@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 
-import cv2, logging, os
+import cv2, logging, numpy as np, os
 
 from .readtable import readtable
 
 logger = logging.getLogger("align")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s"))
+logger.addHandler(handler)
 
 class AlignmentError(Exception):
   """
@@ -20,16 +24,17 @@ class Aligner:
   """
   Main class for running alignment
   """
-  def __init__(self, root1, root2, samp, opt):
+  def __init__(self, root1, root2, samp, opt=0):
     """
     Directory structure should be
     root1/
       samp/
         dbload/
-          bunch of files.csv
+          samp_*.csv
+          samp_qptiff.jpg
     root2/
       samp/
-        bunch of files.fw01 (if using DAPI, could also be fw02 etc.)
+        samp_*.fw01 (if using DAPI, could also be fw02 etc. to align with other markers)
     """
     logger.info(samp)
     self.root1 = root1
@@ -79,6 +84,47 @@ class Aligner:
     self.yposition = self.constantsdict["yposition"]
     self.nclip     = self.constantsdict["nclip"]
     self.layer     = self.constantsdict["layer"]
+
+  def getDAPI(self):
+    logger.info(self.samp)
+    self.getrawlayers()
+
+    """
+    if self.opt == -1:
+      return
+
+    # apply the extra flattening
+
+    self.findmeanimage()
+
+    for i=1:numel(C.F)
+      C.F{i} = uint16(round(C.F{i}./C.mean.flat))
+    end
+    %
+    % get the image statistics
+    %
+    C.I = getImstat(C)
+    %
+    if (C.opt==0)
+      writeImstat(C)
+    end
+    """
+
+  def getrawlayers(self):
+    logger.info(self.samp)
+    ext = f".fw{self.layer:02d}"
+    path = os.path.join(self.root2, self.samp)
+
+    self.F = []
+
+    if not self.rectangles:
+      raise AlignmentError("didn't find any rows in the rectangles table for "+self.samp, 1)
+
+    for rectangle in self.rectangles:
+      with open(os.path.join(path, rectangle.file.replace(".im3", ext)), "rb") as f:
+        img = np.fromfile(f, np.uint16)
+        #use fortran order, like matlab!
+        self.F.append(img.reshape((self.fheight, self.fwidth), order="F"))
 
 if __name__ == "__main__":
   print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))
