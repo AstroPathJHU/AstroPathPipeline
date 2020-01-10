@@ -7,12 +7,30 @@ from .readtable import readtable
 logger = logging.getLogger("align")
 
 class AlignmentError(Exception):
+  """
+  Class for errors that come up during alignment.
+  It has an error id, which is passed to the output of the alignment
+  and stored in the csv file.
+  """
   def __init__(self, errormessage, errorid):
     self.errorid = errorid
     super().__init__(errormessage)
 
 class Aligner:
+  """
+  Main class for running alignment
+  """
   def __init__(self, root1, root2, samp, opt):
+    """
+    Directory structure should be
+    root1/
+      samp/
+        dbload/
+          bunch of files.csv
+    root2/
+      samp/
+        bunch of files.fw01 (if using DAPI, could also be fw02 etc.)
+    """
     logger.info(samp)
     self.root1 = root1
     self.root2 = root2
@@ -29,6 +47,9 @@ class Aligner:
     return os.path.join(self.root1, self.samp, "dbload")
 
   def readmetadata(self):
+    """
+    Read metadata from csv files
+    """
     def intorfloat(string):
       assert isinstance(string, str)
       try: return int(string)
