@@ -89,7 +89,6 @@ class Aligner:
     logger.info(self.samp)
     self.getrawlayers()
 
-    """
     if self.opt == -1:
       return
 
@@ -97,6 +96,8 @@ class Aligner:
 
     self.findmeanimage()
 
+    #todo: finish this function
+    """
     for i=1:numel(C.F)
       C.F{i} = uint16(round(C.F{i}./C.mean.flat))
     end
@@ -115,7 +116,7 @@ class Aligner:
     ext = f".fw{self.layer:02d}"
     path = os.path.join(self.root2, self.samp)
 
-    self.F = []
+    sections = []
 
     if not self.rectangles:
       raise AlignmentError("didn't find any rows in the rectangles table for "+self.samp, 1)
@@ -124,7 +125,53 @@ class Aligner:
       with open(os.path.join(path, rectangle.file.replace(".im3", ext)), "rb") as f:
         img = np.fromfile(f, np.uint16)
         #use fortran order, like matlab!
-        self.F.append(img.reshape((self.fheight, self.fwidth), order="F"))
+        sections.append(img.reshape((self.fheight, self.fwidth), order="F"))
+
+    self.sections = np.array(sections)
+
+  def findmeanimage(self):
+    logger.info(self.samp)
+
+    b = np.mean(self.sections, axis=0)
+
+    #todo: figure out what this code is doing
+
+    ix = b>0
+    bm = np.mean(b[ix])
+    b  = b/bm
+    b[~ix] = 1.0
+
+    m, n = b.shape
+    X, Y = np.meshgrid(range(n),range(m))
+    ft   = createFitFlat(X,Y,b);
+
+    #todo: finish this function
+    """
+    out.flat = feval(ft,X,Y);
+    out.ft   = ft;
+    out.sum  = b;
+    out.img  = b./out.flat;
+    """
+
+def createfitflat(X, Y, img):
+  #todo: finish this function
+  """
+  [xData, yData, zData] = prepareSurfaceData( X, Y, img );
+  %
+  % Set up fittype and options.
+  %
+  ft = fittype( 'poly22' );
+  opts = fitoptions( 'Method', 'LinearLeastSquares' );
+  opts.Robust = 'Bisquare';
+  %
+  % Fit model to data.
+  %
+  [fitresult, gof] = fit( [xData, yData], zData, ft, opts );
+  """
+
+def preparesurfacedata(X, Y, img):
+  #todo: find this function
+
 
 if __name__ == "__main__":
   print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))
