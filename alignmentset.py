@@ -3,6 +3,7 @@
 import cv2, dataclasses, logging, numpy as np, os, typing
 
 from .flatfield import meanimage
+from .overlap import Overlap
 from .readtable import readtable, writetable
 
 logger = logging.getLogger("align")
@@ -179,33 +180,6 @@ class ImageStats:
   std: float
   cx: int
   cy: int
-
-@dataclasses.dataclass(frozen=True)
-class AlignmentResult:
-  n: int
-  p1: int
-  p2: int
-  code: int
-  layer: int
-  exit: int
-  dx: float
-  dy: float
-  sc: float
-  mse1: float
-  mse2: float
-  mse3: float
-  dv: float
-
-@dataclasses.dataclass(frozen=True)
-class Overlap:
-  n: int
-  p1: int
-  p2: int
-  x1: float
-  y1: float
-  x2: float
-  y2: float
-  tag: int
 
 if __name__ == "__main__":
   print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))
