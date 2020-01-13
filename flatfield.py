@@ -15,7 +15,7 @@ def meanimage(images, logmsg=""):
   img[~positiveindices] = 1.0
 
   m, n = img.shape
-  x, y = np.meshgrid(range(1, n+1),range(1, m+1))
+  x, y = np.meshgrid(np.arange(1, n+1) / n, np.arange(1, m+1) / m)
   xdata = x.flatten()
   ydata = y.flatten()
   zdata = img.flatten()
