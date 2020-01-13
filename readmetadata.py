@@ -3,7 +3,7 @@
 import cv2, logging, numpy as np, os
 
 from .flatfield import meanimage
-from .readtable import readtable
+from .readtable import readtable, writetable
 
 logger = logging.getLogger("align")
 logger.setLevel(logging.INFO)
@@ -115,7 +115,7 @@ class Aligner:
       ) for rectangle in self.rectangles
     ]
     if self.opt==0:
-      self.writeimagestats()
+      self.writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats)
 
   def getrawlayers(self):
     logger.info(self.samp)

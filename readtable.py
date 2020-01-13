@@ -1,4 +1,4 @@
-import collections, csv
+import csv, dataclasses
 
 def readtable(filename, rownameorclass, **columntypes):
   """
@@ -8,8 +8,7 @@ def readtable(filename, rownameorclass, **columntypes):
   rownameorclass: class that will represent each row, to be called
                   with **kwargs with the keywords based on the column
                   headers.  Alternatively you can give a name, and a
-                  named tuple class will be automatically created with
-                  that name.
+                  dataclass will be automatically created with that name.
   columntypes:    type (or function) to be called on each element in
                   that column.  Default is it's just left as a string.
 
@@ -36,7 +35,7 @@ def readtable(filename, rownameorclass, **columntypes):
   with open(filename) as f:
     reader = csv.DictReader(f)
     if isinstance(rownameorclass, str):
-      Row = collections.namedtuple(rownameorclass, reader.fieldnames)
+      Row = dataclasses.make_dataclass(rownameorclass, reader.fieldnames)
     else:
       Row = rownameorclass
 
@@ -47,3 +46,23 @@ def readtable(filename, rownameorclass, **columntypes):
       result.append(Row(**row))
 
   return result
+
+def writetable(filename, rows):
+  """
+  Write a csv table into filename based on the rows.
+  The rows should all be the same dataclass type.
+  """
+
+  rowclasses = {type(_) for _ in rows}
+  if len(rowclasses) > 1:
+    raise TypeError(
+      "Provided rows of different types:\n  "
+      + "\n  ".join(_.__name__ for _ in rowclasses))
+  rowclass = rowclasses.pop()
+  fieldnames = [field.name for field in dataclasses.fields(rowclass)]
+
+  with open(filename, "w") as f:
+    writer = csv.DictWriter(f, fieldnames)
+    writer.writeheader()
+    for row in rows:
+      writer.writerow(dataclasses.asdict(row))
