@@ -2,6 +2,7 @@
 
 import cv2, logging, numpy as np, os
 
+from .flatfield import meanimage
 from .readtable import readtable
 
 logger = logging.getLogger("align")
@@ -94,7 +95,7 @@ class Aligner:
 
     # apply the extra flattening
 
-    self.meanimage = findmeanimage(self.imagesraw)
+    self.meanimage = meanimage(self.imagesraw)
 
     self.images = self.imagesraw / self.meanimage.flatfield
     self.images = np.rint(self.images).astype(np.uint16)
@@ -128,68 +129,6 @@ class Aligner:
         images.append(img.reshape((self.fheight, self.fwidth), order="F"))
 
     self.imagesraw = np.array(images)
-
-def findmeanimage(images):
-  meanimage = np.mean(images, axis=0)
-
-  #todo: figure out what this code is doing
-
-  positiveindices = meanimage > 0
-  meanofmeanimage = np.mean(meanimage[positiveindices])
-  meanimage /= meanofmeanimage
-  meanimage[~positiveindices] = 1.0
-
-  m, n = meanimage.shape
-  x, y = np.meshgrid(range(n),range(m))
-  fitresult = createfitflat(x,y,meanimage)
-
-  fitresult.flatfield = fitresult.function(x, y)
-  fitresult.rawflatfield = meanimage
-  fitresult.ratio  = meanimage / fitresult.flatfield
-
-  return fitresult
-
-def makequadraticpolynomial(x, y):
-  """
-  Take x and y, which are variable values.
-  Turn them into an array of the terms that will
-  appear in a quadratic polynomial.
-  The order of terms is 1, x, x^2, y, xy, y^2
-  """
-  assert np.shape(x) == np.shape(y)
-  return np.array([
-    np.ones(np.shape(x)),
-    x,
-    x**2,
-    y,
-    x*y,
-    y**2,
-  ])
-
-def createfitflat(x, y, img):
-  """
-  Least square fit for abcdefg:
-  img = a + bx + cx^2 + dy + exy + fy^2
-  """
-  assert x.shape == y.shape == img.shape
-  xdata = x.flatten()
-  ydata = y.flatten()
-  zdata = img.flatten()
-
-  #least squares fit:
-  #problem has to be set up to get an approximate solution to Ax=b
-  #A = matrix with columns of xdata^m ydata^n
-  #x = vector of coeffs (what we want)
-  #b = zdata
-
-  A = makequadraticpolynomial(xdata, ydata).T
-  b = zdata
-
-  fitresult = scipy.optimize.lsq_linear(A, b)
-  coeffs = fitresult.x
-  fitresult.function = lambda x, y: np.dot(coeffs, makepolynomial(x, y))
-
-  return fitresult
 
 if __name__ == "__main__":
   print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))
