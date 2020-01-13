@@ -3,11 +3,17 @@ import logging, numpy as np, scipy.optimize
 logger = logging.getLogger("align")
 
 def meanimage(images, logmsg=""):
+  """
+  Find the flat field, which is the average intensity
+  over all the images, parameterized as a quadratic
+  polynomial in x and y.  Returns an OptimizeResult
+  from scipy with some extra terms added.  To flatten
+  the image, divide by fitresult.flatfield
+  """
+
   logger.info(logmsg)
 
   img = np.mean(images, axis=0)
-
-  #todo: figure out what this code is doing
 
   positiveindices = img > 0
   meanofmeanimage = np.mean(img[positiveindices])
@@ -54,9 +60,3 @@ def makequadraticpolynomial(x, y):
     x*y,
     y**2,
   ])
-
-def createfitflat(img):
-  """
-  Least square fit for abcdefg:
-  img = a + bx + cx^2 + dy + exy + fy^2
-  """
