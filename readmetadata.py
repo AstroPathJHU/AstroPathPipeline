@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, logging, numpy as np, os
+import cv2, dataclasses, logging, numpy as np, os, typing
 
 from .flatfield import meanimage
 from .readtable import readtable, writetable
@@ -115,7 +115,7 @@ class Aligner:
       ) for rectangle in self.rectangles
     ]
     if self.opt==0:
-      self.writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats)
+      writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats)
 
   def getrawlayers(self):
     logger.info(self.samp)
@@ -138,7 +138,7 @@ class Aligner:
     for rectangle, rawimage in zip(self.rectangles, self.rawimages):
       rectangle.rawimage = rawimage
 
-@dataclass
+@dataclasses.dataclass
 class Rectangle:
   n: int
   x: float
@@ -149,10 +149,10 @@ class Rectangle:
   cy: int
   t: int
   file: str
-  rawimage: None
-  image: None
+  rawimage: typing.Optional[np.ndarray] = None
+  image: typing.Optional[np.ndarray] = None
 
-@dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True)
 class ImageStats:
   n: int
   mean: float
