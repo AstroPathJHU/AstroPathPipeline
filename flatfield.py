@@ -1,5 +1,10 @@
+import logging, numpy as np, scipy.optimize
 
-def meanimage(images):
+logger = logging.getLogger("align")
+
+def meanimage(images, logmsg=""):
+  logger.info(logmsg)
+
   result = np.mean(images, axis=0)
 
   #todo: figure out what this code is doing
@@ -57,7 +62,7 @@ def createfitflat(x, y, img):
 
   fitresult = scipy.optimize.lsq_linear(A, b)
   coeffs = fitresult.x
-  fitresult.function = lambda x, y: np.dot(coeffs, makepolynomial(x, y))
+  fitresult.function = lambda x, y: np.tensordot(coeffs, makequadraticpolynomial(x, y), axes=(0, 0))
 
   return fitresult
 

@@ -95,7 +95,7 @@ class Aligner:
 
     # apply the extra flattening
 
-    self.meanimage = meanimage(self.imagesraw)
+    self.meanimage = meanimage(self.imagesraw, self.samp)
 
     self.images = self.imagesraw / self.meanimage.flatfield
     self.images = np.rint(self.images).astype(np.uint16)
