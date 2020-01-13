@@ -94,13 +94,13 @@ class Aligner:
 
     # apply the extra flattening
 
-    self.findmeanimage()
+    self.meanimage = findmeanimage(self.imagesraw)
+
+    self.images = self.imagesraw / self.meanimage.flatfield
+    self.images = np.rint(self.images).astype(np.uint16)
 
     #todo: finish this function
     """
-    for i=1:numel(C.F)
-      C.F{i} = uint16(round(C.F{i}./C.mean.flat))
-    end
     %
     % get the image statistics
     %
@@ -116,7 +116,7 @@ class Aligner:
     ext = f".fw{self.layer:02d}"
     path = os.path.join(self.root2, self.samp)
 
-    sections = []
+    images = []
 
     if not self.rectangles:
       raise AlignmentError("didn't find any rows in the rectangles table for "+self.samp, 1)
@@ -125,53 +125,71 @@ class Aligner:
       with open(os.path.join(path, rectangle.file.replace(".im3", ext)), "rb") as f:
         img = np.fromfile(f, np.uint16)
         #use fortran order, like matlab!
-        sections.append(img.reshape((self.fheight, self.fwidth), order="F"))
+        images.append(img.reshape((self.fheight, self.fwidth), order="F"))
 
-    self.sections = np.array(sections)
+    self.imagesraw = np.array(images)
 
-  def findmeanimage(self):
-    logger.info(self.samp)
+def findmeanimage(images):
+  meanimage = np.mean(images, axis=0)
 
-    b = np.mean(self.sections, axis=0)
+  #todo: figure out what this code is doing
 
-    #todo: figure out what this code is doing
+  positiveindices = meanimage > 0
+  meanofmeanimage = np.mean(meanimage[positiveindices])
+  meanimage /= meanofmeanimage
+  meanimage[~positiveindices] = 1.0
 
-    ix = b>0
-    bm = np.mean(b[ix])
-    b  = b/bm
-    b[~ix] = 1.0
+  m, n = meanimage.shape
+  x, y = np.meshgrid(range(n),range(m))
+  fitresult = createfitflat(x,y,meanimage)
 
-    m, n = b.shape
-    X, Y = np.meshgrid(range(n),range(m))
-    ft   = createFitFlat(X,Y,b);
+  fitresult.flatfield = fitresult.function(x, y)
+  fitresult.rawflatfield = meanimage
+  fitresult.ratio  = meanimage / fitresult.flatfield
 
-    #todo: finish this function
-    """
-    out.flat = feval(ft,X,Y);
-    out.ft   = ft;
-    out.sum  = b;
-    out.img  = b./out.flat;
-    """
+  return fitresult
 
-def createfitflat(X, Y, img):
-  #todo: finish this function
+def makequadraticpolynomial(x, y):
   """
-  [xData, yData, zData] = prepareSurfaceData( X, Y, img );
-  %
-  % Set up fittype and options.
-  %
-  ft = fittype( 'poly22' );
-  opts = fitoptions( 'Method', 'LinearLeastSquares' );
-  opts.Robust = 'Bisquare';
-  %
-  % Fit model to data.
-  %
-  [fitresult, gof] = fit( [xData, yData], zData, ft, opts );
+  Take x and y, which are variable values.
+  Turn them into an array of the terms that will
+  appear in a quadratic polynomial.
+  The order of terms is 1, x, x^2, y, xy, y^2
   """
+  assert np.shape(x) == np.shape(y)
+  return np.array([
+    np.ones(np.shape(x)),
+    x,
+    x**2,
+    y,
+    x*y,
+    y**2,
+  ])
 
-def preparesurfacedata(X, Y, img):
-  #todo: find this function
+def createfitflat(x, y, img):
+  """
+  Least square fit for abcdefg:
+  img = a + bx + cx^2 + dy + exy + fy^2
+  """
+  assert x.shape == y.shape == img.shape
+  xdata = x.flatten()
+  ydata = y.flatten()
+  zdata = img.flatten()
 
+  #least squares fit:
+  #problem has to be set up to get an approximate solution to Ax=b
+  #A = matrix with columns of xdata^m ydata^n
+  #x = vector of coeffs (what we want)
+  #b = zdata
+
+  A = makequadraticpolynomial(xdata, ydata).T
+  b = zdata
+
+  fitresult = scipy.optimize.lsq_linear(A, b)
+  coeffs = fitresult.x
+  fitresult.function = lambda x, y: np.dot(coeffs, makepolynomial(x, y))
+
+  return fitresult
 
 if __name__ == "__main__":
   print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))
