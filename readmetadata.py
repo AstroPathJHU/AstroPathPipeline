@@ -21,9 +21,9 @@ class AlignmentError(Exception):
     self.errorid = errorid
     super().__init__(errormessage)
 
-class Aligner:
+class AlignmentSet:
   """
-  Main class for running alignment
+  Main class for aligning a set of images
   """
   def __init__(self, root1, root2, samp, opt=0):
     """
@@ -36,6 +36,8 @@ class Aligner:
     root2/
       samp/
         samp_*.fw01 (if using DAPI, could also be fw02 etc. to align with other markers)
+
+    #todo: explain opt here
     """
     logger.info(samp)
     self.root1 = root1
@@ -65,11 +67,11 @@ class Aligner:
       self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int)
       self.vertices    = readtable(os.path.join(self.dbload, self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
       self.batch       = readtable(os.path.join(self.dbload, self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
-      self.overlap     = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), "Overlap", n=int, p1=int, p2=int, x1=float, y1=float, x2=float, y2=float, tag=int)
+      self.overlaps    = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), Overlap)
       self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
       self.image       = cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
       self.constants   = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
-      self.rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), Rectangle, n=int, x=float, y=float, w=int, h=int, cx=int, cy=int, t=int)
+      self.rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), Rectangle)
     except:
       raise AlignmentError(f"ERROR in reading metadata files in {self.dbload}", 1)
 
@@ -85,6 +87,22 @@ class Aligner:
     self.yposition = self.constantsdict["yposition"]
     self.nclip     = self.constantsdict["nclip"]
     self.layer     = self.constantsdict["layer"]
+
+
+  def align(self):
+    self.getDAPI()
+    if self.opt != 0: return
+
+    aligncsv = os.path.join(self.dbpath, self.samp+"_align.csv")
+
+    logger.log("starting align loop for "+self.samp)
+
+    alignments = []
+    for i, overlap in enumerate(self.overlaps):
+      logger.log(f"aligning overlap {i}/{len(self.overlaps)}")
+      overlap.align()
+
+    logger.log("finished align loop for "+self.samp)
 
   def getDAPI(self):
     logger.info(self.samp)
@@ -161,6 +179,33 @@ class ImageStats:
   std: float
   cx: int
   cy: int
+
+@dataclasses.dataclass(frozen=True)
+class AlignmentResult:
+  n: int
+  p1: int
+  p2: int
+  code: int
+  layer: int
+  exit: int
+  dx: float
+  dy: float
+  sc: float
+  mse1: float
+  mse2: float
+  mse3: float
+  dv: float
+
+@dataclasses.dataclass(frozen=True)
+class Overlap:
+  n: int
+  p1: int
+  p2: int
+  x1: float
+  y1: float
+  x2: float
+  y2: float
+  tag: int
 
 if __name__ == "__main__":
   print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))

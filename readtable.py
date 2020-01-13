@@ -35,9 +35,30 @@ def readtable(filename, rownameorclass, **columntypes):
   with open(filename) as f:
     reader = csv.DictReader(f)
     if isinstance(rownameorclass, str):
-      Row = dataclasses.make_dataclass(rownameorclass, reader.fieldnames)
+      Row = dataclasses.make_dataclass(
+        rownameorclass,
+        [
+          (fieldname, columntypes.get(fieldname, str))
+          for fieldname in reader.fieldnames
+        ]
+      )
     else:
       Row = rownameorclass
+      for field in dataclasses.fields(Row):
+        if field.name not in reader.fieldnames:
+          continue
+          #hopefully it has a default value!
+          #otherwise we will get an error when
+          #reading the first row
+        if field.name in columntypes:
+          if columntypes[field.name] != field.type:
+            raise TypeError(
+              f"The type for {field.name} in your dataclass {Row.__name__} "
+              f"and the type provided in readtable are inconsistent "
+              f"({field.type} != {columntypes[field.name]})"
+            )
+        else:
+          columntypes[field.name] = field.type
 
     for row in reader:
       for column, typ in columntypes.items():
