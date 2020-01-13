@@ -14,15 +14,7 @@ def meanimage(images, logmsg=""):
   result /= meanofmeanimage
   result[~positiveindices] = 1.0
 
-  m, n = result.shape
-  x, y = np.meshgrid(range(n),range(m))
-  fitresult = createfitflat(x,y,result)
-
-  fitresult.flatfield = fitresult.function(x, y)
-  fitresult.rawflatfield = result
-  fitresult.ratio  = result / fitresult.flatfield
-
-  return fitresult
+  return createfitflat(result)
 
 def makequadraticpolynomial(x, y):
   """
@@ -41,12 +33,13 @@ def makequadraticpolynomial(x, y):
     y**2,
   ])
 
-def createfitflat(x, y, img):
+def createfitflat(img):
   """
   Least square fit for abcdefg:
   img = a + bx + cx^2 + dy + exy + fy^2
   """
-  assert x.shape == y.shape == img.shape
+  m, n = img.shape
+  x, y = np.meshgrid(range(1, n+1),range(1, m+1))
   xdata = x.flatten()
   ydata = y.flatten()
   zdata = img.flatten()
@@ -63,6 +56,8 @@ def createfitflat(x, y, img):
   fitresult = scipy.optimize.lsq_linear(A, b)
   coeffs = fitresult.x
   fitresult.function = lambda x, y: np.tensordot(coeffs, makequadraticpolynomial(x, y), axes=(0, 0))
+  fitresult.flatfield = fitresult.function(x, y)
+  fitresult.rawflatfield = img
+  fitresult.ratio  = img / fitresult.flatfield
 
   return fitresult
-
