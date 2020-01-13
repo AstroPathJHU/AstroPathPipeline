@@ -69,7 +69,7 @@ class Aligner:
       self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
       self.image       = cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
       self.constants   = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
-      self.rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), "Rectangle", n=int, x=float, y=float, w=int, h=int, cx=int, cy=int, t=int)
+      self.rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), Rectangle, n=int, x=float, y=float, w=int, h=int, cx=int, cy=int, t=int)
     except:
       raise AlignmentError(f"ERROR in reading metadata files in {self.dbload}", 1)
 
@@ -95,22 +95,27 @@ class Aligner:
 
     # apply the extra flattening
 
-    self.meanimage = meanimage(self.imagesraw, self.samp)
+    self.meanimage = meanimage(self.rawimages, self.samp)
 
-    self.images = self.imagesraw / self.meanimage.flatfield
+    self.images = self.rawimages / self.meanimage.flatfield
     self.images = np.rint(self.images).astype(np.uint16)
 
-    #todo: finish this function
-    """
-    %
-    % get the image statistics
-    %
-    C.I = getImstat(C)
-    %
-    if (C.opt==0)
-      writeImstat(C)
-    end
-    """
+    for rectangle, image in zip(self.rectangles, self.images):
+      rectangle.image = image
+
+    self.imagestats = [
+      ImageStats(
+        n=rectangle.n,
+        mean=np.mean(rectangle.image),
+        min=np.min(rectangle.image),
+        max=np.max(rectangle.image),
+        std=np.std(rectangle.image),
+        cx=rectangle.cx,
+        cy=rectangle.cy,
+      ) for rectangle in self.rectangles
+    ]
+    if self.opt==0:
+      self.writeimagestats()
 
   def getrawlayers(self):
     logger.info(self.samp)
@@ -128,7 +133,34 @@ class Aligner:
         #use fortran order, like matlab!
         images.append(img.reshape((self.fheight, self.fwidth), order="F"))
 
-    self.imagesraw = np.array(images)
+    self.rawimages = np.array(images)
+
+    for rectangle, rawimage in zip(self.rectangles, self.rawimages):
+      rectangle.rawimage = rawimage
+
+@dataclass
+class Rectangle:
+  n: int
+  x: float
+  y: float
+  w: int
+  h: int
+  cx: int
+  cy: int
+  t: int
+  file: str
+  rawimage: None
+  image: None
+
+@dataclass(frozen=True)
+class ImageStats:
+  n: int
+  mean: float
+  min: float
+  max: float
+  std: float
+  cx: int
+  cy: int
 
 if __name__ == "__main__":
   print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))

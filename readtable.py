@@ -1,13 +1,17 @@
 import collections, csv
 
-def readtable(filename, rowname, **columntypes):
+def readtable(filename, rownameorclass, **columntypes):
   """
   Read a csv table into a list of named tuples
 
-  filename:    csv file to read from
-  rowname:     name of the class that will represent each row
-  columntypes: type (or function) to be called on each element in
-               that column.  Default is it's just left as a string.
+  filename:       csv file to read from
+  rownameorclass: class that will represent each row, to be called
+                  with **kwargs with the keywords based on the column
+                  headers.  Alternatively you can give a name, and a
+                  named tuple class will be automatically created with
+                  that name.
+  columntypes:    type (or function) to be called on each element in
+                  that column.  Default is it's just left as a string.
 
   Example:
     table.csv contains
@@ -31,7 +35,10 @@ def readtable(filename, rowname, **columntypes):
   result = []
   with open(filename) as f:
     reader = csv.DictReader(f)
-    Row = collections.namedtuple(rowname, reader.fieldnames)
+    if isinstance(rownameorclass, str):
+      Row = collections.namedtuple(rownameorclass, reader.fieldnames)
+    else:
+      Row = rownameorclass
 
     for row in reader:
       for column, typ in columntypes.items():
