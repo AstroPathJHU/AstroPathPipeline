@@ -83,7 +83,7 @@ def writetable(filename, rows):
   fieldnames = [field.name for field in dataclasses.fields(rowclass)]
 
   with open(filename, "w") as f:
-    writer = csv.DictWriter(f, fieldnames)
+    writer = csv.DictWriter(f, fieldnames, lineterminator='\n')
     writer.writeheader()
     for row in rows:
       writer.writerow(dataclasses.asdict(row))

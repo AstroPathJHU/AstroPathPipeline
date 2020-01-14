@@ -1,4 +1,4 @@
-import dataclasses, numpy as np
+import cv2, dataclasses, numpy as np
 
 from .computeshift import computeshift, mse
 
@@ -79,9 +79,10 @@ class Overlap:
 
   def computeshift(self):
     minimizeresult = computeshift(self.images)
-    duplicatedkeys = set(self.result.keys()) & set(minimizeresult.keys())
-    if duplicatedkeys: raise ValueError("Duplicated keys: {}")
-    self.result.update(minimizeresult)
+    for name, value in minimizeresult.items():
+      if hasattr(self, name):
+        raise ValueError(f"Duplicated name: {name}")
+      setattr(self, name, value)
 
   def shiftclip(self):
     """
@@ -94,22 +95,24 @@ class Overlap:
     #clip the non-overlapping parts
     ww = 10*(1+int(max(np.abs([self.dx,self.dy]))/10))
 
-    b1, b2, average = self.result.overlapregion = A(:, ww:-ww or None, ww:-ww or None)
+    b1, b2, average = self.result.overlapregion = A[:, ww:-ww or None, ww:-ww or None]
 
     mse1 = mse(b1)
     mse2 = mse(b2)
 
     self.result.sc = (mse1 / mse2) ** 0.5
 
-    diff = double(b1 - b2*self.result.sc)
+    diff = b1 - b2*self.result.sc
     self.result.mse = mse1, mse2, mse(diff)
 
-def shiftimg(a, b, dx, dy):
+def shiftimg(images, dx, dy):
   """
   Apply the shift to the two images, using
   a symmetric shift with fractional pixels
   """
-  warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT}
+  a, b = images
+
+  warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.shape}
 
   a = cv2.warpAffine(a, np.array([[1, 0,  dx/2], [0, 1,  dy/2]]), **warpkwargs)
   b = cv2.warpAffine(b, np.array([[1, 0, -dx/2], [0, 1, -dy/2]]), **warpkwargs)
@@ -131,13 +134,10 @@ class AlignmentResult:
   mse3: float = 0.
   dv: float = 0.
 
-  def __getattr__(self, attr):
-    if attr == "mse":
-      return self.mse1, self.mse2, self.mse3
-    return super().__getattr__(attr)
+  @property
+  def mse(self):
+    return self.mse1, self.mse2, self.mse3
 
-  def __setattr__(self, attr, value):
-    if attr == "mse":
-      self.mse1, self.mse2, self.mse3 = value
-      return
-    super().__setattr__(attr, value)
+  @mse.setter
+  def mse(self, value):
+    self.mse1, self.mse2, self.mse3 = value

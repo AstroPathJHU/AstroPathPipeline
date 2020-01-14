@@ -1,4 +1,4 @@
-import numpy as np, scipy.interpolate, scipy.optimize
+import functools, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters
 
 def computeshift(images):
   a, b = images;
@@ -7,17 +7,17 @@ def computeshift(images):
   LL = 8
   NG = 5
   firstresult = smoothsearch(a,b,4.0,LL,NG,0,0);
-  x0 = int(np.round(-f.dx))
-  y0 = int(np.round(-f.dy))
+  x0 = int(np.round(-firstresult.dx))
+  y0 = int(np.round(-firstresult.dy))
 
   #fine grid with single step
   LL = 4;
   NG = 2*LL+1;
-  result = smoothSearch(a,b,1.5,LL,NG,x0,y0);
+  result = smoothsearch(a,b,1.5,LL,NG,x0,y0);
   result.firstresult = firstresult;
   return result
 
-def smoothSearch(a,b,WW,LL,NG,x0,y0):
+def smoothsearch(a,b,WW,LL,NG,x0,y0):
   """
   Take the two images a, b, and find their relative shifts.
   a and b are the two images, WW is the smoothing length,
@@ -34,53 +34,54 @@ def smoothSearch(a,b,WW,LL,NG,x0,y0):
      a = skimage.filters.gaussian(a, sigma=WW, mode = 'nearest', truncate=2.0)
      b = skimage.filters.gaussian(b, sigma=WW, mode = 'nearest', truncate=2.0)
 
-   #rescale the intensity
-   mse1 = mse(a)
-   mse2 = mse(b)
-   s = (mse1*mse2)**0.25
-   a *= s/sqrt(mse1)
-   b *= s/sqrt(mse2)
+  #rescale the intensity
+  mse1 = mse(a)
+  mse2 = mse(b)
+  s = (mse1*mse2)**0.25
+  a *= s/np.sqrt(mse1)
+  b *= s/np.sqrt(mse2)
 
-   #create the grid and do brute force evaluations
-   gx = np.linspace(x0-LL,x0+LL,NG)
-   gy = np.linspace(y0-LL,y0+LL,NG)
-   X, Y = np.meshgrid(gx,gy);
+  #create the grid and do brute force evaluations
+  gx = np.linspace(x0-LL,x0+LL,NG)
+  gy = np.linspace(y0-LL,y0+LL,NG)
+  X, Y = np.meshgrid(gx,gy);
 
-   result = OptimizeResult()
+  result = scipy.optimize.OptimizeResult()
 
-   result.v = v = eval2v(a, b, X, Y)
-   result.x = X
-   result.y = Y
-   result.x0 = x0;
-   result.y0 = y0;
+  result.v = v = eval2v(a, b, X, Y)
+  result.x = X
+  result.y = Y
+  print(X, Y, v)
+  result.x0 = x0;
+  result.y0 = y0;
 
-   #fit cubic spline to the cost fn
-   spline = result.spline = fitS2(X, Y, v);
+  #fit cubic spline to the cost fn
+  spline = result.spline = fitS2(X, Y, v);
 
-   #find lowest point for inititalization of the gradient search
-   minindices = np.argmin(v)
-   result.xc = xc = X[minindices]
-   result.yc = yc = Y[minindices]
+  #find lowest point for inititalization of the gradient search
+  minindices = np.unravel_index(np.argmin(v), v.shape)
+  result.xc = xc = X[minindices]
+  result.yc = yc = Y[minindices]
 
-   minimizeresult = scipy.optimize.minimize(
-     fun=lambda xy: spline(*xy),
-     x0=(xc, yc),
-     jac=lambda xy: [spline(*xy, dx=1), spline(*xy, dy=1)],
-     hess=lambda xy: [
-       [spline(*xy, dx=2, dy=0), spline(*xy, dx=1, dy=1)],
-       [spline(*xy, dx=1, dy=1), spline(*xy, dx=0, dy=2)],
-     ],
-     tol=3e-3,
-     bounds=((min(X), max(X)), (min(Y), max(Y))),
-     method="TNC",
-   )
+  minimizeresult = scipy.optimize.minimize(
+    fun=lambda xy: spline(*xy),
+    x0=(xc, yc),
+    jac=lambda xy: [spline(*xy, dx=1), spline(*xy, dy=1)],
+    hess=lambda xy: [
+      [spline(*xy, dx=2, dy=0), spline(*xy, dx=1, dy=1)],
+      [spline(*xy, dx=1, dy=1), spline(*xy, dx=0, dy=2)],
+    ],
+    tol=3e-3,
+    bounds=((np.min(X), np.max(X)), (np.min(Y), np.max(Y))),
+    method="TNC",
+  )
 
-   result.optimizeresult = minimizeresult
-   result.flag = result.exit = flag
-   result.dx, result.dy = -minimizeresult.x
-   result.dv = minimizeresult.fun
+  result.optimizeresult = minimizeresult
+  result.flag = result.exit = minimizeresult.status
+  result.dx, result.dy = -minimizeresult.x
+  result.dv = minimizeresult.fun
 
-   return result
+  return result
 
 
 def eval2v(A, B, gx, gy):
@@ -91,10 +92,11 @@ def eval2v(A, B, gx, gy):
     gx, gy are a 1D vector of eval coordinates
   """
 
-  v = np.array([evalkernel(A, B, x, y) for x, y in zip(gx, gy)])
+  gx = gx.astype(int)
+  gy = gy.astype(int)
+  return evalkernel(A, B, gx, gy)
 
-  return v
-
+@functools.partial(np.vectorize, excluded=(0, 1)) #vectorize over dx and dy
 def evalkernel(A,B,dx,dy):
     if dx > 0:
         x1 = abs(dx)
