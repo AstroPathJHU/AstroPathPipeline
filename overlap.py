@@ -1,5 +1,7 @@
 import dataclasses, numpy as np
 
+from .computeshift import computeshift
+
 @dataclasses.dataclass
 class Overlap:
   n: int
@@ -37,7 +39,7 @@ class Overlap:
       layer=self.layer,
     )
     self.prepimage()
-    self.computeshift()
+    minimizeresult = computeshift(self.images)
     self.shiftclip()
 
     return self.result
