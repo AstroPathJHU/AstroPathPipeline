@@ -35,8 +35,8 @@ def smoothSearch(a,b,WW,LL,NG,x0,y0):
      b = skimage.filters.gaussian(b, sigma=WW, mode = 'nearest', truncate=2.0)
 
    #rescale the intensity
-   mse1 = mkMSE(a)
-   mse2 = mkMSE(b)
+   mse1 = mse(a)
+   mse2 = mse(b)
    s = (mse1*mse2)**0.25
    a *= s/sqrt(mse1)
    b *= s/sqrt(mse2)
@@ -125,6 +125,6 @@ def fitS2(x, y, z):
 
   return scipy.interpolate.SmoothBivariateSpline(xdata, ydata, zdata)
 
-def mkmse(a):
-  mse = np.std(a)**2
+def mse(a):
+  return np.std(a)**2
 

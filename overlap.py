@@ -1,6 +1,6 @@
 import dataclasses, numpy as np
 
-from .computeshift import computeshift
+from .computeshift import computeshift, mse
 
 @dataclasses.dataclass
 class Overlap:
@@ -39,7 +39,7 @@ class Overlap:
       layer=self.layer,
     )
     self.prepimage()
-    minimizeresult = computeshift(self.images)
+    self.computeshift()
     self.shiftclip()
 
     return self.result
@@ -78,9 +78,42 @@ class Overlap:
     ])
 
   def computeshift(self):
-    raise NotImplementedError
+    minimizeresult = computeshift(self.images)
+    duplicatedkeys = set(self.result.keys()) & set(minimizeresult.keys())
+    if duplicatedkeys: raise ValueError("Duplicated keys: {}")
+    self.result.update(minimizeresult)
+
   def shiftclip(self):
-    raise NotImplementedError
+    """
+    Shift images symetrically by fractional amount
+    and save the result. Compute the mse and the
+    illumination correction
+    """
+    A  = shiftimg(self.cutimages,self.result.dx,self.result.dy)
+
+    #clip the non-overlapping parts
+    ww = 10*(1+int(max(np.abs([self.dx,self.dy]))/10))
+
+    b1, b2, average = self.result.overlapregion = A(:, ww:-ww or None, ww:-ww or None)
+
+    mse1 = mse(b1)
+    mse2 = mse(b2)
+
+    self.result.sc = (mse1 / mse2) ** 0.5
+
+    diff = double(b1 - b2*self.result.sc)
+    self.result.mse = mse1, mse2, mse(diff)
+
+def shiftimg(a, b, dx, dy):
+  """
+  Apply the shift to the two images, using
+  a symmetric shift with fractional pixels
+  """
+  warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT}
+
+  a = cv2.warpAffine(a, np.array([[1, 0,  dx/2], [0, 1,  dy/2]]), **warpkwargs)
+  b = cv2.warpAffine(b, np.array([[1, 0, -dx/2], [0, 1, -dy/2]]), **warpkwargs)
+  return np.array([a, b, (a+b)/2])
 
 @dataclasses.dataclass
 class AlignmentResult:
