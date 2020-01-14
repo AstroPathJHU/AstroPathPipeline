@@ -1,4 +1,4 @@
-import dataclasses
+import dataclasses, numpy as np
 
 @dataclasses.dataclass
 class Overlap:
@@ -11,7 +11,7 @@ class Overlap:
   y2: float
   tag: int
 
-  def __init__(self, n, p1, p2, x1, y1, x2, y2, tag, layer, pscale, nclip, images):
+  def __init__(self, n, p1, p2, x1, y1, x2, y2, tag):
     self.n = n
     self.p1 = p1
     self.p2 = p2
@@ -21,10 +21,11 @@ class Overlap:
     self.y2 = y2
     self.tag = tag
 
+  def setalignmentinfo(self, layer, pscale, nclip, images):
     self.layer = layer
     self.pscale = pscale
     self.nclip = nclip
-    self.images = images[(p1-1,p2-1),:,:]
+    self.images = images[(self.p1-1,self.p2-1),:,:]
 
   def align(self):
     if self.tag % 2: return #only align edges, not corners
@@ -39,14 +40,16 @@ class Overlap:
     self.computeshift()
     self.shiftclip()
 
+    return self.result
+
   def prepimage(self):
     hh, ww = self.images.shape[1:]
 
     #convert microns to approximate pixels
-    image1x1 = floor(self.x1 * self.pscale)
-    image1y1 = floor(self.y1 * self.pscale)
-    image2x1 = floor(self.x2 * self.pscale)
-    image2y1 = floor(self.y2 * self.pscale)
+    image1x1 = int(self.x1 * self.pscale)
+    image1y1 = int(self.y1 * self.pscale)
+    image2x1 = int(self.x2 * self.pscale)
+    image2y1 = int(self.y2 * self.pscale)
     image1x2 = image1x1 + ww
     image2x2 = image2x1 + ww
     image1y2 = image1y1 + hh

@@ -63,18 +63,15 @@ class AlignmentSet:
       assert isinstance(string, str)
       try: return int(string)
       except ValueError: return float(string)
-    try:
-      self.annotations = readtable(os.path.join(self.dbload, self.samp+"_annotations.csv"), "Annotation", sampleid=int, layer=int, visible=int)
-      self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int)
-      self.vertices    = readtable(os.path.join(self.dbload, self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
-      self.batch       = readtable(os.path.join(self.dbload, self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
-      self.overlaps    = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), Overlap)
-      self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
-      self.image       = cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
-      self.constants   = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
-      self.rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), Rectangle)
-    except:
-      raise AlignmentError(f"ERROR in reading metadata files in {self.dbload}", 1)
+    self.annotations = readtable(os.path.join(self.dbload, self.samp+"_annotations.csv"), "Annotation", sampleid=int, layer=int, visible=int)
+    self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int)
+    self.vertices    = readtable(os.path.join(self.dbload, self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
+    self.batch       = readtable(os.path.join(self.dbload, self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
+    self.overlaps    = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), Overlap)
+    self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
+    self.image       = cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
+    self.constants   = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
+    self.rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), Rectangle)
 
     self.constantsdict = {constant.name: constant.value for constant in self.constants}
 
@@ -94,16 +91,20 @@ class AlignmentSet:
     self.getDAPI()
     if self.opt != 0: return
 
-    aligncsv = os.path.join(self.dbpath, self.samp+"_align.csv")
+    aligncsv = os.path.join(self.dbload, self.samp+"_align.csv")
 
-    logger.log("starting align loop for "+self.samp)
+    logger.info("starting align loop for "+self.samp)
 
     alignments = []
-    for i, overlap in enumerate(self.overlaps):
-      logger.log(f"aligning overlap {i}/{len(self.overlaps)}")
-      overlap.align()
+    for i, overlap in enumerate(self.overlaps, start=1):
+      logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
+      overlap.setalignmentinfo(layer=self.layer, pscale=self.pscale, nclip=self.nclip, images=self.images)
+      result = overlap.align()
+      if result is not None: alignments.append(result)
 
-    logger.log("finished align loop for "+self.samp)
+    writetable(aligncsv, alignments)
+
+    logger.info("finished align loop for "+self.samp)
 
   def getDAPI(self):
     logger.info(self.samp)
