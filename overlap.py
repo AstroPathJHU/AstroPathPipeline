@@ -79,6 +79,10 @@ class Overlap:
 
   def computeshift(self):
     minimizeresult = computeshift(self.images)
+    self.result.minimizeresult = minimizeresult
+    self.result.dx = minimizeresult.dx
+    self.result.dy = minimizeresult.dy
+    self.result.dv = minimizeresult.dv
     for name, value in minimizeresult.items():
       if hasattr(self, name):
         raise ValueError(f"Duplicated name: {name}")

@@ -60,8 +60,8 @@ def smoothsearch(a,b,WW,LL,NG,x0,y0):
 
   #find lowest point for inititalization of the gradient search
   minindices = np.unravel_index(np.argmin(v), v.shape)
-  result.xc = xc = X[minindices]
-  result.yc = yc = Y[minindices]
+  result.xc = xc = float(X[minindices])
+  result.yc = yc = float(Y[minindices])
 
   minimizeresult = scipy.optimize.minimize(
     fun=lambda xy: spline(*xy),
@@ -75,11 +75,12 @@ def smoothsearch(a,b,WW,LL,NG,x0,y0):
     bounds=((np.min(X), np.max(X)), (np.min(Y), np.max(Y))),
     method="TNC",
   )
+  print(minimizeresult)
 
   result.optimizeresult = minimizeresult
   result.flag = result.exit = minimizeresult.status
   result.dx, result.dy = -minimizeresult.x
-  result.dv = minimizeresult.fun
+  result.dv = minimizeresult.fun[0,0]
 
   return result
 
