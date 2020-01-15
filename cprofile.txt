@@ -1,0 +1,318 @@
+         1526703 function calls (1480503 primitive calls) in 52.694 seconds
+
+   Ordered by: internal time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    12960   17.006    0.001   38.111    0.003 computeshift.py:128(evalkernel)
+    14280   11.981    0.001   19.735    0.001 _methods.py:91(_var)
+    37320    8.031    0.000    8.031    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+      960    3.547    0.004    3.547    0.004 {built-in method scipy.ndimage._nd_image.correlate1d}
+    14280    3.456    0.000   23.205    0.002 _methods.py:138(_std)
+    12960    2.470    0.000   40.598    0.003 function_base.py:2082(func)
+      480    0.594    0.001    0.610    0.001 dtype.py:57(convert)
+      218    0.591    0.003    0.591    0.003 overlap.py:16(setalignmentinfo)
+     3760    0.589    0.000    0.589    0.000 socket.py:342(send)
+      120    0.509    0.004    1.358    0.011 overlap.py:117(shiftimg)
+    57968    0.495    0.000    0.496    0.000 {built-in method numpy.array}
+      240    0.475    0.002    0.475    0.002 {warpAffine}
+      120    0.365    0.003    2.462    0.021 overlap.py:81(shiftclip)
+      240    0.299    0.001   48.980    0.204 computeshift.py:28(smoothsearch)
+     8452    0.245    0.000    0.245    0.000 {method 'acquire' of '_thread.lock' objects}
+      120    0.122    0.001   49.105    0.409 computeshift.py:5(computeshift)
+    75144    0.108    0.000    0.108    0.000 {built-in method numpy.core._multiarray_umath.dragon4_positional}
+45360/1200    0.101    0.000    0.312    0.000 arrayprint.py:716(recurser)
+    15600    0.090    0.000    0.093    0.000 _methods.py:48(_count_reduce_items)
+    39120    0.090    0.000    0.153    0.000 arrayprint.py:945(__call__)
+    14280    0.090    0.000   23.295    0.002 fromnumeric.py:3126(std)
+      121    0.062    0.001    0.064    0.001 {method 'writerow' of '_csv.writer' objects}
+        1    0.055    0.055    0.055    0.055 {built-in method io.open}
+        1    0.049    0.049    0.185    0.185 readtable.py:71(writetable)
+     1200    0.047    0.000    0.230    0.000 arrayprint.py:861(fillFormat)
+     6312    0.043    0.000    0.062    0.000 fitpack2.py:800(__call__)
+    24244    0.041    0.000    0.063    0.000 {built-in method builtins.max}
+    39120    0.038    0.000    0.049    0.000 arrayprint.py:693(_extendLine)
+      240    0.035    0.000   40.653    0.169 function_base.py:2154(_vectorize_call)
+    33240    0.032    0.000    0.071    0.000 numeric.py:541(asanyarray)
+      218    0.029    0.000   51.644    0.237 overlap.py:22(align)
+    78387    0.028    0.000    0.028    0.000 {built-in method builtins.isinstance}
+   328852    0.026    0.000    0.026    0.000 {built-in method builtins.len}
+      960    0.024    0.000    0.048    0.000 filters.py:136(_gaussian_kernel1d)
+      240    0.024    0.000    0.024    0.000 fitpack2.py:1039(__init__)
+    36420    0.022    0.000    0.022    0.000 {built-in method builtins.hasattr}
+    38508    0.022    0.000    0.070    0.000 arrayprint.py:911(<genexpr>)
+     6480    0.021    0.000    0.073    0.000 fromnumeric.py:69(_wrapreduction)
+      940    0.021    0.000    0.053    0.000 __init__.py:282(__init__)
+      480    0.019    0.000    0.048    0.000 function_base.py:37(linspace)
+     2400    0.019    0.000    0.019    0.000 {built-in method numpy.arange}
+    38508    0.017    0.000    0.096    0.000 arrayprint.py:916(<genexpr>)
+    42480    0.017    0.000    0.017    0.000 {built-in method builtins.issubclass}
+     3760    0.016    0.000    0.623    0.000 iostream.py:197(schedule)
+    14160    0.014    0.000    0.014    0.000 {method 'update' of 'dict' objects}
+     1920    0.014    0.000    0.014    0.000 {built-in method numpy.zeros}
+     4320    0.013    0.000    0.031    0.000 numeric.py:2656(seterr)
+     1320    0.012    0.000    2.679    0.002 computeshift.py:159(mse)
+     1784    0.012    0.000    0.038    0.000 computeshift.py:84(<lambda>)
+      960    0.012    0.000    0.032    0.000 numeric.py:2508(within_tol)
+      960    0.012    0.000    3.575    0.004 filters.py:54(correlate1d)
+     4320    0.012    0.000    0.012    0.000 numeric.py:2758(geterr)
+     1320    0.012    0.000    0.462    0.000 _methods.py:58(_mean)
+      960    0.011    0.000    0.011    0.000 {method 'flatten' of 'numpy.ndarray' objects}
+      480    0.011    0.000    4.309    0.009 _gaussian.py:29(gaussian)
+    27840    0.011    0.000    0.011    0.000 {built-in method builtins.abs}
+     1440    0.010    0.000    0.030    0.000 _ni_support.py:71(_get_output)
+      940    0.010    0.000    0.010    0.000 {built-in method time.localtime}
+    39120    0.010    0.000    0.010    0.000 {method 'split' of 'str' objects}
+      940    0.009    0.000    0.264    0.000 threading.py:534(wait)
+     1200    0.009    0.000    0.578    0.000 arrayprint.py:480(_array2string)
+      940    0.009    0.000    0.564    0.001 iostream.py:336(flush)
+      940    0.009    0.000    0.009    0.000 {built-in method time.strftime}
+      960    0.008    0.000    3.631    0.004 filters.py:167(gaussian_filter1d)
+     1878    0.008    0.000    0.008    0.000 {built-in method _thread.allocate_lock}
+      240    0.008    0.000    0.013    0.000 linalg.py:486(inv)
+    38508    0.008    0.000    0.011    0.000 arrayprint.py:920(<genexpr>)
+     4700    0.008    0.000    0.018    0.000 threading.py:1092(is_alive)
+      940    0.008    0.000    0.008    0.000 threading.py:216(__init__)
+    19104    0.008    0.000    0.034    0.000 numeric.py:469(asarray)
+    38508    0.008    0.000    0.010    0.000 arrayprint.py:921(<genexpr>)
+      940    0.008    0.000    0.014    0.000 ntpath.py:178(split)
+     1200    0.008    0.000    0.605    0.001 arrayprint.py:518(array2string)
+      480    0.007    0.000    3.666    0.008 filters.py:220(gaussian_filter)
+      940    0.007    0.000    0.365    0.000 iostream.py:384(write)
+     1200    0.007    0.000    0.253    0.000 arrayprint.py:411(_get_format_function)
+      960    0.007    0.000    0.069    0.000 numeric.py:2431(isclose)
+      940    0.007    0.000    0.016    0.000 __init__.py:1446(findCaller)
+      240    0.007    0.000    0.060    0.000 {built-in method scipy.optimize.moduleTNC.minimize}
+      940    0.007    0.000    0.575    0.001 __init__.py:1002(flush)
+     1200    0.006    0.000    0.237    0.000 arrayprint.py:834(__init__)
+      480    0.006    0.000    0.008    0.000 stride_tricks.py:116(_broadcast_to)
+     1784    0.006    0.000    0.019    0.000 computeshift.py:82(<lambda>)
+      940    0.006    0.000    1.091    0.001 __init__.py:1013(emit)
+     1320    0.006    0.000    0.468    0.000 fromnumeric.py:3014(mean)
+      240    0.006    0.000    0.093    0.000 _minimize.py:42(minimize)
+     3096    0.006    0.000    0.006    0.000 {built-in method numpy.core._multiarray_umath.dragon4_scientific}
+      940    0.006    0.000    1.103    0.001 __init__.py:1570(callHandlers)
+      938    0.005    0.000    0.252    0.000 threading.py:264(wait)
+        1    0.005    0.005   52.694   52.694 alignmentset.py:91(align)
+ 2160/120    0.005    0.000    0.017    0.000 dataclasses.py:1047(_asdict_inner)
+      940    0.005    0.000    1.183    0.001 __init__.py:1491(_log)
+      940    0.005    0.000    0.024    0.000 __init__.py:528(formatTime)
+     1200    0.005    0.000    0.005    0.000 arrayprint.py:358(_get_formatdict)
+     1200    0.005    0.000    0.585    0.000 arrayprint.py:463(wrapper)
+      960    0.005    0.000    0.005    0.000 getlimits.py:497(__init__)
+      940    0.005    0.000    0.143    0.000 __init__.py:595(format)
+     1200    0.005    0.000    0.010    0.000 arrayprint.py:69(_make_options_dict)
+      240    0.004    0.000    0.895    0.004 function_base.py:2093(_get_ufunc_and_otypes)
+     1440    0.004    0.000    0.004    0.000 {method 'copy' of 'numpy.ndarray' objects}
+      240    0.004    0.000    0.077    0.000 tnc.py:280(_minimize_tnc)
+     4700    0.004    0.000    0.008    0.000 threading.py:1050(_wait_for_tstate_lock)
+     6480    0.004    0.000    0.004    0.000 fromnumeric.py:70(<dictcomp>)
+     1200    0.004    0.000    0.004    0.000 {method 'astype' of 'numpy.ndarray' objects}
+      960    0.004    0.000    0.013    0.000 {method 'any' of 'numpy.generic' objects}
+      940    0.004    0.000    0.105    0.000 __init__.py:360(getMessage)
+     1200    0.004    0.000    0.004    0.000 {built-in method builtins.locals}
+     1920    0.004    0.000    0.012    0.000 {method 'all' of 'numpy.generic' objects}
+      720    0.004    0.000    0.922    0.001 __init__.py:1356(debug)
+      945    0.004    0.000    0.005    0.000 ntpath.py:122(splitdrive)
+     3760    0.004    0.000    0.004    0.000 iostream.py:93(_event_pipe)
+     4320    0.004    0.000    0.004    0.000 {built-in method numpy.seterrobj}
+      120    0.004    0.000    0.046    0.000 overlap.py:37(prepimage)
+     2040    0.004    0.000    0.008    0.000 copy.py:132(deepcopy)
+      940    0.004    0.000    0.006    0.000 ntpath.py:44(normcase)
+      940    0.003    0.000    1.098    0.001 __init__.py:881(handle)
+      940    0.003    0.000    0.003    0.000 __init__.py:421(format)
+      240    0.003    0.000   40.658    0.169 function_base.py:2063(__call__)
+      240    0.003    0.000    0.022    0.000 function_base.py:4078(meshgrid)
+     1200    0.003    0.000    0.028    0.000 fromnumeric.py:2083(any)
+     2160    0.003    0.000    0.023    0.000 numeric.py:3058(__enter__)
+     1680    0.003    0.000    0.018    0.000 fromnumeric.py:2397(amax)
+     1784    0.003    0.000    0.061    0.000 tnc.py:370(func_and_grad)
+     2400    0.003    0.000    0.005    0.000 numerictypes.py:293(issubclass_)
+      480    0.003    0.000    0.006    0.000 _dtype.py:319(_name_get)
+      940    0.003    0.000    0.017    0.000 threading.py:499(__init__)
+     1200    0.003    0.000    0.240    0.000 arrayprint.py:367(<lambda>)
+     1200    0.003    0.000    0.008    0.000 numerictypes.py:365(issubdtype)
+     2160    0.003    0.000    0.004    0.000 numeric.py:3054(__init__)
+      940    0.003    0.000    0.005    0.000 genericpath.py:117(_splitext)
+     1920    0.003    0.000    0.023    0.000 fromnumeric.py:2171(all)
+     1440    0.003    0.000    0.003    0.000 {built-in method numpy.result_type}
+     2160    0.003    0.000    0.014    0.000 numeric.py:3063(__exit__)
+      940    0.003    0.000    0.135    0.000 iostream.py:322(_schedule_flush)
+     7201    0.003    0.000    0.003    0.000 {built-in method builtins.getattr}
+      940    0.003    0.000    0.055    0.000 __init__.py:1476(makeRecord)
+     1920    0.003    0.000    0.095    0.000 {built-in method builtins.repr}
+     8640    0.003    0.000    0.003    0.000 {built-in method numpy.geterrobj}
+      480    0.002    0.000    0.093    0.000 arrayprint.py:1397(_array_repr_implementation)
+      940    0.002    0.000    1.107    0.001 __init__.py:1516(handle)
+     9697    0.002    0.000    0.002    0.000 {method 'get' of 'dict' objects}
+     1680    0.002    0.000    0.015    0.000 fromnumeric.py:2512(amin)
+      240    0.002    0.000    0.037    0.000 computeshift.py:149(fitS2)
+      960    0.002    0.000    0.003    0.000 type_check.py:282(iscomplexobj)
+     1880    0.002    0.000    0.004    0.000 __init__.py:838(acquire)
+     8400    0.002    0.000    0.002    0.000 {method 'rstrip' of 'str' objects}
+      120    0.002    0.000   49.108    0.409 overlap.py:70(computeshift)
+      960    0.002    0.000    0.016    0.000 {method 'sum' of 'numpy.ndarray' objects}
+      240    0.002    0.000    0.098    0.000 optimize.py:125(<listcomp>)
+      480    0.002    0.000    0.612    0.001 dtype.py:387(img_as_float)
+      240    0.002    0.000   40.662    0.169 computeshift.py:116(eval2v)
+     1440    0.002    0.000    0.003    0.000 _ni_support.py:55(_normalize_sequence)
+      720    0.002    0.000    0.518    0.001 arrayprint.py:1499(_array_str_implementation)
+      940    0.002    0.000    0.007    0.000 ntpath.py:201(splitext)
+     3120    0.002    0.000    0.002    0.000 optimize.py:113(__getattr__)
+      240    0.002    0.000    0.002    0.000 stride_tricks.py:185(_broadcast_shape)
+     7920    0.002    0.000    0.002    0.000 {method 'items' of 'dict' objects}
+     1200    0.002    0.000    0.314    0.000 arrayprint.py:707(_formatArray)
+      240    0.002    0.000    0.101    0.000 optimize.py:122(__repr__)
+      240    0.002    0.000    0.002    0.000 {method 'round' of 'numpy.generic' objects}
+      240    0.002    0.000    0.002    0.000 {method 'argmin' of 'numpy.ndarray' objects}
+      480    0.002    0.000    0.003    0.000 dtype.py:137(_dtype_itemsize)
+      940    0.002    0.000    0.145    0.000 __init__.py:858(format)
+      240    0.002    0.000    0.014    0.000 stride_tricks.py:208(broadcast_arrays)
+      240    0.002    0.000    0.002    0.000 {built-in method numpy.frompyfunc}
+     1812    0.002    0.000    0.005    0.000 arrayprint.py:886(<genexpr>)
+      940    0.002    0.000    0.003    0.000 __init__.py:154(<lambda>)
+     2820    0.002    0.000    0.002    0.000 {method 'rfind' of 'str' objects}
+     1880    0.002    0.000    0.002    0.000 {method 'acquire' of '_thread.RLock' objects}
+      960    0.002    0.000    0.002    0.000 {method 'reshape' of 'numpy.ndarray' objects}
+     1880    0.002    0.000    0.002    0.000 __init__.py:845(release)
+     1880    0.002    0.000    0.002    0.000 __init__.py:736(filter)
+      240    0.002    0.000    0.002    0.000 {built-in method numpy.unravel_index}
+      940    0.002    0.000    0.004    0.000 __init__.py:573(usesTime)
+     1200    0.002    0.000    0.002    0.000 arrayprint.py:74(<dictcomp>)
+     4320    0.002    0.000    0.002    0.000 {method 'pop' of 'dict' objects}
+      220    0.001    0.000    0.267    0.001 __init__.py:1368(info)
+      940    0.001    0.000    0.002    0.000 threading.py:240(__enter__)
+     4700    0.001    0.000    0.001    0.000 threading.py:507(is_set)
+      240    0.001    0.000    0.002    0.000 linalg.py:144(_commonType)
+      940    0.001    0.000    0.002    0.000 __init__.py:418(usesTime)
+      480    0.001    0.000    0.001    0.000 _internal.py:889(npy_ctypes_check)
+      480    0.001    0.000    0.001    0.000 arrayprint.py:1337(dtype_is_implied)
+     1885    0.001    0.000    0.001    0.000 {method 'replace' of 'str' objects}
+     3767    0.001    0.000    0.001    0.000 {built-in method nt.fspath}
+      240    0.001    0.000    0.002    0.000 function_base.py:2144(<listcomp>)
+     1200    0.001    0.000    0.003    0.000 {built-in method builtins.any}
+      940    0.001    0.000    0.001    0.000 threading.py:1226(current_thread)
+      940    0.001    0.000    0.002    0.000 iostream.py:309(_is_master_process)
+     1200    0.001    0.000    0.002    0.000 copy.py:252(_keep_alive)
+      480    0.001    0.000    0.003    0.000 six.py:130(callable)
+     2280    0.001    0.000    0.002    0.000 dataclasses.py:1012(_is_dataclass_instance)
+     1880    0.001    0.000    0.001    0.000 {built-in method nt.getpid}
+     1200    0.001    0.000    0.001    0.000 {method '__deepcopy__' of 'numpy.generic' objects}
+      938    0.001    0.000    0.002    0.000 threading.py:252(_acquire_restore)
+     4698    0.001    0.000    0.001    0.000 {method 'append' of 'collections.deque' objects}
+     1812    0.001    0.000    0.006    0.000 arrayprint.py:889(<genexpr>)
+      940    0.001    0.000    0.015    0.000 ntpath.py:212(basename)
+      940    0.001    0.000    0.002    0.000 __init__.py:117(getLevelName)
+      940    0.001    0.000    0.001    0.000 threading.py:243(__exit__)
+      940    0.001    0.000    0.001    0.000 __init__.py:1614(isEnabledFor)
+      240    0.001    0.000    0.002    0.000 function_base.py:4198(<listcomp>)
+      480    0.001    0.000    0.613    0.001 utils.py:221(convert_to_float)
+      940    0.001    0.000    0.001    0.000 {built-in method time.time}
+      940    0.001    0.000    0.001    0.000 {method 'find' of 'str' objects}
+     3080    0.001    0.000    0.001    0.000 {built-in method _thread.get_ident}
+      940    0.001    0.000    0.001    0.000 threading.py:1064(name)
+     1920    0.001    0.000    0.008    0.000 _methods.py:45(_all)
+      120    0.001    0.000    0.001    0.000 <string>:1(__init__)
+      480    0.001    0.000    0.001    0.000 getlimits.py:522(max)
+      960    0.001    0.000    0.001    0.000 filters.py:50(_invalid_origin)
+      240    0.001    0.000    0.001    0.000 _minimize.py:799(standardize_constraints)
+     5640    0.001    0.000    0.001    0.000 {built-in method builtins.id}
+      240    0.001    0.000    0.001    0.000 {built-in method builtins.sorted}
+      240    0.001    0.000    0.002    0.000 type_check.py:87(asfarray)
+      960    0.001    0.000    0.014    0.000 _methods.py:34(_sum)
+      940    0.001    0.000    0.001    0.000 {built-in method sys._getframe}
+      480    0.001    0.000    0.001    0.000 function_base.py:20(_index_deprecate)
+     1200    0.001    0.000    0.001    0.000 six.py:131(<genexpr>)
+      960    0.001    0.000    0.001    0.000 dtype.py:139(<genexpr>)
+     1920    0.001    0.000    0.001    0.000 {method 'rjust' of 'str' objects}
+      480    0.001    0.000    0.001    0.000 filters.py:294(<listcomp>)
+      480    0.001    0.000    0.005    0.000 fromnumeric.py:54(_wrapfunc)
+      940    0.001    0.000    0.004    0.000 __init__.py:579(formatMessage)
+      960    0.001    0.000    0.009    0.000 _methods.py:42(_any)
+     1200    0.001    0.000    0.001    0.000 {method 'discard' of 'set' objects}
+      240    0.001    0.000    0.001    0.000 function_base.py:2120(<listcomp>)
+     2178    0.001    0.000    0.001    0.000 csv.py:152(<genexpr>)
+     1880    0.001    0.000    0.001    0.000 {method 'release' of '_thread.RLock' objects}
+      480    0.001    0.000    0.001    0.000 colorconv.py:59(guess_spatial_dimensions)
+      938    0.001    0.000    0.001    0.000 threading.py:249(_release_save)
+      940    0.001    0.000    0.001    0.000 process.py:180(name)
+      480    0.001    0.000    0.001    0.000 numeric.py:2035(isscalar)
+     1181    0.001    0.000    0.001    0.000 {method 'lower' of 'str' objects}
+      940    0.001    0.000    0.001    0.000 ntpath.py:34(_get_bothseps)
+      940    0.001    0.000    0.001    0.000 process.py:36(current_process)
+      938    0.001    0.000    0.001    0.000 threading.py:255(_is_owned)
+     1812    0.001    0.000    0.001    0.000 arrayprint.py:890(<genexpr>)
+      240    0.001    0.000    0.009    0.000 stride_tricks.py:267(<listcomp>)
+     1200    0.001    0.000    0.001    0.000 {method 'copy' of 'dict' objects}
+      940    0.001    0.000    0.001    0.000 {built-in method _imp.lock_held}
+      240    0.001    0.000    0.003    0.000 fromnumeric.py:2940(around)
+      240    0.001    0.000    0.001    0.000 linalg.py:116(_makearray)
+      240    0.001    0.000    0.003    0.000 fromnumeric.py:1110(argmin)
+      940    0.000    0.000    0.000    0.000 {method '__enter__' of '_thread.lock' objects}
+      121    0.000    0.000    0.001    0.000 dataclasses.py:994(fields)
+     1200    0.000    0.000    0.000    0.000 {method 'add' of 'set' objects}
+     1548    0.000    0.000    0.000    0.000 {method 'partition' of 'str' objects}
+     1812    0.000    0.000    0.001    0.000 arrayprint.py:891(<genexpr>)
+      960    0.000    0.000    0.000    0.000 _ni_support.py:86(_check_axis)
+      480    0.000    0.000    0.000    0.000 fromnumeric.py:2847(ndim)
+      240    0.000    0.000    0.006    0.000 function_base.py:2164(<listcomp>)
+     1812    0.000    0.000    0.001    0.000 arrayprint.py:894(<genexpr>)
+      240    0.000    0.000    0.000    0.000 linalg.py:111(get_linalg_error_extobj)
+     2178    0.000    0.000    0.000    0.000 dataclasses.py:1009(<genexpr>)
+     1200    0.000    0.000    0.000    0.000 arrayprint.py:825(_none_or_positive_arg)
+     1812    0.000    0.000    0.000    0.000 arrayprint.py:901(<genexpr>)
+      480    0.000    0.000    0.000    0.000 {method 'join' of 'str' objects}
+      240    0.000    0.000    0.001    0.000 function_base.py:2115(<listcomp>)
+      121    0.000    0.000    0.000    0.000 csv.py:146(_dict_to_list)
+      480    0.000    0.000    0.000    0.000 function_base.py:258(iterable)
+      960    0.000    0.000    0.000    0.000 _ni_support.py:38(_extend_mode_to_code)
+     1440    0.000    0.000    0.000    0.000 stride_tricks.py:121(<genexpr>)
+     2160    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+      240    0.000    0.000    0.000    0.000 linalg.py:209(_assertNdSquareness)
+      240    0.000    0.000    0.000    0.000 _minimize.py:787(standardize_bounds)
+      480    0.000    0.000    0.001    0.000 {built-in method builtins.next}
+      940    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.lock' objects}
+      480    0.000    0.000    0.000    0.000 stride_tricks.py:26(_maybe_view_as_subclass)
+      240    0.000    0.000    0.001    0.000 stride_tricks.py:257(<listcomp>)
+      240    0.000    0.000    0.003    0.000 function_base.py:4211(<listcomp>)
+      720    0.000    0.000    0.000    0.000 function_base.py:2116(<genexpr>)
+      240    0.000    0.000    0.003    0.000 fromnumeric.py:3373(round_)
+      240    0.000    0.000    0.000    0.000 linalg.py:203(_assertRankAtLeast2)
+      480    0.000    0.000    0.000    0.000 stride_tricks.py:261(<genexpr>)
+      480    0.000    0.000    0.000    0.000 linalg.py:121(isComplexType)
+      121    0.000    0.000    0.000    0.000 {built-in method _codecs.charmap_encode}
+      240    0.000    0.000    0.000    0.000 function_base.py:2079(<listcomp>)
+      720    0.000    0.000    0.000    0.000 {method 'setdefault' of 'dict' objects}
+      240    0.000    0.000    0.000    0.000 linalg.py:134(_realType)
+      240    0.000    0.000    0.000    0.000 {built-in method builtins.all}
+      480    0.000    0.000    0.000    0.000 getlimits.py:508(min)
+      480    0.000    0.000    0.000    0.000 {built-in method _operator.index}
+      120    0.000    0.000    0.000    0.000 overlap.py:157(mse)
+      938    0.000    0.000    0.000    0.000 {method 'release' of '_thread.lock' objects}
+      121    0.000    0.000    0.064    0.001 csv.py:154(writerow)
+      240    0.000    0.000    0.000    0.000 function_base.py:2088(<listcomp>)
+      120    0.000    0.000    0.017    0.000 dataclasses.py:1023(asdict)
+      480    0.000    0.000    0.000    0.000 {built-in method builtins.iter}
+      601    0.000    0.000    0.000    0.000 {method 'keys' of 'dict' objects}
+      240    0.000    0.000    0.000    0.000 {built-in method builtins.min}
+      121    0.000    0.000    0.000    0.000 cp1252.py:18(encode)
+      840    0.000    0.000    0.000    0.000 copy.py:190(_deepcopy_atomic)
+      240    0.000    0.000    0.000    0.000 {method '__array_prepare__' of 'numpy.ndarray' objects}
+      240    0.000    0.000    0.000    0.000 function_base.py:2078(<listcomp>)
+      240    0.000    0.000    0.000    0.000 optimize.py:138(_check_unknown_options)
+      240    0.000    0.000    0.000    0.000 {method 'extend' of 'list' objects}
+      240    0.000    0.000    0.000    0.000 function_base.py:2089(<listcomp>)
+        1    0.000    0.000   52.694   52.694 {built-in method builtins.exec}
+        1    0.000    0.000    0.000    0.000 readtable.py:77(<setcomp>)
+      121    0.000    0.000    0.000    0.000 {method 'values' of 'dict' objects}
+        2    0.000    0.000    0.000    0.000 ntpath.py:75(join)
+        1    0.000    0.000    0.000    0.000 {built-in method _csv.writer}
+        1    0.000    0.000    0.000    0.000 csv.py:142(writeheader)
+        1    0.000    0.000    0.000    0.000 _bootlocale.py:11(getpreferredencoding)
+        1    0.000    0.000    0.000    0.000 csv.py:132(__init__)
+        1    0.000    0.000   52.694   52.694 <string>:1(<module>)
+        1    0.000    0.000    0.000    0.000 {built-in method _locale._getdefaultlocale}
+        1    0.000    0.000    0.000    0.000 readtable.py:83(<listcomp>)
+        1    0.000    0.000    0.000    0.000 alignmentset.py:55(dbload)
+        1    0.000    0.000    0.000    0.000 codecs.py:186(__init__)
+        1    0.000    0.000    0.000    0.000 {method 'pop' of 'set' objects}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
