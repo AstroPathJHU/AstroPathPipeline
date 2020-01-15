@@ -20,7 +20,6 @@ class Overlap:
     self.images = images[(self.p1-1,self.p2-1),:,:]
 
   def align(self):
-    if self.tag % 2: return #only align edges, not corners
     self.result = AlignmentResult(
       n=self.n,
       p1=self.p1,
@@ -32,6 +31,36 @@ class Overlap:
     self.computeshift()
     self.shiftclip()
 
+    return self.result
+
+  def getinversealignment(self, inverse):
+    assert (inverse.p1, inverse.p2) == (self.p2, self.p1)
+    self.cutimages = inverse.cutimages[::-1,...]
+    self.result = AlignmentResult(
+      n = self.n,
+      p1 = self.p1,
+      p2 = self.p2,
+      code = self.tag,
+      layer = self.layer,
+      exit = inverse.result.exit,
+      dx = -inverse.result.dx,
+      dy = -inverse.result.dy,
+      sc = 1/inverse.result.sc,
+      mse1 = inverse.result.mse2,
+      mse2 = inverse.result.mse1,
+      mse3 = inverse.result.mse3 / inverse.result.sc**2,
+      dv = inverse.result.dv,
+      tolerance = inverse.result.tolerance,
+      covxx = inverse.result.covxx,
+      covyy = inverse.result.covyy,
+      covxy = inverse.result.covxy,
+    )
+    self.result.minimizeresult = inverse.result.minimizeresult
+    self.shifted = np.array([
+      inverse.shifted[1],
+      inverse.shifted[0],
+      inverse.shifted[2],
+    ])
     return self.result
 
   def prepimage(self):

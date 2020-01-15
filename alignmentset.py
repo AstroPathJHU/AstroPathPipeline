@@ -87,6 +87,8 @@ class AlignmentSet:
     self.nclip     = self.constantsdict["nclip"]
     self.layer     = self.constantsdict["layer"]
 
+    self.overlapsdict = {(o.p1, o.p2): o for o in self.overlaps}
+
 
   def align(self, maxpairs=float("inf")):
     self.getDAPI()
@@ -96,11 +98,17 @@ class AlignmentSet:
     logger.info("starting align loop for "+self.samp)
 
     alignments = []
+    done = set()
     for i, overlap in enumerate(self.overlaps, start=1):
       if i > maxpairs: break
       logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
+      if overlap.tag % 2: continue #only align edges, not corners
       overlap.setalignmentinfo(layer=self.layer, pscale=self.pscale, nclip=self.nclip, images=self.images)
-      result = overlap.align()
+      if (overlap.p2, overlap.p1) in done:
+        result = overlap.getinversealignment(self.overlapsdict[overlap.p2, overlap.p1])
+      else:
+        result = overlap.align()
+      done.add((overlap.p1, overlap.p2))
       if result is not None: alignments.append(result)
 
     writetable(aligncsv, alignments, retry=self.interactive)
