@@ -88,7 +88,7 @@ class AlignmentSet:
     self.layer     = self.constantsdict["layer"]
 
 
-  def align(self):
+  def align(self, maxpairs=float("inf")):
     self.getDAPI()
 
     aligncsv = os.path.join(self.dbload, self.samp+"_align.csv")
@@ -96,7 +96,8 @@ class AlignmentSet:
     logger.info("starting align loop for "+self.samp)
 
     alignments = []
-    for i, overlap in enumerate(self.overlaps[:5], start=1):
+    for i, overlap in enumerate(self.overlaps, start=1):
+      if i > maxpairs: break
       logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
       overlap.setalignmentinfo(layer=self.layer, pscale=self.pscale, nclip=self.nclip, images=self.images)
       result = overlap.align()
