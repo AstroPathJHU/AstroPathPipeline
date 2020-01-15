@@ -68,7 +68,7 @@ class Overlap:
     ])
 
   def computeshift(self):
-    minimizeresult = computeshift(self.images)
+    minimizeresult = computeshift(self.cutimages)
     self.result.minimizeresult = minimizeresult
     self.result.dx = minimizeresult.dx
     self.result.dy = minimizeresult.dy

@@ -3,24 +3,23 @@ import functools, logging, numpy as np, scipy.interpolate, scipy.optimize, skima
 logger = logging.getLogger("align")
 
 def computeshift(images):
-  a, b = images;
+  a, b = images
 
   #first a 17-wide smooth grid with big steps
   LL = 8
   NG = 5
-  result = smoothsearch(a,b,4.0,LL,NG,0,0);
+  result = smoothsearch(a,b,4.0,LL,NG,0,0)
 
   done = False
 
   while not done:
     prevresult = result
-    #fine grid with single step
     x0 = int(np.round(-prevresult.dx))
     y0 = int(np.round(-prevresult.dy))
-    LL = 4;
-    NG = 2*LL+1;
-    result = smoothsearch(a,b,1.5,LL,NG,x0,y0);
-    result.prevresult = prevresult;
+    LL = 4
+    NG = 2*LL+1
+    result = smoothsearch(a,b,1.5,LL,NG,x0,y0)
+    if prevresult is not None: result.prevresult = prevresult
 
     if not result.onboundary: done = True
 
@@ -40,8 +39,8 @@ def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=1e-7):
 
   #smooth the images
   if WW != 1:
-     a = skimage.filters.gaussian(a, sigma=WW, mode = 'nearest', truncate=2.0)
-     b = skimage.filters.gaussian(b, sigma=WW, mode = 'nearest', truncate=2.0)
+     a = skimage.filters.gaussian(a, sigma=WW, mode = 'nearest')
+     b = skimage.filters.gaussian(b, sigma=WW, mode = 'nearest')
 
   #rescale the intensity
   mse1 = mse(a)
@@ -50,10 +49,12 @@ def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=1e-7):
   a *= s/np.sqrt(mse1)
   b *= s/np.sqrt(mse2)
 
+  logger.debug("%s %s %s %s %s", mse1, mse2, s, mse(a), mse(b))
+
   #create the grid and do brute force evaluations
   gx = np.linspace(x0-LL,x0+LL,NG)
   gy = np.linspace(y0-LL,y0+LL,NG)
-  X, Y = np.meshgrid(gx,gy);
+  X, Y = np.meshgrid(gx,gy)
 
   result = scipy.optimize.OptimizeResult()
 
@@ -61,11 +62,11 @@ def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=1e-7):
   result.x = X
   result.y = Y
   logger.debug(f"{X} {Y} {v}")
-  result.x0 = x0;
-  result.y0 = y0;
+  result.x0 = x0
+  result.y0 = y0
 
   #fit cubic spline to the cost fn
-  spline = result.spline = fitS2(X, Y, v);
+  spline = result.spline = fitS2(X, Y, v)
 
   #find lowest point for inititalization of the gradient search
   minindices = np.unravel_index(np.argmin(v), v.shape)
@@ -156,5 +157,5 @@ def fitS2(x, y, z):
   return scipy.interpolate.SmoothBivariateSpline(xdata, ydata, zdata)
 
 def mse(a):
-  return np.std(a)**2
+  return np.std(a)**2 + np.mean(a)**2
 
