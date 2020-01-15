@@ -1,4 +1,6 @@
-import functools, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters
+import functools, logging, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters
+
+logger = logging.getLogger("align")
 
 def computeshift(images):
   a, b = images;
@@ -6,18 +8,25 @@ def computeshift(images):
   #first a 17-wide smooth grid with big steps
   LL = 8
   NG = 5
-  firstresult = smoothsearch(a,b,4.0,LL,NG,0,0);
-  x0 = int(np.round(-firstresult.dx))
-  y0 = int(np.round(-firstresult.dy))
+  result = smoothsearch(a,b,4.0,LL,NG,0,0);
 
-  #fine grid with single step
-  LL = 4;
-  NG = 2*LL+1;
-  result = smoothsearch(a,b,1.5,LL,NG,x0,y0);
-  result.firstresult = firstresult;
+  done = False
+
+  while not done:
+    prevresult = result
+    #fine grid with single step
+    x0 = int(np.round(-prevresult.dx))
+    y0 = int(np.round(-prevresult.dy))
+    LL = 4;
+    NG = 2*LL+1;
+    result = smoothsearch(a,b,1.5,LL,NG,x0,y0);
+    result.prevresult = prevresult;
+
+    if not result.onboundary: done = True
+
   return result
 
-def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=3e-3):
+def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=1e-7):
   """
   Take the two images a, b, and find their relative shifts.
   a and b are the two images, WW is the smoothing length,
@@ -51,7 +60,7 @@ def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=3e-3):
   result.v = v = eval2v(a, b, X, Y)
   result.x = X
   result.y = Y
-  print(X, Y, v)
+  logger.debug(f"{X} {Y} {v}")
   result.x0 = x0;
   result.y0 = y0;
 
@@ -63,15 +72,20 @@ def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=3e-3):
   result.xc = xc = float(X[minindices])
   result.yc = yc = float(Y[minindices])
 
+  minx = np.min(X)
+  maxx = np.max(X)
+  miny = np.min(Y)
+  maxy = np.max(Y)
+
   minimizeresult = scipy.optimize.minimize(
     fun=lambda xy: spline(*xy)[0,0],
     x0=(xc, yc),
     jac=lambda xy: np.array([spline(*xy, dx=1)[0,0], spline(*xy, dy=1)[0,0]]),
     tol=tolerance,
-    bounds=((np.min(X), np.max(X)), (np.min(Y), np.max(Y))),
+    bounds=((minx, maxx), (miny, maxy)),
     method="TNC",
   )
-  print(minimizeresult)
+  logger.debug(minimizeresult)
 
   hessian = np.array([
     [spline(*minimizeresult.x, dx=2, dy=0)[0,0], spline(*minimizeresult.x, dx=1, dy=1)[0,0]],
@@ -88,6 +102,12 @@ def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=3e-3):
   result.covxx = hessianinv[0,0]
   result.covyy = hessianinv[1,1]
   result.covxy = hessianinv[0,1]
+
+  x, y = minimizeresult.x
+  result.onboundary = (
+    np.isclose(x, minx) or np.isclose(x, maxx)
+    or np.isclose(y, miny) or np.isclose(y, maxy)
+  )
 
   return result
 
