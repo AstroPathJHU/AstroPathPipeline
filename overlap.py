@@ -1,4 +1,4 @@
-import cv2, dataclasses, numpy as np
+import cv2, dataclasses, matplotlib.pyplot as plt, numpy as np
 
 from .computeshift import computeshift, mse
 
@@ -84,7 +84,7 @@ class Overlap:
     and save the result. Compute the mse and the
     illumination correction
     """
-    A  = shiftimg(self.cutimages,self.result.dx,self.result.dy)
+    self.shifted = A = shiftimg(self.cutimages,self.result.dx,self.result.dy)
 
     #clip the non-overlapping parts
     ww = 10*(1+int(max(np.abs([self.result.dx, self.result.dy]))/10))
@@ -99,6 +99,21 @@ class Overlap:
     diff = b1 - b2*self.result.sc
     self.result.mse = mse1, mse2, mse(diff)
 
+  def showimages(self, normalize=100., shifted=True):
+    if shifted:
+      red, blue, _ = self.shifted
+    else:
+      red, blue = self.cutimages
+
+    green = np.zeros(red.shape)
+
+    img = np.array([red, green, blue]).transpose(1, 2, 0) / normalize
+
+    plt.imshow(img)
+    plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+    plt.show()
+
+
 def shiftimg(images, dx, dy):
   """
   Apply the shift to the two images, using
@@ -106,10 +121,13 @@ def shiftimg(images, dx, dy):
   """
   a, b = images
 
-  warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.shape}
+  warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.T.shape}
 
   a = cv2.warpAffine(a, np.array([[1, 0,  dx/2], [0, 1,  dy/2]]), **warpkwargs)
   b = cv2.warpAffine(b, np.array([[1, 0, -dx/2], [0, 1, -dy/2]]), **warpkwargs)
+
+  assert a.shape == b.shape == images.shape[1:], (a.shape, b.shape, images.shape)
+
   return np.array([a, b, (a+b)/2])
 
 @dataclasses.dataclass(eq=False)
