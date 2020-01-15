@@ -2,7 +2,7 @@ import cv2, dataclasses, numpy as np
 
 from .computeshift import computeshift, mse
 
-@dataclasses.dataclass
+@dataclasses.dataclass(eq=False, repr=False)
 class Overlap:
   n: int
   p1: int
@@ -12,16 +12,6 @@ class Overlap:
   x2: float
   y2: float
   tag: int
-
-  def __init__(self, n, p1, p2, x1, y1, x2, y2, tag):
-    self.n = n
-    self.p1 = p1
-    self.p2 = p2
-    self.x1 = x1
-    self.y1 = y1
-    self.x2 = x2
-    self.y2 = y2
-    self.tag = tag
 
   def setalignmentinfo(self, layer, pscale, nclip, images):
     self.layer = layer
@@ -118,7 +108,7 @@ def shiftimg(images, dx, dy):
   b = cv2.warpAffine(b, np.array([[1, 0, -dx/2], [0, 1, -dy/2]]), **warpkwargs)
   return np.array([a, b, (a+b)/2])
 
-@dataclasses.dataclass
+@dataclasses.dataclass(eq=False)
 class AlignmentResult:
   n: int
   p1: int
