@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, dataclasses, logging, numpy as np, os, typing
+import cv2, dataclasses, functools, logging, numpy as np, os, typing
 
 from .flatfield import meanimage
 from .overlap import Overlap
@@ -26,7 +26,7 @@ class AlignmentSet:
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, opt=0):
+  def __init__(self, root1, root2, samp):
     """
     Directory structure should be
     root1/
@@ -37,14 +37,11 @@ class AlignmentSet:
     root2/
       samp/
         samp_*.fw01 (if using DAPI, could also be fw02 etc. to align with other markers)
-
-    #todo: explain opt here
     """
     logger.info(samp)
     self.root1 = root1
     self.root2 = root2
     self.samp = samp
-    self.opt = opt
 
     if not os.path.exists(os.path.join(self.root1, self.samp)):
       raise AlignmentError(f"{self.root1}/{self.samp} does not exist", 1)
@@ -89,14 +86,13 @@ class AlignmentSet:
 
   def align(self):
     self.getDAPI()
-    if self.opt != 0: return
 
     aligncsv = os.path.join(self.dbload, self.samp+"_align.csv")
 
     logger.info("starting align loop for "+self.samp)
 
     alignments = []
-    for i, overlap in enumerate(self.overlaps, start=1):
+    for i, overlap in enumerate(self.overlaps[:5], start=1):
       logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
       overlap.setalignmentinfo(layer=self.layer, pscale=self.pscale, nclip=self.nclip, images=self.images)
       result = overlap.align()
@@ -106,12 +102,10 @@ class AlignmentSet:
 
     logger.info("finished align loop for "+self.samp)
 
+  @functools.lru_cache(maxsize=1)
   def getDAPI(self):
     logger.info(self.samp)
     self.getrawlayers()
-
-    if self.opt == -1:
-      return
 
     # apply the extra flattening
 
@@ -134,9 +128,9 @@ class AlignmentSet:
         cy=rectangle.cy,
       ) for rectangle in self.rectangles
     ]
-    if self.opt==0:
-      writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats)
+    writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats)
 
+  @functools.lru_cache(maxsize=1)
   def getrawlayers(self):
     logger.info(self.samp)
     ext = f".fw{self.layer:02d}"

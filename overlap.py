@@ -83,10 +83,6 @@ class Overlap:
     self.result.dx = minimizeresult.dx
     self.result.dy = minimizeresult.dy
     self.result.dv = minimizeresult.dv
-    for name, value in minimizeresult.items():
-      if hasattr(self, name):
-        raise ValueError(f"Duplicated name: {name}")
-      setattr(self, name, value)
 
   def shiftclip(self):
     """
@@ -97,7 +93,7 @@ class Overlap:
     A  = shiftimg(self.cutimages,self.result.dx,self.result.dy)
 
     #clip the non-overlapping parts
-    ww = 10*(1+int(max(np.abs([self.dx,self.dy]))/10))
+    ww = 10*(1+int(max(np.abs([self.result.dx, self.result.dy]))/10))
 
     b1, b2, average = self.result.overlapregion = A[:, ww:-ww or None, ww:-ww or None]
 
