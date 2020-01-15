@@ -68,7 +68,7 @@ def readtable(filename, rownameorclass, **columntypes):
 
   return result
 
-def writetable(filename, rows):
+def writetable(filename, rows, retry=False):
   """
   Write a csv table into filename based on the rows.
   The rows should all be the same dataclass type.
@@ -82,8 +82,20 @@ def writetable(filename, rows):
   rowclass = rowclasses.pop()
   fieldnames = [field.name for field in dataclasses.fields(rowclass)]
 
-  with open(filename, "w") as f:
-    writer = csv.DictWriter(f, fieldnames, lineterminator='\n')
-    writer.writeheader()
-    for row in rows:
-      writer.writerow(dataclasses.asdict(row))
+  try:
+    with open(filename, "w") as f:
+      writer = csv.DictWriter(f, fieldnames, lineterminator='\n')
+      writer.writeheader()
+      for row in rows:
+        writer.writerow(dataclasses.asdict(row))
+  except PermissionError:
+    if retry:
+      result = None
+      while True:
+        result = input(f"Permission error writing to {filename} - do you want to retry? yes/no  ")
+        if result == "yes":
+          return writetable(filename, rows, retry=False)
+        elif result == "no":
+          raise
+    else:
+      raise

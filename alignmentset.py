@@ -26,7 +26,7 @@ class AlignmentSet:
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp):
+  def __init__(self, root1, root2, samp, interactive=False):
     """
     Directory structure should be
     root1/
@@ -37,11 +37,15 @@ class AlignmentSet:
     root2/
       samp/
         samp_*.fw01 (if using DAPI, could also be fw02 etc. to align with other markers)
+
+    interactive: if this is true, then the script might try to prompt
+                 you for input if things go wrong
     """
     logger.info(samp)
     self.root1 = root1
     self.root2 = root2
     self.samp = samp
+    self.interactive = interactive
 
     if not os.path.exists(os.path.join(self.root1, self.samp)):
       raise AlignmentError(f"{self.root1}/{self.samp} does not exist", 1)
@@ -98,7 +102,7 @@ class AlignmentSet:
       result = overlap.align()
       if result is not None: alignments.append(result)
 
-    writetable(aligncsv, alignments)
+    writetable(aligncsv, alignments, retry=self.interactive)
 
     logger.info("finished align loop for "+self.samp)
 
@@ -128,7 +132,7 @@ class AlignmentSet:
         cy=rectangle.cy,
       ) for rectangle in self.rectangles
     ]
-    writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats)
+    writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
 
   @functools.lru_cache(maxsize=1)
   def getrawlayers(self):
