@@ -73,6 +73,10 @@ class Overlap:
     self.result.dx = minimizeresult.dx
     self.result.dy = minimizeresult.dy
     self.result.dv = minimizeresult.dv
+    self.result.tolerance = minimizeresult.tolerance
+    self.result.covxx = minimizeresult.covxx
+    self.result.covxy = minimizeresult.covxy
+    self.result.covyy = minimizeresult.covyy
 
   def shiftclip(self):
     """
@@ -123,6 +127,10 @@ class AlignmentResult:
   mse2: float = 0.
   mse3: float = 0.
   dv: float = 0.
+  tolerance: float = 0.
+  covxx: float = 0.
+  covyy: float = 0.
+  covxy: float = 0.
 
   @property
   def mse(self):

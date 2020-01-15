@@ -17,7 +17,7 @@ def computeshift(images):
   result.firstresult = firstresult;
   return result
 
-def smoothsearch(a,b,WW,LL,NG,x0,y0):
+def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=3e-3):
   """
   Take the two images a, b, and find their relative shifts.
   a and b are the two images, WW is the smoothing length,
@@ -64,23 +64,30 @@ def smoothsearch(a,b,WW,LL,NG,x0,y0):
   result.yc = yc = float(Y[minindices])
 
   minimizeresult = scipy.optimize.minimize(
-    fun=lambda xy: spline(*xy),
+    fun=lambda xy: spline(*xy)[0,0],
     x0=(xc, yc),
-    jac=lambda xy: [spline(*xy, dx=1), spline(*xy, dy=1)],
-    hess=lambda xy: [
-      [spline(*xy, dx=2, dy=0), spline(*xy, dx=1, dy=1)],
-      [spline(*xy, dx=1, dy=1), spline(*xy, dx=0, dy=2)],
-    ],
-    tol=3e-3,
+    jac=lambda xy: np.array([spline(*xy, dx=1)[0,0], spline(*xy, dy=1)[0,0]]),
+    tol=tolerance,
     bounds=((np.min(X), np.max(X)), (np.min(Y), np.max(Y))),
     method="TNC",
   )
   print(minimizeresult)
 
+  hessian = np.array([
+    [spline(*minimizeresult.x, dx=2, dy=0)[0,0], spline(*minimizeresult.x, dx=1, dy=1)[0,0]],
+    [spline(*minimizeresult.x, dx=1, dy=1)[0,0], spline(*minimizeresult.x, dx=0, dy=2)[0,0]],
+  ])
+  hessianinv = tolerance * np.linalg.inv(hessian)
+
   result.optimizeresult = minimizeresult
   result.flag = result.exit = minimizeresult.status
   result.dx, result.dy = -minimizeresult.x
-  result.dv = minimizeresult.fun[0,0]
+  result.dv = minimizeresult.fun
+
+  result.tolerance = tolerance
+  result.covxx = hessianinv[0,0]
+  result.covyy = hessianinv[1,1]
+  result.covxy = hessianinv[0,1]
 
   return result
 
