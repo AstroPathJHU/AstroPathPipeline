@@ -8,7 +8,12 @@ def computeshift(images):
   #first a 17-wide smooth grid with big steps
   LL = 8
   NG = 5
-  result = smoothsearch(a,b,4.0,LL,NG,0,0)
+  result = smoothsearch(
+    a, b, smoothsigma=4.0,
+    nx=5, xmin=-8, xmax=8,
+    ny=5, ymin=-8, ymax=8,
+    x0=0, y0=0,
+  )
 
   done = False
 
@@ -18,18 +23,24 @@ def computeshift(images):
     y0 = int(np.round(-prevresult.dy))
     LL = 4
     NG = 2*LL+1
-    result = smoothsearch(a,b,1.5,LL,NG,x0,y0)
+    result = smoothsearch(
+      a, b, smoothsigma=1.5,
+      nx=9, xmin=x0-4, xmax=x0+4,
+      ny=9, ymin=y0-4, ymax=y0+4,
+      x0=x0, y0=y0,
+    )
     if prevresult is not None: result.prevresult = prevresult
 
     if not result.onboundary: done = True
 
   return result
 
-def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=1e-7):
+def smoothsearch(a, b, smoothsigma, nx, xmin, xmax, ny, ymin, ymax, x0, y0, tolerance=1e-7):
   """
   Take the two images a, b, and find their relative shifts.
-  a and b are the two images, WW is the smoothing length,
-  (-LL,LL) is the grid range, NG is the grid size, and
+  a and b are the two images, smoothsigma is the smoothing length,
+  nx and ny are the number of points in x and y,
+  (xmin, xmax) and (ymin, ymax) are the grid limits
   x0,y0 is the relative shift between the centers.
   The function fits a bicubic spline to the grids, then does
   a gradient search on the interpolated function for the
@@ -38,9 +49,9 @@ def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=1e-7):
   """
 
   #smooth the images
-  if WW != 1:
-     a = skimage.filters.gaussian(a, sigma=WW, mode = 'nearest')
-     b = skimage.filters.gaussian(b, sigma=WW, mode = 'nearest')
+  if smoothsigma != 1:
+     a = skimage.filters.gaussian(a, sigma=smoothsigma, mode = 'nearest')
+     b = skimage.filters.gaussian(b, sigma=smoothsigma, mode = 'nearest')
 
   #rescale the intensity
   mse1 = mse(a)
@@ -52,8 +63,8 @@ def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=1e-7):
   logger.debug("%s %s %s %s %s", mse1, mse2, s, mse(a), mse(b))
 
   #create the grid and do brute force evaluations
-  gx = np.linspace(x0-LL,x0+LL,NG)
-  gy = np.linspace(y0-LL,y0+LL,NG)
+  gx = np.linspace(xmin, xmax, nx)
+  gy = np.linspace(ymin, ymax, ny)
   X, Y = np.meshgrid(gx,gy)
 
   result = scipy.optimize.OptimizeResult()
@@ -61,7 +72,7 @@ def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=1e-7):
   result.v = v = eval2v(a, b, X, Y)
   result.x = X
   result.y = Y
-  logger.debug(f"{X} {Y} {v}")
+  logger.debug("%s %s %s", X, Y, v)
   result.x0 = x0
   result.y0 = y0
 
@@ -77,6 +88,8 @@ def smoothsearch(a, b, WW, LL, NG, x0, y0, tolerance=1e-7):
   maxx = np.max(X)
   miny = np.min(Y)
   maxy = np.max(Y)
+
+  assert minx == xmin and miny == ymin and maxx == xmax and maxy == ymax
 
   minimizeresult = scipy.optimize.minimize(
     fun=lambda xy: spline(*xy)[0,0],
