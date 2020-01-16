@@ -157,5 +157,4 @@ def fitS2(x, y, z):
   return scipy.interpolate.SmoothBivariateSpline(xdata, ydata, zdata)
 
 def mse(a):
-  return np.std(a)**2 + np.mean(a)**2
-
+  return np.mean(a**2)
