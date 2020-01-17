@@ -7,7 +7,7 @@ from .overlap import Overlap
 from .readtable import readtable, writetable
 
 logger = logging.getLogger("align")
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s"))
 logger.addHandler(handler)

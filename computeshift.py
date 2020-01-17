@@ -2,7 +2,7 @@ import functools, logging, numpy as np, scipy.interpolate, scipy.optimize, skima
 
 logger = logging.getLogger("align")
 
-def computeshift(images):
+def computeshift(images, tolerance=0.01):
   widesearcher = ShiftSearcher(images, smoothsigma=4.0)
   finesearcher = ShiftSearcher(images, smoothsigma=1.5)
 
@@ -10,13 +10,17 @@ def computeshift(images):
   result = widesearcher.search(
     nx=5, xmin=-8, xmax=8,
     ny=5, ymin=-8, ymax=8,
-    x0=0, y0=0,
+    x0=0, y0=0, tolerance=tolerance,
   )
 
   done = False
 
   xmin = ymin = float("inf")
   xmax = ymax = -float("inf")
+
+  i = 3
+
+  logger.debug("%g %g %g", result.dx, result.dy, result.dv)
 
   while True:
     prevresult = result
@@ -25,20 +29,33 @@ def computeshift(images):
 
     oldxmin, oldxmax, oldymin, oldymax = xmin, xmax, ymin, ymax
 
-    xmin = int(min(xmin, -prevresult.dx - 3))
-    ymin = int(min(ymin, -prevresult.dy - 3))
-    xmax = int(max(xmax, -prevresult.dx + 3))
-    ymax = int(max(ymax, -prevresult.dy + 3))
+    xmin = int(min(xmin, -prevresult.dx - i))
+    ymin = int(min(ymin, -prevresult.dy - i))
+    xmax = int(max(xmax, -prevresult.dx + i))
+    ymax = int(max(ymax, -prevresult.dy + i))
 
-    if (oldxmin, oldxmax, oldymin, oldymax) == (xmin, xmax, ymin, ymax):
-      break
+    #if (oldxmin, oldxmax, oldymin, oldymax) == (xmin, xmax, ymin, ymax):
+    #  break
 
     result = finesearcher.search(
       nx=xmax-xmin+1, xmin=xmin, xmax=xmax,
       ny=ymax-ymin+1, ymin=ymin, ymax=ymax,
-      x0=x0, y0=y0,
+      x0=x0, y0=y0, tolerance=tolerance,
     )
     if prevresult is not None: result.prevresult = prevresult
+
+    i += 1
+
+    logger.debug("%g %g %g", result.dx, result.dy, result.dv)
+
+    if i > 5 and abs(
+      result.spline(result.dx, result.dy)
+      - result.spline(prevresult.dx, prevresult.dy)
+    ) < tolerance and abs(
+      result.spline(result.dx, result.dy)
+      - result.spline(prevresult.prevresult.dx, prevresult.prevresult.dy)
+    ):
+      break
 
   logger.debug(
     "had to compute %d * %d = %d points",
@@ -63,17 +80,15 @@ class ShiftSearcher:
     mse1 = mse(self.a)
     mse2 = mse(self.b)
     s = (mse1*mse2)**0.25
-    self.a *= s/np.sqrt(mse1)
-    self.b *= s/np.sqrt(mse2)
-
-    logger.debug("%s %s %s %s %s", mse1, mse2, s, mse(a), mse(b))
+    self.a *= 1/np.sqrt(mse1)
+    self.b *= 1/np.sqrt(mse2)
 
     self.__kernel_kache = {}
 
     self.evalkernel = np.vectorize(self.__evalkernel)
 
 
-  def search(self, nx, xmin, xmax, ny, ymin, ymax, x0, y0, tolerance=1e-7):
+  def search(self, nx, xmin, xmax, ny, ymin, ymax, x0, y0, tolerance, minimizetolerance=1e-7):
     """
     Take the two images a, b, and find their relative shifts.
     a and b are the two images, smoothsigma is the smoothing length,
@@ -86,6 +101,8 @@ class ShiftSearcher:
     and the the grid points for debugging.
     """
 
+    tolerance = max(tolerance, minimizetolerance)
+
     #create the grid and do brute force evaluations
     gx = np.linspace(xmin, xmax, nx, dtype=int)
     gy = np.linspace(ymin, ymax, ny, dtype=int)
@@ -96,7 +113,6 @@ class ShiftSearcher:
     result.v = v = self.evalkernel(x, y)
     result.x = x
     result.y = y
-    logger.debug("%s %s %s", x, y, v)
     result.x0 = x0
     result.y0 = y0
 
@@ -112,11 +128,11 @@ class ShiftSearcher:
       fun=lambda xy: spline(*xy)[0,0],
       x0=(xc, yc),
       jac=lambda xy: np.array([spline(*xy, dx=1)[0,0], spline(*xy, dy=1)[0,0]]),
-      tol=tolerance,
+      tol=minimizetolerance,
       bounds=((xmin, xmax), (ymin, ymax)),
       method="TNC",
     )
-    logger.debug(minimizeresult)
+    #logger.debug(minimizeresult)
 
     hessian = np.array([
       [spline(*minimizeresult.x, dx=2, dy=0)[0,0], spline(*minimizeresult.x, dx=1, dy=1)[0,0]],
