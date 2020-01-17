@@ -1,6 +1,6 @@
-import cv2, dataclasses, matplotlib.pyplot as plt, numpy as np
+import dataclasses, matplotlib.pyplot as plt, numpy as np
 
-from .computeshift import computeshift, mse
+from .computeshift import computeshift, mse, shiftimg
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Overlap:
@@ -50,7 +50,7 @@ class Overlap:
       mse2 = inverse.result.mse1,
       mse3 = inverse.result.mse3 / inverse.result.sc**2,
       dv = inverse.result.dv,
-      tolerance = inverse.result.tolerance,
+      dverror = inverse.result.dverror,
       covxx = inverse.result.covxx,
       covyy = inverse.result.covyy,
       covxy = inverse.result.covxy,
@@ -102,7 +102,7 @@ class Overlap:
     self.result.dx = minimizeresult.dx
     self.result.dy = minimizeresult.dy
     self.result.dv = minimizeresult.dv
-    self.result.tolerance = minimizeresult.tolerance
+    self.result.dverror = minimizeresult.dverror
     self.result.covxx = minimizeresult.covxx
     self.result.covxy = minimizeresult.covxy
     self.result.covyy = minimizeresult.covyy
@@ -143,22 +143,6 @@ class Overlap:
     plt.show()
 
 
-def shiftimg(images, dx, dy):
-  """
-  Apply the shift to the two images, using
-  a symmetric shift with fractional pixels
-  """
-  a, b = images
-
-  warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.T.shape}
-
-  a = cv2.warpAffine(a, np.array([[1, 0,  dx/2], [0, 1,  dy/2]]), **warpkwargs)
-  b = cv2.warpAffine(b, np.array([[1, 0, -dx/2], [0, 1, -dy/2]]), **warpkwargs)
-
-  assert a.shape == b.shape == images.shape[1:], (a.shape, b.shape, images.shape)
-
-  return np.array([a, b, (a+b)/2])
-
 @dataclasses.dataclass(eq=False)
 class AlignmentResult:
   n: int
@@ -174,7 +158,7 @@ class AlignmentResult:
   mse2: float = 0.
   mse3: float = 0.
   dv: float = 0.
-  tolerance: float = 0.
+  dverror: float = 0.
   covxx: float = 0.
   covyy: float = 0.
   covxy: float = 0.

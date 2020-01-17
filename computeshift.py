@@ -1,4 +1,4 @@
-import functools, logging, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters
+import cv2, functools, logging, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters
 
 logger = logging.getLogger("align")
 
@@ -46,7 +46,7 @@ def computeshift(images, tolerance=0.01):
 
     i += 1
 
-    logger.debug("%g %g %g", result.dx, result.dy, result.dv)
+    logger.debug("%g %g %g %g", result.dx, result.dy, result.dv, result.dverror)
 
     if i > 5 and abs(
       result.spline(result.dx, result.dy)
@@ -133,19 +133,21 @@ class ShiftSearcher:
       method="TNC",
     )
     #logger.debug(minimizeresult)
+    
+    dverror = abs(minimizeresult.fun - self.evalkernel(*minimizeresult.x))
 
     hessian = np.array([
       [spline(*minimizeresult.x, dx=2, dy=0)[0,0], spline(*minimizeresult.x, dx=1, dy=1)[0,0]],
       [spline(*minimizeresult.x, dx=1, dy=1)[0,0], spline(*minimizeresult.x, dx=0, dy=2)[0,0]],
     ])
-    hessianinv = tolerance * np.linalg.inv(hessian)
+    hessianinv = (dverror**2 + minimizetolerance**2) * np.linalg.inv(hessian)
 
     result.optimizeresult = minimizeresult
     result.flag = result.exit = minimizeresult.status
     result.dx, result.dy = -minimizeresult.x
     result.dv = minimizeresult.fun
 
-    result.tolerance = tolerance
+    result.dverror = dverror
     result.covxx = hessianinv[0,0]
     result.covyy = hessianinv[1,1]
     result.covxy = hessianinv[0,1]
@@ -156,6 +158,9 @@ class ShiftSearcher:
 
   def __evalkernel(self, dx, dy):
     if (dx, dy) not in self.__kernel_kache:
+      if np.isclose(dx, int(dx)): dx = int(dx)
+      if np.isclose(dy, int(dy)): dy = int(dy)
+
       if dx > 0:
         x1 = abs(dx)
         x2 = 0
@@ -171,7 +176,13 @@ class ShiftSearcher:
         y2 = abs(dy)
 
       #or None: https://stackoverflow.com/a/21914093/5228524
-      dd = self.a[y1:-y2 or None,x1:-x2 or None] - self.b[y2:-y1 or None,x2:-x1 or None]
+      if isinstance(dx, int) and isinstance(dy, int):
+        dd = self.a[y1:-y2 or None,x1:-x2 or None] - self.b[y2:-y1 or None,x2:-x1 or None]
+      else:
+        newa, newb = shiftimg([self.a, self.b], dx, dy, getaverage=False)
+        shavex = int(abs(dx)/2)
+        shavey = int(abs(dy)/2)
+        dd = (newa - newb)[shavey:-shavey or None, shavex:-shavex or None]
       result = self.__kernel_kache[dx, dy] = np.std(dd)
 
     return self.__kernel_kache[dx, dy]
@@ -188,3 +199,22 @@ def fitS2(x, y, z):
 
 def mse(a):
   return np.mean(a**2)
+
+def shiftimg(images, dx, dy, getaverage=True):
+  """
+  Apply the shift to the two images, using
+  a symmetric shift with fractional pixels
+  """
+  a, b = images
+
+  warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.T.shape}
+
+  a = cv2.warpAffine(a, np.array([[1, 0,  dx/2], [0, 1,  dy/2]]), **warpkwargs)
+  b = cv2.warpAffine(b, np.array([[1, 0, -dx/2], [0, 1, -dy/2]]), **warpkwargs)
+
+  assert a.shape == b.shape == np.shape(images)[1:], (a.shape, b.shape, np.shape(images))
+
+  result = [a, b]
+  if getaverage: result.append((a+b)/2)
+
+  return np.array(result)
