@@ -18,7 +18,7 @@ def computeshift(images, tolerance=0.01):
   xmin = ymin = float("inf")
   xmax = ymax = -float("inf")
 
-  i = 3
+  i = 5
 
   logger.debug("%g %g %g", result.dx, result.dy, result.dv)
 
@@ -46,9 +46,9 @@ def computeshift(images, tolerance=0.01):
 
     i += 1
 
-    logger.debug("%g %g %g %g", result.dx, result.dy, result.dv, result.dverror)
+    logger.debug("%g %g %g %g %g", result.dx, result.dy, result.dv, result.R_error, result.F_error)
 
-    if i > 5 and abs(
+    if True or i > 5 and abs(
       result.spline(result.dx, result.dy)
       - result.spline(prevresult.dx, prevresult.dy)
     ) < tolerance and abs(
@@ -65,16 +65,15 @@ def computeshift(images, tolerance=0.01):
   return result
 
 class ShiftSearcher:
-  def __init__(self, images, smoothsigma):
+  def __init__(self, images, smoothsigma=None):
     self.images = images
-    self.smoothsigma = smoothsigma
 
-    a, b = images
+    self.a, self.b = images
 
     #smooth the images
-    if smoothsigma != 1:
-      self.a = skimage.filters.gaussian(a, sigma=smoothsigma, mode = 'nearest')
-      self.b = skimage.filters.gaussian(b, sigma=smoothsigma, mode = 'nearest')
+    if smoothsigma is not None:
+      self.a = skimage.filters.gaussian(self.a, sigma=smoothsigma, mode = 'nearest')
+      self.b = skimage.filters.gaussian(self.b, sigma=smoothsigma, mode = 'nearest')
 
     #rescale the intensity
     mse1 = mse(self.a)
@@ -110,9 +109,7 @@ class ShiftSearcher:
 
     result = scipy.optimize.OptimizeResult()
 
-    result.v = v = self.evalkernel(x, y)
-    result.x = x
-    result.y = y
+    v = self.evalkernel(x, y)
     result.x0 = x0
     result.y0 = y0
 
@@ -133,21 +130,50 @@ class ShiftSearcher:
       method="TNC",
     )
     #logger.debug(minimizeresult)
-    
-    dverror = abs(minimizeresult.fun - self.evalkernel(*minimizeresult.x))
+
+    #calculating error according to https://www.osti.gov/servlets/purl/934781
+    #first: R-error from eq. (10)
+    Delta_t = 1  #because the spline spacing is 1 pixel
+
+    #need to estimate sigma_e: error on the spline data points
+    #the data points are calculated from evalkernel: standard deviation of (a-b)
+    #std dev of the final difference gives an estimate of the intensity error on a or b
+    error_on_pixel = self.evalkernel(*minimizeresult.x)
+    """
+    \begin{align}
+    \mathtt{evalkernel}^2 = K^2 &= \frac{1}{n} \sum_i (a_i - b_i)^2 \\
+    (\delta(K^2))^2 &= \frac{1}{n^2} \sum_i 4(a_i-b_i)^2((\delta a_i)^2+(\delta b_i)^2) \\
+    &= \frac{8K^2(\mathtt{error\_on\_pixel})^2}{n} \\
+    \delta(K^2) &= 2K \sqrt{\frac{2}{n}}(\mathtt{error\_on\_pixel}) \\
+    \delta K &= \frac{\delta(K^2)}{2K} \\
+    &=\sqrt{\frac{2}{n}}(\mathtt{error\_on\_pixel})
+    \end{align}
+    """
+    sigma_e = np.sqrt(2 / ((v.shape[0] - int(abs(minimizeresult.x[0]))) * (v.shape[1] - int(abs(minimizeresult.x[1]))))) * error_on_pixel
+    kj = []
+    for idx in np.ndindex(v.shape):
+      deltav = np.zeros(v.shape)
+      deltav[idx] = 1
+      newspline = fitS2(x, y, deltav)
+      kj.append(newspline(*minimizeresult.x) - spline(*minimizeresult.x))
+    R_error = Delta_t * sigma_e * np.linalg.norm(kj)
+    logger.debug("%g %g %g", error_on_pixel, sigma_e, R_error)
+
+    F_error = 0 #placeholder
 
     hessian = np.array([
       [spline(*minimizeresult.x, dx=2, dy=0)[0,0], spline(*minimizeresult.x, dx=1, dy=1)[0,0]],
       [spline(*minimizeresult.x, dx=1, dy=1)[0,0], spline(*minimizeresult.x, dx=0, dy=2)[0,0]],
     ])
-    hessianinv = (dverror**2 + minimizetolerance**2) * np.linalg.inv(hessian)
+    hessianinv = (F_error**2 + R_error**2 + minimizetolerance**2) * np.linalg.inv(hessian)
 
     result.optimizeresult = minimizeresult
     result.flag = result.exit = minimizeresult.status
     result.dx, result.dy = -minimizeresult.x
     result.dv = minimizeresult.fun
 
-    result.dverror = dverror
+    result.R_error = R_error
+    result.F_error = F_error
     result.covxx = hessianinv[0,0]
     result.covyy = hessianinv[1,1]
     result.covxy = hessianinv[0,1]

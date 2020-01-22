@@ -50,7 +50,8 @@ class Overlap:
       mse2 = inverse.result.mse1,
       mse3 = inverse.result.mse3 / inverse.result.sc**2,
       dv = inverse.result.dv,
-      dverror = inverse.result.dverror,
+      R_error = inverse.result.R_error,
+      F_error = inverse.result.F_error,
       covxx = inverse.result.covxx,
       covyy = inverse.result.covyy,
       covxy = inverse.result.covxy,
@@ -102,7 +103,8 @@ class Overlap:
     self.result.dx = minimizeresult.dx
     self.result.dy = minimizeresult.dy
     self.result.dv = minimizeresult.dv
-    self.result.dverror = minimizeresult.dverror
+    self.result.R_error = minimizeresult.R_error
+    self.result.F_error = minimizeresult.F_error
     self.result.covxx = minimizeresult.covxx
     self.result.covxy = minimizeresult.covxy
     self.result.covyy = minimizeresult.covyy
@@ -158,7 +160,8 @@ class AlignmentResult:
   mse2: float = 0.
   mse3: float = 0.
   dv: float = 0.
-  dverror: float = 0.
+  R_error: float = 0.
+  F_error: float = 0.
   covxx: float = 0.
   covyy: float = 0.
   covxy: float = 0.
