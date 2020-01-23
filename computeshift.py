@@ -40,19 +40,11 @@ def computeshift(images, tolerance=0.01):
       ny=ymax-ymin+1, ymin=ymin, ymax=ymax,
       x0=x0, y0=y0, tolerance=tolerance,
     )
-    if prevresult is not None: result.prevresult = prevresult
-
-    i += 1
+    result.prevresult = prevresult
 
     logger.debug("%g %g %g %g %g", result.dx, result.dy, result.dv, result.R_error, result.F_error)
 
-    if True or i > 5 and abs(
-      result.spline(result.dx, result.dy)
-      - result.spline(prevresult.dx, prevresult.dy)
-    ) < tolerance and abs(
-      result.spline(result.dx, result.dy)
-      - result.spline(prevresult.prevresult.dx, prevresult.prevresult.dy)
-    ):
+    if xmin+1 <= -result.dx <= xmax-1 and ymin+1 <= -result.dy <= ymax-1:
       break
 
   return result
