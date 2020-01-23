@@ -107,7 +107,7 @@ class ShiftSearcher:
     result.y0 = y0
 
     #fit cubic spline to the cost fn
-    spline = result.spline = fitS2(x, y, v)
+    spline = result.spline = makespline(x, y, v)
 
     #find lowest point for inititalization of the gradient search
     minindices = np.unravel_index(np.argmin(v), v.shape)
@@ -143,11 +143,12 @@ class ShiftSearcher:
     """
     sigma_e = np.sqrt(2 / ((self.a.shape[0] - int(abs(minimizeresult.x[0]))) * (self.a.shape[1] - int(abs(minimizeresult.x[1]))))) * error_on_pixel
     kj = []
+    deltav = np.zeros(v.shape)
     for idx in np.ndindex(v.shape):
-      deltav = np.zeros(v.shape)
       deltav[idx] = 1
-      newspline = fitS2(x, y, v+deltav)
-      kj.append(newspline(*minimizeresult.x) - spline(*minimizeresult.x))
+      deltaspline = makespline(x, y, deltav)
+      kj.append(deltaspline(*minimizeresult.x))
+      deltav[idx] = 0
     R_error = Delta_t * sigma_e * np.linalg.norm(kj)
     logger.debug("%g %g %g", error_on_pixel, sigma_e, R_error)
 
@@ -205,15 +206,11 @@ class ShiftSearcher:
 
     return self.__kernel_kache[dx, dy]
 
-def fitS2(x, y, z):
+def makespline(x, y, z, knotsx=(), knotsy=()):
   """
   Create a cubic spline fit
   """
-  xdata = x.flatten()
-  ydata = y.flatten()
-  zdata = z.flatten()
-
-  return scipy.interpolate.SmoothBivariateSpline(xdata, ydata, zdata)
+  return scipy.interpolate.LSQBivariateSpline(np.ravel(x), np.ravel(y), np.ravel(z), knotsx, knotsy)
 
 def mse(a):
   return np.mean(a**2)
