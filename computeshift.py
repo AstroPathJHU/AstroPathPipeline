@@ -2,7 +2,7 @@ import cv2, functools, logging, numpy as np, scipy.interpolate, scipy.optimize, 
 
 logger = logging.getLogger("align")
 
-def computeshift(images, tolerance=0.01):
+def computeshift(images):
   widesearcher = ShiftSearcher(images, smoothsigma=4.0)
   finesearcher = ShiftSearcher(images, smoothsigma=1.5)
 
@@ -10,7 +10,7 @@ def computeshift(images, tolerance=0.01):
   result = widesearcher.search(
     nx=5, xmin=-8, xmax=8,
     ny=5, ymin=-8, ymax=8,
-    x0=0, y0=0, tolerance=tolerance,
+    x0=0, y0=0,
   )
 
   done = False
@@ -38,7 +38,7 @@ def computeshift(images, tolerance=0.01):
     result = finesearcher.search(
       nx=xmax-xmin+1, xmin=xmin, xmax=xmax,
       ny=ymax-ymin+1, ymin=ymin, ymax=ymax,
-      x0=x0, y0=y0, tolerance=tolerance,
+      x0=x0, y0=y0,
     )
     result.prevresult = prevresult
 
@@ -64,15 +64,15 @@ class ShiftSearcher:
     mse1 = mse(self.a)
     mse2 = mse(self.b)
     s = (mse1*mse2)**0.25
-    self.a *= 1/np.sqrt(mse1)
-    self.b *= 1/np.sqrt(mse2)
+    self.a *= s/np.sqrt(mse1)
+    self.b *= s/np.sqrt(mse2)
 
     self.__kernel_kache = {}
 
     self.evalkernel = np.vectorize(self.__evalkernel)
 
 
-  def search(self, nx, xmin, xmax, ny, ymin, ymax, x0, y0, tolerance, minimizetolerance=1e-7):
+  def search(self, nx, xmin, xmax, ny, ymin, ymax, x0, y0, minimizetolerance=1e-7):
     """
     Take the two images a, b, and find their relative shifts.
     a and b are the two images, smoothsigma is the smoothing length,
@@ -84,8 +84,6 @@ class ShiftSearcher:
     minimum.  Returns a struct containing the final shift,
     and the the grid points for debugging.
     """
-
-    tolerance = max(tolerance, minimizetolerance)
 
     #create the grid and do brute force evaluations
     gx = np.linspace(xmin, xmax, nx, dtype=int)
