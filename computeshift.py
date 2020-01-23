@@ -20,8 +20,6 @@ def computeshift(images, tolerance=0.01):
 
   i = 5
 
-  logger.debug("%g %g %g", result.dx, result.dy, result.dv)
-
   while True:
     prevresult = result
     x0 = int(np.round(-prevresult.dx))
@@ -56,11 +54,6 @@ def computeshift(images, tolerance=0.01):
       - result.spline(prevresult.prevresult.dx, prevresult.prevresult.dy)
     ):
       break
-
-  logger.debug(
-    "had to compute %d * %d = %d points",
-    xmax-xmin+1, ymax-ymin+1, (xmax-xmin+1) * (ymax-ymin+1)
-  )
 
   return result
 
@@ -129,7 +122,6 @@ class ShiftSearcher:
       bounds=((xmin, xmax), (ymin, ymax)),
       method="TNC",
     )
-    #logger.debug(minimizeresult)
 
     #calculating error according to https://www.osti.gov/servlets/purl/934781
     #first: R-error from eq. (10)
@@ -149,12 +141,12 @@ class ShiftSearcher:
     &=\sqrt{\frac{2}{n}}(\mathtt{error\_on\_pixel})
     \end{align}
     """
-    sigma_e = np.sqrt(2 / ((v.shape[0] - int(abs(minimizeresult.x[0]))) * (v.shape[1] - int(abs(minimizeresult.x[1]))))) * error_on_pixel
+    sigma_e = np.sqrt(2 / ((self.a.shape[0] - int(abs(minimizeresult.x[0]))) * (self.a.shape[1] - int(abs(minimizeresult.x[1]))))) * error_on_pixel
     kj = []
     for idx in np.ndindex(v.shape):
       deltav = np.zeros(v.shape)
       deltav[idx] = 1
-      newspline = fitS2(x, y, deltav)
+      newspline = fitS2(x, y, v+deltav)
       kj.append(newspline(*minimizeresult.x) - spline(*minimizeresult.x))
     R_error = Delta_t * sigma_e * np.linalg.norm(kj)
     logger.debug("%g %g %g", error_on_pixel, sigma_e, R_error)
