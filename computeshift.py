@@ -152,7 +152,13 @@ class ShiftSearcher:
     R_error = Delta_t * sigma_e * np.linalg.norm(kj)
     logger.debug("%g %g %g", error_on_pixel, sigma_e, R_error)
 
-    F_error = 0 #placeholder
+    #F-error from section V
+    Kprimespline = makespline(x, y, v, ((xmin+xmax)/2,), ((ymin+ymax)/2,))
+    maximizeerror = scipy.optimize.differential_evolution(
+      func=lambda xy: -abs(spline(*xy) - Kprimespline(*xy))[0,0],
+      bounds=((xmin, xmax), (ymin, ymax)),
+    )
+    F_error = -0.5 * maximizeerror.fun
 
     hessian = np.array([
       [spline(*minimizeresult.x, dx=2, dy=0)[0,0], spline(*minimizeresult.x, dx=1, dy=1)[0,0]],
