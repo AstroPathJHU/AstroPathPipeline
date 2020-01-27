@@ -155,11 +155,12 @@ class ShiftSearcher:
     )
     F_error = -0.5 * maximizeerror.fun
 
-    hessian = np.array([
+    #https://arxiv.org/pdf/hep-ph/0008191.pdf
+    hessian = 0.5 * np.array([
       [spline(*minimizeresult.x, dx=2, dy=0)[0,0], spline(*minimizeresult.x, dx=1, dy=1)[0,0]],
       [spline(*minimizeresult.x, dx=1, dy=1)[0,0], spline(*minimizeresult.x, dx=0, dy=2)[0,0]],
     ])   #dimensions of intensity / length^2
-    hessianinv = (F_error**2 + R_error**2 + minimizetolerance**2) * np.linalg.inv(hessian)
+    hessianinv = (F_error**2 + R_error**2 + minimizetolerance**2) ** 0.5 * np.linalg.inv(hessian)
 
     result.optimizeresult = minimizeresult
     result.flag = result.exit = minimizeresult.status
