@@ -51,6 +51,8 @@ def computeshift(images):
 
 class ShiftSearcher:
   def __init__(self, images, smoothsigma=None):
+    #images: dimensions of intensity, index dimensions of length
+    #smoothsigma: dimensions of length
     self.images = images
 
     self.a, self.b = images
@@ -61,11 +63,11 @@ class ShiftSearcher:
       self.b = skimage.filters.gaussian(self.b, sigma=smoothsigma, mode = 'nearest')
 
     #rescale the intensity
-    mse1 = mse(self.a)
-    mse2 = mse(self.b)
-    s = (mse1*mse2)**0.25
-    self.a *= s/np.sqrt(mse1)
-    self.b *= s/np.sqrt(mse2)
+    mse1 = mse(self.a)    #dimensions of intensity**2
+    mse2 = mse(self.b)    #dimensions of intensity**2
+    s = (mse1*mse2)**0.25 #dimensions of intensity
+    self.a *= s/np.sqrt(mse1)  #factor is dimensionless, a still has dimensions of intensity
+    self.b *= s/np.sqrt(mse2)  #factor is dimensionless, b still has dimensions of intensity
 
     self.__kernel_kache = {}
 
@@ -84,43 +86,46 @@ class ShiftSearcher:
     minimum.  Returns a struct containing the final shift,
     and the the grid points for debugging.
     """
+    #nx, ny are dimensionless
+    #xmin, xmax, ymin, ymax, x0, y0 have dimensions of length
+    #minimizetolerance has dimensions of intensity
 
     #create the grid and do brute force evaluations
-    gx = np.linspace(xmin, xmax, nx, dtype=int)
-    gy = np.linspace(ymin, ymax, ny, dtype=int)
-    x, y = np.meshgrid(gx,gy)
+    gx = np.linspace(xmin, xmax, nx, dtype=int)   #dimensions of length
+    gy = np.linspace(ymin, ymax, ny, dtype=int)   #dimensions of length
+    x, y = np.meshgrid(gx,gy)                     #still dimensions of length
 
     result = scipy.optimize.OptimizeResult()
 
-    v = self.evalkernel(x, y)
-    result.x0 = x0
-    result.y0 = y0
+    v = self.evalkernel(x, y)                     #dimensions of intensity
+    result.x0 = x0                                #dimensions of length
+    result.y0 = y0                                #dimensions of length
 
     #fit cubic spline to the cost fn
-    spline = result.spline = makespline(x, y, v)
+    spline = result.spline = makespline(x, y, v)  #spline(length, length) = intensity
 
     #find lowest point for inititalization of the gradient search
     minindices = np.unravel_index(np.argmin(v), v.shape)
-    result.xc = xc = float(x[minindices])
-    result.yc = yc = float(y[minindices])
+    result.xc = xc = float(x[minindices])         #dimensions of length
+    result.yc = yc = float(y[minindices])         #dimensions of length
 
     minimizeresult = scipy.optimize.minimize(
-      fun=lambda xy: spline(*xy)[0,0],
-      x0=(xc, yc),
-      jac=lambda xy: np.array([spline(*xy, dx=1)[0,0], spline(*xy, dy=1)[0,0]]),
-      tol=minimizetolerance,
-      bounds=((xmin, xmax), (ymin, ymax)),
+      fun=lambda xy: spline(*xy)[0,0],            #dimensions of intensity
+      x0=(xc, yc),                                #dimensions of length
+      jac=lambda xy: np.array([spline(*xy, dx=1)[0,0], spline(*xy, dy=1)[0,0]]),  #dimensions of intensity/length
+      tol=minimizetolerance,                      #dimensions of intensity
+      bounds=((xmin, xmax), (ymin, ymax)),        #dimensions of length
       method="TNC",
     )
 
     #calculating error according to https://www.osti.gov/servlets/purl/934781
     #first: R-error from eq. (10)
-    Delta_t = 1  #because the spline spacing is 1 pixel
+    Delta_t = 1  #dimensions of length
 
     #need to estimate sigma_e: error on the spline data points
     #the data points are calculated from evalkernel: standard deviation of (a-b)
     #std dev of the final difference gives an estimate of the intensity error on a or b
-    error_on_pixel = self.evalkernel(*minimizeresult.x)
+    error_on_pixel = self.evalkernel(*minimizeresult.x)   #dimensions of intensity
     """
     \begin{align}
     \mathtt{evalkernel}^2 = K^2 &= \frac{1}{n} \sum_i (a_i - b_i)^2 \\
@@ -131,15 +136,15 @@ class ShiftSearcher:
     &=\sqrt{\frac{2}{n}}(\mathtt{error\_on\_pixel})
     \end{align}
     """
-    sigma_e = np.sqrt(2 / ((self.a.shape[0] - int(abs(minimizeresult.x[0]))) * (self.a.shape[1] - int(abs(minimizeresult.x[1]))))) * error_on_pixel
+    sigma_e = np.sqrt(2 / ((self.a.shape[0] - int(abs(minimizeresult.x[0]))) * (self.a.shape[1] - int(abs(minimizeresult.x[1]))))) * error_on_pixel  #dimensions of intensity/length
     kj = []
     deltav = np.zeros(v.shape)
     for idx in np.ndindex(v.shape):
       deltav[idx] = 1
-      deltaspline = makespline(x, y, deltav)
-      kj.append(deltaspline(*minimizeresult.x))
+      deltaspline = makespline(x, y, deltav)           #spline(length, length) = dimensionless
+      kj.append(deltaspline(*minimizeresult.x))        #dimensionless
       deltav[idx] = 0
-    R_error = Delta_t * sigma_e * np.linalg.norm(kj)
+    R_error = Delta_t * sigma_e * np.linalg.norm(kj)   #dimensions of intensity
     logger.debug("%g %g %g", error_on_pixel, sigma_e, R_error)
 
     #F-error from section V
@@ -153,7 +158,7 @@ class ShiftSearcher:
     hessian = np.array([
       [spline(*minimizeresult.x, dx=2, dy=0)[0,0], spline(*minimizeresult.x, dx=1, dy=1)[0,0]],
       [spline(*minimizeresult.x, dx=1, dy=1)[0,0], spline(*minimizeresult.x, dx=0, dy=2)[0,0]],
-    ])
+    ])   #dimensions of intensity / length^2
     hessianinv = (F_error**2 + R_error**2 + minimizetolerance**2) * np.linalg.inv(hessian)
 
     result.optimizeresult = minimizeresult
@@ -172,6 +177,7 @@ class ShiftSearcher:
     return result
 
   def __evalkernel(self, dx, dy):
+    #dx and dy have dimensions of length
     if (dx, dy) not in self.__kernel_kache:
       if np.isclose(dx, int(dx)): dx = int(dx)
       if np.isclose(dy, int(dy)): dy = int(dy)
@@ -189,18 +195,19 @@ class ShiftSearcher:
       else:
         y1 = 0
         y2 = abs(dy)
+      #x1 and x2 have dimensions of length
 
       #or None: https://stackoverflow.com/a/21914093/5228524
       if isinstance(dx, int) and isinstance(dy, int):
-        dd = self.a[y1:-y2 or None,x1:-x2 or None] - self.b[y2:-y1 or None,x2:-x1 or None]
+        dd = self.a[y1:-y2 or None,x1:-x2 or None] - self.b[y2:-y1 or None,x2:-x1 or None]  #dimensions of intensity
       else:
-        newa, newb = shiftimg([self.a, self.b], dx, dy, getaverage=False)
-        shavex = int(abs(dx)/2)
-        shavey = int(abs(dy)/2)
-        dd = (newa - newb)[shavey:-shavey or None, shavex:-shavex or None]
-      result = self.__kernel_kache[dx, dy] = np.std(dd)
+        newa, newb = shiftimg([self.a, self.b], dx, dy, getaverage=False)  #dimensions of intensity
+        shavex = int(abs(dx)/2)                                            #dimensions of length
+        shavey = int(abs(dy)/2)                                            #dimensions of length
+        dd = (newa - newb)[shavey:-shavey or None, shavex:-shavex or None] #dimensions of intensity
+      self.__kernel_kache[dx, dy] = np.std(dd)                             #dimensions of intensity
 
-    return self.__kernel_kache[dx, dy]
+    return self.__kernel_kache[dx, dy]                                     #dimensions of intensity
 
 def makespline(x, y, z, knotsx=(), knotsy=()):
   """
