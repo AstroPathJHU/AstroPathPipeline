@@ -201,7 +201,7 @@ class ShiftSearcher:
       if isinstance(dx, int) and isinstance(dy, int):
         dd = self.a[y1:-y2 or None,x1:-x2 or None] - self.b[y2:-y1 or None,x2:-x1 or None]  #dimensions of intensity
       else:
-        newa, newb = shiftimg([self.a, self.b], dx, dy, getaverage=False)  #dimensions of intensity
+        newa, newb = shiftimg([self.a, self.b], -dx, -dy, getaverage=False)#dimensions of intensity
         shavex = int(abs(dx)/2)                                            #dimensions of length
         shavey = int(abs(dy)/2)                                            #dimensions of length
         dd = (newa - newb)[shavey:-shavey or None, shavex:-shavex or None] #dimensions of intensity
