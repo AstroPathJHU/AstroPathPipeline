@@ -160,7 +160,7 @@ class ShiftSearcher:
       [spline(*result.x, dx=2, dy=0)[0,0], spline(*result.x, dx=1, dy=1)[0,0]],
       [spline(*result.x, dx=1, dy=1)[0,0], spline(*result.x, dx=0, dy=2)[0,0]],
     ])   #dimensions of intensity / length^2
-    hessianinv = (F_error**2 + R_error**2 + minimizetolerance**2) ** 0.5 * np.linalg.inv(hessian)
+    covariancematrix = (F_error**2 + R_error**2 + minimizetolerance**2) ** 0.5 * np.linalg.inv(hessian)
 
     result.flag = result.exit = result.status
     result.dx, result.dy = -result.x
@@ -168,9 +168,9 @@ class ShiftSearcher:
 
     result.R_error = R_error
     result.F_error = F_error
-    result.covxx = hessianinv[0,0]
-    result.covyy = hessianinv[1,1]
-    result.covxy = hessianinv[0,1]
+    result.covxx = covariancematrix[0,0]
+    result.covyy = covariancematrix[1,1]
+    result.covxy = covariancematrix[0,1]
 
     x, y = result.x
 
