@@ -153,7 +153,7 @@ class ShiftSearcher:
       func=lambda xy: -abs(spline(*xy) - Kprimespline(*xy))[0,0],
       bounds=((xmin, xmax), (ymin, ymax)),
     )
-    F_error = -0.5 * maximizeerror.fun
+    F_error = -maximizeerror.fun
 
     #https://arxiv.org/pdf/hep-ph/0008191.pdf
     hessian = 0.5 * np.array([
