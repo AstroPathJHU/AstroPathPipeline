@@ -153,6 +153,11 @@ class ShiftSearcher:
       func=lambda xy: -abs(spline(*xy) - Kprimespline(*xy))[0,0],
       bounds=((xmin, xmax), (ymin, ymax)),
     )
+    #the paper has a factor of 0.5 in this formula
+    #but that's for a 1D spline
+    #see Ferrormontecarlo.py, which reproduces their results
+    #for the 1D case and shows that the factor is 1 for a 2D spline
+    #when the correlation between x and y is small.
     F_error = -maximizeerror.fun
 
     #https://arxiv.org/pdf/hep-ph/0008191.pdf
