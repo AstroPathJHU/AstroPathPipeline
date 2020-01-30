@@ -2,8 +2,8 @@
 
 import dataclasses, itertools, numpy as np, scipy
 
-from computeshift import makespline
-from readtable import writetable
+from .computeshift import makespline
+from ..readtable import writetable
 
 """
 This script is meant to find the factor of 0.5
