@@ -1,4 +1,4 @@
-import cv2, functools, logging, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters
+import cv2, functools, logging, more_itertools, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters
 
 logger = logging.getLogger("align")
 
@@ -42,7 +42,7 @@ def computeshift(images):
     )
     result.prevresult = prevresult
 
-    logger.debug("%g %g %g %g %g", result.dx, result.dy, result.dv, result.R_error, result.F_error)
+    logger.debug("%g %g %g %g %g %g", result.dx, result.dy, result.dv, result.R_error_stat, result.R_error_syst, result.F_error)
 
     if xmin+1 <= -result.dx <= xmax-1 and ymin+1 <= -result.dy <= ymax-1:
       break
@@ -71,7 +71,7 @@ class ShiftSearcher:
 
     self.__kernel_kache = {}
 
-    self.evalkernel = np.vectorize(self.__evalkernel)
+    self.evalkernel = np.vectorize(self.__evalkernel, excluded={"nbins", "getarrays"})
 
 
   def search(self, nx, xmin, xmax, ny, ymin, ymax, x0, y0, minimizetolerance=1e-7):
@@ -122,21 +122,33 @@ class ShiftSearcher:
     #first: R-error from eq. (10)
     Delta_t = 1  #dimensions of length
 
-    #need to estimate sigma_e: error on the spline data points
-    #the data points are calculated from evalkernel: standard deviation of (a-b)
-    #std dev of the final difference gives an estimate of the intensity error on a or b
-    error_on_pixel = self.evalkernel(*result.x)   #dimensions of intensity
+    #two parts of R-error, which we'll store separately
+    #and at the end add in quadrature:
+    #  (a) statistical error from random fluctuations in intensity
+    #      estimate this from the standard deviation of (a-b)
+    #      but only from the central part where (a-b) < (a+b)/2
+    #  (b) systematic error from the edges of cells when the alignment
+    #      (or warping) isn't perfect.  That's characterized by large (a-b).
+
+    #first find (a)
+
     """
     \begin{align}
     \mathtt{evalkernel}^2 = K^2 &= \frac{1}{n} \sum_i (a_i - b_i)^2 \\
     (\delta(K^2))^2 &= \frac{1}{n^2} \sum_i 4(a_i-b_i)^2((\delta a_i)^2+(\delta b_i)^2) \\
-    &= \frac{8K^2(\mathtt{error\_on\_pixel})^2}{n} \\
-    \delta(K^2) &= 2K \sqrt{\frac{2}{n}}(\mathtt{error\_on\_pixel}) \\
-    \delta K &= \frac{\delta(K^2)}{2K} \\
-    &=\sqrt{\frac{2}{n}}(\mathtt{error\_on\_pixel})
+    \delta(K^2) &= \frac{2}{n}\sqrt{\sum_i (a_i-b_i)^2((\delta a_i)^2+(\delta b_i)^2)} \\
+    \delta K &= \frac{\delta(K^2)}{2K}
     \end{align}
     """
-    sigma_e = np.sqrt(2 / ((self.a.shape[0] - int(abs(result.x[0]))) * (self.a.shape[1] - int(abs(result.x[1]))))) * error_on_pixel  #dimensions of intensity/length
+    K = self.evalkernel(*result.x)
+    spline_for_stat_error_on_pixel = self.evalkernel(*result.x, nbins=np.prod(self.a.shape)//2000)[()]
+    newa, newb, dd = self.evalkernel(*result.x, getarrays=True)
+    delta_Ksquared = 2 / np.prod(self.a.shape) * np.sqrt(
+      np.sum(
+        dd**2 * (spline_for_stat_error_on_pixel(newa)**2 + spline_for_stat_error_on_pixel(newb)**2)
+      )
+    )
+    sigma_e = delta_Ksquared / (2*K)
     kj = []
     deltav = np.zeros(v.shape)
     for idx in np.ndindex(v.shape):
@@ -144,8 +156,11 @@ class ShiftSearcher:
       deltaspline = makespline(x, y, deltav)           #spline(length, length) = dimensionless
       kj.append(deltaspline(*result.x))        #dimensionless
       deltav[idx] = 0
-    R_error = Delta_t * sigma_e * np.linalg.norm(kj)   #dimensions of intensity
-    logger.debug("%g %g %g", error_on_pixel, sigma_e, R_error)
+    R_error_stat = Delta_t * sigma_e * np.linalg.norm(kj)   #dimensions of intensity
+    logger.debug("%g %g", sigma_e, R_error_stat)
+
+    #systematic R error, 0 for now
+    R_error_syst = 0
 
     #F-error from section V
     Kprimespline = makespline(x, y, v, ((xmin+xmax)/2,), ((ymin+ymax)/2,))
@@ -165,13 +180,14 @@ class ShiftSearcher:
       [spline(*result.x, dx=2, dy=0)[0,0], spline(*result.x, dx=1, dy=1)[0,0]],
       [spline(*result.x, dx=1, dy=1)[0,0], spline(*result.x, dx=0, dy=2)[0,0]],
     ])   #dimensions of intensity / length^2
-    covariancematrix = (F_error**2 + R_error**2 + minimizetolerance**2) ** 0.5 * np.linalg.inv(hessian)
+    covariancematrix = (F_error**2 + R_error_stat**2 + R_error_syst**2 + minimizetolerance**2) ** 0.5 * np.linalg.inv(hessian)
 
     result.flag = result.exit = result.status
     result.dx, result.dy = -result.x
     result.dv = result.fun
 
-    result.R_error = R_error
+    result.R_error_stat = R_error_stat
+    result.R_error_syst = R_error_syst
     result.F_error = F_error
     result.covxx = covariancematrix[0,0]
     result.covyy = covariancematrix[1,1]
@@ -181,9 +197,9 @@ class ShiftSearcher:
 
     return result
 
-  def __evalkernel(self, dx, dy):
+  def __evalkernel(self, dx, dy, *, nbins=None, getarrays=False):
     #dx and dy have dimensions of length
-    if (dx, dy) not in self.__kernel_kache:
+    if (dx, dy, nbins) not in self.__kernel_kache:
       if np.isclose(dx, int(dx)): dx = int(dx)
       if np.isclose(dy, int(dy)): dy = int(dy)
 
@@ -204,15 +220,35 @@ class ShiftSearcher:
 
       #or None: https://stackoverflow.com/a/21914093/5228524
       if isinstance(dx, int) and isinstance(dy, int):
-        dd = self.a[y1:-y2 or None,x1:-x2 or None] - self.b[y2:-y1 or None,x2:-x1 or None]  #dimensions of intensity
+        newa = self.a[y1:-y2 or None,x1:-x2 or None]
+        newb = self.b[y2:-y1 or None,x2:-x1 or None]
       else:
         newa, newb = shiftimg([self.a, self.b], -dx, -dy, getaverage=False)#dimensions of intensity
         shavex = int(abs(dx)/2)                                            #dimensions of length
         shavey = int(abs(dy)/2)                                            #dimensions of length
-        dd = (newa - newb)[shavey:-shavey or None, shavex:-shavex or None] #dimensions of intensity
-      self.__kernel_kache[dx, dy] = np.std(dd)                             #dimensions of intensity
+        newa = newa[shavey:-shavey or None, shavex:-shavex or None]
+        newb = newb[shavey:-shavey or None, shavex:-shavex or None]
 
-    return self.__kernel_kache[dx, dy]                                     #dimensions of intensity
+      dd = (newa - newb)                                                   #dimensions of intensity
+
+      if nbins is None:
+        self.__kernel_kache[dx, dy, nbins] = np.std(dd), (newa, newb, dd)  #dimensions of intensity
+      else:
+        average = ((newa + newb) / 2)
+        binboundaries = np.quantile(average, np.linspace(0, 1, nbins+1))
+        x = np.array([
+          (low+high)/2
+          for low, high in more_itertools.pairwise(binboundaries)
+        ])
+        y = np.array([
+          np.std(
+            dd[(low < average) & (average <= high) & (abs(dd) < average)]
+          ) for low, high in more_itertools.pairwise(binboundaries)
+        ])
+
+        self.__kernel_kache[dx, dy, nbins] = scipy.interpolate.UnivariateSpline(x, y), (newa, newb, dd, average)
+
+    return self.__kernel_kache[dx, dy, nbins][getarrays]          #dimensions of intensity
 
 def makespline(x, y, z, knotsx=(), knotsy=()):
   """
