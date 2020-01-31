@@ -69,9 +69,13 @@ class ShiftSearcher:
     self.a *= s/np.sqrt(mse1)  #factor is dimensionless, a still has dimensions of intensity
     self.b *= s/np.sqrt(mse2)  #factor is dimensionless, b still has dimensions of intensity
 
-    self.__kernel_kache = {}
-
-    self.evalkernel = np.vectorize(self.__evalkernel, excluded={"nbins", "getarrays"})
+    self.shifted_arrays = functools.lru_cache()(self.__shifted_arrays)
+    self.shifted_array_difference = functools.lru_cache()(self.__shifted_array_difference)
+    self.shifted_array_average = functools.lru_cache()(self.__shifted_array_average)
+    self.evalkernel = np.vectorize(
+      functools.lru_cache()(self.__evalkernel),
+      excluded={"nbins"}
+    )
 
 
   def search(self, nx, xmin, xmax, ny, ymin, ymax, x0, y0, minimizetolerance=1e-7):
@@ -130,6 +134,10 @@ class ShiftSearcher:
     #  (b) systematic error from the edges of cells when the alignment
     #      (or warping) isn't perfect.  That's characterized by large (a-b).
 
+    newa, newb = self.shifted_arrays(*result.x)
+    dd = self.shifted_array_difference(*result.x)
+    average = self.shifted_array_average(*result.x)
+
     #first find (a)
 
     """
@@ -142,13 +150,12 @@ class ShiftSearcher:
     """
     K = self.evalkernel(*result.x)
     spline_for_stat_error_on_pixel = self.evalkernel(*result.x, nbins=np.prod(self.a.shape)//2000)[()]
-    newa, newb, dd = self.evalkernel(*result.x, getarrays=True)
-    delta_Ksquared = 2 / np.prod(self.a.shape) * np.sqrt(
+    delta_Ksquared_stat = 2 / np.prod(self.a.shape) * np.sqrt(
       np.sum(
         dd**2 * (spline_for_stat_error_on_pixel(newa)**2 + spline_for_stat_error_on_pixel(newb)**2)
       )
     )
-    sigma_e = delta_Ksquared / (2*K)
+    sigma_e_stat = delta_Ksquared_stat / (2*K)
     kj = []
     deltav = np.zeros(v.shape)
     for idx in np.ndindex(v.shape):
@@ -156,11 +163,17 @@ class ShiftSearcher:
       deltaspline = makespline(x, y, deltav)           #spline(length, length) = dimensionless
       kj.append(deltaspline(*result.x))        #dimensionless
       deltav[idx] = 0
-    R_error_stat = Delta_t * sigma_e * np.linalg.norm(kj)   #dimensions of intensity
-    logger.debug("%g %g", sigma_e, R_error_stat)
+    R_error_stat = Delta_t * sigma_e_stat * np.linalg.norm(kj)   #dimensions of intensity
 
     #systematic R error, 0 for now
-    R_error_syst = 0
+    delta_Ksquared_syst = 2 / np.prod(self.a.shape) * np.sqrt(
+      np.sum(
+        dd**2 * np.where(abs(dd) > average, dd**2, 0.)
+      )
+    )
+    sigma_e_syst = delta_Ksquared_syst / (2*K)
+    R_error_syst = Delta_t * sigma_e_syst * np.linalg.norm(kj)
+    logger.debug("%g %g %g %g", delta_Ksquared_syst, K, sigma_e_syst, R_error_syst)
 
     #F-error from section V
     Kprimespline = makespline(x, y, v, ((xmin+xmax)/2,), ((ymin+ymax)/2,))
@@ -197,58 +210,66 @@ class ShiftSearcher:
 
     return result
 
-  def __evalkernel(self, dx, dy, *, nbins=None, getarrays=False):
+  def __shifted_arrays(self, dx, dy, with_average=False):
+    if np.isclose(dx, int(dx)): dx = int(dx)
+    if np.isclose(dy, int(dy)): dy = int(dy)
+
+    if dx > 0:
+      x1 = abs(dx)
+      x2 = 0
+    else:
+      x1 = 0
+      x2 = abs(dx)
+
+    if dy > 0:
+      y1 = abs(dy)
+      y2 = 0
+    else:
+      y1 = 0
+      y2 = abs(dy)
+    #x1 and x2 have dimensions of length
+
+    #or None: https://stackoverflow.com/a/21914093/5228524
+    if isinstance(dx, int) and isinstance(dy, int):
+      newa = self.a[y1:-y2 or None,x1:-x2 or None]
+      newb = self.b[y2:-y1 or None,x2:-x1 or None]
+    else:
+      newa, newb = shiftimg([self.a, self.b], -dx, -dy, getaverage=False)#dimensions of intensity
+      shavex = int(abs(dx)/2)                                            #dimensions of length
+      shavey = int(abs(dy)/2)                                            #dimensions of length
+      newa = newa[shavey:-shavey or None, shavex:-shavex or None]
+      newb = newb[shavey:-shavey or None, shavex:-shavex or None]
+
+    return newa, newb
+
+  def __shifted_array_difference(self, dx, dy):
+     newa, newb = self.shifted_arrays(dx, dy)
+     return newa - newb
+
+  def __shifted_array_average(self, dx, dy):
+     newa, newb = self.shifted_arrays(dx, dy)
+     return((newa + newb) / 2)
+
+  def __evalkernel(self, dx, dy, *, nbins=None):
     #dx and dy have dimensions of length
-    if (dx, dy, nbins) not in self.__kernel_kache:
-      if np.isclose(dx, int(dx)): dx = int(dx)
-      if np.isclose(dy, int(dy)): dy = int(dy)
+    newa, newb = self.shifted_arrays(dx, dy)
+    dd = self.shifted_array_difference(dx, dy)                           #dimensions of intensity
 
-      if dx > 0:
-        x1 = abs(dx)
-        x2 = 0
-      else:
-        x1 = 0
-        x2 = abs(dx)
-
-      if dy > 0:
-        y1 = abs(dy)
-        y2 = 0
-      else:
-        y1 = 0
-        y2 = abs(dy)
-      #x1 and x2 have dimensions of length
-
-      #or None: https://stackoverflow.com/a/21914093/5228524
-      if isinstance(dx, int) and isinstance(dy, int):
-        newa = self.a[y1:-y2 or None,x1:-x2 or None]
-        newb = self.b[y2:-y1 or None,x2:-x1 or None]
-      else:
-        newa, newb = shiftimg([self.a, self.b], -dx, -dy, getaverage=False)#dimensions of intensity
-        shavex = int(abs(dx)/2)                                            #dimensions of length
-        shavey = int(abs(dy)/2)                                            #dimensions of length
-        newa = newa[shavey:-shavey or None, shavex:-shavex or None]
-        newb = newb[shavey:-shavey or None, shavex:-shavex or None]
-
-      dd = (newa - newb)                                                   #dimensions of intensity
-
-      if nbins is None:
-        self.__kernel_kache[dx, dy, nbins] = np.std(dd), (newa, newb, dd)  #dimensions of intensity
-      else:
-        average = ((newa + newb) / 2)
-        binboundaries = np.quantile(average, np.linspace(0, 1, nbins+1))
-        x = np.array([
-          (low+high)/2
-          for low, high in more_itertools.pairwise(binboundaries)
-        ])
-        y = np.array([
-          np.std(
-            dd[(low < average) & (average <= high) & (abs(dd) < average)]
-          ) for low, high in more_itertools.pairwise(binboundaries)
-        ])
-
-        self.__kernel_kache[dx, dy, nbins] = scipy.interpolate.UnivariateSpline(x, y), (newa, newb, dd, average)
-
-    return self.__kernel_kache[dx, dy, nbins][getarrays]          #dimensions of intensity
+    if nbins is None:
+      return np.std(dd)                                                  #dimensions of intensity
+    else:
+      average = self.shifted_array_average(dx, dy)
+      binboundaries = np.quantile(average, np.linspace(0, 1, nbins+1))
+      x = np.array([
+        (low+high)/2
+        for low, high in more_itertools.pairwise(binboundaries)
+      ])
+      y = np.array([
+        np.std(
+          dd[(low < average) & (average <= high) & (abs(dd) < average)]
+        ) for low, high in more_itertools.pairwise(binboundaries)
+      ])
+      return scipy.interpolate.UnivariateSpline(x, y)
 
 def makespline(x, y, z, knotsx=(), knotsy=()):
   """
