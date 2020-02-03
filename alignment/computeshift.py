@@ -187,6 +187,7 @@ class ShiftSearcher:
     #for the 1D case and shows that the factor is 1 for a 2D spline
     #when the correlation between x and y is small.
     F_error = -maximizeerror.fun
+    F_error = 0
 
     #https://arxiv.org/pdf/hep-ph/0008191.pdf
     hessian = 0.5 * np.array([
