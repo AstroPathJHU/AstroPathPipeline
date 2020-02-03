@@ -175,6 +175,7 @@ class ShiftSearcher:
     R_error_syst = Delta_t * sigma_e_syst * np.linalg.norm(kj)
     logger.debug("%g %g %g %g", delta_Ksquared_syst, K, sigma_e_syst, R_error_syst)
 
+    """
     #F-error from section V
     Kprimespline = makespline(x, y, v, ((xmin+xmax)/2,), ((ymin+ymax)/2,))
     maximizeerror = scipy.optimize.differential_evolution(
@@ -187,6 +188,8 @@ class ShiftSearcher:
     #for the 1D case and shows that the factor is 1 for a 2D spline
     #when the correlation between x and y is small.
     F_error = -maximizeerror.fun
+    """
+    #not using F-error because it produces a major overestimate
     F_error = 0
 
     #https://arxiv.org/pdf/hep-ph/0008191.pdf
@@ -196,7 +199,19 @@ class ShiftSearcher:
     ])   #dimensions of intensity / length^2
     covariancematrix = (F_error**2 + R_error_stat**2 + R_error_syst**2 + minimizetolerance**2) ** 0.5 * np.linalg.inv(hessian)
 
-    result.flag = result.exit = result.status
+    #flags for TNC are defined here
+    #https://github.com/scipy/scipy/blob/78904d646f6fea3736aa7698394aebd2872e2638/scipy/optimize/tnc/tnc.h#L68-L82
+    result.flag = result.status
+    #0: good
+    #1: error
+    #255: shouldn't happen ever
+    result.exit = {
+      -3: 255, -2: 255, -1: 255,
+      0: 1,
+      1: 0, 2: 0,
+      3: 1,
+      4: 255, 5: 255, 6: 255, 7: 255,
+    }[result.flag]
     result.dx, result.dy = -result.x
     result.dv = result.fun
 
