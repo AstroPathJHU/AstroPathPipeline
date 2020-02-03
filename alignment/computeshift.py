@@ -8,37 +8,61 @@ def computeshift(images):
   widesearcher = ShiftSearcher(images, smoothsigma=4.0)
   finesearcher = ShiftSearcher(images, smoothsigma=1.5)
 
+  result = None
+
   #first a 17-wide smooth grid with big steps
-  result = widesearcher.search(
-    nx=5, xmin=-8, xmax=8,
-    ny=5, ymin=-8, ymax=8,
-    x0=0, y0=0,
-  )
+  #make the steps bigger if necessary
+  xsize = ysize = 8
+  x0 = y0 = 0
 
-  if abs(result.dx) == 8 or abs(result.dy) == 8:
+  alreadysearched = set()
+
+  while (x0, y0, xsize, ysize) not in alreadysearched:
+    logger.info("%d %d %d %d", x0, y0, xsize, ysize)
+    alreadysearched.add((x0, y0, xsize, ysize))
+
     prevresult = result
-    result = widesearcher.search(
-      nx=5, xmin=-width //2, xmax=width //2,
-      ny=5, ymin=-height//2, ymax=height//2,
-      x0=0, y0=0,
-    )
-    result.prevresult = prevresult
 
-    if abs(result.dx) == width//2 or abs(result.dy) == height//2:
-      return scipy.optimize.OptimizeResult(
-        prevresult = result,
-        dx = 0,
-        dy = 0,
-        covxx = float("inf"),
-        covyy = float("inf"),
-        covxy = 0,
-        dv = 0,
-        F_error = result.F_error,
-        R_error_stat = result.R_error_stat,
-        R_error_syst = result.R_error_syst,
-      )
-    else:
-      assert False
+    result = widesearcher.search(
+      nx=5, xmin=x0-xsize, xmax=x0+xsize,
+      ny=5, ymin=y0-ysize, ymax=y0+ysize,
+      x0=x0, y0=y0,
+    )
+
+    if prevresult is not None: result.prevresult = prevresult
+
+    if (
+      #minimum is on the boundary
+      not (x0-xsize+1 <= -result.dx <= x0+xsize-1 and y0-ysize+1 <= -result.dy <= y0+ysize-1)
+      #error is big compared to the search grid size
+      or np.sqrt(np.trace(result.covariance)) > xsize + ysize
+    ):
+      xsize *= 2
+      ysize *= 2
+      x0 = int(np.round(-result.dx))
+      y0 = int(np.round(-result.dy))
+    elif xsize != 8 or ysize != 8:
+      #first bring width//4 or height//4 back to factors of 2
+      xsize = 2**int(np.ceil(np.log(xsize) / np.log(2)))
+      ysize = 2**int(np.ceil(np.log(ysize) / np.log(2)))
+      xsize //= 2
+      ysize //= 2
+
+    xsize = ysize = max(xsize, ysize)
+    xsize = min(xsize, width//4 - abs(x0))
+    ysize = min(ysize, height//4 - abs(y0))
+
+  if abs(result.dx) == width//4 or abs(result.dy) == height//4:
+    return scipy.optimize.OptimizeResult(
+      prevresult = result,
+      dx = 0,
+      dy = 0,
+      covariance = np.array([[float("inf"), 0], [0, float("inf")]]),
+      dv = 0,
+      F_error = result.F_error,
+      R_error_stat = result.R_error_stat,
+      R_error_syst = result.R_error_syst,
+    )
 
   xmin = ymin = float("inf")
   xmax = ymax = -float("inf")
@@ -66,8 +90,6 @@ def computeshift(images):
       x0=x0, y0=y0,
     )
     result.prevresult = prevresult
-
-    logger.debug("%g %g %g %g %g %g", result.dx, result.dy, result.dv, result.R_error_stat, result.R_error_syst, result.F_error)
 
     if xmin+1 <= -result.dx <= xmax-1 and ymin+1 <= -result.dy <= ymax-1:
       break
@@ -198,7 +220,6 @@ class ShiftSearcher:
     )
     sigma_e_syst = delta_Ksquared_syst / (2*K)
     R_error_syst = Delta_t * sigma_e_syst * np.linalg.norm(kj)
-    logger.debug("%g %g %g %g", delta_Ksquared_syst, K, sigma_e_syst, R_error_syst)
 
     """
     #F-error from section V
@@ -243,9 +264,7 @@ class ShiftSearcher:
     result.R_error_stat = R_error_stat
     result.R_error_syst = R_error_syst
     result.F_error = F_error
-    result.covxx = covariancematrix[0,0]
-    result.covyy = covariancematrix[1,1]
-    result.covxy = covariancematrix[0,1]
+    result.covariance = covariancematrix
 
     x, y = result.x
 

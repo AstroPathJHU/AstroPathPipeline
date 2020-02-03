@@ -53,10 +53,8 @@ class Overlap:
       R_error_stat = inverse.result.R_error_stat,
       R_error_syst = inverse.result.R_error_syst,
       F_error = inverse.result.F_error,
-      covxx = inverse.result.covxx,
-      covyy = inverse.result.covyy,
-      covxy = inverse.result.covxy,
     )
+    self.result.covariance = inverse.result.covariance
     self.result.minimizeresult = inverse.result.minimizeresult
     self.shifted = np.array([
       inverse.shifted[1],
@@ -107,9 +105,7 @@ class Overlap:
     self.result.R_error_stat = minimizeresult.R_error_stat
     self.result.R_error_syst = minimizeresult.R_error_syst
     self.result.F_error = minimizeresult.F_error
-    self.result.covxx = minimizeresult.covxx
-    self.result.covxy = minimizeresult.covxy
-    self.result.covyy = minimizeresult.covyy
+    self.result.covariance = minimizeresult.covariance
 
   def shiftclip(self):
     """
@@ -176,3 +172,12 @@ class AlignmentResult:
   @mse.setter
   def mse(self, value):
     self.mse1, self.mse2, self.mse3 = value
+
+  @property
+  def covariance(self):
+    return np.array([[self.covxx, self.covxy], [self.covxy, self.covyy]])
+
+  @covariance.setter
+  def covariance(self, covariancematrix):
+    assert np.isclose(covariancematrix[0, 1], covariancematrix[1, 0]), covariancematrix
+    (self.covxx, self.covxy), (self.covxy, self.covyy) = covariancematrix
