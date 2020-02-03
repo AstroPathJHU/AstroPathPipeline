@@ -3,6 +3,8 @@ import cv2, functools, logging, more_itertools, numpy as np, scipy.interpolate, 
 logger = logging.getLogger("align")
 
 def computeshift(images):
+  _, height, width = images.shape
+
   widesearcher = ShiftSearcher(images, smoothsigma=4.0)
   finesearcher = ShiftSearcher(images, smoothsigma=1.5)
 
@@ -13,7 +15,30 @@ def computeshift(images):
     x0=0, y0=0,
   )
 
-  done = False
+  if abs(result.dx) == 8 or abs(result.dy) == 8:
+    prevresult = result
+    result = widesearcher.search(
+      nx=5, xmin=-width //2, xmax=width //2,
+      ny=5, ymin=-height//2, ymax=height//2,
+      x0=0, y0=0,
+    )
+    result.prevresult = prevresult
+
+    if abs(result.dx) == width//2 or abs(result.dy) == height//2:
+      return scipy.optimize.OptimizeResult(
+        prevresult = result,
+        dx = 0,
+        dy = 0,
+        covxx = float("inf"),
+        covyy = float("inf"),
+        covxy = 0,
+        dv = 0,
+        F_error = result.F_error,
+        R_error_stat = result.R_error_stat,
+        R_error_syst = result.R_error_syst,
+      )
+    else:
+      assert False
 
   xmin = ymin = float("inf")
   xmax = ymax = -float("inf")
