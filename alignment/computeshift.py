@@ -260,15 +260,15 @@ class ShiftSearcher:
     else:
       average = self.shifted_array_average(dx, dy)
       binboundaries = np.quantile(average, np.linspace(0, 1, nbins+1))
-      x = np.array([
-        (low+high)/2
-        for low, high in more_itertools.pairwise(binboundaries)
-      ])
-      y = np.array([
-        np.std(
-          dd[(low < average) & (average <= high) & (abs(dd) < average)]
-        ) for low, high in more_itertools.pairwise(binboundaries)
-      ])
+
+      x = []
+      y = []
+      for low, high in more_itertools.pairwise(binboundaries):
+        slice = (low < average) & (average <= high) & (abs(dd) < average)
+        if not np.any(slice): continue
+        x.append((low+high)/2)
+        y.append(np.std(dd[slice]))
+
       return scipy.interpolate.UnivariateSpline(x, y)
 
 def makespline(x, y, z, knotsx=(), knotsy=()):
