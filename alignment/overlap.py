@@ -130,11 +130,11 @@ class Overlap:
 
   def showimages(self, normalize=100., shifted=True):
     if shifted:
-      red, blue, _ = self.shifted
+      red, green, _ = self.shifted
     else:
-      red, blue = self.cutimages
+      red, green = self.cutimages
 
-    green = np.zeros(red.shape)
+    blue = (red+green)/2
 
     img = np.array([red, green, blue]).transpose(1, 2, 0) / normalize
 
