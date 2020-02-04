@@ -125,7 +125,7 @@ class ShiftSearcher:
     )
 
 
-  def search(self, nx, xmin, xmax, ny, ymin, ymax, x0, y0, minimizetolerance=1e-7):
+  def search(self, nx, xmin, xmax, ny, ymin, ymax, x0, y0, *, minimizetolerance=1e-7, computeRerrorstat=True, computeRerrorsyst=True, computeFerror=False):
     """
     Take the two images a, b, and find their relative shifts.
     a and b are the two images, smoothsigma is the smoothing length,
@@ -169,75 +169,79 @@ class ShiftSearcher:
       method="TNC",
     ))
 
-    #calculating error according to https://www.osti.gov/servlets/purl/934781
-    #first: R-error from eq. (10)
-    Delta_t = 1  #dimensions of length
+    if computeRerrorstat or computeRerrorsyst:
+      #calculating error according to https://www.osti.gov/servlets/purl/934781
+      #first: R-error from eq. (10)
+      Delta_t = 1  #dimensions of length
 
-    #two parts of R-error, which we'll store separately
-    #and at the end add in quadrature:
-    #  (a) statistical error from random fluctuations in intensity
-    #      estimate this from the standard deviation of (a-b)
-    #      but only from the central part where (a-b) < (a+b)/2
-    #  (b) systematic error from the edges of cells when the alignment
-    #      (or warping) isn't perfect.  That's characterized by large (a-b).
+      kj = []
+      deltav = np.zeros(v.shape)
+      for idx in np.ndindex(v.shape):
+        deltav[idx] = 1
+        deltaspline = makespline(x, y, deltav)           #spline(length, length) = dimensionless
+        kj.append(deltaspline(*result.x))                #dimensionless
+        deltav[idx] = 0
 
-    newa, newb = self.shifted_arrays(*result.x)
-    dd = self.shifted_array_difference(*result.x)
-    average = self.shifted_array_average(*result.x)
+      #two parts of R-error, which we'll store separately
+      #and at the end add in quadrature:
+      #  (a) statistical error from random fluctuations in intensity
+      #      estimate this from the standard deviation of (a-b)
+      #      but only from the central part where (a-b) < (a+b)/2
+      #  (b) systematic error from the edges of cells when the alignment
+      #      (or warping) isn't perfect.  That's characterized by large (a-b).
 
-    #first find (a)
+      newa, newb = self.shifted_arrays(*result.x)
+      dd = self.shifted_array_difference(*result.x)
 
-    """
-    \begin{align}
-    \mathtt{evalkernel}^2 = K^2 &= \frac{1}{n} \sum_i (a_i - b_i)^2 \\
-    (\delta(K^2))^2 &= \frac{1}{n^2} \sum_i 4(a_i-b_i)^2((\delta a_i)^2+(\delta b_i)^2) \\
-    \delta(K^2) &= \frac{2}{n}\sqrt{\sum_i (a_i-b_i)^2((\delta a_i)^2+(\delta b_i)^2)} \\
-    \delta K &= \frac{\delta(K^2)}{2K}
-    \end{align}
-    """
-    K = self.evalkernel(*result.x)
-    spline_for_stat_error_on_pixel = self.evalkernel(*result.x, nbins=np.prod(self.a.shape)//2000)[()]
-    delta_Ksquared_stat = 2 / np.prod(self.a.shape) * np.sqrt(
-      np.sum(
-        dd**2 * (spline_for_stat_error_on_pixel(newa)**2 + spline_for_stat_error_on_pixel(newb)**2)
+    if computeRerrorstat:
+      """
+      \begin{align}
+      \mathtt{evalkernel}^2 = K^2 &= \frac{1}{n} \sum_i (a_i - b_i)^2 \\
+      (\delta(K^2))^2 &= \frac{1}{n^2} \sum_i 4(a_i-b_i)^2((\delta a_i)^2+(\delta b_i)^2) \\
+      \delta(K^2) &= \frac{2}{n}\sqrt{\sum_i (a_i-b_i)^2((\delta a_i)^2+(\delta b_i)^2)} \\
+      \delta K &= \frac{\delta(K^2)}{2K}
+      \end{align}
+      """
+      K = self.evalkernel(*result.x)
+      spline_for_stat_error_on_pixel = self.evalkernel(*result.x, nbins=np.prod(self.a.shape)//2000)[()]
+      delta_Ksquared_stat = 2 / np.prod(self.a.shape) * np.sqrt(
+        np.sum(
+          dd**2 * (spline_for_stat_error_on_pixel(newa)**2 + spline_for_stat_error_on_pixel(newb)**2)
+        )
       )
-    )
-    sigma_e_stat = delta_Ksquared_stat / (2*K)
-    kj = []
-    deltav = np.zeros(v.shape)
-    for idx in np.ndindex(v.shape):
-      deltav[idx] = 1
-      deltaspline = makespline(x, y, deltav)           #spline(length, length) = dimensionless
-      kj.append(deltaspline(*result.x))        #dimensionless
-      deltav[idx] = 0
-    R_error_stat = Delta_t * sigma_e_stat * np.linalg.norm(kj)   #dimensions of intensity
+      sigma_e_stat = delta_Ksquared_stat / (2*K)
+      R_error_stat = Delta_t * sigma_e_stat * np.linalg.norm(kj)   #dimensions of intensity
+    else:
+      R_error_stat = 0
 
-    #systematic R error, 0 for now
-    ddsquared = dd**2
-    delta_Ksquared_syst = 2 / np.prod(self.a.shape) * np.sqrt(
-      np.sum(
-        ddsquared * np.where(ddsquared > average**2, ddsquared, 0.)
+    if computeRerrorsyst:
+      average = self.shifted_array_average(*result.x)
+      ddsquared = dd**2
+      delta_Ksquared_syst = 2 / np.prod(self.a.shape) * np.sqrt(
+        np.sum(
+          ddsquared * np.where(ddsquared > average**2, ddsquared, 0.)
+        )
       )
-    )
-    sigma_e_syst = delta_Ksquared_syst / (2*K)
-    R_error_syst = Delta_t * sigma_e_syst * np.linalg.norm(kj)
+      sigma_e_syst = delta_Ksquared_syst / (2*K)
+      R_error_syst = Delta_t * sigma_e_syst * np.linalg.norm(kj)
+    else:
+      R_error_syst = 0
 
-    """
-    #F-error from section V
-    Kprimespline = makespline(x, y, v, ((xmin+xmax)/2,), ((ymin+ymax)/2,))
-    maximizeerror = scipy.optimize.differential_evolution(
-      func=lambda xy: -abs(spline(*xy) - Kprimespline(*xy))[0,0],
-      bounds=((xmin, xmax), (ymin, ymax)),
-    )
-    #the paper has a factor of 0.5 in this formula
-    #but that's for a 1D spline
-    #see Ferrormontecarlo.py, which reproduces their results
-    #for the 1D case and shows that the factor is 1 for a 2D spline
-    #when the correlation between x and y is small.
-    F_error = -maximizeerror.fun
-    """
-    #not using F-error because it produces a major overestimate
-    F_error = 0
+    if computeFerror:
+      #F-error from section V
+      Kprimespline = makespline(x, y, v, ((xmin+xmax)/2,), ((ymin+ymax)/2,))
+      maximizeerror = scipy.optimize.differential_evolution(
+        func=lambda xy: -abs(spline(*xy) - Kprimespline(*xy))[0,0],
+        bounds=((xmin, xmax), (ymin, ymax)),
+      )
+      #the paper has a factor of 0.5 in this formula
+      #but that's for a 1D spline
+      #see Ferrormontecarlo.py, which reproduces their results
+      #for the 1D case and shows that the factor is 1 for a 2D spline
+      #when the correlation between x and y is small.
+      F_error = -maximizeerror.fun
+    else:
+      F_error = 0
 
     #https://arxiv.org/pdf/hep-ph/0008191.pdf
     hessian = 0.5 * np.array([
