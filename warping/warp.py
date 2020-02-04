@@ -28,9 +28,10 @@ def polyFit(max_warp,deg,squared=False,plot=False) :
 def makeWarp(n=1344,m=1004,xc=584,yc=600,max_warp=1.85,pdegree=3,psq=False,plot_fit=False,plot_warpfields=False) :
     #define distance fields
     grid = np.mgrid[1:m+1,1:n+1]
-    x=(grid[1]-xc)/500. #scaled x displacement from center
-    y=(grid[0]-yc)/500. #scaled y displacement from center
-    r=np.sqrt(x**2+y**2)                                      #scaled total distance from center
+    rescale = floor(min([xc,abs(n-xc),yc,abs(m-yc)])) #scale radius to be tangential to nearest edge
+    x=(grid[1]-xc)/rescale #scaled x displacement from center
+    y=(grid[0]-yc)/rescale #scaled y displacement from center
+    r=np.sqrt(x**2+y**2)   #scaled total distance from center
     #fit polynomial to data
     coeffs = polyFit(max_warp,pdegree,psq,plot=plot_fit)
     #make field of r-dependent corrections
@@ -49,17 +50,6 @@ def makeWarp(n=1344,m=1004,xc=584,yc=600,max_warp=1.85,pdegree=3,psq=False,plot_
         plotWarpFields(r_warps,d_warps)
     #return double layer field of x and y shifts
     return d_warps
-
-#helper function to read the binary dump of a raw im3 file 
-def im3readraw(f) :
-    with open(f,mode='rb') as fp : #read as binary
-        content = np.fromfile(fp,dtype=np.uint16)
-    return content
-
-#helper function to write an array of uint16s as an im3 file
-def im3writeraw(outname,a) :
-    with open(outname,mode='wb') as fp : #write as binary
-        a.tofile(fp)
 
 #function to apply a warp field to one image and write it as a new file
 def warpImageWithField(warp,infname,file_ext=r".raw",nlayers=35,interpolation=cv2.INTER_LINEAR,showimgs=False) :
@@ -90,3 +80,14 @@ def warpImageWithField(warp,infname,file_ext=r".raw",nlayers=35,interpolation=cv
     #write out image flattened in fortran order
     outfname = infname.replace(file_ext,'.warpTEST')
     im3writeraw(outfname,img_transposed.flatten(order="F").astype(np.uint16))
+
+#helper function to read the binary dump of a raw im3 file 
+def im3readraw(f) :
+    with open(f,mode='rb') as fp : #read as binary
+        content = np.fromfile(fp,dtype=np.uint16)
+    return content
+
+#helper function to write an array of uint16s as an im3 file
+def im3writeraw(outname,a) :
+    with open(outname,mode='wb') as fp : #write as binary
+        a.tofile(fp)
