@@ -125,7 +125,7 @@ class ShiftSearcher:
     )
 
 
-  def search(self, nx, xmin, xmax, ny, ymin, ymax, x0, y0, *, minimizetolerance=1e-7, computeRerrorstat=True, computeRerrorsyst=True, computeFerror=False):
+  def search(self, nx, xmin, xmax, ny, ymin, ymax, x0, y0, *, minimizetolerance=1e-7, compute_R_error_stat=True, compute_R_error_syst=True, compute_F_error=False):
     """
     Take the two images a, b, and find their relative shifts.
     a and b are the two images, smoothsigma is the smoothing length,
@@ -169,7 +169,7 @@ class ShiftSearcher:
       method="TNC",
     ))
 
-    if computeRerrorstat or computeRerrorsyst:
+    if compute_R_error_stat or compute_R_error_syst:
       #calculating error according to https://www.osti.gov/servlets/purl/934781
       #first: R-error from eq. (10)
       Delta_t = 1  #dimensions of length
@@ -193,7 +193,7 @@ class ShiftSearcher:
       newa, newb = self.shifted_arrays(*result.x)
       dd = self.shifted_array_difference(*result.x)
 
-    if computeRerrorstat:
+    if compute_R_error_stat:
       """
       \begin{align}
       \mathtt{evalkernel}^2 = K^2 &= \frac{1}{n} \sum_i (a_i - b_i)^2 \\
@@ -214,7 +214,7 @@ class ShiftSearcher:
     else:
       R_error_stat = 0
 
-    if computeRerrorsyst:
+    if compute_R_error_syst:
       average = self.shifted_array_average(*result.x)
       ddsquared = dd**2
       delta_Ksquared_syst = 2 / np.prod(self.a.shape) * np.sqrt(
@@ -227,7 +227,7 @@ class ShiftSearcher:
     else:
       R_error_syst = 0
 
-    if computeFerror:
+    if compute_F_error:
       #F-error from section V
       Kprimespline = makespline(x, y, v, ((xmin+xmax)/2,), ((ymin+ymax)/2,))
       maximizeerror = scipy.optimize.differential_evolution(
