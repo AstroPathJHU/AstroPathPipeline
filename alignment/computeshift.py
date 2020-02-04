@@ -213,9 +213,10 @@ class ShiftSearcher:
     R_error_stat = Delta_t * sigma_e_stat * np.linalg.norm(kj)   #dimensions of intensity
 
     #systematic R error, 0 for now
+    ddsquared = dd**2
     delta_Ksquared_syst = 2 / np.prod(self.a.shape) * np.sqrt(
       np.sum(
-        dd**2 * np.where(abs(dd) > average, dd**2, 0.)
+        ddsquared * np.where(ddsquared > average**2, ddsquared, 0.)
       )
     )
     sigma_e_syst = delta_Ksquared_syst / (2*K)
@@ -321,10 +322,12 @@ class ShiftSearcher:
       average = self.shifted_array_average(dx, dy)
       binboundaries = np.quantile(average, np.linspace(0, 1, nbins+1))
 
+      absdd = abs(dd)
+
       x = []
       y = []
       for low, high in more_itertools.pairwise(binboundaries):
-        slice = (low < average) & (average <= high) & (abs(dd) < average)
+        slice = (low < average) & (average <= high) & (absdd < average)
         if not np.any(slice): continue
         x.append((low+high)/2)
         y.append(np.std(dd[slice]))
