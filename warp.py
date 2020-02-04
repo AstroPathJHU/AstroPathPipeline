@@ -1,6 +1,7 @@
 #imports
 import numpy as np
-from plotting import *
+from .plotting import *
+import math 
 import cv2
 
 class WarpingError(Exception) :
@@ -28,7 +29,7 @@ def polyFit(max_warp,deg,squared=False,plot=False) :
 def makeWarp(n=1344,m=1004,xc=584,yc=600,max_warp=1.85,pdegree=3,psq=False,plot_fit=False,plot_warpfields=False) :
     #define distance fields
     grid = np.mgrid[1:m+1,1:n+1]
-    rescale = floor(min([xc,abs(n-xc),yc,abs(m-yc)])) #scale radius to be tangential to nearest edge
+    rescale = math.floor(min([xc,abs(n-xc),yc,abs(m-yc)])) #scale radius to be tangential to nearest edge
     x=(grid[1]-xc)/rescale #scaled x displacement from center
     y=(grid[0]-yc)/rescale #scaled y displacement from center
     r=np.sqrt(x**2+y**2)   #scaled total distance from center
