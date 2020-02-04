@@ -50,13 +50,3 @@ def plotWarpFields(r,d) :
     g3 = sns.heatmap(d[:,:,1],ax=ax3)
     g3.set_title('warping shift y components')
 
-#function to plot original and warped images 
-def plotWarpingComparison(fname,orig,warp,layers=[0]) :
-    for i in layers :
-        f,(ax1,ax2,ax3) = plt.subplots(1,3)
-        f.set_size_inches(20.,5.)
-        f.suptitle(f"Image {fname} layer {i} warping comparison", fontsize=20)
-        im1 = ax1.imshow(orig[:,:,i],cmap='gray')
-        im2 = ax2.imshow(warp[:,:,i],cmap='gray')
-        im3 = ax3.imshow(warp[:,:,i]-orig[:,:,i],cmap='gray')
-

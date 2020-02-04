@@ -116,9 +116,9 @@ class AlignmentSet:
     logger.info("finished align loop for "+self.samp)
 
   @functools.lru_cache(maxsize=1)
-  def getDAPI(self):
+  def getDAPI(self,filetype="flatWarpDAPI"):
     logger.info(self.samp)
-    self.getrawlayers()
+    self.getrawlayers(filetype)
 
     # apply the extra flattening
 
@@ -144,9 +144,14 @@ class AlignmentSet:
     writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
 
   @functools.lru_cache(maxsize=1)
-  def getrawlayers(self):
+  def getrawlayers(self,filetype):
     logger.info(self.samp)
-    ext = f".fw{self.layer:02d}"
+    if filetype=="flatWarpDAPI" :
+      ext = f".fw{self.layer:02d}"
+    elif filetype=="camWarpDAPI" :
+      ext = f".cwarp{self.layer:02d}"
+    else :
+      raise AlignmentError(f"requested file type {filetype} not recognized by getrawlayers", 1)
     path = os.path.join(self.root2, self.samp)
 
     images = []
