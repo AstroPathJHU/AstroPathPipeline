@@ -324,16 +324,16 @@ class ShiftSearcher:
       return np.std(dd)                                                  #dimensions of intensity
     else:
       average = self.shifted_array_average(dx, dy)
+      isnotoutlier = abs(dd) < average
+      average = average[isnotoutlier]
+      dd = dd[isnotoutlier]
+
       binboundaries = np.quantile(average, np.linspace(0, 1, nbins+1))
-
-      absdd = abs(dd)
-
-      isnotoutlier = absdd < average
 
       x = []
       y = []
       for low, high in more_itertools.pairwise(binboundaries):
-        slice = (low < average) & (average <= high) & isnotoutlier
+        slice = (low < average) & (average <= high)
         if not np.any(slice): continue
         x.append((low+high)/2)
         y.append(np.std(dd[slice]))
