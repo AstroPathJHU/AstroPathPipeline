@@ -324,10 +324,12 @@ class ShiftSearcher:
 
       absdd = abs(dd)
 
+      isnotoutlier = absdd < average
+
       x = []
       y = []
       for low, high in more_itertools.pairwise(binboundaries):
-        slice = (low < average) & (average <= high) & (absdd < average)
+        slice = (low < average) & (average <= high) & isnotoutlier
         if not np.any(slice): continue
         x.append((low+high)/2)
         y.append(np.std(dd[slice]))
