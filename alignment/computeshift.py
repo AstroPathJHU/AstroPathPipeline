@@ -192,6 +192,7 @@ class ShiftSearcher:
 
       newa, newb = self.shifted_arrays(*result.x)
       dd = self.shifted_array_difference(*result.x)
+      ddsquared = dd*dd
 
     if compute_R_error_stat:
       """
@@ -206,7 +207,7 @@ class ShiftSearcher:
       spline_for_stat_error_on_pixel = self.evalkernel(*result.x, nbins=20)[()]
       delta_Ksquared_stat = 2 / np.prod(self.a.shape) * np.sqrt(
         np.sum(
-          dd**2 * (spline_for_stat_error_on_pixel(newa)**2 + spline_for_stat_error_on_pixel(newb)**2)
+          ddsquared * (spline_for_stat_error_on_pixel(newa)**2 + spline_for_stat_error_on_pixel(newb)**2)
         )
       )
       sigma_e_stat = delta_Ksquared_stat / (2*K)
@@ -216,7 +217,6 @@ class ShiftSearcher:
 
     if compute_R_error_syst:
       average = self.shifted_array_average(*result.x)
-      ddsquared = dd**2
       delta_Ksquared_syst = 2 / np.prod(self.a.shape) * np.sqrt(
         np.sum(
           ddsquared * np.where(ddsquared > average**2, ddsquared, 0.)
