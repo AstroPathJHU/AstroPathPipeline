@@ -18,7 +18,6 @@ def computeshift(images):
   alreadysearched = set()
 
   while (x0, y0, xsize, ysize) not in alreadysearched:
-    logger.info("%d %d %d %d", x0, y0, xsize, ysize)
     alreadysearched.add((x0, y0, xsize, ysize))
 
     prevresult = result
@@ -64,12 +63,12 @@ def computeshift(images):
       R_error_syst = result.R_error_syst,
     )
 
-  xmin = ymin = float("inf")
-  xmax = ymax = -float("inf")
+  xmin = ymin = 9999
+  xmax = ymax = -9999
 
   i = 5
 
-  while True:
+  while not (xmin+1 <= -result.dx <= xmax-1 and ymin+1 <= -result.dy <= ymax-1):
     prevresult = result
     x0 = int(np.round(-prevresult.dx))
     y0 = int(np.round(-prevresult.dy))
@@ -90,9 +89,6 @@ def computeshift(images):
       x0=x0, y0=y0,
     )
     result.prevresult = prevresult
-
-    if xmin+1 <= -result.dx <= xmax-1 and ymin+1 <= -result.dy <= ymax-1:
-      break
 
   return result
 
@@ -192,6 +188,7 @@ class ShiftSearcher:
 
       newa, newb = self.shifted_arrays(*result.x)
       dd = self.shifted_array_difference(*result.x)
+      ddsquared = dd*dd
 
     if compute_R_error_stat:
       """
@@ -203,10 +200,10 @@ class ShiftSearcher:
       \end{align}
       """
       K = self.evalkernel(*result.x)
-      spline_for_stat_error_on_pixel = self.evalkernel(*result.x, nbins=np.prod(self.a.shape)//2000)[()]
+      spline_for_stat_error_on_pixel = self.evalkernel(*result.x, nbins=20)[()]
       delta_Ksquared_stat = 2 / np.prod(self.a.shape) * np.sqrt(
         np.sum(
-          dd**2 * (spline_for_stat_error_on_pixel(newa)**2 + spline_for_stat_error_on_pixel(newb)**2)
+          ddsquared * (spline_for_stat_error_on_pixel(newa)**2 + spline_for_stat_error_on_pixel(newb)**2)
         )
       )
       sigma_e_stat = delta_Ksquared_stat / (2*K)
@@ -216,7 +213,6 @@ class ShiftSearcher:
 
     if compute_R_error_syst:
       average = self.shifted_array_average(*result.x)
-      ddsquared = dd**2
       delta_Ksquared_syst = 2 / np.prod(self.a.shape) * np.sqrt(
         np.sum(
           ddsquared * np.where(ddsquared > average**2, ddsquared, 0.)
@@ -324,16 +320,16 @@ class ShiftSearcher:
       return np.std(dd)                                                  #dimensions of intensity
     else:
       average = self.shifted_array_average(dx, dy)
+      isnotoutlier = abs(dd) < average
+      average = average[isnotoutlier]
+      dd = dd[isnotoutlier]
+
       binboundaries = np.quantile(average, np.linspace(0, 1, nbins+1))
-
-      absdd = abs(dd)
-
-      isnotoutlier = absdd < average
 
       x = []
       y = []
       for low, high in more_itertools.pairwise(binboundaries):
-        slice = (low < average) & (average <= high) & isnotoutlier
+        slice = (low < average) & (average <= high)
         if not np.any(slice): continue
         x.append((low+high)/2)
         y.append(np.std(dd[slice]))
