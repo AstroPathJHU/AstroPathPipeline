@@ -18,7 +18,6 @@ def computeshift(images):
   alreadysearched = set()
 
   while (x0, y0, xsize, ysize) not in alreadysearched:
-    logger.info("%d %d %d %d", x0, y0, xsize, ysize)
     alreadysearched.add((x0, y0, xsize, ysize))
 
     prevresult = result
@@ -64,12 +63,12 @@ def computeshift(images):
       R_error_syst = result.R_error_syst,
     )
 
-  xmin = ymin = float("inf")
-  xmax = ymax = -float("inf")
+  xmin = ymin = 9999
+  xmax = ymax = -9999
 
   i = 5
 
-  while True:
+  while not (xmin+1 <= -result.dx <= xmax-1 and ymin+1 <= -result.dy <= ymax-1):
     prevresult = result
     x0 = int(np.round(-prevresult.dx))
     y0 = int(np.round(-prevresult.dy))
@@ -90,9 +89,6 @@ def computeshift(images):
       x0=x0, y0=y0,
     )
     result.prevresult = prevresult
-
-    if xmin+1 <= -result.dx <= xmax-1 and ymin+1 <= -result.dy <= ymax-1:
-      break
 
   return result
 
