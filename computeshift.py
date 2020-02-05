@@ -248,7 +248,6 @@ class ShiftSearcher:
 
     #flags for TNC are defined here
     #https://github.com/scipy/scipy/blob/78904d646f6fea3736aa7698394aebd2872e2638/scipy/optimize/tnc/tnc.h#L68-L82
-    result.flag = result.status
     #0: good
     #1: error
     #255: shouldn't happen ever
@@ -258,7 +257,7 @@ class ShiftSearcher:
       1: 0, 2: 0,
       3: 1,
       4: 255, 5: 255, 6: 255, 7: 255,
-    }[result.flag]
+    }[result.status]
     result.dx, result.dy = -result.x
     result.dv = result.fun
 
@@ -266,8 +265,6 @@ class ShiftSearcher:
     result.R_error_syst = R_error_syst
     result.F_error = F_error
     result.covariance = covariancematrix
-
-    x, y = result.x
 
     return result
 
