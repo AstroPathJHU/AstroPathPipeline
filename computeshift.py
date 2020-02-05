@@ -317,7 +317,7 @@ class ShiftSearcher:
     dd = self.shifted_array_difference(dx, dy)                           #dimensions of intensity
 
     if nbins is None:
-      return np.std(dd)                                                  #dimensions of intensity
+      return mse(dd)**.5                                                 #dimensions of intensity
     else:
       average = self.shifted_array_average(dx, dy)
       isnotoutlier = abs(dd) < average
@@ -332,7 +332,7 @@ class ShiftSearcher:
         slice = (low < average) & (average <= high)
         if not np.any(slice): continue
         x.append((low+high)/2)
-        y.append(np.std(dd[slice]))
+        y.append(mse(dd[slice])**.5)
 
       return scipy.interpolate.UnivariateSpline(x, y)
 
@@ -343,7 +343,7 @@ def makespline(x, y, z, knotsx=(), knotsy=()):
   return scipy.interpolate.LSQBivariateSpline(np.ravel(x), np.ravel(y), np.ravel(z), knotsx, knotsy)
 
 def mse(a):
-  return np.mean(a**2)
+  return np.mean(a*a)
 
 def shiftimg(images, dx, dy, getaverage=True):
   """
