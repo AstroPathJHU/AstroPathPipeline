@@ -90,7 +90,7 @@ class AlignmentSet:
     self.overlapsdict = {(o.p1, o.p2): o for o in self.overlaps}
 
 
-  def align(self, maxpairs=float("inf")):
+  def align(self, maxpairs=float("inf"), *, compute_R_error_stat=True, compute_R_error_syst=True, compute_F_error=False):
     self.getDAPI()
 
     aligncsv = os.path.join(self.dbload, self.samp+"_align.csv")
@@ -99,6 +99,7 @@ class AlignmentSet:
 
     alignments = []
     done = set()
+
     for i, overlap in enumerate(self.overlaps, start=1):
       if i > maxpairs: break
       logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
@@ -107,7 +108,7 @@ class AlignmentSet:
       if (overlap.p2, overlap.p1) in done:
         result = overlap.getinversealignment(self.overlapsdict[overlap.p2, overlap.p1])
       else:
-        result = overlap.align()
+        result = overlap.align(compute_R_error_stat=compute_R_error_stat, compute_R_error_syst=compute_R_error_syst, compute_F_error=compute_F_error)
       done.add((overlap.p1, overlap.p2))
       if result is not None: alignments.append(result)
 

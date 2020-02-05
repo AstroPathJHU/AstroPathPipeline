@@ -19,7 +19,7 @@ class Overlap:
     self.nclip = nclip
     self.images = images[(self.p1-1,self.p2-1),:,:]
 
-  def align(self):
+  def align(self, **errorkwargs):
     self.result = AlignmentResult(
       n=self.n,
       p1=self.p1,
@@ -28,7 +28,7 @@ class Overlap:
       layer=self.layer,
     )
     self.prepimage()
-    self.computeshift()
+    self.computeshift(**errorkwargs)
     self.shiftclip()
 
     return self.result
@@ -96,8 +96,8 @@ class Overlap:
       self.images[1,cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
     ])
 
-  def computeshift(self):
-    minimizeresult = computeshift(self.cutimages)
+  def computeshift(self, **errorkwargs):
+    minimizeresult = computeshift(self.cutimages, **errorkwargs)
     self.result.minimizeresult = minimizeresult
     self.result.dx = minimizeresult.dx
     self.result.dy = minimizeresult.dy

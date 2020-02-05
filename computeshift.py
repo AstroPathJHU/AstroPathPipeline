@@ -2,7 +2,7 @@ import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.
 
 logger = logging.getLogger("align")
 
-def computeshift(images):
+def computeshift(images, **errorkwargs):
   _, height, width = images.shape
 
   widesearcher = ShiftSearcher(images, smoothsigma=4.0)
@@ -25,7 +25,7 @@ def computeshift(images):
     result = widesearcher.search(
       nx=5, xmin=x0-xsize, xmax=x0+xsize,
       ny=5, ymin=y0-ysize, ymax=y0+ysize,
-      x0=x0, y0=y0,
+      x0=x0, y0=y0, **errorkwargs
     )
 
     if prevresult is not None: result.prevresult = prevresult
@@ -86,7 +86,7 @@ def computeshift(images):
     result = finesearcher.search(
       nx=xmax-xmin+1, xmin=xmin, xmax=xmax,
       ny=ymax-ymin+1, ymin=ymin, ymax=ymax,
-      x0=x0, y0=y0,
+      x0=x0, y0=y0, **errorkwargs
     )
     result.prevresult = prevresult
 
