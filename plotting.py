@@ -38,15 +38,15 @@ def plotPolyFit(x,y,c,squared,smooth_points=50) :
     plt.show()
 
 #helper function to plot r-dependent and x/y-dependent warp fields
-def plotWarpFields(r,d) :
+def plotWarpFields(r,x,y) :
     f,(ax1,ax2,ax3) = plt.subplots(1,3)
     f.set_size_inches(20.,5.)
     #plot radial field as a heatmap
     g1 = sns.heatmap(r,ax=ax1)
     g1.set_title('radially-dependent warping shifts')
     #plot x and y shifts
-    g2 = sns.heatmap(d[:,:,0],ax=ax2)
+    g2 = sns.heatmap(x,ax=ax2)
     g2.set_title('warping shift x components')
-    g3 = sns.heatmap(d[:,:,1],ax=ax3)
+    g3 = sns.heatmap(y,ax=ax3)
     g3.set_title('warping shift y components')
 
