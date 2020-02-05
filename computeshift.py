@@ -189,6 +189,7 @@ class ShiftSearcher:
       newa, newb = self.shifted_arrays(*result.x)
       dd = self.shifted_array_difference(*result.x)
       ddsquared = dd*dd
+      K = self.evalkernel(*result.x)
 
     if compute_R_error_stat:
       """
@@ -199,7 +200,6 @@ class ShiftSearcher:
       \delta K &= \frac{\delta(K^2)}{2K}
       \end{align}
       """
-      K = self.evalkernel(*result.x)
       spline_for_stat_error_on_pixel = self.evalkernel(*result.x, nbins=20)[()]
       delta_Ksquared_stat = 2 / np.prod(self.a.shape) * np.sqrt(
         np.sum(
