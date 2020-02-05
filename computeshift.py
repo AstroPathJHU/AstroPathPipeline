@@ -1,4 +1,4 @@
-import cv2, functools, logging, more_itertools, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters
+import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters
 
 logger = logging.getLogger("align")
 
@@ -342,6 +342,7 @@ def makespline(x, y, z, knotsx=(), knotsy=()):
   """
   return scipy.interpolate.LSQBivariateSpline(np.ravel(x), np.ravel(y), np.ravel(z), knotsx, knotsy)
 
+@nb.njit
 def mse(a):
   return np.mean(a*a)
 
