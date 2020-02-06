@@ -68,7 +68,7 @@ class AlignmentSet:
     self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int)
     self.vertices    = readtable(os.path.join(self.dbload, self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
     self.batch       = readtable(os.path.join(self.dbload, self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
-    self.overlaps    = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), Overlap)
+    self.overlaps    = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), self.overlaptype)
     self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
     self.image       = cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
     self.constants   = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
@@ -171,6 +171,8 @@ class AlignmentSet:
 
     for rectangle, rawimage in zip(self.rectangles, self.rawimages):
       rectangle.rawimage = rawimage
+
+  overlaptype = Overlap #can be overridden in subclasses
 
 @dataclasses.dataclass
 class Rectangle:
