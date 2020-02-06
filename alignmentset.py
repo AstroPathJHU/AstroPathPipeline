@@ -90,7 +90,7 @@ class AlignmentSet:
     self.overlapsdict = {(o.p1, o.p2): o for o in self.overlaps}
 
 
-  def align(self, maxpairs=float("inf"), *, compute_R_error_stat=True, compute_R_error_syst=True, compute_F_error=False):
+  def align(self, *, compute_R_error_stat=True, compute_R_error_syst=True, compute_F_error=False, maxpairs=float("inf"), chooseoverlaps=None):
     self.getDAPI()
 
     aligncsv = os.path.join(self.dbload, self.samp+"_align.csv")
@@ -101,6 +101,7 @@ class AlignmentSet:
     done = set()
 
     for i, overlap in enumerate(self.overlaps, start=1):
+      if chooseoverlaps is not None and i not in chooseoverlaps: continue
       if i > maxpairs: break
       logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
       #if overlap.tag % 2: continue #only align edges, not corners
