@@ -34,7 +34,7 @@ class Warp :
         img = im3readraw(fname)
         #reshape it to match the warping field
         try :
-            img_a = np.reshape(img,(nlayers,self.n,self.m),order="F") #dim. rev. due to MATLAB/python order mismatch
+            img_a = np.reshape(img,(nlayers,self.n,self.m),order="F")
         except ValueError :
             msg = f"ERROR: Raw image file shape ({nlayers} layers, {len(img)} total bytes) is mismatched to"
             msg+= f" dimensions (layers, width={self.n}, height={self.m})!"
@@ -47,27 +47,23 @@ class Warp :
         """
         Function to read a file that contains one layer of an image into an array with the Warp's dimensions 
         """
-        #get the .raw file as a vector of uint16s
+        #get the file as a vector of uint16s
         img = im3readraw(fname)
         #reshape it to match the warping field
         try :
-            img_a = np.reshape(img,(self.n,self.m),order="F") #dim. rev. due to MATLAB/python order mismatch
+            img_a = np.reshape(img,(self.m,self.n),order="F")
         except ValueError :
             msg = f"ERROR: single layer image file ({len(img)} total bytes) shape is mismatched to"
             msg+= f" dimensions (width={self.n}, height={self.m})!"
             raise WarpingError(msg)
-        #flip x and y dimensions to display image correctly
-        img_array = np.transpose(img_a,(1,0))
-        return img_array
+        return img_a
 
     def writeSingleLayerImage(self,im,outfname) :
         """
         Function to write out an image as a properly transformed and flattened vector of uints 
         """
-        #transpose the image back to flipped dimensions to save
-        im_t = np.transpose(im,(1,0))
         #write out image flattened in fortran order
-        im3writeraw(outfname,im_t.flatten(order="F").astype(np.uint16))
+        im3writeraw(outfname,im.flatten(order="F").astype(np.uint16))
 
 class PolyFieldWarp(Warp) :
     """
