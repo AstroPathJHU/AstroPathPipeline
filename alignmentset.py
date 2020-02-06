@@ -107,7 +107,15 @@ class AlignmentSet:
       if i > maxpairs: break
       logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
       #if overlap.tag % 2: continue #only align edges, not corners
-      overlap.setalignmentinfo(layer=self.layer, pscale=self.pscale, nclip=self.nclip, images=self.images)
+      p1image = [r.image for r in self.rectangles if r.n==overlap.p1]
+      p2image = [r.image for r in self.rectangles if r.n==overlap.p2]
+      try :
+        overlap_images = np.array([p1image[0],p2image[0]])
+      except IndexError :
+        errormsg=f"error indexing images from rectangle.n for overlap #{i} (p1={overlap.p1}, p2={overlap.p2})"
+        errormsg+=f" [len(p1image)={len(p1image)}, len(p2image)={len(p2image)}]"
+        raise AlignmentError(errormsg,1)
+      overlap.setalignmentinfo(layer=self.layer, pscale=self.pscale, nclip=self.nclip, images=overlap_images)
       if (overlap.p2, overlap.p1) in done:
         result = overlap.getinversealignment(self.overlapsdict[overlap.p2, overlap.p1])
       else:

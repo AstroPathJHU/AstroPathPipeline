@@ -17,7 +17,7 @@ class Overlap:
     self.layer = layer
     self.pscale = pscale
     self.nclip = nclip
-    self.images = images[(self.p1-1,self.p2-1),:,:]
+    self.images = images
 
   def align(self, **errorkwargs):
     self.result = AlignmentResult(
