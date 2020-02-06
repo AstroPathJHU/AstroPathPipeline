@@ -15,16 +15,12 @@ class Warp :
     """
     def __init__(self,n,m,xc,yc) :
         """
-        Initializes a general warp to apply to images of a certain size centered on a certain point
+        Initializes a general warp to apply to images of a certain size
         n               = image width (pixels)
         m               = image height (pixels)
-        xc              = principal center point x coordinate
-        yc              = principal center point y coordinate
         """
         self.n = n
         self.m = m
-        self.xc = xc
-        self.yc = yc
 
     def getHWLFromRaw(self,fname,nlayers=35) :
         """
@@ -73,8 +69,6 @@ class PolyFieldWarp(Warp) :
         """
         Initializes the warp_field based on a polynomial fit to scaled radial distance or scaled radial distance squared
         Fit range and warp parameters are hardcoded except for maximum warp at furthest location
-        n               = image width (pixels)
-        m               = image height (pixels)
         xc              = principal center point x coordinate
         yc              = principal center point y coordinate
         max_warp        = warping factor for furthest-from-center point in fit
@@ -83,7 +77,7 @@ class PolyFieldWarp(Warp) :
         plot_fit        = if True, show plot of polynomial fit
         plot_warpfields = if True, show heatmaps of warp as radius and components of resulting gradient warp field
         """
-        super().__init__(n,m,xc,yc)
+        super().__init__(n,m)
         self.r_warps, self.x_warps, self.y_warps = self.__getWarpFields(max_warp,pdegree,psq,plot_fit)
         #plot warp fields if requested
         if plot_warpfields : plotWarpFields(self.r_warps,self.x_warps,self.y_warps)
@@ -148,19 +142,19 @@ class CameraWarp(Warp) :
     """
     Subclass for applying warping to images based on a camera matrix and distortion parameters
     """
-    def __init__(self,n=1344,m=1004,xc=584,yc=600,fx=1.,fy=1.,cx=584,cy=600,k1=0.,k2=0.,p1=0.,p2=0.,k3=None,k4=None,k5=None,k6=None) :
+    def __init__(self,n=1344,m=1004,cx=584,cy=600,fx=1.,fy=1.,k1=0.,k2=0.,p1=0.,p2=0.,k3=None,k4=None,k5=None,k6=None) :
         """
         Initialize a camera matrix and vector of distortion parameters for a camera warp transformation
         See https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html for explanations of parameters/functions
+        cx         = principal center point x coordinate
+        cy         = principal center point y coordinate
         fx         = x focal length (pixels)
         fy         = y focal length (pixels)
-        cx         = center principal point x pixel
-        cy         = center principal point y pixel
         k1, k2, k3 = radial distortion by third-order polynomial in r^2 (numerator)
         k4, k5, k6 = radial distortion by third-order polynomial in r^2 (denominator)
         p1, p2     = tangential distortion parameters
         """
-        super().__init__(n,m,xc,yc)
+        super().__init__(n,m)
         self.cam_matrix = np.array([[fx,0.,cx],[0.,fy,cy],[0.,0.,1.]])
         dplist = [k1,k2,p1,p2]
         for extrapar in [k3,k4,k5,k6] :
@@ -182,6 +176,13 @@ class CameraWarp(Warp) :
             layer_warped = cv2.undistort(img_to_warp[:,:,i],self.cam_matrix,self.dist_pars)
             outfname = (infname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(i+1):02d}"
             self.writeSingleLayerImage(layer_warped,outfname)
+
+    def updateParams(cx,cy,fx,fy,dist_pars) :
+        """
+        Update the camera matrix and distortion parameters for a new transformation on the same images
+        """
+        self.cam_matrix = np.array([[fx,0.,cx],[0.,fy,cy],[0.,0.,1.]])
+        self.dist_pars  = dist_pars
 
 #helper function to read the binary dump of a raw im3 file 
 def im3readraw(f) :
