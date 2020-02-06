@@ -48,7 +48,7 @@ class AlignmentSet:
     self.interactive = interactive
 
     if not os.path.exists(os.path.join(self.root1, self.samp)):
-      raise AlignmentError(f"{self.root1}/{self.samp} does not exist", 1)
+      raise AlignmentError(f"{os.path.join(self.root1, self.samp)} does not exist", 1)
 
     self.readmetadata()
 
@@ -170,6 +170,16 @@ class AlignmentSet:
 
     for rectangle, rawimage in zip(self.rectangles, self.rawimages):
       rectangle.rawimage = rawimage
+
+  # Getters & Setters
+  def getOverlaps(self) :
+    return self.overlaps
+  def setOverlaps(self,o) :
+    self.overlaps = 0
+  def getRectangles(self) :
+    return self.rectangles
+  def setRectangles(self,r) :
+    self.rectangles = r
 
 @dataclasses.dataclass
 class Rectangle:
