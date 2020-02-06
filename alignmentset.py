@@ -36,7 +36,7 @@ class AlignmentSet:
           samp_qptiff.jpg
     root2/
       samp/
-        samp_*.fw01 (if using DAPI, could also be fw02 etc. to align with other markers)
+        samp_*.(fw01/camWarp_layer01) (if using DAPI, could also be 02 etc. to align with other markers)
 
     interactive: if this is true, then the script might try to prompt
                  you for input if things go wrong
@@ -119,7 +119,7 @@ class AlignmentSet:
   @functools.lru_cache(maxsize=1)
   def getDAPI(self,filetype="flatWarpDAPI"):
     logger.info(self.samp)
-    self.getrawlayers(filetype)
+    self.rawimages = self._getrawlayers(filetype)
 
     # apply the extra flattening
 
@@ -145,12 +145,12 @@ class AlignmentSet:
     writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
 
   @functools.lru_cache(maxsize=1)
-  def getrawlayers(self,filetype):
+  def _getrawlayers(self,filetype):
     logger.info(self.samp)
     if filetype=="flatWarpDAPI" :
       ext = f".fw{self.layer:02d}"
     elif filetype=="camWarpDAPI" :
-      ext = f".cwarp{self.layer:02d}"
+      ext = f".camWarp_layer{self.layer:02d}"
     else :
       raise AlignmentError(f"requested file type {filetype} not recognized by getrawlayers", 1)
     path = os.path.join(self.root2, self.samp)
@@ -166,10 +166,12 @@ class AlignmentSet:
         #use fortran order, like matlab!
         images.append(img.reshape((self.fheight, self.fwidth), order="F"))
 
-    self.rawimages = np.array(images)
+    rawimages = np.array(images)
 
-    for rectangle, rawimage in zip(self.rectangles, self.rawimages):
+    for rectangle, rawimage in zip(self.rectangles, rawimages):
       rectangle.rawimage = rawimage
+
+    return rawimages
 
   # Getters & Setters
   def getOverlaps(self) :
