@@ -1,8 +1,7 @@
 #imports
 import numpy as np
 from .plotting import *
-import math 
-import cv2
+import os, math, cv2
 
 class WarpingError(Exception) :
     """
@@ -95,7 +94,7 @@ class PolyFieldWarp(Warp) :
 
     def warpImage(self,infname,nlayers=35,layers=[0],interpolation=cv2.INTER_LINEAR) :
         """
-        Read in an image, warp layer-by-layer with remap, and save each warped layer as its own new file
+        Read in an image, warp layer-by-layer with remap, and save each warped layer as its own new file in the current directory
         infname       = name of image file to split, warp, and re-save
         nlayers       = number of layers in original image file that's opened
         layers        = list (of integers) of layers to split out, warp, and save (index starting from 0)
@@ -111,7 +110,7 @@ class PolyFieldWarp(Warp) :
         #remap each layer
         for i in layers :
             layer_warped = cv2.remap(img_to_warp[:,:,i],map_x,map_y,interpolation)
-            outfname = infname.split(".")[0]+f".fieldWarp_layer{(i+1):02d}"
+            outfname = (infname.split(os.path.sep)[-1]).split(".")[0]+f".fieldWarp_layer{(i+1):02d}"
             self.writeSingleLayerImage(layer_warped,outfname)
     
     #helper function to make and return r_warps (field of warp factors) and x/y_warps (two fields of warp gradient dx/dy)
@@ -175,7 +174,7 @@ class CameraWarp(Warp) :
 
     def warpImage(self,infname,nlayers=35,layers=[0]) :
         """
-        Read in an image, warp layer-by-layer with undistort, and save each warped layer as its own new file
+        Read in an image, warp layer-by-layer with undistort, and save each warped layer as its own new file in the current directory
         infname       = name of image file to split, warp, and re-save
         nlayers       = number of layers in original image file that's opened
         layers        = list (of integers) of layers to split out, warp, and save (index starting from 0)
@@ -185,7 +184,7 @@ class CameraWarp(Warp) :
         #undistort each layer
         for i in layers :
             layer_warped = cv2.undistort(img_to_warp[:,:,i],self.cam_matrix,self.dist_pars)
-            outfname = infname.split(".")[0]+f".camWarp_layer{(i+1):02d}"
+            outfname = (infname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(i+1):02d}"
             self.writeSingleLayerImage(layer_warped,outfname)
 
 #helper function to read the binary dump of a raw im3 file 
