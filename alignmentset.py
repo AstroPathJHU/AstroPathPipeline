@@ -51,6 +51,7 @@ class AlignmentSet:
       raise AlignmentError(f"{os.path.join(self.root1, self.samp)} does not exist", 1)
 
     self.readmetadata()
+    self.rawimages=None
 
   @property
   def dbload(self):
@@ -91,7 +92,9 @@ class AlignmentSet:
 
 
   def align(self, maxpairs=float("inf"), *, compute_R_error_stat=True, compute_R_error_syst=True, compute_F_error=False):
-    self.getDAPI()
+    #if the raw images haven't already been loaded, load them with the default argument
+    if self.rawimages is None :
+      self.getDAPI()
 
     aligncsv = os.path.join(self.dbload, self.samp+"_align.csv")
 
@@ -177,11 +180,15 @@ class AlignmentSet:
   def getOverlaps(self) :
     return self.overlaps
   def setOverlaps(self,o) :
-    self.overlaps = 0
+    self.overlaps=o
   def getRectangles(self) :
     return self.rectangles
   def setRectangles(self,r) :
-    self.rectangles = r
+    self.rectangles=r
+  def getRawImages(self) :
+    return self.rawimages
+  def setRawImages(self,ri) :
+    self.rawimages=ri
 
 @dataclasses.dataclass
 class Rectangle:
