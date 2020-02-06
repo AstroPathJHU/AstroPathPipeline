@@ -184,20 +184,6 @@ class AlignmentSet:
 
     return rawimages
 
-  # Getters & Setters
-  def getOverlaps(self) :
-    return self.overlaps
-  def setOverlaps(self,o) :
-    self.overlaps=o
-  def getRectangles(self) :
-    return self.rectangles
-  def setRectangles(self,r) :
-    self.rectangles=r
-  def getRawImages(self) :
-    return self.rawimages
-  def setRawImages(self,ri) :
-    self.rawimages=ri
-
 @dataclasses.dataclass
 class Rectangle:
   n: int

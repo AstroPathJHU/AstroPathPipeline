@@ -27,9 +27,9 @@ class Overlap:
       code=self.tag,
       layer=self.layer,
     )
-    self.prepimage()
-    self.computeshift(**errorkwargs)
-    self.shiftclip()
+    self._prepimage()
+    self._computeshift(**errorkwargs)
+    self._shiftclip()
 
     return self.result
 
@@ -63,7 +63,7 @@ class Overlap:
     ])
     return self.result
 
-  def prepimage(self):
+  def _prepimage(self):
     hh, ww = self.images.shape[1:]
 
     #convert microns to approximate pixels
@@ -96,7 +96,7 @@ class Overlap:
       self.images[1,cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
     ])
 
-  def computeshift(self, **errorkwargs):
+  def _computeshift(self, **errorkwargs):
     minimizeresult = computeshift(self.cutimages, **errorkwargs)
     self.result.minimizeresult = minimizeresult
     self.result.dx = minimizeresult.dx
@@ -107,7 +107,7 @@ class Overlap:
     self.result.F_error = minimizeresult.F_error
     self.result.covariance = minimizeresult.covariance
 
-  def shiftclip(self):
+  def _shiftclip(self):
     """
     Shift images symetrically by fractional amount
     and save the result. Compute the mse and the
