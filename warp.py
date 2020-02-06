@@ -13,7 +13,7 @@ class Warp :
     """
     Main superclass for applying warping to images
     """
-    def __init__(self,n,m,xc,yc) :
+    def __init__(self,n,m) :
         """
         Initializes a general warp to apply to images of a certain size
         n               = image width (pixels)
@@ -177,7 +177,7 @@ class CameraWarp(Warp) :
             outfname = (infname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(i+1):02d}"
             self.writeSingleLayerImage(layer_warped,outfname)
 
-    def updateParams(cx,cy,fx,fy,dist_pars) :
+    def updateParams(self,cx,cy,fx,fy,dist_pars) :
         """
         Update the camera matrix and distortion parameters for a new transformation on the same images
         """
