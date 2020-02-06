@@ -101,6 +101,7 @@ class AlignmentSet:
     logger.info("starting align loop for "+self.samp)
 
     alignments = []
+    sum_mse = 0.
     done = set()
 
     for i, overlap in enumerate(self.overlaps, start=1):
@@ -121,11 +122,14 @@ class AlignmentSet:
       else:
         result = overlap.align(compute_R_error_stat=compute_R_error_stat, compute_R_error_syst=compute_R_error_syst, compute_F_error=compute_F_error)
       done.add((overlap.p1, overlap.p2))
-      if result is not None: alignments.append(result)
+      if result is not None: 
+        alignments.append(result)
+        sum_mse+=result.mse[0]+result.mse[1]
 
     writetable(aligncsv, alignments, retry=self.interactive)
 
     logger.info("finished align loop for "+self.samp)
+    return sum_mse
 
   @functools.lru_cache(maxsize=1)
   def getDAPI(self,filetype="flatWarpDAPI"):
