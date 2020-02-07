@@ -1,4 +1,4 @@
-import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters
+import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters, textwrap
 
 logger = logging.getLogger("align")
 
@@ -52,7 +52,7 @@ def computeshift(images, **errorkwargs):
     ysize = min(ysize, height//4 - abs(y0))
 
   if abs(result.dx) == width//4 or abs(result.dy) == height//4:
-    return scipy.optimize.OptimizeResult(
+    return OptimizeResult(
       prevresult = result,
       dx = 0,
       dy = 0,
@@ -75,10 +75,10 @@ def computeshift(images, **errorkwargs):
 
     oldxmin, oldxmax, oldymin, oldymax = xmin, xmax, ymin, ymax
 
-    xmin = int(min(xmin, -prevresult.dx - i))
-    ymin = int(min(ymin, -prevresult.dy - i))
-    xmax = int(max(xmax, -prevresult.dx + i))
-    ymax = int(max(ymax, -prevresult.dy + i))
+    xmin = min(xmin, x0 - i)
+    ymin = min(ymin, y0 - i)
+    xmax = max(xmax, x0 + i)
+    ymax = max(ymax, y0 + i)
 
     #if (oldxmin, oldxmax, oldymin, oldymax) == (xmin, xmax, ymin, ymax):
     #  break
@@ -142,7 +142,7 @@ class ShiftSearcher:
     gy = np.linspace(ymin, ymax, ny, dtype=int)   #dimensions of length
     x, y = np.meshgrid(gx,gy)                     #still dimensions of length
 
-    result = scipy.optimize.OptimizeResult()
+    result = OptimizeResult()
 
     v = self.evalkernel(x, y)                     #dimensions of intensity
     result.x0 = x0                                #dimensions of length
@@ -361,3 +361,18 @@ def shiftimg(images, dx, dy, getaverage=True):
   if getaverage: result.append((a+b)/2)
 
   return np.array(result)
+
+
+class OptimizeResult(scipy.optimize.OptimizeResult):
+  def __formatvforrepr(self, v, m):
+    if isinstance(v, OptimizeResult):
+      return "\n" + textwrap.indent(repr(v), ' '*m)
+    return repr(v)
+
+  def __repr__(self):
+    if self.keys():
+      m = max(map(len, list(self.keys()))) + 1
+      return '\n'.join([k.rjust(m) + ': ' + self.__formatvforrepr(v, m)
+                        for k, v in sorted(self.items())])
+    else:
+      return self.__class__.__name__ + "()"
