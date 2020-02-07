@@ -21,6 +21,7 @@ class Warp :
         """
         self.n = n
         self.m = m
+        self.raw_images = {}
 
     def getHWLFromRaw(self,fname,nlayers=35) :
         """
@@ -60,6 +61,17 @@ class Warp :
         """
         #write out image flattened in fortran order
         im3writeraw(outfname,im.flatten(order="F").astype(np.uint16))
+
+    def loadRawImageSet(self,rawfiles,nlayers=35,layers=[0]) :
+        """
+        Loads files in rawfiles list into a dictionary indexed by layer number to cut down on I/O for repeatedly warping a set of images
+        """
+        for rf in rawfiles :
+            rawimage = self.getHWLFromRaw(rf,nlayers)
+            if rf not in self.raw_images.keys() :
+                    self.raw_images[rf]={}
+            for l in layers :
+                self.raw_images[rf][l]=rawimage[:,:,l]
 
 class PolyFieldWarp(Warp) :
     """
@@ -142,7 +154,7 @@ class CameraWarp(Warp) :
     """
     Subclass for applying warping to images based on a camera matrix and distortion parameters
     """
-    def __init__(self,n=1344,m=1004,cx=584,cy=600,fx=1.,fy=1.,k1=0.,k2=0.,p1=0.,p2=0.,k3=None,k4=None,k5=None,k6=None) :
+    def __init__(self,n=1344,m=1004,cx=0.,cy=0.,fx=1.,fy=1.,k1=0.,k2=0.,p1=0.,p2=0.,k3=None,k4=None,k5=None,k6=None) :
         """
         Initialize a camera matrix and vector of distortion parameters for a camera warp transformation
         See https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html for explanations of parameters/functions
@@ -161,7 +173,6 @@ class CameraWarp(Warp) :
             if extrapar is not None : dplist.append(extrapar)
         self.dist_pars  = np.array(dplist)
         self.n_dist_pars = len(self.dist_pars)
-        self.raw_images = {}
 
     def warpImage(self,infname,nlayers=35,layers=[0]) :
         """
@@ -177,26 +188,13 @@ class CameraWarp(Warp) :
             layer_warped = cv2.undistort(img_to_warp[:,:,i],self.cam_matrix,self.dist_pars)
             self.writeSingleLayerImage(layer_warped,self._getWarpedLayerFilename(infname,i))
 
-    def updateParams(self,cx,cy,fx,fy,dist_pars) :
+    def updateParams(self,pars) :
         """
         Update the camera matrix and distortion parameters for a new transformation on the same images
+        pars = list of transformation parameters in order cx, cy, fx, fy, [dist_vec] (len 4-8, depending)
         """
-        self.cam_matrix = np.array([[fx,0.,cx],[0.,fy,cy],[0.,0.,1.]])
-        self.dist_pars  = dist_pars
-
-    def loadRawImageSet(self,rawfiles,nlayers=35,layers=[0]) :
-        """
-        Loads files in rawfiles list into a dictionary indexed by layer number to cut down on I/O for repeatedly warping a set of images
-        """
-        dict_to_copy = {}
-        for l in layers :
-            dict_to_copy[l]=None
-        for rf in rawfiles :
-            rawimage = self.getHWLFromRaw(rf,nlayers)
-            if rf not in self.raw_images.keys() :
-                    self.raw_images[rf]=dict_to_copy
-            for l in layers :
-                self.raw_images[rf][l]=rawimage[:,:,l]
+        self.cam_matrix = np.array([[pars[2],0.,pars[0]],[0.,pars[3],pars[1]],[0.,0.,1.]])
+        self.dist_pars  = np.array(pars[4:])
 
     def warpLoadedImageSet(self) :
         """
