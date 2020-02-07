@@ -2,8 +2,8 @@ from .alignmentset import AlignmentSet
 from .overlap import Overlap
 
 class OverlapWithSystematicShift(Overlap):
-  def prepimage(self, systematicshift=0):
-    result = super().prepimage()
+  def _prepimage(self, systematicshift=0):
+    result = super()._prepimage()
 
     try:
       assert not self.systematicshift%2
