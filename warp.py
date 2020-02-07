@@ -161,6 +161,7 @@ class CameraWarp(Warp) :
             if extrapar is not None : dplist.append(extrapar)
         self.dist_pars  = np.array(dplist)
         self.n_dist_pars = len(self.dist_pars)
+        self.raw_images = {}
 
     def warpImage(self,infname,nlayers=35,layers=[0]) :
         """
@@ -174,8 +175,7 @@ class CameraWarp(Warp) :
         #undistort each layer
         for i in layers :
             layer_warped = cv2.undistort(img_to_warp[:,:,i],self.cam_matrix,self.dist_pars)
-            outfname = (infname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(i+1):02d}"
-            self.writeSingleLayerImage(layer_warped,outfname)
+            self.writeSingleLayerImage(layer_warped,self._getWarpedLayerFilename(infname,i))
 
     def updateParams(self,cx,cy,fx,fy,dist_pars) :
         """
@@ -183,6 +183,33 @@ class CameraWarp(Warp) :
         """
         self.cam_matrix = np.array([[fx,0.,cx],[0.,fy,cy],[0.,0.,1.]])
         self.dist_pars  = dist_pars
+
+    def loadRawImageSet(self,rawfiles,nlayers=35,layers=[0]) :
+        """
+        Loads files in rawfiles list into a dictionary indexed by layer number to cut down on I/O for repeatedly warping a set of images
+        """
+        dict_to_copy = {}
+        for l in layers :
+            dict_to_copy[l]=None
+        for rf in rawfiles :
+            rawimage = self.getHWLFromRaw(rf,nlayers)
+            if rf not in self.raw_images.keys() :
+                    self.raw_images[rf]=dict_to_copy
+            for l in layers :
+                self.raw_images[rf][l]=rawimage[:,:,l]
+
+    def warpLoadedImageSet(self) :
+        """
+        Warps all the image layers in the raw_images dictionary with the current parameters and saves them
+        """
+        for fn in self.raw_images.keys() :
+            for l in self.raw_images[fn].keys() :
+                layer_warped = cv2.undistort(self.raw_images[fn][l],self.cam_matrix,self.dist_pars)
+                self.writeSingleLayerImage(layer_warped,self._getWarpedLayerFilename(fn,l))
+
+    #helper function to convert a raw file name and a layer into a camwarped single layer filename
+    def _getWarpedLayerFilename(self,rawname,layer) :
+        return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(layer+1):02d}"
 
 #helper function to read the binary dump of a raw im3 file 
 def im3readraw(f) :
