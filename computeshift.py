@@ -96,8 +96,6 @@ class ShiftSearcher:
   def __init__(self, images, smoothsigma=None):
     #images: dimensions of intensity, index dimensions of length
     #smoothsigma: dimensions of length
-    self.images = images
-
     self.a, self.b = images
 
     #smooth the images
@@ -201,7 +199,7 @@ class ShiftSearcher:
       \end{align}
       """
       spline_for_stat_error_on_pixel = self.evalkernel(*result.x, nbins=20)[()]
-      delta_Ksquared_stat = 2 / np.prod(self.a.shape) * np.sqrt(
+      delta_Ksquared_stat = 2 / np.prod(dd.shape) * np.sqrt(
         np.sum(
           ddsquared * (spline_for_stat_error_on_pixel(newa)**2 + spline_for_stat_error_on_pixel(newb)**2)
         )
@@ -213,7 +211,7 @@ class ShiftSearcher:
 
     if compute_R_error_syst:
       average = self.shifted_array_average(*result.x)
-      delta_Ksquared_syst = 2 / np.prod(self.a.shape) * np.sqrt(
+      delta_Ksquared_syst = 2 / np.prod(dd.shape) * np.sqrt(
         np.sum(
           ddsquared * np.where(ddsquared > average**2, ddsquared, 0.)
         )
@@ -293,8 +291,8 @@ class ShiftSearcher:
       newb = self.b[y2:-y1 or None,x2:-x1 or None]
     else:
       newa, newb = shiftimg([self.a, self.b], -dx, -dy, getaverage=False)#dimensions of intensity
-      shavex = int(abs(dx)/2)                                            #dimensions of length
-      shavey = int(abs(dy)/2)                                            #dimensions of length
+      shavex = int(np.ceil(abs(dx)/2))                                            #dimensions of length
+      shavey = int(np.ceil(abs(dy)/2))                                            #dimensions of length
       newa = newa[shavey:-shavey or None, shavex:-shavex or None]
       newb = newb[shavey:-shavey or None, shavex:-shavex or None]
 
