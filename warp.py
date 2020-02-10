@@ -70,7 +70,7 @@ class Warp :
         square_sizes=range(1,176)
         square_pixels = max([s for s in square_sizes if self.m%s==0]+[s for s in square_sizes if self.n%s==0])
         #make an initial black image
-        data = np.zeros((self.m,self.n),dtype=np.uint16)
+        data = np.zeros((self.m,self.n),dtype=np.uint16)+0.5
         #make the white squares
         for i in range(data.shape[0]) :
             for j in range(data.shape[1]) :
@@ -97,7 +97,7 @@ class PolyFieldWarp(Warp) :
         plot_warpfields = if True, show heatmaps of warp as radius and components of resulting gradient warp field
         """
         super().__init__(n,m)
-        self.r_warps, self.x_warps, self.y_warps = self.__getWarpFields(max_warp,pdegree,psq,plot_fit)
+        self.r_warps, self.x_warps, self.y_warps = self.__getWarpFields(xc,yc,max_warp,pdegree,psq,plot_fit)
         self.interp=interpolation
         #plot warp fields if requested
         if plot_warpfields : plotWarpFields(self.r_warps,self.x_warps,self.y_warps)
@@ -126,7 +126,7 @@ class PolyFieldWarp(Warp) :
         Quickly warps and returns a single inputted image layer array
         """
         map_x, map_y = self.__getMapMatrices()
-        return cv2.remap(layer,map_x,map_y,self.interpolation)
+        return cv2.remap(layer,map_x,map_y,self.interp)
 
     def showCheckerboard(self) :
         """
@@ -135,12 +135,12 @@ class PolyFieldWarp(Warp) :
         plotCheckerboards(self.checkerboard,self.getWarpedLayer(self.checkerboard))
     
     #helper function to make and return r_warps (field of warp factors) and x/y_warps (two fields of warp gradient dx/dy)
-    def __getWarpFields(self,max_warp,pdegree,psq,plot_fit) :
+    def __getWarpFields(self,xc,yc,max_warp,pdegree,psq,plot_fit) :
         #define distance fields
         grid = np.mgrid[1:self.m+1,1:self.n+1]
-        rescale = math.floor(min([self.xc,abs(self.n-self.xc),self.yc,abs(self.m-self.yc)])) #scale radius to be tangential to nearest edge
-        x=(grid[1]-self.xc)/rescale #scaled x displacement from center
-        y=(grid[0]-self.yc)/rescale #scaled y displacement from center
+        rescale = math.floor(min([xc,abs(self.n-xc),yc,abs(self.m-yc)])) #scale radius to be tangential to nearest edge
+        x=(grid[1]-xc)/rescale #scaled x displacement from center
+        y=(grid[0]-yc)/rescale #scaled y displacement from center
         r=np.sqrt(x**2+y**2)   #scaled total distance from center
         #fit polynomial to data
         coeffs = self.__polyFit(max_warp,pdegree,psq,plot=plot_fit)
@@ -187,7 +187,7 @@ class CameraWarp(Warp) :
     """
     Subclass for applying warping to images based on a camera matrix and distortion parameters
     """
-    def __init__(self,n=1344,m=1004,cx=0.,cy=0.,fx=1.,fy=1.,k1=0.,k2=0.,p1=0.,p2=0.,k3=None,k4=None,k5=None,k6=None) :
+    def __init__(self,n=1344,m=1004,cx=672.,cy=502.,fx=1.,fy=1.,k1=0.,k2=0.,p1=0.,p2=0.,k3=None,k4=None,k5=None,k6=None) :
         """
         Initialize a camera matrix and vector of distortion parameters for a camera warp transformation
         See https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html for explanations of parameters/functions

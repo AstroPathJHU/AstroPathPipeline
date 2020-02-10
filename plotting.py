@@ -54,6 +54,5 @@ def plotWarpFields(r,x,y) :
 def plotCheckerboards(o,w) :
     f,(ax1,ax2) = plt.subplots(1,2)
     f.set_size_inches(20.,5.)
-    ax1.imshow(data,cmap='gray')
-    ax2.imshow(initWarp.getWarpedLayer(data),cmap='gray')
-    
+    ax1.imshow(o,cmap='gray')
+    ax2.imshow(w,cmap='gray')
