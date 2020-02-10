@@ -50,3 +50,10 @@ def plotWarpFields(r,x,y) :
     g3 = sns.heatmap(y,ax=ax3)
     g3.set_title('warping shift y components')
 
+#helper function to plot unwarped and warped checkerboard images next to one another
+def plotCheckerboards(o,w) :
+    f,(ax1,ax2) = plt.subplots(1,2)
+    f.set_size_inches(20.,5.)
+    ax1.imshow(data,cmap='gray')
+    ax2.imshow(initWarp.getWarpedLayer(data),cmap='gray')
+    

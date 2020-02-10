@@ -21,7 +21,7 @@ class Warp :
         """
         self.n = n
         self.m = m
-        self.raw_images = {}
+        self.checkerboard = self.__makeCheckerboard()
 
     def getHWLFromRaw(self,fname,nlayers=35) :
         """
@@ -62,22 +62,28 @@ class Warp :
         #write out image flattened in fortran order
         im3writeraw(outfname,im.flatten(order="F").astype(np.uint16))
 
-    def loadRawImageSet(self,rawfiles,nlayers=35,layers=[0]) :
+    def __makeCheckerboard(self) :
         """
-        Loads files in rawfiles list into a dictionary indexed by layer number to cut down on I/O for repeatedly warping a set of images
+        Function to create and return a checkerboard image of the appropriate size for visualizing warp effects
         """
-        for rf in rawfiles :
-            rawimage = self.getHWLFromRaw(rf,nlayers)
-            if rf not in self.raw_images.keys() :
-                    self.raw_images[rf]={}
-            for l in layers :
-                self.raw_images[rf][l]=rawimage[:,:,l]
+        #find a good size to use for the squares
+        square_sizes=range(1,176)
+        square_pixels = max([s for s in square_sizes if self.m%s==0]+[s for s in square_sizes if self.n%s==0])
+        #make an initial black image
+        data = np.zeros((self.m,self.n),dtype=np.uint16)
+        #make the white squares
+        for i in range(data.shape[0]) :
+            for j in range(data.shape[1]) :
+                if math.floor(i/square_pixels)%2==math.floor(j/square_pixels)%2 :
+                    data[i,j]=1
+        return data
+
 
 class PolyFieldWarp(Warp) :
     """
     Subclass for applying warping to images based on a polynomial fit to datapoints of warp factors vs. (scaled) distance or distance^2
     """
-    def __init__(self,n=1344,m=1004,xc=584,yc=600,max_warp=1.85,pdegree=3,psq=False,plot_fit=False,plot_warpfields=False) :
+    def __init__(self,n=1344,m=1004,xc=584,yc=600,max_warp=1.85,pdegree=3,psq=False,interpolation=cv2.INTER_LINEAR,plot_fit=False,plot_warpfields=False) :
         """
         Initializes the warp_field based on a polynomial fit to scaled radial distance or scaled radial distance squared
         Fit range and warp parameters are hardcoded except for maximum warp at furthest location
@@ -86,34 +92,47 @@ class PolyFieldWarp(Warp) :
         max_warp        = warping factor for furthest-from-center point in fit
         pdegree         = degree of polynomial fit to use
         psq             = if True, fit to a polynomial in r^2 instead of in r
+        interpolation   = openCV interpolation parameter (see https://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html)
         plot_fit        = if True, show plot of polynomial fit
         plot_warpfields = if True, show heatmaps of warp as radius and components of resulting gradient warp field
         """
         super().__init__(n,m)
         self.r_warps, self.x_warps, self.y_warps = self.__getWarpFields(max_warp,pdegree,psq,plot_fit)
+        self.interp=interpolation
         #plot warp fields if requested
         if plot_warpfields : plotWarpFields(self.r_warps,self.x_warps,self.y_warps)
 
-    def warpImage(self,infname,nlayers=35,layers=[0],interpolation=cv2.INTER_LINEAR) :
+    def warpImage(self,infname,nlayers=35,layers=[0]) :
         """
         Read in an image, warp layer-by-layer with remap, and save each warped layer as its own new file in the current directory
         infname       = name of image file to split, warp, and re-save
         nlayers       = number of layers in original image file that's opened
         layers        = list (of integers) of layers to split out, warp, and save (index starting from 0)
-        interpolation = openCV interpolation parameter (see https://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html)
         """
         #get the reshaped image from the raw file
         img_to_warp = self.getHWLFromRaw(infname,nlayers)
-        #calculate the map matrices for remap
-        grid = np.mgrid[1:self.m+1,1:self.n+1]
-        xpos, ypos = grid[1], grid[0]
-        map_x = (xpos-self.x_warps).astype(np.float32) 
-        map_y = (ypos-self.y_warps).astype(np.float32) #maybe use maps from convertMaps() instead later on?
         #remap each layer
         for i in layers :
-            layer_warped = cv2.remap(img_to_warp[:,:,i],map_x,map_y,interpolation)
-            outfname = (infname.split(os.path.sep)[-1]).split(".")[0]+f".fieldWarp_layer{(i+1):02d}"
-            self.writeSingleLayerImage(layer_warped,outfname)
+            self.warpLayer(img_to_warp[:,:,i],i,infname)
+
+    def warpLayer(self,layer,layernumber,rawfilename) :
+        """
+        Quickly warps a single inputted image layer array with the current parameters and save it
+        """
+        self.writeSingleLayerImage(self.getWarpedLayer(layer),self._getWarpedLayerFilename(rawfilename,layernumber))
+
+    def getWarpedLayer(self,layer) :
+        """
+        Quickly warps and returns a single inputted image layer array
+        """
+        map_x, map_y = self.__getMapMatrices()
+        return cv2.remap(layer,map_x,map_y,self.interpolation)
+
+    def showCheckerboard(self) :
+        """
+        Plot a checkerboard image before and after application of the warp
+        """
+        plotCheckerboards(self.checkerboard,self.getWarpedLayer(self.checkerboard))
     
     #helper function to make and return r_warps (field of warp factors) and x/y_warps (two fields of warp gradient dx/dy)
     def __getWarpFields(self,max_warp,pdegree,psq,plot_fit) :
@@ -150,6 +169,20 @@ class PolyFieldWarp(Warp) :
         #return coefficients
         return coeffs
 
+    def __getMapMatrices(self) :
+        """
+        calculate and return the map matrices for remap
+        """
+        grid = np.mgrid[1:self.m+1,1:self.n+1]
+        xpos, ypos = grid[1], grid[0]
+        map_x = (xpos-self.x_warps).astype(np.float32) 
+        map_y = (ypos-self.y_warps).astype(np.float32) #maybe use maps from convertMaps() instead later on?
+        return map_x, map_y
+
+    #helper function to convert a raw file name and a layer into a fieldwarped single layer filename
+    def _getWarpedLayerFilename(self,rawname,layer) :
+        return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".fieldWarp_layer{(layer+1):02d}"
+
 class CameraWarp(Warp) :
     """
     Subclass for applying warping to images based on a camera matrix and distortion parameters
@@ -185,8 +218,19 @@ class CameraWarp(Warp) :
         img_to_warp = self.getHWLFromRaw(infname,nlayers)
         #undistort each layer
         for i in layers :
-            layer_warped = cv2.undistort(img_to_warp[:,:,i],self.cam_matrix,self.dist_pars)
-            self.writeSingleLayerImage(layer_warped,self._getWarpedLayerFilename(infname,i))
+            self.warpLayer(img_to_warp[:,:,i],i,infname)
+
+    def warpLayer(self,layer,layernumber,rawfilename) :
+        """
+        Quickly warps a single inputted image layer array with the current parameters and save it
+        """
+        self.writeSingleLayerImage(self.getWarpedLayer(layer),self._getWarpedLayerFilename(rawfilename,layernumber))
+
+    def getWarpedLayer(self,layer) :
+        """
+        Quickly warps and returns a single inputted image layer array
+        """
+        return cv2.undistort(layer,self.cam_matrix,self.dist_pars)
 
     def updateParams(self,pars) :
         """
@@ -196,14 +240,11 @@ class CameraWarp(Warp) :
         self.cam_matrix = np.array([[pars[2],0.,pars[0]],[0.,pars[3],pars[1]],[0.,0.,1.]])
         self.dist_pars  = np.array(pars[4:])
 
-    def warpLoadedImageSet(self) :
+    def showCheckerboard(self) :
         """
-        Warps all the image layers in the raw_images dictionary with the current parameters and saves them
+        Plot a checkerboard image before and after application of the warp
         """
-        for fn in self.raw_images.keys() :
-            for l in self.raw_images[fn].keys() :
-                layer_warped = cv2.undistort(self.raw_images[fn][l],self.cam_matrix,self.dist_pars)
-                self.writeSingleLayerImage(layer_warped,self._getWarpedLayerFilename(fn,l))
+        plotCheckerboards(self.checkerboard,self.getWarpedLayer(self.checkerboard))
 
     #helper function to convert a raw file name and a layer into a camwarped single layer filename
     def _getWarpedLayerFilename(self,rawname,layer) :

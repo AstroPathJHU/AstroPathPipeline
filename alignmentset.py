@@ -134,7 +134,7 @@ class AlignmentSet:
   @functools.lru_cache(maxsize=1)
   def getDAPI(self,filetype="flatWarpDAPI"):
     logger.info(self.samp)
-    self.rawimages = self._getrawlayers(filetype)
+    self.rawimages = self.__getrawlayers(filetype)
 
     # apply the extra flattening
 
@@ -160,7 +160,7 @@ class AlignmentSet:
     writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
 
   @functools.lru_cache(maxsize=1)
-  def _getrawlayers(self,filetype):
+  def __getrawlayers(self,filetype):
     logger.info(self.samp)
     if filetype=="flatWarpDAPI" :
       ext = f".fw{self.layer:02d}"
