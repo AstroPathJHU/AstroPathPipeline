@@ -191,6 +191,19 @@ class AlignmentSet:
 
   overlaptype = Overlap #can be overridden in subclasses
 
+  @property
+  def overlapgraph(self):
+    try:
+      import networkx as nx
+    except ImportError:
+      raise ImportError("To get the overlap graph you have to install networkx")
+
+    g = nx.DiGraph()
+    for o in self.overlaps:
+      g.add_edge(o.p1, o.p2, overlap=o)
+
+    return g
+
 @dataclasses.dataclass
 class Rectangle:
   n: int

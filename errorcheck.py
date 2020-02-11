@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import matplotlib.pyplot as plt, numpy as np
+import matplotlib.pyplot as plt, numpy as np, scipy, uncertainties
 
 def errorcheck(overlaps):
   pulls = []
@@ -33,5 +33,5 @@ def errorcheck(overlaps):
   print()
   print("pulls:")
   plt.hist(pulls)
-  print("mean:   ", np.mean(pulls))
-  print("std dev:", np.std(pulls))
+  print("mean:   ", uncertainties.ufloat(np.mean(pulls), scipy.stats.sem(pulls)))
+  print("std dev:", uncertainties.ufloat(np.std(pulls), np.std(pulls) / np.sqrt(2*len(pulls)-2)))
