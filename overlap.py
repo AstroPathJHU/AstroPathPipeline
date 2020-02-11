@@ -185,3 +185,7 @@ class AlignmentResult:
   @property
   def dxdy(self):
     return uncertainties.correlated_values([self.dx, self.dy], self.covariance)
+
+  @property
+  def isedge(self):
+    return self.tag % 2 == 0

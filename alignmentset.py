@@ -108,7 +108,6 @@ class AlignmentSet:
       if chooseoverlaps is not None and i not in chooseoverlaps: continue
       if i > maxpairs: break
       logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
-      #if overlap.tag % 2: continue #only align edges, not corners
       p1image = [r.image for r in self.rectangles if r.n==overlap.p1]
       p2image = [r.image for r in self.rectangles if r.n==overlap.p2]
       try :
