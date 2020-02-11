@@ -1,4 +1,4 @@
-import dataclasses, matplotlib.pyplot as plt, numpy as np
+import dataclasses, matplotlib.pyplot as plt, numpy as np, uncertainties
 
 from .computeshift import computeshift, mse, shiftimg
 
@@ -181,3 +181,7 @@ class AlignmentResult:
   def covariance(self, covariancematrix):
     assert np.isclose(covariancematrix[0, 1], covariancematrix[1, 0]), covariancematrix
     (self.covxx, self.covxy), (self.covxy, self.covyy) = covariancematrix
+
+  @property
+  def dxdy(self):
+    return uncertainties.correlated_values([self.dx, self.dy], self.covariance)
