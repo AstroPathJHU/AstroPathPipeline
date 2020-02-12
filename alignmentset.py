@@ -12,16 +12,6 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s"))
 logger.addHandler(handler)
 
-class AlignmentError(Exception):
-  """
-  Class for errors that come up during alignment.
-  It has an error id, which is passed to the output of the alignment
-  and stored in the csv file.
-  """
-  def __init__(self, errormessage, errorid):
-    self.errorid = errorid
-    super().__init__(errormessage)
-
 class AlignmentSet:
   """
   Main class for aligning a set of images
@@ -48,7 +38,7 @@ class AlignmentSet:
     self.interactive = interactive
 
     if not os.path.exists(os.path.join(self.root1, self.samp)):
-      raise AlignmentError(f"{os.path.join(self.root1, self.samp)} does not exist", 1)
+      raise IOError(f"{os.path.join(self.root1, self.samp)} does not exist")
 
     self.readmetadata()
     self.rawimages=None
@@ -115,7 +105,7 @@ class AlignmentSet:
       except IndexError :
         errormsg=f"error indexing images from rectangle.n for overlap #{i} (p1={overlap.p1}, p2={overlap.p2})"
         errormsg+=f" [len(p1image)={len(p1image)}, len(p2image)={len(p2image)}]"
-        raise AlignmentError(errormsg,1)
+        raise IndexError(errormsg)
       overlap.setalignmentinfo(layer=self.layer, pscale=self.pscale, nclip=self.nclip, images=overlap_images)
       if (overlap.p2, overlap.p1) in done:
         result = overlap.getinversealignment(self.overlapsdict[overlap.p2, overlap.p1])
@@ -167,13 +157,13 @@ class AlignmentSet:
     elif filetype=="camWarpDAPI" :
       ext = f".camWarp_layer{self.layer:02d}"
     else :
-      raise AlignmentError(f"requested file type {filetype} not recognized by getrawlayers", 1)
+      raise ValueError(f"requested file type {filetype} not recognized by getrawlayers", 1)
     path = os.path.join(self.root2, self.samp)
 
     images = []
 
     if not self.rectangles:
-      raise AlignmentError("didn't find any rows in the rectangles table for "+self.samp, 1)
+      raise IOError("didn't find any rows in the rectangles table for "+self.samp, 1)
 
     for rectangle in self.rectangles:
       with open(os.path.join(path, rectangle.file.replace(".im3", ext)), "rb") as f:
