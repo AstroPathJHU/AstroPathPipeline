@@ -4,7 +4,7 @@ import cv2, dataclasses, functools, logging, numpy as np, os, typing
 
 from .flatfield import meanimage
 from .overlap import Overlap
-from .readtable import readtable, writetable
+from .tableio import readtable, writetable
 
 logger = logging.getLogger("align")
 logger.setLevel(logging.DEBUG)
