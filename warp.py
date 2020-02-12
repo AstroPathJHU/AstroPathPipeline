@@ -119,7 +119,7 @@ class PolyFieldWarp(Warp) :
         """
         Quickly warps a single inputted image layer array with the current parameters and save it
         """
-        self.writeSingleLayerImage(self.getWarpedLayer(layer),self._getWarpedLayerFilename(rawfilename,layernumber))
+        self.writeSingleLayerImage(self.getWarpedLayer(layer),self.__getWarpedLayerFilename(rawfilename,layernumber))
 
     def getWarpedLayer(self,layer) :
         """
@@ -180,7 +180,7 @@ class PolyFieldWarp(Warp) :
         return map_x, map_y
 
     #helper function to convert a raw file name and a layer into a fieldwarped single layer filename
-    def _getWarpedLayerFilename(self,rawname,layer) :
+    def __getWarpedLayerFilename(self,rawname,layer) :
         return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".fieldWarp_layer{(layer+1):02d}"
 
 class CameraWarp(Warp) :
@@ -224,7 +224,7 @@ class CameraWarp(Warp) :
         """
         Quickly warps a single inputted image layer array with the current parameters and save it
         """
-        self.writeSingleLayerImage(self.getWarpedLayer(layer),self._getWarpedLayerFilename(rawfilename,layernumber))
+        self.writeSingleLayerImage(self.getWarpedLayer(layer),self.__getWarpedLayerFilename(rawfilename,layernumber))
 
     def getWarpedLayer(self,layer) :
         """
@@ -247,7 +247,7 @@ class CameraWarp(Warp) :
         plotCheckerboards(self.checkerboard,self.getWarpedLayer(self.checkerboard))
 
     #helper function to convert a raw file name and a layer into a camwarped single layer filename
-    def _getWarpedLayerFilename(self,rawname,layer) :
+    def __getWarpedLayerFilename(self,rawname,layer) :
         return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(layer+1):02d}"
 
 #helper function to read the binary dump of a raw im3 file 

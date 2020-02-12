@@ -24,7 +24,7 @@ def plotPolyFit(x,y,c,squared,smooth_points=50) :
         ftext+=f"{coeff:03f}"
         if i!=0 :
             ftext += "*r"
-            if squared :
+            if squared and i==1 :
                 ftext+='^2'
             if i!=1 :
                 if squared :

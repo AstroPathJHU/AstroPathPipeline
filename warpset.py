@@ -23,12 +23,15 @@ class WarpSet :
         """
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
         """
-        for rf in rawfiles :
+        print("Loading raw images...")
+        for i,rf in enumerate(rawfiles,start=1) :
+            print(f"    loading {rf} ({i} of {len(rawfiles)}) ...")
             rawimage = self.warp.getHWLFromRaw(rf,nlayers)
             if rf not in self.raw_images.keys() :
                 self.raw_images[rf]={}
             for l in layers :
                 self.raw_images[rf][l]=rawimage[:,:,l]
+        print("Done.")
 
     def warpLoadedImageSet(self) :
         """
