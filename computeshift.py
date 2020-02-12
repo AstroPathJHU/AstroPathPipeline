@@ -1,12 +1,13 @@
-import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters
+import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters, textwrap
 
 logger = logging.getLogger("align")
 
-def computeshift(images, **errorkwargs):
+def computeshift(images, *, usefinalsearcher=False, **errorkwargs):
   _, height, width = images.shape
 
   widesearcher = ShiftSearcher(images, smoothsigma=4.0)
   finesearcher = ShiftSearcher(images, smoothsigma=1.5)
+  if usefinalsearcher: finalsearcher = ShiftSearcher(images, smoothsigma=None)
 
   result = None
 
@@ -52,11 +53,11 @@ def computeshift(images, **errorkwargs):
     ysize = min(ysize, height//4 - abs(y0))
 
   if abs(result.dx) == width//4 or abs(result.dy) == height//4:
-    return scipy.optimize.OptimizeResult(
+    return OptimizeResult(
       prevresult = result,
       dx = 0,
       dy = 0,
-      covariance = np.array([[float("inf"), 0], [0, float("inf")]]),
+      covariance = np.array([[9999., 0.], [0., 9999.]]),
       dv = 0,
       F_error = result.F_error,
       R_error_stat = result.R_error_stat,
@@ -75,15 +76,30 @@ def computeshift(images, **errorkwargs):
 
     oldxmin, oldxmax, oldymin, oldymax = xmin, xmax, ymin, ymax
 
-    xmin = int(min(xmin, -prevresult.dx - i))
-    ymin = int(min(ymin, -prevresult.dy - i))
-    xmax = int(max(xmax, -prevresult.dx + i))
-    ymax = int(max(ymax, -prevresult.dy + i))
+    xmin = min(xmin, x0 - i)
+    ymin = min(ymin, y0 - i)
+    xmax = max(xmax, x0 + i)
+    ymax = max(ymax, y0 + i)
 
     #if (oldxmin, oldxmax, oldymin, oldymax) == (xmin, xmax, ymin, ymax):
     #  break
 
     result = finesearcher.search(
+      nx=xmax-xmin+1, xmin=xmin, xmax=xmax,
+      ny=ymax-ymin+1, ymin=ymin, ymax=ymax,
+      x0=x0, y0=y0, **errorkwargs
+    )
+    result.prevresult = prevresult
+
+  if usefinalsearcher:
+    x0 = int(np.round(-prevresult.dx))
+    y0 = int(np.round(-prevresult.dy))
+    xmin = x0-i
+    ymin = y0-i
+    xmax = x0+i
+    ymax = y0+i
+    prevresult = result
+    result = finalsearcher.search(
       nx=xmax-xmin+1, xmin=xmin, xmax=xmax,
       ny=ymax-ymin+1, ymin=ymin, ymax=ymax,
       x0=x0, y0=y0, **errorkwargs
@@ -96,14 +112,15 @@ class ShiftSearcher:
   def __init__(self, images, smoothsigma=None):
     #images: dimensions of intensity, index dimensions of length
     #smoothsigma: dimensions of length
-    self.images = images
-
     self.a, self.b = images
 
     #smooth the images
     if smoothsigma is not None:
       self.a = skimage.filters.gaussian(self.a, sigma=smoothsigma, mode = 'nearest')
       self.b = skimage.filters.gaussian(self.b, sigma=smoothsigma, mode = 'nearest')
+    else:
+      self.a = skimage.util.img_as_float(self.a)
+      self.b = skimage.util.img_as_float(self.b)
 
     #rescale the intensity
     mse1 = mse(self.a)    #dimensions of intensity**2
@@ -142,7 +159,7 @@ class ShiftSearcher:
     gy = np.linspace(ymin, ymax, ny, dtype=int)   #dimensions of length
     x, y = np.meshgrid(gx,gy)                     #still dimensions of length
 
-    result = scipy.optimize.OptimizeResult()
+    result = OptimizeResult()
 
     v = self.evalkernel(x, y)                     #dimensions of intensity
     result.x0 = x0                                #dimensions of length
@@ -201,7 +218,7 @@ class ShiftSearcher:
       \end{align}
       """
       spline_for_stat_error_on_pixel = self.evalkernel(*result.x, nbins=20)[()]
-      delta_Ksquared_stat = 2 / np.prod(self.a.shape) * np.sqrt(
+      delta_Ksquared_stat = 2 / np.prod(dd.shape) * np.sqrt(
         np.sum(
           ddsquared * (spline_for_stat_error_on_pixel(newa)**2 + spline_for_stat_error_on_pixel(newb)**2)
         )
@@ -213,7 +230,7 @@ class ShiftSearcher:
 
     if compute_R_error_syst:
       average = self.shifted_array_average(*result.x)
-      delta_Ksquared_syst = 2 / np.prod(self.a.shape) * np.sqrt(
+      delta_Ksquared_syst = 2 / np.prod(dd.shape) * np.sqrt(
         np.sum(
           ddsquared * np.where(ddsquared > average**2, ddsquared, 0.)
         )
@@ -293,8 +310,8 @@ class ShiftSearcher:
       newb = self.b[y2:-y1 or None,x2:-x1 or None]
     else:
       newa, newb = shiftimg([self.a, self.b], -dx, -dy, getaverage=False)#dimensions of intensity
-      shavex = int(abs(dx)/2)                                            #dimensions of length
-      shavey = int(abs(dy)/2)                                            #dimensions of length
+      shavex = int(np.ceil(abs(dx)/2))                                            #dimensions of length
+      shavey = int(np.ceil(abs(dy)/2))                                            #dimensions of length
       newa = newa[shavey:-shavey or None, shavex:-shavex or None]
       newb = newb[shavey:-shavey or None, shavex:-shavex or None]
 
@@ -361,3 +378,18 @@ def shiftimg(images, dx, dy, getaverage=True):
   if getaverage: result.append((a+b)/2)
 
   return np.array(result)
+
+
+class OptimizeResult(scipy.optimize.OptimizeResult):
+  def __formatvforrepr(self, v, m):
+    if isinstance(v, OptimizeResult):
+      return "\n" + textwrap.indent(repr(v), ' '*m)
+    return repr(v)
+
+  def __repr__(self):
+    if self.keys():
+      m = max(map(len, list(self.keys()))) + 1
+      return '\n'.join([k.rjust(m) + ': ' + self.__formatvforrepr(v, m)
+                        for k, v in sorted(self.items())])
+    else:
+      return self.__class__.__name__ + "()"

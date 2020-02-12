@@ -69,7 +69,7 @@ class AlignmentSet:
     self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int)
     self.vertices    = readtable(os.path.join(self.dbload, self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
     self.batch       = readtable(os.path.join(self.dbload, self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
-    self.overlaps    = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), Overlap)
+    self.overlaps    = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), self.overlaptype)
     self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
     self.image       = cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
     self.constants   = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
@@ -91,7 +91,7 @@ class AlignmentSet:
     self.overlapsdict = {(o.p1, o.p2): o for o in self.overlaps}
 
 
-  def align(self, maxpairs=float("inf"), *, compute_R_error_stat=True, compute_R_error_syst=True, compute_F_error=False):
+  def align(self, *, compute_R_error_stat=True, compute_R_error_syst=True, compute_F_error=False, maxpairs=float("inf"), chooseoverlaps=None):
     #if the raw images haven't already been loaded, load them with the default argument
     if self.rawimages is None :
       self.getDAPI()
@@ -105,9 +105,9 @@ class AlignmentSet:
     done = set()
 
     for i, overlap in enumerate(self.overlaps, start=1):
+      if chooseoverlaps is not None and i not in chooseoverlaps: continue
       if i > maxpairs: break
       logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
-      #if overlap.tag % 2: continue #only align edges, not corners
       p1image = [r.image for r in self.rectangles if r.n==overlap.p1]
       p2image = [r.image for r in self.rectangles if r.n==overlap.p2]
       try :
@@ -187,6 +187,21 @@ class AlignmentSet:
       rectangle.rawimage = rawimage
 
     return rawimages
+
+  overlaptype = Overlap #can be overridden in subclasses
+
+  @property
+  def overlapgraph(self):
+    try:
+      import networkx as nx
+    except ImportError:
+      raise ImportError("To get the overlap graph you have to install networkx")
+
+    g = nx.DiGraph()
+    for o in self.overlaps:
+      g.add_edge(o.p1, o.p2, overlap=o)
+
+    return g
 
 @dataclasses.dataclass
 class Rectangle:
