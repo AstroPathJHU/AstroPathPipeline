@@ -4,6 +4,20 @@ import matplotlib.pyplot as plt, networkx as nx, numpy as np, scipy, uncertainti
 from more_itertools import pairwise
 
 def errorcheck(alignmentset, *, tagsequence):
+  dct = {
+    1: (-1, -1),
+    2: ( 0, -1),
+    3: ( 1, -1),
+    4: (-1,  0),
+    6: ( 1,  0),
+    7: (-1,  1),
+    8: ( 0,  1),
+    9: ( 1,  1),
+  }
+  totaloffset = sum(np.array(dct[tag]) for tag in tagsequence)
+  if np.any(totaloffset):
+    raise ValueError(f"please check your tag sequence - it ends with an offset of {tuple(totaloffset)}")
+
   overlaps = alignmentset.overlaps
   g = alignmentset.overlapgraph
   pullsx, pullsy = [], []
@@ -22,8 +36,8 @@ def errorcheck(alignmentset, *, tagsequence):
       tags = [o.tag for o in overlaps]
       if tags != tagsequence: continue
 
-      dxdys = [o.result.dxdy for o in overlaps]
       if any(not np.all(np.isfinite(o.result.covariance)) for o in overlaps): continue
+      dxdys = [o.result.dxdy for o in overlaps]
 
       dxs, dys = zip(*dxdys)
 
