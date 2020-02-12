@@ -36,7 +36,7 @@ def errorcheck(alignmentset, *, tagsequence):
       tags = [o.tag for o in overlaps]
       if tags != tagsequence: continue
 
-      if any(not np.all(np.isfinite(o.result.covariance)) for o in overlaps): continue
+      if any(not np.all(o.result.covariance < 9998) for o in overlaps): continue
       dxdys = [o.result.dxdy for o in overlaps]
 
       dxs, dys = zip(*dxdys)

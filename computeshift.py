@@ -57,7 +57,7 @@ def computeshift(images, **errorkwargs):
       prevresult = result,
       dx = 0,
       dy = 0,
-      covariance = np.array([[float("inf"), 0], [0, float("inf")]]),
+      covariance = np.array([[9999., 0.], [0., 9999.]]),
       dv = 0,
       F_error = result.F_error,
       R_error_stat = result.R_error_stat,
