@@ -2,12 +2,12 @@ import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.
 
 logger = logging.getLogger("align")
 
-def computeshift(images, **errorkwargs):
+def computeshift(images, *, usefinalsearcher=False, **errorkwargs):
   _, height, width = images.shape
 
   widesearcher = ShiftSearcher(images, smoothsigma=4.0)
   finesearcher = ShiftSearcher(images, smoothsigma=1.5)
-  finalsearcher = ShiftSearcher(images, smoothsigma=None)
+  if usefinalsearcher: finalsearcher = ShiftSearcher(images, smoothsigma=None)
 
   result = None
 
@@ -91,19 +91,20 @@ def computeshift(images, **errorkwargs):
     )
     result.prevresult = prevresult
 
-  x0 = int(np.round(-prevresult.dx))
-  y0 = int(np.round(-prevresult.dy))
-  xmin = x0-i
-  ymin = y0-i
-  xmax = x0+i
-  ymax = y0+i
-  prevresult = result
-  result = finalsearcher.search(
-    nx=xmax-xmin+1, xmin=xmin, xmax=xmax,
-    ny=ymax-ymin+1, ymin=ymin, ymax=ymax,
-    x0=x0, y0=y0, **errorkwargs
-  )
-  result.prevresult = prevresult
+  if usefinalsearcher:
+    x0 = int(np.round(-prevresult.dx))
+    y0 = int(np.round(-prevresult.dy))
+    xmin = x0-i
+    ymin = y0-i
+    xmax = x0+i
+    ymax = y0+i
+    prevresult = result
+    result = finalsearcher.search(
+      nx=xmax-xmin+1, xmin=xmin, xmax=xmax,
+      ny=ymax-ymin+1, ymin=ymin, ymax=ymax,
+      x0=x0, y0=y0, **errorkwargs
+    )
+    result.prevresult = prevresult
 
   return result
 
