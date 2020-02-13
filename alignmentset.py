@@ -157,10 +157,10 @@ class AlignmentSet:
     elif filetype=="camWarpDAPI" :
       ext = f".camWarp_layer{self.layer:02d}"
     else :
-      raise ValueError(f"requested file type {filetype} not recognized by getrawlayers", 1)
+      raise ValueError(f"requested file type {filetype} not recognized by getrawlayers")
     path = os.path.join(self.root2, self.samp)
 
-    images = np.ndarray(shape=(len(self.rectangles), self.fheight, self.fwidth), dtype=np.uint16)
+    rawimages = np.ndarray(shape=(len(self.rectangles), self.fheight, self.fwidth), dtype=np.uint16)
 
     if not self.rectangles:
       raise IOError("didn't find any rows in the rectangles table for "+self.samp, 1)
@@ -168,18 +168,13 @@ class AlignmentSet:
     for i, rectangle in enumerate(self.rectangles):
       with open(os.path.join(path, rectangle.file.replace(".im3", ext)), "rb") as f:
         #use fortran order, like matlab!
-        images[i] = np.memmap(
+        rawimages[i] = np.memmap(
           f,
           dtype=np.uint16,
           shape=(self.fheight, self.fwidth),
           order="F",
           mode="r")
-        rectangle.rawimage = images[i]
-
-    rawimages = np.array(images)
-
-    for rectangle, rawimage in zip(self.rectangles, rawimages):
-      rectangle.rawimage = rawimage
+        rectangle.rawimage = rawimages[i]
 
     return rawimages
 
