@@ -52,7 +52,10 @@ def computeshift(images, *, usefinalsearcher=False, **errorkwargs):
     xsize = min(xsize, width//4 - abs(x0))
     ysize = min(ysize, height//4 - abs(y0))
 
-  if abs(result.dx) == width//4 or abs(result.dy) == height//4:
+  if (
+    abs(result.dx) == width//4 or abs(result.dy) == height//4
+    or np.sqrt(np.trace(result.covariance)) > xsize + ysize
+  ):
     return OptimizeResult(
       prevresult = result,
       dx = 0,
