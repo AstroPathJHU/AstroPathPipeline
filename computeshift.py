@@ -66,6 +66,7 @@ def computeshift(images, *, usefinalsearcher=False, **errorkwargs):
       F_error = result.F_error,
       R_error_stat = result.R_error_stat,
       R_error_syst = result.R_error_syst,
+      exit = 2
     )
 
   xmin = ymin = 9999

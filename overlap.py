@@ -27,10 +27,20 @@ class Overlap:
       code=self.tag,
       layer=self.layer,
     )
-    self.__prepimage()
-    self.__computeshift(**errorkwargs)
-    self.__shiftclip()
-
+    try:
+      self.__prepimage()
+      self.__computeshift(**errorkwargs)
+      self.__shiftclip()
+    except Exception as e:
+      self.result.exit = 3
+      self.result.dx = 0.
+      self.result.dy = 0.
+      self.result.sc = 1.
+      self.result.covxx = 9999.
+      self.result.covyy = 9999.
+      self.result.exception = e
+    else:
+      self.result.exception = None
     return self.result
 
   def getinversealignment(self, inverse):
