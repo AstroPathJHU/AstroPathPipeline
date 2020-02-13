@@ -122,16 +122,17 @@ class AlignmentSet:
     return sum_mse
 
   @functools.lru_cache(maxsize=1)
-  def getDAPI(self,filetype="flatWarpDAPI"):
+  def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False):
     logger.info(self.samp)
-    self.rawimages = self.__getrawlayers(filetype)
+    rawimages = self.__getrawlayers(filetype, keep=keeprawimages)
 
     # apply the extra flattening
 
-    self.meanimage = meanimage(self.rawimages, self.samp)
+    self.meanimage = meanimage(rawimages, self.samp)
 
-    self.images = self.rawimages / self.meanimage.flatfield
-    self.images = np.rint(self.images).astype(np.uint16)
+    for image in rawimages:
+        image[:] = np.rint(image / self.meanimage.flatfield)
+    self.images = rawimages
 
     for rectangle, image in zip(self.rectangles, self.images):
       rectangle.image = image
@@ -149,8 +150,7 @@ class AlignmentSet:
     ]
     writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
 
-  @functools.lru_cache(maxsize=1)
-  def __getrawlayers(self,filetype):
+  def __getrawlayers(self, filetype, keep=False):
     logger.info(self.samp)
     if filetype=="flatWarpDAPI" :
       ext = f".fw{self.layer:02d}"
@@ -166,6 +166,7 @@ class AlignmentSet:
       raise IOError("didn't find any rows in the rectangles table for "+self.samp, 1)
 
     for i, rectangle in enumerate(self.rectangles):
+      #logger.info(f"loading rectangle {i+1}/{len(self.rectangles)}")
       with open(os.path.join(path, rectangle.file.replace(".im3", ext)), "rb") as f:
         #use fortran order, like matlab!
         rawimages[i] = np.memmap(
@@ -173,8 +174,13 @@ class AlignmentSet:
           dtype=np.uint16,
           shape=(self.fheight, self.fwidth),
           order="F",
-          mode="r")
-        rectangle.rawimage = rawimages[i]
+          mode="r"
+        )
+
+    if keep:
+        self.rawimages = rawimages.copy()
+        for rectangle, rawimage in zip(rectangles, self.rawimages):
+            rectangle.rawimage = rawimage
 
     return rawimages
 
