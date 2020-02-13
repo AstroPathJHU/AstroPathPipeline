@@ -64,7 +64,8 @@ class Overlap:
     return self.result
 
   def __prepimage(self):
-    hh, ww = self.images.shape[1:]
+    hh, ww = self.images[0].shape
+    assert (hh, ww) == self.images[1].shape
 
     #convert microns to approximate pixels
     image1x1 = int(self.x1 * self.pscale)
@@ -92,8 +93,8 @@ class Overlap:
     cutimage2y2 = overlapy2 - image2y1 - self.nclip
 
     self.cutimages = np.array([
-      self.images[0,cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
-      self.images[1,cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
+      self.images[0][cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
+      self.images[1][cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
     ])
 
   def __computeshift(self, **errorkwargs):

@@ -101,7 +101,7 @@ class AlignmentSet:
       p1image = [r.image for r in self.rectangles if r.n==overlap.p1]
       p2image = [r.image for r in self.rectangles if r.n==overlap.p2]
       try :
-        overlap_images = np.array([p1image[0],p2image[0]])
+        overlap_images = p1image[0], p2image[0]
       except IndexError :
         errormsg=f"error indexing images from rectangle.n for overlap #{i} (p1={overlap.p1}, p2={overlap.p2})"
         errormsg+=f" [len(p1image)={len(p1image)}, len(p2image)={len(p2image)}]"
