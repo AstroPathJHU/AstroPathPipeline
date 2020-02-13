@@ -35,12 +35,13 @@ def computeshift(images, *, usefinalsearcher=False, **errorkwargs):
       #minimum is on the boundary
       not (x0-xsize+1 <= -result.dx <= x0+xsize-1 and y0-ysize+1 <= -result.dy <= y0+ysize-1)
       #error is big compared to the search grid size
-      or np.sqrt(np.trace(result.covariance)) > xsize + ysize
     ):
       xsize *= 2
       ysize *= 2
       x0 = int(np.round(-result.dx))
       y0 = int(np.round(-result.dy))
+    elif np.sqrt(np.trace(result.covariance)) > xsize + ysize:
+      pass #stop here and return the dummy result
     elif xsize != 8 or ysize != 8:
       #first bring width//4 or height//4 back to factors of 2
       xsize = 2**int(np.ceil(np.log(xsize) / np.log(2)))
