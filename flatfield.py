@@ -22,9 +22,9 @@ def meanimage(images, logmsg=""):
 
   m, n = img.shape
   x, y = np.meshgrid(np.arange(1, n+1) / n, np.arange(1, m+1) / m)
-  xdata = x.flatten()
-  ydata = y.flatten()
-  zdata = img.flatten()
+  xdata = np.ravel(x)
+  ydata = np.ravel(y)
+  zdata = np.ravel(img)
 
   #least squares fit:
   #problem has to be set up to get an approximate solution to Ax=b
