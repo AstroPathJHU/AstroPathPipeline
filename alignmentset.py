@@ -199,6 +199,19 @@ class AlignmentSet:
 
     return g
 
+  def stitch(self):
+    """
+    \begin{align}
+    -2 \ln L =&
+      1/2 \sum_\text{overlaps}
+      (\vec{x}_{p1} - \vec{x}_{p2} - d\vec{x} - \vec{x}_{p1}^n - \vec{x}_{p2}^n)^T \\
+      &\mathbf{cov}^{-1}
+      (\vec{x}_{p1} - \vec{x}_{p2} - d\vec{x} - \vec{x}_{p1}^n - \vec{x}_{p2}^n) \\
+      +&
+      \sum_p \left(\frac{\vec{x}_p - \mathbf{A}\vec{x}_p^n}{\sigma}\right)^2
+    \end{align}
+    """
+
 @dataclasses.dataclass
 class Rectangle:
   n: int
