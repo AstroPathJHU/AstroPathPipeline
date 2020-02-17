@@ -16,7 +16,7 @@ class AlignmentSet:
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, interactive=False):
+  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None):
     """
     Directory structure should be
     root1/
@@ -36,6 +36,7 @@ class AlignmentSet:
     self.root2 = root2
     self.samp = samp
     self.interactive = interactive
+    self.selectrectangles = selectrectangles
 
     if not os.path.exists(os.path.join(self.root1, self.samp)):
       raise IOError(f"{os.path.join(self.root1, self.samp)} does not exist")
@@ -77,6 +78,10 @@ class AlignmentSet:
     self.yposition = self.constantsdict["yposition"]
     self.nclip     = self.constantsdict["nclip"]
     self.layer     = self.constantsdict["layer"]
+
+    if self.selectrectangles is not None:
+      self.rectangles = [r for r in self.rectangles if r.n in self.selectrectangles]
+      self.overlaps = [o for o in self.overlaps if o.p1 in self.selectrectangles and o.p2 in self.selectrectangles]
 
     self.overlapsdict = {(o.p1, o.p2): o for o in self.overlaps}
 
@@ -229,34 +234,39 @@ class AlignmentSet:
     Tyx = -2
     Tyy = -1
 
+    rectangledict = {rectangle.n: i for i, rectangle in enumerate(self.rectangles)}
     for o in self.overlaps:
-      ix = 2*(o.p1-1)
-      iy = 2*(o.p1-1)+1
-      jx = 2*(o.p2-1)
-      jy = 2*(o.p2-1)+1
-      assert ix >= 0, o.p1
-      assert iy < 2*len(self.rectangles), o.p1
-      assert jx >= 0, o.p2
-      assert jy < 2*len(self.rectangles), o.p2
+      ix = 2*rectangledict[o.p1]
+      iy = 2*rectangledict[o.p1]+1
+      jx = 2*rectangledict[o.p2]
+      jy = 2*rectangledict[o.p2]+1
+      assert ix >= 0, ix
+      assert iy < 2*len(self.rectangles), iy
+      assert jx >= 0, jx
+      assert jy < 2*len(self.rectangles), jy
 
       ii = np.ix_((ix,iy), (ix,iy))
       ij = np.ix_((ix,iy), (jx,jy))
       ji = np.ix_((jx,jy), (ix,iy))
       jj = np.ix_((jx,jy), (jx,jy))
-      covariance = o.result.covariance
+      inversecovariance = np.linalg.inv(o.result.covariance)
 
-      A[ii] += covariance / 2
-      A[ij] -= covariance / 2
-      A[ji] -= covariance / 2
-      A[jj] += covariance / 2
+      A[ii] += inversecovariance / 2
+      A[ij] -= inversecovariance / 2
+      A[ji] -= inversecovariance / 2
+      A[jj] += inversecovariance / 2
 
       i = np.ix_((ix, iy))
       j = np.ix_((jx, jy))
 
-      b[i] += 2 * (-o.result.dxvec - o.x1vec + o.x2vec)
-      b[j] -= 2 * (-o.result.dxvec - o.x1vec + o.x2vec)
+      constpiece = -o.result.dxvec - o.x1vec + o.x2vec
 
-      c += np.linalg.norm(o.result.dxvec + o.x1vec - o.x2vec) ** 2
+      b[i] += 2 * inversecovariance @ constpiece
+      b[j] -= 2 * inversecovariance @ constpiece
+
+      c += constpiece @ inversecovariance @ constpiece
+
+      print(A); print(b); print(c)
 
     dxs, dys = zip(*(o.result.dxdy for o in self.overlaps))
 
@@ -273,8 +283,8 @@ class AlignmentSet:
     sigmay = np.sqrt(weightedvariancedy)
 
     for r in self.rectangles:
-      ix = 2*(r.n-1)
-      iy = 2*(r.n-1)+1
+      ix = 2*rectangledict[r.n]
+      iy = 2*rectangledict[r.n]+1
 
       A[ix] += 1 / sigmax**2
       A[iy] += 1 / sigmay**2
@@ -290,6 +300,8 @@ class AlignmentSet:
       A[Tyx, Tyx]               += r.cx**2   / sigmay**2
       A[(Tyx, Tyy), (Tyy, Tyx)] += r.cx*r.cy / sigmay**2
       A[Tyy, Tyy]               += r.cy**2   / sigmay**2
+
+      print(A); print(b); print(c)
 
     result = np.linalg.solve(A/2, -b)
     return result
