@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, dataclasses, functools, logging, numpy as np, os, typing, uncertainties.unumpy as unp
+import cv2, cvxpy as cp, dataclasses, functools, logging, numpy as np, os, typing, uncertainties.unumpy as unp
 
 from .flatfield import meanimage
 from .overlap import Overlap
@@ -222,51 +222,20 @@ class AlignmentSet:
     \end{pmatrix}
     \end{equation}
     """
-    #nll = x^T A x + bx + c
 
-    size = 2*len(self.rectangles) + 4 #2* because each rectangle has an x and a y, + 4 for the components of T
-    A = np.zeros(shape=(size, size))
-    b = np.zeros(shape=(size,))
-    c = 0
+    x = cp.Variable(shape=(len(self.rectangles), 2))
+    T = cp.Variable(shape=(2, 2))
 
-    Txx = -4
-    Txy = -3
-    Tyx = -2
-    Tyy = -1
+    twonll = 0
+    rectanglex = {r.n: xx for r, xx in zip(self.rectangles, x)}
 
-    rectangledict = {rectangle.n: i for i, rectangle in enumerate(self.rectangles)}
     for o in self.overlaps:
-      ix = 2*rectangledict[o.p1]
-      iy = 2*rectangledict[o.p1]+1
-      jx = 2*rectangledict[o.p2]
-      jy = 2*rectangledict[o.p2]+1
-      assert ix >= 0, ix
-      assert iy < 2*len(self.rectangles), iy
-      assert jx >= 0, jx
-      assert jy < 2*len(self.rectangles), jy
-
-      ii = np.ix_((ix,iy), (ix,iy))
-      ij = np.ix_((ix,iy), (jx,jy))
-      ji = np.ix_((jx,jy), (ix,iy))
-      jj = np.ix_((jx,jy), (jx,jy))
-      inversecovariance = np.linalg.inv(o.result.covariance)
-
-      A[ii] += inversecovariance / 2
-      A[ij] -= inversecovariance / 2
-      A[ji] -= inversecovariance / 2
-      A[jj] += inversecovariance / 2
-
-      i = np.ix_((ix, iy))
-      j = np.ix_((jx, jy))
-
-      constpiece = -o.result.dxvec - o.x1vec + o.x2vec
-
-      b[i] += 2 * inversecovariance @ constpiece
-      b[j] -= 2 * inversecovariance @ constpiece
-
-      c += constpiece @ inversecovariance @ constpiece
-
-      print(A); print(b); print(c)
+      x1 = rectanglex[o.p1]
+      x2 = rectanglex[o.p2]
+      twonll += 0.5 * cp.quad_form(
+        x1 - x2 - o.result.dxvec - o.x1vec + o.x2vec,
+        np.linalg.inv(o.result.covariance)
+      )
 
     dxs, dys = zip(*(o.result.dxdy for o in self.overlaps))
 
@@ -282,29 +251,16 @@ class AlignmentSet:
     )
     sigmay = np.sqrt(weightedvariancedy)
 
+    sigma = np.array(sigmax, sigmay)
+
     for r in self.rectangles:
-      ix = 2*rectangledict[r.n]
-      iy = 2*rectangledict[r.n]+1
+      twonll += cp.norm((rectanglex[r.n] - T @ r.cxvec) / sigma)
 
-      A[ix] += 1 / sigmax**2
-      A[iy] += 1 / sigmay**2
-      A[(ix, Txx), (Txx, ix)] -= r.cx / sigmax**2
-      A[(ix, Txy), (Txy, ix)] -= r.cy / sigmax**2
-      A[(iy, Tyx), (Tyx, iy)] -= r.cx / sigmay**2
-      A[(iy, Tyy), (Tyy, iy)] -= r.cy / sigmay**2
+    minimize = cp.Minimize(twonll)
+    prob = cp.Problem(minimize)
+    prob.solve()
 
-      A[Txx, Txx]               += r.cx**2   / sigmax**2
-      A[(Txx, Txy), (Txy, Txx)] += r.cx*r.cy / sigmax**2
-      A[Txy, Txy]               += r.cy**2   / sigmax**2
-
-      A[Tyx, Tyx]               += r.cx**2   / sigmay**2
-      A[(Tyx, Tyy), (Tyy, Tyx)] += r.cx*r.cy / sigmay**2
-      A[Tyy, Tyy]               += r.cy**2   / sigmay**2
-
-      print(A); print(b); print(c)
-
-    result = np.linalg.solve(A/2, -b)
-    return result
+    return x, T
 
 @dataclasses.dataclass
 class Rectangle:
@@ -322,7 +278,7 @@ class Rectangle:
 
   @property
   def cxvec(self):
-    return np.array([cx, cy])
+    return np.array([self.cx, self.cy])
 
 @dataclasses.dataclass(frozen=True)
 class ImageStats:
