@@ -204,7 +204,7 @@ class AlignmentSet:
 
     return g
 
-  def stitch(self):
+  def stitch(self, *, getproblem=False):
     """
     \begin{align}
     -2 \ln L =&
@@ -260,7 +260,10 @@ class AlignmentSet:
     prob = cp.Problem(minimize)
     prob.solve()
 
-    return x, T
+    if getproblem:
+      return x, T, prob
+    else:
+      return x, T
 
 @dataclasses.dataclass
 class Rectangle:
