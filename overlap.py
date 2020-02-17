@@ -153,6 +153,12 @@ class Overlap:
     plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
     plt.show()
 
+  @property
+  def x1vec(self):
+    return np.array([self.x1, self.y1])
+  @property
+  def x2vec(self):
+    return np.array([self.x2, self.y2])
 
 @dataclasses.dataclass(eq=False)
 class AlignmentResult:
@@ -192,6 +198,10 @@ class AlignmentResult:
   def covariance(self, covariancematrix):
     assert np.isclose(covariancematrix[0, 1], covariancematrix[1, 0]), covariancematrix
     (self.covxx, self.covxy), (self.covxy, self.covyy) = covariancematrix
+
+  @property
+  def dxvec(self):
+    return np.array([self.dx, self.dy])
 
   @property
   def dxdy(self):
