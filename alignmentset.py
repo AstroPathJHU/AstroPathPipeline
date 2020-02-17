@@ -114,7 +114,7 @@ class AlignmentSet:
       done.add((overlap.p1, overlap.p2))
       if result is not None: 
         alignments.append(result)
-        sum_mse+=result.mse[0]+result.mse[1]
+        sum_mse+=result.mse[2]
 
     writetable(aligncsv, alignments, retry=self.interactive)
 

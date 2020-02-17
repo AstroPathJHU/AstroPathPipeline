@@ -187,7 +187,7 @@ class CameraWarp(Warp) :
     """
     Subclass for applying warping to images based on a camera matrix and distortion parameters
     """
-    def __init__(self,n=1344,m=1004,cx=672.,cy=502.,fx=1.,fy=1.,k1=0.,k2=0.,p1=0.,p2=0.,k3=None,k4=None,k5=None,k6=None) :
+    def __init__(self,n=1344,m=1004,cx=672.5,cy=502.,fx=40000.,fy=40000.,k1=0.,k2=0.,p1=0.,p2=0.,k3=None,k4=None,k5=None,k6=None) :
         """
         Initialize a camera matrix and vector of distortion parameters for a camera warp transformation
         See https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html for explanations of parameters/functions
@@ -239,6 +239,14 @@ class CameraWarp(Warp) :
         """
         self.cam_matrix = np.array([[pars[2],0.,pars[0]],[0.,pars[3],pars[1]],[0.,0.,1.]])
         self.dist_pars  = np.array(pars[4:])
+
+    def printParams(self) :
+        parnames=['cx','cy','fx','fy','k1','k2','p1','p2','k3','k4','k5','k6']
+        parvals=[self.cam_matrix[0][2],self.cam_matrix[1][2],self.cam_matrix[0][0],self.cam_matrix[1][1]]+[p for p in self.dist_pars]
+        s=''
+        for n,v in zip(parnames,parvals) :
+            s+=f'{n}={v:.3f}, '
+        print(s[:-2])
 
     def showCheckerboard(self) :
         """
