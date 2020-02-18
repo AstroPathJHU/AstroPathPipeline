@@ -204,7 +204,105 @@ class AlignmentSet:
 
     return g
 
-  def stitch(self, *, getproblem=False):
+  def stitch(self):
+    """
+    \begin{align}
+    -2 \ln L =&
+      1/2 \sum_\text{overlaps}
+      (\vec{x}_{p1} - \vec{x}_{p2} - d\vec{x} - \vec{x}_{p1}^n + \vec{x}_{p2}^n)^T \\
+      &\mathbf{cov}^{-1}
+      (\vec{x}_{p1} - \vec{x}_{p2} - d\vec{x} - \vec{x}_{p1}^n + \vec{x}_{p2}^n) \\
+      +&
+      \sum_p \left(\frac{\vec{x}_p - \mathbf{T}\vec{x}_p^n}{\sigma}\right)^2
+    \end{align}
+    \begin{equation}
+    \mathbf{T} = \begin{pmatrix}
+    T_{xx} & T_{xy} \\ T_{yx} & T_{yy}
+    \end{pmatrix}
+    \end{equation}
+    """
+    #nll = x^T A x + bx + c
+
+    size = 2*len(self.rectangles) + 4 #2* because each rectangle has an x and a y, + 4 for the components of T
+    A = np.zeros(shape=(size, size))
+    b = np.zeros(shape=(size,))
+    c = 0
+
+    Txx = -4
+    Txy = -3
+    Tyx = -2
+    Tyy = -1
+
+    rectangledict = {rectangle.n: i for i, rectangle in enumerate(self.rectangles)}
+    for o in self.overlaps:
+      ix = 2*rectangledict[o.p1]
+      iy = 2*rectangledict[o.p1]+1
+      jx = 2*rectangledict[o.p2]
+      jy = 2*rectangledict[o.p2]+1
+      assert ix >= 0, ix
+      assert iy < 2*len(self.rectangles), iy
+      assert jx >= 0, jx
+      assert jy < 2*len(self.rectangles), jy
+
+      ii = np.ix_((ix,iy), (ix,iy))
+      ij = np.ix_((ix,iy), (jx,jy))
+      ji = np.ix_((jx,jy), (ix,iy))
+      jj = np.ix_((jx,jy), (jx,jy))
+      inversecovariance = np.linalg.inv(o.result.covariance)
+
+      A[ii] += inversecovariance / 2
+      A[ij] -= inversecovariance / 2
+      A[ji] -= inversecovariance / 2
+      A[jj] += inversecovariance / 2
+
+      i = np.ix_((ix, iy))
+      j = np.ix_((jx, jy))
+
+      constpiece = -o.result.dxvec - o.x1vec + o.x2vec
+
+      b[i] += 2 * inversecovariance @ constpiece
+      b[j] -= 2 * inversecovariance @ constpiece
+
+      c += constpiece @ inversecovariance @ constpiece
+
+    dxs, dys = zip(*(o.result.dxdy for o in self.overlaps))
+
+    weightedvariancedx = np.average(
+      unp.nominal_values(dxs)**2,
+      weights=1/unp.std_devs(dxs)**2,
+    )
+    sigmax = np.sqrt(weightedvariancedx)
+
+    weightedvariancedy = np.average(
+      unp.nominal_values(dys)**2,
+      weights=1/unp.std_devs(dys)**2,
+    )
+    sigmay = np.sqrt(weightedvariancedy)
+
+    for r in self.rectangles:
+      ix = 2*rectangledict[r.n]
+      iy = 2*rectangledict[r.n]+1
+
+      A[ix] += 1 / sigmax**2
+      A[iy] += 1 / sigmay**2
+      A[(ix, Txx), (Txx, ix)] -= r.cx / sigmax**2
+      A[(ix, Txy), (Txy, ix)] -= r.cy / sigmax**2
+      A[(iy, Tyx), (Tyx, iy)] -= r.cx / sigmay**2
+      A[(iy, Tyy), (Tyy, iy)] -= r.cy / sigmay**2
+
+      A[Txx, Txx]               += r.cx**2   / sigmax**2
+      A[(Txx, Txy), (Txy, Txx)] += r.cx*r.cy / sigmax**2
+      A[Txy, Txy]               += r.cy**2   / sigmax**2
+
+      A[Tyx, Tyx]               += r.cx**2   / sigmay**2
+      A[(Tyx, Tyy), (Tyy, Tyx)] += r.cx*r.cy / sigmay**2
+      A[Tyy, Tyy]               += r.cy**2   / sigmay**2
+
+    result = np.linalg.solve(A/2, -b)
+    print(np.linalg.det(A))
+    return result[:-4].reshape(len(self.rectangles), 2), result[-4:].reshape(2, 2)
+
+  def stitch_cvxpy(self, *, getproblem=False):
     """
     \begin{align}
     -2 \ln L =&
