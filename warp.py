@@ -1,7 +1,7 @@
 #imports
 import numpy as np
-from .plotting import *
 import os, math, cv2
+import matplotlib.pyplot as plt, seaborn as sns
 
 class WarpingError(Exception) :
     """
@@ -21,7 +21,7 @@ class Warp :
         """
         self.n = n
         self.m = m
-        self.checkerboard = self.__makeCheckerboard()
+        self._checkerboard = self.__makeCheckerboard()
 
     def getHWLFromRaw(self,fname,nlayers=35) :
         """
@@ -62,10 +62,18 @@ class Warp :
         #write out image flattened in fortran order
         im3writeraw(outfname,im.flatten(order="F").astype(np.uint16))
 
+    #helper function to plot unwarped and warped checkerboard images next to one another
+    def _plotCheckerboards(self,warped_board) :
+        f,(ax1,ax2) = plt.subplots(1,2)
+        f.set_size_inches(20.,5.)
+        ax1.imshow(self._checkerboard,cmap='gray')
+        ax1.set_title('original')
+        ax2.imshow(warped_board,cmap='gray')
+        ax2.set_title('warped')
+        plt.show()
+
+    #Helper function to create and return a checkerboard image of the appropriate size for visualizing warp effects
     def __makeCheckerboard(self) :
-        """
-        Function to create and return a checkerboard image of the appropriate size for visualizing warp effects
-        """
         #find a good size to use for the squares
         square_sizes=range(1,176)
         square_pixels = max([s for s in square_sizes if self.m%s==0]+[s for s in square_sizes if self.n%s==0])
@@ -77,7 +85,6 @@ class Warp :
                 if math.floor(i/square_pixels)%2==math.floor(j/square_pixels)%2 :
                     data[i,j]=1
         return data
-
 
 class PolyFieldWarp(Warp) :
     """
@@ -97,10 +104,12 @@ class PolyFieldWarp(Warp) :
         plot_warpfields = if True, show heatmaps of warp as radius and components of resulting gradient warp field
         """
         super().__init__(n,m)
+        self.xc=xc
+        self.yc=yc
         self.r_warps, self.x_warps, self.y_warps = self.__getWarpFields(xc,yc,max_warp,pdegree,psq,plot_fit)
         self.interp=interpolation
         #plot warp fields if requested
-        if plot_warpfields : plotWarpFields(self.r_warps,self.x_warps,self.y_warps)
+        if plot_warpfields : self.plotWarpFields()
 
     def warpImage(self,infname,nlayers=35,layers=[1]) :
         """
@@ -117,7 +126,7 @@ class PolyFieldWarp(Warp) :
 
     def warpLayer(self,layer,layernumber,rawfilename) :
         """
-        Quickly warps a single inputted image layer array with the current parameters and save it
+        Quickly warp a single inputted image layer array with the current parameters and save it
         """
         self.writeSingleLayerImage(self.getWarpedLayer(layer),self.__getWarpedLayerFilename(rawfilename,layernumber))
 
@@ -128,11 +137,30 @@ class PolyFieldWarp(Warp) :
         map_x, map_y = self.__getMapMatrices()
         return cv2.remap(layer,map_x,map_y,self.interp)
 
+    def plotWarpFields(self) :
+        """
+        Plot three heatmaps of the r-, x-, and y-dependent warping fields
+        """
+        f,(ax1,ax2,ax3) = plt.subplots(1,3)
+        f.set_size_inches(20.,5.)
+        #plot radial field as a heatmap
+        g1 = sns.heatmap(self.r_warps,ax=ax1)
+        ax1.scatter(self.xc,self.yc,marker='*',color='yellow')
+        g1.set_title('radially-dependent warping shifts')
+        #plot x and y shifts
+        g2 = sns.heatmap(self.x_warps,ax=ax2)
+        ax2.scatter(self.xc,self.yc,marker='*',color='yellow')
+        g2.set_title('warping shift x components')
+        g3 = sns.heatmap(self.y_warps,ax=ax3)
+        ax3.scatter(self.xc,self.yc,marker='*',color='yellow')
+        g3.set_title('warping shift y components')
+        plt.show()
+
     def showCheckerboard(self) :
         """
         Plot a checkerboard image before and after application of the warp
         """
-        plotCheckerboards(self.checkerboard,self.getWarpedLayer(self.checkerboard))
+        self._plotCheckerboards(self.getWarpedLayer(self._checkerboard))
     
     #helper function to make and return r_warps (field of warp factors) and x/y_warps (two fields of warp gradient dx/dy)
     def __getWarpFields(self,xc,yc,max_warp,pdegree,psq,plot_fit) :
@@ -161,18 +189,50 @@ class PolyFieldWarp(Warp) :
         if squared :
             r_points = r_points**2
         warp_amt = np.array([0.0,0.0,0.0,0.2,max_warp])
-        #fit polynomial (***** may want to do this with scipy.optimize instead *****)
+        #fit polynomial 
         coeffs = np.polyfit(r_points,warp_amt,deg)
         #make plot if requested
         if plot :
-            plotPolyFit(r_points,warp_amt,coeffs,squared)
+            self.__plotPolyFit(r_points,warp_amt,coeffs,squared)
         #return coefficients
         return coeffs
 
+    #helper function to plot a curve fit to data
+    def __plotPolyFit(self,x,y,c,squared,npoints=50) :
+        plt.plot(x,y,".",label="Datapoints")
+        fit_xs = np.linspace(x[0],x[-1],npoints)
+        fit_ys = np.polynomial.polynomial.polyval(fit_xs,np.flip(c))
+        plt.plot(fit_xs,fit_ys,label=f"Fit")
+        deg=len(c)-1
+        if squared :
+            plt.title(f"Fit with degree {deg} squared polynomial")
+        else :
+            plt.title(f"Fit with degree {deg} polynomial")
+        if squared : 
+            plt.xlabel("scaled squared radial distance r^2") 
+        else : 
+            plt.xlabel("scaled radial distance r")
+        plt.ylabel("warp amount")
+        ftext="warp="
+        for i,coeff in enumerate(np.flip(c)) :
+            ftext+=f"{coeff:03f}"
+            if i!=0 :
+                ftext += "*r"
+                if squared and i==1 :
+                    ftext+='^2'
+                if i!=1 :
+                    if squared :
+                        ftext += f"^{2*i}"
+                    else :
+                        ftext += f"^{i}"
+            if i!=deg :
+                ftext+=" + "
+        plt.text(x[0],0.5*(fit_ys[-1]-fit_ys[0]),ftext)
+        plt.legend()
+        plt.show()
+
+    #helper function to calculate and return the map matrices for remap
     def __getMapMatrices(self) :
-        """
-        calculate and return the map matrices for remap
-        """
         grid = np.mgrid[1:self.m+1,1:self.n+1]
         xpos, ypos = grid[1], grid[0]
         map_x = (xpos-self.x_warps).astype(np.float32) 
@@ -241,6 +301,9 @@ class CameraWarp(Warp) :
         self.dist_pars  = np.array(pars[4:])
 
     def printParams(self) :
+        """
+        Print the current warp parameters in a nice string
+        """
         parnames=['cx','cy','fx','fy','k1','k2','p1','p2','k3','k4','k5','k6']
         parvals=[self.cam_matrix[0][2],self.cam_matrix[1][2],self.cam_matrix[0][0],self.cam_matrix[1][1]]+[p for p in self.dist_pars]
         s=''
@@ -252,7 +315,7 @@ class CameraWarp(Warp) :
         """
         Plot a checkerboard image before and after application of the warp
         """
-        plotCheckerboards(self.checkerboard,self.getWarpedLayer(self.checkerboard))
+        self._plotCheckerboards(self.getWarpedLayer(self._checkerboard))
 
     #helper function to convert a raw file name and a layer into a camwarped single layer filename
     def __getWarpedLayerFilename(self,rawname,layer) :
