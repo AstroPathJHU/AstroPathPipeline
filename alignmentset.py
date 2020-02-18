@@ -260,10 +260,10 @@ class AlignmentSet:
 
       constpiece = (-o.result.dxvec - o.x1vec + o.x2vec) / scaleby
 
-      b[i] += 2 * inversecovariance @ constpiece
-      b[j] -= 2 * inversecovariance @ constpiece
+      b[i] += inversecovariance @ constpiece
+      b[j] -= inversecovariance @ constpiece
 
-      c += constpiece @ inversecovariance @ constpiece
+      c += constpiece @ inversecovariance @ constpiece / 2
 
     dxs, dys = zip(*(o.result.dxdy for o in self.overlaps))
 
