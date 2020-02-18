@@ -407,8 +407,6 @@ class Rectangle:
   cy: int
   t: int
   file: str
-  rawimage: typing.Optional[np.ndarray] = None
-  image: typing.Optional[np.ndarray] = None
 
   @property
   def xvec(self):
