@@ -271,32 +271,35 @@ class AlignmentSet:
       unp.nominal_values(dxs)**2,
       weights=1/unp.std_devs(dxs)**2,
     )
-    sigmax = np.sqrt(weightedvariancedx)
+    sigmax = np.sqrt(weightedvariancedx) / scaleby
 
     weightedvariancedy = np.average(
       unp.nominal_values(dys)**2,
       weights=1/unp.std_devs(dys)**2,
     )
-    sigmay = np.sqrt(weightedvariancedy)
+    sigmay = np.sqrt(weightedvariancedy) / scaleby
 
     for r in self.rectangles:
       ix = 2*rectangledict[r.n]
       iy = 2*rectangledict[r.n]+1
 
-      A[ix] += 1 / sigmax**2
-      A[iy] += 1 / sigmay**2
-      A[(ix, Txx), (Txx, ix)] -= r.cx / sigmax**2 * scaleby
-      A[(ix, Txy), (Txy, ix)] -= r.cy / sigmax**2 * scaleby
-      A[(iy, Tyx), (Tyx, iy)] -= r.cx / sigmay**2 * scaleby
-      A[(iy, Tyy), (Tyy, iy)] -= r.cy / sigmay**2 * scaleby
+      cx = r.cx / scaleby
+      cy = r.cy / scaleby
 
-      A[Txx, Txx]               += r.cx**2   / sigmax**2
-      A[(Txx, Txy), (Txy, Txx)] += r.cx*r.cy / sigmax**2
-      A[Txy, Txy]               += r.cy**2   / sigmax**2
+      A[ix,ix] += 1 / sigmax**2
+      A[iy,iy] += 1 / sigmay**2
+      A[(ix, Txx), (Txx, ix)] -= cx / sigmax**2
+      A[(ix, Txy), (Txy, ix)] -= cy / sigmax**2
+      A[(iy, Tyx), (Tyx, iy)] -= cx / sigmay**2
+      A[(iy, Tyy), (Tyy, iy)] -= cy / sigmay**2
 
-      A[Tyx, Tyx]               += r.cx**2   / sigmay**2
-      A[(Tyx, Tyy), (Tyy, Tyx)] += r.cx*r.cy / sigmay**2
-      A[Tyy, Tyy]               += r.cy**2   / sigmay**2
+      A[Txx, Txx]               += cx**2 / sigmax**2
+      A[(Txx, Txy), (Txy, Txx)] += cx*cy / sigmax**2
+      A[Txy, Txy]               += cy**2 / sigmax**2
+
+      A[Tyx, Tyx]               += cx**2 / sigmay**2
+      A[(Tyx, Tyy), (Tyy, Tyx)] += cx*cy / sigmay**2
+      A[Tyy, Tyy]               += cy**2 / sigmay**2
 
     result = np.linalg.solve(A/2, -b)
     x = result[:-4].reshape(len(self.rectangles), 2) * scaleby
