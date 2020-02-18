@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, dataclasses, functools, logging, numpy as np, os, typing, uncertainties.unumpy as unp
+import cv2, dataclasses, functools, logging, numpy as np, os, scipy, typing, uncertainties, uncertainties.unumpy as unp
 
 from .flatfield import meanimage
 from .overlap import Overlap
@@ -204,7 +204,7 @@ class AlignmentSet:
 
     return g
 
-  def stitch(self, *, scaleby=1, getABC=False):
+  def stitch(self, *, scaleby=1, getABC=False, getcovariance=True, geterror=True):
     """
     \begin{align}
     -2 \ln L =&
@@ -302,6 +302,27 @@ class AlignmentSet:
       A[Tyy, Tyy]               += cy**2 / sigmay**2
 
     result = np.linalg.solve(2*A, -b)
+
+    if getcovariance or geterror:
+      onesigmaCL = scipy.stats.chi2.cdf(1, df=1)
+      solveresult = scipy.optimize.root_scalar(
+        f=lambda x: scipy.stats.chi2.cdf(x, df=size) - onesigmaCL,
+        fprime=lambda x: scipy.stats.chi2.pdf(x, df=size),
+        x0=size,
+        method="newton",
+      )
+      if not solveresult.converged:
+        raise ValueError(f"finding -2 delta ln L for 1sigma failed with flag {solveresult.flag}")
+      delta2nllfor1sigma = solveresult.root
+
+    if getcovariance:
+      covariancematrix = np.linalg.inv(A) * delta2nllfor1sigma
+      result = np.array(uncertainties.correlated_values(result, covariancematrix))
+
+    elif geterror:  #less computationally intensive, don't need to invert big matrix
+      errorvector = (np.diag(A) * delta2nllfor1sigma) ** -0.5
+      result = unp.uarray(result, errorvector)
+
     x = result[:-4].reshape(len(self.rectangles), 2) * scaleby
     T = result[-4:].reshape(2, 2)
     if getABC:
