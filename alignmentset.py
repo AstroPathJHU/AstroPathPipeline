@@ -204,7 +204,7 @@ class AlignmentSet:
 
     return g
 
-  def stitch(self):
+  def stitch(self, *, scaleby=1):
     """
     \begin{align}
     -2 \ln L =&
@@ -248,7 +248,7 @@ class AlignmentSet:
       ij = np.ix_((ix,iy), (jx,jy))
       ji = np.ix_((jx,jy), (ix,iy))
       jj = np.ix_((jx,jy), (jx,jy))
-      inversecovariance = np.linalg.inv(o.result.covariance)
+      inversecovariance = np.linalg.inv(o.result.covariance) * scaleby**2
 
       A[ii] += inversecovariance / 2
       A[ij] -= inversecovariance / 2
@@ -258,7 +258,7 @@ class AlignmentSet:
       i = np.ix_((ix, iy))
       j = np.ix_((jx, jy))
 
-      constpiece = -o.result.dxvec - o.x1vec + o.x2vec
+      constpiece = (-o.result.dxvec - o.x1vec + o.x2vec) / scaleby
 
       b[i] += 2 * inversecovariance @ constpiece
       b[j] -= 2 * inversecovariance @ constpiece
@@ -285,10 +285,10 @@ class AlignmentSet:
 
       A[ix] += 1 / sigmax**2
       A[iy] += 1 / sigmay**2
-      A[(ix, Txx), (Txx, ix)] -= r.cx / sigmax**2
-      A[(ix, Txy), (Txy, ix)] -= r.cy / sigmax**2
-      A[(iy, Tyx), (Tyx, iy)] -= r.cx / sigmay**2
-      A[(iy, Tyy), (Tyy, iy)] -= r.cy / sigmay**2
+      A[(ix, Txx), (Txx, ix)] -= r.cx / sigmax**2 * scaleby
+      A[(ix, Txy), (Txy, ix)] -= r.cy / sigmax**2 * scaleby
+      A[(iy, Tyx), (Tyx, iy)] -= r.cx / sigmay**2 * scaleby
+      A[(iy, Tyy), (Tyy, iy)] -= r.cy / sigmay**2 * scaleby
 
       A[Txx, Txx]               += r.cx**2   / sigmax**2
       A[(Txx, Txy), (Txy, Txx)] += r.cx*r.cy / sigmax**2
@@ -300,7 +300,7 @@ class AlignmentSet:
 
     result = np.linalg.solve(A/2, -b)
     print(np.linalg.det(A))
-    return result[:-4].reshape(len(self.rectangles), 2), result[-4:].reshape(2, 2)
+    return result[:-4].reshape(len(self.rectangles), 2) * scaleby, result[-4:].reshape(2, 2)
 
   def stitch_cvxpy(self, *, getproblem=False):
     """
