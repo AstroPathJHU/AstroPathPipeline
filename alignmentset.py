@@ -213,7 +213,10 @@ class AlignmentSet:
       &\mathbf{cov}^{-1}
       (\vec{x}_{p1} - \vec{x}_{p2} - d\vec{x} - \vec{x}_{p1}^n + \vec{x}_{p2}^n) \\
       +&
-      \sum_p \left(\frac{\vec{x}_p - \mathbf{T}\vec{x}_p^n}{\sigma}\right)^2
+      \sum_p \left(
+        \frac{(\vec{x}_p-\vec{x}_0) - \mathbf{T}(\vec{x}_p^n-\vec{x}_0)}
+        {\sigma}
+      \right)^2
     \end{align}
     \begin{equation}
     \mathbf{T} = \begin{pmatrix}
@@ -279,27 +282,38 @@ class AlignmentSet:
     )
     sigmay = np.sqrt(weightedvariancedy) / scaleby
 
+    x0vec = np.mean([r.xvec for r in self.rectangles], axis=0)
+    x0, y0 = x0vec
+
     for r in self.rectangles:
       ix = 2*rectangledict[r.n]
       iy = 2*rectangledict[r.n]+1
 
-      cx = r.cx / scaleby
-      cy = r.cy / scaleby
+      x = r.x / scaleby
+      y = r.y / scaleby
 
       A[ix,ix] += 1 / sigmax**2
       A[iy,iy] += 1 / sigmay**2
-      A[(ix, Txx), (Txx, ix)] -= cx / sigmax**2
-      A[(ix, Txy), (Txy, ix)] -= cy / sigmax**2
-      A[(iy, Tyx), (Tyx, iy)] -= cx / sigmay**2
-      A[(iy, Tyy), (Tyy, iy)] -= cy / sigmay**2
+      A[(ix, Txx), (Txx, ix)] -= (x - x0) / sigmax**2
+      A[(ix, Txy), (Txy, ix)] -= (y - y0) / sigmax**2
+      A[(iy, Tyx), (Tyx, iy)] -= (x - x0) / sigmay**2
+      A[(iy, Tyy), (Tyy, iy)] -= (y - y0) / sigmay**2
 
-      A[Txx, Txx]               += cx**2 / sigmax**2
-      A[(Txx, Txy), (Txy, Txx)] += cx*cy / sigmax**2
-      A[Txy, Txy]               += cy**2 / sigmax**2
+      A[Txx, Txx]               += (x - x0)**2       / sigmax**2
+      A[(Txx, Txy), (Txy, Txx)] += (x - x0)*(y - y0) / sigmax**2
+      A[Txy, Txy]               += (y - y0)**2       / sigmax**2
 
-      A[Tyx, Tyx]               += cx**2 / sigmay**2
-      A[(Tyx, Tyy), (Tyy, Tyx)] += cx*cy / sigmay**2
-      A[Tyy, Tyy]               += cy**2 / sigmay**2
+      A[Tyx, Tyx]               += (x - x0)**2       / sigmay**2
+      A[(Tyx, Tyy), (Tyy, Tyx)] += (x - x0)*(y - y0) / sigmay**2
+      A[Tyy, Tyy]               += (y - y0)**2       / sigmay**2
+
+      b[ix] -= 2 * x0 / sigmax**2
+      b[iy] -= 2 * y0 / sigmay**2
+
+      b[Txx] += 2 * x0 * (x - x0) / sigmax**2
+      b[Txy] += 2 * x0 * (y - y0) / sigmax**2
+      b[Tyx] += 2 * y0 * (x - x0) / sigmay**2
+      b[Tyy] += 2 * y0 * (y - y0) / sigmay**2
 
     result = np.linalg.solve(2*A, -b)
 
@@ -339,9 +353,11 @@ class AlignmentSet:
       &\mathbf{cov}^{-1}
       (\vec{x}_{p1} - \vec{x}_{p2} - d\vec{x} - \vec{x}_{p1}^n + \vec{x}_{p2}^n) \\
       +&
-      \sum_p \left(\frac{\vec{x}_p - \mathbf{T}\vec{x}_p^n}{\sigma}\right)^2
+      \sum_p \left(
+        \frac{(\vec{x}_p-\vec{x}_0) - \mathbf{T}(\vec{x}_p^n-\vec{x}_0)}
+        {\sigma}
+      \right)^2
     \end{align}
-
     \begin{equation}
     \mathbf{T} = \begin{pmatrix}
     T_{xx} & T_{xy} \\ T_{yx} & T_{yy}
@@ -384,8 +400,10 @@ class AlignmentSet:
 
     sigma = np.array(sigmax, sigmay)
 
+    x0vec = np.mean([r.xvec for r in self.rectangles], axis=0)
+
     for r in self.rectangles:
-      twonll += cp.norm((rectanglex[r.n] - T @ r.xvec) / sigma)
+      twonll += cp.norm(((rectanglex[r.n] - x0vec) - T @ (r.xvec - x0vec)) / sigma)
 
     minimize = cp.Minimize(twonll)
     prob = cp.Problem(minimize)
