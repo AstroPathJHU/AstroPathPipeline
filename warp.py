@@ -166,7 +166,8 @@ class PolyFieldWarp(Warp) :
     def __getWarpFields(self,xc,yc,max_warp,pdegree,psq,plot_fit) :
         #define distance fields
         grid = np.mgrid[1:self.m+1,1:self.n+1]
-        rescale = math.floor(min([xc,abs(self.n-xc),yc,abs(self.m-yc)])) #scale radius to be tangential to nearest edge
+        rescale=500. #Alex's parameter
+        #rescale = math.floor(min([xc,abs(self.n-xc),yc,abs(self.m-yc)])) #scale radius to be tangential to nearest edge
         x=(grid[1]-xc)/rescale #scaled x displacement from center
         y=(grid[0]-yc)/rescale #scaled y displacement from center
         r=np.sqrt(x**2+y**2)   #scaled total distance from center
@@ -251,6 +252,7 @@ class CameraWarp(Warp) :
         """
         Initialize a camera matrix and vector of distortion parameters for a camera warp transformation
         See https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html for explanations of parameters/functions
+        Parameters k3, k4, k5, and k6 are all optional, but if k4 is defined k5 and k6 must be as well.
         cx         = principal center point x coordinate
         cy         = principal center point y coordinate
         fx         = x focal length (pixels)
@@ -260,12 +262,16 @@ class CameraWarp(Warp) :
         p1, p2     = tangential distortion parameters
         """
         super().__init__(n,m)
+        self.cx=cx; self.cy=cy; self.fx=fx; self.fy=fy
+        self.k1=k1; self.k2=k2
+        self.p1=p1; self.p2=p2
+        self.k3=k3
+        self.k4=k4; self.k5=k5; self.k6=k6
         self.cam_matrix = np.array([[fx,0.,cx],[0.,fy,cy],[0.,0.,1.]])
         dplist = [k1,k2,p1,p2]
         for extrapar in [k3,k4,k5,k6] :
             if extrapar is not None : dplist.append(extrapar)
         self.dist_pars  = np.array(dplist)
-        self.n_dist_pars = len(self.dist_pars)
 
     def warpImage(self,infname,nlayers=35,layers=[1]) :
         """
@@ -290,25 +296,44 @@ class CameraWarp(Warp) :
         """
         Quickly warps and returns a single inputted image layer array
         """
-        return cv2.undistort(layerimg,self.cam_matrix,self.dist_pars)
+        #make the camera matrix
+        cam_matrix = np.array([[self.fx,0.,self.cx],[0.,self.fy,self.cy],[0.,0.,1.]])
+        #make the vector of distortion parameters
+        dist_list = [self.k1,self.k2,self.p1,self.p2]
+        if self.k3 is not None:
+            dist_list.append(self.k3)
+            if self.k4 is not None :
+                dist_list.append(self.k4)
+                dist_list.append(self.k5)
+                dist_list.append(self.k6)
+        dist_vec=np.array(dist_list)
+        #return the result of undistort
+        return cv2.undistort(layerimg,cam_matrix,dist_vec)
 
     def updateParams(self,pars) :
         """
         Update the camera matrix and distortion parameters for a new transformation on the same images
         pars = list of transformation parameters in order cx, cy, fx, fy, [dist_vec] (len 4-8, depending)
         """
-        self.cam_matrix = np.array([[pars[2],0.,pars[0]],[0.,pars[3],pars[1]],[0.,0.,1.]])
-        self.dist_pars  = np.array(pars[4:])
+        self.cx=pars[0]; self.cy=pars[1]
+        self.fx=pars[2]; self.fy=pars[3]
+        self.k1=pars[4]; self.k2=pars[5]
+        self.p1=pars[6]; self.p2=pars[7]
+        if len(pars)>8 :
+            self.k3=pars[8]
+            if len(pars)>9 :
+                self.k4=pars[9]; self.k5=pars[10]; self.k6=pars[11]
 
     def printParams(self) :
         """
         Print the current warp parameters in a nice string
         """
         parnames=['cx','cy','fx','fy','k1','k2','p1','p2','k3','k4','k5','k6']
-        parvals=[self.cam_matrix[0][2],self.cam_matrix[1][2],self.cam_matrix[0][0],self.cam_matrix[1][1]]+[p for p in self.dist_pars]
+        parvals=[self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.p1,self.p2,self.k3,self.k4,self.k5,self.k6]
         s=''
         for n,v in zip(parnames,parvals) :
-            s+=f'{n}={v:.3f}, '
+            if v is not None :
+                s+=f'{n}={v:.3f}, '
         print(s[:-2])
 
     def showCheckerboard(self) :
