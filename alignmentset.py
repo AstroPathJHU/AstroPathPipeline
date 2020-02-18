@@ -149,6 +149,18 @@ class AlignmentSet:
     ]
     writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
 
+  def updateRectangleImages(self,imgdict,ext) :
+    """
+    Updates the "image" variable in each rectangle based on a dictionary of image layers
+    imgdict = dictionary indexed first by filename then by layer number; values are image layers 
+    ext     = string of file extension identifying image layers in imgdict (will be replaced by ".im3" to match "file" variable in rectangles)
+    """
+    warped_image_filenames = imgdict.keys()
+    for r in self.rectangles :
+      imgdictfn = r.file.replace('.im3',ext)
+      if imgdictfn in warped_image_filenames :
+        r.image = imgdict[imgdictfn][self.layer] / self.meanimage.flatfield
+
   @functools.lru_cache(maxsize=1)
   def __getrawlayers(self,filetype):
     logger.info(self.samp)

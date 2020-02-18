@@ -102,12 +102,12 @@ class PolyFieldWarp(Warp) :
         #plot warp fields if requested
         if plot_warpfields : plotWarpFields(self.r_warps,self.x_warps,self.y_warps)
 
-    def warpImage(self,infname,nlayers=35,layers=[0]) :
+    def warpImage(self,infname,nlayers=35,layers=[1]) :
         """
         Read in an image, warp layer-by-layer with remap, and save each warped layer as its own new file in the current directory
         infname       = name of image file to split, warp, and re-save
         nlayers       = number of layers in original image file that's opened
-        layers        = list (of integers) of layers to split out, warp, and save (index starting from 0)
+        layers        = list (of integers) of layers to split out, warp, and save (index starting from 1)
         """
         #get the reshaped image from the raw file
         img_to_warp = self.getHWLFromRaw(infname,nlayers)
@@ -181,7 +181,7 @@ class PolyFieldWarp(Warp) :
 
     #helper function to convert a raw file name and a layer into a fieldwarped single layer filename
     def __getWarpedLayerFilename(self,rawname,layer) :
-        return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".fieldWarp_layer{(layer+1):02d}"
+        return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".fieldWarp_layer{(layer):02d}"
 
 class CameraWarp(Warp) :
     """
@@ -207,12 +207,12 @@ class CameraWarp(Warp) :
         self.dist_pars  = np.array(dplist)
         self.n_dist_pars = len(self.dist_pars)
 
-    def warpImage(self,infname,nlayers=35,layers=[0]) :
+    def warpImage(self,infname,nlayers=35,layers=[1]) :
         """
         Read in an image, warp layer-by-layer with undistort, and save each warped layer as its own new file in the current directory
         infname       = name of image file to split, warp, and re-save
         nlayers       = number of layers in original image file that's opened
-        layers        = list (of integers) of layers to split out, warp, and save (index starting from 0)
+        layers        = list (of integers) of layers to split out, warp, and save (index starting from 1)
         """
         #get the reshaped image from the raw file
         img_to_warp = self.getHWLFromRaw(infname,nlayers)
@@ -226,11 +226,11 @@ class CameraWarp(Warp) :
         """
         self.writeSingleLayerImage(self.getWarpedLayer(layer),self.__getWarpedLayerFilename(rawfilename,layernumber))
 
-    def getWarpedLayer(self,layer) :
+    def getWarpedLayer(self,layerimg) :
         """
         Quickly warps and returns a single inputted image layer array
         """
-        return cv2.undistort(layer,self.cam_matrix,self.dist_pars)
+        return cv2.undistort(layerimg,self.cam_matrix,self.dist_pars)
 
     def updateParams(self,pars) :
         """
@@ -256,7 +256,7 @@ class CameraWarp(Warp) :
 
     #helper function to convert a raw file name and a layer into a camwarped single layer filename
     def __getWarpedLayerFilename(self,rawname,layer) :
-        return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(layer+1):02d}"
+        return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(layer):02d}"
 
 #helper function to read the binary dump of a raw im3 file 
 def im3readraw(f) :
