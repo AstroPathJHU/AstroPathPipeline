@@ -301,7 +301,7 @@ class AlignmentSet:
       A[(Tyx, Tyy), (Tyy, Tyx)] += cx*cy / sigmay**2
       A[Tyy, Tyy]               += cy**2 / sigmay**2
 
-    result = np.linalg.solve(A/2, -b)
+    result = np.linalg.solve(2*A, -b)
     x = result[:-4].reshape(len(self.rectangles), 2) * scaleby
     T = result[-4:].reshape(2, 2)
     if getABC:
