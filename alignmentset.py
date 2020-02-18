@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, cvxpy as cp, dataclasses, functools, logging, numpy as np, os, typing, uncertainties.unumpy as unp
+import cv2, dataclasses, functools, logging, numpy as np, os, typing, uncertainties.unumpy as unp
 
 from .flatfield import meanimage
 from .overlap import Overlap
@@ -327,6 +327,11 @@ class AlignmentSet:
     \end{pmatrix}
     \end{equation}
     """
+
+    try:
+      import cvxpy as cp
+    except ImportError:
+      raise ImportError("To stitch with cvxpy, you have to install cvxpy")
 
     x = cp.Variable(shape=(len(self.rectangles), 2))
     T = cp.Variable(shape=(2, 2))
