@@ -385,7 +385,7 @@ class AlignmentSet:
     sigma = np.array(sigmax, sigmay)
 
     for r in self.rectangles:
-      twonll += cp.norm((rectanglex[r.n] - T @ r.cxvec) / sigma)
+      twonll += cp.norm((rectanglex[r.n] - T @ r.xvec) / sigma)
 
     minimize = cp.Minimize(twonll)
     prob = cp.Problem(minimize)
@@ -411,8 +411,8 @@ class Rectangle:
   image: typing.Optional[np.ndarray] = None
 
   @property
-  def cxvec(self):
-    return np.array([self.cx, self.cy])
+  def xvec(self):
+    return np.array([self.x, self.y])
 
 @dataclasses.dataclass(frozen=True)
 class ImageStats:
