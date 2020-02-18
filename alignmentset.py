@@ -204,7 +204,7 @@ class AlignmentSet:
 
     return g
 
-  def stitch(self, *, scaleby=1):
+  def stitch(self, *, scaleby=1, getABC=False):
     """
     \begin{align}
     -2 \ln L =&
@@ -299,8 +299,12 @@ class AlignmentSet:
       A[Tyy, Tyy]               += r.cy**2   / sigmay**2
 
     result = np.linalg.solve(A/2, -b)
-    print(np.linalg.det(A))
-    return result[:-4].reshape(len(self.rectangles), 2) * scaleby, result[-4:].reshape(2, 2)
+    x = result[:-4].reshape(len(self.rectangles), 2) * scaleby
+    T = result[-4:].reshape(2, 2)
+    if getABC:
+      return x, T, A, b, c
+    else:
+      return x, T
 
   def stitch_cvxpy(self, *, getproblem=False):
     """
