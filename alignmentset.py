@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, dataclasses, functools, logging, numpy as np, os, scipy, typing, uncertainties, uncertainties.unumpy as unp
+import collections, cv2, dataclasses, logging, methodtools, numpy as np, os, scipy, typing, uncertainties, uncertainties.unumpy as unp
 
 from .flatfield import meanimage
 from .overlap import Overlap
@@ -16,7 +16,7 @@ class AlignmentSet:
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None):
+  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None):
     """
     Directory structure should be
     root1/
@@ -36,13 +36,31 @@ class AlignmentSet:
     self.root2 = root2
     self.samp = samp
     self.interactive = interactive
-    self.selectrectangles = selectrectangles
+
+    if selectrectangles is None:
+      self.rectanglefilter = lambda r: True
+    elif isinstance(selectrectangles, collections.abc.Container):
+      self.rectanglefilter = lambda r: r.n in selectrectangles
+    else:
+      self.rectanglefilter = selectrectangles
+
+    if selectoverlaps is None:
+      overlapfilter = lambda o: True
+    elif isinstance(selectoverlaps, collections.abc.Container):
+      overlapfilter = lambda o: o.n in selectoverlaps
+    else:
+      overlapfilter = selectoverlaps
+    self.overlapfilter = lambda o: overlapfilter(o) and o.p1 in self.rectangleindices() and o.p2 in self.rectangleindices()
 
     if not os.path.exists(os.path.join(self.root1, self.samp)):
       raise IOError(f"{os.path.join(self.root1, self.samp)} does not exist")
 
     self.readmetadata()
     self.rawimages=None
+
+  @methodtools.lru_cache()
+  def rectangleindices(self):
+    return {r.n for r in self.rectangles}
 
   @property
   def dbload(self):
@@ -79,17 +97,15 @@ class AlignmentSet:
     self.nclip     = self.constantsdict["nclip"]
     self.layer     = self.constantsdict["layer"]
 
-    if self.selectrectangles is not None:
-      self.rectangles = [r for r in self.rectangles if r.n in self.selectrectangles]
-      self.overlaps = [o for o in self.overlaps if o.p1 in self.selectrectangles and o.p2 in self.selectrectangles]
+    self.rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
+    self.overlaps = [o for o in self.overlaps if self.overlapfilter(o)]
 
     self.overlapsdict = {(o.p1, o.p2): o for o in self.overlaps}
 
   @property
+  @methodtools.lru_cache()
   def image(self):
-    if self.__image is None:
-      self.__image = cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
-    return self.__image
+    return cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
 
   def align(self, *, compute_R_error_stat=True, compute_R_error_syst=True, compute_F_error=False, maxpairs=float("inf"), chooseoverlaps=None):
     #if the raw images haven't already been loaded, load them with the default argument
@@ -131,7 +147,7 @@ class AlignmentSet:
     logger.info("finished align loop for "+self.samp)
     return sum_mse
 
-  @functools.lru_cache(maxsize=1)
+  @methodtools.lru_cache(maxsize=1)
   def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False):
     logger.info(self.samp)
     rawimages = self.__getrawlayers(filetype, keep=keeprawimages)
