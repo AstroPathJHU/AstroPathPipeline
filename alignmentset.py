@@ -62,7 +62,7 @@ class AlignmentSet:
     self.batch       = readtable(os.path.join(self.dbload, self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
     self.overlaps    = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), self.overlaptype)
     self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
-    self.image       = cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
+    self.__image     = None
     self.constants   = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
     self.rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), Rectangle)
 
@@ -85,6 +85,11 @@ class AlignmentSet:
 
     self.overlapsdict = {(o.p1, o.p2): o for o in self.overlaps}
 
+  @property
+  def image(self):
+    if self.__image is None:
+      self.__image = cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
+    return self.__image
 
   def align(self, *, compute_R_error_stat=True, compute_R_error_syst=True, compute_F_error=False, maxpairs=float("inf"), chooseoverlaps=None):
     #if the raw images haven't already been loaded, load them with the default argument
