@@ -346,6 +346,9 @@ class AlignmentSet:
       b[Tyx] += 2 * y0 * (x - x0) / sigmay**2
       b[Tyy] += 2 * y0 * (y - y0) / sigmay**2
 
+      c += x0**2 / sigmax**2
+      c += y0**2 / sigmay**2
+
     result = np.linalg.solve(2*A, -b)
 
     if getcovariance or geterror:
