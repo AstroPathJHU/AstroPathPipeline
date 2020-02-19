@@ -235,7 +235,7 @@ class AlignmentSet:
 
     return result
 
-  def __stitch(self, *, scaleby=1, getcovariance=True, geterror=True):
+  def __stitch(self, *, scaleby=1, getcovariance=True, geterror=True, scalejittererror=1, scaleoverlaperror=1):
     """
     \begin{align}
     -2 \ln L =&
@@ -282,7 +282,7 @@ class AlignmentSet:
       ij = np.ix_((ix,iy), (jx,jy))
       ji = np.ix_((jx,jy), (ix,iy))
       jj = np.ix_((jx,jy), (jx,jy))
-      inversecovariance = np.linalg.inv(o.result.covariance) * scaleby**2
+      inversecovariance = np.linalg.inv(o.result.covariance) * scaleby**2 / scaleoverlaperror**2
 
       A[ii] += inversecovariance / 2
       A[ij] -= inversecovariance / 2
@@ -305,13 +305,13 @@ class AlignmentSet:
       unp.nominal_values(dxs)**2,
       weights=1/unp.std_devs(dxs)**2,
     )
-    sigmax = np.sqrt(weightedvariancedx) / scaleby
+    sigmax = np.sqrt(weightedvariancedx) / scaleby * scalejittererror
 
     weightedvariancedy = np.average(
       unp.nominal_values(dys)**2,
       weights=1/unp.std_devs(dys)**2,
     )
-    sigmay = np.sqrt(weightedvariancedy) / scaleby
+    sigmay = np.sqrt(weightedvariancedy) / scaleby * scalejittererror
 
     x0vec = np.mean([r.xvec for r in self.rectangles], axis=0)
     x0, y0 = x0vec
