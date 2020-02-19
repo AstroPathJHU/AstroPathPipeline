@@ -216,7 +216,7 @@ class PolyFieldWarp(Warp) :
         plt.ylabel("warp amount")
         ftext="warp="
         for i,coeff in enumerate(np.flip(c)) :
-            ftext+=f"{coeff:03f}"
+            ftext+=f"{coeff:.04f}"
             if i!=0 :
                 ftext += "*r"
                 if squared and i==1 :
@@ -267,11 +267,9 @@ class CameraWarp(Warp) :
         self.p1=p1; self.p2=p2
         self.k3=k3
         self.k4=k4; self.k5=k5; self.k6=k6
-        self.cam_matrix = np.array([[fx,0.,cx],[0.,fy,cy],[0.,0.,1.]])
-        dplist = [k1,k2,p1,p2]
-        for extrapar in [k3,k4,k5,k6] :
-            if extrapar is not None : dplist.append(extrapar)
-        self.dist_pars  = np.array(dplist)
+        self.__cam_matrix = None 
+        self.__dist_pars  = None
+        self.__calculateWarpObjects()
 
     def warpImage(self,infname,nlayers=35,layers=[1]) :
         """
@@ -296,19 +294,8 @@ class CameraWarp(Warp) :
         """
         Quickly warps and returns a single inputted image layer array
         """
-        #make the camera matrix
-        cam_matrix = np.array([[self.fx,0.,self.cx],[0.,self.fy,self.cy],[0.,0.,1.]])
-        #make the vector of distortion parameters
-        dist_list = [self.k1,self.k2,self.p1,self.p2]
-        if self.k3 is not None:
-            dist_list.append(self.k3)
-            if self.k4 is not None :
-                dist_list.append(self.k4)
-                dist_list.append(self.k5)
-                dist_list.append(self.k6)
-        dist_vec=np.array(dist_list)
         #return the result of undistort
-        return cv2.undistort(layerimg,cam_matrix,dist_vec)
+        return cv2.undistort(layerimg,self.__cam_matrix,self.__dist_pars)
 
     def updateParams(self,pars) :
         """
@@ -323,6 +310,37 @@ class CameraWarp(Warp) :
             self.k3=pars[8]
             if len(pars)>9 :
                 self.k4=pars[9]; self.k5=pars[10]; self.k6=pars[11]
+        self.__calculateWarpObjects()
+
+    def getCoordsFromPixel(self,pixel_x,pixel_y) :
+        """
+        Convert a pixel to an x/y coordinate with units of x/y focal lengths
+        """
+        return (pixel_x-self.cx)/self.fx, (pixel_y-self.cy)/self.fy
+
+    def getMaxDistanceCoords(self) :
+        """
+        Get the x/y coordinate-space location of the image corner that is furthest from the principal point
+        """
+        corner_point_xy_pixels = [(0,0),(self.n-1,0),(0,self.m-1),(self.n-1,self.m-1)]
+        corner_point_xy_coords = [self.getCoordsFromPixel(x,y) for x,y in corner_point_xy_pixels]
+        distances = [math.sqrt(x**2+y**2) for x,y in corner_point_xy_coords]
+        r = max(distances)
+        return corner_point_xy_coords[distances.index(r)]
+
+    def radDistortAmountAtCoords(self,coord_x,coord_y) :
+        """
+        Return the amount of radial warp (in pixels) at the given coordinate-space location
+        """
+        r = math.sqrt(coord_x**2+coord_y**2)
+        return (self.k1*(r**2) + self.k2*(r**4))*math.sqrt((self.fx*coord_x)**2 + (self.fy*coord_y)**2)
+
+    def radDistortAmountAtPixel(self,pixel_x,pixel_y) :
+        """
+        Return the amount of radial warp (in pixels) at the given pixel
+        """
+        x, y = self.getCoordsFromPixel(pixel_x,pixel_y)
+        return self.radDistortAmountAtCoords(x,y)
 
     def printParams(self) :
         """
@@ -341,6 +359,44 @@ class CameraWarp(Warp) :
         Plot a checkerboard image before and after application of the warp
         """
         self._plotCheckerboards(self.getWarpedLayer(self._checkerboard))
+
+    def plotRadialWarpAmount(self,npoints=50) :
+        max_x, max_y = self.getMaxDistanceCoords()
+        xvals = np.linspace(0.,max_x,npoints)
+        yvals = np.linspace(0.,max_y,npoints)
+        max_r = math.sqrt(max_x**2+max_y**2)
+        xaxis_points = np.linspace(0.,max_r,npoints)
+        yaxis_points = np.array([self.radDistortAmountAtCoords(x,y) for x,y in zip(xvals,yvals)])
+        heat_map = np.zeros((self.m,self.n))
+        for i in range(heat_map.shape[0]) :
+            for j in range(heat_map.shape[1]) :
+                heat_map[i,j] = self.radDistortAmountAtPixel(j,i)
+        f,(ax1,ax2,ax3) = plt.subplots(1,3)
+        f.set_size_inches(20.,5.)
+        hm=sns.heatmap(heat_map,ax=ax1)
+        ax1.scatter(self.cx,self.cy,marker='*',color='yellow')
+        hm.set_title('radial warp components',fontsize=14)
+        ax2.plot(xaxis_points,yaxis_points)
+        ax2.set_xlabel('distance from center (focal lengths)',fontsize=14)
+        ax2.set_ylabel('radial warp amount (pixels)',fontsize=14)
+        txt = f'warp=({self.k1:.04f}*r^2+{self.k2:.04f}*r^4)\n'
+        txt+= f'*sqrt(({self.fx:.0f}*x)^2+({self.fy:.0f}*y)^2)'
+        ax2.text(xaxis_points[0],0.5*(yaxis_points[-1]-yaxis_points[0]),txt,fontsize='14')
+        plt.show()
+
+    #helper function to make or update the camera matrix and the vector of distortion parameters
+    def __calculateWarpObjects(self) :
+        #make the camera matrix
+        self.__cam_matrix = np.array([[self.fx,0.,self.cx],[0.,self.fy,self.cy],[0.,0.,1.]])
+        #make the vector of distortion parameters
+        dist_list = [self.k1,self.k2,self.p1,self.p2]
+        if self.k3 is not None:
+            dist_list.append(self.k3)
+            if self.k4 is not None :
+                dist_list.append(self.k4)
+                dist_list.append(self.k5)
+                dist_list.append(self.k6)
+        self.__dist_pars=np.array(dist_list)
 
     #helper function to convert a raw file name and a layer into a camwarped single layer filename
     def __getWarpedLayerFilename(self,rawname,layer) :
