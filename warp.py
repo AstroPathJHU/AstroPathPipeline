@@ -23,6 +23,8 @@ class Warp :
         self.m = m
         self._checkerboard = self.__makeCheckerboard()
 
+    #################### COMMON FUNCTIONS ####################
+
     def getHWLFromRaw(self,fname,nlayers=35) :
         """
         Function to read a '.raw' binary file into an array of dimensions (height,width,nlayers) or (m,n,nlayers)
@@ -61,6 +63,8 @@ class Warp :
         """
         #write out image flattened in fortran order
         im3writeraw(outfname,im.flatten(order="F").astype(np.uint16))
+
+    #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to plot unwarped and warped checkerboard images next to one another
     def _plotCheckerboards(self,warped_board) :
@@ -111,6 +115,8 @@ class PolyFieldWarp(Warp) :
         #plot warp fields if requested
         if plot_warpfields : self.plotWarpFields()
 
+    #################### COMMON FUNCTIONS ####################
+
     def warpImage(self,infname,nlayers=35,layers=[1]) :
         """
         Read in an image, warp layer-by-layer with remap, and save each warped layer as its own new file in the current directory
@@ -137,6 +143,8 @@ class PolyFieldWarp(Warp) :
         map_x, map_y = self.__getMapMatrices()
         return cv2.remap(layer,map_x,map_y,self.interp)
 
+    #################### VISUALIZATION FUNCTIONS ####################
+
     def plotWarpFields(self) :
         """
         Plot three heatmaps of the r-, x-, and y-dependent warping fields
@@ -161,6 +169,8 @@ class PolyFieldWarp(Warp) :
         Plot a checkerboard image before and after application of the warp
         """
         self._plotCheckerboards(self.getWarpedLayer(self._checkerboard))
+
+    #################### PRIVATE HELPER FUNCTIONS ####################
     
     #helper function to make and return r_warps (field of warp factors) and x/y_warps (two fields of warp gradient dx/dy)
     def __getWarpFields(self,xc,yc,max_warp,pdegree,psq,plot_fit) :
@@ -271,6 +281,8 @@ class CameraWarp(Warp) :
         self.__dist_pars  = None
         self.__calculateWarpObjects()
 
+    #################### COMMON FUNCTIONS ####################
+
     def warpImage(self,infname,nlayers=35,layers=[1]) :
         """
         Read in an image, warp layer-by-layer with undistort, and save each warped layer as its own new file in the current directory
@@ -297,6 +309,32 @@ class CameraWarp(Warp) :
         #return the result of undistort
         return cv2.undistort(layerimg,self.__cam_matrix,self.__dist_pars)
 
+    #################### PUBLIC UTILITY FUNCTIONS ####################
+
+    def getCoordsFromPixel(self,pixel_x,pixel_y) :
+        """
+        Convert a pixel to an x/y coordinate with units of x/y focal lengths
+        """
+        return (pixel_x-self.cx)/self.fx, (pixel_y-self.cy)/self.fy
+
+    def radialDistortAmountAtPixel(self,pixel_x,pixel_y) :
+        """
+        Return the amount of radial warp (in pixels) at the given pixel
+        """
+        x, y = self.getCoordsFromPixel(pixel_x,pixel_y)
+        return self._radialDistortAmountAtCoords(x,y)
+
+    def tangentialDistortAmountAtPixel(self,pixel_x,pixel_y) :
+        """
+        Return the amount of tangential warp (in pixels) at the given pixel
+        """
+        x, y = self.getCoordsFromPixel(pixel_x,pixel_y)
+        return self._tangentialDistortAmountAtCoords(x,y)
+
+    #################### FUNCTIONS FOR USE WITH MINIMIZATION ####################
+
+    # !!!!!! For the time being, these functions don't correctly describe dependence on k3, k4, k5, or k6 !!!!!!
+
     def updateParams(self,pars) :
         """
         Update the camera matrix and distortion parameters for a new transformation on the same images
@@ -312,35 +350,104 @@ class CameraWarp(Warp) :
                 self.k4=pars[9]; self.k5=pars[10]; self.k6=pars[11]
         self.__calculateWarpObjects()
 
-    def getCoordsFromPixel(self,pixel_x,pixel_y) :
+    def maxRadialDistortAmount(self,pars) :
         """
-        Convert a pixel to an x/y coordinate with units of x/y focal lengths
+        Return the maximum amount of radial distortion (in pixels) observed with the given parameters
         """
-        return (pixel_x-self.cx)/self.fx, (pixel_y-self.cy)/self.fy
+        x, y = self._getMaxDistanceCoords(pars)
+        return self._radialDistortAmountAtCoords(x,y,pars)
 
-    def getMaxDistanceCoords(self) :
+    def maxTangentialDistortAmount(self,pars) :
+        """
+        Return the maximum amount of tangential distortion (in pixels) observed with the given parameters
+        """
+        x, y = self._getMaxDistanceCoords(pars)
+        return self._tangentialDistortAmountAtCoords(x,y,pars)
+
+    def maxRadialDistortAmountJacobian(self,pars) :
+        """
+        Return the Jacobian vector of the maxRadialDistortAmount function (used in minimization)
+        """
+        x, y = self._getMaxDistanceCoords(pars)
+        fxfyk1k2_dependence = self._radialDistortAmountAtCoordsJacobian(x,y,pars)
+        retvec =[0.,0.] # no dependence on cx/cy
+        retvec+=fxfyk1k2_dependence
+        retvec+=[0.,0.] # no dependence on p1/p2
+        return retvec 
+
+    def maxTangentialDistortAmountJacobian(self,pars) :
+        """
+        Return the Jacobian vector of the maxTangentialDistortAmount function (used in minimization)
+        """
+        x, y = self._getMaxDistanceCoords(pars)
+        fxfyp1p2_dependence = self._tangentialDistortAmountAtCoordsJacobian(x,y,pars)
+        retvec =[0.,0.] # no dependence on cx/cy
+        retvec+=fxfyp1p2_dependence[:2]
+        retvec+=[0.,0.] # no dependence on k1/k2
+        retvec+=fxfyp1p2_dependence[2:]
+        return retvec
+
+    def _getMaxDistanceCoords(self,pars=None) :
         """
         Get the x/y coordinate-space location of the image corner that is furthest from the principal point
+        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        corner_point_xy_pixels = [(0,0),(self.n-1,0),(0,self.m-1),(self.n-1,self.m-1)]
-        corner_point_xy_coords = [self.getCoordsFromPixel(x,y) for x,y in corner_point_xy_pixels]
-        distances = [math.sqrt(x**2+y**2) for x,y in corner_point_xy_coords]
-        r = max(distances)
-        return corner_point_xy_coords[distances.index(r)]
+        cx,cy,_,_,_,_,_,_ = self.__getEvalPars(pars)
+        x = 0 if cx>(self.n-1)/2 else self.n-1
+        y = 0 if cy>(self.m-1)/2 else self.m-1
+        return self.getCoordsFromPixel(x,y)
 
-    def radDistortAmountAtCoords(self,coord_x,coord_y) :
+    def _radialDistortAmountAtCoords(self,coord_x,coord_y,pars=None) :
         """
         Return the amount of radial warp (in pixels) at the given coordinate-space location
+        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
+        _,_,fx,fy,k1,k2,_,_ = self.__getEvalPars(pars)
         r = math.sqrt(coord_x**2+coord_y**2)
-        return (self.k1*(r**2) + self.k2*(r**4))*math.sqrt((self.fx*coord_x)**2 + (self.fy*coord_y)**2)
+        return (k1*(r**2) + k2*(r**4))*math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
 
-    def radDistortAmountAtPixel(self,pixel_x,pixel_y) :
+    def _tangentialDistortAmountAtCoords(self,coord_x,coord_y,pars=None) :
         """
-        Return the amount of radial warp (in pixels) at the given pixel
+        Return the amount of tangential warp (in pixels) at the given coordinate-space location
+        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        x, y = self.getCoordsFromPixel(pixel_x,pixel_y)
-        return self.radDistortAmountAtCoords(x,y)
+        _,_,fx,fy,_,_,p1,p2 = self.__getEvalPars(pars)
+        r = math.sqrt(coord_x**2+coord_y**2)
+        dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
+        dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
+        return math.sqrt((dx)**2 + (dy)**2)
+
+    def _radialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
+        """
+        Return the Jacobian vector of the _radialDistortAmountAtCoords function (used in minimization)
+        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
+        """
+        _,_,fx,fy,k1,k2,_,_ = self.__getEvalPars(pars)
+        r = math.sqrt(coord_x**2+coord_y**2)
+        A = math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
+        B = k1*(r**2) + k2*(r**4)
+        dfdfx = (B/A)*fx*(coord_x**2)
+        dfdfy = (B/A)*fy*(coord_y**2)
+        dfdk1 = A*(r**2)
+        dfdk2 = A*(r**4)
+        return [dfdfx,dfdfy,dfdk1,dfdk2]
+
+    def _tangentialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
+        """
+        Return the Jacobian of the _tangentialDistortAmountAtCoords function (used in minimization)
+        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
+        """
+        _,_,fx,fy,_,_,p1,p2 = self.__getEvalPars(pars)
+        r = math.sqrt(coord_x**2+coord_y**2)
+        dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
+        dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
+        dfdfx = (dx/fx)/(math.sqrt(1+(dy/dx)**2))
+        dfdfy = (dy/fy)/(math.sqrt(1+(dx/dy)**2))
+        dfdp1 = (2*dx*fx*coord_x*coord_y + 2*dy*fy*(coord_y**2) + dy*fy*(r**2))/(math.sqrt(dx**2+dy**2))
+        dfdp2 = (2*dy*fy*coord_x*coord_y + 2*dx*fx*(coord_x**2) + dx*fx*(r**2))/(math.sqrt(dx**2+dy**2))
+        return [dfdfx,dfdfy,dfdp1,dfdp2]
+
+    #################### VISUALIZATION FUNCTIONS ####################
 
     def printParams(self) :
         """
@@ -360,29 +467,36 @@ class CameraWarp(Warp) :
         """
         self._plotCheckerboards(self.getWarpedLayer(self._checkerboard))
 
-    def plotRadialWarpAmount(self,npoints=50) :
-        max_x, max_y = self.getMaxDistanceCoords()
+    def showWarpAmounts(self,npoints=50) :
+        max_x, max_y = self._getMaxDistanceCoords()
         xvals = np.linspace(0.,max_x,npoints)
         yvals = np.linspace(0.,max_y,npoints)
         max_r = math.sqrt(max_x**2+max_y**2)
         xaxis_points = np.linspace(0.,max_r,npoints)
-        yaxis_points = np.array([self.radDistortAmountAtCoords(x,y) for x,y in zip(xvals,yvals)])
-        heat_map = np.zeros((self.m,self.n))
-        for i in range(heat_map.shape[0]) :
-            for j in range(heat_map.shape[1]) :
-                heat_map[i,j] = self.radDistortAmountAtPixel(j,i)
+        yaxis_points = np.array([self._radialDistortAmountAtCoords(x,y) for x,y in zip(xvals,yvals)])
+        rad_heat_map = np.zeros((self.m,self.n))
+        tan_heat_map = np.zeros((self.m,self.n))
+        for i in range(self.m) :
+            for j in range(self.n) :
+                rad_heat_map[i,j] = self.radialDistortAmountAtPixel(j,i)
+                tan_heat_map[i,j] = self.tangentialDistortAmountAtPixel(j,i)                
         f,(ax1,ax2,ax3) = plt.subplots(1,3)
         f.set_size_inches(20.,5.)
-        hm=sns.heatmap(heat_map,ax=ax1)
+        rhm=sns.heatmap(rad_heat_map,ax=ax1)
         ax1.scatter(self.cx,self.cy,marker='*',color='yellow')
-        hm.set_title('radial warp components',fontsize=14)
+        rhm.set_title('radial warp components',fontsize=14)
         ax2.plot(xaxis_points,yaxis_points)
         ax2.set_xlabel('distance from center (focal lengths)',fontsize=14)
         ax2.set_ylabel('radial warp amount (pixels)',fontsize=14)
         txt = f'warp=({self.k1:.04f}*r^2+{self.k2:.04f}*r^4)\n'
         txt+= f'*sqrt(({self.fx:.0f}*x)^2+({self.fy:.0f}*y)^2)'
         ax2.text(xaxis_points[0],0.5*(yaxis_points[-1]-yaxis_points[0]),txt,fontsize='14')
+        thm=sns.heatmap(tan_heat_map,ax=ax3)
+        ax3.scatter(self.cx,self.cy,marker='*',color='yellow')
+        thm.set_title('tangential warp components',fontsize=14)
         plt.show()
+
+    #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to make or update the camera matrix and the vector of distortion parameters
     def __calculateWarpObjects(self) :
@@ -401,6 +515,19 @@ class CameraWarp(Warp) :
     #helper function to convert a raw file name and a layer into a camwarped single layer filename
     def __getWarpedLayerFilename(self,rawname,layer) :
         return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(layer):02d}"
+
+    #helper function to return a tuple of parameters for single function evaluations
+    def __getEvalPars(self,pars) :
+        if pars is None :
+            return self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.p1, self.p2
+        else :
+            return (*pars, )
+
+
+
+
+
+#################### FILE-SCOPE HELPER FUNCTIONS ####################
 
 #helper function to read the binary dump of a raw im3 file 
 def im3readraw(f) :
