@@ -225,7 +225,17 @@ class AlignmentSet:
 
     return g
 
-  def stitch(self, *, scaleby=1, getABC=False, getcovariance=True, geterror=True):
+  def stitch(self, *, usecvxpy=False, saveresult=True, **kwargs):
+    result = (self.__stitch_cvxpy if usecvxpy else self.__stitch)(**kwargs)
+
+    if saveresult:
+      rectangledict = {rectangle.n: i for i, rectangle in enumerate(self.rectangles)}
+      for o in self.overlaps:
+        o.stitchresult = result.dx(o)
+
+    return result
+
+  def __stitch(self, *, scaleby=1, getcovariance=True, geterror=True):
     """
     \begin{align}
     -2 \ln L =&
@@ -360,12 +370,10 @@ class AlignmentSet:
 
     x = result[:-4].reshape(len(self.rectangles), 2) * scaleby
     T = result[-4:].reshape(2, 2)
-    if getABC:
-      return x, T, A, b, c
-    else:
-      return x, T
 
-  def stitch_cvxpy(self, *, getproblem=False):
+    return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangledict=rectangledict)
+
+  def __stitch_cvxpy(self):
     """
     \begin{align}
     -2 \ln L =&
@@ -430,10 +438,8 @@ class AlignmentSet:
     prob = cp.Problem(minimize)
     prob.solve()
 
-    if getproblem:
-      return x, T, prob
-    else:
-      return x, T
+    rectangledict = {rectangle.n: i for i, rectangle in enumerate(self.rectangles)}
+    return StitchResultCvxpy(x=x, T=T, problem=prob, rectangledict=rectangledict)
 
 @dataclasses.dataclass
 class Rectangle:
@@ -460,6 +466,34 @@ class ImageStats:
   std: float
   cx: int
   cy: int
+
+class StitchResultBase:
+  def __init__(self, x, T, rectangledict):
+    self.__x = x
+    self.T = T
+    self.__rectangledict = rectangledict
+
+  def x(self, rectangle_or_id=None):
+    if rectangle_or_id is None: return self.__x
+    if isinstance(rectangle_or_id, Rectangle): rectangle_or_id = rectangle_or_id.n
+    return self.__x[self.__rectangledict[rectangle_or_id]]
+
+  def dx(self, overlap):
+    return self.x(overlap.p1) - self.x(overlap.p2) - (overlap.x1vec - overlap.x2vec)
+
+class StitchResult(StitchResultBase):
+  def __init__(self, x, T, rectangledict, A, b, c):
+    super().__init__(x=x, T=T, rectangledict=rectangledict)
+    self.A = A
+    self.b = b
+    self.c = c
+
+class StitchResultCvxpy(StitchResultBase):
+  def __init__(self, x, T, rectangledict, problem):
+    super().__init__(x=x.value, T=T.value, rectangledict=rectangledict)
+    self.problem = problem
+    self.xvar = x
+    self.Tvar = T
 
 if __name__ == "__main__":
   print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))
