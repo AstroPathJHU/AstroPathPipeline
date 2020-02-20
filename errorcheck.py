@@ -3,7 +3,7 @@
 import matplotlib.pyplot as plt, networkx as nx, numpy as np, scipy, uncertainties
 from more_itertools import pairwise
 
-def errorcheck(alignmentset, *, tagsequence):
+def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), quantileforstats=0.99, verbose=True):
   dct = {
     1: (-1, -1),
     2: ( 0, -1),
@@ -41,27 +41,39 @@ def errorcheck(alignmentset, *, tagsequence):
 
       dxs, dys = zip(*dxdys)
 
-      print(" --> ".join(f"{node:3d}" for node in path))
-      for nodepair, dx, dy in zip(pairwise(path), dxs, dys):
-        print(f"  {nodepair[0]:3d} --> {nodepair[1]:3d}: {dx:10} {dy:10}")
-      print(f"        total: {sum(dxs):10} {sum(dys):10}")
+      if verbose is True or verbose(path, dxs, dys):
+        print(" --> ".join(f"{node:4d}" for node in path))
+        for nodepair, dx, dy in zip(pairwise(path), dxs, dys):
+          print(f"  {nodepair[0]:4d} --> {nodepair[1]:4d}: {dx:10} {dy:10}")
+        print(f"          total: {sum(dxs):10} {sum(dys):10}")
 
       totaldx = sum(dxs)
       totaldy = sum(dys)
       pullsx.append(totaldx.n / totaldx.s)
       pullsy.append(totaldy.n / totaldy.s)
 
-  print()
-  print()
-  print()
+  if verbose:
+    print()
+    print()
+    print()
+  pullsx = np.array(pullsx)
+  pullsy = np.array(pullsy)
+  quantiles = np.array(sorted(((1-quantileforstats)/2, (1+quantileforstats)/2)))
+  minpull, maxpull = np.quantile(np.array([pullsx, pullsy]), quantiles)
+  outliersx = len(pullsx[(minpull > pullsx) | (pullsx > maxpull)])
+  outliersy = len(pullsy[(minpull > pullsy) | (pullsy > maxpull)])
+  pullsx = pullsx[(minpull <= pullsx) & (pullsx <= maxpull)]
+  pullsy = pullsy[(minpull <= pullsy) & (pullsy <= maxpull)]
   print("x pulls:")
-  plt.hist(pullsx)
-  print("mean:   ", uncertainties.ufloat(np.mean(pullsx), scipy.stats.sem(pullsx)))
-  print("std dev:", uncertainties.ufloat(np.std(pullsx), np.std(pullsx) / np.sqrt(2*len(pullsx)-2)))
+  plt.hist(pullsx, bins=binning, alpha=0.5)
+  print(f"mean of middle {100*quantileforstats}%:   ", uncertainties.ufloat(np.mean(pullsx), scipy.stats.sem(pullsx)))
+  print(f"std dev of middle {100*quantileforstats}%:", uncertainties.ufloat(np.std(pullsx), np.std(pullsx) / np.sqrt(2*len(pullsx)-2)))
+  print("n outliers: ", outliersx)
   print()
   print()
   print()
   print("y pulls:")
-  plt.hist(pullsy)
-  print("mean:   ", uncertainties.ufloat(np.mean(pullsy), scipy.stats.sem(pullsy)))
-  print("std dev:", uncertainties.ufloat(np.std(pullsy), np.std(pullsy) / np.sqrt(2*len(pullsy)-2)))
+  plt.hist(pullsy, bins=binning, alpha=0.5)
+  print(f"mean of middle {100*quantileforstats}%:   ", uncertainties.ufloat(np.mean(pullsy), scipy.stats.sem(pullsy)))
+  print(f"std dev of middle {100*quantileforstats}%:", uncertainties.ufloat(np.std(pullsy), np.std(pullsy) / np.sqrt(2*len(pullsy)-2)))
+  print("n outliers: ", outliersy)

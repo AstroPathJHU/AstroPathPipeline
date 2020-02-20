@@ -27,10 +27,20 @@ class Overlap:
       code=self.tag,
       layer=self.layer,
     )
-    self.__prepimage()
-    self.__computeshift(**errorkwargs)
-    self.__shiftclip()
-
+    try:
+      self.__prepimage()
+      self.__computeshift(**errorkwargs)
+      self.__shiftclip()
+    except Exception as e:
+      self.result.exit = 3
+      self.result.dx = 0.
+      self.result.dy = 0.
+      self.result.sc = 1.
+      self.result.covxx = 9999.
+      self.result.covyy = 9999.
+      self.result.exception = e
+    else:
+      self.result.exception = None
     return self.result
 
   def getinversealignment(self, inverse):
@@ -64,7 +74,8 @@ class Overlap:
     return self.result
 
   def __prepimage(self):
-    hh, ww = self.images.shape[1:]
+    hh, ww = self.images[0].shape
+    assert (hh, ww) == self.images[1].shape
 
     #convert microns to approximate pixels
     image1x1 = int(self.x1 * self.pscale)
@@ -92,8 +103,8 @@ class Overlap:
     cutimage2y2 = overlapy2 - image2y1 - self.nclip
 
     self.cutimages = np.array([
-      self.images[0,cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
-      self.images[1,cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
+      self.images[0][cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
+      self.images[1][cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
     ])
 
   def __computeshift(self, **errorkwargs):
@@ -142,6 +153,12 @@ class Overlap:
     plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
     plt.show()
 
+  @property
+  def x1vec(self):
+    return np.array([self.x1, self.y1])
+  @property
+  def x2vec(self):
+    return np.array([self.x2, self.y2])
 
 @dataclasses.dataclass(eq=False)
 class AlignmentResult:
@@ -181,6 +198,10 @@ class AlignmentResult:
   def covariance(self, covariancematrix):
     assert np.isclose(covariancematrix[0, 1], covariancematrix[1, 0]), covariancematrix
     (self.covxx, self.covxy), (self.covxy, self.covyy) = covariancematrix
+
+  @property
+  def dxvec(self):
+    return np.array([self.dx, self.dy])
 
   @property
   def dxdy(self):

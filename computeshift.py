@@ -35,12 +35,13 @@ def computeshift(images, *, usefinalsearcher=False, **errorkwargs):
       #minimum is on the boundary
       not (x0-xsize+1 <= -result.dx <= x0+xsize-1 and y0-ysize+1 <= -result.dy <= y0+ysize-1)
       #error is big compared to the search grid size
-      or np.sqrt(np.trace(result.covariance)) > xsize + ysize
     ):
       xsize *= 2
       ysize *= 2
       x0 = int(np.round(-result.dx))
       y0 = int(np.round(-result.dy))
+    elif np.sqrt(np.trace(result.covariance)) > xsize + ysize:
+      pass #stop here and return the dummy result
     elif xsize != 8 or ysize != 8:
       #first bring width//4 or height//4 back to factors of 2
       xsize = 2**int(np.ceil(np.log(xsize) / np.log(2)))
@@ -52,7 +53,10 @@ def computeshift(images, *, usefinalsearcher=False, **errorkwargs):
     xsize = min(xsize, width//4 - abs(x0))
     ysize = min(ysize, height//4 - abs(y0))
 
-  if abs(result.dx) == width//4 or abs(result.dy) == height//4:
+  if (
+    abs(result.dx) == width//4 or abs(result.dy) == height//4
+    or np.sqrt(np.trace(result.covariance)) > xsize + ysize
+  ):
     return OptimizeResult(
       prevresult = result,
       dx = 0,
@@ -62,6 +66,7 @@ def computeshift(images, *, usefinalsearcher=False, **errorkwargs):
       F_error = result.F_error,
       R_error_stat = result.R_error_stat,
       R_error_syst = result.R_error_syst,
+      exit = 2
     )
 
   xmin = ymin = 9999
@@ -261,7 +266,6 @@ class ShiftSearcher:
       [spline(*result.x, dx=2, dy=0)[0,0], spline(*result.x, dx=1, dy=1)[0,0]],
       [spline(*result.x, dx=1, dy=1)[0,0], spline(*result.x, dx=0, dy=2)[0,0]],
     ])   #dimensions of intensity / length^2
-    covariancematrix = (F_error**2 + R_error_stat**2 + R_error_syst**2 + minimizetolerance**2) ** 0.5 * np.linalg.inv(hessian)
 
     #flags for TNC are defined here
     #https://github.com/scipy/scipy/blob/78904d646f6fea3736aa7698394aebd2872e2638/scipy/optimize/tnc/tnc.h#L68-L82
@@ -281,7 +285,12 @@ class ShiftSearcher:
     result.R_error_stat = R_error_stat
     result.R_error_syst = R_error_syst
     result.F_error = F_error
-    result.covariance = covariancematrix
+
+    if np.linalg.det(hessian) > 0:
+      result.covariance = (F_error**2 + R_error_stat**2 + R_error_syst**2 + minimizetolerance**2) ** 0.5 * np.linalg.inv(hessian)
+    else:
+      result.covariance = np.array([[9999., 0], [0, 9999]])
+      result.exit = min(result.exit, 2)
 
     return result
 
