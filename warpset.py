@@ -1,5 +1,6 @@
 #imports
 from .warp import PolyFieldWarp, CameraWarp, WarpingError
+import copy
 import os
 
 class WarpSet :
@@ -34,7 +35,7 @@ class WarpSet :
             if rfkey not in self.raw_images.keys() :
                 self.raw_images[rfkey]={}
             for l in layers :
-                self.raw_images[rfkey][l]=rawimage[:,:,l]
+                self.raw_images[rfkey][l]=copy.copy(rawimage[:,:,l])
         print("Done.")
 
     def warpLoadedImageSet(self) :
