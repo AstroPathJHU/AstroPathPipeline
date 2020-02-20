@@ -23,6 +23,8 @@ class WarpSet :
             self.loadRawImageSet(rawfiles,nlayers,layers)
         self.warped_images = {}
 
+    #################### COMMON FUNCTIONS ####################
+
     def loadRawImageSet(self,rawfiles,nlayers=35,layers=[1]) :
         """
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
