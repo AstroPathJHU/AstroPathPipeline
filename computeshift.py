@@ -1,4 +1,4 @@
-import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters, textwrap, uncertainties
+import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters, textwrap, uncertainties as unc, uncertainties.unumpy as unp
 
 logger = logging.getLogger("align")
 
@@ -9,48 +9,72 @@ def computeshift(images):
   fourier = np.fft.fft2(images)
   crosspower = getcrosspower(fourier)
   invfourier = np.real(np.fft.ifft2(crosspower))
+
   y, x = np.mgrid[0:invfourier.shape[0],0:invfourier.shape[1]]
-  x = np.ravel(x)
-  y = np.ravel(y)
-  z = np.ravel(invfourier)
+  z = invfourier
 
-  maxidx = np.argmax(z)
-  mux0 = x[maxidx]
-  muy0 = y[maxidx]
-  covxx0 = covyy0 = 1.
-  covxy0 = 0.
-  A0 = z[maxidx]
+  x = np.roll(x, x.shape[0]//2, axis=0)
+  y = np.roll(y, y.shape[0]//2, axis=0)
+  z = np.roll(z, z.shape[0]//2, axis=0)
+  x = np.roll(x, x.shape[1]//2, axis=1)
+  y = np.roll(y, y.shape[1]//2, axis=1)
+  z = np.roll(z, z.shape[1]//2, axis=1)
+  #roll to get the peak in the middle
 
-  p0 = np.array([mux0, muy0, covxx0, covyy0, covxy0, A0])
+  maxidx = np.unravel_index(np.argmax(z, axis=None), z.shape)
+  mux = x[maxidx]
+  muy = y[maxidx]
+  covxx = covyy = 1.
+  covxy = 0.
+  A = z[maxidx]
 
-  #delete me!
-  p0[:] = 250.6668413139962, 2.0840262502716596, 4.673295014296137, 7.522943223827396, 0.0019985244960734096, 0.009531276372970677
+  dx = dy = unc.ufloat(0, 9999)
+  windowsize = 0
 
-  f = functools.partial(vectorizedperiodicdoublegaussian, shape=invfourier.shape)
+  p0 = unp.nominal_values(np.array([mux, muy, covxx, covyy, covxy, A]))
 
-  mux, muy, covxx, covyy, covxy, A = uncertainties.correlated_values(
-    *scipy.optimize.curve_fit(
-      f,
-      np.array([x, y], order="F"),
-      z,
-      p0=p0
+  while np.sqrt(np.trace(unc.covariance_matrix([dx, dy]))) > windowsize / 5:
+    windowsize += 10
+
+    slc = (
+      slice(maxidx[0]-windowsize, maxidx[0]+windowsize),
+      slice(maxidx[1]-windowsize, maxidx[1]+windowsize),
     )
-  )
+    xx = x[slc]
+    yy = y[slc]
+    zz = z[slc]
 
-  logger.info("%s %s %s %s %s %s", mux, muy, covxx, covyy, covxy, A)
+    xx = np.ravel(xx)
+    yy = np.ravel(yy)
+    zz = np.ravel(zz)
 
-  print(
-    [mux.n, muy.n],
-    uncertainties.covariance_matrix([mux, muy]) + np.array([[covxx.n, covxy.n], [covxy.n, covyy.n]]),
-  )
+    #p0 = unp.nominal_values(np.array([mux, muy, covxx, covyy, covxy, A]))
 
-  mux *= -1
-  muy *= -1
+    #delete me!
+    #p0[:] = 250.6668413139962, 2.0840262502716596, 4.673295014296137, 7.522943223827396, 0.0019985244960734096, 0.009531276372970677
 
-  dx, dy = uncertainties.correlated_values(
-    [mux.n, muy.n],
-    uncertainties.covariance_matrix([mux, muy]) + np.array([[covxx.n, covxy.n], [covxy.n, covyy.n]]),
-  )
+    f = functools.partial(vectorizedperiodicdoublegaussian, shape=invfourier.shape)
+
+    mux, muy, covxx, covyy, covxy, A = unc.correlated_values(
+      *scipy.optimize.curve_fit(
+        f,
+        np.array([xx, yy], order="F"),
+        zz,
+        p0=p0
+      )
+    )
+
+    logger.info("%s %s %s %s %s %s %d", mux, muy, covxx, covyy, covxy, A, windowsize)
+
+    print(
+      [mux.n, muy.n],
+      unc.covariance_matrix([mux, muy]) + np.array([[covxx.n, covxy.n], [covxy.n, covyy.n]]),
+    )
+
+    dx, dy = unc.correlated_values(
+      [-mux.n, -muy.n],
+      unc.covariance_matrix([mux, muy]) + np.array([[covxx.n, covxy.n], [covxy.n, covyy.n]]),
+    )
 
   while dx.n >= invfourier.shape[1] / 2: dx -= invfourier.shape[1]
   while dx.n < -invfourier.shape[1] / 2: dx += invfourier.shape[1]
@@ -91,7 +115,7 @@ def vectorizedperiodicdoublegaussian(x, mux, muy, covxx, covyy, covxy, A, shape)
 
     result = np.apply_along_axis(periodicdoublegaussian, 0, x, mux, muy, invcov, A, shape)
 
-    print(mux, muy, covxx, covyy, covxy, A, result)
+    print(mux, muy, covxx, covyy, covxy, A)
     return result
 
 @nb.njit
