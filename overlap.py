@@ -39,6 +39,7 @@ class Overlap:
       self.result.covxx = 9999.
       self.result.covyy = 9999.
       self.result.exception = e
+      raise
     else:
       self.result.exception = None
     return self.result
@@ -59,13 +60,8 @@ class Overlap:
       mse1 = inverse.result.mse2,
       mse2 = inverse.result.mse1,
       mse3 = inverse.result.mse3 / inverse.result.sc**2,
-      dv = inverse.result.dv,
-      R_error_stat = inverse.result.R_error_stat,
-      R_error_syst = inverse.result.R_error_syst,
-      F_error = inverse.result.F_error,
     )
     self.result.covariance = inverse.result.covariance
-    self.result.minimizeresult = inverse.result.minimizeresult
     self.shifted = np.array([
       inverse.shifted[1],
       inverse.shifted[0],
@@ -109,14 +105,7 @@ class Overlap:
 
   def __computeshift(self, **errorkwargs):
     minimizeresult = computeshift(self.cutimages, **errorkwargs)
-    self.result.minimizeresult = minimizeresult
-    self.result.dx = minimizeresult.dx
-    self.result.dy = minimizeresult.dy
-    self.result.dv = minimizeresult.dv
-    self.result.R_error_stat = minimizeresult.R_error_stat
-    self.result.R_error_syst = minimizeresult.R_error_syst
-    self.result.F_error = minimizeresult.F_error
-    self.result.covariance = minimizeresult.covariance
+    self.result.dxdy = minimizeresult.dx, minimizeresult.dy
 
   def __shiftclip(self):
     """
@@ -174,10 +163,6 @@ class AlignmentResult:
   mse1: float = 0.
   mse2: float = 0.
   mse3: float = 0.
-  dv: float = 0.
-  R_error_stat: float = 0.
-  R_error_syst: float = 0.
-  F_error: float = 0.
   covxx: float = 0.
   covyy: float = 0.
   covxy: float = 0.
@@ -206,6 +191,12 @@ class AlignmentResult:
   @property
   def dxdy(self):
     return uncertainties.correlated_values([self.dx, self.dy], self.covariance)
+
+  @dxdy.setter
+  def dxdy(self, dxdy):
+    self.dx = dxdy[0].n
+    self.dy = dxdy[1].n
+    self.covariance = np.array(uncertainties.covariance_matrix(dxdy))
 
   @property
   def isedge(self):
