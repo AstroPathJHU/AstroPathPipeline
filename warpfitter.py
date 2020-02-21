@@ -2,7 +2,7 @@
 from .warpset import WarpSet
 from .alignmentset import AlignmentSet, Rectangle
 from .overlap import Overlap
-from .readtable import readtable,writetable
+from .tableio import readtable,writetable
 import os
 
 #global variables
@@ -49,6 +49,12 @@ class WarpFitter :
         self.warpset = WarpSet(warp,self.rawfile_paths,nlayers,layers)
         #make the alignmentset object to use
         self.alignset = AlignmentSet(os.path.join(*([os.sep]+self.metafile_dir.split(os.sep)[:-2])),self.working_dir,self.samp_name,interactive=True)
+
+    def loadRawFiles(self) :
+        """
+        Load the raw files into the warpset
+        """
+        self.warpset.loadRawImageSet(self.rawfile_paths)
 
     # helper function to create the working directory and create/write out lists of overlaps and rectangles
     def __setupWorkingDirectory(self,overlaps) :
