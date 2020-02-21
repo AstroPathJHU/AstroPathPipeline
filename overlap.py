@@ -38,8 +38,8 @@ class Overlap:
       self.result.sc = 1.
       self.result.covxx = 9999.
       self.result.covyy = 9999.
+      self.shifted = np.array([self.cutimages[0], self.cutimages[1], np.mean(self.cutimages, axis=0)])
       self.result.exception = e
-      raise
     else:
       self.result.exception = None
     return self.result

@@ -2,7 +2,7 @@ import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.
 
 logger = logging.getLogger("align")
 
-def computeshift(images, smoothsigma=1.5, window=lambda images: hann(images)):
+def computeshift(images, smoothsigma=None, window=lambda images: hann(images)):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -33,51 +33,43 @@ def computeshift(images, smoothsigma=1.5, window=lambda images: hann(images)):
   A = z[maxidx]
 
   dx = dy = unc.ufloat(0, 9999)
-  windowsize = 0
+  windowsize = 10
 
   p0 = unp.nominal_values(np.array([mux, muy, covxx, covyy, covxy, A]))
 
-  while np.sqrt(np.trace(unc.covariance_matrix([dx, dy]))) > windowsize / 2:
-    windowsize += 10
+  slc = (
+    slice(maxidx[0]-windowsize, maxidx[0]+windowsize),
+    slice(maxidx[1]-windowsize, maxidx[1]+windowsize),
+  )
+  xx = x[slc]
+  yy = y[slc]
+  zz = z[slc]
 
-    slc = (
-      slice(maxidx[0]-windowsize, maxidx[0]+windowsize),
-      slice(maxidx[1]-windowsize, maxidx[1]+windowsize),
-    )
-    xx = x[slc]
-    yy = y[slc]
-    zz = z[slc]
+  xx = np.ravel(xx)
+  yy = np.ravel(yy)
+  zz = np.ravel(zz)
 
-    xx = np.ravel(xx)
-    yy = np.ravel(yy)
-    zz = np.ravel(zz)
+  #p0 = unp.nominal_values(np.array([mux, muy, covxx, covyy, covxy, A]))
 
-    #p0 = unp.nominal_values(np.array([mux, muy, covxx, covyy, covxy, A]))
+  #delete me!
+  #p0[:] = 250.6668413139962, 2.0840262502716596, 4.673295014296137, 7.522943223827396, 0.0019985244960734096, 0.009531276372970677
 
-    #delete me!
-    #p0[:] = 250.6668413139962, 2.0840262502716596, 4.673295014296137, 7.522943223827396, 0.0019985244960734096, 0.009531276372970677
+  f = functools.partial(vectorizedperiodicdoublegaussian, shape=invfourier.shape)
 
-    f = functools.partial(vectorizedperiodicdoublegaussian, shape=invfourier.shape)
+  p, cov = scipy.optimize.curve_fit(
+    f,
+    np.array([xx, yy], order="F"),
+    zz,
+    p0=p0,
+  )
+  mux, muy, covxx, covyy, covxy, A = unc.correlated_values(p, cov)
 
-    p, cov = scipy.optimize.curve_fit(
-      f,
-      np.array([xx, yy], order="F"),
-      zz,
-      p0=p0,
-    )
-    mux, muy, covxx, covyy, covxy, A = unc.correlated_values(p, cov)
+  logger.info("%s %s %s %s %s %s %d", mux, muy, covxx, covyy, covxy, A, windowsize)
 
-    logger.info("%s %s %s %s %s %s %d", mux, muy, covxx, covyy, covxy, A, windowsize)
-
-    print(
-      [mux.n, muy.n],
-      unc.covariance_matrix([mux, muy]) + np.array([[covxx.n, covxy.n], [covxy.n, covyy.n]]),
-    )
-
-    dx, dy = unc.correlated_values(
-      [-mux.n, -muy.n],
-      unc.covariance_matrix([mux, muy]) + np.array([[covxx.n, covxy.n], [covxy.n, covyy.n]]),
-    )
+  dx, dy = unc.correlated_values(
+    [-mux.n, -muy.n],
+    unc.covariance_matrix([mux, muy]) + np.array([[covxx.n, covxy.n], [covxy.n, covyy.n]]),
+  )
 
   while dx.n >= invfourier.shape[1] / 2: dx -= invfourier.shape[1]
   while dx.n < -invfourier.shape[1] / 2: dx += invfourier.shape[1]
