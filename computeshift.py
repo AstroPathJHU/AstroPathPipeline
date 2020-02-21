@@ -2,10 +2,14 @@ import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.
 
 logger = logging.getLogger("align")
 
-def computeshift(images):
+def computeshift(images, smoothsigma=1.5, window=lambda images: hann(images)):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
+  if smoothsigma is not None:
+    images = skimage.filters.gaussian(images, sigma=smoothsigma, mode = 'nearest')
+  if window is not None:
+    images = window(images)
   fourier = np.fft.fft2(images)
   crosspower = getcrosspower(fourier)
   invfourier = np.real(np.fft.ifft2(crosspower))
@@ -33,7 +37,7 @@ def computeshift(images):
 
   p0 = unp.nominal_values(np.array([mux, muy, covxx, covyy, covxy, A]))
 
-  while np.sqrt(np.trace(unc.covariance_matrix([dx, dy]))) > windowsize / 5:
+  while np.sqrt(np.trace(unc.covariance_matrix([dx, dy]))) > windowsize / 2:
     windowsize += 10
 
     slc = (
@@ -55,14 +59,13 @@ def computeshift(images):
 
     f = functools.partial(vectorizedperiodicdoublegaussian, shape=invfourier.shape)
 
-    mux, muy, covxx, covyy, covxy, A = unc.correlated_values(
-      *scipy.optimize.curve_fit(
-        f,
-        np.array([xx, yy], order="F"),
-        zz,
-        p0=p0
-      )
+    p, cov = scipy.optimize.curve_fit(
+      f,
+      np.array([xx, yy], order="F"),
+      zz,
+      p0=p0,
     )
+    mux, muy, covxx, covyy, covxy, A = unc.correlated_values(p, cov)
 
     logger.info("%s %s %s %s %s %s %d", mux, muy, covxx, covyy, covxy, A, windowsize)
 
@@ -86,6 +89,13 @@ def computeshift(images):
     dy=dy,
   )
 
+@nb.njit
+def hann(images):
+  M, N = images.shape[1:]
+  hannx = np.hanning(M)
+  hanny = np.hanning(N)
+  hann = np.outer(hannx, hanny)
+  return images * hann
 
 @nb.njit
 def getcrosspower(fourier):
@@ -106,7 +116,7 @@ def periodicdoublegaussian(x, mux, muy, invcov, A, shape):
     shape0, shape1 = shape
     for i in -1, 0, 1:
         for j in -1, 0, 1:
-            result += doublegaussian(x, mux+i*shape0, muy+j*shape1, invcov, A)
+            result += doublegaussian(x, mux+i*shape1, muy+j*shape0, invcov, A)
     return result
 
 def vectorizedperiodicdoublegaussian(x, mux, muy, covxx, covyy, covxy, A, shape):
@@ -115,7 +125,6 @@ def vectorizedperiodicdoublegaussian(x, mux, muy, covxx, covyy, covxy, A, shape)
 
     result = np.apply_along_axis(periodicdoublegaussian, 0, x, mux, muy, invcov, A, shape)
 
-    print(mux, muy, covxx, covyy, covxy, A)
     return result
 
 @nb.njit
