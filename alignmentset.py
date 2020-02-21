@@ -109,8 +109,8 @@ class AlignmentSet:
 
   def align(self, *, compute_R_error_stat=True, compute_R_error_syst=True, compute_F_error=False, maxpairs=float("inf"), chooseoverlaps=None):
     #if the raw images haven't already been loaded, load them with the default argument
-    if self.rawimages is None :
-      self.getDAPI()
+    #if self.rawimages is None :
+    #  self.getDAPI()
 
     aligncsv = os.path.join(self.dbload, self.samp+"_align.csv")
 
@@ -186,7 +186,8 @@ class AlignmentSet:
     for r in self.rectangles :
       imgdictfn = r.file.replace('.im3',ext)
       if imgdictfn in warped_image_filenames :
-        r.image = imgdict[imgdictfn][self.layer] / self.meanimage.flatfield
+        #np.copyto(r.image,imgdict[imgdictfn][self.layer] / self.meanimage.flatfield,casting='no')
+        np.copyto(r.image,imgdict[imgdictfn][self.layer],casting='no') #question for Alex: applying meanimage?
 
   def __getrawlayers(self, filetype, keep=False):
     logger.info(self.samp)

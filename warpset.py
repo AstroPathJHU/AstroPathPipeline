@@ -1,13 +1,13 @@
 #imports
 from .warp import PolyFieldWarp, CameraWarp, WarpingError
-import copy
-import os
+import numpy as np
+import os, copy
 
 class WarpSet :
     """
     Main class for handling I/O and repeated warp application
     """
-    def __init__(self,warp=None,rawfiles=None,nlayers=35,layers=[1]) :
+    def __init__(self,n=None,m=None,warp=None,rawfiles=None,nlayers=35,layers=[1]) :
         """
         warp     = warp object to apply to images (optional, default loads a default CameraWarp)
         rawfiles = list of raw, unwarped image filenames 
@@ -16,7 +16,10 @@ class WarpSet :
         """
         self.warp=warp
         if self.warp is None :
-            self.warp = CameraWarp()
+            if n is not None and m is not None :
+                self.warp=CameraWarp(n,m)
+            else :
+                self.warp = CameraWarp()
         self.raw_filenames = rawfiles
         self.nlayers=nlayers
         self.layers=layers
@@ -39,19 +42,42 @@ class WarpSet :
             rfkey = rf.split(os.sep)[-1]
             if rfkey not in self.raw_images.keys() :
                 self.raw_images[rfkey]={}
+                self.warped_images[rfkey]={}
             for l in self.layers :
                 self.raw_images[rfkey][l]=copy.copy(rawimage[:,:,l])
+                self.warped_images[rfkey][l]=np.zeros_like(self.raw_images[rfkey][l])
         print("Done.")
 
     def warpLoadedImageSet(self) :
         """
         Warps all the image layers in the raw_images dictionary with the current warp and stores them in memory
         """
+        #If we haven't loaded the raw images yet, do it now : /
+        if self.raw_images=={} :
+            self.loadRawImageSet()
+        #Warp all the image layers and store them in memory
         for fn in self.raw_images.keys() :
-            if fn not in self.warped_images.keys() :
-                self.warped_images[fn] = {}
             for l in self.raw_images[fn].keys() :
-                self.warped_images[fn][l] = self.warp.getWarpedLayer(self.raw_images[fn][l])
+                self.warp.warpLayerInPlace(self.raw_images[fn][l],self.warped_images[fn][l])
+
+    def writeOutWarpedImageSet(self,path=None) :
+        """
+        Save the warped images as new files in the directory at "path" (or in the current directory if path=None)
+        """
+        #change to the directory passed in
+        if path is not None :
+            init_dir = os.getcwd()
+            try :
+                os.chdir(path)
+            except FileNotFoundError :
+                raise FileNotFoundError(f'path {path} supplied to writeOutWarpedImageSet is not a valid location')
+        #write out all the image file layers
+        for fn in self.raw_images.keys() :
+            for l in self.raw_images[fn].keys() :
+                self.warp.writeImageLayer(self.warped_images[fn][l],fn,l)
+        #change back to the initial directory
+        if path is not None :
+            os.chdir(init_dir)
 
     def updateCameraParams(self,pars) :
         """

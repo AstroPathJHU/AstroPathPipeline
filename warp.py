@@ -117,7 +117,7 @@ class PolyFieldWarp(Warp) :
 
     #################### COMMON FUNCTIONS ####################
 
-    def warpImage(self,infname,nlayers=35,layers=[1]) :
+    def warpAndWriteImage(self,infname,nlayers=35,layers=[1]) :
         """
         Read in an image, warp layer-by-layer with remap, and save each warped layer as its own new file in the current directory
         infname       = name of image file to split, warp, and re-save
@@ -128,13 +128,13 @@ class PolyFieldWarp(Warp) :
         img_to_warp = self.getHWLFromRaw(infname,nlayers)
         #remap each layer
         for i in layers :
-            self.warpLayer(img_to_warp[:,:,i],i,infname)
+            self.warpAndWriteLayer(img_to_warp[:,:,i],i,infname)
 
-    def warpLayer(self,layer,layernumber,rawfilename) :
+    def warpAndWriteLayer(self,layer,layernumber,rawfilename) :
         """
-        Quickly warp a single inputted image layer array with the current parameters and save it
+        Quickly warps a single inputted image layer array with the current parameters and save it
         """
-        self.writeSingleLayerImage(self.getWarpedLayer(layer),self.__getWarpedLayerFilename(rawfilename,layernumber))
+        self.writeImageLayer(self.getWarpedLayer(layer),rawfilename,layernumber)
 
     def getWarpedLayer(self,layer) :
         """
@@ -142,6 +142,12 @@ class PolyFieldWarp(Warp) :
         """
         map_x, map_y = self.__getMapMatrices()
         return cv2.remap(layer,map_x,map_y,self.interp)
+
+    def writeImageLayer(self,im,rawfilename,layernumber) :
+        """
+        Write out a single given image layer
+        """
+        self.writeSingleLayerImage(im,self.__getWarpedLayerFilename(rawfilename,layernumber))
 
     #################### VISUALIZATION FUNCTIONS ####################
 
@@ -283,7 +289,7 @@ class CameraWarp(Warp) :
 
     #################### COMMON FUNCTIONS ####################
 
-    def warpImage(self,infname,nlayers=35,layers=[1]) :
+    def warpAndWriteImage(self,infname,nlayers=35,layers=[1]) :
         """
         Read in an image, warp layer-by-layer with undistort, and save each warped layer as its own new file in the current directory
         infname       = name of image file to split, warp, and re-save
@@ -294,13 +300,13 @@ class CameraWarp(Warp) :
         img_to_warp = self.getHWLFromRaw(infname,nlayers)
         #undistort each layer
         for i in layers :
-            self.warpLayer(img_to_warp[:,:,i],i,infname)
+            self.warpAndWriteLayer(img_to_warp[:,:,i],i,infname)
 
-    def warpLayer(self,layer,layernumber,rawfilename) :
+    def warpAndWriteLayer(self,layer,layernumber,rawfilename) :
         """
         Quickly warps a single inputted image layer array with the current parameters and save it
         """
-        self.writeSingleLayerImage(self.getWarpedLayer(layer),self.__getWarpedLayerFilename(rawfilename,layernumber))
+        self.writeImageLayer(self.getWarpedLayer(layer),rawfilename,layernumber)
 
     def getWarpedLayer(self,layerimg) :
         """
@@ -308,6 +314,18 @@ class CameraWarp(Warp) :
         """
         #return the result of undistort
         return cv2.undistort(layerimg,self.__cam_matrix,self.__dist_pars)
+
+    def warpLayerInPlace(self,layerimg,dest) :
+        """
+        Quickly warps a single inputted image layer into the provided destination
+        """
+        cv2.undistort(layerimg,self.__cam_matrix,self.__dist_pars,dest)
+
+    def writeImageLayer(self,im,rawfilename,layernumber) :
+        """
+        Write out a single given image layer
+        """
+        self.writeSingleLayerImage(im,self.__getWarpedLayerFilename(rawfilename,layernumber))
 
     #################### PUBLIC UTILITY FUNCTIONS ####################
 
