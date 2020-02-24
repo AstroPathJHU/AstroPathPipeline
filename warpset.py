@@ -87,3 +87,11 @@ class WarpSet :
             raise WarpingError("ERROR: only call updateCameraParams if the warpset is using a CameraWarp!")
         self.warp.updateParams(pars)
 
+    def getListOfWarpParameters(self) :
+        """
+        Returns a list of all the current warp parameters
+        """
+        if not isinstance(self.warp,CameraWarp) :
+            raise WarpingError("ERROR: only call getListOfWarpParameters if the warpset is using a CameraWarp!")
+        return [self.warp.cx,self.warp.cy,self.warp.fx,self.warp.fy,self.warp.k1,self.warp.k2,self.warp.p1,self.warp.p2]
+
