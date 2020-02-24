@@ -130,9 +130,7 @@ def hann(images):
 
 @nb.njit
 def getcrosspower(fourier):
-  product = fourier[0] * np.conj(fourier[1])
-  crosspower = product / np.abs(product)
-  return crosspower
+  return fourier[0] * np.conj(fourier[1])
 
 @nb.njit
 def doublegaussian(x, mux, muy, invcov, A):
