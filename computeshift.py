@@ -1,8 +1,8 @@
-import cv2, functools, logging, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters, textwrap, uncertainties as unc, uncertainties.unumpy as unp
+import cv2, functools, logging, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.filters, textwrap, uncertainties as unc, uncertainties.unumpy as unp
 
 logger = logging.getLogger("align")
 
-def computeshift(images, smoothsigma=None, window=lambda images: hann(images)):
+def computeshift(images, *, windowsize=10, smoothsigma=None, window=lambda images: hann(images), showsmallimage=False, showbigimage=False):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -33,7 +33,6 @@ def computeshift(images, smoothsigma=None, window=lambda images: hann(images)):
   A = z[maxidx]
 
   dx = dy = unc.ufloat(0, 9999)
-  windowsize = 10
 
   p0 = unp.nominal_values(np.array([mux, muy, covxx, covyy, covxy, A]))
 
@@ -44,6 +43,9 @@ def computeshift(images, smoothsigma=None, window=lambda images: hann(images)):
   xx = x[slc]
   yy = y[slc]
   zz = z[slc]
+
+  if showbigimage: plt.imshow(z)
+  if showsmallimage: plt.imshow(zz)
 
   xx = np.ravel(xx)
   yy = np.ravel(yy)
