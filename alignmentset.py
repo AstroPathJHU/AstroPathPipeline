@@ -107,7 +107,7 @@ class AlignmentSet:
   def image(self):
     return cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
 
-  def align(self, *, compute_R_error_stat=True, compute_R_error_syst=True, compute_F_error=False, maxpairs=float("inf"), chooseoverlaps=None):
+  def align(self, maxpairs=float("inf"), chooseoverlaps=None):
     #if the raw images haven't already been loaded, load them with the default argument
     #if self.rawimages is None :
     #  self.getDAPI()
@@ -136,7 +136,7 @@ class AlignmentSet:
       if (overlap.p2, overlap.p1) in done:
         result = overlap.getinversealignment(self.overlapsdict[overlap.p2, overlap.p1])
       else:
-        result = overlap.align(compute_R_error_stat=compute_R_error_stat, compute_R_error_syst=compute_R_error_syst, compute_F_error=compute_F_error)
+        result = overlap.align()
       done.add((overlap.p1, overlap.p2))
       if result is not None: 
         alignments.append(result)
@@ -326,7 +326,7 @@ class AlignmentSet:
     )
     sigmay = np.sqrt(weightedvariancedy) / scaleby * scalejittererror
 
-    x0vec = np.mean([r.xvec for r in self.rectangles], axis=0)
+    x0vec = np.array([0, 0]) #fix the origin, linear scaling is with respect to that
     x0, y0 = x0vec
 
     for r in self.rectangles:
