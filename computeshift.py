@@ -25,12 +25,17 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=lambda image
   z = np.roll(z, z.shape[1]//2, axis=1)
   #roll to get the peak in the middle
 
+  #estimate gaussian mean and center
   maxidx = np.unravel_index(np.argmax(z, axis=None), z.shape)
   mux = x[maxidx]
   muy = y[maxidx]
-  covxx = covyy = 1.
-  covxy = 0.
   A = z[maxidx]
+
+  #estimate gaussian width
+  bigpoints = np.argwhere(z>=np.max(z)/2)
+  distances = np.linalg.norm(bigpoints-maxidx, axis=1)
+  covxx = covyy = max(distances)**2
+  covxy = 0.
 
   dx = dy = unc.ufloat(0, 9999)
 
@@ -50,11 +55,6 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=lambda image
   xx = np.ravel(xx)
   yy = np.ravel(yy)
   zz = np.ravel(zz)
-
-  #p0 = unp.nominal_values(np.array([mux, muy, covxx, covyy, covxy, A]))
-
-  #delete me!
-  #p0[:] = 250.6668413139962, 2.0840262502716596, 4.673295014296137, 7.522943223827396, 0.0019985244960734096, 0.009531276372970677
 
   f = functools.partial(vectorizedperiodicdoublegaussian, shape=invfourier.shape)
 
