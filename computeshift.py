@@ -2,7 +2,7 @@ import cv2, functools, logging, matplotlib.pyplot as plt, more_itertools, numba 
 
 logger = logging.getLogger("align")
 
-def computeshift(images, *, windowsize=10, smoothsigma=None, window=lambda images: hann(images), showsmallimage=False, showbigimage=False):
+def computeshift(images, *, windowsize=10, smoothsigma=None, window=lambda images: hann(images), localmax_min_distance=20, localmax_threshold_rel=.5, localmax_windowsize=20, showsmallimage=False, showbigimage=False):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -26,62 +26,99 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=lambda image
   #roll to get the peak in the middle
 
   #estimate gaussian mean and center
-  maxidx = np.unravel_index(np.argmax(z, axis=None), z.shape)
-  mux = x[maxidx]
-  muy = y[maxidx]
-  A = z[maxidx]
-
-  #estimate gaussian width
-  bigpoints = np.argwhere(z>=np.max(z)/2)
-  distances = np.linalg.norm(bigpoints-maxidx, axis=1)
-  covxx = covyy = max(distances[distances <= windowsize * 2**.5])**2
-  covxy = 0.
-
-  dx = dy = unc.ufloat(0, 9999)
-
-  p0 = unp.nominal_values(np.array([mux, muy, covxx, covyy, covxy, A]))
-
-  slc = (
-    slice(maxidx[0]-windowsize, maxidx[0]+windowsize),
-    slice(maxidx[1]-windowsize, maxidx[1]+windowsize),
+  labels = (
+      (x < localmax_windowsize//2)
+    | (x > invfourier.shape[1]-localmax_windowsize//2)
+  ) & (
+      (y < localmax_windowsize//2)
+    | (y > invfourier.shape[0]-localmax_windowsize//2)
   )
-  xx = x[slc]
-  yy = y[slc]
-  zz = z[slc]
+  maxindices = skimage.feature.peak_local_max(z, min_distance=localmax_min_distance, threshold_rel=localmax_threshold_rel, labels=labels)
+  results = []
+  for maxidx in maxindices:
+    maxidx = tuple(maxidx)
+    try:
+      mux = x[maxidx]
+      muy = y[maxidx]
+      A = z[maxidx]
 
-  if showbigimage: plt.imshow(z)
-  if showsmallimage: plt.imshow(zz)
+      #estimate gaussian width
+      bigpoints = np.argwhere(z>=np.max(z)/2)
+      distances = np.linalg.norm(bigpoints-maxidx, axis=1)
+      covxx = covyy = max(distances[distances <= windowsize * 2**.5])**2
+      covxy = 0.
 
-  xx = np.ravel(xx)
-  yy = np.ravel(yy)
-  zz = np.ravel(zz)
+      p0 = unp.nominal_values(np.array([mux, muy, covxx, covyy, covxy, A]))
 
-  f = functools.partial(vectorizedperiodicdoublegaussian, shape=invfourier.shape)
+      slc = (
+        slice(maxidx[0]-windowsize, maxidx[0]+windowsize),
+        slice(maxidx[1]-windowsize, maxidx[1]+windowsize),
+      )
+      xx = x[slc]
+      yy = y[slc]
+      zz = z[slc]
 
-  p, cov = scipy.optimize.curve_fit(
-    f,
-    np.array([xx, yy], order="F"),
-    zz,
-    p0=p0,
-  )
-  mux, muy, covxx, covyy, covxy, A = unc.correlated_values(p, cov)
+      if showbigimage: plt.imshow(z)
+      if showsmallimage: plt.imshow(zz)
 
-  logger.info("%s %s %s %s %s %s %d", mux, muy, covxx, covyy, covxy, A, windowsize)
+      xx = np.ravel(xx)
+      yy = np.ravel(yy)
+      zz = np.ravel(zz)
 
-  dx, dy = unc.correlated_values(
-    [-mux.n, -muy.n],
-    unc.covariance_matrix([mux, muy]) + np.array([[covxx.n, covxy.n], [covxy.n, covyy.n]]),
-  )
+      f = functools.partial(vectorizedperiodicdoublegaussian, shape=invfourier.shape)
 
-  while dx.n >= invfourier.shape[1] / 2: dx -= invfourier.shape[1]
-  while dx.n < -invfourier.shape[1] / 2: dx += invfourier.shape[1]
-  while dy.n >= invfourier.shape[0] / 2: dy -= invfourier.shape[0]
-  while dy.n < -invfourier.shape[0] / 2: dy += invfourier.shape[0]
+      xfit = np.array([xx, yy], order="F")
+      p, cov = scipy.optimize.curve_fit(
+        f,
+        xfit,
+        zz,
+        p0=p0,
+      )
+      mux, muy, covxx, covyy, covxy, A = unc.correlated_values(p, cov)
 
-  return OptimizeResult(
-    dx=dx,
-    dy=dy,
-  )
+      logger.info("%s %s %s %s %s %s %d", mux, muy, covxx, covyy, covxy, A, windowsize)
+
+      dx, dy = unc.correlated_values(
+        [-mux.n, -muy.n],
+        unc.covariance_matrix([mux, muy]) + np.array([[covxx.n, covxy.n], [covxy.n, covyy.n]]),
+      )
+
+      while dx.n >= invfourier.shape[1] / 2: dx -= invfourier.shape[1]
+      while dx.n < -invfourier.shape[1] / 2: dx += invfourier.shape[1]
+      while dy.n >= invfourier.shape[0] / 2: dy -= invfourier.shape[0]
+      while dy.n < -invfourier.shape[0] / 2: dy += invfourier.shape[0]
+
+      chi2 = sum((f(xfit, *p) - zz) ** 2)
+
+      results.append(OptimizeResult(
+        mux=mux,
+        muy=muy,
+        covxx=covxx,
+        covyy=covyy,
+        covxy=covxy,
+        A=A,
+        p0=p0,
+        dx=dx,
+        dy=dy,
+        chi2=chi2,
+      ))
+    except Exception as e:
+      dx, dy = unc.correlated_values([0, 0], [[9999, 0], [0, 9999]])
+      results.append(OptimizeResult(
+        exception=e,
+      ))
+
+  def resultevaluator(result):
+    if hasattr(result, "exception"): return "bad", 0
+    cov = unc.covariance_matrix([result.dx, result.dy])
+    if np.trace(cov) ** .5 >= sum(invfourier.shape): return "bad", 1
+    return "ok", -result.chi2
+
+  result = max(results, key=resultevaluator)
+  if hasattr(result, "exception"): raise result.exception
+  results.remove(result)
+  result.otherresults = results
+  return result
 
 @nb.njit
 def hann(images):
@@ -149,6 +186,8 @@ class OptimizeResult(scipy.optimize.OptimizeResult):
   def __formatvforrepr(self, v, m):
     if isinstance(v, OptimizeResult):
       return "\n" + textwrap.indent(repr(v), ' '*m)
+    if isinstance(v, list) and all(isinstance(thing, OptimizeResult) for thing in v):
+      return "[\n" + "\n\n".join(textwrap.indent(repr(thing), ' '*m) for thing in v) + "\n" + " "*m + "]"
     return repr(v)
 
   def __repr__(self):
