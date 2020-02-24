@@ -34,7 +34,7 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=lambda image
   #estimate gaussian width
   bigpoints = np.argwhere(z>=np.max(z)/2)
   distances = np.linalg.norm(bigpoints-maxidx, axis=1)
-  covxx = covyy = max(distances)**2
+  covxx = covyy = max(distances[distances <= windowsize * 2**.5])**2
   covxy = 0.
 
   dx = dy = unc.ufloat(0, 9999)
