@@ -2,7 +2,7 @@ import cv2, functools, logging, matplotlib.pyplot as plt, more_itertools, numba 
 
 logger = logging.getLogger("align")
 
-def computeshift(images, *, windowsize=10, smoothsigma=None, window=lambda images: hann(images), localmax_min_distance=20, localmax_threshold_rel=.5, localmax_windowsize=20, showsmallimage=False, showbigimage=False):
+def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, showbigimage=False):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -10,9 +10,8 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=lambda image
     images = skimage.filters.gaussian(images, sigma=smoothsigma, mode = 'nearest')
   if window is not None:
     images = window(images)
-  fourier = np.fft.fft2(images)
-  crosspower = getcrosspower(fourier)
-  invfourier = np.real(np.fft.ifft2(crosspower))
+
+  invfourier = crosscorrelation(images)
 
   y, x = np.mgrid[0:invfourier.shape[0],0:invfourier.shape[1]]
   z = invfourier
@@ -83,6 +82,12 @@ def hann(images):
   hanny = np.hanning(N)
   hann = np.outer(hannx, hanny)
   return images * hann
+
+def crosscorrelation(images):
+  fourier = np.fft.fft2(images)
+  crosspower = getcrosspower(fourier)
+  invfourier = np.real(np.fft.ifft2(crosspower))
+  return invfourier
 
 @nb.njit
 def getcrosspower(fourier):
