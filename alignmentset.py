@@ -2,9 +2,9 @@
 
 import collections, cv2, dataclasses, logging, methodtools, numpy as np, os, scipy, typing, uncertainties, uncertainties.unumpy as unp
 
-from .flatfield import meanimage
-from .overlap import Overlap
-from .tableio import readtable, writetable
+from flatfield import meanimage
+from overlap import Overlap
+from tableio import readtable, writetable
 
 logger = logging.getLogger("align")
 logger.setLevel(logging.DEBUG)

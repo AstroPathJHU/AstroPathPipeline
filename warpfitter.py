@@ -1,8 +1,8 @@
 #imports
-from .warpset import WarpSet
-from .alignmentset import AlignmentSet, Rectangle
-from .overlap import Overlap
-from .tableio import readtable,writetable
+from warpset import WarpSet
+from alignmentset import AlignmentSet, Rectangle
+from overlap import Overlap
+from tableio import readtable,writetable
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, logging
 
@@ -10,18 +10,12 @@ import os, logging
 OVERLAP_FILE_EXT   = '_overlap.csv'
 RECTANGLE_FILE_EXT = '_rect.csv'
 IM3_EXT='.im3'
+IMM_EXT='.imm'
 RAW_EXT='.raw'
 WARP_EXT='.camWarp_layer'
-DEF_PAR_BOUNDS = {
-    'cx':(400,945),
-    'cy':(300,710),
-    'fx':(39600,40400),
-    'fy':(39600,40400),
-    'k1':(-75.,75.),
-    'k2':(-150000.,150000.),
-    'p1':(-0.75,0.75),
-    'p2':(-0.6,0.6)
-}
+IMM_FILE_X_SIZE='sizeX'
+IMM_FILE_Y_SIZE='sizeY'
+MICROSCOPE_OBJECTIVE_FOCAL_LENGTH=40000. # 20mm in pixels
 
 class FittingError(Exception) :
     """
@@ -33,7 +27,7 @@ class WarpFitter :
     """
     Main class for fitting a camera matrix and distortion parameters to a set of images based on the results of their alignment
     """
-    def __init__(self,samplename,rawfile_dir,metafile_dir,working_dir,overlaps=-1,warpset=None,warp=None,n=1344,m=1004,nlayers=35,layers=[1]) :
+    def __init__(self,samplename,rawfile_dir,metafile_dir,working_dir,overlaps=-1,warpset=None,warp=None,nlayers=35,layers=[1]) :
         """
         samplename   = name of the microscope data sample to fit to ("M21_1" or equivalent)
         rawfile_dir  = path to directory containing multilayered ".raw" files
@@ -43,8 +37,6 @@ class WarpFitter :
                        (default=-1 will use all overlaps)
         warpset      = WarpSet object to initialize with (optional, a new WarpSet will be created if None) 
         warp         = CameraWarp object whose optimal parameters will be determined (optional, if None a new one will be created)
-        n            = image width (pixels)
-        m            = image height (pixels)
         nlayers      = # of layers in raw images (default=35)
         layers       = list of image layer numbers (indexed starting at 1) to consider in the warping/alignment (default=[1])
         """
@@ -58,13 +50,19 @@ class WarpFitter :
         self.overlaps, self.rectangles = self.__setupWorkingDirectory(overlaps)
         #get the list of raw file paths
         self.rawfile_paths = [os.path.join(self.rawfile_dir,fn.replace(IM3_EXT,RAW_EXT)) for fn in [r.file for r in self.rectangles]]
+        #get the size of the images in the sample
+        self.n, self.m = self.__getImageSizesFromImmFile()
         #make the warpset object to use
         if warpset is not None :
             self.warpset = warpset
         elif warp is not None :
+            if warp.n!=self.n or warp.m!=self.m :
+                msg = f'Warp object passed to WarpFitter is set to run on images of size ({warp.n},{warp.m}),'
+                msg+=f' not of size ({self.n},{self.m}) as specified by .imm files'
+                raise FittingError(msg)
             self.warpset = WarpSet(warp=warp,rawfiles=self.rawfile_paths,nlayers=nlayers,layers=layers)
         else :
-            self.warpset = WarpSet(n=n,m=m,rawfiles=self.rawfile_paths,nlayers=nlayers,layers=layers)
+            self.warpset = WarpSet(n=self.n,m=self.m,rawfiles=self.rawfile_paths,nlayers=nlayers,layers=layers)
         #make the alignmentset object to use
         self.alignset = self.__initializeAlignmentSet()
 
@@ -102,7 +100,8 @@ class WarpFitter :
         logger = logging.getLogger('align')
         logger.setLevel(logging.WARN)
         #build the list of parameter bounds
-        parameter_bounds = self.__getParameterBoundsList(par_bounds,fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2)
+        default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
+        parameter_bounds = self.__getParameterBoundsList(par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2)
         #get the list of constraints
         constraints = self.__getConstraints(fix_k1k2,fix_p1p2,max_radial_warp,max_tangential_warp)
         #get the list to use to mask fixed parameters in the minimization functions
@@ -209,6 +208,8 @@ class WarpFitter :
             olaps = [all_overlaps[i-1] for i in overlaps]
         else :
             raise FittingError(f'Cannot recognize overlap choice from overlaps={overlaps} (must be a tuple, list, or -1)')
+        if len(olaps)==0 :
+            raise FittingError(f'Overlap choice {overlaps} does not represent a valid selection for this sample!')
         #read all the rectangles and store the relevant ones
         all_rectangles = readtable(os.path.join(self.metafile_dir,self.samp_name+RECTANGLE_FILE_EXT),Rectangle)
         rects = [r for r in all_rectangles if r.n in ([o.p1 for o in olaps]+[o.p2 for o in olaps])]
@@ -221,6 +222,15 @@ class WarpFitter :
         os.chdir(self.init_dir)
         return olaps, rects
 
+    # helper function to return the (x,y) size of the images read from the .imm file 
+    def __getImageSizesFromImmFile(self) :
+        first_immfile_path = os.path.join(self.rawfile_dir,self.rectangles[0].file.replace(IM3_EXT,IMM_EXT))
+        with open(first_immfile_path) as fp :
+            lines=fp.readlines()
+        n=int([line.rstrip().split()[1] for line in lines if line.rstrip().split()[0]==IMM_FILE_X_SIZE][0])
+        m=int([line.rstrip().split()[1] for line in lines if line.rstrip().split()[0]==IMM_FILE_Y_SIZE][0])
+        return n,m
+
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
     def __initializeAlignmentSet(self) :
         a = AlignmentSet(os.path.join(*([os.sep]+self.metafile_dir.split(os.sep)[:-2])),self.working_dir,self.samp_name,interactive=True)
@@ -229,13 +239,13 @@ class WarpFitter :
         return a
 
     #helper function to make the list of parameter bounds for fitting
-    def __getParameterBoundsList(self,par_bounds,fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2) :
+    def __getParameterBoundsList(self,par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2) :
         parorder=['cx','cy','fx','fy','k1','k2','p1','p2']
         #overwrite the default with anything that was supplied
-        bounds_dict = DEF_PAR_BOUNDS
+        bounds_dict = default_bounds
         if par_bounds is not None :
             for name in par_bounds.keys() :
-                if name in DEF_PAR_BOUNDS.keys() :
+                if name in bounds_dict.keys() :
                     bounds_dict[name] = par_bounds[name]
                 else :
                     raise FittingError(f'Parameter "{name}"" in supplied dictionary of bounds not recognized!')
@@ -259,6 +269,36 @@ class WarpFitter :
         print(f'Will fit with {len(bounds_dict.keys())} parameters ({fixed_par_string[:-2]} fixed).')
         #return the ordered list of parameters
         return [bounds_dict[name] for name in parorder if name in bounds_dict.keys()]
+
+    #helper function to make the default list of parameter constraints
+    def __buildDefaultParameterBoundsDict(self,max_radial_warp,max_tangential_warp) :
+        bounds = {}
+        # cx/cy bounds are +/- 35% of the center point
+        bounds['cx']=(0.65*(self.n/2.),1.35*(self.n/2.))
+        bounds['cy']=(0.65*(self.m/2.),1.35*(self.m/2.))
+        # fx/fy bounds are +/- 2% of the nominal values 
+        bounds['fx']=(0.98*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
+        bounds['fy']=(0.98*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
+        # k1/k2 and p1/p2 bounds are twice those that would produce the max radial and tangential warp, respectively, with all others zero
+        maxk1 = self.__findDefaultParameterLimit(4,1,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
+        bounds['k1']=(-2.*maxk1,2.*maxk1)
+        maxk2 = self.__findDefaultParameterLimit(5,1000,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
+        bounds['k2']=(-2.*maxk2,2.*maxk2)
+        maxp1 = self.__findDefaultParameterLimit(6,0.01,max_tangential_warp,self.warpset.warp.maxTangentialDistortAmount)
+        bounds['p1']=(-2.*maxp1,2.*maxp1)
+        maxp2 = self.__findDefaultParameterLimit(7,0.001,max_tangential_warp,self.warpset.warp.maxTangentialDistortAmount)
+        bounds['p2']=(-2.*maxp2,2.*maxp2)
+        return bounds
+
+    #helper function to find the limit on a parameter that produces the maximum warp
+    def __findDefaultParameterLimit(self,parindex,parincrement,warplimit,warpamtfunc) :
+        testpars=[self.n/2,self.m/2,MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,0.,0.,0.,0.]
+        warpamt=0.; testparval=0.
+        while warpamt<warplimit :
+            testparval+=parincrement
+            testpars[parindex]=testparval
+            warpamt=warpamtfunc(testpars)
+        return testparval
 
     #helper function to make the constraints
     def __getConstraints(self,fix_k1k2,fix_p1p2,max_radial_warp,max_tangential_warp) :

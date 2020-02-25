@@ -1,6 +1,6 @@
 import dataclasses, matplotlib.pyplot as plt, numpy as np, uncertainties
 
-from .computeshift import computeshift, mse, shiftimg
+from computeshift import computeshift, mse, shiftimg
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Overlap:
