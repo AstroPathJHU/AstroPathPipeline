@@ -3,7 +3,7 @@
 import matplotlib.pyplot as plt, networkx as nx, numpy as np, scipy, uncertainties
 from more_itertools import pairwise
 
-def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), quantileforstats=0.99, verbose=True):
+def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), quantileforstats=0.99, verbose=True, stitchresult=None):
   dct = {
     1: (-1, -1),
     2: ( 0, -1),
@@ -37,7 +37,10 @@ def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), q
       if tags != tagsequence: continue
 
       if any(not np.all(o.result.covariance < 9998) for o in overlaps): continue
-      dxdys = [o.result.dxdy for o in overlaps]
+      if stitchresult is not None:
+        dxdys = [stitchresult.dx(o) for o in overlaps]
+      else:
+        dxdys = [o.result.dxdy for o in overlaps]
 
       dxs, dys = zip(*dxdys)
 

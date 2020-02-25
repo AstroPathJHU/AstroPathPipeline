@@ -62,7 +62,16 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
     [f(*r.x, dx=2, dy=0), f(*r.x, dx=1, dy=1)],
     [f(*r.x, dx=1, dy=1), f(*r.x, dx=0, dy=2)],
   ])
-  covariance = f(*r.x) * np.linalg.inv(hessian)
+
+  shifted = shiftimg(images, -r.x[0], -r.x[1], getaverage=False)
+  staterrorspline = statisticalerrorspline(shifted, nbins=20)
+  #cross correlation evaluated at 0
+  error_crosscorrelation = np.sqrt(np.sum(
+    (staterrorspline(shifted[0]) * shifted[1]) ** 2
+  + (shifted[0] * staterrorspline(shifted[1])) ** 2
+  ))
+
+  covariance = error_crosscorrelation * np.linalg.inv(hessian)
 
   dx, dy = unc.correlated_values(
     -r.x,
@@ -92,6 +101,19 @@ def crosscorrelation(images):
 @nb.njit
 def getcrosspower(fourier):
   return fourier[0] * np.conj(fourier[1])
+
+def statisticalerrorspline(images, nbins):
+  difference = images[0] - images[1]
+  average = (images[0]+images[1])/2
+  binboundaries = np.quantile(average, np.linspace(0, 1, nbins+1))
+  x = []
+  y = []
+  for low, high in more_itertools.pairwise(binboundaries):
+    slice = (low < average) & (average <= high)
+    if not np.any(slice): continue
+    x.append((low+high)/2)
+    y.append(mse(difference[slice])**.5)
+  return scipy.interpolate.UnivariateSpline(x, y)
 
 @nb.njit
 def mse(a):
