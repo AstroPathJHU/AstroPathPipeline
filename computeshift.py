@@ -2,7 +2,7 @@ import cv2, functools, logging, matplotlib.pyplot as plt, more_itertools, numba 
 
 logger = logging.getLogger("align")
 
-def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, showbigimage=False):
+def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, showbigimage=False, errorfactor=1):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -73,7 +73,7 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
 
   logger.info("%g %g %g", z[maxidx], error_crosscorrelation, error_crosscorrelation / z[maxidx])
 
-  covariance = error_crosscorrelation * np.linalg.inv(hessian)
+  covariance = error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
 
   exit = 0
 
