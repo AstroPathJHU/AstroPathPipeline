@@ -1,7 +1,7 @@
 #imports
 from warp import PolyFieldWarp, CameraWarp, WarpingError
 import numpy as np
-import os, copy
+import os, copy, logging
 
 class WarpSet :
     """
@@ -33,11 +33,12 @@ class WarpSet :
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
         rawfiles = list of raw, unwarped image filenames (optional, will use value from init if None)
         """
+        logger = logging.getLogger("warpfitter")
         if rawfiles is not None :
             self.raw_filenames=rawfiles
-        print("Loading raw images...")
+        logger.info("Loading raw images...")
         for i,rf in enumerate(self.raw_filenames,start=1) :
-            print(f"    loading {rf} ({i} of {len(self.raw_filenames)}) ...")
+            logger.info(f"    loading {rf} ({i} of {len(self.raw_filenames)}) ...")
             rawimage = self.warp.getHWLFromRaw(rf,self.nlayers)
             rfkey = rf.split(os.sep)[-1]
             if rfkey not in self.raw_images.keys() :
@@ -46,7 +47,7 @@ class WarpSet :
             for l in self.layers :
                 self.raw_images[rfkey][l]=copy.copy(rawimage[:,:,l])
                 self.warped_images[rfkey][l]=np.zeros_like(self.raw_images[rfkey][l])
-        print("Done.")
+        logger.info("Done.")
 
     def warpLoadedImageSet(self) :
         """

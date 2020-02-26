@@ -18,6 +18,13 @@ IMM_FILE_Y_SIZE='sizeY'
 IMM_FILE_Z_SIZE='sizeC'
 MICROSCOPE_OBJECTIVE_FOCAL_LENGTH=40000. # 20mm in pixels
 
+#set up the logger
+logger = logging.getLogger("warpfitter")
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
+logger.addHandler(handler)
+
 class FittingError(Exception) :
     """
     Class for errors encountered during fitting
@@ -111,7 +118,7 @@ class WarpFitter :
         #build the list of parameter bounds
         default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
         parameter_bounds = self.__getParameterBoundsList(par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2)
-        print(f'Floating parameter bounds = {parameter_bounds}')
+        logger.info(f'Floating parameter bounds = {parameter_bounds}')
         #get the list of constraints
         constraints = self.__getConstraints(fix_k1k2,fix_p1p2,max_radial_warp,max_tangential_warp)
         #get the list to use to mask fixed parameters in the minimization functions
@@ -121,7 +128,7 @@ class WarpFitter :
         #set the variable describing how often to print progress
         self.print_every = print_every
         #call differential_evolution
-        print('Starting minimization....')
+        logger.info('Starting minimization....')
         os.chdir(self.working_dir)
         try :
             result=scipy.optimize.differential_evolution(
@@ -133,14 +140,14 @@ class WarpFitter :
             raise FittingError('Something failed in the minimization!')
         finally :
             os.chdir(self.init_dir)
-        print(f'Minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations.')
+        logger.info(f'Minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations.')
         #make the fit progress plots
         self.__makeFitProgressPlots(show_plots)
         #use the fit result to make the best fit warp object and save the figure of its warp fields
         best_fit_pars = self.__correctParameterList(result.x)
         self.warpset.updateCameraParams(best_fit_pars)
         self.__best_fit_warp = copy.deepcopy(self.warpset.warp)
-        print(f'Best fit parameters:')
+        logger.info(f'Best fit parameters:')
         self.__best_fit_warp.printParams()
         os.chdir(self.working_dir)
         try :
@@ -178,10 +185,10 @@ class WarpFitter :
         self.max_tangential_warps.append(self.warpset.warp.maxTangentialDistortAmount(fixedpars))
         #print progress if requested
         if self.minfunc_calls%self.print_every==0 :
-            self.warpset.warp.printParams()
+            logger.info(self.warpset.warp.paramString())
             msg = f'  Call {self.minfunc_calls} cost={cost}'
             msg+=f' (radial warp={self.max_radial_warps[-1]:.02f}, tangential warp={self.max_tangential_warps[-1]:.02f})'
-            print(msg)
+            logger.info(msg)
         #return the cost from the alignment
         return cost
 
@@ -329,7 +336,7 @@ class WarpFitter :
         fixed_par_string=''
         for name in to_remove :
             fixed_par_string+=name+', '
-        print(f'Will fit with {len(bounds_dict.keys())} parameters ({fixed_par_string[:-2]} fixed).')
+        logger.info(f'Will fit with {len(bounds_dict.keys())} parameters ({fixed_par_string[:-2]} fixed).')
         #return the ordered list of parameters
         return [bounds_dict[name] for name in parorder if name in bounds_dict.keys()]
 
@@ -391,13 +398,13 @@ class WarpFitter :
             names_to_print.append(f'max tangential warp={max_tangential_warp} pixels')
         #print the information about the constraints
         if len(constraints)==0 :
-            print('No constraints will be applied')
+            logger.info('No constraints will be applied')
             return ()
         else :
             constraintstring = 'Will apply constraints: '
             for ntp in names_to_print :
                 constraintstring+=ntp+', '
-            print(constraintstring[:-2]+'.')
+            logger.info(constraintstring[:-2]+'.')
         #return the list of constraints
         if len(constraints)==1 : #if there's only one it doesn't get passed as a list
             return constraints[0]

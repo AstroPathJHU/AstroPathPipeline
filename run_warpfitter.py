@@ -1,7 +1,7 @@
 #imports 
 from warpfitter import WarpFitter
 from argparse import ArgumentParser
-import os
+import os, logging
 
 #################### PARSE ARGUMENTS ####################
 
@@ -69,14 +69,17 @@ if len(args.fixed)!=2*sum([fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2]) :
 
 #################### RUN THE WARPFITTER ####################
 
+logger = logging.getLogger("warpfitter")
 #make the WarpFitter Objects
+logger.info('Initializing WarpFitter')
 fitter = WarpFitter(args.sample,rawfile_dir,metafile_dir,args.working_dir,overlaps,args.layers)
 #load the raw files
+logger.info('Loading raw files')
 fitter.loadRawFiles()
 #fit the model to the data
+logger.info('Running doFit')
 result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,
                       max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
                       print_every=args.print_every)
-print('FINAL RESULT:')
-print(result)
+logger.info('All done')
 

@@ -467,17 +467,20 @@ class CameraWarp(Warp) :
 
     #################### VISUALIZATION FUNCTIONS ####################
 
-    def printParams(self) :
-        """
-        Print the current warp parameters in a nice string
-        """
+    def paramString(self) :
         parnames=['cx','cy','fx','fy','k1','k2','p1','p2','k3','k4','k5','k6']
         parvals=[self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.p1,self.p2,self.k3,self.k4,self.k5,self.k6]
         s=''
         for n,v in zip(parnames,parvals) :
             if v is not None :
                 s+=f'{n}={v:.3f}, '
-        print(s[:-2])
+        return s[:-2]
+
+    def printParams(self) :
+        """
+        Print the current warp parameters in a nice string
+        """
+        print(self.paramString())
 
     def showCheckerboard(self) :
         """
