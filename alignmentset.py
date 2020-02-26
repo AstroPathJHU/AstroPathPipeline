@@ -141,6 +141,9 @@ class AlignmentSet:
       if result is not None: 
         alignments.append(result)
         sum_mse+=result.mse[2]
+      else :
+        logger.warning(f'Overlap number {i} alignment result is "None"!')
+        sum_mse+=1e10
 
     writetable(aligncsv, alignments, retry=self.interactive)
 

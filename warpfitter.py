@@ -80,20 +80,24 @@ class WarpFitter :
         self.warpset.loadRawImageSet(self.rawfile_paths)
         self.warpset.warpLoadedImageSet()
         os.chdir(self.working_dir)
-        if not os.path.isdir(os.path.join(self.working_dir,self.samp_name)) :
+        if not os.path.isdir(self.samp_name) :
             os.mkdir(self.samp_name)
-        os.chdir(os.path.join(self.working_dir,self.samp_name))
-        self.warpset.writeOutWarpedImageSet()
-        os.chdir(self.init_dir)
+        os.chdir(self.samp_name)
+        try :
+            self.warpset.writeOutWarpedImageSet()
+        except Exception :
+            raise FittingError('Something went wrong in trying to write out the initial warped files!')
+        finally :
+            os.chdir(self.init_dir)
         self.alignset.getDAPI(filetype='camWarpDAPI')
 
-    def doFit(self,par_bounds=None,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=25.,max_tangential_warp=25.,print_every=1,show_plots=False) :
+    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=25.,max_tangential_warp=25.,par_bounds=None,print_every=1,show_plots=False) :
         """
         Fit the cameraWarp model to the loaded dataset
-        par_bounds  = dictionary of alternate parameter bounds for differential_evolution keyed by name ('cx','cy','fx','fy','k1','k2','p1','p2')
-                      can be some parameters or all, will just overwrite the defaults with those supplied
         fix_*       = set True to fix groups of parameters
         max_*_warp  = values to use for max warp amount constraints (set to -1 to remove constraints)
+        par_bounds  = dictionary of alternate parameter bounds for differential_evolution keyed by name ('cx','cy','fx','fy','k1','k2','p1','p2')
+                      can be some parameters or all, will just overwrite the defaults with those supplied
         print_every = print warp parameters and fit results at every [print_every] minimization function calls
         """
         #make the iteration counter and the lists of costs/warp amounts
@@ -107,6 +111,7 @@ class WarpFitter :
         #build the list of parameter bounds
         default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
         parameter_bounds = self.__getParameterBoundsList(par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2)
+        print(f'Floating parameter bounds = {parameter_bounds}')
         #get the list of constraints
         constraints = self.__getConstraints(fix_k1k2,fix_p1p2,max_radial_warp,max_tangential_warp)
         #get the list to use to mask fixed parameters in the minimization functions
@@ -116,6 +121,7 @@ class WarpFitter :
         #set the variable describing how often to print progress
         self.print_every = print_every
         #call differential_evolution
+        print('Starting minimization....')
         os.chdir(self.working_dir)
         try :
             result=scipy.optimize.differential_evolution(
@@ -127,9 +133,10 @@ class WarpFitter :
             raise FittingError('Something failed in the minimization!')
         finally :
             os.chdir(self.init_dir)
+        print('Minimization complete.')
         #make the plots if requested
         self.__makeFitProgressPlots(show_plots)
-        #return the fit results
+        #print fit result
         print(result)
 
     #################### FUNCTIONS FOR USE WITH MINIMIZATION ####################
@@ -203,7 +210,8 @@ class WarpFitter :
             raise FittingError('something went wrong while trying to save the fit progress plots!')
         finally :
             os.chdir(self.init_dir)
-        plt.show()
+        if show :
+            plt.show()
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -228,9 +236,13 @@ class WarpFitter :
         if not os.path.isdir(self.working_dir) :
             os.mkdir(self.working_dir)
         os.chdir(self.working_dir)
-        writetable(os.path.join(self.working_dir,self.samp_name+OVERLAP_FILE_EXT),olaps)
-        writetable(os.path.join(self.working_dir,self.samp_name+RECTANGLE_FILE_EXT),rects)
-        os.chdir(self.init_dir)
+        try :
+            writetable(self.samp_name+OVERLAP_FILE_EXT,olaps)
+            writetable(self.samp_name+RECTANGLE_FILE_EXT,rects)
+        except Exception :
+            raise FittingError('Something went wrong in trying to write the truncated overlap/rectangle files in the working directory!')
+        finally :
+            os.chdir(self.init_dir)
         return olaps, rects
 
     # helper function to return the (x,y) size of the images read from the .imm file 
