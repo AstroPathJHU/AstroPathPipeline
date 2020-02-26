@@ -2,7 +2,7 @@ import cv2, functools, logging, matplotlib.pyplot as plt, more_itertools, numba 
 
 logger = logging.getLogger("align")
 
-def computeshift(images, *, windowsize=10, smoothsigma=None, window=lambda images: hann(images), localmax_min_distance=20, localmax_threshold_rel=.5, localmax_windowsize=20, showsmallimage=False, showbigimage=False):
+def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, showbigimage=False, errorfactor=1):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -10,115 +10,97 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=lambda image
     images = skimage.filters.gaussian(images, sigma=smoothsigma, mode = 'nearest')
   if window is not None:
     images = window(images)
-  fourier = np.fft.fft2(images)
-  crosspower = getcrosspower(fourier)
-  invfourier = np.real(np.fft.ifft2(crosspower))
+
+  invfourier = crosscorrelation(images)
 
   y, x = np.mgrid[0:invfourier.shape[0],0:invfourier.shape[1]]
   z = invfourier
 
+  #roll to get the peak in the middle
   x = np.roll(x, x.shape[0]//2, axis=0)
   y = np.roll(y, y.shape[0]//2, axis=0)
   z = np.roll(z, z.shape[0]//2, axis=0)
   x = np.roll(x, x.shape[1]//2, axis=1)
   y = np.roll(y, y.shape[1]//2, axis=1)
   z = np.roll(z, z.shape[1]//2, axis=1)
-  #roll to get the peak in the middle
 
-  #estimate gaussian mean and center
-  labels = (
-      (x < localmax_windowsize//2)
-    | (x > invfourier.shape[1]-localmax_windowsize//2)
-  ) & (
-      (y < localmax_windowsize//2)
-    | (y > invfourier.shape[0]-localmax_windowsize//2)
+  #change coordinate system, so 0 is in the middle
+  x[x > x.shape[1]/2] -= x.shape[1]
+  y[y > y.shape[0]/2] -= y.shape[0]
+
+  maxidx = np.unravel_index(np.argmax(np.abs(z)), z.shape)
+
+  slc = (
+    slice(maxidx[0]-windowsize, maxidx[0]+windowsize),
+    slice(maxidx[1]-windowsize, maxidx[1]+windowsize),
   )
-  maxindices = skimage.feature.peak_local_max(z, min_distance=localmax_min_distance, threshold_rel=localmax_threshold_rel, labels=labels)
-  results = []
-  for maxidx in maxindices:
-    maxidx = tuple(maxidx)
-    try:
-      mux = x[maxidx]
-      muy = y[maxidx]
-      A = z[maxidx]
+  xx = x[slc]
+  yy = y[slc]
+  zz = z[slc]
 
-      #estimate gaussian width
-      bigpoints = np.argwhere(z>=np.max(z)/2)
-      distances = np.linalg.norm(bigpoints-maxidx, axis=1)
-      covxx = covyy = max(distances[distances <= windowsize * 2**.5])**2
-      covxy = 0.
+  if showbigimage: plt.imshow(z)
+  if showsmallimage: plt.imshow(zz)
 
-      p0 = unp.nominal_values(np.array([mux, muy, covxx, covyy, covxy, A]))
+  xx = np.ravel(xx)
+  yy = np.ravel(yy)
+  zz = np.ravel(zz)
 
-      slc = (
-        slice(maxidx[0]-windowsize, maxidx[0]+windowsize),
-        slice(maxidx[1]-windowsize, maxidx[1]+windowsize),
-      )
-      xx = x[slc]
-      yy = y[slc]
-      zz = z[slc]
+  knotsx = ()
+  knotsy = ()
+  spline = scipy.interpolate.LSQBivariateSpline(xx, yy, zz, knotsx, knotsy)
+  def f(*args, **kwargs): return spline(*args, **kwargs)[0,0]
 
-      if showbigimage: plt.imshow(z)
-      if showsmallimage: plt.imshow(zz)
+  r = scipy.optimize.minimize(
+    fun=lambda xy: -f(*xy),
+    x0=(x[maxidx], y[maxidx]),
+    jac=lambda xy: np.array([-f(*xy, dx=1), -f(*xy, dy=1)]),
+    bounds=((x[maxidx]-windowsize, x[maxidx]+windowsize), (y[maxidx]-windowsize, y[maxidx]+windowsize)),
+    method="TNC",
+  )
 
-      xx = np.ravel(xx)
-      yy = np.ravel(yy)
-      zz = np.ravel(zz)
+  hessian = -np.array([
+    [f(*r.x, dx=2, dy=0), f(*r.x, dx=1, dy=1)],
+    [f(*r.x, dx=1, dy=1), f(*r.x, dx=0, dy=2)],
+  ])
 
-      f = functools.partial(vectorizedperiodicdoublegaussian, shape=invfourier.shape)
+  shifted = shiftimg(images, -r.x[0], -r.x[1], getaverage=False)
+  staterrorspline = statisticalerrorspline(shifted, nbins=20)
+  #cross correlation evaluated at 0
+  error_crosscorrelation = np.sqrt(np.sum(
+    (staterrorspline(shifted[0]) * shifted[1]) ** 2
+  + (shifted[0] * staterrorspline(shifted[1])) ** 2
+  ))
 
-      xfit = np.array([xx, yy], order="F")
-      p, cov = scipy.optimize.curve_fit(
-        f,
-        xfit,
-        zz,
-        p0=p0,
-      )
-      mux, muy, covxx, covyy, covxy, A = unc.correlated_values(p, cov)
+  logger.info("%g %g %g", z[maxidx], error_crosscorrelation, error_crosscorrelation / z[maxidx])
 
-      logger.info("%s %s %s %s %s %s %d", mux, muy, covxx, covyy, covxy, A, windowsize)
+  covariance = error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
 
-      dx, dy = unc.correlated_values(
-        [-mux.n, -muy.n],
-        unc.covariance_matrix([mux, muy]) + np.array([[covxx.n, covxy.n], [covxy.n, covyy.n]]),
-      )
+  exit = 0
 
-      while dx.n >= invfourier.shape[1] / 2: dx -= invfourier.shape[1]
-      while dx.n < -invfourier.shape[1] / 2: dx += invfourier.shape[1]
-      while dy.n >= invfourier.shape[0] / 2: dy -= invfourier.shape[0]
-      while dy.n < -invfourier.shape[0] / 2: dy += invfourier.shape[0]
+  otherbigindices = skimage.feature.corner_peaks(z, min_distance=windowsize, threshold_abs=z[maxidx] - error_crosscorrelation)
+  for idx in otherbigindices:
+    if np.all(idx == maxidx): continue
+    displacement = idx - maxidx
+    dist = np.linalg.norm(displacement)
+    angle = np.arctan2(displacement[1], displacement[0])
+    rotationmatrix = np.array([[np.cos(angle), np.sin(angle)], [-np.sin(angle), np.cos(angle)]])
 
-      chi2 = sum((f(xfit, *p) - zz) ** 2)
+    covariance = rotationmatrix @ covariance @ rotationmatrix.T
+    covariance += [[dist**2, 0], [0, 0]]
+    covariance = rotationmatrix.T @ covariance @ rotationmatrix
+    exit = 1
 
-      results.append(OptimizeResult(
-        mux=mux,
-        muy=muy,
-        covxx=covxx,
-        covyy=covyy,
-        covxy=covxy,
-        A=A,
-        p0=p0,
-        dx=dx,
-        dy=dy,
-        chi2=chi2,
-      ))
-    except Exception as e:
-      dx, dy = unc.correlated_values([0, 0], [[9999, 0], [0, 9999]])
-      results.append(OptimizeResult(
-        exception=e,
-      ))
+  dx, dy = unc.correlated_values(
+    -r.x,
+    covariance
+  )
 
-  def resultevaluator(result):
-    if hasattr(result, "exception"): return "bad", 0
-    cov = unc.covariance_matrix([result.dx, result.dy])
-    if np.trace(cov) ** .5 >= sum(invfourier.shape): return "bad", 1
-    return "ok", -result.chi2
-
-  result = max(results, key=resultevaluator)
-  if hasattr(result, "exception"): raise result.exception
-  results.remove(result)
-  result.otherresults = results
-  return result
+  return OptimizeResult(
+    dx=dx,
+    dy=dy,
+    exit=exit,
+    spline=spline,
+  )
 
 @nb.njit
 def hann(images):
@@ -128,33 +110,28 @@ def hann(images):
   hann = np.outer(hannx, hanny)
   return images * hann
 
+def crosscorrelation(images):
+  fourier = np.fft.fft2(images)
+  crosspower = getcrosspower(fourier)
+  invfourier = np.real(np.fft.ifft2(crosspower))
+  return invfourier
+
 @nb.njit
 def getcrosspower(fourier):
   return fourier[0] * np.conj(fourier[1])
 
-@nb.njit
-def doublegaussian(x, mux, muy, invcov, A):
-    mu = np.array([mux, muy])
-    shifted = x - mu
-
-    return A * np.exp(-0.5 * shifted @ invcov @ shifted)
-
-@nb.njit
-def periodicdoublegaussian(x, mux, muy, invcov, A, shape):
-    result = 0
-    shape0, shape1 = shape
-    for i in -1, 0, 1:
-        for j in -1, 0, 1:
-            result += doublegaussian(x, mux+i*shape1, muy+j*shape0, invcov, A)
-    return result
-
-def vectorizedperiodicdoublegaussian(x, mux, muy, covxx, covyy, covxy, A, shape):
-    cov = np.array([[covxx, covxy], [covxy, covyy]])
-    invcov = np.linalg.inv(cov)
-
-    result = np.apply_along_axis(periodicdoublegaussian, 0, x, mux, muy, invcov, A, shape)
-
-    return result
+def statisticalerrorspline(images, nbins):
+  difference = images[0] - images[1]
+  average = (images[0]+images[1])/2
+  binboundaries = np.quantile(average, np.linspace(0, 1, nbins+1))
+  x = []
+  y = []
+  for low, high in more_itertools.pairwise(binboundaries):
+    slice = (low < average) & (average <= high)
+    if not np.any(slice): continue
+    x.append((low+high)/2)
+    y.append(mse(difference[slice])**.5)
+  return scipy.interpolate.UnivariateSpline(x, y)
 
 @nb.njit
 def mse(a):
