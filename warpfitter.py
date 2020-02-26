@@ -15,6 +15,7 @@ RAW_EXT='.raw'
 WARP_EXT='.camWarp_layer'
 IMM_FILE_X_SIZE='sizeX'
 IMM_FILE_Y_SIZE='sizeY'
+IMM_FILE_Z_SIZE='sizeC'
 MICROSCOPE_OBJECTIVE_FOCAL_LENGTH=40000. # 20mm in pixels
 
 class FittingError(Exception) :
@@ -27,7 +28,7 @@ class WarpFitter :
     """
     Main class for fitting a camera matrix and distortion parameters to a set of images based on the results of their alignment
     """
-    def __init__(self,samplename,rawfile_dir,metafile_dir,working_dir,overlaps=-1,warpset=None,warp=None,nlayers=35,layers=[1]) :
+    def __init__(self,samplename,rawfile_dir,metafile_dir,working_dir,overlaps=-1,layers=[1],warpset=None,warp=None) :
         """
         samplename   = name of the microscope data sample to fit to ("M21_1" or equivalent)
         rawfile_dir  = path to directory containing multilayered ".raw" files
@@ -35,10 +36,9 @@ class WarpFitter :
         working_dir  = path to some local directory to store files produced by the WarpFitter
         overlaps     = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
                        (default=-1 will use all overlaps)
+        layers       = list of image layer numbers (indexed starting at 1) to consider in the warping/alignment (default=[1])
         warpset      = WarpSet object to initialize with (optional, a new WarpSet will be created if None) 
         warp         = CameraWarp object whose optimal parameters will be determined (optional, if None a new one will be created)
-        nlayers      = # of layers in raw images (default=35)
-        layers       = list of image layer numbers (indexed starting at 1) to consider in the warping/alignment (default=[1])
         """
         #store the directory paths
         self.samp_name = samplename
@@ -51,7 +51,10 @@ class WarpFitter :
         #get the list of raw file paths
         self.rawfile_paths = [os.path.join(self.rawfile_dir,fn.replace(IM3_EXT,RAW_EXT)) for fn in [r.file for r in self.rectangles]]
         #get the size of the images in the sample
-        self.n, self.m = self.__getImageSizesFromImmFile()
+        self.n, self.m, self.nlayers = self.__getImageSizesFromImmFile()
+        for layer in layers :
+            if layer<1 or layer>self.nlayers :
+                raise FittingError(f'Choice of layers ({layers}) is not valid for images with {self.nlayers} layers!')
         #make the warpset object to use
         if warpset is not None :
             self.warpset = warpset
@@ -60,11 +63,13 @@ class WarpFitter :
                 msg = f'Warp object passed to WarpFitter is set to run on images of size ({warp.n},{warp.m}),'
                 msg+=f' not of size ({self.n},{self.m}) as specified by .imm files'
                 raise FittingError(msg)
-            self.warpset = WarpSet(warp=warp,rawfiles=self.rawfile_paths,nlayers=nlayers,layers=layers)
+            self.warpset = WarpSet(warp=warp,rawfiles=self.rawfile_paths,nlayers=self.nlayers,layers=layers)
         else :
-            self.warpset = WarpSet(n=self.n,m=self.m,rawfiles=self.rawfile_paths,nlayers=nlayers,layers=layers)
+            self.warpset = WarpSet(n=self.n,m=self.m,rawfiles=self.rawfile_paths,nlayers=self.nlayers,layers=layers)
         #make the alignmentset object to use
         self.alignset = self.__initializeAlignmentSet()
+        #the private variable that will hold the best-fit warp
+        self.__best_fit_warp = None
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -123,8 +128,7 @@ class WarpFitter :
         finally :
             os.chdir(self.init_dir)
         #make the plots if requested
-        if show_plots :
-            self.__showFitProgressPlots()
+        self.__makeFitProgressPlots(show_plots)
         #return the fit results
         print(result)
 
@@ -179,7 +183,7 @@ class WarpFitter :
     #################### VISUALIZATION FUNCTIONS ####################
 
     #function to plot the costs and warps over all the iterations of the fit
-    def __showFitProgressPlots(self) :
+    def __makeFitProgressPlots(self,show) :
         iters = np.linspace(0,len(self.costs),len(self.costs),endpoint=False)
         f,(ax1,ax2,ax3) = plt.subplots(1,3)
         f.set_size_inches(20.,5.)
@@ -192,6 +196,13 @@ class WarpFitter :
         ax3.plot(iters,self.max_tangential_warps)
         ax3.set_xlabel('iteration')
         ax3.set_ylabel('max tangential warp')
+        os.chdir(self.working_dir)
+        try :
+            plt.savefig('fit_progress.pdf')
+        except Exception :
+            raise FittingError('something went wrong while trying to save the fit progress plots!')
+        finally :
+            os.chdir(self.init_dir)
         plt.show()
 
     #################### PRIVATE HELPER FUNCTIONS ####################
@@ -229,7 +240,8 @@ class WarpFitter :
             lines=fp.readlines()
         n=int([line.rstrip().split()[1] for line in lines if line.rstrip().split()[0]==IMM_FILE_X_SIZE][0])
         m=int([line.rstrip().split()[1] for line in lines if line.rstrip().split()[0]==IMM_FILE_Y_SIZE][0])
-        return n,m
+        z=int([line.rstrip().split()[1] for line in lines if line.rstrip().split()[0]==IMM_FILE_Z_SIZE][0])
+        return n,m,z
 
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
     def __initializeAlignmentSet(self) :
