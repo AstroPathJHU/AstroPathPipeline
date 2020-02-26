@@ -24,6 +24,7 @@ def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), q
   overlapdict = nx.get_edge_attributes(g, "overlap")
 
   for o in overlaps:
+    if o.result.exit: continue
     if o.tag != tagsequence[-1]: continue
     for path in nx.algorithms.simple_paths.shortest_simple_paths(g, o.p2, o.p1):
       if len(path) < len(tagsequence): continue
