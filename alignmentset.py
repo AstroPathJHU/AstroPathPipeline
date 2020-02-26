@@ -138,9 +138,13 @@ class AlignmentSet:
       done.add((overlap.p1, overlap.p2))
       if result is not None: 
         alignments.append(result)
-        sum_mse+=result.mse[2]
+        if result.exit==0 :
+          sum_mse+=result.mse[2]
+        else :
+          logger.warning(f'WARNING: Overlap number {i} alignment result is invalid, adding 1e10 to sum_mse!!')
+          sum_mse+=1e10
       else :
-        logger.warning(f'Overlap number {i} alignment result is "None"!')
+        logger.warning(f'WARNING: Overlap number {i} alignment result is "None"!')
         sum_mse+=1e10
 
     writetable(aligncsv, alignments, retry=self.interactive)
