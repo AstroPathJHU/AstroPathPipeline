@@ -107,7 +107,7 @@ class AlignmentSet:
   def image(self):
     return cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
 
-  def align(self, maxpairs=float("inf"), chooseoverlaps=None):
+  def align(self, **kwargs):
     #if the raw images haven't already been loaded, load them with the default argument
     #if self.rawimages is None :
     #  self.getDAPI()
@@ -121,8 +121,6 @@ class AlignmentSet:
     done = set()
 
     for i, overlap in enumerate(self.overlaps, start=1):
-      if chooseoverlaps is not None and i not in chooseoverlaps: continue
-      if i > maxpairs: break
       logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
       p1image = [r.image for r in self.rectangles if r.n==overlap.p1]
       p2image = [r.image for r in self.rectangles if r.n==overlap.p2]
@@ -136,7 +134,7 @@ class AlignmentSet:
       if (overlap.p2, overlap.p1) in done:
         result = overlap.getinversealignment(self.overlapsdict[overlap.p2, overlap.p1])
       else:
-        result = overlap.align()
+        result = overlap.align(**kwargs)
       done.add((overlap.p1, overlap.p2))
       if result is not None: 
         alignments.append(result)

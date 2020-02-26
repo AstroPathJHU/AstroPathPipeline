@@ -19,7 +19,7 @@ class Overlap:
     self.nclip = nclip
     self.images = images
 
-  def align(self, **errorkwargs):
+  def align(self, *, debug=False, **computeshiftkwargs):
     self.result = AlignmentResult(
       n=self.n,
       p1=self.p1,
@@ -29,7 +29,7 @@ class Overlap:
     )
     try:
       self.__prepimage()
-      self.__computeshift(**errorkwargs)
+      self.__computeshift(**computeshiftkwargs)
       self.__shiftclip()
     except Exception as e:
       self.result.exit = 3
@@ -40,6 +40,7 @@ class Overlap:
       self.result.covyy = 9999.
       self.shifted = np.array([self.cutimages[0], self.cutimages[1], np.mean(self.cutimages, axis=0)])
       self.result.exception = e
+      if debug: raise
     else:
       self.result.exception = None
     return self.result
@@ -117,8 +118,8 @@ class Overlap:
       self.images[1][cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
     ])
 
-  def __computeshift(self, **errorkwargs):
-    minimizeresult = computeshift(self.cutimages, **errorkwargs)
+  def __computeshift(self, **computeshiftkwargs):
+    minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
     self.result.dxdy = minimizeresult.dx, minimizeresult.dy
 
   def __shiftclip(self):
