@@ -4,7 +4,7 @@ from alignmentset import AlignmentSet, Rectangle
 from overlap import Overlap
 from tableio import readtable,writetable
 import numpy as np, scipy, matplotlib.pyplot as plt
-import os, logging
+import os, logging, copy
 
 #global variables
 OVERLAP_FILE_EXT   = '_overlap.csv'
@@ -133,11 +133,27 @@ class WarpFitter :
             raise FittingError('Something failed in the minimization!')
         finally :
             os.chdir(self.init_dir)
-        print('Minimization complete.')
-        #make the plots if requested
+        print(f'Minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations.')
+        #make the fit progress plots
         self.__makeFitProgressPlots(show_plots)
-        #print fit result
-        print(result)
+        #use the fit result to make the best fit warp object and save the figure of its warp fields
+        best_fit_pars = self.__correctParameterList(result.x)
+        self.warpset.updateCameraParams(best_fit_pars)
+        self.__best_fit_warp = copy.deepcopy(self.warpset.warp)
+        print(f'Best fit parameters:')
+        self.__best_fit_warp.printParams()
+        os.chdir(self.working_dir)
+        try :
+            self.__best_fit_warp.makeWarpAmountFigure()
+            self.__best_fit_warp.writeParameterTextFile(self.par_mask)
+        except Exception :
+            raise FittingError('Something went wrong in trying to save the warping amount figure for the best-fit warp')
+        finally :
+            os.chdir(self.init_dir)
+        #write out the set of alignment comparison images
+        self.__makeBestFitAlignmentComparisonImages()
+        return result
+
 
     #################### FUNCTIONS FOR USE WITH MINIMIZATION ####################
 
@@ -147,7 +163,7 @@ class WarpFitter :
     def _evalCamWarpOnAlignmentSet(self,pars) :
         self.minfunc_calls+=1
         #first fix the parameter list so the warp functions always see vectors of the same length
-        fixedpars = self.__fixParameterList(pars)
+        fixedpars = self.__correctParameterList(pars)
         #update the warp with the new parameters
         self.warpset.updateCameraParams(fixedpars)
         #then warp the images
@@ -157,7 +173,7 @@ class WarpFitter :
         #align the images 
         cost = self.alignset.align()
         #add to the lists to plot
-        self.costs.append(cost)
+        self.costs.append(cost if cost<1e10 else -999)
         self.max_radial_warps.append(self.warpset.warp.maxRadialDistortAmount(fixedpars))
         self.max_tangential_warps.append(self.warpset.warp.maxTangentialDistortAmount(fixedpars))
         #print progress if requested
@@ -171,20 +187,20 @@ class WarpFitter :
 
     #call the warp's max radial distort amount function with the corrected parameters
     def _maxRadialDistortAmountForConstraint(self,pars) :
-        return self.warpset.warp.maxRadialDistortAmount(self.__fixParameterList(pars))
+        return self.warpset.warp.maxRadialDistortAmount(self.__correctParameterList(pars))
 
     #get the correctly-formatted Jacobian of the maximum radial distortion amount constraint 
     def _maxRadialDistortAmountJacobianForConstraint(self,pars) :
-        warpresult = np.array(self.warpset.warp.maxRadialDistortAmountJacobian(self.__fixParameterList(pars)))
+        warpresult = np.array(self.warpset.warp.maxRadialDistortAmountJacobian(self.__correctParameterList(pars)))
         return (warpresult[self.par_mask]).tolist()
 
     #call the warp's max tangential distort amount function with the corrected parameters
     def _maxTangentialDistortAmountForConstraint(self,pars) :
-        return self.warpset.warp.maxTangentialDistortAmount(self.__fixParameterList(pars))
+        return self.warpset.warp.maxTangentialDistortAmount(self.__correctParameterList(pars))
 
     #get the correctly-formatted Jacobian of the maximum tangential distortion amount constraint 
     def _maxTangentialDistortAmountJacobianForConstraint(self) :
-        warpresult = np.array(self.warpset.warp.maxTangentialDistortAmountJacobian(self.__fixParameterList(pars)))
+        warpresult = np.array(self.warpset.warp.maxTangentialDistortAmountJacobian(self.__correctParameterList(pars)))
         return (warpresult[self.par_mask]).tolist()
 
     #################### VISUALIZATION FUNCTIONS ####################
@@ -205,13 +221,36 @@ class WarpFitter :
         ax3.set_ylabel('max tangential warp')
         os.chdir(self.working_dir)
         try :
-            plt.savefig('fit_progress.pdf')
+            plt.savefig('fit_progress.png')
         except Exception :
             raise FittingError('something went wrong while trying to save the fit progress plots!')
         finally :
             os.chdir(self.init_dir)
         if show :
             plt.show()
+
+    #function to save alignment comparison visualizations in a new directory inside the working directory
+    def __makeBestFitAlignmentComparisonImages(self) :
+        #make sure the best fit warp exists (which means the warpset is updated with the best fit parameters)
+        if self.__best_fit_warp is None :
+            raise FittingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
+        self.warpset.warpLoadedImageSet()
+        #reload the (newly-warped) images into the alignment set
+        self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
+        #align the images 
+        bestcost = self.alignset.align()
+        #write out the overlap comparison figures
+        figure_dir_name = 'alignment_overlap_comparisons'
+        os.chdir(self.working_dir)
+        if not os.path.isdir(figure_dir_name) :
+            os.mkdir(figure_dir_name)
+        os.chdir(figure_dir_name)
+        try :
+            self.alignset.writeOverlapComparisonImages()
+        except Exception :
+            raise FittingError('Something went wrong while trying to write out the overlap comparison images')
+        finally :
+            os.chdir(self.init_dir)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -383,7 +422,7 @@ class WarpFitter :
         return mask
 
     #helper function to get a parameter list of the right length so the warp functions always see/return lists of the same length
-    def __fixParameterList(self,pars) :
+    def __correctParameterList(self,pars) :
         fixedlist = []; pi=0
         for i,p in enumerate(self.init_pars) :
             if self.par_mask[i] :
