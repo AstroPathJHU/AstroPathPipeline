@@ -81,6 +81,7 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
   return OptimizeResult(
     dx=dx,
     dy=dy,
+    exit=0,
     spline=spline,
   )
 

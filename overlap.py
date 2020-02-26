@@ -1,4 +1,4 @@
-import dataclasses, matplotlib.pyplot as plt, numpy as np, uncertainties
+import dataclasses, matplotlib.pyplot as plt, numpy as np, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 
@@ -33,11 +33,8 @@ class Overlap:
       self.__shiftclip()
     except Exception as e:
       self.result.exit = 3
-      self.result.dx = 0.
-      self.result.dy = 0.
+      self.result.dxdy = unc.ufloat(0, 9999), unc.ufloat(0, 9999)
       self.result.sc = 1.
-      self.result.covxx = 9999.
-      self.result.covyy = 9999.
       self.shifted = np.array([self.cutimages[0], self.cutimages[1], np.mean(self.cutimages, axis=0)])
       self.result.exception = e
       if debug: raise
@@ -121,6 +118,7 @@ class Overlap:
   def __computeshift(self, **computeshiftkwargs):
     minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
     self.result.dxdy = minimizeresult.dx, minimizeresult.dy
+    self.result.exit = minimizeresult.exit
 
   def __shiftclip(self):
     """
@@ -205,13 +203,13 @@ class AlignmentResult:
 
   @property
   def dxdy(self):
-    return uncertainties.correlated_values([self.dx, self.dy], self.covariance)
+    return unc.correlated_values([self.dx, self.dy], self.covariance)
 
   @dxdy.setter
   def dxdy(self, dxdy):
     self.dx = dxdy[0].n
     self.dy = dxdy[1].n
-    self.covariance = np.array(uncertainties.covariance_matrix(dxdy))
+    self.covariance = np.array(unc.covariance_matrix(dxdy))
 
   @property
   def isedge(self):
