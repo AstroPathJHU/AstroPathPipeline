@@ -351,16 +351,7 @@ class AlignmentSet:
 
     result = np.linalg.solve(2*A, -b)
 
-    onesigmaCL = scipy.stats.chi2.cdf(1, df=1)
-    solveresult = scipy.optimize.root_scalar(
-      f=lambda x: scipy.stats.chi2.cdf(x, df=size) - onesigmaCL,
-      fprime=lambda x: scipy.stats.chi2.pdf(x, df=size),
-      x0=size,
-      method="newton",
-    )
-    if not solveresult.converged:
-      raise ValueError(f"finding -2 delta ln L for 1sigma failed with flag {solveresult.flag}")
-    delta2nllfor1sigma = solveresult.root
+    delta2nllfor1sigma = 1
 
     covariancematrix = np.linalg.inv(A) * delta2nllfor1sigma
     result = np.array(uncertainties.correlated_values(result, covariancematrix))
