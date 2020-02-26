@@ -29,13 +29,13 @@ parser.add_argument('--overlaps',            default='-1',        type=split_csv
     help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
 parser.add_argument('--layers',              default='1',         type=split_csv_to_list_of_ints,         
     help='Comma-separated list of image layers to use')
-parser.add_argument('--fixed',                                    type=split_csv_to_list,         
+parser.add_argument('--fixed',               default='',          type=split_csv_to_list,         
     help='Comma-separated list of parameters to keep fixed during fitting')
 parser.add_argument('--max_radial_warp',     default=25.,         type=float,
     help='Maximum amount of radial warp to use for constraint')
 parser.add_argument('--max_tangential_warp', default=25.,         type=float,
     help='Maximum amount of radial warp to use for constraint')
-parser.add_argument('--print_every',         default=10,         type=int,
+parser.add_argument('--print_every',         default=10,          type=int,
     help='Maximum amount of radial warp to use for constraint')
 args = parser.parse_args()
 
@@ -64,7 +64,7 @@ fix_cxcy = 'cx' in args.fixed and 'cy' in args.fixed
 fix_fxfy = 'fx' in args.fixed and 'fy' in args.fixed
 fix_k1k2 = 'k1' in args.fixed and 'k2' in args.fixed
 fix_p1p2 = 'p1' in args.fixed and 'p2' in args.fixed
-if len(args.fixed)!=2*sum([fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2]) :
+if args.fixed!=[''] and len(args.fixed)!=2*sum([fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2]) :
     raise ValueError(f'Fixed parameters argument ({args.fixed}) does not result in a valid fixed parameter condition!')
 
 #################### RUN THE WARPFITTER ####################

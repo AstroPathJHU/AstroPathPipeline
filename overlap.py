@@ -160,8 +160,15 @@ class Overlap:
     fn = f'overlap_{self.result.n}_[{self.result.p1}x{self.result.p2},type{self.result.code},layer{self.result.layer:02d}]_shift_comparison.png'
     img_orig = self.getimage(normalize=1000.,shifted=False)
     img_shifted = self.getimage(normalize=1000.,shifted=True)
-    f,(ax1,ax2) = plt.subplots(2,1)
-    f.set_size_inches(20.,10.)
+    if self.result.code in [2,8] :
+      f,(ax1,ax2) = plt.subplots(2,1)
+      f.set_size_inches(20.,10.)
+    elif self.result.code in [1,3,7,9] :
+      f,(ax1,ax2) = plt.subplots(2,1)
+      f.set_size_inches(10.,10.)
+    elif self.result.code in [4,6] :
+      f,(ax1,ax2) = plt.subplots(1,2)
+      f.set_size_inches(10.,20.)
     ax1.imshow(img_orig)
     ax1.set_title('initial')
     ax2.imshow(img_shifted)
