@@ -467,17 +467,20 @@ class CameraWarp(Warp) :
 
     #################### VISUALIZATION FUNCTIONS ####################
 
-    def printParams(self) :
-        """
-        Print the current warp parameters in a nice string
-        """
+    def paramString(self) :
         parnames=['cx','cy','fx','fy','k1','k2','p1','p2','k3','k4','k5','k6']
         parvals=[self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.p1,self.p2,self.k3,self.k4,self.k5,self.k6]
         s=''
         for n,v in zip(parnames,parvals) :
             if v is not None :
                 s+=f'{n}={v:.3f}, '
-        print(s[:-2])
+        return s[:-2]
+
+    def printParams(self) :
+        """
+        Print the current warp parameters in a nice string
+        """
+        print(self.paramString())
 
     def showCheckerboard(self) :
         """
@@ -485,7 +488,7 @@ class CameraWarp(Warp) :
         """
         self._plotCheckerboards(self.getWarpedLayer(self._checkerboard))
 
-    def showWarpAmounts(self,npoints=50) :
+    def makeWarpAmountFigure(self,show=False,npoints=50) :
         max_x, max_y = self._getMaxDistanceCoords()
         xvals = np.linspace(0.,max_x,npoints)
         yvals = np.linspace(0.,max_y,npoints)
@@ -512,7 +515,42 @@ class CameraWarp(Warp) :
         thm=sns.heatmap(tan_heat_map,ax=ax3)
         ax3.scatter(self.cx,self.cy,marker='*',color='yellow')
         thm.set_title('tangential warp components',fontsize=14)
-        plt.show()
+        plt.savefig('warp_amounts.png')
+        if show :
+            plt.show()
+
+    def writeParameterTextFile(self,par_mask=None) :
+        fn = 'warping_parameters.txt'
+        max_r_x, max_r_y = self._getMaxDistanceCoords()
+        pars=[self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.p1,self.p2]
+        if par_mask==None :
+            par_mask=[True for p in pars]
+        to_write = {
+            'n':str(self.n),
+            'm':str(self.m),
+            'cx':str(self.cx)+('' if par_mask[0] else ' (fixed)'),
+            'cy':str(self.cy)+('' if par_mask[1] else ' (fixed)'),
+            'fx':str(self.fx)+('' if par_mask[2] else ' (fixed)'),
+            'fy':str(self.fy)+('' if par_mask[3] else ' (fixed)'),
+            'k1':str(self.k1)+('' if par_mask[4] else ' (fixed)'),
+            'k2':str(self.k2)+('' if par_mask[5] else ' (fixed)'),
+            'p1':str(self.p1)+('' if par_mask[6] else ' (fixed)'),
+            'p2':str(self.p2)+('' if par_mask[7] else ' (fixed)'),
+            'max_r_x_coord':str(max_r_x),
+            'max_r_y_coord':str(max_r_y),
+            'max_r':str(math.sqrt((max_r_x)**2+(max_r_y)**2)),
+            'max_radial_warp':str(self.maxRadialDistortAmount(pars)),
+            'max_tangential_warp':str(self.maxTangentialDistortAmount(pars)),
+        }
+        max_key_width = 0; max_value_width = 0
+        for k,v in to_write.items() :
+            if len(k)>max_key_width :
+                max_key_width=len(k)
+            if len(v)>max_value_width :
+                max_value_width=len(v)
+        with open(fn,'w') as fp :
+            for k,v in to_write.items() :
+                fp.write(f'{k:<{max_key_width+3}}{v:<{max_value_width}}\n')
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

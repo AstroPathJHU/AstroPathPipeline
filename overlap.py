@@ -1,6 +1,6 @@
 import dataclasses, matplotlib.pyplot as plt, numpy as np, uncertainties as unc
 
-from .computeshift import computeshift, mse, shiftimg
+from computeshift import computeshift, mse, shiftimg
 
 @dataclasses.dataclass(eq=False, repr=False)
 class Overlap:
@@ -141,19 +141,32 @@ class Overlap:
     diff = b1 - b2*self.result.sc
     self.result.mse = mse1, mse2, mse(diff)
 
-  def showimages(self, normalize=100., shifted=True):
+  def getimage(self,normalize=100.,shifted=True) :
     if shifted:
       red, green, _ = self.shifted
     else:
       red, green = self.cutimages
-
     blue = (red+green)/2
-
     img = np.array([red, green, blue]).transpose(1, 2, 0) / normalize
+    return img
 
+  def showimages(self, normalize=100., shifted=True):
+    img=self.getimage(normalize,shifted)
     plt.imshow(img)
     plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
     plt.show()
+
+  def writeShiftComparisonImages(self) :
+    fn = f'overlap_{self.result.n}_[{self.result.p1}x{self.result.p2},type{self.result.code},layer{self.result.layer:02d}]_shift_comparison.png'
+    img_orig = self.getimage(normalize=1000.,shifted=False)
+    img_shifted = self.getimage(normalize=1000.,shifted=True)
+    f,(ax1,ax2) = plt.subplots(2,1)
+    f.set_size_inches(20.,10.)
+    ax1.imshow(img_orig)
+    ax1.set_title('initial')
+    ax2.imshow(img_shifted)
+    ax2.set_title('warped and aligned')
+    plt.savefig(fn)
 
   @property
   def x1vec(self):

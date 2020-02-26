@@ -2,9 +2,9 @@
 
 import collections, cv2, dataclasses, logging, methodtools, numpy as np, os, scipy, typing, uncertainties, uncertainties.unumpy as unp
 
-from .flatfield import meanimage
-from .overlap import Overlap
-from .tableio import readtable, writetable
+from flatfield import meanimage
+from overlap import Overlap
+from tableio import readtable, writetable
 
 logger = logging.getLogger("align")
 logger.setLevel(logging.DEBUG)
@@ -127,7 +127,14 @@ class AlignmentSet:
       done.add((overlap.p1, overlap.p2))
       if result is not None: 
         alignments.append(result)
-        sum_mse+=result.mse[2]
+        if result.exit==0 :
+          sum_mse+=result.mse[2]
+        else :
+          logger.warning(f'WARNING: Overlap number {i} alignment result is invalid, adding 1e10 to sum_mse!!')
+          sum_mse+=1e10
+      else :
+        logger.warning(f'WARNING: Overlap number {i} alignment result is "None"!')
+        sum_mse+=1e10
 
     writetable(aligncsv, alignments, retry=self.interactive)
 
@@ -175,6 +182,13 @@ class AlignmentSet:
       if imgdictfn in warped_image_filenames :
         #np.copyto(r.image,imgdict[imgdictfn][self.layer] / self.meanimage.flatfield,casting='no')
         np.copyto(r.image,imgdict[imgdictfn][self.layer],casting='no') #question for Alex: applying meanimage?
+
+  def writeOverlapComparisonImages(self) :
+    """
+    Write out a figure for each overlap showing comparisons between the original and shifted images
+    """
+    for o in self.overlaps :
+      o.writeShiftComparisonImages()
 
   def __getrawlayers(self, filetype, keep=False):
     logger.info(self.samp)
