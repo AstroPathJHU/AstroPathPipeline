@@ -1,5 +1,5 @@
 #imports 
-from warpfitter import WarpFitter
+from .warpfitter import WarpFitter
 from argparse import ArgumentParser
 import os, logging
 
