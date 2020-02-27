@@ -115,6 +115,7 @@ class WarpFitter :
         #silence the AlignmentSet logger
         logger = logging.getLogger('align')
         logger.setLevel(logging.WARN)
+        logger = logging.getLogger('warpfitter')
         #build the list of parameter bounds
         default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
         parameter_bounds = self.__getParameterBoundsList(par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2)
