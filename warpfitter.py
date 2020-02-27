@@ -206,7 +206,7 @@ class WarpFitter :
         return self.warpset.warp.maxTangentialDistortAmount(self.__correctParameterList(pars))
 
     #get the correctly-formatted Jacobian of the maximum tangential distortion amount constraint 
-    def _maxTangentialDistortAmountJacobianForConstraint(self) :
+    def _maxTangentialDistortAmountJacobianForConstraint(self,pars) :
         warpresult = np.array(self.warpset.warp.maxTangentialDistortAmountJacobian(self.__correctParameterList(pars)))
         return (warpresult[self.par_mask]).tolist()
 

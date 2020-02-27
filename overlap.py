@@ -27,8 +27,8 @@ class Overlap:
       code=self.tag,
       layer=self.layer,
     )
+    self.__prepimage()
     try:
-      self.__prepimage()
       self.__computeshift(**computeshiftkwargs)
       self.__shiftclip()
     except Exception as e:
