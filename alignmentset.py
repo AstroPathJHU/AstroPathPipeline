@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import collections, cv2, dataclasses, logging, methodtools, numpy as np, os, scipy, typing, uncertainties, uncertainties.unumpy as unp
+import collections, cv2, dataclasses, itertools, logging, methodtools, numpy as np, os, scipy, typing, uncertainties as unc, uncertainties.unumpy as unp
 
 from .flatfield import meanimage
 from .overlap import Overlap
@@ -249,6 +249,12 @@ class AlignmentSet:
       for o in self.overlaps:
         o.stitchresult = result.dx(o)
 
+      result.writetable(
+        os.path.join(self.dbload, self.samp+"_stitch.csv"),
+        os.path.join(self.dbload, self.samp+"_stitch_covariance.csv"),
+        retry=self.interactive,
+      )
+
     return result
 
   def __stitch(self, *, scaleby=1, scalejittererror=1, scaleoverlaperror=1):
@@ -370,7 +376,7 @@ class AlignmentSet:
     delta2nllfor1sigma = 1
 
     covariancematrix = np.linalg.inv(A) * delta2nllfor1sigma
-    result = np.array(uncertainties.correlated_values(result, covariancematrix))
+    result = np.array(unc.correlated_values(result, covariancematrix))
 
     x = result[:-4].reshape(len(self.rectangles), 2) * scaleby
     T = result[-4:].reshape(2, 2)
@@ -510,6 +516,69 @@ class StitchResultBase:
 
   def dx(self, overlap):
     return self.x(overlap.p1) - self.x(overlap.p2) - (overlap.x1vec - overlap.x2vec)
+
+  def writetable(self, filename, covariancefilename, **kwargs):
+    n = 0
+    rows = []
+    for rectangleid in self.__rectangledict:
+      for coordinate, position in enumerate(self.x(rectangleid)):
+        n += 1
+        rows.append(
+          StitchCoordinate(
+            n=n,
+            rectangle=rectangleid,
+            coordinate=coordinate,
+            position=position,
+          )
+        )
+    i = 0
+    for i, Tii in enumerate(np.ravel(self.T)):
+      n+=1
+      rows.append(
+        StitchCoordinate(
+          n=n,
+          rectangle=-99,
+          coordinate=i,
+          position=Tii,
+        )
+      )
+    writetable(filename, rows, **kwargs)
+
+    n = 0
+    covrows = []
+    for row1, row2 in itertools.combinations_with_replacement(rows, 2):
+      n += 1
+      covrows.append(
+        StitchCovarianceEntry(
+          n=n,
+          coordinate1=row1.n,
+          coordinate2=row2.n,
+          covariance=unc.covariance_matrix([row1.positionwithuncertainty, row2.positionwithuncertainty])[0][1],
+        )
+      )
+    writetable(covariancefilename, covrows, **kwargs)
+
+@dataclasses.dataclass
+class StitchCoordinate:
+  n: int
+  rectangle: int  #rectangle = -99: T matrix
+  coordinate: int #for a rectangle: 0=x, 1=y
+                  #for T matrix: 0=xx, 1=xy, 2=yx, 3=yy
+  position: float
+
+  def __init__(self, n, rectangle, coordinate, position):
+    self.n = n
+    self.rectangle = rectangle
+    self.coordinate = coordinate
+    self.positionwithuncertainty = position
+    self.position = unc.nominal_value(position)
+
+@dataclasses.dataclass
+class StitchCovarianceEntry:
+  n: int
+  coordinate1: int
+  coordinate2: int
+  covariance: float
 
 class StitchResult(StitchResultBase):
   def __init__(self, x, T, rectangledict, A, b, c):
