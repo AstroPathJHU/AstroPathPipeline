@@ -89,7 +89,9 @@ class AlignmentSet:
     self.rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
     self.overlaps = [o for o in self.overlaps if self.overlapfilter(o)]
 
-    self.overlapsdict = {(o.p1, o.p2): o for o in self.overlaps}
+  @property
+  def overlapsdict(self):
+    return {(o.p1, o.p2): o for o in self.overlaps}
 
   @property
   @methodtools.lru_cache()
