@@ -18,6 +18,7 @@ class Overlap:
     self.pscale = pscale
     self.nclip = nclip
     self.images = images
+    self.cutimages = None
 
   def align(self, *, debug=False, **computeshiftkwargs):
     self.result = AlignmentResult(
@@ -96,24 +97,13 @@ class Overlap:
     cutimage2y1 = overlapy1 - image2y1 + self.nclip
     cutimage2y2 = overlapy2 - image2y1 - self.nclip
 
-    #self.cutimages = np.array([
-    #  self.images[0][cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
-    #  self.images[1][cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
-    #])
+    if self.cutimages is None:
+      self.cutimages = np.ndarray(shape=(2, cutimage1y2-cutimage1y1, cutimage1x2-cutimage1x1))
 
-    try :
-      if self.cutimages is None :
-        pass
-    except AttributeError :
-      self.cutimages = np.zeros_like(np.array([
+      np.copyto(self.cutimages,[
         self.images[0][cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
         self.images[1][cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
-      ]))
-
-    np.copyto(self.cutimages,[
-      self.images[0][cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
-      self.images[1][cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
-    ])
+      ])
 
   def __computeshift(self, **computeshiftkwargs):
     minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
