@@ -2,9 +2,9 @@
 
 import collections, cv2, dataclasses, logging, methodtools, numpy as np, os, scipy, typing, uncertainties, uncertainties.unumpy as unp
 
-from flatfield import meanimage
-from overlap import Overlap
-from tableio import readtable, writetable
+from .flatfield import meanimage
+from .overlap import Overlap
+from .tableio import readtable, writetable
 
 logger = logging.getLogger("align")
 logger.setLevel(logging.DEBUG)
@@ -37,19 +37,8 @@ class AlignmentSet:
     self.samp = samp
     self.interactive = interactive
 
-    if selectrectangles is None:
-      self.rectanglefilter = lambda r: True
-    elif isinstance(selectrectangles, collections.abc.Container):
-      self.rectanglefilter = lambda r: r.n in selectrectangles
-    else:
-      self.rectanglefilter = selectrectangles
-
-    if selectoverlaps is None:
-      overlapfilter = lambda o: True
-    elif isinstance(selectoverlaps, collections.abc.Container):
-      overlapfilter = lambda o: o.n in selectoverlaps
-    else:
-      overlapfilter = selectoverlaps
+    self.rectanglefilter = rectangleoroverlapfilter(selectrectangles)
+    overlapfilter = rectangleoroverlapfilter(selectoverlaps)
     self.overlapfilter = lambda o: overlapfilter(o) and o.p1 in self.rectangleindices() and o.p2 in self.rectangleindices()
 
     if not os.path.exists(os.path.join(self.root1, self.samp)):
@@ -260,7 +249,7 @@ class AlignmentSet:
 
     return result
 
-  def __stitch(self, *, scaleby=1, getcovariance=True, geterror=True, scalejittererror=1, scaleoverlaperror=1):
+  def __stitch(self, *, scaleby=1, scalejittererror=1, scaleoverlaperror=1):
     """
     \begin{align}
     -2 \ln L =&
@@ -376,25 +365,10 @@ class AlignmentSet:
 
     result = np.linalg.solve(2*A, -b)
 
-    if getcovariance or geterror:
-      onesigmaCL = scipy.stats.chi2.cdf(1, df=1)
-      solveresult = scipy.optimize.root_scalar(
-        f=lambda x: scipy.stats.chi2.cdf(x, df=size) - onesigmaCL,
-        fprime=lambda x: scipy.stats.chi2.pdf(x, df=size),
-        x0=size,
-        method="newton",
-      )
-      if not solveresult.converged:
-        raise ValueError(f"finding -2 delta ln L for 1sigma failed with flag {solveresult.flag}")
-      delta2nllfor1sigma = solveresult.root
+    delta2nllfor1sigma = 1
 
-    if getcovariance:
-      covariancematrix = np.linalg.inv(A) * delta2nllfor1sigma
-      result = np.array(uncertainties.correlated_values(result, covariancematrix))
-
-    elif geterror:  #less computationally intensive, don't need to invert big matrix
-      errorvector = (np.diag(A) * delta2nllfor1sigma) ** -0.5
-      result = unp.uarray(result, errorvector)
+    covariancematrix = np.linalg.inv(A) * delta2nllfor1sigma
+    result = np.array(uncertainties.correlated_values(result, covariancematrix))
 
     x = result[:-4].reshape(len(self.rectangles), 2) * scaleby
     T = result[-4:].reshape(2, 2)
@@ -469,6 +443,24 @@ class AlignmentSet:
     rectangledict = {rectangle.n: i for i, rectangle in enumerate(self.rectangles)}
     return StitchResultCvxpy(x=x, T=T, problem=prob, rectangledict=rectangledict)
 
+  def subset(self, *, selectrectangles=None, selectoverlaps=None):
+    rectanglefilter = rectangleoroverlapfilter(selectrectangles)
+    overlapfilter = rectangleoroverlapfilter(selectoverlaps)
+
+    result = AlignmentSet(
+      self.root1, self.root2, self.samp,
+      interactive=self.interactive,
+      selectrectangles=lambda r: self.rectanglefilter(r) and rectanglefilter(r),
+      selectoverlaps=lambda o: self.overlapfilter(o) and overlapfilter(o),
+    )
+    for i, rectangle in enumerate(result.rectangles):
+      result.rectangles[i] = [r for r in self.rectangles if r.n == rectangle.n][0]
+    result.meanimage = self.meanimage
+    result.images = self.images
+    for i, overlap in enumerate(result.overlaps):
+      result.overlaps[i] = [o for o in self.overlaps if o.n == overlap.n][0]
+    return result
+
 @dataclasses.dataclass
 class Rectangle:
   n: int
@@ -494,6 +486,14 @@ class ImageStats:
   std: float
   cx: int
   cy: int
+
+def rectangleoroverlapfilter(selection):
+  if selection is None:
+    return lambda r: True
+  elif isinstance(selection, collections.abc.Container):
+    return lambda r: r.n in selection
+  else:
+    return selection
 
 class StitchResultBase:
   def __init__(self, x, T, rectangledict):

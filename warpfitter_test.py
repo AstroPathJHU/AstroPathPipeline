@@ -1,5 +1,5 @@
 #imports
-from warpfitter import WarpFitter
+from .warpfitter import WarpFitter
 import os
 
 #details of the sample and overlaps to use

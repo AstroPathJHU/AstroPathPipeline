@@ -1,5 +1,5 @@
 #imports
-from warp import PolyFieldWarp, CameraWarp, WarpingError
+from .warp import PolyFieldWarp, CameraWarp, WarpingError
 import numpy as np
 import os, copy, logging
 

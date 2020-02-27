@@ -1,8 +1,8 @@
 #imports
-from warpset import WarpSet
-from alignmentset import AlignmentSet, Rectangle
-from overlap import Overlap
-from tableio import readtable,writetable
+from .warpset import WarpSet
+from .alignmentset import AlignmentSet, Rectangle
+from .overlap import Overlap
+from .tableio import readtable,writetable
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, logging, copy
 
