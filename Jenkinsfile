@@ -19,7 +19,7 @@ pipeline {
                             trackingSubmodules: false
                         ]], 
                         submoduleCfg: [], 
-                        userRemoteConfigs: [[credentialsId: 'astropath-github', url: 'git@github.com:astropathjhu/microscopealignment']]
+                        userRemoteConfigs: [[credentialsId: 'astropath-github', url: 'https://github.com/astropathjhu/microscopealignment']]
                     ]
                 )
             }
