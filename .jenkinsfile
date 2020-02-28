@@ -1,0 +1,35 @@
+pipeline {
+  agent {
+    docker { image 'circleci/python:3.7.6-buster' }
+  }
+
+  environment {
+    TEST_DATA_REPONAME = "alignmentjenkinsdata"
+    TEST_DATA_REPO = "git@github.com:astropathjhu/${TEST_DATA_REPONAME}"
+    TEST_DATA_COMMIT = "ff899302017f39d29153ab7cb00962cb07cbb6b7"
+  }
+
+  stages {
+    stage('get test data') {
+      steps {
+
+        checkout([
+          $class: 'GitSCM',
+          branches: [[name: '**']],
+          doGenerateSubmoduleConfigurations: false,
+          extensions: [[
+            $class: 'RelativeTargetDirectory',
+            relativeTargetDir: 'data'
+          ]],
+          submoduleCfg: [],
+          userRemoteConfigs: [[
+            credentialsId: 'astropath-github-password',
+            url: 'https://github.com/astropathjhu/alignmentjenkinsdata'
+          ]]
+        ])
+
+        sh "cd data && git checkout ${TEST_DATA_COMMIT}"
+      }
+    }
+  }
+}
