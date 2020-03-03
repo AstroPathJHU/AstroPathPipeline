@@ -264,7 +264,7 @@ class CameraWarp(Warp) :
     """
     Subclass for applying warping to images based on a camera matrix and distortion parameters
     """
-    def __init__(self,n=1344,m=1004,cx=672.5,cy=502.,fx=40000.,fy=40000.,k1=0.,k2=0.,p1=0.,p2=0.,k3=None,k4=None,k5=None,k6=None) :
+    def __init__(self,n=1344,m=1004,cx=None,cy=None,fx=40000.,fy=40000.,k1=0.,k2=0.,p1=0.,p2=0.,k3=None,k4=None,k5=None,k6=None) :
         """
         Initialize a camera matrix and vector of distortion parameters for a camera warp transformation
         See https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html for explanations of parameters/functions
@@ -278,7 +278,15 @@ class CameraWarp(Warp) :
         p1, p2     = tangential distortion parameters
         """
         super().__init__(n,m)
-        self.cx=cx; self.cy=cy; self.fx=fx; self.fy=fy
+        if cx is None :
+            self.cx=n/2.
+        else :
+            self.cx=cx
+        if cy is None :
+            self.cy=m/2.
+        else :
+            self.cy=cy
+        self.fx=fx; self.fy=fy
         self.k1=k1; self.k2=k2
         self.p1=p1; self.p2=p2
         self.k3=k3
