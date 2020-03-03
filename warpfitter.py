@@ -179,7 +179,7 @@ class WarpFitter :
         #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
         #align the images 
-        cost = self.alignset.align()
+        cost = self.alignset.align(write_result=False,return_on_invalid_result=True)
         #add to the lists to plot
         self.costs.append(cost if cost<1e10 else -999)
         self.max_radial_warps.append(self.warpset.warp.maxRadialDistortAmount(fixedpars))
