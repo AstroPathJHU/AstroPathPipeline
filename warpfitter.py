@@ -4,7 +4,7 @@ from .alignmentset import AlignmentSet, Rectangle
 from .overlap import Overlap
 from .tableio import readtable,writetable
 import numpy as np, scipy, matplotlib.pyplot as plt
-import os, logging, copy
+import os, logging, copy, shutil
 
 #global variables
 OVERLAP_FILE_EXT   = '_overlap.csv'
@@ -77,6 +77,19 @@ class WarpFitter :
         self.alignset = self.__initializeAlignmentSet()
         #the private variable that will hold the best-fit warp
         self.__best_fit_warp = None
+
+    #remove the placeholder files when the object is being deleted
+    def __del__(self) :
+        os.chdir(self.working_dir)
+        if not os.path.isdir(self.samp_name) :
+            os.chdir(self.init_dir)
+            return
+        try :
+            shutil.rmtree(self.samp_name)
+        except Exception :
+            raise FittingError('Something went wrong in trying to remove the directory of initially-warped files!')
+        finally :
+            os.chdir(self.init_dir)
 
     #################### PUBLIC FUNCTIONS ####################
 
