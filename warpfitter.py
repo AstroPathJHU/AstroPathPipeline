@@ -337,7 +337,12 @@ class WarpFitter :
         fixed_par_string=''
         for name in to_remove :
             fixed_par_string+=name+', '
-        logger.info(f'Will fit with {len(bounds_dict.keys())} parameters ({fixed_par_string[:-2]} fixed).')
+        msg = f'Will fit with {len(bounds_dict.keys())} parameters'
+        if to_remove!=[] :
+            msg+=f' ({fixed_par_string[:-2]} fixed).'
+        else :
+            msg+='.'
+        logger.info(msg)
         #return the ordered list of parameters
         return [bounds_dict[name] for name in parorder if name in bounds_dict.keys()]
 
