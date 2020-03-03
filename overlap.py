@@ -172,7 +172,7 @@ class Overlap:
   def x2vec(self):
     return np.array([self.x2, self.y2])
 
-@dataclasses.dataclass(eq=False)
+@dataclasses.dataclass()
 class AlignmentResult:
   n: int
   p1: int
