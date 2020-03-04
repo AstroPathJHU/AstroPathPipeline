@@ -146,24 +146,13 @@ class Overlap:
     plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
     plt.show()
 
-  def writeShiftComparisonImages(self) :
-    fn = f'overlap_{self.result.n}_[{self.result.p1}x{self.result.p2},type{self.result.code},layer{self.result.layer:02d}]_shift_comparison.png'
+  def getShiftComparisonImageCodeNameTuple(self) :
+    return (self.result.code,f'overlap_{self.result.n}_[{self.result.p1}x{self.result.p2},type{self.result.code},layer{self.result.layer:02d}]_shift_comparison.png')
+
+  def getShiftComparisonImages(self) :
     img_orig = self.getimage(normalize=1000.,shifted=False)
     img_shifted = self.getimage(normalize=1000.,shifted=True)
-    if self.result.code in [2,8] :
-      f,(ax1,ax2) = plt.subplots(2,1)
-      f.set_size_inches(20.,10.)
-    elif self.result.code in [1,3,7,9] :
-      f,(ax1,ax2) = plt.subplots(2,1)
-      f.set_size_inches(10.,10.)
-    elif self.result.code in [4,6] :
-      f,(ax1,ax2) = plt.subplots(1,2)
-      f.set_size_inches(10.,20.)
-    ax1.imshow(img_orig)
-    ax1.set_title('initial')
-    ax2.imshow(img_shifted)
-    ax2.set_title('warped and aligned')
-    plt.savefig(fn)
+    return (img_orig,img_shifted)
 
   @property
   def x1vec(self):

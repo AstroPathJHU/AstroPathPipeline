@@ -194,12 +194,14 @@ class AlignmentSet:
         #np.copyto(r.image,imgdict[imgdictfn][self.layer] / self.meanimage.flatfield,casting='no')
         np.copyto(r.image,imgdict[imgdictfn][self.layer],casting='no') #question for Alex: applying meanimage?
 
-  def writeOverlapComparisonImages(self) :
+  def getOverlapComparisonImagesDict(self) :
     """
     Write out a figure for each overlap showing comparisons between the original and shifted images
     """
+    overlap_shift_comparisons = {}
     for o in self.overlaps :
-      o.writeShiftComparisonImages()
+      overlap_shift_comparisons[o.getShiftComparisonImageCodeNameTuple()]=o.getShiftComparisonImages()
+    return overlap_shift_comparisons
 
   def __getrawlayers(self, filetype, keep=False):
     logger.info(self.samp)

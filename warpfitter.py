@@ -80,6 +80,7 @@ class WarpFitter :
 
     #remove the placeholder files when the object is being deleted
     def __del__(self) :
+        logger.info('Removing copied raw layer files....')
         os.chdir(self.working_dir)
         if not os.path.isdir(self.samp_name) :
             os.chdir(self.init_dir)
@@ -184,7 +185,7 @@ class WarpFitter :
         msg+=f'due to compliance with {term_conds[result.status]} criteria.'
         logger.info(msg)
         #make the fit progress plots
-        self.__makeFitProgressPlots(firstresult.nfev,show_plots)
+        #self.__makeFitProgressPlots(firstresult.nfev,show_plots)
         #use the fit result to make the best fit warp object and save the figure of its warp fields
         best_fit_pars = self.__correctParameterList(result.x)
         self.warpset.updateCameraParams(best_fit_pars)
@@ -290,14 +291,20 @@ class WarpFitter :
 
     #function to save alignment comparison visualizations in a new directory inside the working directory
     def __makeBestFitAlignmentComparisonImages(self) :
+        logger.info('writing out warping/alignment comparison images')
         #make sure the best fit warp exists (which means the warpset is updated with the best fit parameters)
         if self.__best_fit_warp is None :
             raise FittingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
+        #start by aligning the raw, unwarped images and getting their shift comparison information/images
+        self.alignset.updateRectangleImages(self.warpset.raw_images,'.raw')
+        rawcost = self.alignset.align()
+        raw_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
+        #next warp and align the images with the best fit warp
         self.warpset.warpLoadedImageSet()
-        #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
-        #align the images 
         bestcost = self.alignset.align()
+        warped_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
+        logger.info(f'Alignment cost from raw images = {rawcost:.02f}; alignment cost from warped images = {bestcost:.02f}')
         #write out the overlap comparison figures
         figure_dir_name = 'alignment_overlap_comparisons'
         os.chdir(self.working_dir)
@@ -305,7 +312,31 @@ class WarpFitter :
             os.mkdir(figure_dir_name)
         os.chdir(figure_dir_name)
         try :
-            self.alignset.writeOverlapComparisonImages()
+            for overlap_identifier in raw_overlap_comparisons_dict.keys() :
+                code = overlap_identifier[0]
+                fn   = overlap_identifier[1]
+                pix_to_in = 20./self.n
+                if code in [2,8] :
+                    f,(ax1,ax2,ax3,ax4) = plt.subplots(4,1,sharex=True)
+                    f.set_size_inches(self.n*pix_to_in,4.*0.2*self.m*pix_to_in)
+                    order = [ax1,ax3,ax2,ax4]
+                elif code in [1,3,7,9] :
+                    f,ax = plt.subplots(2,2)
+                    f.set_size_inches(2.*0.2*self.n*pix_to_in,2*0.2*self.m*pix_to_in)
+                    order = [ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
+                elif code in [4,6] :
+                    f,(ax1,ax2,ax3,ax4) = plt.subplots(1,4,sharey=True)
+                    f.set_size_inches(4.*0.2*self.n*pix_to_in,self.m*pix_to_in)
+                    order=[ax1,ax3,ax2,ax4]
+                order[0].imshow(raw_overlap_comparisons_dict[overlap_identifier][0])
+                order[0].set_title('raw overlap images')
+                order[1].imshow(raw_overlap_comparisons_dict[overlap_identifier][1])
+                order[1].set_title('raw overlap images aligned')
+                order[2].imshow(warped_overlap_comparisons_dict[overlap_identifier][0])
+                order[2].set_title('warped overlap images')
+                order[3].imshow(warped_overlap_comparisons_dict[overlap_identifier][1])
+                order[3].set_title('warped overlap images aligned')
+                plt.savefig(fn)
         except Exception :
             raise FittingError('Something went wrong while trying to write out the overlap comparison images')
         finally :
