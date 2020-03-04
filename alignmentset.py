@@ -113,15 +113,6 @@ class AlignmentSet:
 
     for i, overlap in enumerate(self.overlaps, start=1):
       logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
-      p1image = [r.image for r in self.rectangles if r.n==overlap.p1]
-      p2image = [r.image for r in self.rectangles if r.n==overlap.p2]
-      try :
-        overlap_images = p1image[0], p2image[0]
-      except IndexError :
-        errormsg=f"error indexing images from rectangle.n for overlap #{i} (p1={overlap.p1}, p2={overlap.p2})"
-        errormsg+=f" [len(p1image)={len(p1image)}, len(p2image)={len(p2image)}]"
-        raise IndexError(errormsg)
-      overlap.setalignmentinfo(layer=self.layer, pscale=self.pscale, nclip=self.nclip, images=overlap_images)
       if (overlap.p2, overlap.p1) in done:
         result = overlap.getinversealignment(self.overlapsdict[overlap.p2, overlap.p1])
       else:
@@ -180,6 +171,17 @@ class AlignmentSet:
       ) for rectangle in self.rectangles
     ]
     writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
+
+    for overlap in self.overlaps:
+      p1image = [r.image for r in self.rectangles if r.n==overlap.p1]
+      p2image = [r.image for r in self.rectangles if r.n==overlap.p2]
+      try :
+        overlap_images = p1image[0], p2image[0]
+      except IndexError :
+        errormsg=f"error indexing images from rectangle.n for overlap #{i} (p1={overlap.p1}, p2={overlap.p2})"
+        errormsg+=f" [len(p1image)={len(p1image)}, len(p2image)={len(p2image)}]"
+        raise IndexError(errormsg)
+      overlap.setalignmentinfo(layer=self.layer, pscale=self.pscale, nclip=self.nclip, images=overlap_images)
 
   def updateRectangleImages(self,imgdict,ext) :
     """
