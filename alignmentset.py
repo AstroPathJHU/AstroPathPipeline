@@ -98,7 +98,7 @@ class AlignmentSet:
   def image(self):
     return cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
 
-  def align(self, **kwargs):
+  def align(self,*,write_result=True,return_on_invalid_result=False,**kwargs):
     #if the raw images haven't already been loaded, load them with the default argument
     #if self.rawimages is None :
     #  self.getDAPI()
@@ -132,13 +132,22 @@ class AlignmentSet:
         if result.exit==0 :
           sum_mse+=result.mse[2]
         else :
-          logger.warning(f'WARNING: Overlap number {i} alignment result is invalid, adding 1e10 to sum_mse!!')
-          sum_mse+=1e10
+          if return_on_invalid_result :
+            logger.warning(f'WARNING: Overlap number {i} alignment result is invalid, returning 1e10!!')
+            return 1e10
+          else :
+            logger.warning(f'WARNING: Overlap number {i} alignment result is invalid, adding 1e10 to sum_mse!!')
+            sum_mse+=1e10
       else :
-        logger.warning(f'WARNING: Overlap number {i} alignment result is "None"!')
-        sum_mse+=1e10
+        if return_on_invalid_result :
+            logger.warning(f'WARNING: Overlap number {i} alignment result is "None"; returning 1e10!!')
+            return 1e10
+        else :
+          logger.warning(f'WARNING: Overlap number {i} alignment result is "None"!')
+          sum_mse+=1e10
 
-    writetable(aligncsv, alignments, retry=self.interactive)
+    if write_result :
+      writetable(aligncsv, alignments, retry=self.interactive)
 
     logger.info("finished align loop for "+self.samp)
     return sum_mse
