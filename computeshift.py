@@ -143,6 +143,8 @@ def shiftimg(images, dx, dy, *, clip=True):
   a symmetric shift with fractional pixels
   """
   a, b = images
+  a = a.astype(float)
+  b = b.astype(float)
 
   warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.T.shape}
 
