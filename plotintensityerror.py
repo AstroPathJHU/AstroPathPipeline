@@ -5,7 +5,7 @@ from .computeshift import mse
 def plotintensityerror(overlap, aligned=True):
     print(overlap.result)
     if aligned:
-        red, blue, _ = overlap.shifted.copy()
+        red, blue = overlap.shifted.copy()
     else:
         red, blue = overlap.cutimages.astype(float).copy()
     msered = mse(red)

@@ -13,12 +13,16 @@ class Overlap:
   y2: float
   tag: int
 
-  def setalignmentinfo(self, layer, pscale, nclip, images):
+  def setalignmentinfo(self, layer, pscale, nclip, rectangles):
     self.layer = layer
     self.pscale = pscale
     self.nclip = nclip
-    self.images = images
-    self.cutimages = None
+    self.rectangles = rectangles
+    self.shifted = None
+
+  @property
+  def images(self):
+    return tuple(r.image for r in self.rectangles)
 
   def align(self, *, debug=False, **computeshiftkwargs):
     self.result = AlignmentResult(
@@ -28,7 +32,6 @@ class Overlap:
       code=self.tag,
       layer=self.layer,
     )
-    self.__prepimage()
     try:
       self.__computeshift(**computeshiftkwargs)
       self.__shiftclip()
@@ -36,7 +39,7 @@ class Overlap:
       self.result.exit = 3
       self.result.dxdy = unc.ufloat(0, 9999), unc.ufloat(0, 9999)
       self.result.sc = 1.
-      self.shifted = np.array([self.cutimages[0], self.cutimages[1], np.mean(self.cutimages, axis=0)])
+      self.shifted = self.cutimages[0], self.cutimages[1]
       self.result.exception = e
       if debug: raise
     else:
@@ -45,7 +48,6 @@ class Overlap:
 
   def getinversealignment(self, inverse):
     assert (inverse.p1, inverse.p2) == (self.p2, self.p1)
-    self.cutimages = inverse.cutimages[::-1,...]
     self.result = AlignmentResult(
       n = self.n,
       p1 = self.p1,
@@ -61,16 +63,22 @@ class Overlap:
       mse3 = inverse.result.mse3 / inverse.result.sc**2,
     )
     self.result.covariance = inverse.result.covariance
-    self.shifted = np.array([
+    self.shifted = (
       inverse.shifted[1],
       inverse.shifted[0],
-      inverse.shifted[2],
-    ])
+    )
     return self.result
 
-  def __prepimage(self):
-    hh, ww = self.images[0].shape
-    assert (hh, ww) == self.images[1].shape
+  @property
+  def images(self):
+    return tuple(_.image for _ in self.rectangles)
+
+  @property
+  def cutimages(self):
+    image1, image2 = self.images
+
+    hh, ww = image1.shape
+    assert (hh, ww) == image2.shape
 
     #convert microns to approximate pixels
     image1x1 = int(self.x1 * self.pscale)
@@ -97,13 +105,10 @@ class Overlap:
     cutimage2y1 = overlapy1 - image2y1 + self.nclip
     cutimage2y2 = overlapy2 - image2y1 - self.nclip
 
-    if self.cutimages is None:
-      self.cutimages = np.ndarray(shape=(2, cutimage1y2-cutimage1y1, cutimage1x2-cutimage1x1))
-
-      np.copyto(self.cutimages,[
-        self.images[0][cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
-        self.images[1][cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
-      ])
+    return (
+      image1[cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
+      image2[cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
+    )
 
   def __computeshift(self, **computeshiftkwargs):
     minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
@@ -116,12 +121,7 @@ class Overlap:
     and save the result. Compute the mse and the
     illumination correction
     """
-    self.shifted = A = shiftimg(self.cutimages,self.result.dx,self.result.dy)
-
-    #clip the non-overlapping parts
-    ww = 10*(1+int(max(np.abs([self.result.dx, self.result.dy]))/10))
-
-    b1, b2, average = self.result.overlapregion = A[:, ww:-ww or None, ww:-ww or None]
+    b1, b2 = self.shifted = shiftimg(self.cutimages, self.result.dx, self.result.dy)
 
     mse1 = mse(b1)
     mse2 = mse(b2)
@@ -133,7 +133,7 @@ class Overlap:
 
   def getimage(self,normalize=100.,shifted=True) :
     if shifted:
-      red, green, _ = self.shifted
+      red, green = self.shifted
     else:
       red, green = self.cutimages
     blue = (red+green)/2
