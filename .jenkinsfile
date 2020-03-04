@@ -33,7 +33,7 @@ pipeline {
 
     stage('test alignment') {
       steps {
-        sh "cd data && git checkout ${TEST_DATA_COMMIT}"
+        sh "cd test/data && git checkout ${TEST_DATA_COMMIT}"
         sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
       }
     }
