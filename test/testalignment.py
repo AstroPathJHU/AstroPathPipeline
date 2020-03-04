@@ -27,7 +27,7 @@ class TestAlignment(unittest.TestCase):
   def testAlign(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
     a.getDAPI()
-    a.align(debug=False, errorfactor=1/5)
+    a.align(debug=True, errorfactor=1/5)
     a.stitch()
 
   def testAlignmentResults(self):
