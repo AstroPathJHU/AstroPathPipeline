@@ -265,7 +265,7 @@ class AlignmentSet:
 
     return result
 
-  def __stitch(self, *, scaleby=1, scalejittererror=1, scaleoverlaperror=1):
+  def __stitch(self, *, scaleby=1, scalejittererror=1, scaleoverlaperror=1, fixpoint="origin"):
     """
     \begin{align}
     -2 \ln L =&
@@ -343,7 +343,13 @@ class AlignmentSet:
     )
     sigmay = np.sqrt(weightedvariancedy) / scaleby * scalejittererror
 
-    x0vec = np.array([0, 0]) #fix the origin, linear scaling is with respect to that
+    if fixpoint == "origin":
+      x0vec = np.array([0, 0]) #fix the origin, linear scaling is with respect to that
+    elif fixpoint == "center":
+      x0vec = np.mean([r.xvec for r in self.rectangles], axis=0)
+    else:
+      x0vec = fixpoint
+
     x0, y0 = x0vec
 
     for r in self.rectangles:
@@ -391,7 +397,7 @@ class AlignmentSet:
 
     return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangledict=rectangledict)
 
-  def __stitch_cvxpy(self):
+  def __stitch_cvxpy(self, fixpoint="origin"):
     """
     \begin{align}
     -2 \ln L =&
@@ -447,7 +453,12 @@ class AlignmentSet:
 
     sigma = np.array(sigmax, sigmay)
 
-    x0vec = np.mean([r.xvec for r in self.rectangles], axis=0)
+    if fixpoint == "origin":
+      x0vec = np.array([0, 0]) #fix the origin, linear scaling is with respect to that
+    elif fixpoint == "center":
+      x0vec = np.mean([r.xvec for r in self.rectangles], axis=0)
+    else:
+      x0vec = fixpoint
 
     for r in self.rectangles:
       twonll += cp.norm(((rectanglex[r.n] - x0vec) - T @ (r.xvec - x0vec)) / sigma)
