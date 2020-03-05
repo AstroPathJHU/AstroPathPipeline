@@ -22,7 +22,9 @@ class Overlap:
 
   @property
   def images(self):
-    return tuple(r.image for r in self.rectangles)
+    result = tuple(r.image[:] for r in self.rectangles)
+    for i in result: i.flags.writeable = False
+    return result
 
   @property
   def cutimages(self):
