@@ -24,6 +24,43 @@ class Overlap:
   def images(self):
     return tuple(r.image for r in self.rectangles)
 
+  @property
+  def cutimages(self):
+    image1, image2 = self.images
+
+    hh, ww = image1.shape
+    assert (hh, ww) == image2.shape
+
+    #convert microns to approximate pixels
+    image1x1 = int(self.x1 * self.pscale)
+    image1y1 = int(self.y1 * self.pscale)
+    image2x1 = int(self.x2 * self.pscale)
+    image2y1 = int(self.y2 * self.pscale)
+    image1x2 = image1x1 + ww
+    image2x2 = image2x1 + ww
+    image1y2 = image1y1 + hh
+    image2y2 = image2y1 + hh
+
+    overlapx1 = max(image1x1, image2x1)
+    overlapx2 = min(image1x2, image2x2)
+    overlapy1 = max(image1y1, image2y1)
+    overlapy2 = min(image1y2, image2y2)
+
+    cutimage1x1 = overlapx1 - image1x1 + self.nclip
+    cutimage1x2 = overlapx2 - image1x1 - self.nclip
+    cutimage1y1 = overlapy1 - image1y1 + self.nclip
+    cutimage1y2 = overlapy2 - image1y1 - self.nclip
+
+    cutimage2x1 = overlapx1 - image2x1 + self.nclip
+    cutimage2x2 = overlapx2 - image2x1 - self.nclip
+    cutimage2y1 = overlapy1 - image2y1 + self.nclip
+    cutimage2y2 = overlapy2 - image2y1 - self.nclip
+
+    return (
+      image1[cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
+      image2[cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
+    )
+
   def align(self, *, debug=False, **computeshiftkwargs):
     self.result = AlignmentResult(
       n=self.n,
@@ -68,47 +105,6 @@ class Overlap:
       inverse.shifted[0],
     )
     return self.result
-
-  @property
-  def images(self):
-    return tuple(_.image for _ in self.rectangles)
-
-  @property
-  def cutimages(self):
-    image1, image2 = self.images
-
-    hh, ww = image1.shape
-    assert (hh, ww) == image2.shape
-
-    #convert microns to approximate pixels
-    image1x1 = int(self.x1 * self.pscale)
-    image1y1 = int(self.y1 * self.pscale)
-    image2x1 = int(self.x2 * self.pscale)
-    image2y1 = int(self.y2 * self.pscale)
-    image1x2 = image1x1 + ww
-    image2x2 = image2x1 + ww
-    image1y2 = image1y1 + hh
-    image2y2 = image2y1 + hh
-
-    overlapx1 = max(image1x1, image2x1)
-    overlapx2 = min(image1x2, image2x2)
-    overlapy1 = max(image1y1, image2y1)
-    overlapy2 = min(image1y2, image2y2)
-
-    cutimage1x1 = overlapx1 - image1x1 + self.nclip
-    cutimage1x2 = overlapx2 - image1x1 - self.nclip
-    cutimage1y1 = overlapy1 - image1y1 + self.nclip
-    cutimage1y2 = overlapy2 - image1y1 - self.nclip
-
-    cutimage2x1 = overlapx1 - image2x1 + self.nclip
-    cutimage2x2 = overlapx2 - image2x1 - self.nclip
-    cutimage2y1 = overlapy1 - image2y1 + self.nclip
-    cutimage2y2 = overlapy2 - image2y1 - self.nclip
-
-    return (
-      image1[cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
-      image2[cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
-    )
 
   def __computeshift(self, **computeshiftkwargs):
     minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
