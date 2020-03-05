@@ -1,4 +1,4 @@
-import dataclasses, numbers, numpy as np, os, uncertainties.unumpy as unp, unittest
+import dataclasses, itertools, numbers, numpy as np, os, uncertainties.unumpy as unp, unittest
 from ..alignmentset import AlignmentSet, ImageStats, StitchCoordinate, StitchCovarianceEntry
 from ..overlap import AlignmentResult
 from ..tableio import readtable
@@ -18,20 +18,15 @@ def assertAlmostEqual(a, b, **kwargs):
     return np.testing.assert_equal(a, b)
 
 class TestAlignment(unittest.TestCase):
-  @classmethod
-  def setUpClass(cls):
-    a = cls.a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
-    a.getDAPI()
-    a.align(debug=True, errorfactor=1/5)
-    cls.stitchresult = a.stitch()
-
   def setUp(self):
-    pass
+    self.a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
 
   def tearDown(self):
     pass
 
-  def testAlignmentResults(self):
+  def testAlignment(self):
+    self.a.getDAPI()
+    self.a.align(debug=True, errorfactor=1/5)
     for filename, cls in (
       ("M21_1_imstat.csv", ImageStats),
       ("M21_1_align.csv", AlignmentResult),
@@ -40,11 +35,21 @@ class TestAlignment(unittest.TestCase):
     ):
       rows = readtable(os.path.join(thisfolder, "data", "M21_1", "dbload", filename), cls)
       targetrows = readtable(os.path.join(thisfolder, "alignmentreference", filename), cls)
-      for row, target in zip(rows, targetrows):
+      for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5)
 
+  def testReadAlignment(self):
+    self.a.readalignments(filename=os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"))
+    self.a.writealignments(filename="testreadalignments.csv")
+    rows = readtable("testreadalignments.csv", AlignmentResult)
+    targetrows = readtable(os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"), AlignmentResult)
+    for row, target in itertools.zip_longest(rows, targetrows):
+      assertAlmostEqual(row, target, rtol=1e-5)
+
   def testStitchCvxpy(self):
-    defaultresult = self.stitchresult
+    self.a.readalignments(filename=os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"))
+
+    defaultresult = self.a.stitch()
     cvxpyresult = self.a.stitch(saveresult=False, usecvxpy=True)
 
     centerresult = self.a.stitch(saveresult=False, fixpoint="center")

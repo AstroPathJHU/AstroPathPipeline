@@ -117,7 +117,6 @@ class AlignmentSet:
 
     logger.info("starting align loop for "+self.samp)
 
-    alignments = []
     sum_mse = 0.
     done = set()
 
@@ -129,7 +128,6 @@ class AlignmentSet:
         result = overlap.align(**kwargs)
       done.add((overlap.p1, overlap.p2))
       if result is not None: 
-        alignments.append(result)
         if result.exit==0 :
           sum_mse+=result.mse[2]
         else :
@@ -148,22 +146,24 @@ class AlignmentSet:
           sum_mse+=1e10
 
     if write_result :
-      self.writealignments(alignments)
+      self.writealignments()
 
     logger.info("finished align loop for "+self.samp)
     return sum_mse
 
-  def writealignments(self, alignments):
-    writetable(self.aligncsv, alignments, retry=self.interactive)
+  def writealignments(self, *, filename=None):
+    if filename is None: filename = self.aligncsv
+    writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive)
 
-  def readalignments(self):
-    alignmentresults = {o.n: o for o in readtable(self.aligncsv, AlignmentResult)}
+  def readalignments(self, *, filename=None):
+    if filename is None: filename = self.aligncsv
+    alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult)}
     for o in self.overlaps:
       try:
         o.result = alignmentresults[o.n]
       except KeyError:
         pass
-    return alignmentresults
+    return alignmentresults.values()
 
   def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False):
     logger.info(self.samp)
