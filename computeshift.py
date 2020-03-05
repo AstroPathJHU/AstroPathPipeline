@@ -63,7 +63,7 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
     [f(*r.x, dx=1, dy=1), f(*r.x, dx=0, dy=2)],
   ])
 
-  shifted = shiftimg(images, -r.x[0], -r.x[1], clip=True)
+  shifted = shiftimg(images, -r.x[0], -r.x[1], clip=False)
   staterrorspline = statisticalerrorspline(shifted, nbins=20)
   #cross correlation evaluated at 0
   error_crosscorrelation = np.sqrt(np.sum(
