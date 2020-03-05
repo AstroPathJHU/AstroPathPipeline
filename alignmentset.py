@@ -3,7 +3,7 @@
 import collections, cv2, dataclasses, itertools, logging, methodtools, numpy as np, os, scipy, typing, uncertainties as unc, uncertainties.unumpy as unp
 
 from .flatfield import meanimage
-from .overlap import Overlap
+from .overlap import AlignmentResult, Overlap
 from .tableio import readtable, writetable
 
 logger = logging.getLogger("align")
@@ -106,12 +106,14 @@ class AlignmentSet:
   def image(self):
     return cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
 
+  @property
+  def aligncsv(self):
+    return os.path.join(self.dbload, self.samp+"_align.csv")
+
   def align(self,*,write_result=True,return_on_invalid_result=False,**kwargs):
     #if the raw images haven't already been loaded, load them with the default argument
     #if self.rawimages is None :
     #  self.getDAPI()
-
-    aligncsv = os.path.join(self.dbload, self.samp+"_align.csv")
 
     logger.info("starting align loop for "+self.samp)
 
@@ -146,12 +148,23 @@ class AlignmentSet:
           sum_mse+=1e10
 
     if write_result :
-      writetable(aligncsv, alignments, retry=self.interactive)
+      self.writealignment(alignments)
 
     logger.info("finished align loop for "+self.samp)
     return sum_mse
 
-  @methodtools.lru_cache(maxsize=1)
+  def writealignments(self, alignments):
+    writetable(self.aligncsv, alignments, retry=self.interactive)
+
+  def readalignments(self):
+    alignmentresults = {o.n: o for o in readtable(self.aligncsv, AlignmentResult)}
+    for o in self.overlaps:
+      try:
+        o.result = alignmentresults[o.n]
+      except KeyError:
+        pass
+    return alignmentresults
+
   def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False):
     logger.info(self.samp)
     rawimages = self.__getrawlayers(filetype, keep=keeprawimages)

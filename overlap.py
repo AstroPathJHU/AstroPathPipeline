@@ -62,7 +62,16 @@ class Overlap:
       image2[cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
     )
 
-  def align(self, *, debug=False, **computeshiftkwargs):
+  def align(self, *, debug=False, alreadyalignedstrategy="error", **computeshiftkwargs):
+    if self.result is not None:
+      if alreadyalignedstrategy == "error":
+        raise RuntimeError(f"Overlap {self.n} is already aligned.  To keep the previous result, call align(alreadyalignedstrategy='skip').  To align again and overwrite the previous result, call align(alreadyalignedstrategy='overwrite').")
+      elif alreadyalignedstrategy == "skip":
+        return
+      elif alreadyalignedstrategy == "overwrite":
+        pass
+      else:
+        raise ValueError(f"Unknown value alreadyalignedstrategy={alreadyalignedstrategy!r}")
     self.result = AlignmentResult(
       n=self.n,
       p1=self.p1,
