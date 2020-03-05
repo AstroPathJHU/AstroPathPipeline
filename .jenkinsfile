@@ -28,12 +28,12 @@ pipeline {
             url: 'https://github.com/astropathjhu/alignmentjenkinsdata'
           ]]
         ])
+        sh "cd test/data && git checkout ${TEST_DATA_COMMIT}"
       }
     }
 
     stage('test alignment') {
       steps {
-        sh "cd test/data && git checkout ${TEST_DATA_COMMIT}"
         sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
       }
     }
