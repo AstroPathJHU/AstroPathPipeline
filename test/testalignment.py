@@ -39,10 +39,13 @@ class TestAlignment(unittest.TestCase):
         assertAlmostEqual(row, target, rtol=1e-5)
 
   def testReadAlignment(self):
-    self.a.readalignments(filename=os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"))
-    self.a.writealignments(filename="testreadalignments.csv")
-    rows = readtable("testreadalignments.csv", AlignmentResult)
-    targetrows = readtable(os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"), AlignmentResult)
+    readfilename = os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv")
+    writefilename = os.path.join(thisfolder, "testreadalignments.csv")
+
+    self.a.readalignments(filename=readfilename)
+    self.a.writealignments(filename=writefilename)
+    rows = readtable(writefilename, AlignmentResult)
+    targetrows = readtable(readfilename, AlignmentResult)
     for row, target in itertools.zip_longest(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
