@@ -1,0 +1,41 @@
+pipeline {
+  agent {
+    docker { image 'astropathjhu/alignmenttest:latest' }
+  }
+
+  environment {
+    TEST_DATA_REPONAME = "alignmentjenkinsdata"
+    TEST_DATA_REPO = "git@github.com:astropathjhu/${TEST_DATA_REPONAME}"
+    TEST_DATA_COMMIT = "ff899302017f39d29153ab7cb00962cb07cbb6b7"
+    PIP_INSTALL_PLACE = "$WORKSPACE/python"
+    PYTHONPATH = "$PIP_INSTALL_PLACE:$PYTHONPATH"
+  }
+
+  stages {
+    stage('get test data and dependencies') {
+      steps {
+        checkout([
+          $class: 'GitSCM',
+          branches: [[name: '**']],
+          doGenerateSubmoduleConfigurations: false,
+          extensions: [[
+            $class: 'RelativeTargetDirectory',
+            relativeTargetDir: 'test/data'
+          ]],
+          submoduleCfg: [],
+          userRemoteConfigs: [[
+            credentialsId: 'astropath-github-password',
+            url: 'https://github.com/astropathjhu/alignmentjenkinsdata'
+          ]]
+        ])
+        sh "cd test/data && git checkout ${TEST_DATA_COMMIT}"
+      }
+    }
+
+    stage('test alignment') {
+      steps {
+        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
+      }
+    }
+  }
+}
