@@ -46,11 +46,12 @@ class TestAlignment(unittest.TestCase):
   def testStitchCvxpy(self):
     cvxpyresult = self.a.stitch(saveresult=False, usecvxpy=True)
 
-    np.testing.assert_allclose(cvxpyresult.x(), unp.nominal_values(self.stitchresult.x()))
-    np.testing.assert_allclose(cvxpyresult.T,   unp.nominal_values(self.stitchresult.T  ))
+    np.testing.assert_allclose(cvxpyresult.x(), unp.nominal_values(self.stitchresult.x()), rtol=1e-2)
+    np.testing.assert_allclose(cvxpyresult.T,   unp.nominal_values(self.stitchresult.T  ), rtol=1e-2, atol=2e-3)
 
-    x = np.concatenate((self.stitchresult.x(), self.stitchresult.T), axis=None)
-    np.testing.assert_close(
+    x = unp.nominal_values(np.concatenate((self.stitchresult.x(), self.stitchresult.T), axis=None))
+    np.testing.assert_allclose(
       cvxpyresult.problem.value,
-      x @ self.stitchresult.A @ x + self.stitchresult.b @ x + self.stitchresult.c
+      x @ self.stitchresult.A @ x + self.stitchresult.b @ x + self.stitchresult.c,
+      rtol=0.1,
     )
