@@ -521,7 +521,7 @@ class WarpFitter :
                     toadd[list_indices[1]]=par_variations[list_indices[1]][c[1]]
                     population_list.append(toadd)
         to_return = np.array(population_list)
-        logger.info(f'Initial parameter population:\n{to_return}')
+        logger.info(f'Initial parameter population ({len(population_list)} members):\n{to_return}')
         return to_return
 
     #helper function to make the constraints
