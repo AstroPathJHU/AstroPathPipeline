@@ -18,6 +18,7 @@ class Overlap:
     self.pscale = pscale
     self.nclip = nclip
     self.rectangles = rectangles
+    self.result = None
 
   @property
   def images(self):

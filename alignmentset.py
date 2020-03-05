@@ -148,7 +148,7 @@ class AlignmentSet:
           sum_mse+=1e10
 
     if write_result :
-      self.writealignment(alignments)
+      self.writealignments(alignments)
 
     logger.info("finished align loop for "+self.samp)
     return sum_mse
