@@ -297,8 +297,11 @@ class AlignmentSet:
     Tyx = -2
     Tyy = -1
 
+
     rectangledict = {rectangle.n: i for i, rectangle in enumerate(self.rectangles)}
-    for o in self.overlaps:
+    overlaps = [o for o in self.overlaps if not o.result.exit]
+
+    for o in overlaps:
       ix = 2*rectangledict[o.p1]
       iy = 2*rectangledict[o.p1]+1
       jx = 2*rectangledict[o.p2]
@@ -329,7 +332,7 @@ class AlignmentSet:
 
       c += constpiece @ inversecovariance @ constpiece / 2
 
-    dxs, dys = zip(*(o.result.dxdy for o in self.overlaps))
+    dxs, dys = zip(*(o.result.dxdy for o in overlaps))
 
     weightedvariancedx = np.average(
       unp.nominal_values(dxs)**2,
@@ -428,8 +431,9 @@ class AlignmentSet:
 
     twonll = 0
     rectanglex = {r.n: xx for r, xx in zip(self.rectangles, x)}
+    overlaps = [o for o in self.overlaps if not o.result.exit]
 
-    for o in self.overlaps:
+    for o in overlaps:
       x1 = rectanglex[o.p1]
       x2 = rectanglex[o.p2]
       twonll += 0.5 * cp.quad_form(
@@ -437,7 +441,7 @@ class AlignmentSet:
         np.linalg.inv(o.result.covariance)
       )
 
-    dxs, dys = zip(*(o.result.dxdy for o in self.overlaps))
+    dxs, dys = zip(*(o.result.dxdy for o in overlaps))
 
     weightedvariancedx = np.average(
       unp.nominal_values(dxs)**2,
