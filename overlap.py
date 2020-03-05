@@ -18,7 +18,6 @@ class Overlap:
     self.pscale = pscale
     self.nclip = nclip
     self.rectangles = rectangles
-    self.shifted = None
 
   @property
   def images(self):
@@ -70,6 +69,7 @@ class Overlap:
       p2=self.p2,
       code=self.tag,
       layer=self.layer,
+      exit=-1,
     )
     try:
       self.__computeshift(**computeshiftkwargs)
@@ -78,7 +78,6 @@ class Overlap:
       self.result.exit = 3
       self.result.dxdy = unc.ufloat(0, 9999), unc.ufloat(0, 9999)
       self.result.sc = 1.
-      self.shifted = self.cutimages[0], self.cutimages[1]
       self.result.exception = e
       if debug: raise
     else:
@@ -102,10 +101,6 @@ class Overlap:
       mse3 = inverse.result.mse3 / inverse.result.sc**2,
     )
     self.result.covariance = inverse.result.covariance
-    self.shifted = (
-      inverse.shifted[1],
-      inverse.shifted[0],
-    )
     return self.result
 
   def __computeshift(self, **computeshiftkwargs):
@@ -113,13 +108,17 @@ class Overlap:
     self.result.dxdy = minimizeresult.dx, minimizeresult.dy
     self.result.exit = minimizeresult.exit
 
+  @property
+  def shifted(self):
+    return shiftimg(self.cutimages, self.result.dx, self.result.dy)
+
   def __shiftclip(self):
     """
     Shift images symetrically by fractional amount
     and save the result. Compute the mse and the
     illumination correction
     """
-    b1, b2 = self.shifted = shiftimg(self.cutimages, self.result.dx, self.result.dy)
+    b1, b2 = self.shifted
 
     mse1 = mse(b1)
     mse2 = mse(b2)
