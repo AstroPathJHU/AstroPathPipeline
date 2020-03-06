@@ -94,5 +94,10 @@ class TestAlignment(unittest.TestCase):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1", selectrectangles=(10, 11))
     a.getDAPI()
     o1, o2 = a.overlaps
-    c1, c2 = crosscorrelation(o1.cutimages), crosscorrelation(o2.cutimages)
-    np.testing.assert_allclose(np.roll(np.roll(np.fft.ifft2(c2).real[::-1,::-1], 1, axis=0), 1, axis=1), np.fft.ifft2(c1).real, rtol=1e-4)
+    o1.align()
+    o2.align()
+    assertAlmostEqual(o1.result.dx, -o2.result.dx, rtol=1e-5)
+    assertAlmostEqual(o1.result.dy, -o2.result.dy, rtol=1e-5)
+    assertAlmostEqual(o1.result.covxx, o2.result.covxx, rtol=1e-5)
+    assertAlmostEqual(o1.result.covyy, o2.result.covyy, rtol=1e-5)
+    assertAlmostEqual(o1.result.covxy, o2.result.covxy, rtol=1e-5)
