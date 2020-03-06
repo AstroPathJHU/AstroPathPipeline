@@ -80,6 +80,7 @@ class WarpFitter :
 
     #remove the placeholder files when the object is being deleted
     def __del__(self) :
+        logger.info('Removing copied raw layer files....')
         os.chdir(self.working_dir)
         if not os.path.isdir(self.samp_name) :
             os.chdir(self.init_dir)
@@ -144,22 +145,48 @@ class WarpFitter :
         #get the list of constraints
         constraints = self.__getConstraints(fix_k1k2,fix_p1p2,max_radial_warp,max_tangential_warp)
         #call differential_evolution
-        logger.info('Starting minimization....')
+        logger.info('Starting initial minimization....')
         os.chdir(self.working_dir)
         try :
-            result=scipy.optimize.differential_evolution(
+            firstresult=scipy.optimize.differential_evolution(
                 func=self._evalCamWarpOnAlignmentSet,
                 bounds=parameter_bounds,
+                strategy='best2bin',
+                tol=0.008,
+                mutation=(0.6,1.00),
+                recombination=0.5,
+                polish=False,
                 init=initial_population,
                 constraints=constraints
                 )
         except Exception :
-            raise FittingError('Something failed in the minimization!')
+            raise FittingError('Something failed in the initial minimization!')
         finally :
             os.chdir(self.init_dir)
-        logger.info(f'Minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations.')
+        logger.info(f'Initial minimization completed {"successfully" if firstresult.success else "UNSUCCESSFULLY"} in {firstresult.nfev} evaluations.')
+        #call minimize with trust_constr
+        logger.info('Starting polishing minimization....')
+        relative_steps = np.array([0.02,0.02,0.02,0.02,0.02,0.02,0.0001,0.0001])[self.par_mask]
+        os.chdir(self.working_dir)
+        try :
+            result=scipy.optimize.minimize(
+                fun=self._evalCamWarpOnAlignmentSet,
+                x0=firstresult.x,
+                method='trust-constr',
+                bounds=parameter_bounds,
+                constraints=constraints,
+                options={'xtol':1e-4,'gtol':1e-3,'finite_diff_rel_step':relative_steps}
+                )
+        except Exception :
+            raise FittingError('Something failed in the polishing minimization!')
+        finally :
+            os.chdir(self.init_dir)
+        msg = f'Final minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations '
+        term_conds = {0:'max iterations',1:'gradient tolerance',2:'parameter tolerance',3:'callback function'}
+        msg+=f'due to compliance with {term_conds[result.status]} criteria.'
+        logger.info(msg)
         #make the fit progress plots
-        self.__makeFitProgressPlots(show_plots)
+        #self.__makeFitProgressPlots(firstresult.nfev,show_plots)
         #use the fit result to make the best fit warp object and save the figure of its warp fields
         best_fit_pars = self.__correctParameterList(result.x)
         self.warpset.updateCameraParams(best_fit_pars)
@@ -230,19 +257,29 @@ class WarpFitter :
     #################### VISUALIZATION FUNCTIONS ####################
 
     #function to plot the costs and warps over all the iterations of the fit
-    def __makeFitProgressPlots(self,show) :
-        iters = np.linspace(0,len(self.costs),len(self.costs),endpoint=False)
-        f,(ax1,ax2,ax3) = plt.subplots(1,3)
-        f.set_size_inches(20.,5.)
-        ax1.plot(iters,self.costs)
-        ax1.set_xlabel('iteration')
-        ax1.set_ylabel('cost')
-        ax2.plot(iters,self.max_radial_warps)
-        ax2.set_xlabel('iteration')
-        ax2.set_ylabel('max radial warp')
-        ax3.plot(iters,self.max_tangential_warps)
-        ax3.set_xlabel('iteration')
-        ax3.set_ylabel('max tangential warp')
+    def __makeFitProgressPlots(self,ninitev,show) :
+        inititers  = np.linspace(0,ninitev,ninitev,endpoint=False)
+        finaliters = np.linspace(ninitev,len(self.costs),len(self.costs)-ninitev,endpoint=False)
+        f,ax = plt.subplots(2,3)
+        f.set_size_inches(20.,10.)
+        ax[0][0].plot(inititers,self.costs[:ninitev])
+        ax[0][0].set_xlabel('initial minimization iteration')
+        ax[0][0].set_ylabel('cost')
+        ax[0][1].plot(inititers,self.max_radial_warps[:ninitev])
+        ax[0][1].set_xlabel('initial minimization iteration')
+        ax[0][1].set_ylabel('max radial warp')
+        ax[0][2].plot(inititers,self.max_tangential_warps[:ninitev])
+        ax[0][2].set_xlabel('initial minimization iteration')
+        ax[0][2].set_ylabel('max tangential warp')
+        ax[1][0].plot(finaliters,self.costs[ninitev:])
+        ax[1][0].set_xlabel('final minimization iteration')
+        ax[1][0].set_ylabel('cost')
+        ax[1][1].plot(finaliters,self.max_radial_warps[ninitev:])
+        ax[1][1].set_xlabel('final minimization iteration')
+        ax[1][1].set_ylabel('max radial warp')
+        ax[1][2].plot(finaliters,self.max_tangential_warps[ninitev:])
+        ax[1][2].set_xlabel('final minimization iteration')
+        ax[1][2].set_ylabel('max tangential warp')
         os.chdir(self.working_dir)
         try :
             plt.savefig('fit_progress.png')
@@ -255,14 +292,20 @@ class WarpFitter :
 
     #function to save alignment comparison visualizations in a new directory inside the working directory
     def __makeBestFitAlignmentComparisonImages(self) :
+        logger.info('writing out warping/alignment comparison images')
         #make sure the best fit warp exists (which means the warpset is updated with the best fit parameters)
         if self.__best_fit_warp is None :
             raise FittingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
+        #start by aligning the raw, unwarped images and getting their shift comparison information/images
+        self.alignset.updateRectangleImages(self.warpset.raw_images,'.raw')
+        rawcost = self.alignset.align()
+        raw_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
+        #next warp and align the images with the best fit warp
         self.warpset.warpLoadedImageSet()
-        #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
-        #align the images 
         bestcost = self.alignset.align()
+        warped_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
+        logger.info(f'Alignment cost from raw images = {rawcost:.02f}; alignment cost from warped images = {bestcost:.02f}')
         #write out the overlap comparison figures
         figure_dir_name = 'alignment_overlap_comparisons'
         os.chdir(self.working_dir)
@@ -270,7 +313,31 @@ class WarpFitter :
             os.mkdir(figure_dir_name)
         os.chdir(figure_dir_name)
         try :
-            self.alignset.writeOverlapComparisonImages()
+            for overlap_identifier in raw_overlap_comparisons_dict.keys() :
+                code = overlap_identifier[0]
+                fn   = overlap_identifier[1]
+                pix_to_in = 20./self.n
+                if code in [2,8] :
+                    f,(ax1,ax2,ax3,ax4) = plt.subplots(4,1,sharex=True)
+                    f.set_size_inches(self.n*pix_to_in,4.*0.2*self.m*pix_to_in)
+                    order = [ax1,ax3,ax2,ax4]
+                elif code in [1,3,7,9] :
+                    f,ax = plt.subplots(2,2)
+                    f.set_size_inches(2.*0.2*self.n*pix_to_in,2*0.2*self.m*pix_to_in)
+                    order = [ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
+                elif code in [4,6] :
+                    f,(ax1,ax2,ax3,ax4) = plt.subplots(1,4,sharey=True)
+                    f.set_size_inches(4.*0.2*self.n*pix_to_in,self.m*pix_to_in)
+                    order=[ax1,ax3,ax2,ax4]
+                order[0].imshow(raw_overlap_comparisons_dict[overlap_identifier][0])
+                order[0].set_title('raw overlap images')
+                order[1].imshow(raw_overlap_comparisons_dict[overlap_identifier][1])
+                order[1].set_title('raw overlap images aligned')
+                order[2].imshow(warped_overlap_comparisons_dict[overlap_identifier][0])
+                order[2].set_title('warped overlap images')
+                order[3].imshow(warped_overlap_comparisons_dict[overlap_identifier][1])
+                order[3].set_title('warped overlap images aligned')
+                plt.savefig(fn)
         except Exception :
             raise FittingError('Something went wrong while trying to write out the overlap comparison images')
         finally :
@@ -395,14 +462,12 @@ class WarpFitter :
 
     #helper function to return the array of the initial population settings for differential_evolution
     def __getInitialPopulation(self,bounds) :
-        #initial population is a bunch of linear spaces between the bounds for the parameters individually
+        #initial population is a bunch of linear spaces between the bounds for the parameters individually and in pairs
         init_fit_pars = np.array(self.init_pars)[self.par_mask]
         parnames = np.array(['cx','cy','fx','fy','k1','k2','p1','p2'])[self.par_mask]
-        #first member of the population is the nominal initial parameters
-        population_list = []
-        population_list.append(copy.deepcopy(init_fit_pars))
-        #the rest are for different values of the fit parameters independently
-        nperpar=10-len(parnames)
+        #make a list of each parameter's grid of possible values
+        par_variations = []
+        nperpar=12-len(parnames)
         for i in range(len(bounds)) :
             name = parnames[i]
             bnds = bounds[i]
@@ -419,14 +484,44 @@ class WarpFitter :
                 thisparvalues = np.linspace(0.5*bnds[0],0.5*bnds[1],nperpar)
             else :
                 raise FittingError(f'ERROR: parameter name {name} is not recognized in __getInitialPopulation!')
-            #for each of this parameter's values, append a new vector with just this parameter varied
-            for val in thisparvalues :
+            par_variations.append(thisparvalues)
+        #first member of the population is the nominal initial parameters
+        population_list = []
+        population_list.append(copy.deepcopy(init_fit_pars))
+        #next add a set describing independent parameter variations
+        for i in range(len(par_variations)) :
+            for val in par_variations[i] :
                 if val!=init_fit_pars[i] :
                     toadd = copy.deepcopy(init_fit_pars)
                     toadd[i]=val
                     population_list.append(toadd)
+        #add sets describing corner limits of pairs of parameters
+        parameter_pair_sets = [np.array([0,0,1,1,2,2,3,3])[self.par_mask], #parameters that have the same effect
+                               np.array([0,1,None,None,0,1,None,None])[self.par_mask], #principal points and radial warps 1                                  
+                               np.array([0,1,None,None,1,0,None,None])[self.par_mask], #principal points and radial warps 2
+                               np.array([None,None,0,1,0,1,None,None])[self.par_mask], #focal lengths and radial warps 1
+                               np.array([None,None,0,1,1,0,None,None])[self.par_mask], #focal lengths and radial warps 2
+                               np.array([0,1,None,None,None,None,0,1])[self.par_mask], #principal points and tangential warps 1
+                               np.array([0,1,None,None,None,None,1,0])[self.par_mask], #principal points and tangential warps 2
+                               np.array([None,None,0,1,None,None,0,1])[self.par_mask], #focal lengths and tangential warps 1
+                               np.array([None,None,0,1,None,None,1,0])[self.par_mask], #focal lengths and tangential warps 2
+                            ]
+        for parameter_pair_numbers in parameter_pair_sets :
+            pair_numbers_to_consider = set(parameter_pair_numbers)
+            if None in pair_numbers_to_consider :
+                pair_numbers_to_consider.remove(None)
+            for pair_number in pair_numbers_to_consider :
+                list_indices = [i for i in range(len(par_variations)) if parameter_pair_numbers[i]==pair_number]
+                if len(list_indices)!=2 : 
+                    continue
+                combinations = [(1,1),(-2,-2),(1,-2),(-2,1)]
+                for c in combinations :
+                    toadd = copy.deepcopy(init_fit_pars)
+                    toadd[list_indices[0]]=par_variations[list_indices[0]][c[0]]
+                    toadd[list_indices[1]]=par_variations[list_indices[1]][c[1]]
+                    population_list.append(toadd)
         to_return = np.array(population_list)
-        logger.info(f'Initial parameter population:\n{to_return}')
+        logger.info(f'Initial parameter population ({len(population_list)} members):\n{to_return}')
         return to_return
 
     #helper function to make the constraints
