@@ -636,7 +636,7 @@ class StitchResultCvxpy(StitchResultBase):
       x=x.value,
       T=T.value,
       rectangledict=rectangledict,
-      covariancematrix=np.zeros(self.x.size+self.T.size, self.x.size+self.T.size)
+      covariancematrix=np.zeros(x.size+T.size, x.size+T.size)
     )
     self.problem = problem
     self.xvar = x
