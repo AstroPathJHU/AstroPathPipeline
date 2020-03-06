@@ -1,4 +1,6 @@
-import csv, dataclasses
+import csv, dataclasses, logging
+
+logger = logging.getLogger("align")
 
 def readtable(filename, rownameorclass, **columntypes):
   """
@@ -68,11 +70,16 @@ def readtable(filename, rownameorclass, **columntypes):
 
   return result
 
-def writetable(filename, rows, retry=False):
+def writetable(filename, rows, *, retry=False, printevery=float("inf")):
   """
   Write a csv table into filename based on the rows.
   The rows should all be the same dataclass type.
   """
+  size = len(rows)
+  if printevery > size:
+    printevery = None
+  if printevery is not None:
+    logger.info(f"writing {filename}, which will have {size} rows")
 
   rowclasses = {type(_) for _ in rows}
   if len(rowclasses) > 1:
@@ -86,7 +93,9 @@ def writetable(filename, rows, retry=False):
     with open(filename, "w") as f:
       writer = csv.DictWriter(f, fieldnames, lineterminator='\n')
       writer.writeheader()
-      for row in rows:
+      for i, row in enumerate(rows, start=1):
+        if printevery is not None and not i % printevery:
+          logger.info(f"{i} / {size}")
         writer.writerow(dataclasses.asdict(row))
   except PermissionError:
     if retry:
@@ -99,3 +108,5 @@ def writetable(filename, rows, retry=False):
           raise
     else:
       raise
+  if printevery is not None:
+    logger.info("finished!")

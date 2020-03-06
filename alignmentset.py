@@ -163,7 +163,6 @@ class AlignmentSet:
         o.result = alignmentresults[o.n]
       except KeyError:
         pass
-    return alignmentresults.values()
 
   def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False):
     logger.info(self.samp)
@@ -274,6 +273,7 @@ class AlignmentSet:
         os.path.join(self.dbload, self.samp+"_stitch.csv"),
         os.path.join(self.dbload, self.samp+"_stitch_covariance.csv"),
         retry=self.interactive,
+        printevery=10000,
       )
 
     return result
@@ -411,7 +411,7 @@ class AlignmentSet:
     x = result[:-4].reshape(len(self.rectangles), 2) * scaleby
     T = result[-4:].reshape(2, 2)
 
-    return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangledict=rectangledict)
+    return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangledict=rectangledict, covariancematrix=covariancematrix)
 
   def __stitch_cvxpy(self, fixpoint="origin"):
     """
@@ -540,10 +540,17 @@ def rectangleoroverlapfilter(selection):
     return selection
 
 class StitchResultBase:
-  def __init__(self, x, T, rectangledict):
+  def __init__(self, x, T, rectangledict, covariancematrix):
     self.__x = x
     self.T = T
     self.__rectangledict = rectangledict
+    self.covariancematrix = covariancematrix
+
+    #sanity check
+    for thing, errorsq in zip(
+      itertools.chain(np.ravel(x), np.ravel(T)),
+      np.diag(covariancematrix)
+    ): np.testing.assert_allclose(unc.std_dev(thing)**2, errorsq)
 
   def x(self, rectangle_or_id=None):
     if rectangle_or_id is None: return self.__x
@@ -553,7 +560,7 @@ class StitchResultBase:
   def dx(self, overlap):
     return self.x(overlap.p1) - self.x(overlap.p2) - (overlap.x1vec - overlap.x2vec)
 
-  def writetable(self, filename, covariancefilename, **kwargs):
+  def writetable(self, filename, covariancefilename, *, printevery=10000, **kwargs):
     n = 0
     rows = []
     for rectangleid in self.__rectangledict:
@@ -578,21 +585,21 @@ class StitchResultBase:
           position=Tii,
         )
       )
-    writetable(filename, rows, **kwargs)
+    writetable(filename, rows, printevery=printevery, **kwargs)
 
-    n = 0
     covrows = []
-    for row1, row2 in itertools.combinations_with_replacement(rows, 2):
-      n += 1
+    size = len(rows) * (len(rows)+1) // 2
+    for n, (row1, row2) in enumerate(itertools.combinations_with_replacement(rows, 2), start=1):
+      if not n % printevery: logger.info(f"finding covariance entry {n} / {size}")
       covrows.append(
         StitchCovarianceEntry(
           n=n,
           coordinate1=row1.n,
           coordinate2=row2.n,
-          covariance=unc.covariance_matrix([row1.positionwithuncertainty, row2.positionwithuncertainty])[0][1],
+          covariance=self.covariancematrix[row1.n-1,row2.n-1],
         )
       )
-    writetable(covariancefilename, covrows, **kwargs)
+    writetable(covariancefilename, covrows, printevery=printevery, **kwargs)
 
 @dataclasses.dataclass
 class StitchCoordinate:
@@ -617,15 +624,20 @@ class StitchCovarianceEntry:
   covariance: float
 
 class StitchResult(StitchResultBase):
-  def __init__(self, x, T, rectangledict, A, b, c):
-    super().__init__(x=x, T=T, rectangledict=rectangledict)
+  def __init__(self, x, T, rectangledict, A, b, c, covariancematrix):
+    super().__init__(x=x, T=T, rectangledict=rectangledict, covariancematrix=covariancematrix)
     self.A = A
     self.b = b
     self.c = c
 
 class StitchResultCvxpy(StitchResultBase):
   def __init__(self, x, T, rectangledict, problem):
-    super().__init__(x=x.value, T=T.value, rectangledict=rectangledict)
+    super().__init__(
+      x=x.value,
+      T=T.value,
+      rectangledict=rectangledict,
+      covariancematrix=np.zeros(self.x.size+self.T.size, self.x.size+self.T.size)
+    )
     self.problem = problem
     self.xvar = x
     self.Tvar = T

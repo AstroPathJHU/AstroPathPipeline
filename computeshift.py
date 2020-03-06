@@ -71,8 +71,6 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
   + (shifted[0] * staterrorspline(shifted[1])) ** 2
   ))
 
-  logger.info("%g %g %g", z[maxidx], error_crosscorrelation, error_crosscorrelation / z[maxidx])
-
   covariance = error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
 
   exit = 0
