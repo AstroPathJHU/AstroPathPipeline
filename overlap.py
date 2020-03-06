@@ -68,7 +68,7 @@ class Overlap:
       if alreadyalignedstrategy == "error":
         raise RuntimeError(f"Overlap {self.n} is already aligned.  To keep the previous result, call align(alreadyalignedstrategy='skip').  To align again and overwrite the previous result, call align(alreadyalignedstrategy='overwrite').")
       elif alreadyalignedstrategy == "skip":
-        return
+        return self.result
       elif alreadyalignedstrategy == "overwrite":
         pass
       else:
