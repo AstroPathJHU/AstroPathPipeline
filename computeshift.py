@@ -31,8 +31,8 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
   maxidx = np.unravel_index(np.argmax(np.abs(z)), z.shape)
 
   slc = (
-    slice(maxidx[0]-windowsize, maxidx[0]+windowsize),
-    slice(maxidx[1]-windowsize, maxidx[1]+windowsize),
+    slice(maxidx[0]-windowsize, maxidx[0]+windowsize+1),
+    slice(maxidx[1]-windowsize, maxidx[1]+windowsize+1),
   )
   xx = x[slc]
   yy = y[slc]
@@ -113,8 +113,8 @@ def hann(images):
 def crosscorrelation(images):
   fourier = np.fft.fft2(images)
   crosspower = getcrosspower(fourier)
-  invfourier = np.real(np.fft.ifft2(crosspower))
-  return invfourier
+  invfourier = np.fft.ifft2(crosspower)
+  return np.real(invfourier)
 
 @nb.njit
 def getcrosspower(fourier):
