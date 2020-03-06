@@ -95,4 +95,4 @@ class TestAlignment(unittest.TestCase):
     a.getDAPI()
     o1, o2 = a.overlaps
     c1, c2 = crosscorrelation(o1.cutimages), crosscorrelation(o2.cutimages)
-    np.testing.assert_allclose(np.roll(np.roll(np.fft.ifft2(c2).real[::-1,::-1], 1, axis=0), 1, axis=1), np.fft.ifft2(c1).real)
+    np.testing.assert_allclose(np.roll(np.roll(np.fft.ifft2(c2).real[::-1,::-1], 1, axis=0), 1, axis=1), np.fft.ifft2(c1).real, rtol=1e-4)
