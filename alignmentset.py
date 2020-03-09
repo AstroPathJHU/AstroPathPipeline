@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import collections, cv2, dataclasses, itertools, logging, methodtools, numpy as np, os, scipy, typing, uncertainties as unc, uncertainties.unumpy as unp
+import abc, collections, cv2, dataclasses, itertools, logging, methodtools, numpy as np, os, scipy, typing, uncertainties as unc, uncertainties.unumpy as unp
 
 from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap
@@ -273,6 +273,7 @@ class AlignmentSet:
 
       result.writetable(
         os.path.join(self.dbload, self.samp+"_stitch.csv"),
+        os.path.join(self.dbload, self.samp+"_affine.csv"),
         os.path.join(self.dbload, self.samp+"_stitch_covariance.csv"),
         retry=self.interactive,
         printevery=10000,
@@ -413,7 +414,7 @@ class AlignmentSet:
     x = result[:-4].reshape(len(self.rectangles), 2) * scaleby
     T = result[-4:].reshape(2, 2)
 
-    return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangledict=rectangledict, covariancematrix=covariancematrix)
+    return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangledict=rectangledict, overlaps=self.overlaps, covariancematrix=covariancematrix)
 
   def __stitch_cvxpy(self, fixpoint="origin"):
     """
@@ -487,7 +488,7 @@ class AlignmentSet:
     prob.solve()
 
     rectangledict = {rectangle.n: i for i, rectangle in enumerate(self.rectangles)}
-    return StitchResultCvxpy(x=x, T=T, problem=prob, rectangledict=rectangledict)
+    return StitchResultCvxpy(x=x, T=T, problem=prob, rectangledict=rectangledict, overlaps=self.overlaps)
 
   def subset(self, *, selectrectangles=None, selectoverlaps=None):
     rectanglefilter = rectangleoroverlapfilter(selectrectangles)
@@ -542,10 +543,11 @@ def rectangleoroverlapfilter(selection):
     return selection
 
 class StitchResultBase:
-  def __init__(self, x, T, rectangledict, covariancematrix):
+  def __init__(self, x, T, rectangledict, overlaps, covariancematrix):
     self.__x = x
     self.T = T
     self.__rectangledict = rectangledict
+    self.__overlaps = overlaps
     self.covariancematrix = covariancematrix
 
     #sanity check
@@ -562,7 +564,7 @@ class StitchResultBase:
   def dx(self, overlap):
     return self.x(overlap.p1) - self.x(overlap.p2) - (overlap.x1vec - overlap.x2vec)
 
-  def writetable(self, filename, covariancefilename, *, printevery=10000, **kwargs):
+  def writetable(self, filename, affinefilename, covariancefilename, *, printevery=10000, **kwargs):
     n = 0
     rows = []
     for rectangleid in self.__rectangledict:
@@ -571,73 +573,110 @@ class StitchResultBase:
         rows.append(
           StitchCoordinate(
             n=n,
-            rectangle=rectangleid,
+            hpfid=rectangleid,
             coordinate=coordinate,
             position=position,
           )
         )
-    i = 0
-    for i, Tii in enumerate(np.ravel(self.T)):
-      n+=1
-      rows.append(
-        StitchCoordinate(
-          n=n,
-          rectangle=-99,
-          coordinate=i,
-          position=Tii,
-        )
-      )
     writetable(filename, rows, printevery=printevery, **kwargs)
 
-    covrows = []
-    size = len(rows) * (len(rows)+1) // 2
-    for n, (row1, row2) in enumerate(itertools.combinations_with_replacement(rows, 2), start=1):
-      if not n % printevery: logger.info(f"finding covariance entry {n} / {size}")
-      covrows.append(
-        StitchCovarianceEntry(
-          n=n,
-          coordinate1=row1.n,
-          coordinate2=row2.n,
-          covariance=self.covariancematrix[row1.n-1,row2.n-1],
+    affine = []
+    n = 0
+    for rowcoordinate, row in zip("xy", self.T):
+      for columncoordinate, entry in zip("xy", row):
+        n += 1
+        affine.append(
+          AffineNominalEntry(
+            n=n,
+            matrixentry=entry,
+            description="a"+rowcoordinate+columncoordinate
+          )
+        )
+
+    for entry1, entry2 in itertools.combinations_with_replacement(affine[:], 2):
+      n += 1
+      affine.append(AffineCovarianceEntry(n=n, entry1=entry1, entry2=entry2))
+    writetable(affinefilename, affine, printevery=printevery, rowclass=AffineEntry, **kwargs)
+
+    overlapcovariances = []
+    for o in self.__overlaps:
+      covariance = unc.covariance_matrix(self.dx(o))
+      overlapcovariances.append(
+        StitchOverlapCovariance(
+          hpfid1=o.p1,
+          hpfid2=o.p2,
+          covxx=covariance[0][0],
+          covxy=covariance[0][1],
+          covyy=covariance[1][1],
         )
       )
-    writetable(covariancefilename, covrows, printevery=printevery, **kwargs)
+    writetable(covariancefilename, overlapcovariances, printevery=printevery, **kwargs)
 
 @dataclasses.dataclass
 class StitchCoordinate:
   n: int
-  rectangle: int  #rectangle = -99: T matrix
+  hpfid: int
   coordinate: int #for a rectangle: 0=x, 1=y
-                  #for T matrix: 0=xx, 1=xy, 2=yx, 3=yy
   position: float
 
-  def __init__(self, n, rectangle, coordinate, position):
+  def __init__(self, n, hpfid, coordinate, position):
     self.n = n
-    self.rectangle = rectangle
+    self.hpfid = hpfid
     self.coordinate = coordinate
     self.positionwithuncertainty = position
     self.position = unc.nominal_value(position)
 
 @dataclasses.dataclass
-class StitchCovarianceEntry:
+class AffineEntry(abc.ABC):
   n: int
-  coordinate1: int
-  coordinate2: int
-  covariance: float
+  value: float
+  description: str
+
+  @abc.abstractmethod
+  def __post_init__(self):
+    pass
+
+class AffineNominalEntry(AffineEntry):
+  def __init__(self, n, matrixentry, description):
+    self.matrixentry = matrixentry
+    super().__init__(n=n, value=matrixentry.n, description=description)
+
+  def __post_init__(self): pass
+
+class AffineCovarianceEntry(AffineEntry):
+  def __init__(self, n, entry1, entry2):
+    self.entry1 = entry1
+    self.entry2 = entry2
+    if entry1 is entry2:
+      value = entry1.matrixentry.s
+    else:
+      value = unc.covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0][1]
+    super().__init__(n=n, value=value, description = "cov_"+entry1.description+"_"+entry2.description)
+
+  def __post_init__(self): pass
+
+@dataclasses.dataclass
+class StitchOverlapCovariance:
+  hpfid1: int
+  hpfid2: int
+  covxx: float
+  covyy: float
+  covxy: float
 
 class StitchResult(StitchResultBase):
-  def __init__(self, x, T, rectangledict, A, b, c, covariancematrix):
-    super().__init__(x=x, T=T, rectangledict=rectangledict, covariancematrix=covariancematrix)
+  def __init__(self, x, T, rectangledict, overlaps, A, b, c, covariancematrix):
+    super().__init__(x=x, T=T, rectangledict=rectangledict, overlaps=overlaps, covariancematrix=covariancematrix)
     self.A = A
     self.b = b
     self.c = c
 
 class StitchResultCvxpy(StitchResultBase):
-  def __init__(self, x, T, rectangledict, problem):
+  def __init__(self, x, T, rectangledict, overlaps, problem):
     super().__init__(
       x=x.value,
       T=T.value,
       rectangledict=rectangledict,
+      overlaps=overlaps,
       covariancematrix=np.zeros(x.size+T.size, x.size+T.size)
     )
     self.problem = problem
