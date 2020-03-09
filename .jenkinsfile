@@ -28,7 +28,7 @@ pipeline {
             url: 'https://github.com/astropathjhu/alignmentjenkinsdata'
           ]]
         ])
-        sh "cd test/data && git checkout ${TEST_DATA_COMMIT} -b maggie"
+        sh "cd test/data && git checkout ${TEST_DATA_COMMIT} maggie"
       }
     }
 
