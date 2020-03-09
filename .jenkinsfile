@@ -41,8 +41,7 @@ pipeline {
     stage('test warping') {
       steps {
         sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
-	sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.run_warpfitter fit M21_1 ${folder}/test/data/raw ${folder}/test/data --working_dir jenkins_test --overlaps 46 --fixed fx,fy --max_iter 1'
-	sh 'cat jenkins_test/warping_parameters.txt; rm -rf jenkins_test'
+	sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
       }
     }
   }

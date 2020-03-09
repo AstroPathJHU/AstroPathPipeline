@@ -1,6 +1,6 @@
 #imports 
 from .warpfitter import WarpFitter
-from microscopealignment.alignmentset import AlignmentSet
+from .alignmentset import AlignmentSet
 from argparse import ArgumentParser
 from scipy import stats
 import os, gc, logging, matplotlib.pyplot as plt, seaborn as sns
