@@ -152,7 +152,7 @@ def getOverlaps(args) :
         octets = getSampleOctets(args.root1_dir,args.root2_dir,args.sample,args.working_dir,(args.mode=='show_octets' or args.mode=='show_chunks'))
         if args.mode=='fit' and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
             for i,octet in enumerate([octets[key] for key in sorted(octets.keys())],start=1) :
-                if i in args.octets :
+                if i in args.octets or args.octets==[-1]:
                     logger.info(f'Adding overlaps in octet #{i}...')
                     for overlap in octet :
                         overlaps.append(overlap.n)
@@ -166,7 +166,7 @@ def getOverlaps(args) :
             octet_chunks = getSampleChunks(octets)
             if args.mode=='fit' and args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS) :
                 for i,chunk in enumerate(octet_chunks,start=1) :
-                    if i in args.chunks :
+                    if i in args.chunks or args.chunks==[-1] :
                         logger.info(f'Adding overlaps in chunk #{i}...')
                         for octet in chunk :
                             for overlap in octet :
