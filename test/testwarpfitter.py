@@ -7,7 +7,7 @@ import os
 #some constants
 folder = os.path.dirname(__file__)
 samp = 'M21_1'
-rawfile_dir = os.path.join(folder,'data','raw')
+rawfile_dir = os.path.join(folder,'data','raw',samp)
 metafile_dir = os.path.join(folder,'data',samp,'dbload')
 working_dir = os.path.join(folder,'warpfitter_test_for_jenkins')
 overlaps = [46]

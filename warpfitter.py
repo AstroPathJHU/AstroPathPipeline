@@ -365,7 +365,6 @@ class WarpFitter :
         all_rectangles = readtable(os.path.join(self.metafile_dir,self.samp_name+RECTANGLE_FILE_EXT),Rectangle)
         rects = [r for r in all_rectangles if r.n in ([o.p1 for o in olaps]+[o.p2 for o in olaps])]
         #create the working directory and write to it the new metadata .csv files
-        print(f'CURRENT_DIRECTORY = {os.getcwd()}')
         if not os.path.isdir(self.working_dir) :
             os.mkdir(self.working_dir)
         os.chdir(self.working_dir)
