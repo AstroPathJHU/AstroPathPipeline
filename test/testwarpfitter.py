@@ -8,7 +8,7 @@ import os
 folder = os.path.dirname(__file__)
 samp = 'M21_1'
 rawfile_dir = os.path.join(folder,'data','raw')
-metafile_dir = os.path.join(folder,'data')
+metafile_dir = os.path.join(folder,'data',samp,'dbload')
 working_dir = 'jenkins_test'
 overlaps = [46]
 layers = [1]
