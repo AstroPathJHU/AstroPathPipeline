@@ -1,4 +1,4 @@
-import dataclasses, numbers, numpy as np, os, unittest
+import dataclasses, itertools, numbers, numpy as np, os, unittest
 from ..alignmentset import AlignmentSet, ImageStats, StitchCoordinate, StitchCovarianceEntry
 from ..overlap import AlignmentResult
 from ..tableio import readtable
@@ -39,5 +39,5 @@ class TestAlignment(unittest.TestCase):
     ):
       rows = readtable(os.path.join(thisfolder, "data", "M21_1", "dbload", filename), cls)
       targetrows = readtable(os.path.join(thisfolder, "alignmentreference", filename), cls)
-      for row, target in zip(rows, targetrows):
-        assertAlmostEqual(row, target, rtol=1e-5)
+      for row, target in itertools.zip_longest(rows, targetrows):
+        assertAlmostEqual(row, target, rtol=1e-5, atol=1e-8)
