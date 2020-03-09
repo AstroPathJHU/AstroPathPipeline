@@ -113,7 +113,7 @@ class WarpFitter :
         self.alignset.getDAPI(filetype='camWarpDAPI')
 
     def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=15.,max_tangential_warp=15.,par_bounds=None,
-              print_every=1,maxiter=1000,show_plots=False) :
+              polish=True,print_every=1,maxiter=1000,show_plots=False) :
         """
         Fit the cameraWarp model to the loaded dataset
         fix_*       = set True to fix groups of parameters
@@ -166,29 +166,32 @@ class WarpFitter :
         finally :
             os.chdir(self.init_dir)
         logger.info(f'Initial minimization completed {"successfully" if firstresult.success else "UNSUCCESSFULLY"} in {firstresult.nfev} evaluations.')
-        #call minimize with trust_constr
-        logger.info('Starting polishing minimization....')
-        relative_steps = np.array([0.02,0.02,0.02,0.02,0.02,0.02,0.0001,0.0001])[self.par_mask]
-        os.chdir(self.working_dir)
-        try :
-            result=scipy.optimize.minimize(
-                fun=self._evalCamWarpOnAlignmentSet,
-                x0=firstresult.x,
-                method='trust-constr',
-                bounds=parameter_bounds,
-                constraints=constraints,
-                options={'xtol':1e-4,'gtol':1e-3,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
-                )
-        except Exception :
-            raise FittingError('Something failed in the polishing minimization!')
-        finally :
-            os.chdir(self.init_dir)
-        msg = f'Final minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations '
-        term_conds = {0:'max iterations',1:'gradient tolerance',2:'parameter tolerance',3:'callback function'}
-        msg+=f'due to compliance with {term_conds[result.status]} criteria.'
-        logger.info(msg)
+        if polish :
+            #call minimize with trust_constr
+            logger.info('Starting polishing minimization....')
+            relative_steps = np.array([0.02,0.02,0.02,0.02,0.02,0.02,0.0001,0.0001])[self.par_mask]
+            os.chdir(self.working_dir)
+            try :
+                result=scipy.optimize.minimize(
+                    fun=self._evalCamWarpOnAlignmentSet,
+                    x0=firstresult.x,
+                    method='trust-constr',
+                    bounds=parameter_bounds,
+                    constraints=constraints,
+                    options={'xtol':1e-4,'gtol':1e-3,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
+                    )
+            except Exception :
+                raise FittingError('Something failed in the polishing minimization!')
+            finally :
+                os.chdir(self.init_dir)
+            msg = f'Final minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations '
+            term_conds = {0:'max iterations',1:'gradient tolerance',2:'parameter tolerance',3:'callback function'}
+            msg+=f'due to compliance with {term_conds[result.status]} criteria.'
+            logger.info(msg)
+        else :
+            result=firstresult
         #make the fit progress plots
-        #self.__makeFitProgressPlots(firstresult.nfev,show_plots)
+        self.__makeFitProgressPlots(firstresult.nfev,show_plots)
         #use the fit result to make the best fit warp object and save the figure of its warp fields
         best_fit_pars = self.__correctParameterList(result.x)
         self.warpset.updateCameraParams(best_fit_pars)

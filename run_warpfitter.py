@@ -264,7 +264,7 @@ if args.mode=='fit' :
     logger.info('Running doFit')
     result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,
                           max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
-                          print_every=args.print_every,maxiter=args.max_iter)
+                          polish=True,print_every=args.print_every,maxiter=args.max_iter)
 
 logger.info('All done : )')
 
