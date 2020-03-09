@@ -12,7 +12,52 @@ DEFAULT_OCTETS   = '-1'
 DEFAULT_CHUNKS   = '-999'
 REJECTED_OVERLAP_IMAGE_DIR_NAME = 'rejected_overlap_images'
 
-#################### HELPER FUNCTIONS TO FIND OVERLAPS TO USE ####################
+#################### PARSE ARGUMENTS ####################
+
+#parser callback function to split a string of comma-separated values into a list
+def split_csv_to_list(value) :
+    return value.split(',')
+
+#parser callback function to split a string of comma-separated values into a list of integers
+def split_csv_to_list_of_ints(value) :
+    try :
+        return [int(v) for v in value.split(',')]
+    except ValueError :
+        raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
+
+#define and get the command-line arguments
+parser = ArgumentParser()
+#positional arguments
+parser.add_argument('mode',        help='Operation to perform', choices=['fit','show_octets','show_chunks'])
+parser.add_argument('sample',      help='Name of the data sample to use')
+parser.add_argument('rawfile_dir', help='Path to the directory containing the "[sample_name]/*.raw" files')
+parser.add_argument('root1_dir',   help='Path to the directory containing "[sample name]/dbload" subdirectories')
+#optional arguments
+parser.add_argument('--working_dir',         default='warpfit_test',
+    help='Path to (or name of) the working directory that will be created')
+parser.add_argument('--overlaps',            default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
+    help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
+parser.add_argument('--root2_dir',
+    help='Path to the directory containing the "[sample_name]/*.fw01" files to use for initial alignment in determining valid octets or chunks')
+parser.add_argument('--octets',              default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
+    help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
+parser.add_argument('--chunks',              default=DEFAULT_CHUNKS,   type=split_csv_to_list_of_ints,         
+    help='Comma-separated list of overlap octet chunk indices (ordered by n of first octet central rectangle) to use')
+parser.add_argument('--layers',              default='1',         type=split_csv_to_list_of_ints,         
+    help='Comma-separated list of image layers to use')
+parser.add_argument('--fixed',               default='',          type=split_csv_to_list,         
+    help='Comma-separated list of parameters to keep fixed during fitting')
+parser.add_argument('--max_radial_warp',     default=15.,         type=float,
+    help='Maximum amount of radial warp to use for constraint')
+parser.add_argument('--max_tangential_warp', default=15.,         type=float,
+    help='Maximum amount of radial warp to use for constraint')
+parser.add_argument('--print_every',         default=10,          type=int,
+    help='Maximum amount of radial warp to use for constraint')
+parser.add_argument('--max_iter',            default=1000,        type=int,
+    help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
+args = parser.parse_args()
+
+#################### HELPER FUNCTIONS ####################
 
 # Helper function that produces the visualizations of the rejected overlaps
 def makeImagePixelPlots(overlaps) :
@@ -136,10 +181,8 @@ def getOverlaps(args) :
     #if the overlaps are being specified then they have to be either -1 (to use all), a tuple (to use a range), or a list
     if args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS) :
         overlaps = args.overlaps
-        if len(overlaps)==1 :
+        if overlaps==[-1] :
             overlaps = overlaps[0]
-            if overlaps!=-1 :
-                raise ValueError(f'single overlaps argument ({args.overlaps}) must be -1 (to use all overlaps)!')
         elif len(overlaps)==2 :
             overlaps=tuple(overlaps)
     #otherwise overlaps will have to be set after finding the octets and/or chunks
@@ -178,48 +221,7 @@ def getOverlaps(args) :
                     raise ValueError(msg)
     return overlaps
 
-#################### PARSE ARGUMENTS ####################
-
-#parser callback function to split a string of comma-separated values into a list
-def split_csv_to_list(value) :
-    return value.split(',')
-
-#parser callback function to split a string of comma-separated values into a list of integers
-def split_csv_to_list_of_ints(value) :
-    try :
-        return [int(v) for v in value.split(',')]
-    except ValueError :
-        raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
-
-#define and get the command-line arguments
-parser = ArgumentParser()
-#positional arguments
-parser.add_argument('mode',        help='Operation to perform', choices=['fit','show_octets','show_chunks'])
-parser.add_argument('sample',      help='Name of the data sample to use')
-parser.add_argument('rawfile_dir', help='Path to the directory containing the "[sample_name]/*.raw" files')
-parser.add_argument('root1_dir',   help='Path to the directory containing "[sample name]/dbload" subdirectories')
-#optional arguments
-parser.add_argument('--working_dir',         default='warpfit_test',
-    help='Path to (or name of) the working directory that will be created')
-parser.add_argument('--overlaps',            default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
-    help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
-parser.add_argument('--root2_dir',
-    help='Path to the directory containing the "[sample_name]/*.fw01" files to use for initial alignment in determining octets or chunks')
-parser.add_argument('--octets',              default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
-    help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
-parser.add_argument('--chunks',              default=DEFAULT_CHUNKS,   type=split_csv_to_list_of_ints,         
-    help='Comma-separated list of overlap octet chunk indices (ordered by n of first octet central rectangle) to use')
-parser.add_argument('--layers',              default='1',         type=split_csv_to_list_of_ints,         
-    help='Comma-separated list of image layers to use')
-parser.add_argument('--fixed',               default='',          type=split_csv_to_list,         
-    help='Comma-separated list of parameters to keep fixed during fitting')
-parser.add_argument('--max_radial_warp',     default=15.,         type=float,
-    help='Maximum amount of radial warp to use for constraint')
-parser.add_argument('--max_tangential_warp', default=15.,         type=float,
-    help='Maximum amount of radial warp to use for constraint')
-parser.add_argument('--print_every',         default=10,          type=int,
-    help='Maximum amount of radial warp to use for constraint')
-args = parser.parse_args()
+#################### MAIN SCRIPT ####################
 
 #apply some checks to the arguments to make sure they're valid
 #only one of "overlaps" "octets" and/or "chunks" can be specified
@@ -251,7 +253,6 @@ gc.collect()
 if args.mode=='fit' :
     logger.info(f'Will run fit on a sample of {len(overlaps)} total overlaps.')
 
-#################### RUN THE WARPFITTER ####################
 if args.mode=='fit' :
     #make the WarpFitter Objects
     logger.info('Initializing WarpFitter')
@@ -263,7 +264,7 @@ if args.mode=='fit' :
     logger.info('Running doFit')
     result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,
                           max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
-                          print_every=args.print_every)
+                          print_every=args.print_every,maxiter=args.max_iter)
 
 logger.info('All done : )')
 

@@ -112,7 +112,8 @@ class WarpFitter :
             os.chdir(self.init_dir)
         self.alignset.getDAPI(filetype='camWarpDAPI')
 
-    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=15.,max_tangential_warp=15.,par_bounds=None,print_every=1,show_plots=False) :
+    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=15.,max_tangential_warp=15.,par_bounds=None,
+              print_every=1,maxiter=1000,show_plots=False) :
         """
         Fit the cameraWarp model to the loaded dataset
         fix_*       = set True to fix groups of parameters
@@ -152,6 +153,7 @@ class WarpFitter :
                 func=self._evalCamWarpOnAlignmentSet,
                 bounds=parameter_bounds,
                 strategy='best2bin',
+                maxiter=maxiter,
                 tol=0.008,
                 mutation=(0.6,1.00),
                 recombination=0.5,
@@ -175,7 +177,7 @@ class WarpFitter :
                 method='trust-constr',
                 bounds=parameter_bounds,
                 constraints=constraints,
-                options={'xtol':1e-4,'gtol':1e-3,'finite_diff_rel_step':relative_steps}
+                options={'xtol':1e-4,'gtol':1e-3,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
                 )
         except Exception :
             raise FittingError('Something failed in the polishing minimization!')
