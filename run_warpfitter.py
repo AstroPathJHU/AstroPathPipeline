@@ -3,7 +3,7 @@ from .warpfitter import WarpFitter
 from microscopealignment.alignmentset import AlignmentSet
 from argparse import ArgumentParser
 from scipy import stats
-import os, logging, matplotlib.pyplot as plt, seaborn as sns
+import os, gc, logging, matplotlib.pyplot as plt, seaborn as sns
 
 #constants
 logger = logging.getLogger("warpfitter")
@@ -129,6 +129,55 @@ def getSampleChunks(octets) :
         logger.info(msg)
     return octet_chunks
 
+# Helper function to determine the list of overlaps
+def getOverlaps(args) :
+    #set the overlaps variable based on which of the options was used to specify
+    overlaps=[]
+    #if the overlaps are being specified then they have to be either -1 (to use all), a tuple (to use a range), or a list
+    if args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS) :
+        overlaps = args.overlaps
+        if len(overlaps)==1 :
+            overlaps = overlaps[0]
+            if overlaps!=-1 :
+                raise ValueError(f'single overlaps argument ({args.overlaps}) must be -1 (to use all overlaps)!')
+        elif len(overlaps)==2 :
+            overlaps=tuple(overlaps)
+    #otherwise overlaps will have to be set after finding the octets and/or chunks
+    else :
+        if args.root2_dir is None :
+            raise ValueError(f'A root2_dir must be specified if you want the code to determine the valid octets and/or chunks for this sample!')
+        if not os.path.isdir(args.root2_dir) :
+            raise ValueError(f'root2_dir {args.root2_dir} is not a valid directory!')
+        #get the dictionary of overlap octets
+        octets = getSampleOctets(args.root1_dir,args.root2_dir,args.sample,args.working_dir,(args.mode=='show_octets' or args.mode=='show_chunks'))
+        if args.mode=='fit' and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
+            for i,octet in enumerate([octets[key] for key in sorted(octets.keys())],start=1) :
+                if i in args.octets :
+                    logger.info(f'Adding overlaps in octet #{i}...')
+                    for overlap in octet :
+                        overlaps.append(overlap.n)
+            if len(overlaps)!=8*len(args.octets) :
+                msg =f'specified octets {args.octets} did not result in the desired set of overlaps! '
+                msg+=f'(asked for {len(args.octets)} octets but found {len(overlaps)} corresponding overlaps)'
+                msg+=f' there are {len(octets)} octets to choose from.'
+                raise ValueError(msg)
+        if args.mode=='show_chunks' or (args.mode=='fit' and overlaps==[]) :
+            #find the chunks of interconnected octets
+            octet_chunks = getSampleChunks(octets)
+            if args.mode=='fit' and args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS) :
+                for i,chunk in enumerate(octet_chunks,start=1) :
+                    if i in args.chunks :
+                        logger.info(f'Adding overlaps in chunk #{i}...')
+                        for octet in chunk :
+                            for overlap in octet :
+                                overlaps.append(overlap.n)
+                if len(overlaps)==0 :
+                    msg =f'specified chunks {args.chunks} did not result in the desired set of overlaps! '
+                    msg+=f'(asked for {len(args.chunks)} chunks but found {len(overlaps)} corresponding overlaps)'
+                    msg+=f' there are {len(octet_chunks)} chunks to choose from.'
+                    raise ValueError(msg)
+    return overlaps
+
 #################### PARSE ARGUMENTS ####################
 
 #parser callback function to split a string of comma-separated values into a list
@@ -197,52 +246,8 @@ fix_p1p2 = 'p1' in args.fixed and 'p2' in args.fixed
 if args.fixed!=[''] and len(args.fixed)!=2*sum([fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2]) :
     raise ValueError(f'Fixed parameters argument ({args.fixed}) does not result in a valid fixed parameter condition!')
 #choice of overlaps must be valid
-overlaps=None
-#if the overlaps are being specified then they have to be either -1 (to use all), a tuple (to use a range), or a list
-if args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS) :
-    overlaps = args.overlaps
-    if len(overlaps)==1 :
-        overlaps = overlaps[0]
-        if overlaps!=-1 :
-            raise ValueError(f'single overlaps argument ({args.overlaps}) must be -1 (to use all overlaps)!')
-    elif len(overlaps)==2 :
-        overlaps=tuple(overlaps)
-#otherwise overlaps will have to be set after finding the octets and/or chunks
-else :
-    if args.root2_dir is None :
-        raise ValueError(f'A root2_dir must be specified if you want the code to determine the valid octets and/or chunks for this sample!')
-    if not os.path.isdir(args.root2_dir) :
-        raise ValueError(f'root2_dir {args.root2_dir} is not a valid directory!')
-    #set the overlaps variable based on which of the options was used to specify
-    overlaps=[]
-    #get the dictionary of overlap octets
-    octets = getSampleOctets(args.root1_dir,args.root2_dir,args.sample,args.working_dir,(args.mode=='show_octets' or args.mode=='show_chunks'))
-    if args.mode=='fit' and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
-        for i,octet in enumerate([octets[key] for key in sorted(octets.keys())],start=1) :
-            if i in args.octets :
-                logger.info(f'Adding overlaps in octet #{i}...')
-                for overlap in octet :
-                    overlaps.append(overlap.n)
-        if len(overlaps)!=8*len(args.octets) :
-            msg =f'specified octets {args.octets} did not result in the desired set of overlaps! '
-            msg+=f'(asked for {len(args.octets)} octets but found {len(overlaps)} corresponding overlaps)'
-            msg+=f' there are {len(octets)} octets to choose from.'
-            raise ValueError(msg)
-    if args.mode=='show_chunks' or (args.mode=='fit' and overlaps==[]) :
-        #find the chunks of interconnected octets
-        octet_chunks = getSampleChunks(octets)
-        if args.mode=='fit' and args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS) :
-            for i,chunk in enumerate(octet_chunks,start=1) :
-                if i in args.chunks :
-                    logger.info(f'Adding overlaps in chunk #{i}...')
-                    for octet in chunk :
-                        for overlap in octet :
-                            overlaps.append(overlap.n)
-            if len(overlaps)==0 :
-                msg =f'specified chunks {args.chunks} did not result in the desired set of overlaps! '
-                msg+=f'(asked for {len(args.chunks)} chunks but found {len(overlaps)} corresponding overlaps)'
-                msg+=f' there are {len(octet_chunks)} chunks to choose from.'
-                raise ValueError(msg)
+overlaps=getOverlaps(args)
+gc.collect()
 if args.mode=='fit' :
     logger.info(f'Will run fit on a sample of {len(overlaps)} total overlaps.')
 
