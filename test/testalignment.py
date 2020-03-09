@@ -1,4 +1,4 @@
-import dataclasses, numbers, numpy as np, os, unittest
+import dataclasses, itertools, numbers, numpy as np, os, unittest
 from ..alignmentset import AlignmentSet, ImageStats, StitchCoordinate, StitchCovarianceEntry
 from ..overlap import AlignmentResult
 from ..tableio import readtable
