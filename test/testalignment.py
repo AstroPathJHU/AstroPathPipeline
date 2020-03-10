@@ -1,5 +1,5 @@
 import dataclasses, itertools, numbers, numpy as np, os, uncertainties.unumpy as unp, unittest
-from ..alignmentset import AlignmentSet, ImageStats, StitchCoordinate, StitchCovarianceEntry
+from ..alignmentset import AffineEntry, AlignmentSet, ImageStats, StitchCoordinate, StitchOverlapCovariance
 from ..computeshift import crosscorrelation
 from ..overlap import AlignmentResult
 from ..tableio import readtable
@@ -28,12 +28,14 @@ class TestAlignment(unittest.TestCase):
   def testAlignment(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
     a.getDAPI()
-    a.align(debug=True, errorfactor=1/5)
+    a.align(debug=True)
+    a.stitch()
     for filename, cls in (
       ("M21_1_imstat.csv", ImageStats),
+      ("M21_1_affine.csv", AffineEntry),
       ("M21_1_align.csv", AlignmentResult),
       ("M21_1_stitch.csv", StitchCoordinate),
-      ("M21_1_stitch_covariance.csv", StitchCovarianceEntry),
+      ("M21_1_stitch_covariance.csv", StitchOverlapCovariance),
     ):
       rows = readtable(os.path.join(thisfolder, "data", "M21_1", "dbload", filename), cls)
       targetrows = readtable(os.path.join(thisfolder, "alignmentreference", filename), cls)
@@ -56,7 +58,7 @@ class TestAlignment(unittest.TestCase):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
     a.readalignments(filename=os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"))
 
-    defaultresult = a.stitch()
+    defaultresult = a.stitch(saveresult=False)
     cvxpyresult = a.stitch(saveresult=False, usecvxpy=True)
 
     centerresult = a.stitch(saveresult=False, fixpoint="center")

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import abc, collections, cv2, dataclasses, itertools, logging, methodtools, numpy as np, os, scipy, typing, uncertainties as unc, uncertainties.unumpy as unp
+import collections, cv2, dataclasses, itertools, logging, methodtools, numpy as np, os, scipy, typing, uncertainties as unc, uncertainties.unumpy as unp
 
 from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap
@@ -627,14 +627,10 @@ class StitchCoordinate:
     self.position = unc.nominal_value(position)
 
 @dataclasses.dataclass
-class AffineEntry(abc.ABC):
+class AffineEntry:
   n: int
   value: float
   description: str
-
-  @abc.abstractmethod
-  def __post_init__(self):
-    pass
 
 class AffineNominalEntry(AffineEntry):
   def __init__(self, n, matrixentry, description):
