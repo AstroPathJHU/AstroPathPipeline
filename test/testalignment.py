@@ -1,7 +1,8 @@
 import dataclasses, itertools, numbers, numpy as np, os, uncertainties.unumpy as unp, unittest
-from ..alignmentset import AffineEntry, AlignmentSet, ImageStats, StitchCoordinate, StitchOverlapCovariance
+from ..alignmentset import AlignmentSet, ImageStats
 from ..computeshift import crosscorrelation
 from ..overlap import AlignmentResult
+from ..stitch import AffineEntry, StitchCoordinate, StitchOverlapCovariance
 from ..tableio import readtable
 
 thisfolder = os.path.dirname(__file__)
