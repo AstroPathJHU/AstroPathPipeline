@@ -8,7 +8,7 @@ import os, gc, logging, matplotlib.pyplot as plt, seaborn as sns
 #constants
 logger = logging.getLogger("warpfitter")
 DEFAULT_OVERLAPS = '-999'
-DEFAULT_OCTETS   = '-1'
+DEFAULT_OCTETS   = '-999'
 DEFAULT_CHUNKS   = '-999'
 REJECTED_OVERLAP_IMAGE_DIR_NAME = 'rejected_overlap_images'
 
@@ -225,9 +225,16 @@ def getOverlaps(args) :
 
 #apply some checks to the arguments to make sure they're valid
 #only one of "overlaps" "octets" and/or "chunks" can be specified
-if sum([args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS),
-        args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS),
-        args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS)])!=1 :
+nspec = sum([args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS),
+             args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS),
+             args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS)])
+if nspec==0 :
+    logger.info('No overlaps, octets, or chunks specified; will use the default of octets=[-1] to run all octets.')
+    args.octets=[-1]
+nspec = sum([args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS),
+             args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS),
+             args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS)])
+if nspec!=1 :
     raise ValueError(f'Must specify exactly ONE of overlaps, octets, or chunks! (overlaps={args.overlaps}, octets={args.octets}, chunks={args.chunks})')
 #rawfile_dir/[sample] must exist
 rawfile_dir = args.rawfile_dir if args.rawfile_dir.endswith(args.sample) else os.path.join(args.rawfile_dir,args.sample)
