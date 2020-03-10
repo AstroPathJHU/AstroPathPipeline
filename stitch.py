@@ -281,6 +281,7 @@ class StitchResultBase:
 
     overlapcovariances = []
     for o in self.__overlaps:
+      if o.p2 < o.p1: continue
       covariance = unc.covariance_matrix(self.dx(o))
       overlapcovariances.append(
         StitchOverlapCovariance(
