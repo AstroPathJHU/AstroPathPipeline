@@ -30,7 +30,6 @@ def readtable(filename, rownameorclass, **columntypes):
     where Point is a class created specially for this table.
 
     You can access the column values through table[0].ID (= "A")
-    or table[1][1] (= 2.0)
   """
 
   result = []

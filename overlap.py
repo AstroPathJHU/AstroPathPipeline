@@ -1,4 +1,4 @@
-import dataclasses, matplotlib.pyplot as plt, numpy as np, uncertainties as unc
+import abc, dataclasses, matplotlib.pyplot as plt, numpy as np, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 
@@ -167,6 +167,27 @@ class Overlap:
   @property
   def x2vec(self):
     return np.array([self.x2, self.y2])
+
+class OverlapCollection(abc.ABC):
+  @abc.abstractproperty
+  def overlaps(self): pass
+
+  @property
+  def overlapgraph(self):
+    try:
+      import networkx as nx
+    except ImportError:
+      raise ImportError("To get the overlap graph you have to install networkx")
+
+    g = nx.DiGraph()
+    for o in self.overlaps:
+      g.add_edge(o.p1, o.p2, overlap=o)
+
+    return g
+
+  @property
+  def overlapsdict(self):
+    return {(o.p1, o.p2): o for o in self.overlaps}
 
 @dataclasses.dataclass
 class AlignmentResult:

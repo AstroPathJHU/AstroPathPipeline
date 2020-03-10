@@ -3,7 +3,7 @@
 import collections, cv2, logging, methodtools, numpy as np, os, scipy, typing, uncertainties as unc
 
 from .flatfield import meanimage
-from .overlap import AlignmentResult, Overlap
+from .overlap import AlignmentResult, Overlap, OverlapCollection
 from .rectangle import ImageStats, Rectangle
 from .stitch import stitch
 from .tableio import readtable, writetable
@@ -14,7 +14,7 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s"))
 logger.addHandler(handler)
 
-class AlignmentSet:
+class AlignmentSet(OverlapCollection):
   """
   Main class for aligning a set of images
   """
@@ -69,7 +69,7 @@ class AlignmentSet:
     self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int)
     self.vertices    = readtable(os.path.join(self.dbload, self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
     self.batch       = readtable(os.path.join(self.dbload, self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
-    self.overlaps    = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), self.overlaptype)
+    self.__overlaps  = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), self.overlaptype)
     self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
     self.__image     = None
     self.constants   = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
@@ -89,7 +89,7 @@ class AlignmentSet:
     self.layer     = self.constantsdict["layer"]
 
     self.rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
-    self.overlaps = [o for o in self.overlaps if self.overlapfilter(o)]
+    self.__overlaps = [o for o in self.overlaps if self.overlapfilter(o)]
 
     for overlap in self.overlaps:
       p1rect = [r for r in self.rectangles if r.n==overlap.p1]
@@ -100,8 +100,7 @@ class AlignmentSet:
       overlap.setalignmentinfo(layer=self.layer, pscale=self.pscale, nclip=self.nclip, rectangles=overlap_rectangles)
 
   @property
-  def overlapsdict(self):
-    return {(o.p1, o.p2): o for o in self.overlaps}
+  def overlaps(self): return self.__overlaps
 
   @property
   @methodtools.lru_cache()
@@ -251,19 +250,6 @@ class AlignmentSet:
     return rawimages
 
   overlaptype = Overlap #can be overridden in subclasses
-
-  @property
-  def overlapgraph(self):
-    try:
-      import networkx as nx
-    except ImportError:
-      raise ImportError("To get the overlap graph you have to install networkx")
-
-    g = nx.DiGraph()
-    for o in self.overlaps:
-      g.add_edge(o.p1, o.p2, overlap=o)
-
-    return g
 
   def stitch(self, *, saveresult=True, **kwargs):
     result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, saveresult=saveresult, **kwargs)
