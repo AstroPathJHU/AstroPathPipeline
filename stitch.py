@@ -42,16 +42,15 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   Tyx = -2
   Tyy = -1
 
-
-  rectangledict = {rectangle.n: i for i, rectangle in enumerate(rectangles)}
+  rd = rectangledict(rectangles)
   alloverlaps = overlaps
   overlaps = [o for o in overlaps if not o.result.exit]
 
   for o in overlaps:
-    ix = 2*rectangledict[o.p1]
-    iy = 2*rectangledict[o.p1]+1
-    jx = 2*rectangledict[o.p2]
-    jy = 2*rectangledict[o.p2]+1
+    ix = 2*rd[o.p1]
+    iy = 2*rd[o.p1]+1
+    jx = 2*rd[o.p2]
+    jy = 2*rd[o.p2]+1
     assert ix >= 0, ix
     assert iy < 2*len(rectangles), iy
     assert jx >= 0, jx
@@ -102,8 +101,8 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   x0, y0 = x0vec
 
   for r in rectangles:
-    ix = 2*rectangledict[r.n]
-    iy = 2*rectangledict[r.n]+1
+    ix = 2*rd[r.n]
+    iy = 2*rd[r.n]+1
 
     x = r.x / scaleby
     y = r.y / scaleby
@@ -144,7 +143,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   x = result[:-4].reshape(len(rectangles), 2) * scaleby
   T = result[-4:].reshape(2, 2)
 
-  return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangledict=rectangledict, overlaps=alloverlaps, covariancematrix=covariancematrix)
+  return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix)
 
 def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
   """
@@ -218,14 +217,13 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
   prob = cp.Problem(minimize)
   prob.solve()
 
-  rectangledict = {rectangle.n: i for i, rectangle in enumerate(rectangles)}
-  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangledict=rectangledict, overlaps=alloverlaps)
+  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps)
 
 class StitchResultBase:
-  def __init__(self, x, T, rectangledict, overlaps, covariancematrix):
+  def __init__(self, *, x, T, rectangles, overlaps, covariancematrix):
     self.__x = x
     self.T = T
-    self.__rectangledict = rectangledict
+    self.__rectangles = rectangles
     self.__overlaps = overlaps
     self.covariancematrix = covariancematrix
 
@@ -234,6 +232,10 @@ class StitchResultBase:
       itertools.chain(np.ravel(x), np.ravel(T)),
       np.diag(covariancematrix)
     ): np.testing.assert_allclose(unc.std_dev(thing)**2, errorsq)
+
+  @property
+  def __rectangledict(self):
+    return rectangledict(self.__rectangles)
 
   def x(self, rectangle_or_id=None):
     if rectangle_or_id is None: return self.__x
@@ -291,6 +293,9 @@ class StitchResultBase:
       )
     writetable(covariancefilename, overlapcovariances, printevery=printevery, **kwargs)
 
+  def readtable(self, filename, affinefilename, covariancefilename):
+    raise NotImplementedError
+
   def applytooverlaps(self):
     for o in self.__overlaps:
       o.stitchresult = self.dx(o)
@@ -340,22 +345,23 @@ class StitchOverlapCovariance:
   covxy: float
 
 class StitchResult(StitchResultBase):
-  def __init__(self, x, T, rectangledict, overlaps, A, b, c, covariancematrix):
-    super().__init__(x=x, T=T, rectangledict=rectangledict, overlaps=overlaps, covariancematrix=covariancematrix)
+  def __init__(self, *, A, b, c, **kwargs):
+    super().__init__(**kwargs)
     self.A = A
     self.b = b
     self.c = c
 
 class StitchResultCvxpy(StitchResultBase):
-  def __init__(self, x, T, rectangledict, overlaps, problem):
+  def __init__(self, *, x, T, problem, **kwargs):
     super().__init__(
       x=x.value,
       T=T.value,
-      rectangledict=rectangledict,
-      overlaps=overlaps,
-      covariancematrix=np.zeros(x.size+T.size, x.size+T.size)
+      covariancematrix=np.zeros(x.size+T.size, x.size+T.size),
+      **kwargs
     )
     self.problem = problem
     self.xvar = x
     self.Tvar = T
 
+def rectangledict(rectangles):
+  return {rectangle.n: i for i, rectangle in enumerate(rectangles)}
