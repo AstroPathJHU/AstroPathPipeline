@@ -47,11 +47,11 @@ parser.add_argument('--layers',              default='1',         type=split_csv
     help='Comma-separated list of image layers to use')
 parser.add_argument('--fixed',               default='',          type=split_csv_to_list,         
     help='Comma-separated list of parameters to keep fixed during fitting')
-parser.add_argument('--max_radial_warp',     default=15.,         type=float,
+parser.add_argument('--max_radial_warp',     default=10.,         type=float,
     help='Maximum amount of radial warp to use for constraint')
-parser.add_argument('--max_tangential_warp', default=15.,         type=float,
+parser.add_argument('--max_tangential_warp', default=10.,         type=float,
     help='Maximum amount of radial warp to use for constraint')
-parser.add_argument('--print_every',         default=10,          type=int,
+parser.add_argument('--print_every',         default=100,          type=int,
     help='Maximum amount of radial warp to use for constraint')
 parser.add_argument('--max_iter',            default=1000,        type=int,
     help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')

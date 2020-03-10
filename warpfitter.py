@@ -112,7 +112,7 @@ class WarpFitter :
             os.chdir(self.init_dir)
         self.alignset.getDAPI(filetype='camWarpDAPI')
 
-    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=15.,max_tangential_warp=15.,par_bounds=None,
+    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=10.,max_tangential_warp=10.,par_bounds=None,
               polish=True,print_every=1,maxiter=1000,show_plots=False) :
         """
         Fit the cameraWarp model to the loaded dataset
@@ -147,6 +147,7 @@ class WarpFitter :
         constraints = self.__getConstraints(fix_k1k2,fix_p1p2,max_radial_warp,max_tangential_warp)
         #call differential_evolution
         logger.info('Starting initial minimization....')
+        self.skip_corners = True
         os.chdir(self.working_dir)
         try :
             firstresult=scipy.optimize.differential_evolution(
@@ -167,6 +168,7 @@ class WarpFitter :
             os.chdir(self.init_dir)
         logger.info(f'Initial minimization completed {"successfully" if firstresult.success else "UNSUCCESSFULLY"} in {firstresult.nfev} evaluations.')
         if polish :
+            self.skip_corners = False
             #call minimize with trust_constr
             logger.info('Starting polishing minimization....')
             relative_steps = np.array([0.02,0.02,0.02,0.02,0.02,0.02,0.0001,0.0001])[self.par_mask]
@@ -227,7 +229,7 @@ class WarpFitter :
         #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
         #align the images 
-        cost = self.alignset.align(write_result=False,return_on_invalid_result=True)
+        cost = self.alignset.align(skip_corners=self.skip_corners,write_result=False,return_on_invalid_result=True)
         #add to the lists to plot
         self.costs.append(cost if cost<1e10 else -999)
         self.max_radial_warps.append(self.warpset.warp.maxRadialDistortAmount(fixedpars))
@@ -303,12 +305,12 @@ class WarpFitter :
             raise FittingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
         #start by aligning the raw, unwarped images and getting their shift comparison information/images
         self.alignset.updateRectangleImages(self.warpset.raw_images,'.raw')
-        rawcost = self.alignset.align()
+        rawcost = self.alignset.align(write_result=False)
         raw_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
         #next warp and align the images with the best fit warp
         self.warpset.warpLoadedImageSet()
         self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
-        bestcost = self.alignset.align()
+        bestcost = self.alignset.align(write_result=False)
         warped_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
         logger.info(f'Alignment cost from raw images = {rawcost:.02f}; alignment cost from warped images = {bestcost:.02f}')
         #write out the overlap comparison figures

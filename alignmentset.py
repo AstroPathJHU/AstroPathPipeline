@@ -98,7 +98,7 @@ class AlignmentSet:
   def image(self):
     return cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
 
-  def align(self,*,write_result=True,return_on_invalid_result=False,**kwargs):
+  def align(self,*,skip_corners=False,write_result=True,return_on_invalid_result=False,**kwargs):
     #if the raw images haven't already been loaded, load them with the default argument
     #if self.rawimages is None :
     #  self.getDAPI()
@@ -112,6 +112,8 @@ class AlignmentSet:
     done = set()
 
     for i, overlap in enumerate(self.overlaps, start=1):
+      if skip_corners and overlap.tag in [1,3,7,9] :
+        continue
       logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
       p1image = [r.image for r in self.rectangles if r.n==overlap.p1]
       p2image = [r.image for r in self.rectangles if r.n==overlap.p2]
