@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import collections, cv2, dataclasses, logging, methodtools, numpy as np, os, scipy, typing, uncertainties as unc
+import collections, cv2, logging, methodtools, numpy as np, os, scipy, typing, uncertainties as unc
 
 from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap

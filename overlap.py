@@ -2,7 +2,7 @@ import dataclasses, matplotlib.pyplot as plt, numpy as np, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 
-@dataclasses.dataclass(eq=False, repr=False)
+@dataclasses.dataclass
 class Overlap:
   n: int
   p1: int
@@ -168,7 +168,7 @@ class Overlap:
   def x2vec(self):
     return np.array([self.x2, self.y2])
 
-@dataclasses.dataclass()
+@dataclasses.dataclass
 class AlignmentResult:
   n: int
   p1: int

@@ -302,12 +302,9 @@ class StitchCoordinate:
   coordinate: int #for a rectangle: 0=x, 1=y
   position: float
 
-  def __init__(self, n, hpfid, coordinate, position):
-    self.n = n
-    self.hpfid = hpfid
-    self.coordinate = coordinate
-    self.positionwithuncertainty = position
-    self.position = unc.nominal_value(position)
+  def __post_init__(self):
+    self.positionwithuncertainty = self.position
+    self.position = unc.nominal_value(self.position)
 
 @dataclasses.dataclass
 class AffineEntry:
