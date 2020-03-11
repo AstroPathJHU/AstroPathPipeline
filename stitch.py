@@ -223,7 +223,7 @@ class StitchResultBase:
   def __init__(self, *, x, T, rectangles, overlaps, covariancematrix):
     self.__x = x
     self.T = T
-    self.__rectangles = rectangles
+    self.rectangles = rectangles
     self.__overlaps = overlaps
     self.covariancematrix = covariancematrix
 
@@ -234,13 +234,13 @@ class StitchResultBase:
     ): np.testing.assert_allclose(unc.std_dev(thing)**2, errorsq)
 
   @property
-  def __rectangledict(self):
-    return rectangledict(self.__rectangles)
+  def rectangledict(self):
+    return rectangledict(self.rectangles)
 
   def x(self, rectangle_or_id=None):
     if rectangle_or_id is None: return self.__x
     if isinstance(rectangle_or_id, Rectangle): rectangle_or_id = rectangle_or_id.n
-    return self.__x[self.__rectangledict[rectangle_or_id]]
+    return self.__x[self.rectangledict[rectangle_or_id]]
 
   def dx(self, overlap):
     return self.x(overlap.p1) - self.x(overlap.p2) - (overlap.x1vec - overlap.x2vec)
@@ -248,7 +248,7 @@ class StitchResultBase:
   def writetable(self, filename, affinefilename, covariancefilename, *, printevery=10000, **kwargs):
     n = 0
     rows = []
-    for rectangleid in self.__rectangledict:
+    for rectangleid in self.rectangledict:
       for coordinate, position in enumerate(self.x(rectangleid)):
         n += 1
         rows.append(
