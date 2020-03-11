@@ -1,6 +1,6 @@
 import dataclasses, itertools, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
 from .rectangle import Rectangle
-from .tableio import writetable
+from .tableio import readtable, writetable
 
 def stitch(*, saveresult, usecvxpy=False, **kwargs):
   result = (__stitch_cvxpy if usecvxpy else __stitch)(**kwargs)
@@ -295,7 +295,64 @@ class StitchResultBase:
     writetable(covariancefilename, overlapcovariances, printevery=printevery, **kwargs)
 
   def readtable(self, filename, affinefilename, covariancefilename):
-    raise NotImplementedError
+    coordinates = readtable(filename, StitchCoordinate)
+    affines = readtable(affinefilename, AffineEntry)
+    overlapcovariances = readtable(covariancefilename, StitchOverlapCovariance)
+
+    dct = {affine.description: affine.value for affine in affines}
+    names = "axx", "axy", "ayx", "ayy"
+    Tnominal = np.array([dct[a] for a in names])
+    Tcovariance = np.array([
+      [dct["cov_"+min(a, b)+"_"+max(a, b)] for b in names]
+      for a in names
+    ])
+    T = np.array(unc.correlated_values(Tnominal, Tcovariance)).reshape(2, 2)
+
+    assert len(coordinates) == 2*len(self.rectangles)
+    x_affineonly = np.array([T @ r.xvec for r in self.rectangles])
+    x_finalpositions = []
+    for r in self.rectangles:
+      x = {c.position for c in coordinates if c.hpfid == r.n and c.coordinate == 0}
+      y = {c.position for c in coordinates if c.hpfid == r.n and c.coordinate == 1}
+      assert len(x) == len(y) == 1
+      x_finalpositions.append([x.pop(), y.pop()])
+    x_errorfromaffine = x_affineonly + x_finalpositions - unp.nominal_values(x_affineonly)
+    covariancematrix = np.array(unc.covariance_matrix(np.ravel(x_errorfromaffine)))
+
+    rectangledict = self.rectangledict
+    for oc in overlapcovariances:
+      p1 = oc.hpfid1
+      p2 = oc.hpfid2
+      ix = 2*rectangledict[p1]
+      iy = 2*rectangledict[p1]+1
+      jx = 2*rectangledict[p2]
+      jy = 2*rectangledict[p2]+1
+
+      covariancematrix[ix,ix] += oc.covxx / 2
+      covariancematrix[ix,iy] += oc.covxy / 2
+      covariancematrix[iy,ix] += oc.covxy / 2
+      covariancematrix[iy,iy] += oc.covyy / 2
+
+      covariancematrix[ix,jx] -= oc.covxx / 2
+      covariancematrix[ix,jy] -= oc.covxy / 2
+      covariancematrix[iy,jx] -= oc.covxy / 2
+      covariancematrix[iy,jy] -= oc.covyy / 2
+
+      covariancematrix[jx,ix] -= oc.covxx / 2
+      covariancematrix[jx,iy] -= oc.covxy / 2
+      covariancematrix[jy,ix] -= oc.covxy / 2
+      covariancematrix[jy,iy] -= oc.covyy / 2
+
+      covariancematrix[jx,jx] += oc.covxx / 2
+      covariancematrix[jx,jy] += oc.covxy / 2
+      covariancematrix[jy,jx] += oc.covxy / 2
+      covariancematrix[jy,jy] += oc.covyy / 2
+
+    x = np.array(unc.correlated_values(np.ravel(unp.nominal_values(x_errorfromaffine)), covariancematrix)).reshape(len(self.rectangles), 2)
+
+    self.__x = x
+    self.T = T
+    self.covariancematrix = covariancematrix
 
   def applytooverlaps(self):
     for o in self.__overlaps:
