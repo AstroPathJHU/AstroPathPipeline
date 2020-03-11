@@ -330,7 +330,7 @@ class AffineCovarianceEntry(AffineEntry):
     self.entry1 = entry1
     self.entry2 = entry2
     if entry1 is entry2:
-      value = entry1.matrixentry.s
+      value = entry1.matrixentry.s**2
     else:
       value = unc.covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0][1]
     super().__init__(n=n, value=value, description = "cov_"+entry1.description+"_"+entry2.description)
