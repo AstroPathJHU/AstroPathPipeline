@@ -239,8 +239,7 @@ class AlignmentSet:
 
   overlaptype = Overlap #can be overridden in subclasses
 
-  @property
-  def overlapgraph(self):
+  def overlapgraph(self, useexitstatus=False):
     try:
       import networkx as nx
     except ImportError:
@@ -248,6 +247,7 @@ class AlignmentSet:
 
     g = nx.DiGraph()
     for o in self.overlaps:
+      if useexitstatus and o.result.exit: continue
       g.add_edge(o.p1, o.p2, overlap=o)
 
     return g
