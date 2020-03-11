@@ -183,18 +183,17 @@ class AlignmentSet:
     ]
     writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
 
-  def updateRectangleImages(self,imgdict,ext) :
+  def updateRectangleImages(self,imgs) :
     """
     Updates the "image" variable in each rectangle based on a dictionary of image layers
-    imgdict = dictionary indexed first by filename then by layer number; values are image layers 
-    ext     = string of file extension identifying image layers in imgdict (will be replaced by ".im3" to match "file" variable in rectangles)
+    imgs = list of WarpImages to use for update
     """
-    warped_image_filenames = imgdict.keys()
     for r in self.rectangles :
-      imgdictfn = r.file.replace('.im3',ext)
-      if imgdictfn in warped_image_filenames :
-        #np.copyto(r.image,imgdict[imgdictfn][self.layer] / self.meanimage.flatfield,casting='no')
-        np.copyto(r.image,imgdict[imgdictfn][self.layer],casting='no') #question for Alex: applying meanimage?
+      thiswarpedimg=[img.warped_image for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
+      assert len(thiswarpedimg)<2
+      if len(thiswarpedimg)==1 :
+        #np.copyto(r.image,thiswarpedimg[0] / self.meanimage.flatfield,casting='no')
+        np.copyto(r.image,thiswarpedimg[0],casting='no') #question for Alex: applying meanimage?
 
   def getOverlapComparisonImagesDict(self) :
     """

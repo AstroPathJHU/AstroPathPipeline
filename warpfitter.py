@@ -35,7 +35,7 @@ class WarpFitter :
     """
     Main class for fitting a camera matrix and distortion parameters to a set of images based on the results of their alignment
     """
-    def __init__(self,samplename,rawfile_dir,metafile_dir,working_dir,overlaps=-1,layers=[1],warpset=None,warp=None) :
+    def __init__(self,samplename,rawfile_dir,metafile_dir,working_dir,overlaps=-1,layer=1,warpset=None,warp=None) :
         """
         samplename   = name of the microscope data sample to fit to ("M21_1" or equivalent)
         rawfile_dir  = path to directory containing multilayered ".raw" files
@@ -43,7 +43,7 @@ class WarpFitter :
         working_dir  = path to some local directory to store files produced by the WarpFitter
         overlaps     = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
                        (default=-1 will use all overlaps)
-        layers       = list of image layer numbers (indexed starting at 1) to consider in the warping/alignment (default=[1])
+        layer        = image layer number (indexed starting at 1) to consider in the warping/alignment (default=1)
         warpset      = WarpSet object to initialize with (optional, a new WarpSet will be created if None) 
         warp         = CameraWarp object whose optimal parameters will be determined (optional, if None a new one will be created)
         """
@@ -59,9 +59,8 @@ class WarpFitter :
         self.rawfile_paths = [os.path.join(self.rawfile_dir,fn.replace(IM3_EXT,RAW_EXT)) for fn in [r.file for r in self.rectangles]]
         #get the size of the images in the sample
         self.n, self.m, self.nlayers = self.__getImageSizesFromImmFile()
-        for layer in layers :
-            if layer<1 or layer>self.nlayers :
-                raise FittingError(f'Choice of layers ({layers}) is not valid for images with {self.nlayers} layers!')
+        if layer<1 or layer>self.nlayers :
+            raise FittingError(f'Choice of layer ({layer}) is not valid for images with {self.nlayers} layers!')
         #make the warpset object to use
         if warpset is not None :
             self.warpset = warpset
@@ -70,9 +69,9 @@ class WarpFitter :
                 msg = f'Warp object passed to WarpFitter is set to run on images of size ({warp.n},{warp.m}),'
                 msg+=f' not of size ({self.n},{self.m}) as specified by .imm files'
                 raise FittingError(msg)
-            self.warpset = WarpSet(warp=warp,rawfiles=self.rawfile_paths,nlayers=self.nlayers,layers=layers)
+            self.warpset = WarpSet(warp=warp,rawfiles=self.rawfile_paths,nlayers=self.nlayers,layer=layer)
         else :
-            self.warpset = WarpSet(n=self.n,m=self.m,rawfiles=self.rawfile_paths,nlayers=self.nlayers,layers=layers)
+            self.warpset = WarpSet(n=self.n,m=self.m,rawfiles=self.rawfile_paths,nlayers=self.nlayers,layer=layer)
         #make the alignmentset object to use
         self.alignset = self.__initializeAlignmentSet()
         #the private variable that will hold the best-fit warp
@@ -98,7 +97,7 @@ class WarpFitter :
         """
         Load the raw files into the warpset, warp/save them, and load them into the alignment set 
         """
-        self.warpset.loadRawImageSet(self.rawfile_paths)
+        self.warpset.loadRawImageSet(self.rawfile_paths,self.overlaps,self.rectangles)
         self.warpset.warpLoadedImageSet()
         os.chdir(self.working_dir)
         if not os.path.isdir(self.samp_name) :
@@ -171,7 +170,7 @@ class WarpFitter :
             self.skip_corners = False
             #call minimize with trust_constr
             logger.info('Starting polishing minimization....')
-            relative_steps = np.array([0.02,0.02,0.02,0.02,0.02,0.02,0.0001,0.0001])[self.par_mask]
+            relative_steps = np.array([0.02,0.02,0.02,0.02,0.02,0.02,0.0002,0.0002])[self.par_mask]
             os.chdir(self.working_dir)
             try :
                 result=scipy.optimize.minimize(
@@ -225,9 +224,9 @@ class WarpFitter :
         #update the warp with the new parameters
         self.warpset.updateCameraParams(fixedpars)
         #then warp the images
-        self.warpset.warpLoadedImageSet()
+        self.warpset.warpLoadedImageSet(skip_corners=self.skip_corners)
         #reload the (newly-warped) images into the alignment set
-        self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
+        self.alignset.updateRectangleImages([warpimg for warpimg in self.warpset.images if not (self.skip_corners and warpimg.is_corner_only)])
         #align the images 
         cost = self.alignset.align(skip_corners=self.skip_corners,write_result=False,return_on_invalid_result=True)
         #add to the lists to plot
@@ -312,7 +311,7 @@ class WarpFitter :
         self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
         bestcost = self.alignset.align(write_result=False)
         warped_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
-        logger.info(f'Alignment cost from raw images = {rawcost:.02f}; alignment cost from warped images = {bestcost:.02f}')
+        logger.info(f'Alignment cost from raw images = {rawcost:.02f}; alignment cost from warped images = {bestcost:.02f} ({100*(1.-bestcost/rawcost):.02f}% reduction)')
         #write out the overlap comparison figures
         figure_dir_name = 'alignment_overlap_comparisons'
         os.chdir(self.working_dir)

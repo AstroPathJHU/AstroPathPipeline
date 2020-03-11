@@ -43,8 +43,8 @@ parser.add_argument('--octets',              default=DEFAULT_OCTETS,   type=spli
     help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
 parser.add_argument('--chunks',              default=DEFAULT_CHUNKS,   type=split_csv_to_list_of_ints,         
     help='Comma-separated list of overlap octet chunk indices (ordered by n of first octet central rectangle) to use')
-parser.add_argument('--layers',              default='1',         type=split_csv_to_list_of_ints,         
-    help='Comma-separated list of image layers to use')
+parser.add_argument('--layer',               default='1',         type=int,         
+    help='Image layer to use (indexed from 1)')
 parser.add_argument('--fixed',               default='',          type=split_csv_to_list,         
     help='Comma-separated list of parameters to keep fixed during fitting')
 parser.add_argument('--max_radial_warp',     default=10.,         type=float,
@@ -263,7 +263,7 @@ if args.mode=='fit' :
 if args.mode=='fit' :
     #make the WarpFitter Objects
     logger.info('Initializing WarpFitter')
-    fitter = WarpFitter(args.sample,rawfile_dir,metafile_dir,args.working_dir,overlaps,args.layers)
+    fitter = WarpFitter(args.sample,rawfile_dir,metafile_dir,args.working_dir,overlaps,args.layer)
     #load the raw files
     logger.info('Loading raw files')
     fitter.loadRawFiles()
