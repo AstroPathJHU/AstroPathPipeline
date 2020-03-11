@@ -19,7 +19,7 @@ def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), q
     raise ValueError(f"please check your tag sequence - it ends with an offset of {tuple(totaloffset)}")
 
   overlaps = alignmentset.overlaps
-  g = alignmentset.overlapgraph
+  g = alignmentset.overlapgraph()
   pullsx, pullsy = [], []
   overlapdict = nx.get_edge_attributes(g, "overlap")
 
