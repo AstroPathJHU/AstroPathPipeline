@@ -1,4 +1,4 @@
-import abc, dataclasses, matplotlib.pyplot as plt, numpy as np, uncertainties as unc
+import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 
@@ -174,16 +174,15 @@ class OverlapCollection(abc.ABC):
 
   @property
   def overlapgraph(self):
-    try:
-      import networkx as nx
-    except ImportError:
-      raise ImportError("To get the overlap graph you have to install networkx")
-
     g = nx.DiGraph()
     for o in self.overlaps:
       g.add_edge(o.p1, o.p2, overlap=o)
 
     return g
+
+  @property
+  def nislands(self):
+    return nx.number_strongly_connected_components(self.overlapgraph)
 
   @property
   def overlapsdict(self):
