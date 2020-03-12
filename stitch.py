@@ -320,17 +320,16 @@ class StitchResultBase(OverlapCollection):
       T1 = self.T
       x2 = readback.x()
       T2 = readback.T
-      if not np.all(np.isclose(unp.nominal_values(x1), unp.nominal_values(x2), atol=atol, rtol=rtol)): raise BadCovarianceError
-      if not np.all(np.isclose(unp.nominal_values(T1), unp.nominal_values(T2), atol=atol, rtol=rtol)): raise BadCovarianceError
-      if not np.all(np.isclose(unp.std_devs(x1), unp.std_devs(x2), atol=atol, rtol=rtol)): raise BadCovarianceError
-      if not np.all(np.isclose(unp.std_devs(T1), unp.std_devs(T2), atol=atol, rtol=rtol)): raise BadCovarianceError
+      np.testing.assert_allclose(unp.nominal_values(x1), unp.nominal_values(x2), atol=atol, rtol=rtol)
+      np.testing.assert_allclose(unp.nominal_values(T1), unp.nominal_values(T2), atol=atol, rtol=rtol)
+      np.testing.assert_allclose(unp.std_devs(x1), unp.std_devs(x2), atol=atol, rtol=rtol)
+      np.testing.assert_allclose(unp.std_devs(T1), unp.std_devs(T2), atol=atol, rtol=rtol)
       for o in self.overlaps:
-        if not np.all(np.isclose(unc.covariance_matrix(self.dx(o)), unc.covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)): raise BadCovarianceError
+        np.testing.assert_allclose(unc.covariance_matrix(self.dx(o)), unc.covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
 
-      if not np.all(np.isclose(self.covariancematrix, readback.covariancematrix, atol=atol, rtol=rtol)):
-        raise BadCovarianceError("Covariance matrix is not equal within tolerance, need to include more eigenvectors")
+      np.testing.assert_allclose(self.covariancematrix, readback.covariancematrix, atol=atol, rtol=rtol)
 
-    except BadCovarianceError:
+    except (BadCovarianceError, AssertionError):
       logger.warning(f"{neigenvectors} eigenvectors (+ field errors and overlap covariances) are not enough to represent the covariance matrix within tolerance, trying with {neigenvectors+1}")
       return self.writetable(*filenames, neigenvectors=neigenvectors+1, **kwargs)
 
