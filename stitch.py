@@ -2,13 +2,8 @@ import dataclasses, itertools, numpy as np, uncertainties as unc, uncertainties.
 from .rectangle import Rectangle
 from .tableio import readtable, writetable
 
-def stitch(*, saveresult, usecvxpy=False, **kwargs):
-  result = (__stitch_cvxpy if usecvxpy else __stitch)(**kwargs)
-
-  if saveresult:
-    result.applytooverlaps()
-
-  return result
+def stitch(*, usecvxpy=False, **kwargs):
+  return (__stitch_cvxpy if usecvxpy else __stitch)(**kwargs)
 
 def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverlaperror=1, fixpoint="origin"):
   """
@@ -227,10 +222,10 @@ class StitchResultBase:
     self.__overlaps = overlaps
     self.covariancematrix = covariancematrix
 
-    #sanity check
+  def sanitycheck(self):
     for thing, errorsq in zip(
-      itertools.chain(np.ravel(x), np.ravel(T)),
-      np.diag(covariancematrix)
+      itertools.chain(np.ravel(self.x()), np.ravel(self.T)),
+      np.diag(self.covariancematrix)
     ): np.testing.assert_allclose(unc.std_dev(thing)**2, errorsq)
 
   @property
@@ -299,7 +294,7 @@ class StitchResultBase:
     n = len(self.rectangles)
     rd = self.rectangledict
     nominal = np.ndarray(2*n+4)
-    covariance = np.ndarray((2*n+4, 2*n+4))
+    covariance = np.zeros((2*n+4, 2*n+4))
 
     iTxx = -4
     iTxy = -3
@@ -314,7 +309,7 @@ class StitchResultBase:
       nominal[iy] = coordinate.y
       covariance[ix,ix] = coordinate.cov_x_x
       covariance[ix,iy] = coordinate.cov_x_y
-      covariance[iy,iy] = coordinate.cov_x_y
+      covariance[iy,iy] = coordinate.cov_y_y
       covariance[ix,iTxx] = coordinate.cov_x_axx
       covariance[ix,iTxy] = coordinate.cov_x_axy
       covariance[ix,iTyx] = coordinate.cov_x_ayx
@@ -354,28 +349,39 @@ class StitchResultBase:
       jx = 2*rd[p2]
       jy = 2*rd[p2]+1
 
-      covariancematrix[ix,jx] -= oc.cov_x1_x2
-      covariancematrix[ix,jy] -= oc.cov_x1_y2
-      covariancematrix[iy,jx] -= oc.cov_y1_x2
-      covariancematrix[iy,jy] -= oc.cov_y1_y2
+      covariance[ix,jx] = oc.cov_x1_x2
+      covariance[ix,jy] = oc.cov_x1_y2
+      covariance[iy,jx] = oc.cov_y1_x2
+      covariance[iy,jy] = oc.cov_y1_y2
 
-    covariancematrix += covariancematrix.T - np.diag(np.diag(covariancematrix))
-    self.covariancematrix = covariancematrix
+    covariance += covariance.T - np.diag(np.diag(covariance))
+    self.covariance = covariance
 
     x, T = np.split(
       np.array(
-        unc.correlated_values(covariancematrix)
-      ).reshape(self.nrectangles+2, 2),
+        unc.correlated_values(nominal, covariance)
+      ).reshape(n+2, 2),
       [-2],
     )
 
     self.__x = x
     self.T = T
-    self.covariancematrix = covariancematrix
+    self.covariancematrix = covariance
 
   def applytooverlaps(self):
     for o in self.__overlaps:
       o.stitchresult = self.dx(o)
+
+class ReadStitchResult(StitchResultBase):
+  def __init__(self, *args, rectangles, overlaps, **kwargs):
+    super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, covariancematrix=None)
+    self.readtable(*args, **kwargs)
+    #self.sanitycheck()
+
+class CalculatedStitchResult(StitchResultBase):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.sanitycheck()
 
 @dataclasses.dataclass
 class StitchCoordinate:
@@ -440,14 +446,14 @@ class StitchOverlapCovariance:
   cov_y1_x2: float
   cov_y1_y2: float
 
-class StitchResult(StitchResultBase):
+class StitchResult(CalculatedStitchResult):
   def __init__(self, *, A, b, c, **kwargs):
     super().__init__(**kwargs)
     self.A = A
     self.b = b
     self.c = c
 
-class StitchResultCvxpy(StitchResultBase):
+class StitchResultCvxpy(CalculatedStitchResult):
   def __init__(self, *, x, T, problem, **kwargs):
     super().__init__(
       x=x.value,

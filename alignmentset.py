@@ -5,7 +5,7 @@ import collections, cv2, logging, methodtools, numpy as np, os, scipy, typing, u
 from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap, OverlapCollection
 from .rectangle import ImageStats, Rectangle
-from .stitch import stitch
+from .stitch import ReadStitchResult, stitch
 from .tableio import readtable, writetable
 
 logger = logging.getLogger("align")
@@ -251,18 +251,34 @@ class AlignmentSet(OverlapCollection):
 
   overlaptype = Overlap #can be overridden in subclasses
 
+  @property
+  def stitchfilenames(self):
+    return (
+      os.path.join(self.dbload, self.samp+"_stitch.csv"),
+      os.path.join(self.dbload, self.samp+"_affine.csv"),
+      os.path.join(self.dbload, self.samp+"_stitch_covariance.csv"),
+    )
+
   def stitch(self, *, saveresult=True, **kwargs):
-    result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, saveresult=saveresult, **kwargs)
+    result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, **kwargs)
 
     if saveresult:
+      result.applytooverlaps()
       result.writetable(
-        os.path.join(self.dbload, self.samp+"_stitch.csv"),
-        os.path.join(self.dbload, self.samp+"_affine.csv"),
-        os.path.join(self.dbload, self.samp+"_stitch_covariance.csv"),
+        *self.stitchfilenames,
         retry=self.interactive,
         printevery=10000,
       )
 
+    return result
+
+  def readstitchresult(self, *, saveresult=True):
+    result = ReadStitchResult(
+      *self.stitchfilenames,
+      overlaps=self.overlaps,
+      rectangles=self.rectangles
+    )
+    if saveresult: result.applytooverlaps()
     return result
 
   def subset(self, *, selectrectangles=None, selectoverlaps=None):
