@@ -6,7 +6,7 @@ pipeline {
   environment {
     TEST_DATA_REPONAME = "alignmentjenkinsdata"
     TEST_DATA_REPO = "git@github.com:astropathjhu/${TEST_DATA_REPONAME}"
-    TEST_DATA_COMMIT = "5af518f5dc18793a296bc796e0e7b97c0c2a3bcf"
+    TEST_DATA_COMMIT = "b70242f2605d8c8e5dfd2bcae80b45a8321f9d8e"
     PIP_INSTALL_PLACE = "$WORKSPACE/python"
     PYTHONPATH = "$PIP_INSTALL_PLACE:$PYTHONPATH"
   }
