@@ -330,6 +330,7 @@ class StitchResultBase(OverlapCollection):
       np.testing.assert_allclose(self.covariancematrix, readback.covariancematrix, atol=atol, rtol=rtol)
 
     except (BadCovarianceError, AssertionError):
+      if nkeep >= len(val): raise BadCovarianceError("Inconsistency when writing the covariance matrix to files and reading it back, even when we write all the eigenvectors")
       logger.warning(f"{neigenvectors} eigenvectors (+ field errors and overlap covariances) are not enough to represent the covariance matrix within tolerance, trying with {neigenvectors+1}")
       return self.writetable(*filenames, neigenvectors=neigenvectors+1, **kwargs)
 
