@@ -108,7 +108,7 @@ class AlignmentSet:
     logger.info("starting align loop for "+self.samp)
 
     alignments = []
-    sum_mse = 0.
+    sum_mse = 0.; norm=0.
     done = set()
 
     for i, overlap in enumerate(self.overlaps, start=1):
@@ -132,27 +132,27 @@ class AlignmentSet:
       if result is not None: 
         alignments.append(result)
         if result.exit==0 :
-          sum_mse+=result.mse[2]
+          sum_mse+=result.mse[2]; norm+=overlap.cutimages.shape[1]*overlap.cutimages.shape[2]
         else :
           if return_on_invalid_result :
             logger.warning(f'WARNING: Overlap number {i} alignment result is invalid, returning 1e10!!')
             return 1e10
           else :
             logger.warning(f'WARNING: Overlap number {i} alignment result is invalid, adding 1e10 to sum_mse!!')
-            sum_mse+=1e10
+            sum_mse+=1e10; norm+=overlap.cutimages.shape[1]*overlap.cutimages.shape[2]
       else :
         if return_on_invalid_result :
             logger.warning(f'WARNING: Overlap number {i} alignment result is "None"; returning 1e10!!')
             return 1e10
         else :
           logger.warning(f'WARNING: Overlap number {i} alignment result is "None"!')
-          sum_mse+=1e10
+          sum_mse+=1e10; norm+=overlap.cutimages.shape[1]*overlap.cutimages.shape[2]
 
     if write_result :
       writetable(aligncsv, alignments, retry=self.interactive)
 
     logger.info("finished align loop for "+self.samp)
-    return sum_mse
+    return sum_mse/norm
 
   @methodtools.lru_cache(maxsize=1)
   def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False):
@@ -192,8 +192,8 @@ class AlignmentSet:
       thiswarpedimg=[img.warped_image for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
       assert len(thiswarpedimg)<2
       if len(thiswarpedimg)==1 :
-        #np.copyto(r.image,thiswarpedimg[0] / self.meanimage.flatfield,casting='no')
-        np.copyto(r.image,thiswarpedimg[0],casting='no') #question for Alex: applying meanimage?
+        np.copyto(r.image,(thiswarpedimg[0]/self.meanimage.flatfield).astype(np.uint16),casting='no')
+        #np.copyto(r.image,thiswarpedimg[0],casting='no') #question for Alex: applying meanimage?
 
   def getOverlapComparisonImagesDict(self) :
     """

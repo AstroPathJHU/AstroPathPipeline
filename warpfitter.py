@@ -35,7 +35,7 @@ class WarpFitter :
     """
     Main class for fitting a camera matrix and distortion parameters to a set of images based on the results of their alignment
     """
-    def __init__(self,samplename,rawfile_dir,metafile_dir,working_dir,overlaps=-1,layer=1,warpset=None,warp=None) :
+    def __init__(self,samplename,rawfile_dir,metafile_dir,working_dir,overlaps=-1,layer=1,meanimage=None,warpset=None,warp=None) :
         """
         samplename   = name of the microscope data sample to fit to ("M21_1" or equivalent)
         rawfile_dir  = path to directory containing multilayered ".raw" files
@@ -44,6 +44,7 @@ class WarpFitter :
         overlaps     = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
                        (default=-1 will use all overlaps)
         layer        = image layer number (indexed starting at 1) to consider in the warping/alignment (default=1)
+        meanimage    = the "meanimage" fit result calculated for the entire dataset (None will recalculate this based on the data subset)
         warpset      = WarpSet object to initialize with (optional, a new WarpSet will be created if None) 
         warp         = CameraWarp object whose optimal parameters will be determined (optional, if None a new one will be created)
         """
@@ -53,6 +54,7 @@ class WarpFitter :
         self.metafile_dir=metafile_dir
         self.working_dir=working_dir
         self.init_dir = os.getcwd()
+        self.mean_image = meanimage
         #setup the working directory and the lists of overlaps and rectangles
         self.overlaps, self.rectangles = self.__setupWorkingDirectory(overlaps)
         #get the list of raw file paths
@@ -110,6 +112,8 @@ class WarpFitter :
         finally :
             os.chdir(self.init_dir)
         self.alignset.getDAPI(filetype='camWarpDAPI')
+        if self.mean_image is not None :
+            self.alignset.meanimage = self.mean_image
 
     def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=10.,max_tangential_warp=10.,par_bounds=None,
               polish=True,print_every=1,maxiter=1000,show_plots=False) :
@@ -154,7 +158,7 @@ class WarpFitter :
                 bounds=parameter_bounds,
                 strategy='best2bin',
                 maxiter=maxiter,
-                tol=0.008,
+                tol=0.025,
                 mutation=(0.6,1.00),
                 recombination=0.5,
                 polish=False,
@@ -230,7 +234,7 @@ class WarpFitter :
         #align the images 
         cost = self.alignset.align(skip_corners=self.skip_corners,write_result=False,return_on_invalid_result=True)
         #add to the lists to plot
-        self.costs.append(cost if cost<1e10 else -999)
+        self.costs.append(cost if cost<1e10 else -0.1)
         self.max_radial_warps.append(self.warpset.warp.maxRadialDistortAmount(fixedpars))
         self.max_tangential_warps.append(self.warpset.warp.maxTangentialDistortAmount(fixedpars))
         #print progress if requested
@@ -303,15 +307,15 @@ class WarpFitter :
         if self.__best_fit_warp is None :
             raise FittingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
         #start by aligning the raw, unwarped images and getting their shift comparison information/images
-        self.alignset.updateRectangleImages(self.warpset.raw_images,'.raw')
+        self.alignset.updateRectangleImages(self.warpset.images)
         rawcost = self.alignset.align(write_result=False)
         raw_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
         #next warp and align the images with the best fit warp
         self.warpset.warpLoadedImageSet()
-        self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
+        self.alignset.updateRectangleImages(self.warpset.images)
         bestcost = self.alignset.align(write_result=False)
         warped_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
-        logger.info(f'Alignment cost from raw images = {rawcost:.02f}; alignment cost from warped images = {bestcost:.02f} ({100*(1.-bestcost/rawcost):.02f}% reduction)')
+        logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
         #write out the overlap comparison figures
         figure_dir_name = 'alignment_overlap_comparisons'
         os.chdir(self.working_dir)
@@ -396,6 +400,8 @@ class WarpFitter :
         a = AlignmentSet(os.path.join(*([os.sep]+self.metafile_dir.split(os.sep)[:-2])),self.working_dir,self.samp_name,interactive=True)
         a.overlaps=self.overlaps
         a.rectangles=self.rectangles
+        if self.mean_image is not None :
+            a.meanimage = self.mean_image
         return a
 
     #helper function to make the list of parameter bounds for fitting

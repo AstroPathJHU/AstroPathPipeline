@@ -3,7 +3,7 @@ from .warpfitter import WarpFitter
 from .alignmentset import AlignmentSet
 from argparse import ArgumentParser
 from scipy import stats
-import os, gc, logging, matplotlib.pyplot as plt, seaborn as sns
+import os, copy, gc, logging, matplotlib.pyplot as plt, seaborn as sns
 
 #constants
 logger = logging.getLogger("warpfitter")
@@ -32,13 +32,12 @@ parser.add_argument('mode',        help='Operation to perform', choices=['fit','
 parser.add_argument('sample',      help='Name of the data sample to use')
 parser.add_argument('rawfile_dir', help='Path to the directory containing the "[sample_name]/*.raw" files')
 parser.add_argument('root1_dir',   help='Path to the directory containing "[sample name]/dbload" subdirectories')
+parser.add_argument('root2_dir',   help='Path to the directory containing the "[sample_name]/*.fw01" files to use for initial alignment')
 #optional arguments
 parser.add_argument('--working_dir',         default='warpfit_test',
     help='Path to (or name of) the working directory that will be created')
 parser.add_argument('--overlaps',            default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
     help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
-parser.add_argument('--root2_dir',
-    help='Path to the directory containing the "[sample_name]/*.fw01" files to use for initial alignment in determining valid octets or chunks')
 parser.add_argument('--octets',              default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
     help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
 parser.add_argument('--chunks',              default=DEFAULT_CHUNKS,   type=split_csv_to_list_of_ints,         
@@ -84,6 +83,7 @@ def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
     logger.info("Performing an initial alignment to find this sample's valid octets/chunks...")
     a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample)
     a.getDAPI()
+    whole_sample_meanimage = a.meanimage
     result = a.align(write_result=False)
     #get the list of overlaps
     overlaps = a.overlaps
@@ -126,7 +126,7 @@ def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
     if save_plots :
         msg+=f'; rejected overlap images in {os.path.join(working_dir,REJECTED_OVERLAP_IMAGE_DIR_NAME)}'
     logger.info(msg+'.')
-    return octets
+    return octets, whole_sample_meanimage
 
 # Recursive function to get groups of interconnected octets
 def getRectangleConnectedOctets(all_octets,rects_done,rect) :
@@ -177,7 +177,7 @@ def getSampleChunks(octets) :
 # Helper function to determine the list of overlaps
 def getOverlaps(args) :
     #set the overlaps variable based on which of the options was used to specify
-    overlaps=[]
+    overlaps=[]; whole_sample_meanimage=None
     #if the overlaps are being specified then they have to be either -1 (to use all), a tuple (to use a range), or a list
     if args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS) :
         overlaps = args.overlaps
@@ -192,7 +192,7 @@ def getOverlaps(args) :
         if not os.path.isdir(args.root2_dir) :
             raise ValueError(f'root2_dir {args.root2_dir} is not a valid directory!')
         #get the dictionary of overlap octets
-        octets = getSampleOctets(args.root1_dir,args.root2_dir,args.sample,args.working_dir,(args.mode=='show_octets' or args.mode=='show_chunks'))
+        octets, whole_sample_meanimage = getSampleOctets(args.root1_dir,args.root2_dir,args.sample,args.working_dir,(args.mode=='show_octets' or args.mode=='show_chunks'))
         if args.mode=='fit' and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
             for i,octet in enumerate([octets[key] for key in sorted(octets.keys())],start=1) :
                 if i in args.octets or args.octets==[-1]:
@@ -219,7 +219,12 @@ def getOverlaps(args) :
                     msg+=f'(asked for {len(args.chunks)} chunks but found {len(overlaps)} corresponding overlaps)'
                     msg+=f' there are {len(octet_chunks)} chunks to choose from.'
                     raise ValueError(msg)
-    return overlaps
+    if whole_sample_meanimage is None :
+        logger.info("Loading an AlignmentSet to find the meanimage over the whole sample...")
+        a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample)
+        a.getDAPI()
+        whole_sample_meanimage = a.meanimage
+    return overlaps, copy.deepcopy(whole_sample_meanimage)
 
 #################### MAIN SCRIPT ####################
 
@@ -255,7 +260,7 @@ fix_p1p2 = 'p1' in args.fixed and 'p2' in args.fixed
 if args.fixed!=[''] and len(args.fixed)!=2*sum([fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2]) :
     raise ValueError(f'Fixed parameters argument ({args.fixed}) does not result in a valid fixed parameter condition!')
 #choice of overlaps must be valid
-overlaps=getOverlaps(args)
+overlaps,whole_sample_meanimage=getOverlaps(args)
 gc.collect()
 if args.mode=='fit' :
     logger.info(f'Will run fit on a sample of {len(overlaps)} total overlaps.')
@@ -263,7 +268,7 @@ if args.mode=='fit' :
 if args.mode=='fit' :
     #make the WarpFitter Objects
     logger.info('Initializing WarpFitter')
-    fitter = WarpFitter(args.sample,rawfile_dir,metafile_dir,args.working_dir,overlaps,args.layer)
+    fitter = WarpFitter(args.sample,rawfile_dir,metafile_dir,args.working_dir,overlaps,args.layer,whole_sample_meanimage)
     #load the raw files
     logger.info('Loading raw files')
     fitter.loadRawFiles()
