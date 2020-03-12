@@ -279,11 +279,14 @@ class StitchResultBase(OverlapCollection):
     writetable(filename, rows, **kwargs)
 
     val, vec = np.linalg.eig(self.covariancematrix)
+    #sign convention for eigenvectors - doesn't really matter but we want consistent results each time we run
+    for v in vec.T:
+      if v[0] < 0: v *= -1
     sortidx = val.argsort()[::-1]
     val = val[sortidx]
     vec = vec[:,sortidx]
 
-    nkeep = neigenvectors# + 4 + 2*self.nislands  #4 for components of T, global x and y for islands
+    nkeep = neigenvectors
 
     values = []
     for n, v in enumerate(val[:nkeep]):
