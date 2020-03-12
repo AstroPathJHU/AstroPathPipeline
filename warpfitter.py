@@ -112,7 +112,8 @@ class WarpFitter :
             os.chdir(self.init_dir)
         self.alignset.getDAPI(filetype='camWarpDAPI')
 
-    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=15.,max_tangential_warp=15.,par_bounds=None,print_every=1,show_plots=False) :
+    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=15.,max_tangential_warp=15.,par_bounds=None,
+              polish=True,print_every=1,maxiter=1000,show_plots=False) :
         """
         Fit the cameraWarp model to the loaded dataset
         fix_*       = set True to fix groups of parameters
@@ -152,6 +153,7 @@ class WarpFitter :
                 func=self._evalCamWarpOnAlignmentSet,
                 bounds=parameter_bounds,
                 strategy='best2bin',
+                maxiter=maxiter,
                 tol=0.008,
                 mutation=(0.6,1.00),
                 recombination=0.5,
@@ -164,29 +166,32 @@ class WarpFitter :
         finally :
             os.chdir(self.init_dir)
         logger.info(f'Initial minimization completed {"successfully" if firstresult.success else "UNSUCCESSFULLY"} in {firstresult.nfev} evaluations.')
-        #call minimize with trust_constr
-        logger.info('Starting polishing minimization....')
-        relative_steps = np.array([0.02,0.02,0.02,0.02,0.02,0.02,0.0001,0.0001])[self.par_mask]
-        os.chdir(self.working_dir)
-        try :
-            result=scipy.optimize.minimize(
-                fun=self._evalCamWarpOnAlignmentSet,
-                x0=firstresult.x,
-                method='trust-constr',
-                bounds=parameter_bounds,
-                constraints=constraints,
-                options={'xtol':1e-4,'gtol':1e-3,'finite_diff_rel_step':relative_steps}
-                )
-        except Exception :
-            raise FittingError('Something failed in the polishing minimization!')
-        finally :
-            os.chdir(self.init_dir)
-        msg = f'Final minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations '
-        term_conds = {0:'max iterations',1:'gradient tolerance',2:'parameter tolerance',3:'callback function'}
-        msg+=f'due to compliance with {term_conds[result.status]} criteria.'
-        logger.info(msg)
+        if polish :
+            #call minimize with trust_constr
+            logger.info('Starting polishing minimization....')
+            relative_steps = np.array([0.02,0.02,0.02,0.02,0.02,0.02,0.0001,0.0001])[self.par_mask]
+            os.chdir(self.working_dir)
+            try :
+                result=scipy.optimize.minimize(
+                    fun=self._evalCamWarpOnAlignmentSet,
+                    x0=firstresult.x,
+                    method='trust-constr',
+                    bounds=parameter_bounds,
+                    constraints=constraints,
+                    options={'xtol':1e-4,'gtol':1e-3,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
+                    )
+            except Exception :
+                raise FittingError('Something failed in the polishing minimization!')
+            finally :
+                os.chdir(self.init_dir)
+            msg = f'Final minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations '
+            term_conds = {0:'max iterations',1:'gradient tolerance',2:'parameter tolerance',3:'callback function'}
+            msg+=f'due to compliance with {term_conds[result.status]} criteria.'
+            logger.info(msg)
+        else :
+            result=firstresult
         #make the fit progress plots
-        #self.__makeFitProgressPlots(firstresult.nfev,show_plots)
+        self.__makeFitProgressPlots(firstresult.nfev,show_plots)
         #use the fit result to make the best fit warp object and save the figure of its warp fields
         best_fit_pars = self.__correctParameterList(result.x)
         self.warpset.updateCameraParams(best_fit_pars)
@@ -222,7 +227,7 @@ class WarpFitter :
         #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
         #align the images 
-        cost = self.alignset.align(write_result=False,return_on_invalid_result=True)
+        cost = self.alignset.align(write_result=False,return_on_invalid_result=True,alreadyalignedstrategy="overwrite")
         #add to the lists to plot
         self.costs.append(cost if cost<1e10 else -999)
         self.max_radial_warps.append(self.warpset.warp.maxRadialDistortAmount(fixedpars))
@@ -298,12 +303,12 @@ class WarpFitter :
             raise FittingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
         #start by aligning the raw, unwarped images and getting their shift comparison information/images
         self.alignset.updateRectangleImages(self.warpset.raw_images,'.raw')
-        rawcost = self.alignset.align()
+        rawcost = self.alignset.align(alreadyalignedstrategy="overwrite")
         raw_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
         #next warp and align the images with the best fit warp
         self.warpset.warpLoadedImageSet()
         self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
-        bestcost = self.alignset.align()
+        bestcost = self.alignset.align(alreadyalignedstrategy="overwrite")
         warped_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
         logger.info(f'Alignment cost from raw images = {rawcost:.02f}; alignment cost from warped images = {bestcost:.02f}')
         #write out the overlap comparison figures
@@ -388,8 +393,7 @@ class WarpFitter :
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
     def __initializeAlignmentSet(self) :
         a = AlignmentSet(os.path.join(*([os.sep]+self.metafile_dir.split(os.sep)[:-2])),self.working_dir,self.samp_name,interactive=True)
-        a.overlaps=self.overlaps
-        a.rectangles=self.rectangles
+        a.rectanglesoverlaps=self.rectangles, self.overlaps
         return a
 
     #helper function to make the list of parameter bounds for fitting

@@ -73,7 +73,7 @@ class AlignmentSet(OverlapCollection):
     self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
     self.__image     = None
     self.constants   = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
-    self.rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), Rectangle)
+    self.__rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), Rectangle)
 
     self.constantsdict = {constant.name: constant.value for constant in self.constants}
 
@@ -88,9 +88,12 @@ class AlignmentSet(OverlapCollection):
     self.nclip     = self.constantsdict["nclip"]
     self.layer     = self.constantsdict["layer"]
 
-    self.rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
+    self.__rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
     self.__overlaps = [o for o in self.overlaps if self.overlapfilter(o)]
 
+    self.initializeoverlaps()
+
+  def initializeoverlaps(self):
     for overlap in self.overlaps:
       p1rect = [r for r in self.rectangles if r.n==overlap.p1]
       p2rect = [r for r in self.rectangles if r.n==overlap.p2]
@@ -101,6 +104,17 @@ class AlignmentSet(OverlapCollection):
 
   @property
   def overlaps(self): return self.__overlaps
+  @property
+  def rectangles(self): return self.__rectangles
+
+  @property
+  def rectanglesoverlaps(self): return self.rectangles, self.overlaps
+  @rectanglesoverlaps.setter
+  def rectanglesoverlaps(self, rectanglesoverlaps):
+    rectangles, overlaps = rectanglesoverlaps
+    self.__rectangles = rectangles
+    self.__overlaps = overlaps
+    self.initializeoverlaps()
 
   @property
   @methodtools.lru_cache()

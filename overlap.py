@@ -172,17 +172,16 @@ class OverlapCollection(abc.ABC):
   @abc.abstractproperty
   def overlaps(self): pass
 
-  @property
-  def overlapgraph(self):
+  def overlapgraph(self, useexitstatus=False):
     g = nx.DiGraph()
     for o in self.overlaps:
+      if useexitstatus and o.result.exit: continue
       g.add_edge(o.p1, o.p2, overlap=o)
 
     return g
 
-  @property
-  def nislands(self):
-    return nx.number_strongly_connected_components(self.overlapgraph)
+  def nislands(self, *args, **kwargs):
+    return nx.number_strongly_connected_components(self.overlapgraph(*args, **kwargs))
 
   @property
   def overlapsdict(self):

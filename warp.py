@@ -128,7 +128,7 @@ class PolyFieldWarp(Warp) :
         img_to_warp = self.getHWLFromRaw(infname,nlayers)
         #remap each layer
         for i in layers :
-            self.warpAndWriteLayer(img_to_warp[:,:,i],i,infname)
+            self.warpAndWriteLayer(img_to_warp[:,:,i-1],i,infname)
 
     def warpAndWriteLayer(self,layer,layernumber,rawfilename) :
         """
@@ -142,6 +142,13 @@ class PolyFieldWarp(Warp) :
         """
         map_x, map_y = self.__getMapMatrices()
         return cv2.remap(layer,map_x,map_y,self.interp)
+
+    def warpLayerInPlace(self,layerimg,dest) :
+        """
+        Quickly warps a single inputted image layer into the provided destination
+        """
+        map_x, map_y = self.__getMapMatrices()
+        return cv2.remap(layer,map_x,map_y,self.interp,dest)
 
     def writeImageLayer(self,im,rawfilename,layernumber) :
         """
@@ -273,9 +280,9 @@ class CameraWarp(Warp) :
         cy         = principal center point y coordinate
         fx         = x focal length (pixels)
         fy         = y focal length (pixels)
-        k1, k2, k3 = radial distortion by third-order polynomial in r^2 (numerator)
-        k4, k5, k6 = radial distortion by third-order polynomial in r^2 (denominator)
+        k1, k2, k3 = coeffcients for radial distortion by third-order polynomial in r^2 (numerator)
         p1, p2     = tangential distortion parameters
+        k4, k5, k6 = coeffcients for radial distortion by third-order polynomial in r^2 (denominator)
         """
         super().__init__(n,m)
         if cx is None :
@@ -308,7 +315,7 @@ class CameraWarp(Warp) :
         img_to_warp = self.getHWLFromRaw(infname,nlayers)
         #undistort each layer
         for i in layers :
-            self.warpAndWriteLayer(img_to_warp[:,:,i],i,infname)
+            self.warpAndWriteLayer(img_to_warp[:,:,i-1],i,infname)
 
     def warpAndWriteLayer(self,layer,layernumber,rawfilename) :
         """

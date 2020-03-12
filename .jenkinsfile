@@ -37,5 +37,12 @@ pipeline {
         sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
       }
     }
+
+    stage('test warping') {
+      steps {
+        sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
+	sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
+      }
+    }
   }
 }
