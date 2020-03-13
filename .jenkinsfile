@@ -32,16 +32,20 @@ pipeline {
       }
     }
 
-    stage('test alignment') {
-      steps {
-        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
-      }
-    }
+    stage('run tests') {
+      parallel {
+        stage('test alignment') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
+          }
+        }
 
-    stage('test warping') {
-      steps {
-        sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
-	sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
+        stage('test warping') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
+          }
+        }
       }
     }
   }
