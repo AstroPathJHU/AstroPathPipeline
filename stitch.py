@@ -2,6 +2,7 @@ import dataclasses, itertools, logging, numpy as np, uncertainties as unc, uncer
 from .overlap import OverlapCollection
 from .rectangle import Rectangle
 from .tableio import readtable, writetable
+from .utilities import covariance_matrix
 
 logger = logging.getLogger("align")
 
@@ -223,6 +224,8 @@ class StitchResultBase(OverlapCollection):
     self.T = T
     self.rectangles = rectangles
     self.__overlaps = overlaps
+    if covariancematrix is not None:
+      covariancematrix = (covariancematrix + covariancematrix.T) / 2
     self.covariancematrix = covariancematrix
 
   @property
@@ -301,7 +304,7 @@ class StitchResultBase(OverlapCollection):
     overlapcovariances = []
     for o in self.overlaps:
       if o.p2 < o.p1: continue
-      covariance = np.array(unc.covariance_matrix(np.concatenate([self.x(o.p1), self.x(o.p2)])))
+      covariance = np.array(covariance_matrix(np.concatenate([self.x(o.p1), self.x(o.p2)])))
       overlapcovariances.append(
         StitchOverlapCovariance(
           hpfid1=o.p1,
@@ -325,7 +328,7 @@ class StitchResultBase(OverlapCollection):
       np.testing.assert_allclose(unp.std_devs(x1), unp.std_devs(x2), atol=atol, rtol=rtol)
       np.testing.assert_allclose(unp.std_devs(T1), unp.std_devs(T2), atol=atol, rtol=rtol)
       for o in self.overlaps:
-        np.testing.assert_allclose(unc.covariance_matrix(self.dx(o)), unc.covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
+        np.testing.assert_allclose(covariance_matrix(self.dx(o)), covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
 
       np.testing.assert_allclose(self.covariancematrix, readback.covariancematrix, atol=atol, rtol=rtol)
 
@@ -474,7 +477,7 @@ def stitchcoordinate(*, position=None, T=None, **kwargs):
   kw2 = {}
   if position is not None:
     kw2["x"], kw2["y"] = unp.nominal_values(position)
-    (kw2["cov_x_x"], kw2["cov_x_y"]), (kw2["cov_x_y"], kw2["cov_y_y"]) = unc.covariance_matrix(position)
+    (kw2["cov_x_x"], kw2["cov_x_y"]), (kw2["cov_x_y"], kw2["cov_y_y"]) = covariance_matrix(position)
 
   return StitchCoordinate(**kwargs, **kw2)
 
@@ -498,7 +501,7 @@ class AffineCovarianceEntry(AffineEntry):
     if entry1 is entry2:
       value = entry1.matrixentry.s**2
     else:
-      value = unc.covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0][1]
+      value = covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0][1]
     super().__init__(n=n, value=value, description = "cov_"+entry1.description+"_"+entry2.description)
 
   def __post_init__(self): pass

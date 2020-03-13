@@ -1,6 +1,7 @@
 import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
+from .utilities import covariance_matrix
 
 @dataclasses.dataclass
 class Overlap:
@@ -234,7 +235,7 @@ class AlignmentResult:
   def dxdy(self, dxdy):
     self.dx = dxdy[0].n
     self.dy = dxdy[1].n
-    self.covariance = np.array(unc.covariance_matrix(dxdy))
+    self.covariance = covariance_matrix(dxdy)
 
   @property
   def isedge(self):
