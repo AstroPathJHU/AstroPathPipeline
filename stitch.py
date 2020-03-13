@@ -224,9 +224,27 @@ class StitchResultBase(OverlapCollection):
     self.T = T
     self.rectangles = rectangles
     self.__overlaps = overlaps
-    if covariancematrix is not None:
-      covariancematrix = (covariancematrix + covariancematrix.T) / 2
     self.covariancematrix = covariancematrix
+
+  @property
+  def covariancematrix(self): return self.__covariancematrix
+  @covariancematrix.setter
+  def covariancematrix(self, matrix):
+    if matrix is not None:
+      matrix = (matrix + matrix.T) / 2
+    self.__covariancematrix = matrix
+    self.__covarianceeig = None
+  @property
+  def covarianceeig(self):
+    if self.__covarianceeig is None:
+      cov = self.covariancematrix
+      if cov is None: raise ValueError("can't get eigenvalues/vectors from matrix because the matrix is None")
+      self.__covarianceeig = np.linalg.eig(cov)
+    return self.__covarianceeig
+  @property
+  def covarianceeigenvalues(self): return self.covarianceeig[0]
+  @property
+  def covarianceeigenvectors(self): return self.covarianceeig[1]
 
   @property
   def overlaps(self): return self.__overlaps
@@ -249,7 +267,7 @@ class StitchResultBase(OverlapCollection):
   def dx(self, overlap):
     return self.x(overlap.p1) - self.x(overlap.p2) - (overlap.x1vec - overlap.x2vec)
 
-  def writetable(self, *filenames, neigenvectors=10, rtol=1e-3, atol=1e-5, **kwargs):
+  def writetable(self, *filenames, neigenvectors=10, trymoreeigenvectors=True, rtol=1e-3, atol=1e-5, **kwargs):
     filename, affinefilename, overlapcovariancefilename, eigenvaluefilename, eigenvectorfilename = filenames
 
     affine = []
@@ -281,7 +299,7 @@ class StitchResultBase(OverlapCollection):
       )
     writetable(filename, rows, **kwargs)
 
-    val, vec = np.linalg.eig(self.covariancematrix)
+    val, vec = self.covarianceeig
     #sign convention for eigenvectors - doesn't really matter but we want consistent results each time we run
     for v in vec.T:
       if v[0] < 0: v *= -1
@@ -318,21 +336,28 @@ class StitchResultBase(OverlapCollection):
     writetable(overlapcovariancefilename, overlapcovariances, **kwargs)
 
     try:
+      logger.debug("reading back from the file")
       readback = ReadStitchResult(filename, affinefilename, overlapcovariancefilename, eigenvaluefilename, eigenvectorfilename, rectangles=self.rectangles, overlaps=self.overlaps)
+      logger.debug("done reading")
       x1 = self.x()
       T1 = self.T
       x2 = readback.x()
       T2 = readback.T
+      logger.debug("comparing nominals")
       np.testing.assert_allclose(unp.nominal_values(x1), unp.nominal_values(x2), atol=atol, rtol=rtol)
       np.testing.assert_allclose(unp.nominal_values(T1), unp.nominal_values(T2), atol=atol, rtol=rtol)
+      logger.debug("comparing individual errors")
       np.testing.assert_allclose(unp.std_devs(x1), unp.std_devs(x2), atol=atol, rtol=rtol)
       np.testing.assert_allclose(unp.std_devs(T1), unp.std_devs(T2), atol=atol, rtol=rtol)
+      logger.debug("comparing overlap errors")
       for o in self.overlaps:
         np.testing.assert_allclose(covariance_matrix(self.dx(o)), covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
+      logger.debug("done")
 
-      np.testing.assert_allclose(self.covariancematrix, readback.covariancematrix, atol=atol, rtol=rtol)
+      #np.testing.assert_allclose(self.covariancematrix, readback.covariancematrix, atol=atol, rtol=rtol)
 
     except (BadCovarianceError, AssertionError):
+      if not trymoreeigenvectors: raise
       if nkeep >= len(val): raise BadCovarianceError("Inconsistency when writing the covariance matrix to files and reading it back, even when we write all the eigenvectors")
       logger.warning(f"{neigenvectors} eigenvectors (+ field errors and overlap covariances) are not enough to represent the covariance matrix within tolerance, trying with {neigenvectors+1}")
       return self.writetable(*filenames, neigenvectors=neigenvectors+1, **kwargs)
@@ -412,9 +437,9 @@ class StitchResultBase(OverlapCollection):
         covariance[iy,jx] = covariance[jx,iy] = oc.cov_y1_x2
         covariance[iy,jy] = covariance[jy,iy] = oc.cov_y1_y2
 
-    self.covariance = covariance
+    self.covariancematrix = covariance
 
-    val, vec = np.linalg.eig(covariance)
+    val, vec = self.covarianceeig
     val[::-1].sort()
     if val[-1] < -val[0] * 1e-8:
       raise BadCovarianceError(f"Covariance matrix isn't positive definite: eigenvalues are\n{val}")
