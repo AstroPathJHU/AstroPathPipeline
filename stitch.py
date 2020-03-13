@@ -371,14 +371,6 @@ class StitchResultBase(OverlapCollection):
         covariance[ix,ix] = coordinate.cov_x_x
         covariance[ix,iy] = covariance[iy,ix] = coordinate.cov_x_y
         covariance[iy,iy] = coordinate.cov_y_y
-        covariance[ix,iTxx] = covariance[iTxx,ix] = coordinate.cov_x_axx
-        covariance[ix,iTxy] = covariance[iTxy,ix] = coordinate.cov_x_axy
-        covariance[ix,iTyx] = covariance[iTyx,ix] = coordinate.cov_x_ayx
-        covariance[ix,iTyy] = covariance[iTyy,ix] = coordinate.cov_x_ayy
-        covariance[iy,iTxx] = covariance[iTxx,iy] = coordinate.cov_y_axx
-        covariance[iy,iTxy] = covariance[iTxy,iy] = coordinate.cov_y_axy
-        covariance[iy,iTyx] = covariance[iTyx,iy] = coordinate.cov_y_ayx
-        covariance[iy,iTyy] = covariance[iTyy,iy] = coordinate.cov_y_ayy
 
     dct = {affine.description: affine.value for affine in affines}
 
@@ -477,24 +469,12 @@ class StitchCoordinate:
   cov_x_x: float
   cov_x_y: float
   cov_y_y: float
-  cov_x_axx: float
-  cov_x_axy: float
-  cov_x_ayx: float
-  cov_x_ayy: float
-  cov_y_axx: float
-  cov_y_axy: float
-  cov_y_ayx: float
-  cov_y_ayy: float
 
 def stitchcoordinate(*, position=None, T=None, **kwargs):
   kw2 = {}
   if position is not None:
     kw2["x"], kw2["y"] = unp.nominal_values(position)
     (kw2["cov_x_x"], kw2["cov_x_y"]), (kw2["cov_x_y"], kw2["cov_y_y"]) = unc.covariance_matrix(position)
-    if T is not None:
-      cov = np.array(unc.covariance_matrix(np.concatenate([position, np.ravel(T)])))
-      kw2["cov_x_axx"], kw2["cov_x_axy"], kw2["cov_x_ayx"], kw2["cov_x_ayy"] = cov[0, 2:]
-      kw2["cov_y_axx"], kw2["cov_y_axy"], kw2["cov_y_ayx"], kw2["cov_y_ayy"] = cov[1, 2:]
 
   return StitchCoordinate(**kwargs, **kw2)
 
