@@ -227,7 +227,7 @@ class WarpFitter :
         #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
         #align the images 
-        cost = self.alignset.align(write_result=False,return_on_invalid_result=True)
+        cost = self.alignset.align(write_result=False,return_on_invalid_result=True,alreadyalignedstrategy="overwrite")
         #add to the lists to plot
         self.costs.append(cost if cost<1e10 else -999)
         self.max_radial_warps.append(self.warpset.warp.maxRadialDistortAmount(fixedpars))
@@ -303,12 +303,12 @@ class WarpFitter :
             raise FittingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
         #start by aligning the raw, unwarped images and getting their shift comparison information/images
         self.alignset.updateRectangleImages(self.warpset.raw_images,'.raw')
-        rawcost = self.alignset.align()
+        rawcost = self.alignset.align(alreadyalignedstrategy="overwrite")
         raw_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
         #next warp and align the images with the best fit warp
         self.warpset.warpLoadedImageSet()
         self.alignset.updateRectangleImages(self.warpset.warped_images,'.raw')
-        bestcost = self.alignset.align()
+        bestcost = self.alignset.align(alreadyalignedstrategy="overwrite")
         warped_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
         logger.info(f'Alignment cost from raw images = {rawcost:.02f}; alignment cost from warped images = {bestcost:.02f}')
         #write out the overlap comparison figures
@@ -393,8 +393,7 @@ class WarpFitter :
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
     def __initializeAlignmentSet(self) :
         a = AlignmentSet(os.path.join(*([os.sep]+self.metafile_dir.split(os.sep)[:-2])),self.working_dir,self.samp_name,interactive=True)
-        a.overlaps=self.overlaps
-        a.rectangles=self.rectangles
+        a.rectanglesoverlaps=self.rectangles, self.overlaps
         return a
 
     #helper function to make the list of parameter bounds for fitting

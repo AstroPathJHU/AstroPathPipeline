@@ -1,8 +1,8 @@
-import dataclasses, matplotlib.pyplot as plt, numpy as np, uncertainties as unc
+import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 
-@dataclasses.dataclass(eq=False, repr=False)
+@dataclasses.dataclass
 class Overlap:
   n: int
   p1: int
@@ -13,64 +13,25 @@ class Overlap:
   y2: float
   tag: int
 
-  def setalignmentinfo(self, layer, pscale, nclip, images):
+  def setalignmentinfo(self, layer, pscale, nclip, rectangles):
     self.layer = layer
     self.pscale = pscale
     self.nclip = nclip
-    self.images = images
-    self.cutimages = None
+    self.rectangles = rectangles
+    self.result = None
 
-  def align(self, *, debug=False, **computeshiftkwargs):
-    self.result = AlignmentResult(
-      n=self.n,
-      p1=self.p1,
-      p2=self.p2,
-      code=self.tag,
-      layer=self.layer,
-    )
-    self.__prepimage()
-    try:
-      self.__computeshift(**computeshiftkwargs)
-      self.__shiftclip()
-    except Exception as e:
-      self.result.exit = 3
-      self.result.dxdy = unc.ufloat(0, 9999), unc.ufloat(0, 9999)
-      self.result.sc = 1.
-      self.shifted = np.array([self.cutimages[0], self.cutimages[1], np.mean(self.cutimages, axis=0)])
-      self.result.exception = e
-      if debug: raise
-    else:
-      self.result.exception = None
-    return self.result
+  @property
+  def images(self):
+    result = tuple(r.image[:] for r in self.rectangles)
+    for i in result: i.flags.writeable = False
+    return result
 
-  def getinversealignment(self, inverse):
-    assert (inverse.p1, inverse.p2) == (self.p2, self.p1)
-    self.cutimages = inverse.cutimages[::-1,...]
-    self.result = AlignmentResult(
-      n = self.n,
-      p1 = self.p1,
-      p2 = self.p2,
-      code = self.tag,
-      layer = self.layer,
-      exit = inverse.result.exit,
-      dx = -inverse.result.dx,
-      dy = -inverse.result.dy,
-      sc = 1/inverse.result.sc,
-      mse1 = inverse.result.mse2,
-      mse2 = inverse.result.mse1,
-      mse3 = inverse.result.mse3 / inverse.result.sc**2,
-    )
-    self.result.covariance = inverse.result.covariance
-    self.shifted = np.array([
-      inverse.shifted[1],
-      inverse.shifted[0],
-      inverse.shifted[2],
-    ])
-    return self.result
+  @property
+  def cutimages(self):
+    image1, image2 = self.images
 
-  def __prepimage(self):
-    hh, ww = self.images[0].shape
-    assert (hh, ww) == self.images[1].shape
+    hh, ww = image1.shape
+    assert (hh, ww) == image2.shape
 
     #convert microns to approximate pixels
     image1x1 = int(self.x1 * self.pscale)
@@ -97,18 +58,69 @@ class Overlap:
     cutimage2y1 = overlapy1 - image2y1 + self.nclip
     cutimage2y2 = overlapy2 - image2y1 - self.nclip
 
-    if self.cutimages is None:
-      self.cutimages = np.ndarray(shape=(2, cutimage1y2-cutimage1y1, cutimage1x2-cutimage1x1))
+    return (
+      image1[cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
+      image2[cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
+    )
 
-      np.copyto(self.cutimages,[
-        self.images[0][cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
-        self.images[1][cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
-      ])
+  def align(self, *, debug=False, alreadyalignedstrategy="error", **computeshiftkwargs):
+    if self.result is not None:
+      if alreadyalignedstrategy == "error":
+        raise RuntimeError(f"Overlap {self.n} is already aligned.  To keep the previous result, call align(alreadyalignedstrategy='skip').  To align again and overwrite the previous result, call align(alreadyalignedstrategy='overwrite').")
+      elif alreadyalignedstrategy == "skip":
+        return self.result
+      elif alreadyalignedstrategy == "overwrite":
+        pass
+      else:
+        raise ValueError(f"Unknown value alreadyalignedstrategy={alreadyalignedstrategy!r}")
+    self.result = AlignmentResult(
+      n=self.n,
+      p1=self.p1,
+      p2=self.p2,
+      code=self.tag,
+      layer=self.layer,
+      exit=-1,
+    )
+    try:
+      self.__computeshift(**computeshiftkwargs)
+      self.__shiftclip()
+    except Exception as e:
+      self.result.exit = 3
+      self.result.dxdy = unc.ufloat(0, 9999), unc.ufloat(0, 9999)
+      self.result.sc = 1.
+      self.result.exception = e
+      if debug: raise
+    else:
+      self.result.exception = None
+    return self.result
+
+  def getinversealignment(self, inverse):
+    assert (inverse.p1, inverse.p2) == (self.p2, self.p1)
+    self.result = AlignmentResult(
+      n = self.n,
+      p1 = self.p1,
+      p2 = self.p2,
+      code = self.tag,
+      layer = self.layer,
+      exit = inverse.result.exit,
+      dx = -inverse.result.dx,
+      dy = -inverse.result.dy,
+      sc = 1/inverse.result.sc,
+      mse1 = inverse.result.mse2,
+      mse2 = inverse.result.mse1,
+      mse3 = inverse.result.mse3 / inverse.result.sc**2,
+    )
+    self.result.covariance = inverse.result.covariance
+    return self.result
 
   def __computeshift(self, **computeshiftkwargs):
     minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
     self.result.dxdy = minimizeresult.dx, minimizeresult.dy
     self.result.exit = minimizeresult.exit
+
+  @property
+  def shifted(self):
+    return shiftimg(self.cutimages, self.result.dx, self.result.dy)
 
   def __shiftclip(self):
     """
@@ -116,12 +128,7 @@ class Overlap:
     and save the result. Compute the mse and the
     illumination correction
     """
-    self.shifted = A = shiftimg(self.cutimages,self.result.dx,self.result.dy)
-
-    #clip the non-overlapping parts
-    ww = 10*(1+int(max(np.abs([self.result.dx, self.result.dy]))/10))
-
-    b1, b2, average = self.result.overlapregion = A[:, ww:-ww or None, ww:-ww or None]
+    b1, b2 = self.shifted
 
     mse1 = mse(b1)
     mse2 = mse(b2)
@@ -133,7 +140,7 @@ class Overlap:
 
   def getimage(self,normalize=100.,shifted=True) :
     if shifted:
-      red, green, _ = self.shifted
+      red, green = self.shifted
     else:
       red, green = self.cutimages
     blue = (red+green)/2
@@ -161,7 +168,26 @@ class Overlap:
   def x2vec(self):
     return np.array([self.x2, self.y2])
 
-@dataclasses.dataclass()
+class OverlapCollection(abc.ABC):
+  @abc.abstractproperty
+  def overlaps(self): pass
+
+  def overlapgraph(self, useexitstatus=False):
+    g = nx.DiGraph()
+    for o in self.overlaps:
+      if useexitstatus and o.result.exit: continue
+      g.add_edge(o.p1, o.p2, overlap=o)
+
+    return g
+
+  def nislands(self, *args, **kwargs):
+    return nx.number_strongly_connected_components(self.overlapgraph(*args, **kwargs))
+
+  @property
+  def overlapsdict(self):
+    return {(o.p1, o.p2): o for o in self.overlaps}
+
+@dataclasses.dataclass
 class AlignmentResult:
   n: int
   p1: int

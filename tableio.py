@@ -1,4 +1,6 @@
-import csv, dataclasses
+import csv, dataclasses, logging
+
+logger = logging.getLogger("align")
 
 def readtable(filename, rownameorclass, **columntypes):
   """
@@ -28,7 +30,6 @@ def readtable(filename, rownameorclass, **columntypes):
     where Point is a class created specially for this table.
 
     You can access the column values through table[0].ID (= "A")
-    or table[1][1] (= 2.0)
   """
 
   result = []
@@ -68,25 +69,41 @@ def readtable(filename, rownameorclass, **columntypes):
 
   return result
 
-def writetable(filename, rows, retry=False):
+def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("inf")):
   """
   Write a csv table into filename based on the rows.
   The rows should all be the same dataclass type.
   """
+  size = len(rows)
+  if printevery > size:
+    printevery = None
+  if printevery is not None:
+    logger.info(f"writing {filename}, which will have {size} rows")
 
   rowclasses = {type(_) for _ in rows}
-  if len(rowclasses) > 1:
-    raise TypeError(
-      "Provided rows of different types:\n  "
-      + "\n  ".join(_.__name__ for _ in rowclasses))
-  rowclass = rowclasses.pop()
+  if rowclass is None:
+    if len(rowclasses) > 1:
+      raise TypeError(
+        "Provided rows of different types:\n  "
+        + "\n  ".join(_.__name__ for _ in rowclasses)
+      )
+    rowclass = rowclasses.pop()
+  else:
+    badclasses = {cls for cls in rowclasses if not issubclass(cls, rowclass)}
+    if badclasses:
+      raise TypeError(f"Provided rows of types that aren't consistent with rowclass={rowclass.__name__}:\n  "
+        + "\n  ".join(_.__name__ for _ in badclasses)
+      )
+
   fieldnames = [field.name for field in dataclasses.fields(rowclass)]
 
   try:
     with open(filename, "w") as f:
       writer = csv.DictWriter(f, fieldnames, lineterminator='\n')
       writer.writeheader()
-      for row in rows:
+      for i, row in enumerate(rows, start=1):
+        if printevery is not None and not i % printevery:
+          logger.info(f"{i} / {size}")
         writer.writerow(dataclasses.asdict(row))
   except PermissionError:
     if retry:
@@ -94,8 +111,10 @@ def writetable(filename, rows, retry=False):
       while True:
         result = input(f"Permission error writing to {filename} - do you want to retry? yes/no  ")
         if result == "yes":
-          return writetable(filename, rows, retry=False)
+          return writetable(filename, rows, retry=False, rowclass=rowclass, printevery=printevery)
         elif result == "no":
           raise
     else:
       raise
+  if printevery is not None:
+    logger.info("finished!")
