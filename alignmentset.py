@@ -125,7 +125,7 @@ class AlignmentSet(OverlapCollection):
   def aligncsv(self):
     return os.path.join(self.dbload, self.samp+"_align.csv")
 
-  def align(self,*,write_result=True,return_on_invalid_result=False,**kwargs):
+  def align(self,*,skip_corners=False,write_result=True,return_on_invalid_result=False,**kwargs):
     #if the raw images haven't already been loaded, load them with the default argument
     #if self.rawimages is None :
     #  self.getDAPI()
@@ -146,7 +146,7 @@ class AlignmentSet(OverlapCollection):
       done.add((overlap.p1, overlap.p2))
       if result is not None: 
         if result.exit==0 :
-          sum_mse+=result.mse[2]; norm+=overlap.cutimages.shape[1]*overlap.cutimages.shape[2]
+          sum_mse+=result.mse[2]; norm+=((overlap.cutimages[0]).shape[0])*((overlap.cutimages[0]).shape[1])
         else :
           if return_on_invalid_result :
             logger.warning(f'WARNING: Overlap number {i} alignment result is invalid, returning 1e10!!')
