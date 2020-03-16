@@ -7,9 +7,9 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
   https://www.scirp.org/html/8-2660057_43054.htm
   """
   if smoothsigma is not None:
-    images = skimage.filters.gaussian(images, sigma=smoothsigma, mode = 'nearest')
+    images = tuple(skimage.filters.gaussian(image, sigma=smoothsigma, mode = 'nearest') for image in images)
   if window is not None:
-    images = window(images)
+    images = tuple(window(image) for image in images)
 
   invfourier = crosscorrelation(images)
 
@@ -63,15 +63,13 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
     [f(*r.x, dx=1, dy=1), f(*r.x, dx=0, dy=2)],
   ])
 
-  shifted = shiftimg(images, -r.x[0], -r.x[1], getaverage=False)
+  shifted = shiftimg(images, -r.x[0], -r.x[1], clip=False)
   staterrorspline = statisticalerrorspline(shifted, nbins=20)
   #cross correlation evaluated at 0
   error_crosscorrelation = np.sqrt(np.sum(
     (staterrorspline(shifted[0]) * shifted[1]) ** 2
   + (shifted[0] * staterrorspline(shifted[1])) ** 2
   ))
-
-  logger.info("%g %g %g", z[maxidx], error_crosscorrelation, error_crosscorrelation / z[maxidx])
 
   covariance = error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
 
@@ -103,15 +101,15 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
   )
 
 @nb.njit
-def hann(images):
-  M, N = images.shape[1:]
+def hann(image):
+  M, N = image.shape
   hannx = np.hanning(M)
   hanny = np.hanning(N)
   hann = np.outer(hannx, hanny)
-  return images * hann
+  return image * hann
 
 def crosscorrelation(images):
-  fourier = np.fft.fft2(images)
+  fourier = tuple(np.fft.fft2(image) for image in images)
   crosspower = getcrosspower(fourier)
   invfourier = np.fft.ifft2(crosspower)
   return np.real(invfourier)
@@ -137,12 +135,14 @@ def statisticalerrorspline(images, nbins):
 def mse(a):
   return np.mean(a*a)
 
-def shiftimg(images, dx, dy, getaverage=True):
+def shiftimg(images, dx, dy, *, clip=True):
   """
   Apply the shift to the two images, using
   a symmetric shift with fractional pixels
   """
   a, b = images
+  a = a.astype(float)
+  b = b.astype(float)
 
   warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.T.shape}
 
@@ -151,11 +151,13 @@ def shiftimg(images, dx, dy, getaverage=True):
 
   assert a.shape == b.shape == np.shape(images)[1:], (a.shape, b.shape, np.shape(images))
 
-  result = [a, b]
-  if getaverage: result.append((a+b)/2)
+  if clip:
+    ww = 10*(1+int(max(np.abs([dx, dy]))/10))
+    clipslice = slice(ww, -ww or None), slice(ww, -ww or None)
+  else:
+    clipslice = ...
 
-  return np.array(result)
-
+  return np.array([a[clipslice], b[clipslice]])
 
 class OptimizeResult(scipy.optimize.OptimizeResult):
   def __formatvforrepr(self, v, m):

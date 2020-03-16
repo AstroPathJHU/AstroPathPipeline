@@ -6,7 +6,7 @@ pipeline {
   environment {
     TEST_DATA_REPONAME = "alignmentjenkinsdata"
     TEST_DATA_REPO = "git@github.com:astropathjhu/${TEST_DATA_REPONAME}"
-    TEST_DATA_COMMIT = "572306c3b4baf96cbd0242e7294a0466095835fe"
+    TEST_DATA_COMMIT = "3204f0035097d32f84d1f2d886231fafaf4ac250"
     PIP_INSTALL_PLACE = "$WORKSPACE/python"
     PYTHONPATH = "$PIP_INSTALL_PLACE:$PYTHONPATH"
   }
@@ -28,20 +28,24 @@ pipeline {
             url: 'https://github.com/astropathjhu/alignmentjenkinsdata'
           ]]
         ])
-        sh "cd test/data && git checkout ${TEST_DATA_COMMIT}"
+        sh "cd test/data; git clean -fxd; git checkout ${TEST_DATA_COMMIT}"
       }
     }
 
-    stage('test alignment') {
-      steps {
-        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
-      }
-    }
+    stage('run tests') {
+      parallel {
+        stage('test alignment') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
+          }
+        }
 
-    stage('test warping') {
-      steps {
-        sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
-	sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
+        stage('test warping') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
+          }
+        }
       }
     }
   }
