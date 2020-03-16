@@ -111,7 +111,7 @@ class WarpFitter :
             raise FittingError('Something went wrong in trying to write out the initial warped files!')
         finally :
             os.chdir(self.init_dir)
-        self.alignset.getDAPI(filetype='camWarpDAPI',writeimstat=False,meanimage=self.mean_image)
+        self.alignset.getDAPI(filetype='camWarpDAPI',writeimstat=False,mean_image=self.mean_image)
 
     def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=10.,max_tangential_warp=10.,par_bounds=None,
               polish=True,print_every=1,maxiter=1000,show_plots=False) :
