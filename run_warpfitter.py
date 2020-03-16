@@ -83,7 +83,7 @@ def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
     #create the alignment set and run its alignment
     logger.info("Performing an initial alignment to find this sample's valid octets/chunks...")
     a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample)
-    a.getDAPI()
+    a.getDAPI(writeimstat=False)
     result = a.align(write_result=False)
     #get the list of overlaps
     overlaps = a.overlaps

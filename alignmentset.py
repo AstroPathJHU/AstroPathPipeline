@@ -179,7 +179,7 @@ class AlignmentSet(OverlapCollection):
       except KeyError:
         pass
 
-  def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False):
+  def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, writeimstat=True):
     logger.info(self.samp)
     rawimages = self.__getrawlayers(filetype, keep=keeprawimages)
 
@@ -205,7 +205,8 @@ class AlignmentSet(OverlapCollection):
         cy=rectangle.cy,
       ) for rectangle in self.rectangles
     ]
-    writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
+    if writeimstat:
+      writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
 
   def updateRectangleImages(self,imgdict,ext) :
     """
