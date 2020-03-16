@@ -181,13 +181,13 @@ class AlignmentSet(OverlapCollection):
       except KeyError:
         pass
 
-  def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, writeimstat=True):
+  def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, writeimstat=True, meanimage=None):
     logger.info(self.samp)
     rawimages = self.__getrawlayers(filetype, keep=keeprawimages)
 
     # apply the extra flattening
 
-    self.meanimage = meanimage(rawimages, self.samp)
+    self.meanimage = meanimage if meanimage is not None else meanimage(rawimages, self.samp)
 
     for image in rawimages:
         image[:] = np.rint(image / self.meanimage.flatfield)
