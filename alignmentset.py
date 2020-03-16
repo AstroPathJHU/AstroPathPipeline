@@ -153,14 +153,14 @@ class AlignmentSet(OverlapCollection):
             return 1e10
           else :
             logger.warning(f'WARNING: Overlap number {i} alignment result is invalid, adding 1e10 to sum_mse!!')
-            sum_mse+=1e10; norm+=overlap.cutimages.shape[1]*overlap.cutimages.shape[2]
+            sum_mse+=1e10; norm+=((overlap.cutimages[0]).shape[0])*((overlap.cutimages[0]).shape[1])
       else :
         if return_on_invalid_result :
             logger.warning(f'WARNING: Overlap number {i} alignment result is "None"; returning 1e10!!')
             return 1e10
         else :
           logger.warning(f'WARNING: Overlap number {i} alignment result is "None"!')
-          sum_mse+=1e10; norm+=overlap.cutimages.shape[1]*overlap.cutimages.shape[2]
+          sum_mse+=1e10; norm+=((overlap.cutimages[0]).shape[0])*((overlap.cutimages[0]).shape[1])
 
     if write_result :
       self.writealignments()
