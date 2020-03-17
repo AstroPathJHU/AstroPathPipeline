@@ -2,7 +2,7 @@ import dataclasses, itertools, numbers, numpy as np, os, uncertainties.unumpy as
 from ..alignmentset import AlignmentSet, ImageStats
 from ..computeshift import crosscorrelation
 from ..overlap import AlignmentResult
-from ..stitch import AffineEntry, StitchCoordinate, StitchCovarianceEigenvalue, StitchCovarianceEigenvectorEntry, StitchOverlapCovariance
+from ..stitch import AffineEntry, StitchCoordinate, StitchOverlapCovariance
 from ..tableio import readtable
 
 thisfolder = os.path.dirname(__file__)
@@ -37,8 +37,6 @@ class TestAlignment(unittest.TestCase):
       ("M21_1_align.csv", AlignmentResult),
       ("M21_1_stitch.csv", StitchCoordinate),
       ("M21_1_stitch_overlap_covariance.csv", StitchOverlapCovariance),
-      ("M21_1_stitch_covariance_eigenvalues.csv", StitchCovarianceEigenvalue),
-      ("M21_1_stitch_covariance_eigenvectors.csv", StitchCovarianceEigenvectorEntry),
     ):
       rows = readtable(os.path.join(thisfolder, "data", "M21_1", "dbload", filename), cls)
       targetrows = readtable(os.path.join(thisfolder, "alignmentreference", filename), cls)
@@ -56,6 +54,24 @@ class TestAlignment(unittest.TestCase):
     targetrows = readtable(readfilename, AlignmentResult)
     for row, target in itertools.zip_longest(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
+
+  def testStitchReadingWriting(self):
+    a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
+    a.readalignments(filename=os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"))
+    result = a.readstitchresult()
+
+    def newfilename(filename): return os.path.join(thisfolder, "test_"+os.path.basename(filename))
+
+    a.writestitchresult(result, filenames=[newfilename(f) for f in a.stitchfilenames])
+
+    for filename, cls in itertools.zip_longest(
+      a.stitchfilenames,
+      (StitchCoordinate, AffineEntry, StitchOverlapCovariance)
+    ):
+      rows = readtable(newfilename(filename), cls)
+      targetrows = readtable(filename, cls)
+      for row, target in itertools.zip_longest(rows, targetrows):
+        assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
 
   def testStitchCvxpy(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
