@@ -232,39 +232,14 @@ class StitchResultBase(OverlapCollection, RectangleCollection):
   def x(self, rectangle_or_id=None): pass
   @abc.abstractmethod
   def dx(self, overlap): pass
+  @abc.abstractproperty
+  def T(self): pass
+  @abc.abstractproperty
+  def overlapcovariances(self): pass
 
   def applytooverlaps(self):
     for o in self.overlaps:
       o.stitchresult = self.dx(o)
-
-class StitchResultFullCovariance(StitchResultBase):
-  def __init__(self, *, x, T, covariancematrix, **kwargs):
-    self.__x = x
-    self.T = T
-    self.covariancematrix = covariancematrix
-    super().__init__(**kwargs)
-
-  @property
-  def covariancematrix(self): return self.__covariancematrix
-  @covariancematrix.setter
-  def covariancematrix(self, matrix):
-    if matrix is not None:
-      matrix = (matrix + matrix.T) / 2
-    self.__covariancematrix = matrix
-
-  def sanitycheck(self):
-    for thing, errorsq in zip(
-      itertools.chain(np.ravel(self.x()), np.ravel(self.T)),
-      np.diag(self.covariancematrix)
-    ): np.testing.assert_allclose(unc.std_dev(thing)**2, errorsq)
-
-  def x(self, rectangle_or_id=None):
-    if rectangle_or_id is None: return self.__x
-    if isinstance(rectangle_or_id, Rectangle): rectangle_or_id = rectangle_or_id.n
-    return self.__x[self.rectangledict[rectangle_or_id]]
-
-  def dx(self, overlap):
-    return self.x(overlap.p1) - self.x(overlap.p2) - (overlap.x1vec - overlap.x2vec)
 
   def writetable(self, *filenames, rtol=1e-3, atol=1e-5, **kwargs):
     filename, affinefilename, overlapcovariancefilename = filenames
@@ -293,26 +268,11 @@ class StitchResultFullCovariance(StitchResultBase):
         stitchcoordinate(
           hpfid=rectangleid,
           position=self.x(rectangleid),
-          T=self.T
         )
       )
     writetable(filename, rows, **kwargs)
 
-    overlapcovariances = []
-    for o in self.overlaps:
-      if o.p2 < o.p1: continue
-      covariance = np.array(covariance_matrix(np.concatenate([self.x(o.p1), self.x(o.p2)])))
-      overlapcovariances.append(
-        StitchOverlapCovariance(
-          hpfid1=o.p1,
-          hpfid2=o.p2,
-          cov_x1_x2=covariance[0,2],
-          cov_x1_y2=covariance[0,3],
-          cov_y1_x2=covariance[1,2],
-          cov_y1_y2=covariance[1,3],
-        )
-      )
-    writetable(overlapcovariancefilename, overlapcovariances, **kwargs)
+    writetable(overlapcovariancefilename, self.overlapcovariances, **kwargs)
 
     logger.debug("reading back from the file")
     readback = ReadStitchResult(*filenames, rectangles=self.rectangles, overlaps=self.overlaps)
@@ -332,12 +292,67 @@ class StitchResultFullCovariance(StitchResultBase):
       np.testing.assert_allclose(covariance_matrix(self.dx(o)), covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
     logger.debug("done")
 
+class StitchResultFullCovariance(StitchResultBase):
+  def __init__(self, *, x, T, covariancematrix, **kwargs):
+    self.__x = x
+    self.__T = T
+    self.covariancematrix = covariancematrix
+    super().__init__(**kwargs)
+
+  @property
+  def T(self): return self.__T
+
+  @property
+  def covariancematrix(self): return self.__covariancematrix
+  @covariancematrix.setter
+  def covariancematrix(self, matrix):
+    if matrix is not None:
+      matrix = (matrix + matrix.T) / 2
+    self.__covariancematrix = matrix
+
+  def sanitycheck(self):
+    for thing, errorsq in zip(
+      itertools.chain(np.ravel(self.x()), np.ravel(self.T)),
+      np.diag(self.covariancematrix)
+    ): np.testing.assert_allclose(unc.std_dev(thing)**2, errorsq)
+
+  def x(self, rectangle_or_id=None):
+    if rectangle_or_id is None: return self.__x
+    if isinstance(rectangle_or_id, Rectangle): rectangle_or_id = rectangle_or_id.n
+    return self.__x[self.rectangledict[rectangle_or_id]]
+
+  def dx(self, overlap):
+    return self.x(overlap.p1) - self.x(overlap.p2) - (overlap.x1vec - overlap.x2vec)
+
+  @property
+  def overlapcovariances(self):
+    overlapcovariances = []
+    for o in self.overlaps:
+      if o.p2 < o.p1: continue
+      covariance = np.array(covariance_matrix(np.concatenate([self.x(o.p1), self.x(o.p2)])))
+      overlapcovariances.append(
+        StitchOverlapCovariance(
+          hpfid1=o.p1,
+          hpfid2=o.p2,
+          cov_x1_x2=covariance[0,2],
+          cov_x1_y2=covariance[0,3],
+          cov_y1_x2=covariance[1,2],
+          cov_y1_y2=covariance[1,3],
+        )
+      )
+    return overlapcovariances
+
 class StitchResultOverlapCovariances(StitchResultBase):
   def __init__(self, *, x, T, overlapcovariances, **kwargs):
     self.__x = x
-    self.T = T
-    self.overlapcovariances = overlapcovariances
+    self.__T = T
+    self.__overlapcovariances = overlapcovariances
     super().__init__(**kwargs)
+
+  @property
+  def T(self): return self.__T
+  @property
+  def overlapcovariances(self): return self.__overlapcovariances
 
   def x(self, rectangle_or_id=None):
     if rectangle_or_id is None: return self.__x
@@ -384,7 +399,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
     overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance)
 
     self.__x = np.array([coordinate.xvec for coordinate in coordinates])
-    self.overlapcovariances = overlapcovariances
+    self.__overlapcovariances = overlapcovariances
 
     iTxx, iTxy, iTyx, iTyy = range(4)
 
@@ -412,7 +427,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
 
     Tcovariance[iTyy,iTyy] = dct["cov_ayy_ayy"]
 
-    self.T = np.array(unc.correlated_values(Tnominal, Tcovariance)).reshape((2, 2))
+    self.__T = np.array(unc.correlated_values(Tnominal, Tcovariance)).reshape((2, 2))
 
 class ReadStitchResult(StitchResultOverlapCovariances):
   def __init__(self, *args, rectangles, overlaps, **kwargs):
@@ -457,7 +472,7 @@ class StitchCoordinate:
     covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
     self.xvec = unc.correlated_values(nominal, covariance)
 
-def stitchcoordinate(*, position=None, T=None, **kwargs):
+def stitchcoordinate(*, position=None, **kwargs):
   kw2 = {}
   if position is not None:
     kw2["x"], kw2["y"] = unp.nominal_values(position)
