@@ -1,6 +1,6 @@
 import dataclasses, itertools, logging, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
 from .overlap import OverlapCollection
-from .rectangle import Rectangle
+from .rectangle import Rectangle, RectangleCollection, rectangledict
 from .tableio import readtable, writetable
 from .utilities import covariance_matrix
 
@@ -218,13 +218,31 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
 
   return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps)
 
-class StitchResultBase(OverlapCollection):
-  def __init__(self, *, x, T, rectangles, overlaps, covariancematrix):
+class StitchResultBase(OverlapCollection, RectangleCollection):
+  def __init__(self, *, rectangles, overlaps):
+    self.__rectangles = rectangles
+    self.__overlaps = overlaps
+
+  @property
+  def overlaps(self): return self.__overlaps
+  @property
+  def rectangles(self): return self.__rectangles
+
+  @abc.abstractmethod
+  def x(self, rectangle_or_id=None): pass
+  @abc.abstractmethod
+  def dx(self, overlap): pass
+
+  def applytooverlaps(self):
+    for o in self.overlaps:
+      o.stitchresult = self.dx(o)
+
+class StitchResultFullCovariance(StitchResultBase):
+  def __init__(self, *, x, T, covariancematrix, **kwargs):
     self.__x = x
     self.T = T
-    self.rectangles = rectangles
-    self.__overlaps = overlaps
     self.covariancematrix = covariancematrix
+    super().__init__(**kwargs)
 
   @property
   def covariancematrix(self): return self.__covariancematrix
@@ -246,18 +264,11 @@ class StitchResultBase(OverlapCollection):
   @property
   def covarianceeigenvectors(self): return self.covarianceeig[1]
 
-  @property
-  def overlaps(self): return self.__overlaps
-
   def sanitycheck(self):
     for thing, errorsq in zip(
       itertools.chain(np.ravel(self.x()), np.ravel(self.T)),
       np.diag(self.covariancematrix)
     ): np.testing.assert_allclose(unc.std_dev(thing)**2, errorsq)
-
-  @property
-  def rectangledict(self):
-    return rectangledict(self.rectangles)
 
   def x(self, rectangle_or_id=None):
     if rectangle_or_id is None: return self.__x
@@ -455,17 +466,13 @@ class StitchResultBase(OverlapCollection):
     self.T = T
     self.covariancematrix = covariance
 
-  def applytooverlaps(self):
-    for o in self.overlaps:
-      o.stitchresult = self.dx(o)
-
-class ReadStitchResult(StitchResultBase):
+class ReadStitchResult(StitchResultFullCovariance):
   def __init__(self, *args, rectangles, overlaps, **kwargs):
     super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, covariancematrix=None)
     self.readtable(*args, **kwargs)
     self.sanitycheck()
 
-class CalculatedStitchResult(StitchResultBase):
+class CalculatedStitchResult(StitchResultFullCovariance):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.sanitycheck()
@@ -550,8 +557,5 @@ class StitchCovarianceEigenvectorEntry:
   nvector: int
   nentry: int
   value: float
-
-def rectangledict(rectangles):
-  return {rectangle.n: i for i, rectangle in enumerate(rectangles)}
 
 class BadCovarianceError(Exception): pass
