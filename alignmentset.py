@@ -272,8 +272,6 @@ class AlignmentSet(OverlapCollection):
       os.path.join(self.dbload, self.samp+"_stitch.csv"),
       os.path.join(self.dbload, self.samp+"_affine.csv"),
       os.path.join(self.dbload, self.samp+"_stitch_overlap_covariance.csv"),
-      os.path.join(self.dbload, self.samp+"_stitch_covariance_eigenvalues.csv"),
-      os.path.join(self.dbload, self.samp+"_stitch_covariance_eigenvectors.csv"),
     )
 
   def stitch(self, *, saveresult=True, **kwargs):
