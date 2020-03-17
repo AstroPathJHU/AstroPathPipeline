@@ -55,6 +55,24 @@ class TestAlignment(unittest.TestCase):
     for row, target in itertools.zip_longest(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
+  def testStitchReadingWriting(self):
+    a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
+    a.readalignments(filename=os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"))
+    result = a.readstitchresult()
+
+    def newfilename(filename): return os.path.join(thisfolder, "test_"+os.path.basename(filename))
+
+    a.writestitchresult(result, filenames=[newfilename(f) for f in a.stitchfilenames])
+
+    for filename, cls in itertools.zip_longest(
+      a.stitchfilenames,
+      (StitchCoordinate, AffineEntry, StitchOverlapCovariance)
+    ):
+      rows = readtable(newfilename(filename), cls)
+      targetrows = readtable(filename, cls)
+      for row, target in itertools.zip_longest(rows, targetrows):
+        assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
+
   def testStitchCvxpy(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
     a.readalignments(filename=os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"))
