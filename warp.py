@@ -533,6 +533,7 @@ class CameraWarp(Warp) :
         plt.savefig('warp_amounts.png')
         if show :
             plt.show()
+        plt.close()
 
     def writeParameterTextFile(self,par_mask=None) :
         fn = 'warping_parameters.txt'
