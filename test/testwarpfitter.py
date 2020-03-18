@@ -11,7 +11,7 @@ rawfile_dir = os.path.join(folder,'data','raw',samp)
 metafile_dir = os.path.join(folder,'data',samp,'dbload')
 working_dir = os.path.join(folder,'warpfitter_test_for_jenkins')
 overlaps = [46]
-layers = [1]
+layer = 1
 fix_cxcy = False
 fix_fxfy = True
 fix_k1k2 = False
@@ -23,7 +23,7 @@ max_iter = 1
 
 #make the WarpFitter Objects
 print('Initializing WarpFitter')
-fitter = WarpFitter(samp,rawfile_dir,metafile_dir,working_dir,overlaps,layers)
+fitter = WarpFitter(samp,rawfile_dir,metafile_dir,working_dir,overlaps,layer)
 #load the raw files
 print('Loading raw files')
 fitter.loadRawFiles()
