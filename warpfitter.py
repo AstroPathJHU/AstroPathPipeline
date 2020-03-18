@@ -291,12 +291,13 @@ class WarpFitter :
         os.chdir(self.working_dir)
         try :
             plt.savefig('fit_progress.png')
+            if show :
+                plt.show()
+            plt.close()
         except Exception :
             raise FittingError('something went wrong while trying to save the fit progress plots!')
         finally :
             os.chdir(self.init_dir)
-        if show :
-            plt.show()
 
     #function to save alignment comparison visualizations in a new directory inside the working directory
     def __makeBestFitAlignmentComparisonImages(self) :
@@ -346,6 +347,7 @@ class WarpFitter :
                 order[3].imshow(warped_overlap_comparisons_dict[overlap_identifier][1])
                 order[3].set_title('warped overlap images aligned')
                 plt.savefig(fn)
+                plt.close()
         except Exception :
             raise FittingError('Something went wrong while trying to write out the overlap comparison images')
         finally :
