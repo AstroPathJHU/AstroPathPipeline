@@ -85,7 +85,7 @@ class WarpSet :
                 raise FileNotFoundError(f'path {path} supplied to writeOutWarpedImageSet is not a valid location')
         #write out all the image files
         for warpimg in self.images :
-            self.warp.writeImageLayer(warpimg.warped_image,warpimg.rawfile_key,self.layer)
+            self.warp.writeImageLayer((warpimg.warped_image).get(),warpimg.rawfile_key,self.layer)
         #change back to the initial directory
         if path is not None :
             os.chdir(init_dir)

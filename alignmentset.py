@@ -216,7 +216,7 @@ class AlignmentSet(OverlapCollection):
     imgs = list of WarpImages to use for update
     """
     for r in self.rectangles :
-      thiswarpedimg=[img.warped_image for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
+      thiswarpedimg=[(img.warped_image).get() for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
       assert len(thiswarpedimg)<2
       if len(thiswarpedimg)==1 :
         np.copyto(r.image,(thiswarpedimg[0]/self.meanimage.flatfield).astype(np.uint16),casting='no')
