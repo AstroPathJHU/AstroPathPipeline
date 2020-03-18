@@ -194,23 +194,24 @@ class WarpFitter :
         else :
             result=firstresult
         #make the fit progress plots
-        self.__makeFitProgressPlots(firstresult.nfev,show_plots)
-        #use the fit result to make the best fit warp object and save the figure of its warp fields
+        self.init_its, self.polish_its = self.__makeFitProgressPlots(firstresult.nfev,show_plots)
+        #use the fit result to make the best fit warp object
         best_fit_pars = self.__correctParameterList(result.x)
         self.warpset.updateCameraParams(best_fit_pars)
         self.__best_fit_warp = copy.deepcopy(self.warpset.warp)
         logger.info(f'Best fit parameters:')
         self.__best_fit_warp.printParams()
+        #write out the set of alignment comparison images
+        self.raw_cost, self.best_cost = self.__makeBestFitAlignmentComparisonImages()
+        #save the figure of the best-fit warp fields
         os.chdir(self.working_dir)
         try :
             self.__best_fit_warp.makeWarpAmountFigure()
-            self.__best_fit_warp.writeParameterTextFile(self.par_mask)
+            self.__best_fit_warp.writeParameterTextFile(self.par_mask,self.init_its,self.polish_its,self.raw_cost,self.best_cost)
         except Exception :
             raise FittingError('Something went wrong in trying to save the warping amount figure for the best-fit warp')
         finally :
             os.chdir(self.init_dir)
-        #write out the set of alignment comparison images
-        self.__makeBestFitAlignmentComparisonImages()
         return result
 
 
@@ -298,6 +299,7 @@ class WarpFitter :
             raise FittingError('something went wrong while trying to save the fit progress plots!')
         finally :
             os.chdir(self.init_dir)
+        return ninitev, len(self.costs)-ninitev
 
     #function to save alignment comparison visualizations in a new directory inside the working directory
     def __makeBestFitAlignmentComparisonImages(self) :
@@ -352,6 +354,7 @@ class WarpFitter :
             raise FittingError('Something went wrong while trying to write out the overlap comparison images')
         finally :
             os.chdir(self.init_dir)
+        return rawcost, bestcost
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

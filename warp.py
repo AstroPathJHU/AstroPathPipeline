@@ -535,7 +535,7 @@ class CameraWarp(Warp) :
             plt.show()
         plt.close()
 
-    def writeParameterTextFile(self,par_mask=None) :
+    def writeParameterTextFile(self,par_mask=None,init_its=None,polish_its=None,rawcost=None,bestcost=None) :
         fn = 'warping_parameters.txt'
         max_r_x, max_r_y = self._getMaxDistanceCoords()
         pars=[self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.p1,self.p2]
@@ -558,6 +558,11 @@ class CameraWarp(Warp) :
             'max_radial_warp':str(self.maxRadialDistortAmount(pars)),
             'max_tangential_warp':str(self.maxTangentialDistortAmount(pars)),
         }
+        if init_its is not None : to_write['initial_fit_iterations'] = str(init_its)
+        if polish_its is not None : to_write['polishing_fit_iterations'] = str(polish_its)
+        if rawcost is not None : to_write['raw_cost'] = str(rawcost)
+        if bestcost is not None : to_write['best_cost'] = str(bestcost)
+        if rawcost is not None and bestcost is not None : to_write['cost_reduction'] = f'{(100*(1.-bestcost/rawcost))}%'
         max_key_width = 0; max_value_width = 0
         for k,v in to_write.items() :
             if len(k)>max_key_width :
