@@ -1,6 +1,7 @@
 #imports
 from .warp import PolyFieldWarp, CameraWarp, WarpingError
 import numpy as np
+import cv2
 import dataclasses, os, copy, logging
 
 class WarpSet :
@@ -55,7 +56,7 @@ class WarpSet :
                         is_corner_only=False
                         break
             new_raw_img=copy.copy(rawimage[:,:,self.layer])
-            self.images.append(WarpImage(rfkey,new_raw_img,np.zeros_like(new_raw_img),is_corner_only))
+            self.images.append(WarpImage(rfkey,cv2.UMat(new_raw_img),cv2.UMat(np.zeros_like(new_raw_img)),is_corner_only))
         logger.info("Done.")
 
     def warpLoadedImageSet(self,skip_corners=False) :
@@ -84,7 +85,7 @@ class WarpSet :
                 raise FileNotFoundError(f'path {path} supplied to writeOutWarpedImageSet is not a valid location')
         #write out all the image files
         for warpimg in self.images :
-            self.warp.writeImageLayer(warpimg.warped_image,warpimg.rawfile_key,self.layer)
+            self.warp.writeImageLayer((warpimg.warped_image).get(),warpimg.rawfile_key,self.layer)
         #change back to the initial directory
         if path is not None :
             os.chdir(init_dir)
@@ -109,7 +110,7 @@ class WarpSet :
 @dataclasses.dataclass(eq=False, repr=False)
 class WarpImage :
     rawfile_key    : str
-    raw_image      : np.ndarray
-    warped_image   : np.ndarray
+    raw_image      : cv2.UMat
+    warped_image   : cv2.UMat
     is_corner_only : bool
 
