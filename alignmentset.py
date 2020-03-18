@@ -273,8 +273,6 @@ class AlignmentSet(OverlapCollection):
       os.path.join(self.dbload, self.samp+"_stitch.csv"),
       os.path.join(self.dbload, self.samp+"_affine.csv"),
       os.path.join(self.dbload, self.samp+"_stitch_overlap_covariance.csv"),
-      os.path.join(self.dbload, self.samp+"_stitch_covariance_eigenvalues.csv"),
-      os.path.join(self.dbload, self.samp+"_stitch_covariance_eigenvectors.csv"),
     )
 
   def stitch(self, *, saveresult=True, **kwargs):
@@ -282,17 +280,22 @@ class AlignmentSet(OverlapCollection):
 
     if saveresult:
       result.applytooverlaps()
-      result.writetable(
-        *self.stitchfilenames,
-        retry=self.interactive,
-        printevery=10000,
-      )
+      self.writestitchresult(result)
 
     return result
 
-  def readstitchresult(self, *, saveresult=True):
+  def writestitchresult(self, result, *, filenames=None):
+    if filenames is None: filenames = self.stitchfilenames
+    result.writetable(
+      *filenames,
+      retry=self.interactive,
+      printevery=10000,
+    )
+
+  def readstitchresult(self, *, filenames=None, saveresult=True):
+    if filenames is None: filenames = self.stitchfilenames
     result = ReadStitchResult(
-      *self.stitchfilenames,
+      *filenames,
       overlaps=self.overlaps,
       rectangles=self.rectangles
     )

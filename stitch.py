@@ -1,6 +1,6 @@
-import dataclasses, itertools, logging, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
+import abc, dataclasses, itertools, logging, methodtools, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
 from .overlap import OverlapCollection
-from .rectangle import Rectangle
+from .rectangle import Rectangle, RectangleCollection, rectangledict
 from .tableio import readtable, writetable
 from .utilities import covariance_matrix
 
@@ -218,57 +218,31 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
 
   return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps)
 
-class StitchResultBase(OverlapCollection):
-  def __init__(self, *, x, T, rectangles, overlaps, covariancematrix):
-    self.__x = x
-    self.T = T
-    self.rectangles = rectangles
+class StitchResultBase(OverlapCollection, RectangleCollection):
+  def __init__(self, *, rectangles, overlaps):
+    self.__rectangles = rectangles
     self.__overlaps = overlaps
-    self.covariancematrix = covariancematrix
-
-  @property
-  def covariancematrix(self): return self.__covariancematrix
-  @covariancematrix.setter
-  def covariancematrix(self, matrix):
-    if matrix is not None:
-      matrix = (matrix + matrix.T) / 2
-    self.__covariancematrix = matrix
-    self.__covarianceeig = None
-  @property
-  def covarianceeig(self):
-    if self.__covarianceeig is None:
-      cov = self.covariancematrix
-      if cov is None: raise ValueError("can't get eigenvalues/vectors from matrix because the matrix is None")
-      self.__covarianceeig = np.linalg.eig(cov)
-    return self.__covarianceeig
-  @property
-  def covarianceeigenvalues(self): return self.covarianceeig[0]
-  @property
-  def covarianceeigenvectors(self): return self.covarianceeig[1]
 
   @property
   def overlaps(self): return self.__overlaps
-
-  def sanitycheck(self):
-    for thing, errorsq in zip(
-      itertools.chain(np.ravel(self.x()), np.ravel(self.T)),
-      np.diag(self.covariancematrix)
-    ): np.testing.assert_allclose(unc.std_dev(thing)**2, errorsq)
-
   @property
-  def rectangledict(self):
-    return rectangledict(self.rectangles)
+  def rectangles(self): return self.__rectangles
 
-  def x(self, rectangle_or_id=None):
-    if rectangle_or_id is None: return self.__x
-    if isinstance(rectangle_or_id, Rectangle): rectangle_or_id = rectangle_or_id.n
-    return self.__x[self.rectangledict[rectangle_or_id]]
+  @abc.abstractmethod
+  def x(self, rectangle_or_id=None): pass
+  @abc.abstractmethod
+  def dx(self, overlap): pass
+  @abc.abstractproperty
+  def T(self): pass
+  @abc.abstractproperty
+  def overlapcovariances(self): pass
 
-  def dx(self, overlap):
-    return self.x(overlap.p1) - self.x(overlap.p2) - (overlap.x1vec - overlap.x2vec)
+  def applytooverlaps(self):
+    for o in self.overlaps:
+      o.stitchresult = self.dx(o)
 
-  def writetable(self, *filenames, neigenvectors=10, trymoreeigenvectors=True, rtol=1e-3, atol=1e-5, **kwargs):
-    filename, affinefilename, overlapcovariancefilename, eigenvaluefilename, eigenvectorfilename = filenames
+  def writetable(self, *filenames, rtol=1e-3, atol=1e-5, **kwargs):
+    filename, affinefilename, overlapcovariancefilename = filenames
 
     affine = []
     n = 0
@@ -294,31 +268,64 @@ class StitchResultBase(OverlapCollection):
         stitchcoordinate(
           hpfid=rectangleid,
           position=self.x(rectangleid),
-          T=self.T
         )
       )
     writetable(filename, rows, **kwargs)
 
-    val, vec = self.covarianceeig
-    #sign convention for eigenvectors - doesn't really matter but we want consistent results each time we run
-    for v in vec.T:
-      if v[0] < 0: v *= -1
-    sortidx = val.argsort()[::-1]
-    val = val[sortidx]
-    vec = vec[:,sortidx]
+    writetable(overlapcovariancefilename, self.overlapcovariances, **kwargs)
 
-    nkeep = neigenvectors
+    logger.debug("reading back from the file")
+    readback = ReadStitchResult(*filenames, rectangles=self.rectangles, overlaps=self.overlaps)
+    logger.debug("done reading")
+    x1 = self.x()
+    T1 = self.T
+    x2 = readback.x()
+    T2 = readback.T
+    logger.debug("comparing nominals")
+    np.testing.assert_allclose(unp.nominal_values(x1), unp.nominal_values(x2), atol=atol, rtol=rtol)
+    np.testing.assert_allclose(unp.nominal_values(T1), unp.nominal_values(T2), atol=atol, rtol=rtol)
+    logger.debug("comparing individual errors")
+    np.testing.assert_allclose(unp.std_devs(x1), unp.std_devs(x2), atol=atol, rtol=rtol)
+    np.testing.assert_allclose(unp.std_devs(T1), unp.std_devs(T2), atol=atol, rtol=rtol)
+    logger.debug("comparing overlap errors")
+    for o in self.overlaps:
+      np.testing.assert_allclose(covariance_matrix(self.dx(o)), covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
+    logger.debug("done")
 
-    values = []
-    for n, v in enumerate(val[:nkeep]):
-      values.append(StitchCovarianceEigenvalue(n=n, value=v))
-    writetable(eigenvaluefilename, values, rowclass=StitchCovarianceEigenvalue, **kwargs)
-    vectors = []
-    for n, vector in enumerate(vec.T[:nkeep]):
-      for m, entry in enumerate(vector):
-        vectors.append(StitchCovarianceEigenvectorEntry(nvector=n, nentry=m, value=entry))
-    writetable(eigenvectorfilename, vectors, rowclass=StitchCovarianceEigenvectorEntry, **kwargs)
+class StitchResultFullCovariance(StitchResultBase):
+  def __init__(self, *, x, T, covariancematrix, **kwargs):
+    self.__x = x
+    self.__T = T
+    self.covariancematrix = covariancematrix
+    super().__init__(**kwargs)
 
+  @property
+  def T(self): return self.__T
+
+  @property
+  def covariancematrix(self): return self.__covariancematrix
+  @covariancematrix.setter
+  def covariancematrix(self, matrix):
+    if matrix is not None:
+      matrix = (matrix + matrix.T) / 2
+    self.__covariancematrix = matrix
+
+  def sanitycheck(self):
+    for thing, errorsq in zip(
+      itertools.chain(np.ravel(self.x()), np.ravel(self.T)),
+      np.diag(self.covariancematrix)
+    ): np.testing.assert_allclose(unc.std_dev(thing)**2, errorsq)
+
+  def x(self, rectangle_or_id=None):
+    if rectangle_or_id is None: return self.__x
+    if isinstance(rectangle_or_id, Rectangle): rectangle_or_id = rectangle_or_id.n
+    return self.__x[self.rectangledict[rectangle_or_id]]
+
+  def dx(self, overlap):
+    return self.x(overlap.p1) - self.x(overlap.p2) - (overlap.x1vec - overlap.x2vec)
+
+  @property
+  def overlapcovariances(self):
     overlapcovariances = []
     for o in self.overlaps:
       if o.p2 < o.p1: continue
@@ -333,139 +340,101 @@ class StitchResultBase(OverlapCollection):
           cov_y1_y2=covariance[1,3],
         )
       )
-    writetable(overlapcovariancefilename, overlapcovariances, **kwargs)
+    return overlapcovariances
 
-    try:
-      logger.debug("reading back from the file")
-      readback = ReadStitchResult(filename, affinefilename, overlapcovariancefilename, eigenvaluefilename, eigenvectorfilename, rectangles=self.rectangles, overlaps=self.overlaps)
-      logger.debug("done reading")
-      x1 = self.x()
-      T1 = self.T
-      x2 = readback.x()
-      T2 = readback.T
-      logger.debug("comparing nominals")
-      np.testing.assert_allclose(unp.nominal_values(x1), unp.nominal_values(x2), atol=atol, rtol=rtol)
-      np.testing.assert_allclose(unp.nominal_values(T1), unp.nominal_values(T2), atol=atol, rtol=rtol)
-      logger.debug("comparing individual errors")
-      np.testing.assert_allclose(unp.std_devs(x1), unp.std_devs(x2), atol=atol, rtol=rtol)
-      np.testing.assert_allclose(unp.std_devs(T1), unp.std_devs(T2), atol=atol, rtol=rtol)
-      logger.debug("comparing overlap errors")
-      for o in self.overlaps:
-        np.testing.assert_allclose(covariance_matrix(self.dx(o)), covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
-      logger.debug("done")
+class StitchResultOverlapCovariances(StitchResultBase):
+  def __init__(self, *, x, T, overlapcovariances, **kwargs):
+    self.__x = x
+    self.__T = T
+    self.__overlapcovariances = overlapcovariances
+    super().__init__(**kwargs)
 
-      #np.testing.assert_allclose(self.covariancematrix, readback.covariancematrix, atol=atol, rtol=rtol)
+  @property
+  def T(self): return self.__T
+  @property
+  def overlapcovariances(self): return self.__overlapcovariances
 
-    except (BadCovarianceError, AssertionError):
-      if not trymoreeigenvectors: raise
-      if nkeep >= len(val): raise BadCovarianceError("Inconsistency when writing the covariance matrix to files and reading it back, even when we write all the eigenvectors")
-      logger.warning(f"{neigenvectors} eigenvectors (+ field errors and overlap covariances) are not enough to represent the covariance matrix within tolerance, trying with {neigenvectors+1}")
-      return self.writetable(*filenames, neigenvectors=neigenvectors+1, **kwargs)
+  def x(self, rectangle_or_id=None):
+    if rectangle_or_id is None: return self.__x
+    if isinstance(rectangle_or_id, Rectangle): rectangle_or_id = rectangle_or_id.n
+    return self.__x[self.rectangledict[rectangle_or_id]]
+
+  def dx(self, overlap):
+    x1 = self.x(overlap.p1)
+    x2 = self.x(overlap.p2)
+    overlapcovariance = self.overlapcovariance(overlap)
+
+    nominals = np.concatenate([unp.nominal_values(x1), unp.nominal_values(x2)])
+
+    covariance = np.ndarray((4, 4))
+    covariance[:2,:2] = unc.covariance_matrix(x1)
+    covariance[2:,2:] = unc.covariance_matrix(x2)
+    covariance[0,2] = covariance[2,0] = overlapcovariance.cov_x1_x2
+    covariance[0,3] = covariance[3,0] = overlapcovariance.cov_x1_y2
+    covariance[1,2] = covariance[2,1] = overlapcovariance.cov_y1_x2
+    covariance[1,3] = covariance[3,1] = overlapcovariance.cov_y1_y2
+
+    xx1, yy1, xx2, yy2 = unc.correlated_values(nominals, covariance)
+    newx1 = np.array([xx1, yy1])
+    newx2 = np.array([xx2, yy2])
+
+    np.testing.assert_allclose(unp.nominal_values(x1), unp.nominal_values(newx1))
+    np.testing.assert_allclose(unc.covariance_matrix(x1), unc.covariance_matrix(newx1))
+    np.testing.assert_allclose(unp.nominal_values(x2), unp.nominal_values(newx2))
+    np.testing.assert_allclose(unc.covariance_matrix(x2), unc.covariance_matrix(newx2))
+
+    return newx1 - newx2 - (overlap.x1vec - overlap.x2vec)
+
+  def overlapcovariance(self, overlap):
+    for oc in self.overlapcovariances:
+      if {overlap.p1, overlap.p2} == {oc.hpfid1, oc.hpfid2}:
+        return oc
+    raise KeyError(f"No overlap covariance with {overlap.p1} {overlap.p2}")
 
   def readtable(self, *filenames, adjustoverlaps=True):
-    filename, affinefilename, overlapcovariancefilename, eigenvaluefilename, eigenvectorfilename = filenames
+    filename, affinefilename, overlapcovariancefilename = filenames
 
     coordinates = readtable(filename, StitchCoordinate)
     affines = readtable(affinefilename, AffineEntry)
     overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance)
-    eigenvalues = readtable(eigenvaluefilename, StitchCovarianceEigenvalue)
-    eigenvectorentries = readtable(eigenvectorfilename, StitchCovarianceEigenvectorEntry)
 
-    n = len(self.rectangles)
-    nominal = np.ndarray(2*n+4)
+    self.__x = np.array([coordinate.xvec for coordinate in coordinates])
+    self.__overlapcovariances = overlapcovariances
 
-    eigenvectors = np.zeros((2*n+4, len(eigenvalues)))
-    eigenvalues = np.array([v.value for v in sorted(eigenvalues, key=lambda v: v.n)])
-
-    for entry in eigenvectorentries:
-      eigenvectors[entry.nentry, entry.nvector] = entry.value
-
-    covariance = eigenvectors @ np.diag(eigenvalues) @ eigenvectors.T
-
-    rd = self.rectangledict
-
-    iTxx = -4
-    iTxy = -3
-    iTyx = -2
-    iTyy = -1
-
-    for coordinate in coordinates:
-      ix = 2*rd[coordinate.hpfid]
-      iy = ix+1
-
-      nominal[ix] = coordinate.x
-      nominal[iy] = coordinate.y
-      if adjustoverlaps:
-        covariance[ix,ix] = coordinate.cov_x_x
-        covariance[ix,iy] = covariance[iy,ix] = coordinate.cov_x_y
-        covariance[iy,iy] = coordinate.cov_y_y
+    iTxx, iTxy, iTyx, iTyy = range(4)
 
     dct = {affine.description: affine.value for affine in affines}
 
-    nominal[iTxx] = dct["axx"]
-    nominal[iTxy] = dct["axy"]
-    nominal[iTyx] = dct["ayx"]
-    nominal[iTyy] = dct["ayy"]
+    Tnominal = np.ndarray(4)
+    Tcovariance = np.ndarray((4, 4))
 
-    if adjustoverlaps:
-      covariance[iTxx,iTxx] = dct["cov_axx_axx"]
-      covariance[iTxx,iTxy] = covariance[iTxy,iTxx] = dct["cov_axx_axy"]
-      covariance[iTxx,iTyx] = covariance[iTyx,iTxx] = dct["cov_axx_ayx"]
-      covariance[iTxx,iTyy] = covariance[iTyy,iTxx] = dct["cov_axx_ayy"]
+    Tnominal[iTxx] = dct["axx"]
+    Tnominal[iTxy] = dct["axy"]
+    Tnominal[iTyx] = dct["ayx"]
+    Tnominal[iTyy] = dct["ayy"]
 
-      covariance[iTxy,iTxy] = dct["cov_axy_axy"]
-      covariance[iTxy,iTyx] = covariance[iTyx,iTxy] = dct["cov_axy_ayx"]
-      covariance[iTxy,iTyy] = covariance[iTyy,iTxy] = dct["cov_axy_ayy"]
+    Tcovariance[iTxx,iTxx] = dct["cov_axx_axx"]
+    Tcovariance[iTxx,iTxy] = Tcovariance[iTxy,iTxx] = dct["cov_axx_axy"]
+    Tcovariance[iTxx,iTyx] = Tcovariance[iTyx,iTxx] = dct["cov_axx_ayx"]
+    Tcovariance[iTxx,iTyy] = Tcovariance[iTyy,iTxx] = dct["cov_axx_ayy"]
 
-      covariance[iTyx,iTyx] = dct["cov_ayx_ayx"]
-      covariance[iTyx,iTyy] = covariance[iTyy,iTyx] = dct["cov_ayx_ayy"]
+    Tcovariance[iTxy,iTxy] = dct["cov_axy_axy"]
+    Tcovariance[iTxy,iTyx] = Tcovariance[iTyx,iTxy] = dct["cov_axy_ayx"]
+    Tcovariance[iTxy,iTyy] = Tcovariance[iTyy,iTxy] = dct["cov_axy_ayy"]
 
-      covariance[iTyy,iTyy] = dct["cov_ayy_ayy"]
+    Tcovariance[iTyx,iTyx] = dct["cov_ayx_ayx"]
+    Tcovariance[iTyx,iTyy] = Tcovariance[iTyy,iTyx] = dct["cov_ayx_ayy"]
 
-    rectangledict = self.rectangledict
-    for oc in overlapcovariances:
-      p1 = oc.hpfid1
-      p2 = oc.hpfid2
-      ix = 2*rd[p1]
-      iy = 2*rd[p1]+1
-      jx = 2*rd[p2]
-      jy = 2*rd[p2]+1
+    Tcovariance[iTyy,iTyy] = dct["cov_ayy_ayy"]
 
-      if adjustoverlaps:
-        covariance[ix,jx] = covariance[jx,ix] = oc.cov_x1_x2
-        covariance[ix,jy] = covariance[jy,ix] = oc.cov_x1_y2
-        covariance[iy,jx] = covariance[jx,iy] = oc.cov_y1_x2
-        covariance[iy,jy] = covariance[jy,iy] = oc.cov_y1_y2
+    self.__T = np.array(unc.correlated_values(Tnominal, Tcovariance)).reshape((2, 2))
 
-    self.covariancematrix = covariance
-
-    val, vec = self.covarianceeig
-    val[::-1].sort()
-    if val[-1] < -val[0] * 1e-8:
-      raise BadCovarianceError(f"Covariance matrix isn't positive definite: eigenvalues are\n{val}")
-
-    x, T = np.split(
-      np.array(
-        unc.correlated_values(nominal, covariance)
-      ).reshape(n+2, 2),
-      [-2],
-    )
-
-    self.__x = x
-    self.T = T
-    self.covariancematrix = covariance
-
-  def applytooverlaps(self):
-    for o in self.overlaps:
-      o.stitchresult = self.dx(o)
-
-class ReadStitchResult(StitchResultBase):
+class ReadStitchResult(StitchResultOverlapCovariances):
   def __init__(self, *args, rectangles, overlaps, **kwargs):
-    super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, covariancematrix=None)
+    super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, overlapcovariances=None)
     self.readtable(*args, **kwargs)
-    self.sanitycheck()
 
-class CalculatedStitchResult(StitchResultBase):
+class CalculatedStitchResult(StitchResultFullCovariance):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.sanitycheck()
@@ -498,7 +467,12 @@ class StitchCoordinate:
   cov_x_y: float
   cov_y_y: float
 
-def stitchcoordinate(*, position=None, T=None, **kwargs):
+  def __post_init__(self):
+    nominal = [self.x, self.y]
+    covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
+    self.xvec = unc.correlated_values(nominal, covariance)
+
+def stitchcoordinate(*, position=None, **kwargs):
   kw2 = {}
   if position is not None:
     kw2["x"], kw2["y"] = unp.nominal_values(position)
@@ -539,19 +513,3 @@ class StitchOverlapCovariance:
   cov_x1_y2: float
   cov_y1_x2: float
   cov_y1_y2: float
-
-@dataclasses.dataclass
-class StitchCovarianceEigenvalue:
-  n: int
-  value: float
-
-@dataclasses.dataclass
-class StitchCovarianceEigenvectorEntry:
-  nvector: int
-  nentry: int
-  value: float
-
-def rectangledict(rectangles):
-  return {rectangle.n: i for i, rectangle in enumerate(rectangles)}
-
-class BadCovarianceError(Exception): pass
