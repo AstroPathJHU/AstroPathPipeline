@@ -1,0 +1,78 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{cleveref}
+\usepackage{multicol}
+\usepackage{graphicx}
+
+\newcommand{\pvec}[1]{{\vec{#1}\mkern2mu\vphantom{#1}}^\prime}
+
+\begin{document}
+	
+\title{Alignment and stitching of microscope images}
+\author{Heshy Roskes}
+\date{March 18, 2020}
+
+\section{Introduction}
+
+Our microscope is supposed to scan a tissue sample, which covers some subset of a slide of size $L\times W$.  Initially, it performs a quick scan of the whole slide with a small magnification setting.  This scan is recorded in \texttt{qptiff} format.
+
+Using that image, the microscope determines which parts of the slide actually have tissue in them.  It scans those sections under a larger magnification, using fields of size $l\times w$.  Covering the whole tissue may require $O(1000)$ fields.
+
+The scanning is configured with an overlap fraction $f=20\%$, so that some parts of the image are scanned twice.  The rightmost $\frac{1}{2}fl$ of each field overlaps the leftmost $\frac{1}{2}fl$ of the field to its right.  Similarly, the bottom $\frac{1}{2}fw$ of each field overlaps with the top $\frac{1}{2}fw$ of the field under it.  These overlaps are used to assess differences between the fields, to correct those differences, and ultimately to assess systematic uncertainties based on the remaining differences.
+
+In the process of scanning, the microscope moves from one field to the next.   The slide is supposed to move horizontally by $l(1-f)$ and vertically by $w(1-f)$.  In practice, due to mechanical imprecisions in the microscope, the slide does not always move by exactly this amount, and so a simple, out of the box tiling of the fields (even taking the overlap regions into account by shaving off the outer $\frac{1}{2}fl$ and $\frac{1}{2}fw$ from each side) does not give an accurate picture of the tissue sample.  If fields move away from each other, cells in the boundary region will appear larger than they should due to duplicated pixels, and in extreme cases they may even be cut in half.  If they move towards each other, those cells will appear \emph{smaller} than they should, and for an extreme shift small cells might be completely gone.  If they move sideways, the cell's shape might be ruined and it may not be identified properly.
+
+Here, we describe how we measure the actual positions of the fields based on the images themselves.
+
+\section{Alignment model}
+
+We allow for two sources of error in the microscope's positioning.
+\begin{enumerate}
+\item When the controlling computer signals the microscope to move by $\Delta \vec{r}=(\delta x, \delta y)$, imperfect calibration may result in an actual movement of $A\Delta\vec{r}$, where $A$ is a $2\times2$ matrix to be measured from the data. \label{systematicerror}
+\item Each movement of the microscope involves a random error, so that the final, actual movement is $A\Delta\vec{r}+\delta\vec{r}$. \label{randomerror}
+\end{enumerate}
+Our alignment procedure measures and corrects for both sources of error simultaneously.  The final output is the matrix $A$ and the real position $\vec{r}_i$ of each field $i$.
+
+\section{Alignment procedure}
+
+The first step is to look at each pair of overlapping fields and measure the relative shift of those two fields.  Once we assemble all of those results, we stitch them together to obtain the final result.
+
+\subsection{Pairwise alignment}
+
+For any individual pair of fields that overlap, we can align those two fields by comparing the images to each other.  For example, \cref{fig:overlap} shows the overlap of two fields connected by a corner.  It is clear from (a) that the two fields are misaligned and that the field shown in green needs to move up and to the right with respect to the pink field.  The result, with the size and direction of the shift determined using the procedure described below, is shown in (b) and indicates much better agreement between the fields.
+
+\begin{figure}[ht]
+	\centering
+	\begin{multicols}{2}
+	\includegraphics[width=\linewidth]{overlap-notshifted.pdf} (a)
+	\includegraphics[width=\linewidth]{overlap-shifted.pdf} (b)
+	\end{multicols}
+	\caption{The overlap of two fields (a) before and (b) after alignment.  The two fields' images are shown in pink and green, respectively.  Because those colors are complementary, gray areas mean that the two fields have the same intensity in that spot.}
+	\label{fig:overlap}
+\end{figure}
+
+In order to determine the size of the shift, we compute the \emph{cross correlation} between the two overlap images.  The cross correlation $C$ between images $A$ and $B$ is defined as
+\begin{equation}
+C(\delta\vec{r})=(A\star B)(\delta\vec{r})=\sum_{\vec{r}} {A(\vec{r})B(\vec{r}+\delta\vec{r})}
+\label{eq:xcorrelation}
+\end{equation}
+and describes how similar the two images are when shifted by $\delta\vec{r}$ with respect to each other.  The value of $d\vec{r}$ that maximizes $C$ gives the optimal shift.  We want to achieve precision better than a single pixel, so we fit the region around the peak to a cubic polynominal and find its maximum $\delta x_\text{max}$, as shown in \cref{fig:1Dmaximization} (a) for a one-dimensional example.
+
+\begin{figure}[ht]
+	\centering
+	\begin{multicols}{2}
+	\includegraphics[width=\linewidth]{1Dmaximization.pdf} (a)
+	\includegraphics[width=\linewidth]{1Dmaximizationwitherror.pdf} (a)
+	\end{multicols}
+	\caption{(a) Example of the procedure for aligning two images to sub-pixel precision.  The points show the cross correlation function for pixel shiftes, calculated using \cref{eq:xcorrelation}.  The line shows a polynomial fit to the cross correlation function, and the orange point illustrates.}
+	\label{fig:1Dmaximization}
+\end{figure}
+
+
+We also want to estimate the uncertainty on $\delta\vec{r}$.  This will become important in the next step, when we want to combine all of the alignment results and assign a larger weight to alignments with smaller uncertainty.  To obtain this uncertainty, we first estimate $\sigma_C(\delta x_\text{max})$, the uncertainty on the value of the cross correlation function at its maximum.  We take 
+
+To motivate the calculation, we first consider a 1-dimensional case, as shown in \cref{fig:1Dmaximization}.
+
+
+\end{document}

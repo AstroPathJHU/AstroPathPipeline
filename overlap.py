@@ -148,11 +148,14 @@ class Overlap:
     img = np.array([red, green, blue]).transpose(1, 2, 0) / normalize
     return img
 
-  def showimages(self, normalize=100., shifted=True):
+  def showimages(self, normalize=100., shifted=True, saveas=None, **savekwargs):
     img=self.getimage(normalize,shifted)
     plt.imshow(img)
     plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
-    plt.show()
+    if saveas is None:
+      plt.show()
+    else:
+      plt.savefig(saveas, **savekwargs)
 
   def getShiftComparisonImageCodeNameTuple(self) :
     return (self.result.code,f'overlap_{self.result.n}_[{self.result.p1}x{self.result.p2},type{self.result.code},layer{self.result.layer:02d}]_shift_comparison.png')
