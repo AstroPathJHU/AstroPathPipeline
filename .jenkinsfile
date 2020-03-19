@@ -1,14 +1,12 @@
 pipeline {
   agent {
-    docker { image 'astropathjhu/alignmenttest:latest' }
+    docker { image 'astropathjhu/alignmenttest:v1' }
   }
 
   environment {
     TEST_DATA_REPONAME = "alignmentjenkinsdata"
     TEST_DATA_REPO = "git@github.com:astropathjhu/${TEST_DATA_REPONAME}"
     TEST_DATA_COMMIT = "3204f0035097d32f84d1f2d886231fafaf4ac250"
-    PIP_INSTALL_PLACE = "$WORKSPACE/python"
-    PYTHONPATH = "$PIP_INSTALL_PLACE:$PYTHONPATH"
   }
 
   stages {
@@ -47,6 +45,22 @@ pipeline {
           }
         }
       }
+    }
+
+    stage('build documentation') {
+      parallel {
+        stage('alignment documentation') {
+          steps {
+              sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.alignment.makeplots'
+              sh 'cd documentation/alignment; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex'
+          }
+        }
+      }
+    }
+  }
+  post {
+    always {
+      archiveArtifacts artifacts: 'documentation/alignment/alignment_stitching.pdf', fingerprint: true
     }
   }
 }

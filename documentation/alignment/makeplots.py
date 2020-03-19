@@ -61,5 +61,5 @@ def maximize1D():
     plt.savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
 
 if __name__ == "__main__":
-  #overlap()
   maximize1D()
+  overlap()
