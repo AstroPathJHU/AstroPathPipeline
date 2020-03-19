@@ -156,6 +156,7 @@ class Overlap:
       plt.show()
     else:
       plt.savefig(saveas, **savekwargs)
+      plt.close()
 
   def getShiftComparisonImageCodeNameTuple(self) :
     return (self.result.code,f'overlap_{self.result.n}_[{self.result.p1}x{self.result.p2},type{self.result.code},layer{self.result.layer:02d}]_shift_comparison.png')
