@@ -73,13 +73,17 @@ and describes how similar the two images are when shifted by $\delta\vec{r}$ wit
 
 We also want to estimate the uncertainty on $\delta\vec{r}$.  This will become important in the next step, when we want to combine all of the alignment results and assign a larger weight to alignments with smaller uncertainty.  To obtain this uncertainty, we first estimate $\sigma_C(\delta\vec{r}_\text{max})$, the uncertainty on the value of the cross correlation function at its maximum.  We shift the images by $\pm0.5\delta\vec{r}_\text{max}$, so that they are now in their best-aligned position (as shown in \cref{fig:overlap} (b)).  We can call the shifted images
 \begin{align}
+\begin{aligned}
 A^\prime(\vec{r})&=A\left(\vec{r}-\frac{1}{2}\delta\vec{r}_\text{max}\right), \\
 B^\prime(\vec{r})&=B\left(\vec{r}+\frac{1}{2}\delta\vec{r}_\text{max}\right).
+\end{aligned}
 \end{align}
 Plugging into \cref{eq:xcorrelation},
 \begin{align}
+\begin{aligned}
 C(\delta\vec{r}_\text{max})&=\sum_{\vec{r}}A^\prime\left(\vec{r}+\frac{1}{2}\delta\vec{r}_\text{max}\right) B\left(\vec{r}+\frac{1}{2}\delta\vec{r}_\text{max}\right) \\
 &=(A^\prime\star B^\prime)(0)
+\end{aligned}
 \end{align}
 
 At this point, we consider that the two images are as well aligned as we can make them, and are supposed to be two independent measurements of the same thing.  We then estimate the error on an individual pixel's intensity, in either $A^\prime$ or $B^\prime$, as
@@ -90,10 +94,14 @@ The factor of $1/4$ is derived empirically, as will be discussed below.
 
 By standard techniques of error propagation, we then derive
 \begin{align}
-\sigma_C(\delta\vec{r}_\text{max})=
+\begin{aligned}
+\sigma_C(\delta\vec{r}_\text{max})&=\sum_{\vec{r}}\left(\left[A^\prime(\vec{r})\sigma_{B^\prime}(\vec{r})\right]^2+\left[\sigma_{A^\prime}(\vec{r})B^\prime(\vec{r})\right]^2\right) \\
+&=([(A^\prime)^2+(B^\prime)^2]\star\sigma_{A^\prime,B^\prime}^2)(0)
+\end{aligned}
 \end{align}
 
-To motivate the calculation, we first consider a 1-dimensional case, as shown in \cref{fig:1Dmaximization}.
+
+We now use $\sigma_C(\delta\vec{r}_\text{max})$ to derive $\sigma_{\delta\vec{r}_\text{max}}$.  To motivate the calculation, we first consider the 1-dimensional case shown in \cref{fig:1Dmaximization} (b).
 
 
 \end{document}
