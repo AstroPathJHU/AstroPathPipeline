@@ -30,7 +30,7 @@ class TestAlignment(unittest.TestCase):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
     a.getDAPI()
     a.align(debug=True)
-    a.stitch()
+    a.stitch(checkwriting=True)
     for filename, cls in (
       ("M21_1_imstat.csv", ImageStats),
       ("M21_1_affine.csv", AffineEntry),
@@ -41,7 +41,7 @@ class TestAlignment(unittest.TestCase):
       rows = readtable(os.path.join(thisfolder, "data", "M21_1", "dbload", filename), cls)
       targetrows = readtable(os.path.join(thisfolder, "alignmentreference", filename), cls)
       for row, target in itertools.zip_longest(rows, targetrows):
-        assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
+        assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
   def testReadAlignment(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")

@@ -241,7 +241,7 @@ class StitchResultBase(OverlapCollection, RectangleCollection):
     for o in self.overlaps:
       o.stitchresult = self.dx(o)
 
-  def writetable(self, *filenames, rtol=1e-3, atol=1e-5, **kwargs):
+  def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
     filename, affinefilename, overlapcovariancefilename = filenames
 
     affine = []
@@ -274,23 +274,24 @@ class StitchResultBase(OverlapCollection, RectangleCollection):
 
     writetable(overlapcovariancefilename, self.overlapcovariances, **kwargs)
 
-    logger.debug("reading back from the file")
-    readback = ReadStitchResult(*filenames, rectangles=self.rectangles, overlaps=self.overlaps)
-    logger.debug("done reading")
-    x1 = self.x()
-    T1 = self.T
-    x2 = readback.x()
-    T2 = readback.T
-    logger.debug("comparing nominals")
-    np.testing.assert_allclose(unp.nominal_values(x1), unp.nominal_values(x2), atol=atol, rtol=rtol)
-    np.testing.assert_allclose(unp.nominal_values(T1), unp.nominal_values(T2), atol=atol, rtol=rtol)
-    logger.debug("comparing individual errors")
-    np.testing.assert_allclose(unp.std_devs(x1), unp.std_devs(x2), atol=atol, rtol=rtol)
-    np.testing.assert_allclose(unp.std_devs(T1), unp.std_devs(T2), atol=atol, rtol=rtol)
-    logger.debug("comparing overlap errors")
-    for o in self.overlaps:
-      np.testing.assert_allclose(covariance_matrix(self.dx(o)), covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
-    logger.debug("done")
+    if check:
+      logger.debug("reading back from the file")
+      readback = ReadStitchResult(*filenames, rectangles=self.rectangles, overlaps=self.overlaps)
+      logger.debug("done reading")
+      x1 = self.x()
+      T1 = self.T
+      x2 = readback.x()
+      T2 = readback.T
+      logger.debug("comparing nominals")
+      np.testing.assert_allclose(unp.nominal_values(x1), unp.nominal_values(x2), atol=atol, rtol=rtol)
+      np.testing.assert_allclose(unp.nominal_values(T1), unp.nominal_values(T2), atol=atol, rtol=rtol)
+      logger.debug("comparing individual errors")
+      np.testing.assert_allclose(unp.std_devs(x1), unp.std_devs(x2), atol=atol, rtol=rtol)
+      np.testing.assert_allclose(unp.std_devs(T1), unp.std_devs(T2), atol=atol, rtol=rtol)
+      logger.debug("comparing overlap errors")
+      for o in self.overlaps:
+        np.testing.assert_allclose(covariance_matrix(self.dx(o)), covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
+      logger.debug("done")
 
 class StitchResultFullCovariance(StitchResultBase):
   def __init__(self, *, x, T, covariancematrix, **kwargs):
