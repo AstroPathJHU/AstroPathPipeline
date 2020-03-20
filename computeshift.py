@@ -67,8 +67,7 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
   staterror = abs(shifted[0] - shifted[1]) / 2
   #cross correlation evaluated at 0
   error_crosscorrelation = np.sqrt(np.sum(
-    (staterror * shifted[1]) ** 2
-  + (shifted[0] * staterror) ** 2
+    staterror**2 * (shifted[0]**2 + shifted[1]**2)
   ))
 
   covariance = error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
