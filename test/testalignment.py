@@ -30,7 +30,7 @@ class TestAlignment(unittest.TestCase):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
     a.getDAPI()
     a.align(debug=True)
-    a.stitch()
+    a.stitch(checkwriting=True)
     for filename, cls in (
       ("M21_1_imstat.csv", ImageStats),
       ("M21_1_affine.csv", AffineEntry),
