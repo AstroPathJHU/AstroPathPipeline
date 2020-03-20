@@ -57,7 +57,7 @@ In order to determine the size of the shift, we compute the \emph{cross correlat
 C(\delta\vec{r})=(A\star B)(\delta\vec{r})\equiv\sum_{\vec{r}} {A(\vec{r})B(\vec{r}+\delta\vec{r})}
 \label{eq:xcorrelation}
 \end{equation}
-and describes how similar the two images are when shifted by $\delta\vec{r}$ with respect to each other.  The value of $d\vec{r}$ that maximizes $C$ gives the optimal shift.  We want to achieve precision better than a single pixel, so we fit the region around the peak to a cubic polynominal and find its maximum $\delta x_\text{max}$, as shown in \cref{fig:1Dmaximization} (a) for a one-dimensional example.  For the real images, we fit the region around the peak to a two-dimensional cubic polynomial.
+and describes how similar the two images are when shifted by $\delta\vec{r}$ with respect to each other.  The value of $d\vec{r}$ that maximizes $C$ gives the optimal shift.  We want to achieve precision better than a single pixel, so we fit the region around the peak to a cubic polynominal and find its maximum $\delta\vec{r}_\text{max}$, as shown in \cref{fig:1Dmaximization} (a) for a one-dimensional example.  For the real images, we fit the region around the peak to a two-dimensional cubic polynomial.
 
 \begin{figure}[ht]
 	\centering
@@ -71,9 +71,27 @@ and describes how similar the two images are when shifted by $\delta\vec{r}$ wit
 
 \subsection{Uncertainty on pairwise alignment}
 
-We also want to estimate the uncertainty on $\delta\vec{r}$.  This will become important in the next step, when we want to combine all of the alignment results and assign a larger weight to alignments with smaller uncertainty.  To obtain this uncertainty, we first estimate $\sigma_C(\delta x_\text{max})$, the uncertainty on the value of the cross correlation function at its maximum.  We shift the images by $\pm0.5\delta\vec{r}_\text{max}$, so that they are now in their best-aligned position (as shown in \cref{fig:overlap} (b)).  At this point, we consider that the two images are as well aligned as we can make them, and are supposed to be two independent measurements of the same thing.
+We also want to estimate the uncertainty on $\delta\vec{r}$.  This will become important in the next step, when we want to combine all of the alignment results and assign a larger weight to alignments with smaller uncertainty.  To obtain this uncertainty, we first estimate $\sigma_C(\delta\vec{r}_\text{max})$, the uncertainty on the value of the cross correlation function at its maximum.  We shift the images by $\pm0.5\delta\vec{r}_\text{max}$, so that they are now in their best-aligned position (as shown in \cref{fig:overlap} (b)).  We can call the shifted images
+\begin{align}
+A^\prime(\vec{r})&=A\left(\vec{r}-\frac{1}{2}\delta\vec{r}_\text{max}\right), \\
+B^\prime(\vec{r})&=B\left(\vec{r}+\frac{1}{2}\delta\vec{r}_\text{max}\right).
+\end{align}
+Plugging into \cref{eq:xcorrelation},
+\begin{align}
+C(\delta\vec{r}_\text{max})&=\sum_{\vec{r}}A^\prime\left(\vec{r}+\frac{1}{2}\delta\vec{r}_\text{max}\right) B\left(\vec{r}+\frac{1}{2}\delta\vec{r}_\text{max}\right) \\
+&=(A^\prime\star B^\prime)(0)
+\end{align}
 
-From these two images, we can estimate the statistical error on pixel intensity.  
+At this point, we consider that the two images are as well aligned as we can make them, and are supposed to be two independent measurements of the same thing.  We then estimate the error on an individual pixel's intensity, in either $A^\prime$ or $B^\prime$, as
+\begin{equation}
+\sigma_{A^\prime}(\vec{r})=\sigma_{B^\prime}(\vec{r})=\frac{1}{4}\left|A^\prime(\vec{r})-B^\prime(\vec{r})\right|.
+\end{equation}
+The factor of $1/4$ is derived empirically, as will be discussed below.
+
+By standard techniques of error propagation, we then derive
+\begin{align}
+\sigma_C(\delta\vec{r}_\text{max})=
+\end{align}
 
 To motivate the calculation, we first consider a 1-dimensional case, as shown in \cref{fig:1Dmaximization}.
 
