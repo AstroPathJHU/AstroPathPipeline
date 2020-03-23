@@ -9,6 +9,7 @@ data = os.path.join(here, "..", "..", "test", "data")
 rc = {
   "text.usetex": True,
   "text.latex.preamble": [r"\usepackage{amsmath}"],
+  "font.size": 20,
 }
 
 def overlap():
@@ -24,11 +25,11 @@ def overlap():
 def maximize1D():
   np.random.seed(123456)
   xx = np.linspace(-5, 5, 11)
-  yy = 100 - (xx-0.5)**2 + 0.05 * (xx-0.5)**3 + 2*(np.random.random(xx.shape) - 0.5)
+  yy = 100 - (xx-1.5)**2 + 0.05 * (xx-1.5)**3 + 2*(np.random.random(xx.shape) - 0.5)
 
   ymin = min(yy) - (max(yy) - min(yy)) / 10
 
-  deltaC = 5
+  deltaC = 10
 
   spline = scipy.interpolate.UnivariateSpline(xx, yy)
   x = np.linspace(-5, 5, 51)
@@ -53,6 +54,7 @@ def maximize1D():
 
   with plt.rc_context(rc=rc):
     fig = plt.figure()
+    fig.subplots_adjust(bottom=0.12)
     ax = fig.add_subplot(1, 1, 1)
 
     polynomial, = plt.plot(x, y, color="blue")
@@ -65,7 +67,7 @@ def maximize1D():
     ymin, ymax = plt.ylim()
     xrange = xmax-xmin
     yrange = ymax-ymin
-    deltaxtext = plt.text(xbest - xrange/50, ymin - yrange/20, r"$\delta x_\text{max}$", color=maxline.get_color())
+    deltaxtext = plt.text(xbest - xrange/50, ymin - yrange/40, r"$\delta x_\text{max}$", color=maxline.get_color(), horizontalalignment="center", verticalalignment="top")
 
     ax.set_xlabel(r"$\delta x$")
     ax.set_ylabel(r"$C(\delta x)$")
@@ -75,7 +77,7 @@ def maximize1D():
     maxline.remove()
     deltaxtext.remove()
     deltaCline, = plt.plot([xbest, xbest], [Cbest, Cminus], linestyle=":", color=maxline.get_color())
-    sigmaCtext = plt.text(xbest - xrange/40, Cbest - 2*deltaC/3, r"$\sigma_C$", color=deltaCline.get_color(), horizontalalignment="center")
+    sigmaCtext = plt.text(xbest - xrange/100, Cbest - 5*deltaC/8, r"$\sigma_C$", color=deltaCline.get_color(), horizontalalignment="right", verticalalignment="center")
     deltaxline, = plt.plot([xminus, xplus], [Cminus, Cminus], linestyle=":", color="fuchsia")
     deltaxbrackets, = plt.plot([xminus, xbest, xplus], [Cminus - yrange/20]*3, linestyle="-", color=deltaxline.get_color())
     deltaxbracketends = [
@@ -83,7 +85,7 @@ def maximize1D():
       for x in [xminus, xbest, xplus]
     ]
     sigmaxtexts = [
-      plt.text(xbest + sign * deltax/2, Cminus - yrange/20 - yrange/25, r"$\sigma_{\delta x_\text{max}}$", color=deltaxbrackets.get_color(), horizontalalignment="center")
+      plt.text(xbest + sign * deltax/2, Cminus - yrange/20 - yrange/40, r"$\sigma_{\delta x_\text{max}}$", color=deltaxbrackets.get_color(), horizontalalignment="center", verticalalignment="top")
       for sign in (-1, 1)
     ]
     plt.savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
