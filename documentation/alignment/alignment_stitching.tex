@@ -6,6 +6,7 @@
 \usepackage{graphicx}
 
 \newcommand{\pvec}[1]{{\vec{#1}\mkern2mu\vphantom{#1}}^\prime}
+\newcommand{\matrixbold}[1]{\mathbf{#1}}
 
 \begin{document}
 	
@@ -29,8 +30,8 @@ Here, we describe how we measure the actual positions of the fields based on the
 
 We allow for two sources of error in the microscope's positioning.
 \begin{enumerate}
-\item When the controlling computer signals the microscope to move by $\Delta \vec{r}=(\delta x, \delta y)$, imperfect calibration may result in an actual movement of $A\Delta\vec{r}$, where $A$ is a $2\times2$ matrix to be measured from the data. \label{systematicerror}
-\item Each movement of the microscope involves a random error, so that the final, actual movement is $A\Delta\vec{r}+\delta\vec{r}$. \label{randomerror}
+\item When the controlling computer signals the microscope to move by $\Delta \vec{r}=(\delta x, \delta y)$, imperfect calibration may result in an actual movement of $\matrixbold{A}\Delta\vec{r}$, where $\matrixbold{A}$ is a $2\times2$ matrix to be measured from the data. \label{systematicerror}
+\item Each movement of the microscope involves a random error, so that the final, actual movement is $\matrixbold{A}\Delta\vec{r}+\delta\vec{r}$. \label{randomerror}
 \end{enumerate}
 Our alignment procedure measures and corrects for both sources of error simultaneously.  The final output is the matrix $A$ and the real position $\vec{r}_i$ of each field $i$.
 
@@ -65,7 +66,7 @@ and describes how similar the two images are when shifted by $\delta\vec{r}$ wit
 	\includegraphics[width=\linewidth]{1Dmaximization.pdf} (a)
 	\includegraphics[width=\linewidth]{1Dmaximizationwitherror.pdf} (b)
 	\end{multicols}
-	\caption{(a) Example of the procedure for aligning two images to sub-pixel precision.  The blue points show the cross correlation function for pixel shiftes, calculated using \cref{eq:xcorrelation}.  The blue curve shows a polynomial fit to the cross correlation function, and the orange point and line show the maximum of the polynomial fit.}
+	\caption{(a) Example of the procedure for aligning two images to sub-pixel precision.  The blue points show the cross correlation function for pixel shifts, calculated using \cref{eq:xcorrelation}.  The blue curve shows a polynomial fit to the cross correlation function, and the orange point and line show the maximum of the polynomial fit. (b) Illustration of the procedure for error estimation using the same example curve as in (a).  Given the error on $C$ at the peak, $\sigma_C$, shown in orange, we can use the second derivative of the curve to estimate the error on $x_\text{max}$, $\sigma_\text{xmax}$, shown in pink.}
 	\label{fig:1Dmaximization}
 \end{figure}
 
@@ -88,9 +89,8 @@ C(\delta\vec{r}_\text{max})&=\sum_{\vec{r}}A^\prime\left(\vec{r}+\frac{1}{2}\del
 
 At this point, we consider that the two images are as well aligned as we can make them, and are supposed to be two independent measurements of the same thing.  We then estimate the error on an individual pixel's intensity, in either $A^\prime$ or $B^\prime$, as
 \begin{equation}
-\sigma_{A^\prime}(\vec{r})=\sigma_{B^\prime}(\vec{r})=\frac{1}{4}\left|A^\prime(\vec{r})-B^\prime(\vec{r})\right|.
+\sigma_{A^\prime}(\vec{r})=\sigma_{B^\prime}(\vec{r})=\frac{1}{2}\left|A^\prime(\vec{r})-B^\prime(\vec{r})\right|.
 \end{equation}
-The factor of $1/4$ is derived empirically, as will be discussed below.
 
 By standard techniques of error propagation, we then derive
 \begin{align}
@@ -100,8 +100,25 @@ By standard techniques of error propagation, we then derive
 \end{aligned}
 \end{align}
 
+We now use $\sigma_C(\delta\vec{r}_\text{max})$ to derive $\sigma_{\delta\vec{r}_\text{max}}$.  To motivate the calculation, we first consider the 1-dimensional case shown in \cref{fig:1Dmaximization} (b).  As illustrated there, we need to find $\sigma_{\delta x_\text{max}}$ so that $C(\delta x_\text{max}\pm\sigma_{\delta x_\text{max}})=C(\delta x_\text{max})-\sigma_C$.  Assuming $\delta x$ is small, we can do this by expanding
+\begin{equation}
+C(\delta x)\approx\delta x_\text{max} + \frac{1}{2}C''(\delta x_\text{max})(\delta x - \delta x_\text{max})^2
+\end{equation}
+and find that
+\begin{equation}
+\sigma_{\delta x_\text{max}}^2=\frac{2\sigma_C(\delta x_\text{max})}{C''(\delta x_\text{max})}.
+\end{equation}
 
-We now use $\sigma_C(\delta\vec{r}_\text{max})$ to derive $\sigma_{\delta\vec{r}_\text{max}}$.  To motivate the calculation, we first consider the 1-dimensional case shown in \cref{fig:1Dmaximization} (b).
-
+By an analogous argument, we find the equivalent result in the two-dimensional case.  Beause $\delta\vec{r}$ has two components, $\delta x$ and $\delta y$, we have a $2\times2$ covariance matrix,
+\begin{equation}
+\matrixbold{cov}_{\delta\vec{r}_\text{max}}=2\sigma_C(\delta\vec{r}_\text{max})\matrixbold{H}^{-1}(\delta\vec{r}_\text{max}),
+\end{equation}
+where $ %\begin{equation}
+\matrixbold{H}=\begin{pmatrix}
+\frac{\partial^2C}{\partial \delta x^2} & \frac{\partial^2C}{\partial \delta x \partial \delta y} \\
+\frac{\partial^2C}{\partial \delta x \partial \delta y} & \frac{\partial^2C}{\partial \delta y^2}
+\end{pmatrix}
+$ %\end{equation}
+is the Hessian matrix of $C(\delta\vec{r})$.
 
 \end{document}

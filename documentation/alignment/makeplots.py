@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
+import argparse, os, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
 from ...alignmentset import AlignmentSet
 
 here = os.path.dirname(__file__)
@@ -28,6 +28,8 @@ def maximize1D():
 
   ymin = min(yy) - (max(yy) - min(yy)) / 10
 
+  deltaC = 5
+
   spline = scipy.interpolate.UnivariateSpline(xx, yy)
   x = np.linspace(-5, 5, 51)
   y = spline(x)
@@ -40,6 +42,14 @@ def maximize1D():
     bounds=((-5, 5),),
     method="TNC"
   )
+  xbest = r.x
+  Cbest = -r.fun
+  Cminus = Cbest - deltaC
+  hessian = -spline(r.x, nu=2)
+  covariance = deltaC / (1/2 * hessian)
+  deltax = covariance ** .5
+  xminus = xbest-deltax
+  xplus = xbest+deltax
 
   with plt.rc_context(rc=rc):
     fig = plt.figure()
@@ -47,21 +57,48 @@ def maximize1D():
 
     polynomial, = plt.plot(x, y, color="blue")
     scatter = plt.scatter(xx, yy, color=polynomial.get_color())
-    maxline, = plt.plot([r.x, r.x], [-r.fun, ymin], linestyle=":", color="orange")
-    maxpoint = plt.scatter(r.x, -r.fun, color=maxline.get_color())
+    maxline, = plt.plot([xbest, xbest], [Cbest, ymin], linestyle=":", color="orange")
+    maxpoint = plt.scatter(xbest, Cbest, color=maxline.get_color())
 
     plt.ylim(bottom=ymin)
     xmin, xmax = plt.xlim()
     ymin, ymax = plt.ylim()
-    plt.text(r.x - (xmax - xmin) / 50, ymin - (ymax - ymin) / 20, r"$\delta x_\text{max}$", color=maxline.get_color())
+    xrange = xmax-xmin
+    yrange = ymax-ymin
+    deltaxtext = plt.text(xbest - xrange/50, ymin - yrange/20, r"$\delta x_\text{max}$", color=maxline.get_color())
 
     ax.set_xlabel(r"$\delta x$")
     ax.set_ylabel(r"$C(\delta x)$")
     plt.savefig(os.path.join(here, "1Dmaximization.pdf"))
+
+    maxpoint.remove()
+    maxline.remove()
+    deltaxtext.remove()
+    deltaCline, = plt.plot([xbest, xbest], [Cbest, Cminus], linestyle=":", color=maxline.get_color())
+    sigmaCtext = plt.text(xbest - xrange/40, Cbest - 2*deltaC/3, r"$\sigma_C$", color=deltaCline.get_color(), horizontalalignment="center")
+    deltaxline, = plt.plot([xminus, xplus], [Cminus, Cminus], linestyle=":", color="fuchsia")
+    deltaxbrackets, = plt.plot([xminus, xbest, xplus], [Cminus - yrange/20]*3, linestyle="-", color=deltaxline.get_color())
+    deltaxbracketends = [
+      plt.plot([x, x], [Cminus - yrange/20 - yrange/50, Cminus - yrange/20 + yrange/50], linestyle="-", color=deltaxbrackets.get_color())
+      for x in [xminus, xbest, xplus]
+    ]
+    sigmaxtexts = [
+      plt.text(xbest + sign * deltax/2, Cminus - yrange/20 - yrange/25, r"$\sigma_{\delta x_\text{max}}$", color=deltaxbrackets.get_color(), horizontalalignment="center")
+      for sign in (-1, 1)
+    ]
     plt.savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
 
     plt.close(fig)
 
 if __name__ == "__main__":
-  maximize1D()
-  overlap()
+  p = argparse.ArgumentParser()
+  g = p.add_mutually_exclusive_group()
+  g.add_argument("--all", action="store_const", dest="which", const="all", default="all")
+  g.add_argument("--maximize", action="store_const", dest="which", const="maximize")
+  g.add_argument("--overlap", action="store_const", dest="which", const="overlap")
+  args = p.parse_args()
+
+  if args.which == "all" or args.which == "maximize":
+    maximize1D()
+  if args.which == "all" or args.which == "overlap":
+    overlap()
