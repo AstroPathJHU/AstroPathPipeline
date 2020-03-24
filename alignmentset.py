@@ -116,7 +116,6 @@ class AlignmentSet(OverlapCollection):
     self.__overlaps = overlaps
     self.initializeoverlaps()
 
-  @property
   @methodtools.lru_cache()
   def image(self):
     return cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))

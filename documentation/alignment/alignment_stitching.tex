@@ -8,7 +8,8 @@
 \usepackage{cleveref}
 \renewcommand\thesubfigure{(\alph{subfigure})}
 
-\newcommand{\pvec}[1]{{\vec{#1}\mkern2mu\vphantom{#1}}^\prime}
+\newcommand{\svec}[1]{{\vec{#1}\mkern2mu\vphantom{#1}}}
+\newcommand{\pvec}[1]{\svec^\prime}
 \newcommand{\matrixbold}[1]{\mathbf{#1}}
 
 \begin{document}
@@ -38,12 +39,13 @@ We allow for two sources of error in the microscope's positioning.
 \end{enumerate}
 Our alignment procedure measures and corrects for both sources of error simultaneously.  The final output is the matrix $A$ and the real position $\vec{r}_i$ of each field $i$.
 
-\section{Alignment procedure}
+\section{Pairwise alignment}
+\label{sec:pairwise}
 
 The first step is to look at each pair of overlapping fields and measure the relative shift of those two fields.  Once we assemble all of those results, we stitch them together to obtain the final result.
 
-\subsection{Pairwise alignment}
-\label{sec:pairwise}
+\subsection{Measuring the alignment}
+\label{sec:measuringalignment}
 
 For any individual pair of fields that overlap, we can align those two fields by comparing the images to each other.  For example, \cref{fig:overlapbefore} shows the overlap of two fields connected by a corner.  It is clear that the two fields are misaligned and that the field shown in green needs to move up and to the right with respect to the pink field.  The result, with the size and direction of the shift determined using the procedure described below, is shown in \cref{fig:overlapafter} and indicates much better agreement between the fields.
 
@@ -143,6 +145,7 @@ and find that
 By an analogous argument, we find the equivalent result in the two-dimensional case.  Beause $\delta\vec{r}$ has two components, $\delta x$ and $\delta y$, we have a $2\times2$ covariance matrix,
 \begin{equation}
 \matrixbold{cov}_{\delta\vec{r}_\text{max}}=2\sigma_C(\delta\vec{r}_\text{max})\matrixbold{H}^{-1}(\delta\vec{r}_\text{max}),
+\label{eq:overlapcovariance}
 \end{equation}
 where $ %\begin{equation}
 \matrixbold{H}=\begin{pmatrix}
@@ -159,6 +162,7 @@ For the final step, we multiply the covariance matrix by a factor determined emp
 is a good estimate of our uncertainty.
 
 \subsection{Detecting bad overlaps}
+\label{sec:badoverlaps}
 
 The error estimation procedure also gives us an opportunity to detect when a particular overlap does not contain enough information to align it.  This happens when the overlap region does not contain any cells, and sometimes also when it contains one or two.  In this case, the cross correlation function simply consists of noise, as shown in \cref{fig:badoverlap}.
 
@@ -178,9 +182,60 @@ The error estimation procedure also gives us an opportunity to detect when a par
 	\label{fig:badoverlap}
 \end{figure}
 
-The procedure in \cref{sec:pairwise} looks at the tallest peak of the cross-correlation function.  For a good overlap, there is often only one peak, or one tall peak and several other, much shorter ones.  \Cref{fig:badxcorrelation}, on the other hand, shows a central peak near $(0, 0)$ and a diagonal structure, similar to the structure in \cref{fig:badoverlap}, containing several yellow areas.  The error estimation tells us whether any of the other peaks are significant: if any other peak at $\delta r'$ has $C(\delta r')\ge C(\delta r_\text{max})-\sigma_C(\delta r_\text{max})$, we do not know, to $1\sigma$ confidence, which peak is the correct one, and therefore we mark the overlap as bad.  The result from bad overlaps are not used in the final stitching procedure.
+The procedure in \cref{sec:measuringalignment} looks at the tallest peak of the cross-correlation function.  For a good overlap, there is often only one peak, or one tall peak and several other, much shorter ones.  \Cref{fig:badxcorrelation}, on the other hand, shows a central peak near $(0, 0)$ and a diagonal structure, similar to the structure in \cref{fig:badoverlap}, containing several yellow areas.  The error estimation tells us whether any of the other peaks are significant: if any other peak at $\delta r'$ has $C(\delta r')\ge C(\delta r_\text{max})-\sigma_C(\delta r_\text{max})$, we do not know, to $1\sigma$ confidence, which peak is the correct one, and therefore we mark the overlap as bad.  The result from bad overlaps are not used in the final stitching procedure.
 
-\subsection{Pull distributions}
+\section{Stitching}
+
+After we derive the individual alignment results for each overlap, we can ``stitch'' the results together to obtain the final positions of each field.  We see each alignment result as a Gaussian constraint on the relative positions of those two fields, and combine all of those constraints together to find the likelihood $L$ for alignment positions $\vec{x}_i$:
+\begin{align}
+-2\ln L_\text{alignment}(\vec{r}_1, \ldots, \vec{r}_N)=&
+\sum_{o}(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)^T \\
+&\mathbf{cov}_o^{-1}
+(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)
+\label{eq:loglikelihoodalignment}
+\end{align}
+In this parameterization, $\vec{r}_k$, with $k$ running from $1$ to the number of fields $N$, is the position of the field indexed by $i$; $\svec{r}_k^n$ is the field's nominal position, given by the microscope software; $o$ indexes the overlaps; $i_o$ and $j_o$ are the indices of the two fields whose overlap is described by $o$; $\delta\vec{r}_o$ is the $\delta\vec{r}_\text{max}$ determined for that overlap, as described in \cref{sec:measuringalignment}; and $\mathbf{cov}_o$ is the covariance matrix from \cref{eq:overlapcovariance}.
+
+The likelihood above includes all of the information derived from alignment.  However, it is degenerate: shifting all fields by the same amount leaves the equation unchanged.  This can be fixed easily by just choosing one point to remain fixed, but in general the image may contain multiple disconnected ``islands'', as shown in \cref{fig:islands}.  In this example, the larger island on the left is covered by 33 fields, and the smaller one on the right is covered by 7.  There are no overlaps between fields in one island and fields in the other, and moving one island with respect to the other also leaves \cref{eq:loglikelihoodalignment} unchanged.
+
+A simple solution is to detect the islands using algorithms from graph theory and align each island separately, but there are cases where even this will fail.  For example, the islands may be connected by a single overlap which is not ``bad'', per the definition in \cref{sec:badoverlaps}, but has a large uncertainty.  We would like a procedure that automatically takes this case into account.
+
+
+\begin{align}
+-2 \ln L =&
+1/2 \sum_\text{overlaps}
+(\vec{x}_{p1} - \vec{x}_{p2} - d\vec{x} - \vec{x}_{p1}^n + \vec{x}_{p2}^n)^T \\
+&\mathbf{cov}^{-1}
+(\vec{x}_{p1} - \vec{x}_{p2} - d\vec{x} - \vec{x}_{p1}^n + \vec{x}_{p2}^n) \\
++&
+\sum_p \left(
+\frac{(\vec{x}_p-\vec{x}_0) - \mathbf{T}(\vec{x}_p^n-\vec{x}_0)}
+{\sigma}
+\right)^2
+\end{align}
+\begin{equation}
+\mathbf{T} = \begin{pmatrix}
+T_{xx} & T_{xy} \\ T_{yx} & T_{yy}
+\end{pmatrix}
+\end{equation}
+
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.45\linewidth}
+		\includegraphics[width=\linewidth]{islands.pdf}
+%		\caption{}
+%		\label{fig:badxcorrelation}
+	\end{subfigure}
+	\caption{An example of an image with two disconnected islands.}
+	\label{fig:islands}
+\end{figure}
+
+\section{Validation of the alignment procedure}
+
+\subsection{Consistency of the alignment}
+
+\subsection{Consistency of the errors}
 \label{sec:pulls}
 
 \end{document}

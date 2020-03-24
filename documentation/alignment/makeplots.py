@@ -1,6 +1,4 @@
-
 #!/usr/bin/env python
-
 
 import argparse, functools, os, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
 from ...alignmentset import AlignmentSet
@@ -113,18 +111,32 @@ def maximize1D():
 
     plt.close(fig)
 
+def islands():
+  A = alignmentset(dapi=False)
+  with plt.rc_context(rc=rc):
+    plt.imshow(A.image())
+    plt.xticks([])
+    plt.yticks([])
+    plt.savefig(os.path.join(here, "islands.pdf"))
+    plt.close()
+
 if __name__ == "__main__":
+  class EqualsEverything:
+    def __eq__(self, other): return True
   p = argparse.ArgumentParser()
   g = p.add_mutually_exclusive_group()
-  g.add_argument("--all", action="store_const", dest="which", const="all", default="all")
+  g.add_argument("--all", action="store_const", dest="which", const=EqualsEverything(), default=EqualsEverything())
   g.add_argument("--maximize", action="store_const", dest="which", const="maximize")
   g.add_argument("--overlap", action="store_const", dest="which", const="overlap")
   g.add_argument("--xcorrelation", "--cross-correlation", action="store_const", dest="which", const="xcorrelation")
+  g.add_argument("--islands", action="store_const", dest="which", const="islands")
   args = p.parse_args()
 
-  if args.which == "all" or args.which == "maximize":
+  if args.which == "maximize":
     maximize1D()
-  if args.which == "all" or args.which == "overlap":
+  if args.which == "overlap":
     overlap()
-  if args.which == "all" or args.which == "xcorrelation":
+  if args.which == "xcorrelation":
     xcorrelation()
+  if args.which == "islands":
+    islands()
