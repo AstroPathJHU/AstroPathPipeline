@@ -30,8 +30,8 @@ Here, we describe how we measure the actual positions of the fields based on the
 
 We allow for two sources of error in the microscope's positioning.
 \begin{enumerate}
-\item When the controlling computer signals the microscope to move by $\Delta \vec{r}=(\delta x, \delta y)$, imperfect calibration may result in an actual movement of $\matrixbold{A}\Delta\vec{r}$, where $\matrixbold{A}$ is a $2\times2$ matrix to be measured from the data. \label{systematicerror}
-\item Each movement of the microscope involves a random error, so that the final, actual movement is $\matrixbold{A}\Delta\vec{r}+\delta\vec{r}$. \label{randomerror}
+\item When the controlling computer signals the microscope to move by $\Delta \vec{r}=(\delta x, \delta y)$, imperfect calibration may result in an actual movement of $\matrixbold{A}\Delta\vec{r}$, where $\matrixbold{A}$ is a $2\times2$ matrix to be measured from the data.
+\item Each movement of the microscope involves a random error, so that the final, actual movement is $\matrixbold{A}\Delta\vec{r}+\delta\vec{r}$.
 \end{enumerate}
 Our alignment procedure measures and corrects for both sources of error simultaneously.  The final output is the matrix $A$ and the real position $\vec{r}_i$ of each field $i$.
 
@@ -40,6 +40,7 @@ Our alignment procedure measures and corrects for both sources of error simultan
 The first step is to look at each pair of overlapping fields and measure the relative shift of those two fields.  Once we assemble all of those results, we stitch them together to obtain the final result.
 
 \subsection{Pairwise alignment}
+\label{sec:pairwise}
 
 For any individual pair of fields that overlap, we can align those two fields by comparing the images to each other.  For example, \cref{fig:overlap} shows the overlap of two fields connected by a corner.  It is clear from (a) that the two fields are misaligned and that the field shown in green needs to move up and to the right with respect to the pink field.  The result, with the size and direction of the shift determined using the procedure described below, is shown in (b) and indicates much better agreement between the fields.
 
@@ -58,7 +59,7 @@ In order to determine the size of the shift, we compute the \emph{cross correlat
 C(\delta\vec{r})=(A\star B)(\delta\vec{r})\equiv\sum_{\vec{r}} {A(\vec{r})B(\vec{r}+\delta\vec{r})}
 \label{eq:xcorrelation}
 \end{equation}
-and describes how similar the two images are when shifted by $\delta\vec{r}$ with respect to each other.  The value of $d\vec{r}$ that maximizes $C$ gives the optimal shift.  We want to achieve precision better than a single pixel, so we fit the region around the peak to a cubic polynominal and find its maximum $\delta\vec{r}_\text{max}$, as shown in \cref{fig:1Dmaximization} (a) for a one-dimensional example.  For the real images, we fit the region around the peak to a two-dimensional cubic polynomial.
+and describes how similar the two images are when shifted by $\delta\vec{r}$ with respect to each other.  The value of $d\vec{r}$ that maximizes $C$ gives the optimal shift.  We want to achieve precision better than a single pixel, so we fit the region around the tallest peak of the cross-correlation function to a cubic polynominal and find its maximum $\delta\vec{r}_\text{max}$, as shown in \cref{fig:1Dmaximization} (a) for a one-dimensional example.  For the real images, we fit the region around the peak to a two-dimensional cubic polynomial.
 
 \begin{figure}[ht]
 	\centering
@@ -89,7 +90,8 @@ C(\delta\vec{r}_\text{max})&=\sum_{\vec{r}}A^\prime\left(\vec{r}+\frac{1}{2}\del
 
 At this point, we consider that the two images are as well aligned as we can make them, and are supposed to be two independent measurements of the same thing.  We then estimate the error on an individual pixel's intensity, in either $A^\prime$ or $B^\prime$, as
 \begin{equation}
-\sigma_{A^\prime}(\vec{r})=\sigma_{B^\prime}(\vec{r})=\frac{1}{2}\left|A^\prime(\vec{r})-B^\prime(\vec{r})\right|.
+\sigma_{A^\prime}(\vec{r})=\sigma_{B^\prime}(\vec{r})=\left|A^\prime(\vec{r})-B^\prime(\vec{r})\right|.
+\label{eq:pixelerror}
 \end{equation}
 
 By standard techniques of error propagation, we then derive
@@ -120,5 +122,22 @@ where $ %\begin{equation}
 \end{pmatrix}
 $ %\end{equation}
 is the Hessian matrix of $C(\delta\vec{r})$.
+
+For the final step, we multiply the covariance matrix by a factor determined empirically, as we will describe in \cref{sec:pulls}.  This factor is found to be $\frac{1}{16}$, which means that the original error estimate was too conservative by a factor of $4$.  One possibility for this overestimate is that, if the alignment is not perfect, \cref{eq:pixelerror} overestimates the error on pixel intensity in regions where cell boundaries do not line up correctly.  Whatever the explanation, the plots in \cref{sec:pulls} will show that the corrected covariance matrix
+\begin{equation}
+\matrixbold{cov}_{\delta\vec{r}_\text{max}}^\text{corr}=\frac{1}{2}\sigma_C(\delta\vec{r}_\text{max})\matrixbold{H}^{-1}(\delta\vec{r}_\text{max})
+\end{equation}
+is a good estimate of our uncertainty.
+
+\subsection{Detecting bad overlaps}
+
+The error estimation procedure also gives us an opportunity to detect when a particular overlap does not contain enough information to align it.  This happens when the overlap region does not contain any cells, and sometimes also when it contains one or two.  In this case, the cross correlation function simply consists of noise.
+
+The procedure in \cref{sec:pairwise} looks at the tallest peak of 
+
+As an automated way to detect bad overlaps, we look at all 
+
+\subsection{Pull distributions}
+\label{sec:pulls}
 
 \end{document}
