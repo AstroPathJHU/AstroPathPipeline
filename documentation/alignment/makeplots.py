@@ -40,6 +40,7 @@ def xcorrelation():
 
   o = A.overlaps[203]
   with plt.rc_context(rc=rc):
+    o.showimages(shifted=False, normalize=100, ticks=True, saveas=os.path.join(here, "overlap-bad.pdf"))
     o.align(savebigimage=os.path.join(here, "overlap-xcorrelation-bad.pdf"), alreadyalignedstrategy="overwrite", debug=True)
 
 def maximize1D():

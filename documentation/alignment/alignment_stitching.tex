@@ -160,11 +160,25 @@ is a good estimate of our uncertainty.
 
 \subsection{Detecting bad overlaps}
 
-The error estimation procedure also gives us an opportunity to detect when a particular overlap does not contain enough information to align it.  This happens when the overlap region does not contain any cells, and sometimes also when it contains one or two.  In this case, the cross correlation function simply consists of noise.
+The error estimation procedure also gives us an opportunity to detect when a particular overlap does not contain enough information to align it.  This happens when the overlap region does not contain any cells, and sometimes also when it contains one or two.  In this case, the cross correlation function simply consists of noise, as shown in \cref{fig:badoverlap}.
 
-The procedure in \cref{sec:pairwise} looks at the tallest peak of 
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.45\linewidth}
+		\includegraphics[width=\linewidth]{overlap-bad.pdf}
+		\caption{}
+		\label{fig:badimage}
+	\end{subfigure}
+	\begin{subfigure}{0.45\linewidth}
+		\includegraphics[width=\linewidth]{overlap-xcorrelation-bad.pdf}
+		\caption{}
+		\label{fig:badxcorrelation}
+	\end{subfigure}
+	\caption{\subref{fig:badimage} An almost empty image overlap, similar to \cref{fig:overlapbefore}, but with the pixel intensities multiplied by a factor of 10 with respect to the ones there.  The image contains mostly noise, with three faint features.  \subref{fig:badxcorrelation} The cross-correlation function for the overlap in \subref{fig:badimage}.}
+	\label{fig:badoverlap}
+\end{figure}
 
-As an automated way to detect bad overlaps, we look at all 
+The procedure in \cref{sec:pairwise} looks at the tallest peak of the cross-correlation function.  For a good overlap, there is often only one peak, or one tall peak and several other, much shorter ones.  \Cref{fig:badxcorrelation}, on the other hand, shows a central peak near $(0, 0)$ and a diagonal structure, similar to the structure in \cref{fig:badoverlap}, containing several yellow areas.  The error estimation tells us whether any of the other peaks are significant: if any other peak at $\delta r'$ has $C(\delta r')\ge C(\delta r_\text{max})-\sigma_C(\delta r_\text{max})$, we do not know, to $1\sigma$ confidence, which peak is the correct one, and therefore we mark the overlap as bad.  The result from bad overlaps are not used in the final stitching procedure.
 
 \subsection{Pull distributions}
 \label{sec:pulls}
