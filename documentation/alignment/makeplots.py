@@ -1,4 +1,6 @@
+
 #!/usr/bin/env python
+
 
 import argparse, functools, os, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
 from ...alignmentset import AlignmentSet
@@ -12,19 +14,33 @@ rc = {
   "font.size": 20,
 }
 
-@functools.lru_cache
-def alignmentset():
-  A = AlignmentSet(data, os.path.join(data, "flatw"), "M21_1")
-  A.getDAPI()
-  A.readalignments()
-  return A
+@functools.lru_cache()
+def alignmentset(dapi):
+  if dapi:
+    A = alignmentset(dapi=False)
+    A.getDAPI()
+    return A
+  else:
+    A = AlignmentSet(data, os.path.join(data, "flatw"), "M21_1")
+    A.readalignments()
+    return A
 
 def overlap():
-  A = alignmentset()
+  A = alignmentset(dapi=True)
   o = A.overlaps[140]
   with plt.rc_context(rc=rc):
     o.showimages(shifted=False, normalize=1000, saveas=os.path.join(here, "overlap-notshifted.pdf"))
     o.showimages(shifted=True, normalize=1000, saveas=os.path.join(here, "overlap-shifted.pdf"))
+
+def xcorrelation():
+  A = alignmentset(dapi=True)
+  o = A.overlaps[140]
+  with plt.rc_context(rc=rc):
+    o.align(savebigimage=os.path.join(here, "overlap-xcorrelation.pdf"), alreadyalignedstrategy="overwrite", debug=True)
+
+  o = A.overlaps[203]
+  with plt.rc_context(rc=rc):
+    o.align(savebigimage=os.path.join(here, "overlap-xcorrelation-bad.pdf"), alreadyalignedstrategy="overwrite", debug=True)
 
 def maximize1D():
   np.random.seed(123456)
@@ -95,10 +111,6 @@ def maximize1D():
     plt.savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
 
     plt.close(fig)
-
-def xcorrelation():
-  A = alignmentset()
-  o = A.overlaps[203]
 
 if __name__ == "__main__":
   p = argparse.ArgumentParser()

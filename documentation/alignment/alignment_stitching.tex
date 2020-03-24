@@ -73,16 +73,19 @@ and describes how similar the two images are when shifted by $\delta\vec{r}$ wit
 \begin{figure}[ht]
 	\centering
 	\begin{subfigure}{0.45\linewidth}
+	\includegraphics[width=\linewidth]{overlap-xcorrelation.pdf}
+	\caption{}
+	\label{fig:xcorrelation}
+	\end{subfigure}
+	\begin{subfigure}{0.45\linewidth}
 	\includegraphics[width=\linewidth]{1Dmaximization.pdf}
 	\caption{}
 	\label{fig:1Dmaximizationplot}
 	\end{subfigure}
-	\begin{subfigure}{0.45\linewidth}
-	\includegraphics[width=\linewidth]{1Dmaximizationwitherror.pdf}
-	\caption{}
-	\label{fig:1Dmaximizationploterror}
-	\end{subfigure}
-	\caption{\subref{fig:1Dmaximizationplot} Example of the procedure for aligning two images to sub-pixel precision.  The blue points show the cross correlation function for pixel shifts, calculated using \cref{eq:xcorrelation}.  The blue curve shows a polynomial fit to the cross correlation function, and the orange point and line show the maximum of the polynomial fit. \subref{fig:1Dmaximizationploterror} Illustration of the procedure for error estimation using the same example curve as in \subref{fig:1Dmaximizationplot}.  Given the error on $C$ at the peak, $\sigma_C$, shown in orange, we can use the second derivative of the curve to estimate the error on $x_\text{max}$, $\sigma_\text{xmax}$, shown in pink.}
+	\caption{
+		\subref{fig:xcorrelation} Plot of the cross-correlation function for the overlap shown in \cref{fig:overlap}.
+		\subref{fig:1Dmaximizationplot} Example of the procedure for aligning two images to sub-pixel precision.  The blue points show the cross correlation function for pixel shifts, calculated using \cref{eq:xcorrelation}.  The blue curve shows a polynomial fit to the cross correlation function, and the orange point and line show the maximum of the polynomial fit.
+	}
 	\label{fig:1Dmaximization}
 \end{figure}
 
@@ -116,6 +119,17 @@ By standard techniques of error propagation, we then derive
 &=([(A^\prime)^2+(B^\prime)^2]\star\sigma_{A^\prime,B^\prime}^2)(0)
 \end{aligned}
 \end{align}
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.45\linewidth}
+		\includegraphics[width=\linewidth]{1Dmaximizationwitherror.pdf}
+%		\caption{}
+%		\label{fig:1Dmaximizationploterror}
+	\end{subfigure}
+	\caption{Illustration of the procedure for error estimation using the same example curve as in \cref{fig:1Dmaximizationplot}.  Given the error on $C$ at the peak, $\sigma_C$, shown in orange, we can use the second derivative of the curve to estimate the error on $x_\text{max}$, $\sigma_\text{xmax}$, shown in pink.}
+	\label{fig:1Dmaximizationploterror}
+\end{figure}
 
 We now use $\sigma_C(\delta\vec{r}_\text{max})$ to derive $\sigma_{\delta\vec{r}_\text{max}}$.  To motivate the calculation, we first consider the 1-dimensional case shown in \cref{fig:1Dmaximizationploterror}.  As illustrated there, we need to find $\sigma_{\delta x_\text{max}}$ so that $C(\delta x_\text{max}\pm\sigma_{\delta x_\text{max}})=C(\delta x_\text{max})-\sigma_C$.  Assuming $\delta x$ is small, we can do this by expanding
 \begin{equation}

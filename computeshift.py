@@ -2,7 +2,7 @@ import cv2, functools, logging, matplotlib.pyplot as plt, more_itertools, numba 
 
 logger = logging.getLogger("align")
 
-def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, showbigimage=False, errorfactor=1/4):
+def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -38,8 +38,24 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
   yy = y[slc]
   zz = z[slc]
 
-  if showbigimage: plt.imshow(z)
-  if showsmallimage: plt.imshow(zz)
+  if showbigimage or savebigimage:
+    plt.imshow(z)
+    plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+    if savebigimage:
+      plt.savefig(savebigimage)
+    if showbigimage:
+      plt.show()
+    if savebigimage:
+      plt.close()
+  if showsmallimage or savesmallimage:
+    plt.imshow(zz)
+    plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+    if savesmallimage:
+      plt.savefig(savesmallimage)
+    if showsmallimage:
+      plt.show()
+    if savesmallimage:
+      plt.close()
 
   xx = np.ravel(xx)
   yy = np.ravel(yy)
