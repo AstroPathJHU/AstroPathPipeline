@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, os, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
+import argparse, functools, os, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
 from ...alignmentset import AlignmentSet
 
 here = os.path.dirname(__file__)
@@ -12,11 +12,15 @@ rc = {
   "font.size": 20,
 }
 
-def overlap():
+@functools.lru_cache
+def alignmentset():
   A = AlignmentSet(data, os.path.join(data, "flatw"), "M21_1")
   A.getDAPI()
   A.readalignments()
+  return A
 
+def overlap():
+  A = alignmentset()
   o = A.overlaps[140]
   with plt.rc_context(rc=rc):
     o.showimages(shifted=False, normalize=1000, saveas=os.path.join(here, "overlap-notshifted.pdf"))
@@ -92,15 +96,22 @@ def maximize1D():
 
     plt.close(fig)
 
+def xcorrelation():
+  A = alignmentset()
+  o = A.overlaps[203]
+
 if __name__ == "__main__":
   p = argparse.ArgumentParser()
   g = p.add_mutually_exclusive_group()
   g.add_argument("--all", action="store_const", dest="which", const="all", default="all")
   g.add_argument("--maximize", action="store_const", dest="which", const="maximize")
   g.add_argument("--overlap", action="store_const", dest="which", const="overlap")
+  g.add_argument("--xcorrelation", "--cross-correlation", action="store_const", dest="which", const="xcorrelation")
   args = p.parse_args()
 
   if args.which == "all" or args.which == "maximize":
     maximize1D()
   if args.which == "all" or args.which == "overlap":
     overlap()
+  if args.which == "all" or args.which == "xcorrelation":
+    xcorrelation()
