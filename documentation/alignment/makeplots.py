@@ -29,8 +29,8 @@ def overlap():
   A = alignmentset(dapi=True)
   o = A.overlaps[140]
   with plt.rc_context(rc=rc):
-    o.showimages(shifted=False, normalize=1000, saveas=os.path.join(here, "overlap-notshifted.pdf"))
-    o.showimages(shifted=True, normalize=1000, saveas=os.path.join(here, "overlap-shifted.pdf"))
+    o.showimages(shifted=False, normalize=1000, ticks=True, saveas=os.path.join(here, "overlap-notshifted.pdf"))
+    o.showimages(shifted=True, normalize=1000, ticks=True, saveas=os.path.join(here, "overlap-shifted.pdf"))
 
 def xcorrelation():
   A = alignmentset(dapi=True)

@@ -39,8 +39,9 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
   zz = z[slc]
 
   if showbigimage or savebigimage:
-    plt.imshow(z)
-    plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+    plt.imshow(z, extent=[x.min(), x.max(), y.min(), y.max()])
+    plt.xlabel(r"$\delta x$")
+    plt.ylabel(r"$\delta y$", labelpad=-5)
     if savebigimage:
       plt.savefig(savebigimage)
     if showbigimage:
@@ -48,8 +49,9 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
     if savebigimage:
       plt.close()
   if showsmallimage or savesmallimage:
-    plt.imshow(zz)
-    plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+    plt.imshow(zz, extent=[xx.min(), xx.max(), yy.min(), yy.max()])
+    plt.xlabel(r"$\delta x$")
+    plt.ylabel(r"$\delta y$", labelpad=-5)
     if savesmallimage:
       plt.savefig(savesmallimage)
     if showsmallimage:

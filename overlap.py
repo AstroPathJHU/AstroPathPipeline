@@ -148,10 +148,15 @@ class Overlap:
     img = np.array([red, green, blue]).transpose(1, 2, 0) / normalize
     return img
 
-  def showimages(self, normalize=100., shifted=True, saveas=None, **savekwargs):
+  def showimages(self, normalize=100., shifted=True, saveas=None, ticks=False, **savekwargs):
     img=self.getimage(normalize,shifted)
     plt.imshow(img)
-    plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
+    if ticks:
+      plt.xlabel("$x$")
+      plt.ylabel("$y$")
+    else:
+      plt.xticks([])
+      plt.yticks([])  # to hide tick values on X and Y axis
     if saveas is None:
       plt.show()
     else:

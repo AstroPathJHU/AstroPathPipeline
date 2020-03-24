@@ -33,7 +33,7 @@ Here, we describe how we measure the actual positions of the fields based on the
 
 We allow for two sources of error in the microscope's positioning.
 \begin{enumerate}
-\item When the controlling computer signals the microscope to move by $\Delta \vec{r}=(\delta x, \delta y)$, imperfect calibration may result in an actual movement of $\matrixbold{A}\Delta\vec{r}$, where $\matrixbold{A}$ is a $2\times2$ matrix to be measured from the data.
+\item When the controlling computer signals the microscope to move by $\Delta \vec{r}=(\Delta x, \Delta y)$, imperfect calibration may result in an actual movement of $\matrixbold{A}\Delta\vec{r}$, where $\matrixbold{A}$ is a $2\times2$ matrix to be measured from the data.
 \item Each movement of the microscope involves a random error, so that the final, actual movement is $\matrixbold{A}\Delta\vec{r}+\delta\vec{r}$.
 \end{enumerate}
 Our alignment procedure measures and corrects for both sources of error simultaneously.  The final output is the matrix $A$ and the real position $\vec{r}_i$ of each field $i$.
