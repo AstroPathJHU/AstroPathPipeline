@@ -2,7 +2,7 @@
 
 #imports
 from ..warpfitter import WarpFitter
-import os
+import os, shutil
 
 #some constants
 folder = os.path.dirname(__file__)
@@ -33,5 +33,6 @@ result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_
                       max_radial_warp=max_radial_warp,max_tangential_warp=max_tangential_warp,
                       polish=False,print_every=print_every,maxiter=max_iter)
 print(f'result:\n{result}')
-os.system(f'cat {os.path.join(working_dir,"warping_parameters.txt")}; rm -rf {working_dir} ')
+with open(os.path.join(working_dir,"warping_parameters.txt")) as f:
+  print(f.read())
 print('Done!')

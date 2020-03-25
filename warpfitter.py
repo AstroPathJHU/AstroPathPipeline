@@ -395,7 +395,7 @@ class WarpFitter :
 
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
     def __initializeAlignmentSet(self) :
-        a = AlignmentSet(os.path.join(*([os.sep]+self.metafile_dir.split(os.sep)[:-2])),self.working_dir,self.samp_name,interactive=True)
+        a = AlignmentSet(os.path.join(self.metafile_dir, "..", ".."), self.working_dir,self.samp_name,interactive=True)
         a.rectanglesoverlaps=self.rectangles, self.overlaps
         if self.mean_image is not None :
             a.meanimage = self.mean_image
