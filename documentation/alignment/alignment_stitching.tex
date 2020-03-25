@@ -30,15 +30,6 @@ In the process of scanning, the microscope moves from one field to the next.   T
 
 Here, we describe how we measure the actual positions of the fields based on the images themselves.
 
-\section{Alignment model}
-
-We allow for two sources of error in the microscope's positioning.
-\begin{enumerate}
-\item When the controlling computer signals the microscope to move by $\Delta \vec{r}=(\Delta x, \Delta y)$, imperfect calibration may result in an actual movement of $\matrixbold{A}\Delta\vec{r}$, where $\matrixbold{A}$ is a $2\times2$ matrix to be measured from the data.
-\item Each movement of the microscope involves a random error, so that the final, actual movement is $\matrixbold{A}\Delta\vec{r}+\delta\vec{r}$.
-\end{enumerate}
-Our alignment procedure measures and corrects for both sources of error simultaneously.  The final output is the matrix $A$ and the real position $\vec{r}_i$ of each field $i$.
-
 \section{Pairwise alignment}
 \label{sec:pairwise}
 
@@ -70,7 +61,7 @@ In order to determine the size and direction of the shift, we compute the \emph{
 C(\delta\vec{r})=(A\star B)(\delta\vec{r})\equiv\sum_{\vec{r}} {A(\vec{r})B(\vec{r}+\delta\vec{r})}
 \label{eq:xcorrelation}
 \end{equation}
-and describes how similar the two images are when shifted by $\delta\vec{r}$ with respect to each other.  The value of $d\vec{r}$ that maximizes $C$ gives the optimal shift.  We want to achieve precision better than a single pixel, so we fit the region around the tallest peak of the cross-correlation function to a cubic polynominal and find its maximum $\delta\vec{r}_\text{max}$, as shown in \cref{fig:1Dmaximizationplot} for a one-dimensional example.  For the real images, we fit the region around the peak to a two-dimensional cubic polynomial.
+and describes how similar the two images are when shifted by $\delta\vec{r}$ with respect to each other.  The value of $\delta\vec{r}$ that maximizes $C$ gives the optimal shift.  We want to achieve precision better than a single pixel, so we fit the region around the tallest peak of the cross-correlation function to a cubic polynominal and find its maximum $\delta\vec{r}_\text{max}$, as shown in \cref{fig:1Dmaximizationplot} for a one-dimensional example.  For the real images, we fit the region around the peak to a two-dimensional cubic polynomial.
 
 \begin{figure}[ht]
 	\centering
@@ -188,48 +179,93 @@ The procedure in \cref{sec:measuringalignment} looks at the tallest peak of the 
 
 After we derive the individual alignment results for each overlap, we can ``stitch'' the results together to obtain the final positions of each field.  We see each alignment result as a Gaussian constraint on the relative positions of those two fields, and combine all of those constraints together to find the likelihood $L$ for alignment positions $\vec{x}_i$:
 \begin{align}
--2\ln L_\text{alignment}(\vec{r}_1, \ldots, \vec{r}_N)=&
-\sum_{o}(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)^T \\
+\begin{aligned}
+-2\ln L_\text{alignment}(\vec{r}_1, \ldots, \vec{r}_N)=
+\sum_{o}&(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)^T \\
 &\mathbf{cov}_o^{-1}
 (\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)
+\end{aligned}
 \label{eq:loglikelihoodalignment}
 \end{align}
 In this parameterization, $\vec{r}_k$, with $k$ running from $1$ to the number of fields $N$, is the position of the field indexed by $i$; $\svec{r}_k^n$ is the field's nominal position, given by the microscope software; $o$ indexes the overlaps; $i_o$ and $j_o$ are the indices of the two fields whose overlap is described by $o$; $\delta\vec{r}_o$ is the $\delta\vec{r}_\text{max}$ determined for that overlap, as described in \cref{sec:measuringalignment}; and $\mathbf{cov}_o$ is the covariance matrix from \cref{eq:overlapcovariance}.
-
-The likelihood above includes all of the information derived from alignment.  However, it is degenerate: shifting all fields by the same amount leaves the equation unchanged.  This can be fixed easily by just choosing one point to remain fixed, but in general the image may contain multiple disconnected ``islands'', as shown in \cref{fig:islands}.  In this example, the larger island on the left is covered by 33 fields, and the smaller one on the right is covered by 7.  There are no overlaps between fields in one island and fields in the other, and moving one island with respect to the other also leaves \cref{eq:loglikelihoodalignment} unchanged.
-
-A simple solution is to detect the islands using algorithms from graph theory and align each island separately, but there are cases where even this will fail.  For example, the islands may be connected by a single overlap which is not ``bad'', per the definition in \cref{sec:badoverlaps}, but has a large uncertainty.  We would like a procedure that automatically takes this case into account.
-
-
-\begin{align}
--2 \ln L =&
-1/2 \sum_\text{overlaps}
-(\vec{x}_{p1} - \vec{x}_{p2} - d\vec{x} - \vec{x}_{p1}^n + \vec{x}_{p2}^n)^T \\
-&\mathbf{cov}^{-1}
-(\vec{x}_{p1} - \vec{x}_{p2} - d\vec{x} - \vec{x}_{p1}^n + \vec{x}_{p2}^n) \\
-+&
-\sum_p \left(
-\frac{(\vec{x}_p-\vec{x}_0) - \mathbf{T}(\vec{x}_p^n-\vec{x}_0)}
-{\sigma}
-\right)^2
-\end{align}
-\begin{equation}
-\mathbf{T} = \begin{pmatrix}
-T_{xx} & T_{xy} \\ T_{yx} & T_{yy}
-\end{pmatrix}
-\end{equation}
-
 
 \begin{figure}[ht]
 	\centering
 	\begin{subfigure}{0.45\linewidth}
 		\includegraphics[width=\linewidth]{islands.pdf}
-%		\caption{}
-%		\label{fig:badxcorrelation}
+		%		\caption{}
+		%		\label{fig:badxcorrelation}
 	\end{subfigure}
 	\caption{An example of an image with two disconnected islands.}
 	\label{fig:islands}
 \end{figure}
+
+The likelihood above includes all of the information derived from alignment.  However, it is degenerate: shifting all fields by the same amount leaves the equation unchanged.  This can be fixed easily by just choosing one point to remain fixed, but in general the image may contain multiple disconnected ``islands'', as shown in \cref{fig:islands}.  In this example, the larger island on the left is covered by 33 fields, and the smaller one on the right is covered by 7.  There are no overlaps between fields in one island and fields in the other, and moving one island with respect to the other also leaves \cref{eq:loglikelihoodalignment} unchanged.
+
+A simple solution is to detect the islands using algorithms from graph theory and align each island separately, but there are cases where even this will fail.  For example, the islands may be connected by a single overlap which is not ``bad'', per the definition in \cref{sec:badoverlaps}, but has a large uncertainty, with the result that the two almost-islands are aligned badly with respect to one another when the single overlap is the only constraint.  We would like a procedure that automatically takes all of these cases into account.
+
+To accomplish this, we construct a model that allows for two sources of error in the microscope's positioning.
+\begin{enumerate}
+	\item When the controlling computer signals the microscope to move by $\Delta \vec{r}=(\Delta x, \Delta y)$, imperfect calibration may result in an actual movement of $\matrixbold{A}\Delta\vec{r}$, where $\matrixbold{A}$ is a $2\times2$ matrix to be measured from the data.
+	\item Each movement of the microscope involves a random error, so that the final, actual movement is $\matrixbold{A}\Delta\vec{r}+\delta\vec{r}$.
+\end{enumerate}
+The second source of error is random for each field.  However, the first error, parameterized by the matrix $\matrixbold{A}$, is generally a property of the microscope and is therefore common to all fields.  This matrix is the way we connect the islands together, adding more terms to \cref{eq:loglikelihoodalignment} so that it is no longer singular.
+
+We first assume that $\matrixbold{A}$ is close to the identity matrix $\begin{pmatrix}1 & 0 \\ 0 & 1\end{pmatrix}$.  Therefore, although its deviations from the identity may affect the positioning between fields that are far apart by tens of pixels, it has negligible effect on an individual overlap.  Therefore, the distribution of $\delta\vec{r}$ may be approximated as the distribution of $\delta\vec{r}_o$ from the overlaps $o$.  We take the standard deviation, over all the overlaps, of the $x$ and $y$ components of $\delta\vec{r}_o$, and constrain the position of each rectangle using a Gaussian constraint, centered at $\matrixbold{A}\svec{r}_k^n$ and with a width of $\sigma_x$ for the $x$ component and $\sigma_y$ for the $y$ component.  Or, in other words, we add to \cref{eq:loglikelihoodalignment} a term that looks like
+\begin{align}
+-2\ln L_\text{constraint}(\vec{r}_1, \ldots, \vec{r}_N, \matrixbold{A})=&
+\sum_{k}(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)^T %\\&
+\mathbf{\Sigma}^{-1}
+(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)
+\label{eq:loglikelihoodrandomerror}
+\end{align}
+where $\mathbf{\Sigma}=\begin{pmatrix}\sigma_x^2 & 0 \\ 0 & \sigma_y^2\end{pmatrix}$.
+
+The constraint added in \cref{eq:loglikelihoodrandomerror} turns out to be weak, because the positioning errors $\sigma_{x,y}$ are significantly larger than the errors from the pairwise alignments.  In fact, if we modify $\sigma_{x,y}$ by multiplying them by a few orders of magnitude up or down, the final alignment is basically unchanged.
+
+The final likelihood function is the sum of \cref{eq:loglikelihoodalignment,eq:loglikelihoodrandomerror}:
+\begin{align}
+\begin{aligned}
+-2\ln L(\vec{r}_1, \ldots, \vec{r}_N, \matrixbold{A})=&\\
+&
+\begin{aligned}
+\sum_{o}&(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)^T \\
+&\mathbf{cov}_o^{-1}
+(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n) \\
+\end{aligned} \\
++&\sum_{k}(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)^T %\\&
+\matrixbold{\Sigma}^{-1}
+(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)
+\label{eq:loglikelihood}
+\end{aligned}
+\end{align}
+The most important feature of this equation is that, because $\svec{r}_k^n$ are constants and $\matrixbold{cov}_o$ and $\matrixbold{\Sigma}$ are positive definite, it is a \emph{convex quadratic} in the variables we are interested in solving for, $\vec{r}_k$ and $\matrixbold{A}$.  Assembling $\vec{r}_k$ and $\matrixbold{A}$ into a single, large vector $\vec{v}$
+\begin{equation}
+\vec{v}=\begin{pmatrix}
+x_1,
+y_1,
+\ldots,
+x_k,
+y_k,
+A_{xx},
+A_{xy},
+A_{yx},
+A_{yy}
+\end{pmatrix}^T,
+\end{equation}
+we can expand \cref{eq:loglikelihood} into the form
+\begin{equation}
+-2\ln L(\vec{v})=\svec{v}^T\matrixbold{P}\vec{v} + \vec{v}\cdot\vec{q} + r.
+\label{eq:loglikelihoodshort}
+\end{equation}
+Writing $\matrixbold{P}$, $\vec{q}$, and $r$ explicitly here would result in a mess, but they are easy to compute in code from the numerical values of the variables in \cref{eq:loglikelihood}.  Once they are computed, the value of $\vec{v}$ that minimizes \cref{eq:loglikelihoodshort}, or equivalently maximizes the likelihood, is simply
+\begin{equation}
+\vec{v}=-\frac{1}{2}\matrixbold{P}^{-1}\vec{q}
+\end{equation}
+with a covariance matrix
+\begin{equation}
+\matrixbold{cov}_{\vec{v}}=\matrixbold{P}^{-1}.
+\end{equation}
 
 \section{Validation of the alignment procedure}
 
