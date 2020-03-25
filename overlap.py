@@ -87,7 +87,7 @@ class Overlap:
       self.__shiftclip()
     except Exception as e:
       self.result.exit = 3
-      self.result.dxdy = unc.ufloat(0, 9999), unc.ufloat(0, 9999)
+      self.result.dxvec = unc.ufloat(0, 9999), unc.ufloat(0, 9999)
       self.result.sc = 1.
       self.result.exception = e
       if debug: raise
@@ -116,7 +116,7 @@ class Overlap:
 
   def __computeshift(self, **computeshiftkwargs):
     minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
-    self.result.dxdy = minimizeresult.dx, minimizeresult.dy
+    self.result.dxvec = minimizeresult.dx, minimizeresult.dy
     self.result.exit = minimizeresult.exit
 
   @property
@@ -225,17 +225,13 @@ class AlignmentResult:
 
   @property
   def dxvec(self):
-    return np.array([self.dx, self.dy])
+    return np.array(unc.correlated_values([self.dx, self.dy], self.covariance))
 
-  @property
-  def dxdy(self):
-    return unc.correlated_values([self.dx, self.dy], self.covariance)
-
-  @dxdy.setter
-  def dxdy(self, dxdy):
-    self.dx = dxdy[0].n
-    self.dy = dxdy[1].n
-    self.covariance = covariance_matrix(dxdy)
+  @dxvec.setter
+  def dxvec(self, dxvec):
+    self.dx = dxvec[0].n
+    self.dy = dxvec[1].n
+    self.covariance = covariance_matrix(dxvec)
 
   @property
   def isedge(self):
