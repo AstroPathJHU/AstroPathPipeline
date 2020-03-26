@@ -260,15 +260,20 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       logger.warning("WARNING: Reikna isn't installed. Please install with 'pip install reikna' to use GPU devices.")
       return None
     #create an API
+    #try :
+    #    api = rk.cluda.cuda_api()
+    #except Exception :
+    #  logger.info('CUDA-based GPU API not available; will try to get one based on OpenCL instead.')
+    #  try :
+    #    api = rk.cluda.ocl_api()
+    #  except Exception :
+    #    logger.warning('WARNING: Failed to create an OpenCL API; no GPU computation will be available!!')
+    #    return None
     try :
-        api = rk.cluda.cuda_api()
+      api = rk.cluda.ocl_api()
     except Exception :
-      logger.info('CUDA-based GPU API not available; will try to get one based on OpenCL instead.')
-      try :
-        api = rk.cluda.ocl_api()
-      except Exception :
-        logger.warning('WARNING: Failed to create an OpenCL API; no GPU computation will be available!!')
-        return None
+      logger.warning('WARNING: Failed to create an OpenCL API; no GPU computation will be available!!')
+      return None
     #return a thread from the API
     return api.Thread.create(interactive=interactive)
 
