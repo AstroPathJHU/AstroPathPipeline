@@ -72,14 +72,14 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     i = np.ix_((ix, iy))
     j = np.ix_((jx, jy))
 
-    constpiece = (-o.result.dxvec - o.x1vec + o.x2vec) / scaleby
+    constpiece = (-unp.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec) / scaleby
 
     b[i] += 2 * inversecovariance @ constpiece
     b[j] -= 2 * inversecovariance @ constpiece
 
     c += constpiece @ inversecovariance @ constpiece
 
-  dxs, dys = zip(*(o.result.dxdy for o in overlaps))
+  dxs, dys = zip(*(o.result.dxvec for o in overlaps))
 
   weightedvariancedx = np.average(
     unp.nominal_values(dxs)**2,
@@ -188,11 +188,11 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
     x1 = rectanglex[o.p1]
     x2 = rectanglex[o.p2]
     twonll += cp.quad_form(
-      x1 - x2 - o.result.dxvec - o.x1vec + o.x2vec,
+      x1 - x2 - unp.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec,
       np.linalg.inv(o.result.covariance)
     )
 
-  dxs, dys = zip(*(o.result.dxdy for o in overlaps))
+  dxs, dys = zip(*(o.result.dxvec for o in overlaps))
 
   weightedvariancedx = np.average(
     unp.nominal_values(dxs)**2,

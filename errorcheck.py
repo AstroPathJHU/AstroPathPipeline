@@ -39,11 +39,11 @@ def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), q
 
       if any(not np.all(o.result.covariance < 9998) for o in overlaps): continue
       if stitchresult is not None:
-        dxdys = [stitchresult.dx(o) for o in overlaps]
+        dxvecs = [stitchresult.dx(o) for o in overlaps]
       else:
-        dxdys = [o.result.dxdy for o in overlaps]
+        dxvecs = [o.result.dxvec for o in overlaps]
 
-      dxs, dys = zip(*dxdys)
+      dxs, dys = zip(*dxvecs)
 
       if verbose is True or verbose(path, dxs, dys):
         print(" --> ".join(f"{node:4d}" for node in path))
