@@ -214,6 +214,8 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     #create the dictionary of compiled GPU FFT objects if possible
     self.gpufftdict = None
     if self.gputhread is not None :
+      import reikna as rk
+      from reikna.fft import FFT
       #set up an FFT for images of each unique size in the set of overlaps
       self.gpufftdict = {}
       for olap in self.__overlaps :
@@ -221,9 +223,9 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
           assert cutimages_shapes[0] == cutimages_shapes[1]
           if cutimages_shapes[0] not in self.gpufftdict.keys() :
               gpu_im = np.ndarray(cutimages_shapes[0],dtype=np.csingle)
-              new_fft = rk.fft.FFT(gpu_im)
+              new_fft = FFT(gpu_im)
               new_fftc = new_fft.compile(self.gputhread)
-              fft_dict[cutimages_shapes[0]] = new_fftc
+              self.gpufftdict[cutimages_shapes[0]] = new_fftc
 
   def updateRectangleImages(self,imgs) :
     """

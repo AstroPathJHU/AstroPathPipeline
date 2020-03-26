@@ -14,7 +14,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   if gputhread is not None and gpufftdict is not None :
     images_gpu = tuple(image.astype(np.csingle) for image in images)
     fftc = gpufftdict[images_gpu[0].shape]
-    invfourier = crosscorrelation_gpu(images,gputhread,fftc)
+    invfourier = crosscorrelation_gpu(images_gpu,gputhread,fftc)
   else :
     invfourier = crosscorrelation(images)
 
@@ -116,7 +116,7 @@ def crosscorrelation_gpu(images,thread,fftc):
   image_devs = tuple(thread.to_device(image) for image in images)
   res_devs   = tuple(thread.empty_like(image_dev) for image_dev in image_devs)
   for resd,imd in zip(res_devs,image_devs) :
-      fftc(resd,imd,0)
+    fftc(resd,imd,0)
   crosspower = getcrosspower(tuple(res_dev.get() for res_dev in res_devs))
   cp_dev = thread.to_device(crosspower)
   fftc(cp_dev,cp_dev,1)
