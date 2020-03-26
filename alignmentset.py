@@ -7,6 +7,7 @@ from .overlap import AlignmentResult, Overlap, OverlapCollection
 from .rectangle import ImageStats, Rectangle
 from .stitch import ReadStitchResult, stitch
 from .tableio import readtable, writetable
+from .utilities import savefig
 
 logger = logging.getLogger("align")
 logger.setLevel(logging.DEBUG)
@@ -320,7 +321,7 @@ class AlignmentSet(OverlapCollection):
       result.overlaps[i] = [o for o in self.overlaps if o.n == overlap.n][0]
     return result
 
-  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], errorbars=True):
+  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], xlimkwargs={}, ylimkwargs={}, errorbars=True, saveas=None):
     vectors = np.array([
       o.result.dxvec - (o.stitchresult if stitched else 0)
       for o in self.overlaps
@@ -335,7 +336,15 @@ class AlignmentSet(OverlapCollection):
       yerr=unp.std_devs(vectors[:,1]),
       fmt='o',
     )
-    plt.show()
+    plt.xlabel("$\delta x$")
+    plt.ylabel("$\delta y$")
+    plt.xlim(**xlimkwargs)
+    plt.ylim(**ylimkwargs)
+    if saveas is None:
+      plt.show()
+    else:
+      savefig(saveas)
+      plt.close()
 
 def rectangleoroverlapfilter(selection):
   if selection is None:

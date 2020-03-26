@@ -11,18 +11,20 @@ rc = {
   "text.usetex": True,
   "text.latex.preamble": [r"\usepackage{amsmath}"],
   "font.size": 20,
+  "figure.subplot.bottom": 0.12,
 }
 
 @functools.lru_cache()
-def alignmentset(dapi):
+def alignmentset(*, dapi=False):
   if dapi:
-    A = alignmentset(dapi=False)
+    A = alignmentset()
     A.getDAPI()
     return A
-  else:
-    A = AlignmentSet(data, os.path.join(data, "flatw"), "M21_1")
-    A.readalignments()
-    return A
+
+  A = AlignmentSet(data, os.path.join(data, "flatw"), "M21_1")
+  A.readalignments()
+  A.readstitchresult()
+  return A
 
 def overlap():
   A = alignmentset(dapi=True)
@@ -74,7 +76,6 @@ def maximize1D():
 
   with plt.rc_context(rc=rc):
     fig = plt.figure()
-    fig.subplots_adjust(bottom=0.12)
     ax = fig.add_subplot(1, 1, 1)
 
     polynomial, = plt.plot(x, y, color="blue")
@@ -113,13 +114,25 @@ def maximize1D():
     plt.close(fig)
 
 def islands():
-  A = alignmentset(dapi=False)
+  A = alignmentset()
   with plt.rc_context(rc=rc):
     plt.imshow(A.image())
     plt.xticks([])
     plt.yticks([])
     savefig(os.path.join(here, "islands.pdf"))
     plt.close()
+
+def alignmentresults():
+  A = alignmentset()
+  with plt.rc_context(rc=rc):
+    for tag in 1, 2, 3, 4:
+      kwargs = {
+        "xlimkwargs": {"left": -5, "right": 5},
+        "ylimkwargs": {"top": -5, "bottom": 5},
+        "tags": [tag],
+      }
+      A.plotresults(saveas=os.path.join(here, f"alignment-result-{tag}.pdf"), **kwargs)
+      A.plotresults(stitched=True, saveas=os.path.join(here, f"stitch-result-{tag}.pdf"), **kwargs)
 
 if __name__ == "__main__":
   class EqualsEverything:
@@ -131,6 +144,7 @@ if __name__ == "__main__":
   g.add_argument("--overlap", action="store_const", dest="which", const="overlap")
   g.add_argument("--xcorrelation", "--cross-correlation", action="store_const", dest="which", const="xcorrelation")
   g.add_argument("--islands", action="store_const", dest="which", const="islands")
+  g.add_argument("--alignmentresults", action="store_const", dest="which", const="alignmentresults")
   args = p.parse_args()
 
   if args.which == "maximize":
@@ -141,3 +155,5 @@ if __name__ == "__main__":
     xcorrelation()
   if args.which == "islands":
     islands()
+  if args.which == "alignmentresults":
+    alignmentresults()

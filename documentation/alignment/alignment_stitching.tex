@@ -6,6 +6,7 @@
 \usepackage[subrefformat=simple,labelformat=simple]{subcaption}
 \usepackage{hyperref}
 \usepackage{cleveref}
+\usepackage[margin=1in]{geometry}
 \renewcommand\thesubfigure{(\alph{subfigure})}
 
 \newcommand{\svec}[1]{{\vec{#1}\mkern2mu\vphantom{#1}}}
@@ -269,7 +270,57 @@ with a covariance matrix
 
 \section{Validation of the alignment procedure}
 
-\subsection{Consistency of the alignment}
+In this section, we show plots that illustrate the results of the alignment procedure.
+
+\subsection{Alignment movements}
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-2.pdf}
+		\caption{}
+		\label{fig:alignmentresult2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-4.pdf}
+		\caption{}
+		\label{fig:alignmentresult4}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-1.pdf}
+		\caption{}
+		\label{fig:alignmentresult1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-3.pdf}
+		\caption{}
+		\label{fig:alignmentresult3}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-2.pdf}
+		\caption{}
+		\label{fig:stitchresult2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-4.pdf}
+		\caption{}
+		\label{fig:stitchresult4}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-1.pdf}
+		\caption{}
+		\label{fig:stitchresult1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-3.pdf}
+		\caption{}
+		\label{fig:stitchresult3}
+	\end{subfigure}
+	\caption{%\cref{sub@fig:alignmentresult1,sub@fig:alignmentresult2,sub@fig:alignmentresult3,sub@fig:alignmentresult4}
+		\cref{sub@fig:alignmentresult1}
+	}
+	\label{fig:alignmentresults}
+\end{figure}
 
 \subsection{Consistency of the errors}
 \label{sec:pulls}
