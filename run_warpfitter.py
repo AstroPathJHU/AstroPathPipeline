@@ -83,7 +83,7 @@ def makeImagePixelPlots(overlaps) :
 def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
     #create the alignment set and run its alignment
     logger.info("Performing an initial alignment to find this sample's valid octets/chunks...")
-    a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample,interactive=True)
+    a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample)#,interactive=True)
     a.getDAPI(writeimstat=False)
     whole_sample_meanimage = a.meanimage
     result = a.align(write_result=False)
@@ -223,7 +223,7 @@ def getOverlaps(args) :
                     raise ValueError(msg)
     if whole_sample_meanimage is None :
         logger.info("Loading an AlignmentSet to find the meanimage over the whole sample...")
-        a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample,interactive=True)
+        a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample)#,interactive=True)
         a.getDAPI()
         whole_sample_meanimage = a.meanimage
     return overlaps, copy.deepcopy(whole_sample_meanimage)
