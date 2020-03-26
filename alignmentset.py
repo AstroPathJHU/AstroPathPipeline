@@ -321,13 +321,14 @@ class AlignmentSet(OverlapCollection):
       result.overlaps[i] = [o for o in self.overlaps if o.n == overlap.n][0]
     return result
 
-  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9]):
+  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], errorbars=True):
     vectors = np.array([
       o.result.dxvec - (o.stitchresult if stitched else 0)
       for o in self.overlaps
       if not o.result.exit
       and o.tag in tags
     ])
+    if not errorbars: vectors = unp.nominal_values(vectors)
     plt.errorbar(
       x=unp.nominal_values(vectors[:,0]),
       xerr=unp.std_devs(vectors[:,0]),
