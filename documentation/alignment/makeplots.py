@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, functools, os, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
+import argparse, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
 from ...alignmentset import AlignmentSet
 from ...utilities import savefig
 
@@ -140,6 +140,24 @@ def alignmentresults():
       A.plotresults(tags=[tag], saveas=os.path.join(here, f"alignment-result-{tag}.pdf"), **kwargs)
       A.plotresults(tags=[tag], stitched=True, saveas=os.path.join(here, f"stitch-result-{tag}.pdf"), **kwargs)
 
+def scanning():
+  with plt.rc_context(rc=rc):
+    fig = plt.figure(figsize=(6, 6))
+    ax = fig.add_subplot(1, 1, 1)
+    plt.xlim(0, 500)
+    plt.ylim(500, 0)
+#    ax.invert_yaxis()
+    for y in range(0, 500, 100):
+      for x in range(0, 500, 100):
+        ax.add_patch(patches.Rectangle((x, y), 100, 100, linewidth=1, edgecolor='r', facecolor='none'))
+        if x == 400:
+          if y != 400:
+            plt.arrow(x+50, y+50, -400, 100, width=3, length_includes_head=True)
+        else:
+          plt.arrow(x+50, y+50, 100, 0, width=3, length_includes_head=True)
+    savefig(os.path.join(here, "scanning.pdf"))
+    plt.close()
+
 if __name__ == "__main__":
   class EqualsEverything:
     def __eq__(self, other): return True
@@ -151,6 +169,7 @@ if __name__ == "__main__":
   g.add_argument("--xcorrelation", "--cross-correlation", action="store_const", dest="which", const="xcorrelation")
   g.add_argument("--islands", action="store_const", dest="which", const="islands")
   g.add_argument("--alignmentresults", action="store_const", dest="which", const="alignmentresults")
+  g.add_argument("--scanning", action="store_const", dest="which", const="scanning")
   args = p.parse_args()
 
   if args.which == "maximize":
@@ -163,3 +182,5 @@ if __name__ == "__main__":
     islands()
   if args.which == "alignmentresults":
     alignmentresults()
+  if args.which == "scanning":
+    scanning()

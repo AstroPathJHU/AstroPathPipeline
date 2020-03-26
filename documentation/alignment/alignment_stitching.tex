@@ -178,7 +178,7 @@ The procedure in \cref{sec:measuringalignment} looks at the tallest peak of the 
 
 \section{Stitching}
 
-After we derive the individual alignment results for each overlap, we can ``stitch'' the results together to obtain the final positions of each field.  We see each alignment result as a Gaussian constraint on the relative positions of those two fields, and combine all of those constraints together to find the likelihood $L$ for alignment positions $\vec{x}_i$:
+After we derive the individual alignment results for each overlap, we can ``stitch'' the results together to obtain the final positions of each field.  We see each alignment result as a Gaussian constraint on the relative positions of those two fields, and combine all of those constraints together to find the likelihood $L$ for alignment positions $\vec{r}_i$:
 \begin{align}
 \begin{aligned}
 -2\ln L_\text{alignment}(\vec{r}_1, \ldots, \vec{r}_N)=
@@ -279,19 +279,9 @@ For an alignment with $N$ fields, we have $2N$ coordinates to set.  Except for t
 \begin{figure}[ht]
 	\centering
 	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{alignment-result-2.pdf}
-		\caption{}
-		\label{fig:alignmentresult2}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{alignment-result-4.pdf}
 		\caption{}
 		\label{fig:alignmentresult4}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{alignment-result-1.pdf}
-		\caption{}
-		\label{fig:alignmentresult1}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{alignment-result-3.pdf}
@@ -299,9 +289,14 @@ For an alignment with $N$ fields, we have $2N$ coordinates to set.  Except for t
 		\label{fig:alignmentresult3}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{stitch-result-2.pdf}
+		\includegraphics[width=\linewidth]{alignment-result-2.pdf}
 		\caption{}
-		\label{fig:stitchresult2}
+		\label{fig:alignmentresult2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-1.pdf}
+		\caption{}
+		\label{fig:alignmentresult1}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{stitch-result-4.pdf}
@@ -309,20 +304,38 @@ For an alignment with $N$ fields, we have $2N$ coordinates to set.  Except for t
 		\label{fig:stitchresult4}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{stitch-result-1.pdf}
-		\caption{}
-		\label{fig:stitchresult1}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{stitch-result-3.pdf}
 		\caption{}
 		\label{fig:stitchresult3}
 	\end{subfigure}
-	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in a small image.  The plots show overlaps between one field and the field \subref{fig:stitchresult2} under it, \subref{fig:stitchresult4} to its right, \subref{fig:stitchresult1} under it and to the left, and \subref{fig:stitchresult3} under it and to the right.  Each point with its error bars indicates a single overlap.  \subref{fig:stitchresult2}-\subref{fig:stitchresult3} The same distributions for the respective overlap directions after stitching has been performed.}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-2.pdf}
+		\caption{}
+		\label{fig:stitchresult2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-1.pdf}
+		\caption{}
+		\label{fig:stitchresult1}
+	\end{subfigure}
+	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in a small image.  The plots show overlaps between one field and the field \subref{fig:alignmentresult4} to its right, \subref{fig:alignmentresult3} under it and to the right, \subref{fig:alignmentresult2} under it, and \subref{fig:alignmentresult1} under it and to the left.  Each point with its error bars indicates a single overlap.  \subref{fig:stitchresult4}--\subref{fig:stitchresult1} The same distributions for the respective overlap directions after stitching has been performed.}
 	\label{fig:alignmentresults}
 \end{figure}
 
-\Cref{fig:alignmentresult1,fig:alignmentresult2,fig:alignmentresult3,fig:alignmentresult4} show
+\Cref{fig:alignmentresult1,fig:alignmentresult2,fig:alignmentresult3,fig:alignmentresult4} show the distribution of $\delta\vec{r}$ for the overlaps, before any stitching has been done.  \Cref{fig:stitchresult1,fig:stitchresult2,fig:stitchresult3,fig:stitchresult4} show the same distributions after the fields have been moved to their stitched positions, and show significant improvement over the top row.
+
+Another interesting feature of the plots is the comparison between \cref{fig:alignmentresult2,fig:alignmentresult4}.  Fields that are only separated in the $x$ direction are only misaligned in the $x$ direction, while fields separated in $y$ are only misaligned in $y$.  As illustrated in \cref{fig:scanning}, the microscope scans along a row in the $x$ direction first, then moves down in the $y$ direction and goes back to the beginning in $x$.  This explains \cref{fig:alignmentresult4}: as the microscope moves in the $x$ direction, the error introduced by slight movements in the $y$ direction is small.  
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.45\linewidth}
+		\includegraphics[width=\linewidth]{scanning.pdf}
+		%		\caption{}
+		%		\label{fig:1Dmaximizationploterror}
+	\end{subfigure}
+	\caption{}
+	\label{fig:scanning}
+\end{figure}
 
 \subsection{Consistency of the errors}
 \label{sec:pulls}
