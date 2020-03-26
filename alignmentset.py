@@ -48,6 +48,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
     self.readmetadata()
     self.rawimages=None
+    self.gputhread=self.__getGPUthread(interactive)
 
   @property
   def dbload(self):
@@ -206,6 +207,20 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     if writeimstat:
       writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
 
+    #create the dictionary of compiled GPU FFT objects if possible
+    self.gpufftdict = None
+    if self.gputhread is not None :
+      #set up an FFT for images of each unique size in the set of overlaps
+      self.gpufftdict = {}
+      for olap in self.__overlaps :
+          cutimages_shapes = tuple(im.shape for im in olap.cutimages)
+          assert cutimages_shapes[0] == cutimages_shapes[1]
+          if cutimages_shapes[0] not in self.gpufftdict.keys() :
+              gpu_im = np.ndarray(cutimages_shapes[0],dtype=np.csingle)
+              new_fft = rk.fft.FFT(gpu_im)
+              new_fftc = new_fft.compile(self.gputhread)
+              fft_dict[cutimages_shapes[0]] = new_fftc
+
   def updateRectangleImages(self,imgs) :
     """
     Updates the "image" variable in each rectangle based on a dictionary of image layers
@@ -226,6 +241,30 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     for o in self.overlaps :
       overlap_shift_comparisons[o.getShiftComparisonImageCodeNameTuple()]=o.getShiftComparisonImages()
     return overlap_shift_comparisons
+
+  def __getGPUthread(self,interactive) :
+    """
+    Tries to create and return a Reikna Thread object to use for running some computations on the GPU
+    interactive : if True (and some GPU is available), user will be given the option to choose a device 
+    """
+    #first try to import Reikna
+    try :
+      import reikna as rk 
+    except ModuleNotFoundError :
+      logger.warning("WARNING: Reikna isn't installed. Please install with 'pip install reikna' to use GPU devices.")
+      return None
+    #create an API
+    try :
+        api = rk.cluda.cuda_api()
+    except Exception :
+      logger.info('CUDA-based GPU API not available; will try to get one based on OpenCL instead.')
+      try :
+        api = rk.cluda.ocl_api()
+      except Exception :
+        logger.warning('WARNING: Failed to create an OpenCL API; no GPU computation will be available!!')
+        return None
+    #return a thread from the API
+    return api.Thread.create(interactive=interactive)
 
   def __getrawlayers(self, filetype, keep=False):
     logger.info(self.samp)
