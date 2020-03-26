@@ -129,6 +129,10 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
     logger.info("starting align loop for "+self.samp)
 
+    #add the GPU thread and the dictionary of compiled FFTs to the keyword arguments
+    kwargs['gputhread']  = self.gputhread
+    kwargs['gpufftdict'] = self.gpufftdict
+
     sum_mse = 0.; norm=0.
     done = set()
 
