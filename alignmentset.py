@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, logging, methodtools, numpy as np, os, scipy, typing, uncertainties as unc
+import cv2, logging, matplotlib.pyplot as plt, methodtools, numpy as np, os, scipy, typing, uncertainties as unc, uncertainties.unumpy as unp
 
 from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap, OverlapCollection
@@ -316,6 +316,23 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     for i, overlap in enumerate(result.overlaps):
       result.overlaps[i] = [o for o in self.overlaps if o.n == overlap.n][0]
     return result
+
+  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], errorbars=True):
+    vectors = np.array([
+      o.result.dxvec - (o.stitchresult if stitched else 0)
+      for o in self.overlaps
+      if not o.result.exit
+      and o.tag in tags
+    ])
+    if not errorbars: vectors = unp.nominal_values(vectors)
+    plt.errorbar(
+      x=unp.nominal_values(vectors[:,0]),
+      xerr=unp.std_devs(vectors[:,0]),
+      y=unp.nominal_values(vectors[:,1]),
+      yerr=unp.std_devs(vectors[:,1]),
+      fmt='o',
+    )
+    plt.show()
 
 if __name__ == "__main__":
   print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))
