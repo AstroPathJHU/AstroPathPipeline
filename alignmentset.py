@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import collections, cv2, logging, matplotlib.pyplot as plt, methodtools, numpy as np, os, scipy, typing, uncertainties as unc, uncertainties.unumpy as unp
+import cv2, logging, matplotlib.pyplot as plt, methodtools, numpy as np, os, scipy, typing, uncertainties as unc, uncertainties.unumpy as unp
 
 from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap, OverlapCollection
-from .rectangle import ImageStats, Rectangle
+from .rectangle import ImageStats, Rectangle, RectangleCollection, rectangleoroverlapfilter
 from .stitch import ReadStitchResult, stitch
 from .tableio import readtable, writetable
 
@@ -14,7 +14,7 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s"))
 logger.addHandler(handler)
 
-class AlignmentSet(OverlapCollection):
+class AlignmentSet(RectangleCollection, OverlapCollection):
   """
   Main class for aligning a set of images
   """
@@ -41,17 +41,13 @@ class AlignmentSet(OverlapCollection):
 
     self.rectanglefilter = rectangleoroverlapfilter(selectrectangles)
     overlapfilter = rectangleoroverlapfilter(selectoverlaps)
-    self.overlapfilter = lambda o: overlapfilter(o) and o.p1 in self.rectangleindices() and o.p2 in self.rectangleindices()
+    self.overlapfilter = lambda o: overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
 
     if not os.path.exists(os.path.join(self.root1, self.samp)):
       raise IOError(f"{os.path.join(self.root1, self.samp)} does not exist")
 
     self.readmetadata()
     self.rawimages=None
-
-  @methodtools.lru_cache()
-  def rectangleindices(self):
-    return {r.n for r in self.rectangles}
 
   @property
   def dbload(self):
@@ -337,14 +333,6 @@ class AlignmentSet(OverlapCollection):
       fmt='o',
     )
     plt.show()
-
-def rectangleoroverlapfilter(selection):
-  if selection is None:
-    return lambda r: True
-  elif isinstance(selection, collections.abc.Container):
-    return lambda r: r.n in selection
-  else:
-    return selection
 
 if __name__ == "__main__":
   print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))
