@@ -274,6 +274,8 @@ In this section, we show plots that illustrate the results of the alignment proc
 
 \subsection{Alignment movements}
 
+For an alignment with $N$ fields, we have $2N$ coordinates to set.  Except for the fields at the edges of an island, each field borders $8$ others, on its four edges and four corners, for a total of $O(8N)$ overlaps.  We therefore have more constraints than parameters, and it is natural to ask how consistent those constraints are.  There is always uncertainty involved, so the final alignment will never be in perfect agreement with all constraints, but does the agreement significantly improve?
+
 \begin{figure}[ht]
 	\centering
 	\begin{subfigure}{0.24\linewidth}
@@ -316,11 +318,11 @@ In this section, we show plots that illustrate the results of the alignment proc
 		\caption{}
 		\label{fig:stitchresult3}
 	\end{subfigure}
-	\caption{%\cref{sub@fig:alignmentresult1,sub@fig:alignmentresult2,sub@fig:alignmentresult3,sub@fig:alignmentresult4}
-		\cref{sub@fig:alignmentresult1}
-	}
+	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in a small image.  The plots show overlaps between one field and the field \subref{fig:stitchresult2} under it, \subref{fig:stitchresult4} to its right, \subref{fig:stitchresult1} under it and to the left, and \subref{fig:stitchresult3} under it and to the right.  Each point with its error bars indicates a single overlap.  \subref{fig:stitchresult2}-\subref{fig:stitchresult3} The same distributions for the respective overlap directions after stitching has been performed.}
 	\label{fig:alignmentresults}
 \end{figure}
+
+\Cref{fig:alignmentresult1,fig:alignmentresult2,fig:alignmentresult3,fig:alignmentresult4} show
 
 \subsection{Consistency of the errors}
 \label{sec:pulls}

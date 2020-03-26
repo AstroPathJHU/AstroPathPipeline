@@ -124,15 +124,21 @@ def islands():
 
 def alignmentresults():
   A = alignmentset()
+  def plotstyling(fig, ax):
+    plt.xlabel("$\delta x$")
+    plt.ylabel("$\delta y$")
+    plt.xlim(left=-5, right=5)
+    plt.ylim(bottom=-5, top=5)
+    ax.set_aspect("equal", "box")
+
+  kwargs = {
+    "plotstyling": plotstyling,
+    "figurekwargs": {"figsize": (6, 6)}
+  }
   with plt.rc_context(rc=rc):
     for tag in 1, 2, 3, 4:
-      kwargs = {
-        "xlimkwargs": {"left": -5, "right": 5},
-        "ylimkwargs": {"top": -5, "bottom": 5},
-        "tags": [tag],
-      }
-      A.plotresults(saveas=os.path.join(here, f"alignment-result-{tag}.pdf"), **kwargs)
-      A.plotresults(stitched=True, saveas=os.path.join(here, f"stitch-result-{tag}.pdf"), **kwargs)
+      A.plotresults(tags=[tag], saveas=os.path.join(here, f"alignment-result-{tag}.pdf"), **kwargs)
+      A.plotresults(tags=[tag], stitched=True, saveas=os.path.join(here, f"stitch-result-{tag}.pdf"), **kwargs)
 
 if __name__ == "__main__":
   class EqualsEverything:

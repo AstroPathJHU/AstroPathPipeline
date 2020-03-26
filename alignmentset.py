@@ -321,7 +321,10 @@ class AlignmentSet(OverlapCollection):
       result.overlaps[i] = [o for o in self.overlaps if o.n == overlap.n][0]
     return result
 
-  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], xlimkwargs={}, ylimkwargs={}, errorbars=True, saveas=None):
+  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}):
+    fig = plt.figure(**figurekwargs)
+    ax = fig.add_subplot(1, 1, 1)
+
     vectors = np.array([
       o.result.dxvec - (o.stitchresult if stitched else 0)
       for o in self.overlaps
@@ -336,10 +339,7 @@ class AlignmentSet(OverlapCollection):
       yerr=unp.std_devs(vectors[:,1]),
       fmt='o',
     )
-    plt.xlabel("$\delta x$")
-    plt.ylabel("$\delta y$")
-    plt.xlim(**xlimkwargs)
-    plt.ylim(**ylimkwargs)
+    plotstyling(fig, ax)
     if saveas is None:
       plt.show()
     else:
