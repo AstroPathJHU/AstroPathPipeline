@@ -1,5 +1,7 @@
 import cv2, functools, logging, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.feature, skimage.filters, textwrap, uncertainties as unc, uncertainties.unumpy as unp
 
+from .utilities import savefig
+
 logger = logging.getLogger("align")
 
 def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4):
@@ -43,7 +45,7 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
     plt.xlabel(r"$\delta x$")
     plt.ylabel(r"$\delta y$", labelpad=-5)
     if savebigimage:
-      plt.savefig(savebigimage)
+      savefig(savebigimage)
     if showbigimage:
       plt.show()
     if savebigimage:
@@ -53,7 +55,7 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
     plt.xlabel(r"$\delta x$")
     plt.ylabel(r"$\delta y$", labelpad=-5)
     if savesmallimage:
-      plt.savefig(savesmallimage)
+      savefig(savesmallimage)
     if showsmallimage:
       plt.show()
     if savesmallimage:

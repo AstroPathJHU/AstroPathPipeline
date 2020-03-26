@@ -2,6 +2,7 @@
 import numpy as np
 import os, math, cv2
 import matplotlib.pyplot as plt, seaborn as sns
+from .utilities import savefig
 
 class WarpingError(Exception) :
     """
@@ -530,7 +531,7 @@ class CameraWarp(Warp) :
         thm=sns.heatmap(tan_heat_map,ax=ax3)
         ax3.scatter(self.cx,self.cy,marker='*',color='yellow')
         thm.set_title('tangential warp components',fontsize=14)
-        plt.savefig('warp_amounts.png')
+        savefig('warp_amounts.png')
         if show :
             plt.show()
         plt.close()

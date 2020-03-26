@@ -2,6 +2,7 @@
 
 import argparse, functools, os, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
 from ...alignmentset import AlignmentSet
+from ...utilities import savefig
 
 here = os.path.dirname(__file__)
 data = os.path.join(here, "..", "..", "test", "data")
@@ -90,7 +91,7 @@ def maximize1D():
 
     ax.set_xlabel(r"$\delta x$")
     ax.set_ylabel(r"$C(\delta x)$")
-    plt.savefig(os.path.join(here, "1Dmaximization.pdf"))
+    savefig(os.path.join(here, "1Dmaximization.pdf"))
 
     maxpoint.remove()
     maxline.remove()
@@ -107,7 +108,7 @@ def maximize1D():
       plt.text(xbest + sign * deltax/2, Cminus - yrange/20 - yrange/40, r"$\sigma_{\delta x_\text{max}}$", color=deltaxbrackets.get_color(), horizontalalignment="center", verticalalignment="top")
       for sign in (-1, 1)
     ]
-    plt.savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
+    savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
 
     plt.close(fig)
 
@@ -117,7 +118,7 @@ def islands():
     plt.imshow(A.image())
     plt.xticks([])
     plt.yticks([])
-    plt.savefig(os.path.join(here, "islands.pdf"))
+    savefig(os.path.join(here, "islands.pdf"))
     plt.close()
 
 if __name__ == "__main__":

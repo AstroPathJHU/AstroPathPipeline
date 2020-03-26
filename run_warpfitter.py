@@ -1,6 +1,7 @@
 #imports 
 from .warpfitter import WarpFitter
 from .alignmentset import AlignmentSet
+from .utilities import savefig
 from argparse import ArgumentParser
 from scipy import stats
 import os, copy, gc, logging, matplotlib.pyplot as plt, seaborn as sns
@@ -75,7 +76,7 @@ def makeImagePixelPlots(overlaps) :
         ax2.text(0.5,0.8,txt1,horizontalalignment='center',verticalalignment='center',transform=ax2.transAxes)
         ax2.text(0.5,0.7,txt2,horizontalalignment='center',verticalalignment='center',transform=ax2.transAxes)
         fn = f'overlap_{overlap.n}.png'
-        plt.savefig(fn)
+        savefig(fn)
 
 # Helper function to get the dictionary of octets
 def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
