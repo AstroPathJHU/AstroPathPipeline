@@ -166,33 +166,33 @@ def squarepulls(*, bki):
     for y in range(0, 500, 100):
       for x in range(0, 500, 100):
         ax.add_patch(patches.Rectangle((x, y), 100, 100, linewidth=1, edgecolor='r', facecolor='none'))
-    x1, y1 = 255, 250
-    x2, y2 = 352, 247
-    x3, y3 = 349, 353
-    x4, y4 = 247, 350
-    x5, y5 = 252, 248
+    x1, y1 = 270, 140
+    x2, y2 = 332, 157
+    x3, y3 = 349, 243
+    x4, y4 = 247, 230
+    x5, y5 = 252, 158
 
     arrows = [
-      plt.arrow(x1, y1, x2-x1, y2-y1, width=3, length_includes_head=True)
-      plt.arrow(x2, y2, x3-x2, y3-y2, width=3, length_includes_head=True)
-      plt.arrow(x3, y3, x4-x3, y4-y3, width=3, length_includes_head=True)
-      plt.arrow(x4, y4, x5-x4, y5-y4, width=3, length_includes_head=True)
-      plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True)
+      plt.arrow(x1, y1, x2-x1, y2-y1, width=3, length_includes_head=True),
+      plt.arrow(x2, y2, x3-x2, y3-y2, width=3, length_includes_head=True),
+      plt.arrow(x3, y3, x4-x3, y4-y3, width=3, length_includes_head=True),
+      plt.arrow(x4, y4, x5-x4, y5-y4, width=3, length_includes_head=True),
+      plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True, facecolor="orange"),
     ]
 
     savefig(os.path.join(here, "squarepulldiagram.pdf"))
 
     for a in arrows: a.remove()
 
-    x2, y2, x3, y3 = x3, y3, x2+200, y2
+    x2, y2, x3, y3 = x3, y3, x2-100, y2+200
     x4 -= 100
 
     arrows = [
-      plt.arrow(x1, y1, x2-x1, y2-y1, width=3, length_includes_head=True)
-      plt.arrow(x2, y2, x3-x2, y3-y2, width=3, length_includes_head=True)
-      plt.arrow(x3, y3, x4-x3, y4-y3, width=3, length_includes_head=True)
-      plt.arrow(x4, y4, x5-x4, y5-y4, width=3, length_includes_head=True)
-      plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True)
+      plt.arrow(x1, y1, x2-x1, y2-y1, width=3, length_includes_head=True),
+      plt.arrow(x2, y2, x3-x2, y3-y2, width=3, length_includes_head=True),
+      plt.arrow(x3, y3, x4-x3, y4-y3, width=3, length_includes_head=True),
+      plt.arrow(x4, y4, x5-x4, y5-y4, width=3, length_includes_head=True),
+      plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True, facecolor="orange"),
     ]
 
     savefig(os.path.join(here, "diamondpulldiagram.pdf"))
@@ -203,6 +203,7 @@ if __name__ == "__main__":
   class EqualsEverything:
     def __eq__(self, other): return True
   p = argparse.ArgumentParser()
+  p.add_argument("--bki", action="store_true")
   g = p.add_mutually_exclusive_group()
   g.add_argument("--all", action="store_const", dest="which", const=EqualsEverything(), default=EqualsEverything())
   g.add_argument("--maximize", action="store_const", dest="which", const="maximize")
@@ -211,6 +212,7 @@ if __name__ == "__main__":
   g.add_argument("--islands", action="store_const", dest="which", const="islands")
   g.add_argument("--alignmentresults", action="store_const", dest="which", const="alignmentresults")
   g.add_argument("--scanning", action="store_const", dest="which", const="scanning")
+  g.add_argument("--squarepulls", action="store_const", dest="which", const="squarepulls")
   args = p.parse_args()
 
   if args.which == "maximize":
@@ -225,3 +227,5 @@ if __name__ == "__main__":
     alignmentresults()
   if args.which == "scanning":
     scanning()
+  if args.which == "squarepulls":
+    squarepulls(bki=args.bki)
