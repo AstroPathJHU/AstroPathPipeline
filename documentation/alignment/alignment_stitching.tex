@@ -342,6 +342,10 @@ Another interesting feature of the plots is the comparison between \cref{fig:ali
 \subsection{Consistency of the errors}
 \label{sec:pulls}
 
-We also want to ensure that our estimate of the errors on the alignment are correct.  
+We also want to ensure that our estimate of the errors on the alignment are correct.  To do this, we use what is known as a ``pull'' distribution.  The idea is to find a quantity $x$ that we expect to be $0$.  Any actual measurement of $x$ will not necessarily be $0$, but we perform multiple measurements $x_i$, we expect to end up with a normal distribution centered at $0$ and with a width of $\sigma$.  If we instead look at the distribution of $x_i/\sigma$, the width of the normal distribution will be $1$.
+
+In general, we do not know $\sigma$ in advance, but we have an estimate $\sigma_i$ of the error on each individual measurement.  The idea of a pull distribution is that we plot $x_i/\sigma_i$ and look at the width of the resulting distribution.  If it is close to $1$, that indicates that our error estimate was correct.
+
+\Cref{fig:squarepulls} shows the pull distributions for the total displacement from pairwise alignments for moving around in a square.
 
 \end{document}
