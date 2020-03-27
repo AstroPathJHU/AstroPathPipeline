@@ -1,3 +1,7 @@
 *.pdf
 *.aux
 *.out
+!diamondpull1.pdf
+!diamondpull2.pdf
+!squarepull1.pdf
+!squarepull2.pdf

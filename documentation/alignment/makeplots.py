@@ -201,12 +201,15 @@ def squarepulls(*, bki):
     plt.close()
 
     if bki:
-      def plotstyling(fig, ax, squareordiamond):
+      def plotstyling(*, fig, ax, squareordiamond):
         plt.xlabel(rf"$\sum_\text{{{squareordiamond}}}\delta x$, $\sum_\text{{{squareordiamond}}}\delta y$")
         plt.ylabel(rf"Number of {squareordiamond}s")
+        plt.margins(y=0.3)
+        plt.legend()
 
       kwargs = {
-        "figurekwargs": {"figsize": (6, 6)}
+        "figurekwargs": {"figsize": (6, 6)},
+        "verbose": False,
       }
 
       for samp in "M1_1", "M2_3":

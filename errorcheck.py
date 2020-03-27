@@ -45,7 +45,7 @@ def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), q
 
       dxs, dys = zip(*dxvecs)
 
-      if verbose is True or verbose(path, dxs, dys):
+      if verbose is True or verbose is not False and verbose(path, dxs, dys):
         print(" --> ".join(f"{node:4d}" for node in path))
         for nodepair, dx, dy in zip(pairwise(path), dxs, dys):
           print(f"  {nodepair[0]:4d} --> {nodepair[1]:4d}: {dx:10} {dy:10}")
@@ -71,7 +71,7 @@ def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), q
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
   print("x pulls:")
-  plt.hist(pullsx, bins=binning, alpha=0.5)
+  plt.hist(pullsx, bins=binning, alpha=0.5, label=rf"$x$ pulls: $\text{{std dev}} = {np.std(pullsx):.02f}$")
   print(f"mean of middle {100*quantileforstats}%:   ", uncertainties.ufloat(np.mean(pullsx), scipy.stats.sem(pullsx)))
   print(f"std dev of middle {100*quantileforstats}%:", uncertainties.ufloat(np.std(pullsx), np.std(pullsx) / np.sqrt(2*len(pullsx)-2)))
   print("n outliers: ", outliersx)
@@ -79,11 +79,11 @@ def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), q
   print()
   print()
   print("y pulls:")
-  plt.hist(pullsy, bins=binning, alpha=0.5)
+  plt.hist(pullsy, bins=binning, alpha=0.5, label=rf"$y$ pulls: $\text{{std dev}} = {np.std(pullsy):.02f}$")
   print(f"mean of middle {100*quantileforstats}%:   ", uncertainties.ufloat(np.mean(pullsy), scipy.stats.sem(pullsy)))
   print(f"std dev of middle {100*quantileforstats}%:", uncertainties.ufloat(np.std(pullsy), np.std(pullsy) / np.sqrt(2*len(pullsy)-2)))
   print("n outliers: ", outliersy)
-  plotstyling(fig, ax)
+  plotstyling(fig=fig, ax=ax)
 
   if saveas is not None:
     plt.savefig(saveas)
