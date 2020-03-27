@@ -207,7 +207,7 @@ def squarepulls(*, bki):
 
     if bki:
       def plotstyling(*, fig, ax, squareordiamond):
-        plt.xlabel(rf"$\sum_\text{{{squareordiamond}}}\delta x$, $\sum_\text{{{squareordiamond}}}\delta y$")
+        plt.xlabel(rf"$\delta(x,y)^\text{{{squareordiamond}}} / \sigma_{{\delta(x,y)}}^\text{{{squareordiamond}}}$", labelpad=-2)
         plt.ylabel(rf"Number of {squareordiamond}s")
         plt.margins(y=0.3)
         plt.legend()
