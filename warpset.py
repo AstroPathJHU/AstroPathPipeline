@@ -63,9 +63,6 @@ class WarpSet :
         """
         Warps all the image layers in the raw_images dictionary with the current warp and stores them in memory
         """
-        #If we haven't loaded the raw images yet, do it now with the default arguments : /
-        if len(self.images)==0 :
-            self.loadRawImageSet()
         #Warp all the images and store them in memory
         for warpimg in self.images :
             if skip_corners and warpimg.is_corner_only :

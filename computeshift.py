@@ -4,7 +4,7 @@ from .utilities import savefig
 
 logger = logging.getLogger("align")
 
-def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4):
+def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -13,7 +13,12 @@ def computeshift(images, *, windowsize=10, smoothsigma=None, window=None, showsm
   if window is not None:
     images = tuple(window(image) for image in images)
 
-  invfourier = crosscorrelation(images)
+  if gputhread is not None and gpufftdict is not None :
+    images_gpu = tuple(image.astype(np.csingle) for image in images)
+    fftc = gpufftdict[images_gpu[0].shape]
+    invfourier = crosscorrelation_gpu(images_gpu,gputhread,fftc)
+  else :
+    invfourier = crosscorrelation(images)
 
   y, x = np.mgrid[0:invfourier.shape[0],0:invfourier.shape[1]]
   z = invfourier
@@ -126,6 +131,16 @@ def hann(image):
   hanny = np.hanning(N)
   hann = np.outer(hannx, hanny)
   return image * hann
+
+def crosscorrelation_gpu(images,thread,fftc):
+  image_devs = tuple(thread.to_device(image) for image in images)
+  res_devs   = tuple(thread.empty_like(image_dev) for image_dev in image_devs)
+  for resd,imd in zip(res_devs,image_devs) :
+    fftc(resd,imd,0)
+  crosspower = getcrosspower(tuple(res_dev.get() for res_dev in res_devs))
+  cp_dev = thread.to_device(crosspower)
+  fftc(cp_dev,cp_dev,1)
+  return np.real(cp_dev.get())
 
 def crosscorrelation(images):
   fourier = tuple(np.fft.fft2(image) for image in images)
