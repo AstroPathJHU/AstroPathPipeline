@@ -147,6 +147,8 @@ def scanning():
     ax = fig.add_subplot(1, 1, 1)
     plt.xlim(0, 500)
     plt.ylim(500, 0)
+    plt.xlabel("$x$")
+    plt.ylabel("$y$")
     for y in range(0, 500, 100):
       for x in range(0, 500, 100):
         ax.add_patch(patches.Rectangle((x, y), 100, 100, linewidth=1, edgecolor='r', facecolor='none'))
