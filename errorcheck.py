@@ -3,7 +3,7 @@
 import matplotlib.pyplot as plt, networkx as nx, numpy as np, scipy, uncertainties
 from more_itertools import pairwise
 
-def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None):
+def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
   dct = {
     1: (-1, -1),
     2: ( 0, -1),
@@ -68,6 +68,8 @@ def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), q
   outliersy = len(pullsy[(minpull > pullsy) | (pullsy > maxpull)])
   pullsx = pullsx[(minpull <= pullsx) & (pullsx <= maxpull)]
   pullsy = pullsy[(minpull <= pullsy) & (pullsy <= maxpull)]
+  fig = plt.figure(**figurekwargs)
+  ax = fig.add_subplot(1, 1, 1)
   print("x pulls:")
   plt.hist(pullsx, bins=binning, alpha=0.5)
   print(f"mean of middle {100*quantileforstats}%:   ", uncertainties.ufloat(np.mean(pullsx), scipy.stats.sem(pullsx)))
@@ -81,3 +83,8 @@ def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), q
   print(f"mean of middle {100*quantileforstats}%:   ", uncertainties.ufloat(np.mean(pullsy), scipy.stats.sem(pullsy)))
   print(f"std dev of middle {100*quantileforstats}%:", uncertainties.ufloat(np.std(pullsy), np.std(pullsy) / np.sqrt(2*len(pullsy)-2)))
   print("n outliers: ", outliersy)
+  plotstyling(fig, ax)
+
+  if saveas is not None:
+    plt.savefig(saveas)
+    plt.close()

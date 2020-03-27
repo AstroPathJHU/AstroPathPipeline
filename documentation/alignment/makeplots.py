@@ -2,6 +2,7 @@
 
 import argparse, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
 from ...alignmentset import AlignmentSet
+from ...errorcheck import errorcheck
 from ...utilities import savefig
 
 here = os.path.dirname(__file__)
@@ -15,13 +16,13 @@ rc = {
 }
 
 @functools.lru_cache()
-def alignmentset(*, dapi=False):
+def alignmentset(*, root1=data, root2=os.path.join(data, "flatw"), samp="M21_1", dapi=False):
   if dapi:
-    A = alignmentset()
+    A = alignmentset(root1=root1, root2=root2, samp=samp)
     A.getDAPI()
     return A
 
-  A = AlignmentSet(data, os.path.join(data, "flatw"), "M21_1")
+  A = AlignmentSet(root1, root2, samp)
   A.readalignments()
   A.readstitchresult()
   return A
@@ -198,6 +199,20 @@ def squarepulls(*, bki):
     savefig(os.path.join(here, "diamondpulldiagram.pdf"))
 
     plt.close()
+
+    if bki:
+      def plotstyling(fig, ax, squareordiamond):
+        plt.xlabel(rf"$\sum_\text{{{squareordiamond}}}\delta x$, $\sum_\text{{{squareordiamond}}}\delta y$")
+        plt.ylabel(rf"Number of {squareordiamond}s")
+
+      kwargs = {
+        "figurekwargs": {"figsize": (6, 6)}
+      }
+
+      for samp in "M1_1", "M2_3":
+        a = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
+        errorcheck(a, tagsequence=[4, 2, 6, 8], saveas=os.path.join(here, "squarepull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
+        errorcheck(a, tagsequence=[1, 3, 9, 7], saveas=os.path.join(here, "diamondpull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
 
 if __name__ == "__main__":
   class EqualsEverything:
