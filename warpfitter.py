@@ -1,7 +1,8 @@
 #imports
 from .warpset import WarpSet
-from .alignmentset import AlignmentSet, Rectangle
-from .overlap import Overlap
+from .alignmentset import AlignmentSet
+from .overlap import Overlap, OverlapList
+from .rectangle import Rectangle, rectangleoroverlapfilter
 from .tableio import readtable,writetable
 from .utilities import savefig
 import numpy as np, scipy, matplotlib.pyplot as plt
@@ -363,19 +364,13 @@ class WarpFitter :
     def __setupWorkingDirectory(self,overlaps) :
         #read all the overlaps in this sample's metadata and reduce to what will actually be used
         all_overlaps = readtable(os.path.join(self.metafile_dir,self.samp_name+OVERLAP_FILE_EXT),Overlap)
-        if overlaps==-1 :
-            olaps = all_overlaps 
-        elif isinstance(overlaps,tuple) :
-            olaps = all_overlaps[overlaps[0]-1:overlaps[1]]
-        elif isinstance(overlaps,list) :
-            olaps = [all_overlaps[i-1] for i in overlaps]
-        else :
-            raise FittingError(f'Cannot recognize overlap choice from overlaps={overlaps} (must be a tuple, list, or -1)')
+        selection = rectangleoroverlapfilter(overlaps, compatibility=True)
+        olaps = OverlapList([o for o in all_overlaps if selection(o)])
         if len(olaps)==0 :
             raise FittingError(f'Overlap choice {overlaps} does not represent a valid selection for this sample!')
         #read all the rectangles and store the relevant ones
         all_rectangles = readtable(os.path.join(self.metafile_dir,self.samp_name+RECTANGLE_FILE_EXT),Rectangle)
-        rects = [r for r in all_rectangles if r.n in ([o.p1 for o in olaps]+[o.p2 for o in olaps])]
+        rects = [r for r in all_rectangles if olaps.selectoverlaprectangles(r)]
         #create the working directory and write to it the new metadata .csv files
         if not os.path.isdir(self.working_dir) :
             os.mkdir(self.working_dir)
@@ -401,7 +396,7 @@ class WarpFitter :
 
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
     def __initializeAlignmentSet(self) :
-        a = AlignmentSet(os.path.join(*([os.sep]+self.metafile_dir.split(os.sep)[:-2])),self.working_dir,self.samp_name,interactive=True)
+        a = AlignmentSet(os.path.join(self.metafile_dir, "..", ".."), self.working_dir,self.samp_name,interactive=True)
         a.rectanglesoverlaps=self.rectangles, self.overlaps
         if self.mean_image is not None :
             a.meanimage = self.mean_image

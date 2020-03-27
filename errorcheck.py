@@ -3,7 +3,7 @@
 import matplotlib.pyplot as plt, networkx as nx, numpy as np, scipy, uncertainties
 from more_itertools import pairwise
 
-def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), quantileforstats=0.99, verbose=True, stitchresult=None):
+def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None):
   dct = {
     1: (-1, -1),
     2: ( 0, -1),

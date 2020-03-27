@@ -1,6 +1,7 @@
 import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
+from .rectangle import rectangleoroverlapfilter as overlapfilter
 from .utilities import covariance_matrix, savefig
 
 @dataclasses.dataclass
@@ -196,6 +197,18 @@ class OverlapCollection(abc.ABC):
   @property
   def overlapsdict(self):
     return {(o.p1, o.p2): o for o in self.overlaps}
+
+  @property
+  def overlaprectangleindices(self):
+    return frozenset(o.p1 for o in self.overlaps) | frozenset(o.p2 for o in self.overlaps)
+
+  @property
+  def selectoverlaprectangles(self):
+    return overlapfilter(self.overlaprectangleindices)
+
+class OverlapList(list, OverlapCollection):
+  @property
+  def overlaps(self): return self
 
 @dataclasses.dataclass
 class AlignmentResult:
