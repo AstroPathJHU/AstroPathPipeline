@@ -5,7 +5,7 @@ from .overlap import Overlap, OverlapList
 from .rectangle import Rectangle, rectangleoroverlapfilter
 from .tableio import readtable,writetable
 import numpy as np, scipy, matplotlib.pyplot as plt
-import os, logging, copy, shutil
+import os, logging, copy, shutil, platform
 
 #global variables
 OVERLAP_FILE_EXT   = '_overlap.csv'
@@ -395,7 +395,9 @@ class WarpFitter :
 
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
     def __initializeAlignmentSet(self) :
-        a = AlignmentSet(os.path.join(self.metafile_dir, "..", ".."), self.working_dir,self.samp_name,interactive=True)
+        #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
+        customGPUdevice = True if platform.system()=='Darwin' else False
+        a = AlignmentSet(os.path.join(self.metafile_dir, "..", ".."), self.working_dir,self.samp_name,interactive=customGPUdevice,useGPU=True)
         a.rectanglesoverlaps=self.rectangles, self.overlaps
         if self.mean_image is not None :
             a.meanimage = self.mean_image

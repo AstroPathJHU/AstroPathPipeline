@@ -4,6 +4,7 @@ from .alignmentset import AlignmentSet
 from argparse import ArgumentParser
 from scipy import stats
 import os, copy, gc, logging, matplotlib.pyplot as plt, seaborn as sns
+import cProfile
 
 #constants
 logger = logging.getLogger("warpfitter")
@@ -76,6 +77,7 @@ def makeImagePixelPlots(overlaps) :
         ax2.text(0.5,0.7,txt2,horizontalalignment='center',verticalalignment='center',transform=ax2.transAxes)
         fn = f'overlap_{overlap.n}.png'
         plt.savefig(fn)
+        plt.close()
 
 # Helper function to get the dictionary of octets
 def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
@@ -277,6 +279,7 @@ if args.mode=='fit' :
     result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,
                           max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
                           polish=True,print_every=args.print_every,maxiter=args.max_iter)
+    #cProfile.run('fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,polish=True,print_every=args.print_every,maxiter=args.max_iter)')
 
 logger.info('All done : )')
 
