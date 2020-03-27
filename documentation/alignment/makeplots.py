@@ -146,7 +146,6 @@ def scanning():
     ax = fig.add_subplot(1, 1, 1)
     plt.xlim(0, 500)
     plt.ylim(500, 0)
-#    ax.invert_yaxis()
     for y in range(0, 500, 100):
       for x in range(0, 500, 100):
         ax.add_patch(patches.Rectangle((x, y), 100, 100, linewidth=1, edgecolor='r', facecolor='none'))
@@ -156,6 +155,48 @@ def scanning():
         else:
           plt.arrow(x+50, y+50, 100, 0, width=3, length_includes_head=True)
     savefig(os.path.join(here, "scanning.pdf"))
+    plt.close()
+
+def squarepulls(*, bki):
+  with plt.rc_context(rc=rc):
+    fig = plt.figure(figsize=(6, 6))
+    ax = fig.add_subplot(1, 1, 1)
+    plt.xlim(0, 500)
+    plt.ylim(500, 0)
+    for y in range(0, 500, 100):
+      for x in range(0, 500, 100):
+        ax.add_patch(patches.Rectangle((x, y), 100, 100, linewidth=1, edgecolor='r', facecolor='none'))
+    x1, y1 = 255, 250
+    x2, y2 = 352, 247
+    x3, y3 = 349, 353
+    x4, y4 = 247, 350
+    x5, y5 = 252, 248
+
+    arrows = [
+      plt.arrow(x1, y1, x2-x1, y2-y1, width=3, length_includes_head=True)
+      plt.arrow(x2, y2, x3-x2, y3-y2, width=3, length_includes_head=True)
+      plt.arrow(x3, y3, x4-x3, y4-y3, width=3, length_includes_head=True)
+      plt.arrow(x4, y4, x5-x4, y5-y4, width=3, length_includes_head=True)
+      plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True)
+    ]
+
+    savefig(os.path.join(here, "squarepulldiagram.pdf"))
+
+    for a in arrows: a.remove()
+
+    x2, y2, x3, y3 = x3, y3, x2+200, y2
+    x4 -= 100
+
+    arrows = [
+      plt.arrow(x1, y1, x2-x1, y2-y1, width=3, length_includes_head=True)
+      plt.arrow(x2, y2, x3-x2, y3-y2, width=3, length_includes_head=True)
+      plt.arrow(x3, y3, x4-x3, y4-y3, width=3, length_includes_head=True)
+      plt.arrow(x4, y4, x5-x4, y5-y4, width=3, length_includes_head=True)
+      plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True)
+    ]
+
+    savefig(os.path.join(here, "diamondpulldiagram.pdf"))
+
     plt.close()
 
 if __name__ == "__main__":
