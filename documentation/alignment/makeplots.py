@@ -127,14 +127,15 @@ def alignmentresults():
   A = alignmentset()
   def plotstyling(fig, ax):
     plt.xlabel("$\delta x$")
-    plt.ylabel("$\delta y$")
+    plt.ylabel("$\delta y$", labelpad=-10)
     plt.xlim(left=-5, right=5)
     plt.ylim(bottom=-5, top=5)
+    plt.subplots_adjust(bottom=0.2, left=0.15)
     ax.set_aspect("equal", "box")
 
   kwargs = {
     "plotstyling": plotstyling,
-    "figurekwargs": {"figsize": (6, 6)}
+    "figurekwargs": {"figsize": (3, 3)}
   }
   with plt.rc_context(rc=rc):
     for tag in 1, 2, 3, 4:
