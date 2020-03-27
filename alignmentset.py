@@ -18,7 +18,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None):
+  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, useGPU=False):
     """
     Directory structure should be
     root1/
@@ -48,7 +48,8 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
     self.readmetadata()
     self.rawimages=None
-    self.gputhread=self.__getGPUthread(interactive)
+
+    self.gputhread=self.__getGPUthread(interactive) if useGPU else None
 
   @property
   def dbload(self):
