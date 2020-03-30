@@ -98,24 +98,18 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   covariance = 2 * error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
 
   exit = 0
-
-  otherbigindices = skimage.feature.corner_peaks(z, min_distance=windowsize, threshold_abs=z[maxidx] - error_crosscorrelation)
-  for idx in otherbigindices:
-    if np.all(idx == maxidx): continue
-    displacement = idx - maxidx
-    dist = np.linalg.norm(displacement)
-    angle = np.arctan2(displacement[1], displacement[0])
-    rotationmatrix = np.array([[np.cos(angle), np.sin(angle)], [-np.sin(angle), np.cos(angle)]])
-
-    covariance = rotationmatrix @ covariance @ rotationmatrix.T
-    covariance += [[dist**2, 0], [0, 0]]
-    covariance = rotationmatrix.T @ covariance @ rotationmatrix
-    exit = 1
-
   dx, dy = unc.correlated_values(
     -r.x,
     covariance
   )
+
+  otherbigindices = skimage.feature.corner_peaks(z, min_distance=windowsize, threshold_abs=z[maxidx] - error_crosscorrelation)
+  for idx in otherbigindices:
+    if np.all(idx == maxidx): continue
+    dx = unc.ufloat(0, 9999.)
+    dy = unc.ufloat(0, 9999.)
+    exit = 1
+    break
 
   return OptimizeResult(
     dx=dx,
