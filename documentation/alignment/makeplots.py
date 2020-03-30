@@ -225,10 +225,16 @@ def squarepulls(*, bki):
 def stitchpulls(*, bki):
   if bki:
     with plt.rc_context(rc=rc):
+      def plotstyling(*, fig, ax):
+        plt.xlabel(rf"$\delta(x,y)^\text{{overlap}} / \sigma_{{\delta(x,y)}}^\text{{overlap}}$", labelpad=-2)
+        plt.ylabel(rf"Number of overlaps")
+        plt.margins(y=0.3)
+        plt.legend()
+
       for samp in "M1_1", "M2_3":
         a = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
         for tag in 1, 2, 3, 4:
-          a.plotresults(tags=[tag], stitched=True, pull=True, saveas=os.path.join(here, f"stitch-pull-{tag}-{samp[1]}.pdf"), **kwargs)
+          a.plotresults(tags=[tag], figurekwargs={"figsize": (6, 6)}, stitched=True, pull=True, plotstyling=plotstyling, saveas=os.path.join(here, f"stitch-pull-{tag}-{samp[1]}.pdf"))
 
 if __name__ == "__main__":
   class EqualsEverything:

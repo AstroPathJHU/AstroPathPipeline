@@ -2,8 +2,9 @@
 
 import matplotlib.pyplot as plt, networkx as nx, numpy as np, scipy, uncertainties
 from more_itertools import pairwise
+from .utilities import pullhist
 
-def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
+def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
   dct = {
     1: (-1, -1),
     2: ( 0, -1),
@@ -20,7 +21,7 @@ def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), q
 
   overlaps = alignmentset.overlaps
   g = alignmentset.overlapgraph()
-  pullsx, pullsy = [], []
+  xresiduals, yresiduals = [], []
   overlapdict = nx.get_edge_attributes(g, "overlap")
 
   for o in overlaps:
@@ -60,35 +61,17 @@ def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-10, 10, 51), q
     print()
     print()
     print()
-  pullsx = np.array(pullsx)
-  pullsy = np.array(pullsy)
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
   print("x pulls:")
-  pull(xresiduals, binning=binning, verbose=True, alpha=0.5, label="$x$ pulls", stdinlabel=True)
+  pullhist(xresiduals, binning=binning, verbose=True, alpha=0.5, label="$x$ pulls", stdinlabel=True)
   print()
   print()
   print()
   print("y pulls:")
-  pull(yresiduals, binning=binning, verbose=True, alpha=0.5, label="$y$ pulls", stdinlabel=True)
+  pullhist(yresiduals, binning=binning, verbose=True, alpha=0.5, label="$y$ pulls", stdinlabel=True)
   plotstyling(fig=fig, ax=ax)
 
   if saveas is not None:
     plt.savefig(saveas)
     plt.close()
-
-def pullhist(array, *, binning=None, verbose=True, label="", stdinlabel=True, quantileforstats=1, **kwargs)
-  pulls = np.array([_.n / _.s for _ in array])
-  quantiles = np.array(sorted(((1-quantileforstats)/2, (1+quantileforstats)/2)))
-  minpull, maxpull = np.quantile(pulls, quantiles)
-  outliers = len(pulls[(minpull > pulls) | (pulls > maxpull)])
-  pulls = pulls[(minpull <= pulls) & (pulls <= maxpull)]
-
-  if stdinlabel:
-    if label: label += ": "
-    label += rf"$\text{{std dev}} = {np.std(pullsx):.02f}$"
-  plt.hist(pullsx, bins=binning, alpha=0.5, label=label, **kwargs)
-  if verbose:
-    print(f"mean of middle {100*quantileforstats}%:   ", uncertainties.ufloat(np.mean(pullsx), scipy.stats.sem(pullsx)))
-    print(f"std dev of middle {100*quantileforstats}%:", uncertainties.ufloat(np.std(pullsx), np.std(pullsx) / np.sqrt(2*len(pullsx)-2)))
-    print("n outliers: ", outliersx)

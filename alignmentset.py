@@ -7,7 +7,7 @@ from .overlap import AlignmentResult, Overlap, OverlapCollection
 from .rectangle import ImageStats, Rectangle, RectangleCollection, rectangleoroverlapfilter
 from .stitch import ReadStitchResult, stitch
 from .tableio import readtable, writetable
-from .utilities import savefig
+from .utilities import pullhist, savefig
 
 logger = logging.getLogger("align")
 logger.setLevel(logging.DEBUG)
@@ -368,7 +368,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       result.overlaps[i] = [o for o in self.overlaps if o.n == overlap.n][0]
     return result
 
-  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pullkwargs={}):
+  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pullkwargs={}, pullbinning=None):
     fig = plt.figure(**figurekwargs)
     ax = fig.add_subplot(1, 1, 1)
 
@@ -380,21 +380,26 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     ])
     if not errorbars: vectors = unp.nominal_values(vectors)
     if pull:
+      if pullbinning is None: pullbinning = np.linspace(-5, 5, 51)
       pullhist(
         vectors[:,0],
         label="$x$ pulls",
         stdinlabel=True,
+        alpha=0.5,
+        binning=pullbinning,
         **pullkwargs,
       )
       pullhist(
         vectors[:,1],
         label="$y$ pulls",
         stdinlabel=True,
+        alpha=0.5,
+        binning=pullbinning,
         **pullkwargs,
       )
     else:
-      if pullkwargs != {}:
-        raise ValueError("Can't provide pullkwargs for a scatter plot")
+      if pullkwargs != {} or pullbinning is not None:
+        raise ValueError("Can't provide pull kwargs for a scatter plot")
       plt.errorbar(
         x=unp.nominal_values(vectors[:,0]),
         xerr=unp.std_devs(vectors[:,0]),
@@ -403,7 +408,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
         fmt='o',
       )
 
-    plotstyling(fig, ax)
+    plotstyling(fig=fig, ax=ax)
     if saveas is None:
       plt.show()
     else:
