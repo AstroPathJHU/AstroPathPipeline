@@ -222,6 +222,14 @@ def squarepulls(*, bki):
         errorcheck(a, tagsequence=[4, 2, 6, 8], saveas=os.path.join(here, "squarepull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
         errorcheck(a, tagsequence=[1, 3, 9, 7], saveas=os.path.join(here, "diamondpull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
 
+def stitchpulls(*, bki):
+  if bki:
+    with plt.rc_context(rc=rc):
+      for samp in "M1_1", "M2_3":
+        a = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
+        for tag in 1, 2, 3, 4:
+          a.plotresults(tags=[tag], stitched=True, pull=True, saveas=os.path.join(here, f"stitch-pull-{tag}-{samp[1]}.pdf"), **kwargs)
+
 if __name__ == "__main__":
   class EqualsEverything:
     def __eq__(self, other): return True
@@ -236,6 +244,7 @@ if __name__ == "__main__":
   g.add_argument("--alignmentresults", action="store_const", dest="which", const="alignmentresults")
   g.add_argument("--scanning", action="store_const", dest="which", const="scanning")
   g.add_argument("--squarepulls", action="store_const", dest="which", const="squarepulls")
+  g.add_argument("--stitchpulls", action="store_const", dest="which", const="stitchpulls")
   args = p.parse_args()
 
   if args.which == "maximize":
@@ -252,3 +261,5 @@ if __name__ == "__main__":
     scanning()
   if args.which == "squarepulls":
     squarepulls(bki=args.bki)
+  if args.which == "stitchpulls":
+    stitchpulls(bki=args.bki)

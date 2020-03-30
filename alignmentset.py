@@ -368,7 +368,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       result.overlaps[i] = [o for o in self.overlaps if o.n == overlap.n][0]
     return result
 
-  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}):
+  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pullkwargs={}):
     fig = plt.figure(**figurekwargs)
     ax = fig.add_subplot(1, 1, 1)
 
@@ -379,13 +379,30 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       and o.tag in tags
     ])
     if not errorbars: vectors = unp.nominal_values(vectors)
-    plt.errorbar(
-      x=unp.nominal_values(vectors[:,0]),
-      xerr=unp.std_devs(vectors[:,0]),
-      y=unp.nominal_values(vectors[:,1]),
-      yerr=unp.std_devs(vectors[:,1]),
-      fmt='o',
-    )
+    if pull:
+      pullhist(
+        vectors[:,0],
+        label="$x$ pulls",
+        stdinlabel=True,
+        **pullkwargs,
+      )
+      pullhist(
+        vectors[:,1],
+        label="$y$ pulls",
+        stdinlabel=True,
+        **pullkwargs,
+      )
+    else:
+      if pullkwargs != {}:
+        raise ValueError("Can't provide pullkwargs for a scatter plot")
+      plt.errorbar(
+        x=unp.nominal_values(vectors[:,0]),
+        xerr=unp.std_devs(vectors[:,0]),
+        y=unp.nominal_values(vectors[:,1]),
+        yerr=unp.std_devs(vectors[:,1]),
+        fmt='o',
+      )
+
     plotstyling(fig, ax)
     if saveas is None:
       plt.show()
