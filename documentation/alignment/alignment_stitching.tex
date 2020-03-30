@@ -151,7 +151,8 @@ is the Hessian matrix of $C(\delta\vec{r})$.
 
 For the final step, we multiply the covariance matrix by a factor determined empirically, as we will describe in \cref{sec:pulls}.  This factor is found to be $\frac{1}{16}$, which means that the original error estimate was too conservative by a factor of $4$.  One possibility for this overestimate is that, if the alignment is not perfect, \cref{eq:pixelerror} overestimates the error on pixel intensity in regions where cell boundaries do not line up correctly.  Whatever the explanation, the plots in \cref{sec:pulls} will show that the corrected covariance matrix
 \begin{equation}
-\matrixbold{cov}_{\delta\vec{r}_\text{max}}^\text{corr}=\frac{1}{2}\sigma_C(\delta\vec{r}_\text{max})\matrixbold{H}^{-1}(\delta\vec{r}_\text{max})
+\matrixbold{cov}_{\delta\vec{r}_\text{max}}^\text{corr}=\frac{1}{8}\sigma_C(\delta\vec{r}_\text{max})\matrixbold{H}^{-1}(\delta\vec{r}_\text{max})
+\label{eq:overlapcovariancecorrected}
 \end{equation}
 is a good estimate of our uncertainty.
 
@@ -346,7 +347,7 @@ We also want to ensure that our estimate of the errors on the alignment are corr
 
 In general, we do not know $\sigma$ in advance, but we have an estimate $\sigma_i$ of the error on each individual measurement.  The idea of a pull distribution is that we plot $x_i/\sigma_i$ and look at the width of the resulting distribution.  If it is close to $1$, that indicates that our error estimate was correct.
 
-\Cref{fig:squarepulls} shows the pull distributions for the total displacement from pairwise alignments for moving around in a square or diamond.  For a perfect alignment, this quantity would be $0$, so it is a good candidate for a pull distribution.  As the figures show, the standard deviations of all pull distributions are close to $1$, indicating that our error estimates for both edge and corner overlaps is reasonable.
+\Cref{fig:squarepulls} shows the pull distributions for the total displacement from pairwise alignments for moving around in a square or diamond.  For a perfect alignment, this quantity would be $0$, so it is a good candidate for a pull distribution.  As the figures show, the standard deviations of all pull distributions are close to $1$, indicating that our error estimates for both edge and corner overlaps are reasonable.
 
 \begin{figure}[ht]
 	\centering
@@ -383,6 +384,8 @@ In general, we do not know $\sigma$ in advance, but we have an estimate $\sigma_
 	\caption{\subref{fig:squarepull1}, \subref{fig:squarepull2} The pull distributions in $x$ and $y$ for the total displacement obtained from pairwise alignment when moving around in a square, as shown in \subref{fig:squarepulldiagram}, for two different images collected with the Vectra 3.0 microscope.  \subref{fig:diamondpull1}, \subref{fig:diamondpull2} The corresponding pull distributions for those two datasets when moving in a diamond, as shown in \subref{fig:diamondpulldiagram}.}
 	\label{fig:squarepulls}
 \end{figure}
+
+\Cref{fig:stitchpulls} shows a different metric for our error estimation.  In these plots, we calculate the misalignment for each overlapping pair of fields after stitching, as in \cref{fig:stitchresult1,fig:stitchresult2,fig:stitchresult3,fig:stitchresult4}, and create pull distributions for the $x$ and $y$ resdiuals.  Again, the standard deviations of the pull distributions are close to $1$.
 
 \begin{figure}[ht]
 	\centering
@@ -426,8 +429,14 @@ In general, we do not know $\sigma$ in advance, but we have an estimate $\sigma_
 		\caption{}
 		\label{fig:stitchpull12}
 	\end{subfigure}
-	\caption{Pull distributions in $x$ and $y$ for the residual pairwise misalignment between an  after stitching, as shown in \cref{fig:stitchresult4,fig:stitchresult3,fig:stitchresult2,fig:stitchresult1}, for two different images collected with the Vectra 3.0 microscope.  The plots show distributions for overlaps between one field and the field \subref{fig:stitchpull41}, \subref{fig:stitchpull42} to its right, \subref{fig:stitchpull31}, \subref{fig:stitchpull32} under it and to the right, \subref{fig:stitchpull21}, \subref{fig:stitchpull22}  under it, and \subref{fig:stitchpull11}, \subref{fig:stitchpull12}  under it and to the left.}
+	\caption{Pull distributions in $x$ and $y$ for the residual pairwise misalignment after stitching, as shown in \cref{fig:stitchresult4,fig:stitchresult3,fig:stitchresult2,fig:stitchresult1}, for two different images collected with the Vectra 3.0 microscope.  The plots show distributions for overlaps between one field and the field \subref{fig:stitchpull41}, \subref{fig:stitchpull42} to its right, \subref{fig:stitchpull31}, \subref{fig:stitchpull32} under it and to the right, \subref{fig:stitchpull21}, \subref{fig:stitchpull22}  under it, and \subref{fig:stitchpull11}, \subref{fig:stitchpull12}  under it and to the left.}
 	\label{fig:stitchpulls}
 \end{figure}
+
+The standard deviations of the pull distributions were used to determine the factor of $1/16$ used to correct \cref{eq:overlapcovariance} to \cref{eq:overlapcovariancecorrected}.  The fact that, after making this correction, the standard deviations are $1$ for multiple different images as well as for pull distributions of two different quantities lends confidence to the \emph{method} of error estimation.  Remaining deviations from $1$ indicate that there is still some amount of room for improvement.
+
+\section{Summary}
+
+In this note, we describe the alignment and stitching of a microscope image composed of up to $1000$ fields.  Our procedure includes an estimation of the error on each field, which are propagated throughout the procedure to obtain a final error estimate and covariance matrix for the positions of the fields.  The method provided here runs in a few minutes and forms an important part of the data calibration in the astropath framework.
 
 \end{document}
