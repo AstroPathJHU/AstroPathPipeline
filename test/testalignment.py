@@ -43,6 +43,19 @@ class TestAlignment(unittest.TestCase):
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
+  def testGPU(self):
+    a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
+    agpu = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1", useGPU=True, forceGPU=True)
+
+    readfilename = os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv")
+    a.readalignments(filename=readfilename)
+
+    agpu.getDAPI()
+    agpu.align(write_result=False)
+
+    for o, ogpu in zip(a.overlaps, agpu.overlaps):
+      assertAlmostEqual(o.result, ogpu.result, rtol=1e-5, atol=1e-5)
+
   def testReadAlignment(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
     readfilename = os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv")

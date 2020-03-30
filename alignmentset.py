@@ -19,7 +19,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, useGPU=False):
+  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, useGPU=False, forceGPU=False):
     """
     Directory structure should be
     root1/
@@ -50,7 +50,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     self.readmetadata()
     self.rawimages=None
 
-    self.gputhread=self.__getGPUthread(interactive) if useGPU else None
+    self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
 
   @property
   def dbload(self):
@@ -249,7 +249,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       overlap_shift_comparisons[o.getShiftComparisonImageCodeNameTuple()]=o.getShiftComparisonImages()
     return overlap_shift_comparisons
 
-  def __getGPUthread(self,interactive) :
+  def __getGPUthread(self, interactive, force) :
     """
     Tries to create and return a Reikna Thread object to use for running some computations on the GPU
     interactive : if True (and some GPU is available), user will be given the option to choose a device 
@@ -258,6 +258,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     try :
       import reikna as rk 
     except ModuleNotFoundError :
+      if force: raise
       logger.warning("WARNING: Reikna isn't installed. Please install with 'pip install reikna' to use GPU devices.")
       return None
     #create an API
@@ -273,6 +274,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     try :
       api = rk.cluda.ocl_api()
     except Exception :
+      if force: raise
       logger.warning('WARNING: Failed to create an OpenCL API; no GPU computation will be available!!')
       return None
     #return a thread from the API
