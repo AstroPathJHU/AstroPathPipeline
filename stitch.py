@@ -44,6 +44,9 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   rd = rectangledict(rectangles)
   alloverlaps = overlaps
   overlaps = [o for o in overlaps if not o.result.exit]
+  for o in overlaps[:]:
+    if o.p2 > o.p1 and any((oo.p2, oo.p1) == (o.p1, o.p2) for oo in overlaps):
+      overlaps.remove(o)
 
   for o in overlaps:
     ix = 2*rd[o.p1]
@@ -61,20 +64,20 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     jj = np.ix_((jx,jy), (jx,jy))
     inversecovariance = np.linalg.inv(o.result.covariance) * scaleby**2 / scaleoverlaperror**2
 
-    A[ii] += inversecovariance / 2
-    A[ij] -= inversecovariance / 2
-    A[ji] -= inversecovariance / 2
-    A[jj] += inversecovariance / 2
+    A[ii] += inversecovariance
+    A[ij] -= inversecovariance
+    A[ji] -= inversecovariance
+    A[jj] += inversecovariance
 
     i = np.ix_((ix, iy))
     j = np.ix_((jx, jy))
 
     constpiece = (-unp.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec) / scaleby
 
-    b[i] += inversecovariance @ constpiece
-    b[j] -= inversecovariance @ constpiece
+    b[i] += 2 * inversecovariance @ constpiece
+    b[j] -= 2 * inversecovariance @ constpiece
 
-    c += constpiece @ inversecovariance @ constpiece / 2
+    c += constpiece @ inversecovariance @ constpiece
 
   dxs, dys = zip(*(o.result.dxvec for o in overlaps))
 
@@ -177,11 +180,14 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
   rectanglex = {r.n: xx for r, xx in zip(rectangles, x)}
   alloverlaps = overlaps
   overlaps = [o for o in overlaps if not o.result.exit]
+  for o in overlaps[:]:
+    if o.p2 > o.p1 and any((oo.p2, oo.p1) == (o.p1, o.p2) for oo in overlaps):
+      overlaps.remove(o)
 
   for o in overlaps:
     x1 = rectanglex[o.p1]
     x2 = rectanglex[o.p2]
-    twonll += 0.5 * cp.quad_form(
+    twonll += cp.quad_form(
       x1 - x2 - unp.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec,
       np.linalg.inv(o.result.covariance)
     )

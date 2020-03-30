@@ -1,8 +1,10 @@
 import cv2, functools, logging, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.feature, skimage.filters, textwrap, uncertainties as unc, uncertainties.unumpy as unp
 
+from .utilities import savefig
+
 logger = logging.getLogger("align")
 
-def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, showbigimage=False, errorfactor=1/2):
+def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -43,8 +45,26 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   yy = y[slc]
   zz = z[slc]
 
-  if showbigimage: plt.imshow(z)
-  if showsmallimage: plt.imshow(zz)
+  if showbigimage or savebigimage:
+    plt.imshow(z, extent=[x.min(), x.max(), y.min(), y.max()])
+    plt.xlabel(r"$\delta x$")
+    plt.ylabel(r"$\delta y$", labelpad=-5)
+    if savebigimage:
+      savefig(savebigimage)
+    if showbigimage:
+      plt.show()
+    if savebigimage:
+      plt.close()
+  if showsmallimage or savesmallimage:
+    plt.imshow(zz, extent=[xx.min(), xx.max(), yy.min(), yy.max()])
+    plt.xlabel(r"$\delta x$")
+    plt.ylabel(r"$\delta y$", labelpad=-5)
+    if savesmallimage:
+      savefig(savesmallimage)
+    if showsmallimage:
+      plt.show()
+    if savesmallimage:
+      plt.close()
 
   xx = np.ravel(xx)
   yy = np.ravel(yy)
@@ -69,13 +89,13 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   ])
 
   shifted = shiftimg(images, -r.x[0], -r.x[1], clip=False)
-  staterror = abs(shifted[0] - shifted[1]) / 2
+  staterror = abs(shifted[0] - shifted[1])
   #cross correlation evaluated at 0
   error_crosscorrelation = np.sqrt(np.sum(
     staterror**2 * (shifted[0]**2 + shifted[1]**2)
   ))
 
-  covariance = error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
+  covariance = 2 * error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
 
   exit = 0
 

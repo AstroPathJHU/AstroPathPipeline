@@ -4,6 +4,7 @@ from .alignmentset import AlignmentSet
 from .overlap import Overlap, OverlapList
 from .rectangle import Rectangle, rectangleoroverlapfilter
 from .tableio import readtable,writetable
+from .utilities import savefig
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, logging, copy, shutil, platform
 
@@ -292,7 +293,7 @@ class WarpFitter :
         ax[1][2].set_ylabel('max tangential warp')
         os.chdir(self.working_dir)
         try :
-            plt.savefig('fit_progress.png')
+            savefig('fit_progress.png')
             if show :
                 plt.show()
             plt.close()
@@ -349,7 +350,7 @@ class WarpFitter :
                 order[2].set_title('warped overlap images')
                 order[3].imshow(warped_overlap_comparisons_dict[overlap_identifier][1])
                 order[3].set_title('warped overlap images aligned')
-                plt.savefig(fn)
+                savefig(fn)
                 plt.close()
         except Exception :
             raise FittingError('Something went wrong while trying to write out the overlap comparison images')

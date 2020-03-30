@@ -1,0 +1,442 @@
+\pdfsuppresswarningpagegroup=1
+
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{multicol}
+\usepackage{graphicx}
+\usepackage[subrefformat=simple,labelformat=simple]{subcaption}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage[margin=1in]{geometry}
+\renewcommand\thesubfigure{(\alph{subfigure})}
+
+\newcommand{\svec}[1]{{\vec{#1}\mkern2mu\vphantom{#1}}}
+\newcommand{\pvec}[1]{\svec^\prime}
+\newcommand{\matrixbold}[1]{\mathbf{#1}}
+
+\begin{document}
+	
+\title{Alignment and stitching of microscope images}
+\author{Heshy Roskes}
+\date{March 18, 2020}
+
+\section{Introduction}
+
+Our microscope is supposed to scan a tissue sample, which covers some subset of a slide of size $L\times W$.  Initially, it performs a quick scan of the whole slide with a small magnification setting.  This scan is recorded in \texttt{qptiff} format.
+
+Using that image, the microscope determines which parts of the slide actually have tissue in them.  It scans those sections under a larger magnification, using fields of size $l\times w$.  Covering the whole tissue may require $O(1000)$ fields.
+
+The scanning is configured with an overlap fraction $f=20\%$, so that some parts of the image are scanned twice.  The rightmost $\frac{1}{2}fl$ of each field overlaps the leftmost $\frac{1}{2}fl$ of the field to its right.  Similarly, the bottom $\frac{1}{2}fw$ of each field overlaps with the top $\frac{1}{2}fw$ of the field under it.  These overlaps are used to assess differences between the fields, to correct those differences, and ultimately to assess systematic uncertainties based on the remaining differences.
+
+In the process of scanning, the microscope moves from one field to the next.   The slide is supposed to move horizontally by $l(1-f)$ and vertically by $w(1-f)$.  In practice, due to mechanical imprecisions in the microscope, the slide does not always move by exactly this amount, and so a simple, out of the box tiling of the fields (even taking the overlap regions into account by shaving off the outer $\frac{1}{2}fl$ and $\frac{1}{2}fw$ from each side) does not give an accurate picture of the tissue sample.  If fields move away from each other, cells in the boundary region will appear larger than they should due to duplicated pixels, and in extreme cases they may even be cut in half.  If they move towards each other, those cells will appear \emph{smaller} than they should, and for an extreme shift small cells might be completely gone.  If they move sideways, the cell's shape might be ruined and it may not be identified properly.
+
+Here, we describe how we measure the actual positions of the fields based on the images themselves.
+
+\section{Pairwise alignment}
+\label{sec:pairwise}
+
+The first step is to look at each pair of overlapping fields and measure the relative shift of those two fields.  Once we assemble all of those results, we stitch them together to obtain the final result.
+
+\subsection{Measuring the alignment}
+\label{sec:measuringalignment}
+
+For any individual pair of fields that overlap, we can align those two fields by comparing the images to each other.  For example, \cref{fig:overlapbefore} shows the overlap of two fields connected by a corner.  It is clear that the two fields are misaligned and that the field shown in green needs to move up and to the right with respect to the pink field.  The result, with the size and direction of the shift determined using the procedure described below, is shown in \cref{fig:overlapafter} and indicates much better agreement between the fields.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.45\linewidth}
+	\includegraphics[width=\linewidth]{overlap-notshifted.pdf}
+	\caption{}
+	\label{fig:overlapbefore}
+	\end{subfigure}
+	\begin{subfigure}{0.45\linewidth}
+	\includegraphics[width=\linewidth]{overlap-shifted.pdf}
+	\caption{}
+	\label{fig:overlapafter}
+	\end{subfigure}
+	\caption{The overlap of two fields \subref{fig:overlapbefore} before and \subref{fig:overlapafter} after alignment.  The two fields' images are shown in pink and green, respectively.  Because those colors are complementary, gray areas mean that the two fields have the same intensity in that spot.}
+	\label{fig:overlap}
+\end{figure}
+
+In order to determine the size and direction of the shift, we compute the \emph{cross correlation} between the two overlap images.  The cross correlation $C$ between images $A$ and $B$ is defined as
+\begin{equation}
+C(\delta\vec{r})=(A\star B)(\delta\vec{r})\equiv\sum_{\vec{r}} {A(\vec{r})B(\vec{r}+\delta\vec{r})}
+\label{eq:xcorrelation}
+\end{equation}
+and describes how similar the two images are when shifted by $\delta\vec{r}$ with respect to each other.  The value of $\delta\vec{r}$ that maximizes $C$ gives the optimal shift.  We want to achieve precision better than a single pixel, so we fit the region around the tallest peak of the cross-correlation function to a cubic polynominal and find its maximum $\delta\vec{r}_\text{max}$, as shown in \cref{fig:1Dmaximizationplot} for a one-dimensional example.  For the real images, we fit the region around the peak to a two-dimensional cubic polynomial.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.45\linewidth}
+	\includegraphics[width=\linewidth]{overlap-xcorrelation.pdf}
+	\caption{}
+	\label{fig:xcorrelation}
+	\end{subfigure}
+	\begin{subfigure}{0.45\linewidth}
+	\includegraphics[width=\linewidth]{1Dmaximization.pdf}
+	\caption{}
+	\label{fig:1Dmaximizationplot}
+	\end{subfigure}
+	\caption{
+		\subref{fig:xcorrelation} Plot of the cross-correlation function for the overlap shown in \cref{fig:overlap}.
+		\subref{fig:1Dmaximizationplot} Example of the procedure for aligning two images to sub-pixel precision.  The blue points show the cross correlation function for pixel shifts, calculated using \cref{eq:xcorrelation}.  The blue curve shows a polynomial fit to the cross correlation function, and the orange point and line show the maximum of the polynomial fit.
+	}
+	\label{fig:1Dmaximization}
+\end{figure}
+
+\subsection{Uncertainty on pairwise alignment}
+
+We also want to estimate the uncertainty on $\delta\vec{r}$.  This will become important in the next step, when we want to combine all of the alignment results and assign a larger weight to alignments with smaller uncertainty.  To obtain this uncertainty, we first estimate $\sigma_C(\delta\vec{r}_\text{max})$, the uncertainty on the value of the cross correlation function at its maximum.  We shift the images by $\pm0.5\delta\vec{r}_\text{max}$, so that they are now in their best-aligned position (as shown in \cref{fig:overlapafter}).  We can call the shifted images
+\begin{align}
+\begin{aligned}
+A^\prime(\vec{r})&=A\left(\vec{r}-\frac{1}{2}\delta\vec{r}_\text{max}\right), \\
+B^\prime(\vec{r})&=B\left(\vec{r}+\frac{1}{2}\delta\vec{r}_\text{max}\right).
+\end{aligned}
+\end{align}
+Plugging into \cref{eq:xcorrelation},
+\begin{align}
+\begin{aligned}
+C(\delta\vec{r}_\text{max})&=\sum_{\vec{r}}A^\prime\left(\vec{r}+\frac{1}{2}\delta\vec{r}_\text{max}\right) B\left(\vec{r}+\frac{1}{2}\delta\vec{r}_\text{max}\right) \\
+&=(A^\prime\star B^\prime)(0)
+\end{aligned}
+\end{align}
+
+At this point, we consider that the two images are as well aligned as we can make them, and are supposed to be two independent measurements of the same thing.  We then estimate the error on an individual pixel's intensity, in either $A^\prime$ or $B^\prime$, as
+\begin{equation}
+\sigma_{A^\prime}(\vec{r})=\sigma_{B^\prime}(\vec{r})=\left|A^\prime(\vec{r})-B^\prime(\vec{r})\right|.
+\label{eq:pixelerror}
+\end{equation}
+
+By standard techniques of error propagation, we then derive
+\begin{align}
+\begin{aligned}
+\sigma_C(\delta\vec{r}_\text{max})&=\sum_{\vec{r}}\left(\left[A^\prime(\vec{r})\sigma_{B^\prime}(\vec{r})\right]^2+\left[\sigma_{A^\prime}(\vec{r})B^\prime(\vec{r})\right]^2\right) \\
+&=([(A^\prime)^2+(B^\prime)^2]\star\sigma_{A^\prime,B^\prime}^2)(0)
+\end{aligned}
+\end{align}
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.45\linewidth}
+		\includegraphics[width=\linewidth]{1Dmaximizationwitherror.pdf}
+%		\caption{}
+%		\label{fig:1Dmaximizationploterror}
+	\end{subfigure}
+	\caption{Illustration of the procedure for error estimation using the same example curve as in \cref{fig:1Dmaximizationplot}.  Given the error on $C$ at the peak, $\sigma_C$, shown in orange, we can use the second derivative of the curve to estimate the error on $x_\text{max}$, $\sigma_\text{xmax}$, shown in pink.}
+	\label{fig:1Dmaximizationploterror}
+\end{figure}
+
+We now use $\sigma_C(\delta\vec{r}_\text{max})$ to derive $\sigma_{\delta\vec{r}_\text{max}}$.  To motivate the calculation, we first consider the 1-dimensional case shown in \cref{fig:1Dmaximizationploterror}.  As illustrated there, we need to find $\sigma_{\delta x_\text{max}}$ so that $C(\delta x_\text{max}\pm\sigma_{\delta x_\text{max}})=C(\delta x_\text{max})-\sigma_C$.  Assuming $\delta x$ is small, we can do this by expanding
+\begin{equation}
+C(\delta x)\approx\delta x_\text{max} + \frac{1}{2}C''(\delta x_\text{max})(\delta x - \delta x_\text{max})^2
+\end{equation}
+and find that
+\begin{equation}
+\sigma_{\delta x_\text{max}}^2=\frac{2\sigma_C(\delta x_\text{max})}{C''(\delta x_\text{max})}.
+\end{equation}
+
+By an analogous argument, we find the equivalent result for two dimensions.  Beause $\delta\vec{r}$ has two components, $\delta x$ and $\delta y$, we have a $2\times2$ covariance matrix,
+\begin{equation}
+\matrixbold{cov}_{\delta\vec{r}_\text{max}}=2\sigma_C(\delta\vec{r}_\text{max})\matrixbold{H}^{-1}(\delta\vec{r}_\text{max}),
+\label{eq:overlapcovariance}
+\end{equation}
+where $ %\begin{equation}
+\matrixbold{H}=\begin{pmatrix}
+\frac{\partial^2C}{\partial \delta x^2} & \frac{\partial^2C}{\partial \delta x \partial \delta y} \\
+\frac{\partial^2C}{\partial \delta x \partial \delta y} & \frac{\partial^2C}{\partial \delta y^2}
+\end{pmatrix}
+$ %\end{equation}
+is the Hessian matrix of $C(\delta\vec{r})$.
+
+For the final step, we multiply the covariance matrix by a factor determined empirically, as we will describe in \cref{sec:pulls}.  This factor is found to be $\frac{1}{16}$, which means that the original error estimate was too conservative by a factor of $4$.  One possibility for this overestimate is that, if the alignment is not perfect, \cref{eq:pixelerror} overestimates the error on pixel intensity in regions where cell boundaries do not line up correctly.  Whatever the explanation, the plots in \cref{sec:pulls} will show that the corrected covariance matrix
+\begin{equation}
+\matrixbold{cov}_{\delta\vec{r}_\text{max}}^\text{corr}=\frac{1}{8}\sigma_C(\delta\vec{r}_\text{max})\matrixbold{H}^{-1}(\delta\vec{r}_\text{max})
+\label{eq:overlapcovariancecorrected}
+\end{equation}
+is a good estimate of our uncertainty.
+
+\subsection{Detecting bad overlaps}
+\label{sec:badoverlaps}
+
+The error estimation procedure also gives us an opportunity to detect when a particular overlap does not contain enough information to align it.  This happens when the overlap region does not contain any cells, and sometimes also when it contains one or two.  In this case, the cross correlation function simply consists of noise, as shown in \cref{fig:badoverlap}.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.45\linewidth}
+		\includegraphics[width=\linewidth]{overlap-bad.pdf}
+		\caption{}
+		\label{fig:badimage}
+	\end{subfigure}
+	\begin{subfigure}{0.45\linewidth}
+		\includegraphics[width=\linewidth]{overlap-xcorrelation-bad.pdf}
+		\caption{}
+		\label{fig:badxcorrelation}
+	\end{subfigure}
+	\caption{\subref{fig:badimage} An almost empty image overlap, similar to \cref{fig:overlapbefore}, but with the pixel intensities multiplied by a factor of 10 with respect to the ones there.  The image contains mostly noise, with three faint features.  \subref{fig:badxcorrelation} The cross-correlation function for the overlap in \subref{fig:badimage}.}
+	\label{fig:badoverlap}
+\end{figure}
+
+The procedure in \cref{sec:measuringalignment} looks at the tallest peak of the cross-correlation function.  For a good overlap, there is often only one peak, or one tall peak and several other, much shorter ones.  \Cref{fig:badxcorrelation}, on the other hand, shows a central peak near $(0, 0)$ and a diagonal structure, similar to the structure in \cref{fig:badoverlap}, containing several yellow areas.  The error estimation tells us whether any of the other peaks are significant: if any other peak at $\delta r'$ has $C(\delta r')\ge C(\delta r_\text{max})-\sigma_C(\delta r_\text{max})$, we do not know, to $1\sigma$ confidence, which peak is the correct one, and therefore we mark the overlap as bad.  The result from bad overlaps are not used in the final stitching procedure.
+
+\section{Stitching}
+
+After we derive the individual alignment results for each overlap, we can ``stitch'' the results together to obtain the final positions of each field.  We see each alignment result as a Gaussian constraint on the relative positions of those two fields, and combine all of those constraints together to find the likelihood $L$ for alignment positions $\vec{r}_i$:
+\begin{align}
+\begin{aligned}
+-2\ln L_\text{alignment}(\vec{r}_1, \ldots, \vec{r}_N)=
+\sum_{o}&(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)^T \\
+&\mathbf{cov}_o^{-1}
+(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)
+\end{aligned}
+\label{eq:loglikelihoodalignment}
+\end{align}
+In this parameterization, $\vec{r}_k$, with $k$ running from $1$ to the number of fields $N$, is the position of the field indexed by $i$; $\svec{r}_k^n$ is the field's nominal position, given by the microscope software; $o$ indexes the overlaps; $i_o$ and $j_o$ are the indices of the two fields whose overlap is described by $o$; $\delta\vec{r}_o$ is the $\delta\vec{r}_\text{max}$ determined for that overlap, as described in \cref{sec:measuringalignment}; and $\mathbf{cov}_o$ is the covariance matrix from \cref{eq:overlapcovariance}.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.45\linewidth}
+		\includegraphics[width=\linewidth]{islands.pdf}
+		%		\caption{}
+		%		\label{fig:badxcorrelation}
+	\end{subfigure}
+	\caption{An example of an image, taken with the Vectra 3.0 microscope, with two disconnected islands.}
+	\label{fig:islands}
+\end{figure}
+
+The likelihood above includes all of the information derived from alignment.  However, it is degenerate: shifting all fields by the same amount leaves the equation unchanged.  This can be fixed easily by just choosing one point to remain fixed, but in general the image may contain multiple disconnected ``islands'', as shown in \cref{fig:islands}.  In this example, the larger island on the left is covered by 33 fields, and the smaller one on the right is covered by 7.  There are no overlaps between fields in one island and fields in the other, and moving one island with respect to the other also leaves \cref{eq:loglikelihoodalignment} unchanged.
+
+A simple solution is to detect the islands using algorithms from graph theory and align each island separately, but there are cases where even this will fail.  For example, the islands may be connected by a single overlap which is not ``bad'', per the definition in \cref{sec:badoverlaps}, but has a large uncertainty, with the result that the two almost-islands are aligned badly with respect to one another when the single overlap is the only constraint.  We would like a procedure that automatically takes all of these cases into account.
+
+To accomplish this, we construct a model that allows for two sources of error in the microscope's positioning.
+\begin{enumerate}
+	\item When the controlling computer signals the microscope to move by $\Delta \vec{r}=(\Delta x, \Delta y)$, imperfect calibration may result in an actual movement of $\matrixbold{A}\Delta\vec{r}$, where $\matrixbold{A}$ is a $2\times2$ matrix to be measured from the data.
+	\item Each movement of the microscope involves a random error, so that the final, actual movement is $\matrixbold{A}\Delta\vec{r}+\delta\vec{r}$.
+\end{enumerate}
+The second source of error is random for each field.  However, the first error, parameterized by the matrix $\matrixbold{A}$, is generally a property of the microscope and is therefore common to all fields.  This matrix is the way we connect the islands together, adding more terms to \cref{eq:loglikelihoodalignment} so that it is no longer singular.
+
+We first assume that $\matrixbold{A}$ is close to the identity matrix $\begin{pmatrix}1 & 0 \\ 0 & 1\end{pmatrix}$.  Therefore, although its deviations from the identity may affect the positioning between fields that are far apart by tens of pixels, it has negligible effect on an individual overlap.  Therefore, the distribution of $\delta\vec{r}$ may be approximated as the distribution of $\delta\vec{r}_o$ from the overlaps $o$.  We take the standard deviation, over all the overlaps, of the $x$ and $y$ components of $\delta\vec{r}_o$, and constrain the position of each rectangle using a Gaussian constraint, centered at $\matrixbold{A}\svec{r}_k^n$ and with a width of $\sigma_x$ for the $x$ component and $\sigma_y$ for the $y$ component.  Or, in other words, we add to \cref{eq:loglikelihoodalignment} a term that looks like
+\begin{align}
+-2\ln L_\text{constraint}(\vec{r}_1, \ldots, \vec{r}_N, \matrixbold{A})=&
+\sum_{k}(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)^T %\\&
+\mathbf{\Sigma}^{-1}
+(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)
+\label{eq:loglikelihoodrandomerror}
+\end{align}
+where $\mathbf{\Sigma}=\begin{pmatrix}\sigma_x^2 & 0 \\ 0 & \sigma_y^2\end{pmatrix}$.
+
+The constraint added in \cref{eq:loglikelihoodrandomerror} turns out to be weak, because the positioning errors $\sigma_{x,y}$ are significantly larger than the errors from the pairwise alignments.  In fact, if we modify $\sigma_{x,y}$ by multiplying them by a few orders of magnitude up or down, the final alignment is basically unchanged.
+
+The final likelihood function is the sum of \cref{eq:loglikelihoodalignment,eq:loglikelihoodrandomerror}:
+\begin{align}
+\begin{aligned}
+-2\ln L(\vec{r}_1, \ldots, \vec{r}_N, \matrixbold{A})=&\\
+&
+\begin{aligned}
+\sum_{o}&(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)^T \\
+&\mathbf{cov}_o^{-1}
+(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n) \\
+\end{aligned} \\
++&\sum_{k}(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)^T %\\&
+\matrixbold{\Sigma}^{-1}
+(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)
+\label{eq:loglikelihood}
+\end{aligned}
+\end{align}
+The most important feature of this equation is that, because $\svec{r}_k^n$ are constants and $\matrixbold{cov}_o$ and $\matrixbold{\Sigma}$ are positive definite, it is a \emph{convex quadratic} in the variables we are interested in solving for, $\vec{r}_k$ and $\matrixbold{A}$.  Assembling $\vec{r}_k$ and $\matrixbold{A}$ into a single, large vector $\vec{v}$
+\begin{equation}
+\vec{v}=\begin{pmatrix}
+x_1,
+y_1,
+\ldots,
+x_k,
+y_k,
+A_{xx},
+A_{xy},
+A_{yx},
+A_{yy}
+\end{pmatrix}^T,
+\end{equation}
+we can expand \cref{eq:loglikelihood} into the form
+\begin{equation}
+-2\ln L(\vec{v})=\svec{v}^T\matrixbold{P}\vec{v} + \vec{v}\cdot\vec{q} + r.
+\label{eq:loglikelihoodshort}
+\end{equation}
+Writing $\matrixbold{P}$, $\vec{q}$, and $r$ explicitly here would result in a mess, but they are easy to compute in code from the numerical values of the variables in \cref{eq:loglikelihood}.  Once they are computed, the value of $\vec{v}$ that minimizes \cref{eq:loglikelihoodshort}, or equivalently maximizes the likelihood, is simply
+\begin{equation}
+\vec{v}=-\frac{1}{2}\matrixbold{P}^{-1}\vec{q}
+\end{equation}
+with a covariance matrix
+\begin{equation}
+\matrixbold{cov}_{\vec{v}}=\matrixbold{P}^{-1}.
+\end{equation}
+
+\section{Validation of the alignment procedure}
+
+In this section, we show plots that illustrate the results of the alignment procedure.
+
+\subsection{Alignment movements}
+
+For an alignment with $N$ fields, we have $2N$ coordinates to set.  Except for the fields at the edges of an island, each field borders $8$ others, on its four edges and four corners, for a total of $O(8N)$ overlaps.  We therefore have more constraints than parameters, and it is natural to ask how consistent those constraints are.  There is always uncertainty involved, so the final alignment will never be in perfect agreement with all constraints, but does the agreement significantly improve?
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-4.pdf}
+		\caption{}
+		\label{fig:alignmentresult4}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-3.pdf}
+		\caption{}
+		\label{fig:alignmentresult3}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-2.pdf}
+		\caption{}
+		\label{fig:alignmentresult2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-1.pdf}
+		\caption{}
+		\label{fig:alignmentresult1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-4.pdf}
+		\caption{}
+		\label{fig:stitchresult4}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-3.pdf}
+		\caption{}
+		\label{fig:stitchresult3}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-2.pdf}
+		\caption{}
+		\label{fig:stitchresult2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-1.pdf}
+		\caption{}
+		\label{fig:stitchresult1}
+	\end{subfigure}
+	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in a small image taken with the Vectra 3.0 microscope.  The plots show overlaps between one field and the field \subref{fig:alignmentresult4} to its right, \subref{fig:alignmentresult3} under it and to the right, \subref{fig:alignmentresult2} under it, and \subref{fig:alignmentresult1} under it and to the left.  Each point with its error bars indicates a single overlap.  \subref{fig:stitchresult4}--\subref{fig:stitchresult1} The same distributions for the respective overlap directions after stitching has been performed.}
+	\label{fig:alignmentresults}
+\end{figure}
+
+\Cref{fig:alignmentresult1,fig:alignmentresult2,fig:alignmentresult3,fig:alignmentresult4} show the distribution of $\delta\vec{r}$ for the overlaps, before any stitching has been done.  \Cref{fig:stitchresult1,fig:stitchresult2,fig:stitchresult3,fig:stitchresult4} show the same distributions after the fields have been moved to their stitched positions, and show significant improvement over the top row.
+
+Another interesting feature of the plots is the comparison between \cref{fig:alignmentresult2,fig:alignmentresult4}.  Fields that are only separated in the $x$ direction are only misaligned in the $x$ direction, while fields separated in $y$ are only misaligned in $y$.  As illustrated in \cref{fig:scanning}, the microscope scans along a row in the $x$ direction first, then moves down in the $y$ direction and goes back to the beginning in $x$.  This explains \cref{fig:alignmentresult4}: as the microscope moves in the $x$ direction, the error introduced by slight movements in the $y$ direction is small.  \Cref{fig:alignmentresult2} is more surprising, because it indicates that the errors introduced as the microscope moves to the right are almost exactly reversed when it moves back to the left.  Whatever the source of this error is, our alignment procedure is able to correct for it as well as for the smaller, apparently random error associated with each individual movement.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.45\linewidth}
+		\includegraphics[width=\linewidth]{scanning.pdf}
+		%		\caption{}
+		%		\label{fig:1Dmaximizationploterror}
+	\end{subfigure}
+	\caption{Illustration of how the microscope scans an image.  It scans the first row in the $x$ direction, then moves on to the second, then the third, and so on.}
+	\label{fig:scanning}
+\end{figure}
+
+\subsection{Consistency of the errors}
+\label{sec:pulls}
+
+We also want to ensure that our estimate of the errors on the alignment are correct.  To do this, we use what is known as a ``pull'' distribution.  The idea is to find a quantity $x$ that we expect to be $0$.  Any actual measurement of $x$ will not necessarily be $0$, but we perform multiple measurements $x_i$, we expect to end up with a normal distribution centered at $0$ and with a width of $\sigma$.  If we instead look at the distribution of $x_i/\sigma$, the width of the normal distribution will be $1$.
+
+In general, we do not know $\sigma$ in advance, but we have an estimate $\sigma_i$ of the error on each individual measurement.  The idea of a pull distribution is that we plot $x_i/\sigma_i$ and look at the width of the resulting distribution.  If it is close to $1$, that indicates that our error estimate was correct.
+
+\Cref{fig:squarepulls} shows the pull distributions for the total displacement from pairwise alignments for moving around in a square or diamond.  For a perfect alignment, this quantity would be $0$, so it is a good candidate for a pull distribution.  As the figures show, the standard deviations of all pull distributions are close to $1$, indicating that our error estimates for both edge and corner overlaps are reasonable.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.32\linewidth}
+		\includegraphics[width=\linewidth]{squarepull1.pdf}
+		\caption{}
+		\label{fig:squarepull1}
+	\end{subfigure}
+	\begin{subfigure}{0.32\linewidth}
+		\includegraphics[width=\linewidth]{squarepull2.pdf}
+		\caption{}
+		\label{fig:squarepull2}
+	\end{subfigure}
+	\begin{subfigure}{0.32\linewidth}
+		\includegraphics[width=\linewidth]{squarepulldiagram.pdf}
+		\caption{}
+		\label{fig:squarepulldiagram}
+	\end{subfigure}
+	\begin{subfigure}{0.32\linewidth}
+		\includegraphics[width=\linewidth]{diamondpull1.pdf}
+		\caption{}
+		\label{fig:diamondpull1}
+	\end{subfigure}
+	\begin{subfigure}{0.32\linewidth}
+		\includegraphics[width=\linewidth]{diamondpull2.pdf}
+		\caption{}
+		\label{fig:diamondpull2}
+	\end{subfigure}
+	\begin{subfigure}{0.32\linewidth}
+		\includegraphics[width=\linewidth]{diamondpulldiagram.pdf}
+		\caption{}
+		\label{fig:diamondpulldiagram}
+	\end{subfigure}
+	\caption{\subref{fig:squarepull1}, \subref{fig:squarepull2} The pull distributions in $x$ and $y$ for the total displacement obtained from pairwise alignment when moving around in a square, as shown in \subref{fig:squarepulldiagram}, for two different images collected with the Vectra 3.0 microscope.  \subref{fig:diamondpull1}, \subref{fig:diamondpull2} The corresponding pull distributions for those two datasets when moving in a diamond, as shown in \subref{fig:diamondpulldiagram}.}
+	\label{fig:squarepulls}
+\end{figure}
+
+\Cref{fig:stitchpulls} shows a different metric for our error estimation.  In these plots, we calculate the misalignment for each overlapping pair of fields after stitching, as in \cref{fig:stitchresult1,fig:stitchresult2,fig:stitchresult3,fig:stitchresult4}, and create pull distributions for the $x$ and $y$ resdiuals.  Again, the standard deviations of the pull distributions are close to $1$.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-pull-4-1.pdf}
+		\caption{}
+		\label{fig:stitchpull41}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-pull-3-1.pdf}
+		\caption{}
+		\label{fig:stitchpull31}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-pull-2-1.pdf}
+		\caption{}
+		\label{fig:stitchpull21}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-pull-1-1.pdf}
+		\caption{}
+		\label{fig:stitchpull11}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-pull-4-2.pdf}
+		\caption{}
+		\label{fig:stitchpull42}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-pull-3-2.pdf}
+		\caption{}
+		\label{fig:stitchpull32}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-pull-2-2.pdf}
+		\caption{}
+		\label{fig:stitchpull22}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-pull-1-2.pdf}
+		\caption{}
+		\label{fig:stitchpull12}
+	\end{subfigure}
+	\caption{Pull distributions in $x$ and $y$ for the residual pairwise misalignment after stitching, as shown in \cref{fig:stitchresult4,fig:stitchresult3,fig:stitchresult2,fig:stitchresult1}, for two different images collected with the Vectra 3.0 microscope.  The plots show distributions for overlaps between one field and the field \subref{fig:stitchpull41}, \subref{fig:stitchpull42} to its right, \subref{fig:stitchpull31}, \subref{fig:stitchpull32} under it and to the right, \subref{fig:stitchpull21}, \subref{fig:stitchpull22}  under it, and \subref{fig:stitchpull11}, \subref{fig:stitchpull12}  under it and to the left.}
+	\label{fig:stitchpulls}
+\end{figure}
+
+The standard deviations of the pull distributions were used to determine the factor of $1/16$ used to correct \cref{eq:overlapcovariance} to \cref{eq:overlapcovariancecorrected}.  The fact that, after making this correction, the standard deviations are $1$ for multiple different images as well as for pull distributions of two different quantities lends confidence to the \emph{method} of error estimation.  Remaining deviations from $1$ indicate that there is still some amount of room for improvement.
+
+\section{Summary}
+
+In this note, we describe the alignment and stitching of a microscope image composed of up to $1000$ fields.  Our procedure includes an estimation of the error on each field, which are propagated throughout the procedure to obtain a final error estimate and covariance matrix for the positions of the fields.  The method provided here runs in a few minutes and forms an important part of the data calibration in the astropath framework.
+
+\end{document}

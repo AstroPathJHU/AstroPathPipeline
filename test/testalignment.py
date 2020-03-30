@@ -33,9 +33,9 @@ class TestAlignment(unittest.TestCase):
     a.stitch(checkwriting=True)
     for filename, cls in (
       ("M21_1_imstat.csv", ImageStats),
-      ("M21_1_affine.csv", AffineEntry),
       ("M21_1_align.csv", AlignmentResult),
       ("M21_1_stitch.csv", StitchCoordinate),
+      ("M21_1_affine.csv", AffineEntry),
       ("M21_1_stitch_overlap_covariance.csv", StitchOverlapCovariance),
     ):
       rows = readtable(os.path.join(thisfolder, "data", "M21_1", "dbload", filename), cls)
