@@ -116,14 +116,6 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     spline=spline,
   )
 
-@nb.njit
-def hann(image):
-  M, N = image.shape
-  hannx = np.hanning(M)
-  hanny = np.hanning(N)
-  hann = np.outer(hannx, hanny)
-  return image * hann
-
 def crosscorrelation_gpu(images,thread,fftc):
   image_devs = tuple(thread.to_device(image) for image in images)
   res_devs   = tuple(thread.empty_like(image_dev) for image_dev in image_devs)
