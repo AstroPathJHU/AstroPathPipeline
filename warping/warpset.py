@@ -1,8 +1,9 @@
 #imports
 from .warp import CameraWarp, WarpingError
+from ..utilities.misc import cd
 import numpy as np
 import cv2
-import dataclasses, os, copy, logging
+import contextlib, dataclasses, os, copy, logging
 
 class WarpSet :
     """
@@ -74,18 +75,13 @@ class WarpSet :
         Save the warped images as new files in the directory at "path" (or in the current directory if path=None)
         """
         #change to the directory passed in
-        if path is not None :
-            init_dir = os.getcwd()
-            try :
-                os.chdir(path)
-            except FileNotFoundError :
-                raise FileNotFoundError(f'path {path} supplied to writeOutWarpedImageSet is not a valid location')
-        #write out all the image files
-        for warpimg in self.images :
-            self.warp.writeImageLayer((warpimg.warped_image).get(),warpimg.rawfile_key,self.layer)
-        #change back to the initial directory
-        if path is not None :
-            os.chdir(init_dir)
+        try:
+            with cd(path) if path is not None else contextlib.nullcontext():
+                #write out all the image files
+                for warpimg in self.images :
+                    self.warp.writeImageLayer((warpimg.warped_image).get(),warpimg.rawfile_key,self.layer)
+        except FileNotFoundError :
+            raise FileNotFoundError(f'path {path} supplied to writeOutWarpedImageSet is not a valid location')
 
     def updateCameraParams(self,pars) :
         """

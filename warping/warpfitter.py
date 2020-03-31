@@ -3,6 +3,7 @@ from .warpset import WarpSet
 from ..alignment.alignmentset import AlignmentSet
 from ..alignment.overlap import Overlap, OverlapList
 from ..alignment.rectangle import Rectangle, rectangleoroverlapfilter
+from ..utilities.misc import cd
 from ..utilities.tableio import readtable,writetable
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, logging, copy, shutil, platform
@@ -83,16 +84,11 @@ class WarpFitter :
     #remove the placeholder files when the object is being deleted
     def __del__(self) :
         logger.info('Removing copied raw layer files....')
-        os.chdir(self.working_dir)
-        if not os.path.isdir(self.samp_name) :
-            os.chdir(self.init_dir)
-            return
-        try :
-            shutil.rmtree(self.samp_name)
-        except Exception :
-            raise FittingError('Something went wrong in trying to remove the directory of initially-warped files!')
-        finally :
-            os.chdir(self.init_dir)
+        with cd(self.working_dir) :
+            try :
+                shutil.rmtree(self.samp_name)
+            except Exception :
+                raise FittingError('Something went wrong in trying to remove the directory of initially-warped files!')
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -102,16 +98,14 @@ class WarpFitter :
         """
         self.warpset.loadRawImageSet(self.rawfile_paths,self.overlaps,self.rectangles)
         self.warpset.warpLoadedImageSet()
-        os.chdir(self.working_dir)
-        if not os.path.isdir(self.samp_name) :
-            os.mkdir(self.samp_name)
-        os.chdir(self.samp_name)
-        try :
-            self.warpset.writeOutWarpedImageSet()
-        except Exception :
-            raise FittingError('Something went wrong in trying to write out the initial warped files!')
-        finally :
-            os.chdir(self.init_dir)
+        with cd(self.working_dir) :
+            if not os.path.isdir(self.samp_name) :
+                os.mkdir(self.samp_name)
+            with cd(self.samp_name) :
+                try :
+                    self.warpset.writeOutWarpedImageSet()
+                except Exception :
+                    raise FittingError('Something went wrong in trying to write out the initial warped files!')
         self.alignset.getDAPI(filetype='camWarpDAPI',writeimstat=False,mean_image=self.mean_image)
 
     def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=10.,max_tangential_warp=10.,par_bounds=None,
@@ -150,44 +144,40 @@ class WarpFitter :
         #call differential_evolution
         logger.info('Starting initial minimization....')
         self.skip_corners = True
-        os.chdir(self.working_dir)
-        try :
-            firstresult=scipy.optimize.differential_evolution(
-                func=self._evalCamWarpOnAlignmentSet,
-                bounds=parameter_bounds,
-                strategy='best2bin',
-                maxiter=maxiter,
-                tol=0.025,
-                mutation=(0.6,1.00),
-                recombination=0.5,
-                polish=False,
-                init=initial_population,
-                constraints=constraints
-                )
-        except Exception :
-            raise FittingError('Something failed in the initial minimization!')
-        finally :
-            os.chdir(self.init_dir)
+        with cd(self.working_dir) :
+            try :
+                firstresult=scipy.optimize.differential_evolution(
+                    func=self._evalCamWarpOnAlignmentSet,
+                    bounds=parameter_bounds,
+                    strategy='best2bin',
+                    maxiter=maxiter,
+                    tol=0.025,
+                    mutation=(0.6,1.00),
+                    recombination=0.5,
+                    polish=False,
+                    init=initial_population,
+                    constraints=constraints
+                    )
+            except Exception :
+                raise FittingError('Something failed in the initial minimization!')
         logger.info(f'Initial minimization completed {"successfully" if firstresult.success else "UNSUCCESSFULLY"} in {firstresult.nfev} evaluations.')
         if polish :
             self.skip_corners = False
             #call minimize with trust_constr
             logger.info('Starting polishing minimization....')
             relative_steps = np.array([0.02,0.02,0.02,0.02,0.02,0.02,0.0002,0.0002])[self.par_mask]
-            os.chdir(self.working_dir)
-            try :
-                result=scipy.optimize.minimize(
-                    fun=self._evalCamWarpOnAlignmentSet,
-                    x0=firstresult.x,
-                    method='trust-constr',
-                    bounds=parameter_bounds,
-                    constraints=constraints,
-                    options={'xtol':1e-4,'gtol':1e-3,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
-                    )
-            except Exception :
-                raise FittingError('Something failed in the polishing minimization!')
-            finally :
-                os.chdir(self.init_dir)
+            with cd(self.working_dir) :
+                try :
+                    result=scipy.optimize.minimize(
+                        fun=self._evalCamWarpOnAlignmentSet,
+                        x0=firstresult.x,
+                        method='trust-constr',
+                        bounds=parameter_bounds,
+                        constraints=constraints,
+                        options={'xtol':1e-4,'gtol':1e-3,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
+                        )
+                except Exception :
+                    raise FittingError('Something failed in the polishing minimization!')
             msg = f'Final minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations '
             term_conds = {0:'max iterations',1:'gradient tolerance',2:'parameter tolerance',3:'callback function'}
             msg+=f'due to compliance with {term_conds[result.status]} criteria.'
@@ -205,14 +195,12 @@ class WarpFitter :
         #write out the set of alignment comparison images
         self.raw_cost, self.best_cost = self.__makeBestFitAlignmentComparisonImages()
         #save the figure of the best-fit warp fields
-        os.chdir(self.working_dir)
-        try :
-            self.__best_fit_warp.makeWarpAmountFigure()
-            self.__best_fit_warp.writeParameterTextFile(self.par_mask,self.init_its,self.polish_its,self.raw_cost,self.best_cost)
-        except Exception :
-            raise FittingError('Something went wrong in trying to save the warping amount figure for the best-fit warp')
-        finally :
-            os.chdir(self.init_dir)
+        with cd(self.working_dir) :
+            try :
+                self.__best_fit_warp.makeWarpAmountFigure()
+                self.__best_fit_warp.writeParameterTextFile(self.par_mask,self.init_its,self.polish_its,self.raw_cost,self.best_cost)
+            except Exception :
+                raise FittingError('Something went wrong in trying to save the warping amount figure for the best-fit warp')
         return result
 
 
@@ -290,16 +278,14 @@ class WarpFitter :
         ax[1][2].plot(finaliters,self.max_tangential_warps[ninitev:])
         ax[1][2].set_xlabel('final minimization iteration')
         ax[1][2].set_ylabel('max tangential warp')
-        os.chdir(self.working_dir)
-        try :
-            plt.savefig('fit_progress.png')
-            if show :
-                plt.show()
-            plt.close()
-        except Exception :
-            raise FittingError('something went wrong while trying to save the fit progress plots!')
-        finally :
-            os.chdir(self.init_dir)
+        with cd(self.working_dir) :
+            try :
+                plt.savefig('fit_progress.png')
+                if show :
+                    plt.show()
+                plt.close()
+            except Exception :
+                raise FittingError('something went wrong while trying to save the fit progress plots!')
         return ninitev, len(self.costs)-ninitev
 
     #function to save alignment comparison visualizations in a new directory inside the working directory
@@ -320,41 +306,39 @@ class WarpFitter :
         logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
         #write out the overlap comparison figures
         figure_dir_name = 'alignment_overlap_comparisons'
-        os.chdir(self.working_dir)
-        if not os.path.isdir(figure_dir_name) :
-            os.mkdir(figure_dir_name)
-        os.chdir(figure_dir_name)
-        try :
-            for overlap_identifier in raw_overlap_comparisons_dict.keys() :
-                code = overlap_identifier[0]
-                fn   = overlap_identifier[1]
-                pix_to_in = 20./self.n
-                if code in [2,8] :
-                    f,(ax1,ax2,ax3,ax4) = plt.subplots(4,1,sharex=True)
-                    f.set_size_inches(self.n*pix_to_in,4.*0.2*self.m*pix_to_in)
-                    order = [ax1,ax3,ax2,ax4]
-                elif code in [1,3,7,9] :
-                    f,ax = plt.subplots(2,2)
-                    f.set_size_inches(2.*0.2*self.n*pix_to_in,2*0.2*self.m*pix_to_in)
-                    order = [ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
-                elif code in [4,6] :
-                    f,(ax1,ax2,ax3,ax4) = plt.subplots(1,4,sharey=True)
-                    f.set_size_inches(4.*0.2*self.n*pix_to_in,self.m*pix_to_in)
-                    order=[ax1,ax3,ax2,ax4]
-                order[0].imshow(raw_overlap_comparisons_dict[overlap_identifier][0])
-                order[0].set_title('raw overlap images')
-                order[1].imshow(raw_overlap_comparisons_dict[overlap_identifier][1])
-                order[1].set_title('raw overlap images aligned')
-                order[2].imshow(warped_overlap_comparisons_dict[overlap_identifier][0])
-                order[2].set_title('warped overlap images')
-                order[3].imshow(warped_overlap_comparisons_dict[overlap_identifier][1])
-                order[3].set_title('warped overlap images aligned')
-                plt.savefig(fn)
-                plt.close()
-        except Exception :
-            raise FittingError('Something went wrong while trying to write out the overlap comparison images')
-        finally :
-            os.chdir(self.init_dir)
+        with cd(self.working_dir) :
+            if not os.path.isdir(figure_dir_name) :
+                os.mkdir(figure_dir_name)
+            with cd(figure_dir_name) :
+                try :
+                    for overlap_identifier in raw_overlap_comparisons_dict.keys() :
+                        code = overlap_identifier[0]
+                        fn   = overlap_identifier[1]
+                        pix_to_in = 20./self.n
+                        if code in [2,8] :
+                            f,(ax1,ax2,ax3,ax4) = plt.subplots(4,1,sharex=True)
+                            f.set_size_inches(self.n*pix_to_in,4.*0.2*self.m*pix_to_in)
+                            order = [ax1,ax3,ax2,ax4]
+                        elif code in [1,3,7,9] :
+                            f,ax = plt.subplots(2,2)
+                            f.set_size_inches(2.*0.2*self.n*pix_to_in,2*0.2*self.m*pix_to_in)
+                            order = [ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
+                        elif code in [4,6] :
+                            f,(ax1,ax2,ax3,ax4) = plt.subplots(1,4,sharey=True)
+                            f.set_size_inches(4.*0.2*self.n*pix_to_in,self.m*pix_to_in)
+                            order=[ax1,ax3,ax2,ax4]
+                        order[0].imshow(raw_overlap_comparisons_dict[overlap_identifier][0])
+                        order[0].set_title('raw overlap images')
+                        order[1].imshow(raw_overlap_comparisons_dict[overlap_identifier][1])
+                        order[1].set_title('raw overlap images aligned')
+                        order[2].imshow(warped_overlap_comparisons_dict[overlap_identifier][0])
+                        order[2].set_title('warped overlap images')
+                        order[3].imshow(warped_overlap_comparisons_dict[overlap_identifier][1])
+                        order[3].set_title('warped overlap images aligned')
+                        plt.savefig(fn)
+                        plt.close()
+                except Exception :
+                    raise FittingError('Something went wrong while trying to write out the overlap comparison images')
         return rawcost, bestcost
 
     #################### PRIVATE HELPER FUNCTIONS ####################
@@ -373,14 +357,12 @@ class WarpFitter :
         #create the working directory and write to it the new metadata .csv files
         if not os.path.isdir(self.working_dir) :
             os.mkdir(self.working_dir)
-        os.chdir(self.working_dir)
-        try :
-            writetable(self.samp_name+OVERLAP_FILE_EXT,olaps)
-            writetable(self.samp_name+RECTANGLE_FILE_EXT,rects)
-        except Exception :
-            raise FittingError('Something went wrong in trying to write the truncated overlap/rectangle files in the working directory!')
-        finally :
-            os.chdir(self.init_dir)
+        with cd(self.working_dir) :
+            try :
+                writetable(self.samp_name+OVERLAP_FILE_EXT,olaps)
+                writetable(self.samp_name+RECTANGLE_FILE_EXT,rects)
+            except Exception :
+                raise FittingError('Something went wrong in trying to write the truncated overlap/rectangle files in the working directory!')
         return olaps, rects
 
     # helper function to return the (x,y) size of the images read from the .imm file 
