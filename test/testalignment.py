@@ -1,4 +1,4 @@
-import dataclasses, itertools, numbers, numpy as np, os, uncertainties.unumpy as unp, unittest
+import argparse, dataclasses, itertools, numbers, numpy as np, os, uncertainties.unumpy as unp, unittest
 from ..alignmentset import AlignmentSet, ImageStats
 from ..computeshift import crosscorrelation
 from ..overlap import AlignmentResult
@@ -18,6 +18,12 @@ def assertAlmostEqual(a, b, **kwargs):
       np.testing.assert_equal(a, b)
   else:
     return np.testing.assert_equal(a, b)
+
+def expectedFailureIf(condition):
+  if condition:
+    return unittest.expectedFailure
+  else:
+    return lambda function: function
 
 class TestAlignment(unittest.TestCase):
   def setUp(self):
@@ -43,6 +49,7 @@ class TestAlignment(unittest.TestCase):
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
+  @expectedFailureIf(int(os.environ.get("JENKINS_NO_GPU", 0)))
   def testGPU(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
     agpu = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1", useGPU=True, forceGPU=True)
