@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import matplotlib.pyplot as plt, networkx as nx, numpy as np, scipy, uncertainties.unumpy as unp
+import matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties.unumpy as unp
 from more_itertools import pairwise
 from .utilities import pullhist, savefig
 

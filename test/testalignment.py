@@ -1,6 +1,5 @@
-import argparse, dataclasses, itertools, numbers, numpy as np, os, uncertainties.unumpy as unp, unittest
+import dataclasses, itertools, numbers, numpy as np, os, uncertainties.unumpy as unp, unittest
 from ..alignmentset import AlignmentSet, ImageStats
-from ..computeshift import crosscorrelation
 from ..overlap import AlignmentResult
 from ..stitch import AffineEntry, StitchCoordinate, StitchOverlapCovariance
 from ..tableio import readtable

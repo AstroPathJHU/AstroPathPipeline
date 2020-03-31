@@ -149,7 +149,7 @@ class PolyFieldWarp(Warp) :
         Quickly warps a single inputted image layer into the provided destination
         """
         map_x, map_y = self.__getMapMatrices()
-        return cv2.remap(layer,map_x,map_y,self.interp,dest)
+        return cv2.remap(layerimg,map_x,map_y,self.interp,dest)
 
     def writeImageLayer(self,im,rawfilename,layernumber) :
         """

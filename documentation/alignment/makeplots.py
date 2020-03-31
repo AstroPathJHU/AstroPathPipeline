@@ -80,7 +80,7 @@ def maximize1D():
     ax = fig.add_subplot(1, 1, 1)
 
     polynomial, = plt.plot(x, y, color="blue")
-    scatter = plt.scatter(xx, yy, color=polynomial.get_color())
+    plt.scatter(xx, yy, color=polynomial.get_color())
     maxline, = plt.plot([xbest, xbest], [Cbest, ymin], linestyle=":", color="orange")
     maxpoint = plt.scatter(xbest, Cbest, color=maxline.get_color())
 
@@ -99,14 +99,14 @@ def maximize1D():
     maxline.remove()
     deltaxtext.remove()
     deltaCline, = plt.plot([xbest, xbest], [Cbest, Cminus], linestyle=":", color=maxline.get_color())
-    sigmaCtext = plt.text(xbest - xrange/100, Cbest - 5*deltaC/8, r"$\sigma_C$", color=deltaCline.get_color(), horizontalalignment="right", verticalalignment="center")
+    plt.text(xbest - xrange/100, Cbest - 5*deltaC/8, r"$\sigma_C$", color=deltaCline.get_color(), horizontalalignment="right", verticalalignment="center")
     deltaxline, = plt.plot([xminus, xplus], [Cminus, Cminus], linestyle=":", color="fuchsia")
     deltaxbrackets, = plt.plot([xminus, xbest, xplus], [Cminus - yrange/20]*3, linestyle="-", color=deltaxline.get_color())
-    deltaxbracketends = [
+    [
       plt.plot([x, x], [Cminus - yrange/20 - yrange/50, Cminus - yrange/20 + yrange/50], linestyle="-", color=deltaxbrackets.get_color())
       for x in [xminus, xbest, xplus]
     ]
-    sigmaxtexts = [
+    [
       plt.text(xbest + sign * deltax/2, Cminus - yrange/20 - yrange/40, r"$\sigma_{\delta x_\text{max}}$", color=deltaxbrackets.get_color(), horizontalalignment="center", verticalalignment="top")
       for sign in (-1, 1)
     ]

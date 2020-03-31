@@ -214,7 +214,6 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     #create the dictionary of compiled GPU FFT objects if possible
     self.gpufftdict = None
     if self.gputhread is not None :
-      import reikna as rk
       from reikna.fft import FFT
       #set up an FFT for images of each unique size in the set of overlaps
       self.gpufftdict = {}
@@ -308,7 +307,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
     if keep:
         self.rawimages = rawimages.copy()
-        for rectangle, rawimage in zip(rectangles, self.rawimages):
+        for rectangle, rawimage in zip(self.rectangles, self.rawimages):
             rectangle.rawimage = rawimage
 
     return rawimages
@@ -368,6 +367,3 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     for i, overlap in enumerate(result.overlaps):
       result.overlaps[i] = [o for o in self.overlaps if o.n == overlap.n][0]
     return result
-
-if __name__ == "__main__":
-  print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))
