@@ -122,16 +122,12 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   def aligncsv(self):
     return os.path.join(self.dbload, self.samp+"_align.csv")
 
-  def align(self,*,skip_corners=False,write_result=True,return_on_invalid_result=False,**kwargs):
+  def align(self,*,skip_corners=False,write_result=True,return_on_invalid_result=False,warpwarnings=False,**kwargs):
     #if the raw images haven't already been loaded, load them with the default argument
     #if self.rawimages is None :
     #  self.getDAPI()
 
     logger.info("starting align loop for "+self.samp)
-
-    #add the GPU thread and the dictionary of compiled FFTs to the keyword arguments
-    kwargs['gputhread']  = self.gputhread
-    kwargs['gpufftdict'] = self.gpufftdict
 
     sum_mse = 0.; norm=0.
     done = set()
@@ -143,25 +139,23 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       if (overlap.p2, overlap.p1) in done:
         result = overlap.getinversealignment(self.overlapsdict[overlap.p2, overlap.p1])
       else:
-        result = overlap.align(**kwargs)
+        result = overlap.align(gputhread=self.gputhread, gpufftdict=self.gpufftdict, **kwargs)
       done.add((overlap.p1, overlap.p2))
-      if result is not None: 
-        if result.exit==0 :
-          sum_mse+=result.mse[2]; norm+=((overlap.cutimages[0]).shape[0])*((overlap.cutimages[0]).shape[1])
-        else :
-          if return_on_invalid_result :
-            logger.warning(f'WARNING: Overlap number {i} alignment result is invalid, returning 1e10!!')
-            return 1e10
-          else :
-            logger.warning(f'WARNING: Overlap number {i} alignment result is invalid, adding 1e10 to sum_mse!!')
-            sum_mse+=1e10; norm+=((overlap.cutimages[0]).shape[0])*((overlap.cutimages[0]).shape[1])
+
+      norm+=((overlap.cutimages[0]).shape[0])*((overlap.cutimages[0]).shape[1])
+      if result is not None and result.exit == 0: 
+        sum_mse+=result.mse[2]
       else :
+        if result is None:
+          reason = "is None"
+        else:
+          reason = f"has exit status {result.exit}"
         if return_on_invalid_result :
-            logger.warning(f'WARNING: Overlap number {i} alignment result is "None"; returning 1e10!!')
-            return 1e10
+          if warpwarnings: logger.warning(f'WARNING: Overlap number {i} alignment result {reason}, returning 1e10!!')
+          return 1e10
         else :
-          logger.warning(f'WARNING: Overlap number {i} alignment result is "None"!')
-          sum_mse+=1e10; norm+=((overlap.cutimages[0]).shape[0])*((overlap.cutimages[0]).shape[1])
+          if warpwarnings: logger.warning(f'WARNING: Overlap number {i} alignment result {reason}, adding 1e10 to sum_mse!!')
+          sum_mse+=1e10
 
     if write_result :
       self.writealignments()

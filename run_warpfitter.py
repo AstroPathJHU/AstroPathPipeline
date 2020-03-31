@@ -86,7 +86,7 @@ def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
     a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample)
     a.getDAPI(writeimstat=False)
     whole_sample_meanimage = a.meanimage
-    a.align(write_result=False)
+    a.align(write_result=False,warpwarnings=True)
     #get the list of overlaps
     overlaps = a.overlaps
     #filter out any that could not be aligned

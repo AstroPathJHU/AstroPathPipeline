@@ -232,7 +232,7 @@ class WarpFitter :
         #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages([warpimg for warpimg in self.warpset.images if not (self.skip_corners and warpimg.is_corner_only)])
         #align the images 
-        cost = self.alignset.align(skip_corners=self.skip_corners,write_result=False,return_on_invalid_result=True,alreadyalignedstrategy="overwrite")
+        cost = self.alignset.align(skip_corners=self.skip_corners,write_result=False,return_on_invalid_result=True,alreadyalignedstrategy="overwrite",warpwarnings=True)
         #add to the lists to plot
         self.costs.append(cost if cost<1e10 else -0.1)
         self.max_radial_warps.append(self.warpset.warp.maxRadialDistortAmount(fixedpars))
@@ -310,12 +310,12 @@ class WarpFitter :
             raise FittingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
         #start by aligning the raw, unwarped images and getting their shift comparison information/images
         self.alignset.updateRectangleImages(self.warpset.images)
-        rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite")
+        rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
         raw_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
         #next warp and align the images with the best fit warp
         self.warpset.warpLoadedImageSet()
         self.alignset.updateRectangleImages(self.warpset.images)
-        bestcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite")
+        bestcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
         warped_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
         logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
         #write out the overlap comparison figures
