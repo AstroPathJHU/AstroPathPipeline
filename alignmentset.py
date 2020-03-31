@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
-import cv2, logging, matplotlib.pyplot as plt, methodtools, numpy as np, os, scipy, typing, uncertainties as unc, uncertainties.unumpy as unp
+import cv2, logging, methodtools, numpy as np, os
 
 from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap, OverlapCollection
 from .rectangle import ImageStats, Rectangle, RectangleCollection, rectangleoroverlapfilter
 from .stitch import ReadStitchResult, stitch
 from .tableio import readtable, writetable
-from .utilities import pullhist, savefig
 
 logger = logging.getLogger("align")
 logger.setLevel(logging.DEBUG)
@@ -369,53 +368,6 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     for i, overlap in enumerate(result.overlaps):
       result.overlaps[i] = [o for o in self.overlaps if o.n == overlap.n][0]
     return result
-
-  def plotresults(self, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pullkwargs={}, pullbinning=None):
-    fig = plt.figure(**figurekwargs)
-    ax = fig.add_subplot(1, 1, 1)
-
-    vectors = np.array([
-      o.result.dxvec - (o.stitchresult if stitched else 0)
-      for o in self.overlaps
-      if not o.result.exit
-      and o.tag in tags
-    ])
-    if not errorbars: vectors = unp.nominal_values(vectors)
-    if pull:
-      if pullbinning is None: pullbinning = np.linspace(-5, 5, 51)
-      pullhist(
-        vectors[:,0],
-        label="$x$ pulls",
-        stdinlabel=True,
-        alpha=0.5,
-        binning=pullbinning,
-        **pullkwargs,
-      )
-      pullhist(
-        vectors[:,1],
-        label="$y$ pulls",
-        stdinlabel=True,
-        alpha=0.5,
-        binning=pullbinning,
-        **pullkwargs,
-      )
-    else:
-      if pullkwargs != {} or pullbinning is not None:
-        raise ValueError("Can't provide pull kwargs for a scatter plot")
-      plt.errorbar(
-        x=unp.nominal_values(vectors[:,0]),
-        xerr=unp.std_devs(vectors[:,0]),
-        y=unp.nominal_values(vectors[:,1]),
-        yerr=unp.std_devs(vectors[:,1]),
-        fmt='o',
-      )
-
-    plotstyling(fig=fig, ax=ax)
-    if saveas is None:
-      plt.show()
-    else:
-      savefig(saveas)
-      plt.close()
 
 if __name__ == "__main__":
   print(Aligner(r"G:\heshy", r"G:\heshy\flatw", "M21_1", 0))

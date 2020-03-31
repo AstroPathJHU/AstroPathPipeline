@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import argparse, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
+from ...alignmentplots import closedlooppulls, plotpairwisealignments
 from ...alignmentset import AlignmentSet
-from ...errorcheck import errorcheck
 from ...utilities import savefig
 
 here = os.path.dirname(__file__)
@@ -139,8 +139,8 @@ def alignmentresults():
   }
   with plt.rc_context(rc=rc):
     for tag in 1, 2, 3, 4:
-      A.plotresults(tags=[tag], saveas=os.path.join(here, f"alignment-result-{tag}.pdf"), **kwargs)
-      A.plotresults(tags=[tag], stitched=True, saveas=os.path.join(here, f"stitch-result-{tag}.pdf"), **kwargs)
+      plotpairwisealignments(A, tags=[tag], saveas=os.path.join(here, f"alignment-result-{tag}.pdf"), **kwargs)
+      plotpairwisealignments(A, tags=[tag], stitched=True, saveas=os.path.join(here, f"stitch-result-{tag}.pdf"), **kwargs)
 
 def scanning():
   with plt.rc_context(rc=rc):
@@ -218,9 +218,9 @@ def squarepulls(*, bki):
       }
 
       for samp in "M1_1", "M2_3":
-        a = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
-        errorcheck(a, tagsequence=[4, 2, 6, 8], saveas=os.path.join(here, "squarepull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
-        errorcheck(a, tagsequence=[1, 3, 9, 7], saveas=os.path.join(here, "diamondpull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
+        A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
+        closedlooppulls(A, tagsequence=[4, 2, 6, 8], saveas=os.path.join(here, "squarepull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
+        closedlooppulls(A, tagsequence=[1, 3, 9, 7], saveas=os.path.join(here, "diamondpull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
 
 def stitchpulls(*, bki):
   if bki:
@@ -232,9 +232,9 @@ def stitchpulls(*, bki):
         plt.legend()
 
       for samp in "M1_1", "M2_3":
-        a = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
+        A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
         for tag in 1, 2, 3, 4:
-          a.plotresults(tags=[tag], figurekwargs={"figsize": (6, 6)}, stitched=True, pull=True, plotstyling=plotstyling, saveas=os.path.join(here, f"stitch-pull-{tag}-{samp[1]}.pdf"))
+          plotpairwisealignments(A, tags=[tag], figurekwargs={"figsize": (6, 6)}, stitched=True, pull=True, plotstyling=plotstyling, saveas=os.path.join(here, f"stitch-pull-{tag}-{samp[1]}.pdf"))
 
 if __name__ == "__main__":
   class EqualsEverything:
