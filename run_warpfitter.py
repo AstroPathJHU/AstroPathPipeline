@@ -29,7 +29,7 @@ def split_csv_to_list_of_ints(value) :
 #define and get the command-line arguments
 parser = ArgumentParser()
 #positional arguments
-parser.add_argument('mode',        help='Operation to perform', choices=['fit','show_octets','show_chunks'])
+parser.add_argument('mode',        help='Operation to perform', choices=['fit','show_octets','show_chunks','cProfile'])
 parser.add_argument('sample',      help='Name of the data sample to use')
 parser.add_argument('rawfile_dir', help='Path to the directory containing the "[sample_name]/*.raw" files')
 parser.add_argument('root1_dir',   help='Path to the directory containing "[sample name]/dbload" subdirectories')
