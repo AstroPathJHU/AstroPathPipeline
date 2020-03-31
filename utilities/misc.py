@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt, numpy as np, uncertainties as unc, scipy.stats
+import contextlib, matplotlib.pyplot as plt, numpy as np, os, uncertainties as unc, scipy.stats
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -19,3 +19,11 @@ def pullhist(array, *, binning=None, verbose=True, label="", stdinlabel=True, qu
     print(f"mean of middle {100*quantileforstats}%:   ", unc.ufloat(np.mean(pulls), scipy.stats.sem(pulls)))
     print(f"std dev of middle {100*quantileforstats}%:", unc.ufloat(np.std(pulls), np.std(pulls) / np.sqrt(2*len(pulls)-2)))
     print("n outliers: ", outliers)
+
+@contextlib.contextmanager
+def cd(dir):
+  cdminus = os.getcwd()
+  try:
+    yield os.chdir(dir)
+  finally:
+    os.chdir(cdminus)

@@ -1,6 +1,7 @@
 #imports 
 from .warpfitter import WarpFitter
 from ..alignment.alignmentset import AlignmentSet
+from ..utilities.misc import cd
 from argparse import ArgumentParser
 from scipy import stats
 import os, copy, gc, logging, matplotlib.pyplot as plt, seaborn as sns
@@ -100,19 +101,13 @@ def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
             rejected_overlaps.append(overlap)
     logger.info(f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)}')
     if save_plots :
-        init_dir = os.getcwd()
         if not os.path.isdir(working_dir) :
             os.mkdir(working_dir)
-        os.chdir(working_dir)
-        if not os.path.isdir(REJECTED_OVERLAP_IMAGE_DIR_NAME) :
-            os.mkdir(REJECTED_OVERLAP_IMAGE_DIR_NAME)
-        os.chdir(REJECTED_OVERLAP_IMAGE_DIR_NAME)
-        try :
-            makeImagePixelPlots(rejected_overlaps)
-        except Exception as e :
-            raise e
-        finally :
-            os.chdir(init_dir)
+        with cd(working_dir):
+            if not os.path.isdir(REJECTED_OVERLAP_IMAGE_DIR_NAME) :
+                os.mkdir(REJECTED_OVERLAP_IMAGE_DIR_NAME)
+            with cd(REJECTED_OVERLAP_IMAGE_DIR_NAME):
+                makeImagePixelPlots(rejected_overlaps)
     #find the overlaps that form full octets (indexed by p1 number)
     octets = {}
     #begin by getting the set of all p1s
