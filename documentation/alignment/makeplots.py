@@ -3,7 +3,6 @@
 import argparse, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
 from ...alignmentplots import closedlooppulls, plotpairwisealignments
 from ...alignmentset import AlignmentSet
-from ...utilities import savefig
 
 here = os.path.dirname(__file__)
 data = os.path.join(here, "..", "..", "test", "data")
@@ -93,7 +92,7 @@ def maximize1D():
 
     ax.set_xlabel(r"$\delta x$")
     ax.set_ylabel(r"$C(\delta x)$")
-    savefig(os.path.join(here, "1Dmaximization.pdf"))
+    plt.savefig(os.path.join(here, "1Dmaximization.pdf"))
 
     maxpoint.remove()
     maxline.remove()
@@ -110,7 +109,7 @@ def maximize1D():
       plt.text(xbest + sign * deltax/2, Cminus - yrange/20 - yrange/40, r"$\sigma_{\delta x_\text{max}}$", color=deltaxbrackets.get_color(), horizontalalignment="center", verticalalignment="top")
       for sign in (-1, 1)
     ]
-    savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
+    plt.savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
 
     plt.close(fig)
 
@@ -120,7 +119,7 @@ def islands():
     plt.imshow(A.image())
     plt.xticks([])
     plt.yticks([])
-    savefig(os.path.join(here, "islands.pdf"))
+    plt.savefig(os.path.join(here, "islands.pdf"))
     plt.close()
 
 def alignmentresults():
@@ -158,7 +157,7 @@ def scanning():
             plt.arrow(x+50, y+50, -400, 100, width=3, length_includes_head=True)
         else:
           plt.arrow(x+50, y+50, 100, 0, width=3, length_includes_head=True)
-    savefig(os.path.join(here, "scanning.pdf"))
+    plt.savefig(os.path.join(here, "scanning.pdf"))
     plt.close()
 
 def squarepulls(*, bki):
@@ -186,7 +185,7 @@ def squarepulls(*, bki):
       plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True, facecolor="orange"),
     ]
 
-    savefig(os.path.join(here, "squarepulldiagram.pdf"))
+    plt.savefig(os.path.join(here, "squarepulldiagram.pdf"))
 
     for a in arrows: a.remove()
 
@@ -201,7 +200,7 @@ def squarepulls(*, bki):
       plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True, facecolor="orange"),
     ]
 
-    savefig(os.path.join(here, "diamondpulldiagram.pdf"))
+    plt.savefig(os.path.join(here, "diamondpulldiagram.pdf"))
 
     plt.close()
 

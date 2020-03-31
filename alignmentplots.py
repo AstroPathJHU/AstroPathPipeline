@@ -2,7 +2,7 @@
 
 import matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties.unumpy as unp
 from more_itertools import pairwise
-from .utilities import pullhist, savefig
+from .utilities import pullhist
 
 def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pullkwargs={}, pullbinning=None):
   fig = plt.figure(**figurekwargs)
@@ -48,7 +48,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
   if saveas is None:
     plt.show()
   else:
-    savefig(saveas)
+    plt.savefig(saveas)
     plt.close()
 
 def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):

@@ -2,7 +2,7 @@ import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, 
 
 from .computeshift import computeshift, mse, shiftimg
 from .rectangle import rectangleoroverlapfilter as overlapfilter
-from .utilities import covariance_matrix, savefig
+from .utilities import covariance_matrix
 
 @dataclasses.dataclass
 class Overlap:
@@ -161,7 +161,7 @@ class Overlap:
     if saveas is None:
       plt.show()
     else:
-      savefig(saveas, **savekwargs)
+      plt.savefig(saveas, **savekwargs)
       plt.close()
 
   def getShiftComparisonImageCodeNameTuple(self) :
