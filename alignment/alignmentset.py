@@ -6,7 +6,7 @@ from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap, OverlapCollection
 from .rectangle import ImageStats, Rectangle, RectangleCollection, rectangleoroverlapfilter
 from .stitch import ReadStitchResult, stitch
-from .tableio import readtable, writetable
+from ..utilities.tableio import readtable, writetable
 
 logger = logging.getLogger("align")
 logger.setLevel(logging.DEBUG)

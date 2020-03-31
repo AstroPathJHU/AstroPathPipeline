@@ -1,7 +1,7 @@
 # A script to run a quick example of the warpfitter
 
 #imports
-from ..warpfitter import WarpFitter
+from ..warping.warpfitter import WarpFitter
 import os
 
 #some constants

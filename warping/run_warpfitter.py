@@ -1,6 +1,6 @@
 #imports 
 from .warpfitter import WarpFitter
-from .alignmentset import AlignmentSet
+from ..alignment.alignmentset import AlignmentSet
 from argparse import ArgumentParser
 from scipy import stats
 import os, copy, gc, logging, matplotlib.pyplot as plt, seaborn as sns

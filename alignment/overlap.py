@@ -2,7 +2,7 @@ import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, 
 
 from .computeshift import computeshift, mse, shiftimg
 from .rectangle import rectangleoroverlapfilter as overlapfilter
-from .utilities import covariance_matrix
+from ..utilities.misc import covariance_matrix
 
 @dataclasses.dataclass
 class Overlap:

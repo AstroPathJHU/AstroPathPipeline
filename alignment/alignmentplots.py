@@ -2,7 +2,7 @@
 
 import matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties.unumpy as unp
 from more_itertools import pairwise
-from .utilities import pullhist
+from ..utilities.misc import pullhist
 
 def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pullkwargs={}, pullbinning=None):
   fig = plt.figure(**figurekwargs)

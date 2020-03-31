@@ -1,8 +1,8 @@
 import abc, dataclasses, itertools, logging, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
 from .overlap import OverlapCollection
 from .rectangle import Rectangle, RectangleCollection, rectangledict
-from .tableio import readtable, writetable
-from .utilities import covariance_matrix
+from ..utilities.tableio import readtable, writetable
+from ..utilities.misc import covariance_matrix
 
 logger = logging.getLogger("align")
 
