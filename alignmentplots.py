@@ -1,10 +1,57 @@
 #!/usr/bin/env python
 
-import matplotlib.pyplot as plt, networkx as nx, numpy as np, scipy, uncertainties
+import matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties.unumpy as unp
 from more_itertools import pairwise
 from .utilities import pullhist
 
-def errorcheck(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
+def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pullkwargs={}, pullbinning=None):
+  fig = plt.figure(**figurekwargs)
+  ax = fig.add_subplot(1, 1, 1)
+
+  vectors = np.array([
+    o.result.dxvec - (o.stitchresult if stitched else 0)
+    for o in alignmentset.overlaps
+    if not o.result.exit
+    and o.tag in tags
+  ])
+  if not errorbars: vectors = unp.nominal_values(vectors)
+  if pull:
+    if pullbinning is None: pullbinning = np.linspace(-5, 5, 51)
+    pullhist(
+      vectors[:,0],
+      label="$x$ pulls",
+      stdinlabel=True,
+      alpha=0.5,
+      binning=pullbinning,
+      **pullkwargs,
+    )
+    pullhist(
+      vectors[:,1],
+      label="$y$ pulls",
+      stdinlabel=True,
+      alpha=0.5,
+      binning=pullbinning,
+      **pullkwargs,
+    )
+  else:
+    if pullkwargs != {} or pullbinning is not None:
+      raise ValueError("Can't provide pull kwargs for a scatter plot")
+    plt.errorbar(
+      x=unp.nominal_values(vectors[:,0]),
+      xerr=unp.std_devs(vectors[:,0]),
+      y=unp.nominal_values(vectors[:,1]),
+      yerr=unp.std_devs(vectors[:,1]),
+      fmt='o',
+    )
+
+  plotstyling(fig=fig, ax=ax)
+  if saveas is None:
+    plt.show()
+  else:
+    plt.savefig(saveas)
+    plt.close()
+
+def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
   dct = {
     1: (-1, -1),
     2: ( 0, -1),

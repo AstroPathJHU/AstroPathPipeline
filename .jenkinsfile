@@ -1,6 +1,6 @@
 pipeline {
   agent {
-    docker { image 'astropathjhu/alignmenttest:v4' }
+    docker { image 'astropathjhu/alignmenttest:v5' }
   }
 
   environment {
@@ -57,6 +57,12 @@ pipeline {
               sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/alignment/alignment_stitching.log'
           }
         }
+      }
+    }
+
+    stage('code checks') {
+      steps {
+        sh 'python -m pyflakes .'
       }
     }
   }

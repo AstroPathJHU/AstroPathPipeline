@@ -1,7 +1,6 @@
 #imports 
 from .warpfitter import WarpFitter
 from .alignmentset import AlignmentSet
-from .utilities import savefig
 from argparse import ArgumentParser
 from scipy import stats
 import os, copy, gc, logging, matplotlib.pyplot as plt, seaborn as sns
@@ -30,7 +29,7 @@ def split_csv_to_list_of_ints(value) :
 #define and get the command-line arguments
 parser = ArgumentParser()
 #positional arguments
-parser.add_argument('mode',        help='Operation to perform', choices=['fit','show_octets','show_chunks'])
+parser.add_argument('mode',        help='Operation to perform', choices=['fit','show_octets','show_chunks','cProfile'])
 parser.add_argument('sample',      help='Name of the data sample to use')
 parser.add_argument('rawfile_dir', help='Path to the directory containing the "[sample_name]/*.raw" files')
 parser.add_argument('root1_dir',   help='Path to the directory containing "[sample name]/dbload" subdirectories')
@@ -77,7 +76,7 @@ def makeImagePixelPlots(overlaps) :
         ax2.text(0.5,0.8,txt1,horizontalalignment='center',verticalalignment='center',transform=ax2.transAxes)
         ax2.text(0.5,0.7,txt2,horizontalalignment='center',verticalalignment='center',transform=ax2.transAxes)
         fn = f'overlap_{overlap.n}.png'
-        savefig(fn)
+        plt.savefig(fn)
         plt.close()
 
 # Helper function to get the dictionary of octets
@@ -87,7 +86,7 @@ def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
     a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample)
     a.getDAPI(writeimstat=False)
     whole_sample_meanimage = a.meanimage
-    result = a.align(write_result=False)
+    a.align(write_result=False,warpwarnings=True)
     #get the list of overlaps
     overlaps = a.overlaps
     #filter out any that could not be aligned
@@ -196,7 +195,7 @@ def getOverlaps(args) :
             raise ValueError(f'root2_dir {args.root2_dir} is not a valid directory!')
         #get the dictionary of overlap octets
         octets, whole_sample_meanimage = getSampleOctets(args.root1_dir,args.root2_dir,args.sample,args.working_dir,(args.mode=='show_octets' or args.mode=='show_chunks'))
-        if args.mode=='fit' and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
+        if args.mode in ('fit', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
             for i,octet in enumerate([octets[key] for key in sorted(octets.keys())],start=1) :
                 if i in args.octets or args.octets==[-1]:
                     logger.info(f'Adding overlaps in octet #{i}...')
@@ -207,10 +206,10 @@ def getOverlaps(args) :
                 msg+=f'(asked for {len(args.octets)} octets but found {len(overlaps)} corresponding overlaps)'
                 msg+=f' there are {len(octets)} octets to choose from.'
                 raise ValueError(msg)
-        if args.mode=='show_chunks' or (args.mode=='fit' and overlaps==[]) :
+        if args.mode=='show_chunks' or (args.mode in ('fit', 'cProfile') and overlaps==[]) :
             #find the chunks of interconnected octets
             octet_chunks = getSampleChunks(octets)
-            if args.mode=='fit' and args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS) :
+            if args.mode in ('fit', 'cProfile') and args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS) :
                 for i,chunk in enumerate(octet_chunks,start=1) :
                     if i in args.chunks or args.chunks==[-1] :
                         logger.info(f'Adding overlaps in chunk #{i}...')
@@ -265,10 +264,10 @@ if args.fixed!=[''] and len(args.fixed)!=2*sum([fix_cxcy,fix_fxfy,fix_k1k2,fix_p
 #choice of overlaps must be valid
 overlaps,whole_sample_meanimage=getOverlaps(args)
 gc.collect()
-if args.mode=='fit' :
+if args.mode in ('fit', 'cProfile') :
     logger.info(f'Will run fit on a sample of {len(overlaps)} total overlaps.')
 
-if args.mode=='fit' :
+if args.mode in ('fit', 'cProfile') :
     #make the WarpFitter Objects
     logger.info('Initializing WarpFitter')
     fitter = WarpFitter(args.sample,rawfile_dir,metafile_dir,args.working_dir,overlaps,args.layer,whole_sample_meanimage)
@@ -277,10 +276,12 @@ if args.mode=='fit' :
     fitter.loadRawFiles()
     #fit the model to the data
     logger.info('Running doFit')
-    result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,
-                          max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
-                          polish=True,print_every=args.print_every,maxiter=args.max_iter)
-    #cProfile.run('fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,polish=True,print_every=args.print_every,maxiter=args.max_iter)')
+    if args.mode == 'fit' :
+        result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,
+                              max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
+                              polish=True,print_every=args.print_every,maxiter=args.max_iter)
+    else:
+        cProfile.run('fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,polish=True,print_every=args.print_every,maxiter=args.max_iter)')
 
 logger.info('All done : )')
 

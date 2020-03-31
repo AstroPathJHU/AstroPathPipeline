@@ -2,7 +2,7 @@
 
 #imports
 from ..warpfitter import WarpFitter
-import os, shutil
+import os
 
 #some constants
 folder = os.path.dirname(__file__)

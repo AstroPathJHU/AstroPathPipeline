@@ -1,6 +1,4 @@
-import cv2, functools, logging, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.feature, skimage.filters, textwrap, uncertainties as unc, uncertainties.unumpy as unp
-
-from .utilities import savefig
+import cv2, logging, matplotlib.pyplot as plt, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.feature, skimage.filters, textwrap, uncertainties as unc
 
 logger = logging.getLogger("align")
 
@@ -50,7 +48,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     plt.xlabel(r"$\delta x$")
     plt.ylabel(r"$\delta y$", labelpad=-5)
     if savebigimage:
-      savefig(savebigimage)
+      plt.savefig(savebigimage)
     if showbigimage:
       plt.show()
     if savebigimage:
@@ -60,7 +58,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     plt.xlabel(r"$\delta x$")
     plt.ylabel(r"$\delta y$", labelpad=-5)
     if savesmallimage:
-      savefig(savesmallimage)
+      plt.savefig(savesmallimage)
     if showsmallimage:
       plt.show()
     if savesmallimage:
@@ -117,14 +115,6 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     exit=exit,
     spline=spline,
   )
-
-@nb.njit
-def hann(image):
-  M, N = image.shape
-  hannx = np.hanning(M)
-  hanny = np.hanning(N)
-  hann = np.outer(hannx, hanny)
-  return image * hann
 
 def crosscorrelation_gpu(images,thread,fftc):
   image_devs = tuple(thread.to_device(image) for image in images)

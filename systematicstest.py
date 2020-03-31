@@ -14,6 +14,7 @@ class OverlapWithSystematicShift(Overlap):
       self.cutimages[0][:self.cutimages[0].shape[0]//2,...] = self.cutimages[0][self.systematicshift//2:self.cutimages[0].shape[0]//2+self.systematicshift//2,...]
       self.cutimages[0][self.cutimages[0].shape[0]//2:,...] = self.cutimages[0][self.cutimages[0].shape[0]//2-self.systematicshift//2:-self.systematicshift//2,...]
 
+    return result
 
 class AlignmentSetWithSystematicShift(AlignmentSet):
   overlaptype = OverlapWithSystematicShift

@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
 import argparse, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
+from ...alignmentplots import closedlooppulls, plotpairwisealignments
 from ...alignmentset import AlignmentSet
-from ...errorcheck import errorcheck
-from ...utilities import savefig
 
 here = os.path.dirname(__file__)
 data = os.path.join(here, "..", "..", "test", "data")
@@ -80,7 +79,7 @@ def maximize1D():
     ax = fig.add_subplot(1, 1, 1)
 
     polynomial, = plt.plot(x, y, color="blue")
-    scatter = plt.scatter(xx, yy, color=polynomial.get_color())
+    plt.scatter(xx, yy, color=polynomial.get_color())
     maxline, = plt.plot([xbest, xbest], [Cbest, ymin], linestyle=":", color="orange")
     maxpoint = plt.scatter(xbest, Cbest, color=maxline.get_color())
 
@@ -93,24 +92,24 @@ def maximize1D():
 
     ax.set_xlabel(r"$\delta x$")
     ax.set_ylabel(r"$C(\delta x)$")
-    savefig(os.path.join(here, "1Dmaximization.pdf"))
+    plt.savefig(os.path.join(here, "1Dmaximization.pdf"))
 
     maxpoint.remove()
     maxline.remove()
     deltaxtext.remove()
     deltaCline, = plt.plot([xbest, xbest], [Cbest, Cminus], linestyle=":", color=maxline.get_color())
-    sigmaCtext = plt.text(xbest - xrange/100, Cbest - 5*deltaC/8, r"$\sigma_C$", color=deltaCline.get_color(), horizontalalignment="right", verticalalignment="center")
+    plt.text(xbest - xrange/100, Cbest - 5*deltaC/8, r"$\sigma_C$", color=deltaCline.get_color(), horizontalalignment="right", verticalalignment="center")
     deltaxline, = plt.plot([xminus, xplus], [Cminus, Cminus], linestyle=":", color="fuchsia")
     deltaxbrackets, = plt.plot([xminus, xbest, xplus], [Cminus - yrange/20]*3, linestyle="-", color=deltaxline.get_color())
-    deltaxbracketends = [
+    [
       plt.plot([x, x], [Cminus - yrange/20 - yrange/50, Cminus - yrange/20 + yrange/50], linestyle="-", color=deltaxbrackets.get_color())
       for x in [xminus, xbest, xplus]
     ]
-    sigmaxtexts = [
+    [
       plt.text(xbest + sign * deltax/2, Cminus - yrange/20 - yrange/40, r"$\sigma_{\delta x_\text{max}}$", color=deltaxbrackets.get_color(), horizontalalignment="center", verticalalignment="top")
       for sign in (-1, 1)
     ]
-    savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
+    plt.savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
 
     plt.close(fig)
 
@@ -120,7 +119,7 @@ def islands():
     plt.imshow(A.image())
     plt.xticks([])
     plt.yticks([])
-    savefig(os.path.join(here, "islands.pdf"))
+    plt.savefig(os.path.join(here, "islands.pdf"))
     plt.close()
 
 def alignmentresults():
@@ -139,8 +138,8 @@ def alignmentresults():
   }
   with plt.rc_context(rc=rc):
     for tag in 1, 2, 3, 4:
-      A.plotresults(tags=[tag], saveas=os.path.join(here, f"alignment-result-{tag}.pdf"), **kwargs)
-      A.plotresults(tags=[tag], stitched=True, saveas=os.path.join(here, f"stitch-result-{tag}.pdf"), **kwargs)
+      plotpairwisealignments(A, tags=[tag], saveas=os.path.join(here, f"alignment-result-{tag}.pdf"), **kwargs)
+      plotpairwisealignments(A, tags=[tag], stitched=True, saveas=os.path.join(here, f"stitch-result-{tag}.pdf"), **kwargs)
 
 def scanning():
   with plt.rc_context(rc=rc):
@@ -158,7 +157,7 @@ def scanning():
             plt.arrow(x+50, y+50, -400, 100, width=3, length_includes_head=True)
         else:
           plt.arrow(x+50, y+50, 100, 0, width=3, length_includes_head=True)
-    savefig(os.path.join(here, "scanning.pdf"))
+    plt.savefig(os.path.join(here, "scanning.pdf"))
     plt.close()
 
 def squarepulls(*, bki):
@@ -186,7 +185,7 @@ def squarepulls(*, bki):
       plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True, facecolor="orange"),
     ]
 
-    savefig(os.path.join(here, "squarepulldiagram.pdf"))
+    plt.savefig(os.path.join(here, "squarepulldiagram.pdf"))
 
     for a in arrows: a.remove()
 
@@ -201,7 +200,7 @@ def squarepulls(*, bki):
       plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True, facecolor="orange"),
     ]
 
-    savefig(os.path.join(here, "diamondpulldiagram.pdf"))
+    plt.savefig(os.path.join(here, "diamondpulldiagram.pdf"))
 
     plt.close()
 
@@ -218,9 +217,9 @@ def squarepulls(*, bki):
       }
 
       for samp in "M1_1", "M2_3":
-        a = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
-        errorcheck(a, tagsequence=[4, 2, 6, 8], saveas=os.path.join(here, "squarepull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
-        errorcheck(a, tagsequence=[1, 3, 9, 7], saveas=os.path.join(here, "diamondpull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
+        A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
+        closedlooppulls(A, tagsequence=[4, 2, 6, 8], saveas=os.path.join(here, "squarepull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
+        closedlooppulls(A, tagsequence=[1, 3, 9, 7], saveas=os.path.join(here, "diamondpull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
 
 def stitchpulls(*, bki):
   if bki:
@@ -232,9 +231,9 @@ def stitchpulls(*, bki):
         plt.legend()
 
       for samp in "M1_1", "M2_3":
-        a = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
+        A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
         for tag in 1, 2, 3, 4:
-          a.plotresults(tags=[tag], figurekwargs={"figsize": (6, 6)}, stitched=True, pull=True, plotstyling=plotstyling, saveas=os.path.join(here, f"stitch-pull-{tag}-{samp[1]}.pdf"))
+          plotpairwisealignments(A, tags=[tag], figurekwargs={"figsize": (6, 6)}, stitched=True, pull=True, plotstyling=plotstyling, saveas=os.path.join(here, f"stitch-pull-{tag}-{samp[1]}.pdf"))
 
 if __name__ == "__main__":
   class EqualsEverything:
