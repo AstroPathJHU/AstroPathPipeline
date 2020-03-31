@@ -273,12 +273,12 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     #    return None
     try :
       api = rk.cluda.ocl_api()
+      #return a thread from the API
+      return api.Thread.create(interactive=interactive)
     except Exception :
       if force: raise
       logger.warning('WARNING: Failed to create an OpenCL API; no GPU computation will be available!!')
       return None
-    #return a thread from the API
-    return api.Thread.create(interactive=interactive)
 
   def __getrawlayers(self, filetype, keep=False):
     logger.info(self.samp)
