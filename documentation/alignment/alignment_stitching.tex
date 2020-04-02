@@ -8,12 +8,15 @@
 \usepackage[subrefformat=simple,labelformat=simple]{subcaption}
 \usepackage{hyperref}
 \usepackage{cleveref}
+\usepackage{siunitx}
 \usepackage[margin=1in]{geometry}
 \renewcommand\thesubfigure{(\alph{subfigure})}
 
 \newcommand{\svec}[1]{{\vec{#1}\mkern2mu\vphantom{#1}}}
 \newcommand{\pvec}[1]{\svec^\prime}
 \newcommand{\matrixbold}[1]{\mathbf{#1}}
+
+\newcommand{\M}[2]{\texttt{M#1\_#2}}
 
 \begin{document}
 	
@@ -25,7 +28,7 @@
 
 Our microscope is supposed to scan a tissue sample, which covers some subset of a slide of size $L\times W$.  Initially, it performs a quick scan of the whole slide with a small magnification setting.  This scan is recorded in \texttt{qptiff} format.
 
-Using that image, the microscope determines which parts of the slide actually have tissue in them.  It scans those sections under a larger magnification, using fields of size $l\times w$.  Covering the whole tissue may require $O(1000)$ fields.
+Using that image, the microscope determines which parts of the slide actually have tissue in them.  It scans those sections under a larger magnification, using high-powered fields of size $l\times w$.  Covering the whole tissue may require $O(1000)$ fields.
 
 The scanning is configured with an overlap fraction $f=20\%$, so that some parts of the image are scanned twice.  The rightmost $\frac{1}{2}fl$ of each field overlaps the leftmost $\frac{1}{2}fl$ of the field to its right.  Similarly, the bottom $\frac{1}{2}fw$ of each field overlaps with the top $\frac{1}{2}fw$ of the field under it.  These overlaps are used to assess differences between the fields, to correct those differences, and ultimately to assess systematic uncertainties based on the remaining differences.
 
@@ -180,18 +183,19 @@ The error estimation procedure also gives us an opportunity to detect when a par
 The procedure in \cref{sec:measuringalignment} looks at the tallest peak of the cross-correlation function.  For a good overlap, there is often only one peak, or one tall peak and several other, much shorter ones.  \Cref{fig:badxcorrelation}, on the other hand, shows a central peak near $(0, 0)$ and a diagonal structure, similar to the structure in \cref{fig:badoverlap}, containing several yellow areas.  The error estimation tells us whether any of the other peaks are significant: if any other peak at $\delta r'$ has $C(\delta r')\ge C(\delta r_\text{max})-\sigma_C(\delta r_\text{max})$, we do not know, to $1\sigma$ confidence, which peak is the correct one, and therefore we mark the overlap as bad.  The result from bad overlaps are not used in the final stitching procedure.
 
 \section{Stitching}
+\label{sec:stitching}
 
 After we derive the individual alignment results for each overlap, we can ``stitch'' the results together to obtain the final positions of each field.  We see each alignment result as a Gaussian constraint on the relative positions of those two fields, and combine all of those constraints together to find the likelihood $L$ for alignment positions $\vec{r}_i$:
 \begin{align}
 \begin{aligned}
 -2\ln L_\text{alignment}(\vec{r}_1, \ldots, \vec{r}_N)=
 \sum_{o}&(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)^T \\
-&\mathbf{cov}_o^{-1}
+&\matrixbold{cov}_o^{-1}
 (\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)
 \end{aligned}
 \label{eq:loglikelihoodalignment}
 \end{align}
-In this parameterization, $\vec{r}_k$, with $k$ running from $1$ to the number of fields $N$, is the position of the field indexed by $i$; $\svec{r}_k^n$ is the field's nominal position, given by the microscope software; $o$ indexes the overlaps; $i_o$ and $j_o$ are the indices of the two fields whose overlap is described by $o$; $\delta\vec{r}_o$ is the $\delta\vec{r}_\text{max}$ determined for that overlap, as described in \cref{sec:measuringalignment}; and $\mathbf{cov}_o$ is the covariance matrix from \cref{eq:overlapcovariance}.
+In this parameterization, $\vec{r}_k$, with $k$ running from $1$ to the number of fields $N$, is the position of the field indexed by $i$; $\svec{r}_k^n$ is the field's nominal position, given by the microscope software; $o$ indexes the overlaps; $i_o$ and $j_o$ are the indices of the two fields whose overlap is described by $o$; $\delta\vec{r}_o$ is the $\delta\vec{r}_\text{max}$ determined for that overlap, as described in \cref{sec:measuringalignment}; and $\matrixbold{cov}_o$ is the covariance matrix from \cref{eq:overlapcovariance}.
 
 \begin{figure}[ht]
 	\centering
@@ -200,7 +204,7 @@ In this parameterization, $\vec{r}_k$, with $k$ running from $1$ to the number o
 		%		\caption{}
 		%		\label{fig:badxcorrelation}
 	\end{subfigure}
-	\caption{An example of an image, taken with the Vectra 3.0 microscope, with two disconnected islands.}
+	\caption{An example of an image, code name \M{21}1, taken with the Vectra 3.0 microscope, with two disconnected islands.}
 	\label{fig:islands}
 \end{figure}
 
@@ -219,11 +223,11 @@ We first assume that $\matrixbold{A}$ is close to the identity matrix $\begin{pm
 \begin{align}
 -2\ln L_\text{constraint}(\vec{r}_1, \ldots, \vec{r}_N, \matrixbold{A})=&
 \sum_{k}(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)^T %\\&
-\mathbf{\Sigma}^{-1}
+\matrixbold{\Sigma}^{-1}
 (\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)
 \label{eq:loglikelihoodrandomerror}
 \end{align}
-where $\mathbf{\Sigma}=\begin{pmatrix}\sigma_x^2 & 0 \\ 0 & \sigma_y^2\end{pmatrix}$.
+where $\matrixbold{\Sigma}=\begin{pmatrix}\sigma_x^2 & 0 \\ 0 & \sigma_y^2\end{pmatrix}$.
 
 The constraint added in \cref{eq:loglikelihoodrandomerror} turns out to be weak, because the positioning errors $\sigma_{x,y}$ are significantly larger than the errors from the pairwise alignments.  In fact, if we modify $\sigma_{x,y}$ by multiplying them by a few orders of magnitude up or down, the final alignment is basically unchanged.
 
@@ -234,7 +238,7 @@ The final likelihood function is the sum of \cref{eq:loglikelihoodalignment,eq:l
 &
 \begin{aligned}
 \sum_{o}&(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)^T \\
-&\mathbf{cov}_o^{-1}
+&\matrixbold{cov}_o^{-1}
 (\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n) \\
 \end{aligned} \\
 +&\sum_{k}(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)^T %\\&
@@ -271,9 +275,9 @@ with a covariance matrix
 \matrixbold{cov}_{\vec{v}}=\matrixbold{P}^{-1}.
 \end{equation}
 
-\section{Validation of the alignment procedure}
+\section{Vectra 3.0 results}
 
-In this section, we show plots that illustrate the results of the alignment procedure.
+In this section, we show plots that illustrate the results of the alignment procedure for the Vectra 3.0 microscope.
 
 \subsection{Alignment movements}
 
@@ -321,7 +325,7 @@ For an alignment with $N$ fields, we have $2N$ coordinates to set.  Except for t
 		\caption{}
 		\label{fig:stitchresult1}
 	\end{subfigure}
-	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in a small image taken with the Vectra 3.0 microscope.  The plots show overlaps between one field and the field \subref{fig:alignmentresult4} to its right, \subref{fig:alignmentresult3} under it and to the right, \subref{fig:alignmentresult2} under it, and \subref{fig:alignmentresult1} under it and to the left.  Each point with its error bars indicates a single overlap.  \subref{fig:stitchresult4}--\subref{fig:stitchresult1} The same distributions for the respective overlap directions after stitching has been performed.}
+	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in a small image, code name \M{21}1, taken with the Vectra 3.0 microscope.  The plots show overlaps between one field and the field \subref{fig:alignmentresult4} to its right, \subref{fig:alignmentresult3} under it and to the right, \subref{fig:alignmentresult2} under it, and \subref{fig:alignmentresult1} under it and to the left.  Each point with its error bars indicates a single overlap.  \subref{fig:stitchresult4}--\subref{fig:stitchresult1} The same distributions for the respective overlap directions after stitching has been performed.}
 	\label{fig:alignmentresults}
 \end{figure}
 
@@ -381,7 +385,7 @@ In general, we do not know $\sigma$ in advance, but we have an estimate $\sigma_
 		\caption{}
 		\label{fig:diamondpulldiagram}
 	\end{subfigure}
-	\caption{\subref{fig:squarepull1}, \subref{fig:squarepull2} The pull distributions in $x$ and $y$ for the total displacement obtained from pairwise alignment when moving around in a square, as shown in \subref{fig:squarepulldiagram}, for two different images collected with the Vectra 3.0 microscope.  \subref{fig:diamondpull1}, \subref{fig:diamondpull2} The corresponding pull distributions for those two datasets when moving in a diamond, as shown in \subref{fig:diamondpulldiagram}.}
+	\caption{\subref{fig:squarepull1}, \subref{fig:squarepull2} The pull distributions in $x$ and $y$ for the total displacement obtained from pairwise alignment when moving around in a square, as shown in \subref{fig:squarepulldiagram}, for two different images, code names \M11 and \M23, respectively, collected with the Vectra 3.0 microscope.  \subref{fig:diamondpull1}, \subref{fig:diamondpull2} The corresponding pull distributions for those two datasets when moving in a diamond, as shown in \subref{fig:diamondpulldiagram}.}
 	\label{fig:squarepulls}
 \end{figure}
 
@@ -429,11 +433,37 @@ In general, we do not know $\sigma$ in advance, but we have an estimate $\sigma_
 		\caption{}
 		\label{fig:stitchpull12}
 	\end{subfigure}
-	\caption{Pull distributions in $x$ and $y$ for the residual pairwise misalignment after stitching, as shown in \cref{fig:stitchresult4,fig:stitchresult3,fig:stitchresult2,fig:stitchresult1}, for two different images collected with the Vectra 3.0 microscope.  The plots show distributions for overlaps between one field and the field \subref{fig:stitchpull41}, \subref{fig:stitchpull42} to its right, \subref{fig:stitchpull31}, \subref{fig:stitchpull32} under it and to the right, \subref{fig:stitchpull21}, \subref{fig:stitchpull22}  under it, and \subref{fig:stitchpull11}, \subref{fig:stitchpull12}  under it and to the left.}
+	\caption{Pull distributions in $x$ and $y$ for the residual pairwise misalignment after stitching, as shown in \cref{fig:stitchresult4,fig:stitchresult3,fig:stitchresult2,fig:stitchresult1}, for two different images, \M11 and \M23, collected with the Vectra 3.0 microscope.  The plots show distributions for overlaps between one field and the field \subref{fig:stitchpull41}, \subref{fig:stitchpull42} to its right, \subref{fig:stitchpull31}, \subref{fig:stitchpull32} under it and to the right, \subref{fig:stitchpull21}, \subref{fig:stitchpull22}  under it, and \subref{fig:stitchpull11}, \subref{fig:stitchpull12}  under it and to the left.}
 	\label{fig:stitchpulls}
 \end{figure}
 
 The standard deviations of the pull distributions were used to determine the factor of $1/16$ used to correct \cref{eq:overlapcovariance} to \cref{eq:overlapcovariancecorrected}.  The fact that, after making this correction, the standard deviations are $1$ for multiple different images as well as for pull distributions of two different quantities lends confidence to the \emph{method} of error estimation.  Remaining deviations from $1$ indicate that there is still some amount of room for improvement.
+
+\subsection{Linear transformation matrix}
+
+As described in \cref{sec:stitching}, when we stitch the alignment we also obtain the linear matrix $\matrixbold{A}$, which describes the relationship between the distance that the microscope is supposed to move $\Delta\vec{r}$ and the average distance it actually moves $\matrixbold{A}\Delta\vec{r}$.  We expect it to be more or less constant for different images taken with the same microscope, although of course the mechanical parts can also degrade over time, change due to maintenance, or be replaced.
+
+The primary purpose of the alignment and stitching is to determine the relative locations of the high-powered fields, and when only a single island is present $\matrixbold{A}$ is not necessary for this purpose.  When there are multiple islands, as in \cref{fig:islands}, including $\matrixbold{A}$ in the fit allows us to obtain those islands' approximate relative locations.  In either case, we do not need the precise values of $\matrixbold{A}$'s entries for any analysis, but the matrix still provides interesting information about the mechanical calibration of the microscope.
+
+For the \M11 dataset, we find
+\begin{align}
+\matrixbold{A}=&\begin{pmatrix}
+\num{0.998037\pm.000010} &
+\num{.000084\pm.000013} \\
+\num{0.000368\pm.000012} &
+\num{0.996957\pm.000015}
+\end{pmatrix} \\
+=\matrixbold{I} + &\begin{pmatrix}
+\num{-1.963\pm.010} &
+\num{.084\pm.013} \\
+\num{0.368\pm.012} &
+\num{-3.043\pm.015}
+\end{pmatrix} \times \num{e-3}
+\label{eq:Amatrix_M11}
+\end{align}
+The Vectra 3.0 scans fields of size $1344\times1004$ $\text{pixels}^2$.  The entries of $\matrixbold{A}$ tell us that on average, when moving one field to the right, the microscope ends up 2 pixels to the left of where it should, and when moving down, it ends up 4 pixels above where it should.  Although the top row of \cref{fig:alignmentresults} shows that the random scatter is a larger effect, the average shift is noticeable.
+
+\subsection{Periodic dependence}
 
 \section{Summary}
 
