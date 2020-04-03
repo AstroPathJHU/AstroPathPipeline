@@ -1,4 +1,4 @@
-import contextlib, matplotlib.pyplot as plt, numpy as np, os, uncertainties as unc, scipy.stats
+import contextlib, dataclasses, matplotlib.pyplot as plt, numpy as np, os, uncertainties as unc, scipy.stats
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -27,3 +27,34 @@ def cd(dir):
     yield os.chdir(dir)
   finally:
     os.chdir(cdminus)
+
+class dataclass_dc_init(cls, **kwargs):
+  """
+  Let's say that you need a dataclass that modifies its arguments to init
+  for example
+  class MyDataClass:
+    x: float
+    y: float
+    #...others
+    def __init__(self, xy, **kwargs):
+      #want to do
+      self.__dc_init__(x=xy[0], y=xy[1], **kwargs)
+
+  this decorator lets you do that.  the normal __init__ from the dataclass
+  will be saved as __dc_init__
+  """
+
+  def __new__(thiscls, decoratedcls=None, **kwargs):
+    if decoratedcls is None: return super().__new__(thiscls, **kwargs)
+    if kwargs: raise TypeError("Can't call this with both decoratedcls and kwargs")
+    return thiscls()(decoratedcls)
+
+  def __init__(self, **kwargs):
+    self.kwargs = kwargs
+
+  def __call__(self, cls):
+    __my_init__ = cls.__init__
+    cls = dataclasses.dataclass(cls, **self.kwargs)
+    cls.__dc_init__ = cls.__init__
+    cls.__init__ = __my_init__
+    return cls

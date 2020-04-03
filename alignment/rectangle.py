@@ -1,4 +1,5 @@
 import abc, collections, dataclasses, numpy as np
+from ..utilities.misc import dataclass_dc_init
 
 @dataclasses.dataclass
 class Rectangle:
@@ -15,6 +16,30 @@ class Rectangle:
   @property
   def xvec(self):
     return np.array([self.x, self.y])
+
+@dataclass_dc_init
+class ShiftedRectangle(Rectangle):
+  ix: int
+  iy: int
+  gc: int
+  px: float
+  py: float
+  mx1: float
+  mx2: float
+  my1: float
+  my2: float
+  gx: int
+  gy: int
+
+  def __init__(self, *args, rectangle=None, **kwargs):
+    return self.__dc_init__(
+      *args,
+      **{
+        field.name: getattr(rectangle, field.name)
+        for field  in dataclasses.fields(type(rectangle))
+      } if rectangle is not None else {},
+      **kwargs
+    )
 
 class RectangleCollection(abc.ABC):
   @abc.abstractproperty
