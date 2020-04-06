@@ -4,6 +4,10 @@ from ..utilities.misc import cd
 from .run_warpfitter import getSampleOctets, checkDirAndFixedArgs, split_csv_to_list
 import os, random, multiprocessing as mp
 
+#function that gets passed to the multiprocessing pool just runs run_warpfitter.py
+def worker(cmd) :
+	os.system(cmd)
+
 def main() :
 	#define and get the command-line arguments
 	parser = ArgumentParser()
@@ -83,10 +87,6 @@ def main() :
 		thisjobworkingdir = os.path.join(args.working_dir,thisjobdirname)
 		thisjobcmdstring = f'{cmd_base} --working_dir {thisjobworkingdir} --octets {thisjoboctetstring[:-1]}'
 		job_cmds.append(thisjobcmdstring)
-
-	#function that gets passed to the multiprocessing pool just runs run_warpfitter.py
-	def worker(cmd) :
-		os.system(cmd)
 
 	#run all the job commands on a pool of workers
 	nworkers = min(mp.cpu_count(),args.njobs) if args.workers is None else min(args.workers,args.njobs)
