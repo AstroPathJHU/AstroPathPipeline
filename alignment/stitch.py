@@ -63,7 +63,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     ij = np.ix_((ix,iy), (jx,jy))
     ji = np.ix_((jx,jy), (ix,iy))
     jj = np.ix_((jx,jy), (jx,jy))
-    inversecovariance = units.inv(o.result.covariance) * scaleby**2 / scaleoverlaperror**2
+    inversecovariance = units.linalg.inv(o.result.covariance) * scaleby**2 / scaleoverlaperror**2
 
     A[ii] += inversecovariance
     A[ij] -= inversecovariance
@@ -136,11 +136,11 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     c += x0**2 / sigmax**2
     c += y0**2 / sigmay**2
 
-  result = units.solve(2*A, -b)
+  result = units.linalg.solve(2*A, -b)
 
   delta2nllfor1sigma = 1
 
-  covariancematrix = units.inv(A) * delta2nllfor1sigma
+  covariancematrix = units.linalg.inv(A) * delta2nllfor1sigma
   result = np.array(units.correlateddistances(distances=result, covariance=covariancematrix))
 
   x = result[:-4].reshape(len(rectangles), 2) * scaleby
