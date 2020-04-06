@@ -191,18 +191,18 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     for rectangle, image in zip(self.rectangles, self.images):
       rectangle.image = image
 
-    self.imagestats = [
-      ImageStats(
-        n=rectangle.n,
-        mean=np.mean(rectangle.image),
-        min=np.min(rectangle.image),
-        max=np.max(rectangle.image),
-        std=np.std(rectangle.image),
-        cx=rectangle.cx,
-        cy=rectangle.cy,
-      ) for rectangle in self.rectangles
-    ]
     if writeimstat:
+      self.imagestats = [
+        ImageStats(
+          n=rectangle.n,
+          mean=np.mean(rectangle.image),
+          min=np.min(rectangle.image),
+          max=np.max(rectangle.image),
+          std=np.std(rectangle.image),
+          cx=rectangle.cx,
+          cy=rectangle.cy,
+        ) for rectangle in self.rectangles
+      ]
       writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
 
     #create the dictionary of compiled GPU FFT objects if possible
