@@ -155,6 +155,10 @@ def inv(matrix):
     return -distance.power
   power = minuspower(matrix.T)
 
+  for (i, row), (j, row2) in itertools.combinations(enumerate(power.T), 2):
+    if len({p2-p1 for p1, p2 in zip(row, row2) if p1 is not None is not p2}) > 1:
+      raise ValueError(f"Rows {i} and {j} of the matrix aren't compatible in powers:\n{matrix[i]}\n{matrix[j]}")
+
   while any(_ is None for _ in np.ravel(power)):
     progressed = False
     for (i, j), element in np.ndenumerate(power):
