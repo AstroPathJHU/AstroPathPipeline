@@ -535,7 +535,7 @@ class CameraWarp(Warp) :
             plt.show()
         plt.close()
 
-    def writeParameterTextFile(self,par_mask=None,init_its=None,polish_its=None,rawcost=None,bestcost=None) :
+    def writeParameterTextFile(self,par_mask=None,init_its=None,polish_its=None,init_min_runtime=None,polish_min_runtime=None,rawcost=None,bestcost=None) :
         fn = 'warping_parameters.txt'
         max_r_x, max_r_y = self._getMaxDistanceCoords()
         pars=[self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.p1,self.p2]
@@ -560,6 +560,8 @@ class CameraWarp(Warp) :
         }
         if init_its is not None : to_write['initial_fit_iterations'] = str(init_its)
         if polish_its is not None : to_write['polishing_fit_iterations'] = str(polish_its)
+        if init_min_runtime is not None : to_write['initial_minimization_time'] = str(init_min_runtime)
+        if polish_min_runtime is not None : to_write['polish_minimization_time'] = str(polish_min_runtime)
         if rawcost is not None : to_write['raw_cost'] = str(rawcost)
         if bestcost is not None : to_write['best_cost'] = str(bestcost)
         if rawcost is not None and bestcost is not None : to_write['cost_reduction'] = f'{(100*(1.-bestcost/rawcost))}%'

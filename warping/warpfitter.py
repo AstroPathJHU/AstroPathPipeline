@@ -6,7 +6,7 @@ from ..alignment.rectangle import Rectangle, rectangleoroverlapfilter
 from ..utilities.misc import cd
 from ..utilities.tableio import readtable,writetable
 import numpy as np, scipy, matplotlib.pyplot as plt
-import os, logging, copy, shutil, platform
+import os, logging, copy, shutil, platform, time
 
 #global variables
 OVERLAP_FILE_EXT   = '_overlap.csv'
@@ -142,6 +142,7 @@ class WarpFitter :
         #get the list of constraints
         constraints = self.__getConstraints(fix_k1k2,fix_p1p2,max_radial_warp,max_tangential_warp)
         #call differential_evolution
+        minimization_start_time = time.time()
         logger.info('Starting initial minimization....')
         self.skip_corners = True
         with cd(self.working_dir) :
@@ -161,6 +162,7 @@ class WarpFitter :
             except Exception :
                 raise FittingError('Something failed in the initial minimization!')
         logger.info(f'Initial minimization completed {"successfully" if firstresult.success else "UNSUCCESSFULLY"} in {firstresult.nfev} evaluations.')
+        init_minimization_done_time = time.time()
         if polish :
             self.skip_corners = False
             #call minimize with trust_constr
@@ -184,6 +186,10 @@ class WarpFitter :
             logger.info(msg)
         else :
             result=firstresult
+        polish_minimization_done_time = time.time()
+        #record the minimization run times
+        self.init_min_runtime = init_minimization_done_time-minimization_start_time
+        self.polish_min_runtime = polish_minimization_done_time-init_minimization_done_time
         #make the fit progress plots
         self.init_its, self.polish_its = self.__makeFitProgressPlots(firstresult.nfev,show_plots)
         #use the fit result to make the best fit warp object
@@ -198,7 +204,10 @@ class WarpFitter :
         with cd(self.working_dir) :
             try :
                 self.__best_fit_warp.makeWarpAmountFigure()
-                self.__best_fit_warp.writeParameterTextFile(self.par_mask,self.init_its,self.polish_its,self.raw_cost,self.best_cost)
+                self.__best_fit_warp.writeParameterTextFile(self.par_mask,
+                                                            self.init_its,self.polish_its,
+                                                            self.init_min_runtime,self.polish_min_runtime,
+                                                            self.raw_cost,self.best_cost)
             except Exception :
                 raise FittingError('Something went wrong in trying to save the warping amount figure for the best-fit warp')
         return result
