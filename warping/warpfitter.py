@@ -152,7 +152,7 @@ class WarpFitter :
                     bounds=parameter_bounds,
                     strategy='best2bin',
                     maxiter=maxiter,
-                    tol=0.025,
+                    tol=0.03,
                     mutation=(0.6,1.00),
                     recombination=0.5,
                     polish=False,
@@ -167,7 +167,7 @@ class WarpFitter :
             self.skip_corners = False
             #call minimize with trust_constr
             logger.info('Starting polishing minimization....')
-            relative_steps = np.array([0.05*p if p<1. else 0.05 for p in firstresult.x])
+            relative_steps = np.array([0.02*p if p<1. else 0.02 for p in firstresult.x])
             with cd(self.working_dir) :
                 try :
                     result=scipy.optimize.minimize(
@@ -176,7 +176,7 @@ class WarpFitter :
                         method='trust-constr',
                         bounds=parameter_bounds,
                         constraints=constraints,
-                        options={'xtol':1e-4,'gtol':1e-3,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
+                        options={'xtol':1e-4,'gtol':1e-5,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
                         )
                 except Exception :
                     raise FittingError('Something failed in the polishing minimization!')
@@ -469,7 +469,7 @@ class WarpFitter :
         parnames = np.array(['cx','cy','fx','fy','k1','k2','p1','p2'])[self.par_mask]
         #make a list of each parameter's grid of possible values
         par_variations = []
-        nperpar=12-len(parnames)
+        nperpar=10-len(parnames)
         for i in range(len(bounds)) :
             name = parnames[i]
             bnds = bounds[i]
