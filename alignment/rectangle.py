@@ -1,16 +1,26 @@
 import abc, collections, dataclasses, numpy as np
+from ..utilities import units
 
 @dataclasses.dataclass
 class Rectangle:
   n: int
-  x: float
-  y: float
-  w: int
-  h: int
-  cx: int
-  cy: int
+  x: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
+  y: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
+  w: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
+  h: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
+  cx: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
+  cy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
   t: int
   file: str
+
+  def setalignmentinfo(self, *, pscale):
+    self.pscale = pscale
+    self.x = units.Distance(microns=self.x, pscale=self.pscale)
+    self.y = units.Distance(microns=self.y, pscale=self.pscale)
+    self.w = units.Distance(microns=self.w, pscale=self.pscale)
+    self.h = units.Distance(microns=self.h, pscale=self.pscale)
+    self.cx = units.Distance(microns=self.cx, pscale=self.pscale)
+    self.cy = units.Distance(microns=self.cy, pscale=self.pscale)
 
   @property
   def xvec(self):

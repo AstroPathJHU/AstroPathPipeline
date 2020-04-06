@@ -89,8 +89,12 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     self.__rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
     self.__overlaps = [o for o in self.overlaps if self.overlapfilter(o)]
 
+    self.initializerectangles()
     self.initializeoverlaps()
 
+  def initializerectangles(self):
+    for rectangle in self.rectangles:
+      rectangle.setalignmentinfo(pscale=self.pscale)
   def initializeoverlaps(self):
     for overlap in self.overlaps:
       p1rect = [r for r in self.rectangles if r.n==overlap.p1]
@@ -112,6 +116,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     rectangles, overlaps = rectanglesoverlaps
     self.__rectangles = rectangles
     self.__overlaps = overlaps
+    self.initializerectangles()
     self.initializeoverlaps()
 
   @methodtools.lru_cache()

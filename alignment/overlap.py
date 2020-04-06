@@ -2,6 +2,7 @@ import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, 
 
 from .computeshift import computeshift, mse, shiftimg
 from .rectangle import rectangleoroverlapfilter as overlapfilter
+from ..utilities import units
 from ..utilities.misc import covariance_matrix
 
 @dataclasses.dataclass
@@ -9,18 +10,23 @@ class Overlap:
   n: int
   p1: int
   p2: int
-  x1: float
-  y1: float
-  x2: float
-  y2: float
+  x1: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
+  y1: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
+  x2: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
+  y2: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
   tag: int
 
-  def setalignmentinfo(self, layer, pscale, nclip, rectangles):
+  def setalignmentinfo(self, *, layer, pscale, nclip, rectangles):
     self.layer = layer
     self.pscale = pscale
     self.nclip = nclip
     self.rectangles = rectangles
     self.result = None
+
+    self.x1 = units.Distance(microns=self.x1, pscale=self.pscale)
+    self.y1 = units.Distance(microns=self.y1, pscale=self.pscale)
+    self.x2 = units.Distance(microns=self.x2, pscale=self.pscale)
+    self.y2 = units.Distance(microns=self.y2, pscale=self.pscale)
 
   @property
   def images(self):
@@ -36,10 +42,10 @@ class Overlap:
     assert (hh, ww) == image2.shape
 
     #convert microns to approximate pixels
-    image1x1 = int(self.x1 * self.pscale)
-    image1y1 = int(self.y1 * self.pscale)
-    image2x1 = int(self.x2 * self.pscale)
-    image2y1 = int(self.y2 * self.pscale)
+    image1x1 = int(self.x1.pixels)
+    image1y1 = int(self.y1.pixels)
+    image2x1 = int(self.x2.pixels)
+    image2y1 = int(self.y2.pixels)
     image1x2 = image1x1 + ww
     image2x2 = image2x1 + ww
     image1y2 = image1y1 + hh
@@ -87,11 +93,11 @@ class Overlap:
       self.__computeshift(**computeshiftkwargs)
       self.__shiftclip()
     except Exception as e:
+      if debug: raise
       self.result.exit = 3
-      self.result.dxvec = unc.ufloat(0, 9999), unc.ufloat(0, 9999)
+      self.result.dxvec = units.udistance(pixels=unc.ufloat(0, 9999), pscale=self.pscale), units.udistance(pixels=unc.ufloat(0, 9999), pscale=self.pscale)
       self.result.sc = 1.
       self.result.exception = e
-      if debug: raise
     else:
       self.result.exception = None
     return self.result
@@ -117,12 +123,16 @@ class Overlap:
 
   def __computeshift(self, **computeshiftkwargs):
     minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
-    self.result.dxvec = minimizeresult.dx, minimizeresult.dy
+    self.result.dxvec = units.correlateddistances(
+      pixels=(minimizeresult.dx, minimizeresult.dy),
+      pscale=self.pscale,
+      power=1,
+    )
     self.result.exit = minimizeresult.exit
 
   @property
   def shifted(self):
-    return shiftimg(self.cutimages, self.result.dx, self.result.dy)
+    return shiftimg(self.cutimages, self.result.dx.pixels, self.result.dy.pixels)
 
   def __shiftclip(self):
     """
@@ -242,12 +252,12 @@ class AlignmentResult:
 
   @covariance.setter
   def covariance(self, covariancematrix):
-    assert np.isclose(covariancematrix[0, 1], covariancematrix[1, 0]), covariancematrix
+    assert np.isclose(units.pixels(covariancematrix)[0, 1], units.pixels(covariancematrix)[1, 0]), covariancematrix
     (self.covxx, self.covxy), (self.covxy, self.covyy) = covariancematrix
 
   @property
   def dxvec(self):
-    return np.array(unc.correlated_values([self.dx, self.dy], self.covariance))
+    return np.array(units.correlateddistances(distances=[self.dx, self.dy], covariance=self.covariance))
 
   @dxvec.setter
   def dxvec(self, dxvec):

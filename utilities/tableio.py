@@ -51,15 +51,16 @@ def readtable(filename, rownameorclass, **columntypes):
           #hopefully it has a default value!
           #otherwise we will get an error when
           #reading the first row
+        typ = field.metadata.get("readfunction", field.type)
         if field.name in columntypes:
-          if columntypes[field.name] != field.type:
+          if columntypes[field.name] != typ:
             raise TypeError(
               f"The type for {field.name} in your dataclass {Row.__name__} "
               f"and the type provided in readtable are inconsistent "
-              f"({field.type} != {columntypes[field.name]})"
+              f"({typ} != {columntypes[field.name]})"
             )
         else:
-          columntypes[field.name] = field.type
+          columntypes[field.name] = typ
 
     for row in reader:
       for column, typ in columntypes.items():
@@ -118,3 +119,18 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
       raise
   if printevery is not None:
     logger.info("finished!")
+
+def asrow(obj, *, dict_factory=dict):
+  """
+  loosely inspired by https://github.com/python/cpython/blob/77c623ba3d084e99d68c30f368bd7fbd7f175b60/Lib/dataclasses.py#L1052
+  """
+  if not dataclasses._is_dataclass_instance(obj):
+    raise TypeError("asrow() should be called on dataclass instances")
+
+  result = []
+  for f in fields(obj):
+    value = _asdict_inner(getattr(obj, f.name), dict_factory)
+    value = f.metadata.get("writefunction", lambda x: x)(value)
+    result.append((f.name, value))
+
+  return dict_factory(result)

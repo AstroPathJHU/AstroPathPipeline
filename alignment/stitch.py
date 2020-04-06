@@ -1,6 +1,7 @@
 import abc, dataclasses, itertools, logging, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
 from .overlap import OverlapCollection
 from .rectangle import Rectangle, RectangleCollection, rectangledict
+from ..utilities import units
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import covariance_matrix
 
@@ -32,8 +33,8 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   #nll = x^T A x + bx + c
 
   size = 2*len(rectangles) + 4 #2* because each rectangle has an x and a y, + 4 for the components of T
-  A = np.zeros(shape=(size, size))
-  b = np.zeros(shape=(size,))
+  A = np.zeros(shape=(size, size), dtype=object)
+  b = np.zeros(shape=(size,), dtype=object)
   c = 0
 
   Txx = -4
@@ -62,7 +63,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     ij = np.ix_((ix,iy), (jx,jy))
     ji = np.ix_((jx,jy), (ix,iy))
     jj = np.ix_((jx,jy), (jx,jy))
-    inversecovariance = np.linalg.inv(o.result.covariance) * scaleby**2 / scaleoverlaperror**2
+    inversecovariance = units.inv(o.result.covariance) * scaleby**2 / scaleoverlaperror**2
 
     A[ii] += inversecovariance
     A[ij] -= inversecovariance
@@ -72,7 +73,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     i = np.ix_((ix, iy))
     j = np.ix_((jx, jy))
 
-    constpiece = (-unp.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec) / scaleby
+    constpiece = (-units.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec) / scaleby
 
     b[i] += 2 * inversecovariance @ constpiece
     b[j] -= 2 * inversecovariance @ constpiece
@@ -82,19 +83,19 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   dxs, dys = zip(*(o.result.dxvec for o in overlaps))
 
   weightedvariancedx = np.average(
-    unp.nominal_values(dxs)**2,
-    weights=1/unp.std_devs(dxs)**2,
+    units.nominal_values(dxs)**2,
+    weights=1/units.std_devs(dxs)**2,
   )
   sigmax = np.sqrt(weightedvariancedx) / scaleby * scalejittererror
 
   weightedvariancedy = np.average(
-    unp.nominal_values(dys)**2,
-    weights=1/unp.std_devs(dys)**2,
+    units.nominal_values(dys)**2,
+    weights=1/units.std_devs(dys)**2,
   )
   sigmay = np.sqrt(weightedvariancedy) / scaleby * scalejittererror
 
   if fixpoint == "origin":
-    x0vec = np.array([0, 0]) #fix the origin, linear scaling is with respect to that
+    x0vec = units.distances(pixels=np.array([0, 0]), pscale=c.pscale) #fix the origin, linear scaling is with respect to that
   elif fixpoint == "center":
     x0vec = np.mean([r.xvec for r in rectangles], axis=0)
   else:
@@ -135,12 +136,12 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     c += x0**2 / sigmax**2
     c += y0**2 / sigmay**2
 
-  result = np.linalg.solve(2*A, -b)
+  result = units.solve(2*A, -b)
 
   delta2nllfor1sigma = 1
 
-  covariancematrix = np.linalg.inv(A) * delta2nllfor1sigma
-  result = np.array(unc.correlated_values(result, covariancematrix))
+  covariancematrix = units.inv(A) * delta2nllfor1sigma
+  result = np.array(units.correlateddistances(distances=result, covariance=covariancematrix))
 
   x = result[:-4].reshape(len(rectangles), 2) * scaleby
   T = result[-4:].reshape(2, 2)
