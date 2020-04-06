@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 from scipy import stats
 import os, copy, gc, logging, matplotlib.pyplot as plt, seaborn as sns
 import cProfile
+import multiprocessing as mp
 
 #constants
 logger = logging.getLogger("warpfitter")
@@ -214,7 +215,7 @@ def getOverlaps(args) :
 #################### MAIN SCRIPT ####################
 
 if __name__=='__main__' :
-    freeze_support()
+    mp.freeze_support()
     #define and get the command-line arguments
     parser = ArgumentParser()
     #positional arguments

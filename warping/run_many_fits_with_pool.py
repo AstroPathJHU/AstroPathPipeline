@@ -101,4 +101,5 @@ def main() :
 	print(f'All jobs in the pool have finished! : )')
 
 if __name__=='__main__' :
+	mp.freeze_support()
 	main()
