@@ -1,4 +1,4 @@
-import functools, itertools, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
+import collections, functools, itertools, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
 
 class UnitsError(Exception): pass
 
@@ -103,27 +103,46 @@ def correlateddistances(*, pscale=None, pixels=None, microns=None, distances=Non
     if distpscale != pscale is not None: raise UnitsError("Provided both pscale and distances, but they're inconsistent")
     pscale = distpscale
 
-  if power is None and distances is None:
-    power = 1
-  if distances is not None:
-    distpower = {_.power for _ in distances}
-    if covariance is not None: distpower |= {_.power/2 for _ in np.ravel(covariance)}
-    if len(distpower) > 1: raise UnitsError(f"Provided distances with multiple powers {distpower}")
-    distpower = distpower.pop()
-    if distpower != power is not None: raise UnitsError("Provided both power and distances, but they're inconsistent")
-    power = distpower
-
   if distances is not None:
     pixels = __pixels(distances)
     if covariance is not None:
+      distcovariance = covariance
       covariance = __pixels(covariance)
   if pixels is not None: name = "pixels"; values = pixels
   if microns is not None: name = "microns"; values = microns
 
+  values = np.array(values)
+  try:
+    length, = values.shape
+    if covariance is not None:
+      assert covariance.shape == (length, length)
+  except Exception:
+    raise TypeError("Need to give values of length N and an NxN covariance matrix")
+
   if covariance is not None:
+    print(values)
+    print(covariance)
     values = unc.correlated_values(values, covariance)
 
-  return tuple(Distance(pscale=pscale, power=power, **{name: _}) for _ in values)
+  if power is None and distances is None:
+    power = 1
+  if power is not None and not isinstance(power, collections.abc.Sequence):
+    power = np.array([power] * length)
+
+  if distances is not None:
+    distpower = np.array([_.power for _ in distances])
+    if covariance is not None:
+      for (i1, p1), (i2, p2) in itertools.product(enumerate(distpower), repeat=2):
+        if distcovariance[i1,i2].power != p1+p2:
+          raise UnitsError(f"Covariance entry {i1},{i2} has power {covariance[i1,i2].power}, should be {p1}+{p2}")
+    if power is not None and not np.all(power == distpower):
+      raise UnitsError(f"Provided both power and distances, but they're inconsistent:\n{power}\n{distpower}")
+    power = distpower
+
+  if len(power) != length:
+    raise TypeError(f"power has the wrong length {len(power)}, should be {length}")
+
+  return tuple(Distance(pscale=pscale, power=p, **{name: v}) for v, p in zip(values, power))
 
 @np.vectorize
 def pixels(distance):
