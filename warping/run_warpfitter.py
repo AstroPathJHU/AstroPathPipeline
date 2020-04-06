@@ -214,6 +214,7 @@ def getOverlaps(args) :
 #################### MAIN SCRIPT ####################
 
 if __name__=='__main__' :
+    freeze_support()
     #define and get the command-line arguments
     parser = ArgumentParser()
     #positional arguments
