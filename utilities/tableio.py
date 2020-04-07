@@ -2,7 +2,7 @@ import csv, dataclasses, logging
 
 logger = logging.getLogger("align")
 
-def readtable(filename, rownameorclass, **columntypes):
+def readtable(filename, rownameorclass, *, extrakwargs={}, **columntypes):
   """
   Read a csv table into a list of named tuples
 
@@ -11,6 +11,7 @@ def readtable(filename, rownameorclass, **columntypes):
                   with **kwargs with the keywords based on the column
                   headers.  Alternatively you can give a name, and a
                   dataclass will be automatically created with that name.
+  extrakwargs:    will be passed to the the class that creates each row
   columntypes:    type (or function) to be called on each element in
                   that column.  Default is it's just left as a string.
 
@@ -66,7 +67,7 @@ def readtable(filename, rownameorclass, **columntypes):
       for column, typ in columntypes.items():
         row[column] = typ(row[column])
 
-      result.append(Row(**row))
+      result.append(Row(**row, **extrakwargs))
 
   return result
 

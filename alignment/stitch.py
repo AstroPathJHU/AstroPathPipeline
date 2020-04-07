@@ -402,7 +402,11 @@ class StitchResultOverlapCovariances(StitchResultBase):
   def readtable(self, *filenames, adjustoverlaps=True):
     filename, affinefilename, overlapcovariancefilename = filenames
 
-    coordinates = readtable(filename, StitchCoordinate)
+    pscale = {_.pscale for _ in itertools.chain(self.rectangles, self.overlaps)}
+    if len(pscale) != 1: raise ValueError("?????? this should never happen")
+    pscale = pscale.pop()
+
+    coordinates = readtable(filename, StitchCoordinate, extrakwargs={"pscale": pscale})
     affines = readtable(affinefilename, AffineEntry)
     overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance)
 
@@ -488,13 +492,13 @@ class StitchCoordinate:
     if not isinstance(self.x, units.Distance):
       self.x = units.Distance(pixels=self.x, pscale=pscale)
     if not isinstance(self.y, units.Distance):
-      self.y = units.Distance(pixels=self.y, pscale=self.pscale)
+      self.y = units.Distance(pixels=self.y, pscale=pscale)
     if not isinstance(self.cov_x_x, units.Distance):
-      self.cov_x_x = units.Distance(pixels=self.cov_x_x, pscale=self.pscale, power=2)
+      self.cov_x_x = units.Distance(pixels=self.cov_x_x, pscale=pscale, power=2)
     if not isinstance(self.cov_x_y, units.Distance):
-      self.cov_x_y = units.Distance(pixels=self.cov_x_y, pscale=self.pscale, power=2)
+      self.cov_x_y = units.Distance(pixels=self.cov_x_y, pscale=pscale, power=2)
     if not isinstance(self.cov_y_y, units.Distance):
-      self.cov_y_y = units.Distance(pixels=self.cov_y_y, pscale=self.pscale, power=2)
+      self.cov_y_y = units.Distance(pixels=self.cov_y_y, pscale=pscale, power=2)
 
     nominal = [self.x, self.y]
     covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
