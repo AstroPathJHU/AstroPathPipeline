@@ -515,7 +515,7 @@ def stitchcoordinate(*, position=None, **kwargs):
 @dataclasses.dataclass
 class AffineEntry:
   n: int
-  value: float
+  value: float = dataclasses.field(metadata={"writefunction": float})
   description: str
 
 class AffineNominalEntry(AffineEntry):
