@@ -228,15 +228,15 @@ class AlignmentResult:
   code: int
   layer: int
   exit: int = 0
-  dx: float = 0.
-  dy: float = 0.
+  dx: units.Distance = dataclasses.field(default=0., metadata={"writefunction": lambda x: units.microns(x), "readfunction": float})
+  dy: units.Distance = dataclasses.field(default=0., metadata={"writefunction": lambda x: units.microns(x), "readfunction": float})
   sc: float = 0.
   mse1: float = 0.
   mse2: float = 0.
   mse3: float = 0.
-  covxx: float = 0.
-  covyy: float = 0.
-  covxy: float = 0.
+  covxx: units.Distance = dataclasses.field(default=0., metadata={"writefunction": lambda x: units.microns(x), "readfunction": float})
+  covyy: units.Distance = dataclasses.field(default=0., metadata={"writefunction": lambda x: units.microns(x), "readfunction": float})
+  covxy: units.Distance = dataclasses.field(default=0., metadata={"writefunction": lambda x: units.microns(x), "readfunction": float})
 
   @property
   def mse(self):

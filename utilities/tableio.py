@@ -105,7 +105,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
       for i, row in enumerate(rows, start=1):
         if printevery is not None and not i % printevery:
           logger.info(f"{i} / {size}")
-        writer.writerow(dataclasses.asdict(row))
+        writer.writerow(asrow(row))
   except PermissionError:
     if retry:
       result = None
@@ -128,9 +128,9 @@ def asrow(obj, *, dict_factory=dict):
     raise TypeError("asrow() should be called on dataclass instances")
 
   result = []
-  for f in fields(obj):
+  for f in dataclasses.fields(obj):
     if not f.metadata.get("includeintable", True): continue
-    value = _asdict_inner(getattr(obj, f.name), dict_factory)
+    value = dataclasses._asdict_inner(getattr(obj, f.name), dict_factory)
     value = f.metadata.get("writefunction", lambda x: x)(value)
     result.append((f.name, value))
 
