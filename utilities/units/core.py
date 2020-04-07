@@ -106,6 +106,7 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
   if distances is not None:
     pixels = __pixels(distances)
     if covariance is not None:
+      covariance = np.array(covariance)
       distcovariance = covariance
       covariance = __pixels(covariance)
   if pixels is not None: name = "pixels"; values = pixels

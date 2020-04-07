@@ -474,14 +474,19 @@ class StitchCoordinate:
   cov_x_x: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
   cov_x_y: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
   cov_y_y: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
-  pscale: float = dataclasses.field(repr=False, metadata={"includeintable": False})
+  pscale: dataclasses.InitVar[float] = None
 
-  def __post_init__(self):
-    self.x = units.Distance(pixels=self.x, pscale=self.pscale)
-    self.y = units.Distance(pixels=self.y, pscale=self.pscale)
-    self.cov_x_x = units.Distance(pixels=self.cov_x_x, pscale=self.pscale, power=2)
-    self.cov_x_y = units.Distance(pixels=self.cov_x_y, pscale=self.pscale, power=2)
-    self.cov_y_y = units.Distance(pixels=self.cov_y_y, pscale=self.pscale, power=2)
+  def __post_init__(self, pscale):
+    if not isinstance(self.x, units.Distance):
+      self.x = units.Distance(pixels=self.x, pscale=pscale)
+    if not isinstance(self.x, units.Distance):
+      self.y = units.Distance(pixels=self.y, pscale=self.pscale)
+    if not isinstance(self.x, units.Distance):
+      self.cov_x_x = units.Distance(pixels=self.cov_x_x, pscale=self.pscale, power=2)
+    if not isinstance(self.x, units.Distance):
+      self.cov_x_y = units.Distance(pixels=self.cov_x_y, pscale=self.pscale, power=2)
+    if not isinstance(self.x, units.Distance):
+      self.cov_y_y = units.Distance(pixels=self.cov_y_y, pscale=self.pscale, power=2)
 
     nominal = [self.x, self.y]
     covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
