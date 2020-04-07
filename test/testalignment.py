@@ -41,10 +41,10 @@ class TestAlignment(unittest.TestCase):
     a.stitch(checkwriting=True)
     for filename, cls, extrakwargs in (
       ("M21_1_imstat.csv", ImageStats, {"pscale": a.pscale}),
-      ("M21_1_align.csv", AlignmentResult, {}),
-      ("M21_1_stitch.csv", StitchCoordinate, {}),
+      ("M21_1_align.csv", AlignmentResult, {"pscale": a.pscale}),
+      ("M21_1_stitch.csv", StitchCoordinate, {"pscale": a.pscale}),
       ("M21_1_affine.csv", AffineEntry, {}),
-      ("M21_1_stitch_overlap_covariance.csv", StitchOverlapCovariance, {}),
+      ("M21_1_stitch_overlap_covariance.csv", StitchOverlapCovariance, {"pscale": a.pscale}),
     ):
       rows = readtable(os.path.join(thisfolder, "data", "M21_1", "dbload", filename), cls, extrakwargs=extrakwargs)
       targetrows = readtable(os.path.join(thisfolder, "alignmentreference", filename), cls, extrakwargs=extrakwargs)

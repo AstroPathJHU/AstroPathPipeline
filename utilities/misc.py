@@ -45,7 +45,7 @@ class dataclass_dc_init:
   """
 
   def __new__(thiscls, decoratedcls=None, **kwargs):
-    if decoratedcls is None: return super().__new__(thiscls, **kwargs)
+    if decoratedcls is None: return super().__new__(thiscls)
     if kwargs: raise TypeError("Can't call this with both decoratedcls and kwargs")
     return thiscls()(decoratedcls)
 
@@ -54,7 +54,9 @@ class dataclass_dc_init:
 
   def __call__(self, cls):
     __my_init__ = cls.__init__
+    del cls.__init__
     cls = dataclasses.dataclass(cls, **self.kwargs)
     cls.__dc_init__ = cls.__init__
+    cls.__dc_init__.__name__ = "__dc_init__"
     cls.__init__ = __my_init__
     return cls

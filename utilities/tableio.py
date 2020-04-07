@@ -97,7 +97,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
         + "\n  ".join(_.__name__ for _ in badclasses)
       )
 
-  fieldnames = [field.name for field in dataclasses.fields(rowclass)]
+  fieldnames = list(asrow(rows[0]))
 
   try:
     with open(filename, "w") as f:
