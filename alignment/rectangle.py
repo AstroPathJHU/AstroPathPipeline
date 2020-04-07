@@ -68,8 +68,23 @@ class ImageStats:
   min: float
   max: float
   std: float
-  cx: int
-  cy: int
+  cx: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
+  cy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
+  pscale: dataclasses.InitVar[float] = None
+
+  def __post_init__(self, pscale):
+    pscale = {pscale} if pscale is not None else set()
+    pscale |= {_.pscale for _ in (self.cx, self.cy) if isinstance(_, units.Distance)}
+    if not pscale:
+      raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
+    if len(pscale) > 1:
+      raise units.UnitsError("Provided inconsistent pscales")
+    pscale = pscale.pop()
+
+    if not isinstance(self.cx, units.Distance):
+      super().__setattr__("cx", units.Distance(pixels=self.cx, pscale=pscale))
+    if not isinstance(self.cy, units.Distance):
+      super().__setattr__("cy", units.Distance(pixels=self.cy, pscale=pscale))
 
 def rectangledict(rectangles):
   return {rectangle.n: i for i, rectangle in enumerate(rectangles)}
