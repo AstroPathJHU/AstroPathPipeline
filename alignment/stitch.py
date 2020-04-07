@@ -3,7 +3,6 @@ from .overlap import OverlapCollection
 from .rectangle import Rectangle, RectangleCollection, rectangledict
 from ..utilities import units
 from ..utilities.tableio import readtable, writetable
-from ..utilities.misc import covariance_matrix
 
 logger = logging.getLogger("align")
 
@@ -290,14 +289,14 @@ class StitchResultBase(OverlapCollection, RectangleCollection):
       x2 = readback.x()
       T2 = readback.T
       logger.debug("comparing nominals")
-      units.testing.assert_allclose(unp.nominal_values(x1), unp.nominal_values(x2), atol=atol, rtol=rtol)
-      units.testing.assert_allclose(unp.nominal_values(T1), unp.nominal_values(T2), atol=atol, rtol=rtol)
+      units.testing.assert_allclose(units.nominal_values(x1), units.nominal_values(x2), atol=atol, rtol=rtol)
+      units.testing.assert_allclose(units.nominal_values(T1), units.nominal_values(T2), atol=atol, rtol=rtol)
       logger.debug("comparing individual errors")
-      units.testing.assert_allclose(unp.std_devs(x1), unp.std_devs(x2), atol=atol, rtol=rtol)
-      units.testing.assert_allclose(unp.std_devs(T1), unp.std_devs(T2), atol=atol, rtol=rtol)
+      units.testing.assert_allclose(units.std_devs(x1), units.std_devs(x2), atol=atol, rtol=rtol)
+      units.testing.assert_allclose(units.std_devs(T1), units.std_devs(T2), atol=atol, rtol=rtol)
       logger.debug("comparing overlap errors")
       for o in self.overlaps:
-        units.testing.assert_allclose(covariance_matrix(self.dx(o)), covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
+        units.testing.assert_allclose(units.covariance_matrix(self.dx(o)), units.covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
       logger.debug("done")
 
 class StitchResultFullCovariance(StitchResultBase):
@@ -337,7 +336,7 @@ class StitchResultFullCovariance(StitchResultBase):
     overlapcovariances = []
     for o in self.overlaps:
       if o.p2 < o.p1: continue
-      covariance = np.array(covariance_matrix(np.concatenate([self.x(o.p1), self.x(o.p2)])))
+      covariance = np.array(units.covariance_matrix(np.concatenate([self.x(o.p1), self.x(o.p2)])))
       overlapcovariances.append(
         StitchOverlapCovariance(
           hpfid1=o.p1,
@@ -372,24 +371,24 @@ class StitchResultOverlapCovariances(StitchResultBase):
     x2 = self.x(overlap.p2)
     overlapcovariance = self.overlapcovariance(overlap)
 
-    nominals = np.concatenate([unp.nominal_values(x1), unp.nominal_values(x2)])
+    nominals = np.concatenate([units.nominal_values(x1), units.nominal_values(x2)])
 
-    covariance = np.ndarray((4, 4))
-    covariance[:2,:2] = unc.covariance_matrix(x1)
-    covariance[2:,2:] = unc.covariance_matrix(x2)
+    covariance = np.zeros((4, 4), dtype=object)
+    covariance[:2,:2] = units.covariance_matrix(x1)
+    covariance[2:,2:] = units.covariance_matrix(x2)
     covariance[0,2] = covariance[2,0] = overlapcovariance.cov_x1_x2
     covariance[0,3] = covariance[3,0] = overlapcovariance.cov_x1_y2
     covariance[1,2] = covariance[2,1] = overlapcovariance.cov_y1_x2
     covariance[1,3] = covariance[3,1] = overlapcovariance.cov_y1_y2
 
-    xx1, yy1, xx2, yy2 = unc.correlated_values(nominals, covariance)
+    xx1, yy1, xx2, yy2 = units.correlated_distances(distances=nominals, covariance=covariance)
     newx1 = np.array([xx1, yy1])
     newx2 = np.array([xx2, yy2])
 
-    np.testing.assert_allclose(unp.nominal_values(x1), unp.nominal_values(newx1))
-    np.testing.assert_allclose(unc.covariance_matrix(x1), unc.covariance_matrix(newx1))
-    np.testing.assert_allclose(unp.nominal_values(x2), unp.nominal_values(newx2))
-    np.testing.assert_allclose(unc.covariance_matrix(x2), unc.covariance_matrix(newx2))
+    units.testing.assert_allclose(units.nominal_values(x1), units.nominal_values(newx1))
+    units.testing.assert_allclose(units.covariance_matrix(x1), units.covariance_matrix(newx1))
+    units.testing.assert_allclose(units.nominal_values(x2), units.nominal_values(newx2))
+    units.testing.assert_allclose(unc.covariance_matrix(x2), units.covariance_matrix(newx2))
 
     return newx1 - newx2 - (overlap.x1vec - overlap.x2vec)
 
@@ -408,7 +407,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
 
     coordinates = readtable(filename, StitchCoordinate, extrakwargs={"pscale": pscale})
     affines = readtable(affinefilename, AffineEntry)
-    overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance)
+    overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance, extrakwargs={"pscale": pscale})
 
     self.__x = np.array([coordinate.xvec for coordinate in coordinates])
     self.__overlapcovariances = overlapcovariances
@@ -508,7 +507,7 @@ def stitchcoordinate(*, position=None, **kwargs):
   kw2 = {}
   if position is not None:
     kw2["x"], kw2["y"] = units.nominal_values(position)
-    (kw2["cov_x_x"], kw2["cov_x_y"]), (kw2["cov_x_y"], kw2["cov_y_y"]) = covariance_matrix(position)
+    (kw2["cov_x_x"], kw2["cov_x_y"]), (kw2["cov_x_y"], kw2["cov_y_y"]) = units.covariance_matrix(position)
 
   return StitchCoordinate(**kwargs, **kw2)
 
@@ -532,7 +531,7 @@ class AffineCovarianceEntry(AffineEntry):
     if entry1 is entry2:
       value = entry1.matrixentry.s**2
     else:
-      value = covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0][1]
+      value = unc.covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0][1]
     super().__init__(n=n, value=value, description = "cov_"+entry1.description+"_"+entry2.description)
 
   def __post_init__(self): pass
@@ -541,7 +540,26 @@ class AffineCovarianceEntry(AffineEntry):
 class StitchOverlapCovariance:
   hpfid1: int
   hpfid2: int
-  cov_x1_x2: float
-  cov_x1_y2: float
-  cov_y1_x2: float
-  cov_y1_y2: float
+  cov_x1_x2: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
+  cov_x1_y2: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
+  cov_y1_x2: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
+  cov_y1_y2: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
+  pscale: dataclasses.InitVar[float] = None
+
+  def __post_init__(self, pscale):
+    pscale = {pscale} if pscale is not None else set()
+    pscale |= {_.pscale for _ in (self.cov_x1_x2, self.cov_x1_y2, self.cov_y1_x2, self.cov_y1_y2) if isinstance(_, units.Distance)}
+    if not pscale:
+      raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
+    if len(pscale) > 1:
+      raise units.UnitsError("Provided inconsistent pscales")
+    pscale = pscale.pop()
+
+    if not isinstance(self.cov_x1_x2, units.Distance):
+      self.cov_x1_x2 = units.Distance(pixels=self.cov_x1_x2, pscale=pscale, power=2)
+    if not isinstance(self.cov_x1_y2, units.Distance):
+      self.cov_x1_y2 = units.Distance(pixels=self.cov_x1_y2, pscale=pscale, power=2)
+    if not isinstance(self.cov_y1_x2, units.Distance):
+      self.cov_y1_x2 = units.Distance(pixels=self.cov_y1_x2, pscale=pscale, power=2)
+    if not isinstance(self.cov_y1_y2, units.Distance):
+      self.cov_y1_y2 = units.Distance(pixels=self.cov_y1_y2, pscale=pscale, power=2)

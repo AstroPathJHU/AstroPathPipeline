@@ -1,4 +1,4 @@
-import collections, functools, itertools, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
+import collections, functools, itertools, numbers, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
 
 class UnitsError(Exception): pass
 
@@ -149,12 +149,12 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
 
 @np.vectorize
 def pixels(distance):
-  if distance == 0: return distance
+  if isinstance(distance, numbers.Number): return distance
   return distance.pixels
 __pixels = pixels #for use in functions with a pixels kwarg
 @np.vectorize
 def microns(distance):
-  if distance == 0: return distance
+  if isinstance(distance, numbers.Number): return distance
   return distance.microns
 
 @np.vectorize
