@@ -28,7 +28,7 @@ def cd(dir):
   finally:
     os.chdir(cdminus)
 
-class dataclass_dc_init(cls, **kwargs):
+class dataclass_dc_init:
   """
   Let's say that you need a dataclass that modifies its arguments to init
   for example
