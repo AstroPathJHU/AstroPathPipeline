@@ -90,7 +90,7 @@ def udistance(*, pscale, pixels=None, microns=None, power=1):
   """
   return Distance(pscale=pscale, pixels=pixels, microns=microns, power=power)
 
-def correlateddistances(*, pscale=None, pixels=None, microns=None, distances=None, covariance=None, power=None):
+def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=None, covariance=None, power=None):
   if (pixels is not None) + (microns is not None) + (distances is not None) != 1:
     raise TypeError("Have to provide exactly one of pixels, microns, or distances")
 
@@ -120,8 +120,6 @@ def correlateddistances(*, pscale=None, pixels=None, microns=None, distances=Non
     raise TypeError("Need to give values of length N and an NxN covariance matrix")
 
   if covariance is not None:
-    print(values)
-    print(covariance)
     values = unc.correlated_values(values, covariance)
 
   if power is None and distances is None:
@@ -155,8 +153,23 @@ def microns(distance):
   return distance.microns
 
 @np.vectorize
-def nominal_values(distance):
+def nominal_value(distance):
   return distance.nominal_value
+nominal_values = nominal_value
 @np.vectorize
-def std_devs(distance):
+def std_dev(distance):
   return distance.std_dev
+std_devs = std_dev
+
+def covariance_matrix(distances):
+  pixels = __pixels(distances)
+  covpixels = unc.covariance_matrix(pixels)
+
+  pscale = {_.pscale for _ in distances}
+  if len(pscale) > 1: raise UnitsError("Provided distances with multiple pscales")
+  pscale = pscale.pop()
+
+  distpowers = [_.power for _ in distances]
+  covpowers = [[a.power + b.power for b in distances] for a in distances]
+
+  return distances_differentpowers(pixels=covpixels, pscale=pscale, power=covpowers)

@@ -141,7 +141,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   delta2nllfor1sigma = 1
 
   covariancematrix = units.linalg.inv(A) * delta2nllfor1sigma
-  result = np.array(units.correlateddistances(distances=result, covariance=covariancematrix))
+  result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
   x = result[:-4].reshape(len(rectangles), 2) * scaleby
   T = result[-4:].reshape(2, 2)
@@ -322,7 +322,7 @@ class StitchResultFullCovariance(StitchResultBase):
     for thing, errorsq in zip(
       itertools.chain(np.ravel(self.x()), np.ravel(self.T)),
       np.diag(self.covariancematrix)
-    ): units.testing.assert_allclose(unc.std_dev(thing)**2, errorsq)
+    ): units.testing.assert_allclose(units.std_dev(thing)**2, errorsq)
 
   def x(self, rectangle_or_id=None):
     if rectangle_or_id is None: return self.__x
@@ -478,12 +478,12 @@ class StitchCoordinate:
   def __post_init__(self):
     nominal = [self.x, self.y]
     covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
-    self.xvec = unc.correlated_values(nominal, covariance)
+    self.xvec = units.correlated_distances(nominal, covariance)
 
 def stitchcoordinate(*, position=None, **kwargs):
   kw2 = {}
   if position is not None:
-    kw2["x"], kw2["y"] = unp.nominal_values(position)
+    kw2["x"], kw2["y"] = units.nominal_values(position)
     (kw2["cov_x_x"], kw2["cov_x_y"]), (kw2["cov_x_y"], kw2["cov_y_y"]) = covariance_matrix(position)
 
   return StitchCoordinate(**kwargs, **kw2)

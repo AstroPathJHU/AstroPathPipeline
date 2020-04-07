@@ -123,7 +123,7 @@ class Overlap:
 
   def __computeshift(self, **computeshiftkwargs):
     minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
-    self.result.dxvec = units.correlateddistances(
+    self.result.dxvec = units.correlated_distances(
       pixels=(minimizeresult.dx, minimizeresult.dy),
       pscale=self.pscale,
       power=1,
@@ -257,7 +257,7 @@ class AlignmentResult:
 
   @property
   def dxvec(self):
-    return np.array(units.correlateddistances(distances=[self.dx, self.dy], covariance=self.covariance))
+    return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
 
   @dxvec.setter
   def dxvec(self, dxvec):
