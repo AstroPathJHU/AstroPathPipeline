@@ -469,16 +469,23 @@ class StitchResultCvxpy(CalculatedStitchResult):
 @dataclasses.dataclass
 class StitchCoordinate:
   hpfid: int
-  x: float
-  y: float
-  cov_x_x: float
-  cov_x_y: float
-  cov_y_y: float
+  x: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
+  y: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
+  cov_x_x: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
+  cov_x_y: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
+  cov_y_y: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.pixels, "readfunction": float})
+  pscale: float = dataclasses.field(repr=False, metadata={"includeintable": False})
 
   def __post_init__(self):
+    self.x = units.Distance(pixels=self.x, pscale=self.pscale)
+    self.y = units.Distance(pixels=self.y, pscale=self.pscale)
+    self.cov_x_x = units.Distance(pixels=self.cov_x_x, pscale=self.pscale, power=2)
+    self.cov_x_y = units.Distance(pixels=self.cov_x_y, pscale=self.pscale, power=2)
+    self.cov_y_y = units.Distance(pixels=self.cov_y_y, pscale=self.pscale, power=2)
+
     nominal = [self.x, self.y]
     covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
-    self.xvec = units.correlated_distances(nominal, covariance)
+    self.xvec = units.correlated_distances(distances=nominal, covariance=covariance)
 
 def stitchcoordinate(*, position=None, **kwargs):
   kw2 = {}

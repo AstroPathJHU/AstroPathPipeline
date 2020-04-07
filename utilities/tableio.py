@@ -129,6 +129,7 @@ def asrow(obj, *, dict_factory=dict):
 
   result = []
   for f in fields(obj):
+    if not f.metadata.get("includeintable", True): continue
     value = _asdict_inner(getattr(obj, f.name), dict_factory)
     value = f.metadata.get("writefunction", lambda x: x)(value)
     result.append((f.name, value))
