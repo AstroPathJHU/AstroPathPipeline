@@ -3,11 +3,14 @@ from ..alignment.alignmentset import AlignmentSet, ImageStats
 from ..alignment.overlap import AlignmentResult
 from ..alignment.stitch import AffineEntry, StitchCoordinate, StitchOverlapCovariance
 from ..utilities.tableio import readtable
+from ..utilities import units
 
 thisfolder = os.path.dirname(__file__)
 
 def assertAlmostEqual(a, b, **kwargs):
-  if isinstance(a, numbers.Number):
+  if isinstance(a, units.Distance):
+    return units.testing.assert_allclose(a, b, **kwargs)
+  elif isinstance(a, numbers.Number):
     return np.testing.assert_allclose(a, b, **kwargs)
   elif dataclasses.is_dataclass(type(a)) and type(a) == type(b):
     try:
