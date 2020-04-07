@@ -77,6 +77,10 @@ class Distance:
   @property
   def derivatives(self): return {k: Distance(pscale=self.pscale, power=self.power, pixels=v) for k, v in self.pixels.derivatives.items()}
 
+  def __repr__(self):
+    if self.pscale is None: return repr(float(self))
+    return f"Distance(pscale={self.pscale}, pixels={self.pixels}, power={self.power})"
+
 distances = np.vectorize(Distance, excluded=["pscale", "power"])
 distances_differentpowers = np.vectorize(Distance, excluded=["pscale"])
   
