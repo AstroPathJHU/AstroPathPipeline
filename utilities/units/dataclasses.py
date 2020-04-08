@@ -18,8 +18,6 @@ class DataClassWithDistances(abc.ABC):
   def pixelsormicrons(self): pass
 
   def __post_init__(self, pscale):
-    object.__setattr__(self, "pscale", pscale)
-
     distancefields = [field for field in dataclasses.fields(type(self)) if field.metadata.get("isdistancefield", False)]
     for field in distancefields:
       if field.metadata["pixelsormicrons"] != self.pixelsormicrons:
@@ -41,6 +39,8 @@ class DataClassWithDistances(abc.ABC):
     if len(pscale) > 1:
       raise units.UnitsError(f"Provided inconsistent pscales {pscale}")
     pscale = pscale.pop()
+
+    object.__setattr__(self, "pscale", pscale)
 
     if not usedistances:
       for field in distancefields:
