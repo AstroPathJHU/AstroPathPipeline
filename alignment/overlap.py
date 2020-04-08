@@ -237,15 +237,15 @@ class AlignmentResult:
   code: int
   layer: int
   exit: int
-  dx: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.microns(x), "readfunction": float})
-  dy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.microns(x), "readfunction": float})
+  dx: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.pixels(x), "readfunction": float})
+  dy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.pixels(x), "readfunction": float})
   sc: float
   mse1: float
   mse2: float
   mse3: float
-  covxx: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.microns(x), "readfunction": float})
-  covyy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.microns(x), "readfunction": float})
-  covxy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.microns(x), "readfunction": float})
+  covxx: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.pixels(x), "readfunction": float})
+  covyy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.pixels(x), "readfunction": float})
+  covxy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.pixels(x), "readfunction": float})
   pscale: dataclasses.InitVar[float] = None
   exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
 
