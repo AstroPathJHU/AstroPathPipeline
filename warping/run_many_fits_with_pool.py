@@ -30,9 +30,9 @@ def main() :
 	    help='Image layer to use (indexed from 1)')
 	parser.add_argument('--fixed',               default=['fx','fy'],          type=split_csv_to_list,         
 	    help='Comma-separated list of parameters to keep fixed during fitting')
-	parser.add_argument('--max_radial_warp',     default=10.,         type=float,
+	parser.add_argument('--max_radial_warp',     default=8.,         type=float,
 	    help='Maximum amount of radial warp to use for constraint')
-	parser.add_argument('--max_tangential_warp', default=10.,         type=float,
+	parser.add_argument('--max_tangential_warp', default=4.,         type=float,
 	    help='Maximum amount of radial warp to use for constraint')
 	parser.add_argument('--print_every',         default=1000,          type=int,
 	    help='How many iterations to wait between printing minimization progress')

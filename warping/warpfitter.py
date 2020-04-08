@@ -435,18 +435,18 @@ class WarpFitter :
     def __buildDefaultParameterBoundsDict(self,max_radial_warp,max_tangential_warp) :
         bounds = {}
         # cx/cy bounds are +/- 25% of the center point
-        bounds['cx']=(0.75*(self.n/2.),1.25*(self.n/2.))
-        bounds['cy']=(0.75*(self.m/2.),1.25*(self.m/2.))
+        bounds['cx']=(0.5*(self.n/2.),1.5*(self.n/2.))
+        bounds['cy']=(0.5*(self.m/2.),1.5*(self.m/2.))
         # fx/fy bounds are +/- 2% of the nominal values 
         bounds['fx']=(0.98*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
         bounds['fy']=(0.98*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
         # k1/k2 and p1/p2 bounds are twice those that would produce the max radial and tangential warp, respectively, with all others zero
         # k1 is not allowed to be negative to prevent overfitting, and k2 therefore only has to be its max value on the positive side, not twice.
-        maxk1 = self.__findDefaultParameterLimit(4,1,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
+        maxk1 = self.__findDefaultParameterLimit(4,0.1,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
         bounds['k1']=(0.,2.*maxk1)
-        maxk2 = self.__findDefaultParameterLimit(5,1000,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
+        maxk2 = self.__findDefaultParameterLimit(5,100,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
         bounds['k2']=(-2.*maxk2,maxk2)
-        maxp1 = self.__findDefaultParameterLimit(6,0.01,max_tangential_warp,self.warpset.warp.maxTangentialDistortAmount)
+        maxp1 = self.__findDefaultParameterLimit(6,0.001,max_tangential_warp,self.warpset.warp.maxTangentialDistortAmount)
         bounds['p1']=(-2.*maxp1,2.*maxp1)
         maxp2 = self.__findDefaultParameterLimit(7,0.001,max_tangential_warp,self.warpset.warp.maxTangentialDistortAmount)
         bounds['p2']=(-2.*maxp2,2.*maxp2)
