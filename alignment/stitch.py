@@ -480,23 +480,29 @@ class StitchCoordinate:
   pscale: dataclasses.InitVar[float] = None
 
   def __post_init__(self, pscale):
+    distancenames = "x", "y", "cov_x_x", "cov_x_y", "cov_y_y"
+    distances = [getattr(self, _) for _ in distancenames]
+    distances = [_ for _ in distances if _]
+
+    usedistances = {isinstance(_, units.Distance) for _ in distances}
+    if len(usedistances) > 1:
+      raise ValueError("Provided some distances and some pixels to StitchCoordinate - this is dangerous!")
+    usedistances = usedistances.pop()
+
     pscale = {pscale} if pscale is not None else set()
-    pscale |= {_.pscale for _ in (self.x, self.y, self.cov_x_x, self.cov_x_y, self.cov_y_y) if isinstance(_, units.Distance)}
+    if usedistances:
+      pscale |= {_.pscale for _ in distances}
     if not pscale:
       raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
     if len(pscale) > 1:
-      raise units.UnitsError("Provided inconsistent pscales")
+      raise units.UnitsError(f"Provided inconsistent pscales {pscale}")
     pscale = pscale.pop()
 
-    if not isinstance(self.x, units.Distance):
+    if not usedistances:
       self.x = units.Distance(pixels=self.x, pscale=pscale)
-    if not isinstance(self.y, units.Distance):
       self.y = units.Distance(pixels=self.y, pscale=pscale)
-    if not isinstance(self.cov_x_x, units.Distance):
       self.cov_x_x = units.Distance(pixels=self.cov_x_x, pscale=pscale, power=2)
-    if not isinstance(self.cov_x_y, units.Distance):
       self.cov_x_y = units.Distance(pixels=self.cov_x_y, pscale=pscale, power=2)
-    if not isinstance(self.cov_y_y, units.Distance):
       self.cov_y_y = units.Distance(pixels=self.cov_y_y, pscale=pscale, power=2)
 
     nominal = [self.x, self.y]
