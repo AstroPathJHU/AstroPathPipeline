@@ -4,29 +4,37 @@ from .computeshift import computeshift, mse, shiftimg
 from .rectangle import rectangleoroverlapfilter as overlapfilter
 from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
-class Overlap:
+class Overlap(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
   n: int
   p1: int
   p2: int
-  x1: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
-  y1: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
-  x2: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
-  y2: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
+  x1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  y1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   tag: int
+  layer: dataclasses.InitVar[float]
+  pscale: dataclasses.InitVar[float]
+  nclip: dataclasses.InitVar[float]
+  rectangles: dataclasses.InitVar[float]
 
-  def setalignmentinfo(self, *, layer, pscale, nclip, rectangles):
+  def __post_init__(self, layer, pscale, nclip, rectangles):
+    super().__post_init__(pscale=pscale)
+
     self.layer = layer
-    self.pscale = pscale
     self.nclip = nclip
-    self.rectangles = rectangles
     self.result = None
 
-    self.x1 = units.Distance(microns=self.x1, pscale=self.pscale)
-    self.y1 = units.Distance(microns=self.y1, pscale=self.pscale)
-    self.x2 = units.Distance(microns=self.x2, pscale=self.pscale)
-    self.y2 = units.Distance(microns=self.y2, pscale=self.pscale)
+    p1rect = [r for r in rectangles if r.n==self.p1]
+    p2rect = [r for r in rectangles if r.n==self.p2]
+    if not len(p1rect) == len(p2rect) == 1:
+      raise ValueError(f"Expected exactly one rectangle each with n={self.p1} and {self.p2}, found {len(p1rect)} and {len(p2rect)}")
+    self.rectangles = p1rect[0], p2rect[0]
 
   @property
   def images(self):
@@ -231,21 +239,23 @@ class OverlapList(list, OverlapCollection):
 
 @dataclass_dc_init(frozen=True)
 class AlignmentResult:
+  pixelsormicrons = "pixels"
+
   n: int
   p1: int
   p2: int
   code: int
   layer: int
   exit: int
-  dx: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.pixels(x), "readfunction": float})
-  dy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.pixels(x), "readfunction": float})
+  dx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  dy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   sc: float
   mse1: float
   mse2: float
   mse3: float
-  covxx: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.pixels(x), "readfunction": float})
-  covyy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.pixels(x), "readfunction": float})
-  covxy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: units.pixels(x), "readfunction": float})
+  covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   pscale: dataclasses.InitVar[float] = None
   exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
 
@@ -266,26 +276,6 @@ class AlignmentResult:
       kwargs["mse1"], kwargs["mse2"], kwargs["mse3"] = mse
 
     return self.__dc_init__(*args, **kwargs)
-
-  def __post_init__(self, pscale):
-    pscale = {pscale} if pscale is not None else set()
-    pscale |= {_.pscale for _ in (self.dx, self.dy, self.covxx, self.covxy, self.covyy) if isinstance(_, units.Distance) and _.pscale is not None}
-    if not pscale:
-      raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
-    if len(pscale) > 1:
-      raise units.UnitsError("Provided inconsistent pscales")
-    pscale = pscale.pop()
-
-    if not isinstance(self.dx, units.Distance):
-      super().__setattr__("dx", units.Distance(pixels=self.dx, pscale=pscale))
-    if not isinstance(self.dy, units.Distance):
-      super().__setattr__("dy", units.Distance(pixels=self.dy, pscale=pscale))
-    if not isinstance(self.covxx, units.Distance):
-      super().__setattr__("covxx", units.Distance(pixels=self.covxx, pscale=pscale, power=2))
-    if not isinstance(self.covxy, units.Distance):
-      super().__setattr__("covxy", units.Distance(pixels=self.covxy, pscale=pscale, power=2))
-    if not isinstance(self.covyy, units.Distance):
-      super().__setattr__("covyy", units.Distance(pixels=self.covyy, pscale=pscale, power=2))
 
   @property
   def mse(self):

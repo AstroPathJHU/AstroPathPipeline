@@ -489,8 +489,6 @@ class StitchCoordinate(DataClassWithDistances):
     covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
     self.xvec = units.correlated_distances(distances=nominal, covariance=covariance)
 
-print(StitchCoordinate.pscale)
-
 def stitchcoordinate(*, position=None, **kwargs):
   kw2 = {}
   if position is not None:

@@ -1,27 +1,22 @@
 import abc, collections, dataclasses, numpy as np
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
-class Rectangle:
-  n: int
-  x: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
-  y: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": float})
-  w: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
-  h: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
-  cx: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
-  cy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
+class Rectangle(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
+  n: int = dataclasses.field()
+  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  w: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  h: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   t: int
   file: str
-
-  def setalignmentinfo(self, *, pscale):
-    self.pscale = pscale
-    self.x = units.Distance(microns=self.x, pscale=self.pscale)
-    self.y = units.Distance(microns=self.y, pscale=self.pscale)
-    self.w = units.Distance(microns=self.w, pscale=self.pscale)
-    self.h = units.Distance(microns=self.h, pscale=self.pscale)
-    self.cx = units.Distance(microns=self.cx, pscale=self.pscale)
-    self.cy = units.Distance(microns=self.cy, pscale=self.pscale)
+  pscale: dataclasses.InitVar[float]
 
   @property
   def xvec(self):
@@ -62,29 +57,17 @@ class RectangleCollection(abc.ABC):
     return {r.n for r in self.rectangles}
 
 @dataclasses.dataclass(frozen=True)
-class ImageStats:
+class ImageStats(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
   n: int
   mean: float
   min: float
   max: float
   std: float
-  cx: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
-  cy: units.Distance = dataclasses.field(metadata={"writefunction": lambda x: x.microns, "readfunction": int})
+  cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   pscale: dataclasses.InitVar[float] = None
-
-  def __post_init__(self, pscale):
-    pscale = {pscale} if pscale is not None else set()
-    pscale |= {_.pscale for _ in (self.cx, self.cy) if isinstance(_, units.Distance)}
-    if not pscale:
-      raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
-    if len(pscale) > 1:
-      raise units.UnitsError("Provided inconsistent pscales")
-    pscale = pscale.pop()
-
-    if not isinstance(self.cx, units.Distance):
-      super().__setattr__("cx", units.Distance(pixels=self.cx, pscale=pscale))
-    if not isinstance(self.cy, units.Distance):
-      super().__setattr__("cy", units.Distance(pixels=self.cy, pscale=pscale))
 
 def rectangledict(rectangles):
   return {rectangle.n: i for i, rectangle in enumerate(rectangles)}

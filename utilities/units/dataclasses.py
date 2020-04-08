@@ -1,10 +1,10 @@
 import abc, dataclasses
 from .core import Distance
 
-def distancefield(pixelsormicrons, *, metadata={}, power=1, **kwargs):
+def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwargs):
   kwargs["metadata"] = {
     "writefunction": {"pixels": lambda x: x.pixels, "microns": lambda x: x.microns}[pixelsormicrons],
-    "readfunction": float,
+    "readfunction": dtype,
     "isdistancefield": True,
     "pixelsormicrons": pixelsormicrons,
     "power": power,
@@ -18,6 +18,8 @@ class DataClassWithDistances(abc.ABC):
   def pixelsormicrons(self): pass
 
   def __post_init__(self, pscale):
+    object.__setattr__(self, "pscale", pscale)
+
     distancefields = [field for field in dataclasses.fields(type(self)) if field.metadata.get("isdistancefield", False)]
     for field in distancefields:
       if field.metadata["pixelsormicrons"] != self.pixelsormicrons:
@@ -42,4 +44,4 @@ class DataClassWithDistances(abc.ABC):
 
     if not usedistances:
       for field in distancefields:
-        setattr(self, field.name, Distance(power=field.metadata["power"], pscale=pscale, **{self.pixelsormicrons: getattr(self, field.name)}))
+        object.__setattr__(self, field.name, Distance(power=field.metadata["power"], pscale=pscale, **{self.pixelsormicrons: getattr(self, field.name)}))
