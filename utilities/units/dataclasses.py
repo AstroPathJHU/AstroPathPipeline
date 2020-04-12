@@ -1,9 +1,9 @@
 import abc, dataclasses
-from .core import Distance
+from .core import Distance, microns, pixels
 
 def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwargs):
   kwargs["metadata"] = {
-    "writefunction": {"pixels": lambda x: x.pixels, "microns": lambda x: x.microns}[pixelsormicrons],
+    "writefunction": {"pixels": pixels, "microns": microns}[pixelsormicrons],
     "readfunction": dtype,
     "isdistancefield": True,
     "pixelsormicrons": pixelsormicrons,
