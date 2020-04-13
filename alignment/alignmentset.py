@@ -186,6 +186,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
           std=np.std(rectangle.image),
           cx=rectangle.cx,
           cy=rectangle.cy,
+          pscale=self.pscale,
         ) for rectangle in self.rectangles
       ]
       writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)

@@ -8,7 +8,7 @@ from ..utilities import units
 thisfolder = os.path.dirname(__file__)
 
 def assertAlmostEqual(a, b, **kwargs):
-  if isinstance(a, units.Distance):
+  if isinstance(a, units.safe.Distance):
     return units.testing.assert_allclose(a, b, **kwargs)
   elif isinstance(a, numbers.Number):
     return np.testing.assert_allclose(a, b, **kwargs)
@@ -51,6 +51,10 @@ class TestAlignment(unittest.TestCase):
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
+  def testAlignmentFastUnits(self):
+    with units.setup_context("fast"):
+      self.testAlignment()
+
   @expectedFailureIf(int(os.environ.get("JENKINS_NO_GPU", 0)))
   def testGPU(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
@@ -77,6 +81,10 @@ class TestAlignment(unittest.TestCase):
     for row, target in itertools.zip_longest(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
+  def testReadAlignmentFastUnits(self):
+    with units.setup_context("fast"):
+      self.testReadAlignment()
+
   def testStitchReadingWriting(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
     a.readalignments(filename=os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"))
@@ -95,6 +103,10 @@ class TestAlignment(unittest.TestCase):
       targetrows = readtable(filename, cls, extrakwargs=extrakwargs)
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
+
+  def testStitchReadingWritingFastUnits(self):
+    with units.setup_context("fast"):
+      self.testStitchReadingWriting()
 
   def testStitchCvxpy(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
@@ -134,6 +146,10 @@ class TestAlignment(unittest.TestCase):
       rtol=1e-4,
     )
 
+  def testStitchCvxpyFastUnits(self):
+    with units.setup_context("fast"):
+      self.testStitchCvxpy()
+
   def testSymmetry(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1", selectrectangles=(10, 11))
     a.getDAPI()
@@ -145,3 +161,4 @@ class TestAlignment(unittest.TestCase):
     assertAlmostEqual(o1.result.covxx, o2.result.covxx, rtol=1e-5)
     assertAlmostEqual(o1.result.covyy, o2.result.covyy, rtol=1e-5)
     assertAlmostEqual(o1.result.covxy, o2.result.covxy, rtol=1e-5)
+    

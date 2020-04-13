@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np, uncertainties as unc
 from uncertainties import covariance_matrix, nominal_value, std_dev
 from uncertainties.unumpy import nominal_values, std_devs
 
@@ -9,7 +9,7 @@ def __micronstopixels(*, microns, pscale, power):
 def __pixelstomicrons(*, pixels, pscale, power):
   return pixels / (pscale**power if power and pixels else 1)  
 
-def distance(*, pscale, pixels=None, microns=None, power=1, defaulttozero=False):
+def Distance(*, pscale, pixels=None, microns=None, power=1, defaulttozero=False):
   if not power or pixels == 0 or microns == 0: pscale = None
   if (pixels is not None) == (microns is not None):
     raise TypeError("Have to provide exactly one of pixels or microns")

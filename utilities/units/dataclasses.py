@@ -1,12 +1,13 @@
 import abc, dataclasses
 from . import safe
+from .core import UnitsError
 
 def __setup(mode):
   global Distance, microns, pixels, _pscale, UnitsError
   if mode == "safe":
-    from .safe import Distance, microns, pixels, pscale as _pscale, UnitsError
+    from .safe import Distance, microns, pixels, pscale as _pscale
   elif mode == "fast":
-    from .fast import Distance, microns, pixels, pscale as _pscale, UnitsError
+    from .fast import Distance, microns, pixels, pscale as _pscale
   else:
     raise ValueError(f"Invalid mode {mode}")
 

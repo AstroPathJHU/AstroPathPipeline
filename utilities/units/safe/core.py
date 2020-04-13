@@ -1,6 +1,6 @@
-import collections, functools, itertools, numbers, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
+from ..core import UnitsError
 
-class UnitsError(Exception): pass
+import collections, functools, itertools, numbers, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
 
 class Distance:
   def __new__(cls, *args, pixels=None, microns=None, defaulttozero=False, **kwargs):
