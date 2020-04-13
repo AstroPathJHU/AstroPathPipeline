@@ -2,9 +2,10 @@
 
 import matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties.unumpy as unp
 from more_itertools import pairwise
+from ..utilities import units
 from ..utilities.misc import pullhist
 
-def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pullkwargs={}, pullbinning=None):
+def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pixelsormicrons=None, pullkwargs={}, pullbinning=None):
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -36,11 +37,14 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
   else:
     if pullkwargs != {} or pullbinning is not None:
       raise ValueError("Can't provide pull kwargs for a scatter plot")
+    if pixelsormicrons is None:
+      raise ValueError("Have to provide pixelsormicrons for a scatterplot")
+    f = {"pixels": units.pixels, "microns": units.microns}[pixelsormicrons]
     plt.errorbar(
-      x=unp.nominal_values(vectors[:,0]),
-      xerr=unp.std_devs(vectors[:,0]),
-      y=unp.nominal_values(vectors[:,1]),
-      yerr=unp.std_devs(vectors[:,1]),
+      x=f(units.nominal_values(vectors[:,0])),
+      xerr=f(units.std_devs(vectors[:,0])),
+      y=f(units.nominal_values(vectors[:,1])),
+      yerr=f(units.std_devs(vectors[:,1])),
       fmt='o',
     )
 
