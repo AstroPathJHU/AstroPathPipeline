@@ -42,11 +42,11 @@ def checkDirAndFixedArgs(args) :
     if not os.path.isdir(metafile_dir) :
         raise ValueError(f'root1_dir ({args.root1_dir}) does not contain "[sample name]/dbload" subdirectories!')
     #the parameter fixing string must correspond to some combination of options
-    fix_cxcy = 'cx' in args.fixed and 'cy' in args.fixed
-    fix_fxfy = 'fx' in args.fixed and 'fy' in args.fixed
-    fix_k1k2 = 'k1' in args.fixed and 'k2' in args.fixed
-    fix_p1p2 = 'p1' in args.fixed and 'p2' in args.fixed
-    if args.fixed!=[''] and len(args.fixed)!=2*sum([fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2]) :
+    fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
+    fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed
+    fix_k1k2k3 = 'k1' in args.fixed and 'k2' in args.fixed and 'k3' in args.fixed
+    fix_p1p2   = 'p1' in args.fixed and 'p2' in args.fixed
+    if args.fixed!=[''] and len(args.fixed)!=2*sum([fix_cxcy,fix_fxfy,fix_p1p2])+(3*int(fix_k1k2k3)) :
         raise ValueError(f'Fixed parameters argument ({args.fixed}) does not result in a valid fixed parameter condition!')
 
 # Helper function that produces the visualizations of the rejected overlaps
@@ -279,16 +279,16 @@ if __name__=='__main__' :
         fitter.loadRawFiles()
         #fit the model to the data
         logger.info('Running doFit')
-        fix_cxcy = 'cx' in args.fixed and 'cy' in args.fixed
-        fix_fxfy = 'fx' in args.fixed and 'fy' in args.fixed
-        fix_k1k2 = 'k1' in args.fixed and 'k2' in args.fixed
-        fix_p1p2 = 'p1' in args.fixed and 'p2' in args.fixed
+        fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
+        fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed
+        fix_k1k2k3 = 'k1' in args.fixed and 'k2' in args.fixed and 'k3' in args.fixed
+        fix_p1p2   = 'p1' in args.fixed and 'p2' in args.fixed
         if args.mode == 'fit' :
-            result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,
+            result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,fix_p1p2=fix_p1p2,
                                   max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
                                   polish=True,print_every=args.print_every,maxiter=args.max_iter)
         else:
-            cProfile.run('fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,polish=True,print_every=args.print_every,maxiter=args.max_iter)')
+            cProfile.run('fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,fix_p1p2=fix_p1p2,max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,polish=True,print_every=args.print_every,maxiter=args.max_iter)')
 
     logger.info('All done : )')
 

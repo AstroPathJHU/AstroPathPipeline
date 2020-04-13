@@ -108,7 +108,7 @@ class WarpFitter :
                     raise FittingError('Something went wrong in trying to write out the initial warped files!')
         self.alignset.getDAPI(filetype='camWarpDAPI',writeimstat=False,mean_image=self.mean_image)
 
-    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2=False,fix_p1p2=False,max_radial_warp=10.,max_tangential_warp=10.,par_bounds=None,
+    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2k3=False,fix_p1p2=False,max_radial_warp=10.,max_tangential_warp=10.,par_bounds=None,
               polish=True,print_every=1,maxiter=1000,show_plots=False) :
         """
         Fit the cameraWarp model to the loaded dataset
@@ -129,10 +129,10 @@ class WarpFitter :
         logger = logging.getLogger('warpfitter')
         #build the list of parameter bounds
         default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
-        parameter_bounds = self.__getParameterBoundsList(par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2)
+        parameter_bounds = self.__getParameterBoundsList(par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
         logger.info(f'Floating parameter bounds = {parameter_bounds}')
         #get the list to use to mask fixed parameters in the minimization functions
-        self.par_mask = self.__getParameterMask(fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2)
+        self.par_mask = self.__getParameterMask(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
         #get the list of initial parameters to copy from when necessary
         self.init_pars = self.warpset.getListOfWarpParameters()
         #set the variable describing how often to print progress
@@ -140,7 +140,7 @@ class WarpFitter :
         #get the array of the initial population
         initial_population=self.__getInitialPopulation(parameter_bounds)
         #get the list of constraints
-        constraints = self.__getConstraints(fix_k1k2,fix_p1p2,max_radial_warp,max_tangential_warp)
+        constraints = self.__getConstraints(fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp)
         #call differential_evolution
         minimization_start_time = time.time()
         logger.info('Starting initial minimization....')
@@ -154,7 +154,7 @@ class WarpFitter :
                     maxiter=maxiter,
                     tol=0.03,
                     mutation=(0.6,1.00),
-                    recombination=0.5,
+                    recombination=0.7,
                     polish=False,
                     init=initial_population,
                     constraints=constraints
@@ -167,7 +167,7 @@ class WarpFitter :
             self.skip_corners = False
             #call minimize with trust_constr
             logger.info('Starting polishing minimization....')
-            relative_steps = np.array([0.02*p if p<1. else 0.02 for p in firstresult.x])
+            relative_steps = np.array([abs(0.02*p) if p<1. else 0.02 for p in firstresult.x])
             with cd(self.working_dir) :
                 try :
                     result=scipy.optimize.minimize(
@@ -304,7 +304,7 @@ class WarpFitter :
         if self.__best_fit_warp is None :
             raise FittingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
         #start by aligning the raw, unwarped images and getting their shift comparison information/images
-        self.alignset.updateRectangleImages(self.warpset.images)
+        self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
         rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
         raw_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
         #next warp and align the images with the best fit warp
@@ -395,8 +395,8 @@ class WarpFitter :
         return a
 
     #helper function to make the list of parameter bounds for fitting
-    def __getParameterBoundsList(self,par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2) :
-        parorder=['cx','cy','fx','fy','k1','k2','p1','p2']
+    def __getParameterBoundsList(self,par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2) :
+        parorder=['cx','cy','fx','fy','k1','k2','p1','p2','k3']
         #overwrite the default with anything that was supplied
         bounds_dict = default_bounds
         if par_bounds is not None :
@@ -411,8 +411,8 @@ class WarpFitter :
             to_remove+=['cx','cy']
         if fix_fxfy :
             to_remove+=['fx','fy']
-        if fix_k1k2 :
-            to_remove+=['k1','k2']
+        if fix_k1k2k3 :
+            to_remove+=['k1','k2','k3']
         if fix_p1p2 :
             to_remove+=['p1','p2']
         for parkey in to_remove :
@@ -440,12 +440,14 @@ class WarpFitter :
         # fx/fy bounds are +/- 2% of the nominal values 
         bounds['fx']=(0.98*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
         bounds['fy']=(0.98*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
-        # k1/k2 and p1/p2 bounds are twice those that would produce the max radial and tangential warp, respectively, with all others zero
+        # k1/k2/k3 and p1/p2 bounds are twice those that would produce the max radial and tangential warp, respectively, with all others zero
         # k1 is not allowed to be negative to prevent overfitting, and k2 therefore only has to be its max value on the positive side, not twice.
         maxk1 = self.__findDefaultParameterLimit(4,0.1,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
         bounds['k1']=(0.,2.*maxk1)
         maxk2 = self.__findDefaultParameterLimit(5,100,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
         bounds['k2']=(-2.*maxk2,maxk2)
+        maxk3 = self.__findDefaultParameterLimit(8,10000,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
+        bounds['k3']=(-2.*maxk3,2.*maxk3)
         maxp1 = self.__findDefaultParameterLimit(6,0.001,max_tangential_warp,self.warpset.warp.maxTangentialDistortAmount)
         bounds['p1']=(-2.*maxp1,2.*maxp1)
         maxp2 = self.__findDefaultParameterLimit(7,0.001,max_tangential_warp,self.warpset.warp.maxTangentialDistortAmount)
@@ -454,7 +456,7 @@ class WarpFitter :
 
     #helper function to find the limit on a parameter that produces the maximum warp
     def __findDefaultParameterLimit(self,parindex,parincrement,warplimit,warpamtfunc) :
-        testpars=[self.n/2,self.m/2,MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,0.,0.,0.,0.]
+        testpars=[self.n/2,self.m/2,MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,0.,0.,0.,0.,0.]
         warpamt=0.; testparval=0.
         while warpamt<warplimit :
             testparval+=parincrement
@@ -466,10 +468,10 @@ class WarpFitter :
     def __getInitialPopulation(self,bounds) :
         #initial population is a bunch of linear spaces between the bounds for the parameters individually and in pairs
         init_fit_pars = np.array(self.init_pars)[self.par_mask]
-        parnames = np.array(['cx','cy','fx','fy','k1','k2','p1','p2'])[self.par_mask]
+        parnames = np.array(['cx','cy','fx','fy','k1','k2','p1','p2','k3'])[self.par_mask]
         #make a list of each parameter's grid of possible values
         par_variations = []
-        nperpar=10-len(parnames)
+        nperpar=5
         for i in range(len(bounds)) :
             name = parnames[i]
             bnds = bounds[i]
@@ -481,8 +483,8 @@ class WarpFitter :
             #k1 is evenly spaced between zero and half its max value
             elif name in ['k1'] :
                 thisparvalues = np.linspace(0.,0.5*bnds[1],nperpar+1) #+1 because the zero at the beginning is the default parameter value
-            #k2 and tangential warping parameters are evenly spaced between +/-(1/2) their bounds
-            elif name in ['k2','p1','p2'] :
+            #k2, k3, and tangential warping parameters are evenly spaced between +/-(1/2) their bounds
+            elif name in ['k2','k3','p1','p2'] :
                 thisparvalues = np.linspace(0.5*bnds[0],0.5*bnds[1],nperpar)
             else :
                 raise FittingError(f'ERROR: parameter name {name} is not recognized in __getInitialPopulation!')
@@ -497,41 +499,49 @@ class WarpFitter :
                     toadd = copy.deepcopy(init_fit_pars)
                     toadd[i]=val
                     population_list.append(toadd)
-        #add sets describing corner limits of pairs of parameters
-        parameter_pair_sets = [np.array([0,0,1,1,2,2,3,3])[self.par_mask], #parameters that have the same effect
-                               np.array([0,1,None,None,0,1,None,None])[self.par_mask], #principal points and radial warps 1                                  
-                               np.array([0,1,None,None,1,0,None,None])[self.par_mask], #principal points and radial warps 2
-                               np.array([None,None,0,1,0,1,None,None])[self.par_mask], #focal lengths and radial warps 1
-                               np.array([None,None,0,1,1,0,None,None])[self.par_mask], #focal lengths and radial warps 2
-                               np.array([0,1,None,None,None,None,0,1])[self.par_mask], #principal points and tangential warps 1
-                               np.array([0,1,None,None,None,None,1,0])[self.par_mask], #principal points and tangential warps 2
-                               np.array([None,None,0,1,None,None,0,1])[self.par_mask], #focal lengths and tangential warps 1
-                               np.array([None,None,0,1,None,None,1,0])[self.par_mask], #focal lengths and tangential warps 2
-                            ]
-        for parameter_pair_numbers in parameter_pair_sets :
-            pair_numbers_to_consider = set(parameter_pair_numbers)
-            if None in pair_numbers_to_consider :
-                pair_numbers_to_consider.remove(None)
-            for pair_number in pair_numbers_to_consider :
-                list_indices = [i for i in range(len(par_variations)) if parameter_pair_numbers[i]==pair_number]
-                if len(list_indices)!=2 : 
-                    continue
-                combinations = [(1,1),(-2,-2),(1,-2),(-2,1)]
+        #add sets describing corner limits of groups of parameters
+        parameter_group_sets = [np.array([0,0,1,1,2,2,3,3,2])[self.par_mask], #parameters that have the same effect
+                                np.array([0,1,None,None,0,1,None,None,0])[self.par_mask], #principal points and radial warps 1                                  
+                                np.array([0,1,None,None,1,0,None,None,1])[self.par_mask], #principal points and radial warps 2
+                                np.array([0,1,None,None,0,1,None,None,1])[self.par_mask], #principal points and radial warps 3                                  
+                                np.array([0,1,None,None,1,0,None,None,0])[self.par_mask], #principal points and radial warps 4
+                                np.array([None,None,0,1,0,1,None,None,0])[self.par_mask], #focal lengths and radial warps 1
+                                np.array([None,None,0,1,1,0,None,None,1])[self.par_mask], #focal lengths and radial warps 2
+                                np.array([None,None,0,1,0,1,None,None,1])[self.par_mask], #focal lengths and radial warps 3
+                                np.array([None,None,0,1,1,0,None,None,0])[self.par_mask], #focal lengths and radial warps 4
+                                np.array([0,1,None,None,None,None,0,1,None])[self.par_mask], #principal points and tangential warps 1
+                                np.array([0,1,None,None,None,None,1,0,None])[self.par_mask], #principal points and tangential warps 2
+                                np.array([None,None,0,1,None,None,0,1,None])[self.par_mask], #focal lengths and tangential warps 1
+                                np.array([None,None,0,1,None,None,1,0,None])[self.par_mask], #focal lengths and tangential warps 2
+                                ]
+        for parameter_group_numbers in parameter_group_sets :
+            group_numbers_to_consider = set(parameter_group_numbers)
+            if None in group_numbers_to_consider :
+                group_numbers_to_consider.remove(None)
+            for group_number in group_numbers_to_consider :
+                list_indices = [i for i in range(len(par_variations)) if parameter_group_numbers[i]==group_number]
+                combinations = []
+                if len(list_indices)==2 :
+                    combinations = [(1,1),(-2,-2),(1,-2),(-2,1),(0,0),(-1,-1),(0,-1),(-1,0)]
+                elif len(list_indices)==3 :
+                    combinations = [(1,1,1),(-2,-2,1),(1,-2,1),(-2,1,1),(1,1,-2),(-2,-2,-2),(1,-2,-2),(-2,1,-2)]
                 for c in combinations :
                     toadd = copy.deepcopy(init_fit_pars)
                     toadd[list_indices[0]]=par_variations[list_indices[0]][c[0]]
                     toadd[list_indices[1]]=par_variations[list_indices[1]][c[1]]
+                    if len(list_indices)==3 :
+                        toadd[list_indices[2]]=par_variations[list_indices[2]][c[2]]
                     population_list.append(toadd)
         to_return = np.array(population_list)
         logger.info(f'Initial parameter population ({len(population_list)} members):\n{to_return}')
         return to_return
 
     #helper function to make the constraints
-    def __getConstraints(self,fix_k1k2,fix_p1p2,max_radial_warp,max_tangential_warp) :
+    def __getConstraints(self,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp) :
         constraints = []
         names_to_print = []
         #if k1 and k2 are being fit for, and max_radial_warp is defined, add the max_radial_warp constraint
-        if (not fix_k1k2) and max_radial_warp!=-1 :
+        if (not fix_k1k2k3) and max_radial_warp!=-1 :
             constraints.append(scipy.optimize.NonlinearConstraint(
                 self._maxRadialDistortAmountForConstraint,
                 -1.*max_radial_warp,
@@ -541,11 +551,11 @@ class WarpFitter :
                 )
             )
             names_to_print.append(f'max radial warp={max_radial_warp} pixels')
-        #if k1 and k2 are being fit for, and max_tangential_warp is defined, add the max_tangential_warp constraint
+        #if p1 and p2 are being fit for, and max_tangential_warp is defined, add the max_tangential_warp constraint
         if (not fix_p1p2) and max_tangential_warp!=-1 :
             constraints.append(scipy.optimize.NonlinearConstraint(
                 self._maxTangentialDistortAmountForConstraint,
-                -1.*max_tangential_warp,
+                0.,
                 max_tangential_warp,
                 jac=self._maxTangentialDistortAmountJacobianForConstraint,
                 hess=scipy.optimize.BFGS()
@@ -568,17 +578,18 @@ class WarpFitter :
             return constraints
 
     #helper function to get a masking list for the parameters from the warp functions to deal with fixed parameters
-    def __getParameterMask(self,fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2) :
-        mask = [True,True,True,True,True,True,True,True]
+    def __getParameterMask(self,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2) :
+        mask = [True,True,True,True,True,True,True,True,True]
         if fix_cxcy :
             mask[0]=False
             mask[1]=False
         if fix_fxfy :
             mask[2]=False
             mask[3]=False
-        if fix_k1k2 :
+        if fix_k1k2k3 :
             mask[4]=False
             mask[5]=False
+            mask[8]=False
         if fix_p1p2 :
             mask[6]=False
             mask[7]=False

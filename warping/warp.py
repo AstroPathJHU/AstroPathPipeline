@@ -271,7 +271,7 @@ class CameraWarp(Warp) :
     """
     Subclass for applying warping to images based on a camera matrix and distortion parameters
     """
-    def __init__(self,n=1344,m=1004,cx=None,cy=None,fx=40000.,fy=40000.,k1=0.,k2=0.,p1=0.,p2=0.,k3=None,k4=None,k5=None,k6=None) :
+    def __init__(self,n=1344,m=1004,cx=None,cy=None,fx=40000.,fy=40000.,k1=0.,k2=0.,p1=0.,p2=0.,k3=0.,k4=None,k5=None,k6=None) :
         """
         Initialize a camera matrix and vector of distortion parameters for a camera warp transformation
         See https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html for explanations of parameters/functions
@@ -366,7 +366,7 @@ class CameraWarp(Warp) :
 
     #################### FUNCTIONS FOR USE WITH MINIMIZATION ####################
 
-    # !!!!!! For the time being, these functions don't correctly describe dependence on k3, k4, k5, or k6 !!!!!!
+    # !!!!!! For the time being, these functions don't correctly describe dependence on k4, k5, or k6 !!!!!!
 
     def updateParams(self,pars) :
         """
@@ -402,10 +402,11 @@ class CameraWarp(Warp) :
         Return the Jacobian vector of the maxRadialDistortAmount function (used in minimization)
         """
         x, y = self._getMaxDistanceCoords(pars)
-        fxfyk1k2_dependence = self._radialDistortAmountAtCoordsJacobian(x,y,pars)
+        fxfyk1k2k3_dependence = self._radialDistortAmountAtCoordsJacobian(x,y,pars)
         retvec =[0.,0.] # no dependence on cx/cy
-        retvec+=fxfyk1k2_dependence
+        retvec+=fxfyk1k2k3_dependence[:-1] #add fx, fy, k1, and k2 dependency
         retvec+=[0.,0.] # no dependence on p1/p2
+        retvec+=[fxfyk1k2k3_dependence[-1]] #add k3 dependence
         return retvec 
 
     def maxTangentialDistortAmountJacobian(self,pars) :
@@ -418,6 +419,7 @@ class CameraWarp(Warp) :
         retvec+=fxfyp1p2_dependence[:2]
         retvec+=[0.,0.] # no dependence on k1/k2
         retvec+=fxfyp1p2_dependence[2:]
+        retvec+=[0.] # no dependence on k3
         return retvec
 
     def _getMaxDistanceCoords(self,pars=None) :
@@ -425,7 +427,7 @@ class CameraWarp(Warp) :
         Get the x/y coordinate-space location of the image corner that is furthest from the principal point
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        cx,cy,_,_,_,_,_,_ = self.__getEvalPars(pars)
+        cx,cy,_,_,_,_,_,_,_ = self.__getEvalPars(pars)
         x = 0 if cx>(self.n-1)/2 else self.n-1
         y = 0 if cy>(self.m-1)/2 else self.m-1
         return self.getCoordsFromPixel(x,y)
@@ -435,16 +437,16 @@ class CameraWarp(Warp) :
         Return the amount of radial warp (in pixels) at the given coordinate-space location
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,k1,k2,_,_ = self.__getEvalPars(pars)
+        _,_,fx,fy,k1,k2,_,_,k3 = self.__getEvalPars(pars)
         r = math.sqrt(coord_x**2+coord_y**2)
-        return (k1*(r**2) + k2*(r**4))*math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
+        return (k1*(r**2) + k2*(r**4) + k3*(r**6))*math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
 
     def _tangentialDistortAmountAtCoords(self,coord_x,coord_y,pars=None) :
         """
         Return the amount of tangential warp (in pixels) at the given coordinate-space location
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,_,_,p1,p2 = self.__getEvalPars(pars)
+        _,_,fx,fy,_,_,p1,p2,_ = self.__getEvalPars(pars)
         r = math.sqrt(coord_x**2+coord_y**2)
         dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
         dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
@@ -455,22 +457,23 @@ class CameraWarp(Warp) :
         Return the Jacobian vector of the _radialDistortAmountAtCoords function (used in minimization)
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,k1,k2,_,_ = self.__getEvalPars(pars)
+        _,_,fx,fy,k1,k2,_,_,k3 = self.__getEvalPars(pars)
         r = math.sqrt(coord_x**2+coord_y**2)
         A = math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
-        B = k1*(r**2) + k2*(r**4)
+        B = k1*(r**2) + k2*(r**4) + k3*(r**6)
         dfdfx = (B/A)*fx*(coord_x**2)
         dfdfy = (B/A)*fy*(coord_y**2)
         dfdk1 = A*(r**2)
         dfdk2 = A*(r**4)
-        return [dfdfx,dfdfy,dfdk1,dfdk2]
+        dfdk3 = A*(r**6)
+        return [dfdfx,dfdfy,dfdk1,dfdk2,dfdk3]
 
     def _tangentialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
         """
         Return the Jacobian of the _tangentialDistortAmountAtCoords function (used in minimization)
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,_,_,p1,p2 = self.__getEvalPars(pars)
+        _,_,fx,fy,_,_,p1,p2,_ = self.__getEvalPars(pars)
         r = math.sqrt(coord_x**2+coord_y**2)
         dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
         dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
@@ -483,8 +486,8 @@ class CameraWarp(Warp) :
     #################### VISUALIZATION FUNCTIONS ####################
 
     def paramString(self) :
-        parnames=['cx','cy','fx','fy','k1','k2','p1','p2','k3','k4','k5','k6']
-        parvals=[self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.p1,self.p2,self.k3,self.k4,self.k5,self.k6]
+        parnames=['cx','cy','fx','fy','k1','k2','k3','p1','p2','k4','k5','k6']
+        parvals=[self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.k3,self.p1,self.p2,self.k4,self.k5,self.k6]
         s=''
         for n,v in zip(parnames,parvals) :
             if v is not None :
@@ -524,9 +527,11 @@ class CameraWarp(Warp) :
         ax2.plot(xaxis_points,yaxis_points)
         ax2.set_xlabel('distance from center (focal lengths)',fontsize=14)
         ax2.set_ylabel('radial warp amount (pixels)',fontsize=14)
-        txt = f'warp=({self.k1:.04f}*r^2+{self.k2:.04f}*r^4)\n'
-        txt+= f'*sqrt(({self.fx:.0f}*x)^2+({self.fy:.0f}*y)^2)'
-        ax2.text(xaxis_points[0],0.5*(yaxis_points[-1]-yaxis_points[0]),txt,fontsize='14')
+        txt = f'warp=({self.k1:.02f}*r^2+{self.k2:.02f}*r^4'
+        if self.k3 is not None :
+            txt+=f'+{self.k3:.02f}*r^6'
+        txt+= f')\n*sqrt(({self.fx:.0f}*x)^2+({self.fy:.0f}*y)^2)'
+        ax2.text(xaxis_points[0],0.5*(yaxis_points[-1]-yaxis_points[0]),txt)#,fontsize='14')
         thm=sns.heatmap(tan_heat_map,ax=ax3)
         ax3.scatter(self.cx,self.cy,marker='*',color='yellow')
         thm.set_title('tangential warp components',fontsize=14)
@@ -538,7 +543,7 @@ class CameraWarp(Warp) :
     def writeParameterTextFile(self,par_mask=None,init_its=None,polish_its=None,init_min_runtime=None,polish_min_runtime=None,rawcost=None,bestcost=None) :
         fn = 'warping_parameters.txt'
         max_r_x, max_r_y = self._getMaxDistanceCoords()
-        pars=[self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.p1,self.p2]
+        pars=[self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.p1,self.p2,self.k3]
         if par_mask==None :
             par_mask=[True for p in pars]
         to_write = {
@@ -550,6 +555,7 @@ class CameraWarp(Warp) :
             'fy':str(self.fy)+('' if par_mask[3] else ' (fixed)'),
             'k1':str(self.k1)+('' if par_mask[4] else ' (fixed)'),
             'k2':str(self.k2)+('' if par_mask[5] else ' (fixed)'),
+            'k3':str(self.k3)+('' if par_mask[8] else ' (fixed)'),
             'p1':str(self.p1)+('' if par_mask[6] else ' (fixed)'),
             'p2':str(self.p2)+('' if par_mask[7] else ' (fixed)'),
             'max_r_x_coord':str(max_r_x),
@@ -598,7 +604,7 @@ class CameraWarp(Warp) :
     #helper function to return a tuple of parameters for single function evaluations
     def __getEvalPars(self,pars) :
         if pars is None :
-            return self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.p1, self.p2
+            return self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.p1, self.p2, self.k3
         else :
             return (*pars, )
 

@@ -97,7 +97,7 @@ class WarpSet :
         """
         if not isinstance(self.warp,CameraWarp) :
             raise WarpingError("ERROR: only call getListOfWarpParameters if the warpset is using a CameraWarp!")
-        return [self.warp.cx,self.warp.cy,self.warp.fx,self.warp.fy,self.warp.k1,self.warp.k2,self.warp.p1,self.warp.p2]
+        return [self.warp.cx,self.warp.cy,self.warp.fx,self.warp.fy,self.warp.k1,self.warp.k2,self.warp.p1,self.warp.p2,self.warp.k3]
 
 #helper class to hold a rectangle's rawfile key, raw image, warped image, and tag for whether it's only relevant for overlaps that are corners
 @dataclasses.dataclass(eq=False, repr=False)
