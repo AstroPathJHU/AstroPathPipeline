@@ -2,7 +2,7 @@ import csv, dataclasses, logging
 
 logger = logging.getLogger("align")
 
-def readtable(filename, rownameorclass, *, extrakwargs={}, **columntypes):
+def readtable(filename, rownameorclass, *, extrakwargs={}, filter=lambda row: True, **columntypes):
   """
   Read a csv table into a list of named tuples
 
@@ -66,6 +66,8 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, **columntypes):
     for row in reader:
       for column, typ in columntypes.items():
         row[column] = typ(row[column])
+
+      if not filter(row): continue
 
       result.append(Row(**row, **extrakwargs))
 
