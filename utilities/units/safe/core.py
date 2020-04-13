@@ -81,14 +81,14 @@ class Distance:
     if self._pscale is None: return repr(float(self))
     return f"Distance(pscale={self._pscale}, pixels={self._pixels}, power={self._power})"
 
-distances = np.vectorize(Distance, excluded=["pscale", "power"])
-distances_differentpowers = np.vectorize(Distance, excluded=["pscale"])
+distances = np.vectorize(Distance, excluded=["pscale"])
+__distances = distances #for use in functions with a distances kwarg
   
 def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=None, covariance=None, power=None):
   if (pixels is not None) + (microns is not None) + (distances is not None) != 1:
     raise TypeError("Have to provide exactly one of pixels, microns, or distances")
 
-  if pscale is None and distances is None and not np.all(power == 1):
+  if pscale is None and distances is None and not np.all(power == 0):
     raise TypeError("If you don't provide distances, you have to provide pscale")
   if distances is not None:
     distpscale = {_._pscale for _ in itertools.chain(distances, np.ravel(covariance) if covariance is not None else []) if _ and _._pscale is not None}
@@ -181,4 +181,4 @@ def covariance_matrix(distances):
   distpowers = [_._power for _ in distances]
   covpowers = [[a._power + b._power for b in distances] for a in distances]
 
-  return distances_differentpowers(pixels=covpixels, pscale=pscale, power=covpowers)
+  return __distances(pixels=covpixels, pscale=pscale, power=covpowers)

@@ -1,5 +1,5 @@
 import functools, itertools, numpy as np
-from .core import distances_differentpowers, pixels, UnitsError
+from .core import distances, pixels, UnitsError
 
 def inv(matrix):
   invpixels = np.linalg.inv(pixels(matrix))
@@ -31,7 +31,7 @@ def inv(matrix):
     if not progressed:
       raise UnitsError(f"Can't figure out any more powers in power matrix {power}")
 
-  return distances_differentpowers(pixels=invpixels, pscale=pscale, power=power, defaulttozero=True)
+  return distances(pixels=invpixels, pscale=pscale, power=power, defaulttozero=True)
 
 def solve(matrix, vector):
   try:
@@ -79,4 +79,4 @@ def solve(matrix, vector):
       raise UnitsError(f"column {i} of matrix has powers {columnpower} which aren't consistent with the vector powers {vectorpower}")
     resultpowers.append(resultentrypower.pop())
 
-  return distances_differentpowers(pixels=solvepixels, pscale=pscale, power=resultpowers)
+  return distances(pixels=solvepixels, pscale=pscale, power=resultpowers)
