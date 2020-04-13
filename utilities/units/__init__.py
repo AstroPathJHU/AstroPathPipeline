@@ -10,12 +10,9 @@ def setup(mode):
   if mode == "safe":
     from .safe.core import correlated_distances, Distance, distances, UnitsError
     from .safe.core import covariance_matrix, microns, nominal_value, nominal_values, pixels, pscale, std_dev, std_devs
-  elif mode == "pixels":
-    from .fast.pixels.core import correlated_distances, Distance, distances, UnitsError
-    from .fast.pixels.core import covariance_matrix, microns, nominal_value, nominal_values, pixels, pscale, std_dev, std_devs
-  elif mode == "microns":
-    from .fast.microns.core import correlated_distances, Distance, distances, UnitsError
-    from .fast.microns.core import covariance_matrix, microns, nominal_value, nominal_values, pixels, pscale, std_dev, std_devs
+  elif mode == "fast":
+    from .fast.core import correlated_distances, Distance, distances, UnitsError
+    from .fast.core import covariance_matrix, microns, nominal_value, nominal_values, pixels, pscale, std_dev, std_devs
   else:
     raise ValueError(f"Invalid mode {mode}")
 

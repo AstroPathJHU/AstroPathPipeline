@@ -134,7 +134,9 @@ def asrow(obj, *, dict_factory=dict):
   for f in dataclasses.fields(obj):
     if not f.metadata.get("includeintable", True): continue
     value = dataclasses._asdict_inner(getattr(obj, f.name), dict_factory)
-    value = f.metadata.get("writefunction", lambda x: x)(value)
+    writefunction = f.metadata.get("writefunction", lambda x: x)
+    writefunctionkwargs = f.metadata.get("writefunctionkwargs", lambda object: {})(obj)
+    value = writefunction(value, **writefunctionkwargs)
     result.append((f.name, value))
 
   return dict_factory(result)
