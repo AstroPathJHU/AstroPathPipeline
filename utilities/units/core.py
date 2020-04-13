@@ -35,7 +35,8 @@ class Distance:
     return self.__power
 
   def __add__(self, other):
-    if other == 0: return self
+    if not other: return self
+    if not self: return other
     if not hasattr(other, "pscale"): return NotImplemented
     if self.power != other.power: raise UnitsError("Trying to add distances with different powers")
     if None is not self.pscale != other.pscale is not None: raise UnitsError("Trying to add distances with different pscales")

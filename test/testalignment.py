@@ -109,7 +109,7 @@ class TestAlignment(unittest.TestCase):
     units.testing.assert_allclose(centercvxpyresult.x(), units.nominal_values(centerresult.x()), rtol=1e-3)
     units.testing.assert_allclose(centercvxpyresult.T,   units.nominal_values(centerresult.T  ), rtol=1e-3, atol=1e-3)
     x = units.nominal_values(np.concatenate((centerresult.x(), centerresult.T), axis=None))
-    np.testing.assert_allclose(
+    units.testing.assert_allclose(
       centercvxpyresult.problem.value,
       x @ centerresult.A @ x + centerresult.b @ x + centerresult.c,
       rtol=0.1,
