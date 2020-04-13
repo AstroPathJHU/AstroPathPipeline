@@ -18,7 +18,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, useGPU=False, forceGPU=False):
+  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False):
     """
     Directory structure should be
     root1/
@@ -46,7 +46,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     if not os.path.exists(os.path.join(self.root1, self.samp)):
       raise IOError(f"{os.path.join(self.root1, self.samp)} does not exist")
 
-    self.readmetadata()
+    self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps)
     self.rawimages=None
 
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
@@ -55,7 +55,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   def dbload(self):
     return os.path.join(self.root1, self.samp, "dbload")
 
-  def readmetadata(self):
+  def readmetadata(self, *, onlyrectanglesinoverlaps=False):
     """
     Read metadata from csv files
     """
@@ -89,21 +89,15 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     self.__rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
     self.__overlaps  = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
     self.__overlaps = [o for o in self.overlaps if self.overlapfilter(o)]
+    if onlyrectanglesinoverlaps:
+      oldfilter = self.rectanglefilter
+      self.rectanglefilter = lambda r: oldfilter(r) and self.selectoverlaprectangles(r)
+      self.__rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
 
   @property
   def overlaps(self): return self.__overlaps
   @property
   def rectangles(self): return self.__rectangles
-
-  @property
-  def rectanglesoverlaps(self): return self.rectangles, self.overlaps
-  @rectanglesoverlaps.setter
-  def rectanglesoverlaps(self, rectanglesoverlaps):
-    rectangles, overlaps = rectanglesoverlaps
-    self.__rectangles = rectangles
-    self.__overlaps = overlaps
-    self.initializerectangles()
-    self.initializeoverlaps()
 
   @methodtools.lru_cache()
   def image(self):
