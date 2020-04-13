@@ -68,13 +68,11 @@ class Distance:
   def sqrt(self): return self**0.5
 
   @property
-  def nominal_value(self): return Distance(pscale=self.pscale, power=self.power, pixels=self.pixels.nominal_value)
+  def nominal_value(self): return Distance(pscale=self.pscale, power=self.power, pixels=unc.nominal_value(self.pixels))
+  n = nominal_value
   @property
-  def n(self): return Distance(pscale=self.pscale, power=self.power, pixels=self.pixels.n)
-  @property
-  def std_dev(self): return Distance(pscale=self.pscale, power=self.power, pixels=self.pixels.std_dev)
-  @property
-  def s(self): return Distance(pscale=self.pscale, power=self.power, pixels=self.pixels.s)
+  def std_dev(self): return Distance(pscale=self.pscale, power=self.power, pixels=unc.std_dev(self.pixels))
+  s = std_dev
   @property
   def derivatives(self): return {k: Distance(pscale=self.pscale, power=self.power, pixels=v) for k, v in self.pixels.derivatives.items()}
 
@@ -178,10 +176,12 @@ def pscale(distance):
 
 @np.vectorize
 def nominal_value(distance):
+  if isinstance(distance, numbers.Number): return distance
   return distance.nominal_value
 nominal_values = nominal_value
 @np.vectorize
 def std_dev(distance):
+  if isinstance(distance, numbers.Number): return 0
   return distance.std_dev
 std_devs = std_dev
 

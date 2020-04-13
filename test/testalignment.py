@@ -106,9 +106,9 @@ class TestAlignment(unittest.TestCase):
     centerresult = a.stitch(saveresult=False, fixpoint="center")
     centercvxpyresult = a.stitch(saveresult=False, fixpoint="center", usecvxpy=True)
 
-    np.testing.assert_allclose(centercvxpyresult.x(), unp.nominal_values(centerresult.x()), rtol=1e-3)
-    np.testing.assert_allclose(centercvxpyresult.T,   unp.nominal_values(centerresult.T  ), rtol=1e-3, atol=1e-3)
-    x = unp.nominal_values(np.concatenate((centerresult.x(), centerresult.T), axis=None))
+    units.testing.assert_allclose(centercvxpyresult.x(), units.nominal_values(centerresult.x()), rtol=1e-3)
+    units.testing.assert_allclose(centercvxpyresult.T,   units.nominal_values(centerresult.T  ), rtol=1e-3, atol=1e-3)
+    x = units.nominal_values(np.concatenate((centerresult.x(), centerresult.T), axis=None))
     np.testing.assert_allclose(
       centercvxpyresult.problem.value,
       x @ centerresult.A @ x + centerresult.b @ x + centerresult.c,
@@ -116,21 +116,21 @@ class TestAlignment(unittest.TestCase):
     )
 
     #test that the point you fix only affects the global translation
-    np.testing.assert_allclose(
+    units.testing.assert_allclose(
       cvxpyresult.x() - cvxpyresult.x()[0],
       centercvxpyresult.x() - centercvxpyresult.x()[0],
       rtol=1e-4,
     )
-    np.testing.assert_allclose(
+    units.testing.assert_allclose(
       cvxpyresult.problem.value,
       centercvxpyresult.problem.value,
       rtol=1e-4,
     )
 
     #test that the point you fix only affects the global translation
-    np.testing.assert_allclose(
-      unp.nominal_values(defaultresult.x() - defaultresult.x()[0]),
-      unp.nominal_values(centerresult.x() - centerresult.x()[0]),
+    units.testing.assert_allclose(
+      units.nominal_values(defaultresult.x() - defaultresult.x()[0]),
+      units.nominal_values(centerresult.x() - centerresult.x()[0]),
       rtol=1e-4,
     )
 

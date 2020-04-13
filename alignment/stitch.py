@@ -174,6 +174,10 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
   except ImportError:
     raise ImportError("To stitch with cvxpy, you have to install cvxpy")
 
+  pscale = {_.pscale for _ in itertools.chain(overlaps, rectangles)}
+  if len(pscale) > 1: raise units.UnitsError("Inconsistent pscales")
+  pscale = pscale.pop()
+
   x = cp.Variable(shape=(len(rectangles), 2))
   T = cp.Variable(shape=(2, 2))
 
@@ -189,25 +193,25 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
     x1 = rectanglex[o.p1]
     x2 = rectanglex[o.p2]
     twonll += cp.quad_form(
-      x1 - x2 - unp.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec,
-      np.linalg.inv(o.result.covariance)
+      x1 - x2 + units.pixels(-units.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec),
+      units.pixels(units.linalg.inv(o.result.covariance))
     )
 
   dxs, dys = zip(*(o.result.dxvec for o in overlaps))
 
   weightedvariancedx = np.average(
-    unp.nominal_values(dxs)**2,
-    weights=1/unp.std_devs(dxs)**2,
+    units.nominal_values(dxs)**2,
+    weights=1/units.std_devs(dxs)**2,
   )
   sigmax = np.sqrt(weightedvariancedx)
 
   weightedvariancedy = np.average(
-    unp.nominal_values(dys)**2,
-    weights=1/unp.std_devs(dys)**2,
+    units.nominal_values(dys)**2,
+    weights=1/units.std_devs(dys)**2,
   )
   sigmay = np.sqrt(weightedvariancedy)
 
-  sigma = np.array(sigmax, sigmay)
+  sigma = np.array([sigmax, sigmay])
 
   if fixpoint == "origin":
     x0vec = np.array([0, 0]) #fix the origin, linear scaling is with respect to that
@@ -217,13 +221,20 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
     x0vec = fixpoint
 
   for r in rectangles:
-    twonll += cp.norm(((rectanglex[r.n] - x0vec) - T @ (r.xvec - x0vec)) / sigma)
+    twonll += cp.norm(
+      (
+        (rectanglex[r.n] - units.pixels(x0vec))
+        - T @ units.pixels(
+          (r.xvec - x0vec)
+        )
+      ) / units.pixels(sigma)
+    )
 
   minimize = cp.Minimize(twonll)
   prob = cp.Problem(minimize)
   prob.solve()
 
-  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps)
+  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale)
 
 class StitchResultBase(OverlapCollection, RectangleCollection):
   def __init__(self, *, rectangles, overlaps):
@@ -459,9 +470,9 @@ class StitchResult(CalculatedStitchResult):
     self.c = c
 
 class StitchResultCvxpy(CalculatedStitchResult):
-  def __init__(self, *, x, T, problem, **kwargs):
+  def __init__(self, *, x, T, problem, pscale, **kwargs):
     super().__init__(
-      x=x.value,
+      x=units.distances(pixels=x.value, pscale=pscale),
       T=T.value,
       covariancematrix=np.zeros(x.size+T.size, x.size+T.size),
       **kwargs
