@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import argparse, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
-from ...alignment.alignmentplots import closedlooppulls, plotpairwisealignments
+from ...alignment.plots import closedlooppulls, plotpairwisealignments
 from ...alignment.alignmentset import AlignmentSet
 
 here = os.path.dirname(__file__)
