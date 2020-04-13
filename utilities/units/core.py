@@ -60,8 +60,9 @@ class Distance:
     return other * oneoverself
   def __pow__(self, other):
     return Distance(pscale=self.pscale, power=self.power*other, pixels=self.pixels**other)
+  def __bool__(self): return bool(self.pixels)
   def __float__(self):
-    if self.power != 0: raise ValueError("Can only convert float to distance if power == 0")
+    if self and self.power != 0: raise ValueError("Can only convert Distance to float if pixels == microns == 0 or power == 0")
     assert self.pixels == self.microns
     return float(self.pixels)
   def sqrt(self): return self**0.5
