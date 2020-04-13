@@ -5,7 +5,7 @@ def covariance_matrix(*args, **kwargs):
   return (result + result.T) / 2
 
 def pullhist(array, *, binning=None, verbose=True, label="", stdinlabel=True, quantileforstats=1, **kwargs):
-  pulls = np.array([_.n / _.s for _ in array])
+  pulls = np.array([_.n / _.s for _ in array], dtype=float)
   quantiles = np.array(sorted(((1-quantileforstats)/2, (1+quantileforstats)/2)))
   minpull, maxpull = np.quantile(pulls, quantiles)
   outliers = len(pulls[(minpull > pulls) | (pulls > maxpull)])

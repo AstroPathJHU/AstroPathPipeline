@@ -89,7 +89,7 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
       tags = [o.tag for o in overlaps]
       if tags != tagsequence: continue
 
-      if any(not np.all(o.result.covariance < 9998) for o in overlaps): continue
+      if any(o.result.exit for o in overlaps): continue
       if stitchresult is not None:
         dxvecs = [stitchresult.dx(o) for o in overlaps]
       else:
