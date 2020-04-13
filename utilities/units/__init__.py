@@ -5,7 +5,7 @@ from .core import UnitsError
 def setup(mode):
   global correlated_distances, Distance, distances
   global covariance_matrix, microns, nominal_value, nominal_values, pixels, pscale, std_dev, std_devs
-  global currentmode
+  global currentmode, unitdtype
 
   for _ in dataclasses, linalg, testing:
     _.__setup(mode)
@@ -14,9 +14,11 @@ def setup(mode):
     if mode == "safe":
       from .safe.core import correlated_distances, Distance, distances
       from .safe.core import covariance_matrix, microns, nominal_value, nominal_values, pixels, pscale, std_dev, std_devs
+      unitdtype = object
     elif mode == "fast":
       from .fast.core import correlated_distances, Distance, distances
       from .fast.core import covariance_matrix, microns, nominal_value, nominal_values, pixels, pscale, std_dev, std_devs
+      unitdtype = float
     else:
       raise ValueError(f"Invalid mode {mode}")
   except:

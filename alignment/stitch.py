@@ -33,8 +33,8 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   #nll = x^T A x + bx + c
 
   size = 2*len(rectangles) + 4 #2* because each rectangle has an x and a y, + 4 for the components of T
-  A = np.zeros(shape=(size, size), dtype=object)
-  b = np.zeros(shape=(size,), dtype=object)
+  A = np.zeros(shape=(size, size), dtype=units.unitdtype)
+  b = np.zeros(shape=(size,), dtype=units.unitdtype)
   c = 0
 
   Txx = -4
@@ -281,11 +281,13 @@ class StitchResultBase(OverlapCollection, RectangleCollection):
     writetable(affinefilename, affine, rowclass=AffineEntry, **kwargs)
 
     rows = []
+    pscale = self.rectangles[0].pscale
     for rectangleid in self.rectangledict:
       rows.append(
         stitchcoordinate(
           hpfid=rectangleid,
           position=self.x(rectangleid),
+          pscale=pscale,
         )
       )
     writetable(filename, rows, **kwargs)
@@ -385,7 +387,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
 
     nominals = np.concatenate([units.nominal_values(x1), units.nominal_values(x2)])
 
-    covariance = np.zeros((4, 4), dtype=object)
+    covariance = np.zeros((4, 4), dtype=units.unitdtype)
     covariance[:2,:2] = units.covariance_matrix(x1)
     covariance[2:,2:] = units.covariance_matrix(x2)
     covariance[0,2] = covariance[2,0] = overlapcovariance.cov_x1_x2
