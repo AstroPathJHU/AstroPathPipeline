@@ -22,34 +22,34 @@ class Distance:
       self.__pixels = microns * (pscale**power if power and microns else 1)
 
   @property
-  def microns(self):
+  def _microns(self):
     return self.__microns
   @property
-  def pixels(self):
+  def _pixels(self):
     return self.__pixels
   @property
-  def pscale(self):
+  def _pscale(self):
     return self.__pscale
   @property
-  def power(self):
+  def _power(self):
     return self.__power
 
   def __add__(self, other):
     if not other: return self
     if not self: return other
-    if not hasattr(other, "pscale"): return NotImplemented
-    if self.power != other.power: raise UnitsError("Trying to add distances with different powers")
-    if None is not self.pscale != other.pscale is not None: raise UnitsError("Trying to add distances with different pscales")
-    pscale = self.pscale if self.pscale is not None else other.pscale
-    return Distance(pscale=pscale, power=self.power, pixels=self.pixels+other.pixels)
+    if not hasattr(other, "_pscale"): return NotImplemented
+    if self._power != other._power: raise UnitsError("Trying to add distances with different powers")
+    if None is not self._pscale != other._pscale is not None: raise UnitsError("Trying to add distances with different pscales")
+    pscale = self._pscale if self._pscale is not None else other._pscale
+    return Distance(pscale=pscale, power=self._power, pixels=self._pixels+other._pixels)
   def __radd__(self, other):
     return self + other
   def __mul__(self, other):
     if isinstance(other, Distance):
-      if None is not self.pscale != other.pscale is not None: raise UnitsError("Trying to multiply distances with different pscales")
-      pscale = self.pscale if self.pscale is not None else other.pscale
-      return Distance(pscale=pscale, power=self.power+other.power, pixels=self.pixels*other.pixels)
-    return Distance(pscale=self.pscale, power=self.power, pixels=other*self.pixels)
+      if None is not self._pscale != other._pscale is not None: raise UnitsError("Trying to multiply distances with different pscales")
+      pscale = self._pscale if self._pscale is not None else other._pscale
+      return Distance(pscale=pscale, power=self._power+other._power, pixels=self._pixels*other._pixels)
+    return Distance(pscale=self._pscale, power=self._power, pixels=other*self._pixels)
   def __rmul__(self, other): return self * other
   def __sub__(self, other): return self + -other
   def __rsub__(self, other): return other + -self
@@ -57,50 +57,33 @@ class Distance:
   def __neg__(self): return -1*self
   def __truediv__(self, other): return self * (1/other)
   def __rtruediv__(self, other):
-    oneoverself = Distance(pscale=self.pscale, power=-self.power, pixels=1/self.pixels)
+    oneoverself = Distance(pscale=self._pscale, power=-self._power, pixels=1/self._pixels)
     return other * oneoverself
   def __pow__(self, other):
-    return Distance(pscale=self.pscale, power=self.power*other, pixels=self.pixels**other)
-  def __bool__(self): return bool(self.pixels)
+    return Distance(pscale=self._pscale, power=self._power*other, pixels=self._pixels**other)
+  def __bool__(self): return bool(self._pixels)
   def __float__(self):
-    if self and self.power != 0: raise ValueError("Can only convert Distance to float if pixels == microns == 0 or power == 0")
-    assert self.pixels == self.microns
-    return float(self.pixels)
+    if self and self._power != 0: raise ValueError("Can only convert Distance to float if pixels == microns == 0 or power == 0")
+    assert self._pixels == self._microns
+    return float(self._pixels)
   def sqrt(self): return self**0.5
 
   @property
-  def nominal_value(self): return Distance(pscale=self.pscale, power=self.power, pixels=unc.nominal_value(self.pixels))
+  def nominal_value(self): return Distance(pscale=self._pscale, power=self._power, pixels=unc.nominal_value(self._pixels))
   n = nominal_value
   @property
-  def std_dev(self): return Distance(pscale=self.pscale, power=self.power, pixels=unc.std_dev(self.pixels))
+  def std_dev(self): return Distance(pscale=self._pscale, power=self._power, pixels=unc.std_dev(self._pixels))
   s = std_dev
   @property
-  def derivatives(self): return {k: Distance(pscale=self.pscale, power=self.power, pixels=v) for k, v in self.pixels.derivatives.items()}
+  def derivatives(self): return {k: Distance(pscale=self._pscale, power=self._power, pixels=v) for k, v in self._pixels.derivatives.items()}
 
   def __repr__(self):
-    if self.pscale is None: return repr(float(self))
-    return f"Distance(pscale={self.pscale}, pixels={self.pixels}, power={self.power})"
+    if self._pscale is None: return repr(float(self))
+    return f"Distance(pscale={self._pscale}, pixels={self._pixels}, power={self._power})"
 
 distances = np.vectorize(Distance, excluded=["pscale", "power"])
 distances_differentpowers = np.vectorize(Distance, excluded=["pscale"])
   
-def udistance(*, pscale, pixels=None, microns=None, power=1):
-  """
-  return unc.ufloat(
-    Distance(
-      pixels=pixels.n if pixels is not None else None,
-      microns=microns.n if microns is not None else None,
-      pscale=pscale, power=power,
-    ),
-    Distance(
-      pixels=pixels.s if pixels is not None else None,
-      microns=microns.s if microns is not None else None,
-      pscale=pscale, power=power,
-    ),
-  )
-  """
-  return Distance(pscale=pscale, pixels=pixels, microns=microns, power=power)
-
 def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=None, covariance=None, power=None):
   if (pixels is not None) + (microns is not None) + (distances is not None) != 1:
     raise TypeError("Have to provide exactly one of pixels, microns, or distances")
@@ -108,7 +91,7 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
   if pscale is None and distances is None and not np.all(power == 1):
     raise TypeError("If you don't provide distances, you have to provide pscale")
   if distances is not None:
-    distpscale = {_.pscale for _ in itertools.chain(distances, np.ravel(covariance) if covariance is not None else []) if _ and _.pscale is not None}
+    distpscale = {_._pscale for _ in itertools.chain(distances, np.ravel(covariance) if covariance is not None else []) if _ and _._pscale is not None}
     if not distpscale: distpscale = {None}
     if len(distpscale) > 1: raise UnitsError("Provided distances with multiple pscales")
     distpscale = distpscale.pop()
@@ -141,12 +124,12 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
     power = np.array([power] * length)
 
   if distances is not None:
-    distpower = np.array([_.power for _ in distances])
+    distpower = np.array([_._power for _ in distances])
     if covariance is not None:
       for (i1, p1), (i2, p2) in itertools.product(enumerate(distpower), repeat=2):
         if not distcovariance[i1,i2]: continue
-        if distcovariance[i1,i2].power != p1+p2:
-          raise UnitsError(f"Covariance entry {i1},{i2} has power {covariance[i1,i2].power}, should be {p1}+{p2}")
+        if distcovariance[i1,i2]._power != p1+p2:
+          raise UnitsError(f"Covariance entry {i1},{i2} has power {covariance[i1,i2]._power}, should be {p1}+{p2}")
     if power is not None and not np.all(power == distpower):
       raise UnitsError(f"Provided both power and distances, but they're inconsistent:\n{power}\n{distpower}")
     power = distpower
@@ -159,21 +142,21 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
 @np.vectorize
 def pixels(distance):
   if isinstance(distance, numbers.Number): return distance
-  return distance.pixels
+  return distance._pixels
 __pixels = pixels #for use in functions with a pixels kwarg
 @np.vectorize
 def microns(distance):
   if isinstance(distance, numbers.Number): return distance
-  return distance.microns
+  return distance._microns
 
 @np.vectorize
 def power(distance):
   if isinstance(distance, numbers.Number) or not distance: return 0
-  return distance.power
+  return distance._power
 @np.vectorize
 def pscale(distance):
   if isinstance(distance, numbers.Number) or not distance: return None
-  return distance.pscale
+  return distance._pscale
 
 @np.vectorize
 def nominal_value(distance):
@@ -190,12 +173,12 @@ def covariance_matrix(distances):
   pixels = __pixels(distances)
   covpixels = unc.covariance_matrix(pixels)
 
-  pscale = {_.pscale for _ in distances if _.pscale is not None}
+  pscale = {_._pscale for _ in distances if _._pscale is not None}
   if not pscale: pscale = {None}
   if len(pscale) > 1: raise UnitsError("Provided distances with multiple pscales")
   pscale = pscale.pop()
 
-  distpowers = [_.power for _ in distances]
-  covpowers = [[a.power + b.power for b in distances] for a in distances]
+  distpowers = [_._power for _ in distances]
+  covpowers = [[a._power + b._power for b in distances] for a in distances]
 
   return distances_differentpowers(pixels=covpixels, pscale=pscale, power=covpowers)

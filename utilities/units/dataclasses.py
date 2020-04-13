@@ -1,5 +1,5 @@
 import abc, dataclasses
-from .core import Distance, microns, pixels, UnitsError
+from .core import Distance, microns, pixels, pscale as _pscale, UnitsError
 
 def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwargs):
   kwargs["metadata"] = {
@@ -31,9 +31,10 @@ class DataClassWithDistances(abc.ABC):
       raise ValueError(f"Provided some distances and some pixels to {type(self).__name__} - this is dangerous!")
     usedistances = usedistances.pop()
 
-    pscale = {pscale} if pscale is not None else set()
+    pscale = {pscale}
     if usedistances:
-      pscale |= {_.pscale for _ in distances if _ and _.pscale is not None}
+      pscale = set(_pscale(distances))
+    pscale.discard(None)
     if not pscale:
       raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
     if len(pscale) > 1:

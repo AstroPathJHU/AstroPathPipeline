@@ -4,7 +4,7 @@ from .core import distances_differentpowers, pixels, UnitsError
 def inv(matrix):
   invpixels = np.linalg.inv(pixels(matrix))
 
-  pscale = {_.pscale for _ in np.ravel(matrix) if _ and _.pscale is not None}
+  pscale = {_._pscale for _ in np.ravel(matrix) if _ and _._pscale is not None}
   if not pscale: return invpixels
   if len(pscale) > 1: raise UnitsError(f"matrix has multiple different pscales {pscale}")
   pscale = pscale.pop()
@@ -12,7 +12,7 @@ def inv(matrix):
   @functools.partial(np.vectorize, otypes=[object])
   def minuspower(distance):
     if not distance: return None
-    return -distance.power
+    return -distance._power
   power = minuspower(matrix.T)
 
   for (i, row), (j, row2) in itertools.combinations(enumerate(power.T), 2):
@@ -42,9 +42,9 @@ def solve(matrix, vector):
 
   solvepixels = np.linalg.solve(pixels(matrix), pixels(vector))
 
-  matrixpscale = {_.pscale for _ in np.ravel(matrix) if _ and _.pscale is not None}
+  matrixpscale = {_._pscale for _ in np.ravel(matrix) if _ and _._pscale is not None}
   if len(matrixpscale) > 1: raise UnitsError(f"matrix has multiple different pscales {matrixpscale}")
-  vectorpscale = {_.pscale for _ in np.ravel(vector) if _ and _.pscale is not None}
+  vectorpscale = {_._pscale for _ in np.ravel(vector) if _ and _._pscale is not None}
   if len(vectorpscale) > 1: raise UnitsError(f"vector has multiple different pscales {vectorpscale}")
   pscale = matrixpscale | vectorpscale
   if len(pscale) > 1: raise UnitsError(f"matrix and vector have inconsistent pscales {pscale}")
@@ -54,7 +54,7 @@ def solve(matrix, vector):
   @functools.partial(np.vectorize, otypes=[object])
   def power(distance):
     if not distance: return None
-    return distance.power
+    return distance._power
 
   matrixpower = power(matrix)
   vectorpower = power(vector)

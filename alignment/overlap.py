@@ -50,10 +50,10 @@ class Overlap(DataClassWithDistances):
     assert (hh, ww) == image2.shape
 
     #convert microns to approximate pixels
-    image1x1 = int(self.x1.pixels)
-    image1y1 = int(self.y1.pixels)
-    image2x1 = int(self.x2.pixels)
-    image2y1 = int(self.y2.pixels)
+    image1x1 = int(units.pixels(self.x1))
+    image1y1 = int(units.pixels(self.y1))
+    image2x1 = int(units.pixels(self.x2))
+    image2y1 = int(units.pixels(self.y2))
     image1x2 = image1x1 + ww
     image2x2 = image2x1 + ww
     image1y2 = image1y1 + hh
@@ -101,7 +101,7 @@ class Overlap(DataClassWithDistances):
       if debug: raise
       self.result = AlignmentResult(
         exit=3,
-        dxvec=(units.udistance(pixels=unc.ufloat(0, 9999), pscale=self.pscale), units.udistance(pixels=unc.ufloat(0, 9999), pscale=self.pscale)),
+        dxvec=(units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale), units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale)),
         sc=1.,
         exception=e,
         **self.alignmentresultkwargs,
@@ -145,7 +145,7 @@ class Overlap(DataClassWithDistances):
 
   @property
   def shifted(self):
-    return shiftimg(self.cutimages, self.result.dx.pixels, self.result.dy.pixels)
+    return shiftimg(self.cutimages, units.pixels(self.result.dx), units.pixels(self.result.dy))
 
   def __shiftclip(self, dxvec):
     """
