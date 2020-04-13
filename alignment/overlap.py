@@ -238,7 +238,7 @@ class OverlapList(list, OverlapCollection):
   def overlaps(self): return self
 
 @dataclass_dc_init(frozen=True)
-class AlignmentResult:
+class AlignmentResult(DataClassWithDistances):
   pixelsormicrons = "pixels"
 
   n: int
