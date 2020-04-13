@@ -160,7 +160,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
   def readalignments(self, *, filename=None):
     if filename is None: filename = self.aligncsv
-    alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult)}
+    alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult, extrakwargs={"pscale": self.pscale})}
     for o in self.overlaps:
       try:
         o.result = alignmentresults[o.n]

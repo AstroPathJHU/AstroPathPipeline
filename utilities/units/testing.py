@@ -2,6 +2,7 @@ import numpy as np
 from .core import Distance, pixels, power, pscale
 
 def assert_allclose(distance1, distance2, *args, **kwargs):
+  if not distance1 and not distance2: return
   try:
     np.testing.assert_array_equal(power(distance1), power(distance2))
   except AssertionError:
