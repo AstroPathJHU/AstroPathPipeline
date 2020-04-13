@@ -12,12 +12,12 @@ metafile_dir = os.path.join(folder,'data',samp,'dbload')
 working_dir = os.path.join(folder,'warpfitter_test_for_jenkins')
 overlaps = [46]
 layer = 1
-fix_cxcy = False
-fix_fxfy = True
-fix_k1k2 = False
-fix_p1p2 = False
-max_radial_warp = 15.
-max_tangential_warp = 15.
+fix_cxcy   = False
+fix_fxfy   = True
+fix_k1k2k3 = False
+fix_p1p2   = False
+max_radial_warp = 10.
+max_tangential_warp = 10.
 print_every = 10
 max_iter = 1
 
@@ -29,7 +29,7 @@ print('Loading raw files')
 fitter.loadRawFiles()
 #fit the model to the data
 print('Running doFit')
-result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,
+result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,fix_p1p2=fix_p1p2,
                       max_radial_warp=max_radial_warp,max_tangential_warp=max_tangential_warp,
                       polish=False,print_every=print_every,maxiter=max_iter)
 print(f'result:\n{result}')
