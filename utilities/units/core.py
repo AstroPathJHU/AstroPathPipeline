@@ -169,11 +169,11 @@ def microns(distance):
 
 @np.vectorize
 def power(distance):
-  if isinstance(distance, numbers.Number): return 0
+  if isinstance(distance, numbers.Number) or not distance: return 0
   return distance.power
 @np.vectorize
 def pscale(distance):
-  if isinstance(distance, numbers.Number): return None
+  if isinstance(distance, numbers.Number) or not distance: return None
   return distance.pscale
 
 @np.vectorize
