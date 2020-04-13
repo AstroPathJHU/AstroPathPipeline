@@ -72,8 +72,8 @@ class TestAlignment(unittest.TestCase):
 
     a.readalignments(filename=readfilename)
     a.writealignments(filename=writefilename)
-    rows = readtable(writefilename, AlignmentResult)
-    targetrows = readtable(readfilename, AlignmentResult)
+    rows = readtable(writefilename, AlignmentResult, extrakwargs={"pscale": a.pscale})
+    targetrows = readtable(readfilename, AlignmentResult, extrakwargs={"pscale": a.pscale})
     for row, target in itertools.zip_longest(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
@@ -86,12 +86,13 @@ class TestAlignment(unittest.TestCase):
 
     a.writestitchresult(result, filenames=[newfilename(f) for f in a.stitchfilenames])
 
-    for filename, cls in itertools.zip_longest(
+    for filename, cls, extrakwargs in itertools.zip_longest(
       a.stitchfilenames,
-      (StitchCoordinate, AffineEntry, StitchOverlapCovariance)
+      (StitchCoordinate, AffineEntry, StitchOverlapCovariance),
+      ({"pscale": a.pscale}, {}, {"pscale": a.pscale}),
     ):
-      rows = readtable(newfilename(filename), cls)
-      targetrows = readtable(filename, cls)
+      rows = readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
+      targetrows = readtable(filename, cls, extrakwargs=extrakwargs)
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
 
