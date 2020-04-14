@@ -2,7 +2,7 @@ import functools, itertools, numpy as np
 from .core import distances, pixels, UnitsError
 
 def inv(matrix):
-  invpixels = np.linalg.inv(pixels(matrix))
+  invpixels = np.linalg.inv(pixels(matrix, power=None))
 
   pscale = {_._pscale for _ in np.ravel(matrix) if _ and _._pscale is not None}
   if not pscale: return invpixels
@@ -40,7 +40,7 @@ def solve(matrix, vector):
   except Exception:
     raise NotImplementedError("This version of solve only works for an NxN matrix and an N length vector")
 
-  solvepixels = np.linalg.solve(pixels(matrix), pixels(vector))
+  solvepixels = np.linalg.solve(pixels(matrix, power=None), pixels(vector, power=None))
 
   matrixpscale = {_._pscale for _ in np.ravel(matrix) if _ and _._pscale is not None}
   if len(matrixpscale) > 1: raise UnitsError(f"matrix has multiple different pscales {matrixpscale}")

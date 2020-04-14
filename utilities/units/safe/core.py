@@ -99,11 +99,11 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
     if distpscale is not None: pscale = distpscale
 
   if distances is not None:
-    pixels = __pixels(distances)
+    pixels = __pixels(distances, power=None)
     if covariance is not None:
       covariance = np.array(covariance)
       distcovariance = covariance
-      covariance = __pixels(covariance)
+      covariance = __pixels(covariance, power=None)
   if pixels is not None: name = "pixels"; values = pixels
   if microns is not None: name = "microns"; values = microns
 
@@ -144,7 +144,7 @@ def pixels(distance, *, pscale=None, power=1):
   if not distance: return 0
   if None is not pscale != _pscale(distance) is not None:
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
-  if power != _power(distance):
+  if None is not power != _power(distance) is not None:
     raise ValueError(f"Inconsistent powers {power} {_power(distance)}")
   if isinstance(distance, numbers.Number): return distance
   return distance._pixels
@@ -156,7 +156,7 @@ def microns(distance, *, pscale=None, power=1):
   if not distance: return 0
   if None is not pscale != _pscale(distance) is not None:
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
-  if power != _power(distance):
+  if None is not power != _power(distance) is not None:
     raise ValueError(f"Inconsistent powers {power} {_power(distance)}")
   if isinstance(distance, numbers.Number): return distance
   return distance._microns
@@ -182,7 +182,7 @@ def std_dev(distance):
 std_devs = std_dev
 
 def covariance_matrix(distances):
-  pixels = __pixels(distances)
+  pixels = __pixels(distances, power=None)
   covpixels = unc.covariance_matrix(pixels)
 
   pscale = {_._pscale for _ in distances if _._pscale is not None}
