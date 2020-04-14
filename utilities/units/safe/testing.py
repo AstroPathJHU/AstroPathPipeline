@@ -1,5 +1,5 @@
 import numpy as np
-from .core import Distance, pixels, _power, _pscale
+from .core import pixels, _power, _pscale
 
 def assert_allclose(distance1, distance2, *args, **kwargs):
   try:

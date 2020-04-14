@@ -12,12 +12,12 @@ def setup(mode):
 
   try:
     if mode == "safe":
-      from .safe.core import correlated_distances, Distance, distances
-      from .safe.core import covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
+      from .safe import correlated_distances, Distance, distances
+      from .safe import covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
       unitdtype = object
     elif mode == "fast":
-      from .fast.core import correlated_distances, Distance, distances
-      from .fast.core import covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
+      from .fast import correlated_distances, Distance, distances
+      from .fast import covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
       unitdtype = float
     else:
       raise ValueError(f"Invalid mode {mode}")

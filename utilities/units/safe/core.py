@@ -1,6 +1,6 @@
 from ..core import UnitsError
 
-import collections, functools, itertools, numbers, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
+import collections, itertools, numbers, numpy as np, uncertainties as unc
 
 class Distance:
   def __new__(cls, *args, pixels=None, microns=None, defaulttozero=False, **kwargs):
@@ -191,6 +191,6 @@ def covariance_matrix(distances):
   pscale = pscale.pop()
 
   distpowers = [_._power for _ in distances]
-  covpowers = [[a._power + b._power for b in distances] for a in distances]
+  covpowers = [[a + b for b in distpowers] for a in distpowers]
 
   return __distances(pixels=covpixels, pscale=pscale, power=covpowers)

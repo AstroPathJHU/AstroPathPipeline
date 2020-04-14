@@ -1,6 +1,4 @@
 import numpy as np, uncertainties as unc
-from uncertainties import covariance_matrix, nominal_value, std_dev
-from uncertainties.unumpy import nominal_values, std_devs
 
 @np.vectorize
 def __micronstopixels(*, microns, pscale, power):

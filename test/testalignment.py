@@ -1,4 +1,4 @@
-import dataclasses, itertools, numbers, numpy as np, os, uncertainties.unumpy as unp, unittest
+import dataclasses, itertools, numbers, numpy as np, os, unittest
 from ..alignment.alignmentset import AlignmentSet, ImageStats
 from ..alignment.overlap import AlignmentResult
 from ..alignment.stitch import AffineEntry, StitchCoordinate, StitchOverlapCovariance
