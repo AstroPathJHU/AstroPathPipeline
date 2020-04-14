@@ -167,7 +167,7 @@ class WarpFitter :
             self.skip_corners = False
             #call minimize with trust_constr
             logger.info('Starting polishing minimization....')
-            relative_steps = np.array([abs(0.02*p) if p<1. else 0.02 for p in firstresult.x])
+            relative_steps = np.array([abs(0.05*p) if abs(p)<1. else 0.05 for p in firstresult.x])
             with cd(self.working_dir) :
                 try :
                     result=scipy.optimize.minimize(
