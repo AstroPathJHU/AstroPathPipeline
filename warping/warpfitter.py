@@ -1,10 +1,9 @@
 #imports
 from .warpset import WarpSet
 from ..alignment.alignmentset import AlignmentSet
-from ..alignment.overlap import Overlap, OverlapList
-from ..alignment.rectangle import Rectangle, rectangleoroverlapfilter
+from ..alignment.rectangle import rectangleoroverlapfilter
+from ..utilities import units
 from ..utilities.misc import cd
-from ..utilities.tableio import readtable,writetable
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, logging, copy, shutil, platform
 
@@ -57,8 +56,15 @@ class WarpFitter :
         self.working_dir=working_dir
         self.init_dir = os.getcwd()
         self.mean_image = meanimage
+        #make sure we're using fast units before making the alignmentset
+        self.bkp_units_mode = units.currentmode
+        units.setup("fast")
+        #make the alignmentset object to use
+        self.alignset = self.__initializeAlignmentSet(overlaps=overlaps)
+        self.rectangles = self.alignset.rectangles
+        self.overlaps = self.alignset.overlaps
         #setup the working directory and the lists of overlaps and rectangles
-        self.overlaps, self.rectangles = self.__setupWorkingDirectory(overlaps)
+        self.__setupWorkingDirectory()
         #get the list of raw file paths
         self.rawfile_paths = [os.path.join(self.rawfile_dir,fn.replace(IM3_EXT,RAW_EXT)) for fn in [r.file for r in self.rectangles]]
         #get the size of the images in the sample
@@ -76,8 +82,6 @@ class WarpFitter :
             self.warpset = WarpSet(warp=warp,rawfiles=self.rawfile_paths,nlayers=self.nlayers,layer=layer)
         else :
             self.warpset = WarpSet(n=self.n,m=self.m,rawfiles=self.rawfile_paths,nlayers=self.nlayers,layer=layer)
-        #make the alignmentset object to use
-        self.alignset = self.__initializeAlignmentSet()
         #the private variable that will hold the best-fit warp
         self.__best_fit_warp = None
 
@@ -89,6 +93,7 @@ class WarpFitter :
                 shutil.rmtree(self.samp_name)
             except Exception :
                 raise FittingError('Something went wrong in trying to remove the directory of initially-warped files!')
+        units.setup(self.bkp_units_mode)
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -344,26 +349,9 @@ class WarpFitter :
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     # helper function to create the working directory and create/write out lists of overlaps and rectangles
-    def __setupWorkingDirectory(self,overlaps) :
-        #read all the overlaps in this sample's metadata and reduce to what will actually be used
-        all_overlaps = readtable(os.path.join(self.metafile_dir,self.samp_name+OVERLAP_FILE_EXT),Overlap)
-        selection = rectangleoroverlapfilter(overlaps, compatibility=True)
-        olaps = OverlapList([o for o in all_overlaps if selection(o)])
-        if len(olaps)==0 :
-            raise FittingError(f'Overlap choice {overlaps} does not represent a valid selection for this sample!')
-        #read all the rectangles and store the relevant ones
-        all_rectangles = readtable(os.path.join(self.metafile_dir,self.samp_name+RECTANGLE_FILE_EXT),Rectangle)
-        rects = [r for r in all_rectangles if olaps.selectoverlaprectangles(r)]
-        #create the working directory and write to it the new metadata .csv files
+    def __setupWorkingDirectory(self) :
         if not os.path.isdir(self.working_dir) :
             os.mkdir(self.working_dir)
-        with cd(self.working_dir) :
-            try :
-                writetable(self.samp_name+OVERLAP_FILE_EXT,olaps)
-                writetable(self.samp_name+RECTANGLE_FILE_EXT,rects)
-            except Exception :
-                raise FittingError('Something went wrong in trying to write the truncated overlap/rectangle files in the working directory!')
-        return olaps, rects
 
     # helper function to return the (x,y) size of the images read from the .imm file 
     def __getImageSizesFromImmFile(self) :
@@ -376,11 +364,10 @@ class WarpFitter :
         return n,m,z
 
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
-    def __initializeAlignmentSet(self) :
+    def __initializeAlignmentSet(self, *, overlaps) :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
-        a = AlignmentSet(os.path.join(self.metafile_dir, "..", ".."), self.working_dir,self.samp_name,interactive=customGPUdevice,useGPU=True)
-        a.rectanglesoverlaps=self.rectangles, self.overlaps
+        a = AlignmentSet(os.path.join(self.metafile_dir,"..",".."),self.working_dir,self.samp_name,interactive=customGPUdevice,useGPU=True,selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True)
         if self.mean_image is not None :
             a.meanimage = self.mean_image
         return a

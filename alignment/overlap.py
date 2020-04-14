@@ -1,26 +1,41 @@
-import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties as unc
+import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, typing, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 from .rectangle import rectangleoroverlapfilter as overlapfilter
-from ..utilities.misc import covariance_matrix
+from ..utilities import units
+from ..utilities.misc import covariance_matrix, dataclass_dc_init
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
-class Overlap:
+class Overlap(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
   n: int
   p1: int
   p2: int
-  x1: float
-  y1: float
-  x2: float
-  y2: float
+  x1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  y1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   tag: int
+  layer: dataclasses.InitVar[float]
+  pscale: dataclasses.InitVar[float]
+  nclip: dataclasses.InitVar[float]
+  rectangles: dataclasses.InitVar[float]
+  readingfromfile: dataclasses.InitVar[float] = False
 
-  def setalignmentinfo(self, layer, pscale, nclip, rectangles):
+  def __post_init__(self, layer, pscale, nclip, rectangles, readingfromfile=False):
+    super().__post_init__(pscale=pscale, readingfromfile=readingfromfile)
+
     self.layer = layer
-    self.pscale = pscale
     self.nclip = nclip
-    self.rectangles = rectangles
     self.result = None
+
+    p1rect = [r for r in rectangles if r.n==self.p1]
+    p2rect = [r for r in rectangles if r.n==self.p2]
+    if not len(p1rect) == len(p2rect) == 1:
+      raise ValueError(f"Expected exactly one rectangle each with n={self.p1} and {self.p2}, found {len(p1rect)} and {len(p2rect)}")
+    self.rectangles = p1rect[0], p2rect[0]
 
   @property
   def images(self):
@@ -36,10 +51,10 @@ class Overlap:
     assert (hh, ww) == image2.shape
 
     #convert microns to approximate pixels
-    image1x1 = int(self.x1 * self.pscale)
-    image1y1 = int(self.y1 * self.pscale)
-    image2x1 = int(self.x2 * self.pscale)
-    image2y1 = int(self.y2 * self.pscale)
+    image1x1 = int(units.pixels(self.x1))
+    image1y1 = int(units.pixels(self.y1))
+    image2x1 = int(units.pixels(self.x2))
+    image2y1 = int(units.pixels(self.y2))
     image1x2 = image1x1 + ww
     image2x2 = image2x1 + ww
     image1y2 = image1y1 + hh
@@ -75,70 +90,83 @@ class Overlap:
         pass
       else:
         raise ValueError(f"Unknown value alreadyalignedstrategy={alreadyalignedstrategy!r}")
-    self.result = AlignmentResult(
+    try:
+      kwargs1 = self.__computeshift(**computeshiftkwargs)
+      kwargs2 = self.__shiftclip(dxvec=kwargs1["dxvec"])
+      self.result = AlignmentResult(
+        **self.alignmentresultkwargs,
+        **kwargs1,
+        **kwargs2,
+      )
+    except Exception as e:
+      if debug: raise
+      self.result = AlignmentResult(
+        exit=3,
+        dxvec=(units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale), units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale)),
+        sc=1.,
+        exception=e,
+        **self.alignmentresultkwargs,
+      )
+    return self.result
+
+  @property
+  def alignmentresultkwargs(self):
+    return dict(
       n=self.n,
       p1=self.p1,
       p2=self.p2,
       code=self.tag,
       layer=self.layer,
-      exit=-1,
+      pscale=self.pscale,
     )
-    try:
-      self.__computeshift(**computeshiftkwargs)
-      self.__shiftclip()
-    except Exception as e:
-      self.result.exit = 3
-      self.result.dxvec = unc.ufloat(0, 9999), unc.ufloat(0, 9999)
-      self.result.sc = 1.
-      self.result.exception = e
-      if debug: raise
-    else:
-      self.result.exception = None
-    return self.result
 
   def getinversealignment(self, inverse):
     assert (inverse.p1, inverse.p2) == (self.p2, self.p1)
     self.result = AlignmentResult(
-      n = self.n,
-      p1 = self.p1,
-      p2 = self.p2,
-      code = self.tag,
-      layer = self.layer,
       exit = inverse.result.exit,
-      dx = -inverse.result.dx,
-      dy = -inverse.result.dy,
+      dxvec = -inverse.result.dxvec,
       sc = 1/inverse.result.sc,
       mse1 = inverse.result.mse2,
       mse2 = inverse.result.mse1,
       mse3 = inverse.result.mse3 / inverse.result.sc**2,
+      **self.alignmentresultkwargs,
     )
-    self.result.covariance = inverse.result.covariance
     return self.result
 
   def __computeshift(self, **computeshiftkwargs):
     minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
-    self.result.dxvec = minimizeresult.dx, minimizeresult.dy
-    self.result.exit = minimizeresult.exit
+    return {
+      "dxvec": units.correlated_distances(
+        pixels=(minimizeresult.dx, minimizeresult.dy),
+        pscale=self.pscale,
+        power=1,
+      ),
+      "exit": minimizeresult.exit,
+    }
 
   @property
   def shifted(self):
-    return shiftimg(self.cutimages, self.result.dx, self.result.dy)
+    return shiftimg(self.cutimages, units.pixels(self.result.dx), units.pixels(self.result.dy))
 
-  def __shiftclip(self):
+  def __shiftclip(self, dxvec):
     """
     Shift images symetrically by fractional amount
     and save the result. Compute the mse and the
     illumination correction
     """
-    b1, b2 = self.shifted
+    b1, b2 = shiftimg(self.cutimages, *units.nominal_values(units.pixels(dxvec)))
 
     mse1 = mse(b1)
     mse2 = mse(b2)
 
-    self.result.sc = (mse1 / mse2) ** 0.5
+    sc = (mse1 / mse2) ** 0.5
 
-    diff = b1 - b2*self.result.sc
-    self.result.mse = mse1, mse2, mse(diff)
+    diff = b1 - b2*sc
+
+    return {
+      "sc": sc,
+      "mse": (mse1, mse2, mse(diff))
+    }
 
   def getimage(self,normalize=100.,shifted=True) :
     if shifted:
@@ -210,50 +238,58 @@ class OverlapList(list, OverlapCollection):
   @property
   def overlaps(self): return self
 
-@dataclasses.dataclass
-class AlignmentResult:
+@dataclass_dc_init(frozen=True)
+class AlignmentResult(DataClassWithDistances):
+  pixelsormicrons = "pixels"
+
   n: int
   p1: int
   p2: int
   code: int
   layer: int
-  exit: int = 0
-  dx: float = 0.
-  dy: float = 0.
-  sc: float = 0.
-  mse1: float = 0.
-  mse2: float = 0.
-  mse3: float = 0.
-  covxx: float = 0.
-  covyy: float = 0.
-  covxy: float = 0.
+  exit: int
+  dx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  dy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  sc: float
+  mse1: float
+  mse2: float
+  mse3: float
+  covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  pscale: dataclasses.InitVar[float] = None
+  exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
+  readingfromfile: dataclasses.InitVar[float] = False
+
+  def __init__(self, *args, **kwargs):
+    dxvec = kwargs.pop("dxvec", None)
+    if dxvec is not None:
+      kwargs["dx"] = dxvec[0].n
+      kwargs["dy"] = dxvec[1].n
+      kwargs["covariance"] = covariance_matrix(dxvec)
+
+    covariancematrix = kwargs.pop("covariance", None)
+    if covariancematrix is not None:
+      units.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
+      (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
+
+    mse = kwargs.pop("mse", None)
+    if mse is not None:
+      kwargs["mse1"], kwargs["mse2"], kwargs["mse3"] = mse
+
+    return self.__dc_init__(*args, **kwargs)
 
   @property
   def mse(self):
     return self.mse1, self.mse2, self.mse3
 
-  @mse.setter
-  def mse(self, value):
-    self.mse1, self.mse2, self.mse3 = value
-
   @property
   def covariance(self):
     return np.array([[self.covxx, self.covxy], [self.covxy, self.covyy]])
 
-  @covariance.setter
-  def covariance(self, covariancematrix):
-    assert np.isclose(covariancematrix[0, 1], covariancematrix[1, 0]), covariancematrix
-    (self.covxx, self.covxy), (self.covxy, self.covyy) = covariancematrix
-
   @property
   def dxvec(self):
-    return np.array(unc.correlated_values([self.dx, self.dy], self.covariance))
-
-  @dxvec.setter
-  def dxvec(self, dxvec):
-    self.dx = dxvec[0].n
-    self.dy = dxvec[1].n
-    self.covariance = covariance_matrix(dxvec)
+    return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
 
   @property
   def isedge(self):

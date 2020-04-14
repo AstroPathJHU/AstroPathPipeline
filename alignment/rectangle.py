@@ -1,20 +1,51 @@
 import abc, collections, dataclasses, numpy as np
+from ..utilities import units
+from ..utilities.misc import dataclass_dc_init
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
-class Rectangle:
-  n: int
-  x: float
-  y: float
-  w: int
-  h: int
-  cx: int
-  cy: int
+class Rectangle(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
+  n: int = dataclasses.field()
+  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  w: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  h: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   t: int
   file: str
+  pscale: dataclasses.InitVar[float]
+  readingfromfile: dataclasses.InitVar[float]
 
   @property
   def xvec(self):
     return np.array([self.x, self.y])
+
+@dataclass_dc_init
+class ShiftedRectangle(Rectangle):
+  ix: int
+  iy: int
+  gc: int
+  px: float
+  py: float
+  mx1: float
+  mx2: float
+  my1: float
+  my2: float
+  gx: int
+  gy: int
+
+  def __init__(self, *args, rectangle=None, **kwargs):
+    return self.__dc_init__(
+      *args,
+      **{
+        field.name: getattr(rectangle, field.name)
+        for field  in dataclasses.fields(type(rectangle))
+      } if rectangle is not None else {},
+      **kwargs
+    )
 
 class RectangleCollection(abc.ABC):
   @abc.abstractproperty
@@ -27,14 +58,18 @@ class RectangleCollection(abc.ABC):
     return {r.n for r in self.rectangles}
 
 @dataclasses.dataclass(frozen=True)
-class ImageStats:
+class ImageStats(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
   n: int
   mean: float
   min: float
   max: float
   std: float
-  cx: int
-  cy: int
+  cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[float] = False
 
 def rectangledict(rectangles):
   return {rectangle.n: i for i, rectangle in enumerate(rectangles)}
