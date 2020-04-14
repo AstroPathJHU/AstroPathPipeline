@@ -104,6 +104,7 @@ class Overlap(DataClassWithDistances):
         exit=3,
         dxvec=(units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale), units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale)),
         sc=1.,
+        mse=(0., 0., 0.),
         exception=e,
         **self.alignmentresultkwargs,
       )
