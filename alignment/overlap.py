@@ -268,7 +268,7 @@ class AlignmentResult(DataClassWithDistances):
 
     covariancematrix = kwargs.pop("covariance", None)
     if covariancematrix is not None:
-      assert np.isclose(units.pixels(covariancematrix)[0, 1], units.pixels(covariancematrix)[1, 0]), covariancematrix
+      units.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
       (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
 
     mse = kwargs.pop("mse", None)

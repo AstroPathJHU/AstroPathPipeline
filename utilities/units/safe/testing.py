@@ -10,4 +10,4 @@ def assert_allclose(distance1, distance2, *args, **kwargs):
     np.testing.assert_array_equal(_pscale(distance1), _pscale(distance2))
   except AssertionError:
     raise AssertionError(f"Distances have different pscales\n{distance1}\n{distance2}")
-  return np.testing.assert_allclose(pixels(distance1), pixels(distance2), *args, **kwargs)
+  return np.testing.assert_allclose(pixels(distance1, pscale=_pscale(distance1), power=_power(distance1)), pixels(distance2, pscale=_pscale(distance2), power=_power(distance2)), *args, **kwargs)
