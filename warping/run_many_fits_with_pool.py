@@ -1,6 +1,5 @@
 #imports
 from argparse import ArgumentParser
-from ..utilities.misc import cd
 from .run_warpfitter import getSampleOctets, checkDirAndFixedArgs, split_csv_to_list
 import os, random, multiprocessing as mp
 
@@ -65,7 +64,7 @@ def main() :
 
 	#make sure that the number of octets per job and the number of jobs will work for this sample
 	if args.njobs*n_octets_per_job<1 or args.njobs*n_octets_per_job>len(all_octets_numbers) :
-		raise ValueError(f'Sample {args.sample} has {len(all_octets_list)} total octets, but you asked for {args.njobs} jobs with {n_octets_per_job} octets per job!')
+		raise ValueError(f'Sample {args.sample} has {len(all_octets_dict)} total octets, but you asked for {args.njobs} jobs with {n_octets_per_job} octets per job!')
 
 	#build the list of commands to pass to os.system to run run_warpfitter.py
 	cmd_base=f'python -m microscopealignment.warping.run_warpfitter fit {args.sample} {args.rawfile_dir} {args.root1_dir} {args.root2_dir}'
