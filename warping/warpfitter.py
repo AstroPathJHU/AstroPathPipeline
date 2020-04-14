@@ -2,6 +2,7 @@
 from .warpset import WarpSet
 from ..alignment.alignmentset import AlignmentSet
 from ..alignment.rectangle import rectangleoroverlapfilter
+from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, logging, copy, shutil, platform
@@ -55,6 +56,9 @@ class WarpFitter :
         self.working_dir=working_dir
         self.init_dir = os.getcwd()
         self.mean_image = meanimage
+        #make sure we're using fast units before making the alignmentset
+        self.bkp_units_mode = units.currentmode
+        units.setup("fast")
         #make the alignmentset object to use
         self.alignset = self.__initializeAlignmentSet(overlaps=overlaps)
         self.rectangles = self.alignset.rectangles
@@ -89,6 +93,7 @@ class WarpFitter :
                 shutil.rmtree(self.samp_name)
             except Exception :
                 raise FittingError('Something went wrong in trying to remove the directory of initially-warped files!')
+        units.setup(self.bkp_units_mode)
 
     #################### PUBLIC FUNCTIONS ####################
 
