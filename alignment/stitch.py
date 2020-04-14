@@ -193,8 +193,8 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
     x1 = rectanglex[o.p1]
     x2 = rectanglex[o.p2]
     twonll += cp.quad_form(
-      x1 - x2 + units.pixels(-units.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec),
-      units.pixels(units.linalg.inv(o.result.covariance))
+      x1 - x2 + units.pixels(-units.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec, pscale=pscale, power=1),
+      units.pixels(units.linalg.inv(o.result.covariance), pscale=pscale, power=-2)
     )
 
   dxs, dys = zip(*(o.result.dxvec for o in overlaps))
@@ -223,11 +223,12 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
   for r in rectangles:
     twonll += cp.norm(
       (
-        (rectanglex[r.n] - units.pixels(x0vec))
+        (rectanglex[r.n] - units.pixels(x0vec, pscale=pscale, power=1))
         - T @ units.pixels(
-          (r.xvec - x0vec)
+          (r.xvec - x0vec),
+          pscale=pscale, power=1
         )
-      ) / units.pixels(sigma)
+      ) / units.pixels(sigma, pscale=pscale, power=1)
     )
 
   minimize = cp.Minimize(twonll)
@@ -496,9 +497,10 @@ class StitchCoordinate(DataClassWithDistances):
   cov_x_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[float] = False
 
-  def __post_init__(self, pscale):
-    super().__post_init__(pscale=pscale)
+  def __post_init__(self, pscale, readingfromfile=False):
+    super().__post_init__(pscale=pscale, readingfromfile=readingfromfile)
 
     nominal = [self.x, self.y]
     covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
@@ -548,3 +550,4 @@ class StitchOverlapCovariance(DataClassWithDistances):
   cov_y1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[float] = False

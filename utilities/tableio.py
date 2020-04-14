@@ -63,6 +63,9 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, filter=lambda row: Tr
         else:
           columntypes[field.name] = typ
 
+    if "readingfromfile" in Row.__annotations__ and "readingfromfile" not in extrakwargs:
+      extrakwargs["readingfromfile"] = True
+
     for row in reader:
       for column, typ in columntypes.items():
         row[column] = typ(row[column])
