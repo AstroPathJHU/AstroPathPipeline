@@ -242,6 +242,12 @@ class StitchResultBase(OverlapCollection, RectangleCollection):
     self.__overlaps = overlaps
 
   @property
+  def pscale(self):
+    pscale = {_.pscale for _ in itertools.chain(self.rectangles, self.overlaps)}
+    if len(pscale) != 1: raise ValueError("?????? this should never happen")
+    return pscale.pop()
+
+  @property
   def overlaps(self): return self.__overlaps
   @property
   def rectangles(self): return self.__rectangles
@@ -281,13 +287,12 @@ class StitchResultBase(OverlapCollection, RectangleCollection):
     writetable(affinefilename, affine, rowclass=AffineEntry, **kwargs)
 
     rows = []
-    pscale = self.rectangles[0].pscale
     for rectangleid in self.rectangledict:
       rows.append(
         stitchcoordinate(
           hpfid=rectangleid,
           position=self.x(rectangleid),
-          pscale=pscale,
+          pscale=self.pscale,
         )
       )
     writetable(filename, rows, **kwargs)
@@ -359,6 +364,7 @@ class StitchResultFullCovariance(StitchResultBase):
           cov_x1_y2=covariance[0,3],
           cov_y1_x2=covariance[1,2],
           cov_y1_y2=covariance[1,3],
+          pscale=self.pscale,
         )
       )
     return overlapcovariances
@@ -415,13 +421,9 @@ class StitchResultOverlapCovariances(StitchResultBase):
   def readtable(self, *filenames, adjustoverlaps=True):
     filename, affinefilename, overlapcovariancefilename = filenames
 
-    pscale = {_.pscale for _ in itertools.chain(self.rectangles, self.overlaps)}
-    if len(pscale) != 1: raise ValueError("?????? this should never happen")
-    pscale = pscale.pop()
-
-    coordinates = readtable(filename, StitchCoordinate, extrakwargs={"pscale": pscale})
+    coordinates = readtable(filename, StitchCoordinate, extrakwargs={"pscale": self.pscale})
     affines = readtable(affinefilename, AffineEntry)
-    overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance, extrakwargs={"pscale": pscale})
+    overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance, extrakwargs={"pscale": self.pscale})
 
     self.__x = np.array([coordinate.xvec for coordinate in coordinates])
     self.__overlapcovariances = overlapcovariances
