@@ -31,9 +31,9 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
   return unc.correlated_values(pixels, covariance)
 
 @np.vectorize
-def pixels(distance, *, pscale=None, power=None): return distance
+def pixels(distance, *, pscale=None, power=1): return distance
 @np.vectorize
-def microns(distance, *, pscale=None, power=None): return __pixelstomicrons(pixels=distance, pscale=pscale, power=power)
+def microns(distance, *, pscale=None, power=1): return __pixelstomicrons(pixels=distance, pscale=pscale, power=power)
 
 def power(distance): return None
 def pscale(distance): return None

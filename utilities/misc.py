@@ -60,3 +60,8 @@ class dataclass_dc_init:
     cls.__dc_init__.__name__ = "__dc_init__"
     cls.__init__ = __my_init__
     return cls
+
+def floattoint(flt):
+  result = int(flt)
+  if result == flt: return result
+  raise ValueError(f"{flt} is not an int")

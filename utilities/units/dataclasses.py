@@ -1,4 +1,5 @@
-import abc, dataclasses
+import abc, dataclasses, numbers
+from ..misc import floattoint
 from . import safe
 from .core import UnitsError
 
@@ -14,8 +15,16 @@ def __setup(mode):
     raise ValueError(f"Invalid mode {mode}")
 
 def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwargs):
+  if issubclass(dtype, numbers.Integral):
+    secondfunction = floattoint
+  else:
+    secondfunction = lambda x: x
+
   kwargs["metadata"] = {
-    "writefunction": {"pixels": pixels, "microns": microns}[pixelsormicrons],
+    "writefunction": {
+      "pixels": lambda *args, **kwargs: secondfunction(pixels(*args, **kwargs)),
+      "microns": lambda *args, **kwargs: secondfunction(microns(*args, **kwargs)),
+    }[pixelsormicrons],
     "readfunction": dtype,
     "isdistancefield": True,
     "pixelsormicrons": pixelsormicrons,
