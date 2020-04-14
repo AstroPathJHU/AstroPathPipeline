@@ -95,7 +95,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   sigmay = np.sqrt(weightedvariancedy) / scaleby * scalejittererror
 
   if fixpoint == "origin":
-    x0vec = units.distances(pixels=np.array([0, 0]), pscale=units.pscale(c)) #fix the origin, linear scaling is with respect to that
+    x0vec = units.distances(pixels=np.array([0, 0]), pscale=self.pscale) #fix the origin, linear scaling is with respect to that
   elif fixpoint == "center":
     x0vec = np.mean([r.xvec for r in rectangles], axis=0)
   else:

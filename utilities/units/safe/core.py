@@ -141,28 +141,32 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
 
 @np.vectorize
 def pixels(distance, *, pscale=None, power=None):
+  if not distance: return 0
+  if None is not pscale != _pscale(distance) is not None:
+    raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
+  if power != _power(distance):
+    raise ValueError(f"Inconsistent powers {power} {_power(distance)}")
   if isinstance(distance, numbers.Number): return distance
-  if None is not pscale != distance._pscale is not None:
-    raise ValueError(f"Inconsistent pscales {pscale} {distance.pscale}")
-  if None is not power != distance._power is not None:
-    raise ValueError(f"Inconsistent powers {power} {distance.power}")
   return distance._pixels
+
 __pixels = pixels #for use in functions with a pixels kwarg
+
 @np.vectorize
 def microns(distance, *, pscale=None, power=None):
+  if not distance: return 0
+  if None is not pscale != _pscale(distance) is not None:
+    raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
+  if power != _power(distance):
+    raise ValueError(f"Inconsistent powers {power} {_power(distance)}")
   if isinstance(distance, numbers.Number): return distance
-  if None is not pscale != distance._pscale is not None:
-    raise ValueError(f"Inconsistent pscales {pscale} {distance.pscale}")
-  if None is not power != distance._power is not None:
-    raise ValueError(f"Inconsistent powers {power} {distance.power}")
   return distance._microns
 
 @np.vectorize
-def power(distance):
+def _power(distance):
   if isinstance(distance, numbers.Number) or not distance: return 0
   return distance._power
 @np.vectorize
-def pscale(distance):
+def _pscale(distance):
   if isinstance(distance, numbers.Number) or not distance: return None
   return distance._pscale
 

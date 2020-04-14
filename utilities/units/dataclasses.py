@@ -5,9 +5,11 @@ from .core import UnitsError
 def __setup(mode):
   global Distance, microns, pixels, _pscale, UnitsError
   if mode == "safe":
-    from .safe import Distance, microns, pixels, pscale as _pscale
+    from .safe import Distance, microns, pixels
+    from .safe.core import _pscale
   elif mode == "fast":
-    from .fast import Distance, microns, pixels, pscale as _pscale
+    from .fast import Distance, microns, pixels
+    def _pscale(distance): return None
   else:
     raise ValueError(f"Invalid mode {mode}")
 
