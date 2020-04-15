@@ -6,7 +6,7 @@ from ..alignment.rectangle import Rectangle, rectangleoroverlapfilter
 from ..utilities.misc import cd
 from ..utilities.tableio import readtable,writetable
 import numpy as np, scipy, matplotlib.pyplot as plt
-import os, logging, copy, shutil, platform, time
+import os, logging, copy, shutil, platform, time, pickle
 
 #global variables
 OVERLAP_FILE_EXT   = '_overlap.csv'
@@ -123,6 +123,12 @@ class WarpFitter :
         self.costs=[]
         self.max_radial_warps=[]
         self.max_tangential_warps=[]
+        #make the object that will keep track of each overlaps' alignment shift during the minimization process
+        self.minimization_evolution_details=[]
+        #each entry will be an iteration, the first is the alignment of the raw images
+        self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
+        rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
+        self.minimization_evolution_details.append(self.__getOverlapAlignmentResultDictForIteration(rawcost,0.,0.))
         #silence the AlignmentSet logger
         logger = logging.getLogger('align')
         logger.setLevel(logging.WARN)
@@ -210,6 +216,9 @@ class WarpFitter :
                                                             self.raw_cost,self.best_cost)
             except Exception :
                 raise FittingError('Something went wrong in trying to save the warping amount figure for the best-fit warp')
+        #pickle and save the alignment evolution details list
+        with cd(self.working_dir) :
+            pickle.dump(copy.deepcopy(self.minimization_evolution_details),open('minimization_evolution_details.p','wb'))
         return result
 
 
@@ -234,6 +243,7 @@ class WarpFitter :
         self.costs.append(cost if cost<1e10 else -0.1)
         self.max_radial_warps.append(self.warpset.warp.maxRadialDistortAmount(fixedpars))
         self.max_tangential_warps.append(self.warpset.warp.maxTangentialDistortAmount(fixedpars))
+        self.minimization_evolution_details.append(self.__getOverlapAlignmentResultDictForIteration(self.costs[-1],self.max_radial_warps[-1],self.max_tangential_warps[-1]))
         #print progress if requested
         if self.minfunc_calls%self.print_every==0 :
             logger.info(self.warpset.warp.paramString())
@@ -605,4 +615,28 @@ class WarpFitter :
             else :
                 fixedlist.append(p)
         return fixedlist
+
+    #helper function to create an return a dictionary of each overlap's alignment results at the current iteration
+    def __getOverlapAlignmentResultDictForIteration(self,iteration_cost,max_radial_warp,max_tangential_warp) :
+        this_iteration_dict = {}
+        this_iteration_dict['cx']=self.warpset.warp.cx
+        this_iteration_dict['cy']=self.warpset.warp.cy
+        this_iteration_dict['fx']=self.warpset.warp.fx
+        this_iteration_dict['fy']=self.warpset.warp.fy
+        this_iteration_dict['k1']=self.warpset.warp.k1
+        this_iteration_dict['k2']=self.warpset.warp.k2
+        this_iteration_dict['k3']=self.warpset.warp.k3
+        this_iteration_dict['p1']=self.warpset.warp.p1
+        this_iteration_dict['p2']=self.warpset.warp.p2
+        this_iteration_dict['cost']=iteration_cost
+        this_iteration_dict['max_radial_warp']=max_radial_warp
+        this_iteration_dict['max_tangential_warp']=max_tangential_warp
+        this_iteration_dict['overlap_dxs']=[]
+        this_iteration_dict['overlap_dys']=[]
+        this_iteration_dict['overlap_diff_MSEs']=[]
+        for olap in self.alignset.overlaps :
+            this_iteration_dict['overlap_dxs'].append(olap.result.dx)
+            this_iteration_dict['overlap_dys'].append(olap.result.dy)
+            this_iteration_dict['overlap_diff_MSEs'].append(olap.result.mse3)
+        return this_iteration_dict
 
