@@ -336,7 +336,7 @@ class WarpFitter :
                         pix_to_in = 20./self.n
                         if code in [2,8] :
                             f,(ax1,ax2,ax3,ax4) = plt.subplots(4,1,sharex=True)
-                            f.set_size_inches(self.n*pix_to_in,4.*0.2*self.m*pix_to_in)
+                            f.set_size_inches(self.n*pix_to_in,4.5*0.2*self.m*pix_to_in)
                             order = [ax1,ax3,ax2,ax4]
                         elif code in [1,3,7,9] :
                             f,ax = plt.subplots(2,2)
@@ -344,7 +344,7 @@ class WarpFitter :
                             order = [ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
                         elif code in [4,6] :
                             f,(ax1,ax2,ax3,ax4) = plt.subplots(1,4,sharey=True)
-                            f.set_size_inches(4.*0.2*self.n*pix_to_in,self.m*pix_to_in)
+                            f.set_size_inches(4.5*0.2*self.n*pix_to_in,self.m*pix_to_in)
                             order=[ax1,ax3,ax2,ax4]
                         order[0].imshow(raw_overlap_comparisons_dict[overlap_identifier][0])
                         order[0].set_title('raw overlap images')
