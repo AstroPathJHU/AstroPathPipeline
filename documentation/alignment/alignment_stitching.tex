@@ -465,6 +465,30 @@ The Vectra 3.0 scans fields of size $1344\times1004$ $\text{pixels}^2$.  The ent
 
 \subsection{Periodic dependence}
 
+\section{Vectra Polaris results}
+
+This section shows results for the Vectra Polaris microscope at BMS.
+
+\subsection{Linear Transformation matrix}
+
+From the sample named \texttt{TS18\_0541\_BMS\_MITRE}, we find the linear transformation matrix to be
+\begin{align}
+\matrixbold{A}=&\begin{pmatrix}
+\num{1.00748\pm.00017} &
+\num{-0.00261\pm.00018} \\
+\num{.00008\pm.00011} &
+\num{1.00675\pm.00012}
+\end{pmatrix} \\
+=\matrixbold{I} + &\begin{pmatrix}
+\num{7.48\pm.17} &
+\num{-2.61\pm.18} \\
+\num{.08\pm.11} &
+\num{6.75\pm.12}
+\end{pmatrix} \times \num{e-3}
+\label{eq:Amatrix_TS18_0541_BMS_MITRE}
+\end{align}
+The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $14$ pixels.  When moving down, it overshoots by an average of $10$ pixels, and when moving back to the beginning of the row it overshoots by $5$ pixels on average.  If left uncorrected, this is a significantly larger bias than the one in the Vectra 3.0 microscope.
+
 \section{Summary}
 
 In this note, we describe the alignment and stitching of a microscope image composed of up to $1000$ fields.  Our procedure includes an estimation of the error on each field, which are propagated throughout the procedure to obtain a final error estimate and covariance matrix for the positions of the fields.  The method provided here runs in a few minutes and forms an important part of the data calibration in the astropath framework.
