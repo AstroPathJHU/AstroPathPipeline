@@ -448,20 +448,20 @@ The primary purpose of the alignment and stitching is to determine the relative 
 For the \M11 dataset, we find
 \begin{align}
 \matrixbold{A}=&\begin{pmatrix}
-\num{0.998037\pm.000010} &
-\num{.000084\pm.000013} \\
-\num{0.000368\pm.000012} &
-\num{0.996957\pm.000015}
+\num{0.999132\pm.000009} &
+\num{.000173\pm.000013} \\
+\num{0.000103\pm.000010} &
+\num{0.998652\pm.000014}
 \end{pmatrix} \\
 =\matrixbold{I} + &\begin{pmatrix}
-\num{-1.963\pm.010} &
-\num{.084\pm.013} \\
-\num{0.368\pm.012} &
-\num{-3.043\pm.015}
+\num{-0.868\pm.009} &
+\num{.173\pm.013} \\
+\num{0.103\pm.010} &
+\num{-1.348\pm.014}
 \end{pmatrix} \times \num{e-3}
 \label{eq:Amatrix_M11}
 \end{align}
-The Vectra 3.0 scans fields of size $1344\times1004$ $\text{pixels}^2$.  The entries of $\matrixbold{A}$ tell us that on average, when moving one field to the right, the microscope ends up 2 pixels to the left of where it should, and when moving down, it ends up 4 pixels above where it should.  Although the top row of \cref{fig:alignmentresults} shows that the random scatter is a larger effect, the average shift is noticeable.
+The Vectra 3.0 scans fields of size $1344\times1004$ $\text{pixels}^2$.  The entries of $\matrixbold{A}$ tell us that on average, when moving one field to the right, the microscope ends up $1$ pixel to the left of where it should, and when moving down, it ends up $1$ pixel above where it should.  Although the top row of \cref{fig:alignmentresults} shows that the random scatter is a larger effect, the average shift is noticeable.
 
 \subsection{Periodic dependence}
 
