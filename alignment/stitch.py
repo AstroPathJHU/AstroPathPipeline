@@ -2,6 +2,7 @@ import abc, dataclasses, itertools, logging, numpy as np, uncertainties as unc
 from .overlap import OverlapCollection
 from .rectangle import Rectangle, RectangleCollection, rectangledict
 from ..utilities import units
+from ..utilities.misc import weightedstd
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
@@ -82,17 +83,8 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
 
   dxs, dys = zip(*(o.result.dxvec for o in overlaps))
 
-  weightedvariancedx = np.average(
-    units.nominal_values(dxs)**2,
-    weights=1/units.std_devs(dxs)**2,
-  )
-  sigmax = np.sqrt(weightedvariancedx) / scaleby * scalejittererror
-
-  weightedvariancedy = np.average(
-    units.nominal_values(dys)**2,
-    weights=1/units.std_devs(dys)**2,
-  )
-  sigmay = np.sqrt(weightedvariancedy) / scaleby * scalejittererror
+  sigmax = weightedstd(dxs, subtractaverage=False) / scaleby * scalejittererror
+  sigmay = weightedstd(dys, subtractaverage=False) / scaleby * scalejittererror
 
   if fixpoint == "origin":
     x0vec = units.distances(pixels=np.array([0, 0]), pscale=None) #fix the origin, linear scaling is with respect to that

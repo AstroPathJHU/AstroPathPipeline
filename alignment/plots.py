@@ -3,7 +3,7 @@
 import matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties.unumpy as unp
 from more_itertools import pairwise
 from ..utilities import units
-from ..utilities.misc import pullhist
+from ..utilities.misc import pullhist, weightedaverage, weightedstd
 
 def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pixelsormicrons=None, pullkwargs={}, pullbinning=None):
   fig = plt.figure(**figurekwargs)
@@ -87,8 +87,8 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   for positions in sorted(set(allpositions), key=lambda x: units.pixels(np.mean(x))):
     x.append((positions[0] + positions[1]) / 2)
     dxs = [o.dx for o in overlaps if o.abspositions == positions]
-    y.append(units.nominal_value(np.mean(dxs)))
-    yerr.append(units.nominal_value(np.std(dxs)))
+    y.append(units.nominal_value(weightedaverage(dxs)))
+    yerr.append(units.nominal_value(weightedstd(dxs)))
 
   x = np.array(x)
   y = np.array(y)
