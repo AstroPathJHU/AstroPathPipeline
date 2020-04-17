@@ -55,6 +55,59 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
     plt.savefig(saveas)
     plt.close()
 
+def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None):
+  fig = plt.figure(**figurekwargs)
+  ax = fig.add_subplot(1, 1, 1)
+
+  xidx = {"x": 0, "y": 1}[vsxory]
+  yidx = {"x": 0, "y": 1}[deltaxory]
+
+  class OverlapForProfile:
+    def __init__(self, overlap):
+      self.overlap = overlap
+
+    def __getattr__(self, attr):
+      return getattr(self.overlap, attr)
+
+    @property
+    def abspositions(self):
+      return self.x1vec[xidx], self.x2vec[xidx]
+
+    @property
+    def dx(self):
+      return self.result.dxvec[yidx]
+
+  overlaps = [OverlapForProfile(o) for o in alignmentset.overlaps if o.tag == tag]
+  allpositions = {o.abspositions for o in overlaps}
+
+  x = []
+  y = []
+  yerr = []
+
+  for positions in sorted(set(allpositions), key=lambda x: units.pixels(np.mean(x))):
+    x.append((positions[0] + positions[1]) / 2)
+    dxs = [o.dx for o in overlaps if o.abspositions == positions]
+    y.append(units.nominal_value(np.mean(dxs)))
+    yerr.append(units.nominal_value(np.std(dxs)))
+
+  x = np.array(x)
+  y = np.array(y)
+  yerr = np.array(yerr)
+
+  plt.errorbar(
+    x=units.pixels(x),
+    y=units.pixels(y),
+    yerr=units.pixels(yerr),
+    fmt='o',
+  )
+
+  plotstyling(fig=fig, ax=ax)
+  if saveas is None:
+    plt.show()
+  else:
+    plt.savefig(saveas)
+    plt.close()
+
 def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
   dct = {
     1: (-1, -1),

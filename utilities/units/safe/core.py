@@ -66,7 +66,26 @@ class Distance:
     if self and self._power != 0: raise ValueError("Can only convert Distance to float if pixels == microns == 0 or power == 0")
     assert self._pixels == self._microns
     return float(self._pixels)
+  def __eq__(self, other):
+    return (self - other)._pixels == 0
+  def __lt__(self, other):
+    return (self - other)._pixels < 0
+  def __le__(self, other):
+    return (self - other)._pixels <= 0
+  def __gt__(self, other):
+    return (self - other)._pixels > 0
+  def __ge__(self, other):
+    return (self - other)._pixels >= 0
+  def __hash__(self):
+    return hash((self._power, self._pscale, self._pixels))
+
   def sqrt(self): return self**0.5
+  def conjugate(self):
+    try:
+      return Distance(pscale=self._pscale, power=self._power, pixels=np.conjugate(self._pixels))
+    except (TypeError, AttributeError):
+      if np.conjugate(self.nominal_value) != self.nominal_value: raise AssertionError
+      return self
 
   @property
   def nominal_value(self): return Distance(pscale=self._pscale, power=self._power, pixels=unc.nominal_value(self._pixels))
@@ -170,16 +189,14 @@ def _pscale(distance):
   if isinstance(distance, numbers.Number) or not distance: return None
   return distance._pscale
 
-@np.vectorize
 def nominal_value(distance):
   if isinstance(distance, numbers.Number): return distance
   return distance.nominal_value
-nominal_values = nominal_value
-@np.vectorize
+nominal_values = np.vectorize(nominal_value)
 def std_dev(distance):
   if isinstance(distance, numbers.Number): return 0
   return distance.std_dev
-std_devs = std_dev
+std_devs = np.vectorize(std_dev)
 
 def covariance_matrix(distances):
   pixels = __pixels(distances, power=None)
