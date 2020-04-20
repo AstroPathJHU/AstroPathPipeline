@@ -170,7 +170,22 @@ class WarpFitter :
         logger.info(f'Initial minimization completed {"successfully" if firstresult.success else "UNSUCCESSFULLY"} in {firstresult.nfev} evaluations.')
         init_minimization_done_time = time.time()
         if polish :
-            self.skip_corners = False
+            #update the warp to the result from the global minimization
+            first_fit_pars = self.__correctParameterList(firstresult.x)
+            first_fit_max_rad_dist = self.warpset.warp.maxRadialDistortAmount(first_fit_pars)
+            first_fit_max_tan_dist = self.warpset.warp.maxTangentialDistortAmount(first_fit_pars)
+            self.warpset.updateCameraParams(first_fit_pars)
+            #re-warp the images, update them in the alignmentset, and re-align them (including the corners this time)
+            self.skip_corners=False
+            self.warpset.warpLoadedImageSet(skip_corners=self.skip_corners)
+            self.alignset.updateRectangleImages([warpimg for warpimg in self.warpset.images if not (self.skip_corners and warpimg.is_corner_only)])
+            after_global_minimization_cost = self.alignset.align(skip_corners=self.skip_corners,
+                                                                 write_result=False,
+                                                                 return_on_invalid_result=True,
+                                                                 alreadyalignedstrategy="overwrite",
+                                                                 warpwarnings=True,
+                                                                 )
+            self.minimization_evolution_details.append(self.__getOverlapAlignmentResultDictForIteration(rawcost,first_fit_max_rad_dist,first_fit_max_tan_dist))
             #call minimize with trust_constr
             logger.info('Starting polishing minimization....')
             relative_steps = np.array([abs(0.05*p) if abs(p)<1. else 0.05 for p in firstresult.x])
@@ -238,7 +253,12 @@ class WarpFitter :
         #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages([warpimg for warpimg in self.warpset.images if not (self.skip_corners and warpimg.is_corner_only)])
         #align the images 
-        cost = self.alignset.align(skip_corners=self.skip_corners,write_result=False,return_on_invalid_result=True,alreadyalignedstrategy="overwrite",warpwarnings=True)
+        cost = self.alignset.align(skip_corners=self.skip_corners,
+                                   write_result=False,
+                                   return_on_invalid_result=True,
+                                   alreadyalignedstrategy='shift_only',#"overwrite",
+                                   warpwarnings=True,
+                                   )
         #add to the lists to plot
         self.costs.append(cost if cost<1e10 else -0.1)
         self.max_radial_warps.append(self.warpset.warp.maxRadialDistortAmount(fixedpars))
