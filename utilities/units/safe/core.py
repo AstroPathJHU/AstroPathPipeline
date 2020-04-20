@@ -106,7 +106,7 @@ class Distance:
   def derivatives(self): return {k: Distance(pscale=self._pscale, power=self._power, pixels=v) for k, v in self._pixels.derivatives.items()}
 
   def __repr__(self):
-    if self._pscale is None: return repr(float(self))
+    if self._pscale is None: assert self._pixels == self._microns; return repr(self._pixels)
     return f"Distance(pscale={self._pscale}, pixels={self._pixels}, power={self._power})"
 
 distances = np.vectorize(Distance, excluded=["pscale"])
