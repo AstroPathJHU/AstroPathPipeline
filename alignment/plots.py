@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import matplotlib.pyplot as plt, networkx as nx, numpy as np, uncertainties.unumpy as unp
+import itertools, matplotlib.pyplot as plt, more_itertools, networkx as nx, numpy as np, scipy.optimize, uncertainties as unc, uncertainties.unumpy as unp
 from more_itertools import pairwise
 from ..utilities import units
 from ..utilities.misc import pullhist, weightedaverage, weightedstd
@@ -57,7 +57,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
 
   return vectors
 
-def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None):
+def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False):
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -96,12 +96,75 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   y = np.array(y)
   yerr = np.array(yerr)
 
+  errornonzero = yerr != 0
+
+  xwitherror = x[errornonzero]
+  ywitherror = y[errornonzero]
+  yerrwitherror = yerr[errornonzero]
+  xnoerror = x[~errornonzero]
+  ynoerror = y[~errornonzero]
+  yerrnoerror = yerr[~errornonzero]
+
   plt.errorbar(
-    x=units.pixels(x),
-    y=units.pixels(y),
-    yerr=units.pixels(yerr),
+    x=units.pixels(xwitherror),
+    y=units.pixels(ywitherror),
+    yerr=units.pixels(yerrwitherror),
     fmt='o',
+    color='b',
   )
+  plt.scatter(
+    x=units.pixels(xnoerror),
+    y=units.pixels(ynoerror),
+    facecolors='none',
+    edgecolors='b',
+  )
+
+  #fit to sine wave
+  #for the initial parameter estimation, do an fft
+  #can only do fft on evenly spaced data
+  # ==> if there are islands, we have to pick the biggest one
+  alldeltaxs = {b-a for a, b in more_itertools.pairwise(x)}
+  deltax = min(alldeltaxs)
+  rtol = 1e-7
+  for _ in alldeltaxs:
+    units.testing.assert_allclose(_*(1+2*rtol) // deltax, _ / deltax, rtol=rtol)
+
+  chunkstarts = [
+    xx for xx in x if not np.any(units.isclose(xx-deltax, x, rtol=rtol))
+  ]
+  chunkends = [
+    xx for xx in x if not np.any(units.isclose(xx+deltax, x, rtol=rtol))
+  ]
+  biggestchunkstart, biggestchunkend = max(
+    itertools.zip_longest(chunkstarts, chunkends),
+    key=lambda startend: startend[1]-startend[0],
+  )
+  biggestchunkxs = np.array([xx for xx in x if biggestchunkstart <= xx <= biggestchunkend])
+  biggestchunkys = np.array([yy for xx, yy in zip(x, y) if xx in biggestchunkxs])
+
+  k = np.fft.fftfreq(len(biggestchunkys), deltax)
+  f = units.fft.fft(biggestchunkys)
+
+  def cosfunction(xx, amplitude, kk, phase, mean):
+    return amplitude * np.cos(np.array(kk*(xx - biggestchunkxs[0]) + phase).astype(float)) + mean
+
+  bestk, bestf = max(zip(k[1:], f[1:]), key=lambda kf: abs(kf[1]))  #[1:]: exclude k=0 term
+  initialguess = (
+    abs(bestf) / (len(biggestchunkxs) / 2),
+    bestk * 2 * np.pi,
+    units.angle(bestf),
+    np.mean(biggestchunkys)
+  )
+
+  p, cov = units.optimize.curve_fit(
+    cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror,
+  )
+  p = units.correlated_distances(distances=p, covariance=cov)
+
+  xplot = units.linspace(min(x), max(x), 1000)
+  if plotsine:
+    #plt.plot(xplot, cosfunction(xplot, *initialguess), color='g')
+    plt.plot(units.pixels(xplot), units.pixels(cosfunction(xplot, *units.nominal_values(p))), color='b')
 
   plotstyling(fig=fig, ax=ax)
   if saveas is None:
@@ -110,7 +173,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     plt.savefig(saveas)
     plt.close()
 
-  return x, y, yerr
+  return x, y, yerr, p
 
 def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
   dct = {

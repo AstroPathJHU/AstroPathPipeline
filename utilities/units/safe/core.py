@@ -37,6 +37,7 @@ class Distance:
   def __add__(self, other):
     if not other: return self
     if not self: return other
+    if self._power == 0: return float(self) + other
     if not hasattr(other, "_pscale"): return NotImplemented
     if self._power != other._power: raise UnitsError("Trying to add distances with different powers")
     if None is not self._pscale != other._pscale is not None: raise UnitsError("Trying to add distances with different pscales")
@@ -49,6 +50,8 @@ class Distance:
       if None is not self._pscale != other._pscale is not None: raise UnitsError("Trying to multiply distances with different pscales")
       pscale = self._pscale if self._pscale is not None else other._pscale
       return Distance(pscale=pscale, power=self._power+other._power, pixels=self._pixels*other._pixels)
+    if isinstance(other, np.ndarray):
+      return other * self
     return Distance(pscale=self._pscale, power=self._power, pixels=other*self._pixels)
   def __rmul__(self, other): return self * other
   def __sub__(self, other): return self + -other
@@ -59,6 +62,8 @@ class Distance:
   def __rtruediv__(self, other):
     oneoverself = Distance(pscale=self._pscale, power=-self._power, pixels=1/self._pixels)
     return other * oneoverself
+  def __floordiv__(self, other):
+    return int(self / other)
   def __pow__(self, other):
     return Distance(pscale=self._pscale, power=self._power*other, pixels=self._pixels**other)
   def __bool__(self): return bool(self._pixels)
@@ -66,6 +71,8 @@ class Distance:
     if self and self._power != 0: raise ValueError("Can only convert Distance to float if pixels == microns == 0 or power == 0")
     assert self._pixels == self._microns
     return float(self._pixels)
+  def __int__(self):
+    return int(float(self))
   def __eq__(self, other):
     return (self - other)._pixels == 0
   def __lt__(self, other):
@@ -76,6 +83,8 @@ class Distance:
     return (self - other)._pixels > 0
   def __ge__(self, other):
     return (self - other)._pixels >= 0
+  def __abs__(self):
+    return Distance(pscale=self._pscale, power=self._power, pixels=abs(self._pixels))
   def __hash__(self):
     return hash((self._power, self._pscale, self._pixels))
 
