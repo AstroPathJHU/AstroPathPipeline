@@ -1,5 +1,4 @@
 import contextlib, dataclasses, matplotlib.pyplot as plt, numpy as np, os, uncertainties as unc, scipy.stats
-from . import units
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -66,6 +65,8 @@ def floattoint(flt):
   result = int(flt)
   if result == flt: return result
   raise ValueError(f"{flt} is not an int")
+
+from . import units
 
 def weightedaverage(a, *args, **kwargs):
   return np.average(units.nominal_values(a), weights=1/units.std_devs(a)**2, *args, **kwargs)
