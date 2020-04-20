@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import itertools, matplotlib.pyplot as plt, more_itertools, networkx as nx, numpy as np, scipy.optimize, uncertainties as unc, uncertainties.unumpy as unp
+import itertools, matplotlib.pyplot as plt, more_itertools, networkx as nx, numpy as np, uncertainties.unumpy as unp
 from more_itertools import pairwise
 from ..utilities import units
 from ..utilities.misc import pullhist, weightedaverage, weightedstd
@@ -103,7 +103,6 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   yerrwitherror = yerr[errornonzero]
   xnoerror = x[~errornonzero]
   ynoerror = y[~errornonzero]
-  yerrnoerror = yerr[~errornonzero]
 
   plt.errorbar(
     x=units.pixels(xwitherror),
