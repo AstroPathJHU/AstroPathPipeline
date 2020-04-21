@@ -96,13 +96,14 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   y = np.array(y)
   yerr = np.array(yerr)
 
-  errornonzero = yerr != 0
+  errorzero = abs(yerr/y) < 1e-10
+  errornonzero = ~errorzero
 
   xwitherror = x[errornonzero]
   ywitherror = y[errornonzero]
   yerrwitherror = yerr[errornonzero]
-  xnoerror = x[~errornonzero]
-  ynoerror = y[~errornonzero]
+  xnoerror = x[errorzero]
+  ynoerror = y[errorzero]
 
   plt.errorbar(
     x=units.pixels(xwitherror),
@@ -157,11 +158,11 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   )
 
   p, cov = units.optimize.curve_fit(
-    cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror,
+    cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror, absolute_sigma=True,
   )
   p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
   print("Average:")
-  print(" ", mean, "pixels/field")
+  print(" ", mean)
   try:
     o = overlaps[0]
     expected = ((alignmentset.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]

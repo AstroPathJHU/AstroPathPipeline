@@ -74,15 +74,20 @@ class Distance:
   def __int__(self):
     return int(float(self))
   def __eq__(self, other):
+    if self._power == 0: return float(self) == other
     return (self - other)._pixels == 0
   def __lt__(self, other):
+    if self._power == 0: return float(self) < other
     return (self - other)._pixels < 0
   def __le__(self, other):
-    return (self - other)._pixels <= 0
+    if self._power == 0: return float(self) <= other
+    return self == other or self < other
   def __gt__(self, other):
+    if self._power == 0: return float(self) > other
     return (self - other)._pixels > 0
   def __ge__(self, other):
-    return (self - other)._pixels >= 0
+    if self._power == 0: return float(self) >= other
+    return self == other or self > other
   def __abs__(self):
     return Distance(pscale=self._pscale, power=self._power, pixels=abs(self._pixels))
   def __hash__(self):
@@ -113,7 +118,7 @@ class Distance:
     if self._power == 1: return f"{self._pixels} pixels"
     return f"{self._pixels} pixels^{self._power}"
 
-distances = np.vectorize(Distance, excluded=["pscale"])
+distances = np.vectorize(Distance, excluded=["pscale"], otypes=[object])
 __distances = distances #for use in functions with a distances kwarg
   
 def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=None, covariance=None, power=None):
