@@ -111,12 +111,13 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     fmt='o',
     color='b',
   )
-  plt.scatter(
-    x=units.pixels(xnoerror),
-    y=units.pixels(ynoerror),
-    facecolors='none',
-    edgecolors='b',
-  )
+  if xnoerror:
+    plt.scatter(
+      x=units.pixels(xnoerror),
+      y=units.pixels(ynoerror),
+      facecolors='none',
+      edgecolors='b',
+    )
 
   #fit to sine wave
   #for the initial parameter estimation, do an fft
