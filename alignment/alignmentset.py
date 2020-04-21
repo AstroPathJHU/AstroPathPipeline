@@ -307,9 +307,17 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
     if saveresult:
       result.applytooverlaps()
+      self.__T = result.T
       self.writestitchresult(result, check=checkwriting)
 
     return result
+
+  @property
+  def T(self):
+    try:
+      return self.__T
+    except AttributeError:
+      raise AttributeError("Haven't run stitching, so we don't have the T matrix")
 
   def writestitchresult(self, result, *, filenames=None, check=False):
     if filenames is None: filenames = self.stitchfilenames
@@ -327,7 +335,9 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       overlaps=self.overlaps,
       rectangles=self.rectangles
     )
-    if saveresult: result.applytooverlaps()
+    if saveresult:
+      result.applytooverlaps()
+      self.__T = result.T
     return result
 
   def subset(self, *, selectrectangles=None, selectoverlaps=None):

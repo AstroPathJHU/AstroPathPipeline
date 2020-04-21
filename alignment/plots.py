@@ -158,7 +158,16 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   p, cov = units.optimize.curve_fit(
     cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror,
   )
-  p = units.correlated_distances(distances=p, covariance=cov)
+  p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
+  print("Average:")
+  print(" ", mean, "pixels/field")
+  try:
+    o = overlaps[0]
+    expected = ((alignmentset.T - np.identity(2)) @ (overlaps[0].x1vec - overlaps[0].x2vec))[yidx]
+  except AttributeError:
+    pass
+  else:
+    print(" ", f"(expected from T matrix: {expected})")
 
   xplot = units.linspace(min(x), max(x), 1000)
   if plotsine:
