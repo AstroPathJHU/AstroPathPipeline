@@ -19,13 +19,14 @@ IMM_FILE_X_SIZE='sizeX'
 IMM_FILE_Y_SIZE='sizeY'
 IMM_FILE_Z_SIZE='sizeC'
 MICROSCOPE_OBJECTIVE_FOCAL_LENGTH=40000. # 20mm in pixels
+PARNAMELIST=['cx','cy','fx','fy','k1','k2','p1','p2','k3']
 
 #set up the logger
-logger = logging.getLogger("warpfitter")
-logger.setLevel(logging.DEBUG)
+warp_logger = logging.getLogger("warpfitter")
+warp_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
-logger.addHandler(handler)
+warp_logger.addHandler(handler)
 
 class FittingError(Exception) :
     """
@@ -83,7 +84,7 @@ class WarpFitter :
 
     #remove the placeholder files when the object is being deleted
     def __del__(self) :
-        logger.info('Removing copied raw layer files....')
+        warp_logger.info('Removing copied raw layer files....')
         with cd(self.working_dir) :
             try :
                 shutil.rmtree(self.samp_name)
@@ -108,7 +109,8 @@ class WarpFitter :
                     raise FittingError('Something went wrong in trying to write out the initial warped files!')
         self.alignset.getDAPI(filetype='camWarpDAPI',writeimstat=False,mean_image=self.mean_image)
 
-    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2k3=False,fix_p1p2=False,max_radial_warp=10.,max_tangential_warp=10.,par_bounds=None,
+    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2k3=False,fix_p1p2_in_global_fit=False,fix_p1p2_in_polish_fit=False,
+              max_radial_warp=10.,max_tangential_warp=10.,par_bounds=None,p1p2_polish_lasso_lambda=0.,
               polish=True,print_every=1,maxiter=1000,show_plots=False) :
         """
         Fit the cameraWarp model to the loaded dataset
@@ -124,19 +126,21 @@ class WarpFitter :
         self.max_radial_warps=[]
         self.max_tangential_warps=[]
         #silence the AlignmentSet logger
-        logger = logging.getLogger('align')
-        logger.setLevel(logging.WARN)
-        logger = logging.getLogger('warpfitter')
+        align_logger = logging.getLogger('align')
+        align_logger.setLevel(logging.WARN)
         #get the list of initial parameters to copy from when necessary
         self.init_pars = self.warpset.getListOfWarpParameters()
+        #figure out the default bounds to reference when needed
+        self.default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
         #set the variable describing how often to print progress
         self.print_every = print_every
         #call differential_evolution
         minimization_start_time = time.time()
-        de_result = self.__runDifferentialEvolution(par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp,maxiter)
+        de_result = self.__runDifferentialEvolution(par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2_in_global_fit,max_radial_warp,max_tangential_warp,maxiter)
         init_minimization_done_time = time.time()
         if polish :
-            result = self.__runPolishMinimization(par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp,de_result.x,maxiter)
+            init_pars = self.__correctParameterList(de_result.x)
+            result = self.__runPolishMinimization(par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2_in_polish_fit,max_radial_warp,max_tangential_warp,p1p2_polish_lasso_lambda,init_pars,maxiter)
         else :
             result=de_result
         polish_minimization_done_time = time.time()
@@ -152,7 +156,7 @@ class WarpFitter :
     # !!!!!! For the time being, these functions don't correctly describe dependence on k3, k4, k5, or k6 !!!!!!
 
     #The function whose return value is minimized by the fitting
-    def _evalCamWarpOnAlignmentSet(self,pars,max_rad_warp,max_tan_warp) :
+    def _evalCamWarpOnAlignmentSet(self,pars,max_rad_warp,max_tan_warp,lasso_param_indices,lasso_lambda) :
         self.minfunc_calls+=1
         #first fix the parameter list so the warp functions always see vectors of the same length
         fixedpars = self.__correctParameterList(pars)
@@ -166,23 +170,31 @@ class WarpFitter :
         rad_warp = self.warpset.warp.maxRadialDistortAmount(fixedpars)
         tan_warp = self.warpset.warp.maxTangentialDistortAmount(fixedpars)
         align_strategy = 'overwrite' if (abs(rad_warp)<max_rad_warp or max_rad_warp==-1) and (tan_warp<max_tan_warp or max_tan_warp==-1) else 'shift_only'
-        #align the images 
-        cost = self.alignset.align(skip_corners=self.skip_corners,
+        #align the images and get the cost
+        aligncost = self.alignset.align(skip_corners=self.skip_corners,
                                    write_result=False,
                                    return_on_invalid_result=True,
                                    alreadyalignedstrategy=align_strategy,
                                    warpwarnings=True,
                                    )
+        #compute the cost from the LASSO constraint on the specified parameters
+        lasso_cost=0.
+        if lasso_param_indices is not None :
+            for pindex in lasso_param_indices :
+                lasso_cost += lasso_lambda*abs(pars[pindex])
+        #sum the costs
+        cost = aligncost+lasso_cost
         #add to the lists to plot
         self.costs.append(cost if cost<1e10 else -0.1)
         self.max_radial_warps.append(rad_warp)
         self.max_tangential_warps.append(tan_warp)
         #print progress if requested
         if self.minfunc_calls%self.print_every==0 :
-            logger.info(self.warpset.warp.paramString())
-            msg = f'  Call {self.minfunc_calls} cost={cost}'
+            warp_logger.info(self.warpset.warp.paramString())
+            msg = f'  Call {self.minfunc_calls} cost={cost:.04f}' 
+            if lasso_param_indices is not None : msg+='(={aligncost:.04f}+{lasso_cost:.04f})'
             msg+=f' (radial warp={self.max_radial_warps[-1]:.02f}, tangential warp={self.max_tangential_warps[-1]:.02f})'
-            logger.info(msg)
+            warp_logger.info(msg)
         #return the cost from the alignment
         return cost
 
@@ -207,23 +219,22 @@ class WarpFitter :
     #function to run global minimization with differential evolution and return the result
     def __runDifferentialEvolution(self,par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp,maxiter) :
         #build the list of parameter bounds
-        default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
-        parameter_bounds = self.__getParameterBoundsList(par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
-        logger.info(f'Floating parameter bounds = {parameter_bounds}')
+        parameter_bounds = self.__getParameterBoundsList(par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
+        warp_logger.info(f'Floating parameter bounds = {parameter_bounds}')
         #get the list to use to mask fixed parameters in the minimization functions
         self.par_mask = self.__getParameterMask(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
         #get the array of the initial population
         initial_population=self.__getInitialPopulation(parameter_bounds)
         #get the list of constraints
         constraints = self.__getConstraints(fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp)
-        logger.info('Starting initial minimization....')
+        warp_logger.info('Starting initial minimization....')
         self.skip_corners = True
         with cd(self.working_dir) :
             try :
                 result=scipy.optimize.differential_evolution(
                     func=self._evalCamWarpOnAlignmentSet,
                     bounds=parameter_bounds,
-                    args=(max_radial_warp,max_tangential_warp),
+                    args=(max_radial_warp,max_tangential_warp,None,0.),
                     strategy='best2bin',
                     maxiter=maxiter,
                     tol=0.03,
@@ -235,25 +246,36 @@ class WarpFitter :
                     )
             except Exception :
                 raise FittingError('Something failed in the initial minimization!')
-        logger.info(f'Initial minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations.')
+        warp_logger.info(f'Initial minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations.')
         return result
 
     #function to run local polishing minimiation with trust-constr and return the result
-    def __runPolishMinimization(self,par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp,init_pars,maxiter) :
+    def __runPolishMinimization(self,par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp,lasso_lambda,init_pars,maxiter) :
         #build the list of parameter bounds
-        default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
-        parameter_bounds = self.__getParameterBoundsList(par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
+        parameter_bounds = self.__getParameterBoundsList(par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
+        #get the list to use to mask fixed parameters in the minimization functions
+        self.par_mask = self.__getParameterMask(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
         #get the list of constraints
         constraints = self.__getConstraints(fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp)
+        #get the indices of the p1 and p2 parameters to lasso if those are floating
+        lasso_indices = None
+        if not fix_p1p2 :
+            relevant_parnamelist = (np.array(PARNAMELIST)[self.par_mask]).tolist()
+            lasso_indices = (relevant_parnamelist.index('p1'),relevant_parnamelist.index('p2'))
+        #figure out the initial parameters and their step sizes
+        init_pars_to_use = ((np.array(init_pars))[self.par_mask]).tolist()
+        for i in range(len(init_pars_to_use)) :
+            if init_pars_to_use[i]==0. :
+                init_pars_to_use[i]=0.000001 # can't send p1/p2=0. to the Jacobian functions in trust-constr
+        relative_steps = np.array([abs(0.05*p) if abs(p)<1. else 0.05 for p in init_pars_to_use])
         #call minimize with trust_constr
-        logger.info('Starting polishing minimization....')
-        relative_steps = np.array([abs(0.05*p) if abs(p)<1. else 0.05 for p in init_pars])
+        warp_logger.info('Starting polishing minimization....')
         with cd(self.working_dir) :
             try :
                 result=scipy.optimize.minimize(
                     fun=self._evalCamWarpOnAlignmentSet,
-                    x0=init_pars,
-                    args=(max_radial_warp,max_tangential_warp),
+                    x0=init_pars_to_use,
+                    args=(max_radial_warp,max_tangential_warp,lasso_indices,lasso_lambda),
                     method='trust-constr',
                     bounds=parameter_bounds,
                     constraints=constraints,
@@ -264,7 +286,7 @@ class WarpFitter :
         msg = f'Final minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations '
         term_conds = {0:'max iterations',1:'gradient tolerance',2:'parameter tolerance',3:'callback function'}
         msg+=f'due to compliance with {term_conds[result.status]} criteria.'
-        logger.info(msg)
+        warp_logger.info(msg)
         return result
 
     #################### VISUALIZATION FUNCTIONS ####################
@@ -305,7 +327,7 @@ class WarpFitter :
 
     #function to save alignment comparison visualizations in a new directory inside the working directory
     def __makeBestFitAlignmentComparisonImages(self) :
-        logger.info('writing out warping/alignment comparison images')
+        warp_logger.info('writing out warping/alignment comparison images')
         #make sure the best fit warp exists (which means the warpset is updated with the best fit parameters)
         if self.__best_fit_warp is None :
             raise FittingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
@@ -318,7 +340,7 @@ class WarpFitter :
         self.alignset.updateRectangleImages(self.warpset.images)
         bestcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
         warped_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
-        logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
+        warp_logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
         #write out the overlap comparison figures
         figure_dir_name = 'alignment_overlap_comparisons'
         with cd(self.working_dir) :
@@ -401,10 +423,9 @@ class WarpFitter :
         return a
 
     #helper function to make the list of parameter bounds for fitting
-    def __getParameterBoundsList(self,par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2) :
-        parorder=['cx','cy','fx','fy','k1','k2','p1','p2','k3']
+    def __getParameterBoundsList(self,par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2) :
         #overwrite the default with anything that was supplied
-        bounds_dict = default_bounds
+        bounds_dict = copy.deepcopy(self.default_bounds)
         if par_bounds is not None :
             for name in par_bounds.keys() :
                 if name in bounds_dict.keys() :
@@ -433,9 +454,9 @@ class WarpFitter :
             msg+=f' ({fixed_par_string[:-2]} fixed).'
         else :
             msg+='.'
-        logger.info(msg)
+        warp_logger.info(msg)
         #return the ordered list of parameters
-        return [bounds_dict[name] for name in parorder if name in bounds_dict.keys()]
+        return [bounds_dict[name] for name in PARNAMELIST if name in bounds_dict.keys()]
 
     #helper function to make the default list of parameter constraints
     def __buildDefaultParameterBoundsDict(self,max_radial_warp,max_tangential_warp) :
@@ -539,7 +560,7 @@ class WarpFitter :
                         toadd[list_indices[2]]=0.2*par_variations[list_indices[2]][c[2]]
                     population_list.append(toadd)
         to_return = np.array(population_list)
-        logger.info(f'Initial parameter population ({len(population_list)} members):\n{to_return}')
+        warp_logger.info(f'Initial parameter population ({len(population_list)} members):\n{to_return}')
         return to_return
 
     #helper function to make the constraints
@@ -570,13 +591,13 @@ class WarpFitter :
             names_to_print.append(f'max tangential warp={max_tangential_warp} pixels')
         #print the information about the constraints
         if len(constraints)==0 :
-            logger.info('No constraints will be applied')
+            warp_logger.info('No constraints will be applied')
             return ()
         else :
             constraintstring = 'Will apply constraints: '
             for ntp in names_to_print :
                 constraintstring+=ntp+', '
-            logger.info(constraintstring[:-2]+'.')
+            warp_logger.info(constraintstring[:-2]+'.')
         #return the list of constraints
         if len(constraints)==1 : #if there's only one it doesn't get passed as a list
             return constraints[0]
@@ -620,7 +641,7 @@ class WarpFitter :
         best_fit_pars = self.__correctParameterList(fitresult.x)
         self.warpset.updateCameraParams(best_fit_pars)
         self.__best_fit_warp = copy.deepcopy(self.warpset.warp)
-        logger.info(f'Best fit parameters:')
+        warp_logger.info(f'Best fit parameters:')
         self.__best_fit_warp.printParams()
         #write out the set of alignment comparison images
         self.raw_cost, self.best_cost = self.__makeBestFitAlignmentComparisonImages()

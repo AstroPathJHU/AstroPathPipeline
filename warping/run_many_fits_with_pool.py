@@ -29,10 +29,14 @@ def main() :
 	    help='Image layer to use (indexed from 1)')
 	parser.add_argument('--fixed',               default=['fx','fy'],          type=split_csv_to_list,         
 	    help='Comma-separated list of parameters to keep fixed during fitting')
+	parser.add_argument('--float_p1p2_to_polish', action='store_true',
+        help='Add this flag to float p1 and p2 in the polishing minimization regardless of whether they are in the list of fixed parameters')
 	parser.add_argument('--max_radial_warp',     default=8.,         type=float,
 	    help='Maximum amount of radial warp to use for constraint')
 	parser.add_argument('--max_tangential_warp', default=4.,         type=float,
 	    help='Maximum amount of radial warp to use for constraint')
+	parser.add_argument('--lasso_lambda',         default=0.0,         type=float,
+        help='Lambda magnitude parameter for the LASSO constraint on p1 and p2 if those parameters are to float in the polishing minimization')
 	parser.add_argument('--print_every',         default=1000,          type=int,
 	    help='How many iterations to wait between printing minimization progress')
 	parser.add_argument('--max_iter',            default=1000,        type=int,
@@ -68,10 +72,13 @@ def main() :
 
 	#build the list of commands to pass to os.system to run run_warpfitter.py
 	cmd_base=f'python -m microscopealignment.warping.run_warpfitter fit {args.sample} {args.rawfile_dir} {args.root1_dir} {args.root2_dir}'
-	cmd_base+=f' {fixedstring[:-1]}'
 	cmd_base+=f' --layer {args.layer}'
+	cmd_base+=f' {fixedstring[:-1]}'
+	if args.float_p1p2_to_polish :
+		cmd_base+=' --float_p1p2_to_polish'
 	cmd_base+=f' --max_radial_warp {args.max_radial_warp}'
 	cmd_base+=f' --max_tangential_warp {args.max_tangential_warp}'
+	cmd_base+=f' --lasso_lambda {args.lasso_lambda}'
 	cmd_base+=f' --print_every {args.print_every}'
 	cmd_base+=f' --max_iter {args.max_iter}'
 	job_cmds = []
