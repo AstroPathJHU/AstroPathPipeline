@@ -156,6 +156,7 @@ class WarpFitter :
                 firstresult=scipy.optimize.differential_evolution(
                     func=self._evalCamWarpOnAlignmentSet,
                     bounds=parameter_bounds,
+                    args=(max_radial_warp,max_tangential_warp),
                     strategy='best2bin',
                     maxiter=maxiter,
                     tol=0.03,
@@ -194,6 +195,7 @@ class WarpFitter :
                     result=scipy.optimize.minimize(
                         fun=self._evalCamWarpOnAlignmentSet,
                         x0=firstresult.x,
+                        args=(max_radial_warp,max_tangential_warp),
                         method='trust-constr',
                         bounds=parameter_bounds,
                         constraints=constraints,
@@ -242,7 +244,7 @@ class WarpFitter :
     # !!!!!! For the time being, these functions don't correctly describe dependence on k3, k4, k5, or k6 !!!!!!
 
     #The function whose return value is minimized by the fitting
-    def _evalCamWarpOnAlignmentSet(self,pars) :
+    def _evalCamWarpOnAlignmentSet(self,pars,max_rad_warp,max_tan_warp) :
         self.minfunc_calls+=1
         #first fix the parameter list so the warp functions always see vectors of the same length
         fixedpars = self.__correctParameterList(pars)
@@ -252,17 +254,21 @@ class WarpFitter :
         self.warpset.warpLoadedImageSet(skip_corners=self.skip_corners)
         #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages([warpimg for warpimg in self.warpset.images if not (self.skip_corners and warpimg.is_corner_only)])
+        #check the warp amounts to see if the sample should be realigned
+        rad_warp = self.warpset.warp.maxRadialDistortAmount(fixedpars)
+        tan_warp = self.warpset.warp.maxTangentialDistortAmount(fixedpars)
+        align_strategy = 'overwrite' if (abs(rad_warp)<max_rad_warp or max_rad_warp==-1) and (tan_warp<max_tan_warp or max_tan_warp==-1) else 'shift_only'
         #align the images 
         cost = self.alignset.align(skip_corners=self.skip_corners,
                                    write_result=False,
                                    return_on_invalid_result=True,
-                                   alreadyalignedstrategy='shift_only',#"overwrite",
+                                   alreadyalignedstrategy=align_strategy,
                                    warpwarnings=True,
                                    )
         #add to the lists to plot
         self.costs.append(cost if cost<1e10 else -0.1)
-        self.max_radial_warps.append(self.warpset.warp.maxRadialDistortAmount(fixedpars))
-        self.max_tangential_warps.append(self.warpset.warp.maxTangentialDistortAmount(fixedpars))
+        self.max_radial_warps.append(rad_warp)
+        self.max_tangential_warps.append(tan_warp)
         self.minimization_evolution_details.append(self.__getOverlapAlignmentResultDictForIteration(self.costs[-1],self.max_radial_warps[-1],self.max_tangential_warps[-1]))
         #print progress if requested
         if self.minfunc_calls%self.print_every==0 :
