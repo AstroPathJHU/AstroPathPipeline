@@ -563,10 +563,10 @@ class WarpFitter :
                     combinations = [(1,1,1),(-2,-2,1),(1,-2,1),(-2,1,1),(1,1,-2),(-2,-2,-2),(1,-2,-2),(-2,1,-2)]
                 for c in combinations :
                     toadd = copy.deepcopy(init_fit_pars)
-                    toadd[list_indices[0]]=par_variations[list_indices[0]][c[0]]
-                    toadd[list_indices[1]]=par_variations[list_indices[1]][c[1]]
+                    toadd[list_indices[0]]=0.2*par_variations[list_indices[0]][c[0]]
+                    toadd[list_indices[1]]=0.2*par_variations[list_indices[1]][c[1]]
                     if len(list_indices)==3 :
-                        toadd[list_indices[2]]=par_variations[list_indices[2]][c[2]]
+                        toadd[list_indices[2]]=0.2*par_variations[list_indices[2]][c[2]]
                     population_list.append(toadd)
         to_return = np.array(population_list)
         logger.info(f'Initial parameter population ({len(population_list)} members):\n{to_return}')
