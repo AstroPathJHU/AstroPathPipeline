@@ -108,6 +108,10 @@ class Distance:
   def __repr__(self):
     if self._pscale is None: assert self._pixels == self._microns; return repr(self._pixels)
     return f"Distance(pscale={self._pscale}, pixels={self._pixels}, power={self._power})"
+  def __str__(self):
+    if self._power == 0: return str(self._pixels)
+    if self._power == 1: return f"{self._pixels} pixels"
+    return f"{self._pixels} pixels^{self._power}"
 
 distances = np.vectorize(Distance, excluded=["pscale"])
 __distances = distances #for use in functions with a distances kwarg
