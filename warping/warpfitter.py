@@ -127,105 +127,24 @@ class WarpFitter :
         logger = logging.getLogger('align')
         logger.setLevel(logging.WARN)
         logger = logging.getLogger('warpfitter')
-        #build the list of parameter bounds
-        default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
-        parameter_bounds = self.__getParameterBoundsList(par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
-        logger.info(f'Floating parameter bounds = {parameter_bounds}')
-        #get the list to use to mask fixed parameters in the minimization functions
-        self.par_mask = self.__getParameterMask(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
         #get the list of initial parameters to copy from when necessary
         self.init_pars = self.warpset.getListOfWarpParameters()
         #set the variable describing how often to print progress
         self.print_every = print_every
-        #get the array of the initial population
-        initial_population=self.__getInitialPopulation(parameter_bounds)
-        #get the list of constraints
-        constraints = self.__getConstraints(fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp)
         #call differential_evolution
         minimization_start_time = time.time()
-        logger.info('Starting initial minimization....')
-        self.skip_corners = True
-        with cd(self.working_dir) :
-            try :
-                firstresult=scipy.optimize.differential_evolution(
-                    func=self._evalCamWarpOnAlignmentSet,
-                    bounds=parameter_bounds,
-                    args=(max_radial_warp,max_tangential_warp),
-                    strategy='best2bin',
-                    maxiter=maxiter,
-                    tol=0.03,
-                    mutation=(0.6,1.00),
-                    recombination=0.7,
-                    polish=False,
-                    init=initial_population,
-                    constraints=constraints
-                    )
-            except Exception :
-                raise FittingError('Something failed in the initial minimization!')
-        logger.info(f'Initial minimization completed {"successfully" if firstresult.success else "UNSUCCESSFULLY"} in {firstresult.nfev} evaluations.')
+        de_result = self.__runDifferentialEvolution(par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp,maxiter)
         init_minimization_done_time = time.time()
         if polish :
-            #update the warp to the result from the global minimization
-            first_fit_pars = self.__correctParameterList(firstresult.x)
-            first_fit_max_rad_dist = self.warpset.warp.maxRadialDistortAmount(first_fit_pars)
-            first_fit_max_tan_dist = self.warpset.warp.maxTangentialDistortAmount(first_fit_pars)
-            self.warpset.updateCameraParams(first_fit_pars)
-            #re-warp the images, update them in the alignmentset, and re-align them (including the corners this time)
-            self.skip_corners=False
-            self.warpset.warpLoadedImageSet(skip_corners=self.skip_corners)
-            self.alignset.updateRectangleImages([warpimg for warpimg in self.warpset.images if not (self.skip_corners and warpimg.is_corner_only)])
-            after_global_minimization_cost = self.alignset.align(skip_corners=self.skip_corners,
-                                                                 write_result=False,
-                                                                 return_on_invalid_result=True,
-                                                                 alreadyalignedstrategy="overwrite",
-                                                                 warpwarnings=True,
-                                                                 )
-            #call minimize with trust_constr
-            logger.info('Starting polishing minimization....')
-            relative_steps = np.array([abs(0.05*p) if abs(p)<1. else 0.05 for p in firstresult.x])
-            with cd(self.working_dir) :
-                try :
-                    result=scipy.optimize.minimize(
-                        fun=self._evalCamWarpOnAlignmentSet,
-                        x0=firstresult.x,
-                        args=(max_radial_warp,max_tangential_warp),
-                        method='trust-constr',
-                        bounds=parameter_bounds,
-                        constraints=constraints,
-                        options={'xtol':1e-4,'gtol':1e-5,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
-                        )
-                except Exception :
-                    raise FittingError('Something failed in the polishing minimization!')
-            msg = f'Final minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations '
-            term_conds = {0:'max iterations',1:'gradient tolerance',2:'parameter tolerance',3:'callback function'}
-            msg+=f'due to compliance with {term_conds[result.status]} criteria.'
-            logger.info(msg)
+            result = self.__runPolishMinimization(par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp,de_result.x,maxiter)
         else :
-            result=firstresult
+            result=de_result
         polish_minimization_done_time = time.time()
         #record the minimization run times
         self.init_min_runtime = init_minimization_done_time-minimization_start_time
         self.polish_min_runtime = polish_minimization_done_time-init_minimization_done_time
-        #make the fit progress plots
-        self.init_its, self.polish_its = self.__makeFitProgressPlots(firstresult.nfev,show_plots)
-        #use the fit result to make the best fit warp object
-        best_fit_pars = self.__correctParameterList(result.x)
-        self.warpset.updateCameraParams(best_fit_pars)
-        self.__best_fit_warp = copy.deepcopy(self.warpset.warp)
-        logger.info(f'Best fit parameters:')
-        self.__best_fit_warp.printParams()
-        #write out the set of alignment comparison images
-        self.raw_cost, self.best_cost = self.__makeBestFitAlignmentComparisonImages()
-        #save the figure of the best-fit warp fields
-        with cd(self.working_dir) :
-            try :
-                self.__best_fit_warp.makeWarpAmountFigure()
-                self.__best_fit_warp.writeParameterTextFile(self.par_mask,
-                                                            self.init_its,self.polish_its,
-                                                            self.init_min_runtime,self.polish_min_runtime,
-                                                            self.raw_cost,self.best_cost)
-            except Exception :
-                raise FittingError('Something went wrong in trying to save the warping amount figure for the best-fit warp')
+        #run all the post-processing stuff
+        self.__runPostProcessing(result,de_result.nfev,show_plots)
         return result
 
     #################### FUNCTIONS FOR USE WITH MINIMIZATION ####################
@@ -284,6 +203,69 @@ class WarpFitter :
     def _maxTangentialDistortAmountJacobianForConstraint(self,pars) :
         warpresult = np.array(self.warpset.warp.maxTangentialDistortAmountJacobian(self.__correctParameterList(pars)))
         return (warpresult[self.par_mask]).tolist()
+
+    #function to run global minimization with differential evolution and return the result
+    def __runDifferentialEvolution(self,par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp,maxiter) :
+        #build the list of parameter bounds
+        default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
+        parameter_bounds = self.__getParameterBoundsList(par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
+        logger.info(f'Floating parameter bounds = {parameter_bounds}')
+        #get the list to use to mask fixed parameters in the minimization functions
+        self.par_mask = self.__getParameterMask(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
+        #get the array of the initial population
+        initial_population=self.__getInitialPopulation(parameter_bounds)
+        #get the list of constraints
+        constraints = self.__getConstraints(fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp)
+        logger.info('Starting initial minimization....')
+        self.skip_corners = True
+        with cd(self.working_dir) :
+            try :
+                result=scipy.optimize.differential_evolution(
+                    func=self._evalCamWarpOnAlignmentSet,
+                    bounds=parameter_bounds,
+                    args=(max_radial_warp,max_tangential_warp),
+                    strategy='best2bin',
+                    maxiter=maxiter,
+                    tol=0.03,
+                    mutation=(0.6,1.00),
+                    recombination=0.7,
+                    polish=False,
+                    init=initial_population,
+                    constraints=constraints
+                    )
+            except Exception :
+                raise FittingError('Something failed in the initial minimization!')
+        logger.info(f'Initial minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations.')
+        return result
+
+    #function to run local polishing minimiation with trust-constr and return the result
+    def __runPolishMinimization(self,par_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp,init_pars,maxiter) :
+        #build the list of parameter bounds
+        default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
+        parameter_bounds = self.__getParameterBoundsList(par_bounds,default_bounds,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
+        #get the list of constraints
+        constraints = self.__getConstraints(fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp)
+        #call minimize with trust_constr
+        logger.info('Starting polishing minimization....')
+        relative_steps = np.array([abs(0.05*p) if abs(p)<1. else 0.05 for p in init_pars])
+        with cd(self.working_dir) :
+            try :
+                result=scipy.optimize.minimize(
+                    fun=self._evalCamWarpOnAlignmentSet,
+                    x0=init_pars,
+                    args=(max_radial_warp,max_tangential_warp),
+                    method='trust-constr',
+                    bounds=parameter_bounds,
+                    constraints=constraints,
+                    options={'xtol':1e-4,'gtol':1e-5,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
+                    )
+            except Exception :
+                raise FittingError('Something failed in the polishing minimization!')
+        msg = f'Final minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations '
+        term_conds = {0:'max iterations',1:'gradient tolerance',2:'parameter tolerance',3:'callback function'}
+        msg+=f'due to compliance with {term_conds[result.status]} criteria.'
+        logger.info(msg)
+        return result
 
     #################### VISUALIZATION FUNCTIONS ####################
 
@@ -629,3 +611,27 @@ class WarpFitter :
             else :
                 fixedlist.append(p)
         return fixedlist
+
+    #helper function to run all of the various post-processing functions after the fit is done
+    def __runPostProcessing(self,fitresult,n_initial_fevs,show_plots) :
+        #make the fit progress plots
+        self.init_its, self.polish_its = self.__makeFitProgressPlots(n_initial_fevs,show_plots)
+        #use the fit result to make the best fit warp object
+        best_fit_pars = self.__correctParameterList(fitresult.x)
+        self.warpset.updateCameraParams(best_fit_pars)
+        self.__best_fit_warp = copy.deepcopy(self.warpset.warp)
+        logger.info(f'Best fit parameters:')
+        self.__best_fit_warp.printParams()
+        #write out the set of alignment comparison images
+        self.raw_cost, self.best_cost = self.__makeBestFitAlignmentComparisonImages()
+        #save the figure of the best-fit warp fields
+        with cd(self.working_dir) :
+            try :
+                self.__best_fit_warp.makeWarpAmountFigure()
+                self.__best_fit_warp.writeParameterTextFile(self.par_mask,
+                                                            self.init_its,self.polish_its,
+                                                            self.init_min_runtime,self.polish_min_runtime,
+                                                            self.raw_cost,self.best_cost)
+            except Exception :
+                raise FittingError('Something went wrong in trying to save the warping amount figure for the best-fit warp')
+
