@@ -123,6 +123,12 @@ class WarpFitter :
         self.costs=[]
         self.max_radial_warps=[]
         self.max_tangential_warps=[]
+        #make the object that will keep track of each overlaps' alignment shift during the minimization process
+        self.minimization_evolution_details=[]
+        #each entry will be an iteration, the first is the alignment of the raw images
+        self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
+        rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
+        self.minimization_evolution_details.append(self.__getOverlapAlignmentResultDictForIteration(rawcost,0.,0.))
         #silence the AlignmentSet logger
         logger = logging.getLogger('align')
         logger.setLevel(logging.WARN)
@@ -141,16 +147,9 @@ class WarpFitter :
         initial_population=self.__getInitialPopulation(parameter_bounds)
         #get the list of constraints
         constraints = self.__getConstraints(fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp)
-        #make the object that will keep track of each overlaps' alignment shift during the minimization process
-        self.minimization_evolution_details=[]
-        #each entry will be an iteration, the first is the alignment of the raw images
-        self.raw_cost = self.__warpAndAlignSample(self.init_pars,use_warped_images=False)
-        self.best_cost_yet=self.raw_cost
-        #start up the list of parameter sets/cost reductions to keep track of during minimization 
-        self.running_cost_reduction_parameters = []
         #call differential_evolution
         minimization_start_time = time.time()
-        logger.info(f'Starting initial minimization (alignment cost from raw images = {self.raw_cost})....')
+        logger.info('Starting initial minimization....')
         self.skip_corners = True
         with cd(self.working_dir) :
             try :
@@ -171,11 +170,22 @@ class WarpFitter :
         logger.info(f'Initial minimization completed {"successfully" if firstresult.success else "UNSUCCESSFULLY"} in {firstresult.nfev} evaluations.')
         init_minimization_done_time = time.time()
         if polish :
-            #update the warp using the global minimization result and realign the sample (including the corners this time)
+            #update the warp to the result from the global minimization
             first_fit_pars = self.__correctParameterList(firstresult.x)
+            first_fit_max_rad_dist = self.warpset.warp.maxRadialDistortAmount(first_fit_pars)
+            first_fit_max_tan_dist = self.warpset.warp.maxTangentialDistortAmount(first_fit_pars)
+            self.warpset.updateCameraParams(first_fit_pars)
+            #re-warp the images, update them in the alignmentset, and re-align them (including the corners this time)
             self.skip_corners=False
-            self.best_cost_yet = self.__warpAndAlignSample(first_fit_pars,return_on_invalid_result=False,add_to_details_list=False)
-            self.running_cost_reduction_parameters = []
+            self.warpset.warpLoadedImageSet(skip_corners=self.skip_corners)
+            self.alignset.updateRectangleImages([warpimg for warpimg in self.warpset.images if not (self.skip_corners and warpimg.is_corner_only)])
+            after_global_minimization_cost = self.alignset.align(skip_corners=self.skip_corners,
+                                                                 write_result=False,
+                                                                 return_on_invalid_result=True,
+                                                                 alreadyalignedstrategy="overwrite",
+                                                                 warpwarnings=True,
+                                                                 )
+            self.minimization_evolution_details.append(self.__getOverlapAlignmentResultDictForIteration(rawcost,first_fit_max_rad_dist,first_fit_max_tan_dist))
             #call minimize with trust_constr
             logger.info('Starting polishing minimization....')
             relative_steps = np.array([abs(0.05*p) if abs(p)<1. else 0.05 for p in firstresult.x])
@@ -210,7 +220,7 @@ class WarpFitter :
         logger.info(f'Best fit parameters:')
         self.__best_fit_warp.printParams()
         #write out the set of alignment comparison images
-        self.best_cost = self.__makeBestFitAlignmentComparisonImages()
+        self.raw_cost, self.best_cost = self.__makeBestFitAlignmentComparisonImages()
         #save the figure of the best-fit warp fields
         with cd(self.working_dir) :
             try :
@@ -229,33 +239,31 @@ class WarpFitter :
 
     #################### FUNCTIONS FOR USE WITH MINIMIZATION ####################
 
-    # !!!!!! For the time being, these functions don't correctly describe dependence on k4, k5, or k6 !!!!!!
+    # !!!!!! For the time being, these functions don't correctly describe dependence on k3, k4, k5, or k6 !!!!!!
 
     #The function whose return value is minimized by the fitting
-    def _evalCamWarpOnAlignmentSet(self,pars,n_cost_reductions_per_alignment=5) :
+    def _evalCamWarpOnAlignmentSet(self,pars) :
         self.minfunc_calls+=1
         #first fix the parameter list so the warp functions always see vectors of the same length
         fixedpars = self.__correctParameterList(pars)
-        #before doing anything, realign the sample with the weighted average of all the parameter vectors if there are enough of them
-        if n_cost_reductions_per_alignment>0 and len(self.running_cost_reduction_parameters)>=n_cost_reductions_per_alignment :
-            print(f'{len(self.running_cost_reduction_parameters)} cost reductions observed, realigning sample')
-            self.best_cost_yet = self.__warpAndAlignSample(self.__correctParameterList(self.reduction_pars_wtd_avg),
-                                                           return_on_invalid_result=False,
-                                                           add_to_details_list=False)
-            print(f'new best cost = {self.best_cost_yet}')
-            self.running_cost_reduction_parameters = []
-        #calculate the alignment cost from this warp
-        cost = self.__warpAndAlignSample(fixedpars,return_on_invalid_result=True,add_to_details_list=False,alreadyalignedstrategy='shift_only')#"overwrite")
-        #if this warp improved the cost, add its cost and parameters to the running list
-        if cost<self.best_cost_yet :
-            self.running_cost_reduction_parameters.append({'cost':cost,'pars':pars})
+        #update the warp with the new parameters
+        self.warpset.updateCameraParams(fixedpars)
+        #then warp the images
+        self.warpset.warpLoadedImageSet(skip_corners=self.skip_corners)
+        #reload the (newly-warped) images into the alignment set
+        self.alignset.updateRectangleImages([warpimg for warpimg in self.warpset.images if not (self.skip_corners and warpimg.is_corner_only)])
+        #align the images 
+        cost = self.alignset.align(skip_corners=self.skip_corners,
+                                   write_result=False,
+                                   return_on_invalid_result=True,
+                                   alreadyalignedstrategy='shift_only',#"overwrite",
+                                   warpwarnings=True,
+                                   )
         #add to the lists to plot
         self.costs.append(cost if cost<1e10 else -0.1)
-        max_rad_dist = self.warpset.warp.maxRadialDistortAmount(fixedpars)
-        max_tan_dist = self.warpset.warp.maxTangentialDistortAmount(fixedpars)
-        self.max_radial_warps.append(max_rad_dist)
-        self.max_tangential_warps.append(max_tan_dist)
-        self.minimization_evolution_details.append(self.__getOverlapAlignmentResultDictForIteration(cost,max_rad_dist,max_tan_dist))
+        self.max_radial_warps.append(self.warpset.warp.maxRadialDistortAmount(fixedpars))
+        self.max_tangential_warps.append(self.warpset.warp.maxTangentialDistortAmount(fixedpars))
+        self.minimization_evolution_details.append(self.__getOverlapAlignmentResultDictForIteration(self.costs[-1],self.max_radial_warps[-1],self.max_tangential_warps[-1]))
         #print progress if requested
         if self.minfunc_calls%self.print_every==0 :
             logger.info(self.warpset.warp.paramString())
@@ -370,7 +378,7 @@ class WarpFitter :
                         plt.close()
                 except Exception :
                     raise FittingError('Something went wrong while trying to write out the overlap comparison images')
-        return bestcost
+        return rawcost, bestcost
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -628,22 +636,6 @@ class WarpFitter :
                 fixedlist.append(p)
         return fixedlist
 
-    #helper function to update the warp based on given parameters, warp the image set, and realign it
-    def __warpAndAlignSample(self,pars,use_warped_images=True,return_on_invalid_result=False,alreadyalignedstrategy="overwrite",add_to_details_list=True) :
-        self.warpset.updateCameraParams(pars)
-        if use_warped_images :
-            self.warpset.warpLoadedImageSet(skip_corners=self.skip_corners)
-        self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=use_warped_images)
-        cost = self.alignset.align(write_result=False,
-                                   return_on_invalid_result=return_on_invalid_result,
-                                   alreadyalignedstrategy=alreadyalignedstrategy,
-                                   warpwarnings=True)
-        if add_to_details_list :
-            max_rad_dist = self.warpset.warp.maxRadialDistortAmount(pars)
-            max_tan_dist = self.warpset.warp.maxTangentialDistortAmount(pars)
-            self.minimization_evolution_details.append(self.__getOverlapAlignmentResultDictForIteration(cost,max_rad_dist,max_tan_dist))
-        return cost
-
     #helper function to create an return a dictionary of each overlap's alignment results at the current iteration
     def __getOverlapAlignmentResultDictForIteration(self,iteration_cost,max_radial_warp,max_tangential_warp) :
         this_iteration_dict = {}
@@ -668,15 +660,3 @@ class WarpFitter :
             this_iteration_dict['overlap_diff_MSEs'].append(olap.result.mse3)
         return this_iteration_dict
 
-    #################### CLASS PROPERTIES ####################
-
-    @property
-    def reduction_pars_wtd_avg(self) :
-        assert len(self.running_cost_reduction_parameters)>0
-        numerator = np.zeros_like(self.running_cost_reduction_parameters[0]['pars'])
-        denominator = 0
-        for d in self.running_cost_reduction_parameters :
-            pct_cost_redux = (self.raw_cost-d['cost'])/self.raw_cost
-            numerator+=pct_cost_redux*d['pars']
-            denominator+=pct_cost_redux
-        return numerator/denominator
