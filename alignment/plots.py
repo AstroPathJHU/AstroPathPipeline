@@ -96,7 +96,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   y = np.array(y)
   yerr = np.array(yerr)
 
-  errorzero = abs(yerr/y) < 1e-10
+  errorzero = abs(yerr/np.sqrt(sum(y**2)/len(y))) < 1e-10
   errornonzero = ~errorzero
 
   xwitherror = x[errornonzero]
