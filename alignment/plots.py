@@ -164,7 +164,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   print(" ", mean, "pixels/field")
   try:
     o = overlaps[0]
-    expected = ((alignmentset.T - np.identity(2)) @ (overlaps[0].x1vec - overlaps[0].x2vec))[yidx]
+    expected = ((alignmentset.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]
   except AttributeError:
     pass
   else:
