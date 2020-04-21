@@ -35,6 +35,8 @@ class Distance:
     return self.__power
 
   def __add__(self, other):
+    if isinstance(other, np.ndarray):
+      return other + self
     if not other: return self
     if not self: return other
     if self._power == 0: return float(self) + other
@@ -74,20 +76,15 @@ class Distance:
   def __int__(self):
     return int(float(self))
   def __eq__(self, other):
-    if self._power == 0: return float(self) == other
-    return (self - other)._pixels == 0
+    return pixels(self - other, power=None) == 0
   def __lt__(self, other):
-    if self._power == 0: return float(self) < other
-    return (self - other)._pixels < 0
+    return pixels(self - other, power=None) < 0
   def __le__(self, other):
-    if self._power == 0: return float(self) <= other
-    return self == other or self < other
+    return pixels(self - other, power=None) <= 0
   def __gt__(self, other):
-    if self._power == 0: return float(self) > other
-    return (self - other)._pixels > 0
+    return pixels(self - other, power=None) > 0
   def __ge__(self, other):
-    if self._power == 0: return float(self) >= other
-    return self == other or self > other
+    return pixels(self - other, power=None) >= 0
   def __abs__(self):
     return Distance(pscale=self._pscale, power=self._power, pixels=abs(self._pixels))
   def __hash__(self):

@@ -96,7 +96,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   y = np.array(y)
   yerr = np.array(yerr)
 
-  errorzero = abs(yerr/np.sqrt(sum(y**2)/len(y))) < 1e-10
+  errorzero = abs(yerr/np.sqrt(sum(y**2)/len(y))) < 1e-3
   errornonzero = ~errorzero
 
   xwitherror = x[errornonzero]
@@ -177,12 +177,13 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
       print(f"  (expected from T matrix: {expected})")
     print("Sine wave:")
     print(f"  amplitude: {amplitude}")
-    if abs(amplitude.n) > 5*amplitude.s:
+    if abs(amplitude.n) > 5*amplitude.s and np.count_nonzero(abs(amplitude.n) > yerr) > len(yerr)/4:
       wavelength = 2*np.pi / kk
       print(f"  wavelength: {wavelength}")
       print(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
     else:
       print(f"  (not significant)")
+      plotsine = False
 
     xplot = units.linspace(min(x), max(x), 1000)
     if plotsine:
