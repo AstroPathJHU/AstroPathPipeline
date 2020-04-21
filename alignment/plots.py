@@ -157,32 +157,37 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     np.mean(biggestchunkys)
   )
 
-  p, cov = units.optimize.curve_fit(
-    cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror, absolute_sigma=True,
-  )
-  p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
-  print("Average:")
-  print(f"  {mean}")
   try:
-    o = overlaps[0]
-    expected = ((alignmentset.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]
-  except AttributeError:
-    pass
+    p, cov = units.optimize.curve_fit(
+      cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror, absolute_sigma=True,
+    )
+  except RuntimeError:
+    print("fit failed")
+    p = None
   else:
-    print(f"  (expected from T matrix: {expected})")
-  print("Sine wave:")
-  print(f"  amplitude: {amplitude}")
-  if abs(amplitude.n) > 5*amplitude.s:
-    wavelength = 2*np.pi / kk
-    print(f"  wavelength: {wavelength}")
-    print(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
-  else:
-    print(f"  (not significant)")
+    p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
+    print("Average:")
+    print(f"  {mean}")
+    try:
+      o = overlaps[0]
+      expected = ((alignmentset.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]
+    except AttributeError:
+      pass
+    else:
+      print(f"  (expected from T matrix: {expected})")
+    print("Sine wave:")
+    print(f"  amplitude: {amplitude}")
+    if abs(amplitude.n) > 5*amplitude.s:
+      wavelength = 2*np.pi / kk
+      print(f"  wavelength: {wavelength}")
+      print(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
+    else:
+      print(f"  (not significant)")
 
-  xplot = units.linspace(min(x), max(x), 1000)
-  if plotsine:
-    #plt.plot(xplot, cosfunction(xplot, *initialguess), color='g')
-    plt.plot(units.pixels(xplot), units.pixels(cosfunction(xplot, *units.nominal_values(p))), color='b')
+    xplot = units.linspace(min(x), max(x), 1000)
+    if plotsine:
+      #plt.plot(xplot, cosfunction(xplot, *initialguess), color='g')
+      plt.plot(units.pixels(xplot), units.pixels(cosfunction(xplot, *units.nominal_values(p))), color='b')
 
   plotstyling(fig=fig, ax=ax)
   if saveas is None:
