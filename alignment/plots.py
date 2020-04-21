@@ -162,14 +162,22 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   )
   p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
   print("Average:")
-  print(" ", mean)
+  print(f"  {mean}")
   try:
     o = overlaps[0]
     expected = ((alignmentset.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]
   except AttributeError:
     pass
   else:
-    print(" ", f"(expected from T matrix: {expected})")
+    print(f"  (expected from T matrix: {expected})")
+  print("Sine wave:")
+  print(f"  amplitude: {amplitude}")
+  if abs(amplitude.n) > 5*amplitude.s:
+    wavelength = 2*np.pi / kk
+    print(f"  wavelength: {wavelength}")
+    print(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
+  else:
+    print(f"  (not significant)")
 
   xplot = units.linspace(min(x), max(x), 1000)
   if plotsine:

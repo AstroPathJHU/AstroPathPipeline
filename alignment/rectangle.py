@@ -23,6 +23,10 @@ class Rectangle(DataClassWithDistances):
   def xvec(self):
     return np.array([self.x, self.y])
 
+  @property
+  def shape(self):
+    return np.array([self.w, self.h])
+
 @dataclass_dc_init
 class ShiftedRectangle(Rectangle):
   ix: int
