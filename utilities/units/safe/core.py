@@ -213,11 +213,11 @@ def _pscale(distance):
   return distance._pscale
 
 def nominal_value(distance):
-  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return distance
+  if isinstance(distance, numbers.Number): return distance
   return distance.nominal_value
 nominal_values = np.vectorize(nominal_value)
 def std_dev(distance):
-  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return 0
+  if isinstance(distance, numbers.Number): return 0
   return distance.std_dev
 std_devs = np.vectorize(std_dev)
 
