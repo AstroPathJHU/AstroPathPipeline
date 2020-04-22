@@ -147,7 +147,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   f = units.fft.fft(biggestchunkys)
 
   def cosfunction(xx, amplitude, kk, phase, mean):
-    return amplitude * np.cos(np.array(kk*(xx - biggestchunkxs[0]) + phase).astype(float)) + mean
+    return amplitude * unp.cos(units.asdimensionless(kk*(xx - biggestchunkxs[0]) + phase)) + mean
 
   bestk, bestf = max(zip(k[1:], f[1:]), key=lambda kf: abs(kf[1]))  #[1:]: exclude k=0 term
   initialguess = (
@@ -181,9 +181,18 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
       wavelength = 2*np.pi / kk
       print(f"  wavelength: {wavelength}")
       print(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
+      def subtractsystematic(misalignment, position1, position2):
+        return misalignment - cosfunction((position1+position2)/2, *p)
     else:
       print(f"  (not significant)")
       plotsine = False
+      def subtractsystematic(misalignment, position1, position2):
+        return misalignment - mean
+
+    remaining = np.array([subtractsystematic(overlap.dx, *overlap.abspositions) for overlap in overlaps])
+    print(f"Remaining noise:")
+    print(f"  average = {weightedaverage(remaining)}")
+    print(f"  RMS     = {weightedstd(remaining, subtractaverage=False)}")
 
     xplot = units.linspace(min(x), max(x), 1000)
     if plotsine:

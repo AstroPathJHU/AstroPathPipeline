@@ -39,7 +39,7 @@ class Distance:
       return other + self
     if not other: return self
     if not self: return other
-    if self._power == 0: return float(self) + other
+    if self._power == 0: return self.asdimensionless + other
     if not hasattr(other, "_pscale"): return NotImplemented
     if self._power != other._power: raise UnitsError("Trying to add distances with different powers")
     if None is not self._pscale != other._pscale is not None: raise UnitsError("Trying to add distances with different pscales")
@@ -69,10 +69,13 @@ class Distance:
   def __pow__(self, other):
     return Distance(pscale=self._pscale, power=self._power*other, pixels=self._pixels**other)
   def __bool__(self): return bool(self._pixels)
-  def __float__(self):
-    if self and self._power != 0: raise ValueError("Can only convert Distance to float if pixels == microns == 0 or power == 0")
+  @property
+  def asdimensionless(self):
+    if self and self._power != 0: raise ValueError("Can only convert Distance to dimensionless if pixels == microns == 0 or power == 0")
     assert self._pixels == self._microns
-    return float(self._pixels)
+    return self._pixels
+  def __float__(self):
+    return float(self.asdimensionless)
   def __int__(self):
     return int(float(self))
   def __eq__(self, other):
@@ -180,7 +183,7 @@ def pixels(distance, *, pscale=None, power=1):
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
   if None is not power != _power(distance) is not None:
     raise ValueError(f"Inconsistent powers {power} {_power(distance)}")
-  if isinstance(distance, numbers.Number): return distance
+  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return distance
   return distance._pixels
 
 __pixels = pixels #for use in functions with a pixels kwarg
@@ -192,24 +195,29 @@ def microns(distance, *, pscale=None, power=1):
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
   if None is not power != _power(distance) is not None:
     raise ValueError(f"Inconsistent powers {power} {_power(distance)}")
-  if isinstance(distance, numbers.Number): return distance
+  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return distance
   return distance._microns
 
 @np.vectorize
+def asdimensionless(distance):
+  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return distance
+  return distance.asdimensionless
+
+@np.vectorize
 def _power(distance):
-  if isinstance(distance, numbers.Number) or not distance: return 0
+  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)) or not distance: return 0
   return distance._power
 @np.vectorize
 def _pscale(distance):
-  if isinstance(distance, numbers.Number) or not distance: return None
+  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)) or not distance: return None
   return distance._pscale
 
 def nominal_value(distance):
-  if isinstance(distance, numbers.Number): return distance
+  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return distance
   return distance.nominal_value
 nominal_values = np.vectorize(nominal_value)
 def std_dev(distance):
-  if isinstance(distance, numbers.Number): return 0
+  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return 0
   return distance.std_dev
 std_devs = np.vectorize(std_dev)
 
