@@ -208,17 +208,20 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
               new_fftc = new_fft.compile(self.gputhread)
               self.gpufftdict[cutimages_shapes[0]] = new_fftc
 
-  def updateRectangleImages(self,imgs) :
+  def updateRectangleImages(self,imgs,usewarpedimages=True) :
     """
     Updates the "image" variable in each rectangle based on a dictionary of image layers
     imgs = list of WarpImages to use for update
     """
     for r in self.rectangles :
-      thiswarpedimg=[(img.warped_image).get() for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
-      assert len(thiswarpedimg)<2
-      if len(thiswarpedimg)==1 :
-        np.copyto(r.image,(thiswarpedimg[0]/self.meanimage.flatfield).astype(np.uint16),casting='no')
-        #np.copyto(r.image,thiswarpedimg[0],casting='no') #question for Alex: applying meanimage?
+      if usewarpedimages :
+        thisupdateimg=[(img.warped_image).get() for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
+      else :
+        thisupdateimg=[(img.raw_image).get() for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
+      assert len(thisupdateimg)<2
+      if len(thisupdateimg)==1 :
+        np.copyto(r.image,(thisupdateimg[0]/self.meanimage.flatfield).astype(np.uint16),casting='no')
+        #np.copyto(r.image,thisupdateimg[0],casting='no') #question for Alex: applying meanimage?
 
   def getOverlapComparisonImagesDict(self) :
     """

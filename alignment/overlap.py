@@ -81,17 +81,23 @@ class Overlap(DataClassWithDistances):
     )
 
   def align(self, *, debug=False, alreadyalignedstrategy="error", **computeshiftkwargs):
-    if self.result is not None:
+    if self.result is None:
+      alreadyalignedstrategy = None
+    else:
       if alreadyalignedstrategy == "error":
         raise RuntimeError(f"Overlap {self.n} is already aligned.  To keep the previous result, call align(alreadyalignedstrategy='skip').  To align again and overwrite the previous result, call align(alreadyalignedstrategy='overwrite').")
       elif alreadyalignedstrategy == "skip":
         return self.result
       elif alreadyalignedstrategy == "overwrite":
         pass
+      elif alreadyalignedstrategy == "shift_only":
+        kwargs1 = {k: getattr(self.result, k) for k in ("dxvec", "exit")}
       else:
         raise ValueError(f"Unknown value alreadyalignedstrategy={alreadyalignedstrategy!r}")
+
     try:
-      kwargs1 = self.__computeshift(**computeshiftkwargs)
+      if alreadyalignedstrategy != "shift_only":
+        kwargs1 = self.__computeshift(**computeshiftkwargs)
       kwargs2 = self.__shiftclip(dxvec=kwargs1["dxvec"])
       self.result = AlignmentResult(
         **self.alignmentresultkwargs,
