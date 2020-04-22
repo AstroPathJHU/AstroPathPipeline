@@ -6,15 +6,16 @@ from argparse import ArgumentParser
 from scipy import stats
 import os, copy, gc, logging, matplotlib.pyplot as plt, seaborn as sns
 import cProfile
+import multiprocessing as mp
 
 #constants
-logger = logging.getLogger("warpfitter")
+warp_logger = logging.getLogger("warpfitter")
 DEFAULT_OVERLAPS = '-999'
 DEFAULT_OCTETS   = '-999'
 DEFAULT_CHUNKS   = '-999'
 REJECTED_OVERLAP_IMAGE_DIR_NAME = 'rejected_overlap_images'
 
-#################### PARSE ARGUMENTS ####################
+#################### HELPER FUNCTIONS ####################
 
 #parser callback function to split a string of comma-separated values into a list
 def split_csv_to_list(value) :
@@ -27,38 +28,26 @@ def split_csv_to_list_of_ints(value) :
     except ValueError :
         raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
 
-#define and get the command-line arguments
-parser = ArgumentParser()
-#positional arguments
-parser.add_argument('mode',        help='Operation to perform', choices=['fit','show_octets','show_chunks','cProfile'])
-parser.add_argument('sample',      help='Name of the data sample to use')
-parser.add_argument('rawfile_dir', help='Path to the directory containing the "[sample_name]/*.raw" files')
-parser.add_argument('root1_dir',   help='Path to the directory containing "[sample name]/dbload" subdirectories')
-parser.add_argument('root2_dir',   help='Path to the directory containing the "[sample_name]/*.fw01" files to use for initial alignment')
-#optional arguments
-parser.add_argument('--working_dir',         default='warpfit_test',
-    help='Path to (or name of) the working directory that will be created')
-parser.add_argument('--overlaps',            default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
-    help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
-parser.add_argument('--octets',              default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
-    help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
-parser.add_argument('--chunks',              default=DEFAULT_CHUNKS,   type=split_csv_to_list_of_ints,         
-    help='Comma-separated list of overlap octet chunk indices (ordered by n of first octet central rectangle) to use')
-parser.add_argument('--layer',               default='1',         type=int,         
-    help='Image layer to use (indexed from 1)')
-parser.add_argument('--fixed',               default='',          type=split_csv_to_list,         
-    help='Comma-separated list of parameters to keep fixed during fitting')
-parser.add_argument('--max_radial_warp',     default=10.,         type=float,
-    help='Maximum amount of radial warp to use for constraint')
-parser.add_argument('--max_tangential_warp', default=10.,         type=float,
-    help='Maximum amount of radial warp to use for constraint')
-parser.add_argument('--print_every',         default=100,          type=int,
-    help='Maximum amount of radial warp to use for constraint')
-parser.add_argument('--max_iter',            default=1000,        type=int,
-    help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
-args = parser.parse_args()
-
-#################### HELPER FUNCTIONS ####################
+#helper function to make sure necessary directories exist and that the input choice of fixed parameters is valid
+def checkDirAndFixedArgs(args) :
+    #rawfile_dir/[sample] must exist
+    rawfile_dir = args.rawfile_dir if args.rawfile_dir.endswith(args.sample) else os.path.join(args.rawfile_dir,args.sample)
+    if not os.path.isdir(rawfile_dir) :
+        raise ValueError(f'rawfile_dir argument ({rawfile_dir}) does not point to a valid directory!')
+    #root1 dir must exist
+    if not os.path.isdir(args.root1_dir) :
+        raise ValueError(f'root1_dir argument ({args.root1_dir}) does not point to a valid directory!')
+    #root1 dir must be usable to find a metafile directory
+    metafile_dir = os.path.join(args.root1_dir,args.sample,'dbload')
+    if not os.path.isdir(metafile_dir) :
+        raise ValueError(f'root1_dir ({args.root1_dir}) does not contain "[sample name]/dbload" subdirectories!')
+    #the parameter fixing string must correspond to some combination of options
+    fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
+    fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed
+    fix_k1k2k3 = 'k1' in args.fixed and 'k2' in args.fixed and 'k3' in args.fixed
+    fix_p1p2   = 'p1' in args.fixed and 'p2' in args.fixed
+    if args.fixed!=[''] and len(args.fixed)!=2*sum([fix_cxcy,fix_fxfy,fix_p1p2])+(3*int(fix_k1k2k3)) :
+        raise ValueError(f'Fixed parameters argument ({args.fixed}) does not result in a valid fixed parameter condition!')
 
 # Helper function that produces the visualizations of the rejected overlaps
 def makeImagePixelPlots(overlaps) :
@@ -83,8 +72,8 @@ def makeImagePixelPlots(overlaps) :
 # Helper function to get the dictionary of octets
 def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
     #create the alignment set and run its alignment
-    logger.info("Performing an initial alignment to find this sample's valid octets/chunks...")
-    a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample)
+    warp_logger.info("Performing an initial alignment to find this sample's valid octets/chunks...")
+    a = AlignmentSet(root1,root2,samp)
     a.getDAPI(writeimstat=False)
     whole_sample_meanimage = a.meanimage
     a.align(write_result=False,warpwarnings=True)
@@ -97,9 +86,9 @@ def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
         if overlap.result.exit==0 :
             good_overlaps.append(overlap)
         else :
-            logger.info(f'overlap number {overlap.n} rejected: alignment status {overlap.result.exit}.')
+            warp_logger.info(f'overlap number {overlap.n} rejected: alignment status {overlap.result.exit}.')
             rejected_overlaps.append(overlap)
-    logger.info(f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)}')
+    warp_logger.info(f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)}')
     if save_plots :
         if not os.path.isdir(working_dir) :
             os.mkdir(working_dir)
@@ -117,12 +106,12 @@ def getSampleOctets(root1,root2,samp,working_dir,save_plots=False) :
         overlapswiththisp1 = [o for o in good_overlaps if o.p1==p1]
         if len(overlapswiththisp1)==8 :
             ons = [o.n for o in overlapswiththisp1]
-            logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
+            warp_logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
             octets[p1]=overlapswiththisp1
     msg=f'{len(octets)} total octets found'
     if save_plots :
         msg+=f'; rejected overlap images in {os.path.join(working_dir,REJECTED_OVERLAP_IMAGE_DIR_NAME)}'
-    logger.info(msg+'.')
+    warp_logger.info(msg+'.')
     return octets, whole_sample_meanimage
 
 # Recursive function to get groups of interconnected octets
@@ -152,12 +141,12 @@ def getSampleChunks(octets) :
         rects_searched,chunk = getRectangleConnectedOctets(octets,rects_checked,op1)
         rects_checked = set(list(rects_checked)+list(rects_searched))
         octet_chunks.append(chunk)
-    logger.info(f'{len(octet_chunks)} total octet chunks found:')
+    warp_logger.info(f'{len(octet_chunks)} total octet chunks found:')
     for i,chunk in enumerate(octet_chunks,start=1) :
         chunkp1s = f'  chunk {i} is made of octets surrounding rectangles '
         for centralp1 in [octet[0].p1 for octet in chunk] :
             chunkp1s+=f'{centralp1}, '
-        logger.info(chunkp1s[:-2]+'.')
+        warp_logger.info(chunkp1s[:-2]+'.')
         msg = f'  chunk {i} will contain '
         chunkolaps=''
         nolaps = 0
@@ -168,7 +157,7 @@ def getSampleChunks(octets) :
                 thisoctetns.append(overlap.n)
             chunkolaps+=f'{min(thisoctetns)}-{max(thisoctetns)}, '
         msg+=f'{nolaps} total overlaps: numbers {chunkolaps[:-2]}.'
-        logger.info(msg)
+        warp_logger.info(msg)
     return octet_chunks
 
 # Helper function to determine the list of overlaps
@@ -193,7 +182,7 @@ def getOverlaps(args) :
         if args.mode in ('fit', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
             for i,octet in enumerate([octets[key] for key in sorted(octets.keys())],start=1) :
                 if i in args.octets or args.octets==[-1]:
-                    logger.info(f'Adding overlaps in octet #{i}...')
+                    warp_logger.info(f'Adding overlaps in octet #{i}...')
                     for overlap in octet :
                         overlaps.append(overlap.n)
             if len(overlaps)!=8*len(args.octets) :
@@ -207,7 +196,7 @@ def getOverlaps(args) :
             if args.mode in ('fit', 'cProfile') and args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS) :
                 for i,chunk in enumerate(octet_chunks,start=1) :
                     if i in args.chunks or args.chunks==[-1] :
-                        logger.info(f'Adding overlaps in chunk #{i}...')
+                        warp_logger.info(f'Adding overlaps in chunk #{i}...')
                         for octet in chunk :
                             for overlap in octet :
                                 overlaps.append(overlap.n)
@@ -217,7 +206,7 @@ def getOverlaps(args) :
                     msg+=f' there are {len(octet_chunks)} chunks to choose from.'
                     raise ValueError(msg)
     if whole_sample_meanimage is None :
-        logger.info("Loading an AlignmentSet to find the meanimage over the whole sample...")
+        warp_logger.info("Loading an AlignmentSet to find the meanimage over the whole sample...")
         a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample)
         a.getDAPI()
         whole_sample_meanimage = a.meanimage
@@ -225,58 +214,88 @@ def getOverlaps(args) :
 
 #################### MAIN SCRIPT ####################
 
-#apply some checks to the arguments to make sure they're valid
-#only one of "overlaps" "octets" and/or "chunks" can be specified
-nspec = sum([args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS),
-             args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS),
-             args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS)])
-if nspec==0 :
-    logger.info('No overlaps, octets, or chunks specified; will use the default of octets=[-1] to run all octets.')
-    args.octets=[-1]
-nspec = sum([args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS),
-             args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS),
-             args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS)])
-if nspec!=1 :
-    raise ValueError(f'Must specify exactly ONE of overlaps, octets, or chunks! (overlaps={args.overlaps}, octets={args.octets}, chunks={args.chunks})')
-#rawfile_dir/[sample] must exist
-rawfile_dir = args.rawfile_dir if args.rawfile_dir.endswith(args.sample) else os.path.join(args.rawfile_dir,args.sample)
-if not os.path.isdir(rawfile_dir) :
-    raise ValueError(f'rawfile_dir argument ({rawfile_dir}) does not point to a valid directory!')
-#root1 dir must exist
-if not os.path.isdir(args.root1_dir) :
-    raise ValueError(f'root1_dir argument ({args.root1_dir}) does not point to a valid directory!')
-#root1 dir must be usable to find a metafile directory
-metafile_dir = os.path.join(args.root1_dir,args.sample,'dbload')
-if not os.path.isdir(metafile_dir) :
-    raise ValueError(f'root1_dir ({args.root1_dir}) does not contain "[sample name]/dbload" subdirectories!')
-#the parameter fixing string must correspond to some combination of options
-fix_cxcy = 'cx' in args.fixed and 'cy' in args.fixed
-fix_fxfy = 'fx' in args.fixed and 'fy' in args.fixed
-fix_k1k2 = 'k1' in args.fixed and 'k2' in args.fixed
-fix_p1p2 = 'p1' in args.fixed and 'p2' in args.fixed
-if args.fixed!=[''] and len(args.fixed)!=2*sum([fix_cxcy,fix_fxfy,fix_k1k2,fix_p1p2]) :
-    raise ValueError(f'Fixed parameters argument ({args.fixed}) does not result in a valid fixed parameter condition!')
-#choice of overlaps must be valid
-overlaps,whole_sample_meanimage=getOverlaps(args)
-gc.collect()
-if args.mode in ('fit', 'cProfile') :
-    logger.info(f'Will run fit on a sample of {len(overlaps)} total overlaps.')
+if __name__=='__main__' :
+    mp.freeze_support()
+    #define and get the command-line arguments
+    parser = ArgumentParser()
+    #positional arguments
+    parser.add_argument('mode',        help='Operation to perform', choices=['fit','show_octets','show_chunks','cProfile'])
+    parser.add_argument('sample',      help='Name of the data sample to use')
+    parser.add_argument('rawfile_dir', help='Path to the directory containing the "[sample_name]/*.raw" files')
+    parser.add_argument('root1_dir',   help='Path to the directory containing "[sample name]/dbload" subdirectories')
+    parser.add_argument('root2_dir',   help='Path to the directory containing the "[sample_name]/*.fw01" files to use for initial alignment')
+    #optional arguments
+    parser.add_argument('--working_dir',          default='warpfit_test',
+        help='Path to (or name of) the working directory that will be created')
+    parser.add_argument('--overlaps',             default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
+        help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
+    parser.add_argument('--octets',               default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
+        help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
+    parser.add_argument('--chunks',               default=DEFAULT_CHUNKS,   type=split_csv_to_list_of_ints,         
+        help='Comma-separated list of overlap octet chunk indices (ordered by n of first octet central rectangle) to use')
+    parser.add_argument('--layer',                default='1',         type=int,         
+        help='Image layer to use (indexed from 1)')
+    parser.add_argument('--fixed',                default='',          type=split_csv_to_list,         
+        help='Comma-separated list of parameters to keep fixed during fitting')
+    parser.add_argument('--float_p1p2_to_polish', action='store_true',
+        help='Add this flag to float p1 and p2 in the polishing minimization regardless of whether they are in the list of fixed parameters')
+    parser.add_argument('--max_radial_warp',      default=8.,         type=float,
+        help='Maximum amount of radial warp to use for constraint')
+    parser.add_argument('--max_tangential_warp',  default=4.,         type=float,
+        help='Maximum amount of radial warp to use for constraint')
+    parser.add_argument('--lasso_lambda',         default=0.0,         type=float,
+        help='Lambda magnitude parameter for the LASSO constraint on p1 and p2 if those parameters are to float in the polishing minimization')
+    parser.add_argument('--print_every',          default=100,          type=int,
+        help='How many iterations to wait between printing minimization progress')
+    parser.add_argument('--max_iter',             default=1000,        type=int,
+        help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
+    args = parser.parse_args()
 
-if args.mode in ('fit', 'cProfile') :
-    #make the WarpFitter Objects
-    logger.info('Initializing WarpFitter')
-    fitter = WarpFitter(args.sample,rawfile_dir,metafile_dir,args.working_dir,overlaps,args.layer,whole_sample_meanimage)
-    #load the raw files
-    logger.info('Loading raw files')
-    fitter.loadRawFiles()
-    #fit the model to the data
-    logger.info('Running doFit')
-    if args.mode == 'fit' :
-        result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,
-                              max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
-                              polish=True,print_every=args.print_every,maxiter=args.max_iter)
-    else:
-        cProfile.run('fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2=fix_k1k2,fix_p1p2=fix_p1p2,max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,polish=True,print_every=args.print_every,maxiter=args.max_iter)')
+    #apply some checks to the arguments to make sure they're valid
+    #make sure directories exist and fixed parameter choice is valid
+    checkDirAndFixedArgs(args)
+    #only one of "overlaps" "octets" and/or "chunks" can be specified
+    nspec = sum([args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS),
+                 args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS),
+                 args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS)])
+    if nspec==0 :
+        warp_logger.info('No overlaps, octets, or chunks specified; will use the default of octets=[-1] to run all octets.')
+        args.octets=[-1]
+    nspec = sum([args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS),
+                 args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS),
+                 args.chunks!=split_csv_to_list_of_ints(DEFAULT_CHUNKS)])
+    if nspec!=1 :
+        raise ValueError(f'Must specify exactly ONE of overlaps, octets, or chunks! (overlaps={args.overlaps}, octets={args.octets}, chunks={args.chunks})')
+    #choice of overlaps must be valid
+    overlaps,whole_sample_meanimage=getOverlaps(args)
+    gc.collect()
+    if args.mode in ('fit', 'cProfile') :
+        warp_logger.info(f'Will run fit on a sample of {len(overlaps)} total overlaps.')
 
-logger.info('All done : )')
+    if args.mode in ('fit', 'cProfile') :
+        #make the WarpFitter Objects
+        warp_logger.info('Initializing WarpFitter')
+        rawfile_dir = args.rawfile_dir if args.rawfile_dir.endswith(args.sample) else os.path.join(args.rawfile_dir,args.sample)
+        metafile_dir = os.path.join(args.root1_dir,args.sample,'dbload')
+        fitter = WarpFitter(args.sample,rawfile_dir,metafile_dir,args.working_dir,overlaps,args.layer,whole_sample_meanimage)
+        #load the raw files
+        warp_logger.info('Loading raw files')
+        fitter.loadRawFiles()
+        #fit the model to the data
+        warp_logger.info('Running doFit')
+        fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
+        fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed
+        fix_k1k2k3 = 'k1' in args.fixed and 'k2' in args.fixed and 'k3' in args.fixed
+        fix_p1p2   = 'p1' in args.fixed and 'p2' in args.fixed
+        if args.mode == 'fit' :
+            result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,fix_p1p2_in_global_fit=fix_p1p2,fix_p1p2_in_polish_fit=(not args.float_p1p2_to_polish),
+                                  max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,p1p2_polish_lasso_lambda=args.lasso_lambda,
+                                  polish=True,print_every=args.print_every,maxiter=args.max_iter)
+        elif args.mode == 'cProfile' :
+            cProfile.run("""fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,fix_p1p2_in_global_fit=fix_p1p2,
+                            fix_p1p2_in_polish_fit=(not args.float_p1p2_to_polish),max_radial_warp=args.max_radial_warp,
+                            max_tangential_warp=args.max_tangential_warp,p1p2_polish_lasso_lambda=args.lasso_lambda,polish=True,
+                            print_every=args.print_every,maxiter=args.max_iter)""")
+
+    warp_logger.info('All done : )')
 
