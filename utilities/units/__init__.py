@@ -43,7 +43,7 @@ def setup_context(mode):
 __all__ = [
   "correlated_distances", "Distance", "distances", "UnitsError",
   "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs",
-  "dataclasses", "fft", "linalg", "testing",
+  "dataclasses", "drawing", "fft", "linalg", "testing",
   "angle", "isclose", "linspace",
   "setup", "setup_context",
 ]
