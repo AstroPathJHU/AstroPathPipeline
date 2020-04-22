@@ -18,7 +18,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, useGPU=False, forceGPU=False):
+  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False):
     """
     Directory structure should be
     root1/
@@ -46,7 +46,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     if not os.path.exists(os.path.join(self.root1, self.samp)):
       raise IOError(f"{os.path.join(self.root1, self.samp)} does not exist")
 
-    self.readmetadata()
+    self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps)
     self.rawimages=None
 
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
@@ -55,7 +55,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   def dbload(self):
     return os.path.join(self.root1, self.samp, "dbload")
 
-  def readmetadata(self):
+  def readmetadata(self, *, onlyrectanglesinoverlaps=False):
     """
     Read metadata from csv files
     """
@@ -63,19 +63,9 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       assert isinstance(string, str)
       try: return int(string)
       except ValueError: return float(string)
-    self.annotations = readtable(os.path.join(self.dbload, self.samp+"_annotations.csv"), "Annotation", sampleid=int, layer=int, visible=int)
-    self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int)
-    self.vertices    = readtable(os.path.join(self.dbload, self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
-    self.batch       = readtable(os.path.join(self.dbload, self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
-    self.__overlaps  = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), self.overlaptype)
-    self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
-    self.__image     = None
-    self.constants   = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
-    self.__rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), Rectangle)
 
+    self.constants     = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
     self.constantsdict = {constant.name: constant.value for constant in self.constants}
-
-    self.scan = f"Scan{self.batch[0].Scan:d}"
 
     self.fwidth    = self.constantsdict["fwidth"]
     self.fheight   = self.constantsdict["fheight"]
@@ -86,33 +76,28 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     self.nclip     = self.constantsdict["nclip"]
     self.layer     = self.constantsdict["layer"]
 
+    self.batch = readtable(os.path.join(self.dbload, self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
+    self.scan  = f"Scan{self.batch[0].Scan:d}"
+
+    self.annotations = readtable(os.path.join(self.dbload, self.samp+"_annotations.csv"), "Annotation", sampleid=int, layer=int, visible=int)
+    self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int)
+    self.vertices    = readtable(os.path.join(self.dbload, self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
+    self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
+    self.__image     = None
+
+    self.__rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), Rectangle, extrakwargs={"pscale": self.pscale})
     self.__rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
+    self.__overlaps  = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
     self.__overlaps = [o for o in self.overlaps if self.overlapfilter(o)]
-
-    self.initializeoverlaps()
-
-  def initializeoverlaps(self):
-    for overlap in self.overlaps:
-      p1rect = [r for r in self.rectangles if r.n==overlap.p1]
-      p2rect = [r for r in self.rectangles if r.n==overlap.p2]
-      if not len(p1rect) == len(p2rect) == 1:
-        raise ValueError(f"Expected exactly one rectangle each with n={overlap.p1} and {overlap.p2}, found {len(p1rect)} and {len(p2rect)}")
-      overlap_rectangles = p1rect[0], p2rect[0]
-      overlap.setalignmentinfo(layer=self.layer, pscale=self.pscale, nclip=self.nclip, rectangles=overlap_rectangles)
+    if onlyrectanglesinoverlaps:
+      oldfilter = self.rectanglefilter
+      self.rectanglefilter = lambda r: oldfilter(r) and self.selectoverlaprectangles(r)
+      self.__rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
 
   @property
   def overlaps(self): return self.__overlaps
   @property
   def rectangles(self): return self.__rectangles
-
-  @property
-  def rectanglesoverlaps(self): return self.rectangles, self.overlaps
-  @rectanglesoverlaps.setter
-  def rectanglesoverlaps(self, rectanglesoverlaps):
-    rectangles, overlaps = rectanglesoverlaps
-    self.__rectangles = rectangles
-    self.__overlaps = overlaps
-    self.initializeoverlaps()
 
   @methodtools.lru_cache()
   def image(self):
@@ -169,7 +154,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
   def readalignments(self, *, filename=None):
     if filename is None: filename = self.aligncsv
-    alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult)}
+    alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult, extrakwargs={"pscale": self.pscale})}
     for o in self.overlaps:
       try:
         o.result = alignmentresults[o.n]
@@ -201,6 +186,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
           std=np.std(rectangle.image),
           cx=rectangle.cx,
           cy=rectangle.cy,
+          pscale=self.pscale,
         ) for rectangle in self.rectangles
       ]
       writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)

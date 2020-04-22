@@ -2,7 +2,7 @@ import csv, dataclasses, logging
 
 logger = logging.getLogger("align")
 
-def readtable(filename, rownameorclass, **columntypes):
+def readtable(filename, rownameorclass, *, extrakwargs={}, filter=lambda row: True, **columntypes):
   """
   Read a csv table into a list of named tuples
 
@@ -11,6 +11,7 @@ def readtable(filename, rownameorclass, **columntypes):
                   with **kwargs with the keywords based on the column
                   headers.  Alternatively you can give a name, and a
                   dataclass will be automatically created with that name.
+  extrakwargs:    will be passed to the the class that creates each row
   columntypes:    type (or function) to be called on each element in
                   that column.  Default is it's just left as a string.
 
@@ -51,21 +52,27 @@ def readtable(filename, rownameorclass, **columntypes):
           #hopefully it has a default value!
           #otherwise we will get an error when
           #reading the first row
+        typ = field.metadata.get("readfunction", field.type)
         if field.name in columntypes:
-          if columntypes[field.name] != field.type:
+          if columntypes[field.name] != typ:
             raise TypeError(
               f"The type for {field.name} in your dataclass {Row.__name__} "
               f"and the type provided in readtable are inconsistent "
-              f"({field.type} != {columntypes[field.name]})"
+              f"({typ} != {columntypes[field.name]})"
             )
         else:
-          columntypes[field.name] = field.type
+          columntypes[field.name] = typ
+
+    if "readingfromfile" in Row.__annotations__ and "readingfromfile" not in extrakwargs:
+      extrakwargs["readingfromfile"] = True
 
     for row in reader:
       for column, typ in columntypes.items():
         row[column] = typ(row[column])
 
-      result.append(Row(**row))
+      if not filter(row): continue
+
+      result.append(Row(**row, **extrakwargs))
 
   return result
 
@@ -95,7 +102,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
         + "\n  ".join(_.__name__ for _ in badclasses)
       )
 
-  fieldnames = [field.name for field in dataclasses.fields(rowclass)]
+  fieldnames = list(asrow(rows[0]))
 
   try:
     with open(filename, "w") as f:
@@ -104,7 +111,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
       for i, row in enumerate(rows, start=1):
         if printevery is not None and not i % printevery:
           logger.info(f"{i} / {size}")
-        writer.writerow(dataclasses.asdict(row))
+        writer.writerow(asrow(row))
   except PermissionError:
     if retry:
       result = None
@@ -118,3 +125,21 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
       raise
   if printevery is not None:
     logger.info("finished!")
+
+def asrow(obj, *, dict_factory=dict):
+  """
+  loosely inspired by https://github.com/python/cpython/blob/77c623ba3d084e99d68c30f368bd7fbd7f175b60/Lib/dataclasses.py#L1052
+  """
+  if not dataclasses._is_dataclass_instance(obj):
+    raise TypeError("asrow() should be called on dataclass instances")
+
+  result = []
+  for f in dataclasses.fields(obj):
+    if not f.metadata.get("includeintable", True): continue
+    value = dataclasses._asdict_inner(getattr(obj, f.name), dict_factory)
+    writefunction = f.metadata.get("writefunction", lambda x: x)
+    writefunctionkwargs = f.metadata.get("writefunctionkwargs", lambda object: {})(obj)
+    value = writefunction(value, **writefunctionkwargs)
+    result.append((f.name, value))
+
+  return dict_factory(result)

@@ -1,8 +1,9 @@
-import abc, dataclasses, itertools, logging, numpy as np, uncertainties as unc, uncertainties.unumpy as unp
+import abc, dataclasses, itertools, logging, numpy as np, uncertainties as unc
 from .overlap import OverlapCollection
 from .rectangle import Rectangle, RectangleCollection, rectangledict
+from ..utilities import units
 from ..utilities.tableio import readtable, writetable
-from ..utilities.misc import covariance_matrix
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 logger = logging.getLogger("align")
 
@@ -32,8 +33,8 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   #nll = x^T A x + bx + c
 
   size = 2*len(rectangles) + 4 #2* because each rectangle has an x and a y, + 4 for the components of T
-  A = np.zeros(shape=(size, size))
-  b = np.zeros(shape=(size,))
+  A = np.zeros(shape=(size, size), dtype=units.unitdtype)
+  b = np.zeros(shape=(size,), dtype=units.unitdtype)
   c = 0
 
   Txx = -4
@@ -62,7 +63,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     ij = np.ix_((ix,iy), (jx,jy))
     ji = np.ix_((jx,jy), (ix,iy))
     jj = np.ix_((jx,jy), (jx,jy))
-    inversecovariance = np.linalg.inv(o.result.covariance) * scaleby**2 / scaleoverlaperror**2
+    inversecovariance = units.linalg.inv(o.result.covariance) * scaleby**2 / scaleoverlaperror**2
 
     A[ii] += inversecovariance
     A[ij] -= inversecovariance
@@ -72,7 +73,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     i = np.ix_((ix, iy))
     j = np.ix_((jx, jy))
 
-    constpiece = (-unp.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec) / scaleby
+    constpiece = (-units.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec) / scaleby
 
     b[i] += 2 * inversecovariance @ constpiece
     b[j] -= 2 * inversecovariance @ constpiece
@@ -82,19 +83,19 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   dxs, dys = zip(*(o.result.dxvec for o in overlaps))
 
   weightedvariancedx = np.average(
-    unp.nominal_values(dxs)**2,
-    weights=1/unp.std_devs(dxs)**2,
+    units.nominal_values(dxs)**2,
+    weights=1/units.std_devs(dxs)**2,
   )
   sigmax = np.sqrt(weightedvariancedx) / scaleby * scalejittererror
 
   weightedvariancedy = np.average(
-    unp.nominal_values(dys)**2,
-    weights=1/unp.std_devs(dys)**2,
+    units.nominal_values(dys)**2,
+    weights=1/units.std_devs(dys)**2,
   )
   sigmay = np.sqrt(weightedvariancedy) / scaleby * scalejittererror
 
   if fixpoint == "origin":
-    x0vec = np.array([0, 0]) #fix the origin, linear scaling is with respect to that
+    x0vec = units.distances(pixels=np.array([0, 0]), pscale=None) #fix the origin, linear scaling is with respect to that
   elif fixpoint == "center":
     x0vec = np.mean([r.xvec for r in rectangles], axis=0)
   else:
@@ -135,12 +136,12 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     c += x0**2 / sigmax**2
     c += y0**2 / sigmay**2
 
-  result = np.linalg.solve(2*A, -b)
+  result = units.linalg.solve(2*A, -b)
 
   delta2nllfor1sigma = 1
 
-  covariancematrix = np.linalg.inv(A) * delta2nllfor1sigma
-  result = np.array(unc.correlated_values(result, covariancematrix))
+  covariancematrix = units.linalg.inv(A) * delta2nllfor1sigma
+  result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
   x = result[:-4].reshape(len(rectangles), 2) * scaleby
   T = result[-4:].reshape(2, 2)
@@ -173,6 +174,10 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
   except ImportError:
     raise ImportError("To stitch with cvxpy, you have to install cvxpy")
 
+  pscale = {_.pscale for _ in itertools.chain(overlaps, rectangles)}
+  if len(pscale) > 1: raise units.UnitsError("Inconsistent pscales")
+  pscale = pscale.pop()
+
   x = cp.Variable(shape=(len(rectangles), 2))
   T = cp.Variable(shape=(2, 2))
 
@@ -188,25 +193,25 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
     x1 = rectanglex[o.p1]
     x2 = rectanglex[o.p2]
     twonll += cp.quad_form(
-      x1 - x2 - unp.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec,
-      np.linalg.inv(o.result.covariance)
+      x1 - x2 + units.pixels(-units.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec, pscale=pscale, power=1),
+      units.pixels(units.linalg.inv(o.result.covariance), pscale=pscale, power=-2)
     )
 
   dxs, dys = zip(*(o.result.dxvec for o in overlaps))
 
   weightedvariancedx = np.average(
-    unp.nominal_values(dxs)**2,
-    weights=1/unp.std_devs(dxs)**2,
+    units.nominal_values(dxs)**2,
+    weights=1/units.std_devs(dxs)**2,
   )
   sigmax = np.sqrt(weightedvariancedx)
 
   weightedvariancedy = np.average(
-    unp.nominal_values(dys)**2,
-    weights=1/unp.std_devs(dys)**2,
+    units.nominal_values(dys)**2,
+    weights=1/units.std_devs(dys)**2,
   )
   sigmay = np.sqrt(weightedvariancedy)
 
-  sigma = np.array(sigmax, sigmay)
+  sigma = np.array([sigmax, sigmay])
 
   if fixpoint == "origin":
     x0vec = np.array([0, 0]) #fix the origin, linear scaling is with respect to that
@@ -216,18 +221,32 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
     x0vec = fixpoint
 
   for r in rectangles:
-    twonll += cp.norm(((rectanglex[r.n] - x0vec) - T @ (r.xvec - x0vec)) / sigma)
+    twonll += cp.norm(
+      (
+        (rectanglex[r.n] - units.pixels(x0vec, pscale=pscale, power=1))
+        - T @ units.pixels(
+          (r.xvec - x0vec),
+          pscale=pscale, power=1
+        )
+      ) / units.pixels(sigma, pscale=pscale, power=1)
+    )
 
   minimize = cp.Minimize(twonll)
   prob = cp.Problem(minimize)
   prob.solve()
 
-  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps)
+  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale)
 
 class StitchResultBase(OverlapCollection, RectangleCollection):
   def __init__(self, *, rectangles, overlaps):
     self.__rectangles = rectangles
     self.__overlaps = overlaps
+
+  @property
+  def pscale(self):
+    pscale = {_.pscale for _ in itertools.chain(self.rectangles, self.overlaps)}
+    if len(pscale) != 1: raise ValueError("?????? this should never happen")
+    return pscale.pop()
 
   @property
   def overlaps(self): return self.__overlaps
@@ -274,6 +293,7 @@ class StitchResultBase(OverlapCollection, RectangleCollection):
         stitchcoordinate(
           hpfid=rectangleid,
           position=self.x(rectangleid),
+          pscale=self.pscale,
         )
       )
     writetable(filename, rows, **kwargs)
@@ -289,14 +309,14 @@ class StitchResultBase(OverlapCollection, RectangleCollection):
       x2 = readback.x()
       T2 = readback.T
       logger.debug("comparing nominals")
-      np.testing.assert_allclose(unp.nominal_values(x1), unp.nominal_values(x2), atol=atol, rtol=rtol)
-      np.testing.assert_allclose(unp.nominal_values(T1), unp.nominal_values(T2), atol=atol, rtol=rtol)
+      units.testing.assert_allclose(units.nominal_values(x1), units.nominal_values(x2), atol=atol, rtol=rtol)
+      units.testing.assert_allclose(units.nominal_values(T1), units.nominal_values(T2), atol=atol, rtol=rtol)
       logger.debug("comparing individual errors")
-      np.testing.assert_allclose(unp.std_devs(x1), unp.std_devs(x2), atol=atol, rtol=rtol)
-      np.testing.assert_allclose(unp.std_devs(T1), unp.std_devs(T2), atol=atol, rtol=rtol)
+      units.testing.assert_allclose(units.std_devs(x1), units.std_devs(x2), atol=atol, rtol=rtol)
+      units.testing.assert_allclose(units.std_devs(T1), units.std_devs(T2), atol=atol, rtol=rtol)
       logger.debug("comparing overlap errors")
       for o in self.overlaps:
-        np.testing.assert_allclose(covariance_matrix(self.dx(o)), covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
+        units.testing.assert_allclose(units.covariance_matrix(self.dx(o)), units.covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
       logger.debug("done")
 
 class StitchResultFullCovariance(StitchResultBase):
@@ -321,7 +341,7 @@ class StitchResultFullCovariance(StitchResultBase):
     for thing, errorsq in zip(
       itertools.chain(np.ravel(self.x()), np.ravel(self.T)),
       np.diag(self.covariancematrix)
-    ): np.testing.assert_allclose(unc.std_dev(thing)**2, errorsq)
+    ): units.testing.assert_allclose(units.std_dev(thing)**2, errorsq)
 
   def x(self, rectangle_or_id=None):
     if rectangle_or_id is None: return self.__x
@@ -336,7 +356,7 @@ class StitchResultFullCovariance(StitchResultBase):
     overlapcovariances = []
     for o in self.overlaps:
       if o.p2 < o.p1: continue
-      covariance = np.array(covariance_matrix(np.concatenate([self.x(o.p1), self.x(o.p2)])))
+      covariance = np.array(units.covariance_matrix(np.concatenate([self.x(o.p1), self.x(o.p2)])))
       overlapcovariances.append(
         StitchOverlapCovariance(
           hpfid1=o.p1,
@@ -345,6 +365,7 @@ class StitchResultFullCovariance(StitchResultBase):
           cov_x1_y2=covariance[0,3],
           cov_y1_x2=covariance[1,2],
           cov_y1_y2=covariance[1,3],
+          pscale=self.pscale,
         )
       )
     return overlapcovariances
@@ -371,24 +392,24 @@ class StitchResultOverlapCovariances(StitchResultBase):
     x2 = self.x(overlap.p2)
     overlapcovariance = self.overlapcovariance(overlap)
 
-    nominals = np.concatenate([unp.nominal_values(x1), unp.nominal_values(x2)])
+    nominals = np.concatenate([units.nominal_values(x1), units.nominal_values(x2)])
 
-    covariance = np.ndarray((4, 4))
-    covariance[:2,:2] = unc.covariance_matrix(x1)
-    covariance[2:,2:] = unc.covariance_matrix(x2)
+    covariance = np.zeros((4, 4), dtype=units.unitdtype)
+    covariance[:2,:2] = units.covariance_matrix(x1)
+    covariance[2:,2:] = units.covariance_matrix(x2)
     covariance[0,2] = covariance[2,0] = overlapcovariance.cov_x1_x2
     covariance[0,3] = covariance[3,0] = overlapcovariance.cov_x1_y2
     covariance[1,2] = covariance[2,1] = overlapcovariance.cov_y1_x2
     covariance[1,3] = covariance[3,1] = overlapcovariance.cov_y1_y2
 
-    xx1, yy1, xx2, yy2 = unc.correlated_values(nominals, covariance)
+    xx1, yy1, xx2, yy2 = units.correlated_distances(distances=nominals, covariance=covariance)
     newx1 = np.array([xx1, yy1])
     newx2 = np.array([xx2, yy2])
 
-    np.testing.assert_allclose(unp.nominal_values(x1), unp.nominal_values(newx1))
-    np.testing.assert_allclose(unc.covariance_matrix(x1), unc.covariance_matrix(newx1))
-    np.testing.assert_allclose(unp.nominal_values(x2), unp.nominal_values(newx2))
-    np.testing.assert_allclose(unc.covariance_matrix(x2), unc.covariance_matrix(newx2))
+    units.testing.assert_allclose(units.nominal_values(x1), units.nominal_values(newx1))
+    units.testing.assert_allclose(units.covariance_matrix(x1), units.covariance_matrix(newx1))
+    units.testing.assert_allclose(units.nominal_values(x2), units.nominal_values(newx2))
+    units.testing.assert_allclose(unc.covariance_matrix(x2), units.covariance_matrix(newx2))
 
     return newx1 - newx2 - (overlap.x1vec - overlap.x2vec)
 
@@ -401,9 +422,9 @@ class StitchResultOverlapCovariances(StitchResultBase):
   def readtable(self, *filenames, adjustoverlaps=True):
     filename, affinefilename, overlapcovariancefilename = filenames
 
-    coordinates = readtable(filename, StitchCoordinate)
+    coordinates = readtable(filename, StitchCoordinate, extrakwargs={"pscale": self.pscale})
     affines = readtable(affinefilename, AffineEntry)
-    overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance)
+    overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance, extrakwargs={"pscale": self.pscale})
 
     self.__x = np.array([coordinate.xvec for coordinate in coordinates])
     self.__overlapcovariances = overlapcovariances
@@ -454,9 +475,9 @@ class StitchResult(CalculatedStitchResult):
     self.c = c
 
 class StitchResultCvxpy(CalculatedStitchResult):
-  def __init__(self, *, x, T, problem, **kwargs):
+  def __init__(self, *, x, T, problem, pscale, **kwargs):
     super().__init__(
-      x=x.value,
+      x=units.distances(pixels=x.value, pscale=pscale),
       T=T.value,
       covariancematrix=np.zeros(x.size+T.size, x.size+T.size),
       **kwargs
@@ -466,31 +487,37 @@ class StitchResultCvxpy(CalculatedStitchResult):
     self.Tvar = T
 
 @dataclasses.dataclass
-class StitchCoordinate:
-  hpfid: int
-  x: float
-  y: float
-  cov_x_x: float
-  cov_x_y: float
-  cov_y_y: float
+class StitchCoordinate(DataClassWithDistances):
+  pixelsormicrons = "pixels"
 
-  def __post_init__(self):
+  hpfid: int
+  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  cov_x_x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_x_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_y_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[float] = False
+
+  def __post_init__(self, pscale, readingfromfile=False):
+    super().__post_init__(pscale=pscale, readingfromfile=readingfromfile)
+
     nominal = [self.x, self.y]
     covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
-    self.xvec = unc.correlated_values(nominal, covariance)
+    self.xvec = units.correlated_distances(distances=nominal, covariance=covariance)
 
 def stitchcoordinate(*, position=None, **kwargs):
   kw2 = {}
   if position is not None:
-    kw2["x"], kw2["y"] = unp.nominal_values(position)
-    (kw2["cov_x_x"], kw2["cov_x_y"]), (kw2["cov_x_y"], kw2["cov_y_y"]) = covariance_matrix(position)
+    kw2["x"], kw2["y"] = units.nominal_values(position)
+    (kw2["cov_x_x"], kw2["cov_x_y"]), (kw2["cov_x_y"], kw2["cov_y_y"]) = units.covariance_matrix(position)
 
   return StitchCoordinate(**kwargs, **kw2)
 
 @dataclasses.dataclass
 class AffineEntry:
   n: int
-  value: float
+  value: float = dataclasses.field(metadata={"writefunction": float})
   description: str
 
 class AffineNominalEntry(AffineEntry):
@@ -507,16 +534,20 @@ class AffineCovarianceEntry(AffineEntry):
     if entry1 is entry2:
       value = entry1.matrixentry.s**2
     else:
-      value = covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0][1]
+      value = unc.covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0][1]
     super().__init__(n=n, value=value, description = "cov_"+entry1.description+"_"+entry2.description)
 
   def __post_init__(self): pass
 
 @dataclasses.dataclass
-class StitchOverlapCovariance:
+class StitchOverlapCovariance(DataClassWithDistances):
+  pixelsormicrons = "pixels"
+
   hpfid1: int
   hpfid2: int
-  cov_x1_x2: float
-  cov_x1_y2: float
-  cov_y1_x2: float
-  cov_y1_y2: float
+  cov_x1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_x1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_y1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_y1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[float] = False
