@@ -147,7 +147,13 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   f = units.fft.fft(biggestchunkys)
 
   def cosfunction(xx, amplitude, kk, phase, mean):
-    return amplitude * unp.cos(units.asdimensionless(kk*(xx - biggestchunkxs[0]) + phase)) + mean
+    @np.vectorize
+    def cos(thing):
+      try:
+        return np.cos(thing)
+      except TypeError:
+        return unp.cos(thing)
+    return amplitude * cos(units.asdimensionless(kk*(xx - biggestchunkxs[0]) + phase)) + mean
 
   bestk, bestf = max(zip(k[1:], f[1:]), key=lambda kf: abs(kf[1]))  #[1:]: exclude k=0 term
   initialguess = (

@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 
 import argparse, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
-from ...alignment.plots import closedlooppulls, plotpairwisealignments
+from ...alignment.plots import alignmentshiftprofile, closedlooppulls, plotpairwisealignments
 from ...alignment.alignmentset import AlignmentSet
+from ...utilities import units
 
 here = os.path.dirname(__file__)
 data = os.path.join(here, "..", "..", "test", "data")
 
 rc = {
   "text.usetex": True,
-  "text.latex.preamble": [r"\usepackage{amsmath}"],
+  "text.latex.preamble": [r"\usepackage{amsmath}\usepackage{siunitx}"],
   "font.size": 20,
   "figure.subplot.bottom": 0.12,
 }
@@ -236,11 +237,29 @@ def stitchpulls(*, bki):
         for tag in 1, 2, 3, 4:
           plotpairwisealignments(A, tags=[tag], figurekwargs={"figsize": (6, 6)}, stitched=True, pull=True, plotstyling=plotstyling, saveas=os.path.join(here, f"stitch-pull-{tag}-{samp[1]}.pdf"))
 
+def sinewaves(*, bki):
+  if bki:
+    with plt.rc_context(rc=rc):
+      def plotstyling(*, fig, ax, deltaxory, vsxory):
+        plt.xlabel(rf"${vsxory}$ (pixels)", labelpad=10)
+        plt.ylabel(rf"$\delta {deltaxory}$ (pixels)", labelpad=-5)
+        plt.subplots_adjust(bottom=0.15, left=0.18)
+
+      for samp in "M1_1", "M2_3":
+        A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
+        kwargs = {}
+        for kwargs["deltaxory"] in "xy":
+          for kwargs["vsxory"] in "xy":
+            for tag in 2, 4:
+              plotsine = kwargs["vsxory"] == {2: "y", 4: "x"}[tag]
+              alignmentshiftprofile(A, tag=tag, plotsine=plotsine, sinetext=True, figurekwargs={"figsize": (6, 6)}, plotstyling=functools.partial(plotstyling, **kwargs), saveas=os.path.join(here, f"sine-wave-{tag}-{kwargs['deltaxory']}{kwargs['vsxory']}-{samp[1]}.pdf"), **kwargs)
+
 if __name__ == "__main__":
   class EqualsEverything:
     def __eq__(self, other): return True
   p = argparse.ArgumentParser()
   p.add_argument("--bki", action="store_true")
+  p.add_argument("--units", choices=("fast", "safe"), default="safe")
   g = p.add_mutually_exclusive_group()
   g.add_argument("--all", action="store_const", dest="which", const=EqualsEverything(), default=EqualsEverything())
   g.add_argument("--maximize", action="store_const", dest="which", const="maximize")
@@ -251,7 +270,10 @@ if __name__ == "__main__":
   g.add_argument("--scanning", action="store_const", dest="which", const="scanning")
   g.add_argument("--squarepulls", action="store_const", dest="which", const="squarepulls")
   g.add_argument("--stitchpulls", action="store_const", dest="which", const="stitchpulls")
+  g.add_argument("--sinewaves", action="store_const", dest="which", const="sinewaves")
   args = p.parse_args()
+
+  units.setup(args.units)
 
   if args.which == "maximize":
     maximize1D()
@@ -269,3 +291,5 @@ if __name__ == "__main__":
     squarepulls(bki=args.bki)
   if args.which == "stitchpulls":
     stitchpulls(bki=args.bki)
+  if args.which == "sinewaves":
+    sinewaves(bki=args.bki)

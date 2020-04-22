@@ -154,12 +154,14 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
   def readalignments(self, *, filename=None):
     if filename is None: filename = self.aligncsv
+    logger.info("reading alignments for "+self.samp+" from "+filename)
     alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult, extrakwargs={"pscale": self.pscale})}
     for o in self.overlaps:
       try:
         o.result = alignmentresults[o.n]
       except KeyError:
         pass
+    logger.info("done reading alignments for "+self.samp)
 
   def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, writeimstat=True, mean_image=None):
     logger.info(self.samp)
@@ -329,6 +331,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     )
 
   def readstitchresult(self, *, filenames=None, saveresult=True):
+    logger.info("reading stitch results for "+self.samp)
     if filenames is None: filenames = self.stitchfilenames
     result = ReadStitchResult(
       *filenames,
@@ -338,6 +341,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     if saveresult:
       result.applytooverlaps()
       self.__T = result.T
+    logger.info("done reading stitch results for "+self.samp)
     return result
 
   def subset(self, *, selectrectangles=None, selectoverlaps=None):
