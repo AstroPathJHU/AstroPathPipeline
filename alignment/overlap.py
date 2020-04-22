@@ -71,20 +71,22 @@ class Overlap:
         raise RuntimeError(f"Overlap {self.n} is already aligned.  To keep the previous result, call align(alreadyalignedstrategy='skip').  To align again and overwrite the previous result, call align(alreadyalignedstrategy='overwrite').")
       elif alreadyalignedstrategy == "skip":
         return self.result
-      elif alreadyalignedstrategy == "overwrite":
+      elif alreadyalignedstrategy == "overwrite" or "shift_only" :
         pass
       else:
         raise ValueError(f"Unknown value alreadyalignedstrategy={alreadyalignedstrategy!r}")
-    self.result = AlignmentResult(
-      n=self.n,
-      p1=self.p1,
-      p2=self.p2,
-      code=self.tag,
-      layer=self.layer,
-      exit=-1,
-    )
+    if alreadyalignedstrategy!="shift_only" :
+      self.result = AlignmentResult(
+        n=self.n,
+        p1=self.p1,
+        p2=self.p2,
+        code=self.tag,
+        layer=self.layer,
+        exit=-1,
+      )
     try:
-      self.__computeshift(**computeshiftkwargs)
+      if alreadyalignedstrategy!="shift_only" :
+        self.__computeshift(**computeshiftkwargs)
       self.__shiftclip()
     except Exception as e:
       self.result.exit = 3

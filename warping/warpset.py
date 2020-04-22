@@ -2,7 +2,7 @@
 from .warp import CameraWarp, WarpingError
 from ..utilities.misc import cd
 import numpy as np
-import cv2
+import cv2, skimage.filters, skimage.util
 import contextlib, dataclasses, os, copy, logging
 
 class WarpSet :
@@ -29,12 +29,14 @@ class WarpSet :
 
     #################### COMMON FUNCTIONS ####################
 
-    def loadRawImageSet(self,rawfiles=None,overlaps=None,rectangles=None) :
+    def loadRawImageSet(self,rawfiles=None,overlaps=None,rectangles=None,smoothsigma=0.75,smoothtruncate=3.3) :
         """
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
-        rawfiles   = list of raw, unwarped image filenames (optional, will use value from init if None)
-        overlaps   = list of overlaps for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
-        rectangles = list of rectangles for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
+        rawfiles               = list of raw, unwarped image filenames (optional, will use value from init if None)
+        overlaps               = list of overlaps for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
+        rectangles             = list of rectangles for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
+        smooth[sigma/truncate] = sigma/n sigma truncation for Gaussian smoothing filter applied to raw images on load (defaults give an ~4.95 pixel kernel)
+                                 set either parameter to None to skip smoothing entirely and just load the raw images
         """
         logger = logging.getLogger("warpfitter")
         if rawfiles is not None :
@@ -57,6 +59,8 @@ class WarpSet :
                         is_corner_only=False
                         break
             new_raw_img=copy.copy(rawimage[:,:,self.layer])
+            if smoothsigma is not None and smoothtruncate is not None :
+                new_raw_img=skimage.util.img_as_uint(skimage.filters.gaussian(new_raw_img,sigma=smoothsigma,truncate=smoothtruncate,mode='reflect'))
             self.images.append(WarpImage(rfkey,cv2.UMat(new_raw_img),cv2.UMat(np.zeros_like(new_raw_img)),is_corner_only))
         logger.info("Done.")
 
@@ -97,7 +101,7 @@ class WarpSet :
         """
         if not isinstance(self.warp,CameraWarp) :
             raise WarpingError("ERROR: only call getListOfWarpParameters if the warpset is using a CameraWarp!")
-        return [self.warp.cx,self.warp.cy,self.warp.fx,self.warp.fy,self.warp.k1,self.warp.k2,self.warp.p1,self.warp.p2]
+        return [self.warp.cx,self.warp.cy,self.warp.fx,self.warp.fy,self.warp.k1,self.warp.k2,self.warp.p1,self.warp.p2,self.warp.k3]
 
 #helper class to hold a rectangle's rawfile key, raw image, warped image, and tag for whether it's only relevant for overlaps that are corners
 @dataclasses.dataclass(eq=False, repr=False)
