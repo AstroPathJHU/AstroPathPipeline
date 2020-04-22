@@ -197,7 +197,7 @@ class WarpFitter :
         if self.minfunc_calls%self.print_every==0 :
             warp_logger.info(self.warpset.warp.paramString())
             msg = f'  Call {self.minfunc_calls} cost={cost:.04f}' 
-            if lasso_param_indices is not None : msg+='(={aligncost:.04f}+{lasso_cost:.04f})'
+            if lasso_param_indices is not None : msg+=f'(={aligncost:.04f}+{lasso_cost:.04f})'
             msg+=f' (radial warp={self.max_radial_warps[-1]:.02f}, tangential warp={self.max_tangential_warps[-1]:.02f})'
             warp_logger.info(msg)
         #return the cost from the alignment
