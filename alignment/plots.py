@@ -112,7 +112,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     fmt='o',
     color='b',
   )
-  if xnoerror:
+  if xnoerror.size:
     plt.scatter(
       x=units.pixels(xnoerror),
       y=units.pixels(ynoerror),
