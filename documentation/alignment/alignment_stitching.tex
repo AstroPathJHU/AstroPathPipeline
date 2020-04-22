@@ -277,7 +277,7 @@ with a covariance matrix
 
 \section{Vectra 3.0 results}
 
-In this section, we show plots that illustrate the results of the alignment procedure for the Vectra 3.0 microscope.
+In this section, we show plots that illustrate the results of the alignment procedure for a Vectra 3.0 microscope maintained at Johns Hopkins Hospital, codenamed \texttt{JHUVectra3\_1}.
 
 \subsection{Alignment movements}
 
@@ -331,7 +331,7 @@ For an alignment with $N$ fields, we have $2N$ coordinates to set.  Except for t
 
 \Cref{fig:alignmentresult1,fig:alignmentresult2,fig:alignmentresult3,fig:alignmentresult4} show the distribution of $\delta\vec{r}$ for the overlaps, before any stitching has been done.  \Cref{fig:stitchresult1,fig:stitchresult2,fig:stitchresult3,fig:stitchresult4} show the same distributions after the fields have been moved to their stitched positions, and show significant improvement over the top row.
 
-Another interesting feature of the plots is the comparison between \cref{fig:alignmentresult2,fig:alignmentresult4}.  Fields that are only separated in the $x$ direction are only misaligned in the $x$ direction, while fields separated in $y$ are only misaligned in $y$.  As illustrated in \cref{fig:scanning}, the microscope scans along a row in the $x$ direction first, then moves down in the $y$ direction and goes back to the beginning in $x$.  This explains \cref{fig:alignmentresult4}: as the microscope moves in the $x$ direction, the error introduced by slight movements in the $y$ direction is small.  \Cref{fig:alignmentresult2} is more surprising, because it indicates that the errors introduced as the microscope moves to the right are almost exactly reversed when it moves back to the left.  Whatever the source of this error is, our alignment procedure is able to correct for it as well as for the smaller, apparently random error associated with each individual movement.
+Another interesting feature of the plots is the comparison between \cref{fig:alignmentresult2,fig:alignmentresult4}.  Fields that are only separated in the $x$ direction are only misaligned in the $x$ direction, while fields separated in $y$ are only misaligned in $y$.  As illustrated in \cref{fig:scanning}, the microscope scans along a row in the $x$ direction first, then moves down in the $y$ direction and goes back to the beginning in $x$.  This explains \cref{fig:alignmentresult4}: as the microscope moves in the $x$ direction, the error introduced by slight movements in the $y$ direction is small.  \Cref{fig:alignmentresult2} is more surprising, because it indicates that the errors introduced as the microscope moves to the right are almost exactly reversed when it moves back to the left.  This indicates that the errors are introduced by some kind of systematic effect, which we will examine in \cref{sec:vectraperiodic}.  Whatever the source of this error is, our alignment procedure is able to correct for it as well as for the smaller, apparently random error associated with each individual movement.
 
 \begin{figure}[ht]
 	\centering
@@ -464,10 +464,103 @@ For the \M11 dataset, we find
 The Vectra 3.0 scans fields of size $1344\times1004$ $\text{pixels}^2$.  The entries of $\matrixbold{A}$ tell us that on average, when moving one field to the right, the microscope ends up $1$ pixel to the left of where it should, and when moving down, it ends up $1$ pixel above where it should.  Although the top row of \cref{fig:alignmentresults} shows that the random scatter is a larger effect, the average shift is noticeable.
 
 \subsection{Periodic dependence}
+\label{sec:vectraperiodic}
 
-\section{Vectra Polaris results}
+To take the analysis a step further, we can look for other systematic effects in the shifts detected by the alignment.  For the purpose of the data analysis, it does not really matter whether the shifts are systematic or random, because we correct for them anyway.  However, if we can measure systematic effects that can be interpreted as mechanical miscalibrations, this can form valuable input to the microscope manufacturers, and if the effects get larger over time, this change may indicate that pieces of the microscope are starting to fail.
 
-This section shows results for the Vectra Polaris microscope at BMS.
+In \cref{fig:sinewaves} we plot the average movement for each row and column of overlaps.  \Cref{fig:sinewave2xx1,fig:sinewave2yx1} show that, as we might expect, the alignment shifts for overlaps between fields separated in $y$ do not depend on the $x$ position of those fields.  Similarly, from \cref{fig:sinewave4yy1,fig:sinewave4xy1} we see that overlaps between fields separated in the $x$ direction do not depend on $y$.
+
+The remaining plots are more interesting and show a clear sinusoidal pattern, though some of them are noisier than others.  The amplitudes and wavelengths are all consistent between the plots in the top two rows, which come from the \M11 dataset, and the plots in the bottom two rows, which come from \M23, indicating that the effect is a property of the microscope.  The sine waves in \cref{fig:sinewave2yy1,fig:sinewave4xx1} may be explained if the cam wheels controlling the microscope movement have a slight eccentricity instead of being circular.  \Cref{fig:sinewave2xy1,fig:sinewave4yx1} may indicate that the wheel wobbles slightly as it moves, though the fact that \cref{fig:sinewave4xx1,fig:sinewave4yx1} have different wavelengths implies that those two effects come from different parts of the microscope structure.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xx-1.pdf}
+		\caption{}
+		\label{fig:sinewave2xx1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xy-1.pdf}
+		\caption{}
+		\label{fig:sinewave2xy1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yx-1.pdf}
+		\caption{}
+		\label{fig:sinewave2yx1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yy-1.pdf}
+		\caption{}
+		\label{fig:sinewave2yy1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xx-1.pdf}
+		\caption{}
+		\label{fig:sinewave4xx1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xy-1.pdf}
+		\caption{}
+		\label{fig:sinewave4xy1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yx-1.pdf}
+		\caption{}
+		\label{fig:sinewave4yx1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yy-1.pdf}
+		\caption{}
+		\label{fig:sinewave4yy1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xx-2.pdf}
+		\caption{}
+		\label{fig:sinewave2xx2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xy-2.pdf}
+		\caption{}
+		\label{fig:sinewave2xy2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yx-2.pdf}
+		\caption{}
+		\label{fig:sinewave2yx2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yy-2.pdf}
+		\caption{}
+		\label{fig:sinewave2yy2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xx-2.pdf}
+		\caption{}
+		\label{fig:sinewave4xx2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xy-2.pdf}
+		\caption{}
+		\label{fig:sinewave4xy2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yx-2.pdf}
+		\caption{}
+		\label{fig:sinewave4yx2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yy-2.pdf}
+		\caption{}
+		\label{fig:sinewave4yy2}
+	\end{subfigure}
+	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \M11 dataset.  The third and fourth rows show the same for the \M23 dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
+	\label{fig:sinewaves}
+\end{figure}
+
+\section{Akoya Vectra Polaris results}
+
+This section shows results for a dataset collected by Bristol-Meyers Squibb and stained and scanned by Akoya Biosciences.  The microscoped is maintained at the Akoya facilities and is codenamed \texttt{AKYPolaris\_1}.
 
 \subsection{Linear Transformation matrix}
 
