@@ -57,7 +57,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
 
   return vectors
 
-def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False):
+def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False, sinetext=False):
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -198,8 +198,18 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     if plotsine:
       #plt.plot(xplot, cosfunction(xplot, *initialguess), color='g')
       plt.plot(units.pixels(xplot), units.pixels(cosfunction(xplot, *units.nominal_values(p))), color='b')
+      if sinetext:
+        xcenter = np.average(ax.get_xlim())
+        bottom, top = ax.get_ylim()
+        top += (top-bottom) * .2
+        ax.set_ylim(bottom, top)
+        amplitudetext = units.drawing.siunitxformat(amplitude, power=1)
+        wavelengthtext = units.drawing.siunitxformat(wavelength, power=1)
+        plt.text(xcenter, top, f"amplitude: {amplitudetext}", horizontalalignment="center", verticalalignment="top")
+        plt.text(xcenter, 0.92*top+0.08*bottom, f"wavelength: {wavelengthtext}", horizontalalignment="center", verticalalignment="top")
 
   plotstyling(fig=fig, ax=ax)
+
   if saveas is None:
     plt.show()
   else:

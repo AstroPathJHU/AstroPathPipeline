@@ -1,5 +1,5 @@
 import contextlib
-from . import dataclasses, fft, linalg, optimize, testing
+from . import dataclasses, drawing, fft, linalg, optimize, testing
 from .core import UnitsError
 
 def setup(mode):
