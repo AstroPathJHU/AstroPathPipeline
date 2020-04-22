@@ -15,10 +15,13 @@ layer = 1
 fix_cxcy   = False
 fix_fxfy   = True
 fix_k1k2k3 = False
-fix_p1p2   = False
-max_radial_warp = 10.
-max_tangential_warp = 10.
-print_every = 10
+fix_p1p2_in_global_fit = True
+fix_p1p2_in_polish_fit = False
+
+max_radial_warp = 8.
+max_tangential_warp = 4.
+p1p2_polish_lasso_lambda = 0.001
+print_every = 1
 max_iter = 1
 
 #make the WarpFitter Objects
@@ -29,9 +32,10 @@ print('Loading raw files')
 fitter.loadRawFiles()
 #fit the model to the data
 print('Running doFit')
-result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,fix_p1p2=fix_p1p2,
+result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,
+					  fix_p1p2_in_global_fit=fix_p1p2_in_global_fit,fix_p1p2_in_polish_fit=fix_p1p2_in_polish_fit,
                       max_radial_warp=max_radial_warp,max_tangential_warp=max_tangential_warp,
-                      polish=False,print_every=print_every,maxiter=max_iter)
+                      polish=True,print_every=print_every,maxiter=max_iter)
 print(f'result:\n{result}')
 with open(os.path.join(working_dir,"warping_parameters.txt")) as f:
   print(f.read())
