@@ -1,8 +1,8 @@
-import csv, dataclasses, logging
+import contextlib, csv, dataclasses, logging
 
 logger = logging.getLogger("align")
 
-def readtable(filename, rownameorclass, *, extrakwargs={}, filter=lambda row: True, **columntypes):
+def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, **columntypes):
   """
   Read a csv table into a list of named tuples
 
@@ -34,7 +34,7 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, filter=lambda row: Tr
   """
 
   result = []
-  with open(filename) as f:
+  with field_size_limit_context(fieldsizelimit), open(filename) as f:
     reader = csv.DictReader(f)
     if isinstance(rownameorclass, str):
       Row = dataclasses.make_dataclass(
@@ -143,3 +143,13 @@ def asrow(obj, *, dict_factory=dict):
     result.append((f.name, value))
 
   return dict_factory(result)
+
+@contextlib.contextmanager
+def field_size_limit_context(limit):
+  if limit is None: yield; return
+  oldlimit = csv.field_size_limit()
+  try:
+    csv.field_size_limit(limit)
+    yield
+  finally:
+    csv.field_size_limit(oldlimit)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, logging, methodtools, numpy as np, os
+import cv2, logging, methodtools, numpy as np, os, sys
 
 from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap, OverlapCollection
@@ -80,7 +80,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     self.scan  = f"Scan{self.batch[0].Scan:d}"
 
     self.annotations = readtable(os.path.join(self.dbload, self.samp+"_annotations.csv"), "Annotation", sampleid=int, layer=int, visible=int)
-    self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int)
+    #self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int, fieldsizelimit=10000000)
     self.vertices    = readtable(os.path.join(self.dbload, self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
     self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
     self.__image     = None
