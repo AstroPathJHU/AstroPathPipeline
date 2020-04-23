@@ -1,4 +1,5 @@
 #imports
+from ..utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
 import numpy as np
 import os, math, cv2
 import matplotlib.pyplot as plt, seaborn as sns
@@ -27,42 +28,21 @@ class Warp :
 
     def getHWLFromRaw(self,fname,nlayers=35) :
         """
-        Function to read a '.raw' binary file into an array of dimensions (height,width,nlayers) or (m,n,nlayers)
+        Function to return a '.raw' binary file as an array of dimensions (height,width,nlayers) or (m,n,nlayers)
         """
-        #get the .raw file as a vector of uint16s
-        img = im3readraw(fname)
-        #reshape it to match the warping field
-        try :
-            img_a = np.reshape(img,(nlayers,self.n,self.m),order="F")
-        except ValueError :
-            msg = f"ERROR: Raw image file shape ({nlayers} layers, {len(img)} total bytes) is mismatched to"
-            msg+= f" dimensions (layers, width={self.n}, height={self.m})!"
-            raise WarpingError(msg)
-        #flip x and y dimensions to display image correctly, move layers to z-axis
-        img_to_warp = np.transpose(img_a,(2,1,0))
-        return img_to_warp
+        return getRawAsHWL(fname,self.m,self.n,nlayers)
 
     def getSingleLayerImage(self,fname) :
         """
         Function to read a file that contains one layer of an image into an array with the Warp's dimensions 
         """
-        #get the file as a vector of uint16s
-        img = im3readraw(fname)
-        #reshape it to match the warping field
-        try :
-            img_a = np.reshape(img,(self.m,self.n),order="F")
-        except ValueError :
-            msg = f"ERROR: single layer image file ({len(img)} total bytes) shape is mismatched to"
-            msg+= f" dimensions (width={self.n}, height={self.m})!"
-            raise WarpingError(msg)
-        return img_a
+        return getRawAsHW(fname,self.m,self.n)
 
     def writeSingleLayerImage(self,im,outfname) :
         """
         Function to write out an image as a properly transformed and flattened vector of uints 
         """
-        #write out image flattened in fortran order
-        im3writeraw(outfname,im.flatten(order="F").astype(np.uint16))
+        writeImageToFile(im,outfname)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -607,20 +587,3 @@ class CameraWarp(Warp) :
             return self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.p1, self.p2, self.k3
         else :
             return (*pars, )
-
-
-
-
-
-#################### FILE-SCOPE HELPER FUNCTIONS ####################
-
-#helper function to read the binary dump of a raw im3 file 
-def im3readraw(f) :
-    with open(f,mode='rb') as fp : #read as binary
-        content = np.fromfile(fp,dtype=np.uint16)
-    return content
-
-#helper function to write an array of uint16s as an im3 file
-def im3writeraw(outname,a) :
-    with open(outname,mode='wb') as fp : #write as binary
-        a.tofile(fp)
