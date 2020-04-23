@@ -196,6 +196,8 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
         return misalignment - mean
 
     remaining = np.array([subtractsystematic(overlap.dx, *overlap.abspositions) for overlap in overlaps])
+    noiseaverage = weightedaverage(remaining)
+    noiseRMS = weightedstd(remaining, subtractaverage=False)
     print(f"Remaining noise:")
     print(f"  average = {weightedaverage(remaining)}")
     print(f"  RMS     = {weightedstd(remaining, subtractaverage=False)}")
@@ -207,12 +209,14 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
       if sinetext:
         xcenter = np.average(ax.get_xlim())
         bottom, top = ax.get_ylim()
-        top += (top-bottom) * .2
+        top += (top-bottom) * .3
         ax.set_ylim(bottom, top)
         amplitudetext = units.drawing.siunitxformat(amplitude, power=1)
         wavelengthtext = units.drawing.siunitxformat(wavelength, power=1)
+        noiseRMStext = units.drawing.siunitxformat(noiseRMS, power=1, fmt=".2f")
         plt.text(xcenter, top, f"amplitude: {amplitudetext}", horizontalalignment="center", verticalalignment="top")
         plt.text(xcenter, 0.92*top+0.08*bottom, f"wavelength: {wavelengthtext}", horizontalalignment="center", verticalalignment="top")
+        plt.text(xcenter, 0.84*top+0.16*bottom, f"RMS of noise: {noiseRMStext}", horizontalalignment="center", verticalalignment="top")
 
   plotstyling(fig=fig, ax=ax)
 
