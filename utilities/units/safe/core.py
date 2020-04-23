@@ -5,7 +5,7 @@ import collections, itertools, numbers, numpy as np, uncertainties as unc
 class Distance:
   def __new__(cls, *args, pixels=None, microns=None, defaulttozero=False, **kwargs):
     if defaulttozero and (pixels == 0 and microns is None or microns == 0 and pixels is None):
-      return 0
+      return 0.
     return super().__new__(cls)
 
   def __init__(self, *, pscale, pixels=None, microns=None, power=1, defaulttozero=False):
@@ -178,7 +178,7 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
 
 @np.vectorize
 def pixels(distance, *, pscale=None, power=1):
-  if not distance: return 0
+  if not distance: return 0.
   if None is not pscale != _pscale(distance) is not None:
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
   if None is not power != _power(distance) is not None:
@@ -190,7 +190,7 @@ __pixels = pixels #for use in functions with a pixels kwarg
 
 @np.vectorize
 def microns(distance, *, pscale=None, power=1):
-  if not distance: return 0
+  if not distance: return 0.
   if None is not pscale != _pscale(distance) is not None:
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
   if None is not power != _power(distance) is not None:
@@ -205,7 +205,7 @@ def asdimensionless(distance):
 
 @np.vectorize
 def _power(distance):
-  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)) or not distance: return 0
+  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)) or not distance: return 0.
   return distance._power
 @np.vectorize
 def _pscale(distance):
@@ -217,7 +217,7 @@ def nominal_value(distance):
   return distance.nominal_value
 nominal_values = np.vectorize(nominal_value)
 def std_dev(distance):
-  if isinstance(distance, numbers.Number): return 0
+  if isinstance(distance, numbers.Number): return 0.
   return distance.std_dev
 std_devs = np.vectorize(std_dev)
 
