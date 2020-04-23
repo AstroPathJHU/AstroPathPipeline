@@ -242,8 +242,8 @@ def sinewaves(*, bki):
     with plt.rc_context(rc=rc):
       def plotstyling(*, fig, ax, deltaxory, vsxory):
         plt.xlabel(rf"${vsxory}$ (pixels)", labelpad=10)
-        plt.ylabel(rf"$\delta {deltaxory}$ (pixels)", labelpad=-5)
-        plt.subplots_adjust(bottom=0.15, left=0.18)
+        plt.ylabel(rf"$\delta {deltaxory}$ (pixels)", labelpad=0)
+        plt.subplots_adjust(bottom=0.15, left=0.21)
 
       Sample = collections.namedtuple("Sample", "samp root1 root2 name plotsine sinetext")
       samples = [
