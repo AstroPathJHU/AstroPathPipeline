@@ -57,7 +57,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
 
   return vectors
 
-def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False, sinetext=False):
+def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False, sinetext=False, drawfourier=False):
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -105,20 +105,21 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   xnoerror = x[errorzero]
   ynoerror = y[errorzero]
 
-  plt.errorbar(
-    x=units.pixels(xwitherror),
-    y=units.pixels(ywitherror),
-    yerr=units.pixels(yerrwitherror),
-    fmt='o',
-    color='b',
-  )
-  if xnoerror.size:
-    plt.scatter(
-      x=units.pixels(xnoerror),
-      y=units.pixels(ynoerror),
-      facecolors='none',
-      edgecolors='b',
+  if not drawfourier:
+    plt.errorbar(
+      x=units.pixels(xwitherror),
+      y=units.pixels(ywitherror),
+      yerr=units.pixels(yerrwitherror),
+      fmt='o',
+      color='b',
     )
+    if xnoerror.size:
+      plt.scatter(
+        x=units.pixels(xnoerror),
+        y=units.pixels(ynoerror),
+        facecolors='none',
+        edgecolors='b',
+      )
 
   #fit to sine wave
   #for the initial parameter estimation, do an fft
@@ -145,6 +146,18 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
 
   k = np.fft.fftfreq(len(biggestchunkys), deltax)
   f = units.fft.fft(biggestchunkys)
+
+  if drawfourier:
+    plt.scatter(units.pixels(k, power=-1), units.pixels(abs(f), power=1))
+    plotstyling(fig=fig, ax=ax)
+
+    if saveas is None:
+      plt.show()
+    else:
+      plt.savefig(saveas)
+      plt.close()
+
+    return k, f
 
   def cosfunction(xx, amplitude, kk, phase, mean):
     @np.vectorize
