@@ -31,6 +31,8 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   \end{pmatrix}
   \end{equation}
   """
+  logger.debug("starting to stitch")
+
   #nll = x^T A x + bx + c
 
   size = 2*len(rectangles) + 4 #2* because each rectangle has an x and a y, + 4 for the components of T
@@ -128,16 +130,22 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     c += x0**2 / sigmax**2
     c += y0**2 / sigmay**2
 
+  logger.debug("assembled A, b, c")
+
   result = units.linalg.solve(2*A, -b)
+
+  logger.debug("solved quadratic equation")
 
   delta2nllfor1sigma = 1
 
   covariancematrix = units.linalg.inv(A) * delta2nllfor1sigma
+  logger.debug("got covariance matrix")
   result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
   x = result[:-4].reshape(len(rectangles), 2) * scaleby
   T = result[-4:].reshape(2, 2)
 
+  logger.debug("done")
   return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix)
 
 def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
