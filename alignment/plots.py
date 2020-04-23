@@ -199,8 +199,8 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     noiseaverage = weightedaverage(remaining)
     noiseRMS = weightedstd(remaining, subtractaverage=False)
     print(f"Remaining noise:")
-    print(f"  average = {weightedaverage(remaining)}")
-    print(f"  RMS     = {weightedstd(remaining, subtractaverage=False)}")
+    print(f"  average = {noiseaverage}")
+    print(f"  RMS     = {noiseRMS}")
 
     xplot = units.linspace(min(x), max(x), 1000)
     if plotsine:
