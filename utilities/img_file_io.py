@@ -32,7 +32,7 @@ def getRawAsHW(fname,height,width) :
   img = im3readraw(fname)
   #reshape it
   try :
-    img_a = np.reshape(img,(self.m,self.n),order="F")
+    img_a = np.reshape(img,(height,width),order="F")
   except ValueError :
     msg = f"ERROR: single layer image file ({len(img)} total bytes) shape is mismatched to"
     msg+= f" dimensions (width={width}, height={height})!"
