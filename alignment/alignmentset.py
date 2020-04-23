@@ -69,7 +69,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
     self.fwidth    = self.constantsdict["fwidth"]
     self.fheight   = self.constantsdict["fheight"]
-    self.pscale    = self.constantsdict["pscale"]
+    self.pscale    = float(self.constantsdict["pscale"])
     self.qpscale   = self.constantsdict["qpscale"]
     self.xposition = self.constantsdict["xposition"]
     self.yposition = self.constantsdict["yposition"]
