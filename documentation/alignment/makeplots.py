@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
+import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
 from ...alignment.plots import alignmentshiftprofile, closedlooppulls, plotpairwisealignments
 from ...alignment.alignmentset import AlignmentSet
 from ...utilities import units
@@ -245,14 +245,20 @@ def sinewaves(*, bki):
         plt.ylabel(rf"$\delta {deltaxory}$ (pixels)", labelpad=-5)
         plt.subplots_adjust(bottom=0.15, left=0.18)
 
-      for samp in "M1_1", "M2_3":
-        A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
+      Sample = collections.namedtuple("Sample", "samp root1 root2 name plotsine")
+      samples = [
+        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M1_1", name="1", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag]),
+        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M2_3", name="2", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag]),
+        Sample(root1=r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", root2=r"\\Bki02\g\flatw", samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda tag, **kwargs: tag==4 and kwargs["deltaxory"] == kwargs["vsxory"] == "x"),
+      ]
+
+      for samp, root1, root2, name, plotsine in samples:
+        A = alignmentset(root1=root1, root2=root2, samp=samp)
         kwargs = {}
         for kwargs["deltaxory"] in "xy":
           for kwargs["vsxory"] in "xy":
             for tag in 2, 4:
-              plotsine = kwargs["vsxory"] == {2: "y", 4: "x"}[tag]
-              alignmentshiftprofile(A, tag=tag, plotsine=plotsine, sinetext=True, figurekwargs={"figsize": (6, 6)}, plotstyling=functools.partial(plotstyling, **kwargs), saveas=os.path.join(here, f"sine-wave-{tag}-{kwargs['deltaxory']}{kwargs['vsxory']}-{samp[1]}.pdf"), **kwargs)
+              alignmentshiftprofile(A, tag=tag, plotsine=plotsine(tag, **kwargs), sinetext=True, figurekwargs={"figsize": (6, 6)}, plotstyling=functools.partial(plotstyling, **kwargs), saveas=os.path.join(here, f"sine-wave-{tag}-{kwargs['deltaxory']}{kwargs['vsxory']}-{name}.pdf"), **kwargs)
 
 if __name__ == "__main__":
   class EqualsEverything:
