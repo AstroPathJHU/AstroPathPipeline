@@ -182,54 +182,66 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     )
   except RuntimeError:
     print("fit failed")
-    p = None
+    toaverage = units.correlated_distances(distances=ywitherror, covariance=np.diag(yerrwitherror))
+    mean = weightedaverage(toaverage)
+    amplitude = kk = phase = 0
+    p = amplitude, kk, phase, mean
+    cov = np.diag([1, 1, 1, weightedstd(toaverage)])
+
+  p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
+  print("Average:")
+  print(f"  {mean}")
+  try:
+    o = overlaps[0]
+    expected = ((alignmentset.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]
+  except AttributeError:
+    pass
   else:
-    p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
-    print("Average:")
-    print(f"  {mean}")
-    try:
-      o = overlaps[0]
-      expected = ((alignmentset.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]
-    except AttributeError:
-      pass
-    else:
-      print(f"  (expected from T matrix: {expected})")
-    print("Sine wave:")
-    print(f"  amplitude: {amplitude}")
-    if abs(amplitude.n) > 5*amplitude.s and np.count_nonzero(abs(amplitude.n) > yerr) > len(yerr)/4:
-      wavelength = 2*np.pi / kk
-      print(f"  wavelength: {wavelength}")
-      print(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
-      def subtractsystematic(misalignment, position1, position2):
-        return misalignment - cosfunction((position1+position2)/2, *p)
-    else:
-      print(f"  (not significant)")
-      plotsine = False
-      def subtractsystematic(misalignment, position1, position2):
-        return misalignment - mean
+    print(f"  (expected from T matrix: {expected})")
+  print("Sine wave:")
+  print(f"  amplitude: {amplitude}")
+  if abs(amplitude.n) > 5*amplitude.s and np.count_nonzero(abs(amplitude.n) > yerr) > len(yerr)/4:
+    wavelength = 2*np.pi / kk
+    print(f"  wavelength: {wavelength}")
+    print(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
+    def subtractsystematic(misalignment, position1, position2):
+      return misalignment - cosfunction((position1+position2)/2, *p)
+  else:
+    print(f"  (not significant)")
+    plotsine = False
+    def subtractsystematic(misalignment, position1, position2):
+      return misalignment - mean
 
-    remaining = np.array([subtractsystematic(overlap.dx, *overlap.abspositions) for overlap in overlaps])
-    noiseaverage = weightedaverage(remaining)
-    noiseRMS = weightedstd(remaining, subtractaverage=False)
-    print(f"Remaining noise:")
-    print(f"  average = {noiseaverage}")
-    print(f"  RMS     = {noiseRMS}")
+  remaining = np.array([subtractsystematic(overlap.dx, *overlap.abspositions) for overlap in overlaps])
+  noiseaverage = weightedaverage(remaining)
+  noiseRMS = weightedstd(remaining, subtractaverage=False)
+  print(f"Remaining noise:")
+  print(f"  average = {noiseaverage}")
+  print(f"  RMS     = {noiseRMS}")
 
-    xplot = units.linspace(min(x), max(x), 1000)
-    if plotsine:
-      #plt.plot(xplot, cosfunction(xplot, *initialguess), color='g')
-      plt.plot(units.pixels(xplot), units.pixels(cosfunction(xplot, *units.nominal_values(p))), color='b')
-      if sinetext:
-        xcenter = np.average(ax.get_xlim())
-        bottom, top = ax.get_ylim()
-        top += (top-bottom) * .3
-        ax.set_ylim(bottom, top)
-        amplitudetext = units.drawing.siunitxformat(amplitude, power=1)
-        wavelengthtext = units.drawing.siunitxformat(wavelength, power=1)
-        noiseRMStext = units.drawing.siunitxformat(noiseRMS, power=1, fmt=".2f")
-        plt.text(xcenter, top, f"amplitude: {amplitudetext}", horizontalalignment="center", verticalalignment="top")
-        plt.text(xcenter, 0.92*top+0.08*bottom, f"wavelength: {wavelengthtext}", horizontalalignment="center", verticalalignment="top")
-        plt.text(xcenter, 0.84*top+0.16*bottom, f"RMS of noise: {noiseRMStext}", horizontalalignment="center", verticalalignment="top")
+  xplot = units.linspace(min(x), max(x), 1000)
+  if plotsine:
+    #plt.plot(xplot, cosfunction(xplot, *initialguess), color='g')
+    plt.plot(units.pixels(xplot), units.pixels(cosfunction(xplot, *units.nominal_values(p))), color='b')
+    if sinetext:
+      xcenter = np.average(ax.get_xlim())
+      bottom, top = ax.get_ylim()
+      top += (top-bottom) * .3
+      ax.set_ylim(bottom, top)
+      amplitudetext = units.drawing.siunitxformat(amplitude, power=1)
+      wavelengthtext = units.drawing.siunitxformat(wavelength, power=1)
+      noiseRMStext = units.drawing.siunitxformat(noiseRMS, power=1, fmt=".2f")
+      plt.text(xcenter, top, f"amplitude: {amplitudetext}", horizontalalignment="center", verticalalignment="top")
+      plt.text(xcenter, 0.92*top+0.08*bottom, f"wavelength: {wavelengthtext}", horizontalalignment="center", verticalalignment="top")
+      plt.text(xcenter, 0.84*top+0.16*bottom, f"RMS of noise: {noiseRMStext}", horizontalalignment="center", verticalalignment="top")
+  else:
+    if sinetext:
+      xcenter = np.average(ax.get_xlim())
+      bottom, top = ax.get_ylim()
+      top += (top-bottom) * .1
+      ax.set_ylim(bottom, top)
+      noiseRMStext = units.drawing.siunitxformat(noiseRMS, power=1, fmt=".2f")
+      plt.text(xcenter, top, f"RMS of noise: {noiseRMStext}", horizontalalignment="center", verticalalignment="top")
 
   plotstyling(fig=fig, ax=ax)
 
