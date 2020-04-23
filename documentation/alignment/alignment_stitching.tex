@@ -4,6 +4,8 @@
 
 \usepackage{amsmath}
 \usepackage{multicol}
+\usepackage{multirow}
+\usepackage{makecell}
 \usepackage{graphicx}
 \usepackage[subrefformat=simple,labelformat=simple]{subcaption}
 \usepackage{hyperref}
@@ -480,14 +482,14 @@ The remaining plots are more interesting and show a clear sinusoidal pattern, th
 		\label{fig:sinewave2xx1}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{sine-wave-2-xy-1.pdf}
-		\caption{}
-		\label{fig:sinewave2xy1}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{sine-wave-2-yx-1.pdf}
 		\caption{}
 		\label{fig:sinewave2yx1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xy-1.pdf}
+		\caption{}
+		\label{fig:sinewave2xy1}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{sine-wave-2-yy-1.pdf}
@@ -500,14 +502,14 @@ The remaining plots are more interesting and show a clear sinusoidal pattern, th
 		\label{fig:sinewave4xx1}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{sine-wave-4-xy-1.pdf}
-		\caption{}
-		\label{fig:sinewave4xy1}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{sine-wave-4-yx-1.pdf}
 		\caption{}
 		\label{fig:sinewave4yx1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xy-1.pdf}
+		\caption{}
+		\label{fig:sinewave4xy1}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{sine-wave-4-yy-1.pdf}
@@ -520,14 +522,14 @@ The remaining plots are more interesting and show a clear sinusoidal pattern, th
 		\label{fig:sinewave2xx2}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{sine-wave-2-xy-2.pdf}
-		\caption{}
-		\label{fig:sinewave2xy2}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{sine-wave-2-yx-2.pdf}
 		\caption{}
 		\label{fig:sinewave2yx2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xy-2.pdf}
+		\caption{}
+		\label{fig:sinewave2xy2}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{sine-wave-2-yy-2.pdf}
@@ -540,14 +542,14 @@ The remaining plots are more interesting and show a clear sinusoidal pattern, th
 		\label{fig:sinewave4xx2}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{sine-wave-4-xy-2.pdf}
-		\caption{}
-		\label{fig:sinewave4xy2}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{sine-wave-4-yx-2.pdf}
 		\caption{}
 		\label{fig:sinewave4yx2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xy-2.pdf}
+		\caption{}
+		\label{fig:sinewave4xy2}
 	\end{subfigure}
 	\begin{subfigure}{0.24\linewidth}
 		\includegraphics[width=\linewidth]{sine-wave-4-yy-2.pdf}
@@ -558,32 +560,113 @@ The remaining plots are more interesting and show a clear sinusoidal pattern, th
 	\label{fig:sinewaves}
 \end{figure}
 
-\section{Akoya Vectra Polaris results}
+\clearpage
+
+\section{Vectra Polaris results}
 
 This section shows results for a dataset collected by Bristol-Meyers Squibb and stained and scanned by Akoya Biosciences.  The microscoped is maintained at the Akoya facilities and is codenamed \texttt{AKYPolaris\_1}.
 
 \subsection{Linear Transformation matrix}
 
-From the sample named \texttt{TS18\_0541\_BMS\_MITRE}, we find the linear transformation matrix to be
+From the sample named \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, we find the linear transformation matrix to be
 \begin{align}
 \matrixbold{A}=&\begin{pmatrix}
-\num{1.00748\pm.00017} &
-\num{-0.00261\pm.00018} \\
-\num{.00008\pm.00011} &
-\num{1.00675\pm.00012}
+\num{1.00770(4)} &
+\num{-0.000447(31)} \\
+\num{.000026(27)} &
+\num{1.007216(22)}
 \end{pmatrix} \\
 =\matrixbold{I} + &\begin{pmatrix}
-\num{7.48\pm.17} &
-\num{-2.61\pm.18} \\
-\num{.08\pm.11} &
-\num{6.75\pm.12}
+\num{7.70(4)} &
+\num{-0.447(31)} \\
+\num{0.026(27)} &
+\num{7.216(22)}
 \end{pmatrix} \times \num{e-3}
 \label{eq:Amatrix_TS18_0541_BMS_MITRE}
 \end{align}
 The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $14$ pixels.  When moving down, it overshoots by an average of $10$ pixels, and when moving back to the beginning of the row it overshoots by $5$ pixels on average.  If left uncorrected, this is a significantly larger bias than the one in the Vectra 3.0 microscope.
 
+\subsection{Periodic dependence}
+\label{sec:akoyapolarisperiodic}
+
+Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systematic behavior in the residuals from the Polaris microscope.  \Cref{fig:sinewavespolaris} shows plots for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset, equivalent to the ones in \cref{fig:sinewaves}.
+
+These plots show less sinusoidal behavior than the ones for the Vectra 3.0 microscope, but they do show other effects.  \Cref{fig:sinewave2yyAKY} has a clear periodic mode, with a wavelength of approximately $5\times\text{the field height}$, though it does not fit to a simple sine wave.  Additionally, \cref{fig:sinewave2xyAKY} shows a behavior change at $y\approx\SI{10000}{pixels}$, which does not fit into any periodic pattern.
+
+On the other hand, once we remove the constant shifts and, where relevant, the sine wave, the \emph{random} misalignments (denoted by ``RMS of noise'') are smaller on this microscope than on the Vectra 3.0.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xx-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave2xxAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yx-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave2yxAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xy-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave2xyAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yy-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave2yyAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xx-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave4xxAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yx-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave4yxAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xy-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave4xyAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yy-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave4yyAKY}
+	\end{subfigure}
+	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset.  The third and fourth rows show the same for the \M23 dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
+	\label{fig:sinewavespolaris}
+\end{figure}
+
+\clearpage
+
 \section{Summary}
 
-In this note, we describe the alignment and stitching of a microscope image composed of up to $1000$ fields.  Our procedure includes an estimation of the error on each field, which are propagated throughout the procedure to obtain a final error estimate and covariance matrix for the positions of the fields.  The method provided here runs in a few minutes and forms an important part of the data calibration in the astropath framework.
+In this note, we describe the alignment and stitching of a microscope image composed of up to $1000$ fields.  Our procedure includes an estimation of the error on each field, which are propagated throughout the procedure to obtain a final error estimate and covariance matrix for the positions of the fields.  To demonstrate the method, we run it over several data samples collected by different microscopes.  \Cref{table:microscopes} compares the alignment behavior of the different microscopes used.  The method provided here, which runs in a few minutes, forms an important part of the data calibration in the astropath framework.
+
+\begin{table}[ht]
+	\centering
+	\begin{tabular}{|l|c|c|c|}
+	\hline
+	\multicolumn{2}{|l|}{Model} & Vectra 3.0 & Vectra Polaris \\\hline
+	\multicolumn{2}{|l|}{Location} & JHU & Akoya \\\hline
+	\multirowcell{3}[0pt][l]{Average shift/field \\ (pixels)} & $x$ & $-1$ & $14$ \\\cline{2-4}
+	& $y$ & $-1$ & $10$ \\\cline{2-4}
+	& $x$ for new row & $0$ & $-5$ \\\hline
+	\multirowcell{4}[0pt][l]{Sine wave amplitude\\(pixels)} & $x$--$\delta x$, $x$ overlap & $1.5$ & $0.7$ \\\cline{2-4}
+	& $x$--$\delta y$, $x$ overlap & $0.4$ & $0$ \\\cline{2-4}
+	& $y$--$\delta x$, $y$ overlap & $0.5$ & $0$ \\\cline{2-4}
+	& $y$--$\delta y$, $y$ overlap & $2.8$ & [other periodic effects] \\\hline
+	\multirowcell{4}[0pt][l]{Remaining RMS\\(pixels)} & $\delta x$, $x$ overlap & $1.4$ & $0.3$ \\\cline{2-4}
+	& $\delta y$, $x$ overlap & $0.3$ & $0.1$ \\\cline{2-4}
+	& $\delta x$, $y$ overlap & $0.4$ & $0.1$ \\\cline{2-4}
+	& $\delta y$, $y$ overlap & $1.2$ & $0.5$ \\\hline
+	\end{tabular}
+	\caption{Comparison between the microscopes studied here.}
+	\label{table:microscopes}
+\end{table}
 
 \end{document}
