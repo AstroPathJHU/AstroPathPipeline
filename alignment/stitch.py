@@ -1,4 +1,4 @@
-import abc, dataclasses, itertools, logging, numpy as np, uncertainties as unc
+import abc, dataclasses, itertools, logging, methodtools, numpy as np, uncertainties as unc
 from .overlap import OverlapCollection
 from .rectangle import Rectangle, RectangleCollection, rectangledict
 from ..utilities import units
@@ -405,11 +405,12 @@ class StitchResultOverlapCovariances(StitchResultBase):
 
     return newx1 - newx2 - (overlap.x1vec - overlap.x2vec)
 
+  @methodtools.lru_cache()
+  def __overlapcovariancedict(self):
+    return {frozenset((oc.hpfid1, oc.hpfid2)): oc for oc in self.overlapcovariances}
+
   def overlapcovariance(self, overlap):
-    for oc in self.overlapcovariances:
-      if {overlap.p1, overlap.p2} == {oc.hpfid1, oc.hpfid2}:
-        return oc
-    raise KeyError(f"No overlap covariance with {overlap.p1} {overlap.p2}")
+    return self.__overlapcovariancedict()[frozenset((overlap.p1, overlap.p2))]
 
   def readtable(self, *filenames, adjustoverlaps=True):
     filename, affinefilename, overlapcovariancefilename = filenames

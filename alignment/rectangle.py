@@ -1,4 +1,4 @@
-import abc, collections, dataclasses, numpy as np
+import abc, collections, dataclasses, methodtools, numpy as np
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
@@ -54,9 +54,11 @@ class ShiftedRectangle(Rectangle):
 class RectangleCollection(abc.ABC):
   @abc.abstractproperty
   def rectangles(self): pass
-  @property
-  def rectangledict(self):
+  @methodtools.lru_cache()
+  def __rectangledict(self):
     return rectangledict(self.rectangles)
+  @property
+  def rectangledict(self): return self.__rectangledict()
   @property
   def rectangleindices(self):
     return {r.n for r in self.rectangles}
