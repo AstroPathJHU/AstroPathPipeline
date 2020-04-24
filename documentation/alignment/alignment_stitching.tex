@@ -4,16 +4,21 @@
 
 \usepackage{amsmath}
 \usepackage{multicol}
+\usepackage{multirow}
+\usepackage{makecell}
 \usepackage{graphicx}
 \usepackage[subrefformat=simple,labelformat=simple]{subcaption}
 \usepackage{hyperref}
 \usepackage{cleveref}
+\usepackage{siunitx}
 \usepackage[margin=1in]{geometry}
 \renewcommand\thesubfigure{(\alph{subfigure})}
 
 \newcommand{\svec}[1]{{\vec{#1}\mkern2mu\vphantom{#1}}}
 \newcommand{\pvec}[1]{\svec^\prime}
 \newcommand{\matrixbold}[1]{\mathbf{#1}}
+
+\newcommand{\M}[2]{\texttt{M#1\_#2}}
 
 \begin{document}
 	
@@ -25,7 +30,7 @@
 
 Our microscope is supposed to scan a tissue sample, which covers some subset of a slide of size $L\times W$.  Initially, it performs a quick scan of the whole slide with a small magnification setting.  This scan is recorded in \texttt{qptiff} format.
 
-Using that image, the microscope determines which parts of the slide actually have tissue in them.  It scans those sections under a larger magnification, using fields of size $l\times w$.  Covering the whole tissue may require $O(1000)$ fields.
+Using that image, the microscope determines which parts of the slide actually have tissue in them.  It scans those sections under a larger magnification, using high-powered fields of size $l\times w$.  Covering the whole tissue may require $O(1000)$ fields.
 
 The scanning is configured with an overlap fraction $f=20\%$, so that some parts of the image are scanned twice.  The rightmost $\frac{1}{2}fl$ of each field overlaps the leftmost $\frac{1}{2}fl$ of the field to its right.  Similarly, the bottom $\frac{1}{2}fw$ of each field overlaps with the top $\frac{1}{2}fw$ of the field under it.  These overlaps are used to assess differences between the fields, to correct those differences, and ultimately to assess systematic uncertainties based on the remaining differences.
 
@@ -180,18 +185,19 @@ The error estimation procedure also gives us an opportunity to detect when a par
 The procedure in \cref{sec:measuringalignment} looks at the tallest peak of the cross-correlation function.  For a good overlap, there is often only one peak, or one tall peak and several other, much shorter ones.  \Cref{fig:badxcorrelation}, on the other hand, shows a central peak near $(0, 0)$ and a diagonal structure, similar to the structure in \cref{fig:badoverlap}, containing several yellow areas.  The error estimation tells us whether any of the other peaks are significant: if any other peak at $\delta r'$ has $C(\delta r')\ge C(\delta r_\text{max})-\sigma_C(\delta r_\text{max})$, we do not know, to $1\sigma$ confidence, which peak is the correct one, and therefore we mark the overlap as bad.  The result from bad overlaps are not used in the final stitching procedure.
 
 \section{Stitching}
+\label{sec:stitching}
 
 After we derive the individual alignment results for each overlap, we can ``stitch'' the results together to obtain the final positions of each field.  We see each alignment result as a Gaussian constraint on the relative positions of those two fields, and combine all of those constraints together to find the likelihood $L$ for alignment positions $\vec{r}_i$:
 \begin{align}
 \begin{aligned}
 -2\ln L_\text{alignment}(\vec{r}_1, \ldots, \vec{r}_N)=
 \sum_{o}&(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)^T \\
-&\mathbf{cov}_o^{-1}
+&\matrixbold{cov}_o^{-1}
 (\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)
 \end{aligned}
 \label{eq:loglikelihoodalignment}
 \end{align}
-In this parameterization, $\vec{r}_k$, with $k$ running from $1$ to the number of fields $N$, is the position of the field indexed by $i$; $\svec{r}_k^n$ is the field's nominal position, given by the microscope software; $o$ indexes the overlaps; $i_o$ and $j_o$ are the indices of the two fields whose overlap is described by $o$; $\delta\vec{r}_o$ is the $\delta\vec{r}_\text{max}$ determined for that overlap, as described in \cref{sec:measuringalignment}; and $\mathbf{cov}_o$ is the covariance matrix from \cref{eq:overlapcovariance}.
+In this parameterization, $\vec{r}_k$, with $k$ running from $1$ to the number of fields $N$, is the position of the field indexed by $i$; $\svec{r}_k^n$ is the field's nominal position, given by the microscope software; $o$ indexes the overlaps; $i_o$ and $j_o$ are the indices of the two fields whose overlap is described by $o$; $\delta\vec{r}_o$ is the $\delta\vec{r}_\text{max}$ determined for that overlap, as described in \cref{sec:measuringalignment}; and $\matrixbold{cov}_o$ is the covariance matrix from \cref{eq:overlapcovariance}.
 
 \begin{figure}[ht]
 	\centering
@@ -200,7 +206,7 @@ In this parameterization, $\vec{r}_k$, with $k$ running from $1$ to the number o
 		%		\caption{}
 		%		\label{fig:badxcorrelation}
 	\end{subfigure}
-	\caption{An example of an image, taken with the Vectra 3.0 microscope, with two disconnected islands.}
+	\caption{An example of an image, code name \M{21}1, taken with the Vectra 3.0 microscope, with two disconnected islands.}
 	\label{fig:islands}
 \end{figure}
 
@@ -219,11 +225,11 @@ We first assume that $\matrixbold{A}$ is close to the identity matrix $\begin{pm
 \begin{align}
 -2\ln L_\text{constraint}(\vec{r}_1, \ldots, \vec{r}_N, \matrixbold{A})=&
 \sum_{k}(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)^T %\\&
-\mathbf{\Sigma}^{-1}
+\matrixbold{\Sigma}^{-1}
 (\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)
 \label{eq:loglikelihoodrandomerror}
 \end{align}
-where $\mathbf{\Sigma}=\begin{pmatrix}\sigma_x^2 & 0 \\ 0 & \sigma_y^2\end{pmatrix}$.
+where $\matrixbold{\Sigma}=\begin{pmatrix}\sigma_x^2 & 0 \\ 0 & \sigma_y^2\end{pmatrix}$.
 
 The constraint added in \cref{eq:loglikelihoodrandomerror} turns out to be weak, because the positioning errors $\sigma_{x,y}$ are significantly larger than the errors from the pairwise alignments.  In fact, if we modify $\sigma_{x,y}$ by multiplying them by a few orders of magnitude up or down, the final alignment is basically unchanged.
 
@@ -234,7 +240,7 @@ The final likelihood function is the sum of \cref{eq:loglikelihoodalignment,eq:l
 &
 \begin{aligned}
 \sum_{o}&(\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n)^T \\
-&\mathbf{cov}_o^{-1}
+&\matrixbold{cov}_o^{-1}
 (\vec{r}_{io} - \vec{r}_{jo} - \delta\vec{r}_o - \svec{r}_{io}^n + \svec{r}_{jo}^n) \\
 \end{aligned} \\
 +&\sum_{k}(\vec{r}_{k} - \matrixbold{A}\svec{r}_{k}^n)^T %\\&
@@ -271,9 +277,9 @@ with a covariance matrix
 \matrixbold{cov}_{\vec{v}}=\matrixbold{P}^{-1}.
 \end{equation}
 
-\section{Validation of the alignment procedure}
+\section{Vectra 3.0 results}
 
-In this section, we show plots that illustrate the results of the alignment procedure.
+In this section, we show plots that illustrate the results of the alignment procedure for a Vectra 3.0 microscope maintained at Johns Hopkins Hospital, codenamed \texttt{JHUVectra3\_1}.
 
 \subsection{Alignment movements}
 
@@ -321,13 +327,13 @@ For an alignment with $N$ fields, we have $2N$ coordinates to set.  Except for t
 		\caption{}
 		\label{fig:stitchresult1}
 	\end{subfigure}
-	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in a small image taken with the Vectra 3.0 microscope.  The plots show overlaps between one field and the field \subref{fig:alignmentresult4} to its right, \subref{fig:alignmentresult3} under it and to the right, \subref{fig:alignmentresult2} under it, and \subref{fig:alignmentresult1} under it and to the left.  Each point with its error bars indicates a single overlap.  \subref{fig:stitchresult4}--\subref{fig:stitchresult1} The same distributions for the respective overlap directions after stitching has been performed.}
+	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in a small image, code name \M{21}1, taken with the Vectra 3.0 microscope.  The plots show overlaps between one field and the field \subref{fig:alignmentresult4} to its right, \subref{fig:alignmentresult3} under it and to the right, \subref{fig:alignmentresult2} under it, and \subref{fig:alignmentresult1} under it and to the left.  Each point with its error bars indicates a single overlap.  \subref{fig:stitchresult4}--\subref{fig:stitchresult1} The same distributions for the respective overlap directions after stitching has been performed.}
 	\label{fig:alignmentresults}
 \end{figure}
 
 \Cref{fig:alignmentresult1,fig:alignmentresult2,fig:alignmentresult3,fig:alignmentresult4} show the distribution of $\delta\vec{r}$ for the overlaps, before any stitching has been done.  \Cref{fig:stitchresult1,fig:stitchresult2,fig:stitchresult3,fig:stitchresult4} show the same distributions after the fields have been moved to their stitched positions, and show significant improvement over the top row.
 
-Another interesting feature of the plots is the comparison between \cref{fig:alignmentresult2,fig:alignmentresult4}.  Fields that are only separated in the $x$ direction are only misaligned in the $x$ direction, while fields separated in $y$ are only misaligned in $y$.  As illustrated in \cref{fig:scanning}, the microscope scans along a row in the $x$ direction first, then moves down in the $y$ direction and goes back to the beginning in $x$.  This explains \cref{fig:alignmentresult4}: as the microscope moves in the $x$ direction, the error introduced by slight movements in the $y$ direction is small.  \Cref{fig:alignmentresult2} is more surprising, because it indicates that the errors introduced as the microscope moves to the right are almost exactly reversed when it moves back to the left.  Whatever the source of this error is, our alignment procedure is able to correct for it as well as for the smaller, apparently random error associated with each individual movement.
+Another interesting feature of the plots is the comparison between \cref{fig:alignmentresult2,fig:alignmentresult4}.  Fields that are only separated in the $x$ direction are only misaligned in the $x$ direction, while fields separated in $y$ are only misaligned in $y$.  As illustrated in \cref{fig:scanning}, the microscope scans along a row in the $x$ direction first, then moves down in the $y$ direction and goes back to the beginning in $x$.  This explains \cref{fig:alignmentresult4}: as the microscope moves in the $x$ direction, the error introduced by slight movements in the $y$ direction is small.  \Cref{fig:alignmentresult2} is more surprising, because it indicates that the errors introduced as the microscope moves to the right are almost exactly reversed when it moves back to the left.  This indicates that the errors are introduced by some kind of systematic effect, which we will examine in \cref{sec:vectraperiodic}.  Whatever the source of this error is, our alignment procedure is able to correct for it as well as for the smaller, apparently random error associated with each individual movement.
 
 \begin{figure}[ht]
 	\centering
@@ -381,7 +387,7 @@ In general, we do not know $\sigma$ in advance, but we have an estimate $\sigma_
 		\caption{}
 		\label{fig:diamondpulldiagram}
 	\end{subfigure}
-	\caption{\subref{fig:squarepull1}, \subref{fig:squarepull2} The pull distributions in $x$ and $y$ for the total displacement obtained from pairwise alignment when moving around in a square, as shown in \subref{fig:squarepulldiagram}, for two different images collected with the Vectra 3.0 microscope.  \subref{fig:diamondpull1}, \subref{fig:diamondpull2} The corresponding pull distributions for those two datasets when moving in a diamond, as shown in \subref{fig:diamondpulldiagram}.}
+	\caption{\subref{fig:squarepull1}, \subref{fig:squarepull2} The pull distributions in $x$ and $y$ for the total displacement obtained from pairwise alignment when moving around in a square, as shown in \subref{fig:squarepulldiagram}, for two different images, code names \M11 and \M23, respectively, collected with the Vectra 3.0 microscope.  \subref{fig:diamondpull1}, \subref{fig:diamondpull2} The corresponding pull distributions for those two datasets when moving in a diamond, as shown in \subref{fig:diamondpulldiagram}.}
 	\label{fig:squarepulls}
 \end{figure}
 
@@ -429,14 +435,238 @@ In general, we do not know $\sigma$ in advance, but we have an estimate $\sigma_
 		\caption{}
 		\label{fig:stitchpull12}
 	\end{subfigure}
-	\caption{Pull distributions in $x$ and $y$ for the residual pairwise misalignment after stitching, as shown in \cref{fig:stitchresult4,fig:stitchresult3,fig:stitchresult2,fig:stitchresult1}, for two different images collected with the Vectra 3.0 microscope.  The plots show distributions for overlaps between one field and the field \subref{fig:stitchpull41}, \subref{fig:stitchpull42} to its right, \subref{fig:stitchpull31}, \subref{fig:stitchpull32} under it and to the right, \subref{fig:stitchpull21}, \subref{fig:stitchpull22}  under it, and \subref{fig:stitchpull11}, \subref{fig:stitchpull12}  under it and to the left.}
+	\caption{Pull distributions in $x$ and $y$ for the residual pairwise misalignment after stitching, as shown in \cref{fig:stitchresult4,fig:stitchresult3,fig:stitchresult2,fig:stitchresult1}, for two different images, \M11 and \M23, collected with the Vectra 3.0 microscope.  The plots show distributions for overlaps between one field and the field \subref{fig:stitchpull41}, \subref{fig:stitchpull42} to its right, \subref{fig:stitchpull31}, \subref{fig:stitchpull32} under it and to the right, \subref{fig:stitchpull21}, \subref{fig:stitchpull22}  under it, and \subref{fig:stitchpull11}, \subref{fig:stitchpull12}  under it and to the left.}
 	\label{fig:stitchpulls}
 \end{figure}
 
 The standard deviations of the pull distributions were used to determine the factor of $1/16$ used to correct \cref{eq:overlapcovariance} to \cref{eq:overlapcovariancecorrected}.  The fact that, after making this correction, the standard deviations are $1$ for multiple different images as well as for pull distributions of two different quantities lends confidence to the \emph{method} of error estimation.  Remaining deviations from $1$ indicate that there is still some amount of room for improvement.
 
+\subsection{Linear transformation matrix}
+
+As described in \cref{sec:stitching}, when we stitch the alignment we also obtain the linear matrix $\matrixbold{A}$, which describes the relationship between the distance that the microscope is supposed to move $\Delta\vec{r}$ and the average distance it actually moves $\matrixbold{A}\Delta\vec{r}$.  We expect it to be more or less constant for different images taken with the same microscope, although of course the mechanical parts can also degrade over time, change due to maintenance, or be replaced.
+
+The primary purpose of the alignment and stitching is to determine the relative locations of the high-powered fields, and when only a single island is present $\matrixbold{A}$ is not necessary for this purpose.  When there are multiple islands, as in \cref{fig:islands}, including $\matrixbold{A}$ in the fit allows us to obtain those islands' approximate relative locations.  In either case, we do not need the precise values of $\matrixbold{A}$'s entries for any analysis, but the matrix still provides interesting information about the mechanical calibration of the microscope.
+
+For the \M11 dataset, we find
+\begin{align}
+\matrixbold{A}=&\begin{pmatrix}
+\num{0.999132\pm.000009} &
+\num{.000173\pm.000013} \\
+\num{0.000103\pm.000010} &
+\num{0.998652\pm.000014}
+\end{pmatrix} \\
+=\matrixbold{I} + &\begin{pmatrix}
+\num{-0.868\pm.009} &
+\num{.173\pm.013} \\
+\num{0.103\pm.010} &
+\num{-1.348\pm.014}
+\end{pmatrix} \times \num{e-3}
+\label{eq:Amatrix_M11}
+\end{align}
+The Vectra 3.0 scans fields of size $1344\times1004$ $\text{pixels}^2$.  The entries of $\matrixbold{A}$ tell us that on average, when moving one field to the right, the microscope ends up $1$ pixel to the left of where it should, and when moving down, it ends up $1$ pixel above where it should.  Although the top row of \cref{fig:alignmentresults} shows that the random scatter is a larger effect, the average shift is noticeable.
+
+\subsection{Periodic dependence}
+\label{sec:vectraperiodic}
+
+To take the analysis a step further, we can look for other systematic effects in the shifts detected by the alignment.  For the purpose of the data analysis, it does not really matter whether the shifts are systematic or random, because we correct for them anyway.  However, if we can measure systematic effects that can be interpreted as mechanical miscalibrations, this can form valuable input to the microscope manufacturers, and if the effects get larger over time, this change may indicate that pieces of the microscope are starting to fail.
+
+In \cref{fig:sinewaves} we plot the average movement for each row and column of overlaps.  \Cref{fig:sinewave2xx1,fig:sinewave2yx1} show that, as we might expect, the alignment shifts for overlaps between fields separated in $y$ do not depend on the $x$ position of those fields.  Similarly, from \cref{fig:sinewave4yy1,fig:sinewave4xy1} we see that overlaps between fields separated in the $x$ direction do not depend on $y$.
+
+The remaining plots are more interesting and show a clear sinusoidal pattern, though some of them are noisier than others.  The amplitudes and wavelengths are all consistent between the plots in the top two rows, which come from the \M11 dataset, and the plots in the bottom two rows, which come from \M23, indicating that the effect is a property of the microscope.  The sine waves in \cref{fig:sinewave2yy1,fig:sinewave4xx1} may be explained if the cam wheels controlling the microscope movement have a slight eccentricity instead of being circular.  \Cref{fig:sinewave2xy1,fig:sinewave4yx1} may indicate that the wheel wobbles slightly as it moves, though the fact that \cref{fig:sinewave4xx1,fig:sinewave4yx1} have different wavelengths implies that those two effects come from different parts of the microscope structure.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xx-1.pdf}
+		\caption{}
+		\label{fig:sinewave2xx1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yx-1.pdf}
+		\caption{}
+		\label{fig:sinewave2yx1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xy-1.pdf}
+		\caption{}
+		\label{fig:sinewave2xy1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yy-1.pdf}
+		\caption{}
+		\label{fig:sinewave2yy1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xx-1.pdf}
+		\caption{}
+		\label{fig:sinewave4xx1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yx-1.pdf}
+		\caption{}
+		\label{fig:sinewave4yx1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xy-1.pdf}
+		\caption{}
+		\label{fig:sinewave4xy1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yy-1.pdf}
+		\caption{}
+		\label{fig:sinewave4yy1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xx-2.pdf}
+		\caption{}
+		\label{fig:sinewave2xx2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yx-2.pdf}
+		\caption{}
+		\label{fig:sinewave2yx2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xy-2.pdf}
+		\caption{}
+		\label{fig:sinewave2xy2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yy-2.pdf}
+		\caption{}
+		\label{fig:sinewave2yy2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xx-2.pdf}
+		\caption{}
+		\label{fig:sinewave4xx2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yx-2.pdf}
+		\caption{}
+		\label{fig:sinewave4yx2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xy-2.pdf}
+		\caption{}
+		\label{fig:sinewave4xy2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yy-2.pdf}
+		\caption{}
+		\label{fig:sinewave4yy2}
+	\end{subfigure}
+	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \M11 dataset.  The third and fourth rows show the same for the \M23 dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
+	\label{fig:sinewaves}
+\end{figure}
+
+\clearpage
+
+\section{Vectra Polaris results}
+
+This section shows results for a dataset collected by Bristol-Meyers Squibb and stained and scanned by Akoya Biosciences.  The microscoped is maintained at the Akoya facilities and is codenamed \texttt{AKYPolaris\_1}.
+
+\subsection{Linear Transformation matrix}
+
+From the sample named \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, we find the linear transformation matrix to be
+\begin{align}
+\matrixbold{A}=&\begin{pmatrix}
+\num{1.00770(4)} &
+\num{-0.000447(31)} \\
+\num{.000026(27)} &
+\num{1.007216(22)}
+\end{pmatrix} \\
+=\matrixbold{I} + &\begin{pmatrix}
+\num{7.70(4)} &
+\num{-0.447(31)} \\
+\num{0.026(27)} &
+\num{7.216(22)}
+\end{pmatrix} \times \num{e-3}
+\label{eq:Amatrix_TS18_0541_BMS_MITRE}
+\end{align}
+The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $14$ pixels.  When moving down, it overshoots by an average of $10$ pixels, and when moving back to the beginning of the row it overshoots by $5$ pixels on average.  If left uncorrected, this is a significantly larger bias than the one in the Vectra 3.0 microscope.
+
+\subsection{Periodic dependence}
+\label{sec:akoyapolarisperiodic}
+
+Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systematic behavior in the residuals from the Polaris microscope.  \Cref{fig:sinewavespolaris} shows plots for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset, equivalent to the ones in \cref{fig:sinewaves}.
+
+These plots show less sinusoidal behavior than the ones for the Vectra 3.0 microscope, but they do show other effects.  \Cref{fig:sinewave2yyAKY} has a clear periodic mode, with a wavelength of approximately $5\times\text{the field height}$, though it does not fit to a simple sine wave.  Additionally, \cref{fig:sinewave2xyAKY} shows a behavior change at $y\approx\SI{10000}{pixels}$, which does not fit into any periodic pattern.
+
+On the other hand, once we remove the constant shifts and, where relevant, the sine wave, the \emph{random} misalignments (denoted by ``RMS of noise'') are smaller on this microscope than on the Vectra 3.0.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xx-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave2xxAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yx-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave2yxAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xy-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave2xyAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yy-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave2yyAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xx-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave4xxAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yx-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave4yxAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xy-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave4xyAKY}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yy-AKY.pdf}
+		\caption{}
+		\label{fig:sinewave4yyAKY}
+	\end{subfigure}
+	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset.  The third and fourth rows show the same for the \M23 dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
+	\label{fig:sinewavespolaris}
+\end{figure}
+
+\clearpage
+
 \section{Summary}
 
-In this note, we describe the alignment and stitching of a microscope image composed of up to $1000$ fields.  Our procedure includes an estimation of the error on each field, which are propagated throughout the procedure to obtain a final error estimate and covariance matrix for the positions of the fields.  The method provided here runs in a few minutes and forms an important part of the data calibration in the astropath framework.
+In this note, we describe the alignment and stitching of a microscope image composed of up to $1000$ fields.  Our procedure includes an estimation of the error on each field, which are propagated throughout the procedure to obtain a final error estimate and covariance matrix for the positions of the fields.  To demonstrate the method, we run it over several data samples collected by different microscopes.  \Cref{table:microscopes} compares the alignment behavior of the different microscopes used.  The method provided here, which runs in a few minutes, forms an important part of the data calibration in the astropath framework.
+
+\begin{table}[ht]
+	\centering
+	\begin{tabular}{|l|c|c|c|}
+	\hline
+	\multicolumn{2}{|l|}{Model} & Vectra 3.0 & Vectra Polaris \\\hline
+	\multicolumn{2}{|l|}{Location} & JHU & Akoya \\\hline
+	\multirowcell{3}[0pt][l]{Average shift/field \\ (pixels)} & $x$ & $-1$ & $14$ \\\cline{2-4}
+	& $y$ & $-1$ & $10$ \\\cline{2-4}
+	& $x$ for new row & $0$ & $-5$ \\\hline
+	\multirowcell{4}[0pt][l]{Sine wave amplitude\\(pixels)} & $x$--$\delta x$, $x$ overlap & $1.5$ & $0.7$ \\\cline{2-4}
+	& $x$--$\delta y$, $x$ overlap & $0.4$ & $0$ \\\cline{2-4}
+	& $y$--$\delta x$, $y$ overlap & $0.5$ & $0$ \\\cline{2-4}
+	& $y$--$\delta y$, $y$ overlap & $2.8$ & [other periodic effects] \\\hline
+	\multirowcell{4}[0pt][l]{Remaining RMS\\(pixels)} & $\delta x$, $x$ overlap & $1.4$ & $0.3$ \\\cline{2-4}
+	& $\delta y$, $x$ overlap & $0.3$ & $0.1$ \\\cline{2-4}
+	& $\delta x$, $y$ overlap & $0.4$ & $0.1$ \\\cline{2-4}
+	& $\delta y$, $y$ overlap & $1.2$ & $0.5$ \\\hline
+	\end{tabular}
+	\caption{Comparison between the microscopes studied here.}
+	\label{table:microscopes}
+\end{table}
 
 \end{document}

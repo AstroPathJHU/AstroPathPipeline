@@ -65,3 +65,18 @@ def floattoint(flt):
   result = int(flt)
   if result == flt: return result
   raise ValueError(f"{flt} is not an int")
+
+from . import units
+
+def weightedaverage(a, *args, **kwargs):
+  return np.average(units.nominal_values(a), weights=1/units.std_devs(a)**2, *args, **kwargs)
+
+def weightedvariance(a, *, subtractaverage=True):
+  if subtractaverage:
+    average = weightedaverage(a)
+    if not isinstance(a, np.ndarray): a = np.array(a)
+    a -= average
+  return np.average(units.nominal_values(a)**2, weights=1/units.std_devs(a)**2)
+
+def weightedstd(*args, **kwargs):
+  return weightedvariance(*args, **kwargs) ** 0.5

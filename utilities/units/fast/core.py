@@ -32,6 +32,8 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
 def pixels(distance, *, pscale=None, power=1): return distance
 @np.vectorize
 def microns(distance, *, pscale=None, power=1): return __pixelstomicrons(pixels=distance, pscale=pscale, power=power)
+@np.vectorize
+def asdimensionless(distance): return distance
 
 def power(distance): return None
 def pscale(distance): return None

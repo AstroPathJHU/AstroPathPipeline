@@ -1,6 +1,6 @@
 pipeline {
   agent {
-    docker { image 'astropathjhu/alignmenttest:v5' }
+    docker { image 'astropathjhu/alignmenttest:v7' }
   }
 
   environment {
@@ -33,36 +33,35 @@ pipeline {
 
     stage('run tests') {
       parallel {
-        stage('test alignment') {
-          steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
+        stage('alignment') {
+          stages {
+            stage('test alignment') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
+              }
+            }
+            stage('alignment documentation') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.alignment.makeplots'
+                sh 'cd documentation/alignment; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/alignment/alignment_stitching.log'
+              }
+            }
           }
         }
 
-        stage('test warping') {
+        stage('warping') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
             sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
           }
         }
-      }
-    }
 
-    stage('build documentation') {
-      parallel {
-        stage('alignment documentation') {
+        stage('code checks') {
           steps {
-              sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.alignment.makeplots'
-              sh 'cd documentation/alignment; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex'
-              sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/alignment/alignment_stitching.log'
+            sh 'python -m pyflakes .'
           }
         }
-      }
-    }
-
-    stage('code checks') {
-      steps {
-        sh 'python -m pyflakes .'
       }
     }
   }

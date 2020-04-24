@@ -69,7 +69,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
     self.fwidth    = self.constantsdict["fwidth"]
     self.fheight   = self.constantsdict["fheight"]
-    self.pscale    = self.constantsdict["pscale"]
+    self.pscale    = float(self.constantsdict["pscale"])
     self.qpscale   = self.constantsdict["qpscale"]
     self.xposition = self.constantsdict["xposition"]
     self.yposition = self.constantsdict["yposition"]
@@ -80,7 +80,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     self.scan  = f"Scan{self.batch[0].Scan:d}"
 
     self.annotations = readtable(os.path.join(self.dbload, self.samp+"_annotations.csv"), "Annotation", sampleid=int, layer=int, visible=int)
-    self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int)
+    #self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int, fieldsizelimit=10000000)
     self.vertices    = readtable(os.path.join(self.dbload, self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
     self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
     self.__image     = None
@@ -154,12 +154,14 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
   def readalignments(self, *, filename=None):
     if filename is None: filename = self.aligncsv
+    logger.info("reading alignments for "+self.samp+" from "+filename)
     alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult, extrakwargs={"pscale": self.pscale})}
     for o in self.overlaps:
       try:
         o.result = alignmentresults[o.n]
       except KeyError:
         pass
+    logger.info("done reading alignments for "+self.samp)
 
   def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, writeimstat=True, mean_image=None):
     logger.info(self.samp)
@@ -310,9 +312,17 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
     if saveresult:
       result.applytooverlaps()
+      self.__T = result.T
       self.writestitchresult(result, check=checkwriting)
 
     return result
+
+  @property
+  def T(self):
+    try:
+      return self.__T
+    except AttributeError:
+      raise AttributeError("Haven't run stitching, so we don't have the T matrix")
 
   def writestitchresult(self, result, *, filenames=None, check=False):
     if filenames is None: filenames = self.stitchfilenames
@@ -324,13 +334,17 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     )
 
   def readstitchresult(self, *, filenames=None, saveresult=True):
+    logger.info("reading stitch results for "+self.samp)
     if filenames is None: filenames = self.stitchfilenames
     result = ReadStitchResult(
       *filenames,
       overlaps=self.overlaps,
       rectangles=self.rectangles
     )
-    if saveresult: result.applytooverlaps()
+    if saveresult:
+      result.applytooverlaps()
+      self.__T = result.T
+    logger.info("done reading stitch results for "+self.samp)
     return result
 
   def subset(self, *, selectrectangles=None, selectoverlaps=None):
