@@ -80,3 +80,14 @@ def weightedvariance(a, *, subtractaverage=True):
 
 def weightedstd(*args, **kwargs):
   return weightedvariance(*args, **kwargs) ** 0.5
+
+#parser callback function to split a string of comma-separated values into a list
+def split_csv_to_list(value) :
+  return value.split(',')
+
+#parser callback function to split a string of comma-separated values into a list of integers
+def split_csv_to_list_of_ints(value) :
+  try :
+      return [int(v) for v in value.split(',')]
+  except ValueError :
+      raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
