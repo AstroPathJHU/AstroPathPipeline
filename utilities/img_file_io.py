@@ -1,9 +1,9 @@
 import numpy as np
 
 #helper function to read the binary dump of a raw im3 file 
-def im3readraw(f) :
+def im3readraw(f,dtype=np.uint16) :
   with open(f,mode='rb') as fp : #read as binary
-    content = np.fromfile(fp,dtype=np.uint16)
+    content = np.fromfile(fp,dtype=dtype)
   return content
 
 #helper function to write an array of uint16s as an im3 file
@@ -12,9 +12,9 @@ def im3writeraw(outname,a) :
     a.tofile(fp)
 
 #helper function to read a raw image file and return it as an array of shape (height,width,n_layers)
-def getRawAsHWL(fname,height,width,nlayers) :
+def getRawAsHWL(fname,height,width,nlayers,dtype=np.uint16) :
   #get the .raw file as a vector of uint16s
-  img = im3readraw(fname)
+  img = im3readraw(fname,dtype)
   #reshape it to the given dimensions
   try :
     img_a = np.reshape(img,(nlayers,width,height),order="F")
@@ -27,9 +27,9 @@ def getRawAsHWL(fname,height,width,nlayers) :
   return img_to_return
 
 #helper function to read a single-layer image and return it as an array of shape (height,width)
-def getRawAsHW(fname,height,width) :
+def getRawAsHW(fname,height,width,dtype=np.uint16) :
   #get the file as a vector of uint16s
-  img = im3readraw(fname)
+  img = im3readraw(fname,dtype)
   #reshape it
   try :
     img_a = np.reshape(img,(height,width),order="F")
@@ -40,6 +40,6 @@ def getRawAsHW(fname,height,width) :
   return img_a
 
 #helper function to flatten and write out a given image as binary uint16 content
-def writeImageToFile(img_array,filename_to_write) :
+def writeImageToFile(img_array,filename_to_write,dtype=np.uint16) :
   #write out image flattened in fortran order
-  im3writeraw(filename_to_write,img_array.flatten(order="F").astype(np.uint16))
+  im3writeraw(filename_to_write,img_array.flatten(order="F").astype(dtype))
