@@ -1,7 +1,8 @@
-import abc, dataclasses, itertools, logging, numpy as np, uncertainties as unc
+import abc, dataclasses, itertools, logging, methodtools, numpy as np, uncertainties as unc
 from .overlap import OverlapCollection
 from .rectangle import Rectangle, RectangleCollection, rectangledict
 from ..utilities import units
+from ..utilities.misc import weightedstd
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
@@ -30,6 +31,8 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   \end{pmatrix}
   \end{equation}
   """
+  logger.debug("starting to stitch")
+
   #nll = x^T A x + bx + c
 
   size = 2*len(rectangles) + 4 #2* because each rectangle has an x and a y, + 4 for the components of T
@@ -82,17 +85,8 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
 
   dxs, dys = zip(*(o.result.dxvec for o in overlaps))
 
-  weightedvariancedx = np.average(
-    units.nominal_values(dxs)**2,
-    weights=1/units.std_devs(dxs)**2,
-  )
-  sigmax = np.sqrt(weightedvariancedx) / scaleby * scalejittererror
-
-  weightedvariancedy = np.average(
-    units.nominal_values(dys)**2,
-    weights=1/units.std_devs(dys)**2,
-  )
-  sigmay = np.sqrt(weightedvariancedy) / scaleby * scalejittererror
+  sigmax = weightedstd(dxs, subtractaverage=False) / scaleby * scalejittererror
+  sigmay = weightedstd(dys, subtractaverage=False) / scaleby * scalejittererror
 
   if fixpoint == "origin":
     x0vec = units.distances(pixels=np.array([0, 0]), pscale=None) #fix the origin, linear scaling is with respect to that
@@ -136,16 +130,22 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     c += x0**2 / sigmax**2
     c += y0**2 / sigmay**2
 
+  logger.debug("assembled A, b, c")
+
   result = units.linalg.solve(2*A, -b)
+
+  logger.debug("solved quadratic equation")
 
   delta2nllfor1sigma = 1
 
   covariancematrix = units.linalg.inv(A) * delta2nllfor1sigma
+  logger.debug("got covariance matrix")
   result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
   x = result[:-4].reshape(len(rectangles), 2) * scaleby
   T = result[-4:].reshape(2, 2)
 
+  logger.debug("done")
   return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix)
 
 def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
@@ -413,11 +413,12 @@ class StitchResultOverlapCovariances(StitchResultBase):
 
     return newx1 - newx2 - (overlap.x1vec - overlap.x2vec)
 
+  @methodtools.lru_cache()
+  def __overlapcovariancedict(self):
+    return {frozenset((oc.hpfid1, oc.hpfid2)): oc for oc in self.overlapcovariances}
+
   def overlapcovariance(self, overlap):
-    for oc in self.overlapcovariances:
-      if {overlap.p1, overlap.p2} == {oc.hpfid1, oc.hpfid2}:
-        return oc
-    raise KeyError(f"No overlap covariance with {overlap.p1} {overlap.p2}")
+    return self.__overlapcovariancedict()[frozenset((overlap.p1, overlap.p2))]
 
   def readtable(self, *filenames, adjustoverlaps=True):
     filename, affinefilename, overlapcovariancefilename = filenames
