@@ -45,7 +45,7 @@ class MeanImage :
         self.image_stack+=im_array
         self.n_images_stacked+=1
 
-    def makeFlatFieldImage(self,smoothsigma=12.5,smoothtruncate=4.0) :
+    def makeFlatFieldImage(self,smoothsigma=100.,smoothtruncate=4.0) :
         """
         A function to take the mean of the image stack, smooth it, and normalize each of its layers to make the flatfield image
         smoothsigma    = sigma (in pixels) of Gaussian filter to use 
@@ -123,13 +123,13 @@ class MeanImage :
         xaxis_vals = list(range(1,self.mean_image.shape[-1]+1))
         plt.figure(figsize=(INTENSITY_FIG_WIDTH,(9./16.)*INTENSITY_FIG_WIDTH))
         plt.plot(xaxis_vals,ff_min_pixel_intensities,color='darkblue',marker='o',linewidth=2,label='minimum intensity')
-        plt.plot(xaxis_vals,ff_low_pixel_intensities,color='royalblue',marker='o',linewidth=2,linestyle='dashed',label='5th %%ile intensity')
+        plt.plot(xaxis_vals,ff_low_pixel_intensities,color='royalblue',marker='o',linewidth=2,linestyle='dashed',label=r'5th %ile intensity')
         plt.plot(xaxis_vals,ff_max_pixel_intensities,color='darkred',marker='o',linewidth=2,label='maximum intensity')
-        plt.plot(xaxis_vals,ff_high_pixel_intensities,color='lightcoral',marker='o',linewidth=2,linestyle='dashed',label='95th %%ile intensity')
-        plt.plot([9.5,9.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],linewidth=2,linestyle='dotted',label='broadband filter changeover')
-        plt.plot([18.5,18.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],linewidth=2,linestyle='dotted')
-        plt.plot([25.5,25.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],linewidth=2,linestyle='dotted')
-        plt.plot([32.5,32.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],linewidth=2,linestyle='dotted')
+        plt.plot(xaxis_vals,ff_high_pixel_intensities,color='lightcoral',marker='o',linewidth=2,linestyle='dashed',label=r'95th %ile intensity')
+        plt.plot([9.5,9.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
+        plt.plot([18.5,18.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],color='black',linewidth=2,linestyle='dotted')
+        plt.plot([25.5,25.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],color='black',linewidth=2,linestyle='dotted')
+        plt.plot([32.5,32.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],color='black',linewidth=2,linestyle='dotted')
         plt.title(f'flatfield image pixel intensities per layer (mean normalized)')
         plt.xlabel('layer number')
         plt.ylabel('pixel intensity')
@@ -142,7 +142,7 @@ class MeanImage :
     def __takeMean(self) :
         self.mean_image = self.image_stack/self.n_images_stacked
 
-    def __smoothMeanImage(self,smoothsigma=12.5,smoothtruncate=4.0) :
+    def __smoothMeanImage(self,smoothsigma,smoothtruncate) :
         if self.mean_image is None :
             raise FlatFieldError('ERROR: cannot call smoothMeanImage before calling takeMean!')
         self.smoothed_mean_image = skimage.filters.gaussian(self.mean_image,sigma=smoothsigma,truncate=smoothtruncate,mode='reflect')
