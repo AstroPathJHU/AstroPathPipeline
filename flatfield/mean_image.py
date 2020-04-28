@@ -7,7 +7,8 @@ import os
 
 FILE_EXT='.bin'
 VISUALIZATION_DIRECTORY_NAME='plots'
-FIG_WIDTH=7.5 #width of figures created in inches
+IMG_LAYER_FIG_WIDTH=7.5 #width of image layer figures created in inches
+INTENSITY_FIG_WIDTH=11.0 #width of the intensity plot figure
 
 class FlatFieldError(Exception) :
     """
@@ -79,15 +80,21 @@ class MeanImage :
         Make and save several visualizations of the image layers
         """
         #figure out the size of the figures to save
-        fig_size=(FIG_WIDTH,FIG_WIDTH*(self.mean_image.shape[0]/self.mean_image.shape[1]))
+        fig_size=(IMG_LAYER_FIG_WIDTH,IMG_LAYER_FIG_WIDTH*(self.mean_image.shape[0]/self.mean_image.shape[1]))
         #make the directory if its not already created
         if not os.path.isdir(VISUALIZATION_DIRECTORY_NAME) :
             os.mkdir(VISUALIZATION_DIRECTORY_NAME)
-        with cd(VISUALIZATION_DIRECTORY_NAME) :
-            #save a little plot of each layer in each image
-            for layer_i in range(self.mean_image.shape[-1]) :
-                layer_titlestem = f'layer {layer_i+1}'
-                layer_fnstem = f'layer_{layer_i+1}'
+        #keep track of the flatfield images' minimum and maximum (and 5/95%ile) pixel intensities while the other plots are made
+        ff_min_pixel_intensities=[]
+        ff_low_pixel_intensities=[]
+        ff_max_pixel_intensities=[]
+        ff_high_pixel_intensities=[]
+        #iterate over the layers
+        for layer_i in range(self.mean_image.shape[-1]) :
+            layer_titlestem = f'layer {layer_i+1}'
+            layer_fnstem = f'layer_{layer_i+1}'
+            #save a little figure of each layer in each image
+            with cd(VISUALIZATION_DIRECTORY_NAME) :
                 #for the mean image
                 plt.figure(figsize=fig_size)
                 plt.imshow(self.mean_image[:,:,layer_i])
@@ -106,6 +113,29 @@ class MeanImage :
                 plt.title(f'flatfield, {layer_titlestem}')
                 plt.savefig(f'flatfield_{layer_fnstem}.png')
                 plt.close()
+            #find the min, max, and 5/95%ile pixel intensities for this image layer
+            sorted_ff_layer = np.sort((self.flatfield_image[:,:,layer_i]).flatten())
+            ff_min_pixel_intensities.append(sorted_ff_layer[0])
+            ff_low_pixel_intensities.append(sorted_ff_layer[int(0.05*len(sorted_ff_layer))])
+            ff_max_pixel_intensities.append(sorted_ff_layer[-1])
+            ff_high_pixel_intensities.append(sorted_ff_layer[int(0.95*len(sorted_ff_layer))])
+        #plot the inensity plots together, with the broadband filter breaks
+        xaxis_vals = list(range(1,self.mean_image.shape[-1]+1))
+        plt.figure(figsize=(INTENSITY_FIG_WIDTH,(9./16.)*INTENSITY_FIG_WIDTH))
+        plt.plot(xaxis_vals,ff_min_pixel_intensities,color='darkblue',marker='o',linewidth=2,label='minimum intensity')
+        plt.plot(xaxis_vals,ff_low_pixel_intensities,color='royalblue',marker='o',linewidth=2,linestyle='dashed',label='5th %%ile intensity')
+        plt.plot(xaxis_vals,ff_max_pixel_intensities,color='darkred',marker='o',linewidth=2,label='maximum intensity')
+        plt.plot(xaxis_vals,ff_high_pixel_intensities,color='lightcoral',marker='o',linewidth=2,linestyle='dashed',label='95th %%ile intensity')
+        plt.plot([9.5,9.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],linewidth=2,linestyle='dotted',label='broadband filter changeover')
+        plt.plot([18.5,18.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],linewidth=2,linestyle='dotted')
+        plt.plot([25.5,25.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],linewidth=2,linestyle='dotted')
+        plt.plot([32.5,32.5],[min(ff_min_pixel_intensities),max(ff_max_pixel_intensities)],linewidth=2,linestyle='dotted')
+        plt.title(f'flatfield image pixel intensities per layer (mean normalized)')
+        plt.xlabel('layer number')
+        plt.ylabel('pixel intensity')
+        plt.legend(loc='best')
+        plt.savefig('pixel_intensity_plot.png')
+
 
     #################### HELPER FUNCTIONS ####################
 
