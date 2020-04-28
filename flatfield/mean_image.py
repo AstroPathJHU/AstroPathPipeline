@@ -45,12 +45,12 @@ class MeanImage :
         self.image_stack+=im_array
         self.n_images_stacked+=1
 
-    def makeFlatFieldImage(self,smoothsigma=100.,smoothtruncate=4.0) :
+    def makeFlatFieldImage(self,smoothsigma=25.,smoothtruncate=4.0) :
         """
         A function to take the mean of the image stack, smooth it, and normalize each of its layers to make the flatfield image
         smoothsigma    = sigma (in pixels) of Gaussian filter to use 
         smoothtruncate = how many sigma to truncate the Gaussian filter at on either side
-        defaults (12.5 and 4.0) give a 100 pixel-wide filter
+        defaults (25 and 4.0) give a 100 pixel-wide filter
         """
         self.__takeMean()
         self.__smoothMeanImage(smoothsigma,smoothtruncate)
