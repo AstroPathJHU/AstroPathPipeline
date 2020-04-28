@@ -47,7 +47,7 @@ class TestAlignment(unittest.TestCase):
       ("M21_1_stitch_overlap_covariance.csv", StitchOverlapCovariance, {"pscale": a.pscale}),
     ):
       rows = readtable(os.path.join(thisfolder, "data", "M21_1", "dbload", filename), cls, extrakwargs=extrakwargs)
-      targetrows = readtable(os.path.join(thisfolder, "alignmentreference", filename), cls, extrakwargs=extrakwargs)
+      targetrows = readtable(os.path.join(thisfolder, "reference", "alignment", filename), cls, extrakwargs=extrakwargs)
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
@@ -60,7 +60,7 @@ class TestAlignment(unittest.TestCase):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
     agpu = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1", useGPU=True, forceGPU=True)
 
-    readfilename = os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv")
+    readfilename = os.path.join(thisfolder, "reference", "alignment", "M21_1_align.csv")
     a.readalignments(filename=readfilename)
 
     agpu.getDAPI()
@@ -71,7 +71,7 @@ class TestAlignment(unittest.TestCase):
 
   def testReadAlignment(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
-    readfilename = os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv")
+    readfilename = os.path.join(thisfolder, "reference", "alignment", "M21_1_align.csv")
     writefilename = os.path.join(thisfolder, "testreadalignments.csv")
 
     a.readalignments(filename=readfilename)
@@ -87,7 +87,7 @@ class TestAlignment(unittest.TestCase):
 
   def testStitchReadingWriting(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
-    a.readalignments(filename=os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"))
+    a.readalignments(filename=os.path.join(thisfolder, "reference", "alignment", "M21_1_align.csv"))
     result = a.readstitchresult()
 
     def newfilename(filename): return os.path.join(thisfolder, "test_"+os.path.basename(filename))
@@ -110,7 +110,7 @@ class TestAlignment(unittest.TestCase):
 
   def testStitchCvxpy(self):
     a = AlignmentSet(os.path.join(thisfolder, "data"), os.path.join(thisfolder, "data", "flatw"), "M21_1")
-    a.readalignments(filename=os.path.join(thisfolder, "alignmentreference", "M21_1_align.csv"))
+    a.readalignments(filename=os.path.join(thisfolder, "reference", "alignment", "M21_1_align.csv"))
 
     defaultresult = a.stitch(saveresult=False)
     cvxpyresult = a.stitch(saveresult=False, usecvxpy=True)

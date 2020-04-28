@@ -22,14 +22,14 @@ rawfile1path = os.path.join(folder,'data','raw',samp,file1stem+'.raw')
 rawfile2path = os.path.join(folder,'data','raw',samp,file2stem+'.raw')
 
 # warp test file paths
-warp1file1layer1p=os.path.join(folder,'warpingreference',file1stem+'.fieldWarp_layer01')
-warp1file1layer2p=os.path.join(folder,'warpingreference',file1stem+'.fieldWarp_layer02')
-warp1file2layer1p=os.path.join(folder,'warpingreference',file2stem+'.fieldWarp_layer01')
-warp1file2layer2p=os.path.join(folder,'warpingreference',file2stem+'.fieldWarp_layer02')
-warp2file1layer1p=os.path.join(folder,'warpingreference',file1stem+'.camWarp_layer01')
-warp2file1layer2p=os.path.join(folder,'warpingreference',file1stem+'.camWarp_layer02')
-warp2file2layer1p=os.path.join(folder,'warpingreference',file2stem+'.camWarp_layer01')
-warp2file2layer2p=os.path.join(folder,'warpingreference',file2stem+'.camWarp_layer02')
+warp1file1layer1p=os.path.join(folder,'reference','warping',file1stem+'.fieldWarp_layer01')
+warp1file1layer2p=os.path.join(folder,'reference','warping',file1stem+'.fieldWarp_layer02')
+warp1file2layer1p=os.path.join(folder,'reference','warping',file2stem+'.fieldWarp_layer01')
+warp1file2layer2p=os.path.join(folder,'reference','warping',file2stem+'.fieldWarp_layer02')
+warp2file1layer1p=os.path.join(folder,'reference','warping',file1stem+'.camWarp_layer01')
+warp2file1layer2p=os.path.join(folder,'reference','warping',file1stem+'.camWarp_layer02')
+warp2file2layer1p=os.path.join(folder,'reference','warping',file2stem+'.camWarp_layer01')
+warp2file2layer2p=os.path.join(folder,'reference','warping',file2stem+'.camWarp_layer02')
 
 #first make a few warps
 warp1 = PolyFieldWarp() #Alex's default polynomial field warp

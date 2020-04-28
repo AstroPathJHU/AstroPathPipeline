@@ -63,14 +63,27 @@ class BadRegionFinder:
   @property
   def ratio(self): return self.__ratio()
 
-  def show(self, *, threshold=.02, alpha=0.4):
+  def badregions(self, *, threshold=0.02):
+    return self.ratio<threshold
+
+  def goodregions(self, *args, **kwargs):
+    return ~self.badregions(*args, **kwargs)
+
+  def show(self, *, alpha=1, saveas=None, **kwargs):
     imagepurple = np.transpose([self.image, self.image//2, self.image], (1, 2, 0))
     plt.imshow(imagepurple)
 
-    badhighlight = np.transpose(np.array([0*self.image+1, 0*self.image+1, 0*self.image, np.where(self.ratio<threshold, alpha, 0.)]), (1, 2, 0))
+    badhighlight = np.array(
+      [0*self.image+1, 0*self.image+1, 0*self.image, self.badregions(**kwargs)*alpha],
+      dtype=float,
+    ).transpose(1, 2, 0)
     plt.imshow(badhighlight)
 
-    plt.show()
+    if saveas is None:
+      plt.show()
+    else:
+      plt.savefig(saveas)
+      plt.close()
 
 def makebiggrid(smallgridy, smallgridx, smallgridvalues, biggridshape):
   biggridvalues = np.ndarray(biggridshape)

@@ -57,6 +57,12 @@ pipeline {
           }
         }
 
+        stage('bad region detection') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testbadregions'
+          }
+        }
+
         stage('code checks') {
           steps {
             sh 'python -m pyflakes .'
@@ -67,7 +73,7 @@ pipeline {
   }
   post {
     always {
-      archiveArtifacts artifacts: 'documentation/alignment/alignment_stitching.pdf', fingerprint: true
+      archiveArtifacts artifacts: 'documentation/alignment/alignment_stitching.pdf, test/badregions_test_for_jenkins/*', fingerprint: true
     }
   }
 }
