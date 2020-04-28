@@ -2,14 +2,15 @@
 
 #imports
 from ..warping.warpfitter import WarpFitter
-import os
+import pathlib
 
 #some constants
-folder = os.path.dirname(__file__)
+folder = pathlib.Path(__file__).parent
 samp = 'M21_1'
-rawfile_dir = os.path.join(folder,'data','raw',samp)
-metafile_dir = os.path.join(folder,'data',samp,'dbload')
-working_dir = os.path.join(folder,'warpfitter_test_for_jenkins')
+rawfile_dir = folder/'data'/'raw'/samp
+metafile_dir = folder/'data'/samp/'dbload'
+working_dir = folder/'warpfitter_test_for_jenkins'
+working_dir.mkdir(exist_ok=True)
 overlaps = [46]
 layer = 1
 fix_cxcy   = False
@@ -37,6 +38,6 @@ result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,
                       max_radial_warp=max_radial_warp,max_tangential_warp=max_tangential_warp,
                       polish=True,print_every=print_every,maxiter=max_iter)
 print(f'result:\n{result}')
-with open(os.path.join(working_dir,"warping_parameters.txt")) as f:
+with open(working_dir/"warping_parameters.txt") as f:
   print(f.read())
 print('Done!')
