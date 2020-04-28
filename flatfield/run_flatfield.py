@@ -15,6 +15,7 @@ IMG_Y = None
 IMG_NLAYERS = None
 IMG_DTYPE = np.uint16
 FILEPATH_TEXT_FILE_NAME='filepath_log.txt'
+PLOT_DIRECTORY_NAME='plots'
 
 #set up a logger
 flatfield_logger = logging.getLogger("flatfield")
@@ -163,7 +164,11 @@ def main() :
     #make some visualizations of the images
     flatfield_logger.info('Saving plots....')
     with cd(args.workingdir_name) :
-        mean_image.savePlots()
+        #make the plot directory if its not already created
+        if not os.path.isdir(PLOT_DIRECTORY_NAME) :
+            os.mkdir(PLOT_DIRECTORY_NAME)
+        with cd(PLOT_DIRECTORY_NAME) :
+            mean_image.savePlots()
     #write out a text file of all the filenames that were added
     flatfield_logger.info('Writing filepath text file....')
     with cd(args.workingdir_name) :
