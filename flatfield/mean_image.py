@@ -67,13 +67,13 @@ class MeanImage :
         if self.mean_image is not None :
             shape = self.mean_image.shape
             meanimage_filename = f'{namestem}_mean_of_{self.n_images_stacked}_{shape[0]}x{shape[1]}x{shape[2]}_images{FILE_EXT}'
-            writeImageToFile(np.transpose(self.mean_image.astype(np.float16,casting='same_kind'),(2,1,0)),meanimage_filename,dtype=np.float16)
+            writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=np.float64)
         if self.smoothed_mean_image is not None :
             smoothed_meanimage_filename = f'{namestem}_smoothed_mean_image{FILE_EXT}'
-            writeImageToFile(np.transpose(self.smoothed_mean_image.astype(np.float16,casting='same_kind'),(2,1,0)),smoothed_meanimage_filename,dtype=np.float16)
+            writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=np.float64)
         if self.flatfield_image is not None :
             flatfieldimage_filename = f'{namestem}{FILE_EXT}'
-            writeImageToFile(np.transpose(self.flatfield_image.astype(np.float16,casting='same_kind'),(2,1,0)),flatfieldimage_filename,dtype=np.float16)
+            writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=np.float64)
 
     def savePlots(self) :
         """
