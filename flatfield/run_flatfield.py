@@ -132,8 +132,6 @@ def main() :
         flatfield_logger.info('Done.')
     #take the mean of the stacked images, smooth it and make the flatfield image by dividing each layer by its mean pixel value
     flatfield_logger.info('Getting/smoothing mean image and making flatfield....')
-    mean_image.takeMean()
-    mean_image.smoothMeanImage()
     mean_image.makeFlatFieldImage()
     #save the images
     flatfield_logger.info('Saving images....')
