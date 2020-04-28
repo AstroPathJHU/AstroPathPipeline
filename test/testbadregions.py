@@ -1,6 +1,6 @@
 import numpy as np, pathlib, unittest
 from ..alignment.alignmentset import AlignmentSet
-from ..badregions.badregions import BadRegionFinder
+from ..badregions.badregions import BadRegionFinderLaplaceStd
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -11,8 +11,8 @@ class TestBadRegions(unittest.TestCase):
     A.getDAPI(writeimstat=False)
     cls.image = A.rectangles[21].image
 
-  def testBadRegionFinder(self):
-    f = BadRegionFinder(self.image)
+  def testBadRegionFinderLaplaceStd(self):
+    f = BadRegionFinderLaplaceStd(self.image)
     kwargs = {"threshold": 0.15}
     badregions = f.badregions(**kwargs)
     try:

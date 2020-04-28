@@ -1,17 +1,43 @@
-"""
-https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
-"""
+import abc, cv2, functools, matplotlib.pyplot as plt, methodtools, numpy as np
 
-import cv2, functools, matplotlib.pyplot as plt, methodtools, numpy as np
-
-class BadRegionFinder:
-  def __init__(self, image, *, blocksize=40, blockoffset=5):
+class BadRegionFinder(abc.ABC):
+  def __init__(self, image):
     self.__image = image
-    self.__blocksize = blocksize
-    self.__blockoffset = blockoffset
 
   @property
   def image(self): return self.__image
+
+  @abc.abstractmethod
+  def badregions(self): pass
+  def goodregions(self, *args, **kwargs):
+    return ~self.badregions(*args, **kwargs)
+
+  def show(self, *, alpha=1, saveas=None, **kwargs):
+    imagepurple = np.transpose([self.image, self.image//2, self.image], (1, 2, 0))
+    plt.imshow(imagepurple)
+
+    badhighlight = np.array(
+      [0*self.image+1, 0*self.image+1, 0*self.image, self.badregions(**kwargs)*alpha],
+      dtype=float,
+    ).transpose(1, 2, 0)
+    plt.imshow(badhighlight)
+
+    if saveas is None:
+      plt.show()
+    else:
+      plt.savefig(saveas)
+      plt.close()
+
+class BadRegionFinderLaplaceStd(BadRegionFinder):
+  """
+  https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
+  """
+
+  def __init__(self, image, *, blocksize=40, blockoffset=5):
+    super().__init__(image)
+    self.__blocksize = blocksize
+    self.__blockoffset = blockoffset
+
   @property
   def blocksize(self): return self.__blocksize
   @property
@@ -65,25 +91,6 @@ class BadRegionFinder:
 
   def badregions(self, *, threshold=0.15):
     return self.ratio<threshold
-
-  def goodregions(self, *args, **kwargs):
-    return ~self.badregions(*args, **kwargs)
-
-  def show(self, *, alpha=1, saveas=None, **kwargs):
-    imagepurple = np.transpose([self.image, self.image//2, self.image], (1, 2, 0))
-    plt.imshow(imagepurple)
-
-    badhighlight = np.array(
-      [0*self.image+1, 0*self.image+1, 0*self.image, self.badregions(**kwargs)*alpha],
-      dtype=float,
-    ).transpose(1, 2, 0)
-    plt.imshow(badhighlight)
-
-    if saveas is None:
-      plt.show()
-    else:
-      plt.savefig(saveas)
-      plt.close()
 
 def makebiggrid(smallgridy, smallgridx, smallgridvalues, biggridshape):
   biggridvalues = np.ndarray(biggridshape)
