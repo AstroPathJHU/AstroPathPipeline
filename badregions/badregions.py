@@ -60,8 +60,8 @@ class BadRegionFinderLaplaceStd(BadRegionFinder):
   def __laplacestd(self):
     grid = self.__evaluationgrid
 
-    evaluatedlaplacestd = regionlaplacianstd(self.image, *grid, width=self.blocksize)
-    return makebiggrid(self.__evaluationypoints, self.__evaluationxpoints, evaluatedlaplacestd, self.image.shape)
+    evaluatedlaplacestd = self.regionlaplacianstd(*grid)
+    return self.makebiggrid(evaluatedlaplacestd, self.image.shape)
 
   @property
   def laplacestd(self): return self.__laplacestd()
@@ -70,8 +70,8 @@ class BadRegionFinderLaplaceStd(BadRegionFinder):
   def __mean(self):
     grid = self.__evaluationgrid
 
-    evaluatedmean = regionmean(self.image, *grid, width=self.blocksize)
-    return makebiggrid(self.__evaluationypoints, self.__evaluationxpoints, evaluatedmean, self.image.shape)
+    evaluatedmean = self.regionmean(*grid)
+    return self.makebiggrid(evaluatedmean, self.image.shape)
 
   @property
   def mean(self): return self.__mean()
@@ -92,44 +92,48 @@ class BadRegionFinderLaplaceStd(BadRegionFinder):
   def badregions(self, *, threshold=0.15):
     return self.ratio<threshold
 
-def makebiggrid(smallgridy, smallgridx, smallgridvalues, biggridshape):
-  biggridvalues = np.ndarray(biggridshape)
+  def makebiggrid(self, smallgridvalues, biggridshape):
+    biggridvalues = np.ndarray(biggridshape)
 
-  for iy, y in enumerate(smallgridy):
-    starty = (y + smallgridy[iy-1])//2 if iy != 0 else 0
-    endy = (y + smallgridy[iy+1])//2 if iy != len(smallgridy)-1 else biggridshape[0]
-    for ix, x in enumerate(smallgridx):
-      startx = (x + smallgridx[ix-1])//2 if ix != 0 else 0
-      endx = (x + smallgridx[ix+1])//2 if ix != len(smallgridx)-1 else biggridshape[1]
+    for iy, y in enumerate(self.__evaluationypoints):
+      starty = (y + self.__evaluationypoints[iy-1])//2 if iy != 0 else 0
+      endy = (y + self.__evaluationypoints[iy+1])//2 if iy != len(self.__evaluationypoints)-1 else biggridshape[0]
+      for ix, x in enumerate(self.__evaluationxpoints):
+        startx = (x + self.__evaluationxpoints[ix-1])//2 if ix != 0 else 0
+        endx = (x + self.__evaluationxpoints[ix+1])//2 if ix != len(self.__evaluationxpoints)-1 else biggridshape[1]
 
-      biggridvalues[starty:endy, startx:endx] = smallgridvalues[iy,ix]
+        biggridvalues[starty:endy, startx:endx] = smallgridvalues[iy,ix]
 
-  return biggridvalues
+    return biggridvalues
 
-@functools.partial(np.vectorize, excluded=(0, 3, "image", "width"))
-def regionlaplacianstd(image, y, x, width=40):
-  xmin = x-width//2
-  ymin = y-width//2
-  xmax = xmin+width
-  ymax = ymin+width
+  def __regionlaplacianstd(self, y, x):
+    xmin = x-self.blocksize//2
+    ymin = y-self.blocksize//2
+    xmax = xmin+self.blocksize
+    ymax = ymin+self.blocksize
 
-  xmin = max(xmin, 0)
-  ymin = max(ymin, 0)
+    xmin = max(xmin, 0)
+    ymin = max(ymin, 0)
 
-  slc = image[ymin:ymax, xmin:xmax]
-  laplace = cv2.Laplacian(slc, cv2.CV_64F)
+    slc = self.image[ymin:ymax, xmin:xmax]
+    laplace = cv2.Laplacian(slc, cv2.CV_64F)
 
-  return laplace.std()
+    return laplace.std()
 
-@functools.partial(np.vectorize, excluded=(0, 3, "image", "width"))
-def regionmean(image, y, x, width=40):
-  xmin = x-width//2
-  ymin = y-width//2
-  xmax = xmin+width
-  ymax = ymin+width
+  def regionlaplacianstd(self, y, x):
+    return np.vectorize(self.__regionlaplacianstd)(y, x)
 
-  xmin = max(xmin, 0)
-  ymin = max(ymin, 0)
+  def __regionmean(self, y, x):
+    xmin = x-self.blocksize//2
+    ymin = y-self.blocksize//2
+    xmax = xmin+self.blocksize
+    ymax = ymin+self.blocksize
 
-  slc = image[ymin:ymax, xmin:xmax]
-  return slc.mean()
+    xmin = max(xmin, 0)
+    ymin = max(ymin, 0)
+
+    slc = self.image[ymin:ymax, xmin:xmax]
+    return slc.mean()
+
+  def regionmean(self, y, x):
+    return np.vectorize(self.__regionmean)(y, x)
