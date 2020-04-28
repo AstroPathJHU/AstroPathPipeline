@@ -2,7 +2,7 @@
 https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
 """
 
-import cv2, functools, imageio, matplotlib.pyplot as plt, methodtools, numpy as np, scipy.interpolate
+import cv2, functools, matplotlib.pyplot as plt, methodtools, numpy as np
 
 class BadRegionFinder:
   def __init__(self, image, *, blocksize=40, blockoffset=5):
