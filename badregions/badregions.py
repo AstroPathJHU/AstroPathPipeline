@@ -31,39 +31,39 @@ class BadRegionFinder:
     return np.meshgrid(self.__evaluationypoints, self.__evaluationxpoints, indexing="ij")
 
   @methodtools.lru_cache()
-  def __laplacevariance(self):
+  def __laplacestd(self):
     grid = self.__evaluationgrid
 
-    evaluatedlaplacevariance = regionlaplacianvariance(self.image, *grid, width=self.blocksize)
-    return makebiggrid(self.__evaluationypoints, self.__evaluationxpoints, evaluatedlaplacevariance, self.image.shape)
+    evaluatedlaplacestd = regionlaplacianstd(self.image, *grid, width=self.blocksize)
+    return makebiggrid(self.__evaluationypoints, self.__evaluationxpoints, evaluatedlaplacestd, self.image.shape)
 
   @property
-  def laplacevariance(self): return self.__laplacevariance()
+  def laplacestd(self): return self.__laplacestd()
 
   @methodtools.lru_cache()
-  def __meansq(self):
+  def __mean(self):
     grid = self.__evaluationgrid
 
-    evaluatedmeansq = regionmeansq(self.image, *grid, width=self.blocksize)
-    return makebiggrid(self.__evaluationypoints, self.__evaluationxpoints, evaluatedmeansq, self.image.shape)
+    evaluatedmean = regionmean(self.image, *grid, width=self.blocksize)
+    return makebiggrid(self.__evaluationypoints, self.__evaluationxpoints, evaluatedmean, self.image.shape)
 
   @property
-  def meansq(self): return self.__meansq()
+  def mean(self): return self.__mean()
 
   @methodtools.lru_cache()
   def __ratio(self):
-    meansqnonzero = self.meansq != 0
-    maxratio = max(self.laplacevariance[meansqnonzero] / self.meansq[meansqnonzero])
+    meannonzero = self.mean != 0
+    maxratio = max(self.laplacestd[meannonzero] / self.mean[meannonzero])
 
-    laplacevariance = np.where(meansqnonzero, self.laplacevariance, maxratio)
-    meansq = np.where(meansqnonzero, self.meansq, 1)
+    laplacestd = np.where(meannonzero, self.laplacestd, maxratio)
+    mean = np.where(meannonzero, self.mean, 1)
 
-    return laplacevariance / meansq
+    return laplacestd / mean
 
   @property
   def ratio(self): return self.__ratio()
 
-  def badregions(self, *, threshold=0.02):
+  def badregions(self, *, threshold=0.15):
     return self.ratio<threshold
 
   def goodregions(self, *args, **kwargs):
@@ -100,7 +100,7 @@ def makebiggrid(smallgridy, smallgridx, smallgridvalues, biggridshape):
   return biggridvalues
 
 @functools.partial(np.vectorize, excluded=(0, 3, "image", "width"))
-def regionlaplacianvariance(image, y, x, width=40):
+def regionlaplacianstd(image, y, x, width=40):
   xmin = x-width//2
   ymin = y-width//2
   xmax = xmin+width
@@ -112,10 +112,10 @@ def regionlaplacianvariance(image, y, x, width=40):
   slc = image[ymin:ymax, xmin:xmax]
   laplace = cv2.Laplacian(slc, cv2.CV_64F)
 
-  return laplace.var()
+  return laplace.std()
 
 @functools.partial(np.vectorize, excluded=(0, 3, "image", "width"))
-def regionmeansq(image, y, x, width=40):
+def regionmean(image, y, x, width=40):
   xmin = x-width//2
   ymin = y-width//2
   xmax = xmin+width
@@ -125,4 +125,4 @@ def regionmeansq(image, y, x, width=40):
   ymin = max(ymin, 0)
 
   slc = image[ymin:ymax, xmin:xmax]
-  return slc.mean()**2
+  return slc.mean()

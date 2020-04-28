@@ -13,7 +13,7 @@ class TestBadRegions(unittest.TestCase):
 
   def testBadRegionFinder(self):
     f = BadRegionFinder(self.image)
-    kwargs = {"threshold": 0.02}
+    kwargs = {"threshold": 0.15}
     badregions = f.badregions(**kwargs)
     try:
       with np.load(thisfolder/"reference"/"badregions"/"badregionsreference.npz") as f:
