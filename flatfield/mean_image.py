@@ -6,7 +6,7 @@ import skimage.filters, skimage.util
 import os
 
 FILE_EXT='.bin'
-VISUALIZATION_DIRECTORY_NAME='plots'
+PLOT_DIRECTORY_NAME='plots'
 IMG_LAYER_FIG_WIDTH=7.5 #width of image layer figures created in inches
 INTENSITY_FIG_WIDTH=11.0 #width of the intensity plot figure
 
@@ -75,15 +75,15 @@ class MeanImage :
             flatfieldimage_filename = f'{namestem}{FILE_EXT}'
             writeImageToFile(np.transpose(self.flatfield_image.astype(np.float16,casting='same_kind'),(2,1,0)),flatfieldimage_filename,dtype=np.float16)
 
-    def saveVisualizations(self) :
+    def savePlots(self) :
         """
         Make and save several visualizations of the image layers
         """
         #figure out the size of the figures to save
         fig_size=(IMG_LAYER_FIG_WIDTH,IMG_LAYER_FIG_WIDTH*(self.mean_image.shape[0]/self.mean_image.shape[1]))
         #make the directory if its not already created
-        if not os.path.isdir(VISUALIZATION_DIRECTORY_NAME) :
-            os.mkdir(VISUALIZATION_DIRECTORY_NAME)
+        if not os.path.isdir(PLOT_DIRECTORY_NAME) :
+            os.mkdir(PLOT_DIRECTORY_NAME)
         #keep track of the flatfield images' minimum and maximum (and 5/95%ile) pixel intensities while the other plots are made
         ff_min_pixel_intensities=[]
         ff_low_pixel_intensities=[]
@@ -94,7 +94,7 @@ class MeanImage :
             layer_titlestem = f'layer {layer_i+1}'
             layer_fnstem = f'layer_{layer_i+1}'
             #save a little figure of each layer in each image
-            with cd(VISUALIZATION_DIRECTORY_NAME) :
+            with cd(PLOT_DIRECTORY_NAME) :
                 #for the mean image
                 plt.figure(figsize=fig_size)
                 plt.imshow(self.mean_image[:,:,layer_i])
@@ -120,17 +120,17 @@ class MeanImage :
             ff_max_pixel_intensities.append(sorted_ff_layer[-1])
             ff_high_pixel_intensities.append(sorted_ff_layer[int(0.95*len(sorted_ff_layer))])
         #plot the inensity plots together, with the broadband filter breaks
-        with cd(VISUALIZATION_DIRECTORY_NAME) :
+        with cd(PLOT_DIRECTORY_NAME) :
             xaxis_vals = list(range(1,self.mean_image.shape[-1]+1))
             plt.figure(figsize=(INTENSITY_FIG_WIDTH,(9./16.)*INTENSITY_FIG_WIDTH))
             plt.plot(xaxis_vals,ff_min_pixel_intensities,color='darkblue',marker='o',linewidth=2,label='minimum intensity')
-            plt.plot(xaxis_vals,ff_low_pixel_intensities,color='royalblue',marker='o',linewidth=2,linestyle='dashed',label=r'5th %ile intensity')
+            plt.plot(xaxis_vals,ff_low_pixel_intensities,color='royalblue',marker='o',linewidth=2,linestyle='dotted',label=r'5th %ile intensity')
             plt.plot(xaxis_vals,ff_max_pixel_intensities,color='darkred',marker='o',linewidth=2,label='maximum intensity')
-            plt.plot(xaxis_vals,ff_high_pixel_intensities,color='lightcoral',marker='o',linewidth=2,linestyle='dashed',label=r'95th %ile intensity')
-            plt.plot([9.5,9.5],[min(ff_min_pixel_intensities)-0.02,max(ff_max_pixel_intensities)+0.02],color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
-            plt.plot([18.5,18.5],[min(ff_min_pixel_intensities)-0.02,max(ff_max_pixel_intensities)+0.02],color='black',linewidth=2,linestyle='dotted')
-            plt.plot([25.5,25.5],[min(ff_min_pixel_intensities)-0.02,max(ff_max_pixel_intensities)+0.02],color='black',linewidth=2,linestyle='dotted')
-            plt.plot([32.5,32.5],[min(ff_min_pixel_intensities)-0.02,max(ff_max_pixel_intensities)+0.02],color='black',linewidth=2,linestyle='dotted')
+            plt.plot(xaxis_vals,ff_high_pixel_intensities,color='lightcoral',marker='o',linewidth=2,linestyle='dotted',label=r'95th %ile intensity')
+            plt.plot([9.5,9.5],[min(ff_min_pixel_intensities)-0.06,max(ff_max_pixel_intensities)+0.06],color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
+            plt.plot([18.5,18.5],[min(ff_min_pixel_intensities)-0.06,max(ff_max_pixel_intensities)+0.06],color='black',linewidth=2,linestyle='dotted')
+            plt.plot([25.5,25.5],[min(ff_min_pixel_intensities)-0.06,max(ff_max_pixel_intensities)+0.06],color='black',linewidth=2,linestyle='dotted')
+            plt.plot([32.5,32.5],[min(ff_min_pixel_intensities)-0.06,max(ff_max_pixel_intensities)+0.06],color='black',linewidth=2,linestyle='dotted')
             plt.title(f'flatfield image pixel intensities per layer (mean normalized)')
             plt.xlabel('layer number')
             plt.ylabel('pixel intensity')
@@ -140,13 +140,17 @@ class MeanImage :
 
     #################### HELPER FUNCTIONS ####################
 
+    #helper function to get the meanimage from the image stack
     def __takeMean(self) :
         self.mean_image = self.image_stack/self.n_images_stacked
 
+    #helper function to smooth each layer of the mean image with a gaussian filter
     def __smoothMeanImage(self,smoothsigma,smoothtruncate) :
         if self.mean_image is None :
             raise FlatFieldError('ERROR: cannot call smoothMeanImage before calling takeMean!')
-        self.smoothed_mean_image = skimage.filters.gaussian(self.mean_image,sigma=smoothsigma,truncate=smoothtruncate,mode='reflect')
+        self.smoothed_mean_image = np.ndarray(self.mean_image.shape,dtype=np.float64)
+        for layer_i in range(self.mean_image.shape[-1]) :
+            self.smoothed_mean_image[:,:,layer_i] = skimage.filters.gaussian(self.mean_image[:,:,layer_i],sigma=smoothsigma,truncate=smoothtruncate,mode='reflect')
 
 
 
