@@ -94,7 +94,10 @@ class WarpFitter :
                 shutil.rmtree(self.samp_name)
             except Exception :
                 raise FittingError('Something went wrong in trying to remove the directory of initially-warped files!')
-        units.setup(self.bkp_units_mode)
+        try:
+            units.setup(self.bkp_units_mode)
+        except TypeError: #units was garbage collected before the warpfitter
+            pass
 
     #################### PUBLIC FUNCTIONS ####################
 
