@@ -137,6 +137,10 @@ def main() :
     flatfield_logger.info('Saving images....')
     with cd(args.workingdir_name) :
         mean_image.saveImages(args.flatfield_image_name)
+    #make some visualizations of the images
+    flatfield_logger.info('Making visualizations....')
+    with cd(args.workingdir_name) :
+        mean_image.saveVisualizations()
     flatfield_logger.info('All Done!')
 
 if __name__=='__main__' :
