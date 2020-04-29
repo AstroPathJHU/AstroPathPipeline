@@ -12,9 +12,9 @@ class TestBadRegions(unittest.TestCase):
     cls.image = A.rectangles[21].image
 
   def testBadRegionFinderLaplaceStd(self):
-    f = BadRegionFinderLaplaceStd(self.image)
+    brf = BadRegionFinderLaplaceStd(self.image)
     kwargs = {"threshold": 0.15}
-    badregions = f.badregions(**kwargs)
+    badregions = brf.badregions(**kwargs)
     try:
       with np.load(thisfolder/"reference"/"badregions"/"badregionsreference.npz") as f:
         reference, = f.values()
@@ -23,5 +23,5 @@ class TestBadRegions(unittest.TestCase):
       savedir = thisfolder/"badregions_test_for_jenkins"
       savedir.mkdir(exist_ok=True)
       np.savez_compressed(savedir/"badregions.npz", badregions)
-      f.show(saveas=savedir/"badregions.pdf", **kwargs)
+      brf.show(saveas=savedir/"badregions.pdf", **kwargs)
       raise

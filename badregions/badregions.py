@@ -1,4 +1,4 @@
-import abc, cv2, functools, logging, matplotlib.pyplot as plt, methodtools, numpy as np
+import abc, cv2, logging, matplotlib.pyplot as plt, methodtools, numpy as np
 
 logger = logging.getLogger("badregions")
 logger.setLevel(logging.DEBUG)
@@ -235,7 +235,6 @@ class BadRegionFinderWatershedSegmentation(BadRegionFinder):
     return result
 
   def badregions(self, *, threshold, **kwargs):
-    segmented = self.segment(**kwargs)
     cellquantification = self.cellquantification(**kwargs)
 
     result = np.zeros_like(self.image, dtype=bool)
