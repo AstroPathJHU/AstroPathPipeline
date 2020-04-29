@@ -1,7 +1,7 @@
 #imports
 from ..utilities.img_file_io import writeImageToFile
 from ..utilities.misc import cd
-import numpy as np, matplotlib.pyplot as plt
+import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import skimage.filters
 import os
 
@@ -20,13 +20,14 @@ class MeanImage :
     """
     Class to hold an image that is the mean of a bunch of stacked raw images 
     """
-    def __init__(self,name,x,y,nlayers,dtype,smoothsigma=50.,smoothtruncate=4.0) :
+    def __init__(self,name,x,y,nlayers,dtype,max_nprocs,smoothsigma=50.,smoothtruncate=4.0) :
         """
-        name    = stem to use for naming files that get created
-        x       = x dimension of images (pixels)
-        y       = y dimension of images (pixels)
-        nlayers = number of layers in images
-        dtype   = datatype of image arrays that will be stacked
+        name           = stem to use for naming files that get created
+        x              = x dimension of images (pixels)
+        y              = y dimension of images (pixels)
+        nlayers        = number of layers in images
+        dtype          = datatype of image arrays that will be stacked
+        max_nprocs     = max number of parallel processes to run when smoothing images
         smoothsigma    = sigma (in pixels) of Gaussian filter to use 
         smoothtruncate = how many sigma to truncate the Gaussian filter at on either side
         defaults (50 and 4.0) give a 100 pixel-wide filter
@@ -35,6 +36,7 @@ class MeanImage :
         self.xpix = x
         self.ypix = y
         self.nlayers = nlayers
+        self.max_nprocs = max_nprocs
         self.smoothsigma=smoothsigma
         self.smoothtruncate=smoothtruncate
         self.image_stack = np.zeros((y,x,nlayers),dtype=dtype)
@@ -52,7 +54,7 @@ class MeanImage :
         im_array = array of new image to add to the stack
         """
         self.image_stack+=im_array
-        copySmoothedLayersTo(im_array,self.smoothed_image_stack,self.smoothsigma,self.smoothtruncate)
+        copySmoothedLayersTo(im_array,self.smoothed_image_stack,self.smoothsigma,self.smoothtruncate,self.max_nprocs)
         self.n_images_stacked+=1
 
     def makeFlatFieldImage(self) :
@@ -62,7 +64,7 @@ class MeanImage :
         self.mean_image = self.image_stack/self.n_images_stacked
         self.smoothed_mean_image = self.smoothed_image_stack/self.n_images_stacked
         self.flatfield_image = np.ndarray(self.smoothed_mean_image.shape,dtype=np.float64)
-        copySmoothedLayersTo(self.smoothed_mean_image,self.flatfield_image,self.smoothsigma,self.smoothtruncate)
+        copySmoothedLayersTo(self.smoothed_mean_image,self.flatfield_image,self.smoothsigma,self.smoothtruncate,self.max_nprocs)
         for layer_i in range(self.nlayers) :
             layermean = np.mean(self.flatfield_image[:,:,layer_i])
             self.flatfield_image[:,:,layer_i]=self.flatfield_image[:,:,layer_i]/layermean
@@ -151,8 +153,26 @@ class MeanImage :
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
+#helper function to smooth and copy over a single layer of an image (will be parallelized)
+def smoothImageLayerWorker(input_layer,layer_i,smoothsigma,smoothtruncate,return_dict) :
+    return_dict[layer_i]=skimage.filters.gaussian(input_layer,sigma=smoothsigma,truncate=smoothtruncate,mode='reflect')
+
 #helper function to smooth each z-layer of a given image with a given sigma/truncate and copy it to a different given image
-def copySmoothedLayersTo(input_arr,output_arr,smoothsigma,smoothtruncate) :
-  for zlayer_i in range(input_arr.shape[-1]) :
-    np.copyto(output_arr[:,:,zlayer_i],skimage.filters.gaussian(input_arr[:,:,zlayer_i],sigma=smoothsigma,truncate=smoothtruncate,mode='reflect'))
+def copySmoothedLayersTo(input_arr,output_arr,smoothsigma,smoothtruncate,max_procs) :
+    nlayers = input_arr.shape[-1]
+    manager = mp.Manager()
+    return_dict = manager.dict()
+    procs = []
+    for i in range(nlayers):
+        if len(procs)>=max_procs :
+            for proc in procs:
+                proc.join()
+            procs=[]
+        p = mp.Process(target=smoothImageLayerWorker, args=(input_arr[:,:,i],i,smoothsigma,smoothtruncate,return_dict))
+        procs.append(p)
+        p.start()
+    for proc in procs:
+        proc.join()
+    for layer_i,smoothed_img_layer in return_dict.items() :
+        np.copyto(output_arr[:,:,layer_i],smoothed_img_layer)
 

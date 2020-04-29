@@ -145,7 +145,7 @@ def main() :
             filepath_chunks.append([])
         filepath_chunks[-1].append((fp,f'({i} of {len(filepaths)})'))
     #Start up a new mean image
-    mean_image = MeanImage(args.flatfield_image_name,IMG_X,IMG_Y,IMG_NLAYERS if args.layers==[-1] else len(args.layers),IMG_DTYPE)
+    mean_image = MeanImage(args.flatfield_image_name,IMG_X,IMG_Y,IMG_NLAYERS if args.layers==[-1] else len(args.layers),IMG_DTYPE,args.n_threads)
     #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
     flatfield_logger.info('Stacking raw images....')
     for fp_chunk in filepath_chunks :
@@ -158,7 +158,7 @@ def main() :
     flatfield_logger.info('Getting/smoothing mean image and making flatfield....')
     mean_image.makeFlatFieldImage()
     #save the images
-    flatfield_logger.info('Saving images....')
+    flatfield_logger.info('Saving layer-by-layer images....')
     with cd(args.workingdir_name) :
         mean_image.saveImages(args.flatfield_image_name)
     #make some visualizations of the images
