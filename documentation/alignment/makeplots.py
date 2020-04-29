@@ -16,13 +16,13 @@ rc = {
 }
 
 @functools.lru_cache()
-def alignmentset(*, root1=data, root2=os.path.join(data, "flatw"), samp="M21_1", dapi=False):
+def alignmentset(*, root1=data, root2=os.path.join(data, "flatw"), samp="M21_1", dapi=False, **kwargs):
   if dapi:
-    A = alignmentset(root1=root1, root2=root2, samp=samp)
+    A = alignmentset(root1=root1, root2=root2, samp=samp, **kwargs)
     A.getDAPI()
     return A
 
-  A = AlignmentSet(root1, root2, samp)
+  A = AlignmentSet(root1, root2, samp, **kwargs)
   A.readalignments()
   A.readstitchresult()
   return A
@@ -245,11 +245,11 @@ def sinewaves(*, bki):
         plt.ylabel(rf"$\delta {deltaxory}$ (pixels)", labelpad=0)
         plt.subplots_adjust(bottom=0.15, left=0.21)
 
-      Sample = collections.namedtuple("Sample", "samp root1 root2 name plotsine sinetext")
+      Sample = collections.namedtuple("Sample", "samp root1 root2 name plotsine sinetext pscale")
       samples = [
-        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M1_1", name="1", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag]),
-        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M2_3", name="2", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag]),
-        Sample(root1=r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", root2=r"\\Bki02\g\flatw", samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda tag, **kwargs: tag==4 and kwargs["deltaxory"] == kwargs["vsxory"] == "x", sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag]),
+        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M1_1", name="1", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=None),
+        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M2_3", name="2", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=None),
+        Sample(root1=r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", root2=r"\\Bki02\g\flatw", samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda tag, **kwargs: tag==4 and kwargs["deltaxory"] == kwargs["vsxory"] == "x", sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=2.014533),
       ]
 
       for samp, root1, root2, name, plotsine, sinetext in samples:

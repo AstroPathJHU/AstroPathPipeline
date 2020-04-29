@@ -18,7 +18,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False):
+  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False, pscale=None):
     """
     Directory structure should be
     root1/
@@ -46,7 +46,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     if not os.path.exists(os.path.join(self.root1, self.samp)):
       raise IOError(f"{os.path.join(self.root1, self.samp)} does not exist")
 
-    self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps)
+    self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps, pscale=pscale)
     self.rawimages=None
 
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
@@ -55,7 +55,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   def dbload(self):
     return os.path.join(self.root1, self.samp, "dbload")
 
-  def readmetadata(self, *, onlyrectanglesinoverlaps=False):
+  def readmetadata(self, *, onlyrectanglesinoverlaps=False, pscale=None):
     """
     Read metadata from csv files
     """
@@ -70,6 +70,9 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     self.fwidth    = self.constantsdict["fwidth"]
     self.fheight   = self.constantsdict["fheight"]
     self.pscale    = float(self.constantsdict["pscale"])
+    if pscale is not None and self.pscale != pscale:
+      logger.warning(f"Provided pscale {pscale} which is different from {self.pscale} (in constants.csv)")
+      self.pscale = pscale
     self.qpscale   = self.constantsdict["qpscale"]
     self.xposition = self.constantsdict["xposition"]
     self.yposition = self.constantsdict["yposition"]
