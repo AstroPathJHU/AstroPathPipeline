@@ -1,28 +1,12 @@
 #imports
 from .mean_image import MeanImage
+from .config import *
 from ..utilities.img_file_io import getRawAsHWL
 from ..utilities.misc import cd, split_csv_to_list_of_ints
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np, matplotlib.pyplot as plt
-import os, logging, glob, csv, random
-
-#################### GLOBALS ####################
-
-#image dimensions and datatype
-IMG_X = None
-IMG_Y = None
-IMG_NLAYERS = None
-IMG_DTYPE = np.uint16
-FILEPATH_TEXT_FILE_NAME='filepath_log.txt'
-PLOT_DIRECTORY_NAME='plots'
-
-#set up a logger
-flatfield_logger = logging.getLogger("flatfield")
-flatfield_logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
-flatfield_logger.addHandler(handler)
+import os, glob, csv, random
 
 #################### HELPER FUNCTIONS ####################
 
@@ -104,7 +88,7 @@ def readImagesMT(sample_image_filepath_tuples,layerlist) :
     else :
         to_return = []
         for new_img_array in new_img_arrays :
-            to_add = np.ndarray((IMG_Y,IMG_X,len(layerlist)),dtype=IMG_DTYPE)
+            to_add = np.ndarray((IMG_Y,IMG_X,len(layerlist)),dtype=IMG_DTYPE_IN)
             for i,layer in enumerate(layerlist) :
                 to_add[:,:,i] = new_img_array[:,:,layer-1]
             to_return.append(to_add)
@@ -145,9 +129,9 @@ def main() :
             filepath_chunks.append([])
         filepath_chunks[-1].append((fp,f'({i} of {len(filepaths)})'))
     #Start up a new mean image
-    mean_image = MeanImage(args.flatfield_image_name,IMG_X,IMG_Y,IMG_NLAYERS if args.layers==[-1] else len(args.layers),IMG_DTYPE,args.n_threads)
+    mean_image = MeanImage(args.flatfield_image_name,IMG_X,IMG_Y,IMG_NLAYERS if args.layers==[-1] else len(args.layers),IMG_DTYPE_IN,args.n_threads)
     #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
-    flatfield_logger.info('Stacking raw images....')
+    flatfield_logger.info('Stacking raw/smoothed images....')
     for fp_chunk in filepath_chunks :
         if len(fp_chunk)<1 :
             continue

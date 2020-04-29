@@ -1,21 +1,10 @@
 #imports
+from .config import *
 from ..utilities.img_file_io import writeImageToFile
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import skimage.filters
-import os, logging
-
-FILE_EXT='.bin'
-IMG_LAYER_FIG_WIDTH=7.5 #width of image layer figures created in inches
-INTENSITY_FIG_WIDTH=11.0 #width of the intensity plot figure
-LAST_FILTER_LAYERS = [9,18,25,32] #last image layers of each broadband filter
-
-#set up a logger
-flatfield_logger = logging.getLogger("flatfield")
-flatfield_logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
-flatfield_logger.addHandler(handler)
+import os
 
 class FlatFieldError(Exception) :
     """
@@ -47,7 +36,7 @@ class MeanImage :
         self.smoothsigma=smoothsigma
         self.smoothtruncate=smoothtruncate
         self.image_stack = np.zeros((y,x,nlayers),dtype=dtype)
-        self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=np.float64)
+        self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=IMG_DTYPE_OUT)
         self.n_images_stacked = 0
         self.mean_image=None
         self.smoothed_mean_image=None
@@ -71,7 +60,7 @@ class MeanImage :
         """
         self.mean_image = self.image_stack/self.n_images_stacked
         self.smoothed_mean_image = self.smoothed_image_stack/self.n_images_stacked
-        self.flatfield_image = np.ndarray(self.smoothed_mean_image.shape,dtype=np.float64)
+        self.flatfield_image = np.ndarray(self.smoothed_mean_image.shape,dtype=IMG_DTYPE_OUT)
         copySmoothedLayersTo(self.smoothed_mean_image,self.flatfield_image,self.smoothsigma,self.smoothtruncate,self.max_nprocs)
         for layer_i in range(self.nlayers) :
             layermean = np.mean(self.flatfield_image[:,:,layer_i])
@@ -85,13 +74,13 @@ class MeanImage :
         if self.mean_image is not None :
             shape = self.mean_image.shape
             meanimage_filename = f'{namestem}_mean_of_{self.n_images_stacked}_{shape[0]}x{shape[1]}x{shape[2]}_images{FILE_EXT}'
-            writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=np.float64)
+            writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=IMG_DTYPE_OUT)
         if self.smoothed_mean_image is not None :
             smoothed_meanimage_filename = f'{namestem}_smoothed_mean_image{FILE_EXT}'
-            writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=np.float64)
+            writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=IMG_DTYPE_OUT)
         if self.flatfield_image is not None :
             flatfieldimage_filename = f'{namestem}{FILE_EXT}'
-            writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=np.float64)
+            writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=IMG_DTYPE_OUT)
 
     def savePlots(self) :
         """
