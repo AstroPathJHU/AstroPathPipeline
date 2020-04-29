@@ -118,6 +118,7 @@ class MeanImage :
         #plot the inensity plots together, with the broadband filter breaks
         xaxis_vals = list(range(1,self.mean_image.shape[-1]+1))
         plt.figure(figsize=(INTENSITY_FIG_WIDTH,(9./16.)*INTENSITY_FIG_WIDTH))
+        plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='mediumseagreen',linestyle='dashed',label='mean intensity')
         for i in range(len(LAST_FILTER_LAYERS)+1) :
             f_i = 0 if i==0 else LAST_FILTER_LAYERS[i-1]
             l_i = xaxis_vals[-1] if i==len(LAST_FILTER_LAYERS) else LAST_FILTER_LAYERS[i]
@@ -134,7 +135,6 @@ class MeanImage :
                 plt.plot(xaxis_vals[f_i:l_i],ff_high_pixel_intensities[f_i:l_i],color='lightcoral',marker='o',linewidth=2,linestyle='dotted')
                 if i!=len(LAST_FILTER_LAYERS) :
                     plt.plot([l_i+0.5,l_i+0.5],[min(ff_min_pixel_intensities)-0.06,max(ff_max_pixel_intensities)+0.06],color='black',linewidth=2,linestyle='dotted')
-        plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='mediumseagreen',linestyle='dashed',label='mean intensity')
         plt.title(f'flatfield image layer normalized pixel intensities',fontsize=14)
         plt.xlabel('layer number',fontsize=14)
         plt.ylabel('pixel intensity',fontsize=14)
