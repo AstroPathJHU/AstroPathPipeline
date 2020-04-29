@@ -154,5 +154,5 @@ class MeanImage :
 #helper function to smooth each z-layer of a given image with a given sigma/truncate and copy it to a different given image
 def copySmoothedLayersTo(input_arr,output_arr,smoothsigma,smoothtruncate) :
   for zlayer_i in range(input_arr.shape[-1]) :
-    np.copyto(output_arr,skimage.filters.gaussian(input_arr[:,:,zlayer_i],sigma=smoothsigma,truncate=smoothtruncate,mode='reflect'))
+    np.copyto(output_arr[:,:,zlayer_i],skimage.filters.gaussian(input_arr[:,:,zlayer_i],sigma=smoothsigma,truncate=smoothtruncate,mode='reflect'))
 
