@@ -136,8 +136,7 @@ def main() :
         if len(fp_chunk)<1 :
             continue
         new_img_arrays = readImagesMT(fp_chunk,args.layers)
-        for im_array in new_img_arrays :
-            mean_image.addNewImage(im_array)
+        mean_image.addGroupOfImages(new_img_arrays)
     #take the mean of the stacked images, smooth it and make the flatfield image by dividing each layer by its mean pixel value
     flatfield_logger.info('Getting/smoothing mean image and making flatfield....')
     mean_image.makeFlatFieldImage()
