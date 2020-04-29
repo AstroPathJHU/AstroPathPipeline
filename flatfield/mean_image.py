@@ -3,8 +3,8 @@ from .config import *
 from ..utilities.img_file_io import writeImageToFile
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import skimage.filters
-import os
+#import skimage.filters
+import os, cv2
 
 class FlatFieldError(Exception) :
     """
@@ -16,7 +16,7 @@ class MeanImage :
     """
     Class to hold an image that is the mean of a bunch of stacked raw images 
     """
-    def __init__(self,name,x,y,nlayers,dtype,max_nprocs,smoothsigma=50.,smoothtruncate=4.0) :
+    def __init__(self,name,x,y,nlayers,dtype,max_nprocs,smoothkernel=(101,101)) :
         """
         name           = stem to use for naming files that get created
         x              = x dimension of images (pixels)
@@ -33,8 +33,7 @@ class MeanImage :
         self.ypix = y
         self.nlayers = nlayers
         self.max_nprocs = max_nprocs
-        self.smoothsigma=smoothsigma
-        self.smoothtruncate=smoothtruncate
+        self.smoothkernel = smoothkernel
         self.image_stack = np.zeros((y,x,nlayers),dtype=dtype)
         self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=IMG_DTYPE_OUT)
         self.n_images_stacked = 0
@@ -51,7 +50,7 @@ class MeanImage :
         """
         self.image_stack+=im_array
         flatfield_logger.info(f'  smoothing image {self.n_images_stacked+1} in the stack....')
-        copySmoothedLayersTo(im_array,self.smoothed_image_stack,self.smoothsigma,self.smoothtruncate,self.max_nprocs)
+        copySmoothedLayersTo(im_array,self.smoothed_image_stack,self.smoothkernel,self.max_nprocs)
         self.n_images_stacked+=1
 
     def makeFlatFieldImage(self) :
@@ -61,7 +60,7 @@ class MeanImage :
         self.mean_image = self.image_stack/self.n_images_stacked
         self.smoothed_mean_image = self.smoothed_image_stack/self.n_images_stacked
         self.flatfield_image = np.ndarray(self.smoothed_mean_image.shape,dtype=IMG_DTYPE_OUT)
-        copySmoothedLayersTo(self.smoothed_mean_image,self.flatfield_image,self.smoothsigma,self.smoothtruncate,self.max_nprocs)
+        copySmoothedLayersTo(self.smoothed_mean_image,self.flatfield_image,self.smoothkernel,self.max_nprocs)
         for layer_i in range(self.nlayers) :
             layermean = np.mean(self.flatfield_image[:,:,layer_i])
             self.flatfield_image[:,:,layer_i]=self.flatfield_image[:,:,layer_i]/layermean
@@ -151,11 +150,15 @@ class MeanImage :
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
 #helper function to smooth and copy over a single layer of an image (will be parallelized)
-def smoothImageLayerWorker(input_layer,layer_i,smoothsigma,smoothtruncate,return_dict) :
-    return_dict[layer_i]=skimage.filters.gaussian(input_layer,sigma=smoothsigma,truncate=smoothtruncate,mode='reflect')
+def smoothImageLayerWorker(input_layer,layer_i,smoothkernel,return_dict) :
+    layer_umat = cv2.UMat(input_layer)
+    smoothed_layer_umat=cv2.UMat(np.zeros_like(input_layer))
+    #return_dict[layer_i]=skimage.filters.gaussian(input_layer,sigma=smoothsigma,truncate=smoothtruncate,mode='reflect')
+    cv2.GaussianBlur(layer_umat,smoothkernel,0,smoothed_layer_umat,0,cv2.BORDER_REFLECT)
+    return_dict[layer_i] = smoothed_layer_umat.get()
 
-#helper function to smooth each z-layer of a given image with a given sigma/truncate and copy it to a different given image
-def copySmoothedLayersTo(input_arr,output_arr,smoothsigma,smoothtruncate,max_procs) :
+#helper function to smooth each z-layer of a given image with a given kernel size and copy it to a different given image
+def copySmoothedLayersTo(input_arr,output_arr,smoothkernel,max_procs) :
     nlayers = input_arr.shape[-1]
     manager = mp.Manager()
     return_dict = manager.dict()
@@ -165,7 +168,7 @@ def copySmoothedLayersTo(input_arr,output_arr,smoothsigma,smoothtruncate,max_pro
             for proc in procs:
                 proc.join()
             procs=[]
-        p = mp.Process(target=smoothImageLayerWorker, args=(input_arr[:,:,i],i,smoothsigma,smoothtruncate,return_dict))
+        p = mp.Process(target=smoothImageLayerWorker, args=(input_arr[:,:,i],i,smoothkernel,return_dict))
         procs.append(p)
         p.start()
     for proc in procs:
