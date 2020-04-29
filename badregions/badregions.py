@@ -155,20 +155,21 @@ class BadRegionFinderLaplaceStd(BadRegionFinder):
   def regionmean(self, y, x):
     return np.vectorize(self.__regionmean)(y, x)
 
-class BadRegionFinderWatershedSegmentationBoundaryLaplaceStd(BadRegionFinder):
+class BadRegionFinderSegmentation(BadRegionFinder):
   """
-  Building off of BadRegionFinderLaplaceStd, instead of taking
-  arbitrary regions we want to try to segment the image.
-  The goal isn't to get exact cells, but just to pinpoint region
-  boundaries within a few pixels.  Then we look at the laplacian
-  around the border, and if the border is fuzzy we call it bad.
-
-  Working from https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_watershed/py_watershed.html
+  Base class for bad region finders that work cell by cell
   """
+  @abc.abstractmethod
+  def segment(self, **kwargs): pass
 
-  def __init__(self, image):
-    super().__init__(image)
+  @methodtools.lru_cache()
+  def cell(self, i, **kwargs):
+    return self.segment(**kwargs) == i
 
+  @abc.abstractmethod
+  def cellquantification(self, i, **kwargs): pass
+
+class BadRegionFinderWatershedSegmentation(BadRegionFinderSegmentation):
   @methodtools.lru_cache()
   def segment(self, *, boundaryregionsize=5):
     gray = skimage.img_as_ubyte(self.image)
@@ -204,9 +205,16 @@ class BadRegionFinderWatershedSegmentationBoundaryLaplaceStd(BadRegionFinder):
 
     return markers
 
-  @methodtools.lru_cache()
-  def cell(self, i, **kwargs):
-    return self.segment(**kwargs) == i
+class BadRegionFinderWatershedSegmentationBoundaryLaplaceStd(BadRegionFinderWatershedSegmentation):
+  """
+  Building off of BadRegionFinderLaplaceStd, instead of taking
+  arbitrary regions we want to try to segment the image.
+  The goal isn't to get exact cells, but just to pinpoint region
+  boundaries within a few pixels.  Then we look at the laplacian
+  around the border, and if the border is fuzzy we call it bad.
+
+  Working from https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_watershed/py_watershed.html
+  """
 
   @methodtools.lru_cache()
   def cellquantification(self, **kwargs):
