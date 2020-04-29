@@ -1,4 +1,4 @@
-import abc, cv2, logging, matplotlib.pyplot as plt, methodtools, numpy as np
+import abc, cv2, logging, matplotlib.pyplot as plt, methodtools, numpy as np, skimage
 
 logger = logging.getLogger("badregions")
 logger.setLevel(logging.DEBUG)
@@ -155,7 +155,7 @@ class BadRegionFinderLaplaceStd(BadRegionFinder):
   def regionmean(self, y, x):
     return np.vectorize(self.__regionmean)(y, x)
 
-class BadRegionFinderWatershedSegmentation(BadRegionFinder):
+class BadRegionFinderWatershedSegmentationBoundaryLaplaceStd(BadRegionFinder):
   """
   Building off of BadRegionFinderLaplaceStd, instead of taking
   arbitrary regions we want to try to segment the image.
@@ -171,8 +171,8 @@ class BadRegionFinderWatershedSegmentation(BadRegionFinder):
 
   @methodtools.lru_cache()
   def segment(self, *, boundaryregionsize=5):
-    gray = self.image
-    img = np.transpose([self.image, self.image, self.image], (1, 2, 0))
+    gray = skimage.img_as_ubyte(self.image)
+    img = np.transpose([gray, gray, gray], (1, 2, 0))
 
     ret, thresh = cv2.threshold(gray,0,255,cv2.THRESH_OTSU)
 

@@ -1,6 +1,6 @@
 import numpy as np, pathlib, unittest
 from ..alignment.alignmentset import AlignmentSet
-from ..badregions.badregions import BadRegionFinderLaplaceStd
+from ..badregions.badregions import BadRegionFinderLaplaceStd, BadRegionFinderWatershedSegmentationBoundaryLaplaceStd
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -46,3 +46,6 @@ class TestBadRegions(unittest.TestCase):
 
   def testBadRegionFinderLaplaceStd(self):
     self.generaltest(BadRegionFinderLaplaceStd, threshold=0.15)
+
+  def testBadRegionFinderWatershedSegmentationBoundaryLaplaceStd(self):
+    self.generaltest(BadRegionFinderWatershedSegmentationBoundaryLaplaceStd, threshold=0.15)
