@@ -2,7 +2,7 @@
 from ..utilities.img_file_io import writeImageToFile
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
-import skimage.filters, skimage.util
+import skimage.filters
 import os
 
 FILE_EXT='.bin'
@@ -20,16 +20,25 @@ class MeanImage :
     """
     Class to hold an image that is the mean of a bunch of stacked raw images 
     """
-    def __init__(self,name,x,y,nlayers,dtype) :
+    def __init__(self,name,x,y,nlayers,dtype,smoothsigma=50.,smoothtruncate=4.0) :
         """
         name    = stem to use for naming files that get created
         x       = x dimension of images (pixels)
         y       = y dimension of images (pixels)
         nlayers = number of layers in images
         dtype   = datatype of image arrays that will be stacked
+        smoothsigma    = sigma (in pixels) of Gaussian filter to use 
+        smoothtruncate = how many sigma to truncate the Gaussian filter at on either side
+        defaults (50 and 4.0) give a 100 pixel-wide filter
         """
         self.namestem = name
+        self.xpix = x
+        self.ypix = y
+        self.nlayers = nlayers
+        self.smoothsigma=smoothsigma
+        self.smoothtruncate=smoothtruncate
         self.image_stack = np.zeros((y,x,nlayers),dtype=dtype)
+        self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=np.float64)
         self.n_images_stacked = 0
         self.mean_image=None
         self.smoothed_mean_image=None
@@ -39,25 +48,24 @@ class MeanImage :
 
     def addNewImage(self,im_array) :
         """
-        A function to add a single new image to the stack
+        A function to add a single new image to the stacks, one smoothed, one raw.
         im_array = array of new image to add to the stack
         """
         self.image_stack+=im_array
+        copySmoothedLayersTo(im_array,self.smoothed_image_stack,self.smoothsigma,self.smoothtruncate)
         self.n_images_stacked+=1
 
-    def makeFlatFieldImage(self,smoothsigma=50.,smoothtruncate=4.0) :
+    def makeFlatFieldImage(self) :
         """
-        A function to take the mean of the image stack, smooth it, and normalize each of its layers to make the flatfield image
-        smoothsigma    = sigma (in pixels) of Gaussian filter to use 
-        smoothtruncate = how many sigma to truncate the Gaussian filter at on either side
-        defaults (25 and 4.0) give a 100 pixel-wide filter
+        A function to take the mean of the image stacks and smooth/normalize each of the smoothed mean image layers to make the flatfield image
         """
-        self.__takeMean()
-        self.__smoothMeanImage(smoothsigma,smoothtruncate)
+        self.mean_image = self.image_stack/self.n_images_stacked
+        self.smoothed_mean_image = self.smoothed_image_stack/self.n_images_stacked
         self.flatfield_image = np.ndarray(self.smoothed_mean_image.shape,dtype=np.float64)
-        for layer_i in range(self.flatfield_image.shape[-1]) :
-            layermean = np.mean(self.smoothed_mean_image[:,:,layer_i])
-            self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
+        copySmoothedLayersTo(self.smoothed_mean_image,self.flatfield_image,self.smoothsigma,self.smoothtruncate)
+        for layer_i in range(self.nlayers) :
+            layermean = np.mean(self.flatfield_image[:,:,layer_i])
+            self.flatfield_image[:,:,layer_i]=self.flatfield_image[:,:,layer_i]/layermean
 
     def saveImages(self,namestem) :
         """
@@ -87,7 +95,7 @@ class MeanImage :
         ff_max_pixel_intensities=[]
         ff_high_pixel_intensities=[]
         #iterate over the layers
-        for layer_i in range(self.mean_image.shape[-1]) :
+        for layer_i in range(self.nlayers) :
             layer_titlestem = f'layer {layer_i+1}'
             layer_fnstem = f'layer_{layer_i+1}'
             #save a little figure of each layer in each image
@@ -116,7 +124,7 @@ class MeanImage :
             ff_max_pixel_intensities.append(sorted_ff_layer[-1])
             ff_high_pixel_intensities.append(sorted_ff_layer[int(0.95*len(sorted_ff_layer))])
         #plot the inensity plots together, with the broadband filter breaks
-        xaxis_vals = list(range(1,self.mean_image.shape[-1]+1))
+        xaxis_vals = list(range(1,self.nlayers+1))
         plt.figure(figsize=(INTENSITY_FIG_WIDTH,(9./16.)*INTENSITY_FIG_WIDTH))
         plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='mediumseagreen',linestyle='dashed',label='mean intensity')
         for i in range(len(LAST_FILTER_LAYERS)+1) :
@@ -141,20 +149,10 @@ class MeanImage :
         plt.legend(loc='best')
         plt.savefig('pixel_intensity_plot.png')
 
+#################### FILE-SCOPE HELPER FUNCTIONS ####################
 
-    #################### HELPER FUNCTIONS ####################
-
-    #helper function to get the meanimage from the image stack
-    def __takeMean(self) :
-        self.mean_image = self.image_stack/self.n_images_stacked
-
-    #helper function to smooth each layer of the mean image with a gaussian filter
-    def __smoothMeanImage(self,smoothsigma,smoothtruncate) :
-        if self.mean_image is None :
-            raise FlatFieldError('ERROR: cannot call smoothMeanImage before calling takeMean!')
-        self.smoothed_mean_image = np.ndarray(self.mean_image.shape,dtype=np.float64)
-        for layer_i in range(self.mean_image.shape[-1]) :
-            self.smoothed_mean_image[:,:,layer_i] = skimage.filters.gaussian(self.mean_image[:,:,layer_i],sigma=smoothsigma,truncate=smoothtruncate,mode='reflect')
-
-
+#helper function to smooth each z-layer of a given image with a given sigma/truncate and copy it to a different given image
+def copySmoothedLayersTo(input_arr,output_arr,sigma,trunc) :
+  for zlayer_i in range(input_arr.shape[-1]) :
+    np.copyto(output_arr,skimage.filters.gaussian(input_arr[:,:,zlayer_i],sigma=smoothsigma,truncate=smoothtruncate,mode='reflect')
 
