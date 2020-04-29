@@ -3,12 +3,19 @@ from ..utilities.img_file_io import writeImageToFile
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import skimage.filters
-import os
+import os, logging
 
 FILE_EXT='.bin'
 IMG_LAYER_FIG_WIDTH=7.5 #width of image layer figures created in inches
 INTENSITY_FIG_WIDTH=11.0 #width of the intensity plot figure
 LAST_FILTER_LAYERS = [9,18,25,32] #last image layers of each broadband filter
+
+#set up a logger
+flatfield_logger = logging.getLogger("flatfield")
+flatfield_logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
+flatfield_logger.addHandler(handler)
 
 class FlatFieldError(Exception) :
     """
@@ -54,6 +61,7 @@ class MeanImage :
         im_array = array of new image to add to the stack
         """
         self.image_stack+=im_array
+        flatfield_logger.info(f'  smoothing image {self.n_images_stacked+1} in the stack....')
         copySmoothedLayersTo(im_array,self.smoothed_image_stack,self.smoothsigma,self.smoothtruncate,self.max_nprocs)
         self.n_images_stacked+=1
 
