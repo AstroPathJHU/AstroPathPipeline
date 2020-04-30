@@ -655,14 +655,17 @@ In this note, we describe the alignment and stitching of a microscope image comp
 	\hline
 	\multicolumn{2}{|l|}{Model} & Vectra 3.0 & Vectra Polaris \\\hline
 	\multicolumn{2}{|l|}{Location} & JHU & Akoya \\\hline
-	\multirowcell{3}[0pt][l]{Average shift/field \\ (pixels)} & $x$ & $-0.9$ & $0.8$ \\\cline{2-4}
+	\multirowcell{3}[0pt][l]{Average shift/field \\ (pixels)}
+	& $x$ & $-0.9$ & $0.8$ \\\cline{2-4}
 	& $y$ & $-1.0$ & $0.5$ \\\cline{2-4}
 	& $x$ for new row & $0.0$ & $0.0$ \\\hline
-	\multirowcell{4}[0pt][l]{Sine wave amplitude\\(pixels)\\ *non-sinusoidal periodic effects} & $x$--$\delta x$, $x$ overlap & $1.5$ & $0.7$ \\\cline{2-4}
-	& $x$--$\delta y$, $x$ overlap & $0.4$ & $0.0$ \\\cline{2-4}
-	& $y$--$\delta x$, $y$ overlap & $0.5$ & $0.0$ \\\cline{2-4}
-	& $y$--$\delta y$, $y$ overlap & $2.8$ & $\sim1$* \\\hline
-	\multirowcell{4}[0pt][l]{Remaining RMS\\(pixels)} & $\delta x$, $x$ overlap & $1.4$ & $0.3$ \\\cline{2-4}
+	\multirowcell{4}[0pt][l]{Sine amplitude \& \\wavelength (pixels)\\ (*)non-sinusoidal\\periodic effects}
+	& $x$--$\delta x$, $x$ overlap & $1.5$, $2800$ & $0.7$, $3560$ \\\cline{2-4}
+	& $x$--$\delta y$, $x$ overlap & $0.4$, $4000$ & $0.0$ \\\cline{2-4}
+	& $y$--$\delta x$, $y$ overlap & $0.5$, $4000$ & $0.0$ \\\cline{2-4}
+	& $y$--$\delta y$, $y$ overlap & $2.8$, $4000$ & $\sim1$, $\sim13000$(*) \\\hline
+	\multirowcell{4}[0pt][l]{Remaining RMS\\(pixels)}
+	& $\delta x$, $x$ overlap & $1.4$ & $0.3$ \\\cline{2-4}
 	& $\delta y$, $x$ overlap & $0.3$ & $0.1$ \\\cline{2-4}
 	& $\delta x$, $y$ overlap & $0.4$ & $0.1$ \\\cline{2-4}
 	& $\delta y$, $y$ overlap & $1.2$ & $0.5$ \\\hline
