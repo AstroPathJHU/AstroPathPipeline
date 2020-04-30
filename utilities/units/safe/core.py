@@ -128,7 +128,7 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
   if pscale is None and distances is None and not np.all(power == 0):
     raise TypeError("If you don't provide distances, you have to provide pscale")
   if distances is not None:
-    distpscale = {_._pscale for _ in itertools.chain(distances, np.ravel(covariance) if covariance is not None else []) if _ and _._pscale is not None}
+    distpscale = {_pscale(_)[()] for _ in itertools.chain(distances, np.ravel(covariance) if covariance is not None else []) if _ and _pscale(_)[()] is not None}
     if not distpscale: distpscale = {None}
     if len(distpscale) > 1: raise UnitsError("Provided distances with multiple pscales")
     distpscale = distpscale.pop()
@@ -161,12 +161,12 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
     power = np.array([power] * length)
 
   if distances is not None:
-    distpower = np.array([_._power for _ in distances])
+    distpower = np.array([_power(_) for _ in distances])
     if covariance is not None:
       for (i1, p1), (i2, p2) in itertools.product(enumerate(distpower), repeat=2):
         if not distcovariance[i1,i2]: continue
-        if distcovariance[i1,i2]._power != p1+p2:
-          raise UnitsError(f"Covariance entry {i1},{i2} has power {covariance[i1,i2]._power}, should be {p1}+{p2}")
+        if _power(distcovariance[i1,i2]) != p1+p2:
+          raise UnitsError(f"Covariance entry {i1},{i2} has power {_power(distcovariance[i1,i2])}, should be {p1}+{p2}")
     if power is not None and not np.all(power == distpower):
       raise UnitsError(f"Provided both power and distances, but they're inconsistent:\n{power}\n{distpower}")
     power = distpower

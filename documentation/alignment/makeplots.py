@@ -252,8 +252,8 @@ def sinewaves(*, bki):
         Sample(root1=r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", root2=r"\\Bki02\g\flatw", samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda tag, **kwargs: tag==4 and kwargs["deltaxory"] == kwargs["vsxory"] == "x", sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=2.014533),
       ]
 
-      for samp, root1, root2, name, plotsine, sinetext in samples:
-        A = alignmentset(root1=root1, root2=root2, samp=samp)
+      for samp, root1, root2, name, plotsine, sinetext, pscale in samples:
+        A = alignmentset(root1=root1, root2=root2, samp=samp, pscale=pscale)
         kwargs = {}
         for kwargs["deltaxory"] in "xy":
           for kwargs["vsxory"] in "xy":
