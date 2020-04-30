@@ -9,6 +9,8 @@ class Distance:
     return super().__new__(cls)
 
   def __init__(self, *, pscale, pixels=None, microns=None, power=1, defaulttozero=False):
+    if power is None and (pixels or microns):
+      raise ValueError("Can't set power=None")
     if not power or pixels == 0 or microns == 0: pscale = None
     self.__pscale = pscale
     self.__power = power
@@ -49,6 +51,7 @@ class Distance:
     return self + other
   def __mul__(self, other):
     if isinstance(other, Distance):
+      if not self or not other: return 0.
       if None is not self._pscale != other._pscale is not None: raise UnitsError("Trying to multiply distances with different pscales")
       pscale = self._pscale if self._pscale is not None else other._pscale
       return Distance(pscale=pscale, power=self._power+other._power, pixels=self._pixels*other._pixels)
@@ -128,7 +131,7 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
   if pscale is None and distances is None and not np.all(power == 0):
     raise TypeError("If you don't provide distances, you have to provide pscale")
   if distances is not None:
-    distpscale = {_pscale(_)[()] for _ in itertools.chain(distances, np.ravel(covariance) if covariance is not None else []) if _ and _pscale(_)[()] is not None}
+    distpscale = {_._pscale for _ in itertools.chain(distances, np.ravel(covariance) if covariance is not None else []) if _ and _pscale(_)[()] is not None}
     if not distpscale: distpscale = {None}
     if len(distpscale) > 1: raise UnitsError("Provided distances with multiple pscales")
     distpscale = distpscale.pop()
@@ -161,12 +164,22 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
     power = np.array([power] * length)
 
   if distances is not None:
-    distpower = np.array([_power(_) for _ in distances])
+    distpower = np.array([_power(_)[()] if _ else None for _ in distances])
+    covpower = _power(distcovariance)
     if covariance is not None:
-      for (i1, p1), (i2, p2) in itertools.product(enumerate(distpower), repeat=2):
-        if not distcovariance[i1,i2]: continue
-        if _power(distcovariance[i1,i2]) != p1+p2:
-          raise UnitsError(f"Covariance entry {i1},{i2} has power {_power(distcovariance[i1,i2])}, should be {p1}+{p2}")
+      repeat = True
+      while repeat:
+        repeat = False
+        for (i1, p1), (i2, p2) in itertools.product(enumerate(distpower), repeat=2):
+          if not distcovariance[i1,i2]: continue
+          if p1 is None and p2 is None and i1 != i2: continue
+          if p1 is None and covpower[i1,i2] is None: continue
+          if p2 is None and covpower[i1,i2] is None: continue
+          if i1 == i2 and p1 is None: distpower[i1] = covpower[i1,i2] / 2; repeat = True; break
+          if p1 is None: distpower[i1] = covpower[i1,i2] - p2; repeat = True; break
+          if p2 is None: distpower[i2] = covpower[i1,i2] - p1; repeat = True; break
+          if covpower[i1,i2] != p1+p2:
+            raise UnitsError(f"Covariance entry {i1},{i2} has power {covariance[i1,i2]._power}, should be {p1}+{p2}")
     if power is not None and not np.all(power == distpower):
       raise UnitsError(f"Provided both power and distances, but they're inconsistent:\n{power}\n{distpower}")
     power = distpower
@@ -205,7 +218,7 @@ def asdimensionless(distance):
 
 @np.vectorize
 def _power(distance):
-  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)) or not distance: return 0.
+  if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return 0.
   return distance._power
 @np.vectorize
 def _pscale(distance):
