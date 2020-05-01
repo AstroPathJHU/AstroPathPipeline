@@ -55,8 +55,10 @@ def getFilepathsToRun(a) :
     #select the total filepaths to run on
     filepaths_to_run = None
     logstring='Will run on a sample of'
-    if min(a.max_images,len(all_image_filepaths)) == len(all_image_filepaths) :
-        logstring+=f' all {len(all_image_filepaths)} images (not enough images in the sample to deliver all {a.max_images} requested)'
+    if min(a.max_images,len(all_image_filepaths)) in [-1,len(all_image_filepaths)] :
+        logstring+=f' all {len(all_image_filepaths)} images' 
+        if min(a.max_images,len(all_image_filepaths)) == len(all_image_filepaths) :
+            logstring+=f' (not enough images in the sample to deliver all {a.max_images} requested)'
         flatfield_logger.info(logstring)
         return all_image_filepaths
     if a.selection=='first' :

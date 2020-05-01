@@ -53,7 +53,7 @@ class MeanImage :
         #if the images aren't meant to be masked then we can just add them up trivially
         if self.skip_masking :
             for i,im_array in enumerate(im_array_list,start=1) :
-                flatfield_logger.info(f'  adding image {self.n_images_stacked+1} in the stack....')
+                flatfield_logger.info(f'  adding image {self.n_images_stacked+1} to the stack....')
                 self.image_stack+=im_array
                 self.n_images_stacked+=1
                 return
@@ -61,14 +61,14 @@ class MeanImage :
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
-        for i,im_array in enumerate(im_array_list) :
-            flatfield_logger.info(f'  masking and adding image {self.n_images_stacked+i} in the stack....')
+        for i,im_array in enumerate(im_array_list,start=1) :
+            flatfield_logger.info(f'  masking and adding image {self.n_images_stacked+i} to the stack....')
             p = mp.Process(target=getImageMaskWorker, args=(im_array,self.flux_threshold,i,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
             proc.join()
-        for i,im_array in enumerate(im_array_list) :
+        for i,im_array in enumerate(im_array_list,start=1) :
             thismask = return_dict[i]
             self.image_stack+=(im_array*thismask)
             self.mask_stack+=thismask
@@ -178,17 +178,17 @@ class MeanImage :
         plt.legend(loc='best')
         plt.savefig('pixel_intensity_plot.png')
 
-        #################### PRIVATE HELPER FUNCTIONS ####################
+    #################### PRIVATE HELPER FUNCTIONS ####################
 
-        #helper function to create and return the mean image from the image (and mask, if applicable, stack)
-        def __makeMeanImage(self) :
-            #if the images haven't been masked then this is trivial
-            if self.skip_masking :
-                return self.image_stack/self.n_images_stacked
-            #otherwise though we have to be a bit careful and take the mean value pixel-wise, 
-            #being careful to fix any pixels that never got added to so there's no division by zero
-            self.mask_stack[self.mask_stack==0] = 1
-            return self.image_stack/self.mask_stack
+    #helper function to create and return the mean image from the image (and mask, if applicable, stack)
+    def __makeMeanImage(self) :
+        #if the images haven't been masked then this is trivial
+        if self.skip_masking :
+            return self.image_stack/self.n_images_stacked
+        #otherwise though we have to be a bit careful and take the mean value pixel-wise, 
+        #being careful to fix any pixels that never got added to so there's no division by zero
+        self.mask_stack[self.mask_stack==0] = 1
+        return self.image_stack/self.mask_stack
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
