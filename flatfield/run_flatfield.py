@@ -113,6 +113,8 @@ def main() :
         help='Select "first", "last", or "random" n images (where n=max_images) from the inputted sample list. Default is "random".')
     parser.add_argument('--n_threads',            default=10,             type=int,         
         help='Number of threads to run at once in speeding up file I/O')
+    parser.add_argument('--skip_masking', action='store_true',
+        help='Add this flag to skip masking out the background regions of the images as they get added')
     parser.add_argument('--rawfile_ext',          default='.Data.dat',
         help='Extension of raw files to load (default is ".Data.dat")')
     parser.add_argument('--workingdir_name',      default='flatfield_test',
@@ -129,7 +131,9 @@ def main() :
             filepath_chunks.append([])
         filepath_chunks[-1].append((fp,f'({i} of {len(filepaths)})'))
     #Start up a new mean image
-    mean_image = MeanImage(args.flatfield_image_name,IMG_X,IMG_Y,IMG_NLAYERS if args.layers==[-1] else len(args.layers),IMG_DTYPE_IN,args.n_threads)
+    mean_image = MeanImage(args.flatfield_image_name,
+                            IMG_X,IMG_Y,IMG_NLAYERS if args.layers==[-1] else len(args.layers),IMG_DTYPE_IN,
+                            args.n_threads,args.skip_masking)
     #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
     flatfield_logger.info('Stacking raw/smoothed images....')
     for fp_chunk in filepath_chunks :

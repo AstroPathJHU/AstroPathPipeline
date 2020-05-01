@@ -15,7 +15,7 @@ class MeanImage :
     """
     Class to hold an image that is the mean of a bunch of stacked raw images 
     """
-    def __init__(self,name,x,y,nlayers,dtype,max_nprocs,smoothkernel=(101,101)) :
+    def __init__(self,name,x,y,nlayers,dtype,max_nprocs,skip_masking=False,smoothkernel=(101,101),flux_threshold=35.) :
         """
         name           = stem to use for naming files that get created
         x              = x dimension of images (pixels)
@@ -32,8 +32,11 @@ class MeanImage :
         self.ypix = y
         self.nlayers = nlayers
         self.max_nprocs = max_nprocs
+        self.skip_masking = skip_masking
         self.smoothkernel = smoothkernel
+        self.flux_threshold = flux_threshold
         self.image_stack = np.zeros((y,x,nlayers),dtype=dtype)
+        self.mask_stack  = np.zeros((y,x,nlayers),dtype=np.uint8) #the masks are always 8-bit unsigned ints 
         self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=IMG_DTYPE_OUT)
         self.n_images_stacked = 0
         self.mean_image=None
@@ -43,33 +46,46 @@ class MeanImage :
     #################### PUBLIC FUNCTIONS ####################
 
     def addGroupOfImages(self,im_array_list) :
+        """
+        A function to add a list of raw image arrays to the image stack
+        If masking is requested this function is parallelized and run on the GPU
+        """
+        #if the images aren't meant to be masked then we can just add them up trivially
+        if self.skip_masking :
+            for i,im_array in enumerate(im_array_list,start=1) :
+                flatfield_logger.info(f'  adding image {self.n_images_stacked+1} in the stack....')
+                self.image_stack+=im_array
+                self.n_images_stacked+=1
+                return
+        #otherwise produce the image masks, apply them to the raw images, and be sure to add them to the list in the same order as the images
         manager = mp.Manager()
-        return_list = manager.list()
+        return_dict = manager.dict()
         procs = []
-        for i,im_array in enumerate(im_array_list,start=1) :
-            self.image_stack+=im_array
-            flatfield_logger.info(f'  smoothing image {self.n_images_stacked+i} in the stack....')
-            p = mp.Process(target=smoothImageLayerByLayerWorker, args=(im_array,self.smoothkernel,return_list))
+        for i,im_array in enumerate(im_array_list) :
+            flatfield_logger.info(f'  masking and adding image {self.n_images_stacked+i} in the stack....')
+            p = mp.Process(target=getImageMaskWorker, args=(im_array,self.flux_threshold,i,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
             proc.join()
-        for smoothed_im_array in return_list :
-            self.smoothed_image_stack+=smoothed_im_array
+        for i,im_array in enumerate(im_array_list) :
+            thismask = return_dict[i]
+            self.image_stack+=(im_array*thismask)
+            self.mask_stack+=thismask
             self.n_images_stacked+=1
 
     def makeFlatFieldImage(self) :
         """
-        A function to take the mean of the image stacks and smooth/normalize each of the smoothed mean image layers to make the flatfield image
+        A function to get the mean of the image stack and smooth/normalize each of its layers to make the flatfield image
         """
-        self.mean_image = self.image_stack/self.n_images_stacked
-        self.smoothed_mean_image = self.smoothed_image_stack/self.n_images_stacked
+        self.mean_image = self.__makeMeanImage()
         return_list = []
-        smoothImageLayerByLayerWorker(self.smoothed_mean_image,self.smoothkernel,return_list)
-        self.flatfield_image = return_list[0]
+        smoothImageLayerByLayerWorker(self.mean_image,self.smoothkernel,return_list)
+        self.smoothed_mean_image = return_list[0]
+        self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
-            layermean = np.mean(self.flatfield_image[:,:,layer_i])
-            self.flatfield_image[:,:,layer_i]=self.flatfield_image[:,:,layer_i]/layermean
+            layermean = np.mean(self.smoothed_mean_image[:,:,layer_i])
+            self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
 
     def saveImages(self,namestem) :
         """
@@ -86,6 +102,9 @@ class MeanImage :
         if self.flatfield_image is not None :
             flatfieldimage_filename = f'{namestem}{FILE_EXT}'
             writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=IMG_DTYPE_OUT)
+        #if masks were calculated, save the stack of them
+        if not self.skip_masking :
+            writeImageToFile(np.transpose(self.mask_stack,(2,1,0)),f'mask_stack{FILE_EXT}',dtype=np.uint8)
 
     def savePlots(self) :
         """
@@ -109,17 +128,23 @@ class MeanImage :
             plt.title(f'mean image, {layer_titlestem}')
             plt.savefig(f'mean_image_{layer_fnstem}.png')
             plt.close()
-            #for the smoothed mean image
-            plt.figure(figsize=fig_size)
-            plt.imshow(self.smoothed_mean_image[:,:,layer_i])
-            plt.title(f'smoothed mean image, {layer_titlestem}')
-            plt.savefig(f'smoothed_mean_image_{layer_fnstem}.png')
-            plt.close()
+            ##for the smoothed mean image
+            #plt.figure(figsize=fig_size)
+            #plt.imshow(self.smoothed_mean_image[:,:,layer_i])
+            #plt.title(f'smoothed mean image, {layer_titlestem}')
+            #plt.savefig(f'smoothed_mean_image_{layer_fnstem}.png')
+            #plt.close()
             #for the flatfield image
             plt.figure(figsize=fig_size)
             plt.imshow(self.flatfield_image[:,:,layer_i])
             plt.title(f'flatfield, {layer_titlestem}')
             plt.savefig(f'flatfield_{layer_fnstem}.png')
+            plt.close()
+            #for the mask stack (if applicable) 
+            plt.figure(figsize=fig_size)
+            plt.imshow(self.mask_stack[:,:,layer_i])
+            plt.title(f'stacked binary image masks, {layer_titlestem}')
+            plt.savefig(f'mask_stack_{layer_fnstem}.png')
             plt.close()
             #find the min, max, and 5/95%ile pixel intensities for this image layer
             sorted_ff_layer = np.sort((self.flatfield_image[:,:,layer_i]).flatten())
@@ -153,7 +178,51 @@ class MeanImage :
         plt.legend(loc='best')
         plt.savefig('pixel_intensity_plot.png')
 
+        #################### PRIVATE HELPER FUNCTIONS ####################
+
+        #helper function to create and return the mean image from the image (and mask, if applicable, stack)
+        def __makeMeanImage(self) :
+            #if the images haven't been masked then this is trivial
+            if self.skip_masking :
+                return self.image_stack/self.n_images_stacked
+            #otherwise though we have to be a bit careful and take the mean value pixel-wise, 
+            #being careful to fix any pixels that never got added to so there's no division by zero
+            self.mask_stack[self.mask_stack==0] = 1
+            return self.image_stack/self.mask_stack
+
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
+
+#helper function to create a layered binary image mask for a given image array
+#this can be run in parallel
+def getImageMaskWorker(im_array,flux_threshold,i,return_dict) :
+    #parameters for how to morph each layer mask
+    ERODE1_KERNEL = np.ones((3,3),np.uint8)
+    DILATE1_KERNEL = np.ones((7,7),np.uint8)
+    ERODE2_KERNEL = np.ones((3,3),np.uint8)
+    DILATE2_KERNEL = np.ones((5,5),np.uint8)
+    ERODE1_ITERS = 1
+    DILATE1_ITERS = 2
+    ERODE2_ITERS = 9
+    DILATE2_ITERS = 2
+    #start up a new multilayer mask
+    image_mask = np.zeros(im_array.shape,np.uint8)
+    for li in range(im_array.shape[-1]) :
+        #gently smooth each layer to remove some noise on the GPU
+        layer_in_umat = cv2.UMat(im_array[:,:,li])
+        layer_out_umat = cv2.UMat(np.zeros_like(im_array[:,:,li]))
+        cv2.GaussianBlur(layer_in_umat,(5,5),0,layer_out_umat,0,cv2.BORDER_REFLECT)
+        smoothed_greyscale_layer = (layer_out_umat.get()).astype('uint8')
+        #threshold the layer at the given flux to produce its binary mask
+        _,layermask = cv2.threshold(smoothed_greyscale_layer,flux_threshold,1,cv2.THRESH_BINARY)
+        #erode and dilate the initial mask twice to clean it up
+        layermask = cv2.erode(layermask,ERODE1_KERNEL,iterations=ERODE1_ITERS)
+        layermask = cv2.dilate(layermask,DILATE1_KERNEL,iterations=DILATE1_ITERS)
+        layermask = cv2.erode(layermask,ERODE2_KERNEL,iterations=ERODE2_ITERS)
+        layermask = cv2.dilate(layermask,DILATE2_KERNEL,iterations=DILATE2_ITERS)
+        #set it to the current layer in the return mask
+        image_mask[:,:,li] = layermask
+    #add the total mask to the dict
+    return_dict[i] = image_mask
 
 #helper function to smooth each layer of an image independently on the GPU
 #this can be run in parallel
