@@ -35,8 +35,8 @@ def getFilepathsToRun(a) :
     if '.csv' in a.samplenames :
         #make sure that the samplename CSV file exists
         if not os.path.isfile(a.samplenames) :
-            raise ValueError(f'ERROR: sample name CSV file {a.samplename_csv_file} does not exist!')
-        with open(a.samplename_csv_file,) as f:
+            raise ValueError(f'ERROR: sample name CSV file {a.samplenames} does not exist!')
+        with open(a.samplenames,) as f:
             reader = csv.reader(f)
             all_sample_names = (list(reader))[0]
     else :
