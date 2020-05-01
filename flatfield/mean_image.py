@@ -56,7 +56,7 @@ class MeanImage :
                 flatfield_logger.info(f'  adding image {self.n_images_stacked+1} to the stack....')
                 self.image_stack+=im_array
                 self.n_images_stacked+=1
-                return
+            return
         #otherwise produce the image masks, apply them to the raw images, and be sure to add them to the list in the same order as the images
         manager = mp.Manager()
         return_dict = manager.dict()
