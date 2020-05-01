@@ -1,7 +1,7 @@
 #imports
 from .mean_image import MeanImage
 from .config import *
-from ..utilities.img_file_io import getRawAsHWL
+from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile
 from ..utilities.misc import cd, split_csv_to_list, split_csv_to_list_of_ints
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
@@ -15,23 +15,12 @@ def checkArgs(a) :
     #make sure that the raw file directory exists
     if not os.path.isdir(a.rawfile_top_dir) :
         raise ValueError(f'ERROR: Raw file directory {a.rawfile_top_dir} does not exist!')
-    #make sure raw image dimensions is the right size
-    try:
-        assert len(a.raw_image_dims)==3
-    except AssertionError :
-        raise ValueError(f'ERROR: Raw image dimensions ({a.raw_image_dims}) must be a list of three integers in x,y,#layers!')
-    #reset the global image dimensions
-    global IMG_X, IMG_Y, IMG_NLAYERS
-    IMG_X = a.raw_image_dims[0]
-    IMG_Y = a.raw_image_dims[1]
-    IMG_NLAYERS = a.raw_image_dims[2]
     #create the working directory if it doesn't already exist
     if not os.path.isdir(a.workingdir_name) :
         os.mkdir(a.workingdir_name)
 
-#helper function to get the list of filepaths to run on based on the selection method and number of images requested
-def getFilepathsToRun(a) :
-    #Get the list of sample names
+#helper function to get the list of sample names to run on
+def getSampleNamesToRun(a) :
     if '.csv' in a.samplenames :
         #make sure that the samplename CSV file exists
         if not os.path.isfile(a.samplenames) :
@@ -41,6 +30,12 @@ def getFilepathsToRun(a) :
             all_sample_names = (list(reader))[0]
     else :
         all_sample_names = split_csv_to_list(a.samplenames)
+    return all_sample_names
+
+#helper function to get the list of filepaths to run on based on the selection method and number of images requested
+def getFilepathsToRun(a) :
+    #get the sample names
+    all_sample_names = getSampleNamesToRun(a)
     #make sure the directories all exist
     for sn in all_sample_names :
         if not os.path.isdir(os.path.join(a.rawfile_top_dir,sn)) :
@@ -80,7 +75,7 @@ def getFilepathsToRun(a) :
 #helper function to parallelize calls to getRawAsHWL
 def getRawImageArray(fpt) :
     flatfield_logger.info(f'  reading file {fpt[0]} {fpt[1]}')
-    raw_img_arr = getRawAsHWL(fpt[0],IMG_Y,IMG_X,IMG_NLAYERS)
+    raw_img_arr = getRawAsHWL(fpt[0],fpt[2][0],fpt[2][1],fpt[2][2])
     return raw_img_arr
 
 #helper function to read and return a group of raw images with multithreading
@@ -108,8 +103,6 @@ def main() :
     parser.add_argument('samplenames', help='Comma-separated list of sample names to include (or path to the csv file that lists them)')
     parser.add_argument('rawfile_top_dir',     help='Path to directory that holds each of the [samplename] directories that contain raw files')
     #optional arguments
-    parser.add_argument('--raw_image_dims',       default=[1344,1004,35], type=split_csv_to_list_of_ints,
-        help='Comma-separated list of raw image dimensions in (x, y, #layers)')
     parser.add_argument('--layers',               default=[-1],           type=split_csv_to_list_of_ints,         
         help='Comma-separated list of image layer numbers to consider (default -1 means all layers)')
     parser.add_argument('--max_images',           default=-1,             type=int,         
@@ -128,16 +121,18 @@ def main() :
         help='Stem for meanimage file names')
     args = parser.parse_args()
     checkArgs(args)
+    #figure out the image dimensions from the xml file of the first sample
+    dims = getImageHWLFromXMLFile(args.rawfile_top_dir,(getSampleNamesToRun(args))[0])
     #get the list of filepaths and break them into chunks to run in parallel
     filepaths = getFilepathsToRun(args)
     filepath_chunks = [[]]
     for i,fp in enumerate(filepaths,start=1) :
         if len(filepath_chunks[-1])>=args.n_threads :
             filepath_chunks.append([])
-        filepath_chunks[-1].append((fp,f'({i} of {len(filepaths)})'))
+        filepath_chunks[-1].append((fp,f'({i} of {len(filepaths)})',dims))
     #Start up a new mean image
     mean_image = MeanImage(args.flatfield_image_name,
-                            IMG_X,IMG_Y,IMG_NLAYERS if args.layers==[-1] else len(args.layers),IMG_DTYPE_IN,
+                            dims[0],dims[1],dims[2] if args.layers==[-1] else len(args.layers),IMG_DTYPE_IN,
                             args.n_threads,args.skip_masking)
     #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
     flatfield_logger.info('Stacking raw/smoothed images....')

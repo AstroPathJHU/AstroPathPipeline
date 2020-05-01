@@ -2,9 +2,6 @@ import numpy as np
 import logging
 
 #run_flatield globals
-IMG_X = None
-IMG_Y = None
-IMG_NLAYERS = None
 IMG_DTYPE_IN = np.uint16
 FILEPATH_TEXT_FILE_NAME='filepath_log.txt'
 PLOT_DIRECTORY_NAME='plots'

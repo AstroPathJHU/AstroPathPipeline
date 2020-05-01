@@ -15,11 +15,11 @@ class MeanImage :
     """
     Class to hold an image that is the mean of a bunch of stacked raw images 
     """
-    def __init__(self,name,x,y,nlayers,dtype,max_nprocs,skip_masking=False,smoothkernel=(101,101),flux_threshold=35.) :
+    def __init__(self,name,y,x,nlayers,dtype,max_nprocs,skip_masking=False,smoothkernel=(101,101),flux_threshold=35.) :
         """
         name           = stem to use for naming files that get created
-        x              = x dimension of images (pixels)
         y              = y dimension of images (pixels)
+        x              = x dimension of images (pixels)
         nlayers        = number of layers in images
         dtype          = datatype of image arrays that will be stacked
         max_nprocs     = max number of parallel processes to run when smoothing images
