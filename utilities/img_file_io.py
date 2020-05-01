@@ -1,4 +1,10 @@
+#imports
 import numpy as np
+import xml.etree.ElementTree as et
+import os
+
+#global variables
+XMLFILE_EXT = '.Parameters.xml'
 
 #helper function to read the binary dump of a raw im3 file 
 def im3readraw(f,dtype=np.uint16) :
@@ -43,3 +49,12 @@ def getRawAsHW(fname,height,width,dtype=np.uint16) :
 def writeImageToFile(img_array,filename_to_write,dtype=np.uint16) :
   #write out image flattened in fortran order
   im3writeraw(filename_to_write,img_array.flatten(order="F").astype(dtype))
+
+#helper function to get an image dimension tuple from the sample XML file
+def getImageHWLFromXMLFile(topdir,samplename) :
+    xmlfilepath = os.path.join(topdir,samplename,f'{samplename}{XMLFILE_EXT}')
+    tree = et.parse(xmlfilepath)
+    for child in tree.getroot() :
+        if child.attrib['name']=='Shape' :
+            img_width, img_height, img_nlayers = tuple([int(val) for val in (child.text).split()])
+    return img_height, img_width, img_nlayers
