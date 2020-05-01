@@ -2,7 +2,7 @@
 from .mean_image import MeanImage
 from .config import *
 from ..utilities.img_file_io import getRawAsHWL
-from ..utilities.misc import cd, split_csv_to_list_of_ints
+from ..utilities.misc import cd, split_csv_to_list, split_csv_to_list_of_ints
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np, matplotlib.pyplot as plt
@@ -12,10 +12,7 @@ import os, glob, csv, random
 
 #helper function to make sure arguments are valid
 def checkArgs(a) :
-    #make sure that the samplename CSV file exists
-    if not os.path.isfile(a.samplename_csv_file) :
-        raise ValueError(f'ERROR: sample name CSV file {a.samplename_csv_file} does not exist!')
-    #make sure that the raw file directory exist
+    #make sure that the raw file directory exists
     if not os.path.isdir(a.rawfile_top_dir) :
         raise ValueError(f'ERROR: Raw file directory {a.rawfile_top_dir} does not exist!')
     #make sure raw image dimensions is the right size
@@ -34,10 +31,16 @@ def checkArgs(a) :
 
 #helper function to get the list of filepaths to run on based on the selection method and number of images requested
 def getFilepathsToRun(a) :
-    #Get the list of sample names from the file
-    with open(a.samplename_csv_file,) as f:
-        reader = csv.reader(f)
-        all_sample_names = (list(reader))[0]
+    #Get the list of sample names
+    if '.csv' in a.samplenames :
+        #make sure that the samplename CSV file exists
+        if not os.path.isfile(a.samplenames) :
+            raise ValueError(f'ERROR: sample name CSV file {a.samplename_csv_file} does not exist!')
+        with open(a.samplename_csv_file,) as f:
+            reader = csv.reader(f)
+            all_sample_names = (list(reader))[0]
+    else :
+        all_sample_names = split_csv_to_list(a.samplenames)
     #make sure the directories all exist
     for sn in all_sample_names :
         if not os.path.isdir(os.path.join(a.rawfile_top_dir,sn)) :
@@ -102,7 +105,7 @@ def main() :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #positional arguments
-    parser.add_argument('samplename_csv_file', help='Path to the csv file that lists the sample names to include')
+    parser.add_argument('samplenames', help='Comma-separated list of sample names to include (or path to the csv file that lists them)')
     parser.add_argument('rawfile_top_dir',     help='Path to directory that holds each of the [samplename] directories that contain raw files')
     #optional arguments
     parser.add_argument('--raw_image_dims',       default=[1344,1004,35], type=split_csv_to_list_of_ints,
