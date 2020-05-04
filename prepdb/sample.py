@@ -37,7 +37,10 @@ class Sample:
     with PIL.Image.open(componenttifffilename) as tiff:
       pscale = tiff.info["dpi"] / 2.54
       fwidth, fheight = units.distances(pixels=tiff.size, pscale=pscale, power=1)
-    batch = self.getbatch()
+
+    with open(self.scanfolder/"BatchID.txt") as f:
+      batch = int(f.read())
+
     R, G = self.getlayout()
     if not R:
       raise ValueError("No layout annotations")
@@ -47,9 +50,9 @@ class Sample:
     xposition = Q.xposition
     yposition = Q.yposition
 
-  def getbatch(self): raise NotImplementedError
   def getlayout(self): raise NotImplementedError
   def getXMLpolygonannotations(self): raise NotImplementedError
+  def getqptiff(self): raise NotImplementedError
   def getoverlaps(self): raise NotImplementedError
   def getconstants(self): raise NotImplementedError
   def writemetadata(self): raise NotImplementedError
