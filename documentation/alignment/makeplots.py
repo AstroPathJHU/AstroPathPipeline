@@ -226,15 +226,13 @@ def squarepulls(*, bki, testing, remake):
 
       for samp in samples:
         plotid = samp[1] if samp else "_test"
-        if samp:
-          A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
-        else:
-          A = alignmentset()
         saveas = os.path.join(here, "squarepull"+plotid+".pdf")
         if remake or not os.path.exists(saveas):
+          A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp) if samp else alignmentset()
           closedlooppulls(A, tagsequence=[4, 2, 6, 8], saveas=saveas, plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
         saveas = os.path.join(here, "diamondpull"+plotid+".pdf")
         if remake or not os.path.exists(saveas):
+          A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp) if samp else alignmentset()
           closedlooppulls(A, tagsequence=[1, 3, 9, 7], saveas=os.path.join(here, "diamondpull"+plotid+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
 
 def stitchpulls(*, bki, testing, remake):
@@ -250,13 +248,10 @@ def stitchpulls(*, bki, testing, remake):
 
       for samp in samples:
         plotid = samp[1] if samp else "test"
-        if samp:
-          A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
-        else:
-          A = alignmentset()
         for tag in 1, 2, 3, 4:
           saveas=os.path.join(here, f"stitch-pull-{tag}-{plotid}.pdf")
           if os.path.exists(saveas) and not remake: continue
+          A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp) if samp else alignmentset()
           plotpairwisealignments(
             A,
             tags=[tag],
@@ -280,26 +275,26 @@ def sinewaves(*, bki, testing, remake):
         Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M1_1", name="1", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=None),
         Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M2_3", name="2", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=None),
         Sample(root1=r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", root2=r"\\Bki02\g\flatw", samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda tag, **kwargs: tag==4 and kwargs["deltaxory"] == kwargs["vsxory"] == "x", sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=2.014533),
-        Sample(root1=r"\\bki04\Clinical_Specimen_2", root2=r"\\bki02\g\heshy\Clinical_Specimen_2", samp="L1_4", name="JHUPolaris", plotsine=lambda **kwargs: True, pscale=None),
+        Sample(root1=r"\\bki04\Clinical_Specimen_2", root2=r"\\bki02\g\heshy\Clinical_Specimen_2", samp="L1_4", name="JHUPolaris", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=None),
       ] if bki else [
         Sample(root1=None, root2=None, samp=None, name="test", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=None),
       ]
 
       for samp, root1, root2, name, plotsine, sinetext, pscale in samples:
-        kwargs = {"root1": root1, "root2": root2, "samp": samp, "pscale": pscale}
-        kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        A = alignmentset(**kwargs)
+        alignmentsetkwargs = {"root1": root1, "root2": root2, "samp": samp, "pscale": pscale}
+        alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
         kwargs = {}
         for kwargs["deltaxory"] in "xy":
           for kwargs["vsxory"] in "xy":
             for tag in 2, 4:
               saveas = os.path.join(here, f"sine-wave-{tag}-{kwargs['deltaxory']}{kwargs['vsxory']}-{name}.pdf")
               if os.path.exists(saveas) and not remake: continue
+              A = alignmentset(**alignmentsetkwargs)
               alignmentshiftprofile(
                 A,
                 tag=tag,
-                plotsine=plotsine(tag, **kwargs),
-                sinetext=sinetext(tag, **kwargs),
+                plotsine=plotsine(tag=tag, **kwargs),
+                sinetext=sinetext(tag=tag, **kwargs),
                 figurekwargs={"figsize": (6, 6)},
                 plotstyling=functools.partial(plotstyling, **kwargs),
                 saveas=saveas,
