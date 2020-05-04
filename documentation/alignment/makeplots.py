@@ -16,11 +16,14 @@ rc = {
 }
 
 @functools.lru_cache()
-def alignmentset(*, root1=data, root2=os.path.join(data, "flatw"), samp="M21_1", dapi=False, **kwargs):
+def alignmentset(*, root1=None, root2=None, samp=None, dapi=False, **kwargs):
   if dapi:
     A = alignmentset(root1=root1, root2=root2, samp=samp, **kwargs)
     A.getDAPI()
     return A
+
+  if root1 is root2 is samp is None:
+    return alignmentset(root1=data, root2=os.path.join(data, "flatw"), samp="M21_1", **kwargs)
 
   A = AlignmentSet(root1, root2, samp, **kwargs)
   A.readalignments()
