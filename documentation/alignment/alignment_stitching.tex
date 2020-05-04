@@ -584,7 +584,7 @@ From the sample named \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, we find the line
 \end{pmatrix} \times \num{e-3}
 \label{eq:Amatrix_TS18_0541_BMS_MITRE}
 \end{align}
-The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $0.8$ pixels.  When moving down, it overshoots by an average of $0.5$ pixels.  If left uncorrected, this is a significantly larger bias than the one in the Vectra 3.0 microscope.
+The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $0.8$ pixels.  When moving down, it overshoots by an average of $0.5$ pixels.
 
 The image scales written in the \texttt{.tiff} and the \texttt{.im3} files are different: $2.0$ or $\SI{2.014533}{pixels\per\micro\meter}$, respectively.  The $\matrixbold{A}$ matrix reported here is based on the scale from the \texttt{.im3} files and confirms that that scale is correct to within half a percent.  Using the scale from the \texttt{.tiff} files would still give an equivalent alignment, but $\matrixbold{A}$ would be further from the identity matrix.
 
@@ -639,7 +639,7 @@ On the other hand, once we remove the constant shifts and, where relevant, the s
 		\caption{}
 		\label{fig:sinewave4yyAKY}
 	\end{subfigure}
-	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset.  The third and fourth rows show the same for the \M23 dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
+	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
 	\label{fig:sinewavespolaris}
 \end{figure}
 

@@ -1,6 +1,7 @@
 *.pdf
 *.aux
 *.out
+*.synctex(busy)
 !diamondpull1.pdf
 !diamondpull2.pdf
 !squarepull1.pdf
