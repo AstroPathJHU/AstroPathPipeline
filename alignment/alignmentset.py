@@ -106,7 +106,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
   @methodtools.lru_cache()
   def image(self):
-    return cv2.imread(self.dbload/(self.samp+"_qptiff.jpg"))
+    return cv2.imread(str(self.dbload/(self.samp+"_qptiff.jpg")))
 
   @property
   def aligncsv(self):
