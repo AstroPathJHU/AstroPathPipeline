@@ -162,7 +162,7 @@ def scanning():
     plt.savefig(os.path.join(here, "scanning.pdf"))
     plt.close()
 
-def squarepulls(*, bki, testing):
+def squarepulls(*, bki, testing, remake):
   with plt.rc_context(rc=rc):
     fig = plt.figure(figsize=(6, 6))
     ax = fig.add_subplot(1, 1, 1)
@@ -227,10 +227,14 @@ def squarepulls(*, bki, testing):
           A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
         else:
           A = alignmentset()
-        closedlooppulls(A, tagsequence=[4, 2, 6, 8], saveas=os.path.join(here, "squarepull"+plotid+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
-        closedlooppulls(A, tagsequence=[1, 3, 9, 7], saveas=os.path.join(here, "diamondpull"+plotid+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
+        saveas = os.path.join(here, "squarepull"+plotid+".pdf")
+        if remake or not os.path.exists(saveas):
+          closedlooppulls(A, tagsequence=[4, 2, 6, 8], saveas=saveas, plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
+        saveas = os.path.join(here, "diamondpull"+plotid+".pdf")
+        if remake or not os.path.exists(saveas):
+          closedlooppulls(A, tagsequence=[1, 3, 9, 7], saveas=os.path.join(here, "diamondpull"+plotid+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
 
-def stitchpulls(*, bki, testing):
+def stitchpulls(*, bki, testing, remake):
   if bki or testing:
     with plt.rc_context(rc=rc):
       def plotstyling(*, fig, ax):
@@ -248,9 +252,19 @@ def stitchpulls(*, bki, testing):
         else:
           A = alignmentset()
         for tag in 1, 2, 3, 4:
-          plotpairwisealignments(A, tags=[tag], figurekwargs={"figsize": (6, 6)}, stitched=True, pull=True, plotstyling=plotstyling, saveas=os.path.join(here, f"stitch-pull-{tag}-{plotid}.pdf"))
+          saveas=os.path.join(here, f"stitch-pull-{tag}-{plotid}.pdf")
+          if os.path.exists(saveas) and not remake: continue
+          plotpairwisealignments(
+            A,
+            tags=[tag],
+            figurekwargs={"figsize": (6, 6)},
+            stitched=True,
+            pull=True,
+            plotstyling=plotstyling,
+            saveas=saveas
+          )
 
-def sinewaves(*, bki, testing):
+def sinewaves(*, bki, testing, remake):
   if bki or testing:
     with plt.rc_context(rc=rc):
       def plotstyling(*, fig, ax, deltaxory, vsxory):
@@ -276,7 +290,18 @@ def sinewaves(*, bki, testing):
         for kwargs["deltaxory"] in "xy":
           for kwargs["vsxory"] in "xy":
             for tag in 2, 4:
-              alignmentshiftprofile(A, tag=tag, plotsine=plotsine(tag, **kwargs), sinetext=sinetext(tag, **kwargs), figurekwargs={"figsize": (6, 6)}, plotstyling=functools.partial(plotstyling, **kwargs), saveas=os.path.join(here, f"sine-wave-{tag}-{kwargs['deltaxory']}{kwargs['vsxory']}-{name}.pdf"), **kwargs)
+              saveas = os.path.join(here, f"sine-wave-{tag}-{kwargs['deltaxory']}{kwargs['vsxory']}-{name}.pdf")
+              if os.path.exists(saveas) and not remake: continue
+              alignmentshiftprofile(
+                A,
+                tag=tag,
+                plotsine=plotsine(tag, **kwargs),
+                sinetext=sinetext(tag, **kwargs),
+                figurekwargs={"figsize": (6, 6)},
+                plotstyling=functools.partial(plotstyling, **kwargs),
+                saveas=saveas,
+                **kwargs
+              )
 
 if __name__ == "__main__":
   class EqualsEverything:
@@ -285,6 +310,7 @@ if __name__ == "__main__":
   g = p.add_mutually_exclusive_group()
   g.add_argument("--bki", action="store_true")
   g.add_argument("--testing", action="store_true")
+  g.add_argument("--remake", action="store_true")
   p.add_argument("--units", choices=("fast", "safe"), default="safe")
   g = p.add_mutually_exclusive_group()
   g.add_argument("--all", action="store_const", dest="which", const=EqualsEverything(), default=EqualsEverything())
@@ -314,8 +340,8 @@ if __name__ == "__main__":
   if args.which == "scanning":
     scanning()
   if args.which == "squarepulls":
-    squarepulls(bki=args.bki, testing=args.testing)
+    squarepulls(bki=args.bki, testing=args.testing, remake=args.remake)
   if args.which == "stitchpulls":
-    stitchpulls(bki=args.bki, testing=args.testing)
+    stitchpulls(bki=args.bki, testing=args.testing, remake=args.remake)
   if args.which == "sinewaves":
-    sinewaves(bki=args.bki, testing=args.testing)
+    sinewaves(bki=args.bki, testing=args.testing, remake=args.remake)
