@@ -50,7 +50,38 @@ class Sample:
     xposition = Q.xposition
     yposition = Q.yposition
 
-  def getlayout(self): raise NotImplementedError
+  def getlayout(self):
+    r, G, p = self.getXMLplan()
+    t = self.getdir()
+    raise NotImplementedError
+
+  def getXMLplan(self):
+    raise NotImplementedError
+    r = self.fixM2(r)
+    return r, G, p
+
+  def getdir(self):
+    folder = self.scanfolder/"MSI"
+    im3s = folder.glob("*.im3")
+    result = []
+    for im3 in im3s:
+      regex = self.samp+r"_\[([0-9]+),([0-9]+)\].im3"
+      match = re.match(regex, im3.name)
+      if not match:
+        raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
+      x = match.group(1)
+      y = match.group(2)
+      t = os.path.getmtime(im3)
+      result.append(
+        Rectangle(
+          x=x,
+          y=y,
+          t=t
+        )
+      )
+    result.sort(key=lambda x: x.t)
+    return result
+
   def getXMLpolygonannotations(self): raise NotImplementedError
   def getqptiff(self): raise NotImplementedError
   def getoverlaps(self): raise NotImplementedError
