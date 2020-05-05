@@ -1,4 +1,4 @@
-import logging, pathlib
+import dateutil, jxmlease, logging, pathlib
 
 logger = logging.getLogger("prepdb")
 logger.setLevel(logging.DEBUG)
@@ -56,7 +56,37 @@ class Sample:
     raise NotImplementedError
 
   def getXMLplan(self):
-    raise NotImplementedError
+    xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+"_annotations.xml")
+    result = []
+    with open(xmlfile, "rb") as f:
+      for path, _, node in ET.parse(f, generator="/AnnotationList/Annotations/Annotations-i"):
+        history = node["History"]["History-i"]
+        if len(history) != 3:
+          raise ValueError(f"Expected 3 items in the history, found {len(history)}")
+        im3path = history[-1]["Im3Path"]
+        if not im3path: continue
+
+        n = len(result)+1
+        x = distance(microns=node["Bounds"]["Origin"]["X"])
+        y = distance(microns=node["Bounds"]["Origin"]["Y"])
+        w = distance(microns=node["Bounds"]["Size"]["Width"])
+        h = distance(microns=node["Bounds"]["Size"]["Height"])
+        time = dateutil.parser.parse(history[-1]["TimeStamp"]).timestamp()
+
+        result.append(
+          Rectangle(
+            n=n,
+            x=x,
+            y=y,
+            cx=cx,
+            cy=cy,
+            w=w,
+            h=h,
+            time=time,
+            file=file,
+          )
+        )
+
     r = self.fixM2(r)
     return r, G, p
 
