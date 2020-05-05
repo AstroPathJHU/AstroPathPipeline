@@ -114,7 +114,69 @@ class Sample:
     result.sort(key=lambda x: x.t)
     return result
 
-  def getXMLpolygonannotations(self): raise NotImplementedError
+  def getXMLpolygonannotations(self):
+    xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+"_annotations.polygons.xml")
+    annotations = []
+    allregions = []
+    allvertices = []
+    with open(filename, "rb") as f:
+      for n, (path, _, node) in enumerate(jxmlease.parse(f, generator="/Annotations/Annotation"), start=1):
+        linecolor = f"{node.get_xml_attr('LineColor'):06x}"
+        linecolor = linecolor[4:6] + linecolor[2:4] + linecolor[0:2]
+        visible = node.get_xml_attr("Visible").lower() == "true"
+        name = node.get_xml_attr("Name")
+        annotations.append(
+          Annotation(
+            linecolor=linecolor,
+            visible=visible,
+            name=name,
+            sampleid=0,
+            layer=n,
+            poly="poly",
+          )
+        )
+
+        regions = node["Regions"]["Region"]
+        if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
+        for m, region in enumerate(regions, start=1):
+          regionid = 1000*n + m
+          vertices = region["Vertices"]["V"]
+          if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
+          regionvertices = []
+          for k, vertex in enumerate(vertices, start=1):
+            x = units.Distance(microns=vertex.get_xml_attr("X"))
+            y = units.Distance(microns=vertex.get_xml_attr("Y"))
+            regionvertices.append(
+              Vertex(
+                regionid=regionid,
+                vid=k,
+                x=x,
+                y=y,
+              )
+            )
+          allvertices += regionvertices
+
+          isNeg = bool(int(region.get_xml_attr("NegativeROA")))
+          if isNeg: regionvertices.reverse()
+          polygonvertices = []
+          for vertex in regionvertices:
+            polygonvertices.append(f"{math.floor(units.pixels(vertex.x))} {math.floor(units.pixels(vertex.y))}")
+
+          allregions.append(
+            Region(
+              regionid=regionid,
+              sampleid=0,
+              layer=n,
+              rid=m,
+              isNeg=isNeg,
+              type=region.get_xml_attr("Type"),
+              nvert=len(vertices),
+              poly="POLYGON ((" + ",".join(polygonvertices) + "))",
+            )
+          )
+
+    return annotations, allregions, allvertices
+
   def getqptiff(self): raise NotImplementedError
   def getoverlaps(self): raise NotImplementedError
   def getconstants(self): raise NotImplementedError
