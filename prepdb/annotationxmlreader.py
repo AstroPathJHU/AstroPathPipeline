@@ -96,7 +96,7 @@ class RectangleAnnotation(AnnotationBase):
   @property
   def h(self): return units.Distance(microns=self.xmlnode["Bounds"]["Size"]["Height"])
   @property
-  def time(self): return dateutil.parser.parse(self.history[-1]["TimeStamp"]).timestamp()
+  def time(self): return dateutil.parser.parse(self.history[-1]["TimeStamp"])
 
   @property
   def globals(self): return None

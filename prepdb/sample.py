@@ -41,7 +41,7 @@ class Sample:
     with open(self.scanfolder/"BatchID.txt") as f:
       batch = int(f.read())
 
-    R, G = self.getlayout()
+    rectangles, globals = self.getlayout()
     if not R:
       raise ValueError("No layout annotations")
     P = self.getXMLpolygonannotations()
@@ -49,11 +49,24 @@ class Sample:
     qpscale = Q.qpscale
     xposition = Q.xposition
     yposition = Q.yposition
+    raise NotImplementedError
 
   def getlayout(self):
-    r, G, p = self.getXMLplan()
-    t = self.getdir()
-    raise NotImplementedError
+    rectangles, globals, perimeters = self.getXMLplan()
+    rectanglefiles = self.getdir()
+    maxtimediff = 0
+    for r in rectangles:
+      rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
+      assert len(rfs) <= 1
+      if not rfs:
+        raise OSError(f"File {self.samp}_[{r.cx},{r.cy}].im3 (expected from annotations) does not exist")
+      maxtimediff = max(maxtimediff, abs(rf.t-r.time))
+    if maxtimediff >= datetime.timedelta(seconds=5):
+      logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
+    rectangles.sort(key=lambda x: x.time)
+    for i, rectangle in enumerate(rectangles, start=1):
+      rectangle.n = i
+    return rectangles, globals
 
   def getXMLplan(self):
     xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+"_annotations.xml")
@@ -82,7 +95,7 @@ class Sample:
   def getdir(self):
     folder = self.scanfolder/"MSI"
     im3s = folder.glob("*.im3")
-    result = []
+    result = set()
     for im3 in im3s:
       regex = self.samp+r"_\[([0-9]+),([0-9]+)\].im3"
       match = re.match(regex, im3.name)
@@ -90,12 +103,12 @@ class Sample:
         raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
       x = match.group(1)
       y = match.group(2)
-      t = os.path.getmtime(im3)
-      result.append(
-        Rectangle(
-          x=x,
-          y=y,
-          t=t
+      t = datetime.fromtimestamp(os.path.getmtime(im3))
+      result.add(
+        RectangleFile(
+          cx=x,
+          cy=y,
+          t=t,
         )
       )
     result.sort(key=lambda x: x.t)
