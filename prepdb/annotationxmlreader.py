@@ -5,13 +5,24 @@ class AnnotationXMLReader:
   @methodtools.lru_cache()
   def getdata(self):
     rectangles = []
+    globals = []
+    perimeters = []
     maxdepth = 1
     with open(self.__filename) as f:
       for path, _, node in jxmlease.parse(
         self.__f,
         generator="/AnnotationList/Annotations/Annotations-i"
       ):
-        for field in AnnotationFactory(node).fields:
+        annotation = AnnotationFactory(node)
+        globalkwargs = annotation.globals
+        if globalkwargs is not None: globals.append(Globals(n=len(globals)+1, **globalkwargs))
+        perimeterkwargs = annotation.perimeters
+        if perimeterkwargs is not None: perimeters += [
+          Perimeter(m=len(perimeters)+1, **kwargs)
+            for kwargs in perimeterkwargs
+        ]
+
+        for field in annotation.fields:
           if field.nestdepth > 2:
             raise ValueError("Found an ROIAnnotation within another ROIAnnotation, did not expect this")
           #don't use RectangleAnnotations if there are also ROIAnnotations
@@ -36,7 +47,14 @@ class AnnotationXMLReader:
             )
           )
 
-    return rectangles
+    return rectangles, globals, perimeters
+
+  @property
+  def rectangles(self): return self.getdata()[0]
+  @property
+  def globals(self): return self.getdata()[1]
+  @property
+  def perimeters(self): return self.getdata()[2]
 
 class AnnotationBase(abc.ABC):
   def __init__(self, xmlnode, *, nestdepth=1):
@@ -48,6 +66,10 @@ class AnnotationBase(abc.ABC):
   def nestdepth(self): return self.__nestdepth
   @abc.abstractproperty
   def fields(self): pass
+  @abc.abstractproperty
+  def globals(self): pass
+  @abc.abstractproperty
+  def perimeter(self): pass
   @property
   def subtype(self): return self.__xmlnode.get_xml_attr("subtype")
 
@@ -76,6 +98,11 @@ class RectangleAnnotation(AnnotationBase):
   @property
   def time(self): return dateutil.parser.parse(self.history[-1]["TimeStamp"]).timestamp()
 
+  @property
+  def globals(self): return None
+  @property
+  def perimeter(self): return None
+
 class ROIAnnotation(AnnotationBase):
   @property
   def fields(self):
@@ -83,6 +110,28 @@ class ROIAnnotation(AnnotationBase):
     if isinstance(fields, jxmlease.XMLDictNode): fields = fields,
     for field in fields:
       yield from AnnotationFactory(field, nestdepth=self.nestdepth+1).fields
+  @property
+  def globals(self):
+    return {
+      "x": units.Distance(microns=self.xmlnode["Bounds"]["Origin"]["X"]),
+      "y": units.Distance(microns=self.xmlnode["Bounds"]["Origin"]["Y"]),
+      "Width": units.Distance(microns=self.xmlnode["Bounds"]["Size"]["Width"]),
+      "Height": units.Distance(microns=self.xmlnode["Bounds"]["Size"]["Height"]),
+      "Unit": "microns",
+      "Tc": self.xmlnode["History"]["History-i"]["TimeStamp"],
+    }
+  @property
+  def perimeter(self):
+    result = []
+    perimeters = self.xmlnode["Perimeter"]["Perimeter-i"]
+    if isinstance(perimeters, jxmlease.XMLDictNode): perimeters = perimeters,
+    for i, perimeter in enumerate(perimeters, start=1):
+      result.append({
+        "n": i,
+        "x": units.Distance(microns=perimeter["X"]),
+        "y": units.Distance(microns=perimeter["Y"]),
+      })
+    return result
 
 def AnnotationFactory(xmlnode, **kwargs):
   return {

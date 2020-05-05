@@ -59,9 +59,25 @@ class Sample:
     xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+"_annotations.xml")
     result = []
     reader = AnnotationXMLReader(xmlfile)
+
     rectangles = reader.rectangles
-    r = self.fixM2(r)
-    return r, G, p
+    globals = reader.globals
+    perimeters = reader.perimeters
+    self.fixM2(rectangles)
+
+    return rectangles, globals, perimeters
+
+  @staticmethod
+  def fixM2(rectangles):
+    for rectangle in rectangles[:]:
+      if "_M2" in rectangle.file:
+        duplicates = [r for r in rectangles if r is not rectangle and np.all(r.cxvec == rectangle.cxvec)]
+        if not duplicates:
+          rectangle.file = rectangle.file.replace("_M2", "")
+        for d in duplicates:
+          rectangles.remove(d)
+    for i, rectangle in enumerate(rectangles, start=1):
+      rectangle.n = i
 
   def getdir(self):
     folder = self.scanfolder/"MSI"
