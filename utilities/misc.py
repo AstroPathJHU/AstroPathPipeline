@@ -80,3 +80,13 @@ def weightedvariance(a, *, subtractaverage=True):
 
 def weightedstd(*args, **kwargs):
   return weightedvariance(*args, **kwargs) ** 0.5
+
+@contextlib.contextmanager
+def PILmaximagepixels(pixels):
+  import PIL.Image
+  bkp = PIL.Image.MAX_IMAGE_PIXELS
+  try:
+    PIL.Image.MAX_IMAGE_PIXELS = size
+    yield
+  finally:
+    PIL.Image.MAX_IMAGE_PIXELS = bkp

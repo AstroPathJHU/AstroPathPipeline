@@ -177,7 +177,47 @@ class Sample:
 
     return annotations, allregions, allvertices
 
-  def getqptiff(self): raise NotImplementedError
+  def getqptiff(self):
+    qptifffilename = self.scanfolder/(self.samp+"_"+self.scanfolder.name+".qptiff")
+    with open(qptifffilename) as f:
+      tags = exifread.process_file(f)
+    resolutionunit = str(tags["Image ResolutionUnit"])
+    xposition = tags["Image XPosition"].values[0]
+    xposition = xposition.num / xposition.den
+    yposition = tags["Image YPosition"].values[0]
+    yposition = yposition.num / yposition.den
+    xresolution = tags["Image XResolution"].values[0]
+    xresolution = xresolution.num / xresolution.den
+    yresolution = tags["Image YResolution"].values[0]
+    yresolution = yresolution.num / yresolution.den
+
+    kw = {
+      "Pixels/Centimeter": "centimeters",
+      "Pixels/Micron": "microns",
+    }[resolutionunit]
+    xresolution = units.Distance(pixels=xresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
+    yresolution = units.Distance(pixels=yresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
+    qpscale = xresolution
+    xposition = units.Distance(**{kw: xposition}, pscale=qpscale)
+    yposition = units.Distance(**{kw: yposition}, pscale=qpscale)
+    qptiffcsv = [
+      QPTiffCsv(
+        SampleID=0,
+        SlideID=self.samp,
+        ResolutionUnit="Micron",
+        XPosition=xposition,
+        YPosition=yposition,
+        XResolution=xresolution,
+        YResolution=yresolution,
+        qpscale=qpscale,
+        fname=jpgfile.name,
+        img="00001234",
+      )
+    ]
+
+    with PILmaximagepixels(1024**3), PIL.Image.open(qptifffilename) as f:
+      
+
   def getoverlaps(self): raise NotImplementedError
   def getconstants(self): raise NotImplementedError
   def writemetadata(self): raise NotImplementedError
