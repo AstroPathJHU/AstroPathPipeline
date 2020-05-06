@@ -86,7 +86,7 @@ def PILmaximagepixels(pixels):
   import PIL.Image
   bkp = PIL.Image.MAX_IMAGE_PIXELS
   try:
-    PIL.Image.MAX_IMAGE_PIXELS = size
+    PIL.Image.MAX_IMAGE_PIXELS = pixels
     yield
   finally:
     PIL.Image.MAX_IMAGE_PIXELS = bkp

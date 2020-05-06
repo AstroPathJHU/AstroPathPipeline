@@ -1,4 +1,10 @@
-import dateutil, jxmlease, logging, pathlib
+import dataclasses, datetime, exifread, itertools, jxmlease, logging, math, methodtools, numpy as np, os, pathlib, PIL, re
+from ..utilities import units
+from ..utilities.misc import PILmaximagepixels
+from ..utilities.tableio import writetable
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from ..alignment.overlap import Overlap
+from .annotationxmlreader import AnnotationXMLReader
 
 logger = logging.getLogger("prepdb")
 logger.setLevel(logging.DEBUG)
@@ -58,16 +64,14 @@ class Sample:
   @property
   def fheight(self): return self.getcomponenttiffinfo()[2]
 
-  def getmetadata(self):
-    rectangles, globals = self.getlayout()
-    if not R:
-      raise ValueError("No layout annotations")
-    P = self.getXMLpolygonannotations()
-    Q = self.getqptiff()
-    qpscale = Q.qpscale
-    xposition = Q.xposition
-    yposition = Q.yposition
-    raise NotImplementedError
+  @property
+  def globals(self): return self.getlayout()[0]
+  def writeglobals(self):
+    writetable(self.dest/(self.samp+"_globals.csv"), self.globals)
+  @property
+  def rectangles(self): return self.getlayout()[1]
+  def writerectangles(self):
+    writetable(self.dest/(self.samp+"_rect.csv"), self.rectangles)
 
   @methodtools.lru_cache()
   def getlayout(self):
@@ -79,18 +83,20 @@ class Sample:
       assert len(rfs) <= 1
       if not rfs:
         raise OSError(f"File {self.samp}_[{r.cx},{r.cy}].im3 (expected from annotations) does not exist")
+      rf = rfs.pop()
       maxtimediff = max(maxtimediff, abs(rf.t-r.time))
     if maxtimediff >= datetime.timedelta(seconds=5):
       logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
     rectangles.sort(key=lambda x: x.time)
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
+    if not rectangles:
+      raise ValueError("No layout annotations")
     return rectangles, globals
 
   @methodtools.lru_cache()
   def getXMLplan(self):
     xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+"_annotations.xml")
-    result = []
     reader = AnnotationXMLReader(xmlfile)
 
     rectangles = reader.rectangles
@@ -141,7 +147,7 @@ class Sample:
     annotations = []
     allregions = []
     allvertices = []
-    with open(filename, "rb") as f:
+    with open(xmlfile, "rb") as f:
       for n, (path, _, node) in enumerate(jxmlease.parse(f, generator="/Annotations/Annotation"), start=1):
         linecolor = f"{node.get_xml_attr('LineColor'):06x}"
         linecolor = linecolor[4:6] + linecolor[2:4] + linecolor[0:2]
@@ -207,14 +213,16 @@ class Sample:
   def vertices(self): return self.getXMLpolygonannotations()[2]
 
   def writeannotations(self):
-    writetable(filename=self.dest/(self.samp+"_annotations.csv"), self.annotations)
+    writetable(self.dest/(self.samp+"_annotations.csv"), self.annotations)
   def writeregions(self):
-    writetable(filename=self.dest/(self.samp+"_regions.csv"), self.regions)
+    writetable(self.dest/(self.samp+"_regions.csv"), self.regions)
   def writevertices(self):
-    writetable(filename=self.dest/(self.samp+"_vertices.csv"), self.vertices)
+    writetable(self.dest/(self.samp+"_vertices.csv"), self.vertices)
 
   @property
   def qptifffilename(self): return self.scanfolder/(self.samp+"_"+self.scanfolder.name+".qptiff")
+  @property
+  def jpgfilename(self): return self.dest/(self.samp+"_qptiff.jpg")
 
   @methodtools.lru_cache()
   def getqptiffcsv(self):
@@ -239,7 +247,7 @@ class Sample:
     qpscale = xresolution
     xposition = units.Distance(**{kw: xposition}, pscale=qpscale)
     yposition = units.Distance(**{kw: yposition}, pscale=qpscale)
-    qptiffcsv = [
+    return [
       QPTiffCsv(
         SampleID=0,
         SlideID=self.samp,
@@ -249,18 +257,18 @@ class Sample:
         XResolution=xresolution,
         YResolution=yresolution,
         qpscale=qpscale,
-        fname=jpgfile.name,
+        fname=self.jpgfilename.name,
         img="00001234",
       )
     ]
 
   def writeqptiffcsv(self):
-    writetable(filename=self.dest/(self.samp+"_qptiff.csv"), self.getqptiffcsv())
+    writetable(self.dest/(self.samp+"_qptiff.csv"), self.getqptiffcsv())
 
   def writeqptiffjpg(self):
     raise NotImplementedError
-    with PILmaximagepixels(1024**3), PIL.Image.open(qptifffilename) as f:
-      pass
+    with PILmaximagepixels(1024**3), PIL.Image.open(self.qptifffilename) as f:
+      f
 
   @methodtools.lru_cache()
   def getoverlaps(self):
@@ -288,7 +296,7 @@ class Sample:
     return overlaps
 
   def writeoverlaps(self):
-    writetable(filename=self.dest/(self.samp+"_overlap.csv"), self.getoverlaps())
+    writetable(self.dest/(self.samp+"_overlap.csv"), self.getoverlaps())
 
   def getconstants(self):
     constants = [
@@ -344,7 +352,7 @@ class Sample:
     return constants
 
   def writeconstants(self):
-    writetable(filename=self.dest/(self.samp+"_constants.csv"), self.getconstants())
+    writetable(self.dest/(self.samp+"_constants.csv"), self.getconstants())
 
   def writemetadata(self):
     self.writeconstants()
@@ -354,3 +362,38 @@ class Sample:
     self.writeannotations()
     self.writeregions()
     self.writevertices()
+    self.writeglobals()
+    self.writerectangles()
+
+@dataclasses.dataclass
+class Batch:
+  SampleID: int
+  Sample: str
+  Scan: int
+  Batch: int
+
+@dataclasses.dataclass
+class QPTiffCsv(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
+  SampleID: int
+  SlideID: str
+  ResolutionUnit: str
+  XPosition: distancefield(pixelsormicrons=pixelsormicrons)
+  YPosition: distancefield(pixelsormicrons=pixelsormicrons)
+  XResolution: float
+  YResolution: float
+  qpscale: float
+  fname: str
+  img: str
+
+class Constant:
+  def intorfloat(string):
+    assert isinstance(string, str)
+    try: return int(string)
+    except ValueError: return float(string)
+
+  name: str
+  value: float = dataclasses.field(metadata={"readfunction": intorfloat})
+  unit: str
+  description: str

@@ -1,3 +1,8 @@
+import abc, dataclasses, datetime, dateutil, jxmlease, methodtools
+from ..alignment.rectangle import Rectangle
+from ..utilities import units
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+
 class AnnotationXMLReader:
   def __init__(self, filename):
     self.__filename = filename
@@ -10,7 +15,7 @@ class AnnotationXMLReader:
     maxdepth = 1
     with open(self.__filename) as f:
       for path, _, node in jxmlease.parse(
-        self.__f,
+        f,
         generator="/AnnotationList/Annotations/Annotations-i"
       ):
         annotation = AnnotationFactory(node)
@@ -138,3 +143,22 @@ def AnnotationFactory(xmlnode, **kwargs):
     "RectangleAnnotation": RectangleAnnotation,
     "ROIAnnotation": ROIAnnotation,
   }[xmlnode.get_xml_attr("subtype")](xmlnode, **kwargs)
+
+@dataclasses.dataclass
+class Globals(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
+  x: distancefield(pixelsormicrons=pixelsormicrons)
+  y: distancefield(pixelsormicrons=pixelsormicrons)
+  Width: distancefield(pixelsormicrons=pixelsormicrons)
+  Height: distancefield(pixelsormicrons=pixelsormicrons)
+  Unit: str
+  Tc: datetime.datetime = dataclasses.field(metadata={"writefunction": datetime.datetime.timestamp})
+
+@dataclasses.dataclass
+class Perimeter(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
+  n: int
+  x: distancefield(pixelsormicrons=pixelsormicrons)
+  y: distancefield(pixelsormicrons=pixelsormicrons)
