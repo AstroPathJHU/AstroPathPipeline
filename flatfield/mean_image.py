@@ -77,11 +77,8 @@ class MeanImage :
             self.mask_stack+=thismask
             self.n_images_stacked+=1
             initial_thresholds = return_dict[i]['thresholds']
-            print(f'initial thresholds={initial_thresholds}')
             otsu_choices = return_dict[i]['otsu_iterations']
             for li in range(self.nlayers) :
-                print(f'{i}, {li}')
-                print(self.threshold_lists_by_layer)
                 (self.threshold_lists_by_layer[li]).append((initial_thresholds[li]))
                 if otsu_choices[li]==1 :
                     self.n_otsu1_masks_per_layer[li]+=1
