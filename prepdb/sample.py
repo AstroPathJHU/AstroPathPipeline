@@ -216,8 +216,31 @@ class Sample:
     ]
 
     with PILmaximagepixels(1024**3), PIL.Image.open(qptifffilename) as f:
-      
+      raise NotImplementedError
 
-  def getoverlaps(self): raise NotImplementedError
+  def getoverlaps(self):
+    overlaps = []
+    for r1, r2 in itertools.product(self.rectangles, repeat=2):
+      if r1 is r2: continue
+      if np.all(abs(r1.cxvec - r2.cxvec) < r1.sizevec):
+        tag = (-1)**(r1.cx < r2.cx) + 3*(-1)**(r1.cy < r2.cy) + 5
+        overlaps.append(
+          Overlap(
+            n=len(overlaps)+1,
+            p1=r1.n,
+            p2=r2.n,
+            x1=r1.x,
+            y1=r1.y,
+            x2=r2.x,
+            y2=r2.y,
+            tag=tag,
+            layer=self.layer,
+            nclip=self.nclip,
+            rectangles=(r1, r2),
+            pscale=None,
+          )
+        )
+    return overlaps
+
   def getconstants(self): raise NotImplementedError
   def writemetadata(self): raise NotImplementedError
