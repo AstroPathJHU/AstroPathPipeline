@@ -1,14 +1,29 @@
 import numpy as np
-import logging
+import cv2, logging
 
 #run_flatield globals
 IMG_DTYPE_IN = np.uint16
 FILEPATH_TEXT_FILE_NAME='filepath_log.txt'
 PLOT_DIRECTORY_NAME='plots'
+IMAGE_LAYER_PLOT_DIRECTORY_NAME='image_layer_pngs'
 
 #mean_image constants
 IMG_DTYPE_OUT=np.float64
 FILE_EXT='.bin'
+#parameters for creating the image masks
+GENTLE_GAUSSIAN_SMOOTHING_KERNEL = (5,5)
+ERODE1_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
+DILATE1_EL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(61,61))
+DILATE2_EL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(25,25))
+ERODE2_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(64,64))
+ERODE3_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
+DILATE3_EL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
+DILATE3_ITERATIONS = 3
+CHOICE_THRESHOLD_1 = 0.30
+CHOICE_THRESHOLD_2 = 0.40
+ADD_IF_SHARED_IN_AT_LEAST  = 0.80
+DROP_IF_ABSENT_IN_AT_LEAST = 0.90
+#info for figures that get created
 IMG_LAYER_FIG_WIDTH=7.5 #width of image layer figures created in inches
 INTENSITY_FIG_WIDTH=11.0 #width of the intensity plot figure
 LAST_FILTER_LAYERS = [9,18,25,32] #last image layers of each broadband filter
