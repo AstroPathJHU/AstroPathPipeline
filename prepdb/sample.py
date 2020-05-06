@@ -32,15 +32,33 @@ class Sample:
   def layer(self):
     return 1
 
-  def getmetadata(self):
+  def getbatch(self):
+    with open(self.scanfolder/"BatchID.txt") as f:
+      return [
+        Batch(
+          Batch=int(f.read()),
+          Scan=int(self.scanfolder.name.replace("Scan", "")),
+          SampleID=0,
+          Sample=self.samp,
+        )
+      ]
+
+  @methodtools.lru_cache()
+  def getcomponenttiffinfo(self):
     componenttifffilename = next(self.componenttiffsfolder.glob(self.samp+"*_component_data.tif"))
     with PIL.Image.open(componenttifffilename) as tiff:
       pscale = tiff.info["dpi"] / 2.54
       fwidth, fheight = units.distances(pixels=tiff.size, pscale=pscale, power=1)
+    return pscale, fwidth, fheight
 
-    with open(self.scanfolder/"BatchID.txt") as f:
-      batch = int(f.read())
+  @property
+  def pscale(self): return self.getcomponenttiffinfo()[0]
+  @property
+  def fwidth(self): return self.getcomponenttiffinfo()[1]
+  @property
+  def fheight(self): return self.getcomponenttiffinfo()[2]
 
+  def getmetadata(self):
     rectangles, globals = self.getlayout()
     if not R:
       raise ValueError("No layout annotations")
@@ -51,6 +69,7 @@ class Sample:
     yposition = Q.yposition
     raise NotImplementedError
 
+  @methodtools.lru_cache()
   def getlayout(self):
     rectangles, globals, perimeters = self.getXMLplan()
     rectanglefiles = self.getdir()
@@ -68,6 +87,7 @@ class Sample:
       rectangle.n = i
     return rectangles, globals
 
+  @methodtools.lru_cache()
   def getXMLplan(self):
     xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+"_annotations.xml")
     result = []
@@ -92,6 +112,7 @@ class Sample:
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
 
+  @methodtools.lru_cache()
   def getdir(self):
     folder = self.scanfolder/"MSI"
     im3s = folder.glob("*.im3")
@@ -114,6 +135,7 @@ class Sample:
     result.sort(key=lambda x: x.t)
     return result
 
+  @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
     xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+"_annotations.polygons.xml")
     annotations = []
@@ -177,9 +199,26 @@ class Sample:
 
     return annotations, allregions, allvertices
 
-  def getqptiff(self):
-    qptifffilename = self.scanfolder/(self.samp+"_"+self.scanfolder.name+".qptiff")
-    with open(qptifffilename) as f:
+  @property
+  def annotations(self): return self.getXMLpolygonannotations()[0]
+  @property
+  def regions(self): return self.getXMLpolygonannotations()[1]
+  @property
+  def vertices(self): return self.getXMLpolygonannotations()[2]
+
+  def writeannotations(self):
+    writetable(filename=self.dest/(self.samp+"_annotations.csv"), self.annotations)
+  def writeregions(self):
+    writetable(filename=self.dest/(self.samp+"_regions.csv"), self.regions)
+  def writevertices(self):
+    writetable(filename=self.dest/(self.samp+"_vertices.csv"), self.vertices)
+
+  @property
+  def qptifffilename(self): return self.scanfolder/(self.samp+"_"+self.scanfolder.name+".qptiff")
+
+  @methodtools.lru_cache()
+  def getqptiffcsv(self):
+    with open(self.qptifffilename) as f:
       tags = exifread.process_file(f)
     resolutionunit = str(tags["Image ResolutionUnit"])
     xposition = tags["Image XPosition"].values[0]
@@ -215,9 +254,15 @@ class Sample:
       )
     ]
 
-    with PILmaximagepixels(1024**3), PIL.Image.open(qptifffilename) as f:
-      raise NotImplementedError
+  def writeqptiffcsv(self):
+    writetable(filename=self.dest/(self.samp+"_qptiff.csv"), self.getqptiffcsv())
 
+  def writeqptiffjpg(self):
+    raise NotImplementedError
+    with PILmaximagepixels(1024**3), PIL.Image.open(qptifffilename) as f:
+      pass
+
+  @methodtools.lru_cache()
   def getoverlaps(self):
     overlaps = []
     for r1, r2 in itertools.product(self.rectangles, repeat=2):
@@ -242,56 +287,70 @@ class Sample:
         )
     return overlaps
 
+  def writeoverlaps(self):
+    writetable(filename=self.dest/(self.samp+"_overlap.csv"), self.getoverlaps())
+
   def getconstants(self):
-    return [
+    constants = [
       Constant(
         name='fwidth',
-        value=C.fwidth,
+        value=self.fwidth,
         unit='pixels',
         description='field width',
       ),
       Constant(
         name='fheight',
-        value=C.fheight,
+        value=self.fheight,
         unit='pixels',
         description='field height',
       ),
       Constant(
         name='xposition',
-        value=C.xposition,
+        value=self.xposition,
         unit='microns',
         description='slide x offset',
       ),
       Constant(
         name='yposition',
-        value=C.yposition,
+        value=self.yposition,
         unit='microns',
         description='slide y offset',
       ),
       Constant(
         name='qpscale',
-        value=C.qpscale,
+        value=self.qpscale,
         unit='pixels/micron',
         description='scale of the QPTIFF image',
       ),
       Constant(
         name='pscale',
-        value=C.pscale,
+        value=self.pscale,
         unit='pixels/micron',
         description='scale of the HPF images',
       ),
       Constant(
         name='nclip',
-        value=C.nclip,
+        value=self.nclip,
         unit='pixels',
         description='pixels to clip off the edge after warping',
       ),
       Constant(
         name='layer',
-        value=C.layer,
+        value=self.layer,
         unit='layer number',
         description='which layer to use from the im3 to align',
       ),
     ]
+    return constants
 
-  def writemetadata(self): raise NotImplementedError
+  def writeconstants(self):
+    writetable(filename=self.dest/(self.samp+"_constants.csv"), self.getconstants())
+
+  def writemetadata(self):
+    self.writeconstants()
+    self.writeoverlaps()
+    self.writeqptiffcsv()
+    self.writeqptiffjpg()
+    self.writeannotations()
+    self.writeregions()
+    self.writevertices()
