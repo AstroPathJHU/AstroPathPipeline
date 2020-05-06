@@ -242,5 +242,56 @@ class Sample:
         )
     return overlaps
 
-  def getconstants(self): raise NotImplementedError
+  def getconstants(self):
+    return [
+      Constant(
+        name='fwidth',
+        value=C.fwidth,
+        unit='pixels',
+        description='field width',
+      ),
+      Constant(
+        name='fheight',
+        value=C.fheight,
+        unit='pixels',
+        description='field height',
+      ),
+      Constant(
+        name='xposition',
+        value=C.xposition,
+        unit='microns',
+        description='slide x offset',
+      ),
+      Constant(
+        name='yposition',
+        value=C.yposition,
+        unit='microns',
+        description='slide y offset',
+      ),
+      Constant(
+        name='qpscale',
+        value=C.qpscale,
+        unit='pixels/micron',
+        description='scale of the QPTIFF image',
+      ),
+      Constant(
+        name='pscale',
+        value=C.pscale,
+        unit='pixels/micron',
+        description='scale of the HPF images',
+      ),
+      Constant(
+        name='nclip',
+        value=C.nclip,
+        unit='pixels',
+        description='pixels to clip off the edge after warping',
+      ),
+      Constant(
+        name='layer',
+        value=C.layer,
+        unit='layer number',
+        description='which layer to use from the im3 to align',
+      ),
+    ]
+
   def writemetadata(self): raise NotImplementedError
