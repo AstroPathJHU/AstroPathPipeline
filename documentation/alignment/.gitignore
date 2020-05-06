@@ -1,6 +1,7 @@
 *.pdf
 *.aux
 *.out
+*.synctex(busy)
 !diamondpull1.pdf
 !diamondpull2.pdf
 !squarepull1.pdf
@@ -8,3 +9,4 @@
 !stitch-pull-[1-4]-[1-2].pdf
 !sine-wave-[24]-[xy][xy]-[1-2].pdf
 !sine-wave-[24]-[xy][xy]-AKY.pdf
+!sine-wave-[24]-[xy][xy]-JHUPolaris.pdf

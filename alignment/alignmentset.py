@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, logging, methodtools, numpy as np, os
+import cv2, logging, methodtools, numpy as np, os, pathlib
 
 from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap, OverlapCollection
@@ -18,7 +18,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False):
+  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False, pscale=None, imagefilenameadjustment=lambda x: x):
     """
     Directory structure should be
     root1/
@@ -34,8 +34,8 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
                  you for input if things go wrong
     """
     logger.info(samp)
-    self.root1 = root1
-    self.root2 = root2
+    self.root1 = pathlib.Path(root1)
+    self.root2 = pathlib.Path(root2)
     self.samp = samp
     self.interactive = interactive
 
@@ -43,19 +43,21 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     overlapfilter = rectangleoroverlapfilter(selectoverlaps)
     self.overlapfilter = lambda o: overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
 
-    if not os.path.exists(os.path.join(self.root1, self.samp)):
-      raise IOError(f"{os.path.join(self.root1, self.samp)} does not exist")
+    if not os.path.exists(self.root1/self.samp):
+      raise IOError(f"{self.root1/self.samp} does not exist")
 
-    self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps)
+    self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps, pscale=pscale)
     self.rawimages=None
+    self.__imagefilenameadjustment = imagefilenameadjustment
 
+    self.gpufftdict = None
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
 
   @property
   def dbload(self):
-    return os.path.join(self.root1, self.samp, "dbload")
+    return self.root1/self.samp/"dbload"
 
-  def readmetadata(self, *, onlyrectanglesinoverlaps=False):
+  def readmetadata(self, *, onlyrectanglesinoverlaps=False, pscale=None):
     """
     Read metadata from csv files
     """
@@ -64,30 +66,33 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       try: return int(string)
       except ValueError: return float(string)
 
-    self.constants     = readtable(os.path.join(self.dbload, self.samp+"_constants.csv"), "Constant", value=intorfloat)
+    self.constants     = readtable(self.dbload/(self.samp+"_constants.csv"), "Constant", value=intorfloat)
     self.constantsdict = {constant.name: constant.value for constant in self.constants}
 
     self.fwidth    = self.constantsdict["fwidth"]
     self.fheight   = self.constantsdict["fheight"]
     self.pscale    = float(self.constantsdict["pscale"])
+    if pscale is not None and self.pscale != pscale:
+      logger.warning(f"Provided pscale {pscale} which is different from {self.pscale} (in constants.csv)")
+      self.pscale = pscale
     self.qpscale   = self.constantsdict["qpscale"]
     self.xposition = self.constantsdict["xposition"]
     self.yposition = self.constantsdict["yposition"]
     self.nclip     = self.constantsdict["nclip"]
     self.layer     = self.constantsdict["layer"]
 
-    self.batch = readtable(os.path.join(self.dbload, self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
+    self.batch = readtable(self.dbload/(self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
     self.scan  = f"Scan{self.batch[0].Scan:d}"
 
-    self.annotations = readtable(os.path.join(self.dbload, self.samp+"_annotations.csv"), "Annotation", sampleid=int, layer=int, visible=int)
-    #self.regions     = readtable(os.path.join(self.dbload, self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int, fieldsizelimit=10000000)
-    self.vertices    = readtable(os.path.join(self.dbload, self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
-    self.imagetable  = readtable(os.path.join(self.dbload, self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
+    #self.annotations = readtable(self.dbload/(self.samp+"_annotations.csv"), "Annotation", sampleid=int, layer=int, visible=int)
+    #self.regions     = readtable(self.dbload/(self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int, fieldsizelimit=10000000)
+    #self.vertices    = readtable(self.dbload/(self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
+    self.imagetable  = readtable(self.dbload/(self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
     self.__image     = None
 
-    self.__rectangles  = readtable(os.path.join(self.dbload, self.samp+"_rect.csv"), Rectangle, extrakwargs={"pscale": self.pscale})
+    self.__rectangles  = readtable(self.dbload/(self.samp+"_rect.csv"), Rectangle, extrakwargs={"pscale": self.pscale})
     self.__rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
-    self.__overlaps  = readtable(os.path.join(self.dbload, self.samp+"_overlap.csv"), self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
+    self.__overlaps  = readtable(self.dbload/(self.samp+"_overlap.csv"), self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
     self.__overlaps = [o for o in self.overlaps if self.overlapfilter(o)]
     if onlyrectanglesinoverlaps:
       oldfilter = self.rectanglefilter
@@ -101,11 +106,11 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
   @methodtools.lru_cache()
   def image(self):
-    return cv2.imread(os.path.join(self.dbload, self.samp+"_qptiff.jpg"))
+    return cv2.imread(str(self.dbload/(self.samp+"_qptiff.jpg")))
 
   @property
   def aligncsv(self):
-    return os.path.join(self.dbload, self.samp+"_align.csv")
+    return self.dbload/(self.samp+"_align.csv")
 
   def align(self,*,skip_corners=False,write_result=True,return_on_invalid_result=False,warpwarnings=False,**kwargs):
     #if the raw images haven't already been loaded, load them with the default argument
@@ -154,7 +159,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
   def readalignments(self, *, filename=None):
     if filename is None: filename = self.aligncsv
-    logger.info("reading alignments for "+self.samp+" from "+filename)
+    logger.info("reading alignments for "+self.samp+" from "+str(filename))
     alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult, extrakwargs={"pscale": self.pscale})}
     for o in self.overlaps:
       try:
@@ -191,10 +196,9 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
           pscale=self.pscale,
         ) for rectangle in self.rectangles
       ]
-      writetable(os.path.join(self.dbload, self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
+      writetable(self.dbload/(self.samp+"_imstat.csv"), self.imagestats, retry=self.interactive)
 
     #create the dictionary of compiled GPU FFT objects if possible
-    self.gpufftdict = None
     if self.gputhread is not None :
       from reikna.fft import FFT
       #set up an FFT for images of each unique size in the set of overlaps
@@ -271,7 +275,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       ext = f".camWarp_layer{self.layer:02d}"
     else :
       raise ValueError(f"requested file type {filetype} not recognized by getrawlayers")
-    path = os.path.join(self.root2, self.samp)
+    path = self.root2/self.samp
 
     rawimages = np.ndarray(shape=(len(self.rectangles), self.fheight, self.fwidth), dtype=np.uint16)
 
@@ -280,7 +284,8 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
     for i, rectangle in enumerate(self.rectangles):
       #logger.info(f"loading rectangle {i+1}/{len(self.rectangles)}")
-      with open(os.path.join(path, rectangle.file.replace(".im3", ext)), "rb") as f:
+      filename = path/self.__imagefilenameadjustment(rectangle.file.replace(".im3", ext))
+      with open(filename, "rb") as f:
         #use fortran order, like matlab!
         rawimages[i] = np.memmap(
           f,
@@ -302,9 +307,9 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   @property
   def stitchfilenames(self):
     return (
-      os.path.join(self.dbload, self.samp+"_stitch.csv"),
-      os.path.join(self.dbload, self.samp+"_affine.csv"),
-      os.path.join(self.dbload, self.samp+"_stitch_overlap_covariance.csv"),
+      self.dbload/(self.samp+"_stitch.csv"),
+      self.dbload/(self.samp+"_affine.csv"),
+      self.dbload/(self.samp+"_stitch_overlap_covariance.csv"),
     )
 
   def stitch(self, *, saveresult=True, checkwriting=False, **kwargs):

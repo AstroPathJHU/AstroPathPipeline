@@ -571,20 +571,22 @@ This section shows results for a dataset collected by Bristol-Meyers Squibb and 
 From the sample named \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, we find the linear transformation matrix to be
 \begin{align}
 \matrixbold{A}=&\begin{pmatrix}
-\num{1.00770(4)} &
-\num{-0.000447(31)} \\
-\num{.000026(27)} &
-\num{1.007216(22)}
+\num{1.000503(5)} &
+\num{-0.000454(5)} \\ 
+\num{2.44(31)e-05} &
+\num{1.000044(4)}
 \end{pmatrix} \\
 =\matrixbold{I} + &\begin{pmatrix}
-\num{7.70(4)} &
-\num{-0.447(31)} \\
-\num{0.026(27)} &
-\num{7.216(22)}
+\num{0.503(5)}
+\num{-0.454(5)}
+\num{0.0244(31)}
+\num{0.044(4)}
 \end{pmatrix} \times \num{e-3}
 \label{eq:Amatrix_TS18_0541_BMS_MITRE}
 \end{align}
-The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $14$ pixels.  When moving down, it overshoots by an average of $10$ pixels, and when moving back to the beginning of the row it overshoots by $5$ pixels on average.  If left uncorrected, this is a significantly larger bias than the one in the Vectra 3.0 microscope.
+The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $0.8$ pixels.  When moving down, it overshoots by an average of $0.5$ pixels.
+
+The image scales written in the \texttt{.tiff} and the \texttt{.im3} files are different: $2.0$ or $\SI{2.014533}{pixels\per\micro\meter}$, respectively.  The $\matrixbold{A}$ matrix reported here is based on the scale from the \texttt{.im3} files and confirms that that scale is correct to within half a percent.  Using the scale from the \texttt{.tiff} files would still give an equivalent alignment, but $\matrixbold{A}$ would be further from the identity matrix.
 
 \subsection{Periodic dependence}
 \label{sec:akoyapolarisperiodic}
@@ -637,7 +639,7 @@ On the other hand, once we remove the constant shifts and, where relevant, the s
 		\caption{}
 		\label{fig:sinewave4yyAKY}
 	\end{subfigure}
-	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset.  The third and fourth rows show the same for the \M23 dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
+	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
 	\label{fig:sinewavespolaris}
 \end{figure}
 
@@ -653,14 +655,17 @@ In this note, we describe the alignment and stitching of a microscope image comp
 	\hline
 	\multicolumn{2}{|l|}{Model} & Vectra 3.0 & Vectra Polaris \\\hline
 	\multicolumn{2}{|l|}{Location} & JHU & Akoya \\\hline
-	\multirowcell{3}[0pt][l]{Average shift/field \\ (pixels)} & $x$ & $-1$ & $14$ \\\cline{2-4}
-	& $y$ & $-1$ & $10$ \\\cline{2-4}
-	& $x$ for new row & $0$ & $-5$ \\\hline
-	\multirowcell{4}[0pt][l]{Sine wave amplitude\\(pixels)} & $x$--$\delta x$, $x$ overlap & $1.5$ & $0.7$ \\\cline{2-4}
-	& $x$--$\delta y$, $x$ overlap & $0.4$ & $0$ \\\cline{2-4}
-	& $y$--$\delta x$, $y$ overlap & $0.5$ & $0$ \\\cline{2-4}
-	& $y$--$\delta y$, $y$ overlap & $2.8$ & [other periodic effects] \\\hline
-	\multirowcell{4}[0pt][l]{Remaining RMS\\(pixels)} & $\delta x$, $x$ overlap & $1.4$ & $0.3$ \\\cline{2-4}
+	\multirowcell{3}[0pt][l]{Average shift/field \\ (pixels)}
+	& $x$ & $-0.9$ & $0.8$ \\\cline{2-4}
+	& $y$ & $-1.0$ & $0.5$ \\\cline{2-4}
+	& $x$ for new row & $0.0$ & $0.0$ \\\hline
+	\multirowcell{4}[0pt][l]{Sine amplitude \& \\wavelength (pixels)\\ (*)non-sinusoidal\\periodic effects}
+	& $x$--$\delta x$, $x$ overlap & $1.5$, $2800$ & $0.7$, $3560$ \\\cline{2-4}
+	& $x$--$\delta y$, $x$ overlap & $0.4$, $4000$ & $0.0$ \\\cline{2-4}
+	& $y$--$\delta x$, $y$ overlap & $0.5$, $4000$ & $0.0$ \\\cline{2-4}
+	& $y$--$\delta y$, $y$ overlap & $2.8$, $4000$ & $\sim1$, $\sim13000$(*) \\\hline
+	\multirowcell{4}[0pt][l]{Remaining RMS\\(pixels)}
+	& $\delta x$, $x$ overlap & $1.4$ & $0.3$ \\\cline{2-4}
 	& $\delta y$, $x$ overlap & $0.3$ & $0.1$ \\\cline{2-4}
 	& $\delta x$, $y$ overlap & $0.4$ & $0.1$ \\\cline{2-4}
 	& $\delta y$, $y$ overlap & $1.2$ & $0.5$ \\\hline
