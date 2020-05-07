@@ -387,14 +387,14 @@ class Sample:
 
   def writemetadata(self):
     self.writeconstants()
-    self.writeoverlaps()
-    self.writeqptiffcsv()
+    #self.writeoverlaps()
+    #self.writeqptiffcsv()
     #self.writeqptiffjpg()
-    self.writeannotations()
-    self.writeregions()
-    self.writevertices()
-    self.writeglobals()
-    self.writerectangles()
+    #self.writeannotations()
+    #self.writeregions()
+    #self.writevertices()
+    #self.writeglobals()
+    #self.writerectangles()
 
 @dataclasses.dataclass
 class Batch:
