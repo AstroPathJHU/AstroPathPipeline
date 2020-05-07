@@ -79,17 +79,17 @@ class Sample:
   def getlayout(self):
     rectangles, globals, perimeters = self.getXMLplan()
     rectanglefiles = self.getdir()
-    maxtimediff = 0
+    maxtimediff = datetime.timedelta(0)
     for r in rectangles:
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
         raise OSError(f"File {self.samp}_[{r.cx},{r.cy}].im3 (expected from annotations) does not exist")
       rf = rfs.pop()
-      maxtimediff = max(maxtimediff, abs(rf.t-r.time))
+      maxtimediff = max(maxtimediff, abs(rf.t-r.t))
     if maxtimediff >= datetime.timedelta(seconds=5):
       logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
-    rectangles.sort(key=lambda x: x.time)
+    rectangles.sort(key=lambda x: x.t)
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
     if not rectangles:
@@ -124,16 +124,16 @@ class Sample:
   def getdir(self):
     folder = self.scanfolder/"MSI"
     im3s = folder.glob("*.im3")
-    result = set()
+    result = []
     for im3 in im3s:
       regex = self.samp+r"_\[([0-9]+),([0-9]+)\].im3"
       match = re.match(regex, im3.name)
       if not match:
         raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
-      x = match.group(1)
-      y = match.group(2)
-      t = datetime.fromtimestamp(os.path.getmtime(im3))
-      result.add(
+      x = units.Distance(microns=int(match.group(1)), pscale=self.pscale)
+      y = units.Distance(microns=int(match.group(2)), pscale=self.pscale)
+      t = datetime.datetime.fromtimestamp(os.path.getmtime(im3)).astimezone()
+      result.append(
         RectangleFile(
           cx=x,
           cy=y,
@@ -419,7 +419,7 @@ class Constant:
   unit: str
   description: str
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class RectangleFile(DataClassWithDistances):
   pixelsormicrons = "microns"
 
@@ -428,6 +428,10 @@ class RectangleFile(DataClassWithDistances):
   t: datetime.datetime
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
+
+  @property
+  def cxvec(self):
+    return np.array([self.cx, self.cy])
 
 @dataclasses.dataclass
 class Annotation:

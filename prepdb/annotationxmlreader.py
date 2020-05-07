@@ -1,4 +1,4 @@
-import abc, dataclasses, datetime, dateutil, jxmlease, methodtools
+import abc, dataclasses, datetime, dateutil, jxmlease, methodtools, numpy as np
 from ..alignment.rectangle import Rectangle
 from ..utilities import units
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
@@ -51,9 +51,10 @@ class AnnotationXMLReader:
               cy=field.cy,
               w=field.w,
               h=field.h,
-              time=field.time,
+              t=field.time,
               file=field.im3path,
               pscale=self.pscale,
+              readingfromfile=False,
             )
           )
 
@@ -108,6 +109,12 @@ class RectangleAnnotation(AnnotationBase):
   def w(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Size"]["Width"]), pscale=self.pscale)
   @property
   def h(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Size"]["Height"]), pscale=self.pscale)
+  @property
+  def cx(self):
+    return units.Distance(microns=int(np.round(units.microns(self.x+0.5*self.w))), pscale=self.pscale)
+  @property
+  def cy(self):
+    return units.Distance(microns=int(np.round(units.microns(self.y+0.5*self.h))), pscale=self.pscale)
   @property
   def time(self): return dateutil.parser.parse(self.history[-1]["TimeStamp"])
 

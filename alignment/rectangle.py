@@ -24,6 +24,10 @@ class Rectangle(DataClassWithDistances):
     return np.array([self.x, self.y])
 
   @property
+  def cxvec(self):
+    return np.array([self.cx, self.cy])
+
+  @property
   def shape(self):
     return np.array([self.w, self.h])
 
