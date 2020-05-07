@@ -179,11 +179,12 @@ class MeanImage :
                 plt.savefig(f'flatfield_{layer_fnstem}.png')
                 plt.close()
                 #for the mask stack (if applicable) 
-                plt.figure(figsize=fig_size)
-                plt.imshow(self.mask_stack[:,:,layer_i])
-                plt.title(f'stacked binary image masks, {layer_titlestem}')
-                plt.savefig(f'mask_stack_{layer_fnstem}.png')
-                plt.close()
+                if not self.skip_masking :
+                    plt.figure(figsize=fig_size)
+                    plt.imshow(self.mask_stack[:,:,layer_i])
+                    plt.title(f'stacked binary image masks, {layer_titlestem}')
+                    plt.savefig(f'mask_stack_{layer_fnstem}.png')
+                    plt.close()
 
     #helper function to plot the pixel intensities of the layers in the flatfield image
     def __saveFlatFieldImagePixelIntensityPlot(self) :
