@@ -156,13 +156,13 @@ class Sample:
     allvertices = []
     with open(xmlfile, "rb") as f:
       for n, (path, _, node) in enumerate(jxmlease.parse(f, generator="/Annotations/Annotation"), start=1):
-        linecolor = f"{int(node.get_xml_attr('LineColor')):06x}"
-        linecolor = linecolor[4:6] + linecolor[2:4] + linecolor[0:2]
+        color = f"{int(node.get_xml_attr('LineColor')):06X}"
+        color = color[4:6] + color[2:4] + color[0:2]
         visible = node.get_xml_attr("Visible").lower() == "true"
         name = node.get_xml_attr("Name")
         annotations.append(
           Annotation(
-            linecolor=linecolor,
+            color=color,
             visible=visible,
             name=name,
             sampleid=0,
@@ -386,11 +386,11 @@ class Sample:
     writetable(self.dest/(self.samp+"_constants.csv"), self.getconstants())
 
   def writemetadata(self):
-    self.writeconstants()
+    #self.writeconstants()
     #self.writeoverlaps()
     #self.writeqptiffcsv()
     #self.writeqptiffjpg()
-    #self.writeannotations()
+    self.writeannotations()
     #self.writeregions()
     #self.writevertices()
     #self.writeglobals()
@@ -448,7 +448,7 @@ class RectangleFile(DataClassWithDistances):
 
 @dataclasses.dataclass
 class Annotation:
-  linecolor: str
+  color: str
   visible: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
   name: str
   sampleid: int
