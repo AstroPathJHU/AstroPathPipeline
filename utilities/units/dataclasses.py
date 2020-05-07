@@ -60,7 +60,7 @@ class DataClassWithDistances(abc.ABC):
 
     pscale = {pscale}
     if usedistances:
-      pscale = set(_pscale(distances))
+      pscale |= set(_pscale(distances))
     pscale.discard(None)
     if not pscale:
       raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
