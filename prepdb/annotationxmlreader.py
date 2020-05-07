@@ -101,13 +101,13 @@ class RectangleAnnotation(AnnotationBase):
   def im3path(self):
     return self.history[-1]["Im3Path"]
   @property
-  def x(self): return units.Distance(microns=self.xmlnode["Bounds"]["Origin"]["X"], pscale=self.pscale)
+  def x(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Origin"]["X"]), pscale=self.pscale)
   @property
-  def y(self): return units.Distance(microns=self.xmlnode["Bounds"]["Origin"]["Y"], pscale=self.pscale)
+  def y(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Origin"]["Y"]), pscale=self.pscale)
   @property
-  def w(self): return units.Distance(microns=self.xmlnode["Bounds"]["Size"]["Width"], pscale=self.pscale)
+  def w(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Size"]["Width"]), pscale=self.pscale)
   @property
-  def h(self): return units.Distance(microns=self.xmlnode["Bounds"]["Size"]["Height"], pscale=self.pscale)
+  def h(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Size"]["Height"]), pscale=self.pscale)
   @property
   def time(self): return dateutil.parser.parse(self.history[-1]["TimeStamp"])
 
