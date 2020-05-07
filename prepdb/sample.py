@@ -53,7 +53,9 @@ class Sample:
   def getcomponenttiffinfo(self):
     componenttifffilename = next(self.componenttiffsfolder.glob(self.samp+"*_component_data.tif"))
     with PIL.Image.open(componenttifffilename) as tiff:
-      pscale = tiff.info["dpi"] / 2.54
+      dpi = set(tiff.info["dpi"])
+      if len(dpi) != 1: raise ValueError(f"Multiple different dpi values {dpi}")
+      pscale = dpi.pop() / 2.54
       fwidth, fheight = units.distances(pixels=tiff.size, pscale=pscale, power=1)
     return pscale, fwidth, fheight
 
@@ -226,7 +228,7 @@ class Sample:
 
   @methodtools.lru_cache()
   def getqptiffcsv(self):
-    with open(self.qptifffilename) as f:
+    with open(self.qptifffilename, "rb") as f:
       tags = exifread.process_file(f)
     resolutionunit = str(tags["Image ResolutionUnit"])
     xposition = tags["Image XPosition"].values[0]
@@ -269,6 +271,19 @@ class Sample:
     raise NotImplementedError
     with PILmaximagepixels(1024**3), PIL.Image.open(self.qptifffilename) as f:
       f
+
+  @property
+  def xposition(self):
+    return self.getqptiffcsv()[0].XPosition
+  @property
+  def yposition(self):
+    return self.getqptiffcsv()[0].YPosition
+  @property
+  def xresolution(self):
+    return self.getqptiffcsv()[0].XResolution
+  @property
+  def yresolution(self):
+    return self.getqptiffcsv()[0].YResolution
 
   @methodtools.lru_cache()
   def getoverlaps(self):
@@ -387,6 +402,7 @@ class QPTiffCsv(DataClassWithDistances):
   fname: str
   img: str
 
+@dataclasses.dataclass
 class Constant:
   def intorfloat(string):
     assert isinstance(string, str)
