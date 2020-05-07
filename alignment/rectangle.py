@@ -1,4 +1,4 @@
-import abc, collections, dataclasses, methodtools, numpy as np
+import abc, collections, dataclasses, datetime, methodtools, numpy as np
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
@@ -14,7 +14,7 @@ class Rectangle(DataClassWithDistances):
   h: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  t: int
+  t: datetime.datetime = dataclasses.field(metadata={"readfunction": lambda x: datetime.datetime.fromtimestamp(int(x)), "writefunction": lambda x: int(datetime.datetime.timestamp(x))})
   file: str
   pscale: dataclasses.InitVar[float]
   readingfromfile: dataclasses.InitVar[bool]

@@ -393,8 +393,8 @@ class Sample:
     self.writeannotations()
     #self.writeregions()
     #self.writevertices()
-    #self.writeglobals()
-    #self.writerectangles()
+    self.writeglobals()
+    self.writerectangles()
 
 @dataclasses.dataclass
 class Batch:
