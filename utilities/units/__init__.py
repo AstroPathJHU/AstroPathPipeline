@@ -1,5 +1,5 @@
 import contextlib
-from . import dataclasses, drawing, numpy as np, scipy
+from . import dataclasses, drawing
 from .core import UnitsError
 
 def setup(mode):
@@ -7,8 +7,9 @@ def setup(mode):
   global correlated_distances, distances
   global asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
   global currentmode, unitdtype
+  global np, scipy
 
-  for _ in dataclasses, np, scipy:
+  for _ in dataclasses,:
     _.__setup(mode)
 
   try:
@@ -16,11 +17,13 @@ def setup(mode):
       from . import safe as currentmodule
       from .safe import correlated_distances, distances
       from .safe import asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
+      from .safe import numpy as np, scipy
       unitdtype = object
     elif mode == "fast":
       from . import fast as currentmodule
       from .fast import correlated_distances, distances
       from .fast import asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
+      import numpy as np, scipy
       unitdtype = float
     else:
       raise ValueError(f"Invalid mode {mode}")
@@ -49,4 +52,5 @@ __all__ = [
   "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs",
   "dataclasses", "drawing", "fft", "linalg", "testing",
   "setup", "setup_context",
+  "np", "scipy"
 ]
