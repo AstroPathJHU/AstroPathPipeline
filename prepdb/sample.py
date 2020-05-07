@@ -425,7 +425,34 @@ class Vertex(DataClassWithDistances):
   y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
 
 class Polygon:
-  NotImplemented #yet
+  def __init__(self, *vertices, pixels=None, microns=None, pscale=None, power=1):
+    if power != 1:
+      raise ValueError("Polygon should be inited with power=1")
+    if bool(vertices) + (pixels is not None) + (microns is not None) != 1:
+      raise ValueError("Should provide exactly one of vertices, pixels, or microns")
+
+    if pixels is not None or microns is not None:
+      string = pixels if pixels is not None else microns
+      kw = "pixels" if pixels is not None else "microns"
+      if kw != Vertex.pixelsormicrons:
+        raise ValueError(f"Have to provide {Vertex.pixelsormicrons}, not {kw}")
+
+      match = re.match(r"POLYGON \(\(((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\)\)", string)
+      content = match.group(1)
+      intvertices = re.findall(r"[0-9]* [0-9]*", content)
+      vertices = []
+      for i, vertex in enumerate(intvertices, start=1):
+        x, y = vertex.split()
+        x = int(x)
+        y = int(y)
+        vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, pscale=pscale, readingfromfile=True))
+
+    self.__vertices = vertices
+
+  @property
+  def vertices(self): return self.__vertices
+  def __str__(self):
+    return "POLYGON ((" + ",".join(f"{v.x} {v.y}" for v in self.vertices) + "))"
 
 @dataclasses.dataclass
 class Region(DataClassWithDistances):
@@ -438,4 +465,10 @@ class Region(DataClassWithDistances):
   isNeg: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
   type: str
   nvert: int
-  poly: Polygon
+  poly: Polygon = distancefield(pixelsormicrons=pixelsormicrons, dtype=str)
+
+  def _distances_passed_to_init(self):
+    if not isinstance(self.poly, Polygon): return self.poly
+    result = sum(([v.x, v.y] for v in self.poly.vertices), [])
+    result = [_ for _ in result if _]
+    return result
