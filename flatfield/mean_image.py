@@ -273,7 +273,7 @@ def getImageMaskWorker(im_array,i,return_dict) :
         #gently smooth the layer (on the GPU) to remove some noise
         layer_in_umat = cv2.UMat(im_array[:,:,li])
         layer_out_umat = cv2.UMat(np.empty_like(im_array[:,:,li]))
-        cv2.GaussianBlur(layer_in_umat,GENTLE_GAUSSIAN_SMOOTHING_KERNEL,0,layer_out_umat,0,cv2.BORDER_REFLECT)
+        cv2.GaussianBlur(layer_in_umat,GENTLE_GAUSSIAN_SMOOTHING_KERNEL,0,layer_out_umat,0,cv2.BORDER_REPLICATE)
         layer_array = (layer_out_umat.get()).astype('uint8')
         #calculate and apply the three Otsu threshold values (can't be done on the GPU)
         t1,init_image_mask_1[:,:,li]=cv2.threshold(layer_array,0,1,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
@@ -345,6 +345,6 @@ def smoothImageLayerByLayerWorker(im_array,smoothsigma,return_list) :
     smoothed_im_array = np.zeros_like(im_array)
     nlayers = im_array.shape[-1]
     for li in range(nlayers) :
-        smoothed_im_array[:,:,li]=cv2.GaussianBlur(im_array[:,:,li],(0,0),smoothsigma,borderType=cv2.BORDER_CONSTANT)
+        smoothed_im_array[:,:,li]=cv2.GaussianBlur(im_array[:,:,li],(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
     return_list.append(smoothed_im_array)
 
