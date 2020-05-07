@@ -13,13 +13,15 @@ handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s")
 logger.addHandler(handler)
 
 class Sample:
-  def __init__(self, root, samp):
+  def __init__(self, root, samp, *, dest=None):
     self.root = pathlib.Path(root)
     self.samp = samp
+    if dest is None:
+      dest = self.root/self.samp/"dbload"
+    self.__dest = pathlib.Path(dest)
 
   @property
-  def dest(self):
-    return self.root/self.samp/"dbload"
+  def dest(self): return self.__dest
 
   @property
   def scanfolder(self):
