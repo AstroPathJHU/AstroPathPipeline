@@ -27,3 +27,8 @@ def linspace(start, stop, *args, **kwargs):
   stoppixels = pixels(stop, pscale=pscale, power=power)
   resultpixels = np.linspace(startpixels, stoppixels, *args, **kwargs)
   return distances(pixels=resultpixels, pscale=pscale, power=power)
+
+__all__ = [
+  "fft", "linalg", "testing",
+  "angle", "isclose", "linspace",
+]
