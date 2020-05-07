@@ -177,7 +177,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   )
 
   try:
-    p, cov = units.optimize.curve_fit(
+    p, cov = units.scipy.optimize.curve_fit(
       cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror, absolute_sigma=True,
     )
   except RuntimeError:
