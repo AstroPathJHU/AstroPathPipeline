@@ -67,13 +67,14 @@ class Sample:
   def fheight(self): return self.getcomponenttiffinfo()[2]
 
   @property
-  def globals(self): return self.getlayout()[0]
-  def writeglobals(self):
-    writetable(self.dest/(self.samp+"_globals.csv"), self.globals)
-  @property
-  def rectangles(self): return self.getlayout()[1]
+  def rectangles(self): return self.getlayout()[0]
   def writerectangles(self):
     writetable(self.dest/(self.samp+"_rect.csv"), self.rectangles)
+  @property
+  def globals(self): return self.getlayout()[1]
+  def writeglobals(self):
+    if not self.globals: return
+    writetable(self.dest/(self.samp+"_globals.csv"), self.globals)
 
   @methodtools.lru_cache()
   def getlayout(self):
@@ -145,13 +146,13 @@ class Sample:
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
-    xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+"_annotations.polygons.xml")
+    xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+".annotations.polygons.xml")
     annotations = []
     allregions = []
     allvertices = []
     with open(xmlfile, "rb") as f:
       for n, (path, _, node) in enumerate(jxmlease.parse(f, generator="/Annotations/Annotation"), start=1):
-        linecolor = f"{node.get_xml_attr('LineColor'):06x}"
+        linecolor = f"{int(node.get_xml_attr('LineColor')):06x}"
         linecolor = linecolor[4:6] + linecolor[2:4] + linecolor[0:2]
         visible = node.get_xml_attr("Visible").lower() == "true"
         name = node.get_xml_attr("Name")
@@ -174,8 +175,8 @@ class Sample:
           if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
           regionvertices = []
           for k, vertex in enumerate(vertices, start=1):
-            x = units.Distance(microns=vertex.get_xml_attr("X"))
-            y = units.Distance(microns=vertex.get_xml_attr("Y"))
+            x = units.Distance(microns=int(vertex.get_xml_attr("X")), pscale=self.pscale)
+            y = units.Distance(microns=int(vertex.get_xml_attr("Y")), pscale=self.pscale)
             regionvertices.append(
               Vertex(
                 regionid=regionid,
@@ -201,7 +202,8 @@ class Sample:
               isNeg=isNeg,
               type=region.get_xml_attr("Type"),
               nvert=len(vertices),
-              poly="POLYGON ((" + ",".join(polygonvertices) + "))",
+              poly=vertices,
+              pscale=self.pscale,
             )
           )
 
@@ -293,7 +295,7 @@ class Sample:
     overlaps = []
     for r1, r2 in itertools.product(self.rectangles, repeat=2):
       if r1 is r2: continue
-      if np.all(abs(r1.cxvec - r2.cxvec) < r1.sizevec):
+      if np.all(abs(r1.cxvec - r2.cxvec) < r1.shape):
         tag = (-1)**(r1.cx < r2.cx) + 3*(-1)**(r1.cy < r2.cy) + 5
         overlaps.append(
           Overlap(
@@ -376,7 +378,7 @@ class Sample:
     self.writeconstants()
     self.writeoverlaps()
     self.writeqptiffcsv()
-    self.writeqptiffjpg()
+    #self.writeqptiffjpg()
     self.writeannotations()
     self.writeregions()
     self.writevertices()
