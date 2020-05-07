@@ -143,7 +143,7 @@ class MeanImage :
             return self.image_stack/self.n_images_stacked
         #otherwise though we have to be a bit careful and take the mean value pixel-wise, 
         #being careful to fix any pixels that never got added to so there's no division by zero
-        self.mask_stack[self.mask_stack==0] = 1
+        self.mask_stack[self.mask_stack==0] = self.n_images_stacked
         return self.image_stack/self.mask_stack
 
     #################### VISUALIZATION HELPER FUNCTIONS ####################
@@ -161,28 +161,25 @@ class MeanImage :
                 layer_fnstem = f'layer_{layer_i+1}'
                 #save a little figure of each layer in each image
                 #for the mean image
-                plt.figure(figsize=fig_size)
-                plt.imshow(self.mean_image[:,:,layer_i])
-                plt.title(f'mean image, {layer_titlestem}')
+                f,ax = plt.subplots(figsize=fig_size)
+                pos = ax.imshow(self.mean_image[:,:,layer_i])
+                ax.set_title(f'mean image, {layer_titlestem}')
+                f.colorbar(pos,ax=ax)
                 plt.savefig(f'mean_image_{layer_fnstem}.png')
                 plt.close()
-                ##for the smoothed mean image
-                #plt.figure(figsize=fig_size)
-                #plt.imshow(self.smoothed_mean_image[:,:,layer_i])
-                #plt.title(f'smoothed mean image, {layer_titlestem}')
-                #plt.savefig(f'smoothed_mean_image_{layer_fnstem}.png')
-                #plt.close()
                 #for the flatfield image
-                plt.figure(figsize=fig_size)
-                plt.imshow(self.flatfield_image[:,:,layer_i])
-                plt.title(f'flatfield, {layer_titlestem}')
+                f,ax = plt.subplots(figsize=fig_size)
+                pos = ax.imshow(self.flatfield_image[:,:,layer_i])
+                ax.set_title(f'flatfield, {layer_titlestem}')
+                f.colorbar(pos,ax=ax)
                 plt.savefig(f'flatfield_{layer_fnstem}.png')
                 plt.close()
                 #for the mask stack (if applicable) 
                 if not self.skip_masking :
-                    plt.figure(figsize=fig_size)
-                    plt.imshow(self.mask_stack[:,:,layer_i])
-                    plt.title(f'stacked binary image masks, {layer_titlestem}')
+                    f,ax = plt.subplots(figsize=fig_size)
+                    pos = ax.imshow(self.mask_stack[:,:,layer_i])
+                    ax.set_title(f'stacked binary image masks, {layer_titlestem}')
+                    f.colorbar(pos,ax=ax)
                     plt.savefig(f'mask_stack_{layer_fnstem}.png')
                     plt.close()
 
@@ -228,7 +225,7 @@ class MeanImage :
                     plt.plot([l_i+0.5,l_i+0.5],[min(ff_min_pixel_intensities)-0.1,max(ff_max_pixel_intensities)+0.1],color='black',linewidth=2,linestyle='dotted')
         plt.title(f'flatfield image layer normalized pixel intensities',fontsize=14)
         plt.xlabel('layer number',fontsize=14)
-        plt.ylim(0.,max(2.0,max(ff_max_pixel_intensities)+0.1))
+        plt.ylim(min(0.,min(ff_min_pixel_intensities)-0.1),max(2.0,max(ff_max_pixel_intensities)+0.1))
         plt.ylabel('pixel intensity',fontsize=14)
         plt.legend(loc='best')
         plt.savefig('pixel_intensity_plot.png')
@@ -348,9 +345,6 @@ def smoothImageLayerByLayerWorker(im_array,smoothsigma,return_list) :
     smoothed_im_array = np.zeros_like(im_array)
     nlayers = im_array.shape[-1]
     for li in range(nlayers) :
-        layer_in_umat = cv2.UMat(im_array[:,:,li])
-        layer_out_umat = cv2.UMat(smoothed_im_array[:,:,li])
-        cv2.GaussianBlur(layer_in_umat,(0,0),smoothsigma,layer_out_umat,smoothsigma,cv2.BORDER_CONSTANT)
-        smoothed_im_array[:,:,li]=layer_out_umat.get()
+        smoothed_im_array[:,:,li]=cv2.GaussianBlur(im_array[:,:,li],(0,0),smoothsigma,borderType=cv2.BORDER_CONSTANT)
     return_list.append(smoothed_im_array)
 

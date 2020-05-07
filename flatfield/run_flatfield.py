@@ -135,7 +135,7 @@ def main() :
                             dims[0],dims[1],dims[2] if args.layers==[-1] else len(args.layers),IMG_DTYPE_IN,
                             args.n_threads,args.skip_masking)
     #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
-    flatfield_logger.info('Stacking raw/smoothed images....')
+    flatfield_logger.info('Stacking raw images....')
     for fp_chunk in filepath_chunks :
         if len(fp_chunk)<1 :
             continue
