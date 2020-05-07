@@ -99,7 +99,7 @@ class Sample:
   @methodtools.lru_cache()
   def getXMLplan(self):
     xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+"_annotations.xml")
-    reader = AnnotationXMLReader(xmlfile)
+    reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
 
     rectangles = reader.rectangles
     globals = reader.globals
