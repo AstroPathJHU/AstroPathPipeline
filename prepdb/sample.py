@@ -379,8 +379,8 @@ class QPTiffCsv(DataClassWithDistances):
   SampleID: int
   SlideID: str
   ResolutionUnit: str
-  XPosition: distancefield(pixelsormicrons=pixelsormicrons)
-  YPosition: distancefield(pixelsormicrons=pixelsormicrons)
+  XPosition: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  YPosition: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   XResolution: float
   YResolution: float
   qpscale: float
@@ -397,3 +397,45 @@ class Constant:
   value: float = dataclasses.field(metadata={"readfunction": intorfloat})
   unit: str
   description: str
+
+@dataclasses.dataclass
+class RectangleFile(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
+  cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  t: datetime.datetime
+
+@dataclasses.dataclass
+class Annotation:
+  linecolor: str
+  visible: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
+  name: str
+  sampleid: int
+  layer: int
+  poly: str
+
+@dataclasses.dataclass
+class Vertex(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
+  regionid: int
+  vid: int
+  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+
+class Polygon:
+  NotImplemented #yet
+
+@dataclasses.dataclass
+class Region(DataClassWithDistances):
+  pixelsormicrons = "microns"
+
+  regionid: int
+  sampleid: int
+  layer: int
+  rid: int
+  isNeg: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
+  type: str
+  nvert: int
+  poly: Polygon
