@@ -22,7 +22,7 @@ class Overlap(DataClassWithDistances):
   pscale: dataclasses.InitVar[float]
   nclip: dataclasses.InitVar[float]
   rectangles: dataclasses.InitVar[float]
-  readingfromfile: dataclasses.InitVar[float] = False
+  readingfromfile: dataclasses.InitVar[bool] = False
 
   def __post_init__(self, layer, pscale, nclip, rectangles, readingfromfile=False):
     super().__post_init__(pscale=pscale, readingfromfile=readingfromfile)
@@ -266,7 +266,7 @@ class AlignmentResult(DataClassWithDistances):
   covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   pscale: dataclasses.InitVar[float] = None
   exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
-  readingfromfile: dataclasses.InitVar[float] = False
+  readingfromfile: dataclasses.InitVar[bool] = False
 
   def __init__(self, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)

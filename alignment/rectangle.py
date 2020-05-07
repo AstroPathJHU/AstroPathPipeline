@@ -17,7 +17,7 @@ class Rectangle(DataClassWithDistances):
   t: int
   file: str
   pscale: dataclasses.InitVar[float]
-  readingfromfile: dataclasses.InitVar[float]
+  readingfromfile: dataclasses.InitVar[bool]
 
   @property
   def xvec(self):
@@ -75,7 +75,7 @@ class ImageStats(DataClassWithDistances):
   cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   pscale: dataclasses.InitVar[float] = None
-  readingfromfile: dataclasses.InitVar[float] = False
+  readingfromfile: dataclasses.InitVar[bool] = False
 
 def rectangledict(rectangles):
   return {rectangle.n: i for i, rectangle in enumerate(rectangles)}
