@@ -40,24 +40,32 @@ class DataClassWithDistances(abc.ABC):
   @abc.abstractproperty
   def pixelsormicrons(self): pass
 
+  @classmethod
+  def distancefields(cls):
+    return [field for field in dataclasses.fields(cls) if field.metadata.get("isdistancefield", False)]
+
+  def _distances_passed_to_init(self):
+    return [getattr(self, _.name) for _ in self.distancefields()]
+
   def __post_init__(self, pscale, readingfromfile=False):
-    distancefields = [field for field in dataclasses.fields(type(self)) if field.metadata.get("isdistancefield", False)]
+    distancefields = self.distancefields()
     for field in distancefields:
       if field.metadata["pixelsormicrons"] != self.pixelsormicrons:
         raise ValueError(f"{type(self)} takes {self.pixelsormicrons}, but {field.name} is expecting {field.metadata['pixelsormicrons']}")
 
-    distances = [getattr(self, _.name) for _ in distancefields]
-    distances = [_ for _ in distances if _]
-
     usedistances = False
     if currentmode == "safe":
-      usedistances = {isinstance(_, safe.Distance) for _ in distances}
+      distances = self._distances_passed_to_init()
+      usedistances = {isinstance(_, safe.Distance) for _ in distances if _}
       if len(usedistances) > 1:
         raise ValueError(f"Provided some distances and some pixels/microns to {type(self).__name__} - this is dangerous!")
-      usedistances = usedistances.pop()
-      if usedistances and readingfromfile: assert False #shouldn't be able to happen
-      if not usedistances and not readingfromfile:
-        raise ValueError("Have to init with readingfromfile=True if you're not providing distances")
+      if usedistances:
+        usedistances = usedistances.pop()
+        if usedistances and readingfromfile: assert False #shouldn't be able to happen
+        if not usedistances and not readingfromfile:
+          raise ValueError("Have to init with readingfromfile=True if you're not providing distances")
+      else:
+        usedistances = False
 
     pscale = {pscale}
     if usedistances:
