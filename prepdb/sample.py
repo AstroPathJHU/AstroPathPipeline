@@ -71,11 +71,13 @@ class Sample:
   @property
   def rectangles(self): return self.getlayout()[0]
   def writerectangles(self):
+    logger.info(self.samp)
     writetable(self.dest/(self.samp+"_rect.csv"), self.rectangles)
   @property
   def globals(self): return self.getlayout()[1]
   def writeglobals(self):
     if not self.globals: return
+    logger.info(self.samp)
     writetable(self.dest/(self.samp+"_globals.csv"), self.globals)
 
   @methodtools.lru_cache()
@@ -219,10 +221,13 @@ class Sample:
   def vertices(self): return self.getXMLpolygonannotations()[2]
 
   def writeannotations(self):
+    logger.info(self.samp)
     writetable(self.dest/(self.samp+"_annotations.csv"), self.annotations)
   def writeregions(self):
+    logger.info(self.samp)
     writetable(self.dest/(self.samp+"_regions.csv"), self.regions)
   def writevertices(self):
+    logger.info(self.samp)
     writetable(self.dest/(self.samp+"_vertices.csv"), self.vertices)
 
   @property
@@ -269,10 +274,12 @@ class Sample:
     ]
 
   def writeqptiffcsv(self):
+    logger.info(self.samp)
     writetable(self.dest/(self.samp+"_qptiff.csv"), self.getqptiffcsv())
 
   def writeqptiffjpg(self):
     raise NotImplementedError
+    logger.info(self.samp)
     with PILmaximagepixels(1024**3), PIL.Image.open(self.qptifffilename) as f:
       f
 
@@ -318,6 +325,7 @@ class Sample:
     return overlaps
 
   def writeoverlaps(self):
+    logger.info(self.samp)
     writetable(self.dest/(self.samp+"_overlap.csv"), self.getoverlaps())
 
   def getconstants(self):
@@ -374,6 +382,7 @@ class Sample:
     return constants
 
   def writeconstants(self):
+    logger.info(self.samp)
     writetable(self.dest/(self.samp+"_constants.csv"), self.getconstants())
 
   def writemetadata(self):
