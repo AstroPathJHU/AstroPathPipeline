@@ -129,7 +129,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   deltax = min(alldeltaxs)
   rtol = 1e-7
   for _ in alldeltaxs:
-    units.testing.assert_allclose(_*(1+2*rtol) // deltax, _ / deltax, rtol=rtol)
+    units.np.testing.assert_allclose(_*(1+2*rtol) // deltax, _ / deltax, rtol=rtol)
 
   chunkstarts = [
     xx for xx in x if not np.any(units.isclose(xx-deltax, x, rtol=rtol))
@@ -145,7 +145,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   biggestchunkys = np.array([yy for xx, yy in zip(x, y) if xx in biggestchunkxs])
 
   k = np.fft.fftfreq(len(biggestchunkys), deltax)
-  f = units.fft.fft(biggestchunkys)
+  f = units.np.fft.fft(biggestchunkys)
 
   if drawfourier:
     plt.scatter(units.pixels(k, power=-1), units.pixels(abs(f), power=1))

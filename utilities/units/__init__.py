@@ -1,5 +1,5 @@
 import contextlib
-from . import dataclasses, drawing, fft, linalg, optimize, testing
+from . import dataclasses, drawing, numpy as np, optimize
 from .core import UnitsError
 
 def setup(mode):
@@ -9,7 +9,7 @@ def setup(mode):
   global angle, isclose, linspace
   global currentmode, unitdtype
 
-  for _ in dataclasses, fft, linalg, optimize, testing:
+  for _ in dataclasses, np, optimize:
     _.__setup(mode)
 
   try:

@@ -1,7 +1,7 @@
 def __setup(mode):
   global inv, solve
   if mode == "safe":
-    from .safe.linalg import inv, solve
+    from ..safe.numpy.linalg import inv, solve
   elif mode == "fast":
     from numpy.linalg import inv, solve
   else:

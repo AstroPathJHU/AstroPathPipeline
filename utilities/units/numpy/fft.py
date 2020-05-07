@@ -1,7 +1,7 @@
 def __setup(mode):
   global fft
   if mode == "safe":
-    from .safe.fft import fft
+    from ..safe.numpy.fft import fft
   elif mode == "fast":
     from numpy.fft import fft
   else:
