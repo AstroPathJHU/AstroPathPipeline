@@ -132,10 +132,10 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     units.np.testing.assert_allclose(_*(1+2*rtol) // deltax, _ / deltax, rtol=rtol)
 
   chunkstarts = [
-    xx for xx in x if not np.any(units.isclose(xx-deltax, x, rtol=rtol))
+    xx for xx in x if not np.any(units.np.isclose(xx-deltax, x, rtol=rtol))
   ]
   chunkends = [
-    xx for xx in x if not np.any(units.isclose(xx+deltax, x, rtol=rtol))
+    xx for xx in x if not np.any(units.np.isclose(xx+deltax, x, rtol=rtol))
   ]
   biggestchunkstart, biggestchunkend = max(
     itertools.zip_longest(chunkstarts, chunkends),
@@ -172,7 +172,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   initialguess = (
     abs(bestf) / (len(biggestchunkxs) / 2),
     bestk * 2 * np.pi,
-    units.angle(bestf),
+    units.np.angle(bestf),
     np.mean(biggestchunkys)
   )
 
@@ -219,7 +219,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   print(f"  average = {noiseaverage}")
   print(f"  RMS     = {noiseRMS}")
 
-  xplot = units.linspace(min(x), max(x), 1000)
+  xplot = units.np.linspace(min(x), max(x), 1000)
   if plotsine:
     #plt.plot(xplot, cosfunction(xplot, *initialguess), color='g')
     plt.plot(units.pixels(xplot), units.pixels(cosfunction(xplot, *units.nominal_values(p))), color='b')
