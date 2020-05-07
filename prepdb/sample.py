@@ -496,6 +496,9 @@ class Polygon:
   def __str__(self):
     return "POLYGON ((" + ",".join(f"{v.x} {v.y}" for v in self.vertices) + "))"
 
+  def __eq__(self, other):
+    return self.vertices == other.vertices
+
 @dataclasses.dataclass
 class Region(DataClassWithDistances):
   pixelsormicrons = "microns"
