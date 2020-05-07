@@ -127,10 +127,11 @@ class MeanImage :
         self.__saveImageLayerPlots()
         #plot of the flatfield images' minimum and and maximum (and 5/95%ile) pixel intensities
         self.__saveFlatFieldImagePixelIntensityPlot()
-        #save the plot of the initial masking thresholds by layer
-        self.__saveMaskThresholdsPlot()
-        #save the plot of the chosen number of Otsu iterations per layer
-        self.__saveOtsuIterationPlot()
+        if not self.skip_masking :
+            #save the plot of the initial masking thresholds by layer
+            self.__saveMaskThresholdsPlot()
+            #save the plot of the chosen number of Otsu iterations per layer
+            self.__saveOtsuIterationPlot()
         
 
     #################### PRIVATE HELPER FUNCTIONS ####################
