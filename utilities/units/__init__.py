@@ -1,15 +1,15 @@
 import contextlib
-from . import dataclasses, drawing, fft, linalg, optimize, testing
+from . import dataclasses, drawing
 from .core import UnitsError
 
 def setup(mode):
   global currentmodule
   global correlated_distances, distances
   global asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
-  global angle, isclose, linspace
   global currentmode, unitdtype
+  global np, scipy
 
-  for _ in dataclasses, fft, linalg, optimize, testing:
+  for _ in dataclasses,:
     _.__setup(mode)
 
   try:
@@ -17,13 +17,13 @@ def setup(mode):
       from . import safe as currentmodule
       from .safe import correlated_distances, distances
       from .safe import asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
-      from .safe import angle, isclose, linspace
+      from .safe import numpy as np, scipy
       unitdtype = object
     elif mode == "fast":
       from . import fast as currentmodule
       from .fast import correlated_distances, distances
       from .fast import asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
-      from .fast import angle, isclose, linspace
+      import numpy as np, scipy
       unitdtype = float
     else:
       raise ValueError(f"Invalid mode {mode}")
@@ -51,6 +51,6 @@ __all__ = [
   "correlated_distances", "Distance", "distances", "UnitsError",
   "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs",
   "dataclasses", "drawing", "fft", "linalg", "testing",
-  "angle", "isclose", "linspace",
   "setup", "setup_context",
+  "np", "scipy"
 ]
