@@ -3,7 +3,8 @@ from ..misc import floattoint
 from .core import UnitsError
 
 def __setup(mode):
-  global currentmode, Distance, microns, pixels, _pscale, UnitsError
+  global currentmode, Distance, microns, pixels, _pscale, safe, UnitsError
+  from . import safe as safe
   if mode == "safe":
     from .safe import Distance, microns, pixels
     from .safe.core import _pscale
@@ -50,7 +51,7 @@ class DataClassWithDistances(abc.ABC):
 
     usedistances = False
     if currentmode == "safe":
-      usedistances = {isinstance(_, Distance) for _ in distances}
+      usedistances = {isinstance(_, safe.Distance) for _ in distances}
       if len(usedistances) > 1:
         raise ValueError(f"Provided some distances and some pixels/microns to {type(self).__name__} - this is dangerous!")
       usedistances = usedistances.pop()
@@ -60,7 +61,7 @@ class DataClassWithDistances(abc.ABC):
 
     pscale = {pscale}
     if usedistances:
-      pscale = set(_pscale(distances))
+      pscale |= set(_pscale(distances))
     pscale.discard(None)
     if not pscale:
       raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
@@ -72,4 +73,4 @@ class DataClassWithDistances(abc.ABC):
 
     if readingfromfile:
       for field in distancefields:
-        object.__setattr__(self, field.name, Distance(power=field.metadata["power"], pscale=pscale, **{self.pixelsormicrons: getattr(self, field.name)}))
+        object.__setattr__(self, field.name, field.type(power=field.metadata["power"], pscale=pscale, **{self.pixelsormicrons: getattr(self, field.name)}))
