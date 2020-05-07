@@ -143,7 +143,7 @@ class MeanImage :
             return self.image_stack/self.n_images_stacked
         #otherwise though we have to be a bit careful and take the mean value pixel-wise, 
         #being careful to fix any pixels that never got added to so there's no division by zero
-        self.mask_stack[self.mask_stack==0] = self.n_images_stacked
+        self.mask_stack[self.mask_stack==0] = np.min(self.mask_stack[self.mask_stack!=0])
         return self.image_stack/self.mask_stack
 
     #################### VISUALIZATION HELPER FUNCTIONS ####################
