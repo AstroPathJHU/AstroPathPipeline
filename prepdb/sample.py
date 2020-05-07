@@ -284,6 +284,9 @@ class Sample:
   @property
   def yresolution(self):
     return self.getqptiffcsv()[0].YResolution
+  @property
+  def qpscale(self):
+    return self.getqptiffcsv()[0].qpscale
 
   @methodtools.lru_cache()
   def getoverlaps(self):
@@ -401,6 +404,8 @@ class QPTiffCsv(DataClassWithDistances):
   qpscale: float
   fname: str
   img: str
+  pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass
 class Constant:
@@ -421,6 +426,8 @@ class RectangleFile(DataClassWithDistances):
   cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   t: datetime.datetime
+  pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass
 class Annotation:
@@ -439,6 +446,8 @@ class Vertex(DataClassWithDistances):
   vid: int
   x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[bool] = False
 
 class Polygon:
   def __init__(self, *vertices, pixels=None, microns=None, pscale=None, power=1):
@@ -482,6 +491,8 @@ class Region(DataClassWithDistances):
   type: str
   nvert: int
   poly: Polygon = distancefield(pixelsormicrons=pixelsormicrons, dtype=str)
+  pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[bool] = False
 
   def _distances_passed_to_init(self):
     if not isinstance(self.poly, Polygon): return self.poly

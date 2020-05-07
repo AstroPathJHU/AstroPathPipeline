@@ -8,14 +8,17 @@ class Distance:
       return 0.
     return super().__new__(cls)
 
-  def __init__(self, *, pscale, pixels=None, microns=None, power=1, defaulttozero=False):
-    if power is None and (pixels or microns):
+  def __init__(self, *, pscale, pixels=None, microns=None, centimeters=None, power=1, defaulttozero=False):
+    if (pixels is not None) + (microns is not None) + (centimeters is not None) != 1:
+      raise TypeError("Have to provide exactly one of pixels, microns, or centimeters")
+    if centimeters is not None:
+      microns = centimeters * (1e4**power if power and centimeters else 1)
+
+    if power is None and (pixels or microns or centimeters):
       raise ValueError("Can't set power=None")
     if not power or pixels == 0 or microns == 0: pscale = None
     self.__pscale = pscale
     self.__power = power
-    if (pixels is not None) == (microns is not None):
-      raise TypeError("Have to provide exactly one of pixels or microns")
     if pixels is not None:
       self.__pixels = pixels
       self.__microns = pixels / (pscale**power if power and pixels else 1)
