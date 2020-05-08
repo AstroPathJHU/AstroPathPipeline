@@ -117,7 +117,7 @@ class MeanImage :
             writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=IMG_DTYPE_OUT)
         #if masks were calculated, save the stack of them
         if not self.skip_masking :
-            writeImageToFile(np.transpose(self.mask_stack,(2,1,0)),f'mask_stack{FILE_EXT}',dtype=np.uint8)
+            writeImageToFile(np.transpose(self.mask_stack,(2,1,0)),f'mask_stack{FILE_EXT}',dtype=np.uint16)
 
     def savePlots(self) :
         """
