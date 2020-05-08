@@ -43,7 +43,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     overlapfilter = rectangleoroverlapfilter(selectoverlaps)
     self.overlapfilter = lambda o: overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
 
-    if not os.path.exists(self.root1/self.samp):
+    if not (self.root1/self.samp).exists():
       raise IOError(f"{self.root1/self.samp} does not exist")
 
     self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps, pscale=pscale)
@@ -72,6 +72,12 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     self.fwidth    = self.constantsdict["fwidth"]
     self.fheight   = self.constantsdict["fheight"]
     self.pscale    = float(self.constantsdict["pscale"])
+    if isinstance(pscale, (str, pathlib.Path)):
+      import PIL
+      with PIL.Image.open(componenttifffilename) as tiff:
+        dpi = set(tiff.info["dpi"])
+        if len(dpi) != 1: raise ValueError(f"Multiple different dpi values {dpi}")
+        pscale = dpi.pop() / 2.54
     if pscale is not None and self.pscale != pscale:
       logger.warning(f"Provided pscale {pscale} which is different from {self.pscale} (in constants.csv)")
       self.pscale = pscale
