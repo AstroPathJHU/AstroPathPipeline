@@ -40,6 +40,7 @@ class Sample:
   def layer(self):
     return 1
 
+  @methodtools.lru_cache()
   def getbatch(self):
     with open(self.scanfolder/"BatchID.txt") as f:
       return [
@@ -50,6 +51,10 @@ class Sample:
           Sample=self.samp,
         )
       ]
+
+  def writebatch(self):
+    logger.info(self.samp)
+    writetable(self.dest/(self.samp+"_batch.csv"), self.getbatch())
 
   @methodtools.lru_cache()
   def getcomponenttiffinfo(self):
@@ -386,15 +391,16 @@ class Sample:
     writetable(self.dest/(self.samp+"_constants.csv"), self.getconstants())
 
   def writemetadata(self):
+    self.writeannotations()
+    self.writebatch()
     #self.writeconstants()
+    self.writeglobals()
     #self.writeoverlaps()
     #self.writeqptiffcsv()
     #self.writeqptiffjpg()
-    self.writeannotations()
+    self.writerectangles()
     #self.writeregions()
     #self.writevertices()
-    self.writeglobals()
-    self.writerectangles()
 
 @dataclasses.dataclass
 class Batch:
@@ -448,11 +454,11 @@ class RectangleFile(DataClassWithDistances):
 
 @dataclasses.dataclass
 class Annotation:
-  color: str
-  visible: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
-  name: str
   sampleid: int
   layer: int
+  name: str
+  color: str
+  visible: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
   poly: str
 
 @dataclasses.dataclass

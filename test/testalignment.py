@@ -46,8 +46,8 @@ class TestAlignment(unittest.TestCase):
       ("M21_1_affine.csv", AffineEntry, {}),
       ("M21_1_stitch_overlap_covariance.csv", StitchOverlapCovariance, {"pscale": a.pscale}),
     ):
-      rows = readtable(os.path.join(thisfolder, "data", "M21_1", "dbload", filename), cls, extrakwargs=extrakwargs)
-      targetrows = readtable(os.path.join(thisfolder, "alignmentreference", filename), cls, extrakwargs=extrakwargs)
+      rows = readtable(os.path.join(thisfolder, "data", "M21_1", "dbload", filename), cls, extrakwargs=extrakwargs, checkorder=True)
+      targetrows = readtable(os.path.join(thisfolder, "alignmentreference", filename), cls, extrakwargs=extrakwargs, checkorder=True)
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
