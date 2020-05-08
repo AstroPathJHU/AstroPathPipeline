@@ -200,7 +200,7 @@ class Sample:
           if isNeg: regionvertices.reverse()
           polygonvertices = []
           for vertex in regionvertices:
-            polygonvertices.append(f"{math.floor(units.pixels(vertex.x))} {math.floor(units.pixels(vertex.y))}")
+            polygonvertices.append(vertex)
 
           allregions.append(
             Region(
@@ -211,7 +211,7 @@ class Sample:
               isNeg=isNeg,
               type=region.get_xml_attr("Type"),
               nvert=len(vertices),
-              poly=vertices,
+              poly=Polygon(*polygonvertices),
               pscale=self.pscale,
             )
           )
@@ -399,7 +399,7 @@ class Sample:
     #self.writeqptiffcsv()
     #self.writeqptiffjpg()
     self.writerectangles()
-    #self.writeregions()
+    self.writeregions()
     #self.writevertices()
 
 @dataclasses.dataclass
@@ -485,7 +485,10 @@ class Polygon:
       if kw != Vertex.pixelsormicrons:
         raise ValueError(f"Have to provide {Vertex.pixelsormicrons}, not {kw}")
 
-      match = re.match(r"POLYGON \(\(((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\)\)", string)
+      regex = r"POLYGON \(\(((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\)\)"
+      match = re.match(regex, string)
+      if match is None:
+        raise ValueError(f"Unexpected format in polygon:\n{string}\nexpected it to match regex:\n{regex}")
       content = match.group(1)
       intvertices = re.findall(r"[0-9]* [0-9]*", content)
       vertices = []
@@ -496,11 +499,20 @@ class Polygon:
         vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, pscale=pscale, readingfromfile=True))
 
     self.__vertices = vertices
+    pscale = {v.pscale for v in vertices}
+    if len(pscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
+    self.__pscale = pscale.pop()
+
+  @property
+  def pscale(self): return self.__pscale
 
   @property
   def vertices(self): return self.__vertices
-  def __str__(self):
-    return "POLYGON ((" + ",".join(f"{v.x} {v.y}" for v in self.vertices) + "))"
+  def __repr__(self):
+    return self.tostring(pscale=self.pscale)
+  def tostring(self, **kwargs):
+    f = {"pixels": units.pixels, "microns": units.microns}[Vertex.pixelsormicrons]
+    return "POLYGON ((" + ",".join(f"{f(v.x, **kwargs)} {f(v.y, **kwargs)}" for v in self.vertices) + "))"
 
   def __eq__(self, other):
     return self.vertices == other.vertices
@@ -516,7 +528,7 @@ class Region(DataClassWithDistances):
   isNeg: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
   type: str
   nvert: int
-  poly: Polygon = distancefield(pixelsormicrons=pixelsormicrons, dtype=str)
+  poly: Polygon = distancefield(pixelsormicrons=pixelsormicrons, dtype=str, metadata={"writefunction": Polygon.tostring})
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
 
