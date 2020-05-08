@@ -33,7 +33,7 @@ class MeanImage :
         self.skip_masking = skip_masking
         self.smoothsigma = smoothsigma
         self.image_stack = np.zeros((y,x,nlayers),dtype=dtype)
-        self.mask_stack  = np.zeros((y,x,nlayers),dtype=np.uint8) #the masks are always 8-bit unsigned ints 
+        self.mask_stack  = np.zeros((y,x,nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 masks are stacked 
         self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=IMG_DTYPE_OUT)
         self.n_images_stacked = 0
         self.threshold_lists_by_layer = []
@@ -329,15 +329,15 @@ def getImageMaskWorker(im_array,i,return_dict) :
             chosen_mask[:,:,li] = morphed_mask_2[:,:,li]; chosen_thresholds.append(thresholds_2[li])
         elif choice==3 :
             chosen_mask[:,:,li] = morphed_mask_3[:,:,li]; chosen_thresholds.append(thresholds_3[li])
-    ##finally, refine the masks by stacking them all up and adding/removing the pixels about which we're very confident
-    #mask_stack = np.sum(chosen_mask,axis=-1)
-    #mask_stack_add  = np.where(mask_stack>=(ADD_IF_SHARED_IN_AT_LEAST*nlayers),1,0)
-    #mask_stack_drop = np.where(mask_stack<=((1.-DROP_IF_ABSENT_IN_AT_LEAST)*nlayers),1,0)
-    #refined_mask = np.empty_like(init_image_mask_1)
-    #for li in range(nlayers) :
-    #    refined_mask[:,:,li] = np.clip(chosen_mask[:,:,li]+mask_stack_add-mask_stack_drop,0,1)
+    #finally, refine the masks by stacking them all up and adding/removing the pixels about which we're very confident
+    mask_stack = np.sum(chosen_mask,axis=-1)
+    mask_stack_add  = np.where(mask_stack>=(ADD_IF_SHARED_IN_AT_LEAST*nlayers),1,0)
+    mask_stack_drop = np.where(mask_stack<=((1.-DROP_IF_ABSENT_IN_AT_LEAST)*nlayers),1,0)
+    refined_mask = np.empty_like(init_image_mask_1)
+    for li in range(nlayers) :
+        refined_mask[:,:,li] = np.clip(chosen_mask[:,:,li]+mask_stack_add-mask_stack_drop,0,1)
     #add the total mask to the dict, along with its initial thresholds and number of optimal Otsu iterations per layer
-    return_dict[i] = {'mask':chosen_mask,'thresholds':chosen_thresholds,'otsu_iterations':chosen_otsu_iterations}
+    return_dict[i] = {'mask':refined_mask,'thresholds':chosen_thresholds,'otsu_iterations':chosen_otsu_iterations}
 
 #helper function to smooth each layer of an image independently on the GPU
 #this can be run in parallel
