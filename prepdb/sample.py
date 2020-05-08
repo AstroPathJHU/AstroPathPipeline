@@ -310,7 +310,7 @@ class Sample:
     for r1, r2 in itertools.product(self.rectangles, repeat=2):
       if r1 is r2: continue
       if np.all(abs(r1.cxvec - r2.cxvec) < r1.shape):
-        tag = (-1)**(r1.cx < r2.cx) + 3*(-1)**(r1.cy < r2.cy) + 5
+        tag = np.sign(r1.cx-r2.cx) + 3*np.sign(r1.cy-r2.cy) + 5
         overlaps.append(
           Overlap(
             n=len(overlaps)+1,
@@ -395,7 +395,7 @@ class Sample:
     self.writebatch()
     #self.writeconstants()
     self.writeglobals()
-    #self.writeoverlaps()
+    self.writeoverlaps()
     #self.writeqptiffcsv()
     #self.writeqptiffjpg()
     self.writerectangles()
