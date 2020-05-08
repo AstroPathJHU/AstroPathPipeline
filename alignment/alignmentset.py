@@ -74,10 +74,10 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     self.pscale    = float(self.constantsdict["pscale"])
     if isinstance(pscale, (str, pathlib.Path)):
       import PIL
-      with PIL.Image.open(componenttifffilename) as tiff:
+      with PIL.Image.open(pscale) as tiff:
         dpi = set(tiff.info["dpi"])
         if len(dpi) != 1: raise ValueError(f"Multiple different dpi values {dpi}")
-        pscale = dpi.pop() / 2.54
+        pscale = dpi.pop() / 2.54 / 10000
     if pscale is not None and self.pscale != pscale:
       logger.warning(f"Provided pscale {pscale} which is different from {self.pscale} (in constants.csv)")
       self.pscale = pscale
@@ -289,8 +289,8 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       raise IOError("didn't find any rows in the rectangles table for "+self.samp, 1)
 
     for i, rectangle in enumerate(self.rectangles):
-      #logger.info(f"loading rectangle {i+1}/{len(self.rectangles)}")
       filename = path/self.__imagefilenameadjustment(rectangle.file.replace(".im3", ext))
+      logger.info(f"loading rectangle {i+1}/{len(self.rectangles)} {filename}")
       with open(filename, "rb") as f:
         #use fortran order, like matlab!
         rawimages[i] = np.memmap(
