@@ -275,7 +275,7 @@ def sinewaves(*, bki, testing, remake):
         Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M1_1", name="1", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
         Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M2_3", name="2", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
         Sample(root1=r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", root2=r"\\Bki02\g\flatw", samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda tag, **kwargs: tag==4 and kwargs["deltaxory"] == kwargs["vsxory"] == "x", sinetext=lambda tag, **kwargs: True),
-        #Sample(root1=r"\\bki04\Clinical_Specimen_2", root2=r"\\bki02\g\heshy\Clinical_Specimen_2", samp="L1_4", name="JHUPolaris", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
+        Sample(root1=r"\\bki04\Clinical_Specimen_2", root2=r"\\bki02\g\heshy\Clinical_Specimen_2", samp="L1_4", name="JHUPolaris", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
         Sample(root1=r"\\bki03\Clinical_Specimen_BMS_01", root2=r"\\bki02\g\heshy\Clinical_Specimen_BMS_01", samp="ML1603474_BMS069_5_21", name="BMS", plotsine=lambda tag, **kwargs: False, sinetext=lambda tag, **kwargs: False),
       ] if bki else [
         Sample(root1=None, root2=None, samp=None, name="test", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
