@@ -562,7 +562,169 @@ The remaining plots are more interesting and show a clear sinusoidal pattern, th
 
 \clearpage
 
-\section{Vectra Polaris results}
+\section{JHU Vectra Polaris results}
+
+This section shows results for a dataset scanned on one of the Johns Hopkins Vectra Polaris microscopes, codenamed \texttt{JHUPolaris\_2}.
+
+\subsection{Linear Transformation matrix}
+
+From the sample named \texttt{L1\_4}, we find the linear transformation matrix to be
+\begin{align}
+\matrixbold{A}=&\begin{pmatrix}
+\num{0.998924(5)} &
+\num{0.000101(9)} \\
+\num{0.000097(6)} &
+\num{0.998362(11)}
+\end{pmatrix} \\
+=\matrixbold{I} + &\begin{pmatrix}
+\num{-1.076(5)} &
+\num{0.101(9)} \\
+\num{0.097(6)} &
+\num{-1.638(11)}
+\end{pmatrix} \times \num{e-3}
+\label{eq:Amatrix_L1_4}
+\end{align}
+The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope undershoots by an average of $1.2$ pixels.  When moving down, it undershoots by an average of $1.3$ pixels.
+
+\subsection{Periodic dependence}
+\label{sec:JHUpolarisperiodic}
+
+Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systematic behavior in the residuals from the Polaris microscope.  \Cref{fig:sinewavesJHUPolaris} shows plots for the \texttt{L1\_4} dataset, equivalent to the ones in \cref{fig:sinewaves}.
+
+%These plots show less sinusoidal behavior than the ones for the Vectra 3.0 microscope, but they do show other effects.  \Cref{fig:sinewave2yyJHUPolaris} has a clear periodic mode, with a wavelength of approximately $5\times\text{the field height}$, though it does not fit to a simple sine wave.  Additionally, \cref{fig:sinewave2xyJHUPolaris} shows a behavior change at $y\approx\SI{10000}{pixels}$, which does not fit into any periodic pattern.
+
+%On the other hand, once we remove the constant shifts and, where relevant, the sine wave, the \emph{random} misalignments (denoted by ``RMS of noise'') are smaller on this microscope than on the Vectra 3.0.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xx-JHUPolaris.pdf}
+		\caption{}
+		\label{fig:sinewave2xxJHUPolaris}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yx-JHUPolaris.pdf}
+		\caption{}
+		\label{fig:sinewave2yxJHUPolaris}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xy-JHUPolaris.pdf}
+		\caption{}
+		\label{fig:sinewave2xyJHUPolaris}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yy-JHUPolaris.pdf}
+		\caption{}
+		\label{fig:sinewave2yyJHUPolaris}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xx-JHUPolaris.pdf}
+		\caption{}
+		\label{fig:sinewave4xxJHUPolaris}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yx-JHUPolaris.pdf}
+		\caption{}
+		\label{fig:sinewave4yxJHUPolaris}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xy-JHUPolaris.pdf}
+		\caption{}
+		\label{fig:sinewave4xyJHUPolaris}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yy-JHUPolaris.pdf}
+		\caption{}
+		\label{fig:sinewave4yyJHUPolaris}
+	\end{subfigure}
+	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
+	\label{fig:sinewavesJHUPolaris}
+\end{figure}
+
+\clearpage
+
+\section{BMS Vectra Polaris results}
+
+This section shows results for a dataset scanned a Vectra Polaris microscope at Bristol-Meyers Squibb, codenamed \texttt{BMSPolaris\_1}.
+
+\subsection{Linear Transformation matrix}
+
+From the sample named \texttt{ML1603474\_BMS069\_5\_21}, we find the linear transformation matrix to be
+\begin{align}
+\matrixbold{A}=&\begin{pmatrix}
+\num{0.999512(9)} &
+\num{-0.000261(8)} \\
+\num{0.000353(5)} &
+\num{0.999611(6)}
+\end{pmatrix} \\
+=\matrixbold{I} + &\begin{pmatrix}
+\num{-0.488(9)} &
+\num{-0.261(8)} \\
+\num{0.353(5)} &
+\num{-0.389(6)}
+\end{pmatrix} \times \num{e-3}
+\label{eq:Amatrix_ML1603474_BMS069_5_21}
+\end{align}
+The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope undershoots by an average of $0.7$ pixels and also moves down by $0.5$ pixels.  When moving down, it undershoots by an average of $0.3$ pixels and moves to the left by $0.4 pixels$.
+
+\subsection{Periodic dependence}
+\label{sec:BMSperiodic}
+
+Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systematic behavior in the residuals from the Polaris microscope.  \Cref{fig:sinewavesBMS} shows plots for the \texttt{ML1603474\_BMS069\_5\_21} dataset, equivalent to the ones in \cref{fig:sinewaves}.
+
+%These plots show less sinusoidal behavior than the ones for the Vectra 3.0 microscope, but they do show other effects.  \Cref{fig:sinewave2yyBMS} has a clear periodic mode, with a wavelength of approximately $5\times\text{the field height}$, though it does not fit to a simple sine wave.  Additionally, \cref{fig:sinewave2xyBMS} shows a behavior change at $y\approx\SI{10000}{pixels}$, which does not fit into any periodic pattern.
+
+%On the other hand, once we remove the constant shifts and, where relevant, the sine wave, the \emph{random} misalignments (denoted by ``RMS of noise'') are smaller on this microscope than on the Vectra 3.0.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xx-BMS.pdf}
+		\caption{}
+		\label{fig:sinewave2xxBMS}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yx-BMS.pdf}
+		\caption{}
+		\label{fig:sinewave2yxBMS}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-xy-BMS.pdf}
+		\caption{}
+		\label{fig:sinewave2xyBMS}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-2-yy-BMS.pdf}
+		\caption{}
+		\label{fig:sinewave2yyBMS}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xx-BMS.pdf}
+		\caption{}
+		\label{fig:sinewave4xxBMS}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yx-BMS.pdf}
+		\caption{}
+		\label{fig:sinewave4yxBMS}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-xy-BMS.pdf}
+		\caption{}
+		\label{fig:sinewave4xyBMS}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{sine-wave-4-yy-BMS.pdf}
+		\caption{}
+		\label{fig:sinewave4yyBMS}
+	\end{subfigure}
+	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{ML1603474\_BMS069\_5\_21} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
+	\label{fig:sinewavesBMS}
+\end{figure}
+
+\clearpage
+
+\section{Akoya Vectra Polaris results}
 
 This section shows results for a dataset collected by Bristol-Meyers Squibb and stained and scanned by Akoya Biosciences.  The microscoped is maintained at the Akoya facilities and is codenamed \texttt{AKYPolaris\_1}.
 
@@ -591,7 +753,7 @@ The image scales written in the \texttt{.tiff} and the \texttt{.im3} files are d
 \subsection{Periodic dependence}
 \label{sec:akoyapolarisperiodic}
 
-Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systematic behavior in the residuals from the Polaris microscope.  \Cref{fig:sinewavespolaris} shows plots for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset, equivalent to the ones in \cref{fig:sinewaves}.
+This section shows plots for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset, equivalent to the ones in \cref{sec:vectraperiodic,sec:JHUpolarisperiodic}.
 
 These plots show less sinusoidal behavior than the ones for the Vectra 3.0 microscope, but they do show other effects.  \Cref{fig:sinewave2yyAKY} has a clear periodic mode, with a wavelength of approximately $5\times\text{the field height}$, though it does not fit to a simple sine wave.  Additionally, \cref{fig:sinewave2xyAKY} shows a behavior change at $y\approx\SI{10000}{pixels}$, which does not fit into any periodic pattern.
 
@@ -640,7 +802,7 @@ On the other hand, once we remove the constant shifts and, where relevant, the s
 		\label{fig:sinewave4yyAKY}
 	\end{subfigure}
 	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
-	\label{fig:sinewavespolaris}
+	\label{fig:sinewavesAKY}
 \end{figure}
 
 \clearpage
