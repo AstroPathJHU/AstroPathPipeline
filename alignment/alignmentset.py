@@ -18,7 +18,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False, pscale=None, imagefilenameadjustment=lambda x: x):
+  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False, componenttiff=None, imagefilenameadjustment=lambda x: x):
     """
     Directory structure should be
     root1/
@@ -46,7 +46,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     if not (self.root1/self.samp).exists():
       raise IOError(f"{self.root1/self.samp} does not exist")
 
-    self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps, pscale=pscale)
+    self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps, componenttiff=componenttiff)
     self.rawimages=None
     self.__imagefilenameadjustment = imagefilenameadjustment
 
@@ -57,7 +57,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   def dbload(self):
     return self.root1/self.samp/"dbload"
 
-  def readmetadata(self, *, onlyrectanglesinoverlaps=False, pscale=None):
+  def readmetadata(self, *, onlyrectanglesinoverlaps=False, componenttiff=None):
     """
     Read metadata from csv files
     """
@@ -72,15 +72,20 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     self.fwidth    = self.constantsdict["fwidth"]
     self.fheight   = self.constantsdict["fheight"]
     self.pscale    = float(self.constantsdict["pscale"])
-    if isinstance(pscale, (str, pathlib.Path)):
+
+    if componenttiff is not None:
       import PIL
-      with PIL.Image.open(pscale) as tiff:
+      with PIL.Image.open(componenttiff) as tiff:
         dpi = set(tiff.info["dpi"])
         if len(dpi) != 1: raise ValueError(f"Multiple different dpi values {dpi}")
         pscale = dpi.pop() / 2.54 / 10000
-    if pscale is not None and self.pscale != pscale:
-      logger.warning(f"Provided pscale {pscale} which is different from {self.pscale} (in constants.csv)")
-      self.pscale = pscale
+        width, height = tiff.size
+        if (width, height) != (self.fwidth, self.fheight):
+          logger.warning(f"tiff has size {width, height} which is different from {self.fwidth, self.fheight} (in constants.csv)")
+          self.fwidth, self.fheight = width, height
+      if self.pscale != pscale:
+        logger.warning(f"tiff has pscale {pscale} which is different from {self.pscale} (in constants.csv)")
+        self.pscale = pscale
     self.qpscale   = self.constantsdict["qpscale"]
     self.xposition = self.constantsdict["xposition"]
     self.yposition = self.constantsdict["yposition"]
