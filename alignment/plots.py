@@ -57,7 +57,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
 
   return vectors
 
-def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False, sinetext=False, drawfourier=False):
+def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False, sinetext=False, drawfourier=False, guessparameters=None):
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -169,18 +169,22 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     return amplitude * cos(units.asdimensionless(kk*(xx - biggestchunkxs[0]) + phase)) + mean
 
   bestk, bestf = max(zip(k[1:], f[1:]), key=lambda kf: abs(kf[1]))  #[1:]: exclude k=0 term
-  initialguess = (
+  initialguess = [
     abs(bestf) / (len(biggestchunkxs) / 2),
     bestk * 2 * np.pi,
     units.angle(bestf),
     np.mean(biggestchunkys)
-  )
+  ]
+  if guessparameters is not None:
+    for i, parameter in enumerate(guessparamters):
+      if parameter is not None:
+        initialguess[i] = parameter
 
   try:
     p, cov = units.optimize.curve_fit(
       cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror, absolute_sigma=True,
     )
-    p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
+    amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
   except (RuntimeError, np.linalg.LinAlgError):
     print("fit failed")
     toaverage = units.correlated_distances(distances=ywitherror, covariance=np.diag(yerrwitherror)**2)
@@ -188,7 +192,15 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     amplitude = kk = phase = 0
     p = amplitude, kk, phase, mean
     cov = np.diag([1, 1, 1, weightedstd(toaverage)**2])
-    p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
+    amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
+
+  if amplitude < 0:
+    amplitude *= -1
+    phase += np.pi
+  if kk < 0:
+    kk *= -1
+    phase *= -1
+  p = amplitude, kk, phase, mean
 
   print("Average:")
   print(f"  {mean}")
