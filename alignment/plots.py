@@ -180,15 +180,16 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     p, cov = units.optimize.curve_fit(
       cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror, absolute_sigma=True,
     )
-  except RuntimeError:
+    p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
+  except (RuntimeError, np.linalg.LinAlgError):
     print("fit failed")
     toaverage = units.correlated_distances(distances=ywitherror, covariance=np.diag(yerrwitherror)**2)
     mean = weightedaverage(toaverage)
     amplitude = kk = phase = 0
     p = amplitude, kk, phase, mean
     cov = np.diag([1, 1, 1, weightedstd(toaverage)**2])
+    p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
 
-  p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
   print("Average:")
   print(f"  {mean}")
   try:

@@ -270,18 +270,19 @@ def sinewaves(*, bki, testing, remake):
         plt.ylabel(rf"$\delta {deltaxory}$ (pixels)", labelpad=0)
         plt.subplots_adjust(bottom=0.15, left=0.21)
 
-      Sample = collections.namedtuple("Sample", "samp root1 root2 name plotsine sinetext pscale")
+      Sample = collections.namedtuple("Sample", "samp root1 root2 name plotsine sinetext")
       samples = [
-        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M1_1", name="1", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=None),
-        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M2_3", name="2", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=None),
-        Sample(root1=r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", root2=r"\\Bki02\g\flatw", samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda tag, **kwargs: tag==4 and kwargs["deltaxory"] == kwargs["vsxory"] == "x", sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=2.014533),
-        Sample(root1=r"\\bki04\Clinical_Specimen_2", root2=r"\\bki02\g\heshy\Clinical_Specimen_2", samp="L1_4", name="JHUPolaris", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=None),
+        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M1_1", name="1", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
+        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M2_3", name="2", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
+        Sample(root1=r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", root2=r"\\Bki02\g\flatw", samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda tag, **kwargs: tag==4 and kwargs["deltaxory"] == kwargs["vsxory"] == "x", sinetext=lambda tag, **kwargs: True),
+        #Sample(root1=r"\\bki04\Clinical_Specimen_2", root2=r"\\bki02\g\heshy\Clinical_Specimen_2", samp="L1_4", name="JHUPolaris", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
+        Sample(root1=r"\\bki03\Clinical_Specimen_BMS_01", root2=r"\\bki02\g\heshy\Clinical_Specimen_BMS_01", samp="ML1603474_BMS069_5_21", name="BMS", plotsine=lambda tag, **kwargs: False, sinetext=lambda tag, **kwargs: False),
       ] if bki else [
-        Sample(root1=None, root2=None, samp=None, name="test", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], pscale=None),
+        Sample(root1=None, root2=None, samp=None, name="test", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
       ]
 
-      for samp, root1, root2, name, plotsine, sinetext, pscale in samples:
-        alignmentsetkwargs = {"root1": root1, "root2": root2, "samp": samp, "pscale": pscale}
+      for samp, root1, root2, name, plotsine, sinetext in samples:
+        alignmentsetkwargs = {"root1": root1, "root2": root2, "samp": samp}
         alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
         kwargs = {}
         for kwargs["deltaxory"] in "xy":
@@ -293,8 +294,8 @@ def sinewaves(*, bki, testing, remake):
               alignmentshiftprofile(
                 A,
                 tag=tag,
-                plotsine=plotsine(tag=tag, **kwargs),
-                sinetext=sinetext(tag=tag, **kwargs),
+                plotsine=kwargs["vsxory"] == {2: "y", 4: "x"}[tag] and plotsine(tag=tag, **kwargs),
+                sinetext=kwargs["vsxory"] == {2: "y", 4: "x"}[tag] and sinetext(tag=tag, **kwargs),
                 figurekwargs={"figsize": (6, 6)},
                 plotstyling=functools.partial(plotstyling, **kwargs),
                 saveas=saveas,
