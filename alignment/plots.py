@@ -176,7 +176,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     np.mean(biggestchunkys)
   ]
   if guessparameters is not None:
-    for i, parameter in enumerate(guessparamters):
+    for i, parameter in enumerate(guessparameters):
       if parameter is not None:
         initialguess[i] = parameter
 
