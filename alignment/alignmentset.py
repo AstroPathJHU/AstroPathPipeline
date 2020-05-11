@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, logging, methodtools, numpy as np, os, pathlib
+import cv2, logging, methodtools, numpy as np, pathlib
 
 from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap, OverlapCollection
@@ -18,7 +18,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False, pscale=None, imagefilenameadjustment=lambda x: x):
+  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False, imagefilenameadjustment=lambda x: x):
     """
     Directory structure should be
     root1/
@@ -43,10 +43,10 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     overlapfilter = rectangleoroverlapfilter(selectoverlaps)
     self.overlapfilter = lambda o: overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
 
-    if not os.path.exists(self.root1/self.samp):
+    if not (self.root1/self.samp).exists():
       raise IOError(f"{self.root1/self.samp} does not exist")
 
-    self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps, pscale=pscale)
+    self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps)
     self.rawimages=None
     self.__imagefilenameadjustment = imagefilenameadjustment
 
@@ -57,7 +57,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
   def dbload(self):
     return self.root1/self.samp/"dbload"
 
-  def readmetadata(self, *, onlyrectanglesinoverlaps=False, pscale=None):
+  def readmetadata(self, *, onlyrectanglesinoverlaps=False):
     """
     Read metadata from csv files
     """
@@ -72,9 +72,25 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
     self.fwidth    = self.constantsdict["fwidth"]
     self.fheight   = self.constantsdict["fheight"]
     self.pscale    = float(self.constantsdict["pscale"])
-    if pscale is not None and self.pscale != pscale:
-      logger.warning(f"Provided pscale {pscale} which is different from {self.pscale} (in constants.csv)")
-      self.pscale = pscale
+
+    try:
+      componenttiff = next((self.root1/self.samp/"inform_data"/"Component_Tiffs").glob("*.tif"))
+    except StopIteration:
+      logger.warning("couldn't find a component tiff, trusting image size and pscale from constants.csv")
+    else:
+      import PIL
+      with PIL.Image.open(componenttiff) as tiff:
+        dpi = set(tiff.info["dpi"])
+        if len(dpi) != 1: raise ValueError(f"Multiple different dpi values {dpi}")
+        pscale = dpi.pop() / 2.54 / 10000
+        width, height = tiff.size
+        if (width, height) != (self.fwidth, self.fheight):
+          logger.warning(f"component tiff has size {width, height} which is different from {self.fwidth, self.fheight} (in constants.csv)")
+          self.fwidth, self.fheight = width, height
+      if self.pscale != pscale:
+        logger.warning(f"component tiff has pscale {pscale} which is different from {self.pscale} (in constants.csv)")
+        self.pscale = pscale
+
     self.qpscale   = self.constantsdict["qpscale"]
     self.xposition = self.constantsdict["xposition"]
     self.yposition = self.constantsdict["yposition"]
@@ -283,8 +299,8 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
       raise IOError("didn't find any rows in the rectangles table for "+self.samp, 1)
 
     for i, rectangle in enumerate(self.rectangles):
-      #logger.info(f"loading rectangle {i+1}/{len(self.rectangles)}")
       filename = path/self.__imagefilenameadjustment(rectangle.file.replace(".im3", ext))
+      logger.info(f"loading rectangle {i+1}/{len(self.rectangles)} {filename}")
       with open(filename, "rb") as f:
         #use fortran order, like matlab!
         rawimages[i] = np.memmap(
