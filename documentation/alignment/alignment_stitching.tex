@@ -463,7 +463,7 @@ For the \M11 dataset, we find
 \end{pmatrix} \times \num{e-3}
 \label{eq:Amatrix_M11}
 \end{align}
-The Vectra 3.0 scans fields of size $1344\times1004$ $\text{pixels}^2$.  The entries of $\matrixbold{A}$ tell us that on average, when moving one field to the right, the microscope ends up $1$ pixel to the left of where it should, and when moving down, it ends up $1$ pixel above where it should.  Although the top row of \cref{fig:alignmentresults} shows that the random scatter is a larger effect, the average shift is noticeable.
+The Vectra 3.0 scans fields of size $1344\times1004$ $\text{pixels}^2$.  The entries of $\matrixbold{A}$ tell us that on average, when moving one field to the right, the microscope ends up $0.9$ pixels to the left and $0.1$ pixels below where it should, and when moving down, it ends up $0.1$ pixels to the right and $1.1$ pixels above where it should.  Although the top row of \cref{fig:alignmentresults} shows that the random scatter is a larger effect, the average shift is noticeable.
 
 \subsection{Periodic dependence}
 \label{sec:vectraperiodic}
@@ -665,7 +665,7 @@ From the sample named \texttt{ML1603474\_BMS069\_5\_21}, we find the linear tran
 \end{pmatrix} \times \num{e-3}
 \label{eq:Amatrix_ML1603474_BMS069_5_21}
 \end{align}
-The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope undershoots by an average of $0.7$ pixels and also moves down by $0.5$ pixels.  When moving down, it undershoots by an average of $0.3$ pixels and moves to the left by $0.4 pixels$.
+The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope undershoots by an average of $0.7$ pixels and also moves down by $0.5$ pixels.  When moving down, it undershoots by an average of $0.3$ pixels and moves to the left by $0.4$ pixels.
 
 \subsection{Periodic dependence}
 \label{sec:BMSperiodic}
@@ -739,14 +739,14 @@ From the sample named \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, we find the line
 \num{1.000044(4)}
 \end{pmatrix} \\
 =\matrixbold{I} + &\begin{pmatrix}
-\num{0.503(5)}
-\num{-0.454(5)}
-\num{0.0244(31)}
+\num{0.503(5)} &
+\num{-0.454(5)} \\
+\num{0.0244(31)} &
 \num{0.044(4)}
 \end{pmatrix} \times \num{e-3}
 \label{eq:Amatrix_TS18_0541_BMS_MITRE}
 \end{align}
-The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $0.8$ pixels.  When moving down, it overshoots by an average of $0.5$ pixels.
+The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $0.7$ pixels.  When moving down, it ends up $0.5$ pixels to the left of the desired location.
 
 The image scales written in the \texttt{.tiff} and the \texttt{.im3} files are different: $2.0$ or $\SI{2.014533}{pixels\per\micro\meter}$, respectively.  The $\matrixbold{A}$ matrix reported here is based on the scale from the \texttt{.im3} files and confirms that that scale is correct to within half a percent.  Using the scale from the \texttt{.tiff} files would still give an equivalent alignment, but $\matrixbold{A}$ would be further from the identity matrix.
 
@@ -813,24 +813,25 @@ In this note, we describe the alignment and stitching of a microscope image comp
 
 \begin{table}[ht]
 	\centering
-	\begin{tabular}{|l|c|c|c|}
+	\begin{tabular}{|l|c|c|c|c|c|}
 	\hline
-	\multicolumn{2}{|l|}{Model} & Vectra 3.0 & Vectra Polaris \\\hline
-	\multicolumn{2}{|l|}{Location} & JHU & Akoya \\\hline
+	\multicolumn{2}{|l|}{Model} & Vectra 3.0 & Vectra Polaris & Vectra Polaris & Vectra Polaris \\\hline
+	\multicolumn{2}{|l|}{Location} & JHU & JHU & BMS & Akoya \\\hline
 	\multirowcell{3}[0pt][l]{Average shift/field \\ (pixels)}
-	& $x$ & $-0.9$ & $0.8$ \\\cline{2-4}
-	& $y$ & $-1.0$ & $0.5$ \\\cline{2-4}
-	& $x$ for new row & $0.0$ & $0.0$ \\\hline
-	\multirowcell{4}[0pt][l]{Sine amplitude \& \\wavelength (pixels)\\ (*)non-sinusoidal\\periodic effects}
-	& $x$--$\delta x$, $x$ overlap & $1.5$, $2800$ & $0.7$, $3560$ \\\cline{2-4}
-	& $x$--$\delta y$, $x$ overlap & $0.4$, $4000$ & $0.0$ \\\cline{2-4}
-	& $y$--$\delta x$, $y$ overlap & $0.5$, $4000$ & $0.0$ \\\cline{2-4}
-	& $y$--$\delta y$, $y$ overlap & $2.8$, $4000$ & $\sim1$, $\sim13000$(*) \\\hline
+	& $\delta x$, $x$ movement & $-0.9$ & & $-0.7$ & $0.7$ \\\cline{2-6}
+	& $\delta y$, $x$ movement & $0.1$ & & $0.5$ & $0.0$ \\\cline{2-6}
+	& $\delta x$, $y$ movement & $0.1$ & & $-0.4$ & $-0.5$ \\\cline{2-6}
+	& $\delta y$, $y$ movement & $-1.1$ & & $-0.3$ & $0.0$ \\\hline
+	\multirowcell{4}[0pt][l]{Sine amplitude \& \\wavelength (pixels)\\ (*)more complicated\\periodic effects}
+	& $x$--$\delta x$, $x$ overlap & $1.5$, $2800$ & & & $0.7$, $3560$ \\\cline{2-6}
+	& $x$--$\delta y$, $x$ overlap & $0.4$, $4000$ & & & $0.0$ \\\cline{2-6}
+	& $y$--$\delta x$, $y$ overlap & $0.5$, $4000$ & & & $0.0$ \\\cline{2-6}
+	& $y$--$\delta y$, $y$ overlap & $2.8$, $4000$ & & & $\sim1$, $\sim13000$(*) \\\hline
 	\multirowcell{4}[0pt][l]{Remaining RMS\\(pixels)}
-	& $\delta x$, $x$ overlap & $1.4$ & $0.3$ \\\cline{2-4}
-	& $\delta y$, $x$ overlap & $0.3$ & $0.1$ \\\cline{2-4}
-	& $\delta x$, $y$ overlap & $0.4$ & $0.1$ \\\cline{2-4}
-	& $\delta y$, $y$ overlap & $1.2$ & $0.5$ \\\hline
+	& $\delta x$, $x$ overlap & $1.4$ & & & $0.3$ \\\cline{2-6}
+	& $\delta y$, $x$ overlap & $0.3$ & & & $0.1$ \\\cline{2-6}
+	& $\delta x$, $y$ overlap & $0.4$ & & & $0.1$ \\\cline{2-6}
+	& $\delta y$, $y$ overlap & $1.2$ & & & $0.5$ \\\hline
 	\end{tabular}
 	\caption{Comparison between the microscopes studied here.}
 	\label{table:microscopes}
