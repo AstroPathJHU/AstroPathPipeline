@@ -562,38 +562,27 @@ The remaining plots are more interesting and show a clear sinusoidal pattern, th
 
 \clearpage
 
+\iffalse
 \section{JHU Vectra Polaris results}
 
 This section shows results for a dataset scanned on one of the Johns Hopkins Vectra Polaris microscopes, codenamed \texttt{JHUPolaris\_2}.
 
 \subsection{Linear Transformation matrix}
 
-From the sample named \texttt{L1\_4}, we find the linear transformation matrix to be
+From the sample named \texttt{PZ1}, we find the linear transformation matrix to be
 \begin{align}
 \matrixbold{A}=&\begin{pmatrix}
-\num{0.998924(5)} &
-\num{0.000101(9)} \\
-\num{0.000097(6)} &
-\num{0.998362(11)}
 \end{pmatrix} \\
 =\matrixbold{I} + &\begin{pmatrix}
-\num{-1.076(5)} &
-\num{0.101(9)} \\
-\num{0.097(6)} &
-\num{-1.638(11)}
 \end{pmatrix} \times \num{e-3}
-\label{eq:Amatrix_L1_4}
+\label{eq:Amatrix_PZ1}
 \end{align}
 The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope undershoots by an average of $1.2$ pixels.  When moving down, it undershoots by an average of $1.3$ pixels.
 
 \subsection{Periodic dependence}
 \label{sec:JHUpolarisperiodic}
 
-Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systematic behavior in the residuals from the Polaris microscope.  \Cref{fig:sinewavesJHUPolaris} shows plots for the \texttt{L1\_4} dataset, equivalent to the ones in \cref{fig:sinewaves}.
-
-%These plots show less sinusoidal behavior than the ones for the Vectra 3.0 microscope, but they do show other effects.  \Cref{fig:sinewave2yyJHUPolaris} has a clear periodic mode, with a wavelength of approximately $5\times\text{the field height}$, though it does not fit to a simple sine wave.  Additionally, \cref{fig:sinewave2xyJHUPolaris} shows a behavior change at $y\approx\SI{10000}{pixels}$, which does not fit into any periodic pattern.
-
-%On the other hand, once we remove the constant shifts and, where relevant, the sine wave, the \emph{random} misalignments (denoted by ``RMS of noise'') are smaller on this microscope than on the Vectra 3.0.
+Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systematic behavior in the residuals from the Polaris microscope.  \Cref{fig:sinewavesJHUPolaris} shows plots for the \texttt{PZ1} dataset, equivalent to the ones in \cref{fig:sinewaves}.
 
 \begin{figure}[ht]
 	\centering
@@ -642,6 +631,8 @@ Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systemat
 \end{figure}
 
 \clearpage
+
+\fi
 
 \section{BMS Vectra Polaris results}
 
@@ -753,7 +744,7 @@ The image scales written in the \texttt{.tiff} and the \texttt{.im3} files are d
 \subsection{Periodic dependence}
 \label{sec:akoyapolarisperiodic}
 
-This section shows plots for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset, equivalent to the ones in \cref{sec:vectraperiodic,sec:JHUpolarisperiodic}.
+This section shows plots for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset, equivalent to the ones in \cref{sec:vectraperiodic}.
 
 These plots show less sinusoidal behavior than the ones for the Vectra 3.0 microscope, but they do show other effects.  \Cref{fig:sinewave2yyAKY} has a clear periodic mode, with a wavelength of approximately $5\times\text{the field height}$, though it does not fit to a simple sine wave.  Additionally, \cref{fig:sinewave2xyAKY} shows a behavior change at $y\approx\SI{10000}{pixels}$, which does not fit into any periodic pattern.
 
