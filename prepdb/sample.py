@@ -1,4 +1,4 @@
-import dataclasses, datetime, exifread, itertools, jxmlease, logging, math, methodtools, numpy as np, os, pathlib, PIL, re
+import dataclasses, datetime, exifread, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re
 from ..utilities import units
 from ..utilities.misc import PILmaximagepixels
 from ..utilities.tableio import writetable

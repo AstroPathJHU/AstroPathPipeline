@@ -47,8 +47,8 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
     else:
       Row = rownameorclass
       if checkorder:
-        fieldnames = [field.name for field in dataclasses.fields(Row)]
         columnnames = list(reader.fieldnames)
+        fieldnames = [field.name for field in dataclasses.fields(Row) if field.name in columnnames]
         if fieldnames != columnnames:
           raise ValueError(f"Column names and dataclass field names are not in the same order\n{columnnames}\n{fieldnames}")
       for field in dataclasses.fields(Row):
