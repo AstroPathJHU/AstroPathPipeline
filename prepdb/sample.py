@@ -62,7 +62,7 @@ class Sample:
     with PIL.Image.open(componenttifffilename) as tiff:
       dpi = set(tiff.info["dpi"])
       if len(dpi) != 1: raise ValueError(f"Multiple different dpi values {dpi}")
-      pscale = dpi.pop() / 2.54
+      pscale = dpi.pop() / 2.54 / 10000
       fwidth, fheight = units.distances(pixels=tiff.size, pscale=pscale, power=1)
     return pscale, fwidth, fheight
 
@@ -473,6 +473,8 @@ class Vertex(DataClassWithDistances):
   readingfromfile: dataclasses.InitVar[bool] = False
 
 class Polygon:
+  pixelsormicrons = "pixels"
+
   def __init__(self, *vertices, pixels=None, microns=None, pscale=None, power=1):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
@@ -482,8 +484,8 @@ class Polygon:
     if pixels is not None or microns is not None:
       string = pixels if pixels is not None else microns
       kw = "pixels" if pixels is not None else "microns"
-      if kw != Vertex.pixelsormicrons:
-        raise ValueError(f"Have to provide {Vertex.pixelsormicrons}, not {kw}")
+      if kw != self.pixelsormicrons:
+        raise ValueError(f"Have to provide {self.pixelsormicrons}, not {kw}")
 
       regex = r"POLYGON \(\(((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\)\)"
       match = re.match(regex, string)
@@ -511,15 +513,15 @@ class Polygon:
   def __repr__(self):
     return self.tostring(pscale=self.pscale)
   def tostring(self, **kwargs):
-    f = {"pixels": units.pixels, "microns": units.microns}[Vertex.pixelsormicrons]
-    return "POLYGON ((" + ",".join(f"{f(v.x, **kwargs)} {f(v.y, **kwargs)}" for v in self.vertices) + "))"
+    f = {"pixels": units.pixels, "microns": units.microns}[self.pixelsormicrons]
+    return "POLYGON ((" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in self.vertices) + "))"
 
   def __eq__(self, other):
     return self.vertices == other.vertices
 
 @dataclasses.dataclass
 class Region(DataClassWithDistances):
-  pixelsormicrons = "microns"
+  pixelsormicrons = Polygon.pixelsormicrons
 
   regionid: int
   sampleid: int
