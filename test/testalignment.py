@@ -1,4 +1,4 @@
-import contextlib, dataclasses, itertools, numbers, numpy as np, os, pathlib, unittest
+import contextlib, dataclasses, itertools, numbers, numpy as np, os, pathlib, tempfile, unittest
 from ..alignment.alignmentset import AlignmentSet, ImageStats
 from ..alignment.overlap import AlignmentResult
 from ..alignment.stitch import AffineEntry, StitchCoordinate, StitchOverlapCovariance
@@ -31,8 +31,9 @@ def expectedFailureIf(condition):
 def temporarilyremove(filepath):
   with tempfile.TemporaryDirectory() as d:
     d = pathlib.Path(d)
+    tmppath = d/filepath.name
+    filepath.rename(tmppath)
     try:
-      tmppath = path.rename(d/filepath.name)
       yield
     finally:
       tmppath.rename(filepath)
@@ -173,4 +174,21 @@ class TestAlignment(unittest.TestCase):
     assertAlmostEqual(o1.result.covxy, o2.result.covxy, rtol=1e-5)
     
   def testPscale(self):
-    pass
+    a1 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
+    a1.getDAPI()
+    a1.align(debug=True)
+    a1.stitch()
+
+    with temporarilyremove(thisfolder/"data"/"M21_1"/"inform_data"/"Component_Tiffs"):
+      a2 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
+      a2.getDAPI()
+      a2.align(debug=True)
+      a2.stitch()
+
+    pscale1 = a1.pscale
+    pscale2 = a2.pscale
+
+    for o1, o2 in zip(a1.overlaps, a2.overlaps):
+      x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale1))
+      x2, y2 = units.nominal_values(units.pixels(o2.stitchresult, pscale=pscale2))
+      print(2*(x1-x2) / (x1+x2), 2*(y1-y2) / (y1+y2))
