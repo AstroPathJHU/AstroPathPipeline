@@ -182,11 +182,11 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     )
   except RuntimeError:
     print("fit failed")
-    toaverage = units.correlated_distances(distances=ywitherror, covariance=np.diag(yerrwitherror))
+    toaverage = units.correlated_distances(distances=ywitherror, covariance=np.diag(yerrwitherror)**2)
     mean = weightedaverage(toaverage)
     amplitude = kk = phase = 0
     p = amplitude, kk, phase, mean
-    cov = np.diag([1, 1, 1, weightedstd(toaverage)])
+    cov = np.diag([1, 1, 1, weightedstd(toaverage)**2])
 
   p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
   print("Average:")
