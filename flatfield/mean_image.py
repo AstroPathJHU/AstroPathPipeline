@@ -379,7 +379,6 @@ def getImageMaskWorker(im_array,i,make_plots,workingdir_name,return_dict) :
             erode1_mask = erode1_mask.get()
             dilate2_mask = dilate2_mask.get()
             erode3_mask = erode3_mask.get()
-            dilate3_mask = dilate3_mask.get()
             for li in range(nlayers) :
                 f,ax = plt.subplots(4,2,figsize=MASKING_PLOT_FIG_SIZE)
                 im = im_array[:,:,li]
@@ -387,7 +386,7 @@ def getImageMaskWorker(im_array,i,make_plots,workingdir_name,return_dict) :
                 im = (np.clip(im,0,255)).astype('uint8')
                 ax[0][0].imshow(im_grayscale,cmap='gray')
                 ax[0][0].set_title('raw image in grayscale',fontsize=14)
-                ax[0][1].imshow(morphed_mask[:,:,li])
+                ax[0][1].imshow(init_image_mask[:,:,li])
                 ax[0][1].set_title(f'init mask (thresh. = {thresholds[li]}, {otsu_iterations[li]} it.s, bg std={bg_stddevs[li]:.3f})',fontsize=14)
                 ax[1][0].imshow(erode1_mask[:,:,li])
                 ax[1][0].set_title('mask after initial erode',fontsize=14)
@@ -395,7 +394,7 @@ def getImageMaskWorker(im_array,i,make_plots,workingdir_name,return_dict) :
                 ax[1][1].set_title('mask after 1st and 2nd dilations',fontsize=14)
                 ax[2][0].imshow(erode3_mask[:,:,li])
                 ax[2][0].set_title('mask after 2nd and 3rd erosions',fontsize=14)
-                m = dilate3_mask[:,:,li]
+                m = morphed_mask[:,:,li]
                 ax[2][1].imshow(m)
                 ax[2][1].set_title('final mask after 3rd dilation',fontsize=14)
                 overlay_clipped = np.array([im,im*m,im*m]).transpose(1,2,0)
