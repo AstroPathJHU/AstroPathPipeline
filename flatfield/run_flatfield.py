@@ -18,6 +18,9 @@ def checkArgs(a) :
     #create the working directory if it doesn't already exist
     if not os.path.isdir(a.workingdir_name) :
         os.mkdir(a.workingdir_name)
+    #make sure that the user didn't ask to save the masking plots while skipping the masking
+    if a.skip_masking and a.save_masking_plots :
+        raise ValueError('ERROR: cannot save masking plots if masking will be skipped')
 
 #helper function to get the list of sample names to run on
 def getSampleNamesToRun(a) :
@@ -113,6 +116,8 @@ def main() :
         help='Number of threads to run at once in speeding up file I/O')
     parser.add_argument('--skip_masking', action='store_true',
         help='Add this flag to skip masking out the background regions of the images as they get added')
+    parser.add_argument('--save_masking_plots', action='store_true',
+        help='Add this flag to save the step-by-step plots of the masks produced as they are calculated')
     parser.add_argument('--rawfile_ext',          default='.Data.dat',
         help='Extension of raw files to load (default is ".Data.dat")')
     parser.add_argument('--workingdir_name',      default='flatfield_test',
@@ -133,14 +138,14 @@ def main() :
     #Start up a new mean image
     mean_image = MeanImage(args.flatfield_image_name,
                             dims[0],dims[1],dims[2] if args.layers==[-1] else len(args.layers),IMG_DTYPE_IN,
-                            args.n_threads,args.skip_masking)
+                            args.n_threads,args.workingdir_name,args.skip_masking)
     #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
     flatfield_logger.info('Stacking raw images....')
     for fp_chunk in filepath_chunks :
         if len(fp_chunk)<1 :
             continue
         new_img_arrays = readImagesMT(fp_chunk,args.layers)
-        mean_image.addGroupOfImages(new_img_arrays)
+        mean_image.addGroupOfImages(new_img_arrays,args.save_masking_plots)
     #take the mean of the stacked images, smooth it and make the flatfield image by dividing each layer by its mean pixel value
     flatfield_logger.info('Getting/smoothing mean image and making flatfield....')
     mean_image.makeFlatFieldImage()
@@ -150,12 +155,7 @@ def main() :
         mean_image.saveImages(args.flatfield_image_name)
     #make some visualizations of the images
     flatfield_logger.info('Saving plots....')
-    with cd(args.workingdir_name) :
-        #make the plot directory if its not already created
-        if not os.path.isdir(PLOT_DIRECTORY_NAME) :
-            os.mkdir(PLOT_DIRECTORY_NAME)
-        with cd(PLOT_DIRECTORY_NAME) :
-            mean_image.savePlots()
+    mean_image.savePlots()
     #write out a text file of all the filenames that were added
     flatfield_logger.info('Writing filepath text file....')
     with cd(args.workingdir_name) :

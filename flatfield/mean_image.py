@@ -3,7 +3,7 @@ from .config import *
 from ..utilities.img_file_io import writeImageToFile
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import os, cv2, statistics
+import os, cv2, statistics, copy
 
 class FlatFieldError(Exception) :
     """
@@ -15,40 +15,44 @@ class MeanImage :
     """
     Class to hold an image that is the mean of a bunch of stacked raw images 
     """
-    def __init__(self,name,y,x,nlayers,dtype,max_nprocs,skip_masking=False,smoothsigma=100) :
+    def __init__(self,name,y,x,nlayers,dtype,max_nprocs,workingdir_name,skip_masking=False,smoothsigma=100) :
         """
-        name           = stem to use for naming files that get created
-        y              = y dimension of images (pixels)
-        x              = x dimension of images (pixels)
-        nlayers        = number of layers in images
-        dtype          = datatype of image arrays that will be stacked
-        max_nprocs     = max number of parallel processes to run when smoothing images
-        smoothsigma    = Gaussian sigma for final smoothing of stacked flatfield image
+        name            = stem to use for naming files that get created
+        y               = y dimension of images (pixels)
+        x               = x dimension of images (pixels)
+        nlayers         = number of layers in images
+        dtype           = datatype of image arrays that will be stacked
+        max_nprocs      = max number of parallel processes to run when smoothing images
+        workingdir_name = name of the directory to save everything in
+        skip_masking    = if True, image layers won't be masked before being added to the stack
+        smoothsigma     = Gaussian sigma for final smoothing of stacked flatfield image
         """
         self.namestem = name
         self.xpix = x
         self.ypix = y
         self.nlayers = nlayers
         self.max_nprocs = max_nprocs
+        self.workingdir_name = workingdir_name
         self.skip_masking = skip_masking
         self.smoothsigma = smoothsigma
-        self.image_stack = np.zeros((y,x,nlayers),dtype=dtype)
+        self.image_stack = np.zeros((y,x,nlayers),dtype=np.uint32) #WARNING: may overflow if more than 65,535 masks are stacked 
         self.mask_stack  = np.zeros((y,x,nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 masks are stacked 
         self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=IMG_DTYPE_OUT)
         self.n_images_stacked = 0
         self.threshold_lists_by_layer = []
+        self.otsu_iteration_counts_by_layer = []
+        self.bg_stddev_lists_by_layer = []
         for i in range(self.nlayers) :
             self.threshold_lists_by_layer.append([])
-        self.n_otsu1_masks_per_layer  = self.nlayers*[0]
-        self.n_otsu2_masks_per_layer  = self.nlayers*[0]
-        self.n_otsu3_masks_per_layer  = self.nlayers*[0]
+            self.otsu_iteration_counts_by_layer.append({})
+            self.bg_stddev_lists_by_layer.append([])
         self.mean_image=None
         self.smoothed_mean_image=None
         self.flatfield_image=None
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def addGroupOfImages(self,im_array_list) :
+    def addGroupOfImages(self,im_array_list,make_plots=False) :
         """
         A function to add a list of raw image arrays to the image stack
         If masking is requested this function is parallelized and run on the GPU
@@ -64,28 +68,28 @@ class MeanImage :
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
-        for i,im_array in enumerate(im_array_list,start=1) :
+        for i,im_array in enumerate(im_array_list,start=self.n_images_stacked+1) :
             flatfield_logger.info(f'  masking and adding image {self.n_images_stacked+i} to the stack....')
-            p = mp.Process(target=getImageMaskWorker, args=(im_array,i,return_dict))
+            p = mp.Process(target=getImageMaskWorker, args=(im_array,i,make_plots,self.workingdir_name,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
             proc.join()
-        for i,im_array in enumerate(im_array_list,start=1) :
+        for i,im_array in enumerate(im_array_list,start=self.n_images_stacked+1) :
             thismask = return_dict[i]['mask']
             self.image_stack+=(im_array*thismask)
             self.mask_stack+=thismask
             self.n_images_stacked+=1
             initial_thresholds = return_dict[i]['thresholds']
-            otsu_choices = return_dict[i]['otsu_iterations']
+            otsu_iterations = return_dict[i]['otsu_iterations']
+            print(otsu_iterations)
+            bg_stddevs = return_dict[i]['bg_stddevs']
             for li in range(self.nlayers) :
                 (self.threshold_lists_by_layer[li]).append((initial_thresholds[li]))
-                if otsu_choices[li]==1 :
-                    self.n_otsu1_masks_per_layer[li]+=1
-                elif otsu_choices[li]==2 :
-                    self.n_otsu2_masks_per_layer[li]+=1
-                elif otsu_choices[li]==3 :
-                    self.n_otsu3_masks_per_layer[li]+=1
+                if otsu_iterations[li] not in self.otsu_iteration_counts_by_layer[li].keys() :
+                    self.otsu_iteration_counts_by_layer[li][otsu_iterations[li]] = 0
+                self.otsu_iteration_counts_by_layer[li][otsu_iterations[li]]+=1
+                (self.bg_stddev_lists_by_layer[li]).append(bg_stddevs[li])
 
     def makeFlatFieldImage(self) :
         """
@@ -123,15 +127,22 @@ class MeanImage :
         """
         Make and save several visualizations of the image layers and details of the masking and flatfielding
         """
-        #.pngs of the mean image, flatfield, and mask stack layers
-        self.__saveImageLayerPlots()
-        #plot of the flatfield images' minimum and and maximum (and 5/95%ile) pixel intensities
-        self.__saveFlatFieldImagePixelIntensityPlot()
-        if not self.skip_masking :
-            #save the plot of the initial masking thresholds by layer
-            self.__saveMaskThresholdsPlot()
-            #save the plot of the chosen number of Otsu iterations per layer
-            self.__saveOtsuIterationPlot()
+        with cd(self.workingdir_name) :
+            #make the plot directory if its not already created
+            if not os.path.isdir(POSTRUN_PLOT_DIRECTORY_NAME) :
+                os.mkdir(POSTRUN_PLOT_DIRECTORY_NAME)
+            with cd(POSTRUN_PLOT_DIRECTORY_NAME) :
+                #.pngs of the mean image, flatfield, and mask stack layers
+                self.__saveImageLayerPlots()
+                #plot of the flatfield images' minimum and and maximum (and 5/95%ile) pixel intensities
+                self.__saveFlatFieldImagePixelIntensityPlot()
+                if not self.skip_masking :
+                    #save the plot of the initial masking thresholds by layer
+                    self.__saveMaskThresholdsPlot()
+                    #save the plot of the chosen number of Otsu iterations per layer
+                    self.__saveOtsuIterationPlot()
+                    #save the plot of the mean-normalized standard deviation of the background pixels per layer
+                    self.__saveBackgroundPixelStdDevPlot()
         
 
     #################### PRIVATE HELPER FUNCTIONS ####################
@@ -143,8 +154,9 @@ class MeanImage :
             return self.image_stack/self.n_images_stacked
         #otherwise though we have to be a bit careful and take the mean value pixel-wise, 
         #being careful to fix any pixels that never got added to so there's no division by zero
-        self.mask_stack[self.mask_stack==0] = np.min(self.mask_stack[self.mask_stack!=0])
-        return self.image_stack/self.mask_stack
+        zero_fixed_mask_stack = copy.deepcopy(self.mask_stack)
+        zero_fixed_mask_stack[zero_fixed_mask_stack==0] = np.min(zero_fixed_mask_stack[zero_fixed_mask_stack!=0])
+        return self.image_stack/zero_fixed_mask_stack
 
     #################### VISUALIZATION HELPER FUNCTIONS ####################
 
@@ -236,7 +248,7 @@ class MeanImage :
         xvals=list(range(1,self.nlayers+1))
         mean_thresholds  = [statistics.mean(layer_thresholds) for layer_thresholds in self.threshold_lists_by_layer]
         threshold_stdevs = [statistics.pstdev(layer_thresholds) for layer_thresholds in self.threshold_lists_by_layer]
-        plt.errorbar(xvals,mean_thresholds,yerr=threshold_stdevs,marker='o')
+        plt.errorbar(xvals,mean_thresholds,yerr=threshold_stdevs,marker='o',linewidth=2)
         plt.title('optimal initial thresholds by layer')
         plt.xlabel('image layer')
         plt.ylabel('threshold value (0-255)')
@@ -246,9 +258,20 @@ class MeanImage :
     #helper function to plot how many images in each layer chose the first, second, and third otsu iterations as the optimal initial thresholds
     def __saveOtsuIterationPlot(self) :
         xvals=list(range(1,self.nlayers+1))
-        plt.plot(xvals,self.n_otsu1_masks_per_layer,marker='o',color='r',linewidth=2,label='# of first iterations')
-        plt.plot(xvals,self.n_otsu2_masks_per_layer,marker='o',color='g',linewidth=2,label='# of second iterations')
-        plt.plot(xvals,self.n_otsu3_masks_per_layer,marker='o',color='b',linewidth=2,label='# of third iterations')
+        yval_label_dicts = {1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth'}
+        yvals_dict = {}
+        print(self.otsu_iteration_counts_by_layer)
+        for li1 in range(self.nlayers) :
+            for noi,nimages in self.otsu_iteration_counts_by_layer[li1].items() :
+                if noi not in yvals_dict.keys() :
+                    yvals_dict[noi]=[]
+                    for li2 in range(self.nlayers) :
+                        yvals_dict[noi].append(0)
+                yvals_dict[noi][li1]=nimages
+        for noi,yvals in sorted(yvals_dict.items()) :
+            print(noi)
+            print(yvals)
+            plt.plot(xvals,yvals,marker='o',linewidth=2,label=f'# of {yval_label_dicts[noi]} iterations')
         plt.title('Optimal Otsu iteration choices by image layer')
         plt.xlabel('image layer')
         plt.ylabel('# of images from the sample')
@@ -256,95 +279,128 @@ class MeanImage :
         plt.savefig('otsu_threshold_choices_by_layer.png')
         plt.close()
 
+    #helper function to save a plot of the mean-normalized final background pixel standard deviations in each layer
+    def __saveBackgroundPixelStdDevPlot(self) :
+        xvals=list(range(1,self.nlayers+1))
+        mean_bg_stddevs  = [statistics.mean(layer_bg_stddevs) for layer_bg_stddevs in self.bg_stddev_lists_by_layer]
+        bg_stddev_stdevs = [statistics.pstdev(layer_bg_stddevs) for layer_bg_stddevs in self.bg_stddev_lists_by_layer]
+        plt.errorbar(xvals,mean_bg_stddevs,yerr=bg_stddev_stdevs,marker='o',linewidth=2)
+        plt.title('final background pixel flux mean-normalized standard deviations by layer')
+        plt.xlabel('image layer')
+        plt.ylabel('mean-normalized background pixel standard deviation')
+        plt.savefig('background_pixel_stddevs_by_layer.png')
+        plt.close()
+
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
 #helper function to create a layered binary image mask for a given image array
 #this can be run in parallel
-def getImageMaskWorker(im_array,i,return_dict) :
+def getImageMaskWorker(im_array,i,make_plots,workingdir_name,return_dict) :
     nlayers = im_array.shape[-1]
-    #create three multilayer masks, one for each thresholding point that will be calculated
-    init_image_mask_1 = np.empty(im_array.shape,np.uint8)
-    init_image_mask_2 = np.empty_like(init_image_mask_1)
-    init_image_mask_3 = np.empty_like(init_image_mask_1)
-    #create lists to hold the threshold values for each layer
-    thresholds_1 = []; thresholds_2 = []; thresholds_3 = []
-    #create the initial masks for all the layers
+    #create a new mask
+    init_image_mask = np.empty(im_array.shape,np.uint8)
+    #create lists to hold the threshold values, numbers of Otsu iterations, and final background pixel standard deviations for each layer
+    thresholds = []; otsu_iterations = []; bg_stddevs = []
+    #gently smooth the layer (on the GPU) to remove some noise
+    smoothed_image = cv2.GaussianBlur(im_array,(0,0),GENTLE_GAUSSIAN_SMOOTHING_SIGMA,borderType=cv2.BORDER_REPLICATE)
+    #determine the initial masks for all the layers by repeated Otsu thresholding
     for li in range(nlayers) :
-        #gently smooth the layer (on the GPU) to remove some noise
-        layer_in_umat = cv2.UMat(im_array[:,:,li])
-        layer_out_umat = cv2.UMat(np.empty_like(im_array[:,:,li]))
-        cv2.GaussianBlur(layer_in_umat,GENTLE_GAUSSIAN_SMOOTHING_KERNEL,0,layer_out_umat,0,cv2.BORDER_REPLICATE)
-        layer_array = (layer_out_umat.get()).astype('uint8')
-        #calculate and apply the three Otsu threshold values (can't be done on the GPU)
-        t1,init_image_mask_1[:,:,li]=cv2.threshold(layer_array,0,1,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        t2,_=cv2.threshold(layer_array[layer_array<t1],0,1,cv2.THRESH_BINARY+cv2.THRESH_OTSU)        
-        _,init_image_mask_2[:,:,li]=cv2.threshold(layer_array,t2,1,cv2.THRESH_BINARY)
-        t3,_=cv2.threshold(layer_array[layer_array<t2],0,1,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        _,init_image_mask_3[:,:,li]=cv2.threshold(layer_array,t3,1,cv2.THRESH_BINARY)
-        #add the threshold values to the lists
-        thresholds_1.append(t1); thresholds_2.append(t2); thresholds_3.append(t3)
-    #morph each layer of the three mask stacks through a series of operations on the GPU
-    init_mask_umats  = [cv2.UMat(init_image_mask_1),cv2.UMat(init_image_mask_2),cv2.UMat(init_image_mask_3)]
-    morphed_masks = []
-    for init_mask in init_mask_umats :
-        erode1_mask=cv2.UMat(np.empty_like(init_image_mask_1))
-        erode2_mask=cv2.UMat(np.empty_like(init_image_mask_1))
-        erode3_mask=cv2.UMat(np.empty_like(init_image_mask_1))
-        dilate1_mask=cv2.UMat(np.empty_like(init_image_mask_1))
-        dilate2_mask=cv2.UMat(np.empty_like(init_image_mask_1))
-        dilate3_mask=cv2.UMat(np.empty_like(init_image_mask_1))
-        #erode away small noisy regions
-        cv2.erode(init_mask,ERODE1_EL,erode1_mask)
-        #dilate to fill in between chunks
-        cv2.dilate(erode1_mask,DILATE1_EL,dilate1_mask)
-        cv2.dilate(dilate1_mask,DILATE2_EL,dilate2_mask)
-        #erode away the regions that began as very small pixel clusters
-        cv2.erode(dilate2_mask,ERODE2_EL,erode2_mask)
-        cv2.erode(erode2_mask,ERODE3_EL,erode3_mask)
-        #dilate back the edges that were lost in the bulk of the mask
-        cv2.dilate(erode3_mask,DILATE3_EL,dilate3_mask,iterations=DILATE3_ITERATIONS)
-        #the final mask is this dilated mask
-        morphed_masks.append(dilate3_mask.get())
-    morphed_mask_1, morphed_mask_2, morphed_mask_3 = morphed_masks
-    #choose which of the three masks is the best option layer-by-layer (storing the thresholds and number of Otsu steps)
-    chosen_mask = np.empty_like(init_image_mask_1); chosen_thresholds = []; chosen_otsu_iterations = []
-    for li in range(nlayers) :
-        im = im_array[:,:,li].astype('uint8')
-        im_brightest = np.max(im)
-        first_pixels_added  = im*(morphed_mask_2[:,:,li]-morphed_mask_1[:,:,li])
-        second_pixels_added = im*(morphed_mask_3[:,:,li]-morphed_mask_2[:,:,li])
-        first_nonzero_added  = first_pixels_added[first_pixels_added!=0].flatten()
-        second_nonzero_added = second_pixels_added[second_pixels_added!=0].flatten()
-        first_pa_ninetyfifth  = np.sort(first_nonzero_added)[int(0.95*len(first_nonzero_added))] if len(first_nonzero_added)!=0 else im_brightest
-        second_pa_ninetyfifth = np.sort(second_nonzero_added)[int(0.95*len(second_nonzero_added))] if len(second_nonzero_added)!=0 else im_brightest
-        choice=1        
-        if first_pa_ninetyfifth/im_brightest>CHOICE_THRESHOLD_1 :
-            choice=2
-            if second_pa_ninetyfifth/im_brightest>CHOICE_THRESHOLD_2 :
-                choice=3
-        chosen_otsu_iterations.append(choice)
-        if choice==1 :
-            chosen_mask[:,:,li] = morphed_mask_1[:,:,li]; chosen_thresholds.append(thresholds_1[li])
-        elif choice==2 :
-            chosen_mask[:,:,li] = morphed_mask_2[:,:,li]; chosen_thresholds.append(thresholds_2[li])
-        elif choice==3 :
-            chosen_mask[:,:,li] = morphed_mask_3[:,:,li]; chosen_thresholds.append(thresholds_3[li])
+        sm_layer_array = smoothed_image[:,:,li]
+        #rescale the image layer to 0-255 relative grayscale
+        rs = (1.*np.iinfo(init_image_mask.dtype).max/np.max(sm_layer_array))
+        im_layer_rescaled = (rs*sm_layer_array).astype('uint8')
+        #iterate calculating and applying the Otsu threshold values (can't be done on the GPU)
+        threshold=1000; iterations=0; bg_std = 100.; test_bg_std = 100.
+        while test_bg_std>MAX_BG_PIXEL_MEAN_NORM_STD_DEV :
+            test_threshold,_ = cv2.threshold(im_layer_rescaled[im_layer_rescaled<threshold],0,1,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+            test_threshold_rs = test_threshold/rs
+            bg_pixels = (sm_layer_array[sm_layer_array<test_threshold_rs]).flatten()
+            test_bg_std = np.std(bg_pixels)/np.mean(bg_pixels) if len(bg_pixels)>0 else 0
+            if iterations==0 or test_bg_std>0 :
+                threshold = test_threshold
+                bg_std = test_bg_std
+                iterations+=1
+        #save the mask, its threshold, how many iterations it took, and the standard deviation of the raw image background pixels
+        _,otsu_mask = cv2.threshold(im_layer_rescaled,threshold,1,cv2.THRESH_BINARY)
+        init_image_mask[:,:,li] = otsu_mask
+        thresholds.append(threshold/rs)
+        otsu_iterations.append(iterations)
+        bg_stddevs.append(bg_std)
+    #morph each layer of the mask through a series of operations on the GPU
+    init_mask_umat  = cv2.UMat(init_image_mask)
+    erode1_mask=cv2.UMat(np.empty_like(init_image_mask))
+    erode2_mask=cv2.UMat(np.empty_like(init_image_mask))
+    erode3_mask=cv2.UMat(np.empty_like(init_image_mask))
+    dilate1_mask=cv2.UMat(np.empty_like(init_image_mask))
+    dilate2_mask=cv2.UMat(np.empty_like(init_image_mask))
+    dilate3_mask=cv2.UMat(np.empty_like(init_image_mask))
+    #erode away small noisy regions
+    cv2.erode(init_mask_umat,ERODE1_EL,erode1_mask)
+    #dilate to fill in between chunks
+    cv2.dilate(erode1_mask,DILATE1_EL,dilate1_mask)
+    cv2.dilate(dilate1_mask,DILATE2_EL,dilate2_mask)
+    #erode away the regions that began as very small pixel clusters
+    cv2.erode(dilate2_mask,ERODE2_EL,erode2_mask)
+    cv2.erode(erode2_mask,ERODE3_EL,erode3_mask)
+    #dilate back the edges that were lost in the bulk of the mask
+    cv2.dilate(erode3_mask,DILATE3_EL,dilate3_mask,iterations=DILATE3_ITERATIONS)
+    #the final mask is this dilated mask
+    morphed_mask = dilate3_mask.get()
     ##finally, refine the masks by stacking them all up and adding/removing the pixels about which we're very confident
-    #mask_stack = np.sum(chosen_mask,axis=-1)
+    #mask_stack = np.sum(morphed_mask,axis=-1)
     #mask_stack_add  = np.where(mask_stack>=(ADD_IF_SHARED_IN_AT_LEAST*nlayers),1,0)
     #mask_stack_drop = np.where(mask_stack<=((1.-DROP_IF_ABSENT_IN_AT_LEAST)*nlayers),1,0)
     #refined_mask = np.empty_like(init_image_mask_1)
     #for li in range(nlayers) :
-    #    refined_mask[:,:,li] = np.clip(chosen_mask[:,:,li]+mask_stack_add-mask_stack_drop,0,1)
+    #    refined_mask[:,:,li] = np.clip(morphed_mask[:,:,li]+mask_stack_add-mask_stack_drop,0,1)
     #add the total mask to the dict, along with its initial thresholds and number of optimal Otsu iterations per layer
-    return_dict[i] = {'mask':chosen_mask,'thresholds':chosen_thresholds,'otsu_iterations':chosen_otsu_iterations}
+    return_dict[i] = {'mask':morphed_mask,'thresholds':thresholds,'otsu_iterations':otsu_iterations,'bg_stddevs':bg_stddevs}
+    #make the plots if requested
+    if make_plots :
+        this_image_masking_plot_dirname = f'image_{i}_mask_layers'
+        with cd(workingdir_name) :
+            if not os.path.isdir(MASKING_PLOT_DIR_NAME) :
+                os.mkdir(MASKING_PLOT_DIR_NAME)
+            with cd(MASKING_PLOT_DIR_NAME) :
+                if not os.path.isdir(this_image_masking_plot_dirname) :
+                    os.mkdir(this_image_masking_plot_dirname)
+        masking_plot_dirpath = os.path.join(workingdir_name,MASKING_PLOT_DIR_NAME,this_image_masking_plot_dirname)
+        with cd(masking_plot_dirpath) :
+            erode1_mask = erode1_mask.get()
+            dilate2_mask = dilate2_mask.get()
+            erode3_mask = erode3_mask.get()
+            dilate3_mask = dilate3_mask.get()
+            for li in range(nlayers) :
+                f,ax = plt.subplots(4,2,figsize=MASKING_PLOT_FIG_SIZE)
+                im = im_array[:,:,li]
+                im_grayscale = im/np.max(im)
+                im = (np.clip(im,0,255)).astype('uint8')
+                ax[0][0].imshow(im_grayscale,cmap='gray')
+                ax[0][0].set_title('raw image in grayscale',fontsize=14)
+                ax[0][1].imshow(morphed_mask[:,:,li])
+                ax[0][1].set_title(f'init mask (thresh. = {thresholds[li]}, {otsu_iterations[li]} it.s, bg std={bg_stddevs[li]:.3f})',fontsize=14)
+                ax[1][0].imshow(erode1_mask[:,:,li])
+                ax[1][0].set_title('mask after initial erode',fontsize=14)
+                ax[1][1].imshow(dilate2_mask[:,:,li])
+                ax[1][1].set_title('mask after 1st and 2nd dilations',fontsize=14)
+                ax[2][0].imshow(erode3_mask[:,:,li])
+                ax[2][0].set_title('mask after 2nd and 3rd erosions',fontsize=14)
+                m = dilate3_mask[:,:,li]
+                ax[2][1].imshow(m)
+                ax[2][1].set_title('final mask after 3rd dilation',fontsize=14)
+                overlay_clipped = np.array([im,im*m,im*m]).transpose(1,2,0)
+                overlay_grayscale = np.array([im_grayscale*m,im_grayscale*m,0.15*m]).transpose(1,2,0)
+                ax[3][0].imshow(overlay_clipped)
+                ax[3][0].set_title('mask overlaid with clipped image',fontsize=14)
+                ax[3][1].imshow(overlay_grayscale)
+                ax[3][1].set_title('mask overlaid with grayscale image',fontsize=14)
+                figname = f'image_{i}_layer_{li+1}_masks.png'
+                plt.savefig(figname)
+                plt.close()
 
-#helper function to smooth each layer of an image independently on the GPU
+#helper function to smooth each layer of an image (done on the CPU so they can be done all at once)
 #this can be run in parallel
 def smoothImageLayerByLayerWorker(im_array,smoothsigma,return_list) :
-    smoothed_im_array = np.zeros_like(im_array)
-    nlayers = im_array.shape[-1]
-    for li in range(nlayers) :
-        smoothed_im_array[:,:,li]=cv2.GaussianBlur(im_array[:,:,li],(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
+    smoothed_im_array = cv2.GaussianBlur(im_array,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
     return_list.append(smoothed_im_array)
 
