@@ -82,7 +82,6 @@ class MeanImage :
             self.n_images_stacked+=1
             initial_thresholds = return_dict[i]['thresholds']
             otsu_iterations = return_dict[i]['otsu_iterations']
-            print(otsu_iterations)
             bg_stddevs = return_dict[i]['bg_stddevs']
             for li in range(self.nlayers) :
                 (self.threshold_lists_by_layer[li]).append((initial_thresholds[li]))
@@ -237,7 +236,11 @@ class MeanImage :
                     plt.plot([l_i+0.5,l_i+0.5],[min(ff_min_pixel_intensities)-0.1,max(ff_max_pixel_intensities)+0.1],color='black',linewidth=2,linestyle='dotted')
         plt.title(f'flatfield image layer normalized pixel intensities',fontsize=14)
         plt.xlabel('layer number',fontsize=14)
-        plt.ylim(min(0.,min(ff_min_pixel_intensities)-0.1),max(2.0,max(ff_max_pixel_intensities)+0.1))
+        #fix the range on the y-axis to accommodate the legend
+        plt.ylim(min(0.,min(ff_min_pixel_intensities)-0.2),max(ff_max_pixel_intensities)+0.2)
+        bot,top = plt.gca().get_ylim()
+        newaxisrange=1.35*(top-bot)
+        plt.ylim(bot,bot+newaxisrange)
         plt.ylabel('pixel intensity',fontsize=14)
         plt.legend(loc='best')
         plt.savefig('pixel_intensity_plot.png')
@@ -258,9 +261,9 @@ class MeanImage :
     #helper function to plot how many images in each layer chose the first, second, and third otsu iterations as the optimal initial thresholds
     def __saveOtsuIterationPlot(self) :
         xvals=list(range(1,self.nlayers+1))
-        yval_label_dicts = {1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth'}
+        yval_label_dict = {1:'first',2:'second',3:'third',4:'fourth',5:'fifth',6:'sixth',7:'seventh',8:'eighth',9:'ninth',10:'tenth'}
+        yval_marker_dict = {1:'o',2:'v',3:'^',4:'<',5:'>',6:'s',7:'D',8:'P',9:'*',10:'X'}
         yvals_dict = {}
-        print(self.otsu_iteration_counts_by_layer)
         for li1 in range(self.nlayers) :
             for noi,nimages in self.otsu_iteration_counts_by_layer[li1].items() :
                 if noi not in yvals_dict.keys() :
@@ -269,9 +272,7 @@ class MeanImage :
                         yvals_dict[noi].append(0)
                 yvals_dict[noi][li1]=nimages
         for noi,yvals in sorted(yvals_dict.items()) :
-            print(noi)
-            print(yvals)
-            plt.plot(xvals,yvals,marker='o',linewidth=2,label=f'# of {yval_label_dicts[noi]} iterations')
+            plt.plot(xvals,yvals,marker=yval_marker_dict[noi],linewidth=2,label=f'# of {yval_label_dict[noi]} iterations')
         plt.title('Optimal Otsu iteration choices by image layer')
         plt.xlabel('image layer')
         plt.ylabel('# of images from the sample')
@@ -285,9 +286,9 @@ class MeanImage :
         mean_bg_stddevs  = [statistics.mean(layer_bg_stddevs) for layer_bg_stddevs in self.bg_stddev_lists_by_layer]
         bg_stddev_stdevs = [statistics.pstdev(layer_bg_stddevs) for layer_bg_stddevs in self.bg_stddev_lists_by_layer]
         plt.errorbar(xvals,mean_bg_stddevs,yerr=bg_stddev_stdevs,marker='o',linewidth=2)
-        plt.title('final background pixel flux mean-normalized standard deviations by layer')
+        plt.title('mean-normalized std. devs. of background pixel flux  by layer')
         plt.xlabel('image layer')
-        plt.ylabel('mean-normalized background pixel standard deviation')
+        plt.ylabel('mean-normalized background pixel std. dev.')
         plt.savefig('background_pixel_stddevs_by_layer.png')
         plt.close()
 
