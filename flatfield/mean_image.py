@@ -69,7 +69,7 @@ class MeanImage :
         return_dict = manager.dict()
         procs = []
         for i,im_array in enumerate(im_array_list,start=self.n_images_stacked+1) :
-            flatfield_logger.info(f'  masking and adding image {self.n_images_stacked+i} to the stack....')
+            flatfield_logger.info(f'  masking and adding image {i} to the stack....')
             p = mp.Process(target=getImageMaskWorker, args=(im_array,i,make_plots,self.workingdir_name,return_dict))
             procs.append(p)
             p.start()
@@ -203,6 +203,7 @@ class MeanImage :
         ff_high_pixel_intensities=[]
         plt.figure(figsize=(INTENSITY_FIG_WIDTH,(9./16.)*INTENSITY_FIG_WIDTH))
         xaxis_vals = list(range(1,self.nlayers+1))
+        yaxis_min_val = 100.
         #iterate over the layers
         for layer_i in range(self.nlayers) :
             #find the min, max, and 5/95%ile pixel intensities for this image layer
@@ -216,6 +217,8 @@ class MeanImage :
                 plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-stddev,1.+stddev,1.+stddev,1.-stddev],'mediumseagreen',alpha=0.5,label='intensity std. dev.')
             else :
                 plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-stddev,1.+stddev,1.+stddev,1.-stddev],'mediumseagreen',alpha=0.5)
+            if 1.-stddev<yaxis_min_val :
+                yaxis_min_val=1.-stddev
         #plot the inensity plots together, with the broadband filter breaks
         plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='mediumseagreen',linestyle='dashed',label='mean intensity')
         for i in range(len(LAST_FILTER_LAYERS)+1) :
@@ -234,10 +237,12 @@ class MeanImage :
                 plt.plot(xaxis_vals[f_i:l_i],ff_high_pixel_intensities[f_i:l_i],color='lightcoral',marker='o',linewidth=2,linestyle='dotted')
                 if i!=len(LAST_FILTER_LAYERS) :
                     plt.plot([l_i+0.5,l_i+0.5],[min(ff_min_pixel_intensities)-0.1,max(ff_max_pixel_intensities)+0.1],color='black',linewidth=2,linestyle='dotted')
+        if min(ff_min_pixel_intensities)<yaxis_min_val :
+            yaxis_min_val=min(ff_min_pixel_intensities)
         plt.title(f'flatfield image layer normalized pixel intensities',fontsize=14)
         plt.xlabel('layer number',fontsize=14)
         #fix the range on the y-axis to accommodate the legend
-        plt.ylim(min(0.,min(ff_min_pixel_intensities)-0.2),max(ff_max_pixel_intensities)+0.2)
+        plt.ylim(yaxis_min_val-0.2,max(ff_max_pixel_intensities)+0.2)
         bot,top = plt.gca().get_ylim()
         newaxisrange=1.35*(top-bot)
         plt.ylim(bot,bot+newaxisrange)
@@ -273,8 +278,12 @@ class MeanImage :
                 yvals_dict[noi][li1]=nimages
         for noi,yvals in sorted(yvals_dict.items()) :
             plt.plot(xvals,yvals,marker=yval_marker_dict[noi],linewidth=2,label=f'# of {yval_label_dict[noi]} iterations')
+        plt.plot([xvals[0],xvals[-1]],[self.n_images_stacked,self.n_images_stacked],linewidth=2,color='k',linestyle='dotted',label='total images stacked')
         plt.title('Optimal Otsu iteration choices by image layer')
         plt.xlabel('image layer')
+        bot,top = plt.gca().get_ylim()
+        newaxisrange=1.2*(top-bot)
+        plt.ylim(bot,bot+newaxisrange)
         plt.ylabel('# of images from the sample')
         plt.legend(loc='best')
         plt.savefig('otsu_threshold_choices_by_layer.png')
