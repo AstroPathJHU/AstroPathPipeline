@@ -187,8 +187,16 @@ class TestAlignment(unittest.TestCase):
 
     pscale1 = a1.pscale
     pscale2 = a2.pscale
+    rtol = 1e-6
+    atol = 0
 
     for o1, o2 in zip(a1.overlaps, a2.overlaps):
       x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale1))
       x2, y2 = units.nominal_values(units.pixels(o2.stitchresult, pscale=pscale2))
-      print(2*(x1-x2) / (x1+x2), 2*(y1-y2) / (y1+y2))
+      assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
+      assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
+
+  def testPscaleFastUnits(self):
+    with units.setup_context("fast"):
+      self.testPscale()
+
