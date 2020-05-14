@@ -174,7 +174,7 @@ class Overlap(DataClassWithDistances):
 
   @property
   def shifted(self):
-    return shiftimg(self.cutimages, units.pixels(self.result.dxvec))
+    return shiftimg(self.cutimages, *units.nominal_values(units.pixels(self.result.dxvec)))
 
   def __shiftclip(self, dxvec):
     """

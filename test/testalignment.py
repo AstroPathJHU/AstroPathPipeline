@@ -1,4 +1,4 @@
-import contextlib, dataclasses, itertools, numbers, numpy as np, os, pathlib, tempfile, unittest
+import contextlib, dataclasses, itertools, numbers, numpy as np, os, pathlib, shutil, tempfile, unittest
 from ..alignment.alignmentset import AlignmentSet, ImageStats
 from ..alignment.overlap import AlignmentResult
 from ..alignment.stitch import AffineEntry, StitchCoordinate, StitchOverlapCovariance
@@ -32,11 +32,11 @@ def temporarilyremove(filepath):
   with tempfile.TemporaryDirectory() as d:
     d = pathlib.Path(d)
     tmppath = d/filepath.name
-    filepath.rename(tmppath)
+    shutil.move(filepath, tmppath)
     try:
       yield
     finally:
-      tmppath.rename(filepath)
+      shutil.move(tmppath, filepath)
 
 class TestAlignment(unittest.TestCase):
   def setUp(self):

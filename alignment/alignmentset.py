@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, logging, methodtools, numpy as np, os, pathlib
+import cv2, logging, methodtools, numpy as np, pathlib
 
 from .flatfield import meanimage
 from .overlap import AlignmentResult, Overlap, OverlapCollection
