@@ -387,7 +387,7 @@ def getImageMaskWorker(im_array,i,make_plots,workingdir_name,return_dict) :
                 ax[0][0].imshow(im_grayscale,cmap='gray')
                 ax[0][0].set_title('raw image in grayscale',fontsize=14)
                 ax[0][1].imshow(init_image_mask[:,:,li])
-                ax[0][1].set_title(f'init mask (thresh. = {thresholds[li]}, {otsu_iterations[li]} it.s, bg std={bg_stddevs[li]:.3f})',fontsize=14)
+                ax[0][1].set_title(f'init mask (thresh. = {thresholds[li]:.1f}, {otsu_iterations[li]} it.s, bg std={bg_stddevs[li]:.3f})',fontsize=14)
                 ax[1][0].imshow(erode1_mask[:,:,li])
                 ax[1][0].set_title('mask after initial erode',fontsize=14)
                 ax[1][1].imshow(dilate2_mask[:,:,li])
