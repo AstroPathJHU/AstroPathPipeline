@@ -74,7 +74,7 @@ class TestAlignment(unittest.TestCase):
     readfilename = thisfolder/"alignmentreference"/"M21_1_align.csv"
     a.readalignments(filename=readfilename)
 
-    agpu.getDAPI()
+    agpu.getDAPI(writeimstat=False)
     agpu.align(write_result=False)
 
     for o, ogpu in zip(a.overlaps, agpu.overlaps):
@@ -163,7 +163,7 @@ class TestAlignment(unittest.TestCase):
 
   def testSymmetry(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", selectrectangles=(10, 11))
-    a.getDAPI()
+    a.getDAPI(writeimstat=False)
     o1, o2 = a.overlaps
     o1.align()
     o2.align()
@@ -175,26 +175,29 @@ class TestAlignment(unittest.TestCase):
     
   def testPscale(self):
     a1 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    a1.getDAPI()
+    a1.getDAPI(writeimstat=False)
     a1.align(debug=True)
     a1.stitch()
 
     with temporarilyremove(thisfolder/"data"/"M21_1"/"inform_data"/"Component_Tiffs"):
       a2 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-      a2.getDAPI()
+      a2.getDAPI(writeimstat=False)
       a2.align(debug=True)
       a2.stitch()
 
     pscale1 = a1.pscale
     pscale2 = a2.pscale
     rtol = 1e-6
-    atol = 0
+    atol = 1e-8
 
     for o1, o2 in zip(a1.overlaps, a2.overlaps):
       x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale1))
       x2, y2 = units.nominal_values(units.pixels(o2.stitchresult, pscale=pscale2))
       assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
       assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
+
+    for T1, T2 in zip(np.ravel(units.nominal_values(a1.T)), np.ravel(units.nominal_values(a2.T))):
+      assertAlmostEqual(T1, T2, rtol=rtol, atol=atol)
 
   def testPscaleFastUnits(self):
     with units.setup_context("fast"):
