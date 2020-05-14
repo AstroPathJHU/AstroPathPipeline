@@ -279,9 +279,13 @@ def sinewaves(*, bki, testing, remake):
   if bki or testing:
     with plt.rc_context(rc=rc):
       def plotstyling(*, fig, ax, deltaxory, vsxory):
-        plt.xlabel(rf"${vsxory}$ (pixels)", labelpad=10)
-        plt.ylabel(rf"$\delta {deltaxory}$ (pixels)", labelpad=0)
-        plt.subplots_adjust(bottom=0.15, left=0.21)
+        ax.set_xlabel(rf"${vsxory}$ (pixels)", labelpad=10)
+        ax.set_ylabel(rf"$\delta {deltaxory}$ (pixels)", labelpad=0)
+        fig.subplots_adjust(bottom=0.15, left=0.21)
+        ymin, ymax = ax.get_ylim()
+        ymin = min(ymin, -ymax, -10)
+        ymax = -ymin
+        ax.set_ylim(ymin, ymax)
 
       class Sample(collections.namedtuple("Sample", "samp name plotsine sinetext guessparameters")):
         def __new__(cls, *, plotsine=lambda **kwargs: True, sinetext=lambda **kwargs: True, guessparameters=lambda **kwargs: None, **kwargs):
