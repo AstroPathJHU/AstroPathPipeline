@@ -259,7 +259,7 @@ class MeanImage :
         plt.errorbar(xvals,mean_thresholds,yerr=threshold_stdevs,marker='o',linewidth=2)
         plt.title('optimal initial thresholds by layer')
         plt.xlabel('image layer')
-        plt.ylabel('threshold value (0-255)')
+        plt.ylabel('threshold value')
         plt.savefig('initial_masking_thresholds_by_layer.png')
         plt.close()
 
