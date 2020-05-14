@@ -232,6 +232,10 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   print(f"  average = {noiseaverage}")
   print(f"  RMS     = {noiseRMS}")
 
+  oldylim = ax.get_ylim()
+  plotstyling(fig=fig, ax=ax)
+  adjustylim = oldylim == ax.get_ylim()
+
   xplot = units.np.linspace(min(x), max(x), 1000)
   if plotsine:
     #plt.plot(xplot, cosfunction(xplot, *initialguess), color='g')
@@ -239,8 +243,9 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     if sinetext:
       xcenter = np.average(ax.get_xlim())
       bottom, top = ax.get_ylim()
-      top += (top-bottom) * .3
-      ax.set_ylim(bottom, top)
+      if adjustylim:
+        top += (top-bottom) * .3
+        ax.set_ylim(bottom, top)
       amplitudetext = units.drawing.siunitxformat(amplitude, power=1)
       wavelengthtext = units.drawing.siunitxformat(wavelength, power=1)
       noiseRMStext = units.drawing.siunitxformat(noiseRMS, power=1, fmt=".2f")
@@ -251,12 +256,11 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     if sinetext:
       xcenter = np.average(ax.get_xlim())
       bottom, top = ax.get_ylim()
-      top += (top-bottom) * .1
-      ax.set_ylim(bottom, top)
+      if adjustylim:
+        top += (top-bottom) * .1
+        ax.set_ylim(bottom, top)
       noiseRMStext = units.drawing.siunitxformat(noiseRMS, power=1, fmt=".2f")
       plt.text(xcenter, top, f"RMS of noise: {noiseRMStext}", horizontalalignment="center", verticalalignment="top")
-
-  plotstyling(fig=fig, ax=ax)
 
   if saveas is None:
     plt.show()
