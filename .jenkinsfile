@@ -6,7 +6,7 @@ pipeline {
   environment {
     TEST_DATA_REPONAME = "alignmentjenkinsdata"
     TEST_DATA_REPO = "git@github.com:astropathjhu/${TEST_DATA_REPONAME}"
-    TEST_DATA_COMMIT = "3204f0035097d32f84d1f2d886231fafaf4ac250"
+    TEST_DATA_COMMIT = "4fe4d50a7bdb9ed34f2b65a8e5ede7b5e41a3edb"
     JENKINS_NO_GPU = "1"
   }
 

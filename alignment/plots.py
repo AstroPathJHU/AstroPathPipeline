@@ -129,13 +129,13 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   deltax = min(alldeltaxs)
   rtol = 1e-7
   for _ in alldeltaxs:
-    units.testing.assert_allclose(_*(1+2*rtol) // deltax, _ / deltax, rtol=rtol)
+    units.np.testing.assert_allclose(_*(1+2*rtol) // deltax, _ / deltax, rtol=rtol)
 
   chunkstarts = [
-    xx for xx in x if not np.any(units.isclose(xx-deltax, x, rtol=rtol))
+    xx for xx in x if not np.any(units.np.isclose(xx-deltax, x, rtol=rtol))
   ]
   chunkends = [
-    xx for xx in x if not np.any(units.isclose(xx+deltax, x, rtol=rtol))
+    xx for xx in x if not np.any(units.np.isclose(xx+deltax, x, rtol=rtol))
   ]
   biggestchunkstart, biggestchunkend = max(
     itertools.zip_longest(chunkstarts, chunkends),
@@ -145,7 +145,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   biggestchunkys = np.array([yy for xx, yy in zip(x, y) if xx in biggestchunkxs])
 
   k = np.fft.fftfreq(len(biggestchunkys), deltax)
-  f = units.fft.fft(biggestchunkys)
+  f = units.np.fft.fft(biggestchunkys)
 
   if drawfourier:
     plt.scatter(units.pixels(k, power=-1), units.pixels(abs(f), power=1))
@@ -172,7 +172,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   initialguess = [
     abs(bestf) / (len(biggestchunkxs) / 2),
     bestk * 2 * np.pi,
-    units.angle(bestf),
+    units.np.angle(bestf),
     np.mean(biggestchunkys)
   ]
   if guessparameters is not None:
@@ -181,7 +181,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
         initialguess[i] = parameter
 
   try:
-    p, cov = units.optimize.curve_fit(
+    p, cov = units.scipy.optimize.curve_fit(
       cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror, absolute_sigma=True,
     )
     amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
@@ -232,7 +232,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   print(f"  average = {noiseaverage}")
   print(f"  RMS     = {noiseRMS}")
 
-  xplot = units.linspace(min(x), max(x), 1000)
+  xplot = units.np.linspace(min(x), max(x), 1000)
   if plotsine:
     #plt.plot(xplot, cosfunction(xplot, *initialguess), color='g')
     plt.plot(units.pixels(xplot), units.pixels(cosfunction(xplot, *units.nominal_values(p))), color='b')

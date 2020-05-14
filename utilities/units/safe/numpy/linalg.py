@@ -1,5 +1,5 @@
 import functools, itertools, numpy as np
-from .core import _power, _pscale, distances, pixels, UnitsError
+from ..core import _power, _pscale, distances, pixels, UnitsError
 
 def inv(matrix):
   invpixels = np.linalg.inv(pixels(matrix, power=None))
