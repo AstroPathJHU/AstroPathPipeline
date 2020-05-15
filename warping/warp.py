@@ -226,7 +226,7 @@ class PolyFieldWarp(Warp) :
         plt.plot(x,y,".",label="Datapoints")
         fit_xs = np.linspace(x[0],x[-1],npoints)
         fit_ys = np.polynomial.polynomial.polyval(fit_xs,np.flip(c))
-        plt.plot(fit_xs,fit_ys,label=f"Fit")
+        plt.plot(fit_xs,fit_ys,label="Fit")
         deg=len(c)-1
         if squared :
             plt.title(f"Fit with degree {deg} squared polynomial")

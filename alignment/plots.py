@@ -229,7 +229,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     def subtractsystematic(misalignment, position1, position2):
       return misalignment - cosfunction((position1+position2)/2, *p)
   else:
-    print(f"  (not significant)")
+    print("  (not significant)")
     plotsine = False
     def subtractsystematic(misalignment, position1, position2):
       return misalignment - mean
@@ -237,7 +237,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   remaining = np.array([subtractsystematic(overlap.dx, *overlap.abspositions) for overlap in overlaps])
   noiseaverage = weightedaverage(remaining)
   noiseRMS = weightedstd(remaining, subtractaverage=False)
-  print(f"Remaining noise:")
+  print("Remaining noise:")
   print(f"  average = {noiseaverage}")
   print(f"  RMS     = {noiseRMS}")
 

@@ -257,8 +257,8 @@ def stitchpulls(*, bki, testing, remake):
   if bki or testing:
     with plt.rc_context(rc=rc):
       def plotstyling(*, fig, ax):
-        plt.xlabel(rf"$\delta(x,y)^\text{{overlap}} / \sigma_{{\delta(x,y)}}^\text{{overlap}}$", labelpad=-2)
-        plt.ylabel(rf"Number of overlaps")
+        plt.xlabel(r"$\delta(x,y)^\text{overlap} / \sigma_{\delta(x,y)}^\text{overlap}$", labelpad=-2)
+        plt.ylabel(r"Number of overlaps")
         plt.margins(y=0.3)
         plt.legend()
 
