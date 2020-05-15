@@ -378,7 +378,7 @@ class Sample:
       ),
       Constant(
         name='nclip',
-        value=self.nclip,
+        value=units.Distance(pixels=self.nclip, pscale=self.pscale),
         unit='pixels',
         description='pixels to clip off the edge after warping',
       ),
@@ -398,7 +398,7 @@ class Sample:
   def writemetadata(self):
     self.writeannotations()
     self.writebatch()
-    #self.writeconstants()
+    self.writeconstants()
     self.writeglobals()
     self.writeoverlaps()
     #self.writeqptiffcsv()
@@ -433,15 +433,44 @@ class QPTiffCsv(DataClassWithDistances):
 
 @dataclasses.dataclass
 class Constant:
-  def intorfloat(string):
+  def __intorfloat(string):
     assert isinstance(string, str)
     try: return int(string)
     except ValueError: return float(string)
 
+  def __writefunction(value, *, unit, **kwargs):
+    if unit == "pixels":
+      return units.pixels(value, **kwargs)
+    elif unit == "microns":
+      return units.microns(value, **kwargs)
+    else:
+      return value
+
   name: str
-  value: float = dataclasses.field(metadata={"readfunction": intorfloat})
+  value: float = dataclasses.field(metadata={"readfunction": __intorfloat, "writefunction": __writefunction, "writefunctionkwargs": lambda self: {"pscale": self.pscale, "unit": self.unit}})
   unit: str
   description: str
+  pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[bool] = False
+
+  def __post_init__(self, readingfromfile=False, pscale=None):
+    if self.unit in ("pixels", "microns"):
+      usedistances = False
+      if units.currentmode == "safe" and self.value:
+        usedistances = isinstance(self.value, units.safe.Distance)
+        if usedistances and readingfromfile: assert False #shouldn't be able to happen
+        if not usedistances and not readingfromfile:
+          raise ValueError("Have to init with readingfromfile=True if you're not providing distances")
+
+      if pscale and usedistances and self.value._pscale != pscale:
+        raise units.UnitsError(f"Provided inconsistent pscales: {pscale} {self.value._pscale}")
+      if pscale is None and self.value:
+        if not usedistances:
+          raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
+        object.__setattr__(self, "pscale", pscale)
+
+      if readingfromfile:
+        object.__setattr__(self, "value", units.Distance(pscale=pscale, **{self.unit: self.value}))
 
 @dataclasses.dataclass(frozen=True)
 class RectangleFile(DataClassWithDistances):
