@@ -15,7 +15,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
     if not o.result.exit
     and o.tag in tags
   ])
-  if not errorbars: vectors = unp.nominal_values(vectors)
+  if not errorbars: vectors = units.nominal_values(vectors)
   if pull:
     if pullbinning is None: pullbinning = np.linspace(-5, 5, 51)
     pullhist(
@@ -40,13 +40,22 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
     if pixelsormicrons is None:
       raise ValueError("Have to provide pixelsormicrons for a scatterplot")
     f = {"pixels": units.pixels, "microns": units.microns}[pixelsormicrons]
-    plt.errorbar(
+    kwargs = dict(
       x=f(units.nominal_values(vectors[:,0])),
-      xerr=f(units.std_devs(vectors[:,0])),
       y=f(units.nominal_values(vectors[:,1])),
-      yerr=f(units.std_devs(vectors[:,1])),
-      fmt='o',
     )
+    if errorbars:
+      plt.errorbar(
+        **kwargs,
+        xerr=f(units.std_devs(vectors[:,0])),
+        yerr=f(units.std_devs(vectors[:,1])),
+        fmt='o',
+      )
+    else:
+      plt.scatter(
+        **kwargs,
+        s=4,
+      )
 
   plotstyling(fig=fig, ax=ax)
   if saveas is None:
