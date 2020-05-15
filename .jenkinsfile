@@ -1,6 +1,6 @@
 pipeline {
   agent {
-    docker { image 'astropathjhu/alignmenttest:v8' }
+    docker { image 'astropathjhu/alignmenttest:v9' }
   }
 
   environment {
