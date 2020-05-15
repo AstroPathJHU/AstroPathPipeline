@@ -1,6 +1,7 @@
 import itertools, pathlib, unittest
 from ..alignment.rectangle import Rectangle
 from ..prepdb.sample import Annotation, Batch, Constant, Overlap, QPTiffCsv, Region, Sample, Vertex
+from ..utilities import units
 from ..utilities.tableio import readtable
 from .testalignment import assertAlmostEqual
 
@@ -29,3 +30,6 @@ class TestPrepDb(unittest.TestCase):
       except:
         raise ValueError("Error in "+filename)
 
+  def testPrepDbFastUnits(self):
+    with units.setup_context("fast"):
+      self.testPrepDb()
