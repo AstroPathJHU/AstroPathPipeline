@@ -404,7 +404,7 @@ class Sample:
     #self.writeqptiffcsv()
     #self.writeqptiffjpg()
     self.writerectangles()
-    #self.writeregions()
+    self.writeregions()
     self.writevertices()
 
 @dataclasses.dataclass
@@ -505,9 +505,9 @@ class Polygon:
       vertices = []
       for i, vertex in enumerate(intvertices, start=1):
         x, y = vertex.split()
-        x = int(x)
-        y = int(y)
-        vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, pscale=pscale, readingfromfile=True))
+        x = units.Distance(pscale=pscale, **{kw: int(x)})
+        y = units.Distance(pscale=pscale, **{kw: int(y)})
+        vertices.append(Vertex(x=x, y=y, vid=i, regionid=0))
 
     self.__vertices = vertices
     pscale = {v.pscale for v in vertices}
