@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
+import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
 from ...alignment.plots import alignmentshiftprofile, closedlooppulls, plotpairwisealignments
 from ...alignment.alignmentset import AlignmentSet
 from ...utilities import units
 
-here = os.path.dirname(__file__)
-data = os.path.join(here, "..", "..", "test", "data")
+here = pathlib.Path(__file__).parent
+data = here/".."/".."/"test"/"data"
 
 rc = {
   "text.usetex": True,
@@ -26,7 +26,7 @@ def __alignmentset(root1, root2, samp, dapi, **kwargs):
     return alignmentset(samp="M21_1", **kwargs)
 
   if root1 is root2 is None:
-    if samp == "M21_1": root1, root2 = data, os.path.join(data, "flatw")
+    if samp == "M21_1": root1, root2 = data, data/"flatw"
     elif samp == "M1_1" or samp == "M2_3": root1, root2 = r"\\Bki02\g\heshy", r"\\Bki02\g\heshy\flatw"
     elif samp == "TS19_0181_A_1_3_BMS_MITRE": root1, root2 = r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", r"\\Bki02\g\flatw"
     elif samp == "L1_4": root1, root2 = r"\\bki04\Clinical_Specimen_2", r"\\bki02\g\heshy\Clinical_Specimen_2"
@@ -47,19 +47,19 @@ def overlap():
   A = alignmentset(dapi=True)
   o = A.overlaps[140]
   with plt.rc_context(rc=rc):
-    o.showimages(shifted=False, normalize=1000, ticks=True, saveas=os.path.join(here, "overlap-notshifted.pdf"))
-    o.showimages(shifted=True, normalize=1000, ticks=True, saveas=os.path.join(here, "overlap-shifted.pdf"))
+    o.showimages(shifted=False, normalize=1000, ticks=True, saveas=here/"overlap-notshifted.pdf")
+    o.showimages(shifted=True, normalize=1000, ticks=True, saveas=here/"overlap-shifted.pdf")
 
 def xcorrelation():
   A = alignmentset(dapi=True)
   o = A.overlaps[140]
   with plt.rc_context(rc=rc):
-    o.align(savebigimage=os.path.join(here, "overlap-xcorrelation.pdf"), alreadyalignedstrategy="overwrite", debug=True)
+    o.align(savebigimage=here/"overlap-xcorrelation.pdf", alreadyalignedstrategy="overwrite", debug=True)
 
   o = A.overlaps[203]
   with plt.rc_context(rc=rc):
-    o.showimages(shifted=False, normalize=100, ticks=True, saveas=os.path.join(here, "overlap-bad.pdf"))
-    o.align(savebigimage=os.path.join(here, "overlap-xcorrelation-bad.pdf"), alreadyalignedstrategy="overwrite", debug=True)
+    o.showimages(shifted=False, normalize=100, ticks=True, saveas=here/"overlap-bad.pdf")
+    o.align(savebigimage=here/"overlap-xcorrelation-bad.pdf", alreadyalignedstrategy="overwrite", debug=True)
 
 def maximize1D():
   np.random.seed(123456)
@@ -109,7 +109,7 @@ def maximize1D():
 
     ax.set_xlabel(r"$\delta x$")
     ax.set_ylabel(r"$C(\delta x)$")
-    plt.savefig(os.path.join(here, "1Dmaximization.pdf"))
+    plt.savefig(here/"1Dmaximization.pdf")
 
     maxpoint.remove()
     maxline.remove()
@@ -126,7 +126,7 @@ def maximize1D():
       plt.text(xbest + sign * deltax/2, Cminus - yrange/20 - yrange/40, r"$\sigma_{\delta x_\text{max}}$", color=deltaxbrackets.get_color(), horizontalalignment="center", verticalalignment="top")
       for sign in (-1, 1)
     ]
-    plt.savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
+    plt.savefig(here/"1Dmaximizationwitherror.pdf")
 
     plt.close(fig)
 
@@ -136,11 +136,10 @@ def islands():
     plt.imshow(A.image())
     plt.xticks([])
     plt.yticks([])
-    plt.savefig(os.path.join(here, "islands.pdf"))
+    plt.savefig(here/"islands.pdf")
     plt.close()
 
-def alignmentresults():
-  A = alignmentset()
+def alignmentresults(*, bki, remake):
   def plotstyling(fig, ax):
     plt.xlabel("$\delta x$ (pixels)")
     plt.ylabel("$\delta y$ (pixels)", labelpad=-10)
@@ -155,9 +154,15 @@ def alignmentresults():
     "figurekwargs": {"figsize": (3, 3)},
   }
   with plt.rc_context(rc=rc):
-    for tag in 1, 2, 3, 4:
-      plotpairwisealignments(A, tags=[tag], saveas=os.path.join(here, f"alignment-result-{tag}.pdf"), **kwargs)
-      plotpairwisealignments(A, tags=[tag], stitched=True, saveas=os.path.join(here, f"stitch-result-{tag}.pdf"), **kwargs)
+    for samp, name in ("M21_1", "vectra"), ("TS19_0181_A_1_3_BMS_MITRE", "AKY"):
+      if name == "AKY" and not bki: continue
+      for tag in 1, 2, 3, 4:
+        filename1, filename2 = here/f"alignment-result-{name}-{tag}.pdf", here/f"stitch-result-{name}-{tag}.pdf"
+        if name == "AKY" and filename1.exists() and filename2.exists() and not remake: continue
+        A = alignmentset(samp=samp)
+        errorbars = name != "AKY"
+        plotpairwisealignments(A, tags=[tag], saveas=filename1, errorbars=errorbars, **kwargs)
+        plotpairwisealignments(A, tags=[tag], stitched=True, saveas=filename2, errorbars=errorbars, **kwargs)
 
 def scanning():
   with plt.rc_context(rc=rc):
@@ -175,7 +180,7 @@ def scanning():
             plt.arrow(x+50, y+50, -400, 100, width=3, length_includes_head=True)
         else:
           plt.arrow(x+50, y+50, 100, 0, width=3, length_includes_head=True)
-    plt.savefig(os.path.join(here, "scanning.pdf"))
+    plt.savefig(here/"scanning.pdf")
     plt.close()
 
 def squarepulls(*, bki, testing, remake):
@@ -203,7 +208,7 @@ def squarepulls(*, bki, testing, remake):
       plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True, facecolor="orange"),
     ]
 
-    plt.savefig(os.path.join(here, "squarepulldiagram.pdf"))
+    plt.savefig(here/"squarepulldiagram.pdf")
 
     for a in arrows: a.remove()
 
@@ -218,7 +223,7 @@ def squarepulls(*, bki, testing, remake):
       plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True, facecolor="orange"),
     ]
 
-    plt.savefig(os.path.join(here, "diamondpulldiagram.pdf"))
+    plt.savefig(here/"diamondpulldiagram.pdf")
 
     plt.close()
 
@@ -239,14 +244,14 @@ def squarepulls(*, bki, testing, remake):
 
       for samp in samples:
         plotid = samp[1] if samp else "_test"
-        saveas = os.path.join(here, "squarepull"+plotid+".pdf")
+        saveas = here/("squarepull"+plotid+".pdf")
         if remake or not os.path.exists(saveas):
           A = alignmentset(samp=samp)
           closedlooppulls(A, tagsequence=[4, 2, 6, 8], saveas=saveas, plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
-        saveas = os.path.join(here, "diamondpull"+plotid+".pdf")
+        saveas = here/("diamondpull"+plotid+".pdf")
         if remake or not os.path.exists(saveas):
           A = alignmentset(samp=samp)
-          closedlooppulls(A, tagsequence=[1, 3, 9, 7], saveas=os.path.join(here, "diamondpull"+plotid+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
+          closedlooppulls(A, tagsequence=[1, 3, 9, 7], saveas=here/("diamondpull"+plotid+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
 
 def stitchpulls(*, bki, testing, remake):
   if bki or testing:
@@ -356,7 +361,7 @@ if __name__ == "__main__":
   if args.which == "islands":
     islands()
   if args.which == "alignmentresults":
-    alignmentresults()
+    alignmentresults(bki=args.bki, remake=args.remake)
   if args.which == "scanning":
     scanning()
   if args.which == "squarepulls":
