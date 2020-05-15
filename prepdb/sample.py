@@ -249,14 +249,22 @@ class Sample:
   def getqptiffcsv(self):
     with open(self.qptifffilename, "rb") as f:
       tags = exifreader.process_file(f)
+
+    layerids = [k.replace(" ImageWidth", "") for k in tags if "ImageWidth" in k]
+    for qplayerid in layerids[6:]:
+      if tags[qplayerid+" ImageWidth"].values[0] < 4000:
+        break
+    else:
+      raise ValueError("Unexpected qptiff layout: expected layer with width < 4000 sometime after the 7th.  Widths:\n" + "\n".join(f"  {qplayerid} {tags[qplayerid+' ImageWidth'].values[0]:d}" for qplayerid in layerids))
+
     resolutionunit = str(tags["Image ResolutionUnit"])
     xposition = tags["Image XPosition"].values[0]
     xposition = float(xposition)
     yposition = tags["Image YPosition"].values[0]
     yposition = float(yposition)
-    xresolution = tags["Image XResolution"].values[0]
+    xresolution = tags[qplayerid + " XResolution"].values[0]
     xresolution = float(xresolution)
-    yresolution = tags["Image YResolution"].values[0]
+    yresolution = tags[qplayerid + " YResolution"].values[0]
     yresolution = float(yresolution)
 
     kw = {
@@ -275,8 +283,8 @@ class Sample:
         ResolutionUnit="Micron",
         XPosition=xposition,
         YPosition=yposition,
-        XResolution=xresolution,
-        YResolution=yresolution,
+        XResolution=xresolution * 10000,
+        YResolution=yresolution * 10000,
         qpscale=qpscale,
         fname=self.jpgfilename.name,
         img="00001234",
@@ -401,7 +409,7 @@ class Sample:
     self.writeconstants()
     self.writeglobals()
     self.writeoverlaps()
-    #self.writeqptiffcsv()
+    self.writeqptiffcsv()
     #self.writeqptiffjpg()
     self.writerectangles()
     self.writeregions()
