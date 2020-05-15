@@ -503,6 +503,7 @@ class Polygon:
       content = match.group(1)
       intvertices = re.findall(r"[0-9]* [0-9]*", content)
       vertices = []
+      if intvertices[-1] == intvertices[0]: del intvertices[-1]
       for i, vertex in enumerate(intvertices, start=1):
         x, y = vertex.split()
         x = units.Distance(pscale=pscale, **{kw: int(x)})
@@ -523,9 +524,7 @@ class Polygon:
     return self.tostring(pscale=self.pscale)
   def tostring(self, **kwargs):
     f = {"pixels": units.pixels, "microns": units.microns}[self.pixelsormicrons]
-    vertices = list(self.vertices)
-    if len(vertices) > 1 and np.all(vertices[0].xvec == vertices[-1].xvec):
-      del vertices[-1]
+    vertices = list(self.vertices) + [self.vertices[0]]
     return "POLYGON ((" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in vertices) + "))"
 
   def __eq__(self, other):
