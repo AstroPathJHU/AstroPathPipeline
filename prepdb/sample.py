@@ -1,4 +1,4 @@
-import dataclasses, datetime, exifread, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re
+import dataclasses, datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re
 from ..utilities import units
 from ..utilities.misc import PILmaximagepixels
 from ..utilities.tableio import writetable
@@ -11,6 +11,11 @@ logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s"))
 logger.addHandler(handler)
+
+jxmleaseversion = jxmlease.__version__.split(".")
+jxmleaseversion = [int(_) for _ in jxmleaseversion[:2]] + list(jxmleaseversion[2:])
+if jxmleaseversion <= [1, 0, '2dev1']:
+  raise ImportError("You need a newer jxmleaseversion\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
 
 class Sample:
   def __init__(self, root, samp, *, dest=None):
@@ -243,16 +248,16 @@ class Sample:
   @methodtools.lru_cache()
   def getqptiffcsv(self):
     with open(self.qptifffilename, "rb") as f:
-      tags = exifread.process_file(f)
+      tags = exifreader.process_file(f)
     resolutionunit = str(tags["Image ResolutionUnit"])
     xposition = tags["Image XPosition"].values[0]
-    xposition = xposition.num / xposition.den
+    xposition = float(xposition)
     yposition = tags["Image YPosition"].values[0]
-    yposition = yposition.num / yposition.den
+    yposition = float(yposition)
     xresolution = tags["Image XResolution"].values[0]
-    xresolution = xresolution.num / xresolution.den
+    xresolution = float(xresolution)
     yresolution = tags["Image YResolution"].values[0]
-    yresolution = yresolution.num / yresolution.den
+    yresolution = float(yresolution)
 
     kw = {
       "Pixels/Centimeter": "centimeters",
