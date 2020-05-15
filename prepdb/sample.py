@@ -14,8 +14,8 @@ logger.addHandler(handler)
 
 jxmleaseversion = jxmlease.__version__.split(".")
 jxmleaseversion = [int(_) for _ in jxmleaseversion[:2]] + list(jxmleaseversion[2:])
-if jxmleaseversion <= [1, 0, '2dev1']:
-  raise ImportError("You need a newer jxmleaseversion\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
+if jxmleaseversion < [1, 0, '2dev1']:
+  raise ImportError(f"You need jxmleaseversion >= 1.0.2dev1 (your version: {jxmlease.__version__})\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
 
 class Sample:
   def __init__(self, root, samp, *, dest=None):
@@ -404,8 +404,8 @@ class Sample:
     #self.writeqptiffcsv()
     #self.writeqptiffjpg()
     self.writerectangles()
-    self.writeregions()
-    #self.writevertices()
+    #self.writeregions()
+    self.writevertices()
 
 @dataclasses.dataclass
 class Batch:
@@ -477,6 +477,10 @@ class Vertex(DataClassWithDistances):
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
 
+  @property
+  def xvec(self):
+    return np.array([self.x, self.y])
+
 class Polygon:
   pixelsormicrons = "pixels"
 
@@ -519,7 +523,10 @@ class Polygon:
     return self.tostring(pscale=self.pscale)
   def tostring(self, **kwargs):
     f = {"pixels": units.pixels, "microns": units.microns}[self.pixelsormicrons]
-    return "POLYGON ((" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in self.vertices) + "))"
+    vertices = list(self.vertices)
+    if len(vertices) > 1 and np.all(vertices[0].xvec == vertices[-1].xvec):
+      del vertices[-1]
+    return "POLYGON ((" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in vertices) + "))"
 
   def __eq__(self, other):
     return self.vertices == other.vertices
