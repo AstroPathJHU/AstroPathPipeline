@@ -52,7 +52,7 @@ class AnnotationXMLReader:
               w=field.w,
               h=field.h,
               t=field.time,
-              file=pathlib.Path(field.im3path).name,
+              file=pathlib.Path(field.im3path.replace("\\", "/")).name,
               pscale=self.pscale,
               readingfromfile=False,
             )
