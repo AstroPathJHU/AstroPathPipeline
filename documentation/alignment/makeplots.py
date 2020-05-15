@@ -155,12 +155,12 @@ def alignmentresults(*, bki, remake):
   }
   with plt.rc_context(rc=rc):
     for samp, name in ("M21_1", "vectra"), ("M1_1", "vectra-big"), ("TS19_0181_A_1_3_BMS_MITRE", "AKY"):
-      if name != "M21_1" and not bki: continue
+      if samp != "M21_1" and not bki: continue
       for tag in 1, 2, 3, 4:
         filename1, filename2 = here/f"alignment-result-{name}-{tag}.pdf", here/f"stitch-result-{name}-{tag}.pdf"
-        if name != "M21_1" and filename1.exists() and filename2.exists() and not remake: continue
+        if samp != "M21_1" and filename1.exists() and filename2.exists() and not remake: continue
         A = alignmentset(samp=samp)
-        errorbars = name == "M21_1"
+        errorbars = samp == "M21_1"
         plotpairwisealignments(A, tags=[tag], saveas=filename1, errorbars=errorbars, **kwargs)
         plotpairwisealignments(A, tags=[tag], stitched=True, saveas=filename2, errorbars=errorbars, **kwargs)
 

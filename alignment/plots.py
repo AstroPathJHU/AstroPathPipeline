@@ -15,7 +15,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
     if not o.result.exit
     and o.tag in tags
   ])
-  if not errorbars: vectors = unp.nominal_values(vectors)
+  if not errorbars: vectors = units.nominal_values(vectors)
   if pull:
     if pullbinning is None: pullbinning = np.linspace(-5, 5, 51)
     pullhist(

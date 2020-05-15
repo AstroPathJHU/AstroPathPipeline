@@ -333,8 +333,6 @@ For an alignment with $N$ fields, we have $2N$ coordinates to set.  Except for t
 
 \Cref{fig:alignmentresult1,fig:alignmentresult2,fig:alignmentresult3,fig:alignmentresult4} show the distribution of $\delta\vec{r}$ for the overlaps, before any stitching has been done.  \Cref{fig:stitchresult1,fig:stitchresult2,fig:stitchresult3,fig:stitchresult4} show the same distributions after the fields have been moved to their stitched positions, and show significant improvement over the top row.
 
-Another interesting feature of the plots is the comparison between \cref{fig:alignmentresult2,fig:alignmentresult4}.  Fields that are only separated in the $x$ direction are only misaligned in the $x$ direction, while fields separated in $y$ are only misaligned in $y$.  As illustrated in \cref{fig:scanning}, the microscope scans along a row in the $x$ direction first, then moves down in the $y$ direction and goes back to the beginning in $x$.  This explains \cref{fig:alignmentresult4}: as the microscope moves in the $x$ direction, the error introduced by slight movements in the $y$ direction is small.  \Cref{fig:alignmentresult2} is more surprising, because it indicates that the errors introduced as the microscope moves to the right are almost exactly reversed when it moves back to the left.  This indicates that the errors are introduced by some kind of systematic effect, which we will examine in \cref{sec:vectraperiodic}.  Whatever the source of this error is, our alignment procedure is able to correct for it as well as for the smaller, apparently random error associated with each individual movement.
-
 \begin{figure}[ht]
 	\centering
 	\begin{subfigure}{0.45\linewidth}
@@ -345,6 +343,56 @@ Another interesting feature of the plots is the comparison between \cref{fig:ali
 	\caption{Illustration of how the microscope scans an image.  It scans the first row in the $x$ direction, then moves on to the second, then the third, and so on.}
 	\label{fig:scanning}
 \end{figure}
+
+Another interesting feature of the plots is the comparison between \cref{fig:alignmentresult2,fig:alignmentresult4}.  Fields that are only separated in the $x$ direction are only misaligned in the $x$ direction, while fields separated in $y$ are only misaligned in $y$.  As illustrated in \cref{fig:scanning}, the microscope scans along a row in the $x$ direction first, then moves down in the $y$ direction and goes back to the beginning in $x$.  This explains \cref{fig:alignmentresult4}: as the microscope moves in the $x$ direction, the error introduced by slight movements in the $y$ direction is small.  \Cref{fig:alignmentresult2} is more surprising, because it indicates that the errors introduced as the microscope moves to the right are almost exactly reversed when it moves back to the left.  This indicates that the errors are introduced by some kind of systematic effect, which we will examine in \cref{sec:vectraperiodic}.  Whatever the source of this error is, our alignment procedure is able to correct for it as well as for the smaller, apparently random error associated with each individual movement.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-vectra-big-4.pdf}
+		\caption{}
+		\label{fig:alignmentresultbig4}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-vectra-big-3.pdf}
+		\caption{}
+		\label{fig:alignmentresultbig3}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-vectra-big-2.pdf}
+		\caption{}
+		\label{fig:alignmentresultbig2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-vectra-big-1.pdf}
+		\caption{}
+		\label{fig:alignmentresultbig1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-vectra-big-4.pdf}
+		\caption{}
+		\label{fig:stitchresultbig4}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-vectra-big-3.pdf}
+		\caption{}
+		\label{fig:stitchresultbig3}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-vectra-big-2.pdf}
+		\caption{}
+		\label{fig:stitchresultbig2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-vectra-big-1.pdf}
+		\caption{}
+		\label{fig:stitchresultbig1}
+	\end{subfigure}
+	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in a larger image, code name \M11, taken with the Vectra 3.0 microscope.  The plots show overlaps between one field and the field \subref{fig:alignmentresultbig4} to its right, \subref{fig:alignmentresultbig3} under it and to the right, \subref{fig:alignmentresultbig2} under it, and \subref{fig:alignmentresultbig1} under it and to the left.  Each point indicates a single overlap.  Error bars are omitted because of the larger number of overlaps in this image.  \subref{fig:stitchresultbig4}--\subref{fig:stitchresultbig1} The same distributions for the respective overlap directions after stitching has been performed.}
+	\label{fig:alignmentresultsbig}
+\end{figure}
+
+\Cref{fig:alignmentresultsbig} shows the same distributions for a larger image taken with the same microscope.  It shows similar effects, though they are harder to see due to the larger number of overlaps.
 
 \subsection{Consistency of the errors}
 \label{sec:pulls}
@@ -719,6 +767,58 @@ Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systemat
 
 This section shows results for a dataset collected by Bristol-Meyers Squibb and stained and scanned by Akoya Biosciences.  The microscoped is maintained at the Akoya facilities and is codenamed \texttt{AKYPolaris\_1}.
 
+\subsection{Alignment movements}
+
+\Cref{fig:alignmentresultsAKY} shows the alignment movements from the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} sample.
+
+All four of the plots in the top row show two clusters of overlaps, indicating that there are systematic effects present in addition to the random movement.  The next sections will investigate those effects in greater detail.  The effects are smaller than the ones seen in the Vectra 3.0 microscope shown in \cref{fig:alignmentresults,fig:alignmentresultsbig} and are corrected by the stitching, as shown in the bottom row.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-AKY-4.pdf}
+		\caption{}
+		\label{fig:alignmentresultAKY4}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-AKY-3.pdf}
+		\caption{}
+		\label{fig:alignmentresultAKY3}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-AKY-2.pdf}
+		\caption{}
+		\label{fig:alignmentresultAKY2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-AKY-1.pdf}
+		\caption{}
+		\label{fig:alignmentresultAKY1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-AKY-4.pdf}
+		\caption{}
+		\label{fig:stitchresultAKY4}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-AKY-3.pdf}
+		\caption{}
+		\label{fig:stitchresultAKY3}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-AKY-2.pdf}
+		\caption{}
+		\label{fig:stitchresultAKY2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-AKY-1.pdf}
+		\caption{}
+		\label{fig:stitchresultAKY1}
+	\end{subfigure}
+	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in an image, code name \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, taken with Akoya's Vectra Polaris microscope.  The plots show overlaps between one field and the field \subref{fig:alignmentresultAKY4} to its right, \subref{fig:alignmentresultAKY3} under it and to the right, \subref{fig:alignmentresultAKY2} under it, and \subref{fig:alignmentresultAKY1} under it and to the left.  Each point indicates a single overlap.  Error bars are omitted because of the larger number of overlaps in this image.  \subref{fig:stitchresultAKY4}--\subref{fig:stitchresultAKY1} The same distributions for the respective overlap directions after stitching has been performed.}
+	\label{fig:alignmentresultsAKY}
+\end{figure}
+
 \subsection{Linear Transformation matrix}
 
 From the sample named \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, we find the linear transformation matrix to be
@@ -737,9 +837,7 @@ From the sample named \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, we find the line
 \end{pmatrix} \times \num{e-3}
 \label{eq:Amatrix_TS18_0541_BMS_MITRE}
 \end{align}
-The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $0.7$ pixels.  When moving down, it ends up $0.5$ pixels to the left of the desired location.
-
-The image scales written in the \texttt{.tiff} and the \texttt{.im3} files are different: $2.0$ or $\SI{2.014533}{pixels\per\micro\meter}$, respectively.  The $\matrixbold{A}$ matrix reported here is based on the scale from the \texttt{.im3} files and confirms that that scale is correct to within half a percent.  Using the scale from the \texttt{.tiff} files would still give an equivalent alignment, but $\matrixbold{A}$ would be further from the identity matrix.
+The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $0.7$ pixels, as expected from \cref{fig:alignmentresultAKY4}, and when moving down, it ends up $0.5$ pixels to the left of the desired location, as expected from \cref{fig:alignmentresultAKY2}.
 
 \subsection{Periodic dependence}
 \label{sec:akoyapolarisperiodic}
