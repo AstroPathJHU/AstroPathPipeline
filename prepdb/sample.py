@@ -153,6 +153,7 @@ class Sample:
           cx=x,
           cy=y,
           t=t,
+          pscale=self.pscale,
         )
       )
     result.sort(key=lambda x: x.t)

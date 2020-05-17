@@ -111,10 +111,10 @@ class RectangleAnnotation(AnnotationBase):
   def h(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Size"]["Height"]), pscale=self.pscale)
   @property
   def cx(self):
-    return units.Distance(microns=int(np.round(units.microns(self.x+0.5*self.w))), pscale=self.pscale)
+    return units.Distance(microns=int(np.round(units.microns(self.x+0.5*self.w, pscale=self.pscale))), pscale=self.pscale)
   @property
   def cy(self):
-    return units.Distance(microns=int(np.round(units.microns(self.y+0.5*self.h))), pscale=self.pscale)
+    return units.Distance(microns=int(np.round(units.microns(self.y+0.5*self.h, pscale=self.pscale))), pscale=self.pscale)
   @property
   def time(self): return dateutil.parser.parse(self.history[-1]["TimeStamp"])
 
