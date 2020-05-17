@@ -326,7 +326,7 @@ class Sample:
     for r1, r2 in itertools.product(self.rectangles, repeat=2):
       if r1 is r2: continue
       if np.all(abs(r1.cxvec - r2.cxvec) < r1.shape):
-        tag = np.sign(r1.cx-r2.cx) + 3*np.sign(r1.cy-r2.cy) + 5
+        tag = int(np.sign(r1.cx-r2.cx)) + 3*int(np.sign(r1.cy-r2.cy)) + 5
         overlaps.append(
           Overlap(
             n=len(overlaps)+1,
@@ -340,7 +340,7 @@ class Sample:
             layer=self.layer,
             nclip=self.nclip,
             rectangles=(r1, r2),
-            pscale=None,
+            pscale=self.pscale,
           )
         )
     return overlaps
@@ -553,7 +553,7 @@ class Polygon:
         x, y = vertex.split()
         x = units.Distance(pscale=pscale, **{kw: int(x)})
         y = units.Distance(pscale=pscale, **{kw: int(y)})
-        vertices.append(Vertex(x=x, y=y, vid=i, regionid=0))
+        vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, pscale=pscale))
 
     self.__vertices = vertices
     pscale = {v.pscale for v in vertices}

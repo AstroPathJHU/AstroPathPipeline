@@ -17,7 +17,7 @@ def Distance(*, pscale, pixels=None, microns=None, centimeters=None, power=1, de
   if pixels is not None:
     return pixels
   if microns is not None:
-    return __micronstopixels(microns=microns, pscale=pscale, power=power)
+    return __micronstopixels(microns=microns, pscale=pscale, power=power)[()]
 
 distances = np.vectorize(Distance, excluded=["pscale"])
 
