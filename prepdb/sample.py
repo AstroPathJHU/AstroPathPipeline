@@ -197,6 +197,7 @@ class Sample:
                 vid=k,
                 x=x,
                 y=y,
+                pscale=self.pscale,
               )
             )
           allvertices += regionvertices
@@ -288,6 +289,7 @@ class Sample:
         qpscale=qpscale,
         fname=self.jpgfilename.name,
         img="00001234",
+        pscale=qpscale,
       )
     ]
 
@@ -353,24 +355,28 @@ class Sample:
         value=self.fwidth,
         unit='pixels',
         description='field width',
+        pscale=self.pscale,
       ),
       Constant(
         name='fheight',
         value=self.fheight,
         unit='pixels',
         description='field height',
+        pscale=self.pscale,
       ),
       Constant(
         name='xposition',
         value=self.xposition,
         unit='microns',
         description='slide x offset',
+        pscale=self.qpscale,
       ),
       Constant(
         name='yposition',
         value=self.yposition,
         unit='microns',
         description='slide y offset',
+        pscale=self.qpscale,
       ),
       Constant(
         name='qpscale',
@@ -389,6 +395,7 @@ class Sample:
         value=units.Distance(pixels=self.nclip, pscale=self.pscale),
         unit='pixels',
         description='pixels to clip off the edge after warping',
+        pscale=self.pscale,
       ),
       Constant(
         name='layer',
@@ -461,7 +468,7 @@ class Constant:
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
 
-  def __post_init__(self, readingfromfile=False, pscale=None):
+  def __post_init__(self, pscale=None, readingfromfile=False):
     if self.unit in ("pixels", "microns"):
       usedistances = False
       if units.currentmode == "safe" and self.value:
@@ -475,7 +482,7 @@ class Constant:
       if pscale is None and self.value:
         if not usedistances:
           raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
-        object.__setattr__(self, "pscale", pscale)
+      object.__setattr__(self, "pscale", pscale)
 
       if readingfromfile:
         object.__setattr__(self, "value", units.Distance(pscale=pscale, **{self.unit: self.value}))

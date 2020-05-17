@@ -3,8 +3,8 @@ from ..core import UnitsError
 import collections, itertools, numbers, numpy as np, uncertainties as unc
 
 class Distance:
-  def __new__(cls, *args, pixels=None, microns=None, defaulttozero=False, **kwargs):
-    if defaulttozero and (pixels == 0 and microns is None or microns == 0 and pixels is None):
+  def __new__(cls, *args, pixels=None, microns=None, centimeters=None, defaulttozero=False, **kwargs):
+    if defaulttozero and {pixels, microns, centimeters} == {None, 0}:
       return 0.
     return super().__new__(cls)
 

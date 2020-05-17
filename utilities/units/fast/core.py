@@ -7,10 +7,13 @@ def __micronstopixels(*, microns, pscale, power):
 def __pixelstomicrons(*, pixels, pscale, power):
   return pixels / (pscale**power if power and pixels else 1)  
 
-def Distance(*, pscale, pixels=None, microns=None, power=1, defaulttozero=False):
-  if not power or pixels == 0 or microns == 0: pscale = None
-  if (pixels is not None) == (microns is not None):
-    raise TypeError("Have to provide exactly one of pixels or microns")
+def Distance(*, pscale, pixels=None, microns=None, centimeters=None, power=1, defaulttozero=False):
+  if not power or pixels == 0 or microns == 0 or centimeters == 0: pscale = None
+  if (pixels is not None) + (microns is not None) + (centimeters is not None) != 1:
+    raise TypeError("Have to provide exactly one of pixels, microns, or centimeters")
+  if centimeters is not None:
+    microns = centimeters * (1e4**power if power and centimeters else 1)
+
   if pixels is not None:
     return pixels
   if microns is not None:
