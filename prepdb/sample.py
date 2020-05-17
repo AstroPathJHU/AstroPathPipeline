@@ -1,4 +1,4 @@
-import dataclasses, datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re
+import dataclasses, datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage
 from ..utilities import units
 from ..utilities.misc import PILmaximagepixels
 from ..utilities.tableio import writetable
@@ -248,12 +248,14 @@ class Sample:
   def jpgfilename(self): return self.dest/(self.samp+"_qptiff.jpg")
 
   @methodtools.lru_cache()
-  def getqptiffcsv(self):
+  def getqptiffcsvandimage(self):
     with open(self.qptifffilename, "rb") as f:
       tags = exifreader.process_file(f)
 
     layerids = [k.replace(" ImageWidth", "") for k in tags if "ImageWidth" in k]
-    for qplayerid in layerids[6:]:
+    for qplayeridx, qplayerid in enumerate(layerids):
+      if qplayeridx < 6:
+        continue
       if tags[qplayerid+" ImageWidth"].values[0] < 4000:
         break
     else:
@@ -278,7 +280,7 @@ class Sample:
     qpscale = xresolution
     xposition = units.Distance(**{kw: xposition}, pscale=qpscale)
     yposition = units.Distance(**{kw: yposition}, pscale=qpscale)
-    return [
+    qptiffcsv = [
       QPTiffCsv(
         SampleID=0,
         SlideID=self.samp,
@@ -294,15 +296,46 @@ class Sample:
       )
     ]
 
+    mix = np.array([
+      [0.0, 0.0, 1.0, 1.0, 1.0],
+      [0.0, 1.0, 1.0, 0.5, 0.0],
+      [1.0, 0.0, 0.0, 0.0, 0.0],
+    ])/120
+
+    with open(self.qptifffilename, "rb") as f, PIL.Image.open(f) as imgs:
+      iterator = PIL.ImageSequence.Iterator(imgs)
+      shape = *reversed(iterator[qplayeridx].size), 3
+      finalimg = np.zeros(shape)
+
+      for i in range(qplayeridx, qplayeridx+5):
+        img = iterator[i]
+        try:
+          img.getdata()
+        except OSError as e:
+          if str(e) == "-2":
+            qptiffimage = ImportError("Probably you're on Windows and have a buggy version of libtiff.\nSee https://github.com/python-pillow/Pillow/issues/4237\nTry this, but it may be painful to make it work:\n  conda install -c conda-forge libtiff=4.1.0=h885aae3_4")
+            return qptiffcsv, qptiffimage
+          raise
+        finalimg += np.tensordot(np.asarray(img), mix[:,i-qplayeridx], axes=0)
+    finalimg /= np.max(finalimg)
+    qptiffimg = skimage.img_as_ubyte(finalimg)
+    return qptiffcsv, PIL.Image.fromarray(qptiffimg)
+
+  def getqptiffcsv(self):
+    return self.getqptiffcsvandimage()[0]
+  def getqptiffimage(self):
+    img = self.getqptiffcsvandimage()[1]
+    if isinstance(img, Exception): raise img
+    return img
+
   def writeqptiffcsv(self):
     logger.info(self.samp)
     writetable(self.dest/(self.samp+"_qptiff.csv"), self.getqptiffcsv())
 
   def writeqptiffjpg(self):
-    raise NotImplementedError
     logger.info(self.samp)
-    with PILmaximagepixels(1024**3), PIL.Image.open(self.qptifffilename) as f:
-      f
+    img = self.getqptiffimage()
+    img.save(self.jpgfilename)
 
   @property
   def xposition(self):
@@ -418,7 +451,7 @@ class Sample:
     self.writeglobals()
     self.writeoverlaps()
     self.writeqptiffcsv()
-    #self.writeqptiffjpg()
+    self.writeqptiffjpg()
     self.writerectangles()
     self.writeregions()
     self.writevertices()
