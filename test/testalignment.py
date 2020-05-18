@@ -11,6 +11,7 @@ def assertAlmostEqual(a, b, **kwargs):
   if isinstance(a, units.safe.Distance):
     return units.np.testing.assert_allclose(a, b, **kwargs)
   elif isinstance(a, numbers.Number):
+    if isinstance(b, units.safe.Distance): b = float(b)
     return np.testing.assert_allclose(a, b, **kwargs)
   elif dataclasses.is_dataclass(type(a)) and type(a) == type(b):
     try:
@@ -99,7 +100,8 @@ class TestAlignment(unittest.TestCase):
   def testStitchReadingWriting(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
     a.readalignments(filename=thisfolder/"alignmentreference"/"M21_1_align.csv")
-    result = a.readstitchresult()
+    stitchfilenames = [thisfolder/"alignmentreference"/_.name for _ in a.stitchfilenames]
+    result = a.readstitchresult(filenames=stitchfilenames)
 
     def newfilename(filename): return thisfolder/("test_"+filename.name)
 
@@ -118,6 +120,34 @@ class TestAlignment(unittest.TestCase):
   def testStitchReadingWritingFastUnits(self):
     with units.setup_context("fast"):
       self.testStitchReadingWriting()
+
+  def testStitchWritingReading(self):
+    a1 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
+    a1.readalignments(filename=thisfolder/"alignmentreference"/"M21_1_align.csv")
+    a1.stitch()
+
+    a2 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
+    a2.readalignments(filename=thisfolder/"alignmentreference"/"M21_1_align.csv")
+    stitchfilenames = [thisfolder/"alignmentreference"/_.name for _ in a1.stitchfilenames]
+    a2.readstitchresult(filenames=stitchfilenames)
+
+    pscale = a1.pscale
+    assert pscale == a2.pscale
+
+    rtol = 1e-6
+    atol = 1e-6
+    for o1, o2 in zip(a1.overlaps, a2.overlaps):
+      x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale))
+      x2, y2 = units.nominal_values(units.pixels(o2.stitchresult, pscale=pscale))
+      assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
+      assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
+
+    for T1, T2 in zip(np.ravel(units.nominal_values(a1.T)), np.ravel(units.nominal_values(a2.T))):
+      assertAlmostEqual(T1, T2, rtol=rtol, atol=atol)
+
+  def testStitchWritingReadingFastUnits(self):
+    with units.setup_context("fast"):
+      self.testStitchWritingReading()
 
   def testStitchCvxpy(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
@@ -172,12 +202,13 @@ class TestAlignment(unittest.TestCase):
     assertAlmostEqual(o1.result.covxx, o2.result.covxx, rtol=1e-5)
     assertAlmostEqual(o1.result.covyy, o2.result.covyy, rtol=1e-5)
     assertAlmostEqual(o1.result.covxy, o2.result.covxy, rtol=1e-5)
-    
+
   def testPscale(self):
     a1 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    a1.getDAPI(writeimstat=False)
-    a1.align(debug=True)
-    a1.stitch()
+    readfilename = thisfolder/"alignmentreference"/"M21_1_align.csv"
+    stitchfilenames = [thisfolder/"alignmentreference"/_.name for _ in a1.stitchfilenames]
+    a1.readalignments(filename=readfilename)
+    a1.readstitchresult(filenames=stitchfilenames)
 
     with temporarilyremove(thisfolder/"data"/"M21_1"/"inform_data"/"Component_Tiffs"):
       a2 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
