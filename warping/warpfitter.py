@@ -631,7 +631,7 @@ class WarpFitter :
         best_fit_pars = self.__correctParameterList(fitresult.x)
         self.warpset.updateCameraParams(best_fit_pars)
         self.__best_fit_warp = copy.deepcopy(self.warpset.warp)
-        warp_logger.info(f'Best fit parameters:')
+        warp_logger.info('Best fit parameters:')
         self.__best_fit_warp.printParams()
         #write out the set of alignment comparison images
         self.raw_cost, self.best_cost = self.__makeBestFitAlignmentComparisonImages()

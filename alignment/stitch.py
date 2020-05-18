@@ -498,7 +498,7 @@ class StitchCoordinate(DataClassWithDistances):
   cov_x_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   pscale: dataclasses.InitVar[float] = None
-  readingfromfile: dataclasses.InitVar[float] = False
+  readingfromfile: dataclasses.InitVar[bool] = False
 
   def __post_init__(self, pscale, readingfromfile=False):
     super().__post_init__(pscale=pscale, readingfromfile=readingfromfile)
@@ -551,4 +551,4 @@ class StitchOverlapCovariance(DataClassWithDistances):
   cov_y1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   pscale: dataclasses.InitVar[float] = None
-  readingfromfile: dataclasses.InitVar[float] = False
+  readingfromfile: dataclasses.InitVar[bool] = False

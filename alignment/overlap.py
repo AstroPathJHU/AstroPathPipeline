@@ -3,7 +3,7 @@ import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, 
 from .computeshift import computeshift, mse, shiftimg
 from .rectangle import rectangleoroverlapfilter as overlapfilter
 from ..utilities import units
-from ..utilities.misc import covariance_matrix, dataclass_dc_init
+from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
@@ -22,7 +22,7 @@ class Overlap(DataClassWithDistances):
   pscale: dataclasses.InitVar[float]
   nclip: dataclasses.InitVar[float]
   rectangles: dataclasses.InitVar[float]
-  readingfromfile: dataclasses.InitVar[float] = False
+  readingfromfile: dataclasses.InitVar[bool] = False
 
   def __post_init__(self, layer, pscale, nclip, rectangles, readingfromfile=False):
     super().__post_init__(pscale=pscale, readingfromfile=readingfromfile)
@@ -49,12 +49,12 @@ class Overlap(DataClassWithDistances):
 
     hh, ww = image1.shape
     assert (hh, ww) == image2.shape
+    hh, ww = units.distances(pixels=[hh, ww], pscale=self.pscale)
 
-    #convert microns to approximate pixels
-    image1x1 = int(units.pixels(self.x1))
-    image1y1 = int(units.pixels(self.y1))
-    image2x1 = int(units.pixels(self.x2))
-    image2y1 = int(units.pixels(self.y2))
+    image1x1 = self.x1
+    image1y1 = self.y1
+    image2x1 = self.x2
+    image2y1 = self.y2
     image1x2 = image1x1 + ww
     image2x2 = image2x1 + ww
     image1y2 = image1y1 + hh
@@ -65,15 +65,36 @@ class Overlap(DataClassWithDistances):
     overlapy1 = max(image1y1, image2y1)
     overlapy2 = min(image1y2, image2y2)
 
-    cutimage1x1 = overlapx1 - image1x1 + self.nclip
-    cutimage1x2 = overlapx2 - image1x1 - self.nclip
-    cutimage1y1 = overlapy1 - image1y1 + self.nclip
-    cutimage1y2 = overlapy2 - image1y1 - self.nclip
+    offsetimage1x1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx1 - image1x1, pscale=self.pscale)))
+    offsetimage1x2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx2 - image1x1, pscale=self.pscale)))
+    offsetimage1y1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy1 - image1y1, pscale=self.pscale)))
+    offsetimage1y2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy2 - image1y1, pscale=self.pscale)))
 
-    cutimage2x1 = overlapx1 - image2x1 + self.nclip
-    cutimage2x2 = overlapx2 - image2x1 - self.nclip
-    cutimage2y1 = overlapy1 - image2y1 + self.nclip
-    cutimage2y2 = overlapy2 - image2y1 - self.nclip
+    offsetimage2x1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx1 - image2x1, pscale=self.pscale)))
+    offsetimage2x2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx2 - image2x1, pscale=self.pscale)))
+    offsetimage2y1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy1 - image2y1, pscale=self.pscale)))
+    offsetimage2y2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy2 - image2y1, pscale=self.pscale)))
+
+    cutimage1x1 = floattoint(units.pixels(offsetimage1x1, pscale=self.pscale)) + self.nclip
+    cutimage1x2 = floattoint(units.pixels(offsetimage1x2, pscale=self.pscale)) - self.nclip
+    cutimage1y1 = floattoint(units.pixels(offsetimage1y1, pscale=self.pscale)) + self.nclip
+    cutimage1y2 = floattoint(units.pixels(offsetimage1y2, pscale=self.pscale)) - self.nclip
+
+    cutimage2x1 = floattoint(units.pixels(offsetimage2x1, pscale=self.pscale)) + self.nclip
+    cutimage2x2 = floattoint(units.pixels(offsetimage2x2, pscale=self.pscale)) - self.nclip
+    cutimage2y1 = floattoint(units.pixels(offsetimage2y1, pscale=self.pscale)) + self.nclip
+    cutimage2y2 = floattoint(units.pixels(offsetimage2y2, pscale=self.pscale)) - self.nclip
+
+    #make sure that even with floattoint() they're the same size
+    deltax = min(cutimage1x2 - cutimage1x1, cutimage2x2 - cutimage2x1)
+    cutimage1x2 = cutimage1x1 + deltax
+    cutimage2x2 = cutimage2x1 + deltax
+    deltay = min(cutimage1y2 - cutimage1y1, cutimage2y2 - cutimage2y1)
+    cutimage1y2 = cutimage1y1 + deltay
+    cutimage2y2 = cutimage2y1 + deltay
+
+    #positioncutimage1 = np.array([image1x1 + offsetimage1x1, image1y1 + offsetimage1y1])
+    #positioncutimage2 = np.array([image2x1 + offsetimage2x1, image2y1 + offsetimage2y1])
 
     return (
       image1[cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
@@ -153,7 +174,7 @@ class Overlap(DataClassWithDistances):
 
   @property
   def shifted(self):
-    return shiftimg(self.cutimages, units.pixels(self.result.dx), units.pixels(self.result.dy))
+    return shiftimg(self.cutimages, *units.nominal_values(units.pixels(self.result.dxvec)))
 
   def __shiftclip(self, dxvec):
     """
@@ -266,7 +287,7 @@ class AlignmentResult(DataClassWithDistances):
   covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   pscale: dataclasses.InitVar[float] = None
   exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
-  readingfromfile: dataclasses.InitVar[float] = False
+  readingfromfile: dataclasses.InitVar[bool] = False
 
   def __init__(self, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)

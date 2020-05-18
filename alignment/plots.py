@@ -15,7 +15,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
     if not o.result.exit
     and o.tag in tags
   ])
-  if not errorbars: vectors = unp.nominal_values(vectors)
+  if not errorbars: vectors = units.nominal_values(vectors)
   if pull:
     if pullbinning is None: pullbinning = np.linspace(-5, 5, 51)
     pullhist(
@@ -40,13 +40,22 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
     if pixelsormicrons is None:
       raise ValueError("Have to provide pixelsormicrons for a scatterplot")
     f = {"pixels": units.pixels, "microns": units.microns}[pixelsormicrons]
-    plt.errorbar(
+    kwargs = dict(
       x=f(units.nominal_values(vectors[:,0])),
-      xerr=f(units.std_devs(vectors[:,0])),
       y=f(units.nominal_values(vectors[:,1])),
-      yerr=f(units.std_devs(vectors[:,1])),
-      fmt='o',
     )
+    if errorbars:
+      plt.errorbar(
+        **kwargs,
+        xerr=f(units.std_devs(vectors[:,0])),
+        yerr=f(units.std_devs(vectors[:,1])),
+        fmt='o',
+      )
+    else:
+      plt.scatter(
+        **kwargs,
+        s=4,
+      )
 
   plotstyling(fig=fig, ax=ax)
   if saveas is None:
@@ -57,7 +66,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
 
   return vectors
 
-def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False, sinetext=False, drawfourier=False):
+def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False, sinetext=False, drawfourier=False, guessparameters=None):
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -169,26 +178,39 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     return amplitude * cos(units.asdimensionless(kk*(xx - biggestchunkxs[0]) + phase)) + mean
 
   bestk, bestf = max(zip(k[1:], f[1:]), key=lambda kf: abs(kf[1]))  #[1:]: exclude k=0 term
-  initialguess = (
+  initialguess = [
     abs(bestf) / (len(biggestchunkxs) / 2),
     bestk * 2 * np.pi,
     units.np.angle(bestf),
     np.mean(biggestchunkys)
-  )
+  ]
+  if guessparameters is not None:
+    for i, parameter in enumerate(guessparameters):
+      if parameter is not None:
+        initialguess[i] = parameter
 
   try:
     p, cov = units.scipy.optimize.curve_fit(
       cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror, absolute_sigma=True,
     )
-  except RuntimeError:
+    amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
+  except (RuntimeError, np.linalg.LinAlgError):
     print("fit failed")
-    toaverage = units.correlated_distances(distances=ywitherror, covariance=np.diag(yerrwitherror))
+    toaverage = units.correlated_distances(distances=ywitherror, covariance=np.diag(yerrwitherror)**2)
     mean = weightedaverage(toaverage)
     amplitude = kk = phase = 0
     p = amplitude, kk, phase, mean
-    cov = np.diag([1, 1, 1, weightedstd(toaverage)])
+    cov = np.diag([1, 1, 1, weightedstd(toaverage)**2])
+    amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
 
-  p = amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
+  if amplitude < 0:
+    amplitude *= -1
+    phase += np.pi
+  if kk < 0:
+    kk *= -1
+    phase *= -1
+  p = amplitude, kk, phase, mean
+
   print("Average:")
   print(f"  {mean}")
   try:
@@ -207,7 +229,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     def subtractsystematic(misalignment, position1, position2):
       return misalignment - cosfunction((position1+position2)/2, *p)
   else:
-    print(f"  (not significant)")
+    print("  (not significant)")
     plotsine = False
     def subtractsystematic(misalignment, position1, position2):
       return misalignment - mean
@@ -215,9 +237,13 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   remaining = np.array([subtractsystematic(overlap.dx, *overlap.abspositions) for overlap in overlaps])
   noiseaverage = weightedaverage(remaining)
   noiseRMS = weightedstd(remaining, subtractaverage=False)
-  print(f"Remaining noise:")
+  print("Remaining noise:")
   print(f"  average = {noiseaverage}")
   print(f"  RMS     = {noiseRMS}")
+
+  oldylim = ax.get_ylim()
+  plotstyling(fig=fig, ax=ax)
+  adjustylim = oldylim == ax.get_ylim()
 
   xplot = units.np.linspace(min(x), max(x), 1000)
   if plotsine:
@@ -226,8 +252,9 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     if sinetext:
       xcenter = np.average(ax.get_xlim())
       bottom, top = ax.get_ylim()
-      top += (top-bottom) * .3
-      ax.set_ylim(bottom, top)
+      if adjustylim:
+        top += (top-bottom) * .3
+        ax.set_ylim(bottom, top)
       amplitudetext = units.drawing.siunitxformat(amplitude, power=1)
       wavelengthtext = units.drawing.siunitxformat(wavelength, power=1)
       noiseRMStext = units.drawing.siunitxformat(noiseRMS, power=1, fmt=".2f")
@@ -238,12 +265,11 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     if sinetext:
       xcenter = np.average(ax.get_xlim())
       bottom, top = ax.get_ylim()
-      top += (top-bottom) * .1
-      ax.set_ylim(bottom, top)
+      if adjustylim:
+        top += (top-bottom) * .1
+        ax.set_ylim(bottom, top)
       noiseRMStext = units.drawing.siunitxformat(noiseRMS, power=1, fmt=".2f")
       plt.text(xcenter, top, f"RMS of noise: {noiseRMStext}", horizontalalignment="center", verticalalignment="top")
-
-  plotstyling(fig=fig, ax=ax)
 
   if saveas is None:
     plt.show()
