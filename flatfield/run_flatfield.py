@@ -1,12 +1,9 @@
 #imports
-from .mean_image import MeanImage
-from .config import *
-from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile
+from .config import flatfield_logger
+from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.misc import cd, split_csv_to_list, split_csv_to_list_of_ints
 from argparse import ArgumentParser
-from concurrent.futures import ThreadPoolExecutor
-import numpy as np, matplotlib.pyplot as plt
-import os, glob, csv, random
+import os, csv, random
 
 #################### HELPER FUNCTIONS ####################
 
@@ -23,7 +20,8 @@ def checkArgs(a) :
         raise ValueError('ERROR: cannot save masking plots if masking will be skipped')
 
 #helper function to get the list of sample names to run on
-def getSampleNamesToRun(a) :
+def getAllSampleNames(a) :
+    #get them from the .csv file if requested
     if '.csv' in a.samplenames :
         #make sure that the samplename CSV file exists
         if not os.path.isfile(a.samplenames) :
@@ -31,14 +29,15 @@ def getSampleNamesToRun(a) :
         with open(a.samplenames,) as f:
             reader = csv.reader(f)
             all_sample_names = (list(reader))[0]
+    #otherwise they should just be listed in the command line argument
     else :
         all_sample_names = split_csv_to_list(a.samplenames)
     return all_sample_names
 
-#helper function to get the list of filepaths to run on based on the selection method and number of images requested
-def getFilepathsToRun(a) :
-    #get the sample names
-    all_sample_names = getSampleNamesToRun(a)
+#helper function to get the list of filepaths and associated sample names to run on based on the selection method and number of images requested
+def getFilepathsAndSampleNamesToRun(a) :
+    #get all the possible sample names
+    all_sample_names = getAllSampleNames(a)
     #make sure the directories all exist
     for sn in all_sample_names :
         if not os.path.isdir(os.path.join(a.rawfile_top_dir,sn)) :
@@ -53,13 +52,13 @@ def getFilepathsToRun(a) :
                                             for fn in glob.glob(f'{sn}_[[]*,*[]]{a.rawfile_ext}')]
             all_image_filepaths+=this_sample_image_filepaths
     all_image_filepaths.sort()
-    #select the total filepaths to run on
+    #select the total filepaths/sample names to run on
     filepaths_to_run = None
     logstring='Will run on a sample of'
     if min(a.max_images,len(all_image_filepaths)) in [-1,len(all_image_filepaths)] :
         logstring+=f' all {len(all_image_filepaths)} images' 
         if min(a.max_images,len(all_image_filepaths)) == len(all_image_filepaths) :
-            logstring+=f' (not enough images in the sample to deliver all {a.max_images} requested)'
+            logstring+=f' (not enough images in the sample(s) to deliver all {a.max_images} requested)'
         flatfield_logger.info(logstring)
         return all_image_filepaths
     if a.selection=='first' :
@@ -73,30 +72,23 @@ def getFilepathsToRun(a) :
         filepaths_to_run=all_image_filepaths[:a.max_images]
         logstring+=f' {a.max_images} randomly-chosen images'
     flatfield_logger.info(logstring)
-    return filepaths_to_run
-
-#helper function to parallelize calls to getRawAsHWL
-def getRawImageArray(fpt) :
-    flatfield_logger.info(f'  reading file {fpt[0]} {fpt[1]}')
-    raw_img_arr = getRawAsHWL(fpt[0],fpt[2][0],fpt[2][1],fpt[2][2])
-    return raw_img_arr
-
-#helper function to read and return a group of raw images with multithreading
-def readImagesMT(sample_image_filepath_tuples,layerlist) :
-    e = ThreadPoolExecutor(len(sample_image_filepath_tuples))
-    new_img_arrays = list(e.map(getRawImageArray,[fp for fp in sample_image_filepath_tuples]))
-    e.shutdown()
-    if layerlist==[-1] :
-        return new_img_arrays
+    #figure out the samples from which those files are coming
+    samplenames_to_run = []
+    for fp in filepaths_to_run :
+        this_fp_sn = ((fp.split(os.path.sep)[-1]).split('_')[0])
+        if this_fp_sn not in samplenames_to_run :
+            samplenames_to_run.append(this_fp_sn)
+    logstring = f'Images are sourced from {len(samplenames_to_run)}'
+    if len(samplenames_to_run)>1 :
+        logstring+=' different samples:'
     else :
-        to_return = []
-        for new_img_array in new_img_arrays :
-            to_add = np.ndarray((IMG_Y,IMG_X,len(layerlist)),dtype=IMG_DTYPE_IN)
-            for i,layer in enumerate(layerlist) :
-                to_add[:,:,i] = new_img_array[:,:,layer-1]
-            to_return.append(to_add)
-        return to_return
-
+        logstring+=' sample'
+    logstring+=': '
+    for sn in samplenames_to_run :
+        logstring+=f'{sn}, '
+    flatfield_logger.info(logstring[:-2])
+    #return the lists of filepaths and samplenames
+    return filepaths_to_run, samplenames_to_run
 
 #################### MAIN SCRIPT ####################
 def main() :
@@ -125,44 +117,22 @@ def main() :
     parser.add_argument('--flatfield_image_name', default='flatfield',
         help='Stem for meanimage file names')
     args = parser.parse_args()
+    #make sure the command line arguments are valid
     checkArgs(args)
-    #figure out the image dimensions from the xml file of the first sample
-    dims = getImageHWLFromXMLFile(args.rawfile_top_dir,(getSampleNamesToRun(args))[0])
-    #get the list of filepaths and break them into chunks to run in parallel
-    filepaths = getFilepathsToRun(args)
-    filepath_chunks = [[]]
-    for i,fp in enumerate(filepaths,start=1) :
-        if len(filepath_chunks[-1])>=args.n_threads :
-            filepath_chunks.append([])
-        filepath_chunks[-1].append((fp,f'({i} of {len(filepaths)})',dims))
-    #Start up a new mean image
-    mean_image = MeanImage(args.flatfield_image_name,
-                            dims[0],dims[1],dims[2] if args.layers==[-1] else len(args.layers),IMG_DTYPE_IN,
-                            args.n_threads,args.workingdir_name,args.skip_masking)
-    #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
-    flatfield_logger.info('Stacking raw images....')
-    for fp_chunk in filepath_chunks :
-        if len(fp_chunk)<1 :
-            continue
-        new_img_arrays = readImagesMT(fp_chunk,args.layers)
-        mean_image.addGroupOfImages(new_img_arrays,args.save_masking_plots)
-    #take the mean of the stacked images, smooth it and make the flatfield image by dividing each layer by its mean pixel value
-    flatfield_logger.info('Getting/smoothing mean image and making flatfield....')
-    mean_image.makeFlatFieldImage()
-    #save the images
-    flatfield_logger.info('Saving layer-by-layer images....')
-    with cd(args.workingdir_name) :
-        mean_image.saveImages(args.flatfield_image_name)
-    #make some visualizations of the images
-    flatfield_logger.info('Saving plots....')
-    mean_image.savePlots()
-    #write out a text file of all the filenames that were added
-    flatfield_logger.info('Writing filepath text file....')
-    with cd(args.workingdir_name) :
-        with open(FILEPATH_TEXT_FILE_NAME,'w') as fp :
-            for path in filepaths :
-                fp.write(f'{path}\n')
-    flatfield_logger.info('All Done!')
+    #get the image file dimensions from the .xml file
+    dims = getImageHWLFromXMLFile(args.rawfile_top_dir,sample_names[0])
+    #get the list of filepaths to run and the names of their samples
+    filepaths_to_run, sample_names_to_run = getFilepathsAndSampleNamesToRun(args)
+    #start up a flatfield producer
+    ff_producer = FlatfieldProducer(dims,filepaths_to_run,sample_names_to_run,args.n_threads)
+    #begin by finding the background threshold per layer by looking at the HPFs on the tissue edges
+    ff_producer.findBackgroundThreshold()
+    #mask and stack images together
+    ff_producer.stackImages()
+    #make the flatfield image
+    ff_producer.makeFlatField()
+    #save the flatfield image and all the plots, etc.
+    ff_producer.writeOutInfo()
 
 if __name__=='__main__' :
     main()
