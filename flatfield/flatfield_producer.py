@@ -1,7 +1,9 @@
 #imports
 from .mean_image import MeanImage
 from .config import *
+from ..prepdb.overlap import Overlap
 from ..utilities.img_file_io import getRawAsHWL
+from ..utilities.tableio import readtable
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import os, glob
@@ -11,29 +13,30 @@ class FlatfieldProducer :
 	"""
 	Main class used in producing the flatfield correction image
 	"""
-	def __init__(self,img_dims,filepaths,sample_names,workingdir_name,skip_masking) :
+	def __init__(self,img_dims,raw_filepaths,sample_names,workingdir_name,skip_masking) :
 		"""
 		img_dims        = dimensions of images in files in order as (height, width, # of layers) 
-		filepaths       = list of all filepaths that will be run
+		raw_filepaths       = list of all raw_filepaths that will be run
 		sample_names    = list of names of samples that will be considered in this run
 		workingdir_name = name of the directory to save everything in
 		skip_masking    = if True, image layers won't be masked before being added to the stack
 		"""
 		self.dims = img_dims
-		self.all_filepaths = filepaths
+		self.all_rawfile_paths = raw_filepaths
 		self.sample_names = sample_names
 	    #Start up a new mean image
 	    self.mean_image = MeanImage(flatfield_image_name,self.dims[2],workingdir_name,skip_masking)
 
 	#################### PUBLIC FUNCTIONS ####################
 
-	def findBackgroundThreshold(self,n_threads) :
+	def findBackgroundThreshold(self,dbload_top_dir,n_threads) :
 		"""
 		Function to determine, using HPFs that image edges of the tissue in each slide, what threshold to use for masking out background
-		n_threads = max number of threads/processes to open at once
+		dbload_top_dir = directory where all of the [samplename]/dbload directories can be found
+		n_threads      = max number of threads/processes to open at once
 		"""
 		#find the filepaths corresponding to the edges of the tissue in the samples
-		self.tissue_edge_filepaths = self.__findTissueEdgeFilepaths()
+		self.tissue_edge_filepaths = self.__findTissueEdgeFilepaths(dbload_top_dir)
 		#chunk them together to be read in parallel
 		tissue_edge_fp_chunks = chunkListOfFilepaths(self.tissue_edge_filepaths,self.dims,n_threads)
 
@@ -44,7 +47,7 @@ class FlatfieldProducer :
 		save_masking_plots = whether to save plots of the mask overlays as they're generated
 		"""
 		#break the list of filepaths into chunks to run in parallel
-	    filepath_chunks = chunkListOfFilepaths(self.all_filepaths,self.dims,n_threads)
+	    filepath_chunks = chunkListOfFilepaths(self.all_rawfile_paths,self.dims,n_threads)
 		#for each chunk, get the image arrays from the multithreaded function and then add them to to stack
 	    flatfield_logger.info('Stacking raw images....')
 	    for fp_chunk in filepath_chunks :
@@ -80,8 +83,15 @@ class FlatfieldProducer :
 	#################### PRIVATE HELPER FUNCTIONS ####################
 
 	#helper function to return the subset of the filepath list corresponding to HPFs on the edge of tissue
-	def __findTissueEdgeFilepaths(self) :
-		pass
+	def __findTissueEdgeFilepaths(self,dbload_top_dir) :
+		#want to make a list of all the filepaths corresponding to the edges of tissue in the image
+		filepaths_to_return = []
+		#for each sample
+		for sn in self.sample_names :
+			#make the list of overlaps
+			olap_csv_fp = os.path.join(dbload_top_dir,sn,'dbload',f'{sn}_overlap.csv')
+			this_sample_olaps  = readtable(olap_csv_fp, self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
+
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 

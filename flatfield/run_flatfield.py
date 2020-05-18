@@ -12,6 +12,9 @@ def checkArgs(a) :
     #make sure that the raw file directory exists
     if not os.path.isdir(a.rawfile_top_dir) :
         raise ValueError(f'ERROR: Raw file directory {a.rawfile_top_dir} does not exist!')
+    #make sure that the dbload top directory exists
+    if not os.path.isdir(a.dbload_top_dir) :
+        raise ValueError(f'ERROR: dbload top directory {a.dbload_top_dir} does not exist!')
     #create the working directory if it doesn't already exist
     if not os.path.isdir(a.workingdir_name) :
         os.mkdir(a.workingdir_name)
@@ -38,10 +41,14 @@ def getAllSampleNames(a) :
 def getFilepathsAndSampleNamesToRun(a) :
     #get all the possible sample names
     all_sample_names = getAllSampleNames(a)
-    #make sure the directories all exist
+    #make sure the rawfile directories, dbload/*_overlap.csv, and dbload/*_rect.csv files all exist
     for sn in all_sample_names :
         if not os.path.isdir(os.path.join(a.rawfile_top_dir,sn)) :
             raise ValueError(f'ERROR: sample directory {os.path.join(a.rawfile_top_dir,sn)} does not exist!')
+        if not os.path.isfile(os.path.join(a.dbload_top_dir,sn,'dbload',f'{sn}_overlap.csv')) :
+            raise ValueError(f'ERROR: *_overlap.csv file for sample {sn} does not exist!')
+        if not os.path.isfile(os.path.join(a.dbload_top_dir,sn,'dbload',f'{sn}_rect.csv')) :
+            raise ValueError(f'ERROR: *_rect.csv file for sample {sn} does not exist!')
     #get the (sorted) full list of file names in the sample to choose from
     all_image_filepaths = []
     #iterate over the samples
@@ -98,8 +105,10 @@ def main() :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #positional arguments
-    parser.add_argument('samplenames', help='Comma-separated list of sample names to include (or path to the csv file that lists them)')
-    parser.add_argument('rawfile_top_dir',     help='Path to directory that holds each of the [samplename] directories that contain raw files')
+    parser.add_argument('samplenames',     help='Comma-separated list of sample names to include (or path to the csv file that lists them)')
+    parser.add_argument('rawfile_top_dir', help='Path to directory that holds each of the [samplename] directories that contain raw files')
+    parser.add_argument('dbload_top_dir',  help="""Path to directory that holds each of the [samplename]/dbload directories 
+                                                   which contain *_overlap.csv and *_rect.csv files""")
     #optional arguments
     parser.add_argument('--max_images',           default=-1,             type=int,         
         help='Number of images to load from the inputted list of samples')
@@ -130,7 +139,7 @@ def main() :
     #start up a flatfield producer
     ff_producer = FlatfieldProducer(dims,filepaths_to_run,sample_names_to_run,args.workingdir_name,args.skip_masking)
     #begin by finding the background threshold per layer by looking at the HPFs on the tissue edges
-    ff_producer.findBackgroundThreshold()
+    ff_producer.findBackgroundThreshold(args.dbload_top_dir,args.n_threads)
     #mask and stack images together
     ff_producer.stackImages(args.n_threads,args.save_masking_plots)
     #make the flatfield image
