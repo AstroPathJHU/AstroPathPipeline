@@ -1,6 +1,6 @@
 pipeline {
   agent {
-    docker { image 'astropathjhu/alignmenttest:v7' }
+    docker { image 'astropathjhu/alignmenttest:v9' }
   }
 
   environment {
@@ -8,6 +8,11 @@ pipeline {
   }
 
   stages {
+    stage('setup with prepdb') {
+      steps {
+        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
+      }
+    }
     stage('run tests') {
       parallel {
         stage('alignment') {
@@ -19,7 +24,7 @@ pipeline {
             }
             stage('alignment documentation') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.alignment.makeplots'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.alignment.makeplots --testing'
                 sh 'cd documentation/alignment; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex'
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/alignment/alignment_stitching.log'
               }
@@ -44,7 +49,7 @@ pipeline {
     stage('check that the repo is clean') {
       steps {
         //make sure normal execution doesn't make files that aren't ignored by .gitignore
-        sh 'if ! [ -z "$(git status --porcelain)" ]; then echo "tests created uncommitted changes"; git status; exit 1; fi'
+        sh 'if ! [ -z "$(git status --porcelain)" ]; then echo "tests created uncommitted changes"; git status; git submodule foreach git status; exit 1; fi'
       }
     }
   }

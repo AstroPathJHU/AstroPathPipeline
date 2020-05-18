@@ -1,0 +1,9 @@
+name,value,unit,description
+fwidth,1344,pixels,field width
+fheight,1004,pixels,field height
+xposition,44141.3498201972,microns,slide x offset
+yposition,11187.7357966446,microns,slide y offset
+qpscale,0.498553926649913,pixels/micron,scale of the QPTIFF image
+pscale,2.0050733152,pixels/micron,scale of the HPF images
+nclip,8,pixels,pixels to clip off the edge after warping
+layer,1,layer number,which layer to use from the im3 to align

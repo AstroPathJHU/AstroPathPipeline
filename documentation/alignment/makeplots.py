@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, scipy.interpolate
+import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
 from ...alignment.plots import alignmentshiftprofile, closedlooppulls, plotpairwisealignments
 from ...alignment.alignmentset import AlignmentSet
 from ...utilities import units
 
-here = os.path.dirname(__file__)
-data = os.path.join(here, "..", "..", "test", "data")
+here = pathlib.Path(__file__).parent
+data = here/".."/".."/"test"/"data"
 
 rc = {
   "text.usetex": True,
@@ -16,34 +16,50 @@ rc = {
 }
 
 @functools.lru_cache()
-def alignmentset(*, root1=data, root2=os.path.join(data, "flatw"), samp="M21_1", dapi=False):
+def __alignmentset(root1, root2, samp, dapi, **kwargs):
   if dapi:
-    A = alignmentset(root1=root1, root2=root2, samp=samp)
+    A = alignmentset(root1=root1, root2=root2, samp=samp, **kwargs)
     A.getDAPI()
     return A
 
-  A = AlignmentSet(root1, root2, samp)
+  if root1 is root2 is samp is None:
+    return alignmentset(samp="M21_1", **kwargs)
+
+  if root1 is root2 is None:
+    if samp == "M21_1": root1, root2 = data, data/"flatw"
+    elif samp == "M1_1" or samp == "M2_3": root1, root2 = r"\\Bki02\g\heshy", r"\\Bki02\g\heshy\flatw"
+    elif samp == "TS19_0181_A_1_3_BMS_MITRE": root1, root2 = r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", r"\\Bki02\g\flatw"
+    elif samp == "L1_4": root1, root2 = r"\\bki04\Clinical_Specimen_2", r"\\bki02\g\heshy\Clinical_Specimen_2"
+    elif samp == "PZ1": root1, root2 = r"\\bki03\Clinical_Specimen_4", r"\\bki02\g\heshy\Clinical_Specimen_4"
+    elif samp == "ML1603474_BMS069_5_21": root1, root2 = r"\\bki03\Clinical_Specimen_BMS_01", r"\\bki02\g\heshy\Clinical_Specimen_BMS_01"
+    else: raise ValueError(samp)
+    return alignmentset(root1=root1, root2=root2, samp=samp, **kwargs)
+
+  A = AlignmentSet(root1, root2, samp, **kwargs)
   A.readalignments()
   A.readstitchresult()
   return A
+
+def alignmentset(*, root1=None, root2=None, samp=None, dapi=False, **kwargs):
+  return __alignmentset(root1=root1, root2=root2, samp=samp, dapi=dapi, **kwargs)
 
 def overlap():
   A = alignmentset(dapi=True)
   o = A.overlaps[140]
   with plt.rc_context(rc=rc):
-    o.showimages(shifted=False, normalize=1000, ticks=True, saveas=os.path.join(here, "overlap-notshifted.pdf"))
-    o.showimages(shifted=True, normalize=1000, ticks=True, saveas=os.path.join(here, "overlap-shifted.pdf"))
+    o.showimages(shifted=False, normalize=1000, ticks=True, saveas=here/"overlap-notshifted.pdf")
+    o.showimages(shifted=True, normalize=1000, ticks=True, saveas=here/"overlap-shifted.pdf")
 
 def xcorrelation():
   A = alignmentset(dapi=True)
   o = A.overlaps[140]
   with plt.rc_context(rc=rc):
-    o.align(savebigimage=os.path.join(here, "overlap-xcorrelation.pdf"), alreadyalignedstrategy="overwrite", debug=True)
+    o.align(savebigimage=here/"overlap-xcorrelation.pdf", alreadyalignedstrategy="overwrite", debug=True)
 
   o = A.overlaps[203]
   with plt.rc_context(rc=rc):
-    o.showimages(shifted=False, normalize=100, ticks=True, saveas=os.path.join(here, "overlap-bad.pdf"))
-    o.align(savebigimage=os.path.join(here, "overlap-xcorrelation-bad.pdf"), alreadyalignedstrategy="overwrite", debug=True)
+    o.showimages(shifted=False, normalize=100, ticks=True, saveas=here/"overlap-bad.pdf")
+    o.align(savebigimage=here/"overlap-xcorrelation-bad.pdf", alreadyalignedstrategy="overwrite", debug=True)
 
 def maximize1D():
   np.random.seed(123456)
@@ -93,7 +109,7 @@ def maximize1D():
 
     ax.set_xlabel(r"$\delta x$")
     ax.set_ylabel(r"$C(\delta x)$")
-    plt.savefig(os.path.join(here, "1Dmaximization.pdf"))
+    plt.savefig(here/"1Dmaximization.pdf")
 
     maxpoint.remove()
     maxline.remove()
@@ -110,7 +126,7 @@ def maximize1D():
       plt.text(xbest + sign * deltax/2, Cminus - yrange/20 - yrange/40, r"$\sigma_{\delta x_\text{max}}$", color=deltaxbrackets.get_color(), horizontalalignment="center", verticalalignment="top")
       for sign in (-1, 1)
     ]
-    plt.savefig(os.path.join(here, "1Dmaximizationwitherror.pdf"))
+    plt.savefig(here/"1Dmaximizationwitherror.pdf")
 
     plt.close(fig)
 
@@ -120,11 +136,10 @@ def islands():
     plt.imshow(A.image())
     plt.xticks([])
     plt.yticks([])
-    plt.savefig(os.path.join(here, "islands.pdf"))
+    plt.savefig(here/"islands.pdf")
     plt.close()
 
-def alignmentresults():
-  A = alignmentset()
+def alignmentresults(*, bki, remake):
   def plotstyling(fig, ax):
     plt.xlabel("$\delta x$ (pixels)")
     plt.ylabel("$\delta y$ (pixels)", labelpad=-10)
@@ -139,9 +154,15 @@ def alignmentresults():
     "figurekwargs": {"figsize": (3, 3)},
   }
   with plt.rc_context(rc=rc):
-    for tag in 1, 2, 3, 4:
-      plotpairwisealignments(A, tags=[tag], saveas=os.path.join(here, f"alignment-result-{tag}.pdf"), **kwargs)
-      plotpairwisealignments(A, tags=[tag], stitched=True, saveas=os.path.join(here, f"stitch-result-{tag}.pdf"), **kwargs)
+    for samp, name in ("M21_1", "vectra"), ("M1_1", "vectra-big"), ("TS19_0181_A_1_3_BMS_MITRE", "AKY"):
+      if samp != "M21_1" and not bki: continue
+      for tag in 1, 2, 3, 4:
+        filename1, filename2 = here/f"alignment-result-{name}-{tag}.pdf", here/f"stitch-result-{name}-{tag}.pdf"
+        if samp != "M21_1" and filename1.exists() and filename2.exists() and not remake: continue
+        A = alignmentset(samp=samp)
+        errorbars = samp == "M21_1"
+        plotpairwisealignments(A, tags=[tag], saveas=filename1, errorbars=errorbars, **kwargs)
+        plotpairwisealignments(A, tags=[tag], stitched=True, saveas=filename2, errorbars=errorbars, **kwargs)
 
 def scanning():
   with plt.rc_context(rc=rc):
@@ -159,10 +180,10 @@ def scanning():
             plt.arrow(x+50, y+50, -400, 100, width=3, length_includes_head=True)
         else:
           plt.arrow(x+50, y+50, 100, 0, width=3, length_includes_head=True)
-    plt.savefig(os.path.join(here, "scanning.pdf"))
+    plt.savefig(here/"scanning.pdf")
     plt.close()
 
-def squarepulls(*, bki):
+def squarepulls(*, bki, testing, remake):
   with plt.rc_context(rc=rc):
     fig = plt.figure(figsize=(6, 6))
     ax = fig.add_subplot(1, 1, 1)
@@ -187,7 +208,7 @@ def squarepulls(*, bki):
       plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True, facecolor="orange"),
     ]
 
-    plt.savefig(os.path.join(here, "squarepulldiagram.pdf"))
+    plt.savefig(here/"squarepulldiagram.pdf")
 
     for a in arrows: a.remove()
 
@@ -202,11 +223,12 @@ def squarepulls(*, bki):
       plt.arrow(x5, y5, x1-x5, y1-y5, width=3, length_includes_head=True, facecolor="orange"),
     ]
 
-    plt.savefig(os.path.join(here, "diamondpulldiagram.pdf"))
+    plt.savefig(here/"diamondpulldiagram.pdf")
 
     plt.close()
 
-    if bki:
+    if bki or testing:
+
       def plotstyling(*, fig, ax, squareordiamond):
         plt.xlabel(rf"$\delta(x,y)^\text{{{squareordiamond}}} / \sigma_{{\delta(x,y)}}^\text{{{squareordiamond}}}$", labelpad=-2)
         plt.ylabel(rf"Number of {squareordiamond}s")
@@ -218,53 +240,102 @@ def squarepulls(*, bki):
         "verbose": False,
       }
 
-      for samp in "M1_1", "M2_3":
-        A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
-        closedlooppulls(A, tagsequence=[4, 2, 6, 8], saveas=os.path.join(here, "squarepull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
-        closedlooppulls(A, tagsequence=[1, 3, 9, 7], saveas=os.path.join(here, "diamondpull"+samp[1]+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
+      samples = ("M1_1", "M2_3") if bki else (None,)
 
-def stitchpulls(*, bki):
-  if bki:
+      for samp in samples:
+        plotid = samp[1] if samp else "_test"
+        saveas = here/("squarepull"+plotid+".pdf")
+        if remake or not os.path.exists(saveas):
+          A = alignmentset(samp=samp)
+          closedlooppulls(A, tagsequence=[4, 2, 6, 8], saveas=saveas, plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
+        saveas = here/("diamondpull"+plotid+".pdf")
+        if remake or not os.path.exists(saveas):
+          A = alignmentset(samp=samp)
+          closedlooppulls(A, tagsequence=[1, 3, 9, 7], saveas=here/("diamondpull"+plotid+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
+
+def stitchpulls(*, bki, testing, remake):
+  if bki or testing:
     with plt.rc_context(rc=rc):
       def plotstyling(*, fig, ax):
-        plt.xlabel(rf"$\delta(x,y)^\text{{overlap}} / \sigma_{{\delta(x,y)}}^\text{{overlap}}$", labelpad=-2)
-        plt.ylabel(rf"Number of overlaps")
+        plt.xlabel(r"$\delta(x,y)^\text{overlap} / \sigma_{\delta(x,y)}^\text{overlap}$", labelpad=-2)
+        plt.ylabel(r"Number of overlaps")
         plt.margins(y=0.3)
         plt.legend()
 
-      for samp in "M1_1", "M2_3":
-        A = alignmentset(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp=samp)
-        for tag in 1, 2, 3, 4:
-          plotpairwisealignments(A, tags=[tag], figurekwargs={"figsize": (6, 6)}, stitched=True, pull=True, plotstyling=plotstyling, saveas=os.path.join(here, f"stitch-pull-{tag}-{samp[1]}.pdf"))
+      samples = ("M1_1", "M2_3") if bki else (None,)
 
-def sinewaves(*, bki):
-  if bki:
+      for samp in samples:
+        plotid = samp[1] if samp else "test"
+        for tag in 1, 2, 3, 4:
+          saveas=os.path.join(here, f"stitch-pull-{tag}-{plotid}.pdf")
+          if os.path.exists(saveas) and not remake: continue
+          A = alignmentset(samp=samp)
+          plotpairwisealignments(
+            A,
+            tags=[tag],
+            figurekwargs={"figsize": (6, 6)},
+            stitched=True,
+            pull=True,
+            plotstyling=plotstyling,
+            saveas=saveas
+          )
+
+def sinewaves(*, bki, testing, remake):
+  if bki or testing:
     with plt.rc_context(rc=rc):
       def plotstyling(*, fig, ax, deltaxory, vsxory):
-        plt.xlabel(rf"${vsxory}$ (pixels)", labelpad=10)
-        plt.ylabel(rf"$\delta {deltaxory}$ (pixels)", labelpad=0)
-        plt.subplots_adjust(bottom=0.15, left=0.21)
+        ax.set_xlabel(rf"${vsxory}$ (pixels)", labelpad=10)
+        ax.set_ylabel(rf"$\delta {deltaxory}$ (pixels)", labelpad=0)
+        fig.subplots_adjust(bottom=0.15, left=0.21)
+        ymin, ymax = ax.get_ylim()
+        ymin = min(ymin, -ymax, -10)
+        ymax = -ymin
+        ax.set_ylim(ymin, ymax)
 
-      Sample = collections.namedtuple("Sample", "samp root1 root2 name plotsine sinetext")
+      class Sample(collections.namedtuple("Sample", "samp name plotsine sinetext guessparameters")):
+        def __new__(cls, *, plotsine=lambda **kwargs: True, sinetext=lambda **kwargs: True, guessparameters=lambda **kwargs: None, **kwargs):
+          return super().__new__(cls, plotsine=plotsine, sinetext=sinetext, guessparameters=guessparameters, **kwargs)
+
       samples = [
-        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M1_1", name="1", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag]),
-        Sample(root1=r"\\Bki02\g\heshy", root2=r"\\Bki02\g\heshy\flatw", samp="M2_3", name="2", plotsine=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag], sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag]),
-        Sample(root1=r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", root2=r"\\Bki02\g\flatw", samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda tag, **kwargs: tag==4 and kwargs["deltaxory"] == kwargs["vsxory"] == "x", sinetext=lambda tag, **kwargs: kwargs["vsxory"] == {2: "y", 4: "x"}[tag]),
+        Sample(samp="M1_1", name="1"),
+        Sample(samp="M2_3", name="2"),
+        Sample(samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda deltaxory, vsxory, **kwargs: deltaxory == vsxory == "x"),
+        #Sample(samp="PZ1", name="JHUPolaris"),
+        Sample(samp="ML1603474_BMS069_5_21", name="BMS", plotsine=lambda deltaxory, vsxory, **kwargs: deltaxory == vsxory == "x"),
+      ] if bki else [
+        Sample(samp=None, name="test", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
       ]
 
-      for samp, root1, root2, name, plotsine, sinetext in samples:
-        A = alignmentset(root1=root1, root2=root2, samp=samp)
+      for samp, name, plotsine, sinetext, guessparameters in samples:
+        alignmentsetkwargs = {"samp": samp}
+        alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
         kwargs = {}
         for kwargs["deltaxory"] in "xy":
           for kwargs["vsxory"] in "xy":
             for tag in 2, 4:
-              alignmentshiftprofile(A, tag=tag, plotsine=plotsine(tag, **kwargs), sinetext=sinetext(tag, **kwargs), figurekwargs={"figsize": (6, 6)}, plotstyling=functools.partial(plotstyling, **kwargs), saveas=os.path.join(here, f"sine-wave-{tag}-{kwargs['deltaxory']}{kwargs['vsxory']}-{name}.pdf"), **kwargs)
+              saveas = os.path.join(here, f"sine-wave-{tag}-{kwargs['deltaxory']}{kwargs['vsxory']}-{name}.pdf")
+              if os.path.exists(saveas) and not remake: continue
+              A = alignmentset(**alignmentsetkwargs)
+              alignmentshiftprofile(
+                A,
+                tag=tag,
+                plotsine=kwargs["vsxory"] == {2: "y", 4: "x"}[tag] and plotsine(tag=tag, **kwargs),
+                sinetext=kwargs["vsxory"] == {2: "y", 4: "x"}[tag] and sinetext(tag=tag, **kwargs),
+                guessparameters=guessparameters(**kwargs),
+                figurekwargs={"figsize": (6, 6)},
+                plotstyling=functools.partial(plotstyling, **kwargs),
+                saveas=saveas,
+                **kwargs
+              )
 
 if __name__ == "__main__":
   class EqualsEverything:
     def __eq__(self, other): return True
   p = argparse.ArgumentParser()
-  p.add_argument("--bki", action="store_true")
+  g = p.add_mutually_exclusive_group()
+  g.add_argument("--bki", action="store_true")
+  g.add_argument("--testing", action="store_true")
+  p.add_argument("--remake", action="store_true")
   p.add_argument("--units", choices=("fast", "safe"), default="safe")
   g = p.add_mutually_exclusive_group()
   g.add_argument("--all", action="store_const", dest="which", const=EqualsEverything(), default=EqualsEverything())
@@ -290,12 +361,12 @@ if __name__ == "__main__":
   if args.which == "islands":
     islands()
   if args.which == "alignmentresults":
-    alignmentresults()
+    alignmentresults(bki=args.bki, remake=args.remake)
   if args.which == "scanning":
     scanning()
   if args.which == "squarepulls":
-    squarepulls(bki=args.bki)
+    squarepulls(bki=args.bki, testing=args.testing, remake=args.remake)
   if args.which == "stitchpulls":
-    stitchpulls(bki=args.bki)
+    stitchpulls(bki=args.bki, testing=args.testing, remake=args.remake)
   if args.which == "sinewaves":
-    sinewaves(bki=args.bki)
+    sinewaves(bki=args.bki, testing=args.testing, remake=args.remake)

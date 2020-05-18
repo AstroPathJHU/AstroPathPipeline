@@ -163,7 +163,7 @@ def getOverlaps(args) :
     #otherwise overlaps will have to be set after finding the octets and/or chunks
     else :
         if args.root2_dir is None :
-            raise ValueError(f'A root2_dir must be specified if you want the code to determine the valid octets and/or chunks for this sample!')
+            raise ValueError('A root2_dir must be specified if you want the code to determine the valid octets and/or chunks for this sample!')
         if not os.path.isdir(args.root2_dir) :
             raise ValueError(f'root2_dir {args.root2_dir} is not a valid directory!')
         #get the dictionary of overlap octets
