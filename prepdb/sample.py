@@ -2,8 +2,8 @@ import dataclasses, datetime, exifreader, itertools, jxmlease, logging, methodto
 from ..utilities import units
 from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
-from ..alignment.overlap import Overlap
 from .annotationxmlreader import AnnotationXMLReader
+from .overlap import Overlap
 
 logger = logging.getLogger("prepdb")
 logger.setLevel(logging.DEBUG)

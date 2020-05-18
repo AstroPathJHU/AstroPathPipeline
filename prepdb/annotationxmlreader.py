@@ -1,7 +1,7 @@
 import abc, dataclasses, datetime, dateutil, jxmlease, methodtools, numpy as np, pathlib
-from ..alignment.rectangle import Rectangle
 from ..utilities import units
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from .rectangle import Rectangle
 
 class AnnotationXMLReader:
   def __init__(self, filename, *, pscale):
