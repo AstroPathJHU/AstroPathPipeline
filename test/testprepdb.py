@@ -1,4 +1,4 @@
-import itertools, pathlib, unittest
+import itertools, numpy as np, pathlib, PIL.Image, unittest
 from ..alignment.rectangle import Rectangle
 from ..prepdb.sample import Annotation, Batch, Constant, Overlap, QPTiffCsv, Region, Sample, Vertex
 from ..utilities import units
@@ -29,6 +29,10 @@ class TestPrepDb(unittest.TestCase):
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
       except:
         raise ValueError("Error in "+filename)
+
+    with PIL.Image.open(thisfolder/"data"/"M21_1"/"dbload"/"M21_1_qptiff.jpg") as img, \
+         PIL.Image.open(thisfolder/"prepdbreference"/"M21_1_qptiff.jpg") as targetimg:
+      np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
 
   def testPrepDbFastUnits(self):
     with units.setup_context("fast"):

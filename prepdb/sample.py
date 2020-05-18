@@ -316,7 +316,8 @@ class Sample:
             return qptiffcsv, qptiffimage
           raise
         finalimg += np.tensordot(np.asarray(img), mix[:,i-qplayeridx], axes=0)
-    finalimg /= np.max(finalimg)
+#    finalimg /= np.max(finalimg)
+    finalimg[finalimg > 1] = 1
     qptiffimg = skimage.img_as_ubyte(finalimg)
     return qptiffcsv, PIL.Image.fromarray(qptiffimg)
 
