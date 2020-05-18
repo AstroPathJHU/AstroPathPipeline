@@ -1,7 +1,6 @@
-import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, typing, uncertainties as unc
+import dataclasses, matplotlib.pyplot as plt, numpy as np, typing, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
-from ..prepdb.rectangle import rectangleoroverlapfilter as overlapfilter
 from ..prepdb.overlap import Overlap
 from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint

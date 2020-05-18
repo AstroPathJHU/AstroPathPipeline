@@ -1,8 +1,7 @@
-import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, typing, uncertainties as unc
+import abc, dataclasses, networkx as nx, numpy as np
 
 from .rectangle import rectangleoroverlapfilter as overlapfilter
 from ..utilities import units
-from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass

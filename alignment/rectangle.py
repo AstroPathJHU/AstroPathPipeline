@@ -1,8 +1,6 @@
-import abc, collections, dataclasses, datetime, methodtools, numpy as np
+import dataclasses
 from ..prepdb.rectangle import Rectangle
-from ..utilities import units
 from ..utilities.misc import dataclass_dc_init
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclass_dc_init
 class ShiftedRectangle(Rectangle):

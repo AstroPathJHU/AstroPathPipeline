@@ -1,6 +1,5 @@
 import abc, collections, dataclasses, datetime, methodtools, numpy as np
 from ..utilities import units
-from ..utilities.misc import dataclass_dc_init
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
