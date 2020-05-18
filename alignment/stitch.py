@@ -1,6 +1,6 @@
 import abc, dataclasses, itertools, logging, methodtools, numpy as np, uncertainties as unc
-from ..prepdb.overlap import OverlapCollection
-from ..prepdb.rectangle import Rectangle, RectangleCollection, rectangledict
+from ..prepdb.overlap import RectangleOverlapCollection
+from ..prepdb.rectangle import Rectangle, rectangledict
 from ..utilities import units
 from ..utilities.misc import weightedstd
 from ..utilities.tableio import readtable, writetable
@@ -237,7 +237,7 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
 
   return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale)
 
-class StitchResultBase(OverlapCollection, RectangleCollection):
+class StitchResultBase(RectangleOverlapCollection):
   def __init__(self, *, rectangles, overlaps):
     self.__rectangles = rectangles
     self.__overlaps = overlaps
