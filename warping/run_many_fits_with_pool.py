@@ -102,9 +102,9 @@ def main() :
 		print(f'  command {i}: {cmd}')
 		pool.apply_async(worker,args=(cmd,))
 	pool.close()
-	print(f'POOL CLOSED; BATCH RUNNING!!')
+	print('POOL CLOSED; BATCH RUNNING!!')
 	pool.join()
-	print(f'All jobs in the pool have finished! : )')
+	print('All jobs in the pool have finished! : )')
 
 if __name__=='__main__' :
 	mp.freeze_support()
