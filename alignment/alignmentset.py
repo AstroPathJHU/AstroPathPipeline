@@ -2,11 +2,13 @@
 
 import cv2, logging, methodtools, numpy as np, pathlib
 
-from .flatfield import meanimage
-from .overlap import AlignmentResult, Overlap, OverlapCollection
-from .rectangle import ImageStats, Rectangle, RectangleCollection, rectangleoroverlapfilter
-from .stitch import ReadStitchResult, stitch
+from ..prepdb.overlap import OverlapCollection
+from ..prepdb.rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter
 from ..utilities.tableio import readtable, writetable
+from .flatfield import meanimage
+from .imagestats import ImageStats
+from .overlap import AlignmentResult, AlignmentOverlap
+from .stitch import ReadStitchResult, stitch
 
 logger = logging.getLogger("align")
 logger.setLevel(logging.DEBUG)
@@ -318,7 +320,7 @@ class AlignmentSet(RectangleCollection, OverlapCollection):
 
     return rawimages
 
-  overlaptype = Overlap #can be overridden in subclasses
+  overlaptype = AlignmentOverlap #can be overridden in subclasses
 
   @property
   def stitchfilenames(self):
