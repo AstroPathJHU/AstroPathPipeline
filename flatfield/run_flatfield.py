@@ -1,7 +1,7 @@
 #imports
 from .config import flatfield_logger
 from ..utilities.img_file_io import getImageHWLFromXMLFile
-from ..utilities.misc import cd, split_csv_to_list, split_csv_to_list_of_ints
+from ..utilities.misc import cd, split_csv_to_list
 from argparse import ArgumentParser
 import os, csv, random
 
@@ -72,13 +72,16 @@ def getFilepathsAndSampleNamesToRun(a) :
         filepaths_to_run=all_image_filepaths[:a.max_images]
         logstring+=f' {a.max_images} randomly-chosen images'
     flatfield_logger.info(logstring)
-    #figure out the samples from which those files are coming
-    samplenames_to_run = []
-    for fp in filepaths_to_run :
-        this_fp_sn = ((fp.split(os.path.sep)[-1]).split('_')[0])
-        if this_fp_sn not in samplenames_to_run :
-            samplenames_to_run.append(this_fp_sn)
-    logstring = f'Images are sourced from {len(samplenames_to_run)}'
+    if a.subset_samples_for_background :
+        #figure out the samples from which those files are coming
+        samplenames_to_run = []
+        for fp in filepaths_to_run :
+            this_fp_sn = ((fp.split(os.path.sep)[-1]).split('_')[0])
+            if this_fp_sn not in samplenames_to_run :
+                samplenames_to_run.append(this_fp_sn)
+    else :
+        samplenames_to_run = all_sample_names
+    logstring = f'Background threshold will be determined from images in {len(samplenames_to_run)}'
     if len(samplenames_to_run)>1 :
         logstring+=' different samples:'
     else :
@@ -98,8 +101,6 @@ def main() :
     parser.add_argument('samplenames', help='Comma-separated list of sample names to include (or path to the csv file that lists them)')
     parser.add_argument('rawfile_top_dir',     help='Path to directory that holds each of the [samplename] directories that contain raw files')
     #optional arguments
-    parser.add_argument('--layers',               default=[-1],           type=split_csv_to_list_of_ints,         
-        help='Comma-separated list of image layer numbers to consider (default -1 means all layers)')
     parser.add_argument('--max_images',           default=-1,             type=int,         
         help='Number of images to load from the inputted list of samples')
     parser.add_argument('--selection',            default='random',       choices=['random','first','last'],
@@ -110,6 +111,9 @@ def main() :
         help='Add this flag to skip masking out the background regions of the images as they get added')
     parser.add_argument('--save_masking_plots', action='store_true',
         help='Add this flag to save the step-by-step plots of the masks produced as they are calculated')
+    parser.add_argument('--subset_samples_for_background', action='store_true',
+        help="""Add this flag to only use the samples whose files will actually be read to find the background threshold; 
+              otherwise all samples in the input list will be used""")
     parser.add_argument('--rawfile_ext',          default='.Data.dat',
         help='Extension of raw files to load (default is ".Data.dat")')
     parser.add_argument('--workingdir_name',      default='flatfield_test',
@@ -124,15 +128,16 @@ def main() :
     #get the list of filepaths to run and the names of their samples
     filepaths_to_run, sample_names_to_run = getFilepathsAndSampleNamesToRun(args)
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(dims,filepaths_to_run,sample_names_to_run,args.n_threads)
+    ff_producer = FlatfieldProducer(dims,filepaths_to_run,sample_names_to_run,args.workingdir_name,args.skip_masking)
     #begin by finding the background threshold per layer by looking at the HPFs on the tissue edges
     ff_producer.findBackgroundThreshold()
     #mask and stack images together
-    ff_producer.stackImages()
+    ff_producer.stackImages(args.n_threads,args.save_masking_plots)
     #make the flatfield image
     ff_producer.makeFlatField()
     #save the flatfield image and all the plots, etc.
-    ff_producer.writeOutInfo()
+    ff_producer.writeOutInfo(args.flatfield_image_name)
+    flatfield_logger.info('All Done!')
 
 if __name__=='__main__' :
     main()

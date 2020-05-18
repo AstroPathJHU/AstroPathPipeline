@@ -9,7 +9,6 @@ handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)
 flatfield_logger.addHandler(handler)
 
 #flatield_producer globals
-IMG_DTYPE_IN = np.uint16
 FILEPATH_TEXT_FILE_NAME='filepath_log.txt'
 
 #mean_image constants

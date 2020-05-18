@@ -15,27 +15,18 @@ class MeanImage :
     """
     Class to hold an image that is the mean of a bunch of stacked raw images 
     """
-    def __init__(self,name,y,x,nlayers,dtype,max_nprocs,workingdir_name,skip_masking=False,smoothsigma=100) :
+    def __init__(self,nlayers,workingdir_name,skip_masking=False,smoothsigma=100) :
         """
-        name            = stem to use for naming files that get created
-        y               = y dimension of images (pixels)
-        x               = x dimension of images (pixels)
         nlayers         = number of layers in images
-        dtype           = datatype of image arrays that will be stacked
-        max_nprocs      = max number of parallel processes to run when smoothing images
         workingdir_name = name of the directory to save everything in
         skip_masking    = if True, image layers won't be masked before being added to the stack
         smoothsigma     = Gaussian sigma for final smoothing of stacked flatfield image
         """
-        self.namestem = name
-        self.xpix = x
-        self.ypix = y
         self.nlayers = nlayers
-        self.max_nprocs = max_nprocs
         self.workingdir_name = workingdir_name
         self.skip_masking = skip_masking
         self.smoothsigma = smoothsigma
-        self.image_stack = np.zeros((y,x,nlayers),dtype=np.uint32) #WARNING: may overflow if more than 65,535 masks are stacked 
+        self.image_stack = np.zeros((y,x,nlayers),dtype=np.uint32) #WARNING: may overflow if more than 65,535 images are stacked 
         self.mask_stack  = np.zeros((y,x,nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 masks are stacked 
         self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=IMG_DTYPE_OUT)
         self.n_images_stacked = 0
@@ -108,19 +99,20 @@ class MeanImage :
         Save mean image, smoothed mean image, and flatfield image all as float16s
         namestem = stem of filename to use when saving images
         """
-        if self.mean_image is not None :
-            shape = self.mean_image.shape
-            meanimage_filename = f'{namestem}_mean_of_{self.n_images_stacked}_{shape[0]}x{shape[1]}x{shape[2]}_images{FILE_EXT}'
-            writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=IMG_DTYPE_OUT)
-        if self.smoothed_mean_image is not None :
-            smoothed_meanimage_filename = f'{namestem}_smoothed_mean_image{FILE_EXT}'
-            writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=IMG_DTYPE_OUT)
-        if self.flatfield_image is not None :
-            flatfieldimage_filename = f'{namestem}{FILE_EXT}'
-            writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=IMG_DTYPE_OUT)
-        #if masks were calculated, save the stack of them
-        if not self.skip_masking :
-            writeImageToFile(np.transpose(self.mask_stack,(2,1,0)),f'mask_stack{FILE_EXT}',dtype=np.uint16)
+        with cd(self.workingdir_name) :
+            if self.mean_image is not None :
+                shape = self.mean_image.shape
+                meanimage_filename = f'{namestem}_mean_of_{self.n_images_stacked}_{shape[0]}x{shape[1]}x{shape[2]}_images{FILE_EXT}'
+                writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=IMG_DTYPE_OUT)
+            if self.smoothed_mean_image is not None :
+                smoothed_meanimage_filename = f'{namestem}_smoothed_mean_image{FILE_EXT}'
+                writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=IMG_DTYPE_OUT)
+            if self.flatfield_image is not None :
+                flatfieldimage_filename = f'{namestem}{FILE_EXT}'
+                writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=IMG_DTYPE_OUT)
+            #if masks were calculated, save the stack of them
+            if not self.skip_masking :
+                writeImageToFile(np.transpose(self.mask_stack,(2,1,0)),f'mask_stack{FILE_EXT}',dtype=np.uint16)
 
     def savePlots(self) :
         """

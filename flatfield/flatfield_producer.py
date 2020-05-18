@@ -11,56 +11,77 @@ class FlatfieldProducer :
 	"""
 	Main class used in producing the flatfield correction image
 	"""
-	def __init__(self,img_dims,filepaths,sample_names,n_threads) :
+	def __init__(self,img_dims,filepaths,sample_names,workingdir_name,skip_masking) :
 		"""
-		img_dims     = dimensions of images in files in order as (height, width, # of layers) 
-		filepaths    = list of all filepaths that will be run
-		sample_names = list of names of samples that will be considered in this run
-		n_threads    = max number of threads/processes to open at once
+		img_dims        = dimensions of images in files in order as (height, width, # of layers) 
+		filepaths       = list of all filepaths that will be run
+		sample_names    = list of names of samples that will be considered in this run
+		workingdir_name = name of the directory to save everything in
+		skip_masking    = if True, image layers won't be masked before being added to the stack
 		"""
-	    #get the list of filepaths and break them into chunks to run in parallel
-	    filepath_chunks = [[]]
-	    for i,fp in enumerate(filepaths,start=1) :
-	        if len(filepath_chunks[-1])>=args.n_threads :
-	            filepath_chunks.append([])
-	        filepath_chunks[-1].append((fp,f'({i} of {len(filepaths)})',dims))
+		self.dims = img_dims
+		self.all_filepaths = filepaths
+		self.sample_names = sample_names
 	    #Start up a new mean image
-	    mean_image = MeanImage(args.flatfield_image_name,
-	                            dims[0],dims[1],dims[2] if args.layers==[-1] else len(args.layers),IMG_DTYPE_IN,
-	                            args.n_threads,args.workingdir_name,args.skip_masking)
+	    self.mean_image = MeanImage(flatfield_image_name,self.dims[2],workingdir_name,skip_masking)
 
-	def findBackgroundThreshold(self) :
-		pass
+	#################### PUBLIC FUNCTIONS ####################
 
-	def stackImages(self) :
+	def findBackgroundThreshold(self,n_threads) :
+		"""
+		Function to determine, using HPFs that image edges of the tissue in each slide, what threshold to use for masking out background
+		n_threads = max number of threads/processes to open at once
+		"""
+		#find the filepaths corresponding to the edges of the tissue in the samples
+		self.tissue_edge_filepaths = self.__findTissueEdgeFilepaths()
+		#chunk them together to be read in parallel
+		tissue_edge_fp_chunks = chunkListOfFilepaths(self.tissue_edge_filepaths,self.dims,n_threads)
+
+	def stackImages(self,n_threads,save_masking_plots) :
+		"""
+		Function to mask out background and stack portions of images up
+		n_threads          = max number of threads/processes to open at once
+		save_masking_plots = whether to save plots of the mask overlays as they're generated
+		"""
+		#break the list of filepaths into chunks to run in parallel
+	    filepath_chunks = chunkListOfFilepaths(self.all_filepaths,self.dims,n_threads)
 		#for each chunk, get the image arrays from the multithreaded function and then add them to to stack
 	    flatfield_logger.info('Stacking raw images....')
 	    for fp_chunk in filepath_chunks :
 	        if len(fp_chunk)<1 :
 	            continue
-	        new_img_arrays = readImagesMT(fp_chunk,args.layers)
-	        mean_image.addGroupOfImages(new_img_arrays,args.save_masking_plots)
+	        new_img_arrays = readImagesMT(fp_chunk)
+	        self.mean_image.addGroupOfImages(new_img_arrays,save_masking_plots)
 
 	def makeFlatField(self) :
-		#take the mean of the stacked images, smooth it and make the flatfield image by dividing each layer by its mean pixel value
+		"""
+		Take the mean of the stacked images, smooth it and make the flatfield image by dividing each layer by its mean pixel value
+		"""
 	    flatfield_logger.info('Getting/smoothing mean image and making flatfield....')
-	    mean_image.makeFlatFieldImage()
+	    self.mean_image.makeFlatFieldImage()
 
-	def writeOutInfo(self) :
+	def writeOutInfo(self,name) :
+		"""
+		name            = stem to use for naming files that get created
+		"""
 		#save the images
 	    flatfield_logger.info('Saving layer-by-layer images....')
-	    with cd(args.workingdir_name) :
-	        mean_image.saveImages(args.flatfield_image_name)
+        self.mean_image.saveImages(name)
 	    #make some visualizations of the images
 	    flatfield_logger.info('Saving plots....')
-	    mean_image.savePlots()
+	    self.mean_image.savePlots()
 	    #write out a text file of all the filenames that were added
 	    flatfield_logger.info('Writing filepath text file....')
-	    with cd(args.workingdir_name) :
+	    with cd(self.mean_image.workingdir_name) :
 	        with open(FILEPATH_TEXT_FILE_NAME,'w') as fp :
-	            for path in filepaths :
+	            for path in self.all_filepaths :
 	                fp.write(f'{path}\n')
-	    flatfield_logger.info('All Done!')
+
+	#################### PRIVATE HELPER FUNCTIONS ####################
+
+	#helper function to return the subset of the filepath list corresponding to HPFs on the edge of tissue
+	def __findTissueEdgeFilepaths(self) :
+		pass
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
@@ -71,17 +92,17 @@ def getRawImageArray(fpt) :
     return raw_img_arr
 
 #helper function to read and return a group of raw images with multithreading
-def readImagesMT(sample_image_filepath_tuples,layerlist) :
+def readImagesMT(sample_image_filepath_tuples) :
     e = ThreadPoolExecutor(len(sample_image_filepath_tuples))
     new_img_arrays = list(e.map(getRawImageArray,[fp for fp in sample_image_filepath_tuples]))
     e.shutdown()
-    if layerlist==[-1] :
-        return new_img_arrays
-    else :
-        to_return = []
-        for new_img_array in new_img_arrays :
-            to_add = np.ndarray((IMG_Y,IMG_X,len(layerlist)),dtype=IMG_DTYPE_IN)
-            for i,layer in enumerate(layerlist) :
-                to_add[:,:,i] = new_img_array[:,:,layer-1]
-            to_return.append(to_add)
-        return to_return
+    return new_img_arrays
+
+#helper function to split a list of filenames into chunks to be read in in parallel
+def chunkListOfFilepaths(fps,dims,n_threads) :
+	filepath_chunks = [[]]
+    for i,fp in enumerate(fps,start=1) :
+        if len(filepath_chunks[-1])>=n_threads :
+            filepath_chunks.append([])
+        filepath_chunks[-1].append((fp,f'({i} of {len(fps)})',self.dims))
+    return filepath_chunks
