@@ -1,5 +1,5 @@
 import numpy as np
-from .core import distances, pixels, UnitsError
+from ..core import distances, pixels, UnitsError
 
 def fft(a, *args, **kwargs):
   fftpixels = np.fft.fft(pixels(a, power=None), *args, **kwargs)

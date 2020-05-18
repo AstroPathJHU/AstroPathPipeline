@@ -1,5 +1,5 @@
 import itertools, scipy.optimize
-from .core import _power, _pscale, distances, pixels
+from ..core import _power, _pscale, distances, pixels
 
 def curve_fit(f, xdata, ydata, p0, sigma=None, **kwargs):
   pscale = {_pscale(_)[()] for _ in itertools.chain(p0, xdata, ydata, sigma if sigma is not None else [])}

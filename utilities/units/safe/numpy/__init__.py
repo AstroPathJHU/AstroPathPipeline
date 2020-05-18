@@ -1,6 +1,7 @@
 import numpy as np
-from .. import UnitsError
-from .core import _power, _pscale, distances, pixels
+from ... import UnitsError
+from ..core import _power, _pscale, distances, pixels
+from . import fft, linalg, testing
 
 @np.vectorize
 def isclose(distance1, distance2, *args, **kwargs):
@@ -26,3 +27,8 @@ def linspace(start, stop, *args, **kwargs):
   stoppixels = pixels(stop, pscale=pscale, power=power)
   resultpixels = np.linspace(startpixels, stoppixels, *args, **kwargs)
   return distances(pixels=resultpixels, pscale=pscale, power=power)
+
+__all__ = [
+  "fft", "linalg", "testing",
+  "angle", "isclose", "linspace",
+]
