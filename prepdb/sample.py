@@ -1,6 +1,5 @@
 import dataclasses, datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage
 from ..utilities import units
-from ..utilities.misc import PILmaximagepixels
 from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 from ..alignment.overlap import Overlap
