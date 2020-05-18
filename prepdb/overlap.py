@@ -1,6 +1,6 @@
 import abc, dataclasses, networkx as nx, numpy as np
 
-from .rectangle import rectangleoroverlapfilter as overlapfilter
+from .rectangle import RectangleCollection, rectangleoroverlapfilter as overlapfilter
 from ..utilities import units
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
@@ -57,6 +57,9 @@ class OverlapCollection(abc.ABC):
   def nislands(self, *args, **kwargs):
     return nx.number_strongly_connected_components(self.overlapgraph(*args, **kwargs))
 
+  def islands(self, *args, **kwargs):
+    return list(nx.strongly_connected_components(self.overlapgraph(*args, **kwargs)))
+
   @property
   def overlapsdict(self):
     return {(o.p1, o.p2): o for o in self.overlaps}
@@ -72,3 +75,10 @@ class OverlapCollection(abc.ABC):
 class OverlapList(list, OverlapCollection):
   @property
   def overlaps(self): return self
+
+class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
+  def overlapgraph(self, *args, **kwargs):
+    g = super().overlapgraph(*args, **kwargs)
+    for r in self.rectangles:
+      g.add_node(r.n)
+    return g
