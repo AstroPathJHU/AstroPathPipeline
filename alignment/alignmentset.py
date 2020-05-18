@@ -2,8 +2,8 @@
 
 import cv2, logging, methodtools, numpy as np, pathlib
 
-from ..prepdb.overlap import OverlapCollection
-from ..prepdb.rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter
+from ..prepdb.overlap import RectangleOverlapCollection
+from ..prepdb.rectangle import Rectangle, rectangleoroverlapfilter
 from ..utilities.tableio import readtable, writetable
 from .flatfield import meanimage
 from .imagestats import ImageStats
@@ -16,7 +16,7 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s"))
 logger.addHandler(handler)
 
-class AlignmentSet(RectangleCollection, OverlapCollection):
+class AlignmentSet(RectangleOverlapCollection):
   """
   Main class for aligning a set of images
   """
