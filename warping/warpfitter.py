@@ -1,7 +1,7 @@
 #imports
 from .warpset import WarpSet
 from ..alignment.alignmentset import AlignmentSet
-from ..alignment.rectangle import rectangleoroverlapfilter
+from ..prepdb.rectangle import rectangleoroverlapfilter
 from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, scipy, matplotlib.pyplot as plt

@@ -1,6 +1,6 @@
 import abc, dataclasses, itertools, logging, methodtools, numpy as np, uncertainties as unc
-from .overlap import OverlapCollection
-from .rectangle import Rectangle, RectangleCollection, rectangledict
+from ..prepdb.overlap import OverlapCollection
+from ..prepdb.rectangle import Rectangle, RectangleCollection, rectangledict
 from ..utilities import units
 from ..utilities.misc import weightedstd
 from ..utilities.tableio import readtable, writetable
