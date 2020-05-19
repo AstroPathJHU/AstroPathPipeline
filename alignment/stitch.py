@@ -520,6 +520,7 @@ class AffineEntry:
   n: int
   value: float = dataclasses.field(metadata={"writefunction": float})
   description: str
+  readingfromfile: dataclasses.InitVar[bool] = False
 
 class AffineNominalEntry(AffineEntry):
   def __init__(self, n, matrixentry, description):
