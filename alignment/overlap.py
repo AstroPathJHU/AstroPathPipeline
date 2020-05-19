@@ -46,15 +46,15 @@ class AlignmentOverlap(Overlap):
     offsetimage2y1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy1 - image2y1, pscale=self.pscale)))
     offsetimage2y2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy2 - image2y1, pscale=self.pscale)))
 
-    cutimage1x1 = floattoint(units.pixels(offsetimage1x1, pscale=self.pscale)) + self.nclip
-    cutimage1x2 = floattoint(units.pixels(offsetimage1x2, pscale=self.pscale)) - self.nclip
-    cutimage1y1 = floattoint(units.pixels(offsetimage1y1, pscale=self.pscale)) + self.nclip
-    cutimage1y2 = floattoint(units.pixels(offsetimage1y2, pscale=self.pscale)) - self.nclip
+    cutimage1x1 = floattoint(units.pixels(offsetimage1x1 + self.nclip, pscale=self.pscale))
+    cutimage1x2 = floattoint(units.pixels(offsetimage1x2 - self.nclip, pscale=self.pscale))
+    cutimage1y1 = floattoint(units.pixels(offsetimage1y1 + self.nclip, pscale=self.pscale))
+    cutimage1y2 = floattoint(units.pixels(offsetimage1y2 - self.nclip, pscale=self.pscale))
 
-    cutimage2x1 = floattoint(units.pixels(offsetimage2x1, pscale=self.pscale)) + self.nclip
-    cutimage2x2 = floattoint(units.pixels(offsetimage2x2, pscale=self.pscale)) - self.nclip
-    cutimage2y1 = floattoint(units.pixels(offsetimage2y1, pscale=self.pscale)) + self.nclip
-    cutimage2y2 = floattoint(units.pixels(offsetimage2y2, pscale=self.pscale)) - self.nclip
+    cutimage2x1 = floattoint(units.pixels(offsetimage2x1 + self.nclip, pscale=self.pscale))
+    cutimage2x2 = floattoint(units.pixels(offsetimage2x2 - self.nclip, pscale=self.pscale))
+    cutimage2y1 = floattoint(units.pixels(offsetimage2y1 + self.nclip, pscale=self.pscale))
+    cutimage2y2 = floattoint(units.pixels(offsetimage2y2 - self.nclip, pscale=self.pscale))
 
     #make sure that even with floattoint() they're the same size
     deltax = min(cutimage1x2 - cutimage1x1, cutimage2x2 - cutimage2x1)
