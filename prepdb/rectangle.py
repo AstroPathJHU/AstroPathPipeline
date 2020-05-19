@@ -42,6 +42,10 @@ class RectangleCollection(abc.ABC):
   def rectangleindices(self):
     return {r.n for r in self.rectangles}
 
+class RectangleList(list, RectangleCollection):
+  @property
+  def rectangles(self): return self
+
 def rectangledict(rectangles):
   return {rectangle.n: i for i, rectangle in enumerate(rectangles)}
 

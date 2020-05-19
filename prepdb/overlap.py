@@ -1,8 +1,10 @@
-import abc, dataclasses, networkx as nx, numpy as np
+import abc, dataclasses, networkx as nx, numpy as np, pathlib
 
-from .rectangle import RectangleCollection, rectangleoroverlapfilter as overlapfilter
 from ..utilities import units
+from ..utilities.tableio import readtable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from .csvclasses import Constant
+from .rectangle import Rectangle, RectangleCollection, RectangleList, rectangleoroverlapfilter, rectangleoroverlapfilter as overlapfilter
 
 @dataclasses.dataclass
 class Overlap(DataClassWithDistances):
@@ -82,3 +84,38 @@ class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
     for r in self.rectangles:
       g.add_node(r.n)
     return g
+
+class RectangleOverlapList(RectangleOverlapCollection):
+  def __init__(self, rectangles, overlaps):
+    self.__rectangles = rectangles
+    self.__overlaps = overlaps
+
+  @property
+  def rectangles(self): return self.__rectangles
+  @property
+  def overlaps(self): return self.__overlaps
+
+def rectangleoverlaplist_fromcsvs(dbloadfolder, *, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False):
+  dbload = pathlib.Path(dbloadfolder)
+  samp = dbload.parent.name
+  tmp = readtable(dbload/(samp+"_constants.csv"), Constant, extrakwargs={"pscale": 1})
+  pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
+  constants     = readtable(dbload/(samp+"_constants.csv"), Constant, extrakwargs={"pscale": pscale})
+  constantsdict = {constant.name: constant.value for constant in constants}
+  layer = constantsdict["layer"]
+  nclip = constantsdict["nclip"]
+
+  rectanglefilter = rectangleoroverlapfilter(selectrectangles)
+  _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
+  overlapfilter = lambda o: _overlapfilter(o) and o.p1 in rectangles.rectangleindices and o.p2 in rectangles.rectangleindices
+
+  rectangles  = readtable(dbload/(samp+"_rect.csv"), Rectangle, extrakwargs={"pscale": pscale})
+  rectangles = RectangleList([r for r in rectangles if rectanglefilter(r)])
+  overlaps  = readtable(dbload/(samp+"_overlap.csv"), Overlap, filter=lambda row: row["p1"] in rectangles.rectangleindices and row["p2"] in rectangles.rectangleindices, extrakwargs={"pscale": pscale, "layer": layer, "rectangles": rectangles, "nclip": nclip})
+  overlaps = OverlapList([o for o in overlaps if overlapfilter(o)])
+  if onlyrectanglesinoverlaps:
+    oldfilter = rectanglefilter
+    rectanglefilter = lambda r: oldfilter(r) and overlaps.selectoverlaprectangles(r)
+    rectangles = [r for r in rectangles if rectanglefilter(r)]
+  return RectangleOverlapList(rectangles, overlaps)
+
