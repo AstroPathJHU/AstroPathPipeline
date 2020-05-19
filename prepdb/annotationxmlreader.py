@@ -1,6 +1,6 @@
-import abc, dataclasses, datetime, dateutil, jxmlease, methodtools, numpy as np, pathlib
+import abc, dateutil, jxmlease, methodtools, numpy as np, pathlib
 from ..utilities import units
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from .csvclasses import Globals, Perimeter
 from .rectangle import Rectangle
 
 class AnnotationXMLReader:
@@ -158,22 +158,3 @@ def AnnotationFactory(xmlnode, **kwargs):
     "RectangleAnnotation": RectangleAnnotation,
     "ROIAnnotation": ROIAnnotation,
   }[xmlnode.get_xml_attr("subtype")](xmlnode, **kwargs)
-
-@dataclasses.dataclass
-class Globals(DataClassWithDistances):
-  pixelsormicrons = "microns"
-
-  x: distancefield(pixelsormicrons=pixelsormicrons)
-  y: distancefield(pixelsormicrons=pixelsormicrons)
-  Width: distancefield(pixelsormicrons=pixelsormicrons)
-  Height: distancefield(pixelsormicrons=pixelsormicrons)
-  Unit: str
-  Tc: datetime.datetime = dataclasses.field(metadata={"writefunction": datetime.datetime.timestamp})
-
-@dataclasses.dataclass
-class Perimeter(DataClassWithDistances):
-  pixelsormicrons = "microns"
-
-  n: int
-  x: distancefield(pixelsormicrons=pixelsormicrons)
-  y: distancefield(pixelsormicrons=pixelsormicrons)

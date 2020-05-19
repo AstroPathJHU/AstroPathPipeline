@@ -2,8 +2,10 @@
 
 import cv2, logging, methodtools, numpy as np, pathlib
 
+from ..prepdb.csvclasses import Batch, Constant, QPTiffCsv
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangleoroverlapfilter
+from ..utilities import units
 from ..utilities.tableio import readtable, writetable
 from .flatfield import meanimage
 from .imagestats import ImageStats
@@ -68,27 +70,33 @@ class AlignmentSet(RectangleOverlapCollection):
       try: return int(string)
       except ValueError: return float(string)
 
-    self.constants     = readtable(self.dbload/(self.samp+"_constants.csv"), "Constant", value=intorfloat)
-    self.constantsdict = {constant.name: constant.value for constant in self.constants}
-
-    self.fwidth    = self.constantsdict["fwidth"]
-    self.fheight   = self.constantsdict["fheight"]
-    self.pscale    = float(self.constantsdict["pscale"])
-
     try:
       componenttiff = next((self.root1/self.samp/"inform_data"/"Component_Tiffs").glob("*.tif"))
     except StopIteration:
       logger.warning("couldn't find a component tiff, trusting image size and pscale from constants.csv")
+      componenttiff = None
     else:
       import PIL
       with PIL.Image.open(componenttiff) as tiff:
         dpi = set(tiff.info["dpi"])
         if len(dpi) != 1: raise ValueError(f"Multiple different dpi values {dpi}")
         pscale = dpi.pop() / 2.54 / 10000
-        width, height = tiff.size
-        if (width, height) != (self.fwidth, self.fheight):
-          logger.warning(f"component tiff has size {width, height} which is different from {self.fwidth, self.fheight} (in constants.csv)")
-          self.fwidth, self.fheight = width, height
+        width, height = units.distances(pixels=tiff.size, pscale=pscale)
+
+    if componenttiff is None:
+      tmp = readtable(self.dbload/(self.samp+"_constants.csv"), Constant, extrakwargs={"pscale": 1})
+      pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
+    self.constants     = readtable(self.dbload/(self.samp+"_constants.csv"), Constant, extrakwargs={"pscale": pscale})
+    self.constantsdict = {constant.name: constant.value for constant in self.constants}
+
+    self.fwidth    = self.constantsdict["fwidth"]
+    self.fheight   = self.constantsdict["fheight"]
+    self.pscale    = float(self.constantsdict["pscale"])
+
+    if componenttiff is not None:
+      if (width, height) != (self.fwidth, self.fheight):
+        logger.warning(f"component tiff has size {width, height} which is different from {self.fwidth, self.fheight} (in constants.csv)")
+        self.fwidth, self.fheight = width, height
       if self.pscale != pscale:
         logger.warning(f"component tiff has pscale {pscale} which is different from {self.pscale} (in constants.csv)")
         self.pscale = pscale
@@ -99,13 +107,13 @@ class AlignmentSet(RectangleOverlapCollection):
     self.nclip     = self.constantsdict["nclip"]
     self.layer     = self.constantsdict["layer"]
 
-    self.batch = readtable(self.dbload/(self.samp+"_batch.csv"), "Batch", SampleID=int, Scan=int, Batch=int)
+    self.batch = readtable(self.dbload/(self.samp+"_batch.csv"), Batch)
     self.scan  = f"Scan{self.batch[0].Scan:d}"
 
-    #self.annotations = readtable(self.dbload/(self.samp+"_annotations.csv"), "Annotation", sampleid=int, layer=int, visible=int)
-    #self.regions     = readtable(self.dbload/(self.samp+"_regions.csv"), "Region", regionid=int, sampleid=int, layer=int, rid=int, isNeg=int, nvert=int, fieldsizelimit=10000000)
-    #self.vertices    = readtable(self.dbload/(self.samp+"_vertices.csv"), "Vertex", regionid=int, vid=int, x=int, y=int)
-    self.imagetable  = readtable(self.dbload/(self.samp+"_qptiff.csv"), "ImageInfo", SampleID=int, XPosition=float, YPosition=float, XResolution=float, YResolution=float, qpscale=float, img=int)
+    #self.annotations = readtable(self.dbload/(self.samp+"_annotations.csv"), Annotation)
+    #self.regions     = readtable(self.dbload/(self.samp+"_regions.csv"), Region)
+    #self.vertices    = readtable(self.dbload/(self.samp+"_vertices.csv"), Vertex)
+    self.imagetable  = readtable(self.dbload/(self.samp+"_qptiff.csv"), QPTiffCsv, extrakwargs={"pscale": self.pscale})
     self.__image     = None
 
     self.__rectangles  = readtable(self.dbload/(self.samp+"_rect.csv"), Rectangle, extrakwargs={"pscale": self.pscale})
@@ -295,7 +303,7 @@ class AlignmentSet(RectangleOverlapCollection):
       raise ValueError(f"requested file type {filetype} not recognized by getrawlayers")
     path = self.root2/self.samp
 
-    rawimages = np.ndarray(shape=(len(self.rectangles), self.fheight, self.fwidth), dtype=np.uint16)
+    rawimages = np.ndarray(shape=(len(self.rectangles), units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)), dtype=np.uint16)
 
     if not self.rectangles:
       raise IOError("didn't find any rows in the rectangles table for "+self.samp, 1)
@@ -308,7 +316,7 @@ class AlignmentSet(RectangleOverlapCollection):
         rawimages[i] = np.memmap(
           f,
           dtype=np.uint16,
-          shape=(self.fheight, self.fwidth),
+          shape=(units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)),
           order="F",
           mode="r"
         )

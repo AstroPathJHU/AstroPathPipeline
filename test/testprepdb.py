@@ -1,5 +1,6 @@
 import itertools, numpy as np, pathlib, PIL.Image, unittest
-from ..alignment.rectangle import Rectangle
+from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
+from ..prepdb.rectangle import Rectangle
 from ..prepdb.sample import Annotation, Batch, Constant, Overlap, QPTiffCsv, Region, Sample, Vertex
 from ..utilities import units
 from ..utilities.tableio import readtable
@@ -37,3 +38,15 @@ class TestPrepDb(unittest.TestCase):
   def testPrepDbFastUnits(self):
     with units.setup_context("fast"):
       self.testPrepDb()
+
+  def testRectangleOverlapList(self):
+    l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload")
+    islands = l.islands()
+    self.assertEqual(len(islands), 2)
+    l2 = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", selectrectangles=lambda x: x.n in islands[0])
+    self.assertEqual(l2.islands(), [l.islands()[0]])
+
+  def testRectangleOverlapListFastUnits(self):
+    with units.setup_context("fast"):
+      self.testRectangleOverlapList()
+
