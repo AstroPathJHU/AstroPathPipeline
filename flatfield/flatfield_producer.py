@@ -1,7 +1,8 @@
 #imports
 from .mean_image import MeanImage
 from .config import *
-from ..prepdb.overlap import Overlap
+from ..prepdb.rectangle import Rectangle
+from ..prepdb.overlap import Overlap, RectangleOverlapCollection
 from ..utilities.img_file_io import getRawAsHWL
 from ..utilities.tableio import readtable
 from concurrent.futures import ThreadPoolExecutor
@@ -88,9 +89,15 @@ class FlatfieldProducer :
 		filepaths_to_return = []
 		#for each sample
 		for sn in self.sample_names :
-			#make the list of overlaps
+			#first get the constants for the sample
+			const_csv_fp = os.path.join(dbload_top_dir,sn,'dbload',f'{sn}_constants.csv')
+			constants = readtable(const_csv_fp, "Constant", value=intorfloat)
+		    self.constantsdict = {constant.name: constant.value for constant in self.constants}
+			#make the lists of rectangles and overlaps
+			rect_csv_fp = os.path.join(dbload_top_dir,sn,'dbload',f'{sn}_rect.csv')
+			this_sample_rects  = readtable(rect_csv_fp, Rectangle, extrakwargs={"pscale": self.pscale})
 			olap_csv_fp = os.path.join(dbload_top_dir,sn,'dbload',f'{sn}_overlap.csv')
-			this_sample_olaps  = readtable(olap_csv_fp, self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
+			this_sample_olaps  = readtable(olap_csv_fp, Overlap, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
 
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################

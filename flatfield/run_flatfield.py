@@ -41,7 +41,7 @@ def getAllSampleNames(a) :
 def getFilepathsAndSampleNamesToRun(a) :
     #get all the possible sample names
     all_sample_names = getAllSampleNames(a)
-    #make sure the rawfile directories, dbload/*_overlap.csv, and dbload/*_rect.csv files all exist
+    #make sure the rawfile directories, dbload/*_overlap.csv, dbload/*_rect.csv, and dbload/*_constants.csv files all exist
     for sn in all_sample_names :
         if not os.path.isdir(os.path.join(a.rawfile_top_dir,sn)) :
             raise ValueError(f'ERROR: sample directory {os.path.join(a.rawfile_top_dir,sn)} does not exist!')
@@ -49,6 +49,8 @@ def getFilepathsAndSampleNamesToRun(a) :
             raise ValueError(f'ERROR: *_overlap.csv file for sample {sn} does not exist!')
         if not os.path.isfile(os.path.join(a.dbload_top_dir,sn,'dbload',f'{sn}_rect.csv')) :
             raise ValueError(f'ERROR: *_rect.csv file for sample {sn} does not exist!')
+        if not os.path.isfile(os.path.join(a.dbload_top_dir,sn,'dbload',f'{sn}_constants.csv')) :
+            raise ValueError(f'ERROR: *_constants.csv file for sample {sn} does not exist!')
     #get the (sorted) full list of file names in the sample to choose from
     all_image_filepaths = []
     #iterate over the samples
