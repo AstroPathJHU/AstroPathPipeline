@@ -19,7 +19,6 @@ class ShiftedRectangle(Rectangle):
   my2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   gx: int
   gy: int
-  readingfromfile: dataclasses.InitVar[bool]
 
   def __init__(self, *args, rectangle=None, ixvec=None, pxvec=None, gxvec=None, primaryregionx=None, primaryregiony=None, **kwargs):
     veckwargs = {}

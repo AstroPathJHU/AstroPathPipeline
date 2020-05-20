@@ -68,7 +68,7 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
         else:
           columntypes[field.name] = typ
 
-    if "readingfromfile" in Row.__annotations__ and "readingfromfile" not in extrakwargs:
+    if any("readingfromfile" in _.__annotations__ for _ in Row.__mro__ if _ is not object) and "readingfromfile" not in extrakwargs:
       extrakwargs["readingfromfile"] = True
 
     for row in reader:
