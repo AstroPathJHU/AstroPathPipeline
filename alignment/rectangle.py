@@ -6,17 +6,15 @@ from ..utilities.units.dataclasses import distancefield
 
 @dataclass_dc_init
 class ShiftedRectangle(Rectangle):
-  pixelsormicrons = Rectangle.pixelsormicrons
-
-  ix: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  iy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  ix: units.Distance = distancefield(pixelsormicrons="pixels")
+  iy: units.Distance = distancefield(pixelsormicrons="pixels")
   gc: int
-  px: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  py: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  mx1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  mx2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  my1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  my2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  px: units.Distance = distancefield(pixelsormicrons="pixels")
+  py: units.Distance = distancefield(pixelsormicrons="pixels")
+  mx1: units.Distance = distancefield(pixelsormicrons="pixels")
+  mx2: units.Distance = distancefield(pixelsormicrons="pixels")
+  my1: units.Distance = distancefield(pixelsormicrons="pixels")
+  my2: units.Distance = distancefield(pixelsormicrons="pixels")
   gx: int
   gy: int
 
