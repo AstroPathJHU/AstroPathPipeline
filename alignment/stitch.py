@@ -1,10 +1,11 @@
-import abc, dataclasses, itertools, logging, methodtools, numpy as np, uncertainties as unc
+import abc, collections, dataclasses, itertools, logging, methodtools, more_itertools, numpy as np, uncertainties as unc
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangledict
 from ..utilities import units
 from ..utilities.misc import weightedstd
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from .rectangle import ShiftedRectangle
 
 logger = logging.getLogger("align")
 
@@ -266,8 +267,79 @@ class StitchResultBase(RectangleOverlapCollection):
     for o in self.overlaps:
       o.stitchresult = self.dx(o)
 
+  @methodtools.lru_cache()
+  def __shiftedrectangles(self):
+    result = []
+    islands = list(self.islands(useexitstatus=True))
+    gxdict = collections.defaultdict(dict)
+    gydict = collections.defaultdict(dict)
+    primaryregionsx = {}
+    primaryregionsy = {}
+
+    shape = {tuple(r.shape) for r in self.rectangles}
+    if len(shape) > 1:
+      raise ValueError("Some rectangles have different shapes")
+    shape = w, h = shape.pop()
+
+    for gc, island in enumerate(islands, start=1):
+      rectangles = [self.rectangles[self.rectangledict[n]] for n in island]
+
+      averagex = []
+      cxs = sorted({r.cx for r in rectangles})
+      for gx, cx in enumerate(cxs, start=1):
+        gxdict[gc][cx] = gx
+        xrectangles = [r for r in rectangles if r.cx == cx]
+        averagex.append(np.mean(units.nominal_values([self.x(r)[0] for r in xrectangles])))
+      primaryregionsx[gc] = (
+        [averagex[0]]
+        + [(x1+w + x2)/2 for x1, x2 in more_itertools.pairwise(averagex)]
+        + [averagex[-1]]
+      )
+
+      averagey = []
+      cys = sorted({r.cy for r in rectangles})
+      for gy, cy in enumerate(cys, start=1):
+        gydict[gc][cy] = gy
+        yrectangles = [r for r in rectangles if r.cy == cy]
+        averagey.append(np.mean(units.nominal_values([self.x(r)[1] for r in yrectangles])))
+      primaryregionsy[gc] = (
+        [averagey[0]]
+        + [(y1+h + y2)/2 for y1, y2 in more_itertools.pairwise(averagey)]
+        + [averagey[-1]]
+      )
+
+    for rectangle in self.rectangles:
+      for gc, island in enumerate(islands, start=1):
+        if rectangle.n in island:
+          break
+      else:
+        assert False
+      gx = gxdict[gc][rectangle.cx]
+      gy = gydict[gc][rectangle.cy]
+      result.append(
+        ShiftedRectangle(
+          rectangle=rectangle,
+          ixvec=rectangle.xvec,
+          gc=gc,
+          pxvec=self.x(rectangle),
+          gxvec=(gx, gy),
+          primaryregionx=(primaryregionsx[gc][gx-1], primaryregionsx[gc][gx]),
+          primaryregiony=(primaryregionsy[gc][gy-1], primaryregionsy[gc][gy]),
+          pscale=self.pscale,
+          readingfromfile=False,
+        )
+      )
+    return result
+
+  @property
+  def shiftedrectangles(self):
+    return self.__shiftedrectangles()
+
   def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
-    filename, affinefilename, overlapcovariancefilename = filenames
+    filename, affinefilename, overlapcovariancefilename, fieldsfilename = filenames
+
+    fields = self.shiftedrectangles
+    writetable(fieldsfilename, fields, rowclass=ShiftedRectangle, **kwargs)
 
     affine = []
     n = 0
@@ -421,7 +493,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
     return self.__overlapcovariancedict()[frozenset((overlap.p1, overlap.p2))]
 
   def readtable(self, *filenames, adjustoverlaps=True):
-    filename, affinefilename, overlapcovariancefilename = filenames
+    filename, affinefilename, overlapcovariancefilename, fieldsfilename = filenames
 
     coordinates = readtable(filename, StitchCoordinate, extrakwargs={"pscale": self.pscale})
     affines = readtable(affinefilename, AffineEntry)

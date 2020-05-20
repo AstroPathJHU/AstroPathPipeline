@@ -1,27 +1,47 @@
 import dataclasses
 from ..prepdb.rectangle import Rectangle
+from ..utilities import units
 from ..utilities.misc import dataclass_dc_init
+from ..utilities.units.dataclasses import distancefield
 
 @dataclass_dc_init
 class ShiftedRectangle(Rectangle):
-  ix: int
-  iy: int
+  pixelsormicrons = Rectangle.pixelsormicrons
+
+  ix: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  iy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   gc: int
-  px: float
-  py: float
-  mx1: float
-  mx2: float
-  my1: float
-  my2: float
+  px: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  py: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  mx1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  mx2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  my1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  my2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   gx: int
   gy: int
+  readingfromfile: dataclasses.InitVar[bool]
 
-  def __init__(self, *args, rectangle=None, **kwargs):
-    return self.__dc_init__(
-      *args,
-      **{
+  def __init__(self, *args, rectangle=None, ixvec=None, pxvec=None, gxvec=None, primaryregionx=None, primaryregiony=None, **kwargs):
+    veckwargs = {}
+    rectanglekwargs = {}
+    if ixvec is not None:
+      veckwargs["ix"], veckwargs["iy"] = ixvec
+    if pxvec is not None:
+      veckwargs["px"], veckwargs["py"] = units.nominal_values(pxvec)
+    if gxvec is not None:
+      veckwargs["gx"], veckwargs["gy"] = gxvec
+    if rectangle is not None:
+      rectanglekwargs = {
         field.name: getattr(rectangle, field.name)
         for field  in dataclasses.fields(type(rectangle))
-      } if rectangle is not None else {},
-      **kwargs
+      }
+    if primaryregionx is not None:
+      veckwargs["mx1"], veckwargs["mx2"] = primaryregionx
+    if primaryregiony is not None:
+      veckwargs["my1"], veckwargs["my2"] = primaryregiony
+    return self.__dc_init__(
+      *args,
+      **veckwargs,
+      **rectanglekwargs,
+      **kwargs,
     )
