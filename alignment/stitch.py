@@ -319,7 +319,7 @@ class StitchResultBase(RectangleOverlapCollection):
       result.append(
         ShiftedRectangle(
           rectangle=rectangle,
-          ixvec=units.distances(pixels=units.pixels(rectangle.xvec, pscale=self.pscale).astype(int), pscale=self.pscale),
+          ixvec=units.distances(pixels=units.pixels(rectangle.xvec, pscale=self.pscale).round().astype(int), pscale=self.pscale),
           gc=gc,
           pxvec=self.x(rectangle),
           gxvec=(gx, gy),
