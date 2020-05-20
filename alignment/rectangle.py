@@ -6,8 +6,8 @@ from ..utilities.units.dataclasses import distancefield
 
 @dataclass_dc_init
 class ShiftedRectangle(Rectangle):
-  ix: units.Distance = distancefield(pixelsormicrons="pixels")
-  iy: units.Distance = distancefield(pixelsormicrons="pixels")
+  ix: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  iy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   gc: int
   px: units.Distance = distancefield(pixelsormicrons="pixels")
   py: units.Distance = distancefield(pixelsormicrons="pixels")
