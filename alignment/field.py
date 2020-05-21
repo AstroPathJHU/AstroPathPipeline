@@ -5,7 +5,7 @@ from ..utilities.misc import dataclass_dc_init
 from ..utilities.units.dataclasses import distancefield
 
 @dataclass_dc_init
-class ShiftedRectangle(Rectangle):
+class Field(Rectangle):
   ix: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   iy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   gc: int

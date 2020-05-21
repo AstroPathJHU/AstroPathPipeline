@@ -1,7 +1,7 @@
 import contextlib, dataclasses, itertools, numbers, numpy as np, os, pathlib, shutil, tempfile, unittest
 from ..alignment.alignmentset import AlignmentSet, ImageStats
 from ..alignment.overlap import AlignmentResult
-from ..alignment.rectangle import ShiftedRectangle
+from ..alignment.field import Field
 from ..alignment.stitch import AffineEntry, StitchOverlapCovariance
 from ..utilities.tableio import readtable
 from ..utilities import units
@@ -55,7 +55,7 @@ class TestAlignment(unittest.TestCase):
     for filename, cls, extrakwargs in (
       ("M21_1_imstat.csv", ImageStats, {"pscale": a.pscale}),
       ("M21_1_align.csv", AlignmentResult, {"pscale": a.pscale}),
-      ("M21_1_fields.csv", ShiftedRectangle, {"pscale": a.pscale}),
+      ("M21_1_fields.csv", Field, {"pscale": a.pscale}),
       ("M21_1_affine.csv", AffineEntry, {}),
       ("M21_1_stitch_overlap_covariance.csv", StitchOverlapCovariance, {"pscale": a.pscale}),
     ):
@@ -110,7 +110,7 @@ class TestAlignment(unittest.TestCase):
 
     for filename, cls, extrakwargs in itertools.zip_longest(
       a.stitchfilenames,
-      (AffineEntry, StitchOverlapCovariance, ShiftedRectangle),
+      (AffineEntry, StitchOverlapCovariance, Field),
       ({}, {"pscale": a.pscale}, {"pscale": a.pscale}),
     ):
       rows = readtable(newfilename(filename), cls, extrakwargs=extrakwargs)

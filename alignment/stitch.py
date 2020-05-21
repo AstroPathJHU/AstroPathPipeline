@@ -5,7 +5,7 @@ from ..utilities import units
 from ..utilities.misc import weightedstd
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
-from .rectangle import ShiftedRectangle
+from .field import Field
 
 logger = logging.getLogger("align")
 
@@ -325,7 +325,7 @@ class StitchResultBase(RectangleOverlapCollection):
       gx = gxdict[gc][rectangle.cx]
       gy = gydict[gc][rectangle.cy]
       result.append(
-        ShiftedRectangle(
+        Field(
           rectangle=rectangle,
           ixvec=units.distances(pixels=units.pixels(rectangle.xvec, pscale=self.pscale).round().astype(int), pscale=self.pscale),
           gc=gc,
@@ -347,7 +347,7 @@ class StitchResultBase(RectangleOverlapCollection):
     affinefilename, overlapcovariancefilename, fieldsfilename = filenames
 
     fields = self.shiftedrectangles
-    writetable(fieldsfilename, fields, rowclass=ShiftedRectangle, **kwargs)
+    writetable(fieldsfilename, fields, rowclass=Field, **kwargs)
 
     affine = []
     n = 0
@@ -492,7 +492,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
   def readtable(self, *filenames, adjustoverlaps=True):
     affinefilename, overlapcovariancefilename, fieldsfilename = filenames
 
-    fields = readtable(fieldsfilename, ShiftedRectangle, extrakwargs={"pscale": self.pscale})
+    fields = readtable(fieldsfilename, Field, extrakwargs={"pscale": self.pscale})
     affines = readtable(affinefilename, AffineEntry)
     overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance, extrakwargs={"pscale": self.pscale})
 
