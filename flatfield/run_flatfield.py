@@ -1,7 +1,9 @@
 #imports
+from .flatfield_producer import FlatfieldProducer
 from .config import flatfield_logger
 from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.misc import cd, split_csv_to_list
+from .utilities import sampleNameFromFilepath
 from argparse import ArgumentParser
 import os, glob, csv, random
 
@@ -64,25 +66,21 @@ def getFilepathsAndSampleNamesToRun(a) :
         logstring+=f' all {len(all_image_filepaths)} images' 
         if min(a.max_images,len(all_image_filepaths)) == len(all_image_filepaths) :
             logstring+=f' (not enough images in the sample(s) to deliver all {a.max_images} requested)'
-        flatfield_logger.info(logstring)
-        return all_image_filepaths
-    if a.selection=='first' :
-        filepaths_to_run=all_image_filepaths[:a.max_images]
-        logstring+=f' the first {a.max_images} images'
-    elif a.selection=='last' :
-        filepaths_to_run=all_image_filepaths[-(a.max_images):]
-        logstring+=f' the last {a.max_images} images'
-    elif a.selection=='random' :
-        random.shuffle(all_image_filepaths)
-        filepaths_to_run=all_image_filepaths[:a.max_images]
-        logstring+=f' {a.max_images} randomly-chosen images'
+        filepaths_to_run = all_image_filepaths
+    else :
+        if a.selection=='first' :
+            filepaths_to_run=all_image_filepaths[:a.max_images]
+            logstring+=f' the first {a.max_images} images'
+        elif a.selection=='last' :
+            filepaths_to_run=all_image_filepaths[-(a.max_images):]
+            logstring+=f' the last {a.max_images} images'
+        elif a.selection=='random' :
+            random.shuffle(all_image_filepaths)
+            filepaths_to_run=all_image_filepaths[:a.max_images]
+            logstring+=f' {a.max_images} randomly-chosen images'
     flatfield_logger.info(logstring)
     #figure out the samples from which those files are coming
-    samplenames_to_run = []
-    for fp in filepaths_to_run :
-        this_fp_sn = ((fp.split(os.path.sep)[-1]).split('[')[0][:-1])
-        if this_fp_sn not in samplenames_to_run :
-            samplenames_to_run.append(this_fp_sn)
+    samplenames_to_run = list(set([sampleNameFromFilepath(fp) for fp in filepaths_to_run]))
     logstring = f'Background threshold will be determined from images in {len(samplenames_to_run)}'
     if len(samplenames_to_run)>1 :
         logstring+=' different samples:'
@@ -93,7 +91,8 @@ def getFilepathsAndSampleNamesToRun(a) :
         logstring+=f'{sn}, '
     flatfield_logger.info(logstring[:-2])
     #return the lists of filepaths and samplenames
-    return [fp for fp in all_image_filepaths if fp.split(os.sep)[-1].split('[')[0][:-1] in samplenames_to_run], filepaths_to_run, samplenames_to_run
+    all_filepaths = [fp for fp in all_image_filepaths if sampleNameFromFilepath(fp) in samplenames_to_run]
+    return all_filepaths, filepaths_to_run, samplenames_to_run
 
 #################### MAIN SCRIPT ####################
 def main() :

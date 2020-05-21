@@ -2,7 +2,7 @@
 from .flatfield_sample import FlatfieldSample 
 from .mean_image import MeanImage
 from .config import *
-from .utilities import chunkListOfFilepaths, readImagesMT
+from .utilities import chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
 import numpy as np
 import os
 
@@ -11,7 +11,7 @@ class FlatfieldProducer :
     """
     Main class used in producing the flatfield correction image
     """
-    def __init__(self,img_dims,raw_filepaths,sample_names,workingdir_name,skip_masking) :
+    def __init__(self,img_dims,sample_names,workingdir_name,skip_masking) :
         """
         img_dims        = dimensions of images in files in order as (height, width, # of layers) 
         sample_names    = list of names of samples that will be considered in this run
@@ -23,7 +23,7 @@ class FlatfieldProducer :
         for sn in sample_names :
             self.flatfield_sample_dict[sn]=FlatfieldSample(sn,img_dims)
         #Start up a new mean image to use for making the actual flatfield
-        self.mean_image = MeanImage(flatfield_image_name,self.dims[2],workingdir_name,skip_masking)
+        self.mean_image = MeanImage(img_dims[0],img_dims[1],img_dims[2],workingdir_name,skip_masking)
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -42,8 +42,8 @@ class FlatfieldProducer :
         #make each sample's list of background thresholds by layer
         for sn,samp in sorted(self.flatfield_sample_dict.items()) :
             flatfield_logger.info(f'Finding background thresholds from tissue edges for sample {sn}...')
-            samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if ((rfp.split(os.path.sep)[-1]).split('[')[0][:-1])==sn]
-                                          os.path.join(dbload_top_dir,samp,'dbload'),
+            samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
+                                          os.path.join(dbload_top_dir,sn,'dbload'),
                                           n_threads,
                                           os.path.join(self.mean_image.workingdir_name,THRESHOLDING_PLOT_DIR_NAME))        
 
@@ -57,7 +57,7 @@ class FlatfieldProducer :
         #do one sample at a time
         for sn,samp in sorted(self.flatfield_sample_dict.items()) :
             flatfield_logger.info(f'Stacking raw images from sample {sn}...')
-            this_samp_fps_to_run = [fp in all_sample_rawfile_paths_to_run if fp.split(os.sep)[-1]]
+            this_samp_fps_to_run = [fp for fp in all_sample_rawfile_paths_to_run if sampleNameFromFilepath(fp)==sn]
             #break the list of this sample's filepaths into chunks to run in parallel
             filepath_chunks = chunkListOfFilepaths(this_samp_fps_to_run,self.dims,n_threads)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack

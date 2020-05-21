@@ -1,6 +1,7 @@
 from .config import flatfield_logger
 from ..utilities.img_file_io import getRawAsHWL
 from concurrent.futures import ThreadPoolExecutor
+import os
 
 #helper function to parallelize calls to getRawAsHWL
 def getRawImageArray(fpt) :
@@ -21,5 +22,9 @@ def chunkListOfFilepaths(fps,dims,n_threads) :
     for i,fp in enumerate(fps,start=1) :
         if len(filepath_chunks[-1])>=n_threads :
             filepath_chunks.append([])
-        filepath_chunks[-1].append((fp,f'({i} of {len(fps)})',self.dims))
+        filepath_chunks[-1].append((fp,f'({i} of {len(fps)})',dims))
     return filepath_chunks
+
+#helper function to return the sample name in an whole filepath
+def sampleNameFromFilepath(fp) :
+    return fp.split(os.sep)[-1].split('[')[0][:-1]

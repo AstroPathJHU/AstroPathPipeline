@@ -15,8 +15,10 @@ class MeanImage :
     """
     Class to hold an image that is the mean of a bunch of stacked raw images 
     """
-    def __init__(self,nlayers,workingdir_name,skip_masking=False,smoothsigma=100) :
+    def __init__(self,y,x,nlayers,workingdir_name,skip_masking=False,smoothsigma=100) :
         """
+        y               = image height in pixels
+        x               = image width in pixels
         nlayers         = number of layers in images
         workingdir_name = name of the directory to save everything in
         skip_masking    = if True, image layers won't be masked before being added to the stack
