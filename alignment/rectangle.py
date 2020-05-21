@@ -46,3 +46,10 @@ class ShiftedRectangle(Rectangle):
       **rectanglekwargs,
       **kwargs,
     )
+
+  def __post_init__(self, *args, **kwargs):
+    super().__post_init__(*args, **kwargs)
+
+    nominal = [self.px, self.py]
+    covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
+    self.pxvec = units.correlated_distances(distances=nominal, covariance=covariance)

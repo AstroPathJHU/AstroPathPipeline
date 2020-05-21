@@ -344,7 +344,7 @@ class StitchResultBase(RectangleOverlapCollection):
     return self.__shiftedrectangles()
 
   def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
-    filename, affinefilename, overlapcovariancefilename, fieldsfilename = filenames
+    affinefilename, overlapcovariancefilename, fieldsfilename = filenames
 
     fields = self.shiftedrectangles
     writetable(fieldsfilename, fields, rowclass=ShiftedRectangle, **kwargs)
@@ -366,17 +366,6 @@ class StitchResultBase(RectangleOverlapCollection):
       n += 1
       affine.append(AffineCovarianceEntry(n=n, entry1=entry1, entry2=entry2))
     writetable(affinefilename, affine, rowclass=AffineEntry, **kwargs)
-
-    rows = []
-    for rectangleid in self.rectangledict:
-      rows.append(
-        stitchcoordinate(
-          hpfid=rectangleid,
-          position=self.x(rectangleid),
-          pscale=self.pscale,
-        )
-      )
-    writetable(filename, rows, **kwargs)
 
     writetable(overlapcovariancefilename, self.overlapcovariances, **kwargs)
 
@@ -501,13 +490,13 @@ class StitchResultOverlapCovariances(StitchResultBase):
     return self.__overlapcovariancedict()[frozenset((overlap.p1, overlap.p2))]
 
   def readtable(self, *filenames, adjustoverlaps=True):
-    filename, affinefilename, overlapcovariancefilename, fieldsfilename = filenames
+    affinefilename, overlapcovariancefilename, fieldsfilename = filenames
 
-    coordinates = readtable(filename, StitchCoordinate, extrakwargs={"pscale": self.pscale})
+    fields = readtable(fieldsfilename, ShiftedRectangle, extrakwargs={"pscale": self.pscale})
     affines = readtable(affinefilename, AffineEntry)
     overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance, extrakwargs={"pscale": self.pscale})
 
-    self.__x = np.array([coordinate.xvec for coordinate in coordinates])
+    self.__x = np.array([field.pxvec for field in fields])
     self.__overlapcovariances = overlapcovariances
 
     iTxx, iTxy, iTyx, iTyy = range(4)
@@ -566,34 +555,6 @@ class StitchResultCvxpy(CalculatedStitchResult):
     self.problem = problem
     self.xvar = x
     self.Tvar = T
-
-@dataclasses.dataclass
-class StitchCoordinate(DataClassWithDistances):
-  pixelsormicrons = "pixels"
-
-  hpfid: int
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  cov_x_x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_x_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_y_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: dataclasses.InitVar[float] = None
-  readingfromfile: dataclasses.InitVar[bool] = False
-
-  def __post_init__(self, pscale, readingfromfile=False):
-    super().__post_init__(pscale=pscale, readingfromfile=readingfromfile)
-
-    nominal = [self.x, self.y]
-    covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
-    self.xvec = units.correlated_distances(distances=nominal, covariance=covariance)
-
-def stitchcoordinate(*, position=None, **kwargs):
-  kw2 = {}
-  if position is not None:
-    kw2["x"], kw2["y"] = units.nominal_values(position)
-    (kw2["cov_x_x"], kw2["cov_x_y"]), (kw2["cov_x_y"], kw2["cov_y_y"]) = units.covariance_matrix(position)
-
-  return StitchCoordinate(**kwargs, **kw2)
 
 @dataclasses.dataclass
 class AffineEntry:
