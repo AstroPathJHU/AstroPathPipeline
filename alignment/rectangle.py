@@ -11,6 +11,9 @@ class ShiftedRectangle(Rectangle):
   gc: int
   px: units.Distance = distancefield(pixelsormicrons="pixels")
   py: units.Distance = distancefield(pixelsormicrons="pixels")
+  cov_x_x: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  cov_x_y: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  cov_y_y: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
   mx1: units.Distance = distancefield(pixelsormicrons="pixels")
   mx2: units.Distance = distancefield(pixelsormicrons="pixels")
   my1: units.Distance = distancefield(pixelsormicrons="pixels")
@@ -25,6 +28,7 @@ class ShiftedRectangle(Rectangle):
       veckwargs["ix"], veckwargs["iy"] = ixvec
     if pxvec is not None:
       veckwargs["px"], veckwargs["py"] = units.nominal_values(pxvec)
+      (veckwargs["cov_x_x"], veckwargs["cov_x_y"]), (veckwargs["cov_x_y"], veckwargs["cov_y_y"]) = units.covariance_matrix(pxvec)
     if gxvec is not None:
       veckwargs["gx"], veckwargs["gy"] = gxvec
     if rectangle is not None:
