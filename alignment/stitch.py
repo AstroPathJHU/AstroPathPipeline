@@ -294,7 +294,7 @@ class StitchResultBase(RectangleOverlapCollection):
         primaryregions[gc] = [(x1+shape[i] + x2)/2 for x1, x2 in more_itertools.pairwise(average)]
 
         if len(primaryregions[gc]) >= 2:
-          m, b = np.polyfit(
+          m, b = units.np.polyfit(
             x=range(1, len(average)),
             y=primaryregions[gc],
             deg=1,

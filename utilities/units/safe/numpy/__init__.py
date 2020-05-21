@@ -1,4 +1,4 @@
-import numpy as np
+import functools, numpy as np
 from ... import UnitsError
 from ..core import _power, _pscale, distances, pixels
 from . import fft, linalg, testing
@@ -28,7 +28,56 @@ def linspace(start, stop, *args, **kwargs):
   resultpixels = np.linspace(startpixels, stoppixels, *args, **kwargs)
   return distances(pixels=resultpixels, pscale=pscale, power=power)
 
+def polyfit(x, y, deg):
+  x = np.array(x)
+  y = np.array(y)
+  xpixels = pixels(x, power=None)
+  ypixels = pixels(y, power=None)
+  coeffs = np.polyfit(x=xpixels, y=ypixels, deg=deg)
+
+  xpscale = {_pscale(_)[()] for _ in np.ravel(x) if _ and _pscale(_)[()] is not None}
+  if len(xpscale) > 1: raise UnitsError(f"x has multiple different pscales {xpscale}")
+  ypscale = {_pscale(_)[()] for _ in np.ravel(y) if _ and _pscale(_)[()] is not None}
+  if len(ypscale) > 1: raise UnitsError(f"y has multiple different pscales {ypscale}")
+  pscale = xpscale | ypscale
+  if len(pscale) > 1: raise UnitsError(f"x and y have inconsistent pscales {pscale}")
+  if not pscale: return coeffs
+  pscale = pscale.pop()
+
+  @functools.partial(np.vectorize, otypes=[object])
+  def power(distance):
+    if not distance: return None
+    return _power(distance)[()]
+
+  xpower = power(x)
+  ypower = power(y)
+
+  """
+          A                B        C
+                        --   --
+  --               --   |[1]  |
+  |[L^2] [L]   [1]  | @ |[L]  | = [L^2]
+  --               --   |[L^2]|
+                        --   --
+  [1, x, x^2, ...] = A
+  y = C
+  will return B
+  """
+
+  if len(y.shape) > 1:
+    raise NotImplementedError
+  if len(set(xpower) - {None}) > 1 or len(set(ypower) - {None}) > 1:
+    raise NotImplementedError
+
+  ypower, = set(ypower) - {None}
+  xpower, = set(xpower) - {None}
+
+  constpower = ypower
+  coeffpowers = [constpower - (len(coeffs)-i)*xpower for i in range(1, len(coeffs)+1)]
+
+  return distances(pixels=coeffs, pscale=pscale, power=coeffpowers)
+
 __all__ = [
   "fft", "linalg", "testing",
-  "angle", "isclose", "linspace",
+  "angle", "isclose", "linspace", "polyfit",
 ]
