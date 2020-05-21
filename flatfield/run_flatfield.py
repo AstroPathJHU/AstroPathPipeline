@@ -124,10 +124,10 @@ def main() :
     args = parser.parse_args()
     #make sure the command line arguments are valid
     checkArgs(args)
-    #get the image file dimensions from the .xml file
-    dims = getImageHWLFromXMLFile(args.rawfile_top_dir,sample_names[0])
     #get the list of filepaths to run and the names of their samples
     all_filepaths, filepaths_to_run, sample_names_to_run = getFilepathsAndSampleNamesToRun(args)
+    #get the image file dimensions from the .xml file
+    dims = getImageHWLFromXMLFile(args.rawfile_top_dir,sample_names_to_run[0])
     #start up a flatfield producer
     ff_producer = FlatfieldProducer(dims,sample_names_to_run,args.workingdir_name,args.skip_masking)
     #begin by finding the background threshold per layer by looking at the HPFs on the tissue edges
