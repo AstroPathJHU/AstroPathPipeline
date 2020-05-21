@@ -290,11 +290,15 @@ class StitchResultBase(RectangleOverlapCollection):
         gxdict[gc][cx] = gx
         xrectangles = [r for r in rectangles if r.cx == cx]
         averagex.append(np.mean(units.nominal_values([self.x(r)[0] for r in xrectangles])))
-      primaryregionsx[gc] = (
-        [averagex[0]]
-        + [(x1+w + x2)/2 for x1, x2 in more_itertools.pairwise(averagex)]
-        + [averagex[-1]]
+      primaryregionsx[gc] = [(x1+w + x2)/2 for x1, x2 in more_itertools.pairwise(averagex)]
+      linearfit = np.polynomial.polynomial.Polynomial.fit(
+        x=range(1, len(averagex)),
+        y=primaryregionsx[gc],
+        deg=1,
+        domain=[0, len(averagex)]
       )
+      primaryregionsx[gc].insert(0, linearfit(0))
+      primaryregionsx[gc].append(linearfit(len(averagex)))
 
       averagey = []
       cys = sorted({r.cy for r in rectangles})
@@ -302,11 +306,15 @@ class StitchResultBase(RectangleOverlapCollection):
         gydict[gc][cy] = gy
         yrectangles = [r for r in rectangles if r.cy == cy]
         averagey.append(np.mean(units.nominal_values([self.x(r)[1] for r in yrectangles])))
-      primaryregionsy[gc] = (
-        [averagey[0]]
-        + [(y1+h + y2)/2 for y1, y2 in more_itertools.pairwise(averagey)]
-        + [averagey[-1]]
+      primaryregionsy[gc] = [(y1+h + y2)/2 for y1, y2 in more_itertools.pairwise(averagey)]
+      linearfit = np.polynomial.polynomial.Polynomial.fit(
+        x=range(1, len(averagey)),
+        y=primaryregionsy[gc],
+        deg=1,
+        domain=[0, len(averagey)]
       )
+      primaryregionsy[gc].insert(0, linearfit(0))
+      primaryregionsy[gc].append(linearfit(len(averagey)))
 
     for rectangle in self.rectangles:
       for gc, island in enumerate(islands, start=1):
