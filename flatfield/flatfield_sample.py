@@ -5,7 +5,7 @@ from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
-import os, scipy.stats
+import os, cv2, scipy.stats
 
 units.setup('fast')
 
