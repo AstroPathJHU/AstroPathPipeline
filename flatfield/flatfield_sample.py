@@ -58,7 +58,7 @@ class FlatfieldSample() :
         return_dict = manager.dict()
         procs = []
         for li in range(self.dims[2]) :
-            flatfield_logger.info(f'  determining threshold for layer {li}....')
+            flatfield_logger.info(f'  determining threshold for layer {li+1}....')
             p = mp.Process(target=findLayerBackgroundThreshold, args=(all_tissue_edge_images_per_layer[:,:,:,li],li,self.name,plotdir_path,return_dict))
             procs.append(p)
             p.start()
@@ -201,8 +201,8 @@ def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,r
     skews = []; kurtoses = []; skew_kurt_products = []
     test_thresh_indices = [(np.where(layerpix==t))[0][-1]+1 for t in test_thresholds]
     for ti in test_thresh_indices :
-        skews.append(scipy.stats.skew(all_pixels[:ti]))
-        kurtoses.append(scipy.stats.kurtosis(all_pixels[:ti]))
+        skews.append(scipy.stats.skew(layerpix[:ti]))
+        kurtoses.append(scipy.stats.kurtosis(layerpix[:ti]))
     skew_kurt_products = [abs(s)*abs(k) for s,k in zip(skews,kurtoses)]
     sk_product_diffs = [skew_kurt_products[i+1]-skew_kurt_products[i] for i in range(len(skew_kurt_products)-1)]
     final_threshold = test_thresholds[sk_product_diffs.index(max(sk_product_diffs))+1]
