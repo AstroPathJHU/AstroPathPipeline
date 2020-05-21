@@ -50,7 +50,7 @@ class FlatfieldSample() :
             for chunk_image_i,img_array in enumerate(new_img_arrays) :
                 #smooth each image and copy it to the total array
                 smoothed_img_array = cv2.GaussianBlur(img_array,(0,0),GENTLE_GAUSSIAN_SMOOTHING_SIGMA,borderType=cv2.BORDER_REPLICATE)
-                np.coptyto(all_tissue_edge_image_arrays[:,:,:,starting_image_i+chunk_image_i],smoothed_img_array)
+                np.copyto(all_tissue_edge_image_arrays[:,:,:,starting_image_i+chunk_image_i],smoothed_img_array)
             starting_image_i+=len(new_img_arrays)
         #flatten the array of all of the images to just be a list of pixel values per layer
         all_tissue_edge_image_pixels_per_layer = all_tissue_edge_image_arrays.reshape((self.dims[0]*self.dims[1]*len(tissue_edge_filepaths),self.dims[2]))
