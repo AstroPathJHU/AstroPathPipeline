@@ -41,16 +41,12 @@ def getAllSampleNames(a) :
 def getFilepathsAndSampleNamesToRun(a) :
     #get all the possible sample names
     all_sample_names = getAllSampleNames(a)
-    #make sure the rawfile directories, dbload/*_overlap.csv, dbload/*_rect.csv, and dbload/*_constants.csv files all exist
+    #make sure the rawfile and dbload directories all exist
     for sn in all_sample_names :
         if not os.path.isdir(os.path.join(a.rawfile_top_dir,sn)) :
             raise ValueError(f'ERROR: sample directory {os.path.join(a.rawfile_top_dir,sn)} does not exist!')
-        if not os.path.isfile(os.path.join(a.dbload_top_dir,sn,'dbload',f'{sn}_overlap.csv')) :
-            raise ValueError(f'ERROR: *_overlap.csv file for sample {sn} does not exist!')
-        if not os.path.isfile(os.path.join(a.dbload_top_dir,sn,'dbload',f'{sn}_rect.csv')) :
-            raise ValueError(f'ERROR: *_rect.csv file for sample {sn} does not exist!')
-        if not os.path.isfile(os.path.join(a.dbload_top_dir,sn,'dbload',f'{sn}_constants.csv')) :
-            raise ValueError(f'ERROR: *_constants.csv file for sample {sn} does not exist!')
+        if not os.path.isdir(os.path.join(a.dbload_top_dir,sn,'dbload')) :
+            raise ValueError(f'ERROR: dbload directory for sample {sn} does not exist!')
     #get the (sorted) full list of file names in the sample to choose from
     all_image_filepaths = []
     #iterate over the samples
@@ -81,15 +77,12 @@ def getFilepathsAndSampleNamesToRun(a) :
         filepaths_to_run=all_image_filepaths[:a.max_images]
         logstring+=f' {a.max_images} randomly-chosen images'
     flatfield_logger.info(logstring)
-    if a.subset_samples_for_background :
-        #figure out the samples from which those files are coming
-        samplenames_to_run = []
-        for fp in filepaths_to_run :
-            this_fp_sn = ((fp.split(os.path.sep)[-1]).split('_')[0])
-            if this_fp_sn not in samplenames_to_run :
-                samplenames_to_run.append(this_fp_sn)
-    else :
-        samplenames_to_run = all_sample_names
+    #figure out the samples from which those files are coming
+    samplenames_to_run = []
+    for fp in filepaths_to_run :
+        this_fp_sn = ((fp.split(os.path.sep)[-1]).split('[')[0][:-1])
+        if this_fp_sn not in samplenames_to_run :
+            samplenames_to_run.append(this_fp_sn)
     logstring = f'Background threshold will be determined from images in {len(samplenames_to_run)}'
     if len(samplenames_to_run)>1 :
         logstring+=' different samples:'
@@ -100,7 +93,7 @@ def getFilepathsAndSampleNamesToRun(a) :
         logstring+=f'{sn}, '
     flatfield_logger.info(logstring[:-2])
     #return the lists of filepaths and samplenames
-    return filepaths_to_run, samplenames_to_run
+    return [fp for fp in all_image_filepaths if fp.split(os.sep)[-1].split('[')[0][:-1] in samplenames_to_run], filepaths_to_run, samplenames_to_run
 
 #################### MAIN SCRIPT ####################
 def main() :
@@ -122,9 +115,6 @@ def main() :
         help='Add this flag to skip masking out the background regions of the images as they get added')
     parser.add_argument('--save_masking_plots', action='store_true',
         help='Add this flag to save the step-by-step plots of the masks produced as they are calculated')
-    parser.add_argument('--subset_samples_for_background', action='store_true',
-        help="""Add this flag to only use the samples whose files will actually be read to find the background threshold; 
-              otherwise all samples in the input list will be used""")
     parser.add_argument('--rawfile_ext',          default='.Data.dat',
         help='Extension of raw files to load (default is ".Data.dat")')
     parser.add_argument('--workingdir_name',      default='flatfield_test',
@@ -137,13 +127,14 @@ def main() :
     #get the image file dimensions from the .xml file
     dims = getImageHWLFromXMLFile(args.rawfile_top_dir,sample_names[0])
     #get the list of filepaths to run and the names of their samples
-    filepaths_to_run, sample_names_to_run = getFilepathsAndSampleNamesToRun(args)
+    all_filepaths, filepaths_to_run, sample_names_to_run = getFilepathsAndSampleNamesToRun(args)
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(dims,filepaths_to_run,sample_names_to_run,args.workingdir_name,args.skip_masking)
+    ff_producer = FlatfieldProducer(dims,sample_names_to_run,args.workingdir_name,args.skip_masking)
     #begin by finding the background threshold per layer by looking at the HPFs on the tissue edges
-    ff_producer.findBackgroundThreshold(args.dbload_top_dir,args.n_threads)
+    if not args.skip_masking :
+        ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads)
     #mask and stack images together
-    ff_producer.stackImages(args.n_threads,args.save_masking_plots)
+    ff_producer.stackImages(filepaths_to_run,args.n_threads,args.save_masking_plots)
     #make the flatfield image
     ff_producer.makeFlatField()
     #save the flatfield image and all the plots, etc.

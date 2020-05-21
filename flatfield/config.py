@@ -10,10 +10,16 @@ flatfield_logger.addHandler(handler)
 
 #flatield_producer globals
 FILEPATH_TEXT_FILE_NAME='filepath_log.txt'
+THRESHOLDING_PLOT_DIR_NAME='thresholding_plots'
+
+#flatfield_sample globals
+RECTANGLE_LOCATION_PLOT_STEM='rectangle_locations'
+UPPER_THRESHOLD_KURTOSIS_CUT=0.5
 
 #mean_image constants
 IMG_DTYPE_OUT=np.float64
 FILE_EXT='.bin'
+
 #parameters for creating the image masks
 GENTLE_GAUSSIAN_SMOOTHING_SIGMA = 5
 ERODE1_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
