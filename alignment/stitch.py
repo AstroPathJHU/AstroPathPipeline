@@ -279,42 +279,27 @@ class StitchResultBase(RectangleOverlapCollection):
     shape = {tuple(r.shape) for r in self.rectangles}
     if len(shape) > 1:
       raise ValueError("Some rectangles have different shapes")
-    shape = w, h = shape.pop()
+    shape = shape.pop()
 
     for gc, island in enumerate(islands, start=1):
       rectangles = [self.rectangles[self.rectangledict[n]] for n in island]
 
-      averagex = []
-      cxs = sorted({r.cx for r in rectangles})
-      for gx, cx in enumerate(cxs, start=1):
-        gxdict[gc][cx] = gx
-        xrectangles = [r for r in rectangles if r.cx == cx]
-        averagex.append(np.mean(units.nominal_values([self.x(r)[0] for r in xrectangles])))
-      primaryregionsx[gc] = [(x1+w + x2)/2 for x1, x2 in more_itertools.pairwise(averagex)]
-      linearfit = np.polynomial.polynomial.Polynomial.fit(
-        x=range(1, len(averagex)),
-        y=primaryregionsx[gc],
-        deg=1,
-        domain=[0, len(averagex)]
-      )
-      primaryregionsx[gc].insert(0, linearfit(0))
-      primaryregionsx[gc].append(linearfit(len(averagex)))
-
-      averagey = []
-      cys = sorted({r.cy for r in rectangles})
-      for gy, cy in enumerate(cys, start=1):
-        gydict[gc][cy] = gy
-        yrectangles = [r for r in rectangles if r.cy == cy]
-        averagey.append(np.mean(units.nominal_values([self.x(r)[1] for r in yrectangles])))
-      primaryregionsy[gc] = [(y1+h + y2)/2 for y1, y2 in more_itertools.pairwise(averagey)]
-      linearfit = np.polynomial.polynomial.Polynomial.fit(
-        x=range(1, len(averagey)),
-        y=primaryregionsy[gc],
-        deg=1,
-        domain=[0, len(averagey)]
-      )
-      primaryregionsy[gc].insert(0, linearfit(0))
-      primaryregionsy[gc].append(linearfit(len(averagey)))
+      for i, (primaryregions, gdict) in enumerate(zip((primaryregionsx, primaryregionsy), (gxdict, gydict))):
+        average = []
+        cs = sorted({r.cxvec[i] for r in rectangles})
+        for g, c in enumerate(cs, start=1):
+          gdict[gc][c] = g
+          theserectangles = [r for r in rectangles if r.cxvec[i] == c]
+          average.append(np.mean(units.nominal_values([self.x(r)[i] for r in theserectangles])))
+        primaryregions[gc] = [(x1+shape[i] + x2)/2 for x1, x2 in more_itertools.pairwise(average)]
+        linearfit = np.polynomial.polynomial.Polynomial.fit(
+          x=range(1, len(average)),
+          y=primaryregions[gc],
+          deg=1,
+          domain=[0, len(average)]
+        )
+        primaryregions[gc].insert(0, linearfit(0))
+        primaryregions[gc].append(linearfit(len(average)))
 
     for rectangle in self.rectangles:
       for gc, island in enumerate(islands, start=1):
