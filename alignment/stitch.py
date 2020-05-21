@@ -294,15 +294,13 @@ class StitchResultBase(RectangleOverlapCollection):
         primaryregions[gc] = [(x1+shape[i] + x2)/2 for x1, x2 in more_itertools.pairwise(average)]
 
         if len(primaryregions[gc]) >= 2:
-          linearfit = np.polynomial.polynomial.Polynomial.fit(
+          m, b = np.polyfit(
             x=range(1, len(average)),
             y=primaryregions[gc],
             deg=1,
-            domain=[0, len(average)]
           )
-          primaryregions[gc].insert(0, linearfit(0))
-          primaryregions[gc].append(linearfit(len(average)))
-          print(primaryregions[gc])
+          primaryregions[gc].insert(0, m*0+b)
+          primaryregions[gc].append(m*len(average)+b)
         else:
           allcs = sorted({r.cxvec[i] for r in self.rectangles})
           mindiff = min(np.diff(allcs))
