@@ -188,13 +188,13 @@ def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,r
         threshold = test_threshold
         next_it_pixels = bg_pixels
         iterations+=1
-        #print some info
-        msg = f'  layer {layer_i+1} it. {iterations+1} '
-        msg+=f'skewness = {skew:.3f}, '
-        msg+=f'kurtosis = {kurtosis:.3f}, '
-        msg+=f'abs(skew)*abs(kurtosis) = {abs(skew)*abs(kurtosis):.3f}, '
-        msg+=f'test thresh.={test_threshold:.1f}:'
-        flatfield_logger.info(msg)
+        ##print some info
+        #msg = f'  layer {layer_i+1} it. {iterations+1} '
+        #msg+=f'skewness = {skew:.3f}, '
+        #msg+=f'kurtosis = {kurtosis:.3f}, '
+        #msg+=f'abs(skew)*abs(kurtosis) = {abs(skew)*abs(kurtosis):.3f}, '
+        #msg+=f'test thresh.={test_threshold:.1f}:'
+        #flatfield_logger.info(msg)
     #within the two threshold limits given by the lowest threshold with large kurtosis and the threshold where the skew flips sign, 
     #exhaustively find the values between which the product of the absolute values of the skew and kurtosis of the background pixels changed the most
     test_thresholds = list(range(int(threshold),int(last_large_kurtosis_threshold)+1))
@@ -227,4 +227,4 @@ def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,r
         plt.savefig(figname)
         plt.close()
     #set the values in the return dict
-    return_dict[li] = {'lower_bound':threshold,'upper_bound':last_large_kurtosis_threshold,'final_threshold':final_threshold}
+    return_dict[layer_i] = {'lower_bound':threshold,'upper_bound':last_large_kurtosis_threshold,'final_threshold':final_threshold}
