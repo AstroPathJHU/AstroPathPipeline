@@ -132,12 +132,12 @@ def main() :
     #begin by finding the background threshold per layer by looking at the HPFs on the tissue edges
     if not args.skip_masking :
         ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads)
-    ##mask and stack images together
-    #ff_producer.stackImages(filepaths_to_run,args.n_threads,args.save_masking_plots)
-    ##make the flatfield image
-    #ff_producer.makeFlatField()
-    ##save the flatfield image and all the plots, etc.
-    #ff_producer.writeOutInfo(args.flatfield_image_name)
+    #mask and stack images together
+    ff_producer.stackImages(filepaths_to_run,args.n_threads,args.save_masking_plots)
+    #make the flatfield image
+    ff_producer.makeFlatField()
+    #save the flatfield image and all the plots, etc.
+    ff_producer.writeOutInfo(args.flatfield_image_name)
     flatfield_logger.info('All Done!')
 
 if __name__=='__main__' :

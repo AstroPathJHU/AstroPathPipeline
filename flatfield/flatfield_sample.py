@@ -87,6 +87,7 @@ class FlatfieldSample() :
             plt.title('Thresholds chosen from tissue edge HPFs by image layer')
             plt.xlabel('image layer')
             plt.ylabel('pixel flux threshold')
+            plt.legend(loc='best')
             plt.savefig(f'{self.name}_background_thresholds_by_layer.png')
             plt.close()
 
