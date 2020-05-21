@@ -48,19 +48,18 @@ class FlatfieldSample() :
             #read the raw images from this chunk
             new_img_arrays = readImagesMT(fp_chunk)
             for chunk_image_i,img_array in enumerate(new_img_arrays) :
-                #smooth each image and copy it to the total array
-                smoothed_img_array = cv2.GaussianBlur(img_array,(0,0),GENTLE_GAUSSIAN_SMOOTHING_SIGMA,borderType=cv2.BORDER_REPLICATE)
-                np.copyto(all_tissue_edge_image_arrays[:,:,:,starting_image_i+chunk_image_i],smoothed_img_array)
+                #copy each image to the total array
+                np.copyto(all_tissue_edge_image_arrays[:,:,:,starting_image_i+chunk_image_i],img_array)
             starting_image_i+=len(new_img_arrays)
-        #flatten the array of all of the images to just be a list of pixel values per layer
-        all_tissue_edge_image_pixels_per_layer = all_tissue_edge_image_arrays.reshape((self.dims[0]*self.dims[1]*len(tissue_edge_filepaths),self.dims[2]))
+        #transpose the array to put the layers at the end of all of the images to just be a list of pixel values per layer
+        all_tissue_edge_images_per_layer = np.transpose(all_tissue_edge_image_arrays,(0,1,3,2))
         #in parallel, find the thresholds per layer
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
         for li in range(self.dims[2]) :
             flatfield_logger.info(f'  determining threshold for layer {li}....')
-            p = mp.Process(target=findLayerBackgroundThreshold, args=(all_tissue_edge_image_pixels_per_layer[li],li,self.name,plotdir_path,return_dict))
+            p = mp.Process(target=findLayerBackgroundThreshold, args=(all_tissue_edge_images_per_layer[:,:,:,li],li,self.name,plotdir_path,return_dict))
             procs.append(p)
             p.start()
             if len(procs)>=n_threads :
@@ -159,9 +158,11 @@ class FlatfieldSample() :
 
 #helper function to determine a background threshold flux given a single layer's total pixel array
 #designed to be run in parallel
-def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,return_dict) :
+def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,return_dict) :
+    #first smooth all the images in the given list
+    images_array = cv2.GaussianBlur(images_array,(0,0),GENTLE_GAUSSIAN_SMOOTHING_SIGMA,borderType=cv2.BORDER_REPLICATE)
     #sort this layer's list of pixel fluxes
-    layerpix = np.sort(layerpix)
+    layerpix = np.sort(images_array.flatten())
     #iterate calculating and applying the Otsu threshold values, keeping track of the lowest threshold
     #that results in a sufficiently large background pixel distribution kurtosis, and the threshold at which
     #the background pixel distribution skew goes negative
