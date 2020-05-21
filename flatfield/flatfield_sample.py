@@ -40,7 +40,7 @@ class FlatfieldSample() :
         tissue_edge_fp_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self.dims,n_threads)
         #make an array of all the tissue edge rectangle pixel fluxes per layer
         flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self.name}...')
-        all_tissue_edge_image_arrays = np.ndarray((self.dims[0],self.dims[1],self.dims[2],len(tissue_edge_filepaths)),dtype=np.float16)
+        all_tissue_edge_image_arrays = np.ndarray((self.dims[0],self.dims[1],self.dims[2],len(tissue_edge_filepaths)),dtype=np.uint16)
         starting_image_i=0
         for fp_chunk in tissue_edge_fp_chunks :
             if len(fp_chunk)<1 :
@@ -160,7 +160,7 @@ class FlatfieldSample() :
 #designed to be run in parallel
 def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,return_dict) :
     #first smooth all the images in the given list
-    images_array = cv2.GaussianBlur(images_array,(0,0),GENTLE_GAUSSIAN_SMOOTHING_SIGMA,borderType=cv2.BORDER_REPLICATE)
+    images_array = cv2.GaussianBlur(images_array.astype(np.float32),(0,0),GENTLE_GAUSSIAN_SMOOTHING_SIGMA,borderType=cv2.BORDER_REPLICATE)
     #sort this layer's list of pixel fluxes
     layerpix = np.sort(images_array.flatten())
     #iterate calculating and applying the Otsu threshold values, keeping track of the lowest threshold
