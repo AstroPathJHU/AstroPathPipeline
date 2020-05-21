@@ -160,7 +160,7 @@ class FlatfieldSample() :
 #designed to be run in parallel
 def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,return_dict) :
     #first smooth all the images in the given list
-    images_array = cv2.GaussianBlur(images_array.astype(np.float32),(0,0),GENTLE_GAUSSIAN_SMOOTHING_SIGMA,borderType=cv2.BORDER_REPLICATE)
+    images_array = cv2.GaussianBlur(images_array,(0,0),GENTLE_GAUSSIAN_SMOOTHING_SIGMA,borderType=cv2.BORDER_REPLICATE)
     #sort this layer's list of pixel fluxes
     layerpix = np.sort(images_array.flatten())
     #iterate calculating and applying the Otsu threshold values, keeping track of the lowest threshold
