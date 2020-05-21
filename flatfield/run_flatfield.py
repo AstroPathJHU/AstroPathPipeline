@@ -3,7 +3,7 @@ from .config import flatfield_logger
 from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.misc import cd, split_csv_to_list
 from argparse import ArgumentParser
-import os, csv, random
+import os, glob, csv, random
 
 #################### HELPER FUNCTIONS ####################
 

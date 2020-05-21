@@ -4,7 +4,7 @@ from .mean_image import MeanImage
 from .config import *
 from .utilities import chunkListOfFilepaths, readImagesMT
 import numpy as np
-import os, glob
+import os
 
 #main class
 class FlatfieldProducer :
