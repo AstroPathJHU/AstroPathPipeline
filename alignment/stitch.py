@@ -292,14 +292,31 @@ class StitchResultBase(RectangleOverlapCollection):
           theserectangles = [r for r in rectangles if r.cxvec[i] == c]
           average.append(np.mean(units.nominal_values([self.x(r)[i] for r in theserectangles])))
         primaryregions[gc] = [(x1+shape[i] + x2)/2 for x1, x2 in more_itertools.pairwise(average)]
-        linearfit = np.polynomial.polynomial.Polynomial.fit(
-          x=range(1, len(average)),
-          y=primaryregions[gc],
-          deg=1,
-          domain=[0, len(average)]
-        )
-        primaryregions[gc].insert(0, linearfit(0))
-        primaryregions[gc].append(linearfit(len(average)))
+
+        if len(primaryregions[gc]) >= 2:
+          linearfit = np.polynomial.polynomial.Polynomial.fit(
+            x=range(1, len(average)),
+            y=primaryregions[gc],
+            deg=1,
+            domain=[0, len(average)]
+          )
+          primaryregions[gc].insert(0, linearfit(0))
+          primaryregions[gc].append(linearfit(len(average)))
+          print(primaryregions[gc])
+        else:
+          allcs = sorted({r.cxvec[i] for r in self.rectangles})
+          mindiff = min(np.diff(allcs))
+          divideby = 1
+          while mindiff / divideby > shape[i]:
+            divideby += 1
+          mindiff /= divideby
+
+          if len(primaryregions[gc]) == 1:
+            primaryregions[gc].insert(0, primaryregions[gc][0] - mindiff)
+            primaryregions[gc].append(primaryregions[gc][1] + mindiff)
+          else: #len(primaryregions) == 0
+            primaryregions[gc].append(average[0] + (shape[i] - mindiff) / 2)
+            primaryregions[gc].append(average[0] + (shape[i] + mindiff) / 2)
 
     for rectangle in self.rectangles:
       for gc, island in enumerate(islands, start=1):
