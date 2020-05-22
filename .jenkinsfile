@@ -8,9 +8,18 @@ pipeline {
   }
 
   stages {
-    stage('setup with prepdb') {
-      steps {
-        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
+    stage('setup') {
+      parallel {
+        stage('setup dbload folder') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
+          }
+        }
+        stage('extract flatw layer') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.extractlayer.extractlayer ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
+          }
+        }
       }
     }
     stage('run tests') {
