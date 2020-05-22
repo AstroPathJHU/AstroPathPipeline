@@ -255,3 +255,4 @@ class AlignmentResult(DataClassWithDistances):
   @property
   def isedge(self):
     return self.tag % 2 == 0
+

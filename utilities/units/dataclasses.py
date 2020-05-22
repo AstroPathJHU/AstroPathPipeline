@@ -37,9 +37,6 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwarg
 
 @dataclasses.dataclass
 class DataClassWithDistances(abc.ABC):
-  @abc.abstractproperty
-  def pixelsormicrons(self): pass
-
   @classmethod
   def distancefields(cls):
     return [field for field in dataclasses.fields(cls) if field.metadata.get("isdistancefield", False)]
@@ -49,9 +46,6 @@ class DataClassWithDistances(abc.ABC):
 
   def __post_init__(self, pscale, readingfromfile=False):
     distancefields = self.distancefields()
-    for field in distancefields:
-      if field.metadata["pixelsormicrons"] != self.pixelsormicrons:
-        raise ValueError(f"{type(self)} takes {self.pixelsormicrons}, but {field.name} is expecting {field.metadata['pixelsormicrons']}")
 
     usedistances = False
     if currentmode == "safe":
@@ -81,4 +75,4 @@ class DataClassWithDistances(abc.ABC):
 
     if readingfromfile:
       for field in distancefields:
-        object.__setattr__(self, field.name, field.type(power=field.metadata["power"], pscale=pscale, **{self.pixelsormicrons: getattr(self, field.name)}))
+        object.__setattr__(self, field.name, field.type(power=field.metadata["power"], pscale=pscale, **{field.metadata["pixelsormicrons"]: getattr(self, field.name)}))
