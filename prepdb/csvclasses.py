@@ -27,7 +27,6 @@ class Batch:
   Sample: str
   Scan: int
   Batch: int
-  readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass
 class QPTiffCsv(DataClassWithDistances):

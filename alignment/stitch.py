@@ -1,10 +1,10 @@
-import abc, dataclasses, itertools, logging, methodtools, numpy as np, uncertainties as unc
+import abc, collections, dataclasses, itertools, logging, methodtools, more_itertools, numpy as np, uncertainties as unc
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangledict
 from ..utilities import units
 from ..utilities.misc import weightedstd
 from ..utilities.tableio import readtable, writetable
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from .field import Field, FieldOverlap
 
 logger = logging.getLogger("align")
 
@@ -260,14 +260,92 @@ class StitchResultBase(RectangleOverlapCollection):
   @abc.abstractproperty
   def T(self): pass
   @abc.abstractproperty
-  def overlapcovariances(self): pass
+  def fieldoverlaps(self): pass
 
   def applytooverlaps(self):
     for o in self.overlaps:
       o.stitchresult = self.dx(o)
 
+  @methodtools.lru_cache()
+  def __fields(self):
+    result = []
+    islands = list(self.islands(useexitstatus=True))
+    gxdict = collections.defaultdict(dict)
+    gydict = collections.defaultdict(dict)
+    primaryregionsx = {}
+    primaryregionsy = {}
+
+    shape = {tuple(r.shape) for r in self.rectangles}
+    if len(shape) > 1:
+      raise ValueError("Some rectangles have different shapes")
+    shape = shape.pop()
+
+    for gc, island in enumerate(islands, start=1):
+      rectangles = [self.rectangles[self.rectangledict[n]] for n in island]
+
+      for i, (primaryregions, gdict) in enumerate(zip((primaryregionsx, primaryregionsy), (gxdict, gydict))):
+        average = []
+        cs = sorted({r.cxvec[i] for r in rectangles})
+        for g, c in enumerate(cs, start=1):
+          gdict[gc][c] = g
+          theserectangles = [r for r in rectangles if r.cxvec[i] == c]
+          average.append(np.mean(units.nominal_values([self.x(r)[i] for r in theserectangles])))
+        primaryregions[gc] = [(x1+shape[i] + x2)/2 for x1, x2 in more_itertools.pairwise(average)]
+
+        if len(primaryregions[gc]) >= 2:
+          m, b = units.np.polyfit(
+            x=range(1, len(average)),
+            y=primaryregions[gc],
+            deg=1,
+          )
+          primaryregions[gc].insert(0, m*0+b)
+          primaryregions[gc].append(m*len(average)+b)
+        else:
+          allcs = sorted({r.cxvec[i] for r in self.rectangles})
+          mindiff = min(np.diff(allcs))
+          divideby = 1
+          while mindiff / divideby > shape[i]:
+            divideby += 1
+          mindiff /= divideby
+
+          if len(primaryregions[gc]) == 1:
+            primaryregions[gc].insert(0, primaryregions[gc][0] - mindiff)
+            primaryregions[gc].append(primaryregions[gc][1] + mindiff)
+          else: #len(primaryregions) == 0
+            primaryregions[gc].append(average[0] + (shape[i] - mindiff) / 2)
+            primaryregions[gc].append(average[0] + (shape[i] + mindiff) / 2)
+
+    for rectangle in self.rectangles:
+      for gc, island in enumerate(islands, start=1):
+        if rectangle.n in island:
+          break
+      else:
+        assert False
+      gx = gxdict[gc][rectangle.cx]
+      gy = gydict[gc][rectangle.cy]
+      result.append(
+        Field(
+          rectangle=rectangle,
+          ixvec=units.distances(pixels=units.pixels(rectangle.xvec, pscale=self.pscale).round().astype(int), pscale=self.pscale),
+          gc=gc,
+          pxvec=self.x(rectangle),
+          gxvec=(gx, gy),
+          primaryregionx=(primaryregionsx[gc][gx-1], primaryregionsx[gc][gx]),
+          primaryregiony=(primaryregionsy[gc][gy-1], primaryregionsy[gc][gy]),
+          readingfromfile=False,
+        )
+      )
+    return result
+
+  @property
+  def fields(self):
+    return self.__fields()
+
   def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
-    filename, affinefilename, overlapcovariancefilename = filenames
+    affinefilename, fieldsfilename, fieldoverlapfilename = filenames
+
+    fields = self.fields
+    writetable(fieldsfilename, fields, rowclass=Field, **kwargs)
 
     affine = []
     n = 0
@@ -287,18 +365,7 @@ class StitchResultBase(RectangleOverlapCollection):
       affine.append(AffineCovarianceEntry(n=n, entry1=entry1, entry2=entry2))
     writetable(affinefilename, affine, rowclass=AffineEntry, **kwargs)
 
-    rows = []
-    for rectangleid in self.rectangledict:
-      rows.append(
-        stitchcoordinate(
-          hpfid=rectangleid,
-          position=self.x(rectangleid),
-          pscale=self.pscale,
-        )
-      )
-    writetable(filename, rows, **kwargs)
-
-    writetable(overlapcovariancefilename, self.overlapcovariances, **kwargs)
+    writetable(fieldoverlapfilename, self.fieldoverlaps, **kwargs)
 
     if check:
       logger.debug("reading back from the file")
@@ -352,35 +419,34 @@ class StitchResultFullCovariance(StitchResultBase):
     return self.x(overlap.p1) - self.x(overlap.p2) - (overlap.x1vec - overlap.x2vec)
 
   @property
-  def overlapcovariances(self):
-    overlapcovariances = []
+  def fieldoverlaps(self):
+    fieldoverlaps = []
     for o in self.overlaps:
       if o.p2 < o.p1: continue
       covariance = np.array(units.covariance_matrix(np.concatenate([self.x(o.p1), self.x(o.p2)])))
-      overlapcovariances.append(
-        StitchOverlapCovariance(
-          hpfid1=o.p1,
-          hpfid2=o.p2,
+      fieldoverlaps.append(
+        FieldOverlap(
+          overlap=o,
           cov_x1_x2=covariance[0,2],
           cov_x1_y2=covariance[0,3],
           cov_y1_x2=covariance[1,2],
           cov_y1_y2=covariance[1,3],
-          pscale=self.pscale,
+          readingfromfile=False,
         )
       )
-    return overlapcovariances
+    return fieldoverlaps
 
 class StitchResultOverlapCovariances(StitchResultBase):
-  def __init__(self, *, x, T, overlapcovariances, **kwargs):
+  def __init__(self, *, x, T, fieldoverlaps, **kwargs):
     self.__x = x
     self.__T = T
-    self.__overlapcovariances = overlapcovariances
+    self.__fieldoverlaps = fieldoverlaps
     super().__init__(**kwargs)
 
   @property
   def T(self): return self.__T
   @property
-  def overlapcovariances(self): return self.__overlapcovariances
+  def fieldoverlaps(self): return self.__fieldoverlaps
 
   def x(self, rectangle_or_id=None):
     if rectangle_or_id is None: return self.__x
@@ -390,17 +456,17 @@ class StitchResultOverlapCovariances(StitchResultBase):
   def dx(self, overlap):
     x1 = self.x(overlap.p1)
     x2 = self.x(overlap.p2)
-    overlapcovariance = self.overlapcovariance(overlap)
+    fieldoverlap = self.fieldoverlap(overlap)
 
     nominals = np.concatenate([units.nominal_values(x1), units.nominal_values(x2)])
 
     covariance = np.zeros((4, 4), dtype=units.unitdtype)
     covariance[:2,:2] = units.covariance_matrix(x1)
     covariance[2:,2:] = units.covariance_matrix(x2)
-    covariance[0,2] = covariance[2,0] = overlapcovariance.cov_x1_x2
-    covariance[0,3] = covariance[3,0] = overlapcovariance.cov_x1_y2
-    covariance[1,2] = covariance[2,1] = overlapcovariance.cov_y1_x2
-    covariance[1,3] = covariance[3,1] = overlapcovariance.cov_y1_y2
+    covariance[0,2] = covariance[2,0] = fieldoverlap.cov_x1_x2
+    covariance[0,3] = covariance[3,0] = fieldoverlap.cov_x1_y2
+    covariance[1,2] = covariance[2,1] = fieldoverlap.cov_y1_x2
+    covariance[1,3] = covariance[3,1] = fieldoverlap.cov_y1_y2
 
     xx1, yy1, xx2, yy2 = units.correlated_distances(distances=nominals, covariance=covariance)
     newx1 = np.array([xx1, yy1])
@@ -414,21 +480,23 @@ class StitchResultOverlapCovariances(StitchResultBase):
     return newx1 - newx2 - (overlap.x1vec - overlap.x2vec)
 
   @methodtools.lru_cache()
-  def __overlapcovariancedict(self):
-    return {frozenset((oc.hpfid1, oc.hpfid2)): oc for oc in self.overlapcovariances}
+  def __fieldoverlapdict(self):
+    return {frozenset((oc.p1, oc.p2)): oc for oc in self.fieldoverlaps}
 
-  def overlapcovariance(self, overlap):
-    return self.__overlapcovariancedict()[frozenset((overlap.p1, overlap.p2))]
+  def fieldoverlap(self, overlap):
+    return self.__fieldoverlapdict()[frozenset((overlap.p1, overlap.p2))]
 
   def readtable(self, *filenames, adjustoverlaps=True):
-    filename, affinefilename, overlapcovariancefilename = filenames
+    affinefilename, fieldsfilename, fieldoverlapfilename = filenames
 
-    coordinates = readtable(filename, StitchCoordinate, extrakwargs={"pscale": self.pscale})
+    fields = readtable(fieldsfilename, Field, extrakwargs={"pscale": self.pscale})
     affines = readtable(affinefilename, AffineEntry)
-    overlapcovariances = readtable(overlapcovariancefilename, StitchOverlapCovariance, extrakwargs={"pscale": self.pscale})
+    layer, = {_.layer for _ in self.overlaps}
+    nclip, = {_.nclip for _ in self.overlaps}
+    fieldoverlaps = readtable(fieldoverlapfilename, FieldOverlap, extrakwargs={"pscale": self.pscale, "rectangles": self.rectangles, "layer": layer, "nclip": nclip})
 
-    self.__x = np.array([coordinate.xvec for coordinate in coordinates])
-    self.__overlapcovariances = overlapcovariances
+    self.__x = np.array([field.pxvec for field in fields])
+    self.__fieldoverlaps = fieldoverlaps
 
     iTxx, iTxy, iTyx, iTyy = range(4)
 
@@ -460,7 +528,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
 
 class ReadStitchResult(StitchResultOverlapCovariances):
   def __init__(self, *args, rectangles, overlaps, **kwargs):
-    super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, overlapcovariances=None)
+    super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, fieldoverlaps=None)
     self.readtable(*args, **kwargs)
 
 class CalculatedStitchResult(StitchResultFullCovariance):
@@ -488,39 +556,10 @@ class StitchResultCvxpy(CalculatedStitchResult):
     self.Tvar = T
 
 @dataclasses.dataclass
-class StitchCoordinate(DataClassWithDistances):
-  pixelsormicrons = "pixels"
-
-  hpfid: int
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  cov_x_x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_x_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_y_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: dataclasses.InitVar[float] = None
-  readingfromfile: dataclasses.InitVar[bool] = False
-
-  def __post_init__(self, pscale, readingfromfile=False):
-    super().__post_init__(pscale=pscale, readingfromfile=readingfromfile)
-
-    nominal = [self.x, self.y]
-    covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
-    self.xvec = units.correlated_distances(distances=nominal, covariance=covariance)
-
-def stitchcoordinate(*, position=None, **kwargs):
-  kw2 = {}
-  if position is not None:
-    kw2["x"], kw2["y"] = units.nominal_values(position)
-    (kw2["cov_x_x"], kw2["cov_x_y"]), (kw2["cov_x_y"], kw2["cov_y_y"]) = units.covariance_matrix(position)
-
-  return StitchCoordinate(**kwargs, **kw2)
-
-@dataclasses.dataclass
 class AffineEntry:
   n: int
   value: float = dataclasses.field(metadata={"writefunction": float})
   description: str
-  readingfromfile: dataclasses.InitVar[bool] = False
 
 class AffineNominalEntry(AffineEntry):
   def __init__(self, n, matrixentry, description):
@@ -540,16 +579,3 @@ class AffineCovarianceEntry(AffineEntry):
     super().__init__(n=n, value=value, description = "cov_"+entry1.description+"_"+entry2.description)
 
   def __post_init__(self): pass
-
-@dataclasses.dataclass
-class StitchOverlapCovariance(DataClassWithDistances):
-  pixelsormicrons = "pixels"
-
-  hpfid1: int
-  hpfid2: int
-  cov_x1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_x1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_y1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_y1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: dataclasses.InitVar[float] = None
-  readingfromfile: dataclasses.InitVar[bool] = False
