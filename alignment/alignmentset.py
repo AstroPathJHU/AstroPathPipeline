@@ -334,7 +334,7 @@ class AlignmentSet(RectangleOverlapCollection):
   def stitchfilenames(self):
     return (
       self.dbload/(self.samp+"_affine.csv"),
-      self.dbload/(self.samp+"_stitch_overlap_covariance.csv"),
+      self.dbload/(self.samp+"_fieldoverlaps.csv"),
       self.dbload/(self.samp+"_fields.csv"),
     )
 

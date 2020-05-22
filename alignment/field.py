@@ -1,5 +1,6 @@
 import dataclasses
 from ..prepdb.rectangle import Rectangle
+from ..prepdb.overlap import Overlap
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init
 from ..utilities.units.dataclasses import distancefield
@@ -33,8 +34,11 @@ class Field(Rectangle):
       veckwargs["gx"], veckwargs["gy"] = gxvec
     if rectangle is not None:
       rectanglekwargs = {
-        field.name: getattr(rectangle, field.name)
-        for field  in dataclasses.fields(type(rectangle))
+        "pscale": rectangle.pscale,
+        **{
+          field.name: getattr(rectangle, field.name)
+          for field in dataclasses.fields(type(rectangle))
+        }
       }
     if primaryregionx is not None:
       veckwargs["mx1"], veckwargs["mx2"] = primaryregionx
@@ -53,3 +57,30 @@ class Field(Rectangle):
     nominal = [self.px, self.py]
     covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
     self.pxvec = units.correlated_distances(distances=nominal, covariance=covariance)
+
+@dataclass_dc_init
+class FieldOverlap(Overlap):
+  cov_x1_x2: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  cov_x1_y2: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  cov_y1_x2: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  cov_y1_y2: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+
+  def __init__(self, *args, overlap=None, **kwargs):
+    overlapkwargs = {}
+    if overlap is not None:
+      overlapkwargs = {
+        "pscale": overlap.pscale,
+        "layer": overlap.layer,
+        "nclip": overlap.nclip,
+        "rectangles": overlap.rectangles,
+        **{
+          field.name: getattr(overlap, field.name)
+          for field in dataclasses.fields(type(overlap))
+        }
+      }
+    return self.__dc_init__(
+      *args,
+      **overlapkwargs,
+      **kwargs,
+    )
+

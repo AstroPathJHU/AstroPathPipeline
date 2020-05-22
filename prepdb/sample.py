@@ -374,6 +374,7 @@ class Sample:
             nclip=self.nclip,
             rectangles=(r1, r2),
             pscale=self.pscale,
+            readingfromfile=False,
           )
         )
     return overlaps

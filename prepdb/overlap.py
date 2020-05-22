@@ -22,7 +22,7 @@ class Overlap(DataClassWithDistances):
   pscale: dataclasses.InitVar[float]
   nclip: dataclasses.InitVar[float]
   rectangles: dataclasses.InitVar[float]
-  readingfromfile: dataclasses.InitVar[bool] = False
+  readingfromfile: dataclasses.InitVar[bool]
 
   def __post_init__(self, layer, pscale, nclip, rectangles, readingfromfile=False):
     super().__post_init__(pscale=pscale, readingfromfile=readingfromfile)
