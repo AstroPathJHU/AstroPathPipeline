@@ -1,4 +1,4 @@
-import logging, methodtools, numpy as np, pathlib, PIL.Image
+import argparse, logging, methodtools, numpy as np, pathlib, PIL.Image
 
 logger = logging.getLogger("extractlayer")
 logger.setLevel(logging.DEBUG)
@@ -54,3 +54,22 @@ class LayerExtractor:
           output = memmap[layer-1,:,:].T
           newmemmap = np.memmap(outfilename, dtype=np.uint16, order="F", shape=output.shape, mode="w+")
           newmemmap[:] = output
+
+if __name__ == "__main__":
+  p = argparse.ArgumentParser()
+  p.add_argument("root1")
+  p.add_argument("root2")
+  p.add_argument("samp")
+  p.add_argument("--layer", action="append", type=int)
+  g = p.add_mutually_exclusive_group()
+  g.add_argument("--overwrite", action="store_const", const="overwrite", dest="alreadyexistsstrategy")
+  g.add_argument("--skip-existing", action="store_const", const="keep", dest="alreadyexistsstrategy")
+  g.add_argument("--error-if-exists", action="store_const", const="error", dest="alreadyexistsstrategy", default="error")
+  args = p.parse_args()
+
+  le = LayerExtractor(root1=args.root1, root2=args.root2, samp=args.samp)
+
+  kwargs = {}
+  kwargs["alreadyexistsstrategy"] = args.alreadyexistsstrategy
+  if args.layer: kwargs["layers"] = args.layer
+  le.extractlayers(**kwargs)
