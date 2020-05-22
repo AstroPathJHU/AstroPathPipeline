@@ -1,5 +1,6 @@
 import argparse, datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage
 from ..utilities import units
+from ..utilities.misc import PILmaximagepixels
 from ..utilities.tableio import writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
