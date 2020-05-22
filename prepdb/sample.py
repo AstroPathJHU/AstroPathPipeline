@@ -304,7 +304,7 @@ class Sample:
       [1.0, 0.0, 0.0, 0.0, 0.0],
     ])/120
 
-    with open(self.qptifffilename, "rb") as f, PIL.Image.open(f) as imgs:
+    with open(self.qptifffilename, "rb") as f, PILmaximagepixels(None), PIL.Image.open(f) as imgs:
       iterator = PIL.ImageSequence.Iterator(imgs)
       shape = *reversed(iterator[qplayeridx].size), 3
       finalimg = np.zeros(shape)
