@@ -55,6 +55,7 @@ class FlatfieldProducer :
         n_threads                       = max number of threads/processes to open at once
         save_masking_plots              = whether to save plots of the mask overlays as they're generated
         """
+        self.all_sample_rawfile_paths_to_run = all_sample_rawfile_paths_to_run
         #do one sample at a time
         for sn,samp in sorted(self.flatfield_sample_dict.items()) :
             flatfield_logger.info(f'Stacking raw images from sample {sn}...')
@@ -89,5 +90,5 @@ class FlatfieldProducer :
         flatfield_logger.info('Writing filepath text file....')
         with cd(self.mean_image.workingdir_name) :
             with open(FILEPATH_TEXT_FILE_NAME,'w') as fp :
-                for path in self.all_filepaths :
+                for path in self.all_sample_rawfile_paths_to_run :
                     fp.write(f'{path}\n')
