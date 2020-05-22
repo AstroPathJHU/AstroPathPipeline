@@ -610,7 +610,6 @@ The remaining plots are more interesting and show a clear sinusoidal pattern, th
 
 \clearpage
 
-\iffalse
 \section{JHU Vectra Polaris results}
 
 This section shows results for a dataset scanned on one of the Johns Hopkins Vectra Polaris microscopes, codenamed \texttt{JHUPolaris\_2}.
@@ -620,12 +619,20 @@ This section shows results for a dataset scanned on one of the Johns Hopkins Vec
 From the sample named \texttt{PZ1}, we find the linear transformation matrix to be
 \begin{align}
 \matrixbold{A}=&\begin{pmatrix}
+\num{0.999782(4)} &
+\num{-0.000308(5)} \\
+\num{-0.000327(4)} &
+\num{0.999994(5)}
 \end{pmatrix} \\
 =\matrixbold{I} + &\begin{pmatrix}
+\num{-0.218(4)} &
+\num{-0.308(5)} \\
+\num{-0.327(4)} &
+\num{-0.006(5)}
 \end{pmatrix} \times \num{e-3}
 \label{eq:Amatrix_PZ1}
 \end{align}
-The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope undershoots by an average of $1.2$ pixels.  When moving down, it undershoots by an average of $1.3$ pixels.
+The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope undershoots by an average of $0.3$ pixels and moves up by $0.5$ pixels.  When moving down, it moves to the right by an average of $0.3$ pixels.
 
 \subsection{Periodic dependence}
 \label{sec:JHUpolarisperiodic}
@@ -674,13 +681,11 @@ Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systemat
 		\caption{}
 		\label{fig:sinewave4yyJHUPolaris}
 	\end{subfigure}
-	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
+	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{PZ1} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
 	\label{fig:sinewavesJHUPolaris}
 \end{figure}
 
 \clearpage
-
-\fi
 
 \section{BMS Vectra Polaris results}
 
