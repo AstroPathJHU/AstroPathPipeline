@@ -161,6 +161,8 @@ class Sample:
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
     xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+".annotations.polygons.xml")
+    if not xmlfile.exists():
+      return [], [], []
     annotations = []
     allregions = []
     allvertices = []
@@ -233,13 +235,13 @@ class Sample:
 
   def writeannotations(self):
     logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_annotations.csv"), self.annotations)
+    writetable(self.dest/(self.samp+"_annotations.csv"), self.annotations, rowclass=Annotation)
   def writeregions(self):
     logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_regions.csv"), self.regions)
+    writetable(self.dest/(self.samp+"_regions.csv"), self.regions, rowclass=Region)
   def writevertices(self):
     logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_vertices.csv"), self.vertices)
+    writetable(self.dest/(self.samp+"_vertices.csv"), self.vertices, rowclass=Vertex)
 
   @property
   def qptifffilename(self): return self.scanfolder/(self.samp+"_"+self.scanfolder.name+".qptiff")

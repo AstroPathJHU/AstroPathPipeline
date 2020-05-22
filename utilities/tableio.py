@@ -107,7 +107,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
         + "\n  ".join(_.__name__ for _ in badclasses)
       )
 
-  fieldnames = list(asrow(rows[0]))
+  fieldnames = [f.name for f in dataclasses.fields(rowclass) if f.metadata.get("includeintable", True)]
 
   try:
     with open(filename, "w") as f:
