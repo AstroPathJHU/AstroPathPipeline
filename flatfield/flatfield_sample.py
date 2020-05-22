@@ -36,60 +36,60 @@ class FlatfieldSample() :
         #first find the filepaths corresponding to the edges of the tissue in the samples
         flatfield_logger.info(f'Finding tissue edge HPFs for sample {self.name}...')
         tissue_edge_filepaths = self.__findTissueEdgeFilepaths(rawfile_paths,dbload_dir,plotdir_path)
-        #chunk them together to be read in parallel
-        tissue_edge_fp_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self.dims,n_threads)
-        #make an array of all the tissue edge rectangle pixel fluxes per layer
-        flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self.name}...')
-        all_tissue_edge_image_arrays = np.ndarray((self.dims[0],self.dims[1],self.dims[2],len(tissue_edge_filepaths)),dtype=np.uint16)
-        starting_image_i=0
-        for fp_chunk in tissue_edge_fp_chunks :
-            if len(fp_chunk)<1 :
-                continue
-            #read the raw images from this chunk
-            new_img_arrays = readImagesMT(fp_chunk)
-            for chunk_image_i,img_array in enumerate(new_img_arrays) :
-                #copy each image to the total array
-                np.copyto(all_tissue_edge_image_arrays[:,:,:,starting_image_i+chunk_image_i],img_array)
-            starting_image_i+=len(new_img_arrays)
-        #transpose the array to put the layers at the end of all of the images to just be a list of pixel values per layer
-        all_tissue_edge_images_per_layer = np.transpose(all_tissue_edge_image_arrays,(0,1,3,2))
-        #in parallel, find the thresholds per layer
-        manager = mp.Manager()
-        return_dict = manager.dict()
-        procs = []
-        for li in range(self.dims[2]) :
-            flatfield_logger.info(f'  determining threshold for layer {li+1}....')
-            p = mp.Process(target=findLayerBackgroundThreshold, args=(all_tissue_edge_images_per_layer[:,:,:,li],li,self.name,plotdir_path,return_dict))
-            procs.append(p)
-            p.start()
-            if len(procs)>=n_threads :
-                for proc in procs :
-                    proc.join()
-                procs=[]
-        for proc in procs:
-            proc.join()
-        #when all the layers are done, assign them to this sample's list
-        lower_bounds_by_layer = []; upper_bounds_by_layer = []
-        self.background_thresholds_for_masking=[]
-        for li in range(self.dims[2]) :
-            lower_bounds_by_layer.append(return_dict[li]['lower_bound'])
-            upper_bounds_by_layer.append(return_dict[li]['upper_bound'])
-            self.background_thresholds_for_masking.append(return_dict[li]['final_threshold'])
-            msg =f'  threshold for layer {li+1} found at {self.background_thresholds_for_masking[li]} '
-            msg+=f'(searched between {lower_bounds_by_layer[li]} and {upper_bounds_by_layer[li]})'
-            flatfield_logger.info(msg)
-        #make a little plot of the threshold bounds and final values by layer
-        with cd(plotdir_path) :
-            xvals=list(range(1,self.dims[2]+1))
-            plt.plot(xvals,lower_bounds_by_layer,marker='v',color='r',linewidth=2,label='lower bounds')
-            plt.plot(xvals,upper_bounds_by_layer,marker='^',color='b',linewidth=2,label='upper bounds')
-            plt.plot(xvals,self.background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimum threshold')
-            plt.title('Thresholds chosen from tissue edge HPFs by image layer')
-            plt.xlabel('image layer')
-            plt.ylabel('pixel flux threshold')
-            plt.legend(loc='best')
-            plt.savefig(f'{self.name}_background_thresholds_by_layer.png')
-            plt.close()
+        ##chunk them together to be read in parallel
+        #tissue_edge_fp_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self.dims,n_threads)
+        ##make an array of all the tissue edge rectangle pixel fluxes per layer
+        #flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self.name}...')
+        #all_tissue_edge_image_arrays = np.ndarray((self.dims[0],self.dims[1],self.dims[2],len(tissue_edge_filepaths)),dtype=np.uint16)
+        #starting_image_i=0
+        #for fp_chunk in tissue_edge_fp_chunks :
+        #    if len(fp_chunk)<1 :
+        #        continue
+        #    #read the raw images from this chunk
+        #    new_img_arrays = readImagesMT(fp_chunk)
+        #    for chunk_image_i,img_array in enumerate(new_img_arrays) :
+        #        #copy each image to the total array
+        #        np.copyto(all_tissue_edge_image_arrays[:,:,:,starting_image_i+chunk_image_i],img_array)
+        #    starting_image_i+=len(new_img_arrays)
+        ##transpose the array to put the layers at the end of all of the images to just be a list of pixel values per layer
+        #all_tissue_edge_images_per_layer = np.transpose(all_tissue_edge_image_arrays,(0,1,3,2))
+        ##in parallel, find the thresholds per layer
+        #manager = mp.Manager()
+        #return_dict = manager.dict()
+        #procs = []
+        #for li in range(self.dims[2]) :
+        #    flatfield_logger.info(f'  determining threshold for layer {li+1}....')
+        #    p = mp.Process(target=findLayerBackgroundThreshold, args=(all_tissue_edge_images_per_layer[:,:,:,li],li,self.name,plotdir_path,return_dict))
+        #    procs.append(p)
+        #    p.start()
+        #    if len(procs)>=n_threads :
+        #        for proc in procs :
+        #            proc.join()
+        #        procs=[]
+        #for proc in procs:
+        #    proc.join()
+        ##when all the layers are done, assign them to this sample's list
+        #lower_bounds_by_layer = []; upper_bounds_by_layer = []
+        #self.background_thresholds_for_masking=[]
+        #for li in range(self.dims[2]) :
+        #    lower_bounds_by_layer.append(return_dict[li]['lower_bound'])
+        #    upper_bounds_by_layer.append(return_dict[li]['upper_bound'])
+        #    self.background_thresholds_for_masking.append(return_dict[li]['final_threshold'])
+        #    msg =f'  threshold for layer {li+1} found at {self.background_thresholds_for_masking[li]} '
+        #    msg+=f'(searched between {lower_bounds_by_layer[li]} and {upper_bounds_by_layer[li]})'
+        #    flatfield_logger.info(msg)
+        ##make a little plot of the threshold bounds and final values by layer
+        #with cd(plotdir_path) :
+        #    xvals=list(range(1,self.dims[2]+1))
+        #    plt.plot(xvals,lower_bounds_by_layer,marker='v',color='r',linewidth=2,label='lower bounds')
+        #    plt.plot(xvals,upper_bounds_by_layer,marker='^',color='b',linewidth=2,label='upper bounds')
+        #    plt.plot(xvals,self.background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimum threshold')
+        #    plt.title('Thresholds chosen from tissue edge HPFs by image layer')
+        #    plt.xlabel('image layer')
+        #    plt.ylabel('pixel flux threshold')
+        #    plt.legend(loc='best')
+        #    plt.savefig(f'{self.name}_background_thresholds_by_layer.png')
+        #    plt.close()
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -137,8 +137,8 @@ class FlatfieldSample() :
             edge_rect_xs+=[r.x for r in add_rects]
             edge_rect_ys+=[r.y for r in add_rects]
         #make and save the plot of the edge field locations next to the qptiff for reference
-        bulk_rect_xs = [r.x for r in rol.rectangles if r.file not in edge_rect_filenames]
-        bulk_rect_ys = [r.y for r in rol.rectangles if r.file not in edge_rect_filenames]
+        bulk_rect_xs = [r.x for r in rol.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
+        bulk_rect_ys = [r.y for r in rol.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
         with cd(plotdir_path) :
             f,(ax1,ax2) = plt.subplots(1,2,figsize=(25.6,9.6))
             ax1.scatter(edge_rect_xs,edge_rect_ys,marker='o',color='r',label='edges')
