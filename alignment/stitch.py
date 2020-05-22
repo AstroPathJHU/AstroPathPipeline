@@ -342,7 +342,7 @@ class StitchResultBase(RectangleOverlapCollection):
     return self.__fields()
 
   def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
-    affinefilename, fieldoverlapfilename, fieldsfilename = filenames
+    affinefilename, fieldsfilename, fieldoverlapfilename = filenames
 
     fields = self.fields
     writetable(fieldsfilename, fields, rowclass=Field, **kwargs)
@@ -487,7 +487,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
     return self.__fieldoverlapdict()[frozenset((overlap.p1, overlap.p2))]
 
   def readtable(self, *filenames, adjustoverlaps=True):
-    affinefilename, fieldoverlapfilename, fieldsfilename = filenames
+    affinefilename, fieldsfilename, fieldoverlapfilename = filenames
 
     fields = readtable(fieldsfilename, Field, extrakwargs={"pscale": self.pscale})
     affines = readtable(affinefilename, AffineEntry)

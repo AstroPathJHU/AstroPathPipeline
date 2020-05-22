@@ -110,8 +110,8 @@ class TestAlignment(unittest.TestCase):
 
     for filename, cls, extrakwargs in itertools.zip_longest(
       a.stitchfilenames,
-      (AffineEntry, FieldOverlap, Field),
-      ({}, {"pscale": a.pscale, "layer": a.layer, "nclip": a.nclip, "rectangles": a.rectangles}, {"pscale": a.pscale}),
+      (AffineEntry, Field, FieldOverlap),
+      ({}, {"pscale": a.pscale}, {"pscale": a.pscale, "layer": a.layer, "nclip": a.nclip, "rectangles": a.rectangles}),
     ):
       rows = readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
       targetrows = readtable(filename, cls, extrakwargs=extrakwargs)
