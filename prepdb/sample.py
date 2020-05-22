@@ -1,4 +1,4 @@
-import datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage
+import argparse, datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage
 from ..utilities import units
 from ..utilities.tableio import writetable
 from .annotationxmlreader import AnnotationXMLReader
@@ -457,3 +457,13 @@ class Sample:
     self.writeregions()
     self.writevertices()
 
+if __name__ == "__main__":
+  p = argparse.ArgumentParser()
+  p.add_argument("root")
+  p.add_argument("samp")
+  p.add_argument("--dest")
+  args = p.parse_args()
+  kwargs = {"root": args.root, "samp": args.samp}
+  if args.dest: kwargs["dest"] = args.dest
+  s = Sample(**kwargs)
+  s.writemetadata()
