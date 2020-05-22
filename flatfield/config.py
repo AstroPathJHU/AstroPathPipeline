@@ -14,7 +14,7 @@ THRESHOLDING_PLOT_DIR_NAME='thresholding_plots'
 
 #flatfield_sample globals
 RECTANGLE_LOCATION_PLOT_STEM='rectangle_locations'
-UPPER_THRESHOLD_KURTOSIS_CUT=0.5
+UPPER_THRESHOLD_KURTOSIS_CUT=1.0
 
 #mean_image constants
 IMG_DTYPE_OUT=np.float64
