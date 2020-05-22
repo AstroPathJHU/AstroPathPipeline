@@ -255,9 +255,12 @@ class Sample:
       tags = exifreader.process_file(f)
 
     layerids = [k.replace(" ImageWidth", "") for k in tags if "ImageWidth" in k]
-    for qplayeridx, qplayerid in enumerate(layerids):
-      if qplayeridx < 6:
-        continue
+    layeriterator = iter(enumerate(layerids))
+    for qplayeridx, qplayerid in layeriterator:
+      #get to after the small RGB one
+      if len(tags[qplayerid+" BitsPerSample"].values) == 3:
+        break
+    for qplayeridx, qplayerid in layeriterator:
       if tags[qplayerid+" ImageWidth"].values[0] < 4000:
         break
     else:
