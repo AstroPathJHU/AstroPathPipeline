@@ -24,6 +24,7 @@ class MeanImage :
         skip_masking    = if True, image layers won't be masked before being added to the stack
         smoothsigma     = Gaussian sigma for final smoothing of stacked flatfield image
         """
+        self.dims=tuple(y,x,nlayers)
         self.nlayers = nlayers
         self.workingdir_name = workingdir_name
         self.skip_masking = skip_masking

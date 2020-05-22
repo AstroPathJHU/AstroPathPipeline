@@ -59,7 +59,7 @@ class FlatfieldProducer :
             flatfield_logger.info(f'Stacking raw images from sample {sn}...')
             this_samp_fps_to_run = [fp for fp in all_sample_rawfile_paths_to_run if sampleNameFromFilepath(fp)==sn]
             #break the list of this sample's filepaths into chunks to run in parallel
-            filepath_chunks = chunkListOfFilepaths(this_samp_fps_to_run,self.dims,n_threads)
+            filepath_chunks = chunkListOfFilepaths(this_samp_fps_to_run,self.mean_image.dims,n_threads)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
             for fp_chunk in filepath_chunks :
                 if len(fp_chunk)<1 :
