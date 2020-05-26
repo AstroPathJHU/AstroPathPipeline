@@ -29,7 +29,12 @@ class FlatfieldSample() :
         if self.background_thresholds_for_masking is not None :
             raise FlatFieldError('ERROR: calling readInBackgroundThresholds with non-empty thresholds list')
         with open(threshold_file_path,'r') as tfp :
-            self.background_thresholds_for_masking=[int(l.rstrip()) for l in tfp.readlines()]
+            all_lines = [int(l.rstrip()) for l in tfp.readlines()]
+            for line in all_lines :
+                try :
+                    self.background_thresholds_for_masking.append(int(line))
+                except ValuError :
+                    pass
         if not len(self.background_thresholds_for_masking)==self.dims[-1] :
             raise FlatFieldError(f'ERROR: number of background thresholds read from {threshold_file_path} is not equal to the number of image layers!')
 
