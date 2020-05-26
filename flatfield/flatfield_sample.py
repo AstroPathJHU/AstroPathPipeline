@@ -29,7 +29,7 @@ class FlatfieldSample() :
         if self.background_thresholds_for_masking is not None :
             raise FlatFieldError('ERROR: calling readInBackgroundThresholds with non-empty thresholds list')
         with open(threshold_file_path,'r') as tfp :
-            all_lines = [int(l.rstrip()) for l in tfp.readlines()]
+            all_lines = [l.rstrip() for l in tfp.readlines()]
             for line in all_lines :
                 try :
                     self.background_thresholds_for_masking.append(int(line))
