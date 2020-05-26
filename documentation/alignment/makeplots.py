@@ -333,10 +333,10 @@ def sinewaves(*, bki, testing, remake):
 def plots2D(*, bki, testing, remake):
   if bki or testing:
     with plt.rc_context(rc=rc):
-      def plotstyling(*, fig, ax, deltaxory, vsxory):
+      def plotstyling(*, fig, ax):
         ax.set_xlabel(r"$x$ (pixels)", labelpad=10)
         ax.set_ylabel(r"$y$ (pixels)", labelpad=0)
-        fig.subplots_adjust(bottom=0.15, left=0.21)
+        fig.subplots_adjust(bottom=0.15, left=0.16, right=0.86)
 
       class Sample(collections.namedtuple("Sample", "samp name")):
         def __new__(cls, **kwargs):
@@ -359,9 +359,10 @@ def plots2D(*, bki, testing, remake):
         A = alignmentset(**alignmentsetkwargs)
         shiftplot2D(
           A,
-          figurekwargs={"figsize": (6, 6)},
+          figurekwargs={},
           saveasx=saveasx,
           saveasy=saveasy,
+          plotstyling=plotstyling,
         )
 
 if __name__ == "__main__":
