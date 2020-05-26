@@ -328,6 +328,40 @@ def sinewaves(*, bki, testing, remake):
                 **kwargs
               )
 
+def plots2d(*, bki, testing, remake):
+  if bki or testing:
+    with plt.rc_context(rc=rc):
+      def plotstyling(*, fig, ax, deltaxory, vsxory):
+        ax.set_xlabel(rf"$x$ (pixels)", labelpad=10)
+        ax.set_ylabel(rf"$y$ (pixels)", labelpad=0)
+        fig.subplots_adjust(bottom=0.15, left=0.21)
+
+      class Sample(collections.namedtuple("Sample", "samp name")):
+        def __new__(cls, **kwargs):
+          return super().__new__(cls, **kwargs)
+
+      samples = [
+        Sample(samp="M1_1", name="1"),
+#        Sample(samp="M2_3", name="2"),
+#        Sample(samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY"),
+#        Sample(samp="PZ1", name="JHUPolaris"),
+#        Sample(samp="ML1603474_BMS069_5_21", name="BMS"),
+      ] if bki else [
+        Sample(samp=None, name="test", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
+      ]
+
+      for samp, name in samples:
+        alignmentsetkwargs = {"samp": samp}
+        alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
+        kwargs = {}
+        saveasx, saveasy = (here/f"2D-shifts-{name}-{xy}.pdf" for xy in "xy")
+        if saveasx.exists() and saveasy.exists() and not remake: continue
+        A = alignmentset(**alignmentsetkwargs)
+        shiftplot2D(
+          A,
+          figurekwargs={"figsize": (6, 6)},
+        )
+
 if __name__ == "__main__":
   class EqualsEverything:
     def __eq__(self, other): return True
@@ -348,6 +382,7 @@ if __name__ == "__main__":
   g.add_argument("--squarepulls", action="store_const", dest="which", const="squarepulls")
   g.add_argument("--stitchpulls", action="store_const", dest="which", const="stitchpulls")
   g.add_argument("--sinewaves", action="store_const", dest="which", const="sinewaves")
+  g.add_argument("--2dplots", action="store_const", dest="which", const="2dplots")
   args = p.parse_args()
 
   units.setup(args.units)
@@ -370,3 +405,5 @@ if __name__ == "__main__":
     stitchpulls(bki=args.bki, testing=args.testing, remake=args.remake)
   if args.which == "sinewaves":
     sinewaves(bki=args.bki, testing=args.testing, remake=args.remake)
+  if args.which == "2dplots":
+    plots2d(bki=args.bki, testing=args.testing, remake=args.remake)
