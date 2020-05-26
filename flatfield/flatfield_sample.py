@@ -107,7 +107,7 @@ class FlatfieldSample() :
             with open(THRESHOLD_TEXT_FILE_NAME_STEM,'w') as tfp :
                 for bgv in self.background_thresholds_for_masking :
                     tfp.write(f'{bgv}{os.linesep}')
-    
+
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to return the subset of the filepath list corresponding to HPFs on the edge of tissue
@@ -250,7 +250,7 @@ def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,r
         plt.savefig(figname)
         plt.close()
     #set the values in the return dict
-    return_dict[layer_i] = {}
-    return_dict[layer_i]['lower_bound']=threshold
-    return_dict[layer_i]['upper_bound']=max(last_large_kurtosis_threshold,int(threshold)+MIN_POINTS_TO_SEARCH)
-    return_dict[layer_i]['final_threshold']=final_threshold
+    return_dict[layer_i] = {'lower_bound':threshold,
+                            'upper_bound':max(last_large_kurtosis_threshold,int(threshold)+MIN_POINTS_TO_SEARCH),
+                            'final_threshold':final_threshold
+                            }
