@@ -359,7 +359,7 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
 
   return xresiduals, yresiduals
 
-def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}):
+def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
   logger.info("plotting")
   fields = alignmentset.fields
   deltax = min(abs(a.x-b.x) for a, b in more_itertools.pairwise(fields) if a.x != b.x)
@@ -389,6 +389,7 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}):
     ax = fig.add_subplot(1, 1, 1)
     plt.imshow(colorplot, extent=extent)
     fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
+    plotstyling(fig=fig, ax=ax)
     if saveasx is saveasy is None:
       plt.show()
     if saveas is not None:

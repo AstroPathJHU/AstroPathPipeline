@@ -213,7 +213,7 @@ class AlignmentSet(RectangleOverlapCollection):
 
   def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, writeimstat=True, mean_image=None, overwrite=True):
     logger.info(self.samp)
-    if overwrite or not hasattr(self, images):
+    if overwrite or not hasattr(self, "images"):
       rawimages = self.__getrawlayers(filetype, keep=keeprawimages)
 
       # apply the extra flattening

@@ -334,8 +334,8 @@ def plots2D(*, bki, testing, remake):
   if bki or testing:
     with plt.rc_context(rc=rc):
       def plotstyling(*, fig, ax, deltaxory, vsxory):
-        ax.set_xlabel(rf"$x$ (pixels)", labelpad=10)
-        ax.set_ylabel(rf"$y$ (pixels)", labelpad=0)
+        ax.set_xlabel(r"$x$ (pixels)", labelpad=10)
+        ax.set_ylabel(r"$y$ (pixels)", labelpad=0)
         fig.subplots_adjust(bottom=0.15, left=0.21)
 
       class Sample(collections.namedtuple("Sample", "samp name")):
@@ -348,13 +348,12 @@ def plots2D(*, bki, testing, remake):
         Sample(samp="PZ1", name="JHUPolaris"),
         Sample(samp="ML1603474_BMS069_5_21", name="BMS"),
       ] if bki else [
-        Sample(samp=None, name="test", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
+        Sample(samp=None, name="test"),
       ]
 
       for samp, name in samples:
         alignmentsetkwargs = {"samp": samp}
         alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
-        kwargs = {}
         saveasx, saveasy = (here/f"2D-shifts-{name}-{xy}.pdf" for xy in "xy")
         if saveasx.exists() and saveasy.exists() and not remake: continue
         A = alignmentset(**alignmentsetkwargs)
