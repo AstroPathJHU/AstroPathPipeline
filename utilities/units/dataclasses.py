@@ -1,4 +1,4 @@
-import abc, dataclasses, numbers
+import abc, dataclasses, functools, numbers
 from ..misc import floattoint
 from .core import UnitsError
 
@@ -17,7 +17,7 @@ def __setup(mode):
 
 def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwargs):
   if issubclass(dtype, numbers.Integral):
-    secondfunction = floattoint
+    secondfunction = functools.partial(floattoint, atol=1e-9)
   else:
     secondfunction = lambda x: x
 

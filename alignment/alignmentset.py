@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, logging, methodtools, numpy as np, pathlib
+import cv2, logging, methodtools, numpy as np, pathlib, traceback
 
 from ..prepdb.csvclasses import Batch, Constant, QPTiffCsv
 from ..prepdb.overlap import RectangleOverlapCollection
@@ -183,10 +183,27 @@ class AlignmentSet(RectangleOverlapCollection):
     if filename is None: filename = self.aligncsv
     writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive)
 
-  def readalignments(self, *, filename=None):
+  def readalignments(self, *, filename=None, interactive=True):
+    interactive = interactive and self.interactive and filename is None
     if filename is None: filename = self.aligncsv
     logger.info("reading alignments for "+self.samp+" from "+str(filename))
-    alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult, extrakwargs={"pscale": self.pscale})}
+
+    try:
+      alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult, extrakwargs={"pscale": self.pscale})}
+    except Exception:
+      if interactive:
+        print()
+        traceback.print_exc()
+        print()
+        answer = ""
+        while answer.lower() not in ("y", "n"):
+          answer = input(f"readalignments() gave an exception for {self.samp}.  Do the alignment?  [Y/N] ")
+        if answer.lower() == "y":
+          if not hasattr(self, "images"): self.getDAPI()
+          self.align()
+          return self.readalignments(interactive=False)
+      raise
+
     for o in self.overlaps:
       try:
         o.result = alignmentresults[o.n]
@@ -194,18 +211,21 @@ class AlignmentSet(RectangleOverlapCollection):
         pass
     logger.info("done reading alignments for "+self.samp)
 
-  def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, writeimstat=True, mean_image=None):
+  def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, writeimstat=True, mean_image=None, overwrite=True):
     logger.info(self.samp)
-    rawimages = self.__getrawlayers(filetype, keep=keeprawimages)
+    if overwrite or not hasattr(self, images):
+      rawimages = self.__getrawlayers(filetype, keep=keeprawimages)
 
-    # apply the extra flattening
+      # apply the extra flattening
 
-    self.meanimage = mean_image if mean_image is not None else meanimage(rawimages, self.samp)
+      self.meanimage = mean_image if mean_image is not None else meanimage(rawimages, self.samp)
 
-    for image in rawimages:
+      for image in rawimages:
         image[:] = np.rint(image / self.meanimage.flatfield)
-    self.images = rawimages
+      self.images = rawimages
 
+    if len(self.rectangles) != len(self.images):
+      raise ValueError(f"Mismatch in number of rectangles {len(self.rectangles)} and images {len(self.images)}")
     for rectangle, image in zip(self.rectangles, self.images):
       rectangle.image = image
 
@@ -372,14 +392,30 @@ class AlignmentSet(RectangleOverlapCollection):
       check=check,
     )
 
-  def readstitchresult(self, *, filenames=None, saveresult=True):
+  def readstitchresult(self, *, filenames=None, saveresult=True, interactive=True):
     logger.info("reading stitch results for "+self.samp)
+    interactive = interactive and self.interactive and saveresult and filenames is None
     if filenames is None: filenames = self.stitchfilenames
-    result = ReadStitchResult(
-      *filenames,
-      overlaps=self.overlaps,
-      rectangles=self.rectangles
-    )
+
+    try:
+      result = ReadStitchResult(
+        *filenames,
+        overlaps=self.overlaps,
+        rectangles=self.rectangles
+      )
+    except Exception:
+      if interactive:
+        print()
+        traceback.print_exc()
+        print()
+        answer = ""
+        while answer.lower() not in ("y", "n"):
+          answer = input(f"readstitchresult() gave an exception for {self.samp}.  Do the stitching?  [Y/N] ")
+        if answer.lower() == "y":
+          self.stitch()
+          return self.readstitchresult(interactive=False)
+      raise
+
     if saveresult:
       result.applytooverlaps()
       self.__T = result.T

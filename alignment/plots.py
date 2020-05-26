@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 
-import itertools, more_itertools, networkx as nx, numpy as np, uncertainties.unumpy as unp
+import itertools, logging, more_itertools, networkx as nx, numpy as np, uncertainties.unumpy as unp
 from matplotlib import cm, colors, pyplot as plt
 from more_itertools import pairwise
 from ..utilities import units
 from ..utilities.misc import floattoint, pullhist, weightedaverage, weightedstd
 
+logger = logging.getLogger("align")
+
 def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pixelsormicrons=None, pullkwargs={}, pullbinning=None):
+  logger.info("plotting")
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -68,6 +71,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
   return vectors
 
 def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False, sinetext=False, drawfourier=False, guessparameters=None):
+  logger.info("plotting")
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -281,6 +285,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   return x, y, yerr, p
 
 def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
+  logger.info("plotting")
   dct = {
     1: (-1, -1),
     2: ( 0, -1),
@@ -355,20 +360,22 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
   return xresiduals, yresiduals
 
 def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}):
+  logger.info("plotting")
   fields = alignmentset.fields
-  deltax = min(abs(a.x-b.x) for a, b in itertools.combinations(fields, 2) if a.x != b.x)
-  deltay = min(abs(a.y-b.y) for a, b in itertools.combinations(fields, 2) if a.y != b.y)
+  deltax = min(abs(a.x-b.x) for a, b in more_itertools.pairwise(fields) if a.x != b.x)
+  deltay = min(abs(a.y-b.y) for a, b in more_itertools.pairwise(fields) if a.y != b.y)
   deltaxvec = deltax, deltay
   x0vec = np.min([[f.x, f.y] for f in fields], axis=0)
+  f = fields[0]
   shape = tuple(reversed(floattoint(np.max([(f.xvec - x0vec) / deltaxvec for f in fields], axis=0), atol=1e-9) + 1))
-  xyarray = np.full(shape=(2,)+shape, fill_value=-999, dtype=float)
+  xyarray = np.full(shape=(2,)+shape, fill_value=-999)
 
 #  extent = x0vec[0], shape[0] * deltaxvec[0] + x0vec[0], shape[1] * deltaxvec[1] + x0vec[1], x0vec[1]
-  extent = x0vec[0], shape[1] * deltaxvec[0] + x0vec[0], shape[0] * deltaxvec[1] + x0vec[1], x0vec[1]
+  extent = units.pixels((x0vec[0], shape[1] * deltaxvec[0] + x0vec[0], shape[0] * deltaxvec[1] + x0vec[1], x0vec[1]))
 
   for f in fields:
     idx = (slice(None),) + tuple(reversed(floattoint((f.xvec - x0vec) / deltaxvec, atol=1e-9)))
-    xyarray[idx] = units.nominal_values(f.pxvec - alignmentset.T@f.xvec)
+    xyarray[idx] = units.pixels(units.nominal_values(f.pxvec - alignmentset.T@f.xvec), pscale=alignmentset.pscale)
 
   vmin = min(np.min(xyarray[xyarray != -999]), -np.max(xyarray[xyarray != -999]))
   vmax = -vmin
