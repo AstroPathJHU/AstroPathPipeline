@@ -5,12 +5,6 @@ from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import os, cv2, statistics, copy
 
-class FlatFieldError(Exception) :
-    """
-    Class for errors encountered during flatfielding
-    """
-    pass
-
 class MeanImage :
     """
     Class to hold an image that is the mean of a bunch of stacked raw images 

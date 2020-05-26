@@ -1,6 +1,10 @@
 import numpy as np
 import cv2, logging
 
+#Class for errors encountered during flatfielding
+class FlatFieldError(Exception) :
+    pass
+
 #logger
 flatfield_logger = logging.getLogger("flatfield")
 flatfield_logger.setLevel(logging.DEBUG)
@@ -10,7 +14,8 @@ flatfield_logger.addHandler(handler)
 
 #flatield_producer globals
 FILEPATH_TEXT_FILE_NAME='filepath_log.txt'
-THRESHOLDING_PLOT_DIR_NAME='thresholding_plots'
+THRESHOLDING_PLOT_DIR_NAME='thresholding_info'
+THRESHOLD_TEXT_FILE_NAME_STEM='_background_thresholds.txt'
 
 #flatfield_sample globals
 RECTANGLE_LOCATION_PLOT_STEM='rectangle_locations'

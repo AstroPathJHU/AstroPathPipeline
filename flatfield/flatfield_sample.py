@@ -21,13 +21,26 @@ class FlatfieldSample() :
         self.dims = img_dims
         self.background_thresholds_for_masking = None
 
-    def findBackgroundThresholds(self,rawfile_paths,dbload_dir,n_threads,plotdir_path) :
+    def readInBackgroundThresholds(self,threshold_file_path) :
+        """
+        Function to read in background threshold values from the output file of a previous run with this sample
+        threshold_file_path = path to threshold value file
+        """
+        if self.background_thresholds_for_masking is not None :
+            raise FlatFieldError('ERROR: calling readInBackgroundThresholds with non-empty thresholds list')
+        with open(threshold_file_path,'r') as tfp :
+            self.background_thresholds_for_masking=[int(l.rstrip()) for l in tfp.readlines()]
+        if not len(self.background_thresholds_for_masking)==self.dims[-1] :
+            raise FlatFieldError(f'ERROR: number of background thresholds read from {threshold_file_path} is not equal to the number of image layers!')
+
+    def findBackgroundThresholds(self,rawfile_paths,dbload_dir,n_threads,plotdir_path,threshold_file_name) :
         """
         Function to determine this sample's background pixel flux thresholds per layer
-        rawfile_paths = a list of the rawfile paths to consider for this sample's background threshold calculations
-        dbload_dir    = this sample's dbload directory 
-        n_threads     = max number of threads/processes to open at once
-        plotdir_path  = path to the directory in which to save plots from the thresholding process
+        rawfile_paths       = a list of the rawfile paths to consider for this sample's background threshold calculations
+        dbload_dir          = this sample's dbload directory 
+        n_threads           = max number of threads/processes to open at once
+        plotdir_path        = path to the directory in which to save plots from the thresholding process
+        threshold_file_name = name of file to save background thresholds in, one line per layer
         """
         #make sure the plot directory exists
         if not os.path.isdir(plotdir_path) :
@@ -78,7 +91,7 @@ class FlatfieldSample() :
             msg =f'  threshold for layer {li+1} found at {self.background_thresholds_for_masking[li]} '
             msg+=f'(searched between {lower_bounds_by_layer[li]} and {upper_bounds_by_layer[li]})'
             flatfield_logger.info(msg)
-        #make a little plot of the threshold bounds and final values by layer
+        #make a little plot of the threshold bounds and final values by layer, and save a text file of those values
         with cd(plotdir_path) :
             xvals=list(range(1,self.dims[2]+1))
             plt.plot(xvals,lower_bounds_by_layer,marker='v',color='r',linewidth=2,label='lower bounds')
@@ -90,7 +103,11 @@ class FlatfieldSample() :
             plt.legend(loc='best')
             plt.savefig(f'{self.name}_background_thresholds_by_layer.png')
             plt.close()
-
+            #save the threshold values to a text file
+            with open(THRESHOLD_TEXT_FILE_NAME_STEM,'w') as tfp :
+                for bgv in self.background_thresholds_for_masking :
+                    tfp.write(f'{bgv}{os.linesep}')
+    
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to return the subset of the filepath list corresponding to HPFs on the edge of tissue
@@ -205,7 +222,12 @@ def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,r
         skews.append(scipy.stats.skew(layerpix[:ti]))
         kurtoses.append(scipy.stats.kurtosis(layerpix[:ti]))
     kurtosis_diffs = [kurtoses[i+1]-kurtoses[i] for i in range(len(kurtoses)-1)]
-    kurtosis_diffs_no_negative_skew = [kurtosis_diffs[i] for i in range(len(kurtosis_diffs)) if skews[i]>0]
+    kurtosis_diffs_no_negative_skew = [] 
+    for i in range(len(kurtosis_diffs)) :
+        if skews[i]>0 :
+            kurtosis_diffs_no_negative_skew.append(kurtosis_diffs[i])
+        else :
+            kurtosis_diffs_no_negative_skew.append(-10.)
     final_threshold = test_thresholds[kurtosis_diffs_no_negative_skew.index(max(kurtosis_diffs_no_negative_skew))+1]
     #make and save plots
     figname=f'{sample_name}_layer_{layer_i+1}_background_threshold_plots.png'
@@ -228,4 +250,7 @@ def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,r
         plt.savefig(figname)
         plt.close()
     #set the values in the return dict
-    return_dict[layer_i] = {'lower_bound':threshold,'upper_bound':last_large_kurtosis_threshold,'final_threshold':final_threshold}
+    return_dict[layer_i] = {}
+    return_dict[layer_i]['lower_bound']=threshold
+    return_dict[layer_i]['upper_bound']=max(last_large_kurtosis_threshold,int(threshold)+MIN_POINTS_TO_SEARCH)
+    return_dict[layer_i]['final_threshold']=final_threshold

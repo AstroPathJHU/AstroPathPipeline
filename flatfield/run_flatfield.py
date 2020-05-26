@@ -1,6 +1,6 @@
 #imports
 from .flatfield_producer import FlatfieldProducer
-from .config import flatfield_logger
+from .config import *
 from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.misc import cd, split_csv_to_list
 from .utilities import sampleNameFromFilepath
@@ -23,6 +23,12 @@ def checkArgs(a) :
     #make sure that the user didn't ask to save the masking plots while skipping the masking
     if a.skip_masking and a.save_masking_plots :
         raise ValueError('ERROR: cannot save masking plots if masking will be skipped')
+    #make sure that the user didn't ask to just determine the thresholds while skipping the masking
+    if a.threshold_only and a.skip_masking :
+        raise ValueError('ERROR: cannot skip masking while running to determine background thresholds')
+    #make sure the threshold file directory exists if it's going to be used
+    if a.threshold_file_dir is not None and not os.path.isdir(a.threshold_file_dir) :
+        raise ValueError(f'ERROR: threshold file directory {a.threshold_file_dir} does not exist!')
 
 #helper function to get the list of filepaths and associated sample names to run on based on the selection method and number of images requested
 def getFilepathsAndSampleNamesToRun(a) :
@@ -118,9 +124,13 @@ def main() :
         help='Select "first", "last", or "random" n images (where n=max_images) from the inputted sample list. Default is "random".')
     parser.add_argument('--n_threads',            default=10,             type=int,         
         help='Number of threads to run at once in speeding up file I/O')
-    parser.add_argument('--skip_masking', action='store_true',
+    parser.add_argument('--threshold_file_dir',   default=None,
+        help='Path to the directory holding background threshold files created in previous runs for the samples in question')
+    parser.add_argument('--threshold_only',       action='store_true',
+        help='Add this flag to exit after determining and saving the background thresholds for the given samples')
+    parser.add_argument('--skip_masking',         action='store_true',
         help='Add this flag to skip masking out the background regions of the images as they get added')
-    parser.add_argument('--save_masking_plots', action='store_true',
+    parser.add_argument('--save_masking_plots',   action='store_true',
         help='Add this flag to save the step-by-step plots of the masks produced as they are calculated')
     parser.add_argument('--rawfile_ext',          default='.Data.dat',
         help='Extension of raw files to load (default is ".Data.dat")')
@@ -138,14 +148,14 @@ def main() :
     #start up a flatfield producer
     ff_producer = FlatfieldProducer(dims,sample_names_to_run,args.workingdir_name,args.skip_masking)
     #begin by finding the background threshold per layer by looking at the HPFs on the tissue edges
-    if not args.skip_masking :
-        ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads)
-    #mask and stack images together
-    ff_producer.stackImages(filepaths_to_run,args.n_threads,args.save_masking_plots)
-    #make the flatfield image
-    ff_producer.makeFlatField()
-    #save the flatfield image and all the plots, etc.
-    ff_producer.writeOutInfo(args.flatfield_image_name)
+    ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads,args.threshold_file_dir)
+    if not args.threshold_only :
+        #mask and stack images together
+        ff_producer.stackImages(filepaths_to_run,args.n_threads,args.save_masking_plots)
+        #make the flatfield image
+        ff_producer.makeFlatField()
+        #save the flatfield image and all the plots, etc.
+        ff_producer.writeOutInfo(args.flatfield_image_name)
     flatfield_logger.info('All Done!')
 
 if __name__=='__main__' :
