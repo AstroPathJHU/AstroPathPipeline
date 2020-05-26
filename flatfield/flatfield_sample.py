@@ -33,7 +33,7 @@ class FlatfieldSample() :
             for line in all_lines :
                 try :
                     self.background_thresholds_for_masking.append(int(line))
-                except ValuError :
+                except ValueError :
                     pass
         if not len(self.background_thresholds_for_masking)==self.dims[-1] :
             raise FlatFieldError(f'ERROR: number of background thresholds read from {threshold_file_path} is not equal to the number of image layers!')
