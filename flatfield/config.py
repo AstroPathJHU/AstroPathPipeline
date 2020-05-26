@@ -15,7 +15,7 @@ flatfield_logger.addHandler(handler)
 #flatield_producer globals
 FILEPATH_TEXT_FILE_NAME='filepath_log.txt'
 THRESHOLDING_PLOT_DIR_NAME='thresholding_info'
-THRESHOLD_TEXT_FILE_NAME_STEM='_background_thresholds.txt'
+THRESHOLD_TEXT_FILE_NAME_STEM='background_thresholds.txt'
 
 #flatfield_sample globals
 RECTANGLE_LOCATION_PLOT_STEM='rectangle_locations'
