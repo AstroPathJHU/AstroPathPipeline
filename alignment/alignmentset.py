@@ -344,6 +344,7 @@ class AlignmentSet(RectangleOverlapCollection):
     if saveresult:
       result.applytooverlaps()
       self.__T = result.T
+      self.__fields = result.fields
       self.writestitchresult(result, check=checkwriting)
 
     return result
@@ -354,6 +355,13 @@ class AlignmentSet(RectangleOverlapCollection):
       return self.__T
     except AttributeError:
       raise AttributeError("Haven't run stitching, so we don't have the T matrix")
+
+  @property
+  def fields(self):
+    try:
+      return self.__fields
+    except AttributeError:
+      raise AttributeError("Haven't run stitching, so we don't have the stitched fields")
 
   def writestitchresult(self, result, *, filenames=None, check=False):
     if filenames is None: filenames = self.stitchfilenames
@@ -375,6 +383,7 @@ class AlignmentSet(RectangleOverlapCollection):
     if saveresult:
       result.applytooverlaps()
       self.__T = result.T
+      self.__fields = result.fields
     logger.info("done reading stitch results for "+self.samp)
     return result
 
