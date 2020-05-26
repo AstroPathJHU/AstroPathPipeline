@@ -28,12 +28,14 @@ def checkArgs(a) :
 def getFilepathsAndSampleNamesToRun(a) :
     samplenames_to_run = None; filepaths_to_run = None
     #get sample names/filepaths from the .csv file if requested
-    if '.txt' in a.samplenames :
-        #make sure that the CSV file exists
-        if not os.path.isfile(a.samplenames) :
-            raise ValueError(f'ERROR: sample name CSV file {a.samplenames} does not exist!')
+    previous_log_exists = os.path.isfile(os.path.join(a.samplenames,FILEPATH_TEXT_FILE_NAME))
+    if previous_log_exists or '.txt' in a.samplenames :
+        filepath = os.path.join(a.samplenames,FILEPATH_TEXT_FILE_NAME) if previous_log_exists else a.samplenames
+        #make sure that the text file exists
+        if not os.path.isfile(filepath) :
+            raise ValueError(f'ERROR: file/sample name text file {a.samplenames} does not exist!')
         #get the file contents
-        with open(a.samplenames,'r') as f:
+        with open(filepath,'r') as f:
             file_lines = [l.rstrip() for l in f.readlines()]
         #if the input file was filepaths, then each entry should have the rawfile directory in it
         if a.rawfile_top_dir.split(os.sep)[-1] in file_lines[0].split(os.sep) :
