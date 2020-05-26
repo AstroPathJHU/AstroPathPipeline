@@ -300,7 +300,7 @@ def sinewaves(*, bki, testing, remake):
         Sample(samp="M1_1", name="1"),
         Sample(samp="M2_3", name="2"),
         Sample(samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda deltaxory, vsxory, **kwargs: deltaxory == vsxory == "x"),
-        #Sample(samp="PZ1", name="JHUPolaris"),
+        Sample(samp="PZ1", name="JHUPolaris"),
         Sample(samp="ML1603474_BMS069_5_21", name="BMS", plotsine=lambda deltaxory, vsxory, **kwargs: deltaxory == vsxory == "x"),
       ] if bki else [
         Sample(samp=None, name="test", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),

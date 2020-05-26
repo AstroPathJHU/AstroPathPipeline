@@ -1,5 +1,6 @@
-import datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage
+import argparse, datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage
 from ..utilities import units
+from ..utilities.misc import PILmaximagepixels
 from ..utilities.tableio import writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
@@ -161,6 +162,8 @@ class Sample:
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
     xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+".annotations.polygons.xml")
+    if not xmlfile.exists():
+      return [], [], []
     annotations = []
     allregions = []
     allvertices = []
@@ -233,13 +236,13 @@ class Sample:
 
   def writeannotations(self):
     logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_annotations.csv"), self.annotations)
+    writetable(self.dest/(self.samp+"_annotations.csv"), self.annotations, rowclass=Annotation)
   def writeregions(self):
     logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_regions.csv"), self.regions)
+    writetable(self.dest/(self.samp+"_regions.csv"), self.regions, rowclass=Region)
   def writevertices(self):
     logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_vertices.csv"), self.vertices)
+    writetable(self.dest/(self.samp+"_vertices.csv"), self.vertices, rowclass=Vertex)
 
   @property
   def qptifffilename(self): return self.scanfolder/(self.samp+"_"+self.scanfolder.name+".qptiff")
@@ -252,9 +255,12 @@ class Sample:
       tags = exifreader.process_file(f)
 
     layerids = [k.replace(" ImageWidth", "") for k in tags if "ImageWidth" in k]
-    for qplayeridx, qplayerid in enumerate(layerids):
-      if qplayeridx < 6:
-        continue
+    layeriterator = iter(enumerate(layerids))
+    for qplayeridx, qplayerid in layeriterator:
+      #get to after the small RGB one
+      if len(tags[qplayerid+" BitsPerSample"].values) == 3:
+        break
+    for qplayeridx, qplayerid in layeriterator:
       if tags[qplayerid+" ImageWidth"].values[0] < 4000:
         break
     else:
@@ -301,7 +307,7 @@ class Sample:
       [1.0, 0.0, 0.0, 0.0, 0.0],
     ])/120
 
-    with open(self.qptifffilename, "rb") as f, PIL.Image.open(f) as imgs:
+    with open(self.qptifffilename, "rb") as f, PILmaximagepixels(None), PIL.Image.open(f) as imgs:
       iterator = PIL.ImageSequence.Iterator(imgs)
       shape = *reversed(iterator[qplayeridx].size), 3
       finalimg = np.zeros(shape)
@@ -457,3 +463,13 @@ class Sample:
     self.writeregions()
     self.writevertices()
 
+if __name__ == "__main__":
+  p = argparse.ArgumentParser()
+  p.add_argument("root")
+  p.add_argument("samp")
+  p.add_argument("--dest")
+  args = p.parse_args()
+  kwargs = {"root": args.root, "samp": args.samp}
+  if args.dest: kwargs["dest"] = args.dest
+  s = Sample(**kwargs)
+  s.writemetadata()
