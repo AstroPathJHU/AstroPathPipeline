@@ -198,14 +198,14 @@ def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,r
         #flatfield_logger.info(msg)
     #within the two threshold limits given by the lowest threshold with large kurtosis and the threshold where the skew flips sign, 
     #exhaustively find the values between which the product of the absolute values of the skew and kurtosis of the background pixels changed the most
-    test_thresholds = list(range(int(threshold),int(last_large_kurtosis_threshold)+1))
+    test_thresholds = list(range(int(threshold),max(int(last_large_kurtosis_threshold)+1,int(threshold)+MIN_POINTS_TO_SEARCH)))
     skews = []; kurtoses = []; skew_kurt_products = []
     test_thresh_indices = [(np.where(layerpix==t))[0][-1]+1 for t in test_thresholds]
     for ti in test_thresh_indices :
         skews.append(scipy.stats.skew(layerpix[:ti]))
         kurtoses.append(scipy.stats.kurtosis(layerpix[:ti]))
     skew_kurt_products = [abs(s)*abs(k) for s,k in zip(skews,kurtoses)]
-    sk_product_diffs = [skew_kurt_products[i+1]-skew_kurt_products[i] for i in range(len(skew_kurt_products)-1)]
+    sk_product_diffs = [skew_kurt_products[i+1]-skew_kurt_products[i] for i in range(len(skew_kurt_products)-1) if skews[i]>0 and skews[i+1]>0]
     final_threshold = test_thresholds[sk_product_diffs.index(max(sk_product_diffs))+1]
     #make and save plots
     figname=f'{sample_name}_layer_{layer_i+1}_background_threshold_plots.png'
