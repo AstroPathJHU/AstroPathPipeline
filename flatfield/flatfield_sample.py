@@ -200,7 +200,7 @@ def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,r
     #exhaustively find the values between which the product of the absolute values of the skew and kurtosis of the background pixels changed the most
     test_thresholds = list(range(int(threshold),max(int(last_large_kurtosis_threshold)+1,int(threshold)+MIN_POINTS_TO_SEARCH)))
     skews = []; kurtoses = []
-    test_thresh_indices = [(np.where(layerpix==t))[0][-1]+1 for t in test_thresholds]
+    test_thresh_indices = [(np.where(layerpix<=t))[0][-1]+1 for t in test_thresholds]
     for ti in test_thresh_indices :
         skews.append(scipy.stats.skew(layerpix[:ti]))
         kurtoses.append(scipy.stats.kurtosis(layerpix[:ti]))
