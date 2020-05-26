@@ -199,32 +199,32 @@ def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,r
     #within the two threshold limits given by the lowest threshold with large kurtosis and the threshold where the skew flips sign, 
     #exhaustively find the values between which the product of the absolute values of the skew and kurtosis of the background pixels changed the most
     test_thresholds = list(range(int(threshold),max(int(last_large_kurtosis_threshold)+1,int(threshold)+MIN_POINTS_TO_SEARCH)))
-    skews = []; kurtoses = []; skew_kurt_products = []
+    skews = []; kurtoses = []
     test_thresh_indices = [(np.where(layerpix==t))[0][-1]+1 for t in test_thresholds]
     for ti in test_thresh_indices :
         skews.append(scipy.stats.skew(layerpix[:ti]))
         kurtoses.append(scipy.stats.kurtosis(layerpix[:ti]))
-    skew_kurt_products = [abs(s)*abs(k) for s,k in zip(skews,kurtoses)]
-    sk_product_diffs = [skew_kurt_products[i+1]-skew_kurt_products[i] for i in range(len(skew_kurt_products)-1) if skews[i]>0 and skews[i+1]>0]
-    final_threshold = test_thresholds[sk_product_diffs.index(max(sk_product_diffs))+1]
+    kurtosis_diffs = [kurtoses[i+1]-kurtoses[i] for i in range(len(kurtoses)-1)]
+    kurtosis_diffs_no_negative_skew = [kurtosis_diffs[i] for i in range(len(kurtosis_diffs)) if skews[i]>0]
+    final_threshold = test_thresholds[kurtosis_diffs_no_negative_skew.index(max(kurtosis_diffs_no_negative_skew))+1]
     #make and save plots
     figname=f'{sample_name}_layer_{layer_i+1}_background_threshold_plots.png'
     with cd(plotdir_path) :
         f,(ax1,ax2,ax3)=plt.subplots(1,3,figsize=(19.2,4.6))
-        ax1.plot(test_thresholds,skew_kurt_products,marker='o',linewidth=2)
-        ax1.plot([final_threshold,final_threshold],list(ax1.get_ylim()),color='k',linewidth=2)
-        ax1.set_title('abs(skew)*abs(kurtosis) of background pixels')
+        ax1.plot(test_thresholds,skews,marker='v',color='r',label='bg pixel skew')
+        ax1.plot(test_thresholds,kurtoses,marker='^',color='b',label='bg pixel kurtoses')
+        ax1.plot([final_threshold,final_threshold],list(ax1.get_ylim()),color='k',linewidth=2,label='chosen threshold')
+        ax1.set_title('background pixel skew and kurtosis at candidate thresholds')
         ax1.set_xlabel('candidate threshold')
-        ax1.set_ylabel('abs(skew)*abs(kurtosis) of bg pixels')
-        ax2.hist(layerpix[:np.where(layerpix<=final_threshold)[0][-1]+1])
-        ax2.set_title('histogram of final background pixels')
-        ax3.plot(test_thresholds,skews,marker='v',color='r',label='bg pixel skew')
-        ax3.plot(test_thresholds,kurtoses,marker='^',color='b',label='bg pixel kurtoses')
-        ax3.plot([final_threshold,final_threshold],list(ax3.get_ylim()),color='k',linewidth=2,label='chosen threshold')
-        ax3.set_title('background pixel skew and kurtosis at candidate thresholds')
-        ax3.set_xlabel('candidate threshold')
-        ax3.set_ylabel('background pixel skew and kurtosis')
-        ax3.legend(loc='best')
+        ax1.set_ylabel('background pixel skew and kurtosis')
+        ax1.legend(loc='best')
+        ax2.plot(test_thresholds[1:],kurtosis_diffs,marker='o',linewidth=2)
+        ax2.plot([final_threshold,final_threshold],list(ax2.get_ylim()),color='k',linewidth=2)
+        ax2.set_title('slope of kurtoses of background pixels')
+        ax2.set_xlabel('candidate threshold')
+        ax2.set_ylabel('slope of kurtosis curve')
+        ax3.hist(layerpix[:np.where(layerpix<=final_threshold)[0][-1]+1])
+        ax3.set_title('histogram of final background pixels')
         plt.savefig(figname)
         plt.close()
     #set the values in the return dict
