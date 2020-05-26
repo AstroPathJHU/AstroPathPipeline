@@ -38,7 +38,7 @@ def printmatrix(**kwargs):
 
 if __name__ == "__main__":
   p = argparse.ArgumentParser()
-  p.add_argument("sample", choices=("M21_1", "M1_1", "M2_3", "TS19_0181_A_1_3_BMS_MITRE", "L1_4", "ML1603474_BMS069_5_21"))
+  p.add_argument("sample", choices=("M21_1", "M1_1", "M2_3", "TS19_0181_A_1_3_BMS_MITRE", "L1_4", "ML1603474_BMS069_5_21", "PZ1"))
   p.add_argument("--units", choices=("fast", "safe"), default="safe")
   args = p.parse_args()
 

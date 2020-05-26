@@ -61,9 +61,10 @@ class dataclass_dc_init:
     cls.__init__ = __my_init__
     return cls
 
-def floattoint(flt):
+@np.vectorize
+def floattoint(flt, *, atol=0, rtol=0):
   result = int(flt)
-  if result == flt: return result
+  if np.isclose(result, flt, atol=atol, rtol=rtol): return result
   raise ValueError(f"{flt} is not an int")
 
 from . import units
@@ -91,3 +92,13 @@ def split_csv_to_list_of_ints(value) :
       return [int(v) for v in value.split(',')]
   except ValueError :
       raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
+
+@contextlib.contextmanager
+def PILmaximagepixels(pixels):
+  import PIL.Image
+  bkp = PIL.Image.MAX_IMAGE_PIXELS
+  try:
+    PIL.Image.MAX_IMAGE_PIXELS = pixels
+    yield
+  finally:
+    PIL.Image.MAX_IMAGE_PIXELS = bkp
