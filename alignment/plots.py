@@ -388,15 +388,14 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
   xycolor = cmap(norm(xyarray))
   xycolor[xyarray == -999] = 0
 
-  for colorplot, xy, saveas in zip(xycolor, "xy", (saveasx, saveasy)):
+  for colorplot, xory, saveas in zip(xycolor, "xy", (saveasx, saveasy)):
     fig = plt.figure(**figurekwargs)
     ax = plt.gca()
     ax.imshow(colorplot, extent=extent)
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
-    cbar.set_label(f"$\delta {xy}$")
-    plotstyling(fig=fig, ax=ax)
+    plotstyling(fig=fig, ax=ax, cbar=cbar, xory=xory)
     if saveasx is saveasy is None:
       plt.show()
     if saveas is not None:

@@ -333,25 +333,26 @@ def sinewaves(*, bki, testing, remake):
 def plots2D(*, bki, testing, remake):
   if bki or testing:
     with plt.rc_context(rc=rc):
-      def plotstyling(*, fig, ax):
+      def plotstyling(*, fig, ax, cbar, xory, subplotkwargs):
         ax.set_xlabel(r"$x$ (pixels)", labelpad=10)
         ax.set_ylabel(r"$y$ (pixels)", labelpad=0)
-        fig.subplots_adjust(bottom=0.15, left=0.16, right=0.86)
+        cbar.set_label(f"$\delta {xory}$ (pixels)")
+        fig.subplots_adjust(**subplotkwargs)
 
-      class Sample(collections.namedtuple("Sample", "samp name")):
-        def __new__(cls, **kwargs):
-          return super().__new__(cls, **kwargs)
+      class Sample(collections.namedtuple("Sample", "samp name figurekwargs subplotkwargs")):
+        def __new__(cls, *, figurekwargs={}, subplotkwargs={}, **kwargs):
+          return super().__new__(cls, figurekwargs=figurekwargs, subplotkwargs=subplotkwargs, **kwargs)
 
       samples = [
-        Sample(samp="M1_1", name="JHUVectra"),
-        Sample(samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY"),
-        Sample(samp="PZ1", name="JHUPolaris"),
-        Sample(samp="ML1603474_BMS069_5_21", name="BMS"),
+        Sample(samp="M1_1", name="JHUVectra", figurekwargs={"figsize": (6, 5)}, subplotkwargs={"bottom": 0.15, "left": 0.17, "right": 0.87}),
+        Sample(samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", figurekwargs={"figsize": (5.7, 6)}, subplotkwargs={"bottom": 0.15, "left": 0.16, "right": 0.86}),
+        Sample(samp="PZ1", name="JHUPolaris", figurekwargs={"figsize": (6.7, 6)}, subplotkwargs={"bottom": 0.15, "left": 0.16, "right": 0.86}),
+        Sample(samp="ML1603474_BMS069_5_21", name="BMS", figurekwargs={"figsize": (5.7, 6)}, subplotkwargs={"bottom": 0.15, "left": 0.16, "right": 0.86}),
       ] if bki else [
-        Sample(samp=None, name="test"),
+        Sample(samp=None, name="test", figurekwargs={"figsize": (6, 4)}, subplotkwargs={"bottom": 0.15, "left": 0.16, "right": 0.86}),
       ]
 
-      for samp, name in samples:
+      for samp, name, figurekwargs, subplotkwargs in samples:
         alignmentsetkwargs = {"samp": samp}
         alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
         saveasx, saveasy = (here/f"2D-shifts-{name}-{xy}.pdf" for xy in "xy")
@@ -359,10 +360,10 @@ def plots2D(*, bki, testing, remake):
         A = alignmentset(**alignmentsetkwargs)
         shiftplot2D(
           A,
-          figurekwargs={},
+          figurekwargs=figurekwargs,
           saveasx=saveasx,
           saveasy=saveasy,
-          plotstyling=plotstyling,
+          plotstyling=functools.partial(plotstyling, subplotkwargs=subplotkwargs),
         )
 
 if __name__ == "__main__":
