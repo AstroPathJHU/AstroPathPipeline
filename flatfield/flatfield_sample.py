@@ -187,105 +187,111 @@ class FlatfieldSample() :
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
-#helper function to determine a background threshold flux given a single layer's total pixel list
+#helper function to determine the Otsu threshold given a histogram of pixel values 
+#algorithm from python code at https://docs.opencv.org/3.4/d7/d4d/tutorial_py_thresholding.html
+#reimplemented here for speed and to increase resolution to 16bit
+def getOtsuThreshold(pixel_hist) :
+    # normalize histogram
+    hist_norm = pixel_hist/pixel_hist.sum()
+    # get cumulative distribution function
+    Q = hist_norm.cumsum()
+    # find the upper limit of the histogram
+    max_val = len(pixel_hist)
+    # set up the loop to determine the threshold
+    bins = np.arange(max_val); fn_min = np.inf; thresh = -1
+    # loop over all possible values to find where the function is minimized
+    for i in xrange(1,max_val):
+        p1,p2 = np.hsplit(hist_norm,[i]) # probabilities
+        q1,q2 = Q[i],Q[max_val-1]-Q[i] # cum sum of classes
+        if q1 < 1.e-6 or q2 < 1.e-6:
+            continue
+        b1,b2 = np.hsplit(bins,[i]) # weights
+        # finding means and variances
+        m1,m2 = np.sum(p1*b1)/q1, np.sum(p2*b2)/q2
+        v1,v2 = np.sum(((b1-m1)**2)*p1)/q1,np.sum(((b2-m2)**2)*p2)/q2
+        # calculates the minimization function
+        fn = v1*q1 + v2*q2
+        if fn < fn_min:
+            fn_min = fn
+            thresh = i
+    # return the threshold
+    return thresh
+
+#helper function to return the skewness of a distribution given its histogram
+def getSkewnessFromHistogram(hist) :
+    pass
+
+#helper function to return the kurtosis of a distribution given its histogram
+def getKurtosisFromHistogram(hist) :
+    pass
+
+#helper function to determine a background threshold flux given the histogram of a single layer's pixel fluxes
 #designed to be run in parallel
 def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,return_dict) :
-    plt.plot(list(range(len(layerpix)))[:256],layerpix[:256])
-    plt.show()
-    ##sort this layer's list of pixel fluxes
-    #print('  sorting pixels'); start=time.time()
-    #layerpix = np.sort(layerpix)
-    #stop=time.time(); print(f'  done in {stop-start}')
-    ##iterate calculating and applying the Otsu threshold values, keeping track of the lowest threshold
-    ##that results in a sufficiently large background pixel distribution kurtosis, and the threshold at which
-    ##the background pixel distribution skew goes negative
-    #next_it_pixels = layerpix
-    #threshold=100000; last_large_kurtosis_threshold=100000; iterations=0; skew = 1000.; grayscale_max_value=np.iinfo(np.uint8).max
-    #while skew>0.0 :
-    #    #cut the smoothed images at the value for the current iteration
-    #    this_it_pixels = next_it_pixels
-    #    #convert the 16bit integer pixels to 8bit integer grayscale values, rescaling the maximum if necessary
-    #    this_it_rs = (1.*grayscale_max_value/max(np.max(this_it_pixels),grayscale_max_value))
-    #    print(f'    rescaling with value {this_it_rs} for iteration {iterations}'); start=time.time()
-    #    for_threshold = (this_it_rs*this_it_pixels).astype('uint8')
-    #    stop=time.time(); print(f'    done in {stop-start}')
-    #    #find the test threshold from Otsu's algorithm for this iteration and rescale it back to the 16bit range
-    #    print(f'    thresholding with OpenCV for iteration {iterations}'); start=time.time()
-    #    test_threshold_rs,_ = cv2.threshold(for_threshold,0,1,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    #    stop=time.time(); print(f'    done in {stop-start}')
-    #    test_threshold = 1.*test_threshold_rs/this_it_rs
-    #    #calculate the skew and kurtosis of the pixels that would be background at this threshold
-    #    print(f'    getting background pixels for iteration {iterations}'); start=time.time()
-    #    bg_pixels = layerpix[:np.where(layerpix<=test_threshold)[0][-1]+1]
-    #    stop=time.time(); print(f'    done in {stop-start}')
-    #    print(f'    doing stats for iteration {iterations}'); start=time.time()
-    #    skew = scipy.stats.skew(bg_pixels)
-    #    kurtosis = scipy.stats.kurtosis(bg_pixels)
-    #    stop=time.time(); print(f'    done in {stop-start}')
-    #    #record this iteration if the skew is positive and the kurotsis is large enough
-    #    if skew>0.0 and kurtosis>UPPER_THRESHOLD_KURTOSIS_CUT :
-    #        last_large_kurtosis_threshold = test_threshold
-    #    #set the new threshold and the next iteration's pixels
-    #    threshold = test_threshold
-    #    next_it_pixels = bg_pixels
-    #    iterations+=1
-    #    ##print some info
-    #    #msg = f'  layer {layer_i+1} it. {iterations+1} '
-    #    #msg+=f'skewness = {skew:.3f}, '
-    #    #msg+=f'kurtosis = {kurtosis:.3f}, '
-    #    #msg+=f'abs(skew)*abs(kurtosis) = {abs(skew)*abs(kurtosis):.3f}, '
-    #    #msg+=f'test thresh.={test_threshold:.1f}:'
-    #    #flatfield_logger.info(msg)
-    ##within the two threshold limits given by the lowest threshold with large kurtosis and the threshold where the skew flips sign, 
-    ##exhaustively find the values between which the kurtosis of the background pixels changed the most
-    #print('  making list of test thresholds'); start=time.time()
-    #test_thresholds = list(range(int(threshold),max(int(last_large_kurtosis_threshold)+1,int(threshold)+MIN_POINTS_TO_SEARCH)))
-    #stop=time.time(); print(f'  done in {stop-start}')
-    #skews = []; kurtoses = []
-    #print('  making list of test threshold array indices'); start=time.time()
-    #test_thresh_indices = [(np.where(layerpix<=t))[0][-1]+1 for t in test_thresholds]
-    #stop=time.time(); print(f'  done in {stop-start}')
-    #for ti in test_thresh_indices :
-    #    print(f'    getting stats for threshold at index {ti}'); start=time.time()
-    #    skews.append(scipy.stats.skew(layerpix[:ti]))
-    #    kurtoses.append(scipy.stats.kurtosis(layerpix[:ti]))
-    #    stop=time.time(); print(f'    done in {stop-start}')
-    #print('  finding optimal threshold'); start=time.time()
-    #kurtosis_diffs = [kurtoses[i+1]-kurtoses[i] for i in range(len(kurtoses)-1)]
-    #kurtosis_diffs_no_negative_skew = [] 
-    #for i in range(len(kurtosis_diffs)) :
-    #    if skews[i]>0 :
-    #        kurtosis_diffs_no_negative_skew.append(kurtosis_diffs[i])
-    #    else :
-    #        kurtosis_diffs_no_negative_skew.append(-10.)
-    #final_threshold = test_thresholds[kurtosis_diffs_no_negative_skew.index(max(kurtosis_diffs_no_negative_skew))+1]
-    #stop=time.time(); print(f'  done in {stop-start}')
-    ##make and save plots
-    #figname=f'{sample_name}_layer_{layer_i+1}_background_threshold_plots.png'
-    #print('  making/saving plots'); start=time.time()
-    #with cd(plotdir_path) :
-    #    f,(ax1,ax2,ax3)=plt.subplots(1,3,figsize=(19.2,4.6))
-    #    ax1.plot(test_thresholds,skews,marker='v',color='r',label='bg pixel skew')
-    #    ax1.plot(test_thresholds,kurtoses,marker='^',color='b',label='bg pixel kurtoses')
-    #    ax1.plot([final_threshold,final_threshold],list(ax1.get_ylim()),color='k',linewidth=2,label='chosen threshold')
-    #    ax1.set_title('background pixel skew and kurtosis at candidate thresholds')
-    #    ax1.set_xlabel('candidate threshold')
-    #    ax1.set_ylabel('background pixel skew and kurtosis')
-    #    ax1.legend(loc='best')
-    #    ax2.plot(test_thresholds[1:],kurtosis_diffs,marker='o',linewidth=2)
-    #    ax2.plot([final_threshold,final_threshold],list(ax2.get_ylim()),color='k',linewidth=2)
-    #    ax2.set_title('slope of kurtoses of background pixels')
-    #    ax2.set_xlabel('candidate threshold')
-    #    ax2.set_ylabel('slope of kurtosis curve')
-    #    ax3.hist(layerpix[:np.where(layerpix<=final_threshold)[0][-1]+1])
-    #    ax3.set_title('histogram of final background pixels')
-    #    plt.savefig(figname)
-    #    plt.close()
-    #stop=time.time(); print(f'  done in {stop-start}')
-    ##set the values in the return dict
-    #print('  setting return dict values'); start=time.time()
-    #return_dict[layer_i] = {'lower_bound':threshold,
-    #                        'upper_bound':max(last_large_kurtosis_threshold,int(threshold)+MIN_POINTS_TO_SEARCH),
-    #                        'final_threshold':final_threshold
-    #                        }
-    #stop=time.time(); print(f'  done in {stop-start}')
+    #iterate calculating and applying the Otsu threshold values, keeping track of the lowest threshold
+    #that results in a sufficiently large background pixel distribution kurtosis, and the threshold at which
+    #the background pixel distribution skew goes negative
+    next_it_pixels = layerpix; lowest_threshold=100000; last_large_kurtosis_threshold=100000; iterations=0; skew = 1000.
+    while skew>0.0 :
+        #get the threshold from OpenCV's Otsu thresholding procedure
+        test_threshold = getOtsuThreshold(next_it_pixels)
+        #calculate the skew and kurtosis of the pixels that would be background at this threshold
+        bg_pixels = layerpix[:test_threshold]
+        skew = getSkewnessFromHistogram(bg_pixels)
+        kurtosis = getKurtosisFromHistogram(bg_pixels)
+        #record this iteration if the skew is positive and the kurotsis is large enough
+        if skew>0.0 and kurtosis>UPPER_THRESHOLD_KURTOSIS_CUT :
+            last_large_kurtosis_threshold = test_threshold
+        #set the new threshold and the next iteration's pixels
+        lowest_threshold = test_threshold
+        next_it_pixels = bg_pixels
+        iterations+=1
+        ##print some info
+        #msg = f'  layer {layer_i+1} it. {iterations+1} '
+        #msg+=f'skewness = {skew:.3f}, '
+        #msg+=f'kurtosis = {kurtosis:.3f}, '
+        #msg+=f'test thresh.={test_threshold:.1f}:'
+        #flatfield_logger.info(msg)
+    #within the two threshold limits given by the lowest threshold with large kurtosis and the threshold where the skew flips sign, 
+    #exhaustively find the values between which the kurtosis of the background pixels changed the most
+    upper_bound = max(last_large_kurtosis_threshold+1,lowest_threshold+MIN_POINTS_TO_SEARCH)
+    test_thresholds = list(range(lowest_threshold,upper_bound))
+    skews = []; kurtoses = []
+    for tt in test_thresholds :
+        test_hist = layerpix[:tt]
+        skews.append(getSkewnessFromHistogram(test_hist))
+        kurtoses.append(getKurtosisFromHistogram(test_hist))
+    kurtosis_diffs = [kurtoses[i+1]-kurtoses[i] for i in range(len(kurtoses)-1)]
+    kurtosis_diffs_no_negative_skew = [] 
+    for i in range(len(kurtosis_diffs)) :
+        if skews[i]>0 :
+            kurtosis_diffs_no_negative_skew.append(kurtosis_diffs[i])
+        else :
+            kurtosis_diffs_no_negative_skew.append(-10.)
+    final_threshold = test_thresholds[kurtosis_diffs_no_negative_skew.index(max(kurtosis_diffs_no_negative_skew))+1]
+    #make and save plots
+    figname=f'{sample_name}_layer_{layer_i+1}_background_threshold_plots.png'
+    with cd(plotdir_path) :
+        f,(ax1,ax2,ax3)=plt.subplots(1,3,figsize=(19.2,4.6))
+        ax1.plot(test_thresholds,skews,marker='v',color='r',label='bg pixel skew')
+        ax1.plot(test_thresholds,kurtoses,marker='^',color='b',label='bg pixel kurtoses')
+        ax1.plot([final_threshold,final_threshold],list(ax1.get_ylim()),color='k',linewidth=2,label='chosen threshold')
+        ax1.set_title('background pixel skew and kurtosis at candidate thresholds')
+        ax1.set_xlabel('candidate threshold')
+        ax1.set_ylabel('background pixel skew and kurtosis')
+        ax1.legend(loc='best')
+        ax2.plot(test_thresholds[1:],kurtosis_diffs,marker='o',linewidth=2)
+        ax2.plot([final_threshold,final_threshold],list(ax2.get_ylim()),color='k',linewidth=2)
+        ax2.set_title('slope of kurtoses of background pixels')
+        ax2.set_xlabel('candidate threshold')
+        ax2.set_ylabel('slope of kurtosis curve')
+        ax3.bar(list(range(final_threshold)),layerpix[:final_threshold],width=1.0)
+        ax3.set_title('histogram of final background pixels')
+        plt.savefig(figname)
+        plt.close()
+    #set the values in the return dict
+    return_dict[layer_i] = {'lower_bound':lowest_threshold,
+                            'upper_bound':upper_bound,
+                            'final_threshold':final_threshold
+                            }
+    stop=time.time(); print(f'  done in {stop-start}')

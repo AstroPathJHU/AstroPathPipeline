@@ -19,6 +19,7 @@ THRESHOLD_TEXT_FILE_NAME_STEM='background_thresholds.txt'
 
 #flatfield_sample globals
 RECTANGLE_LOCATION_PLOT_STEM='rectangle_locations'
+GRAYSCALE_MAX_VALUE=np.iinfo(np.uint8).max
 UPPER_THRESHOLD_KURTOSIS_CUT=2.0
 MIN_POINTS_TO_SEARCH=50
 
