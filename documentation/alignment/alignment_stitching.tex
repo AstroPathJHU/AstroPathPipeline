@@ -11,6 +11,7 @@
 \usepackage{hyperref}
 \usepackage{cleveref}
 \usepackage{siunitx}
+\usepackage{todonotes}
 \usepackage[margin=1in]{geometry}
 \renewcommand\thesubfigure{(\alph{subfigure})}
 
@@ -608,6 +609,26 @@ The remaining plots are more interesting and show a clear sinusoidal pattern, th
 	\label{fig:sinewaves}
 \end{figure}
 
+\subsection{Two-dimensional dependence of shifts}
+
+\Cref{fig:2Dvectra} shows the two-dimensional distribution of the shifts for the \M11 dataset.  This plot highlights the sinusoidal dependence shown in the previous section and also reveals more features. in the 2D distribution.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-JHUVectra-x}
+		\caption{}
+		\label{fig:2Dvectrax}
+	\end{subfigure}
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-JHUVectra-y}
+		\caption{}
+		\label{fig:2Dvectray}
+	\end{subfigure}
+	\caption{The shifts in \subref{fig:2Dvectrax} $x$ and \subref{fig:2Dvectray} $y$ for the fields in \M11.}
+	\label{fig:2Dvectra}
+\end{figure}
+
 \clearpage
 
 \section{JHU Vectra Polaris results}
@@ -683,6 +704,26 @@ Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systemat
 	\end{subfigure}
 	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{PZ1} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
 	\label{fig:sinewavesJHUPolaris}
+\end{figure}
+
+\subsection{Two-dimensional dependence of shifts}
+
+\Cref{fig:2Dpolaris} shows the two-dimensional distribution of the shifts for the \texttt{PZ1} dataset.  This plot explains the features observed on the left side of \cref{fig:sinewave2xyJHUPolaris}: at the beginning of the scan, the microscope took some time to gradually ``settle in'' to its final position.  The alignment procedure accounts for this settling.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-JHUPolaris-x}
+		\caption{}
+		\label{fig:2Dpolarisx}
+	\end{subfigure}
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-JHUPolaris-y}
+		\caption{}
+		\label{fig:2Dpolarisy}
+	\end{subfigure}
+	\caption{The shifts in \subref{fig:2Dpolarisx} $x$ and \subref{fig:2Dpolarisy} $y$ for the fields in \texttt{PZ1}.}
+	\label{fig:2Dpolaris}
 \end{figure}
 
 \clearpage
@@ -764,6 +805,28 @@ Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systemat
 	\end{subfigure}
 	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{ML1603474\_BMS069\_5\_21} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
 	\label{fig:sinewavesBMS}
+\end{figure}
+
+\subsection{Two-dimensional dependence of shifts}
+
+\Cref{fig:2DBMS} shows the two-dimensional distribution of the shifts for the \texttt{ML1603474\_BMS069\_5\_21} dataset.  The most striking feature of this plot is the microscope apparently jumped by $10$ pixels in $x$ for several rows in the middle of the scan, then jumped again by $30$ pixels to the right, then moved back closer to its original position.  This kind of shift most likely only happens occasionally, but can severely degrade data quality if left uncorrected.
+
+\todo{check other datasets from this microscope and compare to cell size}
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-BMS-x}
+		\caption{}
+		\label{fig:2DBMSx}
+	\end{subfigure}
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-BMS-y}
+		\caption{}
+		\label{fig:2DBMSy}
+	\end{subfigure}
+	\caption{The shifts in \subref{fig:2DBMSx} $x$ and \subref{fig:2DBMSy} $y$ for the fields in \texttt{ML1603474\_BMS069\_5\_21}.}
+	\label{fig:2DBMS}
 \end{figure}
 
 \clearpage
@@ -897,6 +960,26 @@ On the other hand, once we remove the constant shifts and, where relevant, the s
 	\end{subfigure}
 	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
 	\label{fig:sinewavesAKY}
+\end{figure}
+
+\subsection{Two-dimensional dependence of shifts}
+
+\Cref{fig:2DAKY} shows the two-dimensional distribution of the shifts for the \texttt{ML1603474\_BMS069\_5\_21} dataset.  This dataset is quite stable and only shows a $1$-pixel settling effect at the beginning of the scan.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-AKY-x}
+		\caption{}
+		\label{fig:2DAKYx}
+	\end{subfigure}
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-AKY-y}
+		\caption{}
+		\label{fig:2DAKYy}
+	\end{subfigure}
+	\caption{The shifts in \subref{fig:2DAKYx} $x$ and \subref{fig:2DAKYy} $y$ for the fields in \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}.}
+	\label{fig:2DAKY}
 \end{figure}
 
 \clearpage
