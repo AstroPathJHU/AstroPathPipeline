@@ -12,6 +12,7 @@
 \usepackage{cleveref}
 \usepackage{siunitx}
 \usepackage{todonotes}
+\usepackage[shortlabels]{enumitem}
 \usepackage[margin=1in]{geometry}
 \renewcommand\thesubfigure{(\alph{subfigure})}
 
@@ -278,13 +279,21 @@ with a covariance matrix
 \matrixbold{cov}_{\vec{v}}=\matrixbold{P}^{-1}.
 \end{equation}
 
-\section{Vectra 3.0 results}
+\section{Alignment results}
 
-In this section, we show plots that illustrate the results of the alignment procedure for a Vectra 3.0 microscope maintained at Johns Hopkins Hospital, codenamed \texttt{JHUVectra3\_1}.
+In this section, we show various plots that illustrate the results of the alignment procedure.  We include plots for four microscopes:
+\begin{enumerate}[(a)]
+\item \texttt{JHUVectra3\_1}, a Vectra 3.0 microscope at Johns Hopkins Hospital \label{JHUVectra}.  We plot results for two large images, codenames \M11 and \M23, and one small image, \M{21\_1}, all taken from melanoma patients.
+\item \texttt{JHUPolaris\_2}, a Vectra Polaris microscope at Johns Hopkins Hospital \label{JHUPolaris}.  We plot results for the \texttt{PZ1} image, which is from a pancreas biopsy.
+\item \texttt{BMSPolaris\_1}, a Vectra Polaris microscope at Bristol-Meyers Squibb.  We plot results for the lung image named \texttt{ML1603474\_BMS069\_5\_21}.
+\item \texttt{AKYPolaris\_1}, a Vectra Polaris microscope at Akoya Biosciences.  We plot results for the image named \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}.  The sample was taken by Bristol-Meyers Squibb (hence the ``BMS'' in the name) and sent to Akoya to be stained and scanned.
+\end{enumerate}
 
 \subsection{Alignment movements}
 
 For an alignment with $N$ fields, we have $2N$ coordinates to set.  Except for the fields at the edges of an island, each field borders $8$ others, on its four edges and four corners, for a total of $O(8N)$ overlaps.  We therefore have more constraints than parameters, and it is natural to ask how consistent those constraints are.  There is always uncertainty involved, so the final alignment will never be in perfect agreement with all constraints, but does the agreement significantly improve?
+
+\subsubsection{JHU Vectra 3.0}
 
 \begin{figure}[ht]
 	\centering
@@ -345,7 +354,7 @@ For an alignment with $N$ fields, we have $2N$ coordinates to set.  Except for t
 	\label{fig:scanning}
 \end{figure}
 
-Another interesting feature of the plots is the comparison between \cref{fig:alignmentresult2,fig:alignmentresult4}.  Fields that are only separated in the $x$ direction are only misaligned in the $x$ direction, while fields separated in $y$ are only misaligned in $y$.  As illustrated in \cref{fig:scanning}, the microscope scans along a row in the $x$ direction first, then moves down in the $y$ direction and goes back to the beginning in $x$.  This explains \cref{fig:alignmentresult4}: as the microscope moves in the $x$ direction, the error introduced by slight movements in the $y$ direction is small.  \Cref{fig:alignmentresult2} is more surprising, because it indicates that the errors introduced as the microscope moves to the right are almost exactly reversed when it moves back to the left.  This indicates that the errors are introduced by some kind of systematic effect, which we will examine in \cref{sec:vectraperiodic}.  Whatever the source of this error is, our alignment procedure is able to correct for it as well as for the smaller, apparently random error associated with each individual movement.
+An interesting feature of the plots is the comparison between \cref{fig:alignmentresult2,fig:alignmentresult4}.  Fields that are only separated in the $x$ direction are only misaligned in the $x$ direction, while fields separated in $y$ are only misaligned in $y$.  As illustrated in \cref{fig:scanning}, the microscope scans along a row in the $x$ direction first, then moves down in the $y$ direction and goes back to the beginning in $x$.  This explains \cref{fig:alignmentresult4}: as the microscope moves in the $x$ direction, the error introduced by slight movements in the $y$ direction is small.  \Cref{fig:alignmentresult2} is more surprising, because it indicates that the errors introduced as the microscope moves to the right are almost exactly reversed when it moves back to the left.  This indicates that the errors are introduced by some kind of systematic effect, which we will examine further in \cref{sec:vectraperiodic}.  Our alignment procedure is able to correct for this error as well as for the smaller, apparently random error associated with each individual movement.
 
 \begin{figure}[ht]
 	\centering
@@ -393,7 +402,63 @@ Another interesting feature of the plots is the comparison between \cref{fig:ali
 	\label{fig:alignmentresultsbig}
 \end{figure}
 
-\Cref{fig:alignmentresultsbig} shows the same distributions for a larger image taken with the same microscope.  It shows similar effects, though they are harder to see due to the larger number of overlaps.
+\Cref{fig:alignmentresultsbig} shows the same distributions for a larger image taken with the same microscope.  It shows similar effects, though they are harder to see due to the larger number of overlaps ($4527$ instead of $109$).  From these plots, it appears that although most fields are aligned well, there are a few outliers.  Furthermore, most of the outliers are corner overlaps (\cref{fig:stitchresultbig3,fig:stitchresultbig1}) and are misaligned in a diagonal direction.  Because there are no such effects in the edge overlaps (\cref{fig:stitchresultbig4,fig:stitchresultbig2}), the most likely explanation for the discrepancy between the individual alignment and the stitched alignment is that those particular corner overlaps are aligned badly.  The error estimation procedure correctly assigns a large error to them, and so they are weighted down in the final fit.
+
+\clearpage
+
+\subsubsection{Akoya Vectra Polaris}
+
+\Cref{fig:alignmentresultsAKY} shows the alignment movements from the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} sample.
+
+All four of the plots in the top row show two clusters of overlaps, indicating that there are systematic effects present in addition to the random movement.  \Cref{sec:akoyapolarisperiodic} will investigate those effects in greater detail.  The effects are smaller than the ones seen in the Vectra 3.0 microscope shown in \cref{fig:alignmentresults,fig:alignmentresultsbig} and are corrected by the stitching, as shown in the bottom row.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-AKY-4.pdf}
+		\caption{}
+		\label{fig:alignmentresultAKY4}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-AKY-3.pdf}
+		\caption{}
+		\label{fig:alignmentresultAKY3}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-AKY-2.pdf}
+		\caption{}
+		\label{fig:alignmentresultAKY2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{alignment-result-AKY-1.pdf}
+		\caption{}
+		\label{fig:alignmentresultAKY1}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-AKY-4.pdf}
+		\caption{}
+		\label{fig:stitchresultAKY4}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-AKY-3.pdf}
+		\caption{}
+		\label{fig:stitchresultAKY3}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-AKY-2.pdf}
+		\caption{}
+		\label{fig:stitchresultAKY2}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{stitch-result-AKY-1.pdf}
+		\caption{}
+		\label{fig:stitchresultAKY1}
+	\end{subfigure}
+	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in an image, code name \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, taken with Akoya's Vectra Polaris microscope.  The plots show overlaps between one field and the field \subref{fig:alignmentresultAKY4} to its right, \subref{fig:alignmentresultAKY3} under it and to the right, \subref{fig:alignmentresultAKY2} under it, and \subref{fig:alignmentresultAKY1} under it and to the left.  Each point indicates a single overlap.  Error bars are omitted because of the larger number of overlaps in this image.  \subref{fig:stitchresultAKY4}--\subref{fig:stitchresultAKY1} The same distributions for the respective overlap directions after stitching has been performed.}
+	\label{fig:alignmentresultsAKY}
+\end{figure}
+
+\clearpage
 
 \subsection{Consistency of the errors}
 \label{sec:pulls}
@@ -401,6 +466,8 @@ Another interesting feature of the plots is the comparison between \cref{fig:ali
 We also want to ensure that our estimate of the errors on the alignment are correct.  To do this, we use what is known as a ``pull'' distribution.  The idea is to find a quantity $x$ that we expect to be $0$.  Any actual measurement of $x$ will not necessarily be $0$, but we perform multiple measurements $x_i$, we expect to end up with a normal distribution centered at $0$ and with a width of $\sigma$.  If we instead look at the distribution of $x_i/\sigma$, the width of the normal distribution will be $1$.
 
 In general, we do not know $\sigma$ in advance, but we have an estimate $\sigma_i$ of the error on each individual measurement.  The idea of a pull distribution is that we plot $x_i/\sigma_i$ and look at the width of the resulting distribution.  If it is close to $1$, that indicates that our error estimate was correct.
+
+\subsubsection{JHU Vectra 3.0}
 
 \Cref{fig:squarepulls} shows the pull distributions for the total displacement from pairwise alignments for moving around in a square or diamond.  For a perfect alignment, this quantity would be $0$, so it is a good candidate for a pull distribution.  As the figures show, the standard deviations of all pull distributions are close to $1$, indicating that our error estimates for both edge and corner overlaps are reasonable.
 
@@ -490,11 +557,15 @@ In general, we do not know $\sigma$ in advance, but we have an estimate $\sigma_
 
 The standard deviations of the pull distributions were used to determine the factor of $1/16$ used to correct \cref{eq:overlapcovariance} to \cref{eq:overlapcovariancecorrected}.  The fact that, after making this correction, the standard deviations are $1$ for multiple different images as well as for pull distributions of two different quantities lends confidence to the \emph{method} of error estimation.  Remaining deviations from $1$ indicate that there is still some amount of room for improvement.
 
+\clearpage
+
 \subsection{Linear transformation matrix}
 
 As described in \cref{sec:stitching}, when we stitch the alignment we also obtain the linear matrix $\matrixbold{A}$, which describes the relationship between the distance that the microscope is supposed to move $\Delta\vec{r}$ and the average distance it actually moves $\matrixbold{A}\Delta\vec{r}$.  We expect it to be more or less constant for different images taken with the same microscope, although of course the mechanical parts can also degrade over time, change due to maintenance, or be replaced.
 
 The primary purpose of the alignment and stitching is to determine the relative locations of the high-powered fields, and when only a single island is present $\matrixbold{A}$ is not necessary for this purpose.  When there are multiple islands, as in \cref{fig:islands}, including $\matrixbold{A}$ in the fit allows us to obtain those islands' approximate relative locations.  In either case, we do not need the precise values of $\matrixbold{A}$'s entries for any analysis, but the matrix still provides interesting information about the mechanical calibration of the microscope.
+
+\subsubsection{JHU Vectra 3.0}
 
 For the \M11 dataset, we find
 \begin{align}
@@ -514,10 +585,74 @@ For the \M11 dataset, we find
 \end{align}
 The Vectra 3.0 scans fields of size $1344\times1004$ $\text{pixels}^2$.  The entries of $\matrixbold{A}$ tell us that on average, when moving one field to the right, the microscope ends up $0.9$ pixels to the left and $0.1$ pixels below where it should, and when moving down, it ends up $0.1$ pixels to the right and $1.1$ pixels above where it should.  Although the top row of \cref{fig:alignmentresults} shows that the random scatter is a larger effect, the average shift is noticeable.
 
+\subsubsection{JHU Vectra Polaris}
+
+From the sample named \texttt{PZ1}, we find the linear transformation matrix to be
+\begin{align}
+\matrixbold{A}=&\begin{pmatrix}
+\num{0.999782(4)} &
+\num{-0.000308(5)} \\
+\num{-0.000327(4)} &
+\num{0.999994(5)}
+\end{pmatrix} \\
+=\matrixbold{I} + &\begin{pmatrix}
+\num{-0.218(4)} &
+\num{-0.308(5)} \\
+\num{-0.327(4)} &
+\num{-0.006(5)}
+\end{pmatrix} \times \num{e-3}
+\label{eq:Amatrix_PZ1}
+\end{align}
+The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope undershoots by an average of $0.3$ pixels and moves up by $0.5$ pixels.  When moving down, it moves to the right by an average of $0.3$ pixels.
+
+\subsubsection{BMS Vectra Polaris}
+
+From the sample named \texttt{ML1603474\_BMS069\_5\_21}, we find the linear transformation matrix to be
+\begin{align}
+\matrixbold{A}=&\begin{pmatrix}
+\num{0.999512(9)} &
+\num{-0.000261(8)} \\
+\num{0.000353(5)} &
+\num{0.999611(6)}
+\end{pmatrix} \\
+=\matrixbold{I} + &\begin{pmatrix}
+\num{-0.488(9)} &
+\num{-0.261(8)} \\
+\num{0.353(5)} &
+\num{-0.389(6)}
+\end{pmatrix} \times \num{e-3}
+\label{eq:Amatrix_ML1603474_BMS069_5_21}
+\end{align}
+When moving one field to the right, the microscope undershoots by an average of $0.7$ pixels and also moves down by $0.5$ pixels.  When moving down, it undershoots by an average of $0.3$ pixels and moves to the left by $0.4$ pixels.
+
+\subsubsection{Akoya Vectra Polaris}
+
+From the sample named \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, we find the linear transformation matrix to be
+\begin{align}
+\matrixbold{A}=&\begin{pmatrix}
+\num{1.000503(5)} &
+\num{-0.000454(5)} \\ 
+\num{2.44(31)e-05} &
+\num{1.000044(4)}
+\end{pmatrix} \\
+=\matrixbold{I} + &\begin{pmatrix}
+\num{0.503(5)} &
+\num{-0.454(5)} \\
+\num{0.0244(31)} &
+\num{0.044(4)}
+\end{pmatrix} \times \num{e-3}
+\label{eq:Amatrix_TS18_0541_BMS_MITRE}
+\end{align}
+When moving one field to the right, the microscope overshoots by an average of $0.7$ pixels, as expected from \cref{fig:alignmentresultAKY4}, and when moving down, it ends up $0.5$ pixels to the left of the desired location, as expected from \cref{fig:alignmentresultAKY2}.
+
+\clearpage
+
 \subsection{Periodic dependence}
 \label{sec:vectraperiodic}
 
-To take the analysis a step further, we can look for other systematic effects in the shifts detected by the alignment.  For the purpose of the data analysis, it does not really matter whether the shifts are systematic or random, because we correct for them anyway.  However, if we can measure systematic effects that can be interpreted as mechanical miscalibrations, this can form valuable input to the microscope manufacturers, and if the effects get larger over time, this change may indicate that pieces of the microscope are starting to fail.
+To take the analysis a step further, we can look for other systematic effects in the shifts detected by the alignment.  For the purpose of the data analysis, it does not really matter whether the shifts are systematic or random, because we correct for them anyway.  However, if we can measure systematic effects that can be interpreted as mechanical miscalibrations, this can form valuable input to the microscope manufacturers, and if the effects get larger over time, this change may indicate that pieces of the microscope are starting to fail, or at least to change in some way.
+
+\subsubsection{JHU Vectra 3.0}
 
 In \cref{fig:sinewaves} we plot the average movement for each row and column of overlaps.  \Cref{fig:sinewave2xx1,fig:sinewave2yx1} show that, as we might expect, the alignment shifts for overlaps between fields separated in $y$ do not depend on the $x$ position of those fields.  Similarly, from \cref{fig:sinewave4yy1,fig:sinewave4xy1} we see that overlaps between fields separated in the $x$ direction do not depend on $y$.
 
@@ -609,56 +744,10 @@ The remaining plots are more interesting and show a clear sinusoidal pattern, th
 	\label{fig:sinewaves}
 \end{figure}
 
-\subsection{Two-dimensional dependence of shifts}
-
-\Cref{fig:2Dvectra} shows the two-dimensional distribution of the shifts for the \M11 dataset.  This plot highlights the sinusoidal dependence shown in the previous section and also reveals more features. in the 2D distribution.
-
-\begin{figure}[ht]
-	\centering
-	\begin{subfigure}{0.49\linewidth}
-		\includegraphics[width=\linewidth]{2D-shifts-JHUVectra-x}
-		\caption{}
-		\label{fig:2Dvectrax}
-	\end{subfigure}
-	\begin{subfigure}{0.49\linewidth}
-		\includegraphics[width=\linewidth]{2D-shifts-JHUVectra-y}
-		\caption{}
-		\label{fig:2Dvectray}
-	\end{subfigure}
-	\caption{The shifts in \subref{fig:2Dvectrax} $x$ and \subref{fig:2Dvectray} $y$ for the fields in \M11.}
-	\label{fig:2Dvectra}
-\end{figure}
-
-\clearpage
-
-\section{JHU Vectra Polaris results}
-
-This section shows results for a dataset scanned on one of the Johns Hopkins Vectra Polaris microscopes, codenamed \texttt{JHUPolaris\_2}.
-
-\subsection{Linear Transformation matrix}
-
-From the sample named \texttt{PZ1}, we find the linear transformation matrix to be
-\begin{align}
-\matrixbold{A}=&\begin{pmatrix}
-\num{0.999782(4)} &
-\num{-0.000308(5)} \\
-\num{-0.000327(4)} &
-\num{0.999994(5)}
-\end{pmatrix} \\
-=\matrixbold{I} + &\begin{pmatrix}
-\num{-0.218(4)} &
-\num{-0.308(5)} \\
-\num{-0.327(4)} &
-\num{-0.006(5)}
-\end{pmatrix} \times \num{e-3}
-\label{eq:Amatrix_PZ1}
-\end{align}
-The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope undershoots by an average of $0.3$ pixels and moves up by $0.5$ pixels.  When moving down, it moves to the right by an average of $0.3$ pixels.
-
-\subsection{Periodic dependence}
+\subsubsection{JHU Vectra Polaris}
 \label{sec:JHUpolarisperiodic}
 
-Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systematic behavior in the residuals from the Polaris microscope.  \Cref{fig:sinewavesJHUPolaris} shows plots for the \texttt{PZ1} dataset, equivalent to the ones in \cref{fig:sinewaves}.
+\Cref{fig:sinewavesJHUPolaris} shows plots for the \texttt{PZ1} dataset.  These plots do not show any clear sinusoidal behavior, though there are some sub-pixel periodic effects in \cref{fig:sinewave2yyJHUPolaris,fig:sinewave4yxJHUPolaris}.  \Cref{fig:sinewave2xyJHUPolaris} shows that when the microscope started scanning, it had a ``warm-up'' period before settling in.  \Cref{sec:2Dpolaris} will investigate this effect in greater detail.
 
 \begin{figure}[ht]
 	\centering
@@ -702,64 +791,19 @@ Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systemat
 		\caption{}
 		\label{fig:sinewave4yyJHUPolaris}
 	\end{subfigure}
-	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{PZ1} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.  Some of the plots are fitted to a sine curve, whose amplitude and wavelength are indicated on the plot.}
+	\caption{Profile plot of the measured alignment shifts for overlaps in a particular row or column.  Each data point shows the average shift for the row or column, and the error bars show the standard deviation.  The first row shows overlaps between high-powered fields separated in the $x$ direction, and the second row shows overlaps between fields separated in the $y$ direction, both for the \texttt{PZ1} dataset.  The columns show the shifts in $x$ as a function of $x$, $x$ as a function of $y$, $y$ as a function of $x$, and $y$ as a function of $y$, from right to left.}
 	\label{fig:sinewavesJHUPolaris}
 \end{figure}
 
-\subsection{Two-dimensional dependence of shifts}
-
-\Cref{fig:2Dpolaris} shows the two-dimensional distribution of the shifts for the \texttt{PZ1} dataset.  This plot explains the features observed on the left side of \cref{fig:sinewave2xyJHUPolaris}: at the beginning of the scan, the microscope took some time to gradually ``settle in'' to its final position.  The alignment procedure accounts for this settling.
-
-\begin{figure}[ht]
-	\centering
-	\begin{subfigure}{0.49\linewidth}
-		\includegraphics[width=\linewidth]{2D-shifts-JHUPolaris-x}
-		\caption{}
-		\label{fig:2Dpolarisx}
-	\end{subfigure}
-	\begin{subfigure}{0.49\linewidth}
-		\includegraphics[width=\linewidth]{2D-shifts-JHUPolaris-y}
-		\caption{}
-		\label{fig:2Dpolarisy}
-	\end{subfigure}
-	\caption{The shifts in \subref{fig:2Dpolarisx} $x$ and \subref{fig:2Dpolarisy} $y$ for the fields in \texttt{PZ1}.}
-	\label{fig:2Dpolaris}
-\end{figure}
-
-\clearpage
-
-\section{BMS Vectra Polaris results}
-
-This section shows results for a dataset scanned a Vectra Polaris microscope at Bristol-Meyers Squibb, codenamed \texttt{BMSPolaris\_1}.
-
-\subsection{Linear Transformation matrix}
-
-From the sample named \texttt{ML1603474\_BMS069\_5\_21}, we find the linear transformation matrix to be
-\begin{align}
-\matrixbold{A}=&\begin{pmatrix}
-\num{0.999512(9)} &
-\num{-0.000261(8)} \\
-\num{0.000353(5)} &
-\num{0.999611(6)}
-\end{pmatrix} \\
-=\matrixbold{I} + &\begin{pmatrix}
-\num{-0.488(9)} &
-\num{-0.261(8)} \\
-\num{0.353(5)} &
-\num{-0.389(6)}
-\end{pmatrix} \times \num{e-3}
-\label{eq:Amatrix_ML1603474_BMS069_5_21}
-\end{align}
-The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope undershoots by an average of $0.7$ pixels and also moves down by $0.5$ pixels.  When moving down, it undershoots by an average of $0.3$ pixels and moves to the left by $0.4$ pixels.
-
-\subsection{Periodic dependence}
+\subsubsection{BMS Vectra Polaris}
 \label{sec:BMSperiodic}
 
-Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systematic behavior in the residuals from the Polaris microscope.  \Cref{fig:sinewavesBMS} shows plots for the \texttt{ML1603474\_BMS069\_5\_21} dataset, equivalent to the ones in \cref{fig:sinewaves}.
+\Cref{fig:sinewavesBMS} shows plots for the \texttt{ML1603474\_BMS069\_5\_21} dataset.
 
-%These plots show less sinusoidal behavior than the ones for the Vectra 3.0 microscope, but they do show other effects.  \Cref{fig:sinewave2yyBMS} has a clear periodic mode, with a wavelength of approximately $5\times\text{the field height}$, though it does not fit to a simple sine wave.  Additionally, \cref{fig:sinewave2xyBMS} shows a behavior change at $y\approx\SI{10000}{pixels}$, which does not fit into any periodic pattern.
+These plots show less sinusoidal behavior than the ones for the Vectra 3.0 microscope, but they do show other effects.  \Cref{fig:sinewave2yyBMS} has a clear periodic mode with a wavelength of approximately $4\times\text{the field height}$, though it does not fit to a simple sine wave, as well as some non-periodic effects.  \Cref{fig:sinewave2xyBMS,fig:sinewave4xyBMS,fig:sinewave2yyBMS} reveal some strange behavior at $y\sim\text{\SIlist{11800;13300}{pixels}}$, which will be illuminated in \cref{sec:2DBMS}.
 
-%On the other hand, once we remove the constant shifts and, where relevant, the sine wave, the \emph{random} misalignments (denoted by ``RMS of noise'') are smaller on this microscope than on the Vectra 3.0.
+On the other hand, setting aside \cref{fig:sinewave2xyBMS}, once we remove the constant shifts and, where relevant, the sine wave, the \emph{random} misalignments (denoted by ``RMS of noise'') are smaller on this microscope than on the Vectra 3.0, indicating that its performance is generally more stable.
+
 
 \begin{figure}[ht]
 	\centering
@@ -807,114 +851,15 @@ Similar to \cref{sec:vectraperiodic}, we can look for periodic or other systemat
 	\label{fig:sinewavesBMS}
 \end{figure}
 
-\subsection{Two-dimensional dependence of shifts}
-
-\Cref{fig:2DBMS} shows the two-dimensional distribution of the shifts for the \texttt{ML1603474\_BMS069\_5\_21} dataset.  The most striking feature of this plot is the microscope apparently jumped by $10$ pixels in $x$ for several rows in the middle of the scan, then jumped again by $30$ pixels to the right, then moved back closer to its original position.  This kind of shift most likely only happens occasionally, but can severely degrade data quality if left uncorrected.
-
-\todo{check other datasets from this microscope and compare to cell size}
-
-\begin{figure}[ht]
-	\centering
-	\begin{subfigure}{0.49\linewidth}
-		\includegraphics[width=\linewidth]{2D-shifts-BMS-x}
-		\caption{}
-		\label{fig:2DBMSx}
-	\end{subfigure}
-	\begin{subfigure}{0.49\linewidth}
-		\includegraphics[width=\linewidth]{2D-shifts-BMS-y}
-		\caption{}
-		\label{fig:2DBMSy}
-	\end{subfigure}
-	\caption{The shifts in \subref{fig:2DBMSx} $x$ and \subref{fig:2DBMSy} $y$ for the fields in \texttt{ML1603474\_BMS069\_5\_21}.}
-	\label{fig:2DBMS}
-\end{figure}
-
-\clearpage
-
-\section{Akoya Vectra Polaris results}
-
-This section shows results for a dataset collected by Bristol-Meyers Squibb and stained and scanned by Akoya Biosciences.  The microscoped is maintained at the Akoya facilities and is codenamed \texttt{AKYPolaris\_1}.
-
-\subsection{Alignment movements}
-
-\Cref{fig:alignmentresultsAKY} shows the alignment movements from the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} sample.
-
-All four of the plots in the top row show two clusters of overlaps, indicating that there are systematic effects present in addition to the random movement.  The next sections will investigate those effects in greater detail.  The effects are smaller than the ones seen in the Vectra 3.0 microscope shown in \cref{fig:alignmentresults,fig:alignmentresultsbig} and are corrected by the stitching, as shown in the bottom row.
-
-\begin{figure}[ht]
-	\centering
-	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{alignment-result-AKY-4.pdf}
-		\caption{}
-		\label{fig:alignmentresultAKY4}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{alignment-result-AKY-3.pdf}
-		\caption{}
-		\label{fig:alignmentresultAKY3}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{alignment-result-AKY-2.pdf}
-		\caption{}
-		\label{fig:alignmentresultAKY2}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{alignment-result-AKY-1.pdf}
-		\caption{}
-		\label{fig:alignmentresultAKY1}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{stitch-result-AKY-4.pdf}
-		\caption{}
-		\label{fig:stitchresultAKY4}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{stitch-result-AKY-3.pdf}
-		\caption{}
-		\label{fig:stitchresultAKY3}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{stitch-result-AKY-2.pdf}
-		\caption{}
-		\label{fig:stitchresultAKY2}
-	\end{subfigure}
-	\begin{subfigure}{0.24\linewidth}
-		\includegraphics[width=\linewidth]{stitch-result-AKY-1.pdf}
-		\caption{}
-		\label{fig:stitchresultAKY1}
-	\end{subfigure}
-	\caption{Distributions of $\delta\vec{r}_o$ for the overlaps in an image, code name \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, taken with Akoya's Vectra Polaris microscope.  The plots show overlaps between one field and the field \subref{fig:alignmentresultAKY4} to its right, \subref{fig:alignmentresultAKY3} under it and to the right, \subref{fig:alignmentresultAKY2} under it, and \subref{fig:alignmentresultAKY1} under it and to the left.  Each point indicates a single overlap.  Error bars are omitted because of the larger number of overlaps in this image.  \subref{fig:stitchresultAKY4}--\subref{fig:stitchresultAKY1} The same distributions for the respective overlap directions after stitching has been performed.}
-	\label{fig:alignmentresultsAKY}
-\end{figure}
-
-\subsection{Linear Transformation matrix}
-
-From the sample named \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE}, we find the linear transformation matrix to be
-\begin{align}
-\matrixbold{A}=&\begin{pmatrix}
-\num{1.000503(5)} &
-\num{-0.000454(5)} \\ 
-\num{2.44(31)e-05} &
-\num{1.000044(4)}
-\end{pmatrix} \\
-=\matrixbold{I} + &\begin{pmatrix}
-\num{0.503(5)} &
-\num{-0.454(5)} \\
-\num{0.0244(31)} &
-\num{0.044(4)}
-\end{pmatrix} \times \num{e-3}
-\label{eq:Amatrix_TS18_0541_BMS_MITRE}
-\end{align}
-The Vectra Polaris scans fields of size $1876\times1404$ $\text{pixels}^2$, slightly larger than the Vectra 3.0.  The result is that when moving one field to the right, the microscope overshoots by an average of $0.7$ pixels, as expected from \cref{fig:alignmentresultAKY4}, and when moving down, it ends up $0.5$ pixels to the left of the desired location, as expected from \cref{fig:alignmentresultAKY2}.
-
-\subsection{Periodic dependence}
+\subsubsection{Akoya Vectra Polaris}
 \label{sec:akoyapolarisperiodic}
 
-This section shows plots for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset, equivalent to the ones in \cref{sec:vectraperiodic}.
+\Cref{fig:sinewavesAKY} shows plots for the \texttt{TS19\_0181\_A\_1\_3\_BMS\_MITRE} dataset.
 
-These plots show less sinusoidal behavior than the ones for the Vectra 3.0 microscope, but they do show other effects.  \Cref{fig:sinewave2yyAKY} has a clear periodic mode, with a wavelength of approximately $5\times\text{the field height}$, though it does not fit to a simple sine wave.  Additionally, \cref{fig:sinewave2xyAKY} shows a behavior change at $y\approx\SI{10000}{pixels}$, which does not fit into any periodic pattern.
+As in the case of the BMS microscope, \cref{fig:sinewave2yyAKY} has a clear periodic mode, with a wavelength of approximately $5\times\text{the field height}$.  Otherwise, this microscope is quite stable.
 
-On the other hand, once we remove the constant shifts and, where relevant, the sine wave, the \emph{random} misalignments (denoted by ``RMS of noise'') are smaller on this microscope than on the Vectra 3.0.
+Once again, once we remove the constant shifts and, where relevant, the sine wave, the \emph{random} misalignments (denoted by ``RMS of noise'') are smaller on this microscope than on the Vectra 3.0.
+
 
 \begin{figure}[ht]
 	\centering
@@ -962,7 +907,81 @@ On the other hand, once we remove the constant shifts and, where relevant, the s
 	\label{fig:sinewavesAKY}
 \end{figure}
 
+\clearpage
+
 \subsection{Two-dimensional dependence of shifts}
+
+Finally, we can plot the movements of each field in the image.  These plots give a full picture of the alignment in all of its detail, and will shed more light on the features observed in the previous sections.
+
+In these plots, we show $\vec{r}_k-\matrixbold{A}\vec{r}_k^n$, subtracting the effect of the affine matrix $\matrixbold{A}$.  In this way, we measure the random shifts as well as systematic effects not described by the affine matrix.  Each field is assigned a color in $x$ and $y$ based on the size of the alignment shift.
+
+For each individual microscope, the color scales for $x$ and $y$ are set to be the same.  However, we do not set those scales to be the same between all microscopes because the sizes of the relevant shifts are different for each one, as will be immediately clear from the plots.
+
+\subsubsection{JHU Vectra 3.0}
+
+\Cref{fig:2Dvectra} shows the two-dimensional distribution of the shifts for the \M11 dataset.  This plot highlights the sinusoidal dependence shown in \cref{sec:vectraperiodic} and also reveals more features. in the 2D distribution.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-JHUVectra-x}
+		\caption{}
+		\label{fig:2Dvectrax}
+	\end{subfigure}
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-JHUVectra-y}
+		\caption{}
+		\label{fig:2Dvectray}
+	\end{subfigure}
+	\caption{The shifts in \subref{fig:2Dvectrax} $x$ and \subref{fig:2Dvectray} $y$ for the fields in \M11.}
+	\label{fig:2Dvectra}
+\end{figure}
+
+\subsubsection{JHU Vectra Polaris}
+\label{sec:2Dpolaris}
+
+\Cref{fig:2Dpolaris} shows the two-dimensional distribution of the shifts for the \texttt{PZ1} dataset.  This plot explains the features observed on the left side of \cref{fig:sinewave2xyJHUPolaris}: at the beginning of the scan, the microscope took some time to gradually ``settle in'' to its final position.  The alignment procedure accounts for this settling.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-JHUPolaris-x}
+		\caption{}
+		\label{fig:2Dpolarisx}
+	\end{subfigure}
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-JHUPolaris-y}
+		\caption{}
+		\label{fig:2Dpolarisy}
+	\end{subfigure}
+	\caption{The shifts in \subref{fig:2Dpolarisx} $x$ and \subref{fig:2Dpolarisy} $y$ for the fields in \texttt{PZ1}.}
+	\label{fig:2Dpolaris}
+\end{figure}
+
+\subsubsection{BMS Vectra Polaris}
+\label{sec:2DBMS}
+
+\Cref{fig:2DBMS} shows the two-dimensional distribution of the shifts for the \texttt{ML1603474\_BMS069\_5\_21} dataset.  The most striking feature of this plot is that the microscope apparently jumped to the left by $10$ pixels in $x$ for several rows in the middle of the scan, then jumped again by $30$ pixels to the right, then moved back closer to its original position.  This kind of shift most likely only happens occasionally, but can severely degrade data quality if left uncorrected.
+
+\todo{check other datasets from this microscope and compare to cell size}
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-BMS-x}
+		\caption{}
+		\label{fig:2DBMSx}
+	\end{subfigure}
+	\begin{subfigure}{0.49\linewidth}
+		\includegraphics[width=\linewidth]{2D-shifts-BMS-y}
+		\caption{}
+		\label{fig:2DBMSy}
+	\end{subfigure}
+	\caption{The shifts in \subref{fig:2DBMSx} $x$ and \subref{fig:2DBMSy} $y$ for the fields in \texttt{ML1603474\_BMS069\_5\_21}.}
+	\label{fig:2DBMS}
+\end{figure}
+
+\subsubsection{Akoya Vectra Polaris results}
 
 \Cref{fig:2DAKY} shows the two-dimensional distribution of the shifts for the \texttt{ML1603474\_BMS069\_5\_21} dataset.  This dataset is quite stable and only shows a $1$-pixel settling effect at the beginning of the scan.
 
@@ -995,20 +1014,20 @@ In this note, we describe the alignment and stitching of a microscope image comp
 	\multicolumn{2}{|l|}{Model} & Vectra 3.0 & Polaris & Polaris & Polaris \\\hline
 	\multicolumn{2}{|l|}{Location} & JHU & JHU & BMS & Akoya \\\hline
 	\multirowcell{3}[0pt][l]{Average shift/field \\ (pixels)}
-	& $\delta x$, $x$ overlap & $-0.9$ & & $-0.7$ & $0.7$ \\\cline{2-6}
-	& $\delta y$, $x$ overlap & $0.1$ & & $0.5$ & $0.0$ \\\cline{2-6}
-	& $\delta x$, $y$ overlap & $0.1$ & & $-0.4$ & $-0.5$ \\\cline{2-6}
-	& $\delta y$, $y$ overlap & $-1.1$ & & $-0.3$ & $0.0$ \\\hline
+	& $\delta x$, $x$ overlap & $-0.9$ & $-0.3$ & $-0.7$ & $0.7$ \\\cline{2-6}
+	& $\delta y$, $x$ overlap & $0.1$ & $-0.5$ & $0.5$ & $0.0$ \\\cline{2-6}
+	& $\delta x$, $y$ overlap & $0.1$ & $0.3$ & $-0.4$ & $-0.5$ \\\cline{2-6}
+	& $\delta y$, $y$ overlap & $-1.1$ & $0.0$ & $-0.3$ & $0.0$ \\\hline
 	\multirowcell{4}[0pt][l]{Sine amplitude \& \\wavelength (pixels)\\ (*)more complicated\\periodic effects}
-	& $x$--$\delta x$, $x$ overlap & $1.5$, $2800$ & & $0.7$, $3760$ & $0.7$, $3560$ \\\cline{2-6}
-	& $x$--$\delta y$, $x$ overlap & $0.4$, $4000$ & & $0.0$ & $0.0$ \\\cline{2-6}
-	& $y$--$\delta x$, $y$ overlap & $0.5$, $4000$ & & $0.0$ & $0.0$ \\\cline{2-6}
-	& $y$--$\delta y$, $y$ overlap & $2.8$, $4000$ & & $\sim1$, $\sim3000$(*) & $\sim1$, $\sim13000$(*) \\\hline
+	& $x$--$\delta x$, $x$ overlap & $1.5$, $2800$ & $0.0$ & $0.7$, $3760$ & $0.7$, $3560$ \\\cline{2-6}
+	& $x$--$\delta y$, $x$ overlap & $0.4$, $4000$ & $0.0$ & $0.0$ & $0.0$ \\\cline{2-6}
+	& $y$--$\delta x$, $y$ overlap & $0.5$, $4000$ & $0.0$ & $0.0$ & $0.0$ \\\cline{2-6}
+	& $y$--$\delta y$, $y$ overlap & $2.8$, $4000$ & $0.0$ & $\sim1$, $\sim3000$(*) & $\sim1$, $\sim13000$(*) \\\hline
 	\multirowcell{4}[0pt][l]{Remaining RMS\\(pixels)}
-	& $\delta x$, $x$ overlap & $1.4$ & & $0.9$ & $0.3$ \\\cline{2-6}
-	& $\delta y$, $x$ overlap & $0.3$ & & $0.4$ & $0.1$ \\\cline{2-6}
-	& $\delta x$, $y$ overlap & $0.4$ & & $3.6$ & $0.1$ \\\cline{2-6}
-	& $\delta y$, $y$ overlap & $1.2$ & & $0.8$ & $0.5$ \\\hline
+	& $\delta x$, $x$ overlap & $1.4$ & $0.3$ & $0.9$ & $0.3$ \\\cline{2-6}
+	& $\delta y$, $x$ overlap & $0.3$ & $0.4$ & $0.4$ & $0.1$ \\\cline{2-6}
+	& $\delta x$, $y$ overlap & $0.4$ & $0.5$ & $3.6$ & $0.1$ \\\cline{2-6}
+	& $\delta y$, $y$ overlap & $1.2$ & $0.3$ & $0.8$ & $0.5$ \\\hline
 	\end{tabular}
 	\caption{Comparison between the microscopes studied here.}
 	\label{table:microscopes}
