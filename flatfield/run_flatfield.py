@@ -6,6 +6,7 @@ from ..utilities.misc import cd, split_csv_to_list
 from .utilities import sampleNameFromFilepath
 from argparse import ArgumentParser
 import os, glob, random
+import cProfile
 
 #################### HELPER FUNCTIONS ####################
 
@@ -148,7 +149,7 @@ def main() :
     #start up a flatfield producer
     ff_producer = FlatfieldProducer(dims,sample_names_to_run,args.workingdir_name,args.skip_masking)
     #begin by finding the background threshold per layer by looking at the HPFs on the tissue edges
-    ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads,args.threshold_file_dir)
+    cProfile.run("""ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads,args.threshold_file_dir)""")
     if not args.threshold_only :
         #mask and stack images together
         ff_producer.stackImages(filepaths_to_run,args.n_threads,args.save_masking_plots)
