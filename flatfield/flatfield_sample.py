@@ -66,11 +66,11 @@ class FlatfieldSample() :
             if len(fp_chunk)<1 :
                 continue
             #read the raw images from this chunk
-            new_img_arrays = readImagesMT(fp_chunk)
-            for chunk_image_i,img_array in enumerate(new_img_arrays) :
+            new_smoothed_img_arrays = readImagesMT(fp_chunk,smoothed=True)
+            for chunk_image_i,img_array in enumerate(new_smoothed_img_arrays) :
                 #copy each image to the total array
                 np.copyto(all_tissue_edge_image_arrays[:,:,:,starting_image_i+chunk_image_i],img_array)
-            starting_image_i+=len(new_img_arrays)
+            starting_image_i+=len(new_smoothed_img_arrays)
         #transpose the array to put the layers at the end of all of the images to just be a list of pixel values per layer
         all_tissue_edge_images_per_layer = np.transpose(all_tissue_edge_image_arrays,(0,1,3,2))
         #in parallel, find the thresholds per layer
@@ -79,7 +79,11 @@ class FlatfieldSample() :
         procs = []
         for li in range(self.dims[2]) :
             flatfield_logger.info(f'  determining threshold for layer {li+1}....')
-            p = mp.Process(target=findLayerBackgroundThreshold, args=(all_tissue_edge_images_per_layer[:,:,:,li],li,self.name,plotdir_path,return_dict))
+            p = mp.Process(target=findLayerBackgroundThreshold, args=(all_tissue_edge_images_per_layer[:,:,:,li].flatten(),
+                                                                      li,
+                                                                      self.name,
+                                                                      plotdir_path,
+                                                                      return_dict))
             procs.append(p)
             p.start()
             if len(procs)>=n_threads :
@@ -181,16 +185,12 @@ class FlatfieldSample() :
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
-#helper function to determine a background threshold flux given a single layer's total pixel array
+#helper function to determine a background threshold flux given a single layer's total pixel list
 #designed to be run in parallel
-def findLayerBackgroundThreshold(images_array,layer_i,sample_name,plotdir_path,return_dict) :
-    #first smooth all the images in the given list
-    print('  smoothing images'); start=time.time()
-    images_array = cv2.GaussianBlur(images_array,(0,0),GENTLE_GAUSSIAN_SMOOTHING_SIGMA,borderType=cv2.BORDER_REPLICATE)
-    stop=time.time(); print(f'  done in {stop-start}')
+def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,return_dict) :
     #sort this layer's list of pixel fluxes
-    print('  flattening/sorting pixels'); start=time.time()
-    layerpix = np.sort(images_array.flatten())
+    print('  sorting pixels'); start=time.time()
+    layerpix = np.sort(layerpix)
     stop=time.time(); print(f'  done in {stop-start}')
     #iterate calculating and applying the Otsu threshold values, keeping track of the lowest threshold
     #that results in a sufficiently large background pixel distribution kurtosis, and the threshold at which
