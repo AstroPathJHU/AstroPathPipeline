@@ -190,7 +190,7 @@ class FlatfieldSample() :
 #helper function to determine a background threshold flux given a single layer's total pixel list
 #designed to be run in parallel
 def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,return_dict) :
-    plt.plot(list(range(len(layerpix)+1)),layerpix)
+    plt.plot(list(range(len(layerpix))),layerpix)
     plt.show()
     ##sort this layer's list of pixel fluxes
     #print('  sorting pixels'); start=time.time()
