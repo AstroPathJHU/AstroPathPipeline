@@ -270,8 +270,8 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         #msg+=f'kurtosis = {kurtosis:.3f}, '
         #msg+=f'test thresh.={test_threshold:.1f}:'
         #flatfield_logger.info(msg)
-    #adjust the lowest threshold to make sure it's not at a point that's so low the skew is undefined
-    while math.isnan(moment(layerpix[:lowest_threshold+1],3,True)) :
+    #adjust the lowest threshold to make sure it's not at a point that's so low the skew is negative or undefined
+    while not moment(layerpix[:lowest_threshold+1],3,True) >= 0 :
         lowest_threshold+=1
     #the upper threshold is the last Otsu threshold with sufficiently large kurtosis, or the lowest threshold plus some minimum range
     upper_bound = max(last_large_kurtosis_threshold+1,lowest_threshold+MIN_POINTS_TO_SEARCH)
@@ -283,13 +283,7 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         skews.append(moment(test_hist,3,True))
         kurtoses.append(moment(test_hist,4,True)-3)
     kurtosis_diffs = [kurtoses[i+1]-kurtoses[i] for i in range(len(kurtoses)-1)]
-    kurtosis_diffs_no_negative_skew = [] 
-    for i in range(len(kurtosis_diffs)) :
-        if skews[i]>0 :
-            kurtosis_diffs_no_negative_skew.append(kurtosis_diffs[i])
-        else :
-            kurtosis_diffs_no_negative_skew.append(-10.)
-    final_threshold = test_thresholds[kurtosis_diffs_no_negative_skew.index(max(kurtosis_diffs_no_negative_skew))+1]
+    final_threshold = test_thresholds[kurtosis_diffs.index(max(kurtosis_diffs))+1]
     #make and save plots
     figname=f'{sample_name}_layer_{layer_i+1}_background_threshold_plots.png'
     with cd(plotdir_path) :
