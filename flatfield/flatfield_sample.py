@@ -306,4 +306,3 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
                             'upper_bound':upper_bound,
                             'final_threshold':final_threshold
                             }
-    stop=time.time(); print(f'  done in {stop-start}')
