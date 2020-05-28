@@ -117,9 +117,9 @@ class FlatfieldSample() :
             plt.savefig(f'{self.name}_background_thresholds_by_layer.png')
             plt.close()
             #save the threshold values to a text file
-            with open(THRESHOLD_TEXT_FILE_NAME_STEM,'w') as tfp :
+            with open(f'{self.name}_{THRESHOLD_TEXT_FILE_NAME_STEM}','w') as tfp :
                 for bgv in self.background_thresholds_for_masking :
-                    tfp.write(f'{bgv}{os.linesep}')
+                    tfp.write(f'{bgv}')
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
