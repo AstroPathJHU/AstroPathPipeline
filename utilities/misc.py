@@ -64,6 +64,7 @@ class dataclass_dc_init:
 @np.vectorize
 def floattoint(flt, *, atol=0, rtol=0):
   result = int(flt)
+  flt = float(flt)
   if np.isclose(result, flt, atol=atol, rtol=rtol): return result
   raise ValueError(f"{flt} is not an int")
 
