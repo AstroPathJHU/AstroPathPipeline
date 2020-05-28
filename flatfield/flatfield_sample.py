@@ -250,7 +250,7 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         #calculate the skew and kurtosis of the pixels that would be background at this threshold
         bg_pixels = layerpix[:test_threshold]
         skew = moment(bg_pixels,3,True)
-        kurtosis = moment(bg_pixels,4,True)
+        kurtosis = moment(bg_pixels,4,True)-3
         #record this iteration if the skew is positive and the kurotsis is large enough
         if skew>0.0 and kurtosis>UPPER_THRESHOLD_KURTOSIS_CUT :
             last_large_kurtosis_threshold = test_threshold
@@ -272,7 +272,7 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
     for tt in test_thresholds :
         test_hist = layerpix[:tt]
         skews.append(moment(test_hist,3,True))
-        kurtoses.append(moment(test_hist,4,True))
+        kurtoses.append(moment(test_hist,4,True)-3)
     kurtosis_diffs = [kurtoses[i+1]-kurtoses[i] for i in range(len(kurtoses)-1)]
     kurtosis_diffs_no_negative_skew = [] 
     for i in range(len(kurtosis_diffs)) :
