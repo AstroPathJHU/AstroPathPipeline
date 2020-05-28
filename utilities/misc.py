@@ -92,3 +92,11 @@ def PILmaximagepixels(pixels):
     yield
   finally:
     PIL.Image.MAX_IMAGE_PIXELS = bkp
+
+@contextlib.contextmanager
+def memmapcontext(*args, **kwargs):
+  memmap = np.memmap(*args, **kwargs)
+  try:
+    yield memmap
+  finally:
+    memmap._mmap.close()
