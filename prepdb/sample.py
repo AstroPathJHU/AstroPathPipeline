@@ -452,6 +452,7 @@ class Sample:
     writetable(self.dest/(self.samp+"_constants.csv"), self.getconstants())
 
   def writemetadata(self):
+    self.dest.mkdir(parents=True, exist_ok=True)
     self.writeannotations()
     self.writebatch()
     self.writeconstants()
