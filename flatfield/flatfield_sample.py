@@ -234,9 +234,12 @@ def moment(hist,n,standardized=False) :
     var/=norm
     moment/=norm
     if standardized :
-        return moment/(var**(n/2.))
+        retnorm = (var**(n/2.))
+        print(f'retnorm = {retnorm}')
+        retval = moment/retnorm
     else :
-        return moment
+        retval = moment
+    return retval
 
 #helper function to determine a background threshold flux given the histogram of a single layer's pixel fluxes
 #designed to be run in parallel
