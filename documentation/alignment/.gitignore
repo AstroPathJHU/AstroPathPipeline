@@ -2,6 +2,10 @@
 *.aux
 *.out
 *.synctex(busy)
+!2D-shifts-AKY-[xy].pdf
+!2D-shifts-BMS-[xy].pdf
+!2D-shifts-JHUPolaris-[xy].pdf
+!2D-shifts-JHUVectra-[xy].pdf
 !alignment-result-AKY-[1-4].pdf
 !alignment-result-vectra-big-[1-4].pdf
 !diamondpull1.pdf

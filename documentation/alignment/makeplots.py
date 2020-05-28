@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
 import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
-from ...alignment.plots import alignmentshiftprofile, closedlooppulls, plotpairwisealignments
+from ...alignment.plots import alignmentshiftprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
 from ...alignment.alignmentset import AlignmentSet
 from ...utilities import units
 
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"
+interactive = False
 
 rc = {
   "text.usetex": True,
@@ -19,7 +20,7 @@ rc = {
 def __alignmentset(root1, root2, samp, dapi, **kwargs):
   if dapi:
     A = alignmentset(root1=root1, root2=root2, samp=samp, **kwargs)
-    A.getDAPI()
+    A.getDAPI(overwrite=False)
     return A
 
   if root1 is root2 is samp is None:
@@ -35,7 +36,8 @@ def __alignmentset(root1, root2, samp, dapi, **kwargs):
     else: raise ValueError(samp)
     return alignmentset(root1=root1, root2=root2, samp=samp, **kwargs)
 
-  A = AlignmentSet(root1, root2, samp, **kwargs)
+  A = AlignmentSet(root1, root2, samp, interactive=interactive, **kwargs)
+
   A.readalignments()
   A.readstitchresult()
   return A
@@ -328,6 +330,42 @@ def sinewaves(*, bki, testing, remake):
                 **kwargs
               )
 
+def plots2D(*, bki, testing, remake):
+  if bki or testing:
+    with plt.rc_context(rc=rc):
+      def plotstyling(*, fig, ax, cbar, xory, subplotkwargs):
+        ax.set_xlabel(r"$x$ (pixels)", labelpad=10)
+        ax.set_ylabel(r"$y$ (pixels)", labelpad=0)
+        cbar.set_label(f"$\delta {xory}$ (pixels)")
+        fig.subplots_adjust(**subplotkwargs)
+
+      class Sample(collections.namedtuple("Sample", "samp name figurekwargs subplotkwargs")):
+        def __new__(cls, *, figurekwargs={}, subplotkwargs={}, **kwargs):
+          return super().__new__(cls, figurekwargs=figurekwargs, subplotkwargs=subplotkwargs, **kwargs)
+
+      samples = [
+        Sample(samp="M1_1", name="JHUVectra", figurekwargs={"figsize": (6, 5)}, subplotkwargs={"bottom": 0.15, "left": 0.17, "right": 0.87}),
+        Sample(samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", figurekwargs={"figsize": (5.7, 6)}, subplotkwargs={"bottom": 0.15, "left": 0.16, "right": 0.86}),
+        Sample(samp="PZ1", name="JHUPolaris", figurekwargs={"figsize": (6.7, 6)}, subplotkwargs={"bottom": 0.15, "left": 0.16, "right": 0.86}),
+        Sample(samp="ML1603474_BMS069_5_21", name="BMS", figurekwargs={"figsize": (5.7, 6)}, subplotkwargs={"bottom": 0.15, "left": 0.16, "right": 0.86}),
+      ] if bki else [
+        Sample(samp=None, name="test", figurekwargs={"figsize": (6, 4)}, subplotkwargs={"bottom": 0.15, "left": 0.16, "right": 0.86}),
+      ]
+
+      for samp, name, figurekwargs, subplotkwargs in samples:
+        alignmentsetkwargs = {"samp": samp}
+        alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
+        saveasx, saveasy = (here/f"2D-shifts-{name}-{xy}.pdf" for xy in "xy")
+        if saveasx.exists() and saveasy.exists() and not remake: continue
+        A = alignmentset(**alignmentsetkwargs)
+        shiftplot2D(
+          A,
+          figurekwargs=figurekwargs,
+          saveasx=saveasx,
+          saveasy=saveasy,
+          plotstyling=functools.partial(plotstyling, subplotkwargs=subplotkwargs),
+        )
+
 if __name__ == "__main__":
   class EqualsEverything:
     def __eq__(self, other): return True
@@ -336,6 +374,7 @@ if __name__ == "__main__":
   g.add_argument("--bki", action="store_true")
   g.add_argument("--testing", action="store_true")
   p.add_argument("--remake", action="store_true")
+  p.add_argument("--interactive", action="store_true")
   p.add_argument("--units", choices=("fast", "safe"), default="safe")
   g = p.add_mutually_exclusive_group()
   g.add_argument("--all", action="store_const", dest="which", const=EqualsEverything(), default=EqualsEverything())
@@ -348,9 +387,11 @@ if __name__ == "__main__":
   g.add_argument("--squarepulls", action="store_const", dest="which", const="squarepulls")
   g.add_argument("--stitchpulls", action="store_const", dest="which", const="stitchpulls")
   g.add_argument("--sinewaves", action="store_const", dest="which", const="sinewaves")
+  g.add_argument("--2dplots", action="store_const", dest="which", const="2dplots")
   args = p.parse_args()
 
   units.setup(args.units)
+  interactive = args.interactive
 
   if args.which == "maximize":
     maximize1D()
@@ -370,3 +411,5 @@ if __name__ == "__main__":
     stitchpulls(bki=args.bki, testing=args.testing, remake=args.remake)
   if args.which == "sinewaves":
     sinewaves(bki=args.bki, testing=args.testing, remake=args.remake)
+  if args.which == "2dplots":
+    plots2D(bki=args.bki, testing=args.testing, remake=args.remake)
