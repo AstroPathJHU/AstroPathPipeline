@@ -221,7 +221,6 @@ def getOtsuThreshold(pixel_hist) :
 #used in finding the skewness and kurtosis
 def moment(hist,n,standardized=False) :
     norm = 1.*hist.sum()
-    print(f'norm = {norm}')
     mean = 0.
     for k,p in enumerate(hist) :
         mean+=p*k
@@ -235,7 +234,7 @@ def moment(hist,n,standardized=False) :
     moment/=norm
     if standardized :
         retnorm = (var**(n/2.))
-        print(f'retnorm = {retnorm}')
+        print(f'moment = {moment}, norm = {norm}, var = {var}, retnorm = {retnorm}')
         retval = moment/retnorm
     else :
         retval = moment
