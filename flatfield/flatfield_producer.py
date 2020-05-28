@@ -25,35 +25,37 @@ class FlatfieldProducer :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def findBackgroundThresholds(self,all_sample_rawfile_paths,dbload_top_dir,n_threads,threshold_file_dir=None) :
+    def readInBackgroundThresholds(self,threshold_file_dir) :
+        """
+        Function to read in previously-determined background thresholds for each sample
+        threshold_file_dir       = directory holding [samplename]_[config.THRESHOLD_TEXT_FILE_NAME_STEM] files to read thresholds 
+                                   from instead of finding them from the images themselves
+        """
+        #read each sample's list of background thresholds by layer
+        for sn,samp in sorted(self.flatfield_sample_dict.items()) :
+            threshold_file_name = f'{sn}_{THRESHOLD_TEXT_FILE_NAME_STEM}'
+            threshold_file_path = os.path.join(threshold_file_dir,threshold_file_name)
+            flatfield_logger.info(f'Copying background thresholds from file {threshold_file_path} for sample {sn}...')
+            samp.readInBackgroundThresholds(threshold_file_path)
+
+    def findBackgroundThresholds(self,all_sample_rawfile_paths,dbload_top_dir,n_threads) :
         """
         Function to determine, using HPFs that image edges of the tissue in each slide, what thresholds to use for masking out background
         in each layer of each sample
         all_sample_rawfile_paths = list of every rawfile path for every sample that will be run
         dbload_top_dir           = directory where all of the [samplename]/dbload directories can be found
         n_threads                = max number of threads/processes to open at once
-        threshold_file_dir       = directory holding [samplename]_[config.THRESHOLD_TEXT_FILE_NAME_STEM] files to read thresholds 
-                                   from instead of finding them from the images themselves
         """
-        #don't do anything if the meanimage will be produced without masking
-        if self.mean_image.skip_masking :
-            flatfield_logger.info('Skipping finding background thresholds from tissue edges because masking is being skipped.')
-            return
         #make each sample's list of background thresholds by layer
         for sn,samp in sorted(self.flatfield_sample_dict.items()) :
             threshold_file_name = f'{sn}_{THRESHOLD_TEXT_FILE_NAME_STEM}'
-            if threshold_file_dir is not None :
-                threshold_file_path = os.path.join(threshold_file_dir,threshold_file_name)
-                flatfield_logger.info(f'Copying background thresholds from file {threshold_file_path} for sample {sn}...')
-                samp.readInBackgroundThresholds(threshold_file_path)
-            else :
-                flatfield_logger.info(f'Finding background thresholds from tissue edges for sample {sn}...')
-                samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
-                                              os.path.join(dbload_top_dir,sn,'dbload'),
-                                              n_threads,
-                                              os.path.join(self.mean_image.workingdir_name,THRESHOLDING_PLOT_DIR_NAME),
-                                              threshold_file_name
-                                              )
+            flatfield_logger.info(f'Finding background thresholds from tissue edges for sample {sn}...')
+            samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
+                                          os.path.join(dbload_top_dir,sn,'dbload'),
+                                          n_threads,
+                                          os.path.join(self.mean_image.workingdir_name,THRESHOLDING_PLOT_DIR_NAME),
+                                          threshold_file_name
+                                          )
 
     def stackImages(self,all_sample_rawfile_paths_to_run,n_threads,save_masking_plots) :
         """

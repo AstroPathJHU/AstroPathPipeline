@@ -44,7 +44,7 @@ def getFilepathsAndSampleNamesToRun(a) :
         with open(filepath,'r') as f:
             file_lines = [l.rstrip() for l in f.readlines()]
         #if the input file was filepaths, then each entry should have the rawfile directory in it
-        if a.rawfile_top_dir.split(os.sep)[-1] in file_lines[0].split(os.sep) :
+        if os.sep in file_lines[0] :
             filepaths_to_run = file_lines
             flatfield_logger.info(f'Will run on a sample of {len(filepaths_to_run)} total files as listed in {a.samplenames}')
             samplenames_to_run = list(set([sampleNameFromFilepath(fp) for fp in filepaths_to_run]))
@@ -111,35 +111,47 @@ def getFilepathsAndSampleNamesToRun(a) :
 def main() :
     #define and get the command-line arguments
     parser = ArgumentParser()
-    #positional arguments
-    parser.add_argument('samplenames',     help="""List of sample names to include (or path to the file that lists either 
-                                                   sample names or the files from a previous run, one per line)""")
-    parser.add_argument('rawfile_top_dir', help='Path to directory that holds each of the [samplename] directories that contain raw files')
-    parser.add_argument('dbload_top_dir',  help="""Path to directory that holds each of the [samplename]/dbload directories 
-                                                   which contain *_overlap.csv and *_rect.csv files""")
-    #optional arguments
-    parser.add_argument('--max_images',           default=-1,             type=int,         
-        help='Number of images to load from the inputted list of samples')
-    parser.add_argument('--selection',            default='random',       choices=['random','first','last'],
-        help='Select "first", "last", or "random" n images (where n=max_images) from the inputted sample list. Default is "random".')
-    parser.add_argument('--n_threads',            default=10,             type=int,         
-        help='Number of threads to run at once in speeding up file I/O')
-    parser.add_argument('--threshold_file_dir',   default=None,
-        help='Path to the directory holding background threshold files created in previous runs for the samples in question')
-    parser.add_argument('--threshold_only',       action='store_true',
-        help='Add this flag to exit after determining and saving the background thresholds for the given samples')
-    parser.add_argument('--skip_masking',         action='store_true',
-        help='Add this flag to skip masking out the background regions of the images as they get added')
-    parser.add_argument('--save_masking_plots',   action='store_true',
-        help='Add this flag to save the step-by-step plots of the masks produced as they are calculated')
-    parser.add_argument('--rawfile_ext',          default='.Data.dat',
-        help='Extension of raw files to load (default is ".Data.dat")')
-    parser.add_argument('--workingdir_name',      default='flatfield_test',
-        help='Name of working directory to save created files in')
-    parser.add_argument('--flatfield_image_name', default='flatfield',
-        help='Stem for meanimage file names')
+    #general positional arguments
+    parser.add_argument('mode', default='make_flatfield', choices=['make_flatfield','calculate_thresholds','visualize_masking'],                  
+                        help='Operations to perform')
+    #mutually exclusive group for how to specify the samples that will be used
+    samplenames_group = parser.add_mutually_exclusive_group(required=True)
+    samplenames_group.add_argument('--sample_names',     
+                                   help="""Comma-separated list of sample names to use, or path to a file that lists them line by line 
+                                   [use this argument if this run is using a new set of samples]""")
+    samplenames_group.add_argument('--rawfile_prior_run_dir',     
+                                   help="""Path to the working directory of a previous run whose raw files you want to use again 
+                                   [use this argument instead of defining a new set of samples]""")
+    #mutually exclusive group for how to handle the thresholding
+    thresholding_group = parser.add_mutually_exclusive_group(required=True)
+    thresholding_group.add_argument('--dbload_top_dir',  
+                                    help="""Path to directory containing each of the [samplename]/dbload directories with *.csv files in them
+                                    [use this argument to calculate the background thresholds from scratch]""")
+    thresholding_group.add_argument('--threshold_file_dir',
+                                    help="""Path to the directory holding background threshold files created in previous runs for the samples in question
+                                    [use this argument to re-use previously-calculated background thresholds]""")
+    thresholding_group.add_argument('--skip_masking',       action='store_true',
+                                    help="""Add this flag to entirely skip masking out the background regions of the images as they get added
+                                    [use this argument to completely skip the background thresholding and masking]""")
+    #group for how to select a subset of the samples' files
+    file_selection_group = parser.add_argument_group('file selection',
+                                                     'how many images from the sample set should be used, how to choose them, and where to find them')
+    file_selection_group.add_argument('--rawfile_top_dir',
+                                      help='Path to directory containing each of the [samplename] directories with raw files in them')
+    file_selection_group.add_argument('--rawfile_ext',    default='.Data.dat',
+                                      help='Extension of raw files to load (default is ".Data.dat")')
+    file_selection_group.add_argument('--max_images',     default=-1,       type=int,         
+                                      help='Number of images to load from the inputted list of samples')
+    file_selection_group.add_argument('--selection_mode', default='random', choices=['random','first','last'],
+                                      help='Select "first", "last", or "random" (default) n images (where n=max_images) from the sample group.')
+    #group for some run options
+    run_option_group = parser.add_argument_group('run options','options for this run specifically')
+    run_option_group.add_argument('--workingdir_name', required=True,
+                                  help='Name of working directory to save created files in')
+    run_option_group.add_argument('--n_threads',       default=10,    type=int,         
+                                  help='Number of threads/processes to run at once in parallelized portions of the code')
     args = parser.parse_args()
-    #make sure the command line arguments are valid
+    #make sure the command line arguments make sense
     checkArgs(args)
     #get the list of filepaths to run and the names of their samples
     all_filepaths, filepaths_to_run, sample_names_to_run = getFilepathsAndSampleNamesToRun(args)
@@ -147,15 +159,20 @@ def main() :
     dims = getImageHWLFromXMLFile(args.rawfile_top_dir,sample_names_to_run[0])
     #start up a flatfield producer
     ff_producer = FlatfieldProducer(dims,sample_names_to_run,args.workingdir_name,args.skip_masking)
-    #begin by finding the background threshold per layer by looking at the HPFs on the tissue edges
-    ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads,args.threshold_file_dir)
-    if not args.threshold_only :
+    #begin by figuring out the background thresholds per layer by looking at the HPFs on the tissue edges
+    if not args.skip_masking :
+        if args.threshold_file_dir is not None :
+            ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
+        elif args.dbload_top_dir is not None :
+            ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.threshold_file_dir,args.n_threads)
+    if args.mode in ['make_flatfield','visualize_masking'] :
         #mask and stack images together
         ff_producer.stackImages(filepaths_to_run,args.n_threads,args.save_masking_plots)
-        #make the flatfield image
-        ff_producer.makeFlatField()
-        #save the flatfield image and all the plots, etc.
-        ff_producer.writeOutInfo(args.flatfield_image_name)
+        if args.mode=='make_flatfield' :
+            #make the flatfield image
+            ff_producer.makeFlatField()
+            #save the flatfield image and all the plots, etc.
+            ff_producer.writeOutInfo(args.flatfield_image_name)
     flatfield_logger.info('All Done!')
 
 if __name__=='__main__' :
