@@ -99,7 +99,8 @@ class Sample:
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        raise OSError(f"File {self.samp}_[{r.cx},{r.cy}].im3 (expected from annotations) does not exist")
+        cx, cy = units.microns(r.cxvec, pscale=self.pscale)
+        raise OSError(f"File {self.samp}_[{cx},{cy}].im3 (expected from annotations) does not exist")
       rf = rfs.pop()
       maxtimediff = max(maxtimediff, abs(rf.t-r.t))
     if maxtimediff >= datetime.timedelta(seconds=5):
