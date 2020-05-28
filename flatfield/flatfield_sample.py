@@ -254,7 +254,7 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         #get the threshold from OpenCV's Otsu thresholding procedure
         test_threshold = getOtsuThreshold(next_it_pixels)
         #calculate the skew and kurtosis of the pixels that would be background at this threshold
-        bg_pixels = layerpix[:test_threshold]
+        bg_pixels = layerpix[:test_threshold+1]
         skew = moment(bg_pixels,3,True)
         kurtosis = moment(bg_pixels,4,True)-3
         #record this iteration if the skew is positive and the kurotsis is large enough
@@ -271,7 +271,7 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         #msg+=f'test thresh.={test_threshold:.1f}:'
         #flatfield_logger.info(msg)
     #adjust the lowest threshold to make sure it's not at a point that's so low the skew is undefined
-    while math.isnan(moment(layerpix[:lowest_threshold],3,True)) :
+    while math.isnan(moment(layerpix[:lowest_threshold+1],3,True)) :
         lowest_threshold+=1
     #the upper threshold is the last Otsu threshold with sufficiently large kurtosis, or the lowest threshold plus some minimum range
     upper_bound = max(last_large_kurtosis_threshold+1,lowest_threshold+MIN_POINTS_TO_SEARCH)
@@ -279,7 +279,7 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
     test_thresholds = list(range(lowest_threshold,upper_bound))
     skews = []; kurtoses = []; nan_indices = []
     for tt in test_thresholds :
-        test_hist = layerpix[:tt]
+        test_hist = layerpix[:tt+1]
         skews.append(moment(test_hist,3,True))
         kurtoses.append(moment(test_hist,4,True)-3)
     kurtosis_diffs = [kurtoses[i+1]-kurtoses[i] for i in range(len(kurtoses)-1)]
