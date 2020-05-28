@@ -217,13 +217,23 @@ def getOtsuThreshold(pixel_hist) :
     # return the threshold
     return thresh
 
-#helper function to return the skewness of a distribution given its histogram
-def getSkewnessFromHistogram(hist) :
-    pass
-
-#helper function to return the kurtosis of a distribution given its histogram
-def getKurtosisFromHistogram(hist) :
-    pass
+#helper function to calculate the nth moment of a histogram
+#used in finding the skewness and kurtosis
+def moment(hist,n,standardized=False) :
+    norm = hist.sum()
+    mean = 0
+    for k,p in enumerate(hist) :
+        mean+=p*k
+    mean/=norm
+    var  = 0
+    moment = 0
+    for k,p in enumerate(hist) :
+        var+=p*((k-mean)**2)
+        moment+=p*((k-mean)**n)
+    if standardized :
+        return (moment/norm)/(var**(n/2.))
+    else :
+        return moment/norm
 
 #helper function to determine a background threshold flux given the histogram of a single layer's pixel fluxes
 #designed to be run in parallel
@@ -237,8 +247,8 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         test_threshold = getOtsuThreshold(next_it_pixels)
         #calculate the skew and kurtosis of the pixels that would be background at this threshold
         bg_pixels = layerpix[:test_threshold]
-        skew = getSkewnessFromHistogram(bg_pixels)
-        kurtosis = getKurtosisFromHistogram(bg_pixels)
+        skew = moment(bg_pixels,3,True)
+        kurtosis = moment(bg_pixels,4,True)
         #record this iteration if the skew is positive and the kurotsis is large enough
         if skew>0.0 and kurtosis>UPPER_THRESHOLD_KURTOSIS_CUT :
             last_large_kurtosis_threshold = test_threshold
@@ -259,8 +269,8 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
     skews = []; kurtoses = []
     for tt in test_thresholds :
         test_hist = layerpix[:tt]
-        skews.append(getSkewnessFromHistogram(test_hist))
-        kurtoses.append(getKurtosisFromHistogram(test_hist))
+        skews.append(moment(test_hist,3,True))
+        kurtoses.append(moment(test_hist,4,True))
     kurtosis_diffs = [kurtoses[i+1]-kurtoses[i] for i in range(len(kurtoses)-1)]
     kurtosis_diffs_no_negative_skew = [] 
     for i in range(len(kurtosis_diffs)) :
