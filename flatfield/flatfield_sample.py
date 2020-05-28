@@ -220,13 +220,13 @@ def getOtsuThreshold(pixel_hist) :
 #helper function to calculate the nth moment of a histogram
 #used in finding the skewness and kurtosis
 def moment(hist,n,standardized=False) :
-    norm = hist.sum()
-    mean = 0
+    norm = 1.*hist.sum()
+    mean = 0.
     for k,p in enumerate(hist) :
         mean+=p*k
     mean/=norm
-    var  = 0
-    moment = 0
+    var  = 0.
+    moment = 0.
     for k,p in enumerate(hist) :
         var+=p*((k-mean)**2)
         moment+=p*((k-mean)**n)
