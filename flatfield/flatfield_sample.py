@@ -5,7 +5,7 @@ from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
-import os, cv2, scipy.stats
+import os, cv2, scipy.stats, math
 import time
 
 units.setup('fast')
@@ -221,6 +221,9 @@ def getOtsuThreshold(pixel_hist) :
 #used in finding the skewness and kurtosis
 def moment(hist,n,standardized=False) :
     norm = 1.*hist.sum()
+    #if there are no entries the moments are undefined
+    if norm==0. :
+        return float('NaN')
     mean = 0.
     for k,p in enumerate(hist) :
         mean+=p*k
@@ -232,13 +235,13 @@ def moment(hist,n,standardized=False) :
         moment+=p*((k-mean)**n)
     var/=norm
     moment/=norm
+    #if the moment is zero, then the histogram was just one bin and the moment is undefined
+    if moment==0 :
+        return float('NaN')
     if standardized :
-        retnorm = (var**(n/2.))
-        print(f'moment = {moment}, norm = {norm}, var = {var}, retnorm = {retnorm}')
-        retval = moment/retnorm
+        return moment/(var**(n/2.))
     else :
-        retval = moment
-    return retval
+        return moment
 
 #helper function to determine a background threshold flux given the histogram of a single layer's pixel fluxes
 #designed to be run in parallel
@@ -267,15 +270,22 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         #msg+=f'kurtosis = {kurtosis:.3f}, '
         #msg+=f'test thresh.={test_threshold:.1f}:'
         #flatfield_logger.info(msg)
-    #within the two threshold limits given by the lowest threshold with large kurtosis and the threshold where the skew flips sign, 
-    #exhaustively find the values between which the kurtosis of the background pixels changed the most
+    #adjust the lowest threshold to make sure it's not at a point that's so low the skew is undefined
+    while math.isnan(moment(layerpix[:lowest_threshold],3,True)) :
+        lowest_threshold+=1
+    #the upper threshold is the last Otsu threshold with sufficiently large kurtosis, or the lowest threshold plus some minimum range
     upper_bound = max(last_large_kurtosis_threshold+1,lowest_threshold+MIN_POINTS_TO_SEARCH)
+    #within the two threshold limits, exhaustively find the values between which the kurtosis of the background pixels changed the most
     test_thresholds = list(range(lowest_threshold,upper_bound))
-    skews = []; kurtoses = []
-    for tt in test_thresholds :
+    skews = []; kurtoses = []; nan_indices = []
+    for ti,tt in enumerate(test_thresholds) :
         test_hist = layerpix[:tt]
-        skews.append(moment(test_hist,3,True))
-        kurtoses.append(moment(test_hist,4,True)-3)
+        s = moment(test_hist,3,True)
+        k = moment(test_hist,4,True)-3
+        if math.isnan(s) or math.isnan(k) :
+            nan_indices.append(t1)
+        skews.append()
+        kurtoses.append()
     kurtosis_diffs = [kurtoses[i+1]-kurtoses[i] for i in range(len(kurtoses)-1)]
     kurtosis_diffs_no_negative_skew = [] 
     for i in range(len(kurtosis_diffs)) :
