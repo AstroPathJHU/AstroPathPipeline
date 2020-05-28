@@ -278,14 +278,10 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
     #within the two threshold limits, exhaustively find the values between which the kurtosis of the background pixels changed the most
     test_thresholds = list(range(lowest_threshold,upper_bound))
     skews = []; kurtoses = []; nan_indices = []
-    for ti,tt in enumerate(test_thresholds) :
+    for tt in test_thresholds :
         test_hist = layerpix[:tt]
-        s = moment(test_hist,3,True)
-        k = moment(test_hist,4,True)-3
-        if math.isnan(s) or math.isnan(k) :
-            nan_indices.append(t1)
-        skews.append()
-        kurtoses.append()
+        skews.append(moment(test_hist,3,True))
+        kurtoses.append(moment(test_hist,4,True)-3)
     kurtosis_diffs = [kurtoses[i+1]-kurtoses[i] for i in range(len(kurtoses)-1)]
     kurtosis_diffs_no_negative_skew = [] 
     for i in range(len(kurtosis_diffs)) :
