@@ -119,7 +119,7 @@ class FlatfieldSample() :
             #save the threshold values to a text file
             with open(f'{self.name}_{THRESHOLD_TEXT_FILE_NAME_STEM}','w') as tfp :
                 for bgv in self.background_thresholds_for_masking :
-                    tfp.write(f'{bgv}')
+                    tfp.write(f'{bgv}\n')
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
