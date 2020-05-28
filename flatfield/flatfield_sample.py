@@ -200,7 +200,7 @@ def getOtsuThreshold(pixel_hist) :
     # set up the loop to determine the threshold
     bins = np.arange(max_val); fn_min = np.inf; thresh = -1
     # loop over all possible values to find where the function is minimized
-    for i in xrange(1,max_val):
+    for i in range(1,max_val):
         p1,p2 = np.hsplit(hist_norm,[i]) # probabilities
         q1,q2 = Q[i],Q[max_val-1]-Q[i] # cum sum of classes
         if q1 < 1.e-6 or q2 < 1.e-6:
