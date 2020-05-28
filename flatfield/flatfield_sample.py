@@ -3,10 +3,7 @@ from .config import *
 from .utilities import chunkListOfFilepaths, readImagesMT
 from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities import units
-from ..utilities.misc import cd
-import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
-import os, cv2, scipy.stats, math
-import time
+import matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
 
 units.setup('fast')
 

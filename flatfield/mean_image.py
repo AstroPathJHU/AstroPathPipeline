@@ -1,9 +1,8 @@
 #imports
 from .config import *
 from ..utilities.img_file_io import writeImageToFile
-from ..utilities.misc import cd
-import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import os, cv2, statistics, copy
+import matplotlib.pyplot as plt, multiprocessing as mp
+import statistics, copy
 
 class MeanImage :
     """

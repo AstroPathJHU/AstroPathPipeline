@@ -2,10 +2,10 @@
 from .flatfield_producer import FlatfieldProducer
 from .config import *
 from ..utilities.img_file_io import getImageHWLFromXMLFile
-from ..utilities.misc import cd, split_csv_to_list
+from ..utilities.misc import split_csv_to_list
 from .utilities import sampleNameFromFilepath
 from argparse import ArgumentParser
-import os, glob, random
+import glob, random
 
 #################### HELPER FUNCTIONS ####################
 

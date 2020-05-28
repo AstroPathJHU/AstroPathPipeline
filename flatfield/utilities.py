@@ -1,7 +1,6 @@
 from .config import *
 from ..utilities.img_file_io import getRawAsHWL
 from concurrent.futures import ThreadPoolExecutor
-import os, cv2
 
 #helper function to parallelize calls to getRawAsHWL
 def getRawImageArray(fpt) :

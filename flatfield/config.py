@@ -1,5 +1,7 @@
+#imports for this file and other that are shared
+from ..utilities.misc import cd
 import numpy as np
-import cv2, logging
+import os, cv2, logging
 
 #Class for errors encountered during flatfielding
 class FlatFieldError(Exception) :

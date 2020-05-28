@@ -3,9 +3,6 @@ from .flatfield_sample import FlatfieldSample
 from .mean_image import MeanImage
 from .config import *
 from .utilities import chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
-from ..utilities.misc import cd
-import numpy as np
-import os
 
 #main class
 class FlatfieldProducer :
