@@ -230,10 +230,12 @@ def moment(hist,n,standardized=False) :
     for k,p in enumerate(hist) :
         var+=p*((k-mean)**2)
         moment+=p*((k-mean)**n)
+    var/=norm
+    moment/=norm
     if standardized :
-        return (moment/norm)/(var**(n/2.))
+        return moment/(var**(n/2.))
     else :
-        return moment/norm
+        return moment
 
 #helper function to determine a background threshold flux given the histogram of a single layer's pixel fluxes
 #designed to be run in parallel
