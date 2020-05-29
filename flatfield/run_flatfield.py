@@ -25,7 +25,7 @@ def checkArgs(a) :
     #create/replace the working directory if it doesn't already exist
     if os.path.isdir(a.workingdir_name) :
         flatfield_logger.info(f'Deleting previous run directory with name {a.workingdir_name}...')
-        shutil.rmtree(a.workingdir_name)
+        shutil.rmtree(a.workingdir_name,ignore_errors=True)
         flatfield_logger.info(f'Done.')
     os.mkdir(a.workingdir_name)
 
