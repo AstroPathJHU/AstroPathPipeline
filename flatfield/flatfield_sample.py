@@ -280,7 +280,13 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         skews.append(moment(test_hist,3,True))
         kurtoses.append(moment(test_hist,4,True)-3)
     kurtosis_diffs = [kurtoses[i+1]-kurtoses[i] for i in range(len(kurtoses)-1)]
-    final_threshold = test_thresholds[kurtosis_diffs.index(max(kurtosis_diffs))+1]
+    kurtosis_diffs_no_negative_skew = [] 
+    for i in range(len(kurtosis_diffs)) :
+        if skews[i]>0 :
+            kurtosis_diffs_no_negative_skew.append(kurtosis_diffs[i])
+        else :
+            kurtosis_diffs_no_negative_skew.append(-10.)
+    final_threshold = test_thresholds[kurtosis_diffs_no_negative_skew.index(max(kurtosis_diffs_no_negative_skew))+1]
     #make and save plots
     figname=f'{sample_name}_layer_{layer_i+1}_background_threshold_plots.png'
     with cd(plotdir_path) :
