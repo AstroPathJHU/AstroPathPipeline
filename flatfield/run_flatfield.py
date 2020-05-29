@@ -107,7 +107,7 @@ def getFilepathsAndSampleNamesToRun(a) :
             logstring+=f'{sn}, '
         flatfield_logger.info(logstring[:-2])
     if will_calculate_thresholds :
-        logstring = f'Background thresholds will be determined from images in {len(samplenames_to_run)}'
+        logstring = f'Background thresholds will be calculated for {len(samplenames_to_run)}'
         if len(samplenames_to_run)>1 :
             logstring+=' different samples:'
         else :
@@ -183,7 +183,7 @@ def main() :
         if args.threshold_file_dir is not None :
             ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
         elif args.dbload_top_dir is not None :
-            ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.threshold_file_dir,args.n_threads)
+            ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads)
     if args.mode in ['make_flatfield','visualize_masking'] :
         #mask and stack images together
         ff_producer.stackImages(filepaths_to_run,args.n_threads,args.save_masking_plots)
