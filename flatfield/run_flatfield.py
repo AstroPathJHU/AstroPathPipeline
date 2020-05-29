@@ -186,7 +186,7 @@ def main() :
             ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads)
     if args.mode in ['make_flatfield','visualize_masking'] :
         #mask and stack images together
-        ff_producer.stackImages(filepaths_to_run,args.n_threads,args.save_masking_plots)
+        ff_producer.stackImages(filepaths_to_run,args.n_threads,args.mode=='visualize_masking')
         if args.mode=='make_flatfield' :
             #make the flatfield image
             ff_producer.makeFlatField()
