@@ -83,21 +83,17 @@ class MeanImage :
             layermean = np.mean(self.smoothed_mean_image[:,:,layer_i])
             self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
 
-    def saveImages(self,namestem) :
+    def saveImages(self) :
         """
         Save mean image, smoothed mean image, and flatfield image all as float16s
-        namestem = stem of filename to use when saving images
         """
         with cd(self.workingdir_name) :
             if self.mean_image is not None :
                 shape = self.mean_image.shape
-                meanimage_filename = f'{namestem}_mean_of_{self.n_images_stacked}_{shape[0]}x{shape[1]}x{shape[2]}_images{FILE_EXT}'
+                meanimage_filename = f'mean_of_{self.n_images_stacked}_{shape[0]}x{shape[1]}x{shape[2]}_images{FILE_EXT}'
                 writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=IMG_DTYPE_OUT)
-            if self.smoothed_mean_image is not None :
-                smoothed_meanimage_filename = f'{namestem}_smoothed_mean_image{FILE_EXT}'
-                writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=IMG_DTYPE_OUT)
             if self.flatfield_image is not None :
-                flatfieldimage_filename = f'{namestem}{FILE_EXT}'
+                flatfieldimage_filename = f'flatfield{FILE_EXT}'
                 writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=IMG_DTYPE_OUT)
             #if masks were calculated, save the stack of them
             if not self.skip_masking :

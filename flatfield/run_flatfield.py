@@ -191,7 +191,7 @@ def main() :
             #make the flatfield image
             ff_producer.makeFlatField()
             #save the flatfield image and all the plots, etc.
-            ff_producer.writeOutInfo(args.flatfield_image_name)
+            ff_producer.writeOutInfo()
     flatfield_logger.info('All Done!')
 
 if __name__=='__main__' :

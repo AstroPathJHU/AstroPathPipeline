@@ -85,13 +85,13 @@ class FlatfieldProducer :
         flatfield_logger.info('Getting/smoothing mean image and making flatfield....')
         self.mean_image.makeFlatFieldImage()
 
-    def writeOutInfo(self,name) :
+    def writeOutInfo(self) :
         """
-        name = stem to use for naming files that get created
+        Save layer-by-layer images, some plots, and the list of rawfile paths
         """
         #save the images
         flatfield_logger.info('Saving layer-by-layer images....')
-        self.mean_image.saveImages(name)
+        self.mean_image.saveImages()
         #make some visualizations of the images
         flatfield_logger.info('Saving plots....')
         self.mean_image.savePlots()
