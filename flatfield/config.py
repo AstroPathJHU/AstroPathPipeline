@@ -24,6 +24,8 @@ RECTANGLE_LOCATION_PLOT_STEM='rectangle_locations'
 GRAYSCALE_MAX_VALUE=np.iinfo(np.uint8).max
 UPPER_THRESHOLD_KURTOSIS_CUT=2.0
 MIN_POINTS_TO_SEARCH=50
+MAX_POINTS_TO_SEARCH=300
+ALLOW_NEGATIVE_SKEW_FROM=30
 
 #mean_image constants
 IMG_DTYPE_OUT=np.float64
@@ -34,9 +36,9 @@ N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME='n_images_stacked_per_layer.txt'
 
 #parameters for creating the image masks
 GENTLE_GAUSSIAN_SMOOTHING_SIGMA = 5
-OC1_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))
-OC2_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(16,16))
-C3_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(33,33))
+CO1_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))
+CO2_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(16,16))
+C3_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45))
 OPEN_3_ITERATIONS = 3
 MASKING_PLOT_DIR_NAME = 'masking_plots'
 MASKING_PLOT_FIG_SIZE = (12.8,18.4)

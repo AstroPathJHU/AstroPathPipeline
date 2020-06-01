@@ -277,21 +277,21 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_
     #morph each layer of the mask through a series of operations on the GPU
     init_mask_umat  = cv2.UMat(init_image_mask)
     intermediate_mask=cv2.UMat(np.empty_like(init_image_mask))
-    oc1_mask=cv2.UMat(np.empty_like(init_image_mask))
-    oc2_mask=cv2.UMat(np.empty_like(init_image_mask))
-    open3_mask=cv2.UMat(np.empty_like(init_image_mask))
+    co1_mask=cv2.UMat(np.empty_like(init_image_mask))
+    co2_mask=cv2.UMat(np.empty_like(init_image_mask))
     close3_mask=cv2.UMat(np.empty_like(init_image_mask))
+    open3_mask=cv2.UMat(np.empty_like(init_image_mask))
     #do the morphology transformations
-    #small-scale open/close to remove noise and fill in small holes
-    cv2.morphologyEx(init_mask_umat,cv2.MORPH_OPEN,OC1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    cv2.morphologyEx(intermediate_mask,cv2.MORPH_CLOSE,OC1_EL,oc1_mask,borderType=cv2.BORDER_REPLICATE)
-    #medium-scale open/close for the same reason with larger regions
-    cv2.morphologyEx(oc1_mask,cv2.MORPH_OPEN,OC2_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    cv2.morphologyEx(intermediate_mask,cv2.MORPH_CLOSE,OC2_EL,oc2_mask,borderType=cv2.BORDER_REPLICATE)
+    #small-scale close/open to remove noise and fill in small holes
+    cv2.morphologyEx(init_mask_umat,cv2.MORPH_CLOSE,CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,CO1_EL,co1_mask,borderType=cv2.BORDER_REPLICATE)
+    #medium-scale close/open for the same reason with larger regions
+    cv2.morphologyEx(co1_mask,cv2.MORPH_CLOSE,CO2_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,CO2_EL,co2_mask,borderType=cv2.BORDER_REPLICATE)
     #large close to define the bulk of the mask
-    cv2.morphologyEx(oc2_mask,cv2.MORPH_CLOSE,C3_EL,close3_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(co2_mask,cv2.MORPH_CLOSE,C3_EL,close3_mask,borderType=cv2.BORDER_REPLICATE)
     #repeated small open to eat its edges and remove small regions outside of the bulk of the mask
-    cv2.morphologyEx(close3_mask,cv2.MORPH_OPEN,OC1_EL,open3_mask,iterations=OPEN_3_ITERATIONS,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(close3_mask,cv2.MORPH_OPEN,CO1_EL,open3_mask,iterations=OPEN_3_ITERATIONS,borderType=cv2.BORDER_REPLICATE)
     #the final mask is this last mask
     morphed_mask = open3_mask.get()
     #make the plots if requested
