@@ -39,7 +39,7 @@ OC2_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(16,16))
 C3_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(33,33))
 OPEN_3_ITERATIONS = 3
 MASKING_PLOT_DIR_NAME = 'masking_plots'
-MASKING_PLOT_FIG_SIZE = (17,24)
+MASKING_PLOT_FIG_SIZE = (12.8,18.4)
 
 #info for figures that get created
 IMAGE_LAYER_PLOT_DIRECTORY_NAME='image_layer_pngs'

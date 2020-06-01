@@ -324,7 +324,7 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_
                 ax[2][0].imshow(close3_mask[:,:,li])
                 ax[2][0].set_title('mask after large-scale close',fontsize=14)
                 m = morphed_mask[:,:,li]
-                pixelfrac = 1.*np.sum(m)/im_array.shape[0]+im_array.shape[1]
+                pixelfrac = 1.*np.sum(m)/im_array.shape[0]*im_array.shape[1]
                 will_be_stacked_text = 'WILL' if pixelfrac>=min_selected_pixels else 'WILL_NOT'
                 ax[2][1].imshow(m)
                 ax[2][1].set_title('final mask after repeated small-scale opening',fontsize=14)
