@@ -85,6 +85,16 @@ class FlatfieldProducer :
         flatfield_logger.info('Getting/smoothing mean image and making flatfield....')
         self.mean_image.makeFlatFieldImage()
 
+    def writeFileLog(self) :
+        """
+        Write out a text file of all the filenames that were added
+        """
+        flatfield_logger.info('Writing filepath text file....')
+        with cd(self.mean_image.workingdir_name) :
+            with open(FILEPATH_TEXT_FILE_NAME,'w') as fp :
+                for path in self.all_sample_rawfile_paths_to_run :
+                    fp.write(f'{path}\n')
+
     def writeOutInfo(self) :
         """
         Save layer-by-layer images, some plots, and the list of rawfile paths
@@ -95,9 +105,3 @@ class FlatfieldProducer :
         #make some visualizations of the images
         flatfield_logger.info('Saving plots....')
         self.mean_image.savePlots()
-        #write out a text file of all the filenames that were added
-        flatfield_logger.info('Writing filepath text file....')
-        with cd(self.mean_image.workingdir_name) :
-            with open(FILEPATH_TEXT_FILE_NAME,'w') as fp :
-                for path in self.all_sample_rawfile_paths_to_run :
-                    fp.write(f'{path}\n')

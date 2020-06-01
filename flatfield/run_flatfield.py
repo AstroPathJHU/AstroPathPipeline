@@ -5,7 +5,7 @@ from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.misc import split_csv_to_list
 from .utilities import sampleNameFromFilepath
 from argparse import ArgumentParser
-import shutil, glob, random, sys
+import glob, random, sys
 
 #################### HELPER FUNCTIONS ####################
 
@@ -126,7 +126,7 @@ def main() :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #general positional arguments
-    parser.add_argument('mode', default='make_flatfield', choices=['make_flatfield','calculate_thresholds','visualize_masking','check_run'],                  
+    parser.add_argument('mode', default='make_flatfield', choices=['make_flatfield','calculate_thresholds','visualize_masking','check_run','choose_image_files'],                  
                         help='Which operation to perform')
     parser.add_argument('workingdir_name', 
                         help='Name of working directory to save created files in')
@@ -170,6 +170,10 @@ def main() :
     #get the list of filepaths to run and the names of their samples
     all_filepaths, filepaths_to_run, sample_names_to_run = getFilepathsAndSampleNamesToRun(args)
     if args.mode=='check_run' :
+        sys.exit()
+    #write out the text file of all the raw file paths that will be run
+    ff_producer.writeFileLog()
+    if args.mode=='choose_image_files' :
         sys.exit()
     #get the image file dimensions from the .xml file
     dims = getImageHWLFromXMLFile(args.rawfile_top_dir,sample_names_to_run[0])
