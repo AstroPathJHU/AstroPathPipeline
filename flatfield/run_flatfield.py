@@ -22,12 +22,9 @@ def checkArgs(a) :
     #if the user wants to calculate the thresholds then they need to supply the dbload directory
     if a.mode=='calculate_thresholds' and a.dbload_top_dir is None :
         raise RuntimeError('ERROR: calculating background thresholds needs a dbload directory location specified through --dbload_top_dir!')
-    #create/replace the working directory if it doesn't already exist
+    #create the working directory if it doesn't already exist
     if os.path.isdir(a.workingdir_name) :
-        flatfield_logger.info(f'Deleting previous run directory with name {a.workingdir_name}...')
-        shutil.rmtree(a.workingdir_name,ignore_errors=True)
-        flatfield_logger.info(f'Done.')
-    os.mkdir(a.workingdir_name)
+        os.mkdir(a.workingdir_name)
 
 #helper function to get the list of filepaths and associated sample names to run on based on the selection method and number of images requested
 def getFilepathsAndSampleNamesToRun(a) :

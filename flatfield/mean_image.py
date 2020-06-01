@@ -26,9 +26,6 @@ class MeanImage :
         self.mask_stack  = np.zeros((y,x,nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 masks are stacked 
         self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=IMG_DTYPE_OUT)
         self.n_images_stacked = 0
-        self.threshold_lists_by_layer = []
-        for i in range(self.nlayers) :
-            self.threshold_lists_by_layer.append([])
         self.mean_image=None
         self.smoothed_mean_image=None
         self.flatfield_image=None
@@ -62,13 +59,10 @@ class MeanImage :
         for proc in procs:
             proc.join()
         for i,im_array in enumerate(im_array_list,start=self.n_images_stacked+1) :
-            thismask = return_dict[i]['mask']
+            thismask = return_dict[i]
             self.image_stack+=(im_array*thismask)
             self.mask_stack+=thismask
             self.n_images_stacked+=1
-            initial_thresholds = return_dict[i]['thresholds']
-            for li in range(self.nlayers) :
-                (self.threshold_lists_by_layer[li]).append((initial_thresholds[li]))
 
     def makeFlatFieldImage(self) :
         """
@@ -111,10 +105,7 @@ class MeanImage :
                 #.pngs of the mean image, flatfield, and mask stack layers
                 self.__saveImageLayerPlots()
                 #plot of the flatfield images' minimum and and maximum (and 5/95%ile) pixel intensities
-                self.__saveFlatFieldImagePixelIntensityPlot()
-                if not self.skip_masking :
-                    #save the plot of the initial masking thresholds by layer
-                    self.__saveMaskThresholdsPlot()        
+                self.__saveFlatFieldImagePixelIntensityPlot()   
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -223,18 +214,6 @@ class MeanImage :
         plt.savefig('pixel_intensity_plot.png')
         plt.close()
 
-    #helper function to plot the optimal initial flux thresholds for the masks chosen in each layer
-    def __saveMaskThresholdsPlot(self) :
-        xvals=list(range(1,self.nlayers+1))
-        mean_thresholds  = [statistics.mean(layer_thresholds) for layer_thresholds in self.threshold_lists_by_layer]
-        threshold_stdevs = [statistics.pstdev(layer_thresholds) for layer_thresholds in self.threshold_lists_by_layer]
-        plt.errorbar(xvals,mean_thresholds,yerr=threshold_stdevs,marker='o',linewidth=2)
-        plt.title('optimal initial thresholds by layer')
-        plt.xlabel('image layer')
-        plt.ylabel('threshold value')
-        plt.savefig('initial_masking_thresholds_by_layer.png')
-        plt.close()
-
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
 #helper function to create a layered binary image mask for a given image array
@@ -272,24 +251,24 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,make_plots,workingdir_nam
         init_image_mask[:,:,li] = np.where(smoothed_image[:,:,li]>thresholds[li],1,0)
     #morph each layer of the mask through a series of operations on the GPU
     init_mask_umat  = cv2.UMat(init_image_mask)
-    erode1_mask=cv2.UMat(np.empty_like(init_image_mask))
-    erode2_mask=cv2.UMat(np.empty_like(init_image_mask))
-    erode3_mask=cv2.UMat(np.empty_like(init_image_mask))
-    dilate1_mask=cv2.UMat(np.empty_like(init_image_mask))
-    dilate2_mask=cv2.UMat(np.empty_like(init_image_mask))
-    dilate3_mask=cv2.UMat(np.empty_like(init_image_mask))
-    #erode away small noisy regions
-    cv2.erode(init_mask_umat,ERODE1_EL,erode1_mask)
-    #dilate to fill in between chunks
-    cv2.dilate(erode1_mask,DILATE1_EL,dilate1_mask)
-    cv2.dilate(dilate1_mask,DILATE2_EL,dilate2_mask)
-    #erode away the regions that began as very small pixel clusters
-    cv2.erode(dilate2_mask,ERODE2_EL,erode2_mask)
-    cv2.erode(erode2_mask,ERODE3_EL,erode3_mask)
-    #dilate back the edges that were lost in the bulk of the mask
-    cv2.dilate(erode3_mask,DILATE3_EL,dilate3_mask,iterations=DILATE3_ITERATIONS)
-    #the final mask is this dilated mask
-    morphed_mask = dilate3_mask.get()
+    intermediate_mask=cv2.UMat(np.empty_like(init_image_mask))
+    oc1_mask=cv2.UMat(np.empty_like(init_image_mask))
+    oc2_mask=cv2.UMat(np.empty_like(init_image_mask))
+    open3_mask=cv2.UMat(np.empty_like(init_image_mask))
+    close3_mask=cv2.UMat(np.empty_like(init_image_mask))
+    #do the morphology transformations
+    #small-scale open/close to remove noise and fill in small holes
+    cv2.morphologyEx(init_mask_umat,cv2.MORPH_OPEN,OC1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(intermediate_mask,cv2.MORPH_CLOSE,OC1_EL,oc1_mask,borderType=cv2.BORDER_REPLICATE)
+    #medium-scale open/close for the same reason with larger regions
+    cv2.morphologyEx(oc1_mask,cv2.MORPH_OPEN,OC2_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(intermediate_mask,cv2.MORPH_CLOSE,OC2_EL,oc2_mask,borderType=cv2.BORDER_REPLICATE)
+    #large close to define the bulk of the mask
+    cv2.morphologyEx(oc2_mask,cv2.MORPH_CLOSE,C3_EL,close3_mask,borderType=cv2.BORDER_REPLICATE)
+    #repeated small open to eat its edges and remove small regions outside of the bulk of the mask
+    cv2.morphologyEx(close3_mask,cv2.MORPH_OPEN,OC1_EL,open3_mask,iterations=OPEN_3_ITERATIONS,borderType=cv2.BORDER_REPLICATE)
+    #the final mask is this last mask
+    morphed_mask = open3_mask.get()
     #make the plots if requested
     if make_plots :
         this_image_masking_plot_dirname = f'image_{i}_mask_layers'
@@ -301,9 +280,9 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,make_plots,workingdir_nam
                     os.mkdir(this_image_masking_plot_dirname)
         masking_plot_dirpath = os.path.join(workingdir_name,MASKING_PLOT_DIR_NAME,this_image_masking_plot_dirname)
         with cd(masking_plot_dirpath) :
-            erode1_mask = erode1_mask.get()
-            dilate2_mask = dilate2_mask.get()
-            erode3_mask = erode3_mask.get()
+            oc1_mask = oc1_mask.get()
+            oc2_mask = oc2_mask.get()
+            close3_mask = close3_mask.get()
             for li in range(nlayers) :
                 f,ax = plt.subplots(4,2,figsize=MASKING_PLOT_FIG_SIZE)
                 im = im_array[:,:,li]
@@ -313,15 +292,15 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,make_plots,workingdir_nam
                 ax[0][0].set_title('raw image in grayscale',fontsize=14)
                 ax[0][1].imshow(init_image_mask[:,:,li])
                 ax[0][1].set_title(f'init mask (thresh. = {thresholds[li]:.1f})',fontsize=14)
-                ax[1][0].imshow(erode1_mask[:,:,li])
-                ax[1][0].set_title('mask after initial erode',fontsize=14)
-                ax[1][1].imshow(dilate2_mask[:,:,li])
-                ax[1][1].set_title('mask after 1st and 2nd dilations',fontsize=14)
-                ax[2][0].imshow(erode3_mask[:,:,li])
-                ax[2][0].set_title('mask after 2nd and 3rd erosions',fontsize=14)
+                ax[1][0].imshow(oc1_mask[:,:,li])
+                ax[1][0].set_title('mask after small-scale open+close',fontsize=14)
+                ax[1][1].imshow(oc2_mask[:,:,li])
+                ax[1][1].set_title('mask after medium-scale open+close',fontsize=14)
+                ax[2][0].imshow(close3_mask[:,:,li])
+                ax[2][0].set_title('mask after large-scale close',fontsize=14)
                 m = morphed_mask[:,:,li]
                 ax[2][1].imshow(m)
-                ax[2][1].set_title('final mask after 3rd dilation',fontsize=14)
+                ax[2][1].set_title('final mask after repeated small-scale opening',fontsize=14)
                 overlay_clipped = np.array([im,im*m,im*m]).transpose(1,2,0)
                 overlay_grayscale = np.array([im_grayscale*m,im_grayscale*m,0.15*m]).transpose(1,2,0)
                 ax[3][0].imshow(overlay_clipped)
@@ -332,7 +311,7 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,make_plots,workingdir_nam
                 plt.savefig(figname)
                 plt.close()
     #add the total mask to the dict, along with its initial thresholds and number of optimal Otsu iterations per layer
-    return_dict[i] = {'mask':morphed_mask,'thresholds':thresholds}
+    return_dict[i] = morphed_mask
 
 #helper function to smooth each layer of an image (done on the CPU so they can be done all at once)
 #this can be run in parallel
