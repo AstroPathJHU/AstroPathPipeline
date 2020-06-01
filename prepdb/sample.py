@@ -121,6 +121,7 @@ class Sample:
     globals = reader.globals
     perimeters = reader.perimeters
     self.fixM2(rectangles)
+    self.fixrectanglefilenames(rectangles)
 
     return rectangles, globals, perimeters
 
@@ -133,8 +134,17 @@ class Sample:
           rectangle.file = rectangle.file.replace("_M2", "")
         for d in duplicates:
           rectangles.remove(d)
+        logger.warning(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
+
+  def fixrectanglefilenames(self, rectangles):
+    for r in rectangles:
+      expected = self.samp+f"_[{units.microns(r.cx, pscale=r.pscale):d},{units.microns(r.cy, pscale=r.pscale):d}].im3"
+      actual = r.file
+      if expected != actual:
+        logger.warning(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
+      r.file = expected
 
   @methodtools.lru_cache()
   def getdir(self):
