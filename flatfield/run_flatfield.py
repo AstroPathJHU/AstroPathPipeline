@@ -26,7 +26,7 @@ def checkArgs(a) :
     if a.mode=='calculate_thresholds' and a.dbload_top_dir is None :
         raise RuntimeError('ERROR: calculating background thresholds needs a dbload directory location specified through --dbload_top_dir!')
     #create the working directory if it doesn't already exist
-    if os.path.isdir(a.workingdir_name) :
+    if not os.path.isdir(a.workingdir_name) :
         os.mkdir(a.workingdir_name)
 
 #helper function to get the list of filepaths and associated sample names to run on based on the selection method and number of images requested
