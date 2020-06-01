@@ -176,14 +176,14 @@ def main() :
     all_filepaths, filepaths_to_run, sample_names_to_run = getFilepathsAndSampleNamesToRun(args)
     if args.mode=='check_run' :
         sys.exit()
-    #write out the text file of all the raw file paths that will be run
-    ff_producer.writeFileLog()
-    if args.mode=='choose_image_files' :
-        sys.exit()
     #get the image file dimensions from the .xml file
     dims = getImageHWLFromXMLFile(args.rawfile_top_dir,sample_names_to_run[0])
     #start up a flatfield producer
     ff_producer = FlatfieldProducer(dims,sample_names_to_run,args.workingdir_name,args.selected_pixel_cut,args.skip_masking)
+    #write out the text file of all the raw file paths that will be run
+    ff_producer.writeFileLog()
+    if args.mode=='choose_image_files' :
+        sys.exit()
     #begin by figuring out the background thresholds per layer by looking at the HPFs on the tissue edges
     if not args.skip_masking :
         if args.threshold_file_dir is not None :
