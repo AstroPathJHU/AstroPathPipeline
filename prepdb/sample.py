@@ -1,6 +1,6 @@
 import argparse, datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage
 from ..utilities import units
-from ..utilities.misc import PILmaximagepixels
+from ..utilities.misc import floattoint, PILmaximagepixels
 from ..utilities.tableio import writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
@@ -140,7 +140,7 @@ class Sample:
 
   def fixrectanglefilenames(self, rectangles):
     for r in rectangles:
-      expected = self.samp+f"_[{units.microns(r.cx, pscale=r.pscale):d},{units.microns(r.cy, pscale=r.pscale):d}].im3"
+      expected = self.samp+f"_[{floattoint(units.microns(r.cx, pscale=r.pscale), atol=1e-10):d},{floattoint(units.microns(r.cy, pscale=r.pscale), atol=1e-10):d}].im3"
       actual = r.file
       if expected != actual:
         logger.warning(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
@@ -480,6 +480,7 @@ if __name__ == "__main__":
   p.add_argument("root")
   p.add_argument("samp")
   p.add_argument("--dest")
+  p.add_argument("--units", type=units.setup)
   args = p.parse_args()
   kwargs = {"root": args.root, "samp": args.samp}
   if args.dest: kwargs["dest"] = args.dest

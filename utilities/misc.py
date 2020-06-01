@@ -65,7 +65,8 @@ class dataclass_dc_init:
 def floattoint(flt, *, atol=0, rtol=0):
   result = int(flt)
   flt = float(flt)
-  if np.isclose(result, flt, atol=atol, rtol=rtol): return result
+  for thing in result, result+1, result-1:
+    if np.isclose(thing, flt, atol=atol, rtol=rtol): return thing
   raise ValueError(f"{flt} is not an int")
 
 from . import units
