@@ -25,44 +25,53 @@ class MeanImage :
         self.image_stack = np.zeros((y,x,nlayers),dtype=np.uint32) #WARNING: may overflow if more than 65,535 images are stacked 
         self.mask_stack  = np.zeros((y,x,nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 masks are stacked 
         self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=IMG_DTYPE_OUT)
-        self.n_images_stacked = 0
+        self.n_images_read = 0
+        self.n_images_stacked_by_layer = np.zeros((nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 images are stacked 
         self.mean_image=None
         self.smoothed_mean_image=None
         self.flatfield_image=None
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def addGroupOfImages(self,im_array_list,sample,make_plots=False) :
+    def addGroupOfImages(self,im_array_list,sample,min_selected_pixels,make_plots=False) :
         """
         A function to add a list of raw image arrays to the image stack
         If masking is requested this function's subroutines are parallelized and also run on the GPU
-        im_array_list = list of image arrays to add
-        sample        = sample object corresponding to this group of images
-        make_plots    = set to true to save masking plots
+        im_array_list       = list of image arrays to add
+        sample              = sample object corresponding to this group of images
+        min_selected_pixels = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
+        make_plots          = set to true to save masking plots
         """
         #if the images aren't meant to be masked then we can just add them up trivially
         if self.skip_masking :
             for i,im_array in enumerate(im_array_list,start=1) :
-                flatfield_logger.info(f'  adding image {self.n_images_stacked+1} to the stack....')
+                flatfield_logger.info(f'  adding image {self.n_images_read+1} to the stack....')
                 self.image_stack+=im_array
-                self.n_images_stacked+=1
+                self.n_images_read+=1
+                self.n_images_stacked_by_layer+=1
             return
         #otherwise produce the image masks, apply them to the raw images, and be sure to add them to the list in the same order as the images
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
-        for i,im_array in enumerate(im_array_list,start=self.n_images_stacked+1) :
+        for i,im_array in enumerate(im_array_list,start=self.n_images_read+1) :
             flatfield_logger.info(f'  masking and adding image {i} to the stack....')
-            p = mp.Process(target=getImageMaskWorker, args=(im_array,sample.background_thresholds_for_masking,i,make_plots,self.workingdir_name,return_dict))
+            p = mp.Process(target=getImageMaskWorker, 
+                           args=(im_array,sample.background_thresholds_for_masking,i,min_selected_pixels,make_plots,self.workingdir_name,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
             proc.join()
-        for i,im_array in enumerate(im_array_list,start=self.n_images_stacked+1) :
+        for i,im_array in enumerate(im_array_list,start=self.n_images_read+1) :
             thismask = return_dict[i]
-            self.image_stack+=(im_array*thismask)
-            self.mask_stack+=thismask
-            self.n_images_stacked+=1
+            #check, layer-by-layer, that this mask would select at least the minimum amount of pixels to be added to the stack
+            for li in range(self.nlayers) :
+                thismasklayer = thismask[:,:,li]
+                if 1.*np.sum(thismasklayer)/(self.dims[0]*self.dims[1])>=min_selected_pixels :
+                    self.image_stack[:,:,li]+=(im_array[:,:,li]*thismasklayer)
+                    self.mask_stack[:,:,li]+=thismasklayer
+                    self.n_images_stacked_by_layer[li]+=1
+            self.n_images_read+=1
 
     def makeFlatFieldImage(self) :
         """
@@ -79,12 +88,11 @@ class MeanImage :
 
     def saveImages(self) :
         """
-        Save mean image, smoothed mean image, and flatfield image all as float16s
+        Save mean image and flatfield image all as float16s
         """
         with cd(self.workingdir_name) :
             if self.mean_image is not None :
-                shape = self.mean_image.shape
-                meanimage_filename = f'mean_of_{self.n_images_stacked}_{shape[0]}x{shape[1]}x{shape[2]}_images{FILE_EXT}'
+                meanimage_filename = f'mean_image{FILE_EXT}'
                 writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=IMG_DTYPE_OUT)
             if self.flatfield_image is not None :
                 flatfieldimage_filename = f'flatfield{FILE_EXT}'
@@ -106,6 +114,8 @@ class MeanImage :
                 self.__saveImageLayerPlots()
                 #plot of the flatfield images' minimum and and maximum (and 5/95%ile) pixel intensities
                 self.__saveFlatFieldImagePixelIntensityPlot()   
+                #plot and write a text file of how many images were stacked per layer
+                self.__plotAndWriteNImagesStackedPerLayer()
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -113,7 +123,7 @@ class MeanImage :
     def __makeMeanImage(self) :
         #if the images haven't been masked then this is trivial
         if self.skip_masking :
-            return self.image_stack/self.n_images_stacked
+            return self.image_stack/self.n_images_read
         #otherwise though we have to be a bit careful and take the mean value pixel-wise, 
         #being careful to fix any pixels that never got added to so there's no division by zero
         zero_fixed_mask_stack = copy.deepcopy(self.mask_stack)
@@ -211,14 +221,29 @@ class MeanImage :
         plt.ylim(bot,bot+newaxisrange)
         plt.ylabel('pixel intensity',fontsize=14)
         plt.legend(loc='best')
-        plt.savefig('pixel_intensity_plot.png')
+        plt.savefig(PIXEL_INTENSITY_PLOT_NAME)
         plt.close()
+
+    #helper function to plot and save how many images ended up being stacked in each layer of the meanimage
+    def __plotAndWriteNImagesStackedPerLayer(self) :
+        xvals = list(range(1,self.nlayers+1))
+        plt.plot([xvals[0],xvals[-1]],[self.n_images_read,self.n_images_read],linewidth=2,color='k',label='total images read')
+        plt.plot(xvals,self.n_images_stacked_by_layer,marker='o',linewidth=2,label='n images stacked')
+        plt.title(f'Number of images selected to be stacked by layer {self.n_images_read}')
+        plt.xlabel('image layer')
+        plt.ylabel('number of images')
+        plt.legend(loc='best')
+        plt.savefig(N_IMAGES_STACKED_PER_LAYER_PLOT_NAME)
+        plt.close()
+        with open(N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME) as fp :
+            for li in self.nlayers :
+                fp.write(f'{self.n_images_stacked_by_layer[li]}\n')
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
 #helper function to create a layered binary image mask for a given image array
 #this can be run in parallel
-def getImageMaskWorker(im_array,thresholds_per_layer,i,make_plots,workingdir_name,return_dict) :
+def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_plots,workingdir_name,return_dict) :
     nlayers = im_array.shape[-1]
     #create a new mask
     init_image_mask = np.empty(im_array.shape,np.uint8)
@@ -299,14 +324,16 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,make_plots,workingdir_nam
                 ax[2][0].imshow(close3_mask[:,:,li])
                 ax[2][0].set_title('mask after large-scale close',fontsize=14)
                 m = morphed_mask[:,:,li]
+                pixelfrac = 1.*np.sum(m)/im_array.shape[0]+im_array.shape[1]
+                will_be_stacked_text = 'WILL' if pixelfrac>=min_selected_pixels else 'WILL_NOT'
                 ax[2][1].imshow(m)
                 ax[2][1].set_title('final mask after repeated small-scale opening',fontsize=14)
                 overlay_clipped = np.array([im,im*m,im*m]).transpose(1,2,0)
                 overlay_grayscale = np.array([im_grayscale*m,im_grayscale*m,0.15*m]).transpose(1,2,0)
                 ax[3][0].imshow(overlay_clipped)
-                ax[3][0].set_title('mask overlaid with clipped image',fontsize=14)
+                ax[3][0].set_title(f'mask overlaid with clipped image; selected fraction={pixelfrac:.3f}',fontsize=14)
                 ax[3][1].imshow(overlay_grayscale)
-                ax[3][1].set_title('mask overlaid with grayscale image',fontsize=14)
+                ax[3][1].set_title(f'mask overlaid with grayscale image; image {will_be_stacked_text} be stacked',fontsize=14)
                 figname = f'image_{i}_layer_{li+1}_masks.png'
                 plt.savefig(figname)
                 plt.close()

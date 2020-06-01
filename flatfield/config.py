@@ -28,24 +28,22 @@ MIN_POINTS_TO_SEARCH=50
 #mean_image constants
 IMG_DTYPE_OUT=np.float64
 FILE_EXT='.bin'
+PIXEL_INTENSITY_PLOT_NAME='pixel_intensity_plot.png'
+N_IMAGES_STACKED_PER_LAYER_PLOT_NAME='n_images_stacked_per_layer.png'
+N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME='n_images_stacked_per_layer.txt'
 
 #parameters for creating the image masks
 GENTLE_GAUSSIAN_SMOOTHING_SIGMA = 5
-ERODE1_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
-DILATE1_EL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(61,61))
-DILATE2_EL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(25,25))
-ERODE2_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(64,64))
-ERODE3_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
-DILATE3_EL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
-DILATE3_ITERATIONS = 3
-MAX_BG_PIXEL_MEAN_NORM_STD_DEV = 0.15
+OC1_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))
+OC2_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(16,16))
+C3_EL  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(33,33))
+OPEN_3_ITERATIONS = 3
 MASKING_PLOT_DIR_NAME = 'masking_plots'
 MASKING_PLOT_FIG_SIZE = (17,24)
-#ADD_IF_SHARED_IN_AT_LEAST  = 0.80
-#DROP_IF_ABSENT_IN_AT_LEAST = 0.90
+
 #info for figures that get created
 IMAGE_LAYER_PLOT_DIRECTORY_NAME='image_layer_pngs'
 POSTRUN_PLOT_DIRECTORY_NAME='postrun_plots'
-IMG_LAYER_FIG_WIDTH=7.5 #width of image layer figures created in inches
+IMG_LAYER_FIG_WIDTH=6.4 #width of image layer figures created in inches
 INTENSITY_FIG_WIDTH=11.0 #width of the intensity plot figure
 LAST_FILTER_LAYERS = [9,18,25,32] #last image layers of each broadband filter

@@ -11,6 +11,9 @@ import glob, random, sys
 
 #helper function to make sure arguments are valid
 def checkArgs(a) :
+    #make sure the selected pixel fraction is a valid number
+    if a.selected_pixel_cut<0.0 or a.selected_pixel_cut>1.0 :
+        raise RuntimeError(f'ERROR: selected pixel cut fraction {a.selected_pixel_cut} must be between 0 and 1!')
     #make sure any specified directory paths exist
     dirpath_args = [a.rawfile_prior_run_dir,a.dbload_top_dir,a.threshold_file_dir,a.rawfile_top_dir]
     for dp in dirpath_args :
@@ -164,6 +167,8 @@ def main() :
     run_option_group = parser.add_argument_group('run options','other options for this run')
     run_option_group.add_argument('--n_threads',       default=10,    type=int,         
                                   help='Number of threads/processes to run at once in parallelized portions of the code')
+    run_option_group.add_argument('--selected_pixel_cut',       default=0.0,    type=float,         
+                                  help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
     args = parser.parse_args()
     #make sure the command line arguments make sense
     checkArgs(args)
@@ -178,7 +183,7 @@ def main() :
     #get the image file dimensions from the .xml file
     dims = getImageHWLFromXMLFile(args.rawfile_top_dir,sample_names_to_run[0])
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(dims,sample_names_to_run,args.workingdir_name,args.skip_masking)
+    ff_producer = FlatfieldProducer(dims,sample_names_to_run,args.workingdir_name,args.selected_pixel_cut,args.skip_masking)
     #begin by figuring out the background thresholds per layer by looking at the HPFs on the tissue edges
     if not args.skip_masking :
         if args.threshold_file_dir is not None :

@@ -57,11 +57,12 @@ class FlatfieldProducer :
                                           threshold_file_name
                                           )
 
-    def stackImages(self,all_sample_rawfile_paths_to_run,n_threads,save_masking_plots) :
+    def stackImages(self,all_sample_rawfile_paths_to_run,n_threads,selected_pixel_cut,save_masking_plots) :
         """
         Function to mask out background and stack portions of images up
         all_sample_rawfile_paths_to_run = list of paths to raw files to stack for all samples that will be run
         n_threads                       = max number of threads/processes to open at once
+        selected_pixel_cut              = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
         save_masking_plots              = whether to save plots of the mask overlays as they're generated
         """
         self.all_sample_rawfile_paths_to_run = all_sample_rawfile_paths_to_run
@@ -76,7 +77,7 @@ class FlatfieldProducer :
                 if len(fp_chunk)<1 :
                     continue
                 new_img_arrays = readImagesMT(fp_chunk)
-                self.mean_image.addGroupOfImages(new_img_arrays,samp,save_masking_plots)
+                self.mean_image.addGroupOfImages(new_img_arrays,samp,selected_pixel_cut,save_masking_plots)
 
     def makeFlatField(self) :
         """
