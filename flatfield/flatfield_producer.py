@@ -9,13 +9,15 @@ class FlatfieldProducer :
     """
     Main class used in producing the flatfield correction image
     """
-    def __init__(self,img_dims,sample_names,workingdir_name,skip_masking) :
+    def __init__(self,img_dims,sample_names,all_sample_rawfile_paths_to_run,workingdir_name,skip_masking) :
         """
-        img_dims        = dimensions of images in files in order as (height, width, # of layers) 
-        sample_names    = list of names of samples that will be considered in this run
-        workingdir_name = name of the directory to save everything in
-        skip_masking    = if True, image layers won't be masked before being added to the stack
+        img_dims                        = dimensions of images in files in order as (height, width, # of layers) 
+        sample_names                    = list of names of samples that will be considered in this run
+        all_sample_rawfile_paths_to_run = list of paths to raw files to stack for all samples that will be run
+        workingdir_name                 = name of the directory to save everything in
+        skip_masking                    = if True, image layers won't be masked before being added to the stack
         """
+        self.all_sample_rawfile_paths_to_run = all_sample_rawfile_paths_to_run
         #make a dictionary to hold all of the separate samples we'll be considering (keyed by name)
         self.flatfield_sample_dict = {}
         for sn in sample_names :
@@ -57,15 +59,13 @@ class FlatfieldProducer :
                                           threshold_file_name
                                           )
 
-    def stackImages(self,all_sample_rawfile_paths_to_run,n_threads,selected_pixel_cut,save_masking_plots) :
+    def stackImages(self,n_threads,selected_pixel_cut,save_masking_plots) :
         """
         Function to mask out background and stack portions of images up
-        all_sample_rawfile_paths_to_run = list of paths to raw files to stack for all samples that will be run
-        n_threads                       = max number of threads/processes to open at once
-        selected_pixel_cut              = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
-        save_masking_plots              = whether to save plots of the mask overlays as they're generated
+        n_threads          = max number of threads/processes to open at once
+        selected_pixel_cut = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
+        save_masking_plots = whether to save plots of the mask overlays as they're generated
         """
-        self.all_sample_rawfile_paths_to_run = all_sample_rawfile_paths_to_run
         #do one sample at a time
         for sn,samp in sorted(self.flatfield_sample_dict.items()) :
             flatfield_logger.info(f'Stacking raw images from sample {sn}...')

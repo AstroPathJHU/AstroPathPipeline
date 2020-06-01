@@ -179,7 +179,7 @@ def main() :
     #get the image file dimensions from the .xml file
     dims = getImageHWLFromXMLFile(args.rawfile_top_dir,sample_names_to_run[0])
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(dims,sample_names_to_run,args.workingdir_name,args.skip_masking)
+    ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.workingdir_name,args.skip_masking)
     #write out the text file of all the raw file paths that will be run
     ff_producer.writeFileLog()
     if args.mode=='choose_image_files' :
@@ -192,7 +192,7 @@ def main() :
             ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads)
     if args.mode in ['make_flatfield','visualize_masking'] :
         #mask and stack images together
-        ff_producer.stackImages(filepaths_to_run,args.n_threads,args.selected_pixel_cut,args.mode=='visualize_masking')
+        ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.mode=='visualize_masking')
         if args.mode=='make_flatfield' :
             #make the flatfield image
             ff_producer.makeFlatField()
