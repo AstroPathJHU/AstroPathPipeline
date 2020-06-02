@@ -269,7 +269,7 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         #msg+=f'test thresh.={test_threshold:.1f}:'
         #flatfield_logger.info(msg)
     #adjust the lowest threshold to make sure it's not at a point that's so low the skew is negative or undefined
-    while math.isnan(moment(layerpix[:lowest_threshold-4],3,True)) :
+    while math.isnan(moment(layerpix[:lowest_threshold-4],3,True)) or moment(layerpix[:lowest_threshold+1],3,True) < 0 :
         lowest_threshold+=1
     #the upper threshold is the last Otsu threshold with sufficiently large kurtosis, or the lowest threshold plus some minimum range
     upper_bound = max(min(lowest_threshold+MAX_POINTS_TO_SEARCH,last_large_kurtosis_threshold),lowest_threshold+MIN_POINTS_TO_SEARCH)
