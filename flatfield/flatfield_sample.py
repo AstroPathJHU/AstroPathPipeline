@@ -217,7 +217,7 @@ def getOtsuThreshold(pixel_hist) :
 
 #helper function to calculate the nth moment of a histogram
 #used in finding the skewness and kurtosis
-def moment(hist,n,standardized=False) :
+def moment(hist,n,standardized=True) :
     norm = 1.*hist.sum()
     #if there are no entries the moments are undefined
     if norm==0. :
@@ -253,8 +253,8 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         test_threshold = getOtsuThreshold(next_it_pixels)
         #calculate the skew and kurtosis of the pixels that would be background at this threshold
         bg_pixels = layerpix[:test_threshold+1]
-        skew = moment(bg_pixels,3,True)
-        kurtosis = moment(bg_pixels,4,True)-3
+        skew = moment(bg_pixels,3)
+        kurtosis = moment(bg_pixels,4)-3
         #record this iteration if the skew is positive and the kurotsis is large enough
         if skew>0.0 and kurtosis>UPPER_THRESHOLD_KURTOSIS_CUT :
             last_large_kurtosis_threshold = test_threshold
@@ -269,7 +269,7 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         #msg+=f'test thresh.={test_threshold:.1f}:'
         #flatfield_logger.info(msg)
     #adjust the lowest threshold to make sure it's not at a point that's so low the skew is negative or undefined
-    while math.isnan(moment(layerpix[:lowest_threshold-4],3,True)) or moment(layerpix[:lowest_threshold+1],3,True) < 0 :
+    while math.isnan(moment(layerpix[:lowest_threshold-4],3)) or moment(layerpix[:lowest_threshold+1],3) < 0 :
         lowest_threshold+=1
     #the upper threshold is the last Otsu threshold with sufficiently large kurtosis, or the lowest threshold plus some minimum range
     upper_bound = max(min(lowest_threshold+MAX_POINTS_TO_SEARCH,last_large_kurtosis_threshold),lowest_threshold+MIN_POINTS_TO_SEARCH)
@@ -278,8 +278,8 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
     skews = []; kurtoses = []; nan_indices = []
     for tt in test_thresholds :
         test_hist = layerpix[:tt+1]
-        skews.append(moment(test_hist,3,True))
-        kurtoses.append(moment(test_hist,4,True)-3)
+        skews.append(moment(test_hist,3))
+        kurtoses.append(moment(test_hist,4)-3)
     kurtosis_diffs = [kurtoses[i]-kurtoses[i-1] for i in range(1,len(kurtoses))]
     smoothed_kurtosis_diffs = [np.sum(np.array([kurtosis_diffs[i+k] for k in range(-4,5)]))/9. for i in range(4,len(kurtosis_diffs)-4)]
     #smoothed_kurtosis_diffs_no_negative_skew = [] 
@@ -297,6 +297,7 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
             max_kurtosis_diff=kurtosis_diffs[final_threshold_neigborhood_center+i]
             final_threshold_index=final_threshold_neigborhood_center+i
     final_threshold = test_thresholds[final_threshold_index+1]
+    final_threshold = min(max(lowest_threshold,final_threshold),upper_bound)
     #make and save plots
     figname=f'{sample_name}_layer_{layer_i+1}_background_threshold_plots.png'
     with cd(plotdir_path) :
