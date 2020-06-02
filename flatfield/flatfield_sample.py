@@ -301,8 +301,8 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
     figname=f'{sample_name}_layer_{layer_i+1}_background_threshold_plots.png'
     with cd(plotdir_path) :
         f,(ax1,ax2,ax3)=plt.subplots(1,3,figsize=(19.2,4.6))
-        ax1.plot(test_thresholds,skews,marker='v',color='r',label='bg pixel skew')
-        ax1.plot(test_thresholds,kurtoses,marker='^',color='b',label='bg pixel kurtoses')
+        ax1.plot(test_thresholds[5:-4],skews[5:-4],marker='v',color='r',label='bg pixel skew')
+        ax1.plot(test_thresholds[5:-4],kurtoses[5:-4],marker='^',color='b',label='bg pixel kurtoses')
         ax1.plot([final_threshold,final_threshold],list(ax1.get_ylim()),color='k',linewidth=2,label='chosen threshold')
         ax1.set_title('background pixel skew and kurtosis at candidate thresholds')
         ax1.set_xlabel('candidate threshold')
