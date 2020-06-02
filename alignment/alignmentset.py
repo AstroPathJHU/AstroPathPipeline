@@ -6,6 +6,7 @@ from ..prepdb.csvclasses import Batch, Constant, QPTiffCsv
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangleoroverlapfilter
 from ..utilities import units
+from ..utilities.misc import memmapcontext
 from ..utilities.tableio import readtable, writetable
 from .flatfield import meanimage
 from .imagestats import ImageStats
@@ -333,13 +334,14 @@ class AlignmentSet(RectangleOverlapCollection):
       logger.info(f"loading rectangle {i+1}/{len(self.rectangles)} {filename}")
       with open(filename, "rb") as f:
         #use fortran order, like matlab!
-        rawimages[i] = np.memmap(
+        with memmapcontext(
           f,
           dtype=np.uint16,
           shape=(units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)),
           order="F",
           mode="r"
-        )
+        ) as memmap:
+          rawimages[i] = memmap
 
     if keep:
         self.rawimages = rawimages.copy()
