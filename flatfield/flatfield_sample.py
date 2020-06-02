@@ -4,6 +4,7 @@ from .utilities import chunkListOfFilepaths, readImagesMT
 from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities import units
 import matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
+import math
 
 units.setup('fast')
 
@@ -268,7 +269,7 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         #msg+=f'test thresh.={test_threshold:.1f}:'
         #flatfield_logger.info(msg)
     #adjust the lowest threshold to make sure it's not at a point that's so low the skew is negative or undefined
-    while not moment(layerpix[:lowest_threshold-4],3,True) >= 0 :
+    while math.isnan(moment(layerpix[:lowest_threshold-4],3,True)) :
         lowest_threshold+=1
     #the upper threshold is the last Otsu threshold with sufficiently large kurtosis, or the lowest threshold plus some minimum range
     upper_bound = max(min(lowest_threshold+MAX_POINTS_TO_SEARCH,last_large_kurtosis_threshold),lowest_threshold+MIN_POINTS_TO_SEARCH)
@@ -280,14 +281,22 @@ def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,retur
         skews.append(moment(test_hist,3,True))
         kurtoses.append(moment(test_hist,4,True)-3)
     kurtosis_diffs = [kurtoses[i]-kurtoses[i-1] for i in range(1,len(kurtoses))]
-    smoothed_kurtosis_diffs = [np.sum(np.array([kurtosis_diffs[i-k] for k in range(-4,5)]))/9. for i in range(4,len(kurtosis_diffs)-4)]
-    smoothed_kurtosis_diffs_no_negative_skew = [] 
-    for i in range(len(smoothed_kurtosis_diffs)) :
-        if test_thresholds[i]>=ALLOW_NEGATIVE_SKEW_FROM or skews[i]>0 and skews[i+1]>0 :
-            smoothed_kurtosis_diffs_no_negative_skew.append(smoothed_kurtosis_diffs[i])
-        else :
-            smoothed_kurtosis_diffs_no_negative_skew.append(-10.)
-    final_threshold = test_thresholds[smoothed_kurtosis_diffs_no_negative_skew.index(max(smoothed_kurtosis_diffs_no_negative_skew))+5]
+    smoothed_kurtosis_diffs = [np.sum(np.array([kurtosis_diffs[i+k] for k in range(-4,5)]))/9. for i in range(4,len(kurtosis_diffs)-4)]
+    #smoothed_kurtosis_diffs_no_negative_skew = [] 
+    #for i in range(len(smoothed_kurtosis_diffs)) :
+    #    if test_thresholds[i]>=ALLOW_NEGATIVE_SKEW_FROM or skews[i]>0 and skews[i+1]>0 :
+    #        smoothed_kurtosis_diffs_no_negative_skew.append(smoothed_kurtosis_diffs[i])
+    #    else :
+    #        smoothed_kurtosis_diffs_no_negative_skew.append(-10.)
+    #threshold_neighborhood_center = smoothed_kurtosis_diffs_no_negative_skew.index(max(smoothed_kurtosis_diffs_no_negative_skew))+5
+    final_threshold_neigborhood_center = smoothed_kurtosis_diffs.index(max(smoothed_kurtosis_diffs))+4
+    max_kurtosis_diff = kurtosis_diffs[final_threshold_neigborhood_center]
+    final_threshold_index = final_threshold_neigborhood_center
+    for i in range(-4,5) :
+        if kurtosis_diffs[final_threshold_neigborhood_center+i]>max_kurtosis_diff :
+            max_kurtosis_diff=kurtosis_diffs[final_threshold_neigborhood_center+i]
+            final_threshold_index=final_threshold_neigborhood_center+i
+    final_threshold = test_thresholds[final_threshold_index+1]
     #make and save plots
     figname=f'{sample_name}_layer_{layer_i+1}_background_threshold_plots.png'
     with cd(plotdir_path) :
