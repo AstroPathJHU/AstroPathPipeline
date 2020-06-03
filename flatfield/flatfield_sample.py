@@ -1,6 +1,6 @@
 #imports
 from .config import *
-from .utilities import chunkListOfFilepaths, readImagesMT
+from .utilities import chunkListOfFilepaths, getImageLayerHistsMT
 from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities import units
 import matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
@@ -58,18 +58,15 @@ class FlatfieldSample() :
         tissue_edge_fp_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self.dims,n_threads)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
         flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self.name}...')
-        nbins=np.iinfo(np.uint16).max+1
         all_tissue_edge_image_pixel_hists = np.zeros((nbins,self.dims[-1]),dtype=np.int64)
         for fp_chunk in tissue_edge_fp_chunks :
             if len(fp_chunk)<1 :
                 continue
-            #read the smoothed raw images from this chunk 
-            new_smoothed_img_arrays = readImagesMT(fp_chunk,smoothed=True)
-            for smoothed_img_array in new_smoothed_img_arrays :
+            #get the smoothed image layer histograms for this chunk 
+            new_smoothed_img_layer_hists = getImageLayerHistsMT(fp_chunk,smoothed=True)
+            for smoothed_img_layer_hist in new_smoothed_img_layer_hists :
                 #add each image's pixel values to the total layer histogram array
-                for li in range(self.dims[-1]) :
-                    this_layer_new_hist,_ = np.histogram(smoothed_img_array[:,:,li],nbins,(0,nbins))
-                    all_tissue_edge_image_pixel_hists[:,li]+=this_layer_new_hist
+                all_tissue_edge_image_pixel_hists+=smoothed_img_layer_hist
         #in parallel, find the thresholds per layer
         manager = mp.Manager()
         return_dict = manager.dict()
