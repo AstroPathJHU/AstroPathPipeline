@@ -91,17 +91,18 @@ class FlatfieldSample() :
                 for li in range(len(layer_thresholds)) :
                     all_image_thresholds_by_layer[li,ii-1]=layer_thresholds[li]
         #when all the images are done, find the optimal thresholds for each layer
-        lower_bounds_by_layer=[]; upper_bounds_by_layer=[]
+        low_percentile_by_layer=[]; high_percentile_by_layer=[]
         self.background_thresholds_for_masking=[]
         for li in range(self.dims[-1]) :
             this_layer_thresholds=all_image_thresholds_by_layer[li,:]
             this_layer_thresholds=this_layer_thresholds[this_layer_thresholds!=-1]
+            this_layer_thresholds=np.sort(this_layer_thresholds)
             med = int(round(np.median(this_layer_thresholds)))
             mean = int(round(np.mean(this_layer_thresholds)))
             mode,_ = scipy.stats.mode(this_layer_thresholds)
             mode=int(round(mode[0]))
-            lower_bounds_by_layer.append(np.min(this_layer_thresholds))
-            upper_bounds_by_layer.append(np.max(this_layer_thresholds))
+            low_percentile_by_layer.append(this_layer_thresholds[int(round(0.1*len(this_layer_thresholds)))])
+            high_percentile_by_layer.append(this_layer_thresholds[int(round(0.9*len(this_layer_thresholds)))])
             self.background_thresholds_for_masking.append(med)
             flatfield_logger.info(f'  threshold for layer {li+1} found at {self.background_thresholds_for_masking[li]}')
             with cd(plotdir_path) :
@@ -123,8 +124,8 @@ class FlatfieldSample() :
         #make a little plot of the threshold min/max and final values by layer, and save a text file of those values
         with cd(plotdir_path) :
             xvals=list(range(1,self.dims[-1]+1))
-            plt.plot(xvals,lower_bounds_by_layer,marker='v',color='r',linewidth=2,label='minimum thresholds')
-            plt.plot(xvals,upper_bounds_by_layer,marker='^',color='b',linewidth=2,label='maximum thresholds')
+            plt.plot(xvals,low_percentile_by_layer,marker='v',color='r',linewidth=2,label='10th %%ile thresholds')
+            plt.plot(xvals,high_percentile_by_layer,marker='^',color='b',linewidth=2,label='90th %%ile thresholds')
             plt.plot(xvals,self.background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimal thresholds')
             plt.title('Thresholds chosen from tissue edge HPFs by image layer')
             plt.xlabel('image layer')
