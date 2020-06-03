@@ -58,6 +58,7 @@ class FlatfieldSample() :
         tissue_edge_fp_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self.dims,n_threads)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
         flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self.name}...')
+        nbins=np.iinfo(np.uint16).max+1
         all_tissue_edge_image_pixel_hists = np.zeros((nbins,self.dims[-1]),dtype=np.int64)
         for fp_chunk in tissue_edge_fp_chunks :
             if len(fp_chunk)<1 :
