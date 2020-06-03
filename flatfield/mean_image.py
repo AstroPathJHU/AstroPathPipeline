@@ -227,16 +227,16 @@ class MeanImage :
     #helper function to plot and save how many images ended up being stacked in each layer of the meanimage
     def __plotAndWriteNImagesStackedPerLayer(self) :
         xvals = list(range(1,self.nlayers+1))
-        plt.plot([xvals[0],xvals[-1]],[self.n_images_read,self.n_images_read],linewidth=2,color='k',label='total images read')
+        plt.plot([xvals[0],xvals[-1]],[self.n_images_read,self.n_images_read],linewidth=2,color='k',label=f'total images read ({self.n_images_read})')
         plt.plot(xvals,self.n_images_stacked_by_layer,marker='o',linewidth=2,label='n images stacked')
-        plt.title(f'Number of images selected to be stacked by layer {self.n_images_read}')
+        plt.title(f'Number of images selected to be stacked by layer')
         plt.xlabel('image layer')
         plt.ylabel('number of images')
         plt.legend(loc='best')
         plt.savefig(N_IMAGES_STACKED_PER_LAYER_PLOT_NAME)
         plt.close()
         with open(N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME,'w') as fp :
-            for li in self.nlayers :
+            for li in range(self.nlayers) :
                 fp.write(f'{self.n_images_stacked_by_layer[li]}\n')
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
