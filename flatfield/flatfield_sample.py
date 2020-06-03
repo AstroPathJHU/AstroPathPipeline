@@ -241,6 +241,35 @@ def moment(hist,n,standardized=True) :
     else :
         return moment
 
+# a helper function to take a histogram and return the optimal threshold
+def findLayerThresholds(layer_hists) :
+    best_thresholds = []
+    for li in range(layer_hists.shape[-1])
+    #iterate calculating and applying the Otsu threshold values
+    next_it_pixels = hist; skew = 1000.
+    test_thresholds=[]; test_skews=[]; test_kurtoses=[]
+    test_skew_slopes=[]; test_kurtosis_slopes=[]; weighted_kurtosis_slopes=[]
+    while not math.isnan(skew) :
+        #get the threshold from OpenCV's Otsu thresholding procedure
+        test_threshold = getOtsuThreshold(next_it_pixels)
+        #calculate the skew and kurtosis of the pixels that would be background at this threshold
+        bg_pixels = hist[:test_threshold+1]
+        skew = moment(bg_pixels,3)
+        kurtosis = moment(bg_pixels,4)-3
+        if not math.isnan(skew) :
+            test_thresholds.append(test_threshold)
+            test_skews.append(skew)
+            test_kurtoses.append(kurtosis)
+            skewslope=(moment(hist[:test_threshold+2],3) - moment(hist[:test_threshold],3))/2.
+            kurtslope=(moment(hist[:test_threshold+2],4) - moment(hist[:test_threshold],4))/2.
+            test_skew_slopes.append(skewslope)
+            test_kurtosis_slopes.append(kurtslope if not math.isnan(skewslope) else -1.)
+            weighted_kurtosis_slopes.append(kurtslope*(bg_pixels.sum()/hist.sum()) if not math.isnan(skewslope) else -1)
+        #set the next iteration's pixels
+        next_it_pixels = bg_pixels
+    best_initial_threshold=test_thresholds[weighted_kurtosis_slopes.index(max(weighted_kurtosis_slopes))]
+    return best_initial_threshold
+
 #helper function to determine a background threshold flux given the histogram of a single layer's pixel fluxes
 #designed to be run in parallel
 def findLayerBackgroundThreshold(layerpix,layer_i,sample_name,plotdir_path,return_dict) :
