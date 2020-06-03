@@ -235,7 +235,7 @@ class MeanImage :
         plt.legend(loc='best')
         plt.savefig(N_IMAGES_STACKED_PER_LAYER_PLOT_NAME)
         plt.close()
-        with open(N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME) as fp :
+        with open(N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME,'w') as fp :
             for li in self.nlayers :
                 fp.write(f'{self.n_images_stacked_by_layer[li]}\n')
 
