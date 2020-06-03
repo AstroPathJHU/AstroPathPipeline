@@ -59,37 +59,35 @@ class FlatfieldSample() :
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
         flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self.name}...')
         nbins=np.iinfo(np.uint16).max+1
-        all_tissue_edge_image_pixel_hists = np.zeros((nbins,self.dims[-1]),dtype=np.int64)
+        all_image_thresholds_by_layer = np.empty((self.dims[-1],len(tissue_edge_filepaths)),dtype=np.uint16)
         for fp_chunk in tissue_edge_fp_chunks :
             if len(fp_chunk)<1 :
                 continue
             #get the smoothed image layer histograms for this chunk 
             new_smoothed_img_layer_hists = getImageLayerHistsMT(fp_chunk,smoothed=True)
-            for smoothed_img_layer_hist in new_smoothed_img_layer_hists :
-                #add each image's pixel values to the total layer histogram array
-                all_tissue_edge_image_pixel_hists+=smoothed_img_layer_hist
-        #in parallel, find the thresholds per layer
-        manager = mp.Manager()
-        return_dict = manager.dict()
-        procs = []
-        for li in range(self.dims[-1]) :
-            flatfield_logger.info(f'  determining threshold for layer {li+1}....')
-            p = mp.Process(target=findLayerBackgroundThreshold,
-                           args=(all_tissue_edge_image_pixel_hists[:,li],
-                                 li,
-                                 self.name,
-                                 plotdir_path,
-                                 return_dict
-                                 )
-                           )
-            procs.append(p)
-            p.start()
-            if len(procs)>=n_threads :
-                for proc in procs :
-                    proc.join()
-                procs=[]
-        for proc in procs:
-            proc.join()
+            #find each image's optimal thresholds by layer (in parallel)
+            manager = mp.Manager()
+            return_dict = manager.dict()
+
+            procs = []
+            for li in range(self.dims[-1]) :
+                flatfield_logger.info(f'  determining threshold for layer {li+1}....')
+                p = mp.Process(target=findLayerBackgroundThreshold,
+                               args=(all_tissue_edge_image_pixel_hists[:,li],
+                                     li,
+                                     self.name,
+                                     plotdir_path,
+                                     return_dict
+                                     )
+                               )
+                procs.append(p)
+                p.start()
+                if len(procs)>=n_threads :
+                    for proc in procs :
+                        proc.join()
+                    procs=[]
+            for proc in procs:
+                proc.join()
         #when all the layers are done, assign them to this sample's list
         lower_bounds_by_layer = []; upper_bounds_by_layer = []
         self.background_thresholds_for_masking=[]
