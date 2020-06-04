@@ -1,6 +1,6 @@
 import argparse, datetime, fractions, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage, tifffile
 from ..utilities import units
-from ..utilities.misc import floattoint, PILmaximagepixels
+from ..utilities.misc import floattoint
 from ..utilities.tableio import writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
@@ -297,51 +297,42 @@ class Sample:
       yresolution = page.tags["YResolution"].value
       yresolution = float(fractions.Fraction(*yresolution))
 
-    kw = {
-      tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
-    }[resolutionunit]
-    xresolution = units.Distance(pixels=xresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
-    yresolution = units.Distance(pixels=yresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
-    qpscale = xresolution
-    xposition = units.Distance(**{kw: xposition}, pscale=qpscale)
-    yposition = units.Distance(**{kw: yposition}, pscale=qpscale)
-    qptiffcsv = [
-      QPTiffCsv(
-        SampleID=0,
-        SlideID=self.samp,
-        ResolutionUnit="Micron",
-        XPosition=xposition,
-        YPosition=yposition,
-        XResolution=xresolution * 10000,
-        YResolution=yresolution * 10000,
-        qpscale=qpscale,
-        fname=self.jpgfilename.name,
-        img="00001234",
-        pscale=qpscale,
-      )
-    ]
+      kw = {
+        tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
+      }[resolutionunit]
+      xresolution = units.Distance(pixels=xresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
+      yresolution = units.Distance(pixels=yresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
+      qpscale = xresolution
+      xposition = units.Distance(**{kw: xposition}, pscale=qpscale)
+      yposition = units.Distance(**{kw: yposition}, pscale=qpscale)
+      qptiffcsv = [
+        QPTiffCsv(
+          SampleID=0,
+          SlideID=self.samp,
+          ResolutionUnit="Micron",
+          XPosition=xposition,
+          YPosition=yposition,
+          XResolution=xresolution * 10000,
+          YResolution=yresolution * 10000,
+          qpscale=qpscale,
+          fname=self.jpgfilename.name,
+          img="00001234",
+          pscale=qpscale,
+        )
+      ]
 
-    mix = np.array([
-      [0.0, 0.0, 1.0, 1.0, 1.0],
-      [0.0, 1.0, 1.0, 0.5, 0.0],
-      [1.0, 0.0, 0.0, 0.0, 0.0],
-    ])/120
+      mix = np.array([
+        [0.0, 0.0, 1.0, 1.0, 1.0],
+        [0.0, 1.0, 1.0, 0.5, 0.0],
+        [1.0, 0.0, 0.0, 0.0, 0.0],
+      ])/120
 
-    with open(self.qptifffilename, "rb") as f, PILmaximagepixels(None), PIL.Image.open(f) as imgs:
-      iterator = PIL.ImageSequence.Iterator(imgs)
-      shape = *reversed(iterator[qplayeridx].size), 3
+      shape = *f.pages[qplayeridx].shape, 3
       finalimg = np.zeros(shape)
 
       for i in range(qplayeridx, qplayeridx+5):
-        img = iterator[i]
-        try:
-          img.getdata()
-        except OSError as e:
-          if str(e) == "-2":
-            qptiffimage = ImportError("Probably you're on Windows and have a buggy version of libtiff.\nSee https://github.com/python-pillow/Pillow/issues/4237\nTry this, but it may be painful to make it work:\n  conda install -c conda-forge libtiff=4.1.0=h885aae3_4")
-            return qptiffcsv, qptiffimage
-          raise
-        finalimg += np.tensordot(np.asarray(img), mix[:,i-qplayeridx], axes=0)
+        img = f.pages[i].asarray()
+        finalimg += np.tensordot(img, mix[:,i-qplayeridx], axes=0)
 #    finalimg /= np.max(finalimg)
     finalimg[finalimg > 1] = 1
     qptiffimg = skimage.img_as_ubyte(finalimg)
@@ -350,9 +341,7 @@ class Sample:
   def getqptiffcsv(self):
     return self.getqptiffcsvandimage()[0]
   def getqptiffimage(self):
-    img = self.getqptiffcsvandimage()[1]
-    if isinstance(img, Exception): raise img
-    return img
+    return self.getqptiffcsvandimage()[1]
 
   def writeqptiffcsv(self):
     logger.info(self.samp)
