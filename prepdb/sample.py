@@ -1,4 +1,4 @@
-import argparse, datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage
+import argparse, datetime, fractions, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage, tifffile
 from ..utilities import units
 from ..utilities.misc import floattoint, PILmaximagepixels
 from ..utilities.tableio import writetable
@@ -262,34 +262,33 @@ class Sample:
 
   @methodtools.lru_cache()
   def getqptiffcsvandimage(self):
-    with open(self.qptifffilename, "rb") as f:
-      tags = exifreader.process_file(f)
+    with tifffile.TiffFile(self.qptifffilename) as f:
+      layeriterator = iter(enumerate(f.pages))
+      for qplayeridx, page in layeriterator:
+        #get to after the small RGB one
+        if len(page.shape) == 3:
+          break
+      else:
+        raise ValueError("Unexpected qptiff layout: expected to find an RGB layer (with a 3D array shape).  Array shapes:\n" + "\n".join(f"  {page.shape}" for page in f.pages))
+      for qplayeridx, page in layeriterator:
+        if page.imagewidth < 4000:
+          break
+      else:
+        raise ValueError("Unexpected qptiff layout: expected layer with width < 4000 sometime after the first RGB layer (with a 3D array shape).  Shapes and widths:\n" + "\n".join(f"  {page.shape:20} {page.imagewidth:10}" for page in f.pages))
 
-    layerids = [k.replace(" ImageWidth", "") for k in tags if "ImageWidth" in k]
-    layeriterator = iter(enumerate(layerids))
-    for qplayeridx, qplayerid in layeriterator:
-      #get to after the small RGB one
-      if len(tags[qplayerid+" BitsPerSample"].values) == 3:
-        break
-    for qplayeridx, qplayerid in layeriterator:
-      if tags[qplayerid+" ImageWidth"].values[0] < 4000:
-        break
-    else:
-      raise ValueError("Unexpected qptiff layout: expected layer with width < 4000 sometime after the 7th.  Widths:\n" + "\n".join(f"  {qplayerid} {tags[qplayerid+' ImageWidth'].values[0]:d}" for qplayerid in layerids))
-
-    resolutionunit = str(tags["Image ResolutionUnit"])
-    xposition = tags["Image XPosition"].values[0]
-    xposition = float(xposition)
-    yposition = tags["Image YPosition"].values[0]
-    yposition = float(yposition)
-    xresolution = tags[qplayerid + " XResolution"].values[0]
-    xresolution = float(xresolution)
-    yresolution = tags[qplayerid + " YResolution"].values[0]
-    yresolution = float(yresolution)
+      firstpage = f.pages[0]
+      resolutionunit = firstpage.tags["ResolutionUnit"].value
+      xposition = firstpage.tags["XPosition"].value
+      xposition = float(fractions.Fraction(*xposition))
+      yposition = firstpage.tags["YPosition"].value
+      yposition = float(fractions.Fraction(*yposition))
+      xresolution = page.tags["XResolution"].value
+      xresolution = float(fractions.Fraction(*xresolution))
+      yresolution = page.tags["YResolution"].value
+      yresolution = float(fractions.Fraction(*yresolution))
 
     kw = {
-      "Pixels/Centimeter": "centimeters",
-      "Pixels/Micron": "microns",
+      tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
     }[resolutionunit]
     xresolution = units.Distance(pixels=xresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
     yresolution = units.Distance(pixels=yresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
