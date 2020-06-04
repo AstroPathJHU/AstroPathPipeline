@@ -40,6 +40,19 @@ def temporarilyremove(filepath):
     finally:
       shutil.move(tmppath, filepath)
 
+@contextlib.contextmanager
+def temporarilyreplace(filepath, temporarycontents):
+  with tempfile.TemporaryDirectory() as d:
+    d = pathlib.Path(d)
+    tmppath = d/filepath.name
+    shutil.move(filepath, tmppath)
+    with open(filepath, "w") as f:
+      f.write(temporarycontents)
+    try:
+      yield
+    finally:
+      shutil.move(tmppath, filepath)
+
 class TestAlignment(unittest.TestCase):
   def setUp(self):
     pass
@@ -211,8 +224,15 @@ class TestAlignment(unittest.TestCase):
     a1.readalignments(filename=readfilename)
     a1.readstitchresult(filenames=stitchfilenames)
 
-    with temporarilyremove(thisfolder/"data"/"M21_1"/"inform_data"/"Component_Tiffs"):
+    constantsfile = a1.dbload/"M21_1_constants.csv"
+    with open(constantsfile) as f:
+      constantscontents = f.read()
+    newconstantscontents = constantscontents.replace(str(a1.pscale), str(a1.pscale * (1+1e-6)))
+    assert newconstantscontents != constantscontents
+
+    with temporarilyremove(thisfolder/"data"/"M21_1"/"inform_data"/"Component_Tiffs"), temporarilyreplace(constantsfile, newconstantscontents):
       a2 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
+      assert a1.pscale != a2.pscale
       a2.getDAPI(writeimstat=False)
       a2.align(debug=True)
       a2.stitch()
