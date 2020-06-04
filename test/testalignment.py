@@ -58,7 +58,11 @@ class TestAlignment(unittest.TestCase):
     pass
 
   def tearDown(self):
-    pass
+    for filename in (thisfolder/"alignmentreference").glob("M21_1_*"):
+      try:
+        (thisfolder/"data"/"M21_1"/"dbload"/filename.name).unlink()
+      except FileNotFoundError:
+        pass
 
   def testAlignment(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
@@ -118,6 +122,7 @@ class TestAlignment(unittest.TestCase):
     result = a.readstitchresult(filenames=stitchfilenames)
 
     def newfilename(filename): return thisfolder/("test_"+filename.name)
+    def referencefilename(filename): return thisfolder/"alignmentreference"/filename.name
 
     a.writestitchresult(result, filenames=[newfilename(f) for f in a.stitchfilenames])
 
@@ -127,7 +132,7 @@ class TestAlignment(unittest.TestCase):
       ({}, {"pscale": a.pscale}, {"pscale": a.pscale, "layer": a.layer, "nclip": a.nclip, "rectangles": a.rectangles}),
     ):
       rows = readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
-      targetrows = readtable(filename, cls, extrakwargs=extrakwargs)
+      targetrows = readtable(referencefilename(filename), cls, extrakwargs=extrakwargs)
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
 
