@@ -54,15 +54,38 @@ def temporarilyreplace(filepath, temporarycontents):
       shutil.move(tmppath, filepath)
 
 class TestAlignment(unittest.TestCase):
+  @classmethod
+  def setUpClass(cls):
+    cls.__aligned = None
+
+  @property
+  def alignedfilenames(self):
+    return [
+      thisfolder/"data"/"M21_1"/"dbload"/filename.name
+      for filename in (thisfolder/"alignmentreference").glob("M21_1_*")
+    ]
+
+  def __savealigned(self):
+    if self.__aligned is not None: return
+    type(self).__aligned = contextlib.ExitStack()
+    self.__aligned.__enter__()
+    for filename in self.alignedfilenames:
+      self.__aligned.enter_context(temporarilyremove(filename))
+
   def setUp(self):
     pass
 
   def tearDown(self):
-    for filename in (thisfolder/"alignmentreference").glob("M21_1_*"):
+    for filename in self.alignedfilenames:
       try:
-        (thisfolder/"data"/"M21_1"/"dbload"/filename.name).unlink()
+        filename.unlink()
       except FileNotFoundError:
         pass
+
+  @classmethod
+  def tearDownClass(cls):
+    if cls.__aligned is not None:
+      cls.__aligned.__exit__(None, None, None)
 
   def testAlignment(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
@@ -80,6 +103,8 @@ class TestAlignment(unittest.TestCase):
       targetrows = readtable(thisfolder/"alignmentreference"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+
+    self.__savealigned()
 
   def testAlignmentFastUnits(self):
     with units.setup_context("fast"):
