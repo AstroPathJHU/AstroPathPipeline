@@ -64,11 +64,21 @@ class Sample:
   @methodtools.lru_cache()
   def getcomponenttiffinfo(self):
     componenttifffilename = next(self.componenttiffsfolder.glob(self.samp+"*_component_data.tif"))
-    with PIL.Image.open(componenttifffilename) as tiff:
-      dpi = set(tiff.info["dpi"])
-      if len(dpi) != 1: raise ValueError(f"Multiple different dpi values {dpi}")
-      pscale = dpi.pop() / 2.54 / 10000
-      fwidth, fheight = units.distances(pixels=tiff.size, pscale=pscale, power=1)
+    with tifffile.TiffFile(componenttifffilename) as tiff:
+      page = tiff.pages[0]
+      resolutionunit = page.tags["ResolutionUnit"].value
+      xresolution = page.tags["XResolution"].value
+      xresolution = fractions.Fraction(*xresolution)
+      yresolution = page.tags["YResolution"].value
+      yresolution = fractions.Fraction(*yresolution)
+      if xresolution != yresolution: raise ValueError(f"x and y have different resolutions {xresolution} {yresolution}")
+      resolution = float(xresolution)
+
+      kw = {
+        tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
+      }[resolutionunit]
+      pscale = float(units.Distance(pixels=resolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1))
+      fheight, fwidth = units.distances(pixels=page.shape, pscale=pscale, power=1)
     return pscale, fwidth, fheight
 
   @property
