@@ -6,7 +6,7 @@ from ..prepdb.csvclasses import Batch, Constant, QPTiffCsv
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangleoroverlapfilter
 from ..utilities import units
-from ..utilities.misc import memmapcontext
+from ..utilities.misc import memmapcontext, tiffinfo
 from ..utilities.tableio import readtable, writetable
 from .flatfield import meanimage
 from .imagestats import ImageStats
@@ -77,12 +77,7 @@ class AlignmentSet(RectangleOverlapCollection):
       logger.warning("couldn't find a component tiff, trusting image size and pscale from constants.csv")
       componenttiff = None
     else:
-      import PIL
-      with PIL.Image.open(componenttiff) as tiff:
-        dpi = set(tiff.info["dpi"])
-        if len(dpi) != 1: raise ValueError(f"Multiple different dpi values {dpi}")
-        pscale = dpi.pop() / 2.54 / 10000
-        width, height = units.distances(pixels=tiff.size, pscale=pscale)
+      pscale, width, height = tiffinfo(filename=componenttiff)
 
     if componenttiff is None:
       tmp = readtable(self.dbload/(self.samp+"_constants.csv"), Constant, extrakwargs={"pscale": 1})

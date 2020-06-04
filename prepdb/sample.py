@@ -1,6 +1,6 @@
 import argparse, datetime, fractions, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage, tifffile
 from ..utilities import units
-from ..utilities.misc import floattoint
+from ..utilities.misc import floattoint, tiffinfo
 from ..utilities.tableio import writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
@@ -64,22 +64,7 @@ class Sample:
   @methodtools.lru_cache()
   def getcomponenttiffinfo(self):
     componenttifffilename = next(self.componenttiffsfolder.glob(self.samp+"*_component_data.tif"))
-    with tifffile.TiffFile(componenttifffilename) as tiff:
-      page = tiff.pages[0]
-      resolutionunit = page.tags["ResolutionUnit"].value
-      xresolution = page.tags["XResolution"].value
-      xresolution = fractions.Fraction(*xresolution)
-      yresolution = page.tags["YResolution"].value
-      yresolution = fractions.Fraction(*yresolution)
-      if xresolution != yresolution: raise ValueError(f"x and y have different resolutions {xresolution} {yresolution}")
-      resolution = float(xresolution)
-
-      kw = {
-        tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
-      }[resolutionunit]
-      pscale = float(units.Distance(pixels=resolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1))
-      fheight, fwidth = units.distances(pixels=page.shape, pscale=pscale, power=1)
-    return pscale, fwidth, fheight
+    return tiffinfo(filename=componenttifffilename)
 
   @property
   def pscale(self): return self.getcomponenttiffinfo()[0]
@@ -303,6 +288,7 @@ class Sample:
       xresolution = units.Distance(pixels=xresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
       yresolution = units.Distance(pixels=yresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
       qpscale = xresolution
+
       xposition = units.Distance(**{kw: xposition}, pscale=qpscale)
       yposition = units.Distance(**{kw: yposition}, pscale=qpscale)
       qptiffcsv = [
