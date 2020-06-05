@@ -69,7 +69,6 @@ class LayerExtractor(LayerExtractorBase):
 class ShredderAndLayerExtractor(LayerExtractorBase):
   def __enter__(self):
     self.__tmpdir = pathlib.Path(self.enter_context(tempfile.TemporaryDirectory()))
-    self.shred.cache_clear()
     return super().__enter__()
 
   def __exit__(self, *stuff):
@@ -90,16 +89,17 @@ class ShredderAndLayerExtractor(LayerExtractorBase):
   @property
   def fwfiles(self):
     for im3 in self.im3files:
-      yield self.shred(im3)
+      fw = self.shred(im3)
+      yield fw
+      fw.unlink()
 
   def __len__(self):
     return len(list(self.im3files))
 
-  @methodtools.lru_cache()
   def shred(self, im3):
     rawfile = self.tmpdir/(im3.stem+".raw")
     fwfile = self.tmpdir/(im3.stem+".fw")
-    print(im3)
+    if fwfile.exists(): return fwfile
     try:
       out = subprocess.check_output([str(here/"ShredIm3.exe"), str(im3), "-o", str(fwfile.parent)], stderr=subprocess.STDOUT)
       if not rawfile.exists():
