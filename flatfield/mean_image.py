@@ -299,8 +299,8 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_
                     os.mkdir(this_image_masking_plot_dirname)
         masking_plot_dirpath = os.path.join(workingdir_name,MASKING_PLOT_DIR_NAME,this_image_masking_plot_dirname)
         with cd(masking_plot_dirpath) :
-            oc1_mask = oc1_mask.get()
-            oc2_mask = oc2_mask.get()
+            co1_mask = co1_mask.get()
+            co2_mask = co2_mask.get()
             close3_mask = close3_mask.get()
             for li in range(nlayers) :
                 f,ax = plt.subplots(4,2,figsize=MASKING_PLOT_FIG_SIZE)
@@ -311,9 +311,9 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_
                 ax[0][0].set_title('raw image in grayscale',fontsize=14)
                 ax[0][1].imshow(init_image_mask[:,:,li])
                 ax[0][1].set_title(f'init mask (thresh. = {thresholds[li]:.1f})',fontsize=14)
-                ax[1][0].imshow(oc1_mask[:,:,li])
+                ax[1][0].imshow(co1_mask[:,:,li])
                 ax[1][0].set_title('mask after small-scale open+close',fontsize=14)
-                ax[1][1].imshow(oc2_mask[:,:,li])
+                ax[1][1].imshow(co2_mask[:,:,li])
                 ax[1][1].set_title('mask after medium-scale open+close',fontsize=14)
                 ax[2][0].imshow(close3_mask[:,:,li])
                 ax[2][0].set_title('mask after large-scale close',fontsize=14)
