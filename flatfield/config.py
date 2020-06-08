@@ -47,5 +47,5 @@ MASKING_PLOT_FIG_SIZE = (12.8,18.4)
 IMAGE_LAYER_PLOT_DIRECTORY_NAME='image_layer_pngs'
 POSTRUN_PLOT_DIRECTORY_NAME='postrun_plots'
 IMG_LAYER_FIG_WIDTH=6.4 #width of image layer figures created in inches
-INTENSITY_FIG_WIDTH=11.0 #width of the intensity plot figure
+INTENSITY_FIG_WIDTH=14.0 #width of the intensity plot figure
 LAST_FILTER_LAYERS = [9,18,25,32] #last image layers of each broadband filter

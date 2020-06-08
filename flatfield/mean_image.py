@@ -1,5 +1,6 @@
 #imports
 from .config import *
+from .utilities import smoothImageWorker
 from ..utilities.img_file_io import writeImageToFile
 import matplotlib.pyplot as plt, multiprocessing as mp
 import statistics, copy
@@ -80,9 +81,7 @@ class MeanImage :
         A function to get the mean of the image stack and smooth/normalize each of its layers to make the flatfield image
         """
         self.mean_image = self.__makeMeanImage()
-        return_list = []
-        smoothImageLayerByLayerWorker(self.mean_image,self.smoothsigma,return_list)
-        self.smoothed_mean_image = return_list[0]
+        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
             layermean = np.mean(self.smoothed_mean_image[:,:,layer_i])
@@ -178,7 +177,6 @@ class MeanImage :
         ff_high_pixel_intensities=[]
         plt.figure(figsize=(INTENSITY_FIG_WIDTH,(9./16.)*INTENSITY_FIG_WIDTH))
         xaxis_vals = list(range(1,self.nlayers+1))
-        yaxis_min_val = 100.
         #iterate over the layers
         for layer_i in range(self.nlayers) :
             #find the min, max, and 5/95%ile pixel intensities for this image layer
@@ -192,8 +190,6 @@ class MeanImage :
                 plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-stddev,1.+stddev,1.+stddev,1.-stddev],'mediumseagreen',alpha=0.5,label='intensity std. dev.')
             else :
                 plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-stddev,1.+stddev,1.+stddev,1.-stddev],'mediumseagreen',alpha=0.5)
-            if 1.-stddev<yaxis_min_val :
-                yaxis_min_val=1.-stddev
         #plot the inensity plots together, with the broadband filter breaks
         plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='mediumseagreen',linestyle='dashed',label='mean intensity')
         for i in range(len(LAST_FILTER_LAYERS)+1) :
@@ -212,15 +208,10 @@ class MeanImage :
                 plt.plot(xaxis_vals[f_i:l_i],ff_high_pixel_intensities[f_i:l_i],color='lightcoral',marker='o',linewidth=2,linestyle='dotted')
                 if i!=len(LAST_FILTER_LAYERS) :
                     plt.plot([l_i+0.5,l_i+0.5],[min(ff_min_pixel_intensities)-0.1,max(ff_max_pixel_intensities)+0.1],color='black',linewidth=2,linestyle='dotted')
-        if min(ff_min_pixel_intensities)<yaxis_min_val :
-            yaxis_min_val=min(ff_min_pixel_intensities)
         plt.title(f'flatfield image layer normalized pixel intensities',fontsize=14)
         plt.xlabel('layer number',fontsize=14)
-        #fix the range on the y-axis to accommodate the legend
-        plt.ylim(yaxis_min_val-0.2,max(ff_max_pixel_intensities)+0.2)
-        bot,top = plt.gca().get_ylim()
-        newaxisrange=1.35*(top-bot)
-        plt.ylim(bot,bot+newaxisrange)
+        #fix the range on the x-axis to accommodate the legend
+        plt.xlim(0,self.nlayers+10)
         plt.ylabel('pixel intensity',fontsize=14)
         plt.legend(loc='best')
         plt.savefig(PIXEL_INTENSITY_PLOT_NAME)
@@ -252,7 +243,7 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_
     #create a list to hold the threshold values
     thresholds = thresholds_per_layer
     #gently smooth the layer (on the GPU) to remove some noise
-    smoothed_image = cv2.GaussianBlur(im_array,(0,0),GENTLE_GAUSSIAN_SMOOTHING_SIGMA,borderType=cv2.BORDER_REPLICATE)
+    smoothed_image = smoothImageWorker(im_array,GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
     #if the thresholds haven't already been determined from the background, find them for all the layers by repeated Otsu thresholding
     if thresholds is None :
         thresholds=[]
@@ -342,10 +333,3 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_
                 plt.close()
     #add the total mask to the dict, along with its initial thresholds and number of optimal Otsu iterations per layer
     return_dict[i] = morphed_mask
-
-#helper function to smooth each layer of an image (done on the CPU so they can be done all at once)
-#this can be run in parallel
-def smoothImageLayerByLayerWorker(im_array,smoothsigma,return_list) :
-    smoothed_im_array = cv2.GaussianBlur(im_array,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
-    return_list.append(smoothed_im_array)
-

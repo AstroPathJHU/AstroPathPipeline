@@ -96,7 +96,7 @@ class FlatfieldSample() :
         self.background_thresholds_for_masking=[]
         for li in range(self.dims[-1]) :
             this_layer_thresholds=all_image_thresholds_by_layer[li,:]
-            this_layer_thresholds=this_layer_thresholds[this_layer_thresholds!=-1]
+            this_layer_thresholds=this_layer_thresholds[this_layer_thresholds!=0]
             this_layer_thresholds=np.sort(this_layer_thresholds)
             med = int(round(np.median(this_layer_thresholds)))
             mean = int(round(np.mean(this_layer_thresholds)))
@@ -125,8 +125,8 @@ class FlatfieldSample() :
         #make a little plot of the threshold min/max and final values by layer, and save a text file of those values
         with cd(plotdir_path) :
             xvals=list(range(1,self.dims[-1]+1))
-            plt.plot(xvals,low_percentile_by_layer,marker='v',color='r',linewidth=2,label='10th %%ile thresholds')
-            plt.plot(xvals,high_percentile_by_layer,marker='^',color='b',linewidth=2,label='90th %%ile thresholds')
+            plt.plot(xvals,low_percentile_by_layer,marker='v',color='r',linewidth=2,label='10th %ile thresholds')
+            plt.plot(xvals,high_percentile_by_layer,marker='^',color='b',linewidth=2,label='90th %ile thresholds')
             plt.plot(xvals,self.background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimal thresholds')
             plt.title('Thresholds chosen from tissue edge HPFs by image layer')
             plt.xlabel('image layer')
@@ -270,30 +270,23 @@ def findLayerThresholds(layer_hists,i,rdict) :
         hist=layer_hists[:,li]
         #iterate calculating and applying the Otsu threshold values
         next_it_pixels = hist; skew = 1000.
-        test_thresholds=[]; test_skews=[]; test_kurtoses=[]
-        test_skew_slopes=[]; test_kurtosis_slopes=[]; weighted_kurtosis_slopes=[]
+        test_thresholds=[]; test_weighted_skew_slopes=[]
         while not math.isnan(skew) :
             #get the threshold from OpenCV's Otsu thresholding procedure
             test_threshold = getOtsuThreshold(next_it_pixels)
             #calculate the skew and kurtosis of the pixels that would be background at this threshold
             bg_pixels = hist[:test_threshold+1]
             skew = moment(bg_pixels,3)
-            kurtosis = moment(bg_pixels,4)-3
             if not math.isnan(skew) :
                 test_thresholds.append(test_threshold)
-                test_skews.append(skew)
-                test_kurtoses.append(kurtosis)
                 skewslope=(moment(hist[:test_threshold+2],3) - moment(hist[:test_threshold],3))/2.
-                kurtslope=(moment(hist[:test_threshold+2],4) - moment(hist[:test_threshold],4))/2.
-                test_skew_slopes.append(skewslope)
-                test_kurtosis_slopes.append(kurtslope if not math.isnan(skewslope) else -1.)
-                weighted_kurtosis_slopes.append(kurtslope*(bg_pixels.sum()/hist.sum()) if not math.isnan(skewslope) else -1)
+                test_weighted_skew_slopes.append(skewslope/skew if not math.isnan(skewslope) else 0)
             #set the next iteration's pixels
             next_it_pixels = bg_pixels
         #add the best threshold to the list
         if len(test_thresholds)<1 :
-            best_thresholds.append(-1)
+            best_thresholds.append(0)
         else :
-            best_thresholds.append(test_thresholds[weighted_kurtosis_slopes.index(max(weighted_kurtosis_slopes))])
+            best_thresholds.append(test_thresholds[test_weighted_skew_slopes.index(max(test_weighted_skew_slopes))])
     #put the list of thresholds in the return dict
     rdict[i]=best_thresholds

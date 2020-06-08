@@ -2,6 +2,17 @@ from .config import *
 from ..utilities.img_file_io import getRawAsHWL
 from concurrent.futures import ThreadPoolExecutor
 
+#helper function to smooth an image
+#this can be run in parallel
+def smoothImageWorker(im_array,smoothsigma,return_list=None) :
+    im_in_umat = cv2.UMat(im_array)
+    im_out_umat = cv2.UMat(np.empty_like(im))
+    cv2.GaussianBlur(im_in_umat,(0,0),smoothsigma,im_out_umat,borderType=cv2.BORDER_REPLICATE)
+    if return_list is not None :
+        return_list.append(im_out_umat.get())
+    else :
+        return im_out_umat.get()
+
 #helper function to parallelize calls to getRawAsHWL
 def getRawImageArray(fpt) :
     flatfield_logger.info(f'  reading file {fpt[0]} {fpt[1]}')
@@ -23,7 +34,7 @@ def getRawImageLayerHists(fpt) :
 def getSmoothedImageArray(fpt) :
     raw_img_arr = getRawImageArray(fpt)
     flatfield_logger.info(f'  smoothing image from file {fpt[0]} {fpt[1]}')
-    smoothed_img_arr = cv2.GaussianBlur(raw_img_arr,(0,0),GENTLE_GAUSSIAN_SMOOTHING_SIGMA,borderType=cv2.BORDER_REPLICATE)
+    smoothed_img_arr = smoothImageWorker(raw_img_arr,GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
     return smoothed_img_arr
 
 #helper function to get the result of getSmoothedImageArray as a histogram of pixel fluxes instead of an image
