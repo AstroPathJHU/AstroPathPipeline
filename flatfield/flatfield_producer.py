@@ -55,7 +55,6 @@ class FlatfieldProducer :
             samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
                                           os.path.join(dbload_top_dir,sn,'dbload'),
                                           n_threads,
-                                          n_masking_images_per_sample,
                                           os.path.join(self.mean_image.workingdir_name,THRESHOLDING_PLOT_DIR_NAME),
                                           threshold_file_name
                                           )
