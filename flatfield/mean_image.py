@@ -325,9 +325,9 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_
                 overlay_clipped = np.array([im,im*m,im*m]).transpose(1,2,0)
                 overlay_grayscale = np.array([im_grayscale*m,im_grayscale*m,0.15*m]).transpose(1,2,0)
                 ax[3][0].imshow(overlay_clipped)
-                ax[3][0].set_title(f'mask overlaid with clipped image; selected fraction={pixelfrac:.3f}',fontsize=14)
+                ax[3][0].set_title(f'mask overlaid with clipped image; selected fraction={pixelfrac:.3f}')
                 ax[3][1].imshow(overlay_grayscale)
-                ax[3][1].set_title(f'mask overlaid with grayscale image; image {will_be_stacked_text} be stacked',fontsize=14)
+                ax[3][1].set_title(f'mask overlaid with grayscale image; image {will_be_stacked_text} be stacked')
                 figname = f'image_{i}_layer_{li+1}_masks.png'
                 plt.savefig(figname)
                 plt.close()
