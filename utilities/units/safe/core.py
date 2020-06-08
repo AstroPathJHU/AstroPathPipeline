@@ -182,7 +182,7 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
           if p1 is None: distpower[i1] = covpower[i1,i2] - p2; repeat = True; break
           if p2 is None: distpower[i2] = covpower[i1,i2] - p1; repeat = True; break
           if covpower[i1,i2] != p1+p2:
-            raise UnitsError(f"Covariance entry {i1},{i2} has power {covariance[i1,i2]._power}, should be {p1}+{p2}")
+            raise UnitsError(f"Covariance entry {i1},{i2} has power {covpower[i1,i2]}, should be {p1}+{p2}")
     if power is not None and not np.all(power == distpower):
       raise UnitsError(f"Provided both power and distances, but they're inconsistent:\n{power}\n{distpower}")
     power = distpower
