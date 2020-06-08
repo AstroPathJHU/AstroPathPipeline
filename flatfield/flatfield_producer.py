@@ -55,21 +55,31 @@ class FlatfieldProducer :
             samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
                                           os.path.join(dbload_top_dir,sn,'dbload'),
                                           n_threads,
+                                          n_masking_images_per_sample,
                                           os.path.join(self.mean_image.workingdir_name,THRESHOLDING_PLOT_DIR_NAME),
                                           threshold_file_name
                                           )
 
-    def stackImages(self,n_threads,selected_pixel_cut,save_masking_plots) :
+    def stackImages(self,n_threads,selected_pixel_cut,n_masking_images_per_sample) :
         """
         Function to mask out background and stack portions of images up
-        n_threads          = max number of threads/processes to open at once
-        selected_pixel_cut = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
-        save_masking_plots = whether to save plots of the mask overlays as they're generated
+        n_threads                   = max number of threads/processes to open at once
+        selected_pixel_cut          = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
+        n_masking_images_per_sample = how many example masking image plots to save for each sample (exactly which are saved will be decided randomly)
         """
         #do one sample at a time
         for sn,samp in sorted(self.flatfield_sample_dict.items()) :
             flatfield_logger.info(f'Stacking raw images from sample {sn}...')
+            #get all the filepaths in this sample
             this_samp_fps_to_run = [fp for fp in self.all_sample_rawfile_paths_to_run if sampleNameFromFilepath(fp)==sn]
+            #choose which of them will have their masking images saved
+            if len(this_samp_fps_to_run)<n_masking_images_per_sample :
+                msg=f'WARNING: Requested to save {n_masking_images_per_sample} masking images for each sample,'
+                msg+=f' but {sn} only has {len(this_samp_fps_to_run)} total files! (Masking plots will be saved for all of them.)'
+                flatfield_logger.warn(msg)
+            this_samp_indices_for_masking_plots = list(range(len(this_samp_fps_to_run)))
+            random.shuffle(this_samp_indices_for_masking_plots)
+            this_samp_indices_for_masking_plots=this_samp_indices_for_masking_plots[:n_masking_images_per_sample]
             #break the list of this sample's filepaths into chunks to run in parallel
             filepath_chunks = chunkListOfFilepaths(this_samp_fps_to_run,self.mean_image.dims,n_threads)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
@@ -77,7 +87,9 @@ class FlatfieldProducer :
                 if len(fp_chunk)<1 :
                     continue
                 new_img_arrays = readImagesMT(fp_chunk)
-                self.mean_image.addGroupOfImages(new_img_arrays,samp,selected_pixel_cut,save_masking_plots)
+                this_chunk_masking_plot_indices=[fp_chunk.index(fp) for fp in fp_chunk 
+                                                 if this_samp_fps_to_run.index(fp[0]) in this_samp_indices_for_masking_plots]
+                self.mean_image.addGroupOfImages(new_img_arrays,samp,selected_pixel_cut,this_chunk_masking_plot_indices)
 
     def makeFlatField(self) :
         """

@@ -33,14 +33,14 @@ class MeanImage :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def addGroupOfImages(self,im_array_list,sample,min_selected_pixels,make_plots=False) :
+    def addGroupOfImages(self,im_array_list,sample,min_selected_pixels,masking_plot_indices=[]) :
         """
         A function to add a list of raw image arrays to the image stack
         If masking is requested this function's subroutines are parallelized and also run on the GPU
-        im_array_list       = list of image arrays to add
-        sample              = sample object corresponding to this group of images
-        min_selected_pixels = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
-        make_plots          = set to true to save masking plots
+        im_array_list        = list of image arrays to add
+        sample               = sample object corresponding to this group of images
+        min_selected_pixels  = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
+        masking_plot_indices = list of image array list indices whose masking plots will be saved
         """
         #if the images aren't meant to be masked then we can just add them up trivially
         if self.skip_masking :
@@ -54,16 +54,18 @@ class MeanImage :
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
-        for i,im_array in enumerate(im_array_list,start=self.n_images_read+1) :
-            flatfield_logger.info(f'  masking and adding image {i} to the stack....')
+        for i,im_array in enumerate(im_array_list,) :
+            stack_i = i+self.n_images_read+1
+            flatfield_logger.info(f'  masking and adding image {stack_i} to the stack....')
+            make_plots=i in masking_plot_indices
             p = mp.Process(target=getImageMaskWorker, 
-                           args=(im_array,sample.background_thresholds_for_masking,i,min_selected_pixels,make_plots,self.workingdir_name,return_dict))
+                           args=(im_array,sample.background_thresholds_for_masking,stack_i,min_selected_pixels,make_plots,self.workingdir_name,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
             proc.join()
-        for i,im_array in enumerate(im_array_list,start=self.n_images_read+1) :
-            thismask = return_dict[i]
+        for stack_i,im_array in enumerate(im_array_list,start=self.n_images_read+1) :
+            thismask = return_dict[stack_i]
             #check, layer-by-layer, that this mask would select at least the minimum amount of pixels to be added to the stack
             for li in range(self.nlayers) :
                 thismasklayer = thismask[:,:,li]
@@ -296,6 +298,7 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_
     morphed_mask = open3_mask.get()
     #make the plots if requested
     if make_plots :
+        flatfield_logger.info(f'Saving masking plots for image {i}')
         this_image_masking_plot_dirname = f'image_{i}_mask_layers'
         with cd(workingdir_name) :
             if not os.path.isdir(MASKING_PLOT_DIR_NAME) :

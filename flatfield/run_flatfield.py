@@ -25,6 +25,9 @@ def checkArgs(a) :
     #if the user wants to calculate the thresholds then they need to supply the dbload directory
     if a.mode=='calculate_thresholds' and a.dbload_top_dir is None :
         raise RuntimeError('ERROR: calculating background thresholds needs a dbload directory location specified through --dbload_top_dir!')
+    #if the user wants to save example masking plots, they can't be skipping masking
+    if a.skip_masking and a.n_masking_images_per_sample==0 :
+        raise RuntimeError("ERROR: can't save masking images if masking is being skipped!")
     #create the working directory if it doesn't already exist
     if not os.path.isdir(a.workingdir_name) :
         os.mkdir(a.workingdir_name)
@@ -129,7 +132,7 @@ def main() :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #general positional arguments
-    parser.add_argument('mode', default='make_flatfield', choices=['make_flatfield','calculate_thresholds','visualize_masking','check_run','choose_image_files'],                  
+    parser.add_argument('mode', default='make_flatfield', choices=['make_flatfield','calculate_thresholds','check_run','choose_image_files'],                  
                         help='Which operation to perform')
     parser.add_argument('workingdir_name', 
                         help='Name of working directory to save created files in')
@@ -167,6 +170,8 @@ def main() :
     run_option_group = parser.add_argument_group('run options','other options for this run')
     run_option_group.add_argument('--n_threads',       default=10,    type=int,         
                                   help='Number of threads/processes to run at once in parallelized portions of the code')
+    run_option_group.add_argument('--n_masking_images_per_sample',       default=0,    type=int,         
+                                  help='How many example masking images to save for each sample (randomly chosen)')
     run_option_group.add_argument('--selected_pixel_cut',       default=0.8,    type=float,         
                                   help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
     args = parser.parse_args()
@@ -190,9 +195,9 @@ def main() :
             ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
         elif args.dbload_top_dir is not None :
             ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads)
-    if args.mode in ['make_flatfield','visualize_masking'] :
+    if args.mode in ['make_flatfield'] :
         #mask and stack images together
-        ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.mode=='visualize_masking')
+        ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_sample)
         if args.mode=='make_flatfield' :
             #make the flatfield image
             ff_producer.makeFlatField()
