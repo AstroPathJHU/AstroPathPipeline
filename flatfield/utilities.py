@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 #this can be run in parallel
 def smoothImageWorker(im_array,smoothsigma,return_list=None) :
     im_in_umat = cv2.UMat(im_array)
-    im_out_umat = cv2.UMat(np.empty_like(im))
+    im_out_umat = cv2.UMat(np.empty_like(im_array))
     cv2.GaussianBlur(im_in_umat,(0,0),smoothsigma,im_out_umat,borderType=cv2.BORDER_REPLICATE)
     if return_list is not None :
         return_list.append(im_out_umat.get())
