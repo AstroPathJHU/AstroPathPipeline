@@ -1,6 +1,6 @@
-import argparse, datetime, exifreader, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage
+import argparse, datetime, fractions, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage, tifffile
 from ..utilities import units
-from ..utilities.misc import PILmaximagepixels
+from ..utilities.misc import floattoint, tiffinfo
 from ..utilities.tableio import writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
@@ -64,12 +64,7 @@ class Sample:
   @methodtools.lru_cache()
   def getcomponenttiffinfo(self):
     componenttifffilename = next(self.componenttiffsfolder.glob(self.samp+"*_component_data.tif"))
-    with PIL.Image.open(componenttifffilename) as tiff:
-      dpi = set(tiff.info["dpi"])
-      if len(dpi) != 1: raise ValueError(f"Multiple different dpi values {dpi}")
-      pscale = dpi.pop() / 2.54 / 10000
-      fwidth, fheight = units.distances(pixels=tiff.size, pscale=pscale, power=1)
-    return pscale, fwidth, fheight
+    return tiffinfo(filename=componenttifffilename)
 
   @property
   def pscale(self): return self.getcomponenttiffinfo()[0]
@@ -99,7 +94,8 @@ class Sample:
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        raise OSError(f"File {self.samp}_[{r.cx},{r.cy}].im3 (expected from annotations) does not exist")
+        cx, cy = units.microns(r.cxvec, pscale=self.pscale)
+        raise OSError(f"File {self.samp}_[{cx},{cy}].im3 (expected from annotations) does not exist")
       rf = rfs.pop()
       maxtimediff = max(maxtimediff, abs(rf.t-r.t))
     if maxtimediff >= datetime.timedelta(seconds=5):
@@ -120,6 +116,7 @@ class Sample:
     globals = reader.globals
     perimeters = reader.perimeters
     self.fixM2(rectangles)
+    self.fixrectanglefilenames(rectangles)
 
     return rectangles, globals, perimeters
 
@@ -132,8 +129,17 @@ class Sample:
           rectangle.file = rectangle.file.replace("_M2", "")
         for d in duplicates:
           rectangles.remove(d)
+        logger.warning(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
+
+  def fixrectanglefilenames(self, rectangles):
+    for r in rectangles:
+      expected = self.samp+f"_[{floattoint(units.microns(r.cx, pscale=r.pscale), atol=1e-10):d},{floattoint(units.microns(r.cy, pscale=r.pscale), atol=1e-10):d}].im3"
+      actual = r.file
+      if expected != actual:
+        logger.warning(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
+      r.file = expected
 
   @methodtools.lru_cache()
   def getdir(self):
@@ -251,77 +257,68 @@ class Sample:
 
   @methodtools.lru_cache()
   def getqptiffcsvandimage(self):
-    with open(self.qptifffilename, "rb") as f:
-      tags = exifreader.process_file(f)
+    with tifffile.TiffFile(self.qptifffilename) as f:
+      layeriterator = iter(enumerate(f.pages))
+      for qplayeridx, page in layeriterator:
+        #get to after the small RGB one
+        if len(page.shape) == 3:
+          break
+      else:
+        raise ValueError("Unexpected qptiff layout: expected to find an RGB layer (with a 3D array shape).  Array shapes:\n" + "\n".join(f"  {page.shape}" for page in f.pages))
+      for qplayeridx, page in layeriterator:
+        if page.imagewidth < 4000:
+          break
+      else:
+        raise ValueError("Unexpected qptiff layout: expected layer with width < 4000 sometime after the first RGB layer (with a 3D array shape).  Shapes and widths:\n" + "\n".join(f"  {page.shape:20} {page.imagewidth:10}" for page in f.pages))
 
-    layerids = [k.replace(" ImageWidth", "") for k in tags if "ImageWidth" in k]
-    layeriterator = iter(enumerate(layerids))
-    for qplayeridx, qplayerid in layeriterator:
-      #get to after the small RGB one
-      if len(tags[qplayerid+" BitsPerSample"].values) == 3:
-        break
-    for qplayeridx, qplayerid in layeriterator:
-      if tags[qplayerid+" ImageWidth"].values[0] < 4000:
-        break
-    else:
-      raise ValueError("Unexpected qptiff layout: expected layer with width < 4000 sometime after the 7th.  Widths:\n" + "\n".join(f"  {qplayerid} {tags[qplayerid+' ImageWidth'].values[0]:d}" for qplayerid in layerids))
+      firstpage = f.pages[0]
+      resolutionunit = firstpage.tags["ResolutionUnit"].value
+      xposition = firstpage.tags["XPosition"].value
+      xposition = float(fractions.Fraction(*xposition))
+      yposition = firstpage.tags["YPosition"].value
+      yposition = float(fractions.Fraction(*yposition))
+      xresolution = page.tags["XResolution"].value
+      xresolution = float(fractions.Fraction(*xresolution))
+      yresolution = page.tags["YResolution"].value
+      yresolution = float(fractions.Fraction(*yresolution))
 
-    resolutionunit = str(tags["Image ResolutionUnit"])
-    xposition = tags["Image XPosition"].values[0]
-    xposition = float(xposition)
-    yposition = tags["Image YPosition"].values[0]
-    yposition = float(yposition)
-    xresolution = tags[qplayerid + " XResolution"].values[0]
-    xresolution = float(xresolution)
-    yresolution = tags[qplayerid + " YResolution"].values[0]
-    yresolution = float(yresolution)
+      kw = {
+        tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
+      }[resolutionunit]
+      xresolution = units.Distance(pixels=xresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
+      yresolution = units.Distance(pixels=yresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
+      qpscale = xresolution
 
-    kw = {
-      "Pixels/Centimeter": "centimeters",
-      "Pixels/Micron": "microns",
-    }[resolutionunit]
-    xresolution = units.Distance(pixels=xresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
-    yresolution = units.Distance(pixels=yresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
-    qpscale = xresolution
-    xposition = units.Distance(**{kw: xposition}, pscale=qpscale)
-    yposition = units.Distance(**{kw: yposition}, pscale=qpscale)
-    qptiffcsv = [
-      QPTiffCsv(
-        SampleID=0,
-        SlideID=self.samp,
-        ResolutionUnit="Micron",
-        XPosition=xposition,
-        YPosition=yposition,
-        XResolution=xresolution * 10000,
-        YResolution=yresolution * 10000,
-        qpscale=qpscale,
-        fname=self.jpgfilename.name,
-        img="00001234",
-        pscale=qpscale,
-      )
-    ]
+      xposition = units.Distance(**{kw: xposition}, pscale=qpscale)
+      yposition = units.Distance(**{kw: yposition}, pscale=qpscale)
+      qptiffcsv = [
+        QPTiffCsv(
+          SampleID=0,
+          SlideID=self.samp,
+          ResolutionUnit="Micron",
+          XPosition=xposition,
+          YPosition=yposition,
+          XResolution=xresolution * 10000,
+          YResolution=yresolution * 10000,
+          qpscale=qpscale,
+          fname=self.jpgfilename.name,
+          img="00001234",
+          pscale=qpscale,
+        )
+      ]
 
-    mix = np.array([
-      [0.0, 0.0, 1.0, 1.0, 1.0],
-      [0.0, 1.0, 1.0, 0.5, 0.0],
-      [1.0, 0.0, 0.0, 0.0, 0.0],
-    ])/120
+      mix = np.array([
+        [0.0, 0.0, 1.0, 1.0, 1.0],
+        [0.0, 1.0, 1.0, 0.5, 0.0],
+        [1.0, 0.0, 0.0, 0.0, 0.0],
+      ])/120
 
-    with open(self.qptifffilename, "rb") as f, PILmaximagepixels(None), PIL.Image.open(f) as imgs:
-      iterator = PIL.ImageSequence.Iterator(imgs)
-      shape = *reversed(iterator[qplayeridx].size), 3
+      shape = *f.pages[qplayeridx].shape, 3
       finalimg = np.zeros(shape)
 
       for i in range(qplayeridx, qplayeridx+5):
-        img = iterator[i]
-        try:
-          img.getdata()
-        except OSError as e:
-          if str(e) == "-2":
-            qptiffimage = ImportError("Probably you're on Windows and have a buggy version of libtiff.\nSee https://github.com/python-pillow/Pillow/issues/4237\nTry this, but it may be painful to make it work:\n  conda install -c conda-forge libtiff=4.1.0=h885aae3_4")
-            return qptiffcsv, qptiffimage
-          raise
-        finalimg += np.tensordot(np.asarray(img), mix[:,i-qplayeridx], axes=0)
+        img = f.pages[i].asarray()
+        finalimg += np.tensordot(img, mix[:,i-qplayeridx], axes=0)
 #    finalimg /= np.max(finalimg)
     finalimg[finalimg > 1] = 1
     qptiffimg = skimage.img_as_ubyte(finalimg)
@@ -330,9 +327,7 @@ class Sample:
   def getqptiffcsv(self):
     return self.getqptiffcsvandimage()[0]
   def getqptiffimage(self):
-    img = self.getqptiffcsvandimage()[1]
-    if isinstance(img, Exception): raise img
-    return img
+    return self.getqptiffcsvandimage()[1]
 
   def writeqptiffcsv(self):
     logger.info(self.samp)
@@ -452,6 +447,7 @@ class Sample:
     writetable(self.dest/(self.samp+"_constants.csv"), self.getconstants())
 
   def writemetadata(self):
+    self.dest.mkdir(parents=True, exist_ok=True)
     self.writeannotations()
     self.writebatch()
     self.writeconstants()
@@ -468,6 +464,7 @@ if __name__ == "__main__":
   p.add_argument("root")
   p.add_argument("samp")
   p.add_argument("--dest")
+  p.add_argument("--units", type=units.setup)
   args = p.parse_args()
   kwargs = {"root": args.root, "samp": args.samp}
   if args.dest: kwargs["dest"] = args.dest

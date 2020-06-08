@@ -363,7 +363,7 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
   logger.info("done")
   return xresiduals, yresiduals
 
-def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
+def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax, cbar, xory: None):
   logger.info(alignmentset.samp)
   fields = alignmentset.fields
   deltax = min(abs(a.x-b.x) for a, b in more_itertools.pairwise(fields) if a.x != b.x)
@@ -372,7 +372,7 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
   x0vec = np.min([[f.x, f.y] for f in fields], axis=0)
   f = fields[0]
   shape = tuple(reversed(floattoint(np.max([(f.xvec - x0vec) / deltaxvec for f in fields], axis=0), atol=1e-9) + 1))
-  xyarray = np.full(shape=(2,)+shape, fill_value=-999)
+  xyarray = np.full(shape=(2,)+shape, fill_value=-999.)
 
 #  extent = x0vec[0], shape[0] * deltaxvec[0] + x0vec[0], shape[1] * deltaxvec[1] + x0vec[1], x0vec[1]
   extent = units.pixels((x0vec[0], shape[1] * deltaxvec[0] + x0vec[0], shape[0] * deltaxvec[1] + x0vec[1], x0vec[1]))

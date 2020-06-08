@@ -40,12 +40,52 @@ def temporarilyremove(filepath):
     finally:
       shutil.move(tmppath, filepath)
 
+@contextlib.contextmanager
+def temporarilyreplace(filepath, temporarycontents):
+  with tempfile.TemporaryDirectory() as d:
+    d = pathlib.Path(d)
+    tmppath = d/filepath.name
+    shutil.move(filepath, tmppath)
+    with open(filepath, "w") as f:
+      f.write(temporarycontents)
+    try:
+      yield
+    finally:
+      shutil.move(tmppath, filepath)
+
 class TestAlignment(unittest.TestCase):
+  @classmethod
+  def setUpClass(cls):
+    cls.__aligned = None
+
+  @property
+  def alignedfilenames(self):
+    return [
+      thisfolder/"data"/"M21_1"/"dbload"/filename.name
+      for filename in (thisfolder/"alignmentreference").glob("M21_1_*")
+    ]
+
+  def __savealigned(self):
+    if self.__aligned is not None: return
+    type(self).__aligned = contextlib.ExitStack()
+    self.__aligned.__enter__()
+    for filename in self.alignedfilenames:
+      self.__aligned.enter_context(temporarilyremove(filename))
+
   def setUp(self):
     pass
 
   def tearDown(self):
-    pass
+    for filename in self.alignedfilenames:
+      try:
+        filename.unlink()
+      except FileNotFoundError:
+        pass
+
+  @classmethod
+  def tearDownClass(cls):
+    if cls.__aligned is not None:
+      cls.__aligned.__exit__(None, None, None)
 
   def testAlignment(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
@@ -63,6 +103,8 @@ class TestAlignment(unittest.TestCase):
       targetrows = readtable(thisfolder/"alignmentreference"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+
+    self.__savealigned()
 
   def testAlignmentFastUnits(self):
     with units.setup_context("fast"):
@@ -105,6 +147,7 @@ class TestAlignment(unittest.TestCase):
     result = a.readstitchresult(filenames=stitchfilenames)
 
     def newfilename(filename): return thisfolder/("test_"+filename.name)
+    def referencefilename(filename): return thisfolder/"alignmentreference"/filename.name
 
     a.writestitchresult(result, filenames=[newfilename(f) for f in a.stitchfilenames])
 
@@ -114,7 +157,7 @@ class TestAlignment(unittest.TestCase):
       ({}, {"pscale": a.pscale}, {"pscale": a.pscale, "layer": a.layer, "nclip": a.nclip, "rectangles": a.rectangles}),
     ):
       rows = readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
-      targetrows = readtable(filename, cls, extrakwargs=extrakwargs)
+      targetrows = readtable(referencefilename(filename), cls, extrakwargs=extrakwargs)
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
 
@@ -211,8 +254,15 @@ class TestAlignment(unittest.TestCase):
     a1.readalignments(filename=readfilename)
     a1.readstitchresult(filenames=stitchfilenames)
 
-    with temporarilyremove(thisfolder/"data"/"M21_1"/"inform_data"/"Component_Tiffs"):
+    constantsfile = a1.dbload/"M21_1_constants.csv"
+    with open(constantsfile) as f:
+      constantscontents = f.read()
+    newconstantscontents = constantscontents.replace(str(a1.pscale), str(a1.pscale * (1+1e-6)))
+    assert newconstantscontents != constantscontents
+
+    with temporarilyremove(thisfolder/"data"/"M21_1"/"inform_data"/"Component_Tiffs"), temporarilyreplace(constantsfile, newconstantscontents):
       a2 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
+      assert a1.pscale != a2.pscale
       a2.getDAPI(writeimstat=False)
       a2.align(debug=True)
       a2.stitch()
