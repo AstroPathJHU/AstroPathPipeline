@@ -3,6 +3,7 @@ from .flatfield_sample import FlatfieldSample
 from .mean_image import MeanImage
 from .config import *
 from .utilities import chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
+import random
 
 #main class
 class FlatfieldProducer :
