@@ -56,7 +56,7 @@ class FlatfieldProducer :
                                           os.path.join(dbload_top_dir,sn,'dbload'),
                                           n_threads,
                                           os.path.join(self.mean_image.workingdir_name,THRESHOLDING_PLOT_DIR_NAME),
-                                          threshold_file_name
+                                          threshold_file_name,
                                           )
 
     def stackImages(self,n_threads,selected_pixel_cut,n_masking_images_per_sample) :
