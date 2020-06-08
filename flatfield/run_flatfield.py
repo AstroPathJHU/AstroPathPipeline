@@ -167,7 +167,7 @@ def main() :
     run_option_group = parser.add_argument_group('run options','other options for this run')
     run_option_group.add_argument('--n_threads',       default=10,    type=int,         
                                   help='Number of threads/processes to run at once in parallelized portions of the code')
-    run_option_group.add_argument('--selected_pixel_cut',       default=0.0,    type=float,         
+    run_option_group.add_argument('--selected_pixel_cut',       default=0.8,    type=float,         
                                   help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
     args = parser.parse_args()
     #make sure the command line arguments make sense
