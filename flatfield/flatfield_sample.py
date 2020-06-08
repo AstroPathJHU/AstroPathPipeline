@@ -38,13 +38,12 @@ class FlatfieldSample() :
         if not len(self.background_thresholds_for_masking)==self.dims[-1] :
             raise FlatFieldError(f'ERROR: number of background thresholds read from {threshold_file_path} is not equal to the number of image layers!')
 
-    def findBackgroundThresholds(self,rawfile_paths,dbload_dir,n_threads,n_masking_images,plotdir_path,threshold_file_name) :
+    def findBackgroundThresholds(self,rawfile_paths,dbload_dir,n_threads,plotdir_path,threshold_file_name) :
         """
         Function to determine this sample's background pixel flux thresholds per layer
         rawfile_paths       = a list of the rawfile paths to consider for this sample's background threshold calculations
         dbload_dir          = this sample's dbload directory 
         n_threads           = max number of threads/processes to open at once
-        n_masking_images    = how many randomly-chosen masking images to save
         plotdir_path        = path to the directory in which to save plots from the thresholding process
         threshold_file_name = name of file to save background thresholds in, one line per layer
         """
