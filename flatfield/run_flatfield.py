@@ -95,8 +95,8 @@ def getFilepathsAndSampleNamesToRun(a) :
     if a.rawfile_top_dir is not None :
         rawfile_top_dir = a.rawfile_top_dir
     else :
-        fpsplit = filepaths_to_run[0].split(os.sep)
-        rawfile_top_dir = os.path.join(*[fpp for fpp in fpsplit[:fpsplit.index(sampleNameFromFilepath(filepaths_to_run[0]))]])
+        fpsplit = previously_run_filepaths[0].split(os.sep)
+        rawfile_top_dir = os.path.join(*[fpp for fpp in fpsplit[:fpsplit.index(sampleNameFromFilepath(previously_run_filepaths[0]))]])
     #make sure the rawfile (and dbload, if thresholds will be calculated) directories for each sample all exist first
     will_calculate_thresholds = (not a.skip_masking) and a.threshold_file_dir is None
     for sn in all_sample_names :
