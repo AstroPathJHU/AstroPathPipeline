@@ -203,7 +203,7 @@ class MeanImage :
                     pos = ax.imshow(self.corrected_mean_image[:,:,layer_i])
                     ax.set_title(f'corrected mean image, {layer_titlestem}')
                     f.colorbar(pos,ax=ax)
-                    plt.savefig(f'flatfield_{layer_fnstem}.png')
+                    plt.savefig(f'corrected_mean_image_{layer_fnstem}.png')
                     plt.close()
                 if (not self.skip_masking) and (self.mask_stack is not None) :
                     #for the mask stack
@@ -318,7 +318,7 @@ class MeanImage :
         plt.title(f'uncorrected/corrected smoothed mean image relative pixel intensities',fontsize=14)
         plt.xlabel('layer number',fontsize=14)
         #fix the range on the x-axis to accommodate the legend
-        plt.xlim(0,self.nlayers+10)
+        plt.xlim(0,self.nlayers+12)
         plt.ylabel('pixel intensity relative to layer mean',fontsize=14)
         plt.legend(loc='best')
         plt.savefig(PIXEL_INTENSITY_PLOT_NAME)

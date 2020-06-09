@@ -68,7 +68,7 @@ def getFilepathsAndSampleNamesToRun(a) :
             if filepaths_to_exclude is None :
                 filepaths_to_exclude=[]
             filepaths_to_exclude+=previously_run_filepaths
-            flatfield_logger.info(f'Will exclude {len(filepaths_to_exclude)} files listed in previous run at {a.prior_run_dir}')
+            flatfield_logger.info(f'Will exclude {len(previously_run_filepaths)} files listed in previous run at {a.prior_run_dir}')
         else :
             filepaths_to_run = previously_run_filepaths
             flatfield_logger.info(f'Will run on a sample of {len(filepaths_to_run)} total files as listed in previous run at {a.prior_run_dir}')
@@ -97,6 +97,8 @@ def getFilepathsAndSampleNamesToRun(a) :
     else :
         fpsplit = previously_run_filepaths[0].split(os.sep)
         rawfile_top_dir = os.path.join(*[fpp for fpp in fpsplit[:fpsplit.index(sampleNameFromFilepath(previously_run_filepaths[0]))]])
+        if previously_run_filepaths[0].startswith(os.sep) :
+            rawfile_top_dir=os.path.join(os.sep,rawfile_top_dir)
     #make sure the rawfile (and dbload, if thresholds will be calculated) directories for each sample all exist first
     will_calculate_thresholds = (not a.skip_masking) and a.threshold_file_dir is None
     for sn in all_sample_names :
@@ -125,7 +127,7 @@ def getFilepathsAndSampleNamesToRun(a) :
             if filepaths_to_exclude is not None :
                 logstring+=' remaining'
             logstring+=' images' 
-            if min(a.max_images,len(all_sample_image_filepaths)) == len(all_sample_image_filepaths) :
+            if min(a.max_images,len(all_sample_image_filepaths)) > len(all_sample_image_filepaths) :
                 logstring+=f' (not enough images in the sample(s) to deliver all {a.max_images} requested)'
             filepaths_to_run = all_sample_image_filepaths
         else :
@@ -161,6 +163,8 @@ def getFilepathsAndSampleNamesToRun(a) :
         flatfield_logger.info(f'Background thresholds will be read from the files at {a.threshold_file_dir}')
     #return the lists of filepaths and samplenames
     all_filepaths = [fp for fp in all_sample_image_filepaths if sampleNameFromFilepath(fp) in samplenames_to_run]
+    if len(all_filepaths)<1 or len(filepaths_to_run)<1 or len(samplenames_to_run)<1 :
+        raise RuntimeError('ERROR: The requested options have resulted in no samples or files to run!')
     return all_filepaths, filepaths_to_run, samplenames_to_run
 
 #################### MAIN SCRIPT ####################
@@ -222,7 +226,7 @@ def main() :
     if args.mode=='check_run' :
         sys.exit()
     #get the image file dimensions from the .xml file
-    dims = getImageHWLFromXMLFile(args.rawfile_top_dir,sample_names_to_run[0])
+    dims = getImageHWLFromXMLFile(filepaths_to_run[0][:filepaths_to_run[0].find(sampleNameFromFilepath(filepaths_to_run[0]))],sample_names_to_run[0])
     #start up a flatfield producer
     ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.workingdir_name,args.skip_masking)
     #write out the text file of all the raw file paths that will be run
