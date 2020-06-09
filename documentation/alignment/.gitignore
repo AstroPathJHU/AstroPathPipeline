@@ -7,6 +7,8 @@
 !2D-shifts-JHUPolaris-[xy].pdf
 !2D-shifts-JHUVectra-[xy].pdf
 !alignment-result-AKY-[1-4].pdf
+!alignment-result-BMS-[1-4].pdf
+!alignment-result-JHUPolaris-[1-4].pdf
 !alignment-result-vectra-big-[1-4].pdf
 !diamondpull1.pdf
 !diamondpull2.pdf
@@ -18,4 +20,6 @@
 !squarepull2.pdf
 !stitch-pull-[1-4]-[1-2].pdf
 !stitch-result-AKY-[1-4].pdf
+!stitch-result-BMS-[1-4].pdf
+!stitch-result-JHUPolaris-[1-4].pdf
 !stitch-result-vectra-big-[1-4].pdf
