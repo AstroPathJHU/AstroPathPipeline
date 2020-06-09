@@ -98,6 +98,13 @@ class FlatfieldProducer :
         flatfield_logger.info('Getting/smoothing mean image and making flatfield....')
         self.mean_image.makeFlatFieldImage()
 
+    def applyFlatField(self,flatfield_file_path) :
+        """
+        Take the mean of the stacked images, smooth it, and make the corrected mean image by dividing the mean image by the existing flatfield
+        """
+        flatfield_logger.info(f'Applying flatfield at {flatfield_file_path} to mean image....')
+        self.mean_image.makeCorrectedMeanImage(flatfield_file_path)
+
     def writeFileLog(self) :
         """
         Write out a text file of all the filenames that were added

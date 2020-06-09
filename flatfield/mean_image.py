@@ -1,7 +1,7 @@
 #imports
 from .config import *
 from .utilities import smoothImageWorker
-from ..utilities.img_file_io import writeImageToFile
+from ..utilities.img_file_io import getRawAsHWL, writeImageToFile
 import matplotlib.pyplot as plt, multiprocessing as mp
 import statistics, copy
 
@@ -31,6 +31,7 @@ class MeanImage :
         self.mean_image=None
         self.smoothed_mean_image=None
         self.flatfield_image=None
+        self.corrected_mean_image=None
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -80,27 +81,44 @@ class MeanImage :
         """
         A function to get the mean of the image stack and smooth/normalize each of its layers to make the flatfield image
         """
-        self.mean_image = self.__makeMeanImage()
-        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
+        self.__makeAndSmoothMeanImage()
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
             layermean = np.mean(self.smoothed_mean_image[:,:,layer_i])
             self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
 
+    def makeCorrectedMeanImage(self,flatfield_file_path) :
+        """
+        A function to get the mean of the image stack, smooth it, and divide it by the given flatfield to correct it
+        """
+        self.__makeAndSmoothMeanImage()
+        self.corrected_mean_image = copy.deepcopy(self.smoothed_mean_image)
+        flatfield_image=getRawAsHWL(flatfield_file_path,*(self.dims),dtype=IMG_DTYPE_OUT)
+        self.corrected_mean_image/=flatfield_image
+        with cd(self.workingdir_name) :
+            with open(APPLIED_FLATFIELD_TEXT_FILE_NAME,'w') as fp :
+                fp.write(f'{flatfield_file_path}\n')
+
     def saveImages(self) :
         """
-        Save mean image and flatfield image all as float16s
+        Save the various images that are created
         """
         with cd(self.workingdir_name) :
             if self.mean_image is not None :
-                meanimage_filename = f'mean_image{FILE_EXT}'
+                meanimage_filename = f'{MEAN_IMAGE_FILE_NAME_STEM}{FILE_EXT}'
                 writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=IMG_DTYPE_OUT)
+            if self.smoothed_mean_image is not None :
+                smoothed_meanimage_filename = f'{SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{FILE_EXT}'
+                writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=IMG_DTYPE_OUT)
             if self.flatfield_image is not None :
-                flatfieldimage_filename = f'flatfield{FILE_EXT}'
+                flatfieldimage_filename = f'{FLATFIELD_FILE_NAME_STEM}{FILE_EXT}'
                 writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=IMG_DTYPE_OUT)
+            if self.corrected_mean_image is not None :
+                corrected_mean_image_filename = f'{CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{FILE_EXT}'
+                writeImageToFile(np.transpose(self.corrected_mean_image,(2,1,0)),corrected_mean_image_filename,dtype=IMG_DTYPE_OUT)
             #if masks were calculated, save the stack of them
-            if not self.skip_masking :
-                writeImageToFile(np.transpose(self.mask_stack,(2,1,0)),f'mask_stack{FILE_EXT}',dtype=np.uint16)
+            if (not self.skip_masking) and (self.mask_stack is not None) :
+                writeImageToFile(np.transpose(self.mask_stack,(2,1,0)),f'{MASK_STACK_FILE_NAME_STEM}{FILE_EXT}',dtype=np.uint16)
 
     def savePlots(self) :
         """
@@ -113,8 +131,13 @@ class MeanImage :
             with cd(POSTRUN_PLOT_DIRECTORY_NAME) :
                 #.pngs of the mean image, flatfield, and mask stack layers
                 self.__saveImageLayerPlots()
-                #plot of the flatfield images' minimum and and maximum (and 5/95%ile) pixel intensities
-                self.__saveFlatFieldImagePixelIntensityPlot()   
+                #plots of the minimum and and maximum (and 5/95%ile) pixel intensities
+                if self.flatfield_image is not None :
+                    #for the flatfield image
+                    self.__saveFlatFieldImagePixelIntensityPlot()   
+                if self.smoothed_mean_image is not None and self.corrected_mean_image is not None :
+                    #for the corrected mean image
+                    self.__saveCorrectedMeanImagePixelIntensityPlot()
                 #plot and write a text file of how many images were stacked per layer
                 self.__plotAndWriteNImagesStackedPerLayer()
 
@@ -131,6 +154,11 @@ class MeanImage :
         zero_fixed_mask_stack[zero_fixed_mask_stack==0] = np.min(zero_fixed_mask_stack[zero_fixed_mask_stack!=0])
         return self.image_stack/zero_fixed_mask_stack
 
+    #helper function to make and set the meanimage and smoothed meanimage
+    def __makeAndSmoothMeanImage(self) :
+        self.mean_image = self.__makeMeanImage()
+        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
+
     #################### VISUALIZATION HELPER FUNCTIONS ####################
 
     #helper function to make and save the .png images of the mean image, flatfield, and mask stack layers
@@ -145,22 +173,40 @@ class MeanImage :
                 layer_titlestem = f'layer {layer_i+1}'
                 layer_fnstem = f'layer_{layer_i+1}'
                 #save a little figure of each layer in each image
-                #for the mean image
-                f,ax = plt.subplots(figsize=fig_size)
-                pos = ax.imshow(self.mean_image[:,:,layer_i])
-                ax.set_title(f'mean image, {layer_titlestem}')
-                f.colorbar(pos,ax=ax)
-                plt.savefig(f'mean_image_{layer_fnstem}.png')
-                plt.close()
-                #for the flatfield image
-                f,ax = plt.subplots(figsize=fig_size)
-                pos = ax.imshow(self.flatfield_image[:,:,layer_i])
-                ax.set_title(f'flatfield, {layer_titlestem}')
-                f.colorbar(pos,ax=ax)
-                plt.savefig(f'flatfield_{layer_fnstem}.png')
-                plt.close()
-                #for the mask stack (if applicable) 
-                if not self.skip_masking :
+                if self.mean_image is not None :
+                    #for the mean image
+                    f,ax = plt.subplots(figsize=fig_size)
+                    pos = ax.imshow(self.mean_image[:,:,layer_i])
+                    ax.set_title(f'mean image, {layer_titlestem}')
+                    f.colorbar(pos,ax=ax)
+                    plt.savefig(f'mean_image_{layer_fnstem}.png')
+                    plt.close()
+                if self.smoothed_mean_image is not None :
+                    #for the smoothed mean image
+                    f,ax = plt.subplots(figsize=fig_size)
+                    pos = ax.imshow(self.smoothed_mean_image[:,:,layer_i])
+                    ax.set_title(f'smoothed mean image, {layer_titlestem}')
+                    f.colorbar(pos,ax=ax)
+                    plt.savefig(f'smoothed_mean_image_{layer_fnstem}.png')
+                    plt.close()
+                if self.flatfield_image is not None :
+                    #for the flatfield image
+                    f,ax = plt.subplots(figsize=fig_size)
+                    pos = ax.imshow(self.flatfield_image[:,:,layer_i])
+                    ax.set_title(f'flatfield, {layer_titlestem}')
+                    f.colorbar(pos,ax=ax)
+                    plt.savefig(f'flatfield_{layer_fnstem}.png')
+                    plt.close()
+                if self.corrected_mean_image is not None :
+                    #for the corrected mean image
+                    f,ax = plt.subplots(figsize=fig_size)
+                    pos = ax.imshow(self.corrected_mean_image[:,:,layer_i])
+                    ax.set_title(f'corrected mean image, {layer_titlestem}')
+                    f.colorbar(pos,ax=ax)
+                    plt.savefig(f'flatfield_{layer_fnstem}.png')
+                    plt.close()
+                if (not self.skip_masking) and (self.mask_stack is not None) :
+                    #for the mask stack
                     f,ax = plt.subplots(figsize=fig_size)
                     pos = ax.imshow(self.mask_stack[:,:,layer_i])
                     ax.set_title(f'stacked binary image masks, {layer_titlestem}')
@@ -190,22 +236,22 @@ class MeanImage :
                 plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-stddev,1.+stddev,1.+stddev,1.-stddev],'mediumseagreen',alpha=0.5,label='intensity std. dev.')
             else :
                 plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-stddev,1.+stddev,1.+stddev,1.-stddev],'mediumseagreen',alpha=0.5)
-        #plot the inensity plots together, with the broadband filter breaks
+        #plot the relative intensity plots together, with the broadband filter breaks
         plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='mediumseagreen',linestyle='dashed',label='mean intensity')
         for i in range(len(LAST_FILTER_LAYERS)+1) :
             f_i = 0 if i==0 else LAST_FILTER_LAYERS[i-1]
             l_i = xaxis_vals[-1] if i==len(LAST_FILTER_LAYERS) else LAST_FILTER_LAYERS[i]
             if i==0 :
-                plt.plot(xaxis_vals[f_i:l_i],ff_min_pixel_intensities[f_i:l_i],color='darkblue',marker='o',linewidth=2,label='minimum intensity')
-                plt.plot(xaxis_vals[f_i:l_i],ff_low_pixel_intensities[f_i:l_i],color='royalblue',marker='o',linewidth=2,linestyle='dotted',label=r'5th %ile intensity')
-                plt.plot(xaxis_vals[f_i:l_i],ff_max_pixel_intensities[f_i:l_i],color='darkred',marker='o',linewidth=2,label='maximum intensity')
-                plt.plot(xaxis_vals[f_i:l_i],ff_high_pixel_intensities[f_i:l_i],color='lightcoral',marker='o',linewidth=2,linestyle='dotted',label=r'95th %ile intensity')
+                plt.plot(xaxis_vals[f_i:l_i],ff_min_pixel_intensities[f_i:l_i],color='darkblue',marker='o',label='minimum intensity')
+                plt.plot(xaxis_vals[f_i:l_i],ff_low_pixel_intensities[f_i:l_i],color='royalblue',marker='o',linestyle='dotted',label=r'5th %ile intensity')
+                plt.plot(xaxis_vals[f_i:l_i],ff_max_pixel_intensities[f_i:l_i],color='darkred',marker='o',label='maximum intensity')
+                plt.plot(xaxis_vals[f_i:l_i],ff_high_pixel_intensities[f_i:l_i],color='lightcoral',marker='o',linestyle='dotted',label=r'95th %ile intensity')
                 plt.plot([l_i+0.5,l_i+0.5],[min(ff_min_pixel_intensities)-0.1,max(ff_max_pixel_intensities)+0.1],color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
             else :
-                plt.plot(xaxis_vals[f_i:l_i],ff_min_pixel_intensities[f_i:l_i],color='darkblue',marker='o',linewidth=2)
-                plt.plot(xaxis_vals[f_i:l_i],ff_low_pixel_intensities[f_i:l_i],color='royalblue',marker='o',linewidth=2,linestyle='dotted')
-                plt.plot(xaxis_vals[f_i:l_i],ff_max_pixel_intensities[f_i:l_i],color='darkred',marker='o',linewidth=2)
-                plt.plot(xaxis_vals[f_i:l_i],ff_high_pixel_intensities[f_i:l_i],color='lightcoral',marker='o',linewidth=2,linestyle='dotted')
+                plt.plot(xaxis_vals[f_i:l_i],ff_min_pixel_intensities[f_i:l_i],color='darkblue',marker='o')
+                plt.plot(xaxis_vals[f_i:l_i],ff_low_pixel_intensities[f_i:l_i],color='royalblue',marker='o',linestyle='dotted')
+                plt.plot(xaxis_vals[f_i:l_i],ff_max_pixel_intensities[f_i:l_i],color='darkred',marker='o')
+                plt.plot(xaxis_vals[f_i:l_i],ff_high_pixel_intensities[f_i:l_i],color='lightcoral',marker='o',linestyle='dotted')
                 if i!=len(LAST_FILTER_LAYERS) :
                     plt.plot([l_i+0.5,l_i+0.5],[min(ff_min_pixel_intensities)-0.1,max(ff_max_pixel_intensities)+0.1],color='black',linewidth=2,linestyle='dotted')
         plt.title(f'flatfield image layer normalized pixel intensities',fontsize=14)
@@ -213,6 +259,67 @@ class MeanImage :
         #fix the range on the x-axis to accommodate the legend
         plt.xlim(0,self.nlayers+10)
         plt.ylabel('pixel intensity',fontsize=14)
+        plt.legend(loc='best')
+        plt.savefig(PIXEL_INTENSITY_PLOT_NAME)
+        plt.close()
+
+    #helper function to plot how the average intensities of the mean image change in each layer after application of the flatfield corrections
+    def __saveCorrectedMeanImagePixelIntensityPlot(self) :
+        #keep track of the uncorrected and corrected images' minimum and maximum (and 5/95%ile) pixel intensities while the other plots are made
+        u_min_pixel_intensities=[]; u_low_pixel_intensities=[]; u_max_pixel_intensities=[]; u_high_pixel_intensities=[]
+        c_min_pixel_intensities=[]; c_low_pixel_intensities=[]; c_max_pixel_intensities=[]; c_high_pixel_intensities=[]
+        plt.figure(figsize=(INTENSITY_FIG_WIDTH,(9./16.)*INTENSITY_FIG_WIDTH))
+        xaxis_vals = list(range(1,self.nlayers+1))
+        #iterate over the layers
+        for layer_i in range(self.nlayers) :
+            #find the min, max, and 5/95%ile pixel intensities for this uncorrected and corrected image layer
+            sorted_u_layer = np.sort((self.smoothed_mean_image[:,:,layer_i]).flatten())/np.mean(self.smoothed_mean_image[:,:,layer_i])
+            u_min_pixel_intensities.append(sorted_u_layer[0]); u_low_pixel_intensities.append(sorted_u_layer[int(0.05*len(sorted_u_layer))])
+            u_stddev = np.std(sorted_u_layer)
+            u_max_pixel_intensities.append(sorted_u_layer[-1]); u_high_pixel_intensities.append(sorted_u_layer[int(0.95*len(sorted_u_layer))])
+            sorted_c_layer = np.sort((self.corrected_mean_image[:,:,layer_i]).flatten())/np.mean(self.corrected_mean_image[:,:,layer_i])
+            c_min_pixel_intensities.append(sorted_c_layer[0]); c_low_pixel_intensities.append(sorted_c_layer[int(0.05*len(sorted_c_layer))])
+            c_stddev = np.std(sorted_c_layer)
+            c_max_pixel_intensities.append(sorted_c_layer[-1]); c_high_pixel_intensities.append(sorted_c_layer[int(0.95*len(sorted_c_layer))])
+            if layer_i==0 :
+                plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5,label='uncorrected std. dev.')
+                plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5,label='corrected std. dev.')
+            else :
+                plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5)
+                plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5)
+        #plot the relative intensity plots together, with the broadband filter breaks
+        plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='darkgreen',linestyle='dashed',label='mean')
+        totalmin=min(min(u_min_pixel_intensities),min(c_min_pixel_intensities))
+        totalmax=max(max(u_max_pixel_intensities),max(c_max_pixel_intensities))
+        for i in range(len(LAST_FILTER_LAYERS)+1) :
+            f_i = 0 if i==0 else LAST_FILTER_LAYERS[i-1]
+            l_i = xaxis_vals[-1] if i==len(LAST_FILTER_LAYERS) else LAST_FILTER_LAYERS[i]
+            if i==0 :
+                plt.plot(xaxis_vals[f_i:l_i],u_min_pixel_intensities[f_i:l_i],color='darkred',marker='v',label='uncorrected min.')
+                plt.plot(xaxis_vals[f_i:l_i],u_low_pixel_intensities[f_i:l_i],color='lightcoral',marker='v',linestyle='dotted',label=r'uncorrected 5th %ile')
+                plt.plot(xaxis_vals[f_i:l_i],u_max_pixel_intensities[f_i:l_i],color='darkred',marker='^',label='uncorrected max.')
+                plt.plot(xaxis_vals[f_i:l_i],u_high_pixel_intensities[f_i:l_i],color='lightcoral',marker='^',linestyle='dotted',label=r'uncorrected 95th %ile')
+                plt.plot(xaxis_vals[f_i:l_i],c_min_pixel_intensities[f_i:l_i],color='darkblue',marker='v',label='corrected min.')
+                plt.plot(xaxis_vals[f_i:l_i],c_low_pixel_intensities[f_i:l_i],color='royalblue',marker='v',linestyle='dotted',label=r'corrected 5th %ile')
+                plt.plot(xaxis_vals[f_i:l_i],c_max_pixel_intensities[f_i:l_i],color='darkblue',marker='^',label='corrected max.')
+                plt.plot(xaxis_vals[f_i:l_i],c_high_pixel_intensities[f_i:l_i],color='royalblue',marker='^',linestyle='dotted',label=r'corrected 95th %ile')
+                plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.1,totalmax+0.1],color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
+            else :
+                plt.plot(xaxis_vals[f_i:l_i],u_min_pixel_intensities[f_i:l_i],color='darkred',marker='v')
+                plt.plot(xaxis_vals[f_i:l_i],u_low_pixel_intensities[f_i:l_i],color='lightcoral',marker='v',linestyle='dotted')
+                plt.plot(xaxis_vals[f_i:l_i],u_max_pixel_intensities[f_i:l_i],color='darkred',marker='^')
+                plt.plot(xaxis_vals[f_i:l_i],u_high_pixel_intensities[f_i:l_i],color='lightcoral',marker='^',linestyle='dotted')
+                plt.plot(xaxis_vals[f_i:l_i],c_min_pixel_intensities[f_i:l_i],color='darkblue',marker='v')
+                plt.plot(xaxis_vals[f_i:l_i],c_low_pixel_intensities[f_i:l_i],color='royalblue',marker='v',linestyle='dotted')
+                plt.plot(xaxis_vals[f_i:l_i],c_max_pixel_intensities[f_i:l_i],color='darkblue',marker='^')
+                plt.plot(xaxis_vals[f_i:l_i],c_high_pixel_intensities[f_i:l_i],color='royalblue',marker='^',linestyle='dotted')
+                if i!=len(LAST_FILTER_LAYERS) :
+                    plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.1,totalmax+0.1],color='black',linewidth=2,linestyle='dotted')
+        plt.title(f'uncorrected/corrected smoothed mean image relative pixel intensities',fontsize=14)
+        plt.xlabel('layer number',fontsize=14)
+        #fix the range on the x-axis to accommodate the legend
+        plt.xlim(0,self.nlayers+10)
+        plt.ylabel('pixel intensity relative to layer mean',fontsize=14)
         plt.legend(loc='best')
         plt.savefig(PIXEL_INTENSITY_PLOT_NAME)
         plt.close()

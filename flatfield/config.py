@@ -29,7 +29,13 @@ ALLOW_NEGATIVE_SKEW_FROM=30
 
 #mean_image constants
 IMG_DTYPE_OUT=np.float64
+MEAN_IMAGE_FILE_NAME_STEM='mean_image'
+SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM='smoothed_mean_image'
+FLATFIELD_FILE_NAME_STEM='flatfield'
+CORRECTED_MEAN_IMAGE_FILE_NAME_STEM='corrected_mean_image'
+MASK_STACK_FILE_NAME_STEM='mask_stack'
 FILE_EXT='.bin'
+APPLIED_FLATFIELD_TEXT_FILE_NAME='applied_flatfield_file_path.txt'
 PIXEL_INTENSITY_PLOT_NAME='pixel_intensity_plot.png'
 N_IMAGES_STACKED_PER_LAYER_PLOT_NAME='n_images_stacked_per_layer.png'
 N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME='n_images_stacked_per_layer.txt'
