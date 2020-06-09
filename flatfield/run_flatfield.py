@@ -37,7 +37,7 @@ def checkArgs(a) :
                 if not os.path.isfile(os.path.join(prd,f'{FILEPATH_TEXT_FILE_NAME}')) :
                     raise RuntimeError(f'ERROR: raw file path log does not exist in additional prior run directory {prd}!')
     #if the user wants to save example masking plots, they can't be skipping masking
-    if a.skip_masking and a.n_masking_images_per_sample==0 :
+    if a.skip_masking and a.n_masking_images_per_sample!=0 :
         raise RuntimeError("ERROR: can't save masking images if masking is being skipped!")
     #create the working directory if it doesn't already exist
     if not os.path.isdir(a.workingdir_name) :
