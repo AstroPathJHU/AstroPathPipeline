@@ -64,7 +64,7 @@ def getFilepathsAndSampleNamesToRun(a) :
         #use the filepaths to figure out the sample names
         all_sample_names = samplenames_to_run = list(set([sampleNameFromFilepath(fp) for fp in previously_run_filepaths]))
         #see if those filepaths will be run again or excluded
-        if a.mode=='apply_flatfield' :
+        if a.mode=='apply_flatfield' or filepaths_to_exclude is not None:
             if filepaths_to_exclude is None :
                 filepaths_to_exclude=[]
             filepaths_to_exclude+=previously_run_filepaths
