@@ -77,7 +77,7 @@ def getFilepathsAndSampleNamesToRun(a) :
         filepaths_to_exclude=set(filepaths_to_exclude)
         flatfield_logger.info(f'{len(filepaths_to_exclude)} total files will be excluded from the samples')
     #Otherwise the sample names are defined instead and we need to select rawfiles from them
-    elif a.sample_names is not None :
+    if a.prior_run_dir is None and a.sample_names is not None :
         #if they're defined in a file read them from there
         if '.txt' in a.sample_names :
             if not os.path.isfile(a.sample_names) :
