@@ -4,13 +4,16 @@ def getlogger(module, root, samp, uselogfiles=False):
   logger = logging.getLogger(f"{module}.{root}.{samp}")
   logger.setLevel(logging.DEBUG)
 
-  formatter = logging.Formatter(f"{samp}, %(message)s, %(asctime)s")
+  formatter = logging.Formatter(f"{samp}, %(message)s, %(asctime)s", "%d-%b-%Y %H:%M:%S")
 
+  for _ in logger.handlers:
+    _.close()
   del logger.handlers[:]
 
   def filter(record):
     import pprint
-    if record.levelname in ("INFO", "WARNING", "ERROR"):
+    levelstoadd = ("INFO", "WARNING", "ERROR")
+    if record.levelname in levelstoadd and not record.msg.startswith(record.levelname+": "):
       record.msg = f"{record.levelname}: {record.msg}"
     if "," in record.msg:
       raise ValueError("log messages aren't supposed to have commas:\n\n"+record.msg)

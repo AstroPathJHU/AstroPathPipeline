@@ -88,23 +88,37 @@ class TestAlignment(unittest.TestCase):
       cls.__aligned.__exit__(None, None, None)
 
   def testAlignment(self):
-    a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
+    for log in thisfolder/"data"/"logfiles"/"align.log", thisfolder/"data"/"M21_1"/"logfiles"/"align.log":
+      if log.exists(): log.unlink()
+
+    a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", uselogfiles=True)
     a.getDAPI()
     a.align(debug=True)
     a.stitch(checkwriting=True)
-    for filename, cls, extrakwargs in (
-      ("M21_1_imstat.csv", ImageStats, {"pscale": a.pscale}),
-      ("M21_1_align.csv", AlignmentResult, {"pscale": a.pscale}),
-      ("M21_1_fields.csv", Field, {"pscale": a.pscale}),
-      ("M21_1_affine.csv", AffineEntry, {}),
-      ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "layer": a.layer, "nclip": a.nclip}),
-    ):
-      rows = readtable(thisfolder/"data"/"M21_1"/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-      targetrows = readtable(thisfolder/"alignmentreference"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-      for row, target in itertools.zip_longest(rows, targetrows):
-        assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
-    self.__savealigned()
+    try:
+      for filename, cls, extrakwargs in (
+        ("M21_1_imstat.csv", ImageStats, {"pscale": a.pscale}),
+        ("M21_1_align.csv", AlignmentResult, {"pscale": a.pscale}),
+        ("M21_1_fields.csv", Field, {"pscale": a.pscale}),
+        ("M21_1_affine.csv", AffineEntry, {}),
+        ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "layer": a.layer, "nclip": a.nclip}),
+      ):
+        rows = readtable(thisfolder/"data"/"M21_1"/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        targetrows = readtable(thisfolder/"alignmentreference"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        for row, target in itertools.zip_longest(rows, targetrows):
+          assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+    finally:
+      self.__savealigned()
+
+    for ref, new in (
+      (thisfolder/"alignmentreference"/"mainlog.log", thisfolder/"data"/"logfiles"/"align.log"),
+      (thisfolder/"alignmentreference"/"samplelog.log", thisfolder/"data"/"M21_1"/"logfiles"/"align.log"),
+    ):
+      with open(ref) as fref, open(new) as fnew:
+        refcontents = os.linesep.join([line.rsplit(",", 1)[0] for line in fref.read().splitlines()])+os.linesep
+        newcontents = os.linesep.join([line.rsplit(",", 1)[0] for line in fnew.read().splitlines()])+os.linesep
+        self.assertEqual(newcontents, refcontents)
 
   def testAlignmentFastUnits(self):
     with units.setup_context("fast"):
