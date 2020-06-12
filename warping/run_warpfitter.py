@@ -1,7 +1,7 @@
 #imports 
 from .warpfitter import WarpFitter
 from ..alignment.alignmentset import AlignmentSet
-from ..utilities.misc import cd
+from ..utilities.misc import cd, split_csv_to_list, split_csv_to_list_of_ints
 from argparse import ArgumentParser
 from scipy import stats
 import os, copy, gc, logging, matplotlib.pyplot as plt, seaborn as sns
@@ -16,17 +16,6 @@ DEFAULT_CHUNKS   = '-999'
 REJECTED_OVERLAP_IMAGE_DIR_NAME = 'rejected_overlap_images'
 
 #################### HELPER FUNCTIONS ####################
-
-#parser callback function to split a string of comma-separated values into a list
-def split_csv_to_list(value) :
-    return value.split(',')
-
-#parser callback function to split a string of comma-separated values into a list of integers
-def split_csv_to_list_of_ints(value) :
-    try :
-        return [int(v) for v in value.split(',')]
-    except ValueError :
-        raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
 
 #helper function to make sure necessary directories exist and that the input choice of fixed parameters is valid
 def checkDirAndFixedArgs(args) :

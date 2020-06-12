@@ -1,6 +1,7 @@
 #imports
 from argparse import ArgumentParser
-from .run_warpfitter import getSampleOctets, checkDirAndFixedArgs, split_csv_to_list
+from .run_warpfitter import getSampleOctets, checkDirAndFixedArgs
+from ..utilities.misc import split_csv_to_list
 import os, random, multiprocessing as mp
 
 #function that gets passed to the multiprocessing pool just runs run_warpfitter.py
