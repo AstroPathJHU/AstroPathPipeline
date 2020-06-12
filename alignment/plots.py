@@ -7,7 +7,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from ..utilities import units
 from ..utilities.misc import floattoint, pullhist, weightedaverage, weightedstd
 
-logger = logging.getLogger("align")
+logger = logging.getLogger("alignmentplots")
 
 def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pixelsormicrons=None, pullkwargs={}, pullbinning=None):
   logger.info(alignmentset.samp)
