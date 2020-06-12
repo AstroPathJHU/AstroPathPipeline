@@ -22,9 +22,11 @@ def checkArgs(a) :
     #if the user is giving a list of samples, they must also specify where the rawfiles are
     if a.sample_names is not None and a.rawfile_top_dir is None :
         raise RuntimeError('ERROR: If sample names are given a rawfile location must also be specified through --rawfile_top_dir!')
-    #if the user wants to calculate the thresholds then they need to supply the dbload directory
-    if a.mode=='calculate_thresholds' and a.dbload_top_dir is None :
-        raise RuntimeError('ERROR: calculating background thresholds needs a dbload directory location specified through --dbload_top_dir!')
+    #if the user wants to calculate the thresholds, or exclude the edge HPFs, or they want to apply masking and haven't specified a threshold file directory,
+    # then they or (not a.allow_edge_HPFs) need to supply the dbload directory
+    if (a.mode=='calculate_thresholds' or (not a.allow_edge_HPFs) or (a.threshold_file_dir is None and not a.skip_masking)) and a.dbload_top_dir is None :
+        msg='ERROR: calculating background thresholds, or excluding edge HPFs, needs a dbload directory location specified through --dbload_top_dir!'
+        raise RuntimeError(msg)
     #if the user wants to apply a previously-calculated flatfield, the flatfield itself, and rawfile log, both have to exist in the prior run dir
     if a.mode=='apply_flatfield' :  
         if not os.path.isfile(os.path.join(a.prior_run_dir,f'{FLATFIELD_FILE_NAME_STEM}{FILE_EXT}')) :
@@ -99,13 +101,13 @@ def getFilepathsAndSampleNamesToRun(a) :
         rawfile_top_dir = os.path.join(*[fpp for fpp in fpsplit[:fpsplit.index(sampleNameFromFilepath(previously_run_filepaths[0]))]])
         if previously_run_filepaths[0].startswith(os.sep) :
             rawfile_top_dir=os.path.join(os.sep,rawfile_top_dir)
-        rawfile_top_dir = os.path.join(rawfile_top_dir,os.sep)
+        rawfile_top_dir = os.path.join(rawfile_top_dir,'')
     #make sure the rawfile (and dbload, if thresholds will be calculated) directories for each sample all exist first
     will_calculate_thresholds = (not a.skip_masking) and a.threshold_file_dir is None
     for sn in all_sample_names :
         if not os.path.isdir(os.path.join(rawfile_top_dir,sn)) :
             raise ValueError(f'ERROR: sample directory {os.path.join(rawfile_top_dir,sn)} does not exist!')
-        if will_calculate_thresholds :
+        if will_calculate_thresholds or (not a.allow_edge_HPFs) :
             if not os.path.isdir(os.path.join(a.dbload_top_dir,sn,'dbload')) :
                 raise ValueError(f"ERROR: dbload directory {os.path.join(a.dbload_top_dir,sn,'dbload')} for sample {sn} does not exist!")
     #get the (sorted) full list of file names in each sample to choose from
@@ -188,10 +190,7 @@ def main() :
                                    flatfield you want to apply to a different, orthogonal, set of files in the same samples
                                    [use this argument instead of defining a new set of samples]""")
     #mutually exclusive group for how to handle the thresholding
-    thresholding_group = parser.add_mutually_exclusive_group(required=True)
-    thresholding_group.add_argument('--dbload_top_dir',  
-                                    help="""Path to directory containing each of the [samplename]/dbload directories with *.csv files in them
-                                    [use this argument to calculate the background thresholds from scratch]""")
+    thresholding_group = parser.add_mutually_exclusive_group()
     thresholding_group.add_argument('--threshold_file_dir',
                                     help="""Path to the directory holding background threshold files created in previous runs for the samples in question
                                     [use this argument to re-use previously-calculated background thresholds]""")
@@ -203,12 +202,17 @@ def main() :
                                                      'how many images from the sample set should be used, how to choose them, and where to find them')
     file_selection_group.add_argument('--rawfile_top_dir',
                                       help='Path to directory containing each of the [samplename] directories with raw files in them')
-    file_selection_group.add_argument('--rawfile_ext',    default='.Data.dat',
+    file_selection_group.add_argument('--dbload_top_dir',
+                                      help="""Path to directory containing each of the [samplename]/dbload directories with *.csv files in them
+                                      (Needed to locate HPFs on the edge of the tissue)""")
+    file_selection_group.add_argument('--rawfile_ext',     default='.Data.dat',
                                       help='Extension of raw files to load (default is ".Data.dat")')
-    file_selection_group.add_argument('--max_images',     default=-1,       type=int,         
+    file_selection_group.add_argument('--max_images',      default=-1,       type=int,         
                                       help='Number of images to load from the inputted list of samples')
-    file_selection_group.add_argument('--selection_mode', default='random', choices=['random','first','last'],
+    file_selection_group.add_argument('--selection_mode',  default='random', choices=['random','first','last'],
                                       help='Select "first", "last", or "random" (default) n images (where n=max_images) from the sample group.')
+    file_selection_group.add_argument('--allow_edge_HPFs', action='store_true',
+                                      help="""Add this flag to allow HPFs on the tissue edges to be stacked (not allowed by default)""")
     #group for some run options
     run_option_group = parser.add_argument_group('run options','other options for this run')
     run_option_group.add_argument('--n_threads',                   default=10,  type=int,         
@@ -229,7 +233,7 @@ def main() :
     #get the image file dimensions from the .xml file
     dims = getImageHWLFromXMLFile(filepaths_to_run[0][:filepaths_to_run[0].find(sampleNameFromFilepath(filepaths_to_run[0]))],sample_names_to_run[0])
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.workingdir_name,args.skip_masking)
+    ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.dbload_top_dir,args.workingdir_name,args.skip_masking)
     #write out the text file of all the raw file paths that will be run
     ff_producer.writeFileLog()
     if args.mode=='choose_image_files' :
@@ -239,10 +243,10 @@ def main() :
         if args.threshold_file_dir is not None :
             ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
         elif args.dbload_top_dir is not None :
-            ff_producer.findBackgroundThresholds(all_filepaths,args.dbload_top_dir,args.n_threads)
+            ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
     if args.mode in ['make_flatfield', 'apply_flatfield'] :
         #mask and stack images together
-        ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_sample)
+        ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_sample,args.allow_edge_HPFs)
         if args.mode=='make_flatfield' :
             #make the flatfield image
             ff_producer.makeFlatField()

@@ -11,13 +11,15 @@ units.setup('fast')
 #main class definition
 class FlatfieldSample() :
 
-    def __init__(self,name,img_dims) :
+    def __init__(self,name,img_dims,dbload_dir) :
         """
         name          = name of the sample
         img_dims      = dimensions of images in files in order as (height, width, # of layers) 
+        dbload_dir    = path to the sample's dbload directory
         """
         self.name = name
         self.dims = img_dims
+        self.dbload_dir = dbload_dir
         self.background_thresholds_for_masking = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :
@@ -38,11 +40,10 @@ class FlatfieldSample() :
         if not len(self.background_thresholds_for_masking)==self.dims[-1] :
             raise FlatFieldError(f'ERROR: number of background thresholds read from {threshold_file_path} is not equal to the number of image layers!')
 
-    def findBackgroundThresholds(self,rawfile_paths,dbload_dir,n_threads,plotdir_path,threshold_file_name) :
+    def findBackgroundThresholds(self,rawfile_paths,n_threads,plotdir_path,threshold_file_name) :
         """
         Function to determine this sample's background pixel flux thresholds per layer
         rawfile_paths       = a list of the rawfile paths to consider for this sample's background threshold calculations
-        dbload_dir          = this sample's dbload directory 
         n_threads           = max number of threads/processes to open at once
         plotdir_path        = path to the directory in which to save plots from the thresholding process
         threshold_file_name = name of file to save background thresholds in, one line per layer
@@ -53,7 +54,7 @@ class FlatfieldSample() :
                 os.mkdir(plotdir_path.split(os.sep)[-1])
         #first find the filepaths corresponding to the edges of the tissue in the samples
         flatfield_logger.info(f'Finding tissue edge HPFs for sample {self.name}...')
-        tissue_edge_filepaths = self.__findTissueEdgeFilepaths(rawfile_paths,dbload_dir,plotdir_path)
+        tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,plotdir_path)
         #chunk them together to be read in parallel
         tissue_edge_fp_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self.dims,n_threads)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
@@ -138,12 +139,14 @@ class FlatfieldSample() :
                 for bgv in self.background_thresholds_for_masking :
                     tfp.write(f'{bgv}\n')
 
-    #################### PRIVATE HELPER FUNCTIONS ####################
-
-    #helper function to return the subset of the filepath list corresponding to HPFs on the edge of tissue
-    def __findTissueEdgeFilepaths(self,rawfile_paths,dbload_dir,plotdir_path) :
+    def findTissueEdgeFilepaths(self,rawfile_paths,plotdir_path=None) :
+        """
+        Return a list of filepaths corresponding to HPFs that are on the edge of the tissue
+        rawfile_paths = The list of filepaths that will be searched for those on the edge of the tissue
+        plotdir_path  = Add a valid directory to this argument to save a plot of where the edge HPFs are next to the reference qptiff
+        """
         #make the RectangleOverlapList 
-        rol = rectangleoverlaplist_fromcsvs(dbload_dir)
+        rol = rectangleoverlaplist_fromcsvs(self.dbload_dir)
         #get the list of sets of rectangle IDs by island
         samp_islands = rol.islands()
         edge_rect_filenames = [] #use this to return the list of tissue edge filepaths
@@ -186,19 +189,20 @@ class FlatfieldSample() :
         #make and save the plot of the edge field locations next to the qptiff for reference
         bulk_rect_xs = [r.x for r in rol.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
         bulk_rect_ys = [r.y for r in rol.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
-        with cd(plotdir_path) :
-            f,(ax1,ax2) = plt.subplots(1,2,figsize=(25.6,9.6))
-            ax1.scatter(edge_rect_xs,edge_rect_ys,marker='o',color='r',label='edges')
-            ax1.scatter(bulk_rect_xs,bulk_rect_ys,marker='o',color='b',label='bulk')
-            ax1.invert_yaxis()
-            ax1.set_title(f'{self.name} rectangles, ({len(edge_rect_xs)} edge and {len(bulk_rect_xs)} bulk) :',fontsize=18)
-            ax1.legend(loc='best',fontsize=18)
-            ax1.set_xlabel('x position',fontsize=18)
-            ax1.set_ylabel('y position',fontsize=18)
-            ax2.imshow(mpimg.imread(os.path.join(dbload_dir,f'{self.name}_qptiff.jpg')))
-            ax2.set_title('reference qptiff',fontsize=18)
-            plt.savefig(f'{self.name}_{RECTANGLE_LOCATION_PLOT_STEM}.png')
-            plt.close()
+        if plotdir_path is not None :
+            with cd(plotdir_path) :
+                f,(ax1,ax2) = plt.subplots(1,2,figsize=(25.6,9.6))
+                ax1.scatter(edge_rect_xs,edge_rect_ys,marker='o',color='r',label='edges')
+                ax1.scatter(bulk_rect_xs,bulk_rect_ys,marker='o',color='b',label='bulk')
+                ax1.invert_yaxis()
+                ax1.set_title(f'{self.name} rectangles, ({len(edge_rect_xs)} edge and {len(bulk_rect_xs)} bulk) :',fontsize=18)
+                ax1.legend(loc='best',fontsize=18)
+                ax1.set_xlabel('x position',fontsize=18)
+                ax1.set_ylabel('y position',fontsize=18)
+                ax2.imshow(mpimg.imread(os.path.join(self.dbload_dir,f'{self.name}_qptiff.jpg')))
+                ax2.set_title('reference qptiff',fontsize=18)
+                plt.savefig(f'{self.name}_{RECTANGLE_LOCATION_PLOT_STEM}.png')
+                plt.close()
         #return the list of the filepaths whose rectangles are on the edge of the tissue
         return [rfp for rfp in rawfile_paths if rfp.split(os.sep)[-1].split('.')[0] in edge_rect_filenames]
 

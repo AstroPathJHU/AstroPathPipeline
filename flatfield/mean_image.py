@@ -32,6 +32,7 @@ class MeanImage :
         self.smoothed_mean_image=None
         self.flatfield_image=None
         self.corrected_mean_image=None
+        self.smoothed_corrected_mean_image=None
 
     #################### PUBLIC FUNCTIONS ####################
 
