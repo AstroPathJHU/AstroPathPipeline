@@ -98,7 +98,7 @@ class AlignmentSet(RectangleOverlapCollection):
     self.xposition = self.constantsdict["xposition"]
     self.yposition = self.constantsdict["yposition"]
     self.nclip     = self.constantsdict["nclip"]
-    self.layer     = self.constantsdict["layer"]
+    self.layer     = 1
 
     self.batch = readtable(self.dbload/(self.samp+"_batch.csv"), Batch)
     self.scan  = f"Scan{self.batch[0].Scan:d}"
@@ -106,7 +106,7 @@ class AlignmentSet(RectangleOverlapCollection):
     #self.annotations = readtable(self.dbload/(self.samp+"_annotations.csv"), Annotation)
     #self.regions     = readtable(self.dbload/(self.samp+"_regions.csv"), Region)
     #self.vertices    = readtable(self.dbload/(self.samp+"_vertices.csv"), Vertex)
-    self.imagetable  = readtable(self.dbload/(self.samp+"_qptiff.csv"), QPTiffCsv, extrakwargs={"pscale": self.pscale})
+    #self.imagetable  = readtable(self.dbload/(self.samp+"_qptiff.csv"), QPTiffCsv, extrakwargs={"pscale": self.pscale})
     self.__image     = None
 
     self.__rectangles  = readtable(self.dbload/(self.samp+"_rect.csv"), Rectangle, extrakwargs={"pscale": self.pscale})

@@ -14,8 +14,8 @@ def getlogger(module, root, samp, uselogfiles=False):
     levelstoadd = ("INFO", "WARNING", "ERROR")
     if record.levelname in levelstoadd and not record.msg.startswith(record.levelname+": "):
       record.msg = f"{record.levelname}: {record.msg}"
-    if "," in record.msg:
-      raise ValueError("log messages aren't supposed to have commas:\n\n"+record.msg)
+    #if "," in record.msg:
+    #  raise ValueError("log messages aren't supposed to have commas:\n\n"+record.msg)
     return True
 
   printhandler = logging.StreamHandler()
