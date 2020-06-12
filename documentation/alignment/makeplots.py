@@ -156,7 +156,13 @@ def alignmentresults(*, bki, remake):
     "figurekwargs": {"figsize": (3, 3)},
   }
   with plt.rc_context(rc=rc):
-    for samp, name in ("M21_1", "vectra"), ("M1_1", "vectra-big"), ("TS19_0181_A_1_3_BMS_MITRE", "AKY"):
+    for samp, name in (
+      ("M21_1", "vectra"),
+      ("M1_1", "vectra-big"),
+      ("TS19_0181_A_1_3_BMS_MITRE", "AKY"),
+      ("PZ1", "JHUPolaris"),
+      ("ML1603474_BMS069_5_21", "BMS"),
+    ):
       if samp != "M21_1" and not bki: continue
       for tag in 1, 2, 3, 4:
         filename1, filename2 = here/f"alignment-result-{name}-{tag}.pdf", here/f"stitch-result-{name}-{tag}.pdf"
