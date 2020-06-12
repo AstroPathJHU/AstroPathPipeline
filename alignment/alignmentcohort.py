@@ -1,4 +1,4 @@
-import contextlib, dataclasses, pathlib, tempfile
+import argparse, contextlib, dataclasses, pathlib, re, tempfile
 from ..extractlayer.extractlayer import LayerExtractor, ShredderAndLayerExtractor
 from ..utilities.tableio import readtable
 from .alignmentset import AlignmentSet
@@ -16,7 +16,7 @@ class SampleDef:
   def __bool__(self):
     return bool(self.isGood)
 
-class AlignmentCohort:
+class AlignmentCohort(contextlib.ExitStack):
   def __init__(self, root1, root2, *, doshredding=False, dolayerextraction=False, filter=lambda sample: True):
     self.root1 = pathlib.Path(root1)
     self.root2 = pathlib.Path(root2) if root2 is not None else root2
@@ -46,7 +46,7 @@ class AlignmentCohort:
         alignmentset.logger.critical("FAILED: "+str(e).replace(",", ""))
         #alignmentset.logger.debug(traceback.format_exc())
 
-class AlignmentCohortTmpDir(AlignmentCohort, contextlib.ExitStack):
+class AlignmentCohortTmpDir(AlignmentCohort):
   def __init__(self, root1, *, tmpdirprefix, **kwargs):
     super().__init__(root1, root2=None, dolayerextraction=True, doshredding=True, **kwargs)
     self.tmpdirprefix = tmpdirprefix
@@ -63,3 +63,27 @@ class AlignmentCohortTmpDir(AlignmentCohort, contextlib.ExitStack):
     if self.root2 is None:
       raise RuntimeError("Have to use this in a context manager")
     super().run()
+
+if __name__ == "__main__":
+  p = argparse.ArgumentParser()
+  p.add_argument("root1")
+  p.add_argument("root2", nargs="?")
+  p.add_argument("--sampleregex", type=re.compile)
+  p.add_argument("--extractlayer", action="store_true")
+  p.add_argument("--shred", action="store_true")
+  args = p.parse_args()
+
+  kwargs = {"root1": args.root1}
+  if args.root2 is not None:
+    cls = AlignmentCohort
+    kwargs["root2"] = args.root2
+    kwargs["doshredding"] = args.shred
+    kwargs["dolayerextraction"] = args.extractlayer
+  else:
+    cls = AlignmentCohortTmpDir
+
+  if args.sampleregex is not None:
+    kwargs["filter"] = args.sampleregex.match
+
+  with cls(**kwargs) as cohort:
+    cohort.run()
