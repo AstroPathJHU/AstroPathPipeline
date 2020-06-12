@@ -1,4 +1,4 @@
-import logging, methodtools
+import logging
 
 def getlogger(module, root, samp, uselogfiles=False):
   logger = logging.getLogger(f"{module}.{root}.{samp}")
@@ -11,7 +11,6 @@ def getlogger(module, root, samp, uselogfiles=False):
   del logger.handlers[:]
 
   def filter(record):
-    import pprint
     levelstoadd = ("INFO", "WARNING", "ERROR")
     if record.levelname in levelstoadd and not record.msg.startswith(record.levelname+": "):
       record.msg = f"{record.levelname}: {record.msg}"

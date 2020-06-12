@@ -148,7 +148,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
 
   return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix)
 
-def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
+def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", logger=dummylogger):
   """
   \begin{align}
   -2 \ln L =&
