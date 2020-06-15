@@ -115,6 +115,8 @@ class FlatfieldProducer :
         Write out a text file of all the filenames that were added
         """
         flatfield_logger.info('Writing filepath text file....')
+        if not os.path.isdir(self.mean_image.workingdir_name) :
+            os.mkdir(self.mean_image.workingdir_name)
         with cd(self.mean_image.workingdir_name) :
             with open(FILEPATH_TEXT_FILE_NAME,'w') as fp :
                 for path in self.all_sample_rawfile_paths_to_run :
