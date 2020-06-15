@@ -28,7 +28,7 @@ class Warp :
 
     def getHWLFromRaw(self,fname,nlayers=35) :
         """
-        Function to return a '.raw' binary file as an array of dimensions (height,width,nlayers) or (m,n,nlayers)
+        Function to return a '.Data.dat' binary file as an array of dimensions (height,width,nlayers) or (m,n,nlayers)
         """
         return getRawAsHWL(fname,self.m,self.n,nlayers)
 

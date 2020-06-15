@@ -19,17 +19,17 @@ REJECTED_OVERLAP_IMAGE_DIR_NAME = 'rejected_overlap_images'
 
 #helper function to make sure necessary directories exist and that the input choice of fixed parameters is valid
 def checkDirAndFixedArgs(args) :
-    #rawfile_dir/[sample] must exist
-    rawfile_dir = args.rawfile_dir if args.rawfile_dir.endswith(args.sample) else os.path.join(args.rawfile_dir,args.sample)
+    #rawfile_top_dir/[sample] must exist
+    rawfile_dir = os.path.join(args.rawfile_top_dir,args.sample)
     if not os.path.isdir(rawfile_dir) :
-        raise ValueError(f'rawfile_dir argument ({rawfile_dir}) does not point to a valid directory!')
-    #root1 dir must exist
-    if not os.path.isdir(args.root1_dir) :
-        raise ValueError(f'root1_dir argument ({args.root1_dir}) does not point to a valid directory!')
-    #root1 dir must be usable to find a metafile directory
-    metafile_dir = os.path.join(args.root1_dir,args.sample,'dbload')
+        raise ValueError(f'rawfile directory {rawfile_dir} does not exist!')
+    #dbload top dir must exist
+    if not os.path.isdir(args.dbload_top_dir) :
+        raise ValueError(f'dbload_top_dir argument ({args.dbload_top_dir}) does not point to a valid directory!')
+    #dbload top dir dir must be usable to find a metafile directory
+    metafile_dir = os.path.join(args.dbload_top_dir,args.sample,'dbload')
     if not os.path.isdir(metafile_dir) :
-        raise ValueError(f'root1_dir ({args.root1_dir}) does not contain "[sample name]/dbload" subdirectories!')
+        raise ValueError(f'dbload_top_dir ({args.dbload_top_dir}) does not contain "[sample name]/dbload" subdirectories!')
     #the parameter fixing string must correspond to some combination of options
     fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
     fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed
@@ -162,12 +162,12 @@ def getOverlaps(args) :
             overlaps=tuple(overlaps)
     #otherwise overlaps will have to be set after finding the octets and/or chunks
     else :
-        if args.root2_dir is None :
-            raise ValueError('A root2_dir must be specified if you want the code to determine the valid octets and/or chunks for this sample!')
-        if not os.path.isdir(args.root2_dir) :
-            raise ValueError(f'root2_dir {args.root2_dir} is not a valid directory!')
+        if args.fw01_top_dir is None :
+            raise ValueError('A fw01_top_dir must be specified if you want the code to determine the valid octets and/or chunks for this sample!')
+        if not os.path.isdir(args.fw01_top_dir) :
+            raise ValueError(f'fw01_top_dir {args.fw01_top_dir} is not a valid directory!')
         #get the dictionary of overlap octets
-        octets, whole_sample_meanimage = getSampleOctets(args.root1_dir,args.root2_dir,args.sample,args.working_dir,(args.mode=='show_octets' or args.mode=='show_chunks'))
+        octets, whole_sample_meanimage = getSampleOctets(args.dbload_top_dir,args.fw01_top_dir,args.sample,args.working_dir,(args.mode=='show_octets' or args.mode=='show_chunks'))
         if args.mode in ('fit', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
             for i,octet in enumerate([octets[key] for key in sorted(octets.keys())],start=1) :
                 if i in args.octets or args.octets==[-1]:
@@ -196,7 +196,7 @@ def getOverlaps(args) :
                     raise ValueError(msg)
     if whole_sample_meanimage is None :
         warp_logger.info("Loading an AlignmentSet to find the meanimage over the whole sample...")
-        a = AlignmentSet(args.root1_dir,args.root2_dir,args.sample)
+        a = AlignmentSet(args.dbload_top_dir,args.fw01_top_dir,args.sample)
         a.getDAPI()
         whole_sample_meanimage = a.meanimage
     return overlaps, copy.deepcopy(whole_sample_meanimage)
@@ -210,9 +210,9 @@ if __name__=='__main__' :
     #positional arguments
     parser.add_argument('mode',        help='Operation to perform', choices=['fit','show_octets','show_chunks','cProfile'])
     parser.add_argument('sample',      help='Name of the data sample to use')
-    parser.add_argument('rawfile_dir', help='Path to the directory containing the "[sample_name]/*.raw" files')
-    parser.add_argument('root1_dir',   help='Path to the directory containing "[sample name]/dbload" subdirectories')
-    parser.add_argument('root2_dir',   help='Path to the directory containing the "[sample_name]/*.fw01" files to use for initial alignment')
+    parser.add_argument('rawfile_top_dir', help='Path to the directory containing the "[sample_name]/*.Data.dat" files')
+    parser.add_argument('dbload_top_dir',   help='Path to the directory containing "[sample name]/dbload" subdirectories')
+    parser.add_argument('fw01_top_dir',   help='Path to the directory containing the "[sample_name]/*.fw01" files to use for initial alignment')
     #optional arguments
     parser.add_argument('--working_dir',          default='warpfit_test',
         help='Path to (or name of) the working directory that will be created')
@@ -264,8 +264,8 @@ if __name__=='__main__' :
     if args.mode in ('fit', 'cProfile') :
         #make the WarpFitter Objects
         warp_logger.info('Initializing WarpFitter')
-        rawfile_dir = args.rawfile_dir if args.rawfile_dir.endswith(args.sample) else os.path.join(args.rawfile_dir,args.sample)
-        metafile_dir = os.path.join(args.root1_dir,args.sample,'dbload')
+        rawfile_dir = os.path.join(args.rawfile_top_dir,args.sample)
+        metafile_dir = os.path.join(args.dbload_top_dir,args.sample,'dbload')
         fitter = WarpFitter(args.sample,rawfile_dir,metafile_dir,args.working_dir,overlaps,args.layer,whole_sample_meanimage)
         #load the raw files
         warp_logger.info('Loading raw files')

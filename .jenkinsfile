@@ -48,6 +48,12 @@ pipeline {
           }
         }
 
+	stage('flatfield') {
+	  steps {
+	    sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfield'
+	  }
+	}
+
         stage('code checks') {
           steps {
             sh 'python -m pyflakes .'

@@ -2,6 +2,7 @@
 from .warpset import WarpSet
 from ..alignment.alignmentset import AlignmentSet
 from ..prepdb.rectangle import rectangleoroverlapfilter
+from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, scipy, matplotlib.pyplot as plt
@@ -12,11 +13,8 @@ OVERLAP_FILE_EXT   = '_overlap.csv'
 RECTANGLE_FILE_EXT = '_rect.csv'
 IM3_EXT='.im3'
 IMM_EXT='.imm'
-RAW_EXT='.raw'
+RAW_EXT='.Data.dat'
 WARP_EXT='.camWarp_layer'
-IMM_FILE_X_SIZE='sizeX'
-IMM_FILE_Y_SIZE='sizeY'
-IMM_FILE_Z_SIZE='sizeC'
 MICROSCOPE_OBJECTIVE_FOCAL_LENGTH=40000. # 20mm in pixels
 PARNAMELIST=['cx','cy','fx','fy','k1','k2','p1','p2','k3']
 
@@ -40,7 +38,7 @@ class WarpFitter :
     def __init__(self,samplename,rawfile_dir,metafile_dir,working_dir,overlaps=-1,layer=1,meanimage=None,warpset=None,warp=None) :
         """
         samplename   = name of the microscope data sample to fit to ("M21_1" or equivalent)
-        rawfile_dir  = path to directory containing multilayered ".raw" files
+        rawfile_dir  = path to directory containing multilayered ".Data.dat" files
         metafile_dir = path to directory containing "dbload" metadata files (assuming at least a "rect.csv" and "overlap.csv")
         working_dir  = path to some local directory to store files produced by the WarpFitter
         overlaps     = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
@@ -69,7 +67,7 @@ class WarpFitter :
         #get the list of raw file paths
         self.rawfile_paths = [os.path.join(self.rawfile_dir,fn.replace(IM3_EXT,RAW_EXT)) for fn in [r.file for r in self.rectangles]]
         #get the size of the images in the sample
-        self.n, self.m, self.nlayers = self.__getImageSizesFromImmFile()
+        self.n, self.m, self.nlayers = getImageHWLFromXMLFile(rawfile_dir[:rawfile_dir.find(samplename)],samplename)
         if layer<1 or layer>self.nlayers :
             raise FittingError(f'Choice of layer ({layer}) is not valid for images with {self.nlayers} layers!')
         #make the warpset object to use
@@ -392,16 +390,6 @@ class WarpFitter :
     def __setupWorkingDirectory(self) :
         if not os.path.isdir(self.working_dir) :
             os.mkdir(self.working_dir)
-
-    # helper function to return the (x,y) size of the images read from the .imm file 
-    def __getImageSizesFromImmFile(self) :
-        first_immfile_path = os.path.join(self.rawfile_dir,self.rectangles[0].file.replace(IM3_EXT,IMM_EXT))
-        with open(first_immfile_path) as fp :
-            lines=fp.readlines()
-        n=int([line.rstrip().split()[1] for line in lines if line.rstrip().split()[0]==IMM_FILE_X_SIZE][0])
-        m=int([line.rstrip().split()[1] for line in lines if line.rstrip().split()[0]==IMM_FILE_Y_SIZE][0])
-        z=int([line.rstrip().split()[1] for line in lines if line.rstrip().split()[0]==IMM_FILE_Z_SIZE][0])
-        return n,m,z
 
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
     def __initializeAlignmentSet(self, *, overlaps) :
