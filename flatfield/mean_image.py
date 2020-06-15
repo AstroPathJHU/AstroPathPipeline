@@ -1,14 +1,54 @@
 #imports
-from .config import *
-from .utilities import smoothImageWorker
+from .utilities import flatfield_logger, smoothImageWorker
+from .config import CONST 
 from ..utilities.img_file_io import getRawAsHWL, writeImageToFile
-import matplotlib.pyplot as plt, multiprocessing as mp
-import statistics, copy
+from ..utilities.misc import cd
+import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
+import cv2, os, copy
 
 class MeanImage :
     """
-    Class to hold an image that is the mean of a bunch of stacked raw images 
+    Class representing an image that is the mean of a bunch of stacked raw images 
     """
+
+    #################### PROPERTIES ####################
+    @property
+    def workingdir_name(self):
+        return self._workingdir_name #name of the working directory where everything gets saved
+    
+    #################### CLASS CONSTANTS ####################
+
+    #outputted images
+    IMG_DTYPE_OUT                                = np.float64                        #datatype for the main output images
+    MEAN_IMAGE_FILE_NAME_STEM                    = 'mean_image'                      #name of the outputted mean image file
+    SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM           = 'smoothed_mean_image'             #name of the outputted smoothed mean image file
+    CORRECTED_MEAN_IMAGE_FILE_NAME_STEM          = 'corrected_mean_image'            #name of the outputted corrected mean image file
+    SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM = 'smoothed_corrected_mean_image'   #name of the outputted smoothed corrected mean image file
+    MASK_STACK_FILE_NAME_STEM                    = 'mask_stack'                      #name of the outputted mask stack file
+    APPLIED_FLATFIELD_TEXT_FILE_NAME             = 'applied_flatfield_file_path.txt' #name of the text file to write out the applied flatfield file path
+    #postrun plot directory
+    POSTRUN_PLOT_DIRECTORY_NAME = 'postrun_plots' #name of directory to hold postrun plots (pixel intensity, image layers, etc.)
+    #image layer plots
+    IMAGE_LAYER_PLOT_DIRECTORY_NAME = 'image_layer_pngs' #name of directory to hold image layer plots within postrun plot directory
+    IMG_LAYER_FIG_WIDTH             = 6.4                #width of image layer figures created in inches
+    #pixel intensity plots
+    PIXEL_INTENSITY_PLOT_NAME = 'pixel_intensity_plot.png' #name of the pixel intensity plot
+    LAST_FILTER_LAYERS        = [9,18,25,32]               #last image layers of each broadband filter for 35-layer images
+    INTENSITY_FIG_WIDTH       = 16.8                       #width of the intensity plot figure
+    #images stacked per layer
+    N_IMAGES_STACKED_PER_LAYER_PLOT_NAME      = 'n_images_stacked_per_layer.png' #name of the images stacked per layer plot
+    N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME = 'n_images_stacked_per_layer.txt' #name of the images stacked per layer text file
+    #masking plots
+    MASKING_PLOT_DIR_NAME = 'masking_plots' #name of the masking plot directory
+    MASKING_PLOT_FIG_SIZE = (12.8,18.4)     #size of the outputted masking plot
+    #masking morphology transformations
+    CO1_EL            = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))   #element for first close/open (and final, repeated, open)
+    CO2_EL            = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(16,16)) #element for second close/open
+    C3_EL             = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45)) #element for large-scale close
+    OPEN_3_ITERATIONS = 3                                                    #number of iterations for final small-scale open
+
+    #################### PUBLIC FUNCTIONS ####################
+
     def __init__(self,y,x,nlayers,workingdir_name,skip_masking=False,smoothsigma=100) :
         """
         y               = image height in pixels
@@ -20,12 +60,12 @@ class MeanImage :
         """
         self.dims=(y,x,nlayers)
         self.nlayers = nlayers
-        self.workingdir_name = workingdir_name
+        self._workingdir_name = workingdir_name
         self.skip_masking = skip_masking
         self.smoothsigma = smoothsigma
         self.image_stack = np.zeros((y,x,nlayers),dtype=np.uint32) #WARNING: may overflow if more than 65,535 images are stacked 
         self.mask_stack  = np.zeros((y,x,nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 masks are stacked 
-        self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=IMG_DTYPE_OUT)
+        self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=self.IMG_DTYPE_OUT)
         self.n_images_read = 0
         self.n_images_stacked_by_layer = np.zeros((nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 images are stacked 
         self.mean_image=None
@@ -33,8 +73,6 @@ class MeanImage :
         self.flatfield_image=None
         self.corrected_mean_image=None
         self.smoothed_corrected_mean_image=None
-
-    #################### PUBLIC FUNCTIONS ####################
 
     def addGroupOfImages(self,im_array_list,sample,min_selected_pixels,masking_plot_indices=[]) :
         """
@@ -54,6 +92,10 @@ class MeanImage :
                 self.n_images_stacked_by_layer+=1
             return
         #otherwise produce the image masks, apply them to the raw images, and be sure to add them to the list in the same order as the images
+        with cd(self._workingdir_name) :
+            if not os.path.isdir(self.MASKING_PLOT_DIR_NAME) :
+                os.mkdir(self.MASKING_PLOT_DIR_NAME)
+        masking_plot_dirpath = os.path.join(self._workingdir_name,self.MASKING_PLOT_DIR_NAME)
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
@@ -62,7 +104,7 @@ class MeanImage :
             flatfield_logger.info(f'  masking and adding image {stack_i} to the stack....')
             make_plots=i in masking_plot_indices
             p = mp.Process(target=getImageMaskWorker, 
-                           args=(im_array,sample.background_thresholds_for_masking,stack_i,min_selected_pixels,make_plots,self.workingdir_name,return_dict))
+                           args=(im_array,sample.background_thresholds_for_masking,min_selected_pixels,make_plots,masking_plot_dirpath,stack_i,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
@@ -95,46 +137,46 @@ class MeanImage :
         """
         self.mean_image = self.__makeMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
-        flatfield_image=getRawAsHWL(flatfield_file_path,*(self.dims),dtype=IMG_DTYPE_OUT)
+        flatfield_image=getRawAsHWL(flatfield_file_path,*(self.dims),dtype=self.IMG_DTYPE_OUT)
         self.corrected_mean_image=self.mean_image/flatfield_image
         self.smoothed_corrected_mean_image=smoothImageWorker(self.corrected_mean_image,self.smoothsigma)
-        with cd(self.workingdir_name) :
-            with open(APPLIED_FLATFIELD_TEXT_FILE_NAME,'w') as fp :
+        with cd(self._workingdir_name) :
+            with open(self.APPLIED_FLATFIELD_TEXT_FILE_NAME,'w') as fp :
                 fp.write(f'{flatfield_file_path}\n')
 
     def saveImages(self) :
         """
         Save the various images that are created
         """
-        with cd(self.workingdir_name) :
+        with cd(self._workingdir_name) :
             if self.mean_image is not None :
-                meanimage_filename = f'{MEAN_IMAGE_FILE_NAME_STEM}{FILE_EXT}'
-                writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=IMG_DTYPE_OUT)
+                meanimage_filename = f'{self.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
+                writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=self.IMG_DTYPE_OUT)
             if self.smoothed_mean_image is not None :
-                smoothed_meanimage_filename = f'{SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{FILE_EXT}'
-                writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=IMG_DTYPE_OUT)
+                smoothed_meanimage_filename = f'{self.SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
+                writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=self.IMG_DTYPE_OUT)
             if self.flatfield_image is not None :
-                flatfieldimage_filename = f'{FLATFIELD_FILE_NAME_STEM}{FILE_EXT}'
-                writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=IMG_DTYPE_OUT)
+                flatfieldimage_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}{CONST.FILE_EXT}'
+                writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=self.IMG_DTYPE_OUT)
             if self.corrected_mean_image is not None :
-                corrected_mean_image_filename = f'{CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{FILE_EXT}'
-                writeImageToFile(np.transpose(self.corrected_mean_image,(2,1,0)),corrected_mean_image_filename,dtype=IMG_DTYPE_OUT)
+                corrected_mean_image_filename = f'{self.CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
+                writeImageToFile(np.transpose(self.corrected_mean_image,(2,1,0)),corrected_mean_image_filename,dtype=self.IMG_DTYPE_OUT)
             if self.smoothed_corrected_mean_image is not None :
-                smoothed_corrected_mean_image_filename = f'{SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{FILE_EXT}'
-                writeImageToFile(np.transpose(self.smoothed_corrected_mean_image,(2,1,0)),smoothed_corrected_mean_image_filename,dtype=IMG_DTYPE_OUT)
+                smoothed_corrected_mean_image_filename = f'{self.SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
+                writeImageToFile(np.transpose(self.smoothed_corrected_mean_image,(2,1,0)),smoothed_corrected_mean_image_filename,dtype=self.IMG_DTYPE_OUT)
             #if masks were calculated, save the stack of them
             if (not self.skip_masking) and (self.mask_stack is not None) :
-                writeImageToFile(np.transpose(self.mask_stack,(2,1,0)),f'{MASK_STACK_FILE_NAME_STEM}{FILE_EXT}',dtype=np.uint16)
+                writeImageToFile(np.transpose(self.mask_stack,(2,1,0)),f'{self.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}',dtype=np.uint16)
 
     def savePlots(self) :
         """
         Make and save several visualizations of the image layers and details of the masking and flatfielding
         """
-        with cd(self.workingdir_name) :
+        with cd(self._workingdir_name) :
             #make the plot directory if its not already created
-            if not os.path.isdir(POSTRUN_PLOT_DIRECTORY_NAME) :
-                os.mkdir(POSTRUN_PLOT_DIRECTORY_NAME)
-            with cd(POSTRUN_PLOT_DIRECTORY_NAME) :
+            if not os.path.isdir(self.POSTRUN_PLOT_DIRECTORY_NAME) :
+                os.mkdir(self.POSTRUN_PLOT_DIRECTORY_NAME)
+            with cd(self.POSTRUN_PLOT_DIRECTORY_NAME) :
                 #.pngs of the mean image, flatfield, and mask stack layers
                 self.__saveImageLayerPlots()
                 #plots of the minimum and and maximum (and 5/95%ile) pixel intensities
@@ -164,11 +206,11 @@ class MeanImage :
 
     #helper function to make and save the .png images of the mean image, flatfield, and mask stack layers
     def __saveImageLayerPlots(self) :
-        if not os.path.isdir(IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
-            os.mkdir(IMAGE_LAYER_PLOT_DIRECTORY_NAME)
-        with cd(IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
+        if not os.path.isdir(self.IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
+            os.mkdir(self.IMAGE_LAYER_PLOT_DIRECTORY_NAME)
+        with cd(self.IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
             #figure out the size of the figures to save
-            fig_size=(IMG_LAYER_FIG_WIDTH,IMG_LAYER_FIG_WIDTH*(self.mean_image.shape[0]/self.mean_image.shape[1]))
+            fig_size=(self.IMG_LAYER_FIG_WIDTH,self.IMG_LAYER_FIG_WIDTH*(self.mean_image.shape[0]/self.mean_image.shape[1]))
             #iterate over the layers
             for layer_i in range(self.nlayers) :
                 layer_titlestem = f'layer {layer_i+1}'
@@ -230,7 +272,7 @@ class MeanImage :
         ff_low_pixel_intensities=[]
         ff_max_pixel_intensities=[]
         ff_high_pixel_intensities=[]
-        plt.figure(figsize=INTENSITY_FIG_SIZE)
+        plt.figure(figsize=(self.INTENSITY_FIG_WIDTH,(27./64.)*self.INTENSITY_FIG_WIDTH))
         xaxis_vals = list(range(1,self.nlayers+1))
         #iterate over the layers
         for layer_i in range(self.nlayers) :
@@ -247,9 +289,9 @@ class MeanImage :
                 plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-stddev,1.+stddev,1.+stddev,1.-stddev],'mediumseagreen',alpha=0.5)
         #plot the relative intensity plots together, with the broadband filter breaks
         plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='mediumseagreen',linestyle='dashed',label='mean intensity')
-        for i in range(len(LAST_FILTER_LAYERS)+1) :
-            f_i = 0 if i==0 else LAST_FILTER_LAYERS[i-1]
-            l_i = xaxis_vals[-1] if i==len(LAST_FILTER_LAYERS) else LAST_FILTER_LAYERS[i]
+        for i in range(len(self.LAST_FILTER_LAYERS)+1) :
+            f_i = 0 if i==0 else self.LAST_FILTER_LAYERS[i-1]
+            l_i = xaxis_vals[-1] if i==len(self.LAST_FILTER_LAYERS) else self.LAST_FILTER_LAYERS[i]
             if i==0 :
                 plt.plot(xaxis_vals[f_i:l_i],ff_min_pixel_intensities[f_i:l_i],color='darkblue',marker='o',label='minimum intensity')
                 plt.plot(xaxis_vals[f_i:l_i],ff_low_pixel_intensities[f_i:l_i],color='royalblue',marker='o',linestyle='dotted',label=r'5th %ile intensity')
@@ -261,15 +303,15 @@ class MeanImage :
                 plt.plot(xaxis_vals[f_i:l_i],ff_low_pixel_intensities[f_i:l_i],color='royalblue',marker='o',linestyle='dotted')
                 plt.plot(xaxis_vals[f_i:l_i],ff_max_pixel_intensities[f_i:l_i],color='darkred',marker='o')
                 plt.plot(xaxis_vals[f_i:l_i],ff_high_pixel_intensities[f_i:l_i],color='lightcoral',marker='o',linestyle='dotted')
-                if i!=len(LAST_FILTER_LAYERS) :
+                if i!=len(self.LAST_FILTER_LAYERS) :
                     plt.plot([l_i+0.5,l_i+0.5],[min(ff_min_pixel_intensities)-0.01,max(ff_max_pixel_intensities)+0.01],color='black',linewidth=2,linestyle='dotted')
-        plt.title(f'flatfield image layer normalized pixel intensities',fontsize=14)
+        plt.title('flatfield image layer normalized pixel intensities',fontsize=14)
         plt.xlabel('layer number',fontsize=14)
         #fix the range on the x-axis to accommodate the legend
         plt.xlim(0,self.nlayers+10)
         plt.ylabel('pixel intensity',fontsize=14)
         plt.legend(loc='best')
-        plt.savefig(PIXEL_INTENSITY_PLOT_NAME)
+        plt.savefig(self.PIXEL_INTENSITY_PLOT_NAME)
         plt.close()
 
     #helper function to plot how the average intensities of the mean image change in each layer after application of the flatfield corrections
@@ -277,7 +319,7 @@ class MeanImage :
         #keep track of the uncorrected and corrected images' minimum and maximum (and 5/95%ile) pixel intensities while the other plots are made
         u_min_pixel_intensities=[]; u_low_pixel_intensities=[]; u_max_pixel_intensities=[]; u_high_pixel_intensities=[]
         c_min_pixel_intensities=[]; c_low_pixel_intensities=[]; c_max_pixel_intensities=[]; c_high_pixel_intensities=[]
-        plt.figure(figsize=INTENSITY_FIG_SIZE)
+        plt.figure(figsize=(self.INTENSITY_FIG_WIDTH,(27./64.)*self.INTENSITY_FIG_WIDTH))
         xaxis_vals = list(range(1,self.nlayers+1))
         #iterate over the layers
         for layer_i in range(self.nlayers) :
@@ -300,9 +342,9 @@ class MeanImage :
         plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='darkgreen',linestyle='dashed',label='mean')
         totalmin=min(min(u_min_pixel_intensities),min(c_min_pixel_intensities))
         totalmax=max(max(u_max_pixel_intensities),max(c_max_pixel_intensities))
-        for i in range(len(LAST_FILTER_LAYERS)+1) :
-            f_i = 0 if i==0 else LAST_FILTER_LAYERS[i-1]
-            l_i = xaxis_vals[-1] if i==len(LAST_FILTER_LAYERS) else LAST_FILTER_LAYERS[i]
+        for i in range(len(self.LAST_FILTER_LAYERS)+1) :
+            f_i = 0 if i==0 else self.LAST_FILTER_LAYERS[i-1]
+            l_i = xaxis_vals[-1] if i==len(self.LAST_FILTER_LAYERS) else self.LAST_FILTER_LAYERS[i]
             if i==0 :
                 plt.plot(xaxis_vals[f_i:l_i],u_min_pixel_intensities[f_i:l_i],color='darkred',marker='v',label='uncorrected min.')
                 plt.plot(xaxis_vals[f_i:l_i],u_low_pixel_intensities[f_i:l_i],color='lightcoral',marker='v',linestyle='dotted',label=r'uncorrected 5th %ile')
@@ -322,15 +364,15 @@ class MeanImage :
                 plt.plot(xaxis_vals[f_i:l_i],c_low_pixel_intensities[f_i:l_i],color='royalblue',marker='v',linestyle='dotted')
                 plt.plot(xaxis_vals[f_i:l_i],c_max_pixel_intensities[f_i:l_i],color='darkblue',marker='^')
                 plt.plot(xaxis_vals[f_i:l_i],c_high_pixel_intensities[f_i:l_i],color='royalblue',marker='^',linestyle='dotted')
-                if i!=len(LAST_FILTER_LAYERS) :
+                if i!=len(self.LAST_FILTER_LAYERS) :
                     plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.1,totalmax+0.1],color='black',linewidth=2,linestyle='dotted')
-        plt.title(f'uncorrected/corrected smoothed mean image relative pixel intensities',fontsize=14)
+        plt.title('uncorrected/corrected smoothed mean image relative pixel intensities',fontsize=14)
         plt.xlabel('layer number',fontsize=14)
         #fix the range on the x-axis to accommodate the legend
         plt.xlim(0,self.nlayers+10)
         plt.ylabel('pixel intensity relative to layer mean',fontsize=14)
         plt.legend(loc='best')
-        plt.savefig(PIXEL_INTENSITY_PLOT_NAME)
+        plt.savefig(self.PIXEL_INTENSITY_PLOT_NAME)
         plt.close()
 
     #helper function to plot and save how many images ended up being stacked in each layer of the meanimage
@@ -338,21 +380,21 @@ class MeanImage :
         xvals = list(range(1,self.nlayers+1))
         plt.plot([xvals[0],xvals[-1]],[self.n_images_read,self.n_images_read],linewidth=2,color='k',label=f'total images read ({self.n_images_read})')
         plt.plot(xvals,self.n_images_stacked_by_layer,marker='o',linewidth=2,label='n images stacked')
-        plt.title(f'Number of images selected to be stacked by layer')
+        plt.title('Number of images selected to be stacked by layer')
         plt.xlabel('image layer')
         plt.ylabel('number of images')
         plt.legend(loc='best')
-        plt.savefig(N_IMAGES_STACKED_PER_LAYER_PLOT_NAME)
+        plt.savefig(self.N_IMAGES_STACKED_PER_LAYER_PLOT_NAME)
         plt.close()
-        with open(N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME,'w') as fp :
+        with open(self.N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME,'w') as fp :
             for li in range(self.nlayers) :
                 fp.write(f'{self.n_images_stacked_by_layer[li]}\n')
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
 #helper function to create a layered binary image mask for a given image array
-#this can be run in parallel
-def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_plots,workingdir_name,return_dict) :
+#this can be run in parallel with a given index and return dict
+def getImageMaskWorker(im_array,thresholds_per_layer,min_selected_pixels,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
     nlayers = im_array.shape[-1]
     #create a new mask
     init_image_mask = np.empty(im_array.shape,np.uint8)
@@ -362,24 +404,8 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_
     smoothed_image = smoothImageWorker(im_array,GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
     #if the thresholds haven't already been determined from the background, find them for all the layers by repeated Otsu thresholding
     if thresholds is None :
-        thresholds=[]
-        for li in range(nlayers) :
-            sm_layer_array = smoothed_image[:,:,li]
-            #rescale the image layer to 0-255 relative grayscale
-            rs = (1.*np.iinfo(init_image_mask.dtype).max/np.max(sm_layer_array))
-            im_layer_rescaled = (rs*sm_layer_array).astype('uint8')
-            #iterate calculating and applying the Otsu threshold values (can't be done on the GPU)
-            threshold=1000; iterations=0; bg_std = 100.; test_bg_std = 100.
-            while test_bg_std>MAX_BG_PIXEL_MEAN_NORM_STD_DEV :
-                test_threshold,_ = cv2.threshold(im_layer_rescaled[im_layer_rescaled<threshold],0,1,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-                test_threshold_rs = test_threshold/rs
-                bg_pixels = (sm_layer_array[sm_layer_array<test_threshold_rs]).flatten()
-                test_bg_std = np.std(bg_pixels)/np.mean(bg_pixels) if len(bg_pixels)>0 else 0
-                if iterations==0 or test_bg_std>0 :
-                    threshold = test_threshold
-                    bg_std = test_bg_std
-                    iterations+=1
-            thresholds.append(threshold/rs)
+        layer_hists=getImageArrayLayerHistograms(smoothed_image)
+        thresholds=findLayerThresholds(layer_hists)
     #for each layer, save the mask and its threshold
     for li in range(nlayers) :
         init_image_mask[:,:,li] = np.where(smoothed_image[:,:,li]>thresholds[li],1,0)
@@ -392,34 +418,31 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_
     open3_mask=cv2.UMat(np.empty_like(init_image_mask))
     #do the morphology transformations
     #small-scale close/open to remove noise and fill in small holes
-    cv2.morphologyEx(init_mask_umat,cv2.MORPH_CLOSE,CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,CO1_EL,co1_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(init_mask_umat,cv2.MORPH_CLOSE,self.CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,self.CO1_EL,co1_mask,borderType=cv2.BORDER_REPLICATE)
     #medium-scale close/open for the same reason with larger regions
-    cv2.morphologyEx(co1_mask,cv2.MORPH_CLOSE,CO2_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,CO2_EL,co2_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(co1_mask,cv2.MORPH_CLOSE,self.CO2_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,self.CO2_EL,co2_mask,borderType=cv2.BORDER_REPLICATE)
     #large close to define the bulk of the mask
-    cv2.morphologyEx(co2_mask,cv2.MORPH_CLOSE,C3_EL,close3_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(co2_mask,cv2.MORPH_CLOSE,self.C3_EL,close3_mask,borderType=cv2.BORDER_REPLICATE)
     #repeated small open to eat its edges and remove small regions outside of the bulk of the mask
-    cv2.morphologyEx(close3_mask,cv2.MORPH_OPEN,CO1_EL,open3_mask,iterations=OPEN_3_ITERATIONS,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(close3_mask,cv2.MORPH_OPEN,self.CO1_EL,open3_mask,iterations=self.OPEN_3_ITERATIONS,borderType=cv2.BORDER_REPLICATE)
     #the final mask is this last mask
     morphed_mask = open3_mask.get()
     #make the plots if requested
     if make_plots :
         flatfield_logger.info(f'Saving masking plots for image {i}')
         this_image_masking_plot_dirname = f'image_{i}_mask_layers'
-        with cd(workingdir_name) :
-            if not os.path.isdir(MASKING_PLOT_DIR_NAME) :
-                os.mkdir(MASKING_PLOT_DIR_NAME)
-            with cd(MASKING_PLOT_DIR_NAME) :
-                if not os.path.isdir(this_image_masking_plot_dirname) :
-                    os.mkdir(this_image_masking_plot_dirname)
-        masking_plot_dirpath = os.path.join(workingdir_name,MASKING_PLOT_DIR_NAME,this_image_masking_plot_dirname)
-        with cd(masking_plot_dirpath) :
+        with cd(plotdir_path) :
+            if not os.path.isdir(this_image_masking_plot_dirname) :
+                os.mkdir(this_image_masking_plot_dirname)
+        plotdir_path = os.path.join(plotdir_path,this_image_masking_plot_dirname)
+        with cd(plotdir_path) :
             co1_mask = co1_mask.get()
             co2_mask = co2_mask.get()
             close3_mask = close3_mask.get()
             for li in range(nlayers) :
-                f,ax = plt.subplots(4,2,figsize=MASKING_PLOT_FIG_SIZE)
+                f,ax = plt.subplots(4,2,figsize=self.MASKING_PLOT_FIG_SIZE)
                 im = im_array[:,:,li]
                 im_grayscale = im/np.max(im)
                 im = (np.clip(im,0,255)).astype('uint8')
@@ -447,5 +470,8 @@ def getImageMaskWorker(im_array,thresholds_per_layer,i,min_selected_pixels,make_
                 figname = f'image_{i}_layer_{li+1}_masks.png'
                 plt.savefig(figname)
                 plt.close()
-    #add the total mask to the dict, along with its initial thresholds and number of optimal Otsu iterations per layer
-    return_dict[i] = morphed_mask
+    if i is not None and return_dict is not None :
+        #add the total mask to the dict, along with its initial thresholds and number of optimal Otsu iterations per layer
+        return_dict[i] = morphed_mask
+    else :
+        return morphed_mask

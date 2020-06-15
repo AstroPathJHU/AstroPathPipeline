@@ -1,15 +1,23 @@
 #imports
 from .flatfield_sample import FlatfieldSample 
 from .mean_image import MeanImage
-from .config import *
-from .utilities import chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
-import random
+from .utilities import flatfield_logger, chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
+from .config import CONST
+from ..utilities.misc import cd
+import os, random
 
 #main class
 class FlatfieldProducer :
     """
     Main class used in producing the flatfield correction image
     """
+
+    #################### CLASS CONSTANTS ####################
+    
+    THRESHOLDING_PLOT_DIR_NAME = 'thresholding_info' #name of the directory where the thresholding information will be stored
+
+    #################### INIT FUNCTION ####################
+    
     def __init__(self,img_dims,sample_names,all_sample_rawfile_paths_to_run,dbload_top_dir,workingdir_name,skip_masking) :
         """
         img_dims                        = dimensions of images in files in order as (height, width, # of layers) 
@@ -32,12 +40,12 @@ class FlatfieldProducer :
     def readInBackgroundThresholds(self,threshold_file_dir) :
         """
         Function to read in previously-determined background thresholds for each sample
-        threshold_file_dir       = directory holding [samplename]_[config.THRESHOLD_TEXT_FILE_NAME_STEM] files to read thresholds 
+        threshold_file_dir       = directory holding [samplename]_[CONST.THRESHOLD_TEXT_FILE_NAME_STEM] files to read thresholds 
                                    from instead of finding them from the images themselves
         """
         #read each sample's list of background thresholds by layer
         for sn,samp in sorted(self.flatfield_sample_dict.items()) :
-            threshold_file_name = f'{sn}_{THRESHOLD_TEXT_FILE_NAME_STEM}'
+            threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
             threshold_file_path = os.path.join(threshold_file_dir,threshold_file_name)
             flatfield_logger.info(f'Copying background thresholds from file {threshold_file_path} for sample {sn}...')
             samp.readInBackgroundThresholds(threshold_file_path)
@@ -51,11 +59,11 @@ class FlatfieldProducer :
         """
         #make each sample's list of background thresholds by layer
         for sn,samp in sorted(self.flatfield_sample_dict.items()) :
-            threshold_file_name = f'{sn}_{THRESHOLD_TEXT_FILE_NAME_STEM}'
+            threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
             flatfield_logger.info(f'Finding background thresholds from tissue edges for sample {sn}...')
             samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
                                           n_threads,
-                                          os.path.join(self.mean_image.workingdir_name,THRESHOLDING_PLOT_DIR_NAME),
+                                          os.path.join(self.mean_image.workingdir_name,self.THRESHOLDING_PLOT_DIR_NAME),
                                           threshold_file_name,
                                           )
 
@@ -110,15 +118,17 @@ class FlatfieldProducer :
         flatfield_logger.info(f'Applying flatfield at {flatfield_file_path} to mean image....')
         self.mean_image.makeCorrectedMeanImage(flatfield_file_path)
 
-    def writeFileLog(self) :
+    def writeFileLog(self,filename) :
         """
         Write out a text file of all the filenames that were added
+        filename = name of the file to write to
         """
         flatfield_logger.info('Writing filepath text file....')
         with cd(self.mean_image.workingdir_name) :
-            with open(FILEPATH_TEXT_FILE_NAME,'w') as fp :
-                for path in self.all_sample_rawfile_paths_to_run :
-                    fp.write(f'{path}\n')
+            with open(filename,'w') as fp :
+                for sn,samp in sorted(self.flatfield_sample_dict.items()) :
+                    for path in [fp for fp in self.all_sample_rawfile_paths_to_run if sampleNameFromFilepath(fp)==sn] :
+                        fp.write(f'{path}\n')
 
     def writeOutInfo(self) :
         """
