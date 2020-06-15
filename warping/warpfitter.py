@@ -67,7 +67,7 @@ class WarpFitter :
         #get the list of raw file paths
         self.rawfile_paths = [os.path.join(self.rawfile_dir,fn.replace(IM3_EXT,RAW_EXT)) for fn in [r.file for r in self.rectangles]]
         #get the size of the images in the sample
-        self.n, self.m, self.nlayers = getImageHWLFromXMLFile(rawfile_dir[:rawfile_dir.find(samplename)],samplename)
+        self.n, self.m, self.nlayers = getImageHWLFromXMLFile(os.path.dirname(rawfile_dir),samplename)
         if layer<1 or layer>self.nlayers :
             raise FittingError(f'Choice of layer ({layer}) is not valid for images with {self.nlayers} layers!')
         #make the warpset object to use
