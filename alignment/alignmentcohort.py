@@ -1,21 +1,8 @@
 import argparse, contextlib, dataclasses, os, pathlib, re, tempfile
 from ..extractlayer.extractlayer import LayerExtractor, ShredderAndLayerExtractor
-from ..utilities.logging import getlogger
+from ..utilities.logging import getlogger, SampleDef
 from ..utilities.tableio import readtable
 from .alignmentset import AlignmentSet
-
-@dataclasses.dataclass
-class SampleDef:
-  SampleID: int
-  SlideID: str
-  Project: int
-  Cohort: int
-  Scan: int
-  BatchID: int
-  isGood: int
-
-  def __bool__(self):
-    return bool(self.isGood)
 
 class AlignmentCohort(contextlib.ExitStack):
   def __init__(self, root1, root2, *, doshredding=False, dolayerextraction=False, filter=lambda sample: True, debug=False):
@@ -36,14 +23,13 @@ class AlignmentCohort(contextlib.ExitStack):
     for sample in samples:
       if not sample: continue
       if not self.filter(sample): continue
-      samp = sample.SlideID
-      logger = getlogger("align", self.root1, samp, uselogfiles=True)
+      logger = getlogger("align", self.root1, sample, uselogfiles=True)
       try:
         if self.dolayerextraction:
-          with (ShredderAndLayerExtractor if self.doshredding else LayerExtractor)(self.root1, self.root2, samp, uselogfiles=True) as extractor:
+          with (ShredderAndLayerExtractor if self.doshredding else LayerExtractor)(self.root1, self.root2, sample, uselogfiles=True) as extractor:
             extractor.extractlayers(alreadyexistsstrategy="skip")
 
-        alignmentset = AlignmentSet(self.root1, self.root2, samp, uselogfiles=True)
+        alignmentset = AlignmentSet(self.root1, self.root2, sample, uselogfiles=True)
         alignmentset.getDAPI()
         alignmentset.align()
         alignmentset.stitch()

@@ -1,21 +1,50 @@
-import logging
+import dataclasses, logging
 
-def getlogger(module, root, samp, uselogfiles=False):
-  logger = logging.getLogger(f"{module}.{root}.{samp}")
+@dataclasses.dataclass
+class SampleDef:
+  SampleID: int
+  SlideID: str
+  Project: int
+  Cohort: int
+  Scan: int
+  BatchID: int
+  isGood: int
+
+  def __bool__(self):
+    return bool(self.isGood)
+
+def getlogger(module, root, samp, *, uselogfiles=False):
+  if isinstance(samp, SampleDef):
+    SampleID = samp.SampleID
+    SlideID = samp.SlideID
+    Project = samp.Project
+    Cohort = samp.Cohort
+  else:
+    SlideID = samp
+    SampleID = Project = Cohort = None
+
+  logger = logging.getLogger(f"{module}.{root}.{Project}.{Cohort}.{SlideID}")
   logger.setLevel(logging.DEBUG)
 
-  formatter = logging.Formatter(f"{samp}, %(message)s, %(asctime)s", "%d-%b-%Y %H:%M:%S")
+  if uselogfiles and Project is None:
+    raise ValueError("Have to give a SampleDef object when writing to log files")
+  formatter = logging.Formatter(
+    ";".join(f"{_}" for _ in (Project, Cohort, SampleID, SlideID, "%(message)s", "%(asctime)s") if _ is not None),
+    "%d-%b-%Y %H:%M:%S",
+  )
 
   for _ in logger.handlers:
     _.close()
   del logger.handlers[:]
 
   def filter(record):
-    levelstoadd = ("INFO", "WARNING", "ERROR")
+    levelstoadd = ("WARNING", "ERROR")
+    levelname = record.levelname
+    if levelname == "INFO": levelname = "WARNING"
     if record.levelname in levelstoadd and not record.msg.startswith(record.levelname+": "):
-      record.msg = f"{record.levelname}: {record.msg}"
-    #if "," in record.msg:
-    #  raise ValueError("log messages aren't supposed to have commas:\n\n"+record.msg)
+      record.msg = f"{levelname}: {record.msg}"
+    if ";" in record.msg:
+      raise ValueError("log messages aren't supposed to have semicolons:\n\n"+record.msg)
     return True
 
   printhandler = logging.StreamHandler()
@@ -32,11 +61,11 @@ def getlogger(module, root, samp, uselogfiles=False):
     mainhandler.setLevel(logging.WARNING)
     logger.addHandler(mainhandler)
 
-    (root/samp/"logfiles").mkdir(exist_ok=True)
-    samplehandler = logging.FileHandler(root/samp/"logfiles"/f"{module}.log")
+    (root/SlideID/"logfiles").mkdir(exist_ok=True)
+    samplehandler = logging.FileHandler(root/SlideID/"logfiles"/f"{module}.log")
     samplehandler.setFormatter(formatter)
     samplehandler.addFilter(filter)
-    samplehandler.setLevel(logging.DEBUG)
+    samplehandler.setLevel(logging.INFO)
     logger.addHandler(samplehandler)
 
   return logger
