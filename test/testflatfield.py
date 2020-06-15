@@ -23,24 +23,6 @@ filepaths_to_run = None
 with cd(os.path.join(rawfile_top_dir,samp)) :
 	filepaths_to_run = glob.glob(f'*{rawfile_ext}')
 
-
-    #begin by figuring out the background thresholds per layer by looking at the HPFs on the tissue edges
-    if not args.skip_masking :
-        if args.threshold_file_dir is not None :
-            ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
-        elif args.dbload_top_dir is not None :
-            ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
-    if args.mode in ['make_flatfield', 'apply_flatfield'] :
-        
-        if args.mode=='make_flatfield' :
-            #make the flatfield image
-            ff_producer.makeFlatField()
-        if args.mode=='apply_flatfield' :
-            
-        #save the plots, etc.
-        ff_producer.writeOutInfo()
-    flatfield_logger.info('All Done!')
-
 #get the image dimensions from the .xml file
 dims=getImageHWLFromXMLFile(rawfile_top_dir,samp)
 #make the FlatfieldProducer Object
