@@ -26,7 +26,7 @@ class AlignmentCohort(contextlib.ExitStack):
       logger = getlogger("align", self.root1, sample, uselogfiles=True)
       try:
         if self.dolayerextraction:
-          with (ShredderAndLayerExtractor if self.doshredding else LayerExtractor)(self.root1, self.root2, sample, uselogfiles=True) as extractor:
+          with (ShredderAndLayerExtractor if self.doshredding else LayerExtractor)(self.root1, self.root2, sample, uselogfiles=False) as extractor:
             extractor.extractlayers(alreadyexistsstrategy="skip")
 
         alignmentset = AlignmentSet(self.root1, self.root2, sample, uselogfiles=True)
@@ -34,7 +34,7 @@ class AlignmentCohort(contextlib.ExitStack):
         alignmentset.align()
         alignmentset.stitch()
       except Exception as e:
-        logger.critical("FAILED: "+str(e).replace(",", ""))
+        logger.error(str(e).replace(";", ","))
         #alignmentset.logger.debug(traceback.format_exc())
         if self.debug: raise
 

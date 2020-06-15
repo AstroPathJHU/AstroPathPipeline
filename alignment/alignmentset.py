@@ -318,7 +318,7 @@ class AlignmentSet(RectangleOverlapCollection):
       return None
 
   def __getrawlayers(self, filetype, keep=False):
-    self.logger.info("__getrawlayers")
+    self.logger.info("getrawlayers")
     if filetype=="flatWarpDAPI" :
       ext = f".fw{self.layer:02d}"
     elif filetype=="camWarpDAPI" :

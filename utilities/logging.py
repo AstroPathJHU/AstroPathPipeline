@@ -41,7 +41,7 @@ def getlogger(module, root, samp, *, uselogfiles=False):
     levelstoadd = ("WARNING", "ERROR")
     levelname = record.levelname
     if levelname == "INFO": levelname = "WARNING"
-    if record.levelname in levelstoadd and not record.msg.startswith(record.levelname+": "):
+    if levelname in levelstoadd and not record.msg.startswith(record.levelname+": "):
       record.msg = f"{levelname}: {record.msg}"
     if ";" in record.msg:
       raise ValueError("log messages aren't supposed to have semicolons:\n\n"+record.msg)
@@ -62,7 +62,7 @@ def getlogger(module, root, samp, *, uselogfiles=False):
     logger.addHandler(mainhandler)
 
     (root/SlideID/"logfiles").mkdir(exist_ok=True)
-    samplehandler = logging.FileHandler(root/SlideID/"logfiles"/f"{module}.log")
+    samplehandler = logging.FileHandler(root/SlideID/"logfiles"/f"{SlideID}-{module}.log")
     samplehandler.setFormatter(formatter)
     samplehandler.addFilter(filter)
     samplehandler.setLevel(logging.INFO)
