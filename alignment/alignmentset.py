@@ -2,7 +2,7 @@
 
 import cv2, methodtools, numpy as np, pathlib, traceback
 
-from ..prepdb.csvclasses import Batch, Constant, QPTiffCsv
+from ..prepdb.csvclasses import Batch, Constant
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangleoroverlapfilter
 from ..utilities import units
