@@ -6,7 +6,7 @@ from ..flatfield.utilities import flatfield_logger
 from ..flatfield.config import CONST
 from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.misc import cd
-import pathlib, glob, os
+import pathlib, glob, os, shutil
 
 #some constants
 folder = pathlib.Path(__file__).parent
@@ -38,4 +38,7 @@ ff_producer.makeFlatField()
 ff_producer.writeOutInfo()
 #apply the flatfield to the same image stack
 ff_producer.applyFlatField(os.path.join(working_dir,f'{CONST.FLATFIELD_FILE_NAME_STEM}{CONST.FILE_EXT}'))
+#remove what was made
+flatfield_logger.info('Removing working directory....')
+shutil.rmtree(working_dir,ignore_errors=True)
 flatfield_logger.info('All Done!')

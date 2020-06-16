@@ -2,7 +2,7 @@
 
 #imports
 from ..warping.warpfitter import WarpFitter
-import pathlib
+import pathlib, shutil
 
 #some constants
 folder = pathlib.Path(__file__).parent
@@ -40,4 +40,6 @@ result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,
 print(f'result:\n{result}')
 with open(working_dir/"warping_parameters.txt") as f:
   print(f.read())
+print('Removing working directory...')
+shutil.rmtree(working_dir,ignore_errors=True)
 print('Done!')
