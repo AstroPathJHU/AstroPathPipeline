@@ -301,11 +301,11 @@ class AlignmentSet(RectangleOverlapCollection):
     #try :
     #    api = rk.cluda.cuda_api()
     #except Exception :
-    #  logger.info('CUDA-based GPU API not available; will try to get one based on OpenCL instead.')
+    #  logger.info('CUDA-based GPU API not available, will try to get one based on OpenCL instead.')
     #  try :
     #    api = rk.cluda.ocl_api()
     #  except Exception :
-    #    logger.warningglobal('WARNING: Failed to create an OpenCL API; no GPU computation will be available!!')
+    #    logger.warningglobal('WARNING: Failed to create an OpenCL API, no GPU computation will be available!!')
     #    return None
     try :
       api = rk.cluda.ocl_api()
@@ -313,7 +313,7 @@ class AlignmentSet(RectangleOverlapCollection):
       return api.Thread.create(interactive=interactive)
     except Exception :
       if force: raise
-      self.logger.warningglobal('Failed to create an OpenCL API; no GPU computation will be available!!')
+      self.logger.warningglobal('Failed to create an OpenCL API, no GPU computation will be available!!')
       return None
 
   def __getrawlayers(self, filetype, keep=False):

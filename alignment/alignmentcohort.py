@@ -1,4 +1,4 @@
-import argparse, contextlib, dataclasses, os, pathlib, re, tempfile, traceback
+import argparse, contextlib, os, pathlib, re, tempfile, traceback
 from ..extractlayer.extractlayer import LayerExtractor, ShredderAndLayerExtractor
 from ..utilities.logging import getlogger, SampleDef
 from ..utilities.tableio import readtable

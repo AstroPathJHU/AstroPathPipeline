@@ -3,6 +3,7 @@ from ..alignment.alignmentset import AlignmentSet, ImageStats
 from ..alignment.overlap import AlignmentResult
 from ..alignment.field import Field, FieldOverlap
 from ..alignment.stitch import AffineEntry
+from ..utilities.logging import SampleDef
 from ..utilities.tableio import readtable
 from ..utilities import units
 
@@ -88,10 +89,7 @@ class TestAlignment(unittest.TestCase):
       cls.__aligned.__exit__(None, None, None)
 
   def testAlignment(self):
-    for log in thisfolder/"data"/"logfiles"/"align.log", thisfolder/"data"/"M21_1"/"logfiles"/"align.log":
-      if log.exists(): log.unlink()
-
-    a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", uselogfiles=True)
+    a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
     a.getDAPI()
     a.align(debug=True)
     a.stitch(checkwriting=True)
@@ -110,15 +108,6 @@ class TestAlignment(unittest.TestCase):
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
     finally:
       self.__savealigned()
-
-    for ref, new in (
-      (thisfolder/"alignmentreference"/"mainlog.log", thisfolder/"data"/"logfiles"/"align.log"),
-      (thisfolder/"alignmentreference"/"samplelog.log", thisfolder/"data"/"M21_1"/"logfiles"/"align.log"),
-    ):
-      with open(ref) as fref, open(new) as fnew:
-        refcontents = os.linesep.join([line.rsplit(",", 1)[0] for line in fref.read().splitlines()])+os.linesep
-        newcontents = os.linesep.join([line.rsplit(",", 1)[0] for line in fnew.read().splitlines()])+os.linesep
-        self.assertEqual(newcontents, refcontents)
 
   def testAlignmentFastUnits(self):
     with units.setup_context("fast"):
