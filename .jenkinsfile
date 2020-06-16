@@ -42,13 +42,21 @@ pipeline {
         }
 
         stage('warping') {
-          steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
+	  stages {
+	    stage('test warping') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
+	      }
+	    }
+	    stage('test warpfitter') {
+	      steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
+              }
+	    }
           }
         }
 
-	stage('flatfield') {
+	stage('test flatfield') {
 	  steps {
 	    sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfield'
 	  }
