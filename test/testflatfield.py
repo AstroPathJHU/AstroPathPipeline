@@ -39,6 +39,8 @@ ff_producer.makeFlatField()
 ff_producer.writeOutInfo()
 #apply the flatfield to the same image stack
 ff_producer.applyFlatField(os.path.join(working_dir,f'{CONST.FLATFIELD_FILE_NAME_STEM}{CONST.FILE_EXT}'))
+#save the plots, etc.
+ff_producer.writeOutInfo()
 #this should result in 1s everywhere in the smoothed corrected mean image file
 scmi=getRawAsHWL(os.path.join(working_dir,f'{CONST.SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'),dims[0],dims[1],dims[2],CONST.IMG_DTYPE_OUT)
 np.testing.assert_equal(scmi,np.ones(dims,dtype=CONST.IMG_DTYPE_OUT))
