@@ -1,11 +1,16 @@
 #imports
 from .flatfield_producer import FlatfieldProducer
-from .config import *
+from .utilities import flatfield_logger
+from .config import CONST 
 from ..utilities.img_file_io import getImageHWLFromXMLFile
-from ..utilities.misc import split_csv_to_list
+from ..utilities.misc import cd, split_csv_to_list
 from .utilities import sampleNameFromFilepath
 from argparse import ArgumentParser
-import glob, random, sys
+import os, glob, random, sys
+
+#################### FILE-SCOPE CONSTANTS ####################
+
+FILEPATH_TEXT_FILE_NAME = 'filepath_log.txt' #what the filepath log file is called
 
 #################### HELPER FUNCTIONS ####################
 
@@ -29,7 +34,7 @@ def checkArgs(a) :
         raise RuntimeError(msg)
     #if the user wants to apply a previously-calculated flatfield, the flatfield itself, and rawfile log, both have to exist in the prior run dir
     if a.mode=='apply_flatfield' :  
-        if not os.path.isfile(os.path.join(a.prior_run_dir,f'{FLATFIELD_FILE_NAME_STEM}{FILE_EXT}')) :
+        if not os.path.isfile(os.path.join(a.prior_run_dir,f'{CONST.FLATFIELD_FILE_NAME_STEM}{CONST.FILE_EXT}')) :
             raise RuntimeError(f'ERROR: previously-created flatfield image does not exist in prior run directory {a.prior_run_dir}!')
         if not os.path.isfile(os.path.join(a.prior_run_dir,f'{FILEPATH_TEXT_FILE_NAME}')) :
             raise RuntimeError(f'ERROR: raw file path log does not exist in prior run directory {a.prior_run_dir}!')
@@ -235,7 +240,7 @@ def main() :
     #start up a flatfield producer
     ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.dbload_top_dir,args.workingdir_name,args.skip_masking)
     #write out the text file of all the raw file paths that will be run
-    ff_producer.writeFileLog()
+    ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
     if args.mode=='choose_image_files' :
         sys.exit()
     #begin by figuring out the background thresholds per layer by looking at the HPFs on the tissue edges
@@ -252,7 +257,7 @@ def main() :
             ff_producer.makeFlatField()
         if args.mode=='apply_flatfield' :
             #apply the flatfield to the image stack
-            ff_producer.applyFlatField(os.path.join(args.prior_run_dir,f'{FLATFIELD_FILE_NAME_STEM}{FILE_EXT}'))
+            ff_producer.applyFlatField(os.path.join(args.prior_run_dir,f'{CONST.FLATFIELD_FILE_NAME_STEM}{CONST.FILE_EXT}'))
         #save the plots, etc.
         ff_producer.writeOutInfo()
     flatfield_logger.info('All Done!')

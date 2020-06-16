@@ -1,15 +1,31 @@
 #imports
-from .config import *
-from .utilities import chunkListOfFilepaths, getImageLayerHistsMT
+from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds
+from .config import CONST
 from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities import units
-import matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
-import math, scipy.stats
+from ..utilities.misc import cd
+import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
+import os, math, scipy.stats
 
 units.setup('fast')
 
 #main class definition
 class FlatfieldSample() :
+    """
+    Main class for organizing properties of a particular sample (slide) as they pertain to flatfielding
+    """
+
+    #################### PROPERTIES ####################
+    @property
+    def background_thresholds_for_masking(self):
+        return self._background_thresholds_for_masking # the list of background thresholds by layer
+
+    #################### CLASS CONSTANTS ####################
+
+    RECTANGLE_LOCATION_PLOT_STEM  = 'rectangle_locations'       #stem for the name of the rectangle location reference plot
+    THRESHOLD_PLOT_DIR_STEM       = 'thresholding_plots'        #stem for the name of the thresholding plot dir for this sample
+
+    #################### PUBLIC FUNCTIONS ####################
 
     def __init__(self,name,img_dims,dbload_dir) :
         """
@@ -20,38 +36,43 @@ class FlatfieldSample() :
         self.name = name
         self.dims = img_dims
         self.dbload_dir = dbload_dir
-        self.background_thresholds_for_masking = None
+        self._background_thresholds_for_masking = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :
         """
         Function to read in background threshold values from the output file of a previous run with this sample
         threshold_file_path = path to threshold value file
         """
-        if self.background_thresholds_for_masking is not None :
+        if self._background_thresholds_for_masking is not None :
             raise FlatFieldError('ERROR: calling readInBackgroundThresholds with non-empty thresholds list')
-        self.background_thresholds_for_masking=[]
+        self._background_thresholds_for_masking=[]
         with open(threshold_file_path,'r') as tfp :
             all_lines = [l.rstrip() for l in tfp.readlines()]
             for line in all_lines :
                 try :
-                    self.background_thresholds_for_masking.append(int(line))
+                    self._background_thresholds_for_masking.append(int(line))
                 except ValueError :
                     pass
-        if not len(self.background_thresholds_for_masking)==self.dims[-1] :
+        if not len(self._background_thresholds_for_masking)==self.dims[-1] :
             raise FlatFieldError(f'ERROR: number of background thresholds read from {threshold_file_path} is not equal to the number of image layers!')
 
-    def findBackgroundThresholds(self,rawfile_paths,n_threads,plotdir_path,threshold_file_name) :
+    def findBackgroundThresholds(self,rawfile_paths,n_threads,top_plotdir_path,threshold_file_name) :
         """
         Function to determine this sample's background pixel flux thresholds per layer
         rawfile_paths       = a list of the rawfile paths to consider for this sample's background threshold calculations
         n_threads           = max number of threads/processes to open at once
-        plotdir_path        = path to the directory in which to save plots from the thresholding process
+        top_plotdir_path    = path to the directory in which to save plots from the thresholding process
         threshold_file_name = name of file to save background thresholds in, one line per layer
         """
         #make sure the plot directory exists
+        if not os.path.isdir(top_plotdir_path) :
+            with cd(os.path.join(*[pp for pp in top_plotdir_path.split(os.sep)[:-1]])) :
+                os.mkdir(top_plotdir_path.split(os.sep)[-1])
+        this_samp_threshold_plotdir_name = f'{self.name}_{self.THRESHOLD_PLOT_DIR_STEM}'
+        plotdir_path = os.path.join(top_plotdir_path,this_samp_threshold_plotdir_name)
         if not os.path.isdir(plotdir_path) :
-            with cd(os.path.join(*[pp for pp in plotdir_path.split(os.sep)[:-1]])) :
-                os.mkdir(plotdir_path.split(os.sep)[-1])
+            with cd(top_plotdir_path) :
+                os.mkdir(this_samp_threshold_plotdir_name)
         #first find the filepaths corresponding to the edges of the tissue in the samples
         flatfield_logger.info(f'Finding tissue edge HPFs for sample {self.name}...')
         tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,plotdir_path)
@@ -93,7 +114,7 @@ class FlatfieldSample() :
                     all_image_thresholds_by_layer[li,ii-1]=layer_thresholds[li]
         #when all the images are done, find the optimal thresholds for each layer
         low_percentile_by_layer=[]; high_percentile_by_layer=[]
-        self.background_thresholds_for_masking=[]
+        self._background_thresholds_for_masking=[]
         for li in range(self.dims[-1]) :
             this_layer_thresholds=all_image_thresholds_by_layer[li,:]
             this_layer_thresholds=this_layer_thresholds[this_layer_thresholds!=0]
@@ -104,8 +125,8 @@ class FlatfieldSample() :
             mode=int(round(mode[0]))
             low_percentile_by_layer.append(this_layer_thresholds[int(round(0.1*len(this_layer_thresholds)))])
             high_percentile_by_layer.append(this_layer_thresholds[int(round(0.9*len(this_layer_thresholds)))])
-            self.background_thresholds_for_masking.append(med)
-            flatfield_logger.info(f'  threshold for layer {li+1} found at {self.background_thresholds_for_masking[li]}')
+            self._background_thresholds_for_masking.append(med)
+            flatfield_logger.info(f'  threshold for layer {li+1} found at {self._background_thresholds_for_masking[li]}')
             with cd(plotdir_path) :
                 f,(ax1,ax2) = plt.subplots(1,2,figsize=(12.8,4.6))
                 ax1.hist(this_layer_thresholds,np.max(this_layer_thresholds)+1,(0,np.max(this_layer_thresholds)+1))
@@ -127,7 +148,7 @@ class FlatfieldSample() :
             xvals=list(range(1,self.dims[-1]+1))
             plt.plot(xvals,low_percentile_by_layer,marker='v',color='r',linewidth=2,label='10th %ile thresholds')
             plt.plot(xvals,high_percentile_by_layer,marker='^',color='b',linewidth=2,label='90th %ile thresholds')
-            plt.plot(xvals,self.background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimal thresholds')
+            plt.plot(xvals,self._background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimal thresholds')
             plt.title('Thresholds chosen from tissue edge HPFs by image layer')
             plt.xlabel('image layer')
             plt.ylabel('pixel flux')
@@ -135,8 +156,8 @@ class FlatfieldSample() :
             plt.savefig(f'{self.name}_background_thresholds_by_layer.png')
             plt.close()
             #save the threshold values to a text file
-            with open(f'{self.name}_{THRESHOLD_TEXT_FILE_NAME_STEM}','w') as tfp :
-                for bgv in self.background_thresholds_for_masking :
+            with open(f'{self.name}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}','w') as tfp :
+                for bgv in self._background_thresholds_for_masking :
                     tfp.write(f'{bgv}\n')
 
     def findTissueEdgeFilepaths(self,rawfile_paths,plotdir_path=None) :
@@ -201,95 +222,7 @@ class FlatfieldSample() :
                 ax1.set_ylabel('y position',fontsize=18)
                 ax2.imshow(mpimg.imread(os.path.join(self.dbload_dir,f'{self.name}_qptiff.jpg')))
                 ax2.set_title('reference qptiff',fontsize=18)
-                plt.savefig(f'{self.name}_{RECTANGLE_LOCATION_PLOT_STEM}.png')
+                plt.savefig(f'{self.name}_{self.RECTANGLE_LOCATION_PLOT_STEM}.png')
                 plt.close()
         #return the list of the filepaths whose rectangles are on the edge of the tissue
         return [rfp for rfp in rawfile_paths if rfp.split(os.sep)[-1].split('.')[0] in edge_rect_filenames]
-
-#################### FILE-SCOPE HELPER FUNCTIONS ####################
-
-#helper function to determine the Otsu threshold given a histogram of pixel values 
-#algorithm from python code at https://docs.opencv.org/3.4/d7/d4d/tutorial_py_thresholding.html
-#reimplemented here for speed and to increase resolution to 16bit
-def getOtsuThreshold(pixel_hist) :
-    # normalize histogram
-    hist_norm = pixel_hist/pixel_hist.sum()
-    # get cumulative distribution function
-    Q = hist_norm.cumsum()
-    # find the upper limit of the histogram
-    max_val = len(pixel_hist)
-    # set up the loop to determine the threshold
-    bins = np.arange(max_val); fn_min = np.inf; thresh = -1
-    # loop over all possible values to find where the function is minimized
-    for i in range(1,max_val):
-        p1,p2 = np.hsplit(hist_norm,[i]) # probabilities
-        q1,q2 = Q[i],Q[max_val-1]-Q[i] # cum sum of classes
-        if q1 < 1.e-6 or q2 < 1.e-6:
-            continue
-        b1,b2 = np.hsplit(bins,[i]) # weights
-        # finding means and variances
-        m1,m2 = np.sum(p1*b1)/q1, np.sum(p2*b2)/q2
-        v1,v2 = np.sum(((b1-m1)**2)*p1)/q1,np.sum(((b2-m2)**2)*p2)/q2
-        # calculates the minimization function
-        fn = v1*q1 + v2*q2
-        if fn < fn_min:
-            fn_min = fn
-            thresh = i
-    # return the threshold
-    return thresh
-
-#helper function to calculate the nth moment of a histogram
-#used in finding the skewness and kurtosis
-def moment(hist,n,standardized=True) :
-    norm = 1.*hist.sum()
-    #if there are no entries the moments are undefined
-    if norm==0. :
-        return float('NaN')
-    mean = 0.
-    for k,p in enumerate(hist) :
-        mean+=p*k
-    mean/=norm
-    var  = 0.
-    moment = 0.
-    for k,p in enumerate(hist) :
-        var+=p*((k-mean)**2)
-        moment+=p*((k-mean)**n)
-    var/=norm
-    moment/=norm
-    #if the moment is zero, then the histogram was just one bin and the moment is undefined
-    if moment==0 :
-        return float('NaN')
-    if standardized :
-        return moment/(var**(n/2.))
-    else :
-        return moment
-
-# a helper function to take a list of layer histograms and return the list of optimal thresholds
-#designed to be run in parallel
-def findLayerThresholds(layer_hists,i,rdict) :
-    best_thresholds = []
-    #for each layer
-    for li in range(layer_hists.shape[-1]) :
-        hist=layer_hists[:,li]
-        #iterate calculating and applying the Otsu threshold values
-        next_it_pixels = hist; skew = 1000.
-        test_thresholds=[]; test_weighted_skew_slopes=[]
-        while not math.isnan(skew) :
-            #get the threshold from OpenCV's Otsu thresholding procedure
-            test_threshold = getOtsuThreshold(next_it_pixels)
-            #calculate the skew and kurtosis of the pixels that would be background at this threshold
-            bg_pixels = hist[:test_threshold+1]
-            skew = moment(bg_pixels,3)
-            if not math.isnan(skew) :
-                test_thresholds.append(test_threshold)
-                skewslope=(moment(hist[:test_threshold+2],3) - moment(hist[:test_threshold],3))/2.
-                test_weighted_skew_slopes.append(skewslope/skew if not math.isnan(skewslope) else 0)
-            #set the next iteration's pixels
-            next_it_pixels = bg_pixels
-        #add the best threshold to the list
-        if len(test_thresholds)<1 :
-            best_thresholds.append(0)
-        else :
-            best_thresholds.append(test_thresholds[test_weighted_skew_slopes.index(max(test_weighted_skew_slopes))])
-    #put the list of thresholds in the return dict
-    rdict[i]=best_thresholds
