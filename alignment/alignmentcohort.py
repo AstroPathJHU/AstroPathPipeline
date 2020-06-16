@@ -1,4 +1,4 @@
-import argparse, contextlib, dataclasses, os, pathlib, re, tempfile
+import argparse, contextlib, dataclasses, os, pathlib, re, tempfile, traceback
 from ..extractlayer.extractlayer import LayerExtractor, ShredderAndLayerExtractor
 from ..utilities.logging import getlogger, SampleDef
 from ..utilities.tableio import readtable
@@ -35,7 +35,7 @@ class AlignmentCohort(contextlib.ExitStack):
           alignmentset.stitch()
         except Exception as e:
           logger.error(str(e).replace(";", ","))
-          #alignmentset.logger.debug(traceback.format_exc())
+          logger.info(repr(traceback.format_exc()).replace(";", ""))
           if self.debug: raise
 
 class AlignmentCohortTmpDir(AlignmentCohort):
