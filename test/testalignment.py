@@ -3,7 +3,6 @@ from ..alignment.alignmentset import AlignmentSet, ImageStats
 from ..alignment.overlap import AlignmentResult
 from ..alignment.field import Field, FieldOverlap
 from ..alignment.stitch import AffineEntry
-from ..utilities.logging import SampleDef
 from ..utilities.tableio import readtable
 from ..utilities import units
 

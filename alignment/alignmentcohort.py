@@ -1,5 +1,7 @@
 import argparse, contextlib, os, pathlib, re, tempfile, traceback
+
 from ..extractlayer.extractlayer import LayerExtractor, ShredderAndLayerExtractor
+from ..utilities import units
 from ..utilities.logging import getlogger, SampleDef
 from ..utilities.tableio import readtable
 from .alignmentset import AlignmentSet
@@ -67,7 +69,10 @@ if __name__ == "__main__":
   p.add_argument("--extractlayer", action="store_true")
   p.add_argument("--shred", action="store_true")
   p.add_argument("--debug", action="store_true")
+  p.add_argument("--units", choices=("safe", "fast"), default="fast")
   args = p.parse_args()
+
+  units.setup(args.units)
 
   kwargs = {"root1": args.root1, "debug": args.debug}
   if args.root2 is not None:
