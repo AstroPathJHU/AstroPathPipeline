@@ -7,8 +7,8 @@ import pathlib
 #some constants
 folder = pathlib.Path(__file__).parent
 samp = 'M21_1'
-rawfile_dir = folder/'data'/'raw'/samp
-metafile_dir = folder/'data'/samp/'dbload'
+rawfile_top_dir = folder/'data'/'raw'
+dbload_top_dir = folder/'data'
 working_dir = folder/'warpfitter_test_for_jenkins'
 working_dir.mkdir(exist_ok=True)
 overlaps = [46]
@@ -27,7 +27,7 @@ max_iter = 1
 
 #make the WarpFitter Objects
 print('Initializing WarpFitter')
-fitter = WarpFitter(samp,rawfile_dir,metafile_dir,working_dir,overlaps,layer)
+fitter = WarpFitter(samp,rawfile_top_dir,dbload_top_dir,working_dir,overlaps,layer)
 #load the raw files
 print('Loading raw files')
 fitter.loadRawFiles()

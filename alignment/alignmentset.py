@@ -267,7 +267,7 @@ class AlignmentSet(RectangleOverlapCollection):
       assert len(thisupdateimg)<2
       if len(thisupdateimg)==1 :
         np.copyto(r.image,(thisupdateimg[0]/self.meanimage.flatfield).astype(np.uint16),casting='no')
-        #np.copyto(r.image,thisupdateimg[0],casting='no') #question for Alex: applying meanimage?
+        #np.copyto(r.image,thisupdateimg[0],casting='no') #applying meanimage?
 
   def getOverlapComparisonImagesDict(self) :
     """

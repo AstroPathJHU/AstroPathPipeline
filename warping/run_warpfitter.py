@@ -264,9 +264,7 @@ if __name__=='__main__' :
     if args.mode in ('fit', 'cProfile') :
         #make the WarpFitter Objects
         warp_logger.info('Initializing WarpFitter')
-        rawfile_dir = os.path.join(args.rawfile_top_dir,args.sample)
-        metafile_dir = os.path.join(args.dbload_top_dir,args.sample,'dbload')
-        fitter = WarpFitter(args.sample,rawfile_dir,metafile_dir,args.working_dir,overlaps,args.layer,whole_sample_meanimage)
+        fitter = WarpFitter(args.sample,args.rawfile_top_dir,args.dbload_top_dir,args.working_dir,overlaps,args.layer,whole_sample_meanimage)
         #load the raw files
         warp_logger.info('Loading raw files')
         fitter.loadRawFiles()
