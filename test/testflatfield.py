@@ -4,7 +4,7 @@
 from ..flatfield.flatfield_producer import FlatfieldProducer
 from ..flatfield.utilities import flatfield_logger
 from ..flatfield.config import CONST
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL
+from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.misc import cd
 import pathlib, glob, os
 
