@@ -61,7 +61,7 @@ class MeanImage :
         self.smoothsigma = smoothsigma
         self.image_stack = np.zeros((y,x,nlayers),dtype=np.uint32) #WARNING: may overflow if more than 65,535 images are stacked 
         self.mask_stack  = np.zeros((y,x,nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 masks are stacked 
-        self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=self.IMG_DTYPE_OUT)
+        self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=CONST.IMG_DTYPE_OUT)
         self.n_images_read = 0
         self.n_images_stacked_by_layer = np.zeros((nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 images are stacked 
         self.mean_image=None
@@ -135,7 +135,7 @@ class MeanImage :
         """
         self.mean_image = self.__makeMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
-        flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=self.IMG_DTYPE_OUT)
+        flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=CONST.IMG_DTYPE_OUT)
         self.corrected_mean_image=self.mean_image/flatfield_image
         self.smoothed_corrected_mean_image=smoothImageWorker(self.corrected_mean_image,self.smoothsigma)
         with cd(self._workingdir_name) :
@@ -149,19 +149,19 @@ class MeanImage :
         with cd(self._workingdir_name) :
             if self.mean_image is not None :
                 meanimage_filename = f'{self.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=self.IMG_DTYPE_OUT)
+                writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
             if self.smoothed_mean_image is not None :
                 smoothed_meanimage_filename = f'{self.SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=self.IMG_DTYPE_OUT)
+                writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
             if self.flatfield_image is not None :
                 flatfieldimage_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=self.IMG_DTYPE_OUT)
+                writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=CONST.IMG_DTYPE_OUT)
             if self.corrected_mean_image is not None :
                 corrected_mean_image_filename = f'{self.CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(np.transpose(self.corrected_mean_image,(2,1,0)),corrected_mean_image_filename,dtype=self.IMG_DTYPE_OUT)
+                writeImageToFile(np.transpose(self.corrected_mean_image,(2,1,0)),corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
             if self.smoothed_corrected_mean_image is not None :
-                smoothed_corrected_mean_image_filename = f'{self.SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(np.transpose(self.smoothed_corrected_mean_image,(2,1,0)),smoothed_corrected_mean_image_filename,dtype=self.IMG_DTYPE_OUT)
+                smoothed_corrected_mean_image_filename = f'{CONST.SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
+                writeImageToFile(np.transpose(self.smoothed_corrected_mean_image,(2,1,0)),smoothed_corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
             #if masks were calculated, save the stack of them
             if (not self.skip_masking) and (self.mask_stack is not None) :
                 writeImageToFile(np.transpose(self.mask_stack,(2,1,0)),f'{self.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}',dtype=np.uint16)
