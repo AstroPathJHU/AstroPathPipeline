@@ -85,6 +85,10 @@ class FlatfieldProducer :
                 this_samp_edge_HPF_filepaths = samp.findTissueEdgeFilepaths(this_samp_fps_to_run)
                 flatfield_logger.info(f'Neglecting {len(this_samp_edge_HPF_filepaths)} files on the edge of the tissue')
                 this_samp_fps_to_run = [fp for fp in this_samp_fps_to_run if fp not in this_samp_edge_HPF_filepaths]
+            #If this sample doesn't have any images to stack, warn the user and continue
+            if len(this_samp_fps_to_run)<1 :
+                flatfield_logger.warn(f'WARNING: sample {sn} does not have any images to be stacked!')
+                continue
             #choose which of them will have their masking images saved
             if len(this_samp_fps_to_run)<n_masking_images_per_sample :
                 msg=f'WARNING: Requested to save {n_masking_images_per_sample} masking images for each sample,'

@@ -1,3 +1,6 @@
+#imports
+import cv2
+
 #class for shared constant variables
 class Const :
     #final overall outputs
@@ -14,5 +17,22 @@ class Const :
     @property
     def GENTLE_GAUSSIAN_SMOOTHING_SIGMA(self) :
         return 5 #the sigma, in pixels, of the gentle gaussian smoothing applied to images before thresholding/masking
+    #masking
+    @property 
+    def MASKING_PLOT_FIG_SIZE(self) :
+        return (12.8,18.4) #size of the outputted masking plot
+    #masking morphology transformations
+    @property
+    def CO1_EL(self) :
+        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9)) #element for first close/open (and final, repeated, open)
+    @property
+    def CO2_EL(self) :
+        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(16,16)) #element for second close/open
+    @property
+    def C3_EL(self) :
+        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45)) #element for large-scale close
+    @property
+    def OPEN_3_ITERATIONS(self) :
+        return 3 #number of iterations for final small-scale open
 
 CONST=Const()

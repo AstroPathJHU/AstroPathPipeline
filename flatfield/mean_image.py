@@ -1,5 +1,5 @@
 #imports
-from .utilities import flatfield_logger, smoothImageWorker
+from .utilities import flatfield_logger, FlatFieldError, smoothImageWorker
 from .config import CONST 
 from ..utilities.img_file_io import getRawAsHWL, writeImageToFile
 from ..utilities.misc import cd
@@ -15,6 +15,10 @@ class MeanImage :
     @property
     def workingdir_name(self):
         return self._workingdir_name #name of the working directory where everything gets saved
+    @property
+    def dims(self):
+        return self._dims
+    
     
     #################### CLASS CONSTANTS ####################
 
@@ -40,12 +44,6 @@ class MeanImage :
     N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME = 'n_images_stacked_per_layer.txt' #name of the images stacked per layer text file
     #masking plots
     MASKING_PLOT_DIR_NAME = 'masking_plots' #name of the masking plot directory
-    MASKING_PLOT_FIG_SIZE = (12.8,18.4)     #size of the outputted masking plot
-    #masking morphology transformations
-    CO1_EL            = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))   #element for first close/open (and final, repeated, open)
-    CO2_EL            = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(16,16)) #element for second close/open
-    C3_EL             = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45)) #element for large-scale close
-    OPEN_3_ITERATIONS = 3                                                    #number of iterations for final small-scale open
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -58,7 +56,7 @@ class MeanImage :
         skip_masking    = if True, image layers won't be masked before being added to the stack
         smoothsigma     = Gaussian sigma for final smoothing of stacked flatfield image
         """
-        self.dims=(y,x,nlayers)
+        self._dims=(y,x,nlayers)
         self.nlayers = nlayers
         self._workingdir_name = workingdir_name
         self.skip_masking = skip_masking
@@ -114,7 +112,7 @@ class MeanImage :
             #check, layer-by-layer, that this mask would select at least the minimum amount of pixels to be added to the stack
             for li in range(self.nlayers) :
                 thismasklayer = thismask[:,:,li]
-                if 1.*np.sum(thismasklayer)/(self.dims[0]*self.dims[1])>=min_selected_pixels :
+                if 1.*np.sum(thismasklayer)/(self._dims[0]*self._dims[1])>=min_selected_pixels :
                     self.image_stack[:,:,li]+=(im_array[:,:,li]*thismasklayer)
                     self.mask_stack[:,:,li]+=thismasklayer
                     self.n_images_stacked_by_layer[li]+=1
@@ -124,6 +122,8 @@ class MeanImage :
         """
         A function to get the mean of the image stack and smooth/normalize each of its layers to make the flatfield image
         """
+        if self.n_images_read<1 or np.sum(np.array([nlis<1 for nlis in self.n_images_stacked_by_layer]))!=0 :
+            raise FlatFieldError('ERROR: not enough images were stacked to give a meaningful meanimage in every layer!')
         self.mean_image = self.__makeMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
@@ -137,7 +137,7 @@ class MeanImage :
         """
         self.mean_image = self.__makeMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
-        flatfield_image=getRawAsHWL(flatfield_file_path,*(self.dims),dtype=self.IMG_DTYPE_OUT)
+        flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=self.IMG_DTYPE_OUT)
         self.corrected_mean_image=self.mean_image/flatfield_image
         self.smoothed_corrected_mean_image=smoothImageWorker(self.corrected_mean_image,self.smoothsigma)
         with cd(self._workingdir_name) :
@@ -401,7 +401,7 @@ def getImageMaskWorker(im_array,thresholds_per_layer,min_selected_pixels,make_pl
     #create a list to hold the threshold values
     thresholds = thresholds_per_layer
     #gently smooth the layer (on the GPU) to remove some noise
-    smoothed_image = smoothImageWorker(im_array,GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
+    smoothed_image = smoothImageWorker(im_array,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
     #if the thresholds haven't already been determined from the background, find them for all the layers by repeated Otsu thresholding
     if thresholds is None :
         layer_hists=getImageArrayLayerHistograms(smoothed_image)
@@ -418,15 +418,15 @@ def getImageMaskWorker(im_array,thresholds_per_layer,min_selected_pixels,make_pl
     open3_mask=cv2.UMat(np.empty_like(init_image_mask))
     #do the morphology transformations
     #small-scale close/open to remove noise and fill in small holes
-    cv2.morphologyEx(init_mask_umat,cv2.MORPH_CLOSE,self.CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,self.CO1_EL,co1_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(init_mask_umat,cv2.MORPH_CLOSE,CONST.CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,CONST.CO1_EL,co1_mask,borderType=cv2.BORDER_REPLICATE)
     #medium-scale close/open for the same reason with larger regions
-    cv2.morphologyEx(co1_mask,cv2.MORPH_CLOSE,self.CO2_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,self.CO2_EL,co2_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(co1_mask,cv2.MORPH_CLOSE,CONST.CO2_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,CONST.CO2_EL,co2_mask,borderType=cv2.BORDER_REPLICATE)
     #large close to define the bulk of the mask
-    cv2.morphologyEx(co2_mask,cv2.MORPH_CLOSE,self.C3_EL,close3_mask,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(co2_mask,cv2.MORPH_CLOSE,CONST.C3_EL,close3_mask,borderType=cv2.BORDER_REPLICATE)
     #repeated small open to eat its edges and remove small regions outside of the bulk of the mask
-    cv2.morphologyEx(close3_mask,cv2.MORPH_OPEN,self.CO1_EL,open3_mask,iterations=self.OPEN_3_ITERATIONS,borderType=cv2.BORDER_REPLICATE)
+    cv2.morphologyEx(close3_mask,cv2.MORPH_OPEN,CONST.CO1_EL,open3_mask,iterations=CONST.OPEN_3_ITERATIONS,borderType=cv2.BORDER_REPLICATE)
     #the final mask is this last mask
     morphed_mask = open3_mask.get()
     #make the plots if requested
@@ -442,7 +442,7 @@ def getImageMaskWorker(im_array,thresholds_per_layer,min_selected_pixels,make_pl
             co2_mask = co2_mask.get()
             close3_mask = close3_mask.get()
             for li in range(nlayers) :
-                f,ax = plt.subplots(4,2,figsize=self.MASKING_PLOT_FIG_SIZE)
+                f,ax = plt.subplots(4,2,figsize=CONST.MASKING_PLOT_FIG_SIZE)
                 im = im_array[:,:,li]
                 im_grayscale = im/np.max(im)
                 im = (np.clip(im,0,255)).astype('uint8')
