@@ -5,12 +5,14 @@ from ..utilities.misc import memmapcontext
 here = pathlib.Path(__file__).parent
 
 class LayerExtractorBase(contextlib.ExitStack, collections.abc.Sized):
-  def __init__(self, root1, root2, samp, *, uselogfiles=False):
+  def __init__(self, root1, root2, samp, *, logger=None, uselogfiles=False):
     self.root1 = pathlib.Path(root1)
     self.root2 = pathlib.Path(root2)
     self.samp = samp
-    self.logger = getlogger("extractlayer", self.root1, self.samp, uselogfiles=uselogfiles)
-    self.logger.critical("extractlayer")
+    if logger is None:
+      logger = getlogger("extractlayer", self.root1, self.samp, uselogfiles=uselogfiles)
+      logger.critical("extractlayer")
+    self.logger = logger
     super().__init__()
 
   @property

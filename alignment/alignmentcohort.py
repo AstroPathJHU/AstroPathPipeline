@@ -26,7 +26,7 @@ class AlignmentCohort(contextlib.ExitStack):
       with getlogger("align", self.root1, sample, uselogfiles=True) as logger:
         try:
           if self.dolayerextraction:
-            with (ShredderAndLayerExtractor if self.doshredding else LayerExtractor)(self.root1, self.root2, sample, uselogfiles=False) as extractor:
+            with (ShredderAndLayerExtractor if self.doshredding else LayerExtractor)(self.root1, self.root2, sample, logger=logger) as extractor:
               extractor.extractlayers(alreadyexistsstrategy="skip")
 
           alignmentset = AlignmentSet(self.root1, self.root2, sample, uselogfiles=True)
