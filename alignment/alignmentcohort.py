@@ -23,20 +23,20 @@ class AlignmentCohort(contextlib.ExitStack):
     for sample in samples:
       if not sample: continue
       if not self.filter(sample): continue
-      logger = getlogger("align", self.root1, sample, uselogfiles=True)
-      try:
-        if self.dolayerextraction:
-          with (ShredderAndLayerExtractor if self.doshredding else LayerExtractor)(self.root1, self.root2, sample, uselogfiles=False) as extractor:
-            extractor.extractlayers(alreadyexistsstrategy="skip")
+      with getlogger("align", self.root1, sample, uselogfiles=True) as logger:
+        try:
+          if self.dolayerextraction:
+            with (ShredderAndLayerExtractor if self.doshredding else LayerExtractor)(self.root1, self.root2, sample, uselogfiles=False) as extractor:
+              extractor.extractlayers(alreadyexistsstrategy="skip")
 
-        alignmentset = AlignmentSet(self.root1, self.root2, sample, uselogfiles=True)
-        alignmentset.getDAPI()
-        alignmentset.align()
-        alignmentset.stitch()
-      except Exception as e:
-        logger.error(str(e).replace(";", ","))
-        #alignmentset.logger.debug(traceback.format_exc())
-        if self.debug: raise
+          alignmentset = AlignmentSet(self.root1, self.root2, sample, uselogfiles=True)
+          alignmentset.getDAPI()
+          alignmentset.align()
+          alignmentset.stitch()
+        except Exception as e:
+          logger.error(str(e).replace(";", ","))
+          #alignmentset.logger.debug(traceback.format_exc())
+          if self.debug: raise
 
 class AlignmentCohortTmpDir(AlignmentCohort):
   def __init__(self, root1, *, tmpdirprefix, **kwargs):

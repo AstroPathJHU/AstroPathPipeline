@@ -30,7 +30,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   \end{pmatrix}
   \end{equation}
   """
-  logger.critical("stitch")
+  logger.info("stitch")
 
   #nll = x^T A x + bx + c
 

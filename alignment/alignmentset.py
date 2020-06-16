@@ -39,7 +39,6 @@ class AlignmentSet(RectangleOverlapCollection):
     self.interactive = interactive
 
     self.logger = getlogger("align", self.root1, samp, uselogfiles=uselogfiles)
-    self.logger.critical("align")
 
     self.rectanglefilter = rectangleoroverlapfilter(selectrectangles)
     overlapfilter = rectangleoroverlapfilter(selectoverlaps)
@@ -78,7 +77,7 @@ class AlignmentSet(RectangleOverlapCollection):
     try:
       componenttiff = next((self.root1/self.SlideID/"inform_data"/"Component_Tiffs").glob("*.tif"))
     except StopIteration:
-      self.logger.warning("couldn't find a component tiff: trusting image size and pscale from constants.csv")
+      self.logger.warningglobal("couldn't find a component tiff: trusting image size and pscale from constants.csv")
       componenttiff = None
     else:
       pscale, width, height = tiffinfo(filename=componenttiff)
@@ -95,13 +94,13 @@ class AlignmentSet(RectangleOverlapCollection):
 
     if componenttiff is not None:
       if (width, height) != (self.fwidth, self.fheight):
-        self.logger.warning(f"component tiff has size {width} {height} which is different from {self.fwidth} {self.fheight} (in constants.csv)")
+        self.logger.warningglobal(f"component tiff has size {width} {height} which is different from {self.fwidth} {self.fheight} (in constants.csv)")
         self.fwidth, self.fheight = width, height
       if self.pscale != pscale:
         if np.isclose(self.pscale, pscale, rtol=1e-6):
-          warnfunction = self.logger.info
-        else:
           warnfunction = self.logger.warning
+        else:
+          warnfunction = self.logger.warningglobal
         warnfunction(f"component tiff has pscale {pscale} which is different from {self.pscale} (in constants.csv)")
         self.pscale = pscale
 
@@ -171,10 +170,10 @@ class AlignmentSet(RectangleOverlapCollection):
         else:
           reason = f"has exit status {result.exit}"
         if return_on_invalid_result :
-          if warpwarnings: self.logger.warning(f'Overlap number {i} alignment result {reason}: returning 1e10!!')
+          if warpwarnings: self.logger.warningglobal(f'Overlap number {i} alignment result {reason}: returning 1e10!!')
           return 1e10
         else :
-          if warpwarnings: self.logger.warning(f'Overlap number {i} alignment result {reason}: adding 1e10 to sum_mse!!')
+          if warpwarnings: self.logger.warningglobal(f'Overlap number {i} alignment result {reason}: adding 1e10 to sum_mse!!')
           sum_mse+=1e10
 
     if write_result :
@@ -296,7 +295,7 @@ class AlignmentSet(RectangleOverlapCollection):
       import reikna as rk 
     except ModuleNotFoundError :
       if force: raise
-      self.logger.warning("Reikna isn't installed. Please install with 'pip install reikna' to use GPU devices.")
+      self.logger.warningglobal("Reikna isn't installed. Please install with 'pip install reikna' to use GPU devices.")
       return None
     #create an API
     #try :
@@ -306,7 +305,7 @@ class AlignmentSet(RectangleOverlapCollection):
     #  try :
     #    api = rk.cluda.ocl_api()
     #  except Exception :
-    #    logger.warning('WARNING: Failed to create an OpenCL API; no GPU computation will be available!!')
+    #    logger.warningglobal('WARNING: Failed to create an OpenCL API; no GPU computation will be available!!')
     #    return None
     try :
       api = rk.cluda.ocl_api()
@@ -314,7 +313,7 @@ class AlignmentSet(RectangleOverlapCollection):
       return api.Thread.create(interactive=interactive)
     except Exception :
       if force: raise
-      self.logger.warning('Failed to create an OpenCL API; no GPU computation will be available!!')
+      self.logger.warningglobal('Failed to create an OpenCL API; no GPU computation will be available!!')
       return None
 
   def __getrawlayers(self, filetype, keep=False):

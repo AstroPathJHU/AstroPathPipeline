@@ -13,6 +13,20 @@ class SampleDef:
   def __bool__(self):
     return bool(self.isGood)
 
+class MyLogger(object):
+  def __init__(self, *args, module=None, **kwargs):
+    self.logger = logging.getLogger(*args, **kwargs)
+    self.module = module
+  def __enter__(self):
+    self.logger.critical(self.module)
+    return self
+  def __exit__(self, *exc):
+    self.logger.info(f"end {self.module}")
+  def __getattr__(self, attr):
+    return getattr(self.logger, attr)
+  def warningglobal(self, *args, **kwargs):
+    return self.logger.log(logging.WARNING+1, *args, **kwargs)
+
 def getlogger(module, root, samp, *, uselogfiles=False):
   if isinstance(samp, SampleDef):
     SampleID = samp.SampleID
@@ -23,7 +37,7 @@ def getlogger(module, root, samp, *, uselogfiles=False):
     SlideID = samp
     SampleID = Project = Cohort = None
 
-  logger = logging.getLogger(f"{module}.{root}.{Project}.{Cohort}.{SlideID}")
+  logger = MyLogger(f"{module}.{root}.{Project}.{Cohort}.{SlideID}", module=module)
   logger.setLevel(logging.DEBUG)
 
   if uselogfiles and Project is None:
@@ -38,11 +52,17 @@ def getlogger(module, root, samp, *, uselogfiles=False):
   del logger.handlers[:]
 
   def filter(record):
-    levelstoadd = ("WARNING", "ERROR")
-    levelname = record.levelname
-    if levelname == "INFO": levelname = "WARNING"
-    if levelname in levelstoadd and not record.msg.startswith(record.levelname+": "):
-      record.msg = f"{levelname}: {record.msg}"
+    try:
+      levelname = {
+        logging.WARNING: "WARNING",
+        logging.WARNING+1: "WARNING",
+        logging.ERROR: "ERROR",
+      }[record.levelno]
+    except KeyError:
+      pass
+    else:
+      if not record.msg.startswith(levelname+": "):
+        record.msg = f"{levelname}: {record.msg}"
     if ";" in record.msg:
       raise ValueError("log messages aren't supposed to have semicolons:\n\n"+record.msg)
     return True
@@ -58,7 +78,7 @@ def getlogger(module, root, samp, *, uselogfiles=False):
     mainhandler = logging.FileHandler(root/"logfiles"/f"{module}.log")
     mainhandler.setFormatter(formatter)
     mainhandler.addFilter(filter)
-    mainhandler.setLevel(logging.WARNING)
+    mainhandler.setLevel(logging.WARNING+1)
     logger.addHandler(mainhandler)
 
     (root/SlideID/"logfiles").mkdir(exist_ok=True)
