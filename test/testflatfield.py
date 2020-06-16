@@ -21,7 +21,7 @@ working_dir.mkdir(exist_ok=True)
 sample_names_to_run = [samp]
 filepaths_to_run = None
 with cd(os.path.join(rawfile_top_dir,samp)) :
-	filepaths_to_run = glob.glob(f'*{rawfile_ext}')
+	filepaths_to_run = [os.path.join(rawfile_top_dir,samp,fn) for fn in glob.glob(f'*{rawfile_ext}')]
 
 #get the image dimensions from the .xml file
 dims=getImageHWLFromXMLFile(rawfile_top_dir,samp)
