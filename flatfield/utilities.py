@@ -2,7 +2,7 @@ from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
-import os, cv2, logging
+import os, cv2, logging, math
 
 #Class for errors encountered during flatfielding
 class FlatFieldError(Exception) :

@@ -1,5 +1,5 @@
 #imports
-from .utilities import flatfield_logger, FlatFieldError, smoothImageWorker
+from .utilities import flatfield_logger, FlatFieldError, smoothImageWorker, getImageArrayLayerHistograms, findLayerThresholds
 from .config import CONST 
 from ..utilities.img_file_io import getRawAsHWL, writeImageToFile
 from ..utilities.misc import cd
@@ -23,11 +23,9 @@ class MeanImage :
     #################### CLASS CONSTANTS ####################
 
     #outputted images
-    IMG_DTYPE_OUT                                = np.float64                        #datatype for the main output images
     MEAN_IMAGE_FILE_NAME_STEM                    = 'mean_image'                      #name of the outputted mean image file
     SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM           = 'smoothed_mean_image'             #name of the outputted smoothed mean image file
     CORRECTED_MEAN_IMAGE_FILE_NAME_STEM          = 'corrected_mean_image'            #name of the outputted corrected mean image file
-    SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM = 'smoothed_corrected_mean_image'   #name of the outputted smoothed corrected mean image file
     MASK_STACK_FILE_NAME_STEM                    = 'mask_stack'                      #name of the outputted mask stack file
     APPLIED_FLATFIELD_TEXT_FILE_NAME             = 'applied_flatfield_file_path.txt' #name of the text file to write out the applied flatfield file path
     #postrun plot directory

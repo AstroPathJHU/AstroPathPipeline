@@ -5,11 +5,17 @@ import cv2
 class Const :
     #final overall outputs
     @property
+    def IMG_DTYPE_OUT(self) :
+        return np.float64 #datatype for the main output images
+    @property
     def FILE_EXT(self) :
         return '.bin' #file extension for the main output files
     @property
     def FLATFIELD_FILE_NAME_STEM(self) :
         return 'flatfield' #what the flatfield file is called
+    @property
+    def SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM(self) :
+        return 'smoothed_corrected_mean_image' #name of the outputted smoothed corrected mean image file
     @property
     def THRESHOLD_TEXT_FILE_NAME_STEM(self) :
         return 'background_thresholds.txt' #name of the text file holding each layer's background threshold flux

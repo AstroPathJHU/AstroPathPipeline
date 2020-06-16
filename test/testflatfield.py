@@ -2,7 +2,7 @@
 
 #imports
 from ..flatfield.flatfield_producer import FlatfieldProducer
-from ..flatfield.config import FLATFIELD_FILE_NAME_STEM, FILE_EXT, IMG_DTYPE_OUT, SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM
+from ..flatfield.config import CONST
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL
 from ..utilities.misc import cd
 import numpy as np
@@ -35,8 +35,8 @@ ff_producer.stackImages(1,0.0,0,True)
 #make the flatfield image
 ff_producer.makeFlatField()
 #apply the flatfield to the same image stack
-ff_producer.applyFlatField(os.path.join(working_dir_name,f'{FLATFIELD_FILE_NAME_STEM}{FILE_EXT}'))
+ff_producer.applyFlatField(os.path.join(working_dir,f'{CONST.FLATFIELD_FILE_NAME_STEM}{CONST.FILE_EXT}'))
 #this should result in 1s everywhere in the smoothed corrected mean image file
-scmi=getRawAsHWL(os.path.join(workingdir,f'{SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{FILE_EXT}'),dims[0],dims[1],dims[2],IMG_DTYPE_OUT)
-np.testing.assert_equal(scmi,np.ones(dims,dtype=IMG_DTYPE_OUT))
+scmi=getRawAsHWL(os.path.join(working_dir,f'{CONST.SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'),dims[0],dims[1],dims[2],CONST.IMG_DTYPE_OUT)
+np.testing.assert_equal(scmi,np.ones(dims,dtype=CONST.IMG_DTYPE_OUT))
 print('Done!')
