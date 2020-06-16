@@ -1,4 +1,5 @@
 #imports
+import numpy as np
 import cv2
 
 #class for shared constant variables
