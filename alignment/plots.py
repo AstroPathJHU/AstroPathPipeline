@@ -363,9 +363,11 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
   logger.debug("done")
   return xresiduals, yresiduals
 
-def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax, cbar, xory: None):
+def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax, cbar, xory: None, island=None):
   logger.debug(alignmentset.samp)
   fields = alignmentset.fields
+  if island is not None:
+    fields = [field for field in fields if field.n in alignmentset.islands()[island]]
   deltax = min(abs(a.x-b.x) for a, b in more_itertools.pairwise(fields) if a.x != b.x)
   deltay = min(abs(a.y-b.y) for a, b in more_itertools.pairwise(fields) if a.y != b.y)
   deltaxvec = deltax, deltay
