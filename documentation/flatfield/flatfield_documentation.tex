@@ -20,7 +20,7 @@
 
 %title
 \title{Flatfielding: Spatially-Dependent Correction of Microscope Field Illumination}
-\author{Maggie Eminizer\\ \url{margaret.eminizer@gmail.com}}
+\author{Maggie Eminizer\\ \url{margaret.eminizer@gmail.com}\\ JHU Astropath Group}
 \date{\today}
 \begin{document}
 \maketitle
@@ -32,9 +32,17 @@
 \section{Introduction}
 \label{sec:introduction}
 
+The Astropath group's work in quantifying patient outcomes from cancer immunotherapies is largely driven by analysis of multiplexed immunofluorescence microscopy images. As the group maintains focus on scaling up to curate and analyze large datasets representing multiple types of cancers from multiple primary sources or collaborators, a major push continues to be performing as much of that image analysis as possible in an automated fashion. It is therefore imperative that the image data themselves are of a very high quality, corrected for subtle effects that may adversely impact how individual images are related to one another to represent an entire microscope slide, or how the contents of those slides may be identified by automated algorithms as cells expressing certain immunofluorescence markers of interest. This note discusses a method developed to perform a very low-level correction to the illumination of raw HPF images, and details the effect of applying this correction to an example dataset. 
+
 %%%%%%%%%%% Flatfielding in general subsection
 \subsection{Flatfielding in general}
 \label{ssec:flatfielding_in_general}
+
+When whole slides are imaged, they are first scanned at a low magnification to determine where the tissue is located within the slide. The slide's region of interest is then scanned sequentially at high magnification, resulting in a set of high-power field (HPF) images. The number of HPFs required to image an entire slide's tissue at high magnification varies from a few dozen to over a thousand, depending on the slide, and the sequence of HPFs is collected with their edges overlapping by about 20\%. The microscope stage moves very slightly imperfectly as it travels across the slide, and so minute corrections must be made to ``align'' the HPFs with one another and ``stitch'' them together to give a single high-magnification representation of a whole slide.
+
+It is possible to align pairs of adjacent HPFs only because the 20\% overlap means that opposite edges or corners of each pair show identical portions of the tissue. These multiply-imaged tissue regions are compared to determine how HPFs must be shifted from their nominal locations as reported by the microscope to correct the effects of the imperfect microscope stage translation with sub-pixel accuracy\cite{Heshy}. The degree of similarity between the overlapping image regions is entirely dependent on their illumination flux content: if one side of the HPFs is consistently brighter than the other, the overlapping regions of two adjacent HPFs will never seem perfectly alike. This alignment procedure is therefore one example of how image analysis is affected by systematic and spatially-dependent variations in HPF illumination flux that are introduced at the time of image collection by a particular microscope's methods for illuminating slides and capturing images.
+
+The colloquial term ``flatfielding'' refers to procedures designed to minimize these systematic variations in the amount of illumination flux recorded in each location within HPF images. Although the variations may barely be noticeable to a human observer looking at a single HPF image, they become much more apparent when considering large groups of HPF images at once.
 
 %%%%%%%%%%% Work already performed subsection
 \subsection{Work already performed}
