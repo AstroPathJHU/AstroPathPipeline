@@ -67,7 +67,6 @@ pipeline {
 	      steps {
 	        sh 'cd documentation/flatfield; pdflatex flatfield_documentation.tex; pdflatex flatfield_documentation.tex; pdflatex flatfield_documentation.tex'
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/flatfield/flatfield_documentation.log'
-		sh 'cd documentation/flatfield; rm -rf flatfield_documentation.aux; rm -rf flatfield_documentation.out; rm -rf flatfield_documentation.pdf'
 	      }
 	    }
 	  }
@@ -90,6 +89,7 @@ pipeline {
   post {
     always {
       archiveArtifacts artifacts: 'documentation/alignment/alignment_stitching.pdf', fingerprint: true
+      archiveArtifacts artifacts: 'documentation/flatfield/flatfield_documentation.pdf', fingerprint: true
     }
   }
 }
