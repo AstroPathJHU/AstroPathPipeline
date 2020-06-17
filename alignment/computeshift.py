@@ -93,6 +93,9 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
 
   covariance = 2 * error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
 
+  if not np.all(np.linalg.eig(covariance)[0] > 0):
+    raise ValueError(f"Covariance matrix is not positive definite: {covariance}")
+
   exit = 0
   dx, dy = unc.correlated_values(
     -r.x,
