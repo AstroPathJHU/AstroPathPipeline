@@ -2,13 +2,11 @@
 
 %environment setup
 \documentclass[letterpaper,11pt]{article}
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{tgbonum}
-\usepackage{graphicx}
-\usepackage{amsmath,amssymb,amsthm} 
+\usepackage{arev}
 \usepackage[square,comma,numbers,sort&compress]{natbib}
 \bibliographystyle{abbrvnat}
+\usepackage{amsmath}
+\usepackage{graphicx}
 \usepackage{url}
 \usepackage{xspace}
 \usepackage[left=20mm,top=20mm]{geometry}
@@ -28,7 +26,7 @@
 \maketitle
 
 %abstract
-\abstract{This note details a method for correcting systematic variations in the illumination of multi-layered microscope high power field images. The variations are measured using regions of image layers that are free of empty background as determined using a thresholding and masking procedure. The illumination flux observed in these regions is averaged over approximately 10,000 images, and the resulting variation pattern is smoothed to retain only the large-scale effects. The spatially-dependent corrections are defined as the ratios of these patterns to their mean values in each image layer. The effect of applying these corrections is characterized using a set of 45,384 melanoma tissue images collected at the Johns Hopkins Hospital using an Akoya Biosciences Vectra 3.0 digital microscope. It is shown that the illumination of the tissue depicted in these images initially varies by about ten percent relative flux in systematic patterns for each image layer, and that applying the corrections reduces the variation to less than five percent relative flux in more random patterns.}
+\abstract{This note details a method for correcting systematic variations in the illumination of multi-layered microscope high power field images. The variations are measured using regions of image layers that are free of empty background as determined using a thresholding and masking procedure. The illumination flux observed in these regions is averaged over approximately 10,000 images, and the resulting variation pattern is smoothed to retain only the large-scale effects. The spatially-dependent corrections are defined as the ratios of these patterns to their mean values in each image layer. The effect of applying these corrections is characterized using a set of 45,384 melanoma tissue images collected at the Johns Hopkins Hospital using an Akoya Biosciences Vectra 3.0 digital microscope. It is shown that the illumination of the tissue depicted in these images initially varies with an average standard deviation of 4.2\% relative flux in systematic patterns for each image layer, and that applying the corrections reduces the variation to an average standard deviation of 1.0\% relative flux in more random patterns.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% INTRODUCTION SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
