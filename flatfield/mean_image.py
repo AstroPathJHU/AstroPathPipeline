@@ -29,7 +29,7 @@ class MeanImage :
     MASK_STACK_FILE_NAME_STEM                    = 'mask_stack'                      #name of the outputted mask stack file
     APPLIED_FLATFIELD_TEXT_FILE_NAME             = 'applied_flatfield_file_path.txt' #name of the text file to write out the applied flatfield file path
     #postrun plot directory
-    POSTRUN_PLOT_DIRECTORY_NAME = 'postrun_plots' #name of directory to hold postrun plots (pixel intensity, image layers, etc.)
+    POSTRUN_PLOT_DIRECTORY_NAME = 'postrun_info' #name of directory to hold postrun plots (pixel intensity, image layers, etc.) and other info
     #image layer plots
     IMAGE_LAYER_PLOT_DIRECTORY_NAME = 'image_layer_pngs' #name of directory to hold image layer plots within postrun plot directory
     IMG_LAYER_FIG_WIDTH             = 6.4                #width of image layer figures created in inches
@@ -37,6 +37,10 @@ class MeanImage :
     PIXEL_INTENSITY_PLOT_NAME = 'pixel_intensity_plot.png' #name of the pixel intensity plot
     LAST_FILTER_LAYERS        = [9,18,25,32]               #last image layers of each broadband filter for 35-layer images
     INTENSITY_FIG_WIDTH       = 16.8                       #width of the intensity plot figure
+    #illumination variation reduction
+    ILLUMINATION_VARIATION_PLOT_WIDTH    = 9.6                                   #width of the illumination variation plot
+    ILLUMINATION_VARIATION_PLOT_NAME     = 'ilumination_variation_by_layer.png'  #name of the illumination variation plot
+    ILLUMINATION_VARIATION_CSV_FILE_NAME = 'illumination_variation_by_layer.csv' #name of the illumination variation .csv file
     #images stacked per layer
     N_IMAGES_STACKED_PER_LAYER_PLOT_NAME      = 'n_images_stacked_per_layer.png' #name of the images stacked per layer plot
     N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME = 'n_images_stacked_per_layer.txt' #name of the images stacked per layer text file
@@ -183,7 +187,7 @@ class MeanImage :
                     self.__saveFlatFieldImagePixelIntensityPlot()   
                 if self.smoothed_mean_image is not None and self.corrected_mean_image is not None :
                     #for the corrected mean image
-                    self.__saveCorrectedMeanImagePixelIntensityPlot()
+                    self.__saveCorrectedMeanImagePixelIntensityPlots()
                 #plot and write a text file of how many images were stacked per layer
                 self.__plotAndWriteNImagesStackedPerLayer()
 
@@ -308,15 +312,16 @@ class MeanImage :
         #fix the range on the x-axis to accommodate the legend
         plt.xlim(0,self.nlayers+10)
         plt.ylabel('pixel intensity',fontsize=14)
-        plt.legend(loc='best')
+        plt.legend(loc='lower right')
         plt.savefig(self.PIXEL_INTENSITY_PLOT_NAME)
         plt.close()
 
     #helper function to plot how the average intensities of the mean image change in each layer after application of the flatfield corrections
-    def __saveCorrectedMeanImagePixelIntensityPlot(self) :
+    def __saveCorrectedMeanImagePixelIntensityPlots(self) :
         #keep track of the uncorrected and corrected images' minimum and maximum (and 5/95%ile) pixel intensities while the other plots are made
         u_min_pixel_intensities=[]; u_low_pixel_intensities=[]; u_max_pixel_intensities=[]; u_high_pixel_intensities=[]
         c_min_pixel_intensities=[]; c_low_pixel_intensities=[]; c_max_pixel_intensities=[]; c_high_pixel_intensities=[]
+        u_std_devs=[]; c_std_devs=[]
         plt.figure(figsize=(self.INTENSITY_FIG_WIDTH,(27./64.)*self.INTENSITY_FIG_WIDTH))
         xaxis_vals = list(range(1,self.nlayers+1))
         #iterate over the layers
@@ -324,11 +329,11 @@ class MeanImage :
             #find the min, max, and 5/95%ile pixel intensities for this uncorrected and corrected image layer
             sorted_u_layer = np.sort((self.smoothed_mean_image[:,:,layer_i]).flatten())/np.mean(self.smoothed_mean_image[:,:,layer_i])
             u_min_pixel_intensities.append(sorted_u_layer[0]); u_low_pixel_intensities.append(sorted_u_layer[int(0.05*len(sorted_u_layer))])
-            u_stddev = np.std(sorted_u_layer)
+            u_stddev = np.std(sorted_u_layer); u_std_devs.append(u_stddev)
             u_max_pixel_intensities.append(sorted_u_layer[-1]); u_high_pixel_intensities.append(sorted_u_layer[int(0.95*len(sorted_u_layer))])
             sorted_c_layer = np.sort((self.smoothed_corrected_mean_image[:,:,layer_i]).flatten())/np.mean(self.smoothed_corrected_mean_image[:,:,layer_i])
             c_min_pixel_intensities.append(sorted_c_layer[0]); c_low_pixel_intensities.append(sorted_c_layer[int(0.05*len(sorted_c_layer))])
-            c_stddev = np.std(sorted_c_layer)
+            c_stddev = np.std(sorted_c_layer); c_std_devs.append(c_stddev)
             c_max_pixel_intensities.append(sorted_c_layer[-1]); c_high_pixel_intensities.append(sorted_c_layer[int(0.95*len(sorted_c_layer))])
             if layer_i==0 :
                 plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5,label='uncorrected std. dev.')
@@ -369,19 +374,46 @@ class MeanImage :
         #fix the range on the x-axis to accommodate the legend
         plt.xlim(0,self.nlayers+10)
         plt.ylabel('pixel intensity relative to layer mean',fontsize=14)
-        plt.legend(loc='best')
+        plt.legend(loc='lower right')
         plt.savefig(self.PIXEL_INTENSITY_PLOT_NAME)
         plt.close()
+        #plot the reduction in illumination variation and save the values to a csv file as well
+        u_hi_lo_spread = [u_high_pixel_intensities[li]-u_low_pixel_intensities[li] for li in range(self.nlayers)]
+        c_hi_lo_spread = [c_high_pixel_intensities[li]-c_low_pixel_intensities[li] for li in range(self.nlayers)]
+        f,ax=plt.subplots(figsize=(self.ILLUMINATION_VARIATION_PLOT_WIDTH,0.5*self.ILLUMINATION_VARIATION_PLOT_WIDTH))
+        ax.plot(xaxis_vals,u_hi_lo_spread,marker='v',linestyle='dashed',linewidth=2,label='uncorrected 5th-95th %ile')
+        ax.plot(xaxis_vals,c_hi_lo_spread,marker='^',linestyle='dashed',linewidth=2,label='corrected 5th-95th %ile')
+        ax.plot(xaxis_vals,u_std_devs,marker='<',linestyle='dotted',linewidth=2,label='uncorrected std. dev.')
+        ax.plot(xaxis_vals,c_std_devs,marker='>',linestyle='dotted',linewidth=2,label='corrected std. dev.')
+        ax.set_ylim(0,(ax.get_ylim())[-1]*1.25)
+        ax.set_title('illumination variation reduction by layer')
+        ax.set_xlabel('image layer')
+        ax.set_ylabel('relative flux')
+        ax.legend(loc='best')
+        plt.savefig(self.ILLUMINATION_VARIATION_PLOT_NAME)
+        plt.close()
+        with open(self.ILLUMINATION_VARIATION_CSV_FILE_NAME,'w') as ivrcfp :
+            ivrcfp.write('layer,uncorrected_5th_to_95th_percentile,corrected_5th_to_95th_percentile,uncorrected_std_dev,corrected_std_dev\n')
+            for li,(uhls,chls,usd,csd) in enumerate(zip(u_hi_lo_spread,c_hi_lo_spread,u_std_devs,c_std_devs),start=1) :
+                ivrcfp.write(f'{li:d},{uhls:.5f},{chls:.5f},{usd:.5f},{csd:.5f}\n')
+
 
     #helper function to plot and save how many images ended up being stacked in each layer of the meanimage
     def __plotAndWriteNImagesStackedPerLayer(self) :
         xvals = list(range(1,self.nlayers+1))
-        plt.plot([xvals[0],xvals[-1]],[self.n_images_read,self.n_images_read],linewidth=2,color='k',label=f'total images read ({self.n_images_read})')
-        plt.plot(xvals,self.n_images_stacked_by_layer,marker='o',linewidth=2,label='n images stacked')
-        plt.title('Number of images selected to be stacked by layer')
-        plt.xlabel('image layer')
-        plt.ylabel('number of images')
-        plt.legend(loc='best')
+        f,ax = plt.subplots(figsize=(9.6,4.8))
+        ax.plot([xvals[0],xvals[-1]],[self.n_images_read,self.n_images_read],linewidth=2,color='k',label=f'total images read ({self.n_images_read})')
+        ax.plot(xvals,self.n_images_stacked_by_layer,marker='o',linewidth=2,label='n images stacked')
+        for pi,(xv,yv) in enumerate(zip(xvals,self.n_images_stacked_by_layer)) :
+            plt.annotate(f'{yv:d}',
+                         (xv,yv),
+                         textcoords="offset points", # how to position the text
+                         xytext=(0,10) if pi%2==0 else (0,-12), # distance from text to points (x,y)
+                         ha='center') # horizontal alignment can be left, right or center 
+        ax.set_title('Number of images selected to be stacked by layer')
+        ax.set_xlabel('image layer')
+        ax.set_ylabel('number of images')
+        ax.legend(loc='best')
         plt.savefig(self.N_IMAGES_STACKED_PER_LAYER_PLOT_NAME)
         plt.close()
         with open(self.N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME,'w') as fp :
