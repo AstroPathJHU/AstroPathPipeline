@@ -1,24 +1,30 @@
-import abc, argparse, collections, contextlib, logging, methodtools, numpy as np, pathlib, PIL.Image, subprocess, tempfile
+import abc, argparse, collections, contextlib, methodtools, numpy as np, pathlib, PIL.Image, subprocess, tempfile
+from ..utilities.logging import getlogger, SampleDef
 from ..utilities.misc import memmapcontext
-
-logger = logging.getLogger("extractlayer")
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s"))
-logger.addHandler(handler)
 
 here = pathlib.Path(__file__).parent
 
 class LayerExtractorBase(contextlib.ExitStack, collections.abc.Sized):
-  def __init__(self, root1, root2, samp):
+  def __init__(self, root1, root2, samp, *, logger=None, uselogfiles=False):
     self.root1 = pathlib.Path(root1)
     self.root2 = pathlib.Path(root2)
     self.samp = samp
+    if logger is None:
+      logger = getlogger("extractlayer", self.root1, self.samp, uselogfiles=uselogfiles)
+      logger.critical("extractlayer")
+    self.logger = logger
     super().__init__()
+
+  @property
+  def SlideID(self):
+    if isinstance(self.samp, SampleDef):
+      return self.samp.SlideID
+    else:
+      return self.samp
 
   @methodtools.lru_cache()
   def __getlayershape(self):
-    filename = next((self.root1/self.samp/"inform_data"/"Component_Tiffs").glob("*.tif"))
+    filename = next((self.root1/self.SlideID/"inform_data"/"Component_Tiffs").glob("*.tif"))
     with PIL.Image.open(filename) as f:
       return f.size
 
@@ -39,13 +45,13 @@ class LayerExtractorBase(contextlib.ExitStack, collections.abc.Sized):
     return (self.__getnlayers(),) + self.__getlayershape()
 
   def extractlayers(self, *, layers={1}, alreadyexistsstrategy="error"):
-    (self.root2/self.samp).mkdir(parents=True, exist_ok=True)
+    (self.root2/self.SlideID).mkdir(parents=True, exist_ok=True)
     nfiles = len(self)
     for i, filename in enumerate(self.fwfiles, start=1):
-      logger.info(f"{i:5d}/{nfiles} {filename.name}")
+      self.logger.info(f"{i:5d}/{nfiles} {filename.name}")
       with memmapcontext(filename, dtype=np.uint16, order="F", shape=self.shape, mode="r") as memmap:
         for layer in layers:
-          outfilename = self.root2/self.samp/f"{filename.stem}.fw{layer:02d}"
+          outfilename = self.root2/self.SlideID/f"{filename.stem}.fw{layer:02d}"
           if outfilename.exists():
             if alreadyexistsstrategy == "error":
               raise OSError(f"{outfilename} already exists")
@@ -62,7 +68,7 @@ class LayerExtractorBase(contextlib.ExitStack, collections.abc.Sized):
 class LayerExtractor(LayerExtractorBase):
   @property
   def fwfiles(self):
-    return (self.root2/self.samp).glob("*.fw")
+    return (self.root2/self.SlideID).glob("*.fw")
   def __len__(self):
     return len(list(self.fwfiles))
 
@@ -84,7 +90,7 @@ class ShredderAndLayerExtractor(LayerExtractorBase):
 
   @property
   def im3files(self):
-    return (self.root1/self.samp/"im3"/"flatw").glob("*.im3")
+    return (self.root1/self.SlideID/"im3"/"flatw").glob("*.im3")
 
   @property
   def fwfiles(self):
