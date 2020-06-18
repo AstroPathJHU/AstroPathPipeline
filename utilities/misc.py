@@ -95,8 +95,13 @@ def PILmaximagepixels(pixels):
     PIL.Image.MAX_IMAGE_PIXELS = bkp
 
 @contextlib.contextmanager
-def memmapcontext(*args, **kwargs):
-  memmap = np.memmap(*args, **kwargs)
+def memmapcontext(filename, *args, **kwargs):
+  try:
+    memmap = np.memmap(filename, *args, **kwargs)
+  except OSError as e:
+    if hasattr(filename, "name"): filename = filename.name
+    if getattr(e, "winerror", None) == 8:
+      raise IOError(f"Failed to create memmap from corrupted file {filename}")
   try:
     yield memmap
   finally:
