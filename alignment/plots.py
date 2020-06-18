@@ -7,10 +7,10 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from ..utilities import units
 from ..utilities.misc import floattoint, pullhist, weightedaverage, weightedstd
 
-logger = logging.getLogger("align")
+logger = logging.getLogger("alignmentplots")
 
 def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pixelsormicrons=None, pullkwargs={}, pullbinning=None):
-  logger.info(alignmentset.samp)
+  logger.debug(alignmentset.samp)
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -69,11 +69,11 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
     plt.savefig(saveas)
     plt.close()
 
-  logger.info("done")
+  logger.debug("done")
   return vectors
 
 def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False, sinetext=False, drawfourier=False, guessparameters=None):
-  logger.info(alignmentset.samp)
+  logger.debug(alignmentset.samp)
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -284,11 +284,11 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     plt.savefig(saveas)
     plt.close()
 
-  logger.info("done")
+  logger.debug("done")
   return x, y, yerr, p
 
 def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
-  logger.info(alignmentset.samp)
+  logger.debug(alignmentset.samp)
   dct = {
     1: (-1, -1),
     2: ( 0, -1),
@@ -360,12 +360,14 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
     plt.savefig(saveas)
     plt.close()
 
-  logger.info("done")
+  logger.debug("done")
   return xresiduals, yresiduals
 
-def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax, cbar, xory: None):
-  logger.info(alignmentset.samp)
+def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax, cbar, xory: None, island=None):
+  logger.debug(alignmentset.samp)
   fields = alignmentset.fields
+  if island is not None:
+    fields = [field for field in fields if field.n in alignmentset.islands()[island]]
   deltax = min(abs(a.x-b.x) for a, b in more_itertools.pairwise(fields) if a.x != b.x)
   deltay = min(abs(a.y-b.y) for a, b in more_itertools.pairwise(fields) if a.y != b.y)
   deltaxvec = deltax, deltay
@@ -402,5 +404,5 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
       plt.savefig(saveas)
       plt.close()
 
-  logger.info("done")
+  logger.debug("done")
   return xyarray
