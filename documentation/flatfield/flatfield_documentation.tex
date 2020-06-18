@@ -19,7 +19,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TITLE AND ABSTRACT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %title
-\title{Flatfielding: Spatially-Dependent Correction of Microscope Field Illumination}
+\title{Flatfielding: Spatially-Dependent Correction of Microscope High-power Field Illumination}
 \author{Maggie Eminizer\\ \url{margaret.eminizer@gmail.com}\\ JHU Astropath Group}
 \date{\today}
 \begin{document}
@@ -50,26 +50,53 @@ A-posteriori methods have therefore been developed using a variety of approaches
 \subsection{Work already performed}
 \label{ssec:work_already_performed}
 
-The Astropath group's investigations of systematic illumination variation effects began in 2017, when substantial effects were noticed in Tissue Microarray (TMA) and deep tissue microscope images. In the first version of the work, documented in \cite{Alex_flatfielding_1}, an a-priori method was used to model the effects, wherein a slide of light diffusing material was imaged using identical methods to the slides of interest. The composite image layers, unmixed from their initial component layers using the InForm software package, were normalized by their mean illumination flux, resulting in the pattern shown on the upper left-hand side of \reffig{fig:first_flatfielding} for the DAPI layer of the unmixed image. This pattern was fit with a two-dimensional, second degree polynomial function, shown on the upper right-hand side of \reffig{fig:first_flatfielding}. The flux at each pixel in the first layer of the full individual component IM3 image was then divided by the associated value of the function fitted to the unmixed DAPI layer, and a resulting decrease in the systematic illumination variation was observed, as shown in the lower plot in \reffig{fig:first_flatfielding}. Similar methods using a third-degree polynomial fit were applied to the other layers of the unmixed images, as well as the individual component IM3 layers, with varying results. It was concluded that a polynomial fit was likely insufficient to describe the illumination variations in all image layers.
+The Astropath group's investigations of systematic illumination variation effects began in 2017, when substantial effects were noticed in Tissue Microarray (TMA) and deep tissue microscope images. In the first version of the work, documented in \cite{Alex_flatfielding_1}, an a-priori method was used to model the effects, wherein a slide of light diffusing material was imaged using identical methods to the slides of interest. The composite image layers, unmixed from their initial component layers, were normalized by their mean illumination flux, resulting in the pattern shown on the upper left-hand side of \reffig{fig:first_flatfielding} for the DAPI layer of the unmixed image. This pattern was fit with a two-dimensional, second degree polynomial function, shown on the upper right-hand side of \reffig{fig:first_flatfielding}. The flux at each pixel in the first layer of the full individual component IM3 image was then divided by the associated value of the function fitted to the unmixed DAPI layer, and a resulting decrease in the systematic illumination variation was observed, as shown in the lower plot in \reffig{fig:first_flatfielding}. Similar methods using a third-degree polynomial fit were applied to the other layers of the unmixed images, as well as the individual component IM3 layers, with varying results. It was concluded that a polynomial fit was likely insufficient to describe the illumination variations in all image layers.
 
-\begin{figure}[ht]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=0.45\textwidth]{images/first_unmixed_DAPI_meanimage}
 \includegraphics[width=0.45\textwidth]{images/first_DAPI_meanimage_polynomial_fit}
 \includegraphics[width=0.45\textwidth]{images/first_DAPI_meanimage_corrected_flux}
-\caption{\footnotesize Upper left: Illumination flux pattern observed in the unmixed DAPI layer of an imaged light diffuser. Upper right: Two-dimensional, second-degree polynomial fitted to the mean-normalized flux pattern pictured in the upper left figure. Lower: Histogram of log pixel counts vs. mean-normalized flux for the light diffuser image's unmixed DAPI layer (in red), first component IM3 layer (in blue), and first component IM3 layer after pixelwise division by the polynomial shown in the upper right plot (in green); the applied correction has reduced the systematic illumination variation to more Gaussian noise.}
+\caption{\footnotesize Upper left: Illumination flux pattern observed in the unmixed DAPI layer of an imaged light diffuser. Upper right: Two-dimensional, second-degree polynomial fitted to the mean-normalized flux pattern pictured in the upper left figure. Lower: Histogram of log pixel counts vs. mean-normalized flux for the light diffuser image's unmixed DAPI layer (in red), first component IM3 layer (in blue), and first component IM3 layer after pixelwise division by the polynomial shown in the upper right plot (in green); the applied correction has reduced the systematic illumination variation to more Gaussian noise. Figures from \cite{Alex_flatfielding_1}.}
 \label{fig:first_flatfielding}
 \end{figure}
 
-After these initial investigations, the decision was made to correct illumination variations in images in the raw IM3 component layers rather than in the unmixed composite image layers, and a new a-posteriori method was devloped to model the effects, as documented in \cite{Alex_flatfielding_2}.
+After these initial investigations, the decision was made to correct illumination variations in images in the raw IM3 component layers rather than in the unmixed composite image layers, and a new a-posteriori method was devloped to model the effects, as documented in \cite{Alex_flatfielding_2}. In this method, the flatfielding corrections were determined by making a single, multi-layer, average raw image from a set of 7,358 HPFs, smoothing the layers of the mean image with a Gaussian filter of standard deviation $\sigma=100$ pixels to retain only the large-scale pattern, and dividing this smoothed mean image by the mean average flux value layer-by-layer so that the corrections did not change the overall illumination of each image layer. It was found that this method resulted in consistent illumination variation patterns, shown in \reffig{fig:second_flatfielding}, correlated within layers contributing to the same broadband filter region (raw layers 1-9, 10-18, 19-25, 26-32, and 33-35 for the DAPI, FITC, Cy3, Texas Red, and Cy5 unmixed spectral components, respectively).
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.8\textwidth]{images/second_flatfield_image_layers}
+\caption{\footnotesize Selected layers of the flatfield image from \cite{Alex_flatfielding_2}, stretched from minimum to maximum mean-normalized flux, in the first, middle, and last layer of each broadband filter region as labeled. The patterns are fairly consistent between each broadband filter break. Layer 26, the first layer in the Texas Red region, was not brightly illuminated for the melanoma tissue samples used, and represents an outlier in this and other investigations.}
+\label{fig:second_flatfielding}
+\end{figure}
+
+After using this new model for some time to correct HPF illumination, it was discovered \cite{Ben_flatfielding_1} that the algorithm implemented in the inForm software package \cite{Kramer2018} used to phenotype cells for pathology was over-identifying cells of a certain type in some more recently-collected samples, in a pattern similar to that of the original flatfield correction images. Updated flatfield correction models were developed using the same averaging, smoothing, and normalizing method as in \cite{Alex_flatfielding_2} for different subsets of the data separated by time of collection (or ``Batch''), and it was discovered that changing the lightbulb in the microscope between batches had a significant effect on the pattern of illumination variation, as shown in \reffig{fig:third_flatfielding}. 
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.9\textwidth]{images/third_flatfield_differences}
+\caption{\footnotesize Differences in the third unmixed image layer between the normalized mean images computed independently for each batch and the original flatfield correction image measured in \cite{Alex_flatfielding_2} using a subset of the Batch3 data. These images showed that the illumination variations changed between batches, and especially for batches 12 and 13-14, before the collection of which the lightbulb in the microscope was replaced. Figures from \cite{Ben_flatfielding_1}.}
+\label{fig:third_flatfielding}
+\end{figure}
+
+At this point the decision was made to measure and correct for the illumination variations independently for each batch of images collected. The work documented in \cite{Ben_flatfielding_1} also gave the first look at the illumination variations in samples collected with the Vectra Polaris imaging system as opposed to the Vectra 3.0 digital microscope, showing that the overall amount of variation was less for the Vectra Polaris, and the patterns were different in shape, likely due to the Vectra Polaris using an LED array rather than a lightbulb for slide illumination. This comparison was made in greater detail in \cite{Ben_flatfielding_2} where two component-layer mean image models were computed from sets of 10,000 HPFs collected with the Vectra 3.0 and Vectra Polaris microscopes. The corrections were applied to sets of 10,000 independent HPF datasets from each microscope, and the uncorrected and corrected images were unmixed using inForm and their own average images were compared. It was discovered that applying the flatfield corrections greatly reduced the overall illumination variation in the average unmixed images for both the Vectra 3.0 and Vectra Polaris microscopes, as shown in \reffig{fig:fourth_flatfielding}. To date this type of model of the average of large sets of images is used for correcting illumination variation before unmixing.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.9\textwidth]{images/fourth_flatfield_impact}
+\caption{\footnotesize 10th and 90th percentile illumination flux relative to the layer mean in smoothed, unmixed average images before and after application of flatfielding corrections for data collected with the Vectra 3.0 and Vectra Polaris microscopes. The flatfielding corrections and the averages of the images to which they were applied were determined using independent sets of 10,000 HPFs each. Applying flatfield corrections of this type of smoothed, normalized, mean image layers reduced the overall illumination variation observed for images from both microscopes. Figures from \cite{Ben_flatfielding_1}.}
+\label{fig:fourth_flatfielding}
+\end{figure}
 
 %%%%%%%%%%% This work subsection
 \subsection{This work}
 \label{ssec:this_work}
 
-%%%%%%%%%%% Datasets used subsection
-\subsection{Datasets used}
-\label{ssec:mask_stacks_and_mean_images}
+It is the goal of the work documented in this note to provide the most detailed and highest quality measurements of the illumination variation and associated flatfield corrections yet made by the Astropath group. To this end, an additional step has been implemented in the flatfielding procedure to only average over regions of images that are determined to show tissue, since the inclusion of empty background regions in many of the images over which the average is taken may bias measurements away from noise specifically affecting the tissue used for quantitative clinical pathology further down the line. A secondary goal of this work is to re-implement the analysis pipeline in python, an open-source programming language, and to develop a single software package that is not only easy to use but also able to scale up to even higher throughput without complicating analysis or prohibitively increasing runtime.
+
+Here are the details on the datasets I used to make these measurements.
+
+Here is an overview of the rest of the note.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% IMAGE MASKING SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Image Masking}
