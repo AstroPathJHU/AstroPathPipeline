@@ -1,17 +1,16 @@
-import abc, collections, dataclasses, itertools, logging, methodtools, more_itertools, numpy as np, uncertainties as unc
+import abc, collections, dataclasses, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangledict
 from ..utilities import units
+from ..utilities.logging import dummylogger
 from ..utilities.misc import weightedstd
 from ..utilities.tableio import readtable, writetable
 from .field import Field, FieldOverlap
 
-logger = logging.getLogger("align")
-
 def stitch(*, usecvxpy=False, **kwargs):
   return (__stitch_cvxpy if usecvxpy else __stitch)(**kwargs)
 
-def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverlaperror=1, fixpoint="origin"):
+def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverlaperror=1, fixpoint="origin", logger=dummylogger):
   """
   \begin{align}
   -2 \ln L =&
@@ -31,7 +30,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   \end{pmatrix}
   \end{equation}
   """
-  logger.debug("starting to stitch")
+  logger.info("stitch")
 
   #nll = x^T A x + bx + c
 
@@ -130,7 +129,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     c += x0**2 / sigmax**2
     c += y0**2 / sigmay**2
 
-  logger.debug("assembled A, b, c")
+  logger.debug("assembled A b c")
 
   result = units.np.linalg.solve(2*A, -b)
 
@@ -146,9 +145,10 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   T = result[-4:].reshape(2, 2)
 
   logger.debug("done")
+
   return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix)
 
-def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin"):
+def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", logger=dummylogger):
   """
   \begin{align}
   -2 \ln L =&
@@ -341,7 +341,7 @@ class StitchResultBase(RectangleOverlapCollection):
   def fields(self):
     return self.__fields()
 
-  def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
+  def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, logger=dummylogger, **kwargs):
     affinefilename, fieldsfilename, fieldoverlapfilename = filenames
 
     fields = self.fields

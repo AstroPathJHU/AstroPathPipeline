@@ -92,19 +92,21 @@ class TestAlignment(unittest.TestCase):
     a.getDAPI()
     a.align(debug=True)
     a.stitch(checkwriting=True)
-    for filename, cls, extrakwargs in (
-      ("M21_1_imstat.csv", ImageStats, {"pscale": a.pscale}),
-      ("M21_1_align.csv", AlignmentResult, {"pscale": a.pscale}),
-      ("M21_1_fields.csv", Field, {"pscale": a.pscale}),
-      ("M21_1_affine.csv", AffineEntry, {}),
-      ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "layer": a.layer, "nclip": a.nclip}),
-    ):
-      rows = readtable(thisfolder/"data"/"M21_1"/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-      targetrows = readtable(thisfolder/"alignmentreference"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-      for row, target in itertools.zip_longest(rows, targetrows):
-        assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
-    self.__savealigned()
+    try:
+      for filename, cls, extrakwargs in (
+        ("M21_1_imstat.csv", ImageStats, {"pscale": a.pscale}),
+        ("M21_1_align.csv", AlignmentResult, {"pscale": a.pscale}),
+        ("M21_1_fields.csv", Field, {"pscale": a.pscale}),
+        ("M21_1_affine.csv", AffineEntry, {}),
+        ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "layer": a.layer, "nclip": a.nclip}),
+      ):
+        rows = readtable(thisfolder/"data"/"M21_1"/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        targetrows = readtable(thisfolder/"alignmentreference"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        for row, target in itertools.zip_longest(rows, targetrows):
+          assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+    finally:
+      self.__savealigned()
 
   def testAlignmentFastUnits(self):
     with units.setup_context("fast"):
