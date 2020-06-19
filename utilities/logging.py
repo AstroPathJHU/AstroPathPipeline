@@ -1,17 +1,6 @@
-import dataclasses, logging
+import logging
 
-@dataclasses.dataclass
-class SampleDef:
-  SampleID: int
-  SlideID: str
-  Project: int
-  Cohort: int
-  Scan: int
-  BatchID: int
-  isGood: int
-
-  def __bool__(self):
-    return bool(self.isGood)
+from ..baseclasses.sample import SampleDef
 
 class MyLogger(object):
   def __init__(self, *args, module=None, **kwargs):
