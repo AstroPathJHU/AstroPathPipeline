@@ -54,9 +54,9 @@ The Astropath group's investigations of systematic illumination variation effect
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.45\textwidth]{images/first_unmixed_DAPI_meanimage}
-\includegraphics[width=0.45\textwidth]{images/first_DAPI_meanimage_polynomial_fit}
-\includegraphics[width=0.45\textwidth]{images/first_DAPI_meanimage_corrected_flux}
+\includegraphics[width=0.45\textwidth]{images/introduction/first_unmixed_DAPI_meanimage}
+\includegraphics[width=0.45\textwidth]{images/introduction/first_DAPI_meanimage_polynomial_fit}
+\includegraphics[width=0.45\textwidth]{images/introduction/first_DAPI_meanimage_corrected_flux}
 \caption{\footnotesize Upper left: Illumination flux pattern observed in the unmixed DAPI layer of an imaged light diffuser. Upper right: Two-dimensional, second-degree polynomial fitted to the mean-normalized flux pattern pictured in the upper left figure. Lower: Histogram of log pixel counts vs. mean-normalized flux for the light diffuser image's unmixed DAPI layer (in red), first component IM3 layer (in blue), and first component IM3 layer after pixelwise division by the polynomial shown in the upper right plot (in green); the applied correction has reduced the systematic illumination variation to more Gaussian noise. Figures from \cite{Alex_flatfielding_1}.}
 \label{fig:first_flatfielding}
 \end{figure}
@@ -65,7 +65,7 @@ After these initial investigations, the decision was made to correct illuminatio
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.8\textwidth]{images/second_flatfield_image_layers}
+\includegraphics[width=0.8\textwidth]{images/introduction/second_flatfield_image_layers}
 \caption{\footnotesize Selected layers of the flatfield image from \cite{Alex_flatfielding_2}, stretched from minimum to maximum mean-normalized flux, in the first, middle, and last layer of each broadband filter region as labeled. The patterns are fairly consistent between each broadband filter break. Layer 26, the first layer in the Texas Red region, was not brightly illuminated for the melanoma tissue samples used, and represents an outlier in this and other investigations.}
 \label{fig:second_flatfielding}
 \end{figure}
@@ -74,7 +74,7 @@ After using this new model for some time to correct HPF illumination, it was dis
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.9\textwidth]{images/third_flatfield_differences}
+\includegraphics[width=0.9\textwidth]{images/introduction/third_flatfield_differences}
 \caption{\footnotesize Differences in the third unmixed image layer between the normalized mean images computed independently for each batch and the original flatfield correction image measured in \cite{Alex_flatfielding_2} using a subset of the Batch3 data. These images showed that the illumination variations changed between batches, and especially for batches 12 and 13-14, before the collection of which the lightbulb in the microscope was replaced. Figures from \cite{Ben_flatfielding_1}.}
 \label{fig:third_flatfielding}
 \end{figure}
@@ -83,7 +83,7 @@ At this point the decision was made to measure and correct for the illumination 
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.9\textwidth]{images/fourth_flatfield_impact}
+\includegraphics[width=0.9\textwidth]{images/introduction/fourth_flatfield_impact}
 \caption{\footnotesize 10th and 90th percentile illumination flux relative to the layer mean in smoothed, unmixed average images before and after application of flatfielding corrections for data collected with the Vectra 3.0 and Vectra Polaris microscopes. The flatfielding corrections and the averages of the images to which they were applied were determined using independent sets of 10,000 HPFs each. Applying flatfield corrections of this type of smoothed, normalized, mean image layers reduced the overall illumination variation observed for images from both microscopes. Figures from \cite{Ben_flatfielding_1}.}
 \label{fig:fourth_flatfielding}
 \end{figure}
@@ -94,17 +94,35 @@ At this point the decision was made to measure and correct for the illumination 
 
 It is the goal of the work documented in this note to provide the most detailed and highest quality measurements of the illumination variation and associated flatfield corrections yet made by the Astropath group. To this end, an additional step has been implemented in the flatfielding procedure to only average over regions of images that are determined to show tissue, since the inclusion of empty background regions in many of the images over which the average is taken may bias measurements away from noise specifically affecting the tissue used for quantitative clinical pathology further down the line. A secondary goal of this work is to re-implement the analysis pipeline in python, an open-source programming language, and to develop a single software package that is not only easy to use but also able to scale up to even higher throughput without complicating analysis or prohibitively increasing runtime.
 
-Here are the details on the datasets I used to make these measurements.
+The findings presented in this note were prepared using a total set of 45,384 HPFs from 46 individual slides of melanoma tissue samples collected with the Vectra 3.0 digital microscope. The raw images all had 35 layers, and each layer had a width of 1,344 pixels and a height of 1,004 pixels. The set of 45,384 images was randomly divided into two subsamples of 22,692 HPFs each; one subsample was used to produce the flatfield corrections themselves and the other subsample was used to measure the illumination variation before and after application of the flatfield corrections.
 
-Here is an overview of the rest of the note.
+\refsec{sec:image_masking} below discusses the methods used to identify tissue and mask background out of the HPFs of each sample. \refsec{sec:measuring_flatfield_corrections} explains how images were stacked, averaged, and smoothed to produce measurements of the flatfield corrections. \refsec{sec:results} shows the resulting flatfield image layers and details how their application reduces illumination variation measured in the independent subsample. A brief summary is presented in \refsec{sec:summary}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% IMAGE MASKING SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Image Masking}
 \label{sec:image_masking}
 
+One of the main goals of this work was to ignore as much empty background as possible in the images used to measure the flatfield corrections. The background portions of the images are inherently illuminated differently than the fluorescent tissue, so including background may bias measurements away from what would be observed for the tissue alone. The flatfield corrections should account only for the variations in tissue illumination because the tissue is what is used for clinical analysis. The separation of tissue from background was achieved using a masking procedure.
+
 %%%%%%%%%%% Determining background flux thresholds subsection
 \subsection{Determining background flux thresholds}
 \label{ssec:determining_background_flux_thresholds}
+
+The first step in masking background out of images is to find flux thresholds above which a pixel is more likely to represent bright tissue than dim background. Because of differences in staining, illumination, and fluorescence, these background flux thresholds were measured independently for each layer of each sample. A clear threshold is easiest to determine when a given image layer shows both some tissue and some background, which is often not the case in the bulk of the tissue samples, so thresholds were determined using HPFs located on the edges of each sample. The locations of these edge HPFs are shown in \reffig{fig:edge_HPFs} for a few examples. A set of optimal flux thresholds per layer is found for each of these images independently, and a final determination for the optimal layer thresholds for each sample as a whole is then made from these individual measurements.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/masking/rectangle_locations_M3_1}
+\includegraphics[width=0.95\textwidth]{images/masking/rectangle_locations_M17_1}
+\includegraphics[width=0.95\textwidth]{images/masking/rectangle_locations_M47_1}
+\caption{\footnotesize Locations of HPFs on edges of tissue (left column) next to low-resolution reference .qptiff images (right column) for samples named M3\_1 (upper row), M17\_1 (middle row), and M47\_1 (lower row). }
+\label{fig:edge_HPFs}
+\end{figure}
+
+Let each raw tissue edge HPF image be represented by a three-dimensional tensor $I_{i,j,m}$ whose $x$, $y$, and layer coordinates are indexed by $i$, $j$, and $m$, respectively, and whose contents are pixel intensity fluxes. The initial image layers are first smoothed with a Gaussian filter\footnote{In all filtering operations described in this note, the values at edges of images are repeated to provide the necessary kernel extensions.} of standard deviation $\sigma=5$ pixels using the OpenCV computer vision library \cite{opencv_library} to remove small-scale variations in pixel content and produce a set of smoothed image layers $S_{i,j,m}$. The layers of $S$ are then collapsed into histograms $H_{m}(f)$ where $f$ is the discrete pixel intensity flux (from 0 to 65,535 for 16-bit unsigned integers).
+
+
+
 
 %%%%%%%%%%% Producing image masks subsection
 \subsection{Producing image masks}
@@ -133,6 +151,10 @@ Here is an overview of the rest of the note.
 %%%%%%%%%%% Reduction in illumination variation subsection
 \subsection{Reduction in illumination variation}
 \label{ssec:reduction_in_illumination_variation}
+
+%%%%%%%%%%% Impact of masking subsection
+\subsection{Impact of masking}
+\label{ssec:impact_of_masking}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SUMMARY SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Summary}
