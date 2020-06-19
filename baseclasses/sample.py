@@ -1,4 +1,4 @@
-import abc, methodtools, pathlib
+import abc, dataclasses, methodtools, pathlib
 
 from ..utilities.misc import dataclass_dc_init, tiffinfo
 
