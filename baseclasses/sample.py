@@ -43,6 +43,8 @@ class SampleBase(abc.ABC):
   def __init__(self, root, samp):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
+    if not (self.root/self.SlideID).exists():
+      raise IOError(f"{self.root1/self.SlideID} does not exist")
 
   @property
   def SampleID(self): return self.samp.SampleID
@@ -59,6 +61,9 @@ class SampleBase(abc.ABC):
   @property
   def isGood(self): return self.samp.isGood
   def __bool__(self): return bool(self.samp)
+
+  def __str__(self):
+    return str(self.mainfolder)
 
   @property
   def mainfolder(self):
@@ -82,7 +87,10 @@ class SampleBase(abc.ABC):
 
   @methodtools.lru_cache()
   def getcomponenttiffinfo(self):
-    componenttifffilename = next(self.componenttiffsfolder.glob(self.SlideID+"*_component_data.tif"))
+    try:
+      componenttifffilename = next(self.componenttiffsfolder.glob(self.SlideID+"*_component_data.tif"))
+    except StopIteration:
+      raise OSError(f"No component tiffs for {self}")
     return tiffinfo(filename=componenttifffilename)
 
   @property
@@ -91,3 +99,11 @@ class SampleBase(abc.ABC):
   def tiffwidth(self): return self.getcomponenttiffinfo()[1]
   @property
   def tiffheight(self): return self.getcomponenttiffinfo()[2]
+
+class FlatwSampleBase(SampleBase):
+  def __init__(self, root, root2, samp, *args, **kwargs):
+    super().__init__(root=root, samp=samp, *args, **kwargs)
+    self.root2 = root2
+
+  @property
+  def root1(self): return self.root

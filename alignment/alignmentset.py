@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 
-import cv2, methodtools, numpy as np, pathlib, traceback
+import cv2, methodtools, numpy as np, traceback
 
+from ..baseclasses.sample import FlatwSampleBase
 from ..prepdb.csvclasses import Batch, Constant
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangleoroverlapfilter
 from ..utilities import units
-from ..utilities.logging import getlogger, SampleDef
-from ..utilities.misc import memmapcontext, tiffinfo
+from ..utilities.logging import getlogger
+from ..utilities.misc import memmapcontext
 from ..utilities.tableio import readtable, writetable
 from .flatfield import meanimage
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
 from .stitch import ReadStitchResult, stitch
 
-class AlignmentSet(RectangleOverlapCollection):
+class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
   """
   Main class for aligning a set of images
   """
@@ -33,9 +34,7 @@ class AlignmentSet(RectangleOverlapCollection):
     interactive: if this is true, then the script might try to prompt
                  you for input if things go wrong
     """
-    self.root1 = pathlib.Path(root1)
-    self.root2 = pathlib.Path(root2)
-    self.samp = samp
+    super().__init__(root1, root2, samp)
     self.interactive = interactive
 
     self.logger = getlogger("align", self.root1, samp, uselogfiles=uselogfiles)
@@ -44,26 +43,12 @@ class AlignmentSet(RectangleOverlapCollection):
     overlapfilter = rectangleoroverlapfilter(selectoverlaps)
     self.overlapfilter = lambda o: overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
 
-    if not (self.root1/self.SlideID).exists():
-      raise IOError(f"{self.root1/self.SlideID} does not exist")
-
     self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps)
     self.rawimages=None
     self.__imagefilenameadjustment = imagefilenameadjustment
 
     self.gpufftdict = None
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
-
-  @property
-  def SlideID(self):
-    if isinstance(self.samp, SampleDef):
-      return self.samp.SlideID
-    else:
-      return self.samp
-
-  @property
-  def dbload(self):
-    return self.root1/self.SlideID/"dbload"
 
   def readmetadata(self, *, onlyrectanglesinoverlaps=False):
     """
@@ -74,15 +59,13 @@ class AlignmentSet(RectangleOverlapCollection):
       try: return int(string)
       except ValueError: return float(string)
 
+    width = height = None
     try:
-      componenttiff = next((self.root1/self.SlideID/"inform_data"/"Component_Tiffs").glob("*.tif"))
-    except StopIteration:
+      pscale = self.tiffpscale
+      width = self.tiffwidth
+      height = self.tiffheight
+    except OSError:
       self.logger.warningglobal("couldn't find a component tiff: trusting image size and pscale from constants.csv")
-      componenttiff = None
-    else:
-      pscale, width, height = tiffinfo(filename=componenttiff)
-
-    if componenttiff is None:
       tmp = readtable(self.dbload/(self.SlideID+"_constants.csv"), Constant, extrakwargs={"pscale": 1})
       pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
     self.constants     = readtable(self.dbload/(self.SlideID+"_constants.csv"), Constant, extrakwargs={"pscale": pscale})
@@ -92,7 +75,7 @@ class AlignmentSet(RectangleOverlapCollection):
     self.fheight   = self.constantsdict["fheight"]
     self.pscale    = float(self.constantsdict["pscale"])
 
-    if componenttiff is not None:
+    if width is not None:
       if (width, height) != (self.fwidth, self.fheight):
         self.logger.warningglobal(f"component tiff has size {width} {height} which is different from {self.fwidth} {self.fheight} (in constants.csv)")
         self.fwidth, self.fheight = width, height
