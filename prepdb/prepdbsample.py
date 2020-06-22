@@ -18,7 +18,7 @@ jxmleaseversion = [int(_) for _ in jxmleaseversion[:2]] + list(jxmleaseversion[2
 if jxmleaseversion < [1, 0, '2dev1']:
   raise ImportError(f"You need jxmleaseversion >= 1.0.2dev1 (your version: {jxmlease.__version__})\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
 
-class Sample(SampleBase):
+class PrepdbSample(SampleBase):
   def __init__(self, *args, dest=None, **kwargs):
     super().__init__(*args, **kwargs)
     if dest is None: dest = self.dbload
@@ -445,5 +445,5 @@ if __name__ == "__main__":
   args = p.parse_args()
   kwargs = {"root": args.root, "samp": args.samp}
   if args.dest: kwargs["dest"] = args.dest
-  s = Sample(**kwargs)
+  s = PrepdbSample(**kwargs)
   s.writemetadata()

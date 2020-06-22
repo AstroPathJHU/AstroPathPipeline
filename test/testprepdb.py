@@ -1,7 +1,7 @@
 import itertools, numpy as np, pathlib, PIL.Image, unittest
 from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
 from ..prepdb.rectangle import Rectangle
-from ..prepdb.sample import Annotation, Batch, Constant, Overlap, QPTiffCsv, Region, Sample, Vertex
+from ..prepdb.prepdbsample import Annotation, Batch, Constant, Overlap, QPTiffCsv, Region, PrepdbSample, Vertex
 from ..utilities import units
 from ..utilities.tableio import readtable
 from .testalignment import assertAlmostEqual
@@ -10,7 +10,7 @@ thisfolder = pathlib.Path(__file__).parent
 
 class TestPrepDb(unittest.TestCase):
   def testPrepDb(self):
-    sample = Sample(thisfolder/"data", "M21_1")
+    sample = PrepdbSample(thisfolder/"data", "M21_1")
     sample.writemetadata()
 
     for filename, cls, extrakwargs in (
