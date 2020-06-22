@@ -10,11 +10,15 @@
 \usepackage{xspace}
 \usepackage[left=20mm,top=20mm]{geometry}
 \usepackage{hyperref}
+\usepackage{lineno}
 \renewcommand{\familydefault}{\sfdefault}
 
 %macros
 \newcommand{\reffig}[1]{Figure~\ref{#1}}
 \newcommand{\refsec}[1]{Section~\ref{#1}}
+\newcommand{\refeq}[1]{Equation~\ref{#1}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\Tau}{\mathrm{T}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TITLE AND ABSTRACT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -24,6 +28,9 @@
 \date{\today}
 \begin{document}
 \maketitle
+
+%start numbering lines
+\linenumbers
 
 %abstract
 \abstract{This note details a method for correcting systematic variations in the illumination of multiplexed immunofluorescence microscopy images. The variations are measured using regions of image layers that are free of empty background as determined using a thresholding and masking procedure. The illumination flux observed in these regions is averaged over a large number of images, and the resulting variation pattern is smoothed to retain only the large-scale effects. The spatially-dependent corrections are defined as the ratios of these average flux patterns to their mean values in each image layer. The effect of applying these corrections is characterized using a set of 45,384 melanoma tissue images collected at the Johns Hopkins Hospital using an Akoya Biosciences Vectra 3.0 digital microscope. It is shown that the illumination of the tissue depicted in these images initially varies with an average standard deviation of 4.2\% relative flux in systematic patterns for each image layer, and that applying the corrections reduces the variation to an average standard deviation of 1.0\% relative flux in more random patterns.}
@@ -119,14 +126,86 @@ The first step in masking background out of images is to find flux thresholds ab
 \label{fig:edge_HPFs}
 \end{figure}
 
-Let each raw tissue edge HPF image be represented by a three-dimensional tensor $I_{i,j,m}$ whose $x$, $y$, and layer coordinates are indexed by $i$, $j$, and $m$, respectively, and whose contents are pixel intensity fluxes. The initial image layers are first smoothed with a Gaussian filter\footnote{In all filtering operations described in this note, the values at edges of images are repeated to provide the necessary kernel extensions.} of standard deviation $\sigma=5$ pixels using the OpenCV computer vision library \cite{opencv_library} to remove small-scale variations in pixel content and produce a set of smoothed image layers $S_{i,j,m}$. The layers of $S$ are then collapsed into histograms $H_{m}(f)$ where $f$ is the discrete pixel intensity flux (from 0 to 65,535 for 16-bit unsigned integers).
+Let each raw tissue edge HPF image be represented by a three-dimensional tensor $I_{i,j,m}$ whose $x$, $y$, and layer coordinates are indexed by $i$, $j$, and $m$, respectively, and whose contents are pixel intensity fluxes. The initial image layers are first smoothed with a Gaussian filter\footnote{In all filtering operations described in this note, the values at edges of images are repeated to provide the necessary kernel extensions.} of standard deviation $\sigma=5$ pixels using the OpenCV computer vision library \cite{opencv_library} to remove small-scale variations in pixel content, producing a set of smoothed image layers $S_{i,j,m}$. The layers of $S$ are then collapsed into histograms $H_{m}(f)$ where $f$ is the discrete pixel intensity flux (from 0 to $F=65,535$ for 16-bit unsigned integers). \reffig{fig:raw_to_smoothed_to_histogram} shows $I_{i,j,0}$ and $S_{i,j,0}$ stretched from minimum to maximum in grayscale and the $H_{0}$ histogram for the first layer of a single HPF on the edge of the tissue in the sample called M21\_1. 
 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.45\textwidth]{images/masking/example_raw_image}
+\includegraphics[width=0.45\textwidth]{images/masking/example_smoothed_image}
+\includegraphics[width=0.45\textwidth]{images/masking/example_histogram}
+\caption{\footnotesize Raw image $I_{i,j,0}$ (upper left), smoothed image $S_{i,j,0}$ (upper right), and pixel intensity histogram $H_{0}$ (lower) for the first layer of an example tissue-edge HPF in the sample named M21\_1. (Note that the histogram is shown with a logarithmic y-axis.)}
+\label{fig:raw_to_smoothed_to_histogram}
+\end{figure}
 
+The background pixels appear as peaks near the low edge of the $H_{m}(f)$ histograms: finding a threshold above which pixels are likely to show tissue amounts to finding the end of that low peak. To this end we employ Otsu's thresholding algorithm \cite{4310076}, which determines the threshold $T^{0}_{m}$ that maximizes the inter-class variance $\sigma^2(t)$ as a function of the threshold $t$ separating the signal and background classes in each $H_{m}(f)$,
+\begin{equation}
+T^{0}_{m} = \argmax{ \left\{ \sigma^2(t) \right\} } = \argmax{ \left\{ w_{b}(t) w_{s}(t) \left[ \frac{\sum_{f=0}^{t-1} f H_{m}(f)}{w_{b}(t)} - \frac{\sum_{f=t}^{F-1} f H_{m}(f)}{w_{s}(t)} \right]^2 \right\} },
+\label{eq:otsu_threshold_def}
+\end{equation}  
+where $w_{b}(t) = \sum_{f=0}^{t-1} H_{m}(f)$ and $w_{s}(t) = \sum_{f=t}^{F-1} H_{m}(f)$ are variance weights for the background and signal classes, respectively.
 
+We apply this algorithm iteratively to each $H_{m}(f)$ to find $K$ points of separation $T^{0}_{m}, \ldots, T^{K-1}_{m}$ between different categories of pixel intensities. Each successive $T^{k+1}_{m}$ is defined as the result of applying \refeq{eq:otsu_threshold_def} to the subset of $H_{m}(f)$ bounded above by the previous threshold $T^{k}_{m}$, where summations to $F-1$ in \refeq{eq:otsu_threshold_def} are replaced by summations to $T^{k}_{m}$ for each $k=0,\ldots,K-1$. Iteration continues until no more pixels are left with flux $f<T^{K+1}_{m}$, so the value of $K$ varies for each $H_{m}$.
+
+We define a background pixel flux distribution $B_{m}(t)$ as the subset of $H_{m}$ that is bounded above by the flux $t$, and we define the population skew (or third standardized moment) of $B_{m}(t)$ as $\widetilde{\mu}_{m}(t)$. The optimal background threshold flux $\tau_{m}$ for a given $H_{m}$ is then chosen as the member of the Otsu threshold set exhibiting the maximal value of the local slope of the $\widetilde{\mu}_{m}(t)$ function weighted by $\widetilde{\mu}_{m}(t)$, like
+\begin{equation}
+\tau_{m} = \argmax{\left[ \xi(k) \right]} = \argmax{ \left[ \frac{ \widetilde{\mu}_{m}(T^{k}_{m}+1) - \widetilde{\mu}_{m}(T^{k}_{m}-1) }{ 2 \widetilde{\mu}_{m}(T^{k}_{m}) } \right] } .
+\label{eq:otsu_choice_def}
+\end{equation}
+
+This method tends to choose thresholds resulting in $B_{m}(\tau_{m})$ with large local $\widetilde{\mu}_{m}$ slopes and small values of $\widetilde{\mu}_{m}(\tau_{m})$, indicating a left-weighted peak near $\tau_{m}$ that is relatively clustered around a single mean value, as would be expected for approximately-Gaussian background noise at the low end of $H_{m}$. \reffig{fig:histograms_with_otsu_thresholds} shows the thresholds $T^{k}_{m}$ overlaid on partial pixel intensity histograms for several $H_{m}$ distributions from the example dataset named M21\_1, as well as their corresponding $\widetilde{\mu}_{m}(T^{k}_{m})$ values and weighted and unweighted local $\widetilde{\mu}_{m}(t)$ slopes. It can be seen that the choice defined by \refeq{eq:otsu_choice_def} usually selects a $B_{m}(\tau_{m})$ that is, visually, the lowest peak in $H_{m}$.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.85\textwidth]{images/masking/thresholds_image_15_layer_1}
+\includegraphics[width=0.85\textwidth]{images/masking/thresholds_image_11_layer_5}
+\includegraphics[width=0.85\textwidth]{images/masking/thresholds_image_4_layer_27}
+\includegraphics[width=0.85\textwidth]{images/masking/thresholds_image_25_layer_34}
+\caption{\footnotesize Partial $H_{m}$ histograms with $T^{k}_{m}$ thresholds overlaid (left column), $\widetilde{\mu}_{m}(T^{k}_{m})$ values (middle column), and $0.5*\left[\widetilde{\mu}_{m}(T^{k}_{m}+1) - \widetilde{\mu}_{m}(T^{k}_{m}-1)\right]$ and $\xi(k)$ values (right column), for the 1st, 5th, 27th, and 34th layers of the 16th, 12th, 5th, and 26th tissue edge HPFs in the sample named M21\_1 (rows upper to lower, respectively).}
+\label{fig:histograms_with_otsu_thresholds}
+\end{figure}
+
+For each sample, a final background threshold $\Tau_{m}$ per layer is chosen as the median of the $\tau_{m}$ values found for each tissue edge HPF. Taking the median of multiple measurements reduces the influence of outlier images in the sample, such as those that don't show a substantial portion of background, or that are unevenly stained and fluoresce more brightly than tissue in the bulk of the sample. Figures~\ref{fig:threshold_distributions_1} and ~\ref{fig:threshold_distributions_2} show the distributions of $\tau_{m}$ values observed in several layers and example samples, next to the sum of the $B_{m}(\tau_{m})$ histograms for all edge HPFs in the sample. The thresholding method used produces fairly regular distributions of the final background pixel flux distributions. \reffig{fig:all_sample_thresholds} shows severals statistics describing the $\Tau_{m}$ values found for all 46 of the Vectra 3.0 microscope samples analyzed; there is clear dependence on the broadband filter region, and there is nonzero but regular variation amongst the values found for each layer of the samples.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.80\textwidth]{images/masking/M1_1_layer_1_background_threshold_plots}
+\includegraphics[width=0.80\textwidth]{images/masking/M3_1_layer_5_background_threshold_plots}
+\includegraphics[width=0.80\textwidth]{images/masking/M4_2_layer_11_background_threshold_plots}
+\caption{\footnotesize Distribution of $\tau_{m}$ values (left column) and summed $B_{m}(\tau_{m})$ histograms (right column) for all tissue edge HPFs in the 1st layer of the sample named M1\_1 (upper row), 5th layer of the sample named M3\_1 (middle row), and 11th layer of the sample named M4\_2 (lower row).}
+\label{fig:threshold_distributions_1}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.80\textwidth]{images/masking/M6_1_layer_20_background_threshold_plots}
+\includegraphics[width=0.80\textwidth]{images/masking/M10_2_layer_27_background_threshold_plots}
+\includegraphics[width=0.80\textwidth]{images/masking/M11_1_layer_34_background_threshold_plots}
+\caption{\footnotesize Distribution of $\tau_{m}$ values (left column) and summed $B_{m}(\tau_{m})$ histograms (right column) for all tissue edge HPFs in the 20th layer of the sample named M6\_1 (upper row), 27th layer of the sample named M10\_2 (middle row), and 34th layer of the sample named M11\_1 (lower row).}
+\label{fig:threshold_distributions_2}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\textwidth]{images/masking/optimal_background_thresholds_batches_3-9_samples}
+\caption{\footnotesize Maximum, minimum, 10th percentile, 90th percentile, median, mean, and standard deviation of $\Tau_{m}$ values determined from tissue edge HPFs for 46 Vectra 3.0 melanoma samples.}
+\label{fig:all_sample_thresholds}
+\end{figure}
 
 %%%%%%%%%%% Producing image masks subsection
 \subsection{Producing image masks}
 \label{ssec:producing_image_masks}
+
+The $\Tau_{m}$ values found for each sample can be used to mask background pixels out of arbitrary images from the same sample, layer-by-layer. Given a smoothed raw image $S_{i,j,m}$, and initial binary mask $M^{0}_{i,j,m}$ can be defined by a simple threshold at $\Tau_{m}$ as
+\begin{equation}
+M^{0}_{i,j,m} = 
+\begin{cases} 
+      0 & S_{i,j,m} \leq \Tau_{m} \\
+      1 & S_{i,j,m} > \Tau_{m} 
+\end{cases}
+ .
+\end{equation}
+
+The smoothed image (as opposed to the raw image) is used to reduce the granularity of this initial mask, but the binary thresholding alone is not sufficient to produce a mask that uniformly describes bulk tissue regions of images. The initial $M^{0}_{i,j,m}$ masks are therefore transformed using image morphological operations.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MEASURING FLATFIELD CORRECTIONS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Measuring Flatfield Corrections}
