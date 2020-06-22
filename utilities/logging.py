@@ -10,6 +10,9 @@ class MyLogger(object):
     self.logger.critical(self.module)
     return self
   def __exit__(self, *exc):
+    for handler in self.handlers[:]:
+      handler.close()
+      self.removeHandler(handler)
     self.logger.info(f"end {self.module}")
   def __getattr__(self, attr):
     return getattr(self.logger, attr)

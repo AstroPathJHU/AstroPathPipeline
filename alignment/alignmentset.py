@@ -37,7 +37,7 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
     super().__init__(root1, root2, samp)
     self.interactive = interactive
 
-    self.logger = getlogger("align", self.root1, samp, uselogfiles=uselogfiles)
+    self.logger = getlogger("align", self.root1, self.samp, uselogfiles=uselogfiles)
 
     self.rectanglefilter = rectangleoroverlapfilter(selectrectangles)
     overlapfilter = rectangleoroverlapfilter(selectoverlaps)
