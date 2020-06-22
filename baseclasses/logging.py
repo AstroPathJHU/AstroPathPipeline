@@ -1,7 +1,5 @@
 import logging
 
-from ..baseclasses.sample import SampleDef
-
 class MyLogger(object):
   def __init__(self, *args, module=None, **kwargs):
     self.logger = logging.getLogger(*args, **kwargs)
@@ -20,20 +18,16 @@ class MyLogger(object):
     return self.logger.log(logging.WARNING+1, *args, **kwargs)
 
 def getlogger(module, root, samp, *, uselogfiles=False):
-  if isinstance(samp, SampleDef):
-    SampleID = samp.SampleID
-    SlideID = samp.SlideID
-    Project = samp.Project
-    Cohort = samp.Cohort
-  else:
-    SlideID = samp
-    SampleID = Project = Cohort = None
+  SampleID = samp.SampleID
+  SlideID = samp.SlideID
+  Project = samp.Project
+  Cohort = samp.Cohort
 
   logger = MyLogger(f"{module}.{root}.{Project}.{Cohort}.{SlideID}", module=module)
   logger.setLevel(logging.DEBUG)
 
-  if uselogfiles and Project is None:
-    raise ValueError("Have to give a SampleDef object when writing to log files")
+  if uselogfiles and (Project is None or SampleID is None or Cohort is None):
+    raise ValueError("Have to give a non-None SampleID, Project, and Cohort when writing to log files")
   formatter = logging.Formatter(
     ";".join(f"{_}" for _ in (Project, Cohort, SampleID, SlideID, "%(message)s", "%(asctime)s") if _ is not None),
     "%d-%b-%Y %H:%M:%S",
@@ -81,6 +75,3 @@ def getlogger(module, root, samp, *, uselogfiles=False):
     logger.addHandler(samplehandler)
 
   return logger
-
-dummylogger = logging.getLogger("dummy")
-dummylogger.addHandler(logging.NullHandler())

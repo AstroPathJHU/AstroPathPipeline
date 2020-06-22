@@ -1,6 +1,7 @@
-import abc, dataclasses, methodtools, pathlib
+import abc, contextlib, dataclasses, methodtools, pathlib
 
 from ..utilities.misc import dataclass_dc_init, tiffinfo
+from .logging import getlogger
 
 @dataclass_dc_init(frozen=True)
 class SampleDef:
@@ -108,3 +109,16 @@ class FlatwSampleBase(SampleBase):
 
   @property
   def root1(self): return self.root
+
+class LogSampleBase(SampleBase, contextlib.ExitStack):
+  def __init__(self, *args, uselogfiles=False, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.logger = getlogger(self.logmodule, self.root, self.samp, uselogfiles=uselogfiles)
+
+  def __enter__(self):
+    self.enter_context(self.logger)
+    return super().__enter__()
+
+  @abc.abstractproperty
+  def logmodule(self):
+    "name of the log files for this class (e.g. align)"

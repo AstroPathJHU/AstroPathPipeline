@@ -1,6 +1,6 @@
 import numpy as np, scipy.optimize
 
-from ..utilities.logging import dummylogger
+from ..utilities.misc import dummylogger
 
 def meanimage(images, *, logger=dummylogger):
   """

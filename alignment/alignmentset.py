@@ -2,12 +2,11 @@
 
 import cv2, methodtools, numpy as np, traceback
 
-from ..baseclasses.sample import FlatwSampleBase
+from ..baseclasses.sample import FlatwSampleBase, LogSampleBase
 from ..prepdb.csvclasses import Batch, Constant
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangleoroverlapfilter
 from ..utilities import units
-from ..utilities.logging import getlogger
 from ..utilities.misc import memmapcontext
 from ..utilities.tableio import readtable, writetable
 from .flatfield import meanimage
@@ -15,11 +14,11 @@ from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
 from .stitch import ReadStitchResult, stitch
 
-class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
+class AlignmentSet(FlatwSampleBase, LogSampleBase, RectangleOverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False, imagefilenameadjustment=lambda x: x, uselogfiles=False):
+  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False, imagefilenameadjustment=lambda x: x, **kwargs):
     """
     Directory structure should be
     root1/
@@ -34,10 +33,8 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
     interactive: if this is true, then the script might try to prompt
                  you for input if things go wrong
     """
-    super().__init__(root1, root2, samp)
+    super().__init__(root1, root2, samp, **kwargs)
     self.interactive = interactive
-
-    self.logger = getlogger("align", self.root1, self.samp, uselogfiles=uselogfiles)
 
     self.rectanglefilter = rectangleoroverlapfilter(selectrectangles)
     overlapfilter = rectangleoroverlapfilter(selectoverlaps)
@@ -110,6 +107,9 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
       oldfilter = self.rectanglefilter
       self.rectanglefilter = lambda r: oldfilter(r) and self.selectoverlaprectangles(r)
       self.__rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
+
+  @property
+  def logmodule(self): return "align"
 
   @property
   def overlaps(self): return self.__overlaps

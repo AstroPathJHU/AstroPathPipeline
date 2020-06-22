@@ -95,7 +95,7 @@ class TestAlignment(unittest.TestCase):
   def testAlignment(self):
     samp = SampleDef(SlideID="M21_1", SampleID=0, Project=0, Cohort=0)
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", samp, uselogfiles=True)
-    with a.logger:
+    with a:
       a.getDAPI()
       a.align(debug=True)
       a.stitch(checkwriting=True)
