@@ -45,6 +45,7 @@ class SampleBase(abc.ABC):
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root1/self.SlideID} does not exist")
+    super().__init__()
 
   @property
   def SampleID(self): return self.samp.SampleID
@@ -103,7 +104,7 @@ class SampleBase(abc.ABC):
 class FlatwSampleBase(SampleBase):
   def __init__(self, root, root2, samp, *args, **kwargs):
     super().__init__(root=root, samp=samp, *args, **kwargs)
-    self.root2 = root2
+    self.root2 = pathlib.Path(root2)
 
   @property
   def root1(self): return self.root

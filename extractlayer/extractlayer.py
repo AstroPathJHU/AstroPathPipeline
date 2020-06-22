@@ -1,32 +1,18 @@
-import abc, argparse, collections, contextlib, methodtools, numpy as np, pathlib, PIL.Image, subprocess, tempfile
-from ..utilities.logging import getlogger, SampleDef
+import abc, argparse, collections, contextlib, methodtools, numpy as np, pathlib, subprocess, tempfile
+from ..baseclasses.sample import FlatwSampleBase
+from ..utilities import units
+from ..utilities.logging import getlogger
 from ..utilities.misc import memmapcontext
 
 here = pathlib.Path(__file__).parent
 
-class LayerExtractorBase(contextlib.ExitStack, collections.abc.Sized):
+class LayerExtractorBase(FlatwSampleBase, contextlib.ExitStack, collections.abc.Sized):
   def __init__(self, root1, root2, samp, *, logger=None, uselogfiles=False):
-    self.root1 = pathlib.Path(root1)
-    self.root2 = pathlib.Path(root2)
-    self.samp = samp
+    super().__init__(root1, root2, samp)
     if logger is None:
       logger = getlogger("extractlayer", self.root1, self.samp, uselogfiles=uselogfiles)
       logger.critical("extractlayer")
     self.logger = logger
-    super().__init__()
-
-  @property
-  def SlideID(self):
-    if isinstance(self.samp, SampleDef):
-      return self.samp.SlideID
-    else:
-      return self.samp
-
-  @methodtools.lru_cache()
-  def __getlayershape(self):
-    filename = next((self.root1/self.SlideID/"inform_data"/"Component_Tiffs").glob("*.tif"))
-    with PIL.Image.open(filename) as f:
-      return f.size
 
   @abc.abstractproperty
   def fwfiles(self): pass
@@ -35,14 +21,14 @@ class LayerExtractorBase(contextlib.ExitStack, collections.abc.Sized):
   def __getnlayers(self):
     filename = next(self.fwfiles)
     with memmapcontext(filename, dtype=np.uint16, mode="r") as memmap:
-      nlayers = len(memmap) / np.product(self.__getlayershape())
+      nlayers = len(memmap) / units.pixels(self.tiffwidth * self.tiffheight, pscale=self.tiffpscale, power=2)
     if not nlayers.is_integer():
       raise ValueError(f"file seems to have {nlayers} layers??")
     return int(nlayers)
 
   @property
   def shape(self):
-    return (self.__getnlayers(),) + self.__getlayershape()
+    return (self.__getnlayers(), units.pixels(self.tiffwidth, pscale=self.tiffpscale), units.pixels(self.tiffheight, pscale=self.tiffpscale))
 
   def extractlayers(self, *, layers={1}, alreadyexistsstrategy="error"):
     (self.root2/self.SlideID).mkdir(parents=True, exist_ok=True)
