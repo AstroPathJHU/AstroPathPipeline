@@ -19,6 +19,8 @@
 \newcommand{\refeq}[1]{Equation~\ref{#1}}
 \DeclareMathOperator*{\argmax}{arg\,max}
 \newcommand{\Tau}{\mathrm{T}}
+\newcommand{\Iota}{\mathrm{I}}
+\newcommand{\Mu}{\mathrm{M}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TITLE AND ABSTRACT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -126,7 +128,7 @@ The first step in masking background out of images is to find flux thresholds ab
 \label{fig:edge_HPFs}
 \end{figure}
 
-Let each raw tissue edge HPF image be represented by a three-dimensional tensor $I_{i,j,m}$ whose $x$, $y$, and layer coordinates are indexed by $i$, $j$, and $m$, respectively, and whose contents are pixel intensity fluxes. The initial image layers are first smoothed with a Gaussian filter\footnote{In all filtering operations described in this note, the values at edges of images are repeated to provide the necessary kernel extensions.} of standard deviation $\sigma=5$ pixels using the OpenCV computer vision library \cite{opencv_library} to remove small-scale variations in pixel content, producing a set of smoothed image layers $S_{i,j,m}$. The layers of $S$ are then collapsed into histograms $H_{m}(f)$ where $f$ is the discrete pixel intensity flux (from 0 to $F=65,535$ for 16-bit unsigned integers). \reffig{fig:raw_to_smoothed_to_histogram} shows $I_{i,j,0}$ and $S_{i,j,0}$ stretched from minimum to maximum in grayscale and the $H_{0}$ histogram for the first layer of a single HPF on the edge of the tissue in the sample called M21\_1. 
+Let each raw tissue edge HPF image be represented by a three-dimensional tensor $I_{i,j,m}$ whose $x$, $y$, and layer coordinates are indexed by $i=0,\ldots,w-1$, $j=0,\ldots,l-1$, and $m=0,\ldots,n-1$, respectively (where $w$, $l$, and $n$ are the width and length of the image in pixels and the number of image layers, respectively), and whose contents are pixel intensity fluxes. The initial image layers are first smoothed with a Gaussian filter\footnote{In all filtering operations described in this note, the values at edges of images are repeated to provide the necessary kernel extensions.} of standard deviation $\sigma=5$ pixels using the OpenCV computer vision library \cite{opencv_library} to remove small-scale variations in pixel content, producing a set of smoothed image layers $S_{i,j,m}$. The layers of $S$ are then collapsed into histograms $H_{m}(f)$ where $f$ is the discrete pixel intensity flux (from 0 to $F=65,535$ for 16-bit unsigned integers). \reffig{fig:raw_to_smoothed_to_histogram} shows $I_{i,j,0}$ and $S_{i,j,0}$ stretched from minimum to maximum in grayscale and the $H_{0}$ histogram for the first layer of a single HPF on the edge of the tissue in the sample called M21\_1. 
 
 \begin{figure}[!ht]
 \centering
@@ -204,24 +206,146 @@ M^{0}_{i,j,m} =
 \end{cases}
  .
 \end{equation}
+Multiplying an image by this binary mask will effectively remove regions that are not bright enough to be identified as background.
 
-The smoothed image (as opposed to the raw image) is used to reduce the granularity of this initial mask, but the binary thresholding alone is not sufficient to produce a mask that uniformly describes bulk tissue regions of images. The initial $M^{0}_{i,j,m}$ masks are therefore transformed using image morphological operations.
+The smoothed image (as opposed to the raw image) is used to reduce the granularity of this initial mask, but the binary thresholding alone is not sufficient to produce a mask that uniformly describes bulk tissue regions of images. The initial $M^{0}_{i,j,m}$ masks are therefore transformed using image morphological operations \cite{opencv_mt} to produce larger and less isolated regions of identified signal and background. The operations used are of the ``open'' and ``close'' types, which are themselves compositions of ``erosion'' and ``dilation'' operations. An ``open'' operation is an erosion followed by a dilation, both with the same structure element, and a ``close'' is the opposite, a dilation followed by an erosion with the same structure element.
+
+The exact operations performed on the initial mask $M^{0}_{i,j,m}$ are as follows. The mask image is first closed and then opened with an elliptical structure element of extent $9 \times 9$ pixels to fill in small holes that are surrounded by larger areas and remove any small, isolated areas. Another close and open is then performed with an elliptical element of size $16 \times 16$ pixels to serve the same purpose on a medium scale. The overall bulk of the mask is then defined by a single close operation with an elliptical element of size $45 \times 45$ pixels, and the edges of this bulk are refined, and small areas outside of it are removed, by opening three times with the $9 \times 9$ pixel structure element, to produce the final binary mask $M_{i,j,m}$. This sequence of operations is pictured in \reffig{fig:morphological_transformations} for an example image layer. 
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.80\textwidth]{images/masking/image_286_layer_9_masks}
+\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks. Image shown is from layer 9 of the sample named M14\_1. The raw image stretched from maximum to minimum in grayscale is shown in the upper left, and the initial mask layer $M^{0}_{i,j,8}$ from thresholding at $f=48$ is shown in the upper right. The results of applying the small-scale (left) and medium-scale (right) close and open operations are shown in the second row. The result of a single large-scale close is shown in the left column of the third row. The final mask after the repeated small-scale open is shown in the right column of the third row. The lower row shows the final transformed mask overlaid with (left) the raw image with flux clipped at $f=255$ to show the background more brightly in red, and (right) the raw image in grayscale.}
+\label{fig:morphological_transformations}
+\end{figure}
+
+To further illustrate the masking procedure and the wide variation in the initial thresholds required, three more examples of how initial masks are transformed are shown in Figures~\ref{fig:mask_example_min}, \ref{fig:mask_example_med}, and~\ref{fig:mask_example_max} for image layers whose initial thresholds represent the global minimum, median, and maximum of the values shown in \reffig{fig:all_sample_thresholds}. Transforming the initial masks in this way tends to result in masks made of a minimal number of maximally-connected regions that correllate well with the tissue in each image, including smaller-scale features of the bulk but removing them from more isolated areas. The transformations described are performed for all image layers simultaneously on a GPU to maximize efficiency. 
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.80\textwidth]{images/masking/image_110_layer_26_masks}
+\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks. Image shown is from layer 26 of the sample named M11\_1. The raw image stretched from maximum to minimum in grayscale is shown in the upper left, and the initial mask layer $M^{0}_{i,j,8}$ from thresholding at $f=26$ is shown in the upper right. The results of applying the small-scale (left) and medium-scale (right) close and open operations are shown in the second row. The result of a single large-scale close is shown in the left column of the third row. The final mask after the repeated small-scale open is shown in the right column of the third row. The lower row shows the final transformed mask overlaid with (left) the raw image with flux clipped at $f=255$ to show the background more brightly in red, and (right) the raw image in grayscale.}
+\label{fig:mask_example_min}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.80\textwidth]{images/masking/image_6455_layer_29_masks}
+\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks. Image shown is from layer 29 of the sample named M43\_1. The raw image stretched from maximum to minimum in grayscale is shown in the upper left, and the initial mask layer $M^{0}_{i,j,8}$ from thresholding at $f=41$ is shown in the upper right. The results of applying the small-scale (left) and medium-scale (right) close and open operations are shown in the second row. The result of a single large-scale close is shown in the left column of the third row. The final mask after the repeated small-scale open is shown in the right column of the third row. The lower row shows the final transformed mask overlaid with (left) the raw image with flux clipped at $f=255$ to show the background more brightly in red, and (right) the raw image in grayscale.}
+\label{fig:mask_example_med}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.80\textwidth]{images/masking/image_9941_layer_5_masks}
+\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks. Image shown is from layer 5 of the sample named M9\_1. The raw image stretched from maximum to minimum in grayscale is shown in the upper left, and the initial mask layer $M^{0}_{i,j,8}$ from thresholding at $f=206$ is shown in the upper right. The results of applying the small-scale (left) and medium-scale (right) close and open operations are shown in the second row. The result of a single large-scale close is shown in the left column of the third row. The final mask after the repeated small-scale open is shown in the right column of the third row. The lower row shows the final transformed mask overlaid with (left) the raw image with flux clipped at $f=255$ to show the background more brightly in red, and (right) the raw image in grayscale.}
+\label{fig:mask_example_max}
+\end{figure}
+
+\clearpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MEASURING FLATFIELD CORRECTIONS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Measuring Flatfield Corrections}
 \label{sec:measuring_flatfield_corrections}
 
-%%%%%%%%%%% Stacking masked images subsection
-\subsection{Stacking masked images}
-\label{ssec:stacking_masked_images}
+The illumination variation is measured using only a subset of all the HPF images in a sample to make the highest quality estimation of the effects in the fluorescent tissue alone. First, any images located on the edges of tissue (like those pictured in red in the left column of \reffig{fig:edge_HPFs}) are excluded. Also excluded are any image layers whose masks select less than 80\% of the total pixels (that is, $\sum_{i=0}^{w-1}\sum_{j=0}^{l-1}M_{i,j,m}<0.8*(w*l)$) so that only images primarily showing tissue are stacked. This cut on the fraction of selected pixels reduces the phenomenon of overselecting noise in systematically brightly-illuminated regions of otherwise largely empty HPFs. The fraction of 80\% was chosen because it introduces only minimal bias to the variation in the number or location of the images that are stacked in each layer, as shown in Figures~\ref{fig:selected_pixel_fraction_cut_1} and~\ref{fig:selected_pixel_fraction_cut_2}.
 
-%%%%%%%%%%% Averaging and smoothing subsection
-\subsection{Averaging and smoothing}
-\label{ssec:averaging_and_smoothing}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.45\textwidth]{images/measuring_flatfield_corrections/example_mask_stack_layer_1_cut_at_0_00}
+\includegraphics[width=0.45\textwidth]{images/measuring_flatfield_corrections/example_mask_stack_layer_1_cut_at_0_20}
+\includegraphics[width=0.45\textwidth]{images/measuring_flatfield_corrections/example_mask_stack_layer_1_cut_at_0_50}
+\includegraphics[width=0.45\textwidth]{images/measuring_flatfield_corrections/example_mask_stack_layer_1_cut_at_0_80}
+\caption{\footnotesize Numbers of masks selected to be stacked at each location in the first image layer, with the required fraction of selected pixels at 0\% (no cut, upper left), 20\% (upper right), 50\% (middle left), and 80\% (middle right). With no requirement on the selected pixel fraction, a systematic bias to the lower right hand corner of the images is observed due to overselection of relatively brighter noise in otherwise empty HPFs. This bias persists with the cut at 20\%, and a different systematic bias toward the image centers is observed with the cut at 50\%. The cut at 80\% is the smallest value of the cut that shows less bias to any region. Figures shown were all produced using a set of 6,309 total initial HPFs from 11 Vectra 3.0 samples named M6\_1, M3\_1, M17\_1, M29\_1, M16\_1, M35\_1, M25\_1, M36\_1, M52\_1, M21\_1, and M14\_1.}
+\label{fig:selected_pixel_fraction_cut_1}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.80\textwidth]{images/measuring_flatfield_corrections/example_mask_stack_spreads_by_layer}
+\caption{\footnotesize Difference between the maximum and minimum numbers of images selected to be stacked at any location within each image layer at different values of the selected pixel fraction requirement, divided by the spread observed with no cut applied. The line representing the cut at 80\% is the first that does not increase the spread from what is initially observed. Figure produced using a set of 6,309 total initial HPFs from 11 Vectra 3.0 samples named M6\_1, M3\_1, M17\_1, M29\_1, M16\_1, M35\_1, M25\_1, M36\_1, M52\_1, M21\_1, and M14\_1.}
+\label{fig:selected_pixel_fraction_cut_2}
+\end{figure} 
+
+These requirements on the images and their masked layers define a total number of HPFs from all samples to be stacked in each layer, $N_{m}$. \reffig{fig:n_images_stacked_by_layer} shows this $N_{m}$ for the total set of Vectra 3.0 samples used to make the flatfield correction image, which consists of 22,692 initial HPFs, reduced to 19,024 HPFs after removing those on the edges of the tissue. 
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.80\textwidth]{images/measuring_flatfield_corrections/n_images_stacked_per_layer}
+\caption{\footnotesize Number of images $N_{m}$ selected to be stacked in each layer for the set of 22,692 initial HPFs from 46 Vectra 3.0 samples.}
+\label{fig:n_images_stacked_by_layer}
+\end{figure} 
+
+The layers of the previously-defined image and mask tensors $I$ and $M$ can be collected over the whole image layer set using a new index $\eta=0,\ldots,N_{m}-1$. The sum of all the mask layers, $\Mu_{i,j,m} = \sum_{\eta=0}^{N_{m}-1} M^{\eta}_{i,j,m}$ is shown in \reffig{fig:mask_stack_layers} for the first, middle, and last layers in each broadband filter region. A small bias toward selecting the lower right hand corners of the images remains in most cases. 
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_1}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_5}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_9}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_10}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_14}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_18}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_19}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_22}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_25}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_26}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_29}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_32}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_33}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_34}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_35}
+\caption{\footnotesize Layers of the total stack of binary image masks, $\Mu_{i,j,m}$, for $m=$0, 4, 8, 9, 13, 17, 28, 21, 24, 25, 28, 31, 32, 33, and 34 from upper left to lower right, respectively. Note the differences in scales for each image.}
+\label{fig:mask_stack_layers}
+\end{figure}
+
+Only the central 64\% of each fully-corrected HPF is used when pathology analyses are eventually performed, because the outer 20\% of each image's sides are used to determine the alignment and stitching of the individual HPFs to represent an entire sample \cite{Heshy}. Clipping 10\% from all sides of the image layers (so that $i=0.1*w,\ldots,0.9*w$ and $j=0.1*l,\ldots,0.9*l$) also removes the edge effects apparent in $\Mu_{i,j,m}$. \reffig{fig:clipped_mask_stack_layers} shows the same as \reffig{fig:mask_stack_layers}, except with 10\% of each side of each image layer removed, and \reffig{fig:removing_image_edges_effect_on_mask_stacks} shows how the maximum, minimum, 5th and 95th percentile, and standard deviation of the number of masks stacked in each layer relative to the layer mean changes when the outer 36\% of the image layers are removed. The spread from the 5th to 95th percentile of the number of images stacked divided by the layer mean decreases from 11.2\% to 1.2\% on average over all layers, and the standard deviation of the number of images stacked divided by the layer mean decreases from 0.72\% to 0.49\% on average over all layers, showing that the masking and image layer selection procedures ultimately result in only very small differences in how many images contribute to measurements of the illumination variation in the region of interest.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_1}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_5}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_9}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_10}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_14}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_18}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_19}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_22}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_25}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_26}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_29}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_32}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_33}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_34}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/clipped_mask_stack_layers/clipped_mask_stack_layer_35}
+\caption{\footnotesize Central 64\% of layers of the total stack of binary image masks $\Mu_{i,j,m}$ for $m=$0, 4, 8, 9, 13, 17, 28, 21, 24, 25, 28, 31, 32, 33, and 34 from upper left to lower right, respectively. Image scales are identical to those in \reffig{fig:mask_stack_layers} to show reduction in variation.}
+\label{fig:clipped_mask_stack_layers}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.90\textwidth]{images/measuring_flatfield_corrections/mask_stack_variation_reduction}
+\caption{\footnotesize Maximum, minimum, 5th and 95th percentile, and standard deviation of the number of images stacked relative to the mean in each layer computed using the full images (red lines and green shading) and only the central 64\% of interest (blue lines and orange shading). The relative variation in the number of images stacked is smaller in the central region of interest.}
+\label{fig:removing_image_edges_effect_on_mask_stacks}
+\end{figure} 
+
+An initial mean image $\Iota_{i,j,m}$ is defined pixel-by-pixel by summing over all masked raw images and dividing by the number of images stacked, like
+\begin{equation}
+\Iota_{i,j,m} = \frac{1}{\Mu_{i,j,m}} \left[ \sum_{\eta=0}^{N_{m}-1} I^{\eta}_{i,j,m}*M^{\eta}_{i,j,m} \right] .
+\end{equation}
+Each layer of $\Iota$ is then smoothed using a wide Gaussian filter of standard deviation $\sigma=100$ pixels to produce a smoothed mean image $G_{i,j,m}$ that describes only the large-scale variations. The final flatfield image $F_{i,j,m}$, whose contents are the pixel-by-pixel correction factors, is this $G$ image, with each layer normalized by its mean,
+\begin{equation}
+F_{i,j,m} = G_{i,j,m} \left( \frac{w*l}{\sum_{i=0}^{w-1}\sum_{j=0}^{l-1}G_{i,j,m}} \right) ,
+\end{equation}
+so that applying the corrections only changes the relative illumination within each layer. 
+
+\clearpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% RESULTS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Results}
 \label{sec:results}
+
+The flatfield image $F$ describes the systematic variations in the amount of illumination observed in the regions of HPF images showing fluorescent tissue. Applying the correction factors the $F$ image contains is shown to decrease the amount of illumination variation observed over a large and independent sample of identically masked and selected HPFs. The addition of image layer masking and selection is shown to improve the reduction in illumination variation over the original methods where no masking or selection are applied.
 
 %%%%%%%%%%% Flatfield images subsection
 \subsection{Flatfield images}
