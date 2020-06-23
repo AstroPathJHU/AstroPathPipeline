@@ -10,6 +10,9 @@ from .testalignment import assertAlmostEqual
 thisfolder = pathlib.Path(__file__).parent
 
 class TestPrepDb(unittest.TestCase):
+  def setUp(self):
+    self.maxDiff = None
+
   def testPrepDb(self):
     logs = (
       thisfolder/"data"/"logfiles"/"prepdb.log",
