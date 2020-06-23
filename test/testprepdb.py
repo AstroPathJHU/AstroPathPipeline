@@ -54,8 +54,8 @@ class TestPrepDb(unittest.TestCase):
       for log in logs:
         ref = thisfolder/"prepdbreference"/log.name
         with open(ref) as fref, open(log) as fnew:
-          refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
-          newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
+          refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines() if "Biggest time difference" not in line])+os.linesep
+          newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines() if "Biggest time difference" not in line])+os.linesep
           self.assertEqual(newcontents, refcontents)
 
   def testPrepDbFastUnits(self):
