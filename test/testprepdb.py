@@ -1,4 +1,5 @@
-import itertools, numpy as np, pathlib, PIL.Image, unittest
+import itertools, numpy as np, os, pathlib, PIL.Image, unittest
+from ..baseclasses.sample import SampleDef
 from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
 from ..prepdb.rectangle import Rectangle
 from ..prepdb.prepdbsample import Annotation, Batch, Constant, Overlap, QPTiffCsv, Region, PrepdbSample, Vertex
@@ -10,8 +11,20 @@ thisfolder = pathlib.Path(__file__).parent
 
 class TestPrepDb(unittest.TestCase):
   def testPrepDb(self):
-    sample = PrepdbSample(thisfolder/"data", "M21_1")
-    sample.writemetadata()
+    logs = (
+      thisfolder/"data"/"logfiles"/"prepdb.log",
+      thisfolder/"data"/"M21_1"/"logfiles"/"M21_1-prepdb.log",
+    )
+    for log in logs:
+      try:
+        log.unlink()
+      except FileNotFoundError:
+        pass
+
+    samp = SampleDef(SlideID="M21_1", SampleID=0, Project=0, Cohort=0, root=thisfolder/"data")
+    sample = PrepdbSample(thisfolder/"data", samp, uselogfiles=True)
+    with sample:
+      sample.writemetadata()
 
     for filename, cls, extrakwargs in (
       ("M21_1_annotations.csv", Annotation, {}),
@@ -34,6 +47,13 @@ class TestPrepDb(unittest.TestCase):
     with PIL.Image.open(thisfolder/"data"/"M21_1"/"dbload"/"M21_1_qptiff.jpg") as img, \
          PIL.Image.open(thisfolder/"prepdbreference"/"M21_1_qptiff.jpg") as targetimg:
       np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+
+      for log in logs:
+        ref = thisfolder/"prepdbreference"/log.name
+        with open(ref) as fref, open(log) as fnew:
+          refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
+          newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
+          self.assertEqual(newcontents, refcontents)
 
   def testPrepDbFastUnits(self):
     with units.setup_context("fast"):

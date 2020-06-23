@@ -1,5 +1,5 @@
 import argparse, datetime, fractions, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage, tifffile
-from ..baseclasses.sample import SampleBase
+from ..baseclasses.sample import LogSampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint
 from ..utilities.tableio import writetable
@@ -7,18 +7,12 @@ from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
 from .overlap import Overlap
 
-logger = logging.getLogger("prepdb")
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s"))
-logger.addHandler(handler)
-
 jxmleaseversion = jxmlease.__version__.split(".")
 jxmleaseversion = [int(_) for _ in jxmleaseversion[:2]] + list(jxmleaseversion[2:])
 if jxmleaseversion < [1, 0, '2dev1']:
   raise ImportError(f"You need jxmleaseversion >= 1.0.2dev1 (your version: {jxmlease.__version__})\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
 
-class PrepdbSample(SampleBase):
+class PrepdbSample(LogSampleBase):
   def __init__(self, *args, dest=None, **kwargs):
     super().__init__(*args, **kwargs)
     if dest is None: dest = self.dbload
@@ -26,6 +20,9 @@ class PrepdbSample(SampleBase):
 
   @property
   def dest(self): return self.__dest
+
+  @property
+  def logmodule(self): return "prepdb"
 
   @property
   def nclip(self):
@@ -47,19 +44,19 @@ class PrepdbSample(SampleBase):
     ]
 
   def writebatch(self):
-    logger.info(self.SlideID)
+    self.logger.info("writebatch")
     writetable(self.dest/(self.SlideID+"_batch.csv"), self.getbatch())
 
   @property
   def rectangles(self): return self.getlayout()[0]
   def writerectangles(self):
-    logger.info(self.SlideID)
+    self.logger.info("writerectangles")
     writetable(self.dest/(self.SlideID+"_rect.csv"), self.rectangles)
   @property
   def globals(self): return self.getlayout()[1]
   def writeglobals(self):
     if not self.globals: return
-    logger.info(self.SlideID)
+    self.logger.info("writeglobals")
     writetable(self.dest/(self.SlideID+"_globals.csv"), self.globals)
 
   @methodtools.lru_cache()
@@ -76,7 +73,7 @@ class PrepdbSample(SampleBase):
       rf = rfs.pop()
       maxtimediff = max(maxtimediff, abs(rf.t-r.t))
     if maxtimediff >= datetime.timedelta(seconds=5):
-      logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
+      self.logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
     rectangles.sort(key=lambda x: x.t)
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
@@ -106,7 +103,7 @@ class PrepdbSample(SampleBase):
           rectangle.file = rectangle.file.replace("_M2", "")
         for d in duplicates:
           rectangles.remove(d)
-        logger.warning(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
+        self.logger.warningglobal(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
 
@@ -115,7 +112,7 @@ class PrepdbSample(SampleBase):
       expected = self.SlideID+f"_[{floattoint(units.microns(r.cx, pscale=r.pscale), atol=1e-10):d},{floattoint(units.microns(r.cy, pscale=r.pscale), atol=1e-10):d}].im3"
       actual = r.file
       if expected != actual:
-        logger.warning(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
+        self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
       r.file = expected
 
   @methodtools.lru_cache()
@@ -218,13 +215,13 @@ class PrepdbSample(SampleBase):
   def vertices(self): return self.getXMLpolygonannotations()[2]
 
   def writeannotations(self):
-    logger.info(self.SlideID)
+    self.logger.info("writeannotations")
     writetable(self.dest/(self.SlideID+"_annotations.csv"), self.annotations, rowclass=Annotation)
   def writeregions(self):
-    logger.info(self.SlideID)
+    self.logger.info("writeregions")
     writetable(self.dest/(self.SlideID+"_regions.csv"), self.regions, rowclass=Region)
   def writevertices(self):
-    logger.info(self.SlideID)
+    self.logger.info("writevertices")
     writetable(self.dest/(self.SlideID+"_vertices.csv"), self.vertices, rowclass=Vertex)
 
   @property
@@ -307,11 +304,11 @@ class PrepdbSample(SampleBase):
     return self.getqptiffcsvandimage()[1]
 
   def writeqptiffcsv(self):
-    logger.info(self.SlideID)
+    self.logger.info("writeqptiffcsv")
     writetable(self.dest/(self.SlideID+"_qptiff.csv"), self.getqptiffcsv())
 
   def writeqptiffjpg(self):
-    logger.info(self.SlideID)
+    self.logger.info("writeqptiffjpg")
     img = self.getqptiffimage()
     img.save(self.jpgfilename)
 
@@ -358,7 +355,7 @@ class PrepdbSample(SampleBase):
     return overlaps
 
   def writeoverlaps(self):
-    logger.info(self.SlideID)
+    self.logger.info("writeoverlaps")
     writetable(self.dest/(self.SlideID+"_overlap.csv"), self.getoverlaps())
 
   def getconstants(self):
@@ -420,7 +417,7 @@ class PrepdbSample(SampleBase):
     return constants
 
   def writeconstants(self):
-    logger.info(self.SlideID)
+    self.logger.info("writeconstants")
     writetable(self.dest/(self.SlideID+"_constants.csv"), self.getconstants())
 
   def writemetadata(self):
