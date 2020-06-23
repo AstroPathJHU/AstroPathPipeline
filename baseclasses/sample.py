@@ -40,12 +40,13 @@ class SampleDef:
   def __bool__(self):
     return bool(self.isGood)
 
-class SampleBase(abc.ABC):
-  def __init__(self, root, samp):
+class SampleBase(contextlib.ExitStack):
+  def __init__(self, root, samp, *, uselogfiles=False):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root1/self.SlideID} does not exist")
+    self.logger = getlogger(self.logmodule, self.root, self.samp, uselogfiles=uselogfiles)
     super().__init__()
 
   @property
@@ -102,19 +103,6 @@ class SampleBase(abc.ABC):
   @property
   def tiffheight(self): return self.getcomponenttiffinfo()[2]
 
-class FlatwSampleBase(SampleBase):
-  def __init__(self, root, root2, samp, *args, **kwargs):
-    super().__init__(root=root, samp=samp, *args, **kwargs)
-    self.root2 = pathlib.Path(root2)
-
-  @property
-  def root1(self): return self.root
-
-class LogSampleBase(SampleBase, contextlib.ExitStack):
-  def __init__(self, *args, uselogfiles=False, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.logger = getlogger(self.logmodule, self.root, self.samp, uselogfiles=uselogfiles)
-
   def __enter__(self):
     self.enter_context(self.logger)
     return super().__enter__()
@@ -122,3 +110,11 @@ class LogSampleBase(SampleBase, contextlib.ExitStack):
   @abc.abstractproperty
   def logmodule(self):
     "name of the log files for this class (e.g. align)"
+
+class FlatwSampleBase(SampleBase):
+  def __init__(self, root, root2, samp, *args, **kwargs):
+    super().__init__(root=root, samp=samp, *args, **kwargs)
+    self.root2 = pathlib.Path(root2)
+
+  @property
+  def root1(self): return self.root

@@ -2,7 +2,7 @@
 
 import cv2, methodtools, numpy as np, traceback
 
-from ..baseclasses.sample import FlatwSampleBase, LogSampleBase
+from ..baseclasses.sample import FlatwSampleBase
 from ..prepdb.csvclasses import Batch, Constant
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangleoroverlapfilter
@@ -14,7 +14,7 @@ from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
 from .stitch import ReadStitchResult, stitch
 
-class AlignmentSet(FlatwSampleBase, LogSampleBase, RectangleOverlapCollection):
+class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
   """
   Main class for aligning a set of images
   """

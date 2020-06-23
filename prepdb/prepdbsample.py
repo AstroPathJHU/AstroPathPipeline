@@ -1,5 +1,5 @@
 import argparse, datetime, fractions, itertools, jxmlease, methodtools, numpy as np, os, pathlib, PIL, re, skimage, tifffile
-from ..baseclasses.sample import LogSampleBase
+from ..baseclasses.sample import SampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint
 from ..utilities.tableio import writetable
@@ -12,7 +12,7 @@ jxmleaseversion = [int(_) for _ in jxmleaseversion[:2]] + list(jxmleaseversion[2
 if jxmleaseversion < [1, 0, '2dev1']:
   raise ImportError(f"You need jxmleaseversion >= 1.0.2dev1 (your version: {jxmlease.__version__})\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
 
-class PrepdbSample(LogSampleBase):
+class PrepdbSample(SampleBase):
   def __init__(self, *args, dest=None, **kwargs):
     super().__init__(*args, **kwargs)
     if dest is None: dest = self.dbload
