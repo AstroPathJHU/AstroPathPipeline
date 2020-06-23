@@ -1,4 +1,4 @@
-import dataclasses
+import dataclasses, numpy as np
 from ..prepdb.rectangle import Rectangle
 from ..prepdb.overlap import Overlap
 from ..utilities import units
