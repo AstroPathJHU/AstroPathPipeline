@@ -8,10 +8,10 @@ class MyLogger(object):
     self.logger.critical(self.module)
     return self
   def __exit__(self, *exc):
+    self.logger.info(f"end {self.module}")
     for handler in self.handlers[:]:
       handler.close()
       self.removeHandler(handler)
-    self.logger.info(f"end {self.module}")
   def __getattr__(self, attr):
     return getattr(self.logger, attr)
   def warningglobal(self, *args, **kwargs):
