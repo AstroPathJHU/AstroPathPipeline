@@ -1,18 +1,13 @@
 import abc, argparse, collections, contextlib, methodtools, numpy as np, pathlib, subprocess, tempfile
-from ..baseclasses.sample import FlatwSampleBase
+from ..baseclasses.sample import FlatwSampleBase, LogSampleBase
 from ..utilities import units
-from ..utilities.logging import getlogger
 from ..utilities.misc import memmapcontext
 
 here = pathlib.Path(__file__).parent
 
-class LayerExtractorBase(FlatwSampleBase, contextlib.ExitStack, collections.abc.Sized):
-  def __init__(self, root1, root2, samp, *, logger=None, uselogfiles=False):
-    super().__init__(root1, root2, samp)
-    if logger is None:
-      logger = getlogger("extractlayer", self.root1, self.samp, uselogfiles=uselogfiles)
-      logger.critical("extractlayer")
-    self.logger = logger
+class LayerExtractorBase(FlatwSampleBase, LogSampleBase, contextlib.ExitStack, collections.abc.Sized):
+  @property
+  def logmodule(self): return "extractlayer"
 
   @abc.abstractproperty
   def fwfiles(self): pass
@@ -117,7 +112,7 @@ if __name__ == "__main__":
   g.add_argument("--skip-existing", action="store_const", const="keep", dest="alreadyexistsstrategy")
   args = p.parse_args()
 
-  with args.ShredderClass(root1=args.root1, root2=args.root2, samp=args.samp) as le:
+  with args.ShredderClass(root=args.root1, root2=args.root2, samp=args.samp) as le:
     kwargs = {}
     kwargs["alreadyexistsstrategy"] = args.alreadyexistsstrategy
     if args.layer: kwargs["layers"] = args.layer

@@ -1,4 +1,4 @@
-import argparse, datetime, fractions, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage, tifffile
+import argparse, datetime, fractions, itertools, jxmlease, methodtools, numpy as np, os, pathlib, PIL, re, skimage, tifffile
 from ..baseclasses.sample import LogSampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint
@@ -94,8 +94,7 @@ class PrepdbSample(LogSampleBase):
 
     return rectangles, globals, perimeters
 
-  @staticmethod
-  def fixM2(rectangles):
+  def fixM2(self, rectangles):
     for rectangle in rectangles[:]:
       if "_M2" in rectangle.file:
         duplicates = [r for r in rectangles if r is not rectangle and np.all(r.cxvec == rectangle.cxvec)]
