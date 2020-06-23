@@ -142,3 +142,6 @@ def tiffinfo(*, filename=None, page=None):
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
+
+printlogger = logging.getLogger("print")
+printlogger.addHandler(logging.StreamHandler())

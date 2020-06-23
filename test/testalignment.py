@@ -1,4 +1,5 @@
 import contextlib, dataclasses, itertools, numbers, numpy as np, os, pathlib, shutil, tempfile, unittest
+from ..alignment.alignmentcohort import AlignmentCohort
 from ..alignment.alignmentset import AlignmentSet, ImageStats
 from ..alignment.overlap import AlignmentResult
 from ..alignment.field import Field, FieldOverlap
@@ -101,30 +102,33 @@ class TestAlignment(unittest.TestCase):
       a.stitch(checkwriting=True)
 
     try:
-      for filename, cls, extrakwargs in (
-        ("M21_1_imstat.csv", ImageStats, {"pscale": a.pscale}),
-        ("M21_1_align.csv", AlignmentResult, {"pscale": a.pscale}),
-        ("M21_1_fields.csv", Field, {"pscale": a.pscale}),
-        ("M21_1_affine.csv", AffineEntry, {}),
-        ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "layer": a.layer, "nclip": a.nclip}),
-      ):
-        rows = readtable(thisfolder/"data"/"M21_1"/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        targetrows = readtable(thisfolder/"alignmentreference"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        for row, target in itertools.zip_longest(rows, targetrows):
-          assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
-
-      for log in (
-        thisfolder/"data"/"logfiles"/"align.log",
-        thisfolder/"data"/"M21_1"/"logfiles"/"M21_1-align.log",
-      ):
-        ref = thisfolder/"alignmentreference"/log.name
-        with open(ref) as fref, open(log) as fnew:
-          refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
-          newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
-          self.assertEqual(newcontents, refcontents)
-
+      self.compareoutput(a)
     finally:
       self.__savealigned()
+
+  def compareoutput(self, alignmentset):
+    a = alignmentset
+    for filename, cls, extrakwargs in (
+      ("M21_1_imstat.csv", ImageStats, {"pscale": a.pscale}),
+      ("M21_1_align.csv", AlignmentResult, {"pscale": a.pscale}),
+      ("M21_1_fields.csv", Field, {"pscale": a.pscale}),
+      ("M21_1_affine.csv", AffineEntry, {}),
+      ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "layer": a.layer, "nclip": a.nclip}),
+    ):
+      rows = readtable(thisfolder/"data"/"M21_1"/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+      targetrows = readtable(thisfolder/"alignmentreference"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+      for row, target in itertools.zip_longest(rows, targetrows):
+        assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+
+    for log in (
+      thisfolder/"data"/"logfiles"/"align.log",
+      thisfolder/"data"/"M21_1"/"logfiles"/"M21_1-align.log",
+    ):
+      ref = thisfolder/"alignmentreference"/log.name
+      with open(ref) as fref, open(log) as fnew:
+        refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
+        newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
+        self.assertEqual(newcontents, refcontents)
 
   def testAlignmentFastUnits(self):
     with units.setup_context("fast"):
@@ -304,4 +308,15 @@ class TestAlignment(unittest.TestCase):
   def testPscaleFastUnits(self):
     with units.setup_context("fast"):
       self.testPscale()
+
+  def testCohort(self):
+    with AlignmentCohort(thisfolder/"data", thisfolder/"data"/"flatw", debug=True) as cohort:
+      cohort.run()
+
+    a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
+    self.compareoutput(a)
+
+  def testCohortFastUnits(self):
+    with units.setup_context("fast"):
+      self.testCohort()
 

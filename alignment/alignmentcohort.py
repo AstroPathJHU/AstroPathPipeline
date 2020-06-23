@@ -2,7 +2,8 @@ import argparse, contextlib, os, pathlib, re, tempfile, traceback
 
 from ..extractlayer.extractlayer import LayerExtractor, ShredderAndLayerExtractor
 from ..utilities import units
-from ..utilities.logging import getlogger, SampleDef
+from ..baseclasses.sample import SampleDef
+from ..utilities.misc import printlogger
 from ..utilities.tableio import readtable
 from .alignmentset import AlignmentSet
 
@@ -23,22 +24,24 @@ class AlignmentCohort(contextlib.ExitStack):
     samples = readtable(self.root1/"sampledef.csv", SampleDef)
 
     for sample in samples:
+      logger = printlogger
       if not sample: continue
       if not self.filter(sample): continue
-      with getlogger("align", self.root1, sample, uselogfiles=True) as logger:
-        try:
-          if self.dolayerextraction:
-            with (ShredderAndLayerExtractor if self.doshredding else LayerExtractor)(self.root1, self.root2, sample, logger=logger) as extractor:
-              extractor.extractlayers(alreadyexistsstrategy="skip")
+      try:
+        if self.dolayerextraction:
+          with (ShredderAndLayerExtractor if self.doshredding else LayerExtractor)(self.root1, self.root2, sample, logger=logger) as extractor:
+            logger = extractor.logger
+            extractor.extractlayers(alreadyexistsstrategy="skip")
 
-          alignmentset = AlignmentSet(self.root1, self.root2, sample, uselogfiles=True)
+        with AlignmentSet(self.root1, self.root2, sample, uselogfiles=True) as alignmentset:
+          logger = alignmentset.logger
           alignmentset.getDAPI()
           alignmentset.align()
           alignmentset.stitch()
-        except Exception as e:
-          logger.error(str(e).replace(";", ","))
-          logger.info(repr(traceback.format_exc()).replace(";", ""))
-          if self.debug: raise
+      except Exception as e:
+        logger.error(str(e).replace(";", ","))
+        logger.info(repr(traceback.format_exc()).replace(";", ""))
+        if self.debug: raise
 
 class AlignmentCohortTmpDir(AlignmentCohort):
   def __init__(self, root1, *, tmpdirprefix, **kwargs):
