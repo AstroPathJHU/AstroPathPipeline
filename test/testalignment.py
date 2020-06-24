@@ -310,8 +310,8 @@ class TestAlignment(unittest.TestCase):
       self.testPscale()
 
   def testCohort(self):
-    with AlignmentCohort(thisfolder/"data", thisfolder/"data"/"flatw", debug=True) as cohort:
-      cohort.run()
+    cohort = AlignmentCohort(thisfolder/"data", thisfolder/"data"/"flatw", debug=True)
+    cohort.run()
 
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
     self.compareoutput(a)

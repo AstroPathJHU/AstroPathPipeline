@@ -55,8 +55,9 @@ class MyLogger:
         samplehandler.setLevel(logging.INFO)
         self.logger.addHandler(samplehandler)
 
+        self.logger.critical(self.module)
+
     self.nentered += 1
-    self.logger.critical(self.module)
     return self
 
   def filter(self, record):
@@ -76,9 +77,9 @@ class MyLogger:
     return True
 
   def __exit__(self, *exc):
-    self.logger.info(f"end {self.module}")
     self.nentered -= 1
     if self.nentered == 0:
+      self.logger.info(f"end {self.module}")
       for handler in self.handlers[:]:
         handler.close()
         self.removeHandler(handler)
@@ -112,5 +113,5 @@ class MyFileHandler:
     return getattr(self.__handler, attr)
 
 @functools.lru_cache(maxsize=None)
-def getlogger(module, root, samp, *, uselogfiles=False):
-  return MyLogger(module, root, samp, uselogfiles=uselogfiles)
+def getlogger(*args, **kwargs):
+  return MyLogger(*args, **kwargs)
