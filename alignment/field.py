@@ -1,4 +1,4 @@
-import dataclasses
+import dataclasses, numpy as np
 from ..prepdb.rectangle import Rectangle
 from ..prepdb.overlap import Overlap
 from ..utilities import units
@@ -56,7 +56,7 @@ class Field(Rectangle):
 
     nominal = [self.px, self.py]
     covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
-    self.pxvec = units.correlated_distances(distances=nominal, covariance=covariance)
+    self.pxvec = np.array(units.correlated_distances(distances=nominal, covariance=covariance))
 
 @dataclass_dc_init
 class FieldOverlap(Overlap):
