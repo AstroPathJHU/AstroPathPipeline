@@ -1,43 +1,65 @@
-import logging
+import collections, functools, logging
 
-class MyLogger(object):
-  def __init__(self, *args, module=None, **kwargs):
-    self.logger = logging.getLogger(*args, **kwargs)
+class MyLogger:
+  def __init__(self, module, root, samp, *, uselogfiles=False):
     self.module = module
+    self.root = root
+    self.samp = samp
+    self.uselogfiles = uselogfiles
+    self.nentered = 0
+
+    if uselogfiles and (self.Project is None or self.SampleID is None or self.Cohort is None):
+      raise ValueError("Have to give a non-None SampleID, Project, and Cohort when writing to log files")
+
+    if not uselogfiles:
+      self.__enter__()
+
+  @property
+  def SampleID(self): return self.samp.SampleID
+  @property
+  def SlideID(self): return self.samp.SlideID
+  @property
+  def Project(self): return self.samp.Project
+  @property
+  def Cohort(self): return self.samp.Cohort
+
+  @property
+  def formatter(self):
+    return logging.Formatter(
+      ";".join(str(_) for _ in (self.Project, self.Cohort, self.SampleID, self.SlideID, "%(message)s", "%(asctime)s") if _ is not None),
+      "%d-%b-%Y %H:%M:%S",
+    )
   def __enter__(self):
+    if self.nentered == 0:
+      self.logger = logging.getLogger(f"{self.root}.{self.module}.{self.Project}.{self.Cohort}.{self.SlideID}.{self.uselogfiles}")
+      self.logger.setLevel(logging.DEBUG)
+
+      printhandler = logging.StreamHandler()
+      printhandler.setFormatter(self.formatter)
+      printhandler.addFilter(self.filter)
+      printhandler.setLevel(logging.DEBUG)
+      self.logger.addHandler(printhandler)
+
+      if self.uselogfiles:
+        (self.root/"logfiles").mkdir(exist_ok=True)
+        mainhandler = MyFileHandler(self.root/"logfiles"/f"{self.module}.log")
+        mainhandler.setFormatter(self.formatter)
+        mainhandler.addFilter(self.filter)
+        mainhandler.setLevel(logging.WARNING+1)
+        self.logger.addHandler(mainhandler)
+
+        (self.root/self.SlideID/"logfiles").mkdir(exist_ok=True)
+        samplehandler = MyFileHandler(self.root/self.SlideID/"logfiles"/f"{self.SlideID}-{self.module}.log")
+        samplehandler.setFormatter(self.formatter)
+        samplehandler.addFilter(self.filter)
+        samplehandler.setLevel(logging.INFO)
+        self.logger.addHandler(samplehandler)
+
+    self.nentered += 1
     self.logger.critical(self.module)
     return self
-  def __exit__(self, *exc):
-    self.logger.info(f"end {self.module}")
-    for handler in self.handlers[:]:
-      handler.close()
-      self.removeHandler(handler)
-  def __getattr__(self, attr):
-    return getattr(self.logger, attr)
-  def warningglobal(self, *args, **kwargs):
-    return self.logger.log(logging.WARNING+1, *args, **kwargs)
 
-def getlogger(module, root, samp, *, uselogfiles=False):
-  SampleID = samp.SampleID
-  SlideID = samp.SlideID
-  Project = samp.Project
-  Cohort = samp.Cohort
-
-  logger = MyLogger(f"{module}.{root}.{Project}.{Cohort}.{SlideID}", module=module)
-  logger.setLevel(logging.DEBUG)
-
-  if uselogfiles and (Project is None or SampleID is None or Cohort is None):
-    raise ValueError("Have to give a non-None SampleID, Project, and Cohort when writing to log files")
-  formatter = logging.Formatter(
-    ";".join(f"{_}" for _ in (Project, Cohort, SampleID, SlideID, "%(message)s", "%(asctime)s") if _ is not None),
-    "%d-%b-%Y %H:%M:%S",
-  )
-
-  for _ in logger.handlers:
-    _.close()
-  del logger.handlers[:]
-
-  def filter(record):
+  def filter(self, record):
     try:
       levelname = {
         logging.WARNING: "WARNING",
@@ -53,25 +75,42 @@ def getlogger(module, root, samp, *, uselogfiles=False):
       raise ValueError("log messages aren't supposed to have semicolons:\n\n"+record.msg)
     return True
 
-  printhandler = logging.StreamHandler()
-  printhandler.setFormatter(formatter)
-  printhandler.addFilter(filter)
-  printhandler.setLevel(logging.DEBUG)
-  logger.addHandler(printhandler)
+  def __exit__(self, *exc):
+    self.logger.info(f"end {self.module}")
+    self.nentered -= 1
+    if self.nentered == 0:
+      for handler in self.handlers[:]:
+        handler.close()
+        self.removeHandler(handler)
+      del self.logger
 
-  if uselogfiles:
-    (root/"logfiles").mkdir(exist_ok=True)
-    mainhandler = logging.FileHandler(root/"logfiles"/f"{module}.log")
-    mainhandler.setFormatter(formatter)
-    mainhandler.addFilter(filter)
-    mainhandler.setLevel(logging.WARNING+1)
-    logger.addHandler(mainhandler)
+  def __getattr__(self, attr):
+    if attr == "logger":
+      raise RuntimeError("Have to use this in a context manager if you want to uselogfiles")
+    return getattr(self.logger, attr)
+  def warningglobal(self, *args, **kwargs):
+    return self.logger.log(logging.WARNING+1, *args, **kwargs)
 
-    (root/SlideID/"logfiles").mkdir(exist_ok=True)
-    samplehandler = logging.FileHandler(root/SlideID/"logfiles"/f"{SlideID}-{module}.log")
-    samplehandler.setFormatter(formatter)
-    samplehandler.addFilter(filter)
-    samplehandler.setLevel(logging.INFO)
-    logger.addHandler(samplehandler)
+class MyFileHandler:
+  __handlers = {}
+  __counts = collections.Counter()
 
-  return logger
+  def __init__(self, filename):
+    self.__filename = filename
+    if filename not in self.__handlers:
+      self.__handlers[filename] = logging.FileHandler(filename)
+    self.__handler = self.__handlers[filename]
+    self.__counts[filename] += 1
+
+  def close(self):
+    self.__counts[self.__filename] -= 1
+    if not self.__counts[self.__filename]:
+      self.__handler.close()
+      del self.__handlers[self.__filename]
+
+  def __getattr__(self, attr):
+    return getattr(self.__handler, attr)
+
+@functools.lru_cache(maxsize=None)
+def getlogger(module, root, samp, *, uselogfiles=False):
+  return MyLogger(module, root, samp, uselogfiles=uselogfiles)
