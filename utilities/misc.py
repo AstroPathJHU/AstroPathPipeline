@@ -1,4 +1,4 @@
-import contextlib, dataclasses, fractions, matplotlib.pyplot as plt, numpy as np, os, uncertainties as unc, scipy.stats, tifffile
+import contextlib, dataclasses, fractions, logging, matplotlib.pyplot as plt, numpy as np, os, uncertainties as unc, scipy.stats, tifffile
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -139,3 +139,6 @@ def tiffinfo(*, filename=None, page=None):
     height, width = units.distances(pixels=page.shape, pscale=pscale, power=1)
 
     return pscale, width, height
+
+dummylogger = logging.getLogger("dummy")
+dummylogger.addHandler(logging.NullHandler())

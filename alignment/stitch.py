@@ -2,8 +2,7 @@ import abc, collections, dataclasses, itertools, methodtools, more_itertools, nu
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangledict
 from ..utilities import units
-from ..utilities.logging import dummylogger
-from ..utilities.misc import weightedstd
+from ..utilities.misc import dummylogger, weightedstd
 from ..utilities.tableio import readtable, writetable
 from .field import Field, FieldOverlap
 

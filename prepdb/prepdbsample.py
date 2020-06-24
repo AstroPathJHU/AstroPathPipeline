@@ -1,41 +1,28 @@
-import argparse, datetime, fractions, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, PIL, re, skimage, tifffile
+import argparse, datetime, fractions, itertools, jxmlease, methodtools, numpy as np, os, pathlib, PIL, re, skimage, tifffile
+from ..baseclasses.sample import SampleBase
 from ..utilities import units
-from ..utilities.misc import floattoint, tiffinfo
+from ..utilities.misc import floattoint
 from ..utilities.tableio import writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
 from .overlap import Overlap
-
-logger = logging.getLogger("prepdb")
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s"))
-logger.addHandler(handler)
 
 jxmleaseversion = jxmlease.__version__.split(".")
 jxmleaseversion = [int(_) for _ in jxmleaseversion[:2]] + list(jxmleaseversion[2:])
 if jxmleaseversion < [1, 0, '2dev1']:
   raise ImportError(f"You need jxmleaseversion >= 1.0.2dev1 (your version: {jxmlease.__version__})\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
 
-class Sample:
-  def __init__(self, root, samp, *, dest=None):
-    self.root = pathlib.Path(root)
-    self.samp = samp
-    if dest is None:
-      dest = self.root/self.samp/"dbload"
+class PrepdbSample(SampleBase):
+  def __init__(self, *args, dest=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if dest is None: dest = self.dbload
     self.__dest = pathlib.Path(dest)
 
   @property
   def dest(self): return self.__dest
 
   @property
-  def scanfolder(self):
-    im3folder = self.root/self.samp/"im3"
-    return max(im3folder.glob("Scan*/"), key=lambda folder: int(folder.name.replace("Scan", "")))
-
-  @property
-  def componenttiffsfolder(self):
-    return self.root/self.samp/"inform_data"/"Component_Tiffs"
+  def logmodule(self): return "prepdb"
 
   @property
   def nclip(self):
@@ -47,43 +34,30 @@ class Sample:
 
   @methodtools.lru_cache()
   def getbatch(self):
-    with open(self.scanfolder/"BatchID.txt") as f:
-      return [
-        Batch(
-          Batch=int(f.read()),
-          Scan=int(self.scanfolder.name.replace("Scan", "")),
-          SampleID=0,
-          Sample=self.samp,
-        )
-      ]
+    return [
+      Batch(
+        Batch=self.BatchID,
+        Scan=self.Scan,
+        SampleID=self.SampleID,
+        Sample=self.SlideID,
+      )
+    ]
 
   def writebatch(self):
-    logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_batch.csv"), self.getbatch())
-
-  @methodtools.lru_cache()
-  def getcomponenttiffinfo(self):
-    componenttifffilename = next(self.componenttiffsfolder.glob(self.samp+"*_component_data.tif"))
-    return tiffinfo(filename=componenttifffilename)
-
-  @property
-  def pscale(self): return self.getcomponenttiffinfo()[0]
-  @property
-  def fwidth(self): return self.getcomponenttiffinfo()[1]
-  @property
-  def fheight(self): return self.getcomponenttiffinfo()[2]
+    self.logger.info("writebatch")
+    writetable(self.dest/(self.SlideID+"_batch.csv"), self.getbatch())
 
   @property
   def rectangles(self): return self.getlayout()[0]
   def writerectangles(self):
-    logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_rect.csv"), self.rectangles)
+    self.logger.info("writerectangles")
+    writetable(self.dest/(self.SlideID+"_rect.csv"), self.rectangles)
   @property
   def globals(self): return self.getlayout()[1]
   def writeglobals(self):
     if not self.globals: return
-    logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_globals.csv"), self.globals)
+    self.logger.info("writeglobals")
+    writetable(self.dest/(self.SlideID+"_globals.csv"), self.globals)
 
   @methodtools.lru_cache()
   def getlayout(self):
@@ -94,12 +68,12 @@ class Sample:
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        cx, cy = units.microns(r.cxvec, pscale=self.pscale)
-        raise OSError(f"File {self.samp}_[{cx},{cy}].im3 (expected from annotations) does not exist")
+        cx, cy = units.microns(r.cxvec, pscale=self.tiffpscale)
+        raise OSError(f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist")
       rf = rfs.pop()
       maxtimediff = max(maxtimediff, abs(rf.t-r.t))
     if maxtimediff >= datetime.timedelta(seconds=5):
-      logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
+      self.logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
     rectangles.sort(key=lambda x: x.t)
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
@@ -109,8 +83,8 @@ class Sample:
 
   @methodtools.lru_cache()
   def getXMLplan(self):
-    xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+"_annotations.xml")
-    reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
+    xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
+    reader = AnnotationXMLReader(xmlfile, pscale=self.tiffpscale)
 
     rectangles = reader.rectangles
     globals = reader.globals
@@ -120,8 +94,7 @@ class Sample:
 
     return rectangles, globals, perimeters
 
-  @staticmethod
-  def fixM2(rectangles):
+  def fixM2(self, rectangles):
     for rectangle in rectangles[:]:
       if "_M2" in rectangle.file:
         duplicates = [r for r in rectangles if r is not rectangle and np.all(r.cxvec == rectangle.cxvec)]
@@ -129,16 +102,16 @@ class Sample:
           rectangle.file = rectangle.file.replace("_M2", "")
         for d in duplicates:
           rectangles.remove(d)
-        logger.warning(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
+        self.logger.warningglobal(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
 
   def fixrectanglefilenames(self, rectangles):
     for r in rectangles:
-      expected = self.samp+f"_[{floattoint(units.microns(r.cx, pscale=r.pscale), atol=1e-10):d},{floattoint(units.microns(r.cy, pscale=r.pscale), atol=1e-10):d}].im3"
+      expected = self.SlideID+f"_[{floattoint(units.microns(r.cx, pscale=r.pscale), atol=1e-10):d},{floattoint(units.microns(r.cy, pscale=r.pscale), atol=1e-10):d}].im3"
       actual = r.file
       if expected != actual:
-        logger.warning(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
+        self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
       r.file = expected
 
   @methodtools.lru_cache()
@@ -147,19 +120,19 @@ class Sample:
     im3s = folder.glob("*.im3")
     result = []
     for im3 in im3s:
-      regex = self.samp+r"_\[([0-9]+),([0-9]+)\].im3"
+      regex = self.SlideID+r"_\[([0-9]+),([0-9]+)\].im3"
       match = re.match(regex, im3.name)
       if not match:
         raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
-      x = units.Distance(microns=int(match.group(1)), pscale=self.pscale)
-      y = units.Distance(microns=int(match.group(2)), pscale=self.pscale)
+      x = units.Distance(microns=int(match.group(1)), pscale=self.tiffpscale)
+      y = units.Distance(microns=int(match.group(2)), pscale=self.tiffpscale)
       t = datetime.datetime.fromtimestamp(os.path.getmtime(im3)).astimezone()
       result.append(
         RectangleFile(
           cx=x,
           cy=y,
           t=t,
-          pscale=self.pscale,
+          pscale=self.tiffpscale,
         )
       )
     result.sort(key=lambda x: x.t)
@@ -167,7 +140,7 @@ class Sample:
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
-    xmlfile = self.scanfolder/(self.samp+"_"+self.scanfolder.name+".annotations.polygons.xml")
+    xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".annotations.polygons.xml")
     if not xmlfile.exists():
       return [], [], []
     annotations = []
@@ -198,15 +171,15 @@ class Sample:
           if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
           regionvertices = []
           for k, vertex in enumerate(vertices, start=1):
-            x = units.Distance(microns=int(vertex.get_xml_attr("X")), pscale=self.pscale)
-            y = units.Distance(microns=int(vertex.get_xml_attr("Y")), pscale=self.pscale)
+            x = units.Distance(microns=int(vertex.get_xml_attr("X")), pscale=self.tiffpscale)
+            y = units.Distance(microns=int(vertex.get_xml_attr("Y")), pscale=self.tiffpscale)
             regionvertices.append(
               Vertex(
                 regionid=regionid,
                 vid=k,
                 x=x,
                 y=y,
-                pscale=self.pscale,
+                pscale=self.tiffpscale,
               )
             )
           allvertices += regionvertices
@@ -227,7 +200,7 @@ class Sample:
               type=region.get_xml_attr("Type"),
               nvert=len(vertices),
               poly=Polygon(*polygonvertices),
-              pscale=self.pscale,
+              pscale=self.tiffpscale,
             )
           )
 
@@ -241,19 +214,19 @@ class Sample:
   def vertices(self): return self.getXMLpolygonannotations()[2]
 
   def writeannotations(self):
-    logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_annotations.csv"), self.annotations, rowclass=Annotation)
+    self.logger.info("writeannotations")
+    writetable(self.dest/(self.SlideID+"_annotations.csv"), self.annotations, rowclass=Annotation)
   def writeregions(self):
-    logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_regions.csv"), self.regions, rowclass=Region)
+    self.logger.info("writeregions")
+    writetable(self.dest/(self.SlideID+"_regions.csv"), self.regions, rowclass=Region)
   def writevertices(self):
-    logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_vertices.csv"), self.vertices, rowclass=Vertex)
+    self.logger.info("writevertices")
+    writetable(self.dest/(self.SlideID+"_vertices.csv"), self.vertices, rowclass=Vertex)
 
   @property
-  def qptifffilename(self): return self.scanfolder/(self.samp+"_"+self.scanfolder.name+".qptiff")
+  def qptifffilename(self): return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".qptiff")
   @property
-  def jpgfilename(self): return self.dest/(self.samp+"_qptiff.jpg")
+  def jpgfilename(self): return self.dest/(self.SlideID+"_qptiff.jpg")
 
   @methodtools.lru_cache()
   def getqptiffcsvandimage(self):
@@ -294,7 +267,7 @@ class Sample:
       qptiffcsv = [
         QPTiffCsv(
           SampleID=0,
-          SlideID=self.samp,
+          SlideID=self.SlideID,
           ResolutionUnit="Micron",
           XPosition=xposition,
           YPosition=yposition,
@@ -330,11 +303,11 @@ class Sample:
     return self.getqptiffcsvandimage()[1]
 
   def writeqptiffcsv(self):
-    logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_qptiff.csv"), self.getqptiffcsv())
+    self.logger.info("writeqptiffcsv")
+    writetable(self.dest/(self.SlideID+"_qptiff.csv"), self.getqptiffcsv())
 
   def writeqptiffjpg(self):
-    logger.info(self.samp)
+    self.logger.info("writeqptiffjpg")
     img = self.getqptiffimage()
     img.save(self.jpgfilename)
 
@@ -374,31 +347,31 @@ class Sample:
             layer=self.layer,
             nclip=self.nclip,
             rectangles=(r1, r2),
-            pscale=self.pscale,
+            pscale=self.tiffpscale,
             readingfromfile=False,
           )
         )
     return overlaps
 
   def writeoverlaps(self):
-    logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_overlap.csv"), self.getoverlaps())
+    self.logger.info("writeoverlaps")
+    writetable(self.dest/(self.SlideID+"_overlap.csv"), self.getoverlaps())
 
   def getconstants(self):
     constants = [
       Constant(
         name='fwidth',
-        value=self.fwidth,
+        value=self.tiffwidth,
         unit='pixels',
         description='field width',
-        pscale=self.pscale,
+        pscale=self.tiffpscale,
       ),
       Constant(
         name='fheight',
-        value=self.fheight,
+        value=self.tiffheight,
         unit='pixels',
         description='field height',
-        pscale=self.pscale,
+        pscale=self.tiffpscale,
       ),
       Constant(
         name='xposition',
@@ -422,16 +395,16 @@ class Sample:
       ),
       Constant(
         name='pscale',
-        value=self.pscale,
+        value=self.tiffpscale,
         unit='pixels/micron',
         description='scale of the HPF images',
       ),
       Constant(
         name='nclip',
-        value=units.Distance(pixels=self.nclip, pscale=self.pscale),
+        value=units.Distance(pixels=self.nclip, pscale=self.tiffpscale),
         unit='pixels',
         description='pixels to clip off the edge after warping',
-        pscale=self.pscale,
+        pscale=self.tiffpscale,
       ),
       Constant(
         name='layer',
@@ -443,8 +416,8 @@ class Sample:
     return constants
 
   def writeconstants(self):
-    logger.info(self.samp)
-    writetable(self.dest/(self.samp+"_constants.csv"), self.getconstants())
+    self.logger.info("writeconstants")
+    writetable(self.dest/(self.SlideID+"_constants.csv"), self.getconstants())
 
   def writemetadata(self):
     self.dest.mkdir(parents=True, exist_ok=True)
@@ -468,5 +441,5 @@ if __name__ == "__main__":
   args = p.parse_args()
   kwargs = {"root": args.root, "samp": args.samp}
   if args.dest: kwargs["dest"] = args.dest
-  s = Sample(**kwargs)
+  s = PrepdbSample(**kwargs)
   s.writemetadata()
