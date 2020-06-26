@@ -311,7 +311,7 @@ def sinewaves(*, bki, testing, remake):
         Sample(samp="PZ1", name="JHUPolaris"),
         Sample(samp="ML1603474_BMS069_5_21", name="BMS", plotsine=lambda deltaxory, vsxory, **kwargs: deltaxory == vsxory == "x"),
       ] if bki else [
-        Sample(samp=None, name="test", plotsine=lambda tag, **kwargs: True, sinetext=lambda tag, **kwargs: True),
+        Sample(samp=None, name="test"),
       ]
 
       for samp, name, plotsine, sinetext, guessparameters in samples:
@@ -320,21 +320,19 @@ def sinewaves(*, bki, testing, remake):
         kwargs = {}
         for kwargs["deltaxory"] in "xy":
           for kwargs["vsxory"] in "xy":
-            for tag in 2, 4:
-              saveas = os.path.join(here, f"sine-wave-{tag}-{kwargs['deltaxory']}{kwargs['vsxory']}-{name}.pdf")
-              if os.path.exists(saveas) and not remake: continue
-              A = alignmentset(**alignmentsetkwargs)
-              shiftplotprofile(
-                A,
-                tag=tag,
-                plotsine=kwargs["vsxory"] == {2: "y", 4: "x"}[tag] and plotsine(tag=tag, **kwargs),
-                sinetext=kwargs["vsxory"] == {2: "y", 4: "x"}[tag] and sinetext(tag=tag, **kwargs),
-                guessparameters=guessparameters(**kwargs),
-                figurekwargs={"figsize": (6, 6)},
-                plotstyling=functools.partial(plotstyling, **kwargs),
-                saveas=saveas,
-                **kwargs
-              )
+            saveas = os.path.join(here, f"sine-wave-{kwargs['deltaxory']}{kwargs['vsxory']}-{name}.pdf")
+            if os.path.exists(saveas) and not remake: continue
+            A = alignmentset(**alignmentsetkwargs)
+            shiftplotprofile(
+              A,
+              plotsine=plotsine(**kwargs),
+              sinetext=sinetext(**kwargs),
+              guessparameters=guessparameters(**kwargs),
+              figurekwargs={"figsize": (6, 6)},
+              plotstyling=functools.partial(plotstyling, **kwargs),
+              saveas=saveas,
+              **kwargs
+            )
 
 def plots2D(*, bki, testing, remake):
   if bki or testing:

@@ -16,7 +16,7 @@ def isclose(distance1, distance2, *args, **kwargs):
   return np.isclose(pixels(distance1, pscale=_pscale(distance1), power=_power(distance1)), pixels(distance2, pscale=_pscale(distance2), power=_power(distance2)), *args, **kwargs)
 
 def angle(distance, *args, **kwargs):
-  return np.angle(pixels(distance), *args, **kwargs)
+  return np.angle(pixels(distance, power=None), *args, **kwargs)
 
 def linspace(start, stop, *args, **kwargs):
   stop - start

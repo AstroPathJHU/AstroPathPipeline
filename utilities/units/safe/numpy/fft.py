@@ -1,8 +1,10 @@
 import numpy as np
-from ..core import distances, pixels, UnitsError
+from ..core import _power, distances, pixels, UnitsError
 
 def fft(a, *args, **kwargs):
   fftpixels = np.fft.fft(pixels(a, power=None), *args, **kwargs)
+
+  if set(_power(a)) == {0}: return fftpixels
 
   pscale = {_._pscale for _ in np.ravel(a) if _ and _._pscale is not None}
   if not pscale: return fftpixels

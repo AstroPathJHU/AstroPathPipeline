@@ -72,7 +72,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
   logger.debug("done")
   return vectors
 
-def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax, deltaxory, vsxory: None, drawfourier=False, guessparameters=None, sinetext=False, **kwargs):
+def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax, deltaxory, vsxory: None, drawfourier=False, guessparameters=None, plotsine=True, sinetext=True, **kwargs):
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -89,26 +89,26 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
 
   if vsxory == "x":
     array2D = array2D.T
-    edges = extent[0]
+    edges = extent[0:2]
     xidx = 0
   elif vsxory == "y":
-    edges = extent[1]
+    edges = extent[2:4]
     xidx = 1
   else:
     assert False, vsxory
 
-  mean = np.mean(array2D[array2D > -998])
-  RMS = np.std(array2D[array2D > -998])
+  mean = np.mean(array2D[units.pixels(array2D, pscale=alignmentset.pscale) != -999])
+  RMS = np.std(array2D[units.pixels(array2D, pscale=alignmentset.pscale) != -999])
 
   x = []
   y = []
   yerr = []
-  binedges = np.linspace(*edges, num=len(array2D)+1)
+  binedges = units.np.linspace(*edges, num=len(array2D)+1)
   for rowcolumn, (binlow, binhigh) in itertools.zip_longest(array2D, more_itertools.pairwise(binedges)):
     x.append((binlow+binhigh)/2)
     ys = [_ for _ in rowcolumn if _ is not None]
-    y.append(weightedaverage(ys))
-    yerr.append(weightedstd(ys))
+    y.append(np.mean(ys))
+    yerr.append(np.std(ys))
 
   x = np.array(x)
   y = np.array(y)
@@ -150,10 +150,10 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
     units.np.testing.assert_allclose(_*(1+2*rtol) // deltax, _ / deltax, rtol=rtol)
 
   chunkstarts = [
-    xx for xx in x if not np.any(units.np.isclose(xx-deltax, x, rtol=rtol))
+    xx for xx in x if not np.any(units.np.isclose(xx-abs(deltax), x, rtol=rtol))
   ]
   chunkends = [
-    xx for xx in x if not np.any(units.np.isclose(xx+deltax, x, rtol=rtol))
+    xx for xx in x if not np.any(units.np.isclose(xx+abs(deltax), x, rtol=rtol))
   ]
   biggestchunkstart, biggestchunkend = max(
     itertools.zip_longest(chunkstarts, chunkends),
@@ -365,28 +365,29 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
   x0vec = np.min([[f.x, f.y] for f in fields], axis=0)
   f = fields[0]
   shape = tuple(reversed(floattoint(np.max([(f.xvec - x0vec) / deltaxvec for f in fields], axis=0), atol=1e-9) + 1))
-  xyarray = np.full(shape=(2,)+shape, fill_value=-999.)
+  xyarray = np.full(shape=(2,)+shape, fill_value=units.Distance(pixels=-999., pscale=alignmentset.pscale))
 
-#  extent = x0vec[0], shape[0] * deltaxvec[0] + x0vec[0], shape[1] * deltaxvec[1] + x0vec[1], x0vec[1]
-  extent = units.pixels((x0vec[0], shape[1] * deltaxvec[0] + x0vec[0], shape[0] * deltaxvec[1] + x0vec[1], x0vec[1]))
+  extent = x0vec[0], shape[1] * deltaxvec[0] + x0vec[0], shape[0] * deltaxvec[1] + x0vec[1], x0vec[1]
 
   for f in fields:
     idx = (slice(None),) + tuple(reversed(floattoint((f.xvec - x0vec) / deltaxvec, atol=1e-9)))
-    xyarray[idx] = units.pixels(units.nominal_values(f.pxvec - alignmentset.T@f.xvec), pscale=alignmentset.pscale)
+    xyarray[idx] = units.nominal_values(f.pxvec - alignmentset.T@f.xvec)
 
-  vmin = min(np.min(xyarray[xyarray != -999]), -np.max(xyarray[xyarray != -999]))
+  xyarraypixels = units.pixels(xyarray, pscale=alignmentset.pscale)
+
+  vmin = min(np.min(xyarraypixels[xyarraypixels != -999]), -np.max(xyarraypixels[xyarraypixels != -999]))
   vmax = -vmin
   norm = colors.Normalize(vmin=vmin, vmax=vmax)
   cmap = cm.get_cmap()
-  xycolor = cmap(norm(xyarray))
-  xycolor[xyarray == -999] = 0
+  xycolor = cmap(norm(xyarraypixels))
+  xycolor[xyarraypixels == -999] = 0
 
   if showplot is None: showplot = saveasx is saveasy is None
 
   for colorplot, xory, saveas in zip(xycolor, "xy", (saveasx, saveasy)):
     fig = plt.figure(**figurekwargs)
     ax = plt.gca()
-    ax.imshow(colorplot, extent=extent)
+    ax.imshow(colorplot, extent=units.pixels(extent, pscale=alignmentset.pscale))
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
@@ -395,6 +396,7 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
       plt.show()
     if saveas is not None:
       plt.savefig(saveas)
+    if not showplot:
       plt.close()
 
   logger.debug("done")
