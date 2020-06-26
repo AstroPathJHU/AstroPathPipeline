@@ -308,8 +308,8 @@ def sinewaves(*, bki, testing, remake):
         Sample(samp="M1_1", name="1"),
         Sample(samp="M2_3", name="2"),
         Sample(samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY", plotsine=lambda deltaxory, vsxory, **kwargs: deltaxory == vsxory == "x"),
-        Sample(samp="PZ1", name="JHUPolaris"),
-        Sample(samp="ML1603474_BMS069_5_21", name="BMS", plotsine=lambda deltaxory, vsxory, **kwargs: deltaxory == vsxory == "x"),
+#        Sample(samp="PZ1", name="JHUPolaris"),
+#        Sample(samp="ML1603474_BMS069_5_21", name="BMS", plotsine=lambda deltaxory, vsxory, **kwargs: deltaxory == vsxory == "x"),
       ] if bki else [
         Sample(samp=None, name="test"),
       ]
@@ -320,6 +320,7 @@ def sinewaves(*, bki, testing, remake):
         kwargs = {}
         for kwargs["deltaxory"] in "xy":
           for kwargs["vsxory"] in "xy":
+            if kwargs["deltaxory"] != kwargs["vsxory"]: continue
             saveas = os.path.join(here, f"sine-wave-{kwargs['deltaxory']}{kwargs['vsxory']}-{name}.pdf")
             if os.path.exists(saveas) and not remake: continue
             A = alignmentset(**alignmentsetkwargs)
