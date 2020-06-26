@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
-from ...alignment.plots import alignmentshiftprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
+from ...alignment.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
 from ...alignment.alignmentset import AlignmentSet
 from ...utilities import units
 
@@ -324,7 +324,7 @@ def sinewaves(*, bki, testing, remake):
               saveas = os.path.join(here, f"sine-wave-{tag}-{kwargs['deltaxory']}{kwargs['vsxory']}-{name}.pdf")
               if os.path.exists(saveas) and not remake: continue
               A = alignmentset(**alignmentsetkwargs)
-              alignmentshiftprofile(
+              shiftplotprofile(
                 A,
                 tag=tag,
                 plotsine=kwargs["vsxory"] == {2: "y", 4: "x"}[tag] and plotsine(tag=tag, **kwargs),

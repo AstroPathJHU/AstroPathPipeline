@@ -72,41 +72,43 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
   logger.debug("done")
   return vectors
 
-def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs={}, plotstyling=lambda fig, ax: None, saveas=None, plotsine=False, sinetext=False, drawfourier=False, guessparameters=None):
-  logger.debug(alignmentset.samp)
+def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax, deltaxory, vsxory: None, drawfourier=False, guessparameters=None, sinetext=False, **kwargs):
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
-  xidx = {"x": 0, "y": 1}[vsxory]
-  yidx = {"x": 0, "y": 1}[deltaxory]
+  xyarray, extent = shiftplot2D(alignmentset, showplot=False, **kwargs)
 
-  class OverlapForProfile:
-    def __init__(self, overlap):
-      self.overlap = overlap
+  if deltaxory == "x":
+    array2D = xyarray[0]
+    yidx = 0
+  elif deltaxory == "y":
+    array2D = xyarray[1]
+    yidx = 1
+  else:
+    assert False, deltaxory
 
-    def __getattr__(self, attr):
-      return getattr(self.overlap, attr)
+  if vsxory == "x":
+    array2D = array2D.T
+    edges = extent[0]
+    xidx = 0
+  elif vsxory == "y":
+    edges = extent[1]
+    xidx = 1
+  else:
+    assert False, vsxory
 
-    @property
-    def abspositions(self):
-      return self.x1vec[xidx], self.x2vec[xidx]
-
-    @property
-    def dx(self):
-      return self.result.dxvec[yidx]
-
-  overlaps = [OverlapForProfile(o) for o in alignmentset.overlaps if o.tag == tag]
-  allpositions = {o.abspositions for o in overlaps}
+  mean = np.mean(array2D[array2D > -998])
+  RMS = np.std(array2D[array2D > -998])
 
   x = []
   y = []
   yerr = []
-
-  for positions in sorted(set(allpositions), key=lambda x: units.pixels(np.mean(x))):
-    x.append((positions[0] + positions[1]) / 2)
-    dxs = [o.dx for o in overlaps if o.abspositions == positions]
-    y.append(units.nominal_value(weightedaverage(dxs)))
-    yerr.append(units.nominal_value(weightedstd(dxs)))
+  binedges = np.linspace(*edges, num=len(array2D)+1)
+  for rowcolumn, (binlow, binhigh) in itertools.zip_longest(array2D, more_itertools.pairwise(binedges)):
+    x.append((binlow+binhigh)/2)
+    ys = [_ for _ in rowcolumn if _ is not None]
+    y.append(weightedaverage(ys))
+    yerr.append(weightedstd(ys))
 
   x = np.array(x)
   y = np.array(y)
@@ -175,7 +177,7 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
 
     return k, f
 
-  def cosfunction(xx, amplitude, kk, phase, mean):
+  def cosfunction(xx, amplitude, kk, phase):
     @np.vectorize
     def cos(thing):
       try:
@@ -189,7 +191,6 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     abs(bestf) / (len(biggestchunkxs) / 2),
     bestk * 2 * np.pi,
     units.np.angle(bestf),
-    np.mean(biggestchunkys)
   ]
   if guessparameters is not None:
     for i, parameter in enumerate(guessparameters):
@@ -200,15 +201,13 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     p, cov = units.scipy.optimize.curve_fit(
       cosfunction, xwitherror, ywitherror, p0=initialguess, sigma=yerrwitherror, absolute_sigma=True,
     )
-    amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
+    amplitude, kk, phase = units.correlated_distances(distances=p, covariance=cov)
   except (RuntimeError, np.linalg.LinAlgError):
     print("fit failed")
-    toaverage = units.correlated_distances(distances=ywitherror, covariance=np.diag(yerrwitherror)**2)
-    mean = weightedaverage(toaverage)
     amplitude = kk = phase = 0
-    p = amplitude, kk, phase, mean
-    cov = np.diag([1, 1, 1, weightedstd(toaverage)**2])
-    amplitude, kk, phase, mean = units.correlated_distances(distances=p, covariance=cov)
+    p = amplitude, kk, phase
+    cov = np.diag([1, 1, 1])
+    amplitude, kk, phase = units.correlated_distances(distances=p, covariance=cov)
 
   if amplitude < 0:
     amplitude *= -1
@@ -216,12 +215,12 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
   if kk < 0:
     kk *= -1
     phase *= -1
-  p = amplitude, kk, phase, mean
+  p = amplitude, kk, phase
 
   print("Average:")
   print(f"  {mean}")
   try:
-    o = overlaps[0]
+    o = alignmentset.overlaps[0]
     expected = ((alignmentset.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]
   except AttributeError:
     pass
@@ -233,20 +232,12 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
     wavelength = 2*np.pi / kk
     print(f"  wavelength: {wavelength}")
     print(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
-    def subtractsystematic(misalignment, position1, position2):
-      return misalignment - cosfunction((position1+position2)/2, *p)
   else:
     print("  (not significant)")
     plotsine = False
-    def subtractsystematic(misalignment, position1, position2):
-      return misalignment - mean
 
-  remaining = np.array([subtractsystematic(overlap.dx, *overlap.abspositions) for overlap in overlaps])
-  noiseaverage = weightedaverage(remaining)
-  noiseRMS = weightedstd(remaining, subtractaverage=False)
   print("Remaining noise:")
-  print(f"  average = {noiseaverage}")
-  print(f"  RMS     = {noiseRMS}")
+  print(f"  RMS     = {RMS}")
 
   oldylim = ax.get_ylim()
   plotstyling(fig=fig, ax=ax)
@@ -264,10 +255,10 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
         ax.set_ylim(bottom, top)
       amplitudetext = units.drawing.siunitxformat(amplitude, power=1)
       wavelengthtext = units.drawing.siunitxformat(wavelength, power=1)
-      noiseRMStext = units.drawing.siunitxformat(noiseRMS, power=1, fmt=".2f")
+      RMStext = units.drawing.siunitxformat(RMS, power=1, fmt=".2f")
       plt.text(xcenter, top, f"amplitude: {amplitudetext}", horizontalalignment="center", verticalalignment="top")
       plt.text(xcenter, 0.92*top+0.08*bottom, f"wavelength: {wavelengthtext}", horizontalalignment="center", verticalalignment="top")
-      plt.text(xcenter, 0.84*top+0.16*bottom, f"RMS of noise: {noiseRMStext}", horizontalalignment="center", verticalalignment="top")
+      plt.text(xcenter, 0.84*top+0.16*bottom, f"RMS of noise: {RMStext}", horizontalalignment="center", verticalalignment="top")
   else:
     if sinetext:
       xcenter = np.average(ax.get_xlim())
@@ -275,8 +266,8 @@ def alignmentshiftprofile(alignmentset, *, deltaxory, vsxory, tag, figurekwargs=
       if adjustylim:
         top += (top-bottom) * .1
         ax.set_ylim(bottom, top)
-      noiseRMStext = units.drawing.siunitxformat(noiseRMS, power=1, fmt=".2f")
-      plt.text(xcenter, top, f"RMS of noise: {noiseRMStext}", horizontalalignment="center", verticalalignment="top")
+      RMStext = units.drawing.siunitxformat(RMS, power=1, fmt=".2f")
+      plt.text(xcenter, top, f"RMS of noise: {RMStext}", horizontalalignment="center", verticalalignment="top")
 
   if saveas is None:
     plt.show()
@@ -363,7 +354,7 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
   logger.debug("done")
   return xresiduals, yresiduals
 
-def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax, cbar, xory: None, island=None):
+def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax, cbar, xory: None, island=None, showplot=None):
   logger.debug(alignmentset.samp)
   fields = alignmentset.fields
   if island is not None:
@@ -390,6 +381,8 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
   xycolor = cmap(norm(xyarray))
   xycolor[xyarray == -999] = 0
 
+  if showplot is None: showplot = saveasx is saveasy is None
+
   for colorplot, xory, saveas in zip(xycolor, "xy", (saveasx, saveasy)):
     fig = plt.figure(**figurekwargs)
     ax = plt.gca()
@@ -398,11 +391,11 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
     plotstyling(fig=fig, ax=ax, cbar=cbar, xory=xory)
-    if saveasx is saveasy is None:
+    if showplot:
       plt.show()
     if saveas is not None:
       plt.savefig(saveas)
       plt.close()
 
   logger.debug("done")
-  return xyarray
+  return xyarray, extent
