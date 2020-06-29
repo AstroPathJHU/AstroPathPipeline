@@ -97,7 +97,8 @@ class Distance:
   def __abs__(self):
     return Distance(pscale=self._pscale, power=self._power, pixels=abs(self._pixels))
   def __hash__(self):
-    return hash((self._power, self._pscale, self._pixels))
+    if self._power == 0: return hash(float(self))
+    return hash((float(self._power), float(self._pscale), float(self._pixels)))
 
   def sqrt(self): return self**0.5
   def conjugate(self):
