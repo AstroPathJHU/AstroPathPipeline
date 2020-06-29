@@ -5,7 +5,7 @@ from matplotlib import cm, colors, pyplot as plt
 from more_itertools import pairwise
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from ..utilities import units
-from ..utilities.misc import floattoint, pullhist, weightedaverage, weightedstd
+from ..utilities.misc import floattoint, pullhist
 
 logger = logging.getLogger("alignmentplots")
 
