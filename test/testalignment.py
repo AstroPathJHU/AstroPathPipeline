@@ -320,3 +320,8 @@ class TestAlignment(unittest.TestCase):
     with units.setup_context("fast"):
       self.testCohort()
 
+  def testMissingFolders(self):
+    with temporarilyremove(thisfolder/"data"/"M21_1"/"im3"), temporarilyremove(thisfolder/"data"/"M21_1"/"inform_data"), units.setup_context("fast"):
+      a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", selectrectangles=range(5))
+      a.getDAPI()
+      a.align()
