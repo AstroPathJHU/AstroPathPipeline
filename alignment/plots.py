@@ -230,8 +230,9 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
   yerr = []
   binedges = units.np.linspace(*edges, num=len(array2D)+1)
   for rowcolumn, (binlow, binhigh) in itertools.zip_longest(array2D, more_itertools.pairwise(binedges)):
-    x.append((binlow+binhigh)/2)
     ys = [_ for _ in rowcolumn if _ != units.Distance(pixels=-999, pscale=alignmentset.pscale)]
+    if not ys: continue
+    x.append((binlow+binhigh)/2)
     y.append(np.mean(ys))
     yerr.append(np.std(ys))
 
@@ -239,7 +240,7 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
   y = np.array(y)
   yerr = np.array(yerr)
 
-  errorzero = abs(yerr/np.sqrt(sum(y**2)/len(y))) < 1e-3
+  errorzero = abs(yerr/(sum(y**2)/len(y))**.5) < 1e-3
   errornonzero = ~errorzero
 
   xwitherror = x[errornonzero]
