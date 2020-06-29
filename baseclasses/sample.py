@@ -28,10 +28,16 @@ class SampleDef:
     if "SlideID" in kwargs and root is not None:
       root = pathlib.Path(root)
       if "Scan" not in kwargs:
-        kwargs["Scan"] = max(int(folder.name.replace("Scan", "")) for folder in (root/kwargs["SlideID"]/"im3").glob("Scan*/"))
-      if "BatchID" not in kwargs:
-        with open(root/kwargs["SlideID"]/"im3"/f"Scan{kwargs['Scan']}"/"BatchID.txt") as f:
-          kwargs["BatchID"] = int(f.read())
+        try:
+          kwargs["Scan"] = max(int(folder.name.replace("Scan", "")) for folder in (root/kwargs["SlideID"]/"im3").glob("Scan*/"))
+        except ValueError:
+          pass
+      if "BatchID" not in kwargs and kwargs.get("Scan", None) is not None:
+        try:
+          with open(root/kwargs["SlideID"]/"im3"/f"Scan{kwargs['Scan']}"/"BatchID.txt") as f:
+            kwargs["BatchID"] = int(f.read())
+        except FileNotFoundError:
+          pass
 
     if "SampleID" not in kwargs: kwargs["SampleID"] = 0
 
