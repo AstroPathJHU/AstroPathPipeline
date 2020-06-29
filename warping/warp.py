@@ -4,12 +4,6 @@ import numpy as np
 import os, math, cv2
 import matplotlib.pyplot as plt, seaborn as sns
 
-class WarpingError(Exception) :
-    """
-    Class for errors encountered during warping
-    """
-    pass
-
 class Warp :
     """
     Main superclass for applying warping to images

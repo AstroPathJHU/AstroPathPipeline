@@ -1,7 +1,8 @@
 #imports
-from argparse import ArgumentParser
-from .run_warpfitter import getSampleOctets, checkDirAndFixedArgs
+from .run_warpfitter import getSampleOctets
+from .utilities import checkDirAndFixedArgs
 from ..utilities.misc import split_csv_to_list
+from argparse import ArgumentParser
 import os, random, multiprocessing as mp
 
 #function that gets passed to the multiprocessing pool just runs run_warpfitter.py
@@ -15,7 +16,6 @@ def main() :
 	parser.add_argument('sample',          help='Name of the data sample to use')
 	parser.add_argument('rawfile_top_dir', help='Path to the directory containing the "[sample_name]/*.Data.dat" files')
 	parser.add_argument('dbload_top_dir',  help='Path to the directory containing "[sample name]/dbload" subdirectories')
-	parser.add_argument('fw01_top_dir',    help='Path to the directory containing the "[sample_name]/*.fw01" files to use for initial alignment')
 	parser.add_argument('njobs',           help='Number of jobs to run', type=int)
 	#optional arguments
 	parser.add_argument('--working_dir',         default='warpfit_pool',
@@ -64,7 +64,7 @@ def main() :
 		os.mkdir(args.working_dir)
 
 	#start by ordering the list of octets for this sample by the # of their center rectangle
-	all_octets_dict, _ = getSampleOctets(args.dbload_top_dir,args.fw01_top_dir,args.sample,args.working_dir,save_plots=False)
+	all_octets_dict, _ = getSampleOctets(args.dbload_top_dir,args.sample,args.working_dir,save_plots=False)
 	all_octets_numbers = list(range(1,len(all_octets_dict.items())+1))
 
 	#make sure that the number of octets per job and the number of jobs will work for this sample
@@ -72,7 +72,7 @@ def main() :
 		raise ValueError(f'Sample {args.sample} has {len(all_octets_dict)} total octets, but you asked for {args.njobs} jobs with {n_octets_per_job} octets per job!')
 
 	#build the list of commands to pass to os.system to run run_warpfitter.py
-	cmd_base=f'python -m microscopealignment.warping.run_warpfitter fit {args.sample} {args.rawfile_top_dir} {args.dbload_top_dir} {args.fw01_top_dir}'
+	cmd_base=f'python -m microscopealignment.warping.run_warpfitter fit {args.sample} {args.rawfile_top_dir} {args.dbload_top_dir}'
 	cmd_base+=f' --layer {args.layer}'
 	cmd_base+=f' {fixedstring[:-1]}'
 	if args.float_p1p2_to_polish :

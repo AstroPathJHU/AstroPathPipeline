@@ -1,32 +1,20 @@
 #imports
 from .warpset import WarpSet
+from .utilities import warp_logger, WarpingError
+from .config import CONST
 from ..alignment.alignmentset import AlignmentSet
 from ..prepdb.rectangle import rectangleoroverlapfilter
 from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, scipy, matplotlib.pyplot as plt
-import os, logging, copy, shutil, platform, time
+import os, copy, shutil, platform, time
 
 #global variables
 IM3_EXT='.im3'
-RAW_EXT='.Data.dat'
 WARP_EXT='.camWarp_layer'
 MICROSCOPE_OBJECTIVE_FOCAL_LENGTH=40000. # 20mm in pixels
 PARNAMELIST=['cx','cy','fx','fy','k1','k2','p1','p2','k3']
-
-#set up the logger
-warp_logger = logging.getLogger("warpfitter")
-warp_logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
-warp_logger.addHandler(handler)
-
-class FittingError(Exception) :
-    """
-    Class for errors encountered during fitting
-    """
-    pass
 
 class WarpFitter :
     """
@@ -63,11 +51,11 @@ class WarpFitter :
         #setup the working directory and the lists of overlaps and rectangles
         self.__setupWorkingDirectory()
         #get the list of raw file paths
-        self.rawfile_paths = [os.path.join(self.rawfile_dir,fn.replace(IM3_EXT,RAW_EXT)) for fn in [r.file for r in self.rectangles]]
+        self.rawfile_paths = [os.path.join(self.rawfile_dir,fn.replace(IM3_EXT,CONST.RAW_EXT)) for fn in [r.file for r in self.rectangles]]
         #get the size of the images in the sample
         self.m, self.n, self.nlayers = getImageHWLFromXMLFile(self.rawfile_top_dir,samplename)
         if layer<1 or layer>self.nlayers :
-            raise FittingError(f'Choice of layer ({layer}) is not valid for images with {self.nlayers} layers!')
+            raise WarpingError(f'Choice of layer ({layer}) is not valid for images with {self.nlayers} layers!')
         #make the warpset object to use
         if warpset is not None :
             self.warpset = warpset
@@ -75,7 +63,7 @@ class WarpFitter :
             if warp.n!=self.n or warp.m!=self.m :
                 msg = f'Warp object passed to WarpFitter is set to run on images of size ({warp.n},{warp.m}),'
                 msg+=f' not of size ({self.n},{self.m}) as specified by .imm files'
-                raise FittingError(msg)
+                raise WarpingError(msg)
             self.warpset = WarpSet(warp=warp,rawfiles=self.rawfile_paths,nlayers=self.nlayers,layer=layer)
         else :
             self.warpset = WarpSet(n=self.n,m=self.m,rawfiles=self.rawfile_paths,nlayers=self.nlayers,layer=layer)
@@ -89,7 +77,7 @@ class WarpFitter :
             try :
                 shutil.rmtree(self.samp_name)
             except Exception :
-                raise FittingError('Something went wrong in trying to remove the directory of initially-warped files!')
+                raise WarpingError('Something went wrong in trying to remove the directory of initially-warped files!')
         try:
             units.setup(self.bkp_units_mode)
         except TypeError: #units was garbage collected before the warpfitter
@@ -110,7 +98,7 @@ class WarpFitter :
                 try :
                     self.warpset.writeOutWarpedImageSet()
                 except Exception :
-                    raise FittingError('Something went wrong in trying to write out the initial warped files!')
+                    raise WarpingError('Something went wrong in trying to write out the initial warped files!')
         self.alignset.getDAPI(filetype='camWarpDAPI',writeimstat=False,mean_image=self.mean_image)
 
     def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2k3=False,fix_p1p2_in_global_fit=False,fix_p1p2_in_polish_fit=False,
@@ -249,7 +237,7 @@ class WarpFitter :
                     constraints=constraints
                     )
             except Exception :
-                raise FittingError('Something failed in the initial minimization!')
+                raise WarpingError('Something failed in the initial minimization!')
         warp_logger.info(f'Initial minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations.')
         return result
 
@@ -286,7 +274,7 @@ class WarpFitter :
                     options={'xtol':1e-4,'gtol':1e-5,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
                     )
             except Exception :
-                raise FittingError('Something failed in the polishing minimization!')
+                raise WarpingError('Something failed in the polishing minimization!')
         msg = f'Final minimization completed {"successfully" if result.success else "UNSUCCESSFULLY"} in {result.nfev} evaluations '
         term_conds = {0:'max iterations',1:'gradient tolerance',2:'parameter tolerance',3:'callback function'}
         msg+=f'due to compliance with {term_conds[result.status]} criteria.'
@@ -326,7 +314,7 @@ class WarpFitter :
                     plt.show()
                 plt.close()
             except Exception :
-                raise FittingError('something went wrong while trying to save the fit progress plots!')
+                raise WarpingError('something went wrong while trying to save the fit progress plots!')
         return ninitev, len(self.costs)-ninitev
 
     #function to save alignment comparison visualizations in a new directory inside the working directory
@@ -334,7 +322,7 @@ class WarpFitter :
         warp_logger.info('writing out warping/alignment comparison images')
         #make sure the best fit warp exists (which means the warpset is updated with the best fit parameters)
         if self.__best_fit_warp is None :
-            raise FittingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
+            raise WarpingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
         #start by aligning the raw, unwarped images and getting their shift comparison information/images
         self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
         rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
@@ -379,7 +367,7 @@ class WarpFitter :
                         plt.savefig(fn)
                         plt.close()
                 except Exception :
-                    raise FittingError('Something went wrong while trying to write out the overlap comparison images')
+                    raise WarpingError('Something went wrong while trying to write out the overlap comparison images')
         return rawcost, bestcost
 
     #################### PRIVATE HELPER FUNCTIONS ####################
@@ -407,7 +395,7 @@ class WarpFitter :
                 if name in bounds_dict.keys() :
                     bounds_dict[name] = par_bounds[name]
                 else :
-                    raise FittingError(f'Parameter "{name}"" in supplied dictionary of bounds not recognized!')
+                    raise WarpingError(f'Parameter "{name}"" in supplied dictionary of bounds not recognized!')
         #remove any parameters that will be fixed
         to_remove = []
         if fix_cxcy :
@@ -490,7 +478,7 @@ class WarpFitter :
             elif name in ['k2','k3','p1','p2'] :
                 thisparvalues = np.linspace(0.5*bnds[0],0.5*bnds[1],nperpar)
             else :
-                raise FittingError(f'ERROR: parameter name {name} is not recognized in __getInitialPopulation!')
+                raise WarpingError(f'ERROR: parameter name {name} is not recognized in __getInitialPopulation!')
             par_variations.append(thisparvalues)
         #first member of the population is the nominal initial parameters
         population_list = []
@@ -630,5 +618,5 @@ class WarpFitter :
                                                             self.init_min_runtime,self.polish_min_runtime,
                                                             self.raw_cost,self.best_cost)
             except Exception :
-                raise FittingError('Something went wrong in trying to save the warping amount figure for the best-fit warp')
+                raise WarpingError('Something went wrong in trying to save the warping amount figure for the best-fit warp')
 

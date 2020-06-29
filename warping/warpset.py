@@ -1,5 +1,6 @@
 #imports
-from .warp import CameraWarp, WarpingError
+from .warp import CameraWarp
+from .utilities import WarpingError
 from ..utilities.misc import cd
 import numpy as np
 import cv2, skimage.filters, skimage.util
