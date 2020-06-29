@@ -899,8 +899,6 @@ As a cross check, similar plots are also shown for a second dataset in \cref{fig
 
 In this note, we describe the alignment and stitching of a microscope image composed of up to $1000$ fields.  Our procedure includes an estimation of the error on each field, which are propagated throughout the procedure to obtain a final error estimate and covariance matrix for the positions of the fields.  To demonstrate the method, we run it over several data samples collected by different microscopes.  \Cref{table:microscopes} compares the alignment behavior of the different microscopes used.  The method provided here, which runs in a few minutes, forms an important part of the data calibration in the astropath framework.
 
-\todo{fix RMS}
-
 \begin{table}[ht]
 	\centering
 	\begin{tabular}{|l|c|c|c|c|c|}
@@ -912,11 +910,9 @@ In this note, we describe the alignment and stitching of a microscope image comp
 	& $\delta y$, $x$ overlap & $0.1$ & $-0.5$ & $0.5$ & $0.0$ \\\cline{2-6}
 	& $\delta x$, $y$ overlap & $0.1$ & $0.3$ & $-0.4$ & $-0.5$ \\\cline{2-6}
 	& $\delta y$, $y$ overlap & $-1.1$ & $0.0$ & $-0.3$ & $0.0$ \\\hline
-	\multirowcell{4}[0pt][l]{Remaining RMS\\(pixels)}
-	& $\delta x$, $x$ overlap & $1.4$ & $0.3$ & $0.9$ & $0.3$ \\\cline{2-6}
-	& $\delta y$, $x$ overlap & $0.3$ & $0.4$ & $0.4$ & $0.1$ \\\cline{2-6}
-	& $\delta x$, $y$ overlap & $0.4$ & $0.5$ & $3.6$ & $0.1$ \\\cline{2-6}
-	& $\delta y$, $y$ overlap & $1.2$ & $0.3$ & $0.8$ & $0.5$ \\\hline
+	\multirowcell{2}[0pt][l]{RMS of shifts\\(pixels)}
+	& $\delta x$ & $1.1$ & $0.8$ & $X.Y$ & $0.4$ \\\cline{2-6}
+	& $\delta y$ & $2.0$ & $0.2$ & $X.Y$ & $0.3$ \\\hline
 	\end{tabular}
 	\caption{Comparison between the microscopes studied here.}
 	\label{table:microscopes}
