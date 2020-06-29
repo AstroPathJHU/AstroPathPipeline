@@ -394,6 +394,9 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
       RMStext = units.drawing.siunitxformat(RMS, power=1, fmt=".2f")
       plt.text(xcenter, top, f"RMS of noise: {RMStext}", horizontalalignment="center", verticalalignment="top")
 
+  if vsxory == "y":
+    ax.invert_xaxis()
+
   if saveas is None:
     plt.show()
   else:
