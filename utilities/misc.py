@@ -1,4 +1,4 @@
-import contextlib, dataclasses, matplotlib.pyplot as plt, numpy as np, os, uncertainties as unc, scipy.stats
+import contextlib, dataclasses, fractions, logging, matplotlib.pyplot as plt, numpy as np, os, uncertainties as unc, scipy.stats, tifffile
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -61,9 +61,12 @@ class dataclass_dc_init:
     cls.__init__ = __my_init__
     return cls
 
-def floattoint(flt):
+@np.vectorize
+def floattoint(flt, *, atol=0, rtol=0):
   result = int(flt)
-  if result == flt: return result
+  flt = float(flt)
+  for thing in result, result+1, result-1:
+    if np.isclose(thing, flt, atol=atol, rtol=rtol): return thing
   raise ValueError(f"{flt} is not an int")
 
 from . import units
@@ -80,3 +83,62 @@ def weightedvariance(a, *, subtractaverage=True):
 
 def weightedstd(*args, **kwargs):
   return weightedvariance(*args, **kwargs) ** 0.5
+
+#parser callback function to split a string of comma-separated values into a list
+def split_csv_to_list(value) :
+  return value.split(',')
+
+#parser callback function to split a string of comma-separated values into a list of integers
+def split_csv_to_list_of_ints(value) :
+  try :
+      return [int(v) for v in value.split(',')]
+  except ValueError :
+      raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
+
+@contextlib.contextmanager
+def PILmaximagepixels(pixels):
+  import PIL.Image
+  bkp = PIL.Image.MAX_IMAGE_PIXELS
+  try:
+    PIL.Image.MAX_IMAGE_PIXELS = pixels
+    yield
+  finally:
+    PIL.Image.MAX_IMAGE_PIXELS = bkp
+
+@contextlib.contextmanager
+def memmapcontext(filename, *args, **kwargs):
+  try:
+    memmap = np.memmap(filename, *args, **kwargs)
+  except OSError as e:
+    if hasattr(filename, "name"): filename = filename.name
+    if getattr(e, "winerror", None) == 8:
+      raise IOError(f"Failed to create memmap from corrupted file {filename}")
+  try:
+    yield memmap
+  finally:
+    memmap._mmap.close()
+
+def tiffinfo(*, filename=None, page=None):
+  if filename is page is None:
+    raise TypeError("Have to provide either filename or page")
+  with tifffile.TiffFile(filename) if filename is not None else contextlib.nullcontext() as f:
+    if filename is not None:
+      if page is None: page = 0
+      page = f.pages[page]
+    resolutionunit = page.tags["ResolutionUnit"].value
+    xresolution = page.tags["XResolution"].value
+    xresolution = fractions.Fraction(*xresolution)
+    yresolution = page.tags["YResolution"].value
+    yresolution = fractions.Fraction(*yresolution)
+    if xresolution != yresolution: raise ValueError(f"x and y have different resolutions {xresolution} {yresolution}")
+    resolution = float(xresolution)
+    kw = {
+      tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
+    }[resolutionunit]
+    pscale = float(units.Distance(pixels=resolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1))
+    height, width = units.distances(pixels=page.shape, pscale=pscale, power=1)
+
+    return pscale, width, height
+
+dummylogger = logging.getLogger("dummy")
+dummylogger.addHandler(logging.NullHandler())

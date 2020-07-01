@@ -1,8 +1,8 @@
-import logging, numpy as np, scipy.optimize
+import numpy as np, scipy.optimize
 
-logger = logging.getLogger("align")
+from ..utilities.misc import dummylogger
 
-def meanimage(images, logmsg=""):
+def meanimage(images, *, logger=dummylogger):
   """
   Find the flat field, which is the average intensity
   over all the images, parameterized as a quadratic
@@ -11,7 +11,7 @@ def meanimage(images, logmsg=""):
   the image, divide by fitresult.flatfield
   """
 
-  logger.info(logmsg)
+  logger.info("meanimage")
 
   img = np.mean(images, axis=0)
 

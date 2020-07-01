@@ -1,42 +1,13 @@
-import abc, dataclasses, matplotlib.pyplot as plt, networkx as nx, numpy as np, typing, uncertainties as unc
+import dataclasses, matplotlib.pyplot as plt, numpy as np, typing, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
-from .rectangle import rectangleoroverlapfilter as overlapfilter
+from ..prepdb.overlap import Overlap
 from ..utilities import units
-from ..utilities.misc import covariance_matrix, dataclass_dc_init
+from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
-class Overlap(DataClassWithDistances):
-  pixelsormicrons = "microns"
-
-  n: int
-  p1: int
-  p2: int
-  x1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  tag: int
-  layer: dataclasses.InitVar[float]
-  pscale: dataclasses.InitVar[float]
-  nclip: dataclasses.InitVar[float]
-  rectangles: dataclasses.InitVar[float]
-  readingfromfile: dataclasses.InitVar[float] = False
-
-  def __post_init__(self, layer, pscale, nclip, rectangles, readingfromfile=False):
-    super().__post_init__(pscale=pscale, readingfromfile=readingfromfile)
-
-    self.layer = layer
-    self.nclip = nclip
-    self.result = None
-
-    p1rect = [r for r in rectangles if r.n==self.p1]
-    p2rect = [r for r in rectangles if r.n==self.p2]
-    if not len(p1rect) == len(p2rect) == 1:
-      raise ValueError(f"Expected exactly one rectangle each with n={self.p1} and {self.p2}, found {len(p1rect)} and {len(p2rect)}")
-    self.rectangles = p1rect[0], p2rect[0]
-
+class AlignmentOverlap(Overlap):
   @property
   def images(self):
     result = tuple(r.image[:] for r in self.rectangles)
@@ -49,12 +20,12 @@ class Overlap(DataClassWithDistances):
 
     hh, ww = image1.shape
     assert (hh, ww) == image2.shape
+    hh, ww = units.distances(pixels=[hh, ww], pscale=self.pscale)
 
-    #convert microns to approximate pixels
-    image1x1 = int(units.pixels(self.x1))
-    image1y1 = int(units.pixels(self.y1))
-    image2x1 = int(units.pixels(self.x2))
-    image2y1 = int(units.pixels(self.y2))
+    image1x1 = self.x1
+    image1y1 = self.y1
+    image2x1 = self.x2
+    image2y1 = self.y2
     image1x2 = image1x1 + ww
     image2x2 = image2x1 + ww
     image1y2 = image1y1 + hh
@@ -65,15 +36,36 @@ class Overlap(DataClassWithDistances):
     overlapy1 = max(image1y1, image2y1)
     overlapy2 = min(image1y2, image2y2)
 
-    cutimage1x1 = overlapx1 - image1x1 + self.nclip
-    cutimage1x2 = overlapx2 - image1x1 - self.nclip
-    cutimage1y1 = overlapy1 - image1y1 + self.nclip
-    cutimage1y2 = overlapy2 - image1y1 - self.nclip
+    offsetimage1x1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx1 - image1x1, pscale=self.pscale)))
+    offsetimage1x2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx2 - image1x1, pscale=self.pscale)))
+    offsetimage1y1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy1 - image1y1, pscale=self.pscale)))
+    offsetimage1y2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy2 - image1y1, pscale=self.pscale)))
 
-    cutimage2x1 = overlapx1 - image2x1 + self.nclip
-    cutimage2x2 = overlapx2 - image2x1 - self.nclip
-    cutimage2y1 = overlapy1 - image2y1 + self.nclip
-    cutimage2y2 = overlapy2 - image2y1 - self.nclip
+    offsetimage2x1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx1 - image2x1, pscale=self.pscale)))
+    offsetimage2x2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx2 - image2x1, pscale=self.pscale)))
+    offsetimage2y1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy1 - image2y1, pscale=self.pscale)))
+    offsetimage2y2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy2 - image2y1, pscale=self.pscale)))
+
+    cutimage1x1 = floattoint(units.pixels(offsetimage1x1 + self.nclip, pscale=self.pscale))
+    cutimage1x2 = floattoint(units.pixels(offsetimage1x2 - self.nclip, pscale=self.pscale))
+    cutimage1y1 = floattoint(units.pixels(offsetimage1y1 + self.nclip, pscale=self.pscale))
+    cutimage1y2 = floattoint(units.pixels(offsetimage1y2 - self.nclip, pscale=self.pscale))
+
+    cutimage2x1 = floattoint(units.pixels(offsetimage2x1 + self.nclip, pscale=self.pscale))
+    cutimage2x2 = floattoint(units.pixels(offsetimage2x2 - self.nclip, pscale=self.pscale))
+    cutimage2y1 = floattoint(units.pixels(offsetimage2y1 + self.nclip, pscale=self.pscale))
+    cutimage2y2 = floattoint(units.pixels(offsetimage2y2 - self.nclip, pscale=self.pscale))
+
+    #make sure that even with floattoint() they're the same size
+    deltax = min(cutimage1x2 - cutimage1x1, cutimage2x2 - cutimage2x1)
+    cutimage1x2 = cutimage1x1 + deltax
+    cutimage2x2 = cutimage2x1 + deltax
+    deltay = min(cutimage1y2 - cutimage1y1, cutimage2y2 - cutimage2y1)
+    cutimage1y2 = cutimage1y1 + deltay
+    cutimage2y2 = cutimage2y1 + deltay
+
+    #positioncutimage1 = np.array([image1x1 + offsetimage1x1, image1y1 + offsetimage1y1])
+    #positioncutimage2 = np.array([image2x1 + offsetimage2x1, image2y1 + offsetimage2y1])
 
     return (
       image1[cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
@@ -153,7 +145,7 @@ class Overlap(DataClassWithDistances):
 
   @property
   def shifted(self):
-    return shiftimg(self.cutimages, units.pixels(self.result.dx), units.pixels(self.result.dy))
+    return shiftimg(self.cutimages, *units.nominal_values(units.pixels(self.result.dxvec)))
 
   def __shiftclip(self, dxvec):
     """
@@ -207,44 +199,6 @@ class Overlap(DataClassWithDistances):
     img_shifted = self.getimage(normalize=1000.,shifted=True)
     return (img_orig,img_shifted)
 
-  @property
-  def x1vec(self):
-    return np.array([self.x1, self.y1])
-  @property
-  def x2vec(self):
-    return np.array([self.x2, self.y2])
-
-class OverlapCollection(abc.ABC):
-  @abc.abstractproperty
-  def overlaps(self): pass
-
-  def overlapgraph(self, useexitstatus=False):
-    g = nx.DiGraph()
-    for o in self.overlaps:
-      if useexitstatus and o.result.exit: continue
-      g.add_edge(o.p1, o.p2, overlap=o)
-
-    return g
-
-  def nislands(self, *args, **kwargs):
-    return nx.number_strongly_connected_components(self.overlapgraph(*args, **kwargs))
-
-  @property
-  def overlapsdict(self):
-    return {(o.p1, o.p2): o for o in self.overlaps}
-
-  @property
-  def overlaprectangleindices(self):
-    return frozenset(o.p1 for o in self.overlaps) | frozenset(o.p2 for o in self.overlaps)
-
-  @property
-  def selectoverlaprectangles(self):
-    return overlapfilter(self.overlaprectangleindices)
-
-class OverlapList(list, OverlapCollection):
-  @property
-  def overlaps(self): return self
-
 @dataclass_dc_init(frozen=True)
 class AlignmentResult(DataClassWithDistances):
   pixelsormicrons = "pixels"
@@ -266,7 +220,7 @@ class AlignmentResult(DataClassWithDistances):
   covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   pscale: dataclasses.InitVar[float] = None
   exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
-  readingfromfile: dataclasses.InitVar[float] = False
+  readingfromfile: dataclasses.InitVar[bool] = False
 
   def __init__(self, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)
@@ -277,7 +231,7 @@ class AlignmentResult(DataClassWithDistances):
 
     covariancematrix = kwargs.pop("covariance", None)
     if covariancematrix is not None:
-      units.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
+      units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
       (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
 
     mse = kwargs.pop("mse", None)
@@ -301,3 +255,4 @@ class AlignmentResult(DataClassWithDistances):
   @property
   def isedge(self):
     return self.tag % 2 == 0
+

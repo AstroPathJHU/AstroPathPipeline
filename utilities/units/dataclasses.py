@@ -1,9 +1,10 @@
-import abc, dataclasses, numbers
+import abc, dataclasses, functools, numbers
 from ..misc import floattoint
 from .core import UnitsError
 
 def __setup(mode):
-  global currentmode, Distance, microns, pixels, _pscale, UnitsError
+  global currentmode, Distance, microns, pixels, _pscale, safe, UnitsError
+  from . import safe as safe
   if mode == "safe":
     from .safe import Distance, microns, pixels
     from .safe.core import _pscale
@@ -16,7 +17,7 @@ def __setup(mode):
 
 def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwargs):
   if issubclass(dtype, numbers.Integral):
-    secondfunction = floattoint
+    secondfunction = functools.partial(floattoint, atol=1e-9)
   else:
     secondfunction = lambda x: x
 
@@ -36,31 +37,33 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwarg
 
 @dataclasses.dataclass
 class DataClassWithDistances(abc.ABC):
-  @abc.abstractproperty
-  def pixelsormicrons(self): pass
+  @classmethod
+  def distancefields(cls):
+    return [field for field in dataclasses.fields(cls) if field.metadata.get("isdistancefield", False)]
+
+  def _distances_passed_to_init(self):
+    return [getattr(self, _.name) for _ in self.distancefields()]
 
   def __post_init__(self, pscale, readingfromfile=False):
-    distancefields = [field for field in dataclasses.fields(type(self)) if field.metadata.get("isdistancefield", False)]
-    for field in distancefields:
-      if field.metadata["pixelsormicrons"] != self.pixelsormicrons:
-        raise ValueError(f"{type(self)} takes {self.pixelsormicrons}, but {field.name} is expecting {field.metadata['pixelsormicrons']}")
-
-    distances = [getattr(self, _.name) for _ in distancefields]
-    distances = [_ for _ in distances if _]
+    distancefields = self.distancefields()
 
     usedistances = False
     if currentmode == "safe":
-      usedistances = {isinstance(_, Distance) for _ in distances}
+      distances = self._distances_passed_to_init()
+      usedistances = {isinstance(_, safe.Distance) for _ in distances if _}
       if len(usedistances) > 1:
         raise ValueError(f"Provided some distances and some pixels/microns to {type(self).__name__} - this is dangerous!")
-      usedistances = usedistances.pop()
-      if usedistances and readingfromfile: assert False #shouldn't be able to happen
-      if not usedistances and not readingfromfile:
-        raise ValueError("Have to init with readingfromfile=True if you're not providing distances")
+      if usedistances:
+        usedistances = usedistances.pop()
+        if usedistances and readingfromfile: assert False #shouldn't be able to happen
+        if not usedistances and not readingfromfile:
+          raise ValueError("Have to init with readingfromfile=True if you're not providing distances")
+      else:
+        usedistances = False
 
     pscale = {pscale}
     if usedistances:
-      pscale = set(_pscale(distances))
+      pscale |= set(_pscale([_ for _ in distances if _]))
     pscale.discard(None)
     if not pscale:
       raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
@@ -72,4 +75,4 @@ class DataClassWithDistances(abc.ABC):
 
     if readingfromfile:
       for field in distancefields:
-        object.__setattr__(self, field.name, Distance(power=field.metadata["power"], pscale=pscale, **{self.pixelsormicrons: getattr(self, field.name)}))
+        object.__setattr__(self, field.name, field.type(power=field.metadata["power"], pscale=pscale, **{field.metadata["pixelsormicrons"]: getattr(self, field.name)}))

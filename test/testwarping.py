@@ -9,17 +9,14 @@ import os, numpy as np
 #sample name and directories
 samp = r"M21_1"
 folder = os.path.dirname(__file__)
-root1_dir = os.path.join(folder,'data')
-root2_dir = os.path.join(folder,'data','flatw')
-rawfile_dir = os.path.join(folder,'data','raw')
 
 #file stems
 file1stem = samp+'_[46163,12453]'
 file2stem = samp+'_[46698,12453]'
 
 # .raw file paths
-rawfile1path = os.path.join(folder,'data','raw',samp,file1stem+'.raw')
-rawfile2path = os.path.join(folder,'data','raw',samp,file2stem+'.raw')
+rawfile1path = os.path.join(folder,'data','raw',samp,file1stem+'.Data.dat')
+rawfile2path = os.path.join(folder,'data','raw',samp,file2stem+'.Data.dat')
 
 # warp test file paths
 warp1file1layer1p=os.path.join(folder,'reference','warping',file1stem+'.fieldWarp_layer01')

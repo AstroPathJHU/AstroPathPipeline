@@ -1,0 +1,94 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREAMBLE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%environment setup
+\documentclass[letterpaper,11pt]{article}
+\usepackage[square,comma,numbers,sort&compress]{natbib}
+\bibliographystyle{abbrvnat}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{xspace}
+\usepackage[left=20mm,top=20mm]{geometry}
+\usepackage{hyperref}
+\renewcommand{\familydefault}{\sfdefault}
+
+%macros
+\newcommand{\reffig}[1]{Figure~\ref{#1}}
+\newcommand{\refsec}[1]{Section~\ref{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TITLE AND ABSTRACT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%title
+\title{Flatfielding: Spatially-Dependent Correction of Microscope Field Illumination}
+\author{Maggie Eminizer\\ \url{margaret.eminizer@gmail.com}}
+\date{\today}
+\begin{document}
+\maketitle
+
+%abstract
+\abstract{This note details a method for correcting systematic variations in the illumination of multi-layered microscope high power field images. The variations are measured using regions of image layers that are free of empty background as determined using a thresholding and masking procedure. The illumination flux observed in these regions is averaged over approximately 10,000 images, and the resulting variation pattern is smoothed to retain only the large-scale effects. The spatially-dependent corrections are defined as the ratios of these patterns to their mean values in each image layer. The effect of applying these corrections is characterized using a set of 45,384 melanoma tissue images collected at the Johns Hopkins Hospital using an Akoya Biosciences Vectra 3.0 digital microscope. It is shown that the illumination of the tissue depicted in these images initially varies with an average standard deviation of 4.2\% relative flux in systematic patterns for each image layer, and that applying the corrections reduces the variation to an average standard deviation of 1.0\% relative flux in more random patterns.}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% INTRODUCTION SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+\label{sec:introduction}
+
+%%%%%%%%%%% Flatfielding in general subsection
+\subsection{Flatfielding in general}
+\label{ssec:flatfielding_in_general}
+
+%%%%%%%%%%% Work already performed subsection
+\subsection{Work already performed}
+\label{ssec:work_already_performed}
+
+%%%%%%%%%%% This work subsection
+\subsection{This work}
+\label{ssec:this_work}
+
+%%%%%%%%%%% Datasets used subsection
+\subsection{Datasets used}
+\label{ssec:mask_stacks_and_mean_images}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% IMAGE MASKING SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Image Masking}
+\label{sec:image_masking}
+
+%%%%%%%%%%% Determining background flux thresholds subsection
+\subsection{Determining background flux thresholds}
+\label{ssec:determining_background_flux_thresholds}
+
+%%%%%%%%%%% Producing image masks subsection
+\subsection{Producing image masks}
+\label{ssec:producing_image_masks}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MEASURING FLATFIELD CORRECTIONS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Measuring Flatfield Corrections}
+\label{sec:measuring_flatfield_corrections}
+
+%%%%%%%%%%% Stacking masked images subsection
+\subsection{Stacking masked images}
+\label{ssec:stacking_masked_images}
+
+%%%%%%%%%%% Averaging and smoothing subsection
+\subsection{Averaging and smoothing}
+\label{ssec:averaging_and_smoothing}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% RESULTS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}
+\label{sec:results}
+
+%%%%%%%%%%% Flatfield images subsection
+\subsection{Flatfield images}
+\label{ssec:flatfield_images}
+
+%%%%%%%%%%% Reduction in illumination variation subsection
+\subsection{Reduction in illumination variation}
+\label{ssec:reduction_in_illumination_variation}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SUMMARY SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Summary}
+\label{sec:summary}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BIBLIOGRAPHY %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliography{references}
+
+\end{document}

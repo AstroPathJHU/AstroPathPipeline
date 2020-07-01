@@ -1,22 +1,17 @@
 #imports
 from .warpset import WarpSet
 from ..alignment.alignmentset import AlignmentSet
-from ..alignment.rectangle import rectangleoroverlapfilter
+from ..prepdb.rectangle import rectangleoroverlapfilter
+from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, logging, copy, shutil, platform, time
 
 #global variables
-OVERLAP_FILE_EXT   = '_overlap.csv'
-RECTANGLE_FILE_EXT = '_rect.csv'
 IM3_EXT='.im3'
-IMM_EXT='.imm'
-RAW_EXT='.raw'
+RAW_EXT='.Data.dat'
 WARP_EXT='.camWarp_layer'
-IMM_FILE_X_SIZE='sizeX'
-IMM_FILE_Y_SIZE='sizeY'
-IMM_FILE_Z_SIZE='sizeC'
 MICROSCOPE_OBJECTIVE_FOCAL_LENGTH=40000. # 20mm in pixels
 PARNAMELIST=['cx','cy','fx','fy','k1','k2','p1','p2','k3']
 
@@ -37,25 +32,26 @@ class WarpFitter :
     """
     Main class for fitting a camera matrix and distortion parameters to a set of images based on the results of their alignment
     """
-    def __init__(self,samplename,rawfile_dir,metafile_dir,working_dir,overlaps=-1,layer=1,meanimage=None,warpset=None,warp=None) :
+    def __init__(self,samplename,rawfile_top_dir,dbload_top_dir,working_dir,overlaps=-1,layer=1,meanimage=None,warpset=None,warp=None) :
         """
-        samplename   = name of the microscope data sample to fit to ("M21_1" or equivalent)
-        rawfile_dir  = path to directory containing multilayered ".raw" files
-        metafile_dir = path to directory containing "dbload" metadata files (assuming at least a "rect.csv" and "overlap.csv")
-        working_dir  = path to some local directory to store files produced by the WarpFitter
-        overlaps     = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
-                       (default=-1 will use all overlaps)
-        layer        = image layer number (indexed starting at 1) to consider in the warping/alignment (default=1)
-        meanimage    = the "meanimage" fit result calculated for the entire dataset (None will recalculate this based on the data subset)
-        warpset      = WarpSet object to initialize with (optional, a new WarpSet will be created if None) 
-        warp         = CameraWarp object whose optimal parameters will be determined (optional, if None a new one will be created)
+        samplename      = name of the microscope data sample to fit to ("M21_1" or equivalent)
+        rawfile_top_dir = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
+        dbload_top_dir  = path to directory containing [samplename]/dbload directory (assuming at least a "rect.csv" and "overlap.csv")
+        working_dir     = path to some local directory to store files produced by the WarpFitter
+        overlaps        = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
+                          (default=-1 will use all overlaps)
+        layer           = image layer number (indexed starting at 1) to consider in the warping/alignment (default=1)
+        meanimage       = the "meanimage" fit result calculated for the entire dataset (None will recalculate this based on the data subset)
+        warpset         = WarpSet object to initialize with (optional, a new WarpSet will be created if None) 
+        warp            = CameraWarp object whose optimal parameters will be determined (optional, if None a new one will be created)
         """
         #store the directory paths
         self.samp_name = samplename
-        self.rawfile_dir=rawfile_dir
-        self.metafile_dir=metafile_dir
+        self.rawfile_top_dir=rawfile_top_dir
+        self.rawfile_dir=os.path.join(self.rawfile_top_dir,self.samp_name)
+        self.dbload_top_dir=dbload_top_dir
+        self.metafile_dir=os.path.join(self.dbload_top_dir,self.samp_name,'dbload')
         self.working_dir=working_dir
-        self.init_dir = os.getcwd()
         self.mean_image = meanimage
         #make sure we're using fast units before making the alignmentset
         self.bkp_units_mode = units.currentmode
@@ -69,7 +65,7 @@ class WarpFitter :
         #get the list of raw file paths
         self.rawfile_paths = [os.path.join(self.rawfile_dir,fn.replace(IM3_EXT,RAW_EXT)) for fn in [r.file for r in self.rectangles]]
         #get the size of the images in the sample
-        self.n, self.m, self.nlayers = self.__getImageSizesFromImmFile()
+        self.m, self.n, self.nlayers = getImageHWLFromXMLFile(self.rawfile_top_dir,samplename)
         if layer<1 or layer>self.nlayers :
             raise FittingError(f'Choice of layer ({layer}) is not valid for images with {self.nlayers} layers!')
         #make the warpset object to use
@@ -393,21 +389,11 @@ class WarpFitter :
         if not os.path.isdir(self.working_dir) :
             os.mkdir(self.working_dir)
 
-    # helper function to return the (x,y) size of the images read from the .imm file 
-    def __getImageSizesFromImmFile(self) :
-        first_immfile_path = os.path.join(self.rawfile_dir,self.rectangles[0].file.replace(IM3_EXT,IMM_EXT))
-        with open(first_immfile_path) as fp :
-            lines=fp.readlines()
-        n=int([line.rstrip().split()[1] for line in lines if line.rstrip().split()[0]==IMM_FILE_X_SIZE][0])
-        m=int([line.rstrip().split()[1] for line in lines if line.rstrip().split()[0]==IMM_FILE_Y_SIZE][0])
-        z=int([line.rstrip().split()[1] for line in lines if line.rstrip().split()[0]==IMM_FILE_Z_SIZE][0])
-        return n,m,z
-
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
     def __initializeAlignmentSet(self, *, overlaps) :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
-        a = AlignmentSet(os.path.join(self.metafile_dir,"..",".."),self.working_dir,self.samp_name,interactive=customGPUdevice,useGPU=True,selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True)
+        a = AlignmentSet(self.dbload_top_dir,self.working_dir,self.samp_name,interactive=customGPUdevice,useGPU=True,selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True)
         if self.mean_image is not None :
             a.meanimage = self.mean_image
         return a
@@ -631,7 +617,7 @@ class WarpFitter :
         best_fit_pars = self.__correctParameterList(fitresult.x)
         self.warpset.updateCameraParams(best_fit_pars)
         self.__best_fit_warp = copy.deepcopy(self.warpset.warp)
-        warp_logger.info(f'Best fit parameters:')
+        warp_logger.info('Best fit parameters:')
         self.__best_fit_warp.printParams()
         #write out the set of alignment comparison images
         self.raw_cost, self.best_cost = self.__makeBestFitAlignmentComparisonImages()

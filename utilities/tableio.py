@@ -2,7 +2,7 @@ import contextlib, csv, dataclasses, logging
 
 logger = logging.getLogger("align")
 
-def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, **columntypes):
+def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, **columntypes):
   """
   Read a csv table into a list of named tuples
 
@@ -46,6 +46,11 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
       )
     else:
       Row = rownameorclass
+      if checkorder:
+        columnnames = list(reader.fieldnames)
+        fieldnames = [field.name for field in dataclasses.fields(Row) if field.name in columnnames]
+        if fieldnames != columnnames:
+          raise ValueError(f"Column names and dataclass field names are not in the same order\n{columnnames}\n{fieldnames}")
       for field in dataclasses.fields(Row):
         if field.name not in reader.fieldnames:
           continue
@@ -63,7 +68,7 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
         else:
           columntypes[field.name] = typ
 
-    if "readingfromfile" in Row.__annotations__ and "readingfromfile" not in extrakwargs:
+    if any("readingfromfile" in _.__annotations__ for _ in Row.__mro__ if _ is not object) and "readingfromfile" not in extrakwargs:
       extrakwargs["readingfromfile"] = True
 
     for row in reader:
@@ -102,7 +107,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
         + "\n  ".join(_.__name__ for _ in badclasses)
       )
 
-  fieldnames = list(asrow(rows[0]))
+  fieldnames = [f.name for f in dataclasses.fields(rowclass) if f.metadata.get("includeintable", True)]
 
   try:
     with open(filename, "w") as f:

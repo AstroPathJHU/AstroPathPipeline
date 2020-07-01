@@ -1,4 +1,3 @@
-data
 test*.csv
 badregions_test_for_jenkins
 warpfitter_test_for_jenkins
