@@ -41,18 +41,18 @@ class TestPrepDb(unittest.TestCase):
     ):
       try:
         rows = readtable(thisfolder/"data"/"M21_1"/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        targetrows = readtable(thisfolder/"prepdbreference"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        targetrows = readtable(thisfolder/"reference"/"prepdb"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
         for i, (row, target) in enumerate(itertools.zip_longest(rows, targetrows)):
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
       except:
         raise ValueError("Error in "+filename)
 
     with PIL.Image.open(thisfolder/"data"/"M21_1"/"dbload"/"M21_1_qptiff.jpg") as img, \
-         PIL.Image.open(thisfolder/"prepdbreference"/"M21_1_qptiff.jpg") as targetimg:
+         PIL.Image.open(thisfolder/"reference"/"prepdb"/"M21_1_qptiff.jpg") as targetimg:
       np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
 
       for log in logs:
-        ref = thisfolder/"prepdbreference"/log.name
+        ref = thisfolder/"reference"/"prepdb"/log.name
         with open(ref) as fref, open(log) as fnew:
           refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines() if "Biggest time difference" not in line])+os.linesep
           newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines() if "Biggest time difference" not in line])+os.linesep
