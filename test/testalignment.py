@@ -1,4 +1,4 @@
-import contextlib, dataclasses, itertools, numbers, numpy as np, os, pathlib, shutil, tempfile, unittest
+import contextlib, dataclasses, itertools, logging, numbers, numpy as np, os, pathlib, shutil, tempfile, unittest
 from ..alignment.alignmentcohort import AlignmentCohort
 from ..alignment.alignmentset import AlignmentSet, ImageStats
 from ..alignment.overlap import AlignmentResult
@@ -322,6 +322,23 @@ class TestAlignment(unittest.TestCase):
 
   def testMissingFolders(self):
     with temporarilyremove(thisfolder/"data"/"M21_1"/"im3"), temporarilyremove(thisfolder/"data"/"M21_1"/"inform_data"), units.setup_context("fast"):
-      a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", selectrectangles=range(5))
+      a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", selectrectangles=range(10))
       a.getDAPI()
       a.align()
+      a.stitch()
+
+  def testNoLog(self):
+    samp = SampleDef(SlideID="M21_1", SampleID=0, Project=0, Cohort=0)
+    with AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", samp, selectrectangles=range(10), uselogfiles=True, logthreshold=logging.CRITICAL) as a:
+      a.getDAPI()
+      a.align()
+      a.stitch()
+
+    for log in (
+      thisfolder/"data"/"logfiles"/"align.log",
+      thisfolder/"data"/"M21_1"/"logfiles"/"M21_1-align.log",
+    ):
+      with open(log) as f:
+        contents = f.read().splitlines()
+      if len(contents) != 1:
+        raise AssertionError(f"Expected only one line of log\n\n{contents}")
