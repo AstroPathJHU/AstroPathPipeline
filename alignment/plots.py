@@ -165,7 +165,7 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
 
   for f in fields:
     idx = (slice(None),) + tuple(reversed(floattoint((f.xvec - x0vec) / deltaxvec, atol=1e-9)))
-    xyarray[idx] = units.nominal_values(f.pxvec + alignmentset.position - alignmentset.T@f.xvec)
+    xyarray[idx] = units.nominal_values(f.pxvec - alignmentset.T@(f.xvec-alignmentset.position))
 
   xyarraypixels = units.pixels(xyarray, pscale=alignmentset.pscale)
 
