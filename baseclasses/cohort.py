@@ -30,7 +30,7 @@ class Cohort(abc.ABC):
 
   def run(self):
     for samp in self:
-      with getlogger(self.logmodule, self.root, samp, uselogfiles=True) as logger:
+      with getlogger(module=self.logmodule, root=self.root, samp=samp, uselogfiles=True) as logger:
         try:
           sample = self.initiatesample(samp)
           if sample.logmodule != self.logmodule:

@@ -52,7 +52,7 @@ class SampleBase(contextlib.ExitStack):
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root1/self.SlideID} does not exist")
-    self.logger = getlogger(self.logmodule, self.root, self.samp, uselogfiles=uselogfiles, threshold=logthreshold)
+    self.logger = getlogger(module=self.logmodule, root=self.root, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold)
     super().__init__()
 
   @property
