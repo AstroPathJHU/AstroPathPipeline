@@ -332,8 +332,8 @@ class StitchResultBase(RectangleOverlapCollection):
           gc=gc,
           pxvec=self.x(rectangle) - self.origin,
           gxvec=(gx, gy),
-          primaryregionx=(primaryregionsx[gc][gx-1], primaryregionsx[gc][gx]) - self.origin,
-          primaryregiony=(primaryregionsy[gc][gy-1], primaryregionsy[gc][gy]) - self.origin,
+          primaryregionx=np.array([primaryregionsx[gc][gx-1], primaryregionsx[gc][gx]]) - self.origin[0],
+          primaryregiony=np.array([primaryregionsy[gc][gy-1], primaryregionsy[gc][gy]]) - self.origin[1],
           readingfromfile=False,
         )
       )
