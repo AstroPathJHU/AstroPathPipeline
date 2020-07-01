@@ -84,11 +84,10 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
         warnfunction(f"component tiff has pscale {pscale} which is different from {self.pscale} (in constants.csv)")
         self.pscale = pscale
 
-    self.qpscale   = self.constantsdict["qpscale"]
-    self.xposition = self.constantsdict["xposition"]
-    self.yposition = self.constantsdict["yposition"]
-    self.nclip     = self.constantsdict["nclip"]
-    self.layer     = 1
+    self.qpscale  = self.constantsdict["qpscale"]
+    self.position = np.array([self.constantsdict["xposition"], self.constantsdict["yposition"]])
+    self.nclip    = self.constantsdict["nclip"]
+    self.layer    = 1
 
     self.batch = readtable(self.dbload/(self.SlideID+"_batch.csv"), Batch)
     self.scan  = f"Scan{self.batch[0].Scan:d}"
@@ -345,7 +344,7 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
     )
 
   def stitch(self, *, saveresult=True, checkwriting=False, **kwargs):
-    result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, logger=self.logger, **kwargs)
+    result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
 
     if saveresult:
       result.applytooverlaps()
@@ -387,7 +386,8 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
       result = ReadStitchResult(
         *filenames,
         overlaps=self.overlaps,
-        rectangles=self.rectangles
+        rectangles=self.rectangles,
+        origin=self.position,
       )
     except Exception:
       if interactive:
