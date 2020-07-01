@@ -51,7 +51,7 @@ class SampleBase(contextlib.ExitStack):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
-      raise IOError(f"{self.root1/self.SlideID} does not exist")
+      raise IOError(f"{self.root/self.SlideID} does not exist")
     self.logger = getlogger(module=self.logmodule, root=self.root, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold)
     super().__init__()
 
