@@ -256,8 +256,7 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
         thisupdateimg=[(img.raw_image).get() for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
       assert len(thisupdateimg)<2
       if len(thisupdateimg)==1 :
-        np.copyto(r.image,(thisupdateimg[0]/self.meanimage.flatfield).astype(np.uint16),casting='no')
-        #np.copyto(r.image,thisupdateimg[0],casting='no') #applying meanimage?
+        np.copyto(r.image,thisupdateimg[0],casting='no')
 
   def getOverlapComparisonImagesDict(self) :
     """
