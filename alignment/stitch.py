@@ -9,7 +9,7 @@ from .field import Field, FieldOverlap
 def stitch(*, usecvxpy=False, **kwargs):
   return (__stitch_cvxpy if usecvxpy else __stitch)(**kwargs)
 
-def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverlaperror=1, fixpoint="origin", logger=dummylogger):
+def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverlaperror=1, fixpoint="origin", origin=np.array([0, 0]), logger=dummylogger):
   """
   \begin{align}
   -2 \ln L =&
@@ -87,7 +87,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   sigmay = weightedstd(dys, subtractaverage=False) / scaleby * scalejittererror
 
   if fixpoint == "origin":
-    x0vec = units.distances(pixels=np.array([0, 0]), pscale=None) #fix the origin, linear scaling is with respect to that
+    x0vec = origin
   elif fixpoint == "center":
     x0vec = np.mean([r.xvec for r in rectangles], axis=0)
   else:
@@ -145,9 +145,9 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
 
   logger.debug("done")
 
-  return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix)
+  return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix, origin=origin)
 
-def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", logger=dummylogger):
+def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([0, 0]), logger=dummylogger):
   """
   \begin{align}
   -2 \ln L =&
@@ -213,7 +213,7 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", logger=dummylogge
   sigma = np.array([sigmax, sigmay])
 
   if fixpoint == "origin":
-    x0vec = np.array([0, 0]) #fix the origin, linear scaling is with respect to that
+    x0vec = origin
   elif fixpoint == "center":
     x0vec = np.mean([r.xvec for r in rectangles], axis=0)
   else:
@@ -234,12 +234,13 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", logger=dummylogge
   prob = cp.Problem(minimize)
   prob.solve()
 
-  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale)
+  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale, origin=origin)
 
 class StitchResultBase(RectangleOverlapCollection):
-  def __init__(self, *, rectangles, overlaps):
+  def __init__(self, *, rectangles, overlaps, origin):
     self.__rectangles = rectangles
     self.__overlaps = overlaps
+    self.__origin = origin
 
   @property
   def pscale(self):
@@ -251,6 +252,8 @@ class StitchResultBase(RectangleOverlapCollection):
   def overlaps(self): return self.__overlaps
   @property
   def rectangles(self): return self.__rectangles
+  @property
+  def origin(self): return self.__origin
 
   @abc.abstractmethod
   def x(self, rectangle_or_id=None): pass
@@ -327,10 +330,10 @@ class StitchResultBase(RectangleOverlapCollection):
           rectangle=rectangle,
           ixvec=units.distances(pixels=units.pixels(rectangle.xvec, pscale=self.pscale).round().astype(int), pscale=self.pscale),
           gc=gc,
-          pxvec=self.x(rectangle),
+          pxvec=self.x(rectangle) - self.origin,
           gxvec=(gx, gy),
-          primaryregionx=(primaryregionsx[gc][gx-1], primaryregionsx[gc][gx]),
-          primaryregiony=(primaryregionsy[gc][gy-1], primaryregionsy[gc][gy]),
+          primaryregionx=np.array([primaryregionsx[gc][gx-1], primaryregionsx[gc][gx]]) - self.origin[0],
+          primaryregiony=np.array([primaryregionsy[gc][gy-1], primaryregionsy[gc][gy]]) - self.origin[1],
           readingfromfile=False,
         )
       )
@@ -368,7 +371,7 @@ class StitchResultBase(RectangleOverlapCollection):
 
     if check:
       logger.debug("reading back from the file")
-      readback = ReadStitchResult(*filenames, rectangles=self.rectangles, overlaps=self.overlaps)
+      readback = ReadStitchResult(*filenames, rectangles=self.rectangles, overlaps=self.overlaps, origin=self.origin)
       logger.debug("done reading")
       x1 = self.x()
       T1 = self.T
@@ -494,7 +497,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
     nclip, = {_.nclip for _ in self.overlaps}
     fieldoverlaps = readtable(fieldoverlapfilename, FieldOverlap, extrakwargs={"pscale": self.pscale, "rectangles": self.rectangles, "layer": layer, "nclip": nclip})
 
-    self.__x = np.array([field.pxvec for field in fields])
+    self.__x = np.array([field.pxvec+self.origin for field in fields])
     self.__fieldoverlaps = fieldoverlaps
 
     iTxx, iTxy, iTyx, iTyy = range(4)
@@ -526,8 +529,8 @@ class StitchResultOverlapCovariances(StitchResultBase):
     self.__T = np.array(unc.correlated_values(Tnominal, Tcovariance)).reshape((2, 2))
 
 class ReadStitchResult(StitchResultOverlapCovariances):
-  def __init__(self, *args, rectangles, overlaps, **kwargs):
-    super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, fieldoverlaps=None)
+  def __init__(self, *args, rectangles, overlaps, origin, **kwargs):
+    super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, fieldoverlaps=None, origin=origin)
     self.readtable(*args, **kwargs)
 
 class CalculatedStitchResult(StitchResultFullCovariance):
