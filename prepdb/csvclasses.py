@@ -12,6 +12,8 @@ class Globals(DataClassWithDistances):
   Height: distancefield(pixelsormicrons=pixelsormicrons)
   Unit: str
   Tc: datetime.datetime = dataclasses.field(metadata={"writefunction": datetime.datetime.timestamp})
+  pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass
 class Perimeter(DataClassWithDistances):
@@ -20,6 +22,8 @@ class Perimeter(DataClassWithDistances):
   n: int
   x: distancefield(pixelsormicrons=pixelsormicrons)
   y: distancefield(pixelsormicrons=pixelsormicrons)
+  pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass
 class Batch:
