@@ -1,12 +1,13 @@
 import collections, functools, logging
 
 class MyLogger:
-  def __init__(self, module, root, samp, *, uselogfiles=False):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG):
     self.module = module
     self.root = root
     self.samp = samp
     self.uselogfiles = uselogfiles
     self.nentered = 0
+    self.threshold = threshold
 
     if uselogfiles and (self.Project is None or self.SampleID is None or self.Cohort is None):
       raise ValueError("Have to give a non-None SampleID, Project, and Cohort when writing to log files")
@@ -32,7 +33,7 @@ class MyLogger:
   def __enter__(self):
     if self.nentered == 0:
       self.logger = logging.getLogger(f"{self.root}.{self.module}.{self.Project}.{self.Cohort}.{self.SlideID}.{self.uselogfiles}")
-      self.logger.setLevel(logging.DEBUG)
+      self.logger.setLevel(self.threshold)
 
       printhandler = logging.StreamHandler()
       printhandler.setFormatter(self.formatter)

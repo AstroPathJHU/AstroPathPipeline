@@ -1,4 +1,4 @@
-import abc, contextlib, dataclasses, methodtools, pathlib
+import abc, contextlib, dataclasses, logging, methodtools, pathlib
 
 from ..utilities.misc import dataclass_dc_init, tiffinfo
 from .logging import getlogger
@@ -47,12 +47,12 @@ class SampleDef:
     return bool(self.isGood)
 
 class SampleBase(contextlib.ExitStack):
-  def __init__(self, root, samp, *, uselogfiles=False):
+  def __init__(self, root, samp, *, uselogfiles=False, logthreshold=logging.DEBUG):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root1/self.SlideID} does not exist")
-    self.logger = getlogger(self.logmodule, self.root, self.samp, uselogfiles=uselogfiles)
+    self.logger = getlogger(self.logmodule, self.root, self.samp, uselogfiles=uselogfiles, threshold=logthreshold)
     super().__init__()
 
   @property
