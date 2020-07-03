@@ -10,9 +10,11 @@ class TestBadRegions(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
+    cls.images = []
     A = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
     A.getDAPI(writeimstat=False)
-    cls.image = A.rectangles[21].image
+    cls.images.append(A.rectangles[21].image)
+
     cls.writeoutreference = False
     try:
       with np.load(thisfolder/"reference"/"badregions"/"badregionsreference.npz") as f:
@@ -33,8 +35,8 @@ class TestBadRegions(unittest.TestCase):
     if unknownkeys:
       raise ValueError(f"Unknown arrays in badregionsreference.npz: {', '.join(unknownkeys)}")
 
-  def generaltest(self, BRFclass, **kwargs):
-    brf = BRFclass(self.image)
+  def generaltest(self, BRFclass, imageindex, **kwargs):
+    brf = BRFclass(self.images[imageindex])
     self.seenclasses.add(BRFclass.__name__)
     badregions = brf.badregions(**kwargs)
     try:
@@ -46,10 +48,10 @@ class TestBadRegions(unittest.TestCase):
       raise
 
   def testTissueFoldFinderSimple(self):
-    self.generaltest(TissueFoldFinderSimple, threshold=0.15)
+    self.generaltest(TissueFoldFinderSimple, 0, threshold=0.15)
 
   def testTissueFoldFinderByCell(self):
-    self.generaltest(TissueFoldFinderByCell, threshold=0.15)
+    self.generaltest(TissueFoldFinderByCell, 0, threshold=0.15)
 
   def testDustSpeckFinder(self):
-    self.generaltest(DustSpeckFinder)
+    self.generaltest(DustSpeckFinder, 0)
