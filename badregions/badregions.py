@@ -41,15 +41,7 @@ class BadRegionFinder(abc.ABC):
   def laplacian(self):
     return self.__laplacian()
 
-class BadRegionFinderLaplaceStd(BadRegionFinder):
-  """
-  Find blurry regions of the image, like in this article:
-  https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
-  And label those as bad.  Instead of just looking at the absolute
-  variance, we take std/mean, so it's invariant under scaling the
-  intensity.
-  (but not invariant under scaling the dimensions...)
-  """
+class BadRegionFinderEvaluateGrid(BadRegionFinder):
 
   def __init__(self, image, *, blocksize=40, blockoffset=5):
     super().__init__(image)
@@ -62,21 +54,44 @@ class BadRegionFinderLaplaceStd(BadRegionFinder):
   def blockoffset(self): return self.__blockoffset
 
   @property
-  def __evaluationypoints(self):
+  def evaluationypoints(self):
     ysize, xsize = self.image.shape
     return range((ysize % self.blockoffset) // 2, ysize, self.blockoffset)
   @property
-  def __evaluationxpoints(self):
+  def evaluationxpoints(self):
     ysize, xsize = self.image.shape
     return range((xsize % self.blockoffset) // 2, xsize, self.blockoffset)
 
   @property
-  def __evaluationgrid(self):
-    return np.meshgrid(self.__evaluationypoints, self.__evaluationxpoints, indexing="ij")
+  def evaluationgrid(self):
+    return np.meshgrid(self.evaluationypoints, self.evaluationxpoints, indexing="ij")
 
+  def makebiggrid(self, smallgridvalues, biggridshape):
+    biggridvalues = np.ndarray(biggridshape)
+
+    for iy, y in enumerate(self.evaluationypoints):
+      starty = (y + self.evaluationypoints[iy-1])//2 if iy != 0 else 0
+      endy = (y + self.evaluationypoints[iy+1])//2 if iy != len(self.evaluationypoints)-1 else biggridshape[0]
+      for ix, x in enumerate(self.evaluationxpoints):
+        startx = (x + self.evaluationxpoints[ix-1])//2 if ix != 0 else 0
+        endx = (x + self.evaluationxpoints[ix+1])//2 if ix != len(self.evaluationxpoints)-1 else biggridshape[1]
+
+        biggridvalues[starty:endy, startx:endx] = smallgridvalues[iy,ix]
+
+    return biggridvalues
+
+class BadRegionFinderLaplaceStd(BadRegionFinderEvaluateGrid):
+  """
+  Find blurry regions of the image, like in this article:
+  https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
+  And label those as bad.  Instead of just looking at the absolute
+  variance, we take std/mean, so it's invariant under scaling the
+  intensity.
+  (but not invariant under scaling the dimensions...)
+  """
   @methodtools.lru_cache()
   def __laplacestd(self):
-    grid = self.__evaluationgrid
+    grid = self.evaluationgrid
 
     evaluatedlaplacestd = self.regionlaplacianstd(*grid)
     return self.makebiggrid(evaluatedlaplacestd, self.image.shape)
@@ -86,7 +101,7 @@ class BadRegionFinderLaplaceStd(BadRegionFinder):
 
   @methodtools.lru_cache()
   def __mean(self):
-    grid = self.__evaluationgrid
+    grid = self.evaluationgrid
 
     evaluatedmean = self.regionmean(*grid)
     return self.makebiggrid(evaluatedmean, self.image.shape)
@@ -109,20 +124,6 @@ class BadRegionFinderLaplaceStd(BadRegionFinder):
 
   def badregions(self, *, threshold=0.15):
     return self.ratio<threshold
-
-  def makebiggrid(self, smallgridvalues, biggridshape):
-    biggridvalues = np.ndarray(biggridshape)
-
-    for iy, y in enumerate(self.__evaluationypoints):
-      starty = (y + self.__evaluationypoints[iy-1])//2 if iy != 0 else 0
-      endy = (y + self.__evaluationypoints[iy+1])//2 if iy != len(self.__evaluationypoints)-1 else biggridshape[0]
-      for ix, x in enumerate(self.__evaluationxpoints):
-        startx = (x + self.__evaluationxpoints[ix-1])//2 if ix != 0 else 0
-        endx = (x + self.__evaluationxpoints[ix+1])//2 if ix != len(self.__evaluationxpoints)-1 else biggridshape[1]
-
-        biggridvalues[starty:endy, startx:endx] = smallgridvalues[iy,ix]
-
-    return biggridvalues
 
   def __regionlaplacianstd(self, y, x):
     xmin = x-self.blocksize//2
