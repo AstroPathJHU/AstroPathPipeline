@@ -1,6 +1,7 @@
 import numpy as np, pathlib, unittest
 from ..alignment.alignmentset import AlignmentSet
-from ..badregions.badregions import BadRegionFinderLaplaceStd, BadRegionFinderWatershedSegmentationBoundaryLaplaceStd
+from ..badregions.dustspeck import DustSpeckFinder
+from ..badregions.tissuefold import TissueFoldFinderSimple, TissueFoldFinderByCell
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -44,8 +45,11 @@ class TestBadRegions(unittest.TestCase):
       brf.show(saveas=self.savedir/f"badregions_{BRFclass.__name__}.pdf", **kwargs)
       raise
 
-  def testBadRegionFinderLaplaceStd(self):
-    self.generaltest(BadRegionFinderLaplaceStd, threshold=0.15)
+  def testTissueFoldFinderSimple(self):
+    self.generaltest(TissueFoldFinderSimple, threshold=0.15)
 
-  def testBadRegionFinderWatershedSegmentationBoundaryLaplaceStd(self):
-    self.generaltest(BadRegionFinderWatershedSegmentationBoundaryLaplaceStd, threshold=0.15)
+  def testTissueFoldFinderByCell(self):
+    self.generaltest(TissueFoldFinderByCell, threshold=0.15)
+
+  def testDustSpeckFinder(self):
+    self.generaltest(DustSpeckFinder)
