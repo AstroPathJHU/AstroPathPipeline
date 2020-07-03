@@ -1,0 +1,27 @@
+\pdfsuppresswarningpagegroup=1
+
+\documentclass{article}
+
+\usepackage{amsmath}
+
+\begin{document}
+	
+\title{Identifying Bad Regions in Microscope Images}
+\author{Heshy Roskes}
+\date{July 3, 2020}
+
+\section{Introduction}
+
+We would like a way to automatically identify bad regions in images that should be excluded, or at least corrected, before doing any analysis.  For example, a speck of dust on the slide causes light to diffuse over a wide area, or folds in the tissue might make individual cells difficult to identify.
+
+In principle, after the cells have been identified, it might be possible to identify these regions in a general way by looking for clusters of cells that have strange properties that could never arise biologically.  Of course, this has to be done carefully, because the line between ``strange'' properties that indicate bad data and ``interesting'' properties that indicate real biological features is not necessarily well defined.  Nevertheless, with this care taken, the general approach is probably worth a try later on.
+
+For now, we try to identify one bad feature at a time.  If we eventually move to a general approach, these studies will help to guide the development of that approach and will also serve as a useful cross check.
+
+\section{Types of bad regions}
+
+\subsection{Dust specks}
+
+
+
+\end{document}
