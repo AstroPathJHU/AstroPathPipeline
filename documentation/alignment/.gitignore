@@ -1,7 +1,4 @@
 *.pdf
-*.aux
-*.out
-*.synctex(busy)
 !2D-shifts-AKY-[xy].pdf
 !2D-shifts-BMS-[xy].pdf
 !2D-shifts-BMS2-[xy].pdf
