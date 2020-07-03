@@ -80,7 +80,59 @@ class BadRegionFinderEvaluateGrid(BadRegionFinder):
 
     return biggridvalues
 
-class BadRegionFinderLaplaceStd(BadRegionFinderEvaluateGrid):
+class BadRegionFinderRegionMean(BadRegionFinderEvaluateGrid):
+  @methodtools.lru_cache()
+  def __mean(self):
+    grid = self.evaluationgrid
+
+    evaluatedmean = self.regionmean(*grid)
+    return self.makebiggrid(evaluatedmean, self.image.shape)
+
+  @property
+  def mean(self): return self.__mean()
+
+  def __regionmean(self, y, x):
+    xmin = x-self.blocksize//2
+    ymin = y-self.blocksize//2
+    xmax = xmin+self.blocksize
+    ymax = ymin+self.blocksize
+
+    xmin = max(xmin, 0)
+    ymin = max(ymin, 0)
+
+    slc = self.image[ymin:ymax, xmin:xmax]
+    return slc.mean()
+
+  def regionmean(self, y, x):
+    return np.vectorize(self.__regionmean)(y, x)
+
+class BadRegionFinderRegionStd(BadRegionFinderEvaluateGrid):
+  @methodtools.lru_cache()
+  def __std(self):
+    grid = self.evaluationgrid
+
+    evaluatedstd = self.regionstd(*grid)
+    return self.makebiggrid(evaluatedstd, self.image.shape)
+
+  @property
+  def std(self): return self.__std()
+
+  def __regionstd(self, y, x):
+    xmin = x-self.blocksize//2
+    ymin = y-self.blocksize//2
+    xmax = xmin+self.blocksize
+    ymax = ymin+self.blocksize
+
+    xmin = max(xmin, 0)
+    ymin = max(ymin, 0)
+
+    slc = self.image[ymin:ymax, xmin:xmax]
+    return slc.std()
+
+  def regionstd(self, y, x):
+    return np.vectorize(self.__regionstd)(y, x)
+
+class BadRegionFinderLaplaceStd(BadRegionFinderRegionMean):
   """
   Find blurry regions of the image, like in this article:
   https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
@@ -98,16 +150,6 @@ class BadRegionFinderLaplaceStd(BadRegionFinderEvaluateGrid):
 
   @property
   def laplacestd(self): return self.__laplacestd()
-
-  @methodtools.lru_cache()
-  def __mean(self):
-    grid = self.evaluationgrid
-
-    evaluatedmean = self.regionmean(*grid)
-    return self.makebiggrid(evaluatedmean, self.image.shape)
-
-  @property
-  def mean(self): return self.__mean()
 
   @methodtools.lru_cache()
   def __ratio(self):
@@ -140,21 +182,6 @@ class BadRegionFinderLaplaceStd(BadRegionFinderEvaluateGrid):
 
   def regionlaplacianstd(self, y, x):
     return np.vectorize(self.__regionlaplacianstd)(y, x)
-
-  def __regionmean(self, y, x):
-    xmin = x-self.blocksize//2
-    ymin = y-self.blocksize//2
-    xmax = xmin+self.blocksize
-    ymax = ymin+self.blocksize
-
-    xmin = max(xmin, 0)
-    ymin = max(ymin, 0)
-
-    slc = self.image[ymin:ymax, xmin:xmax]
-    return slc.mean()
-
-  def regionmean(self, y, x):
-    return np.vectorize(self.__regionmean)(y, x)
 
 class BadRegionFinderSegmentation(BadRegionFinder):
   """
