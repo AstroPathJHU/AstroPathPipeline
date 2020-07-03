@@ -15,6 +15,10 @@ class TestBadRegions(unittest.TestCase):
     A.getDAPI(writeimstat=False)
     cls.images.append(A.rectangles[21].image)
 
+    A = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M55_1", selectrectangles=[678])
+    A.getDAPI(writeimstat=False, keeprawimages=True)
+    cls.images.append(A.rectangles[0].rawimage)
+
     cls.writeoutreference = False
     try:
       with np.load(thisfolder/"reference"/"badregions"/"badregionsreference.npz") as f:
@@ -35,15 +39,29 @@ class TestBadRegions(unittest.TestCase):
     if unknownkeys:
       raise ValueError(f"Unknown arrays in badregionsreference.npz: {', '.join(unknownkeys)}")
 
-  def generaltest(self, BRFclass, imageindex, **kwargs):
+  def generaltest(self, BRFclass, imageindex, *, expectallgood=False, **kwargs):
     brf = BRFclass(self.images[imageindex])
-    self.seenclasses.add(BRFclass.__name__)
     badregions = brf.badregions(**kwargs)
+
     try:
-      np.testing.assert_array_equal(badregions, self.reference[BRFclass.__name__])
+      if expectallgood:
+        reference = np.zeros_like(badregions, dtype=badregions.dtype)
+      else:
+        reference = self.reference[BRFclass.__name__]
+
+        if not np.any(reference):
+          raise AssertionError("Reference doesn't have any bad regions, are you sure this is right?  If it is, do expectallgood=True.")
+        if BRFclass.__name__ in self.seenclasses:
+          raise RuntimeError(f"Trying to run {BRFclass.__name__} on a second image.  Testing is only set up to test each class on one image, unless expectallgood")
+        self.seenclasses.add(BRFclass.__name__)
+
+      np.testing.assert_array_equal(badregions, reference)
+
     except:
-      self.reference[BRFclass.__name__] = badregions
-      type(self).writeoutreference = True
+      if not expectallgood:
+        self.reference[BRFclass.__name__] = badregions
+        type(self).writeoutreference = True
+        self.seenclasses.add(BRFclass.__name__)
       brf.show(saveas=self.savedir/f"badregions_{BRFclass.__name__}.pdf", **kwargs)
       raise
 
@@ -53,5 +71,8 @@ class TestBadRegions(unittest.TestCase):
   def testTissueFoldFinderByCell(self):
     self.generaltest(TissueFoldFinderByCell, 0, threshold=0.15)
 
-  def testDustSpeckFinder(self):
-    self.generaltest(DustSpeckFinder, 0)
+  def testDustSpeckFinderNoSpeck(self):
+    self.generaltest(DustSpeckFinder, 0, expectallgood=True)
+
+  def testDustSpeckFinderWithSpeck(self):
+    self.generaltest(DustSpeckFinder, 1)
