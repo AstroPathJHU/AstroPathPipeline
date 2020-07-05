@@ -271,7 +271,7 @@ class StitchResultBase(RectangleOverlapCollection):
   @methodtools.lru_cache()
   def __fields(self):
     result = []
-    islands = list(self.islands(useexitstatus=True))
+    islands = list(self.islands(useexitstatus=False))
     gxdict = collections.defaultdict(dict)
     gydict = collections.defaultdict(dict)
     primaryregionsx = {}
