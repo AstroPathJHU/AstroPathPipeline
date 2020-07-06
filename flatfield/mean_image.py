@@ -35,7 +35,8 @@ class MeanImage :
     IMG_LAYER_FIG_WIDTH             = 6.4                #width of image layer figures created in inches
     #pixel intensity plots
     PIXEL_INTENSITY_PLOT_NAME = 'pixel_intensity_plot.png' #name of the pixel intensity plot
-    LAST_FILTER_LAYERS        = [9,18,25,32]               #last image layers of each broadband filter for 35-layer images
+    LAST_FILTER_LAYERS_35     = [9,18,25,32]               #last image layers of each broadband filter for 35-layer images
+    LAST_FILTER_LAYERS_43     = [9,11,17,20,29,36,43]      #last image layers of each broadband filter for 43-layer images (unconfirmed)
     INTENSITY_FIG_WIDTH       = 16.8                       #width of the intensity plot figure
     #illumination variation reduction
     ILLUMINATION_VARIATION_PLOT_WIDTH    = 9.6                                   #width of the illumination variation plot
@@ -60,6 +61,13 @@ class MeanImage :
         """
         self._dims=(y,x,nlayers)
         self.nlayers = nlayers
+        self.LAST_FILTER_LAYERS = None
+        if self.nlayers==35 :
+            self.LAST_FILTER_LAYERS=self.LAST_FILTER_LAYERS_35
+        elif self.nlayers==43 :
+            self.LAST_FILTER_LAYERS=self.LAST_FILTER_LAYERS_43
+        else :
+            raise FlatFieldError(f'ERROR: no defined list of broadband filter breaks for images with {self.nlayers} layers!')
         self._workingdir_name = workingdir_name
         self.skip_masking = skip_masking
         self.smoothsigma = smoothsigma
@@ -104,7 +112,9 @@ class MeanImage :
             flatfield_logger.info(f'  masking and adding image {stack_i} to the stack....')
             make_plots=i in masking_plot_indices
             p = mp.Process(target=getImageMaskWorker, 
-                           args=(im_array,sample.background_thresholds_for_masking,min_selected_pixels,make_plots,masking_plot_dirpath,stack_i,return_dict))
+                           args=(im_array,sample.background_thresholds_for_masking,sample.name,min_selected_pixels,
+                                 make_plots,masking_plot_dirpath,
+                                 stack_i,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
@@ -124,14 +134,20 @@ class MeanImage :
         """
         A function to get the mean of the image stack and smooth/normalize each of its layers to make the flatfield image
         """
-        if self.n_images_read<1 or np.sum(np.array([nlis<1 for nlis in self.n_images_stacked_by_layer]))!=0 :
-            raise FlatFieldError('ERROR: not enough images were stacked to give a meaningful meanimage in every layer!')
+        if self.n_images_read<1 :
+            raise FlatFieldError('ERROR: not enough images were read to produce a meanimage!')
+        for li,nlis in enumerate(self.n_images_stacked_by_layer,start=1) :
+            if nlis<1 :
+                flatfield_logger.warn(f'WARNING: {nlis} images were stacked in layer {li}; this layer of the meanimage/flatfield will be meaningless!')
         self.mean_image = self.__makeMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
             layermean = np.mean(self.smoothed_mean_image[:,:,layer_i])
-            self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
+            if layermean==0 :
+                self.flatfield_image[:,:,layer_i]=1.0
+            else :
+                self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
 
     def makeCorrectedMeanImage(self,flatfield_file_path) :
         """
@@ -424,7 +440,7 @@ class MeanImage :
 
 #helper function to create a layered binary image mask for a given image array
 #this can be run in parallel with a given index and return dict
-def getImageMaskWorker(im_array,thresholds_per_layer,min_selected_pixels,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
+def getImageMaskWorker(im_array,thresholds_per_layer,samp_name,min_selected_pixels,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
     nlayers = im_array.shape[-1]
     #create a new mask
     init_image_mask = np.empty(im_array.shape,np.uint8)
@@ -462,7 +478,7 @@ def getImageMaskWorker(im_array,thresholds_per_layer,min_selected_pixels,make_pl
     #make the plots if requested
     if make_plots :
         flatfield_logger.info(f'Saving masking plots for image {i}')
-        this_image_masking_plot_dirname = f'image_{i}_mask_layers'
+        this_image_masking_plot_dirname = f'image_{i}_from_{samp_name}_mask_layers'
         with cd(plotdir_path) :
             if not os.path.isdir(this_image_masking_plot_dirname) :
                 os.mkdir(this_image_masking_plot_dirname)
