@@ -332,8 +332,8 @@ class StitchResultBase(RectangleOverlapCollection):
       y22 = max(primaryregionsy[i2])
 
       if (
-        max(x21, x22) - min(x11, x12) < (x12 - x11) + (x22 - x21) + 0.1
-        and max(y21, y22) - min(y11, y12) < (y12 - y11) + (y22 - y21) + 0.1
+        max(x21, x22) - min(x11, x12) + 1e-5*x11 < (x12 - x11) + (x22 - x21)
+        and max(y21, y22) - min(y11, y12) + 1e-5*x11 < (y12 - y11) + (y22 - y21)
       ):
         #if a box around the islands overlaps in both x and y
         for rid1, rid2 in itertools.product(island1, island2):
@@ -356,8 +356,8 @@ class StitchResultBase(RectangleOverlapCollection):
           yy22 = primaryregionsy[i2][gy2]
 
           if (
-            max(xx21, xx22) - min(xx11, xx12) < (xx12 - xx11) + (xx22 - xx21) + 0.1
-            and max(yy21, yy22) - min(yy11, yy12) < (yy12 - yy11) + (yy22 - yy21) + 0.1
+            max(xx21, xx22) - min(xx11, xx12) + 1e-5*x11 < (xx12 - xx11) + (xx22 - xx21)
+            and max(yy21, yy22) - min(yy11, yy12) + 1e-5*x11 < (yy12 - yy11) + (yy22 - yy21)
           ):
             self.__logger.warningglobal(f"Primary regions for fields {rid1} and {rid2} overlap")
 
