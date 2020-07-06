@@ -145,7 +145,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
 
   logger.debug("done")
 
-  return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix, origin=origin)
+  return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix, origin=origin, logger=logger)
 
 def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([0, 0]), logger=dummylogger):
   """
@@ -234,13 +234,14 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([
   prob = cp.Problem(minimize)
   prob.solve()
 
-  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale, origin=origin)
+  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale, origin=origin, logger=logger)
 
 class StitchResultBase(RectangleOverlapCollection):
-  def __init__(self, *, rectangles, overlaps, origin):
+  def __init__(self, *, rectangles, overlaps, origin, logger=dummylogger):
     self.__rectangles = rectangles
     self.__overlaps = overlaps
     self.__origin = origin
+    self.__logger = logger
 
   @property
   def pscale(self):
@@ -271,7 +272,7 @@ class StitchResultBase(RectangleOverlapCollection):
   @methodtools.lru_cache()
   def __fields(self):
     result = []
-    islands = list(self.islands(useexitstatus=False))
+    islands = list(self.islands(useexitstatus=True))
     gxdict = collections.defaultdict(dict)
     gydict = collections.defaultdict(dict)
     primaryregionsx = {}
@@ -317,6 +318,49 @@ class StitchResultBase(RectangleOverlapCollection):
             primaryregions[gc].append(average[0] + (shape[i] - mindiff) / 2)
             primaryregions[gc].append(average[0] + (shape[i] + mindiff) / 2)
 
+    for (i1, island1), (i2, island2) in itertools.combinations(enumerate(islands, start=1), r=2):
+      if len(island1) == 1 or len(island2) == 1: continue #orphans are excluded
+
+      x11 = min(primaryregionsx[i1])
+      x21 = max(primaryregionsx[i1])
+      x12 = min(primaryregionsx[i2])
+      x22 = max(primaryregionsx[i2])
+
+      y11 = min(primaryregionsy[i1])
+      y21 = max(primaryregionsy[i1])
+      y12 = min(primaryregionsy[i2])
+      y22 = max(primaryregionsy[i2])
+
+      if (
+        max(x21, x22) - min(x11, x12) < (x12 - x11) + (x22 - x21) + 0.1
+        and max(y21, y22) - min(y11, y12) < (y12 - y11) + (y22 - y21) + 0.1
+      ):
+        #if a box around the islands overlaps in both x and y
+        for rid1, rid2 in itertools.product(island1, island2):
+          r1 = self.rectangledict[rid1]
+          r2 = self.rectangledict[rid2]
+
+          gx1 = gxdict[i1][r1.cx]
+          gy1 = gydict[i1][r1.cy]
+          gx2 = gxdict[i2][r2.cx]
+          gy2 = gydict[i2][r2.cy]
+
+          xx11 = primaryregionsx[i1][gx1-1]
+          xx21 = primaryregionsx[i1][gx1]
+          xx12 = primaryregionsx[i2][gx2-1]
+          xx22 = primaryregionsx[i2][gx2]
+
+          yy11 = primaryregionsy[i1][gy1-1]
+          yy21 = primaryregionsy[i1][gy1]
+          yy12 = primaryregionsy[i2][gy2-1]
+          yy22 = primaryregionsy[i2][gy2]
+
+          if (
+            max(xx21, xx22) - min(xx11, xx12) < (xx12 - xx11) + (xx22 - xx21) + 0.1
+            and max(yy21, yy22) - min(yy11, yy12) < (yy12 - yy11) + (yy22 - yy21) + 0.1
+          ):
+            self.__logger.warningglobal(f"Primary regions for fields {rid1} and {rid2} overlap")
+
     for rectangle in self.rectangles:
       for gc, island in enumerate(islands, start=1):
         if rectangle.n in island:
@@ -329,7 +373,7 @@ class StitchResultBase(RectangleOverlapCollection):
         Field(
           rectangle=rectangle,
           ixvec=units.distances(pixels=units.pixels(rectangle.xvec, pscale=self.pscale).round().astype(int), pscale=self.pscale),
-          gc=gc,
+          gc=0 if len(island) == 1 else gc,
           pxvec=self.x(rectangle) - self.origin,
           gxvec=(gx, gy),
           primaryregionx=np.array([primaryregionsx[gc][gx-1], primaryregionsx[gc][gx]]) - self.origin[0],
@@ -343,7 +387,7 @@ class StitchResultBase(RectangleOverlapCollection):
   def fields(self):
     return self.__fields()
 
-  def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, logger=dummylogger, **kwargs):
+  def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
     affinefilename, fieldsfilename, fieldoverlapfilename = filenames
 
     fields = self.fields
@@ -370,23 +414,23 @@ class StitchResultBase(RectangleOverlapCollection):
     writetable(fieldoverlapfilename, self.fieldoverlaps, **kwargs)
 
     if check:
-      logger.debug("reading back from the file")
-      readback = ReadStitchResult(*filenames, rectangles=self.rectangles, overlaps=self.overlaps, origin=self.origin)
-      logger.debug("done reading")
+      self.__logger.debug("reading back from the file")
+      readback = ReadStitchResult(*filenames, rectangles=self.rectangles, overlaps=self.overlaps, origin=self.origin, logger=self.__logger)
+      self.__logger.debug("done reading")
       x1 = self.x()
       T1 = self.T
       x2 = readback.x()
       T2 = readback.T
-      logger.debug("comparing nominals")
+      self.__logger.debug("comparing nominals")
       units.np.testing.assert_allclose(units.nominal_values(x1), units.nominal_values(x2), atol=atol, rtol=rtol)
       units.np.testing.assert_allclose(units.nominal_values(T1), units.nominal_values(T2), atol=atol, rtol=rtol)
-      logger.debug("comparing individual errors")
+      self.__logger.debug("comparing individual errors")
       units.np.testing.assert_allclose(units.std_devs(x1), units.std_devs(x2), atol=atol, rtol=rtol)
       units.np.testing.assert_allclose(units.std_devs(T1), units.std_devs(T2), atol=atol, rtol=rtol)
-      logger.debug("comparing overlap errors")
+      self.__logger.debug("comparing overlap errors")
       for o in self.overlaps:
         units.np.testing.assert_allclose(units.covariance_matrix(self.dx(o)), units.covariance_matrix(readback.dx(o)), atol=atol, rtol=rtol)
-      logger.debug("done")
+      self.__logger.debug("done")
 
 class StitchResultFullCovariance(StitchResultBase):
   def __init__(self, *, x, T, covariancematrix, **kwargs):
@@ -529,8 +573,8 @@ class StitchResultOverlapCovariances(StitchResultBase):
     self.__T = np.array(unc.correlated_values(Tnominal, Tcovariance)).reshape((2, 2))
 
 class ReadStitchResult(StitchResultOverlapCovariances):
-  def __init__(self, *args, rectangles, overlaps, origin, **kwargs):
-    super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, fieldoverlaps=None, origin=origin)
+  def __init__(self, *args, rectangles, overlaps, origin, logger=dummylogger, **kwargs):
+    super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, fieldoverlaps=None, origin=origin, logger=logger)
     self.readtable(*args, **kwargs)
 
 class CalculatedStitchResult(StitchResultFullCovariance):
