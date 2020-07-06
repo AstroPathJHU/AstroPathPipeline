@@ -107,7 +107,7 @@ pipeline {
       archiveArtifacts artifacts: 'documentation/alignment/alignment_stitching.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/badregions/badregions.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/flatfield/flatfield_documentation.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'test/badregions_test_for_jenkins/*', fingerprint: true
+      archiveArtifacts artifacts: 'test/badregions_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
     }
   }
 }
