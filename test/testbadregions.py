@@ -10,14 +10,14 @@ class TestBadRegions(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    cls.images = []
+    cls.imagesets = []
     A = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
     A.getDAPI(writeimstat=False)
-    cls.images.append(A.rectangles[21].image)
+    cls.imagesets.append([r.image for r in A.rectangles])
 
     A = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M55_1", selectrectangles=[678])
     A.getDAPI(writeimstat=False, keeprawimages=True)
-    cls.images.append(A.rectangles[0].rawimage)
+    cls.imagesets.append([A.rectangles[0].rawimage])
 
     cls.writeoutreference = False
     try:
@@ -39,8 +39,8 @@ class TestBadRegions(unittest.TestCase):
     if unknownkeys:
       raise ValueError(f"Unknown arrays in badregionsreference.npz: {', '.join(unknownkeys)}")
 
-  def generaltest(self, BRFclass, imageindex, *, expectallgood=False, **kwargs):
-    brf = BRFclass(self.images[imageindex])
+  def generaltest(self, BRFclass, imagesetindex, imageindex, *, expectallgood=False, **kwargs):
+    brf = BRFclass(self.imagesets[imagesetindex][imageindex])
     badregions = brf.badregions(**kwargs)
 
     try:
@@ -62,17 +62,25 @@ class TestBadRegions(unittest.TestCase):
         self.reference[BRFclass.__name__] = badregions
         type(self).writeoutreference = True
         self.seenclasses.add(BRFclass.__name__)
-      brf.show(saveas=self.savedir/f"badregions_{BRFclass.__name__}.pdf", **kwargs)
+      brf.show(alpha=0, saveas=self.savedir/f"badregions_{BRFclass.__name__}_{imagesetindex}_{imageindex}_image.pdf", **kwargs)
+      brf.show(alpha=0.6, saveas=self.savedir/f"badregions_{BRFclass.__name__}_{imagesetindex}_{imageindex}.pdf", **kwargs)
       raise
 
   def testTissueFoldFinderSimple(self):
-    self.generaltest(TissueFoldFinderSimple, 0, threshold=0.15)
+    self.generaltest(TissueFoldFinderSimple, 0, 21, threshold=0.15)
 
   def testTissueFoldFinderByCell(self):
-    self.generaltest(TissueFoldFinderByCell, 0, threshold=0.15)
+    self.generaltest(TissueFoldFinderByCell, 0, 21, threshold=0.15)
 
-  def testDustSpeckFinderNoSpeck(self):
-    self.generaltest(DustSpeckFinder, 0, expectallgood=True)
+  nodust = []
+  for i in range(40):
+    def f(self, i=i):
+      self.generaltest(DustSpeckFinder, 0, i, expectallgood=True)
+    f.__name__ = f"testDustSpeckFinderNoSpeck_{i}"
+    nodust.append(f)
 
   def testDustSpeckFinderWithSpeck(self):
-    self.generaltest(DustSpeckFinder, 1)
+    self.generaltest(DustSpeckFinder, 1, 0)
+
+for f in TestBadRegions.nodust:
+  setattr(TestBadRegions, f.__name__, f)

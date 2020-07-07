@@ -18,7 +18,7 @@ class BadRegionFinder(abc.ABC):
   def goodregions(self, *args, **kwargs):
     return ~self.badregions(*args, **kwargs)
 
-  def show(self, *, alpha=1, saveas=None, plotstyling=lambda fig, ax: None, scale=1, **kwargs):
+  def show(self, *, alpha=1, saveas=None, plotstyling=lambda fig, ax: None, scale=0.2, **kwargs):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
 
