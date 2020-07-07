@@ -28,8 +28,6 @@ class DustSpeckFinder(BadRegionFinder):
 
       intensities = self.image[selection.astype(bool)]
       min, q01, q99, max = np.quantile(intensities, [0, 0.01, 0.99, 1])
-      mean = np.mean(intensities)
-      rms = np.std(intensities)
 
       if q01 / q99 < 0.1:
         badregions[labeled == i] = False
