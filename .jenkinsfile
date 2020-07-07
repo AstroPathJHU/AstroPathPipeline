@@ -63,8 +63,9 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testbadregions'
 	      }
 	    }
-	    stage('flatfield documentation') {
+	    stage('bad regions documentation') {
 	      steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.badregions.makeplots --testing'
 	        sh 'cd documentation/badregions; pdflatex badregions.tex; pdflatex badregions.tex; pdflatex badregions.tex'
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/badregions/badregions.log'
 	      }

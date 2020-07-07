@@ -18,8 +18,12 @@ class BadRegionFinder(abc.ABC):
   def goodregions(self, *args, **kwargs):
     return ~self.badregions(*args, **kwargs)
 
-  def show(self, *, alpha=1, saveas=None, **kwargs):
+  def show(self, *, alpha=1, saveas=None, plotstyling=lambda fig, ax: None, scale=1, **kwargs):
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+
     imagepurple = np.transpose([self.image, self.image//2, self.image], (1, 2, 0))
+    imagepurple = (imagepurple * scale).astype(np.uint16)
     plt.imshow(imagepurple)
 
     badhighlight = np.array(
@@ -27,6 +31,8 @@ class BadRegionFinder(abc.ABC):
       dtype=float,
     ).transpose(1, 2, 0)
     plt.imshow(badhighlight)
+
+    plotstyling(fig, ax)
 
     if saveas is None:
       plt.show()
