@@ -1,6 +1,7 @@
 import abc, contextlib, dataclasses, logging, methodtools, pathlib
 
 from ..utilities.misc import dataclass_dc_init, tiffinfo
+from ..utilities.tableio import readtable, writetable
 from .logging import getlogger
 
 @dataclass_dc_init(frozen=True)
@@ -81,6 +82,13 @@ class SampleBase(contextlib.ExitStack):
   @property
   def dbload(self):
     return self.mainfolder/"dbload"
+
+  def csv(self, csv):
+    return self.mainfolder/"dbload"/f"{self.SlideID}_{csv}.csv"
+  def readcsv(self, csv, *args, **kwargs):
+    return readtable(self.csv(csv), *args, **kwargs)
+  def writecsv(self, csv, *args, **kwargs):
+    return writetable(self.csv(csv), *args, **kwargs)
 
   @property
   def im3folder(self):

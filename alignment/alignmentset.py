@@ -3,7 +3,7 @@
 import cv2, methodtools, numpy as np, traceback
 
 from ..baseclasses.sample import FlatwSampleBase
-from ..prepdb.csvclasses import Batch, Constant
+from ..prepdb.csvclasses import Constant
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangleoroverlapfilter
 from ..utilities import units
@@ -63,9 +63,9 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
       height = self.tiffheight
     except OSError:
       self.logger.warningglobal("couldn't find a component tiff: trusting image size and pscale from constants.csv")
-      tmp = readtable(self.dbload/(self.SlideID+"_constants.csv"), Constant, extrakwargs={"pscale": 1})
+      tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1})
       pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
-    self.constants     = readtable(self.dbload/(self.SlideID+"_constants.csv"), Constant, extrakwargs={"pscale": pscale})
+    self.constants     = self.readcsv("constants", Constant, extrakwargs={"pscale": pscale})
     self.constantsdict = {constant.name: constant.value for constant in self.constants}
 
     self.fwidth    = self.constantsdict["fwidth"]
@@ -89,18 +89,16 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
     self.nclip    = self.constantsdict["nclip"]
     self.layer    = 1
 
-    self.batch = readtable(self.dbload/(self.SlideID+"_batch.csv"), Batch)
-    self.scan  = f"Scan{self.batch[0].Scan:d}"
-
-    #self.annotations = readtable(self.dbload/(self.SlideID+"_annotations.csv"), Annotation)
-    #self.regions     = readtable(self.dbload/(self.SlideID+"_regions.csv"), Region)
-    #self.vertices    = readtable(self.dbload/(self.SlideID+"_vertices.csv"), Vertex)
-    #self.imagetable  = readtable(self.dbload/(self.SlideID+"_qptiff.csv"), QPTiffCsv, extrakwargs={"pscale": self.pscale})
+    #self.annotations = self.readcsv("annotations", Annotation)
+    #self.batch       = self.readcsv("batch", Batch)
+    #self.regions     = self.readcsv("regions", Region)
+    #self.vertices    = self.readcsv("vertices", Vertex)
+    #self.imagetable  = self.readcsv("qptiff", QPTiffCsv, extrakwargs={"pscale": self.pscale})
     self.__image     = None
 
-    self.__rectangles  = readtable(self.dbload/(self.SlideID+"_rect.csv"), Rectangle, extrakwargs={"pscale": self.pscale})
+    self.__rectangles  = self.readcsv("rect", Rectangle, extrakwargs={"pscale": self.pscale})
     self.__rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
-    self.__overlaps  = readtable(self.dbload/(self.SlideID+"_overlap.csv"), self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
+    self.__overlaps  = self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
     self.__overlaps = [o for o in self.overlaps if self.overlapfilter(o)]
     if onlyrectanglesinoverlaps:
       oldfilter = self.rectanglefilter
@@ -118,10 +116,6 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
   @methodtools.lru_cache()
   def image(self):
     return cv2.imread(str(self.dbload/(self.SlideID+"_qptiff.jpg")))
-
-  @property
-  def aligncsv(self):
-    return self.dbload/(self.SlideID+"_align.csv")
 
   def align(self,*,skip_corners=False,write_result=True,return_on_invalid_result=False,warpwarnings=False,**kwargs):
     #if the raw images haven't already been loaded, load them with the default argument
@@ -165,12 +159,12 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
     return sum_mse/norm
 
   def writealignments(self, *, filename=None):
-    if filename is None: filename = self.aligncsv
+    if filename is None: filename = self.csv("align")
     writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive)
 
   def readalignments(self, *, filename=None, interactive=True):
     interactive = interactive and self.interactive and filename is None
-    if filename is None: filename = self.aligncsv
+    if filename is None: filename = self.csv("align")
     self.logger.info("reading alignments from "+str(filename))
 
     try:
@@ -227,7 +221,7 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
           pscale=self.pscale,
         ) for rectangle in self.rectangles
       ]
-      writetable(self.dbload/(self.SlideID+"_imstat.csv"), self.imagestats, retry=self.interactive)
+      self.writecsv("imstat", self.imagestats, retry=self.interactive)
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -339,9 +333,9 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
   @property
   def stitchfilenames(self):
     return (
-      self.dbload/(self.SlideID+"_affine.csv"),
-      self.dbload/(self.SlideID+"_fields.csv"),
-      self.dbload/(self.SlideID+"_fieldoverlaps.csv"),
+      self.csv("affine"),
+      self.csv("fields"),
+      self.csv("fieldoverlaps"),
     )
 
   def stitch(self, *, saveresult=True, checkwriting=False, **kwargs):
