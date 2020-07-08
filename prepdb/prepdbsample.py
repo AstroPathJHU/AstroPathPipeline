@@ -1,4 +1,4 @@
-import argparse, datetime, fractions, itertools, jxmlease, methodtools, numpy as np, os, pathlib, PIL, re, skimage, tifffile
+import argparse, datetime, fractions, itertools, jxmlease, methodtools, numpy as np, os, PIL, re, skimage, tifffile
 from ..baseclasses.sample import SampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint
