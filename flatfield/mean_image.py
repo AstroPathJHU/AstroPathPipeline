@@ -36,7 +36,7 @@ class MeanImage :
     #pixel intensity plots
     PIXEL_INTENSITY_PLOT_NAME = 'pixel_intensity_plot.png' #name of the pixel intensity plot
     LAST_FILTER_LAYERS_35     = [9,18,25,32]               #last image layers of each broadband filter for 35-layer images
-    LAST_FILTER_LAYERS_43     = [9,11,17,20,29,36,43]      #last image layers of each broadband filter for 43-layer images (unconfirmed)
+    LAST_FILTER_LAYERS_43     = [9,11,17,20,29,36]         #last image layers of each broadband filter for 43-layer images (unconfirmed)
     INTENSITY_FIG_WIDTH       = 16.8                       #width of the intensity plot figure
     #illumination variation reduction
     ILLUMINATION_VARIATION_PLOT_WIDTH    = 9.6                                   #width of the illumination variation plot
