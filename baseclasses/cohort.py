@@ -11,7 +11,7 @@ class Cohort(abc.ABC):
     self.debug = debug
 
   def __iter__(self):
-    for samp in readtable(self.root1/"sampledef.csv", SampleDef):
+    for samp in readtable(self.root/"sampledef.csv", SampleDef):
       if not samp: continue
       if not self.filter(samp): continue
       yield samp
