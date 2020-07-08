@@ -2,7 +2,6 @@ import argparse, datetime, fractions, itertools, jxmlease, methodtools, numpy as
 from ..baseclasses.sample import SampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint
-from ..utilities.tableio import writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
 from .overlap import Overlap
@@ -13,14 +12,6 @@ if jxmleaseversion < [1, 0, '2dev1']:
   raise ImportError(f"You need jxmleaseversion >= 1.0.2dev1 (your version: {jxmlease.__version__})\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
 
 class PrepdbSample(SampleBase):
-  def __init__(self, *args, dest=None, **kwargs):
-    super().__init__(*args, **kwargs)
-    if dest is None: dest = self.dbload
-    self.__dest = pathlib.Path(dest)
-
-  @property
-  def dest(self): return self.__dest
-
   @property
   def logmodule(self): return "prepdb"
 
@@ -45,19 +36,19 @@ class PrepdbSample(SampleBase):
 
   def writebatch(self):
     self.logger.info("writebatch")
-    writetable(self.dest/(self.SlideID+"_batch.csv"), self.getbatch())
+    self.writecsv("batch", self.getbatch())
 
   @property
   def rectangles(self): return self.getlayout()[0]
   def writerectangles(self):
     self.logger.info("writerectangles")
-    writetable(self.dest/(self.SlideID+"_rect.csv"), self.rectangles)
+    self.writecsv("rect", self.rectangles)
   @property
   def globals(self): return self.getlayout()[1]
   def writeglobals(self):
     if not self.globals: return
     self.logger.info("writeglobals")
-    writetable(self.dest/(self.SlideID+"_globals.csv"), self.globals)
+    self.writecsv("globals", self.globals)
 
   @methodtools.lru_cache()
   def getlayout(self):
@@ -215,18 +206,18 @@ class PrepdbSample(SampleBase):
 
   def writeannotations(self):
     self.logger.info("writeannotations")
-    writetable(self.dest/(self.SlideID+"_annotations.csv"), self.annotations, rowclass=Annotation)
+    self.writecsv("annotations", self.annotations, rowclass=Annotation)
   def writeregions(self):
     self.logger.info("writeregions")
-    writetable(self.dest/(self.SlideID+"_regions.csv"), self.regions, rowclass=Region)
+    self.writecsv("regions", self.regions, rowclass=Region)
   def writevertices(self):
     self.logger.info("writevertices")
-    writetable(self.dest/(self.SlideID+"_vertices.csv"), self.vertices, rowclass=Vertex)
+    self.writecsv("vertices", self.vertices, rowclass=Vertex)
 
   @property
   def qptifffilename(self): return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".qptiff")
   @property
-  def jpgfilename(self): return self.dest/(self.SlideID+"_qptiff.jpg")
+  def jpgfilename(self): return self.dbload/(self.SlideID+"_qptiff.jpg")
 
   @methodtools.lru_cache()
   def getqptiffcsvandimage(self):
@@ -304,7 +295,7 @@ class PrepdbSample(SampleBase):
 
   def writeqptiffcsv(self):
     self.logger.info("writeqptiffcsv")
-    writetable(self.dest/(self.SlideID+"_qptiff.csv"), self.getqptiffcsv())
+    self.writecsv("qptiff", self.getqptiffcsv())
 
   def writeqptiffjpg(self):
     self.logger.info("writeqptiffjpg")
@@ -355,7 +346,7 @@ class PrepdbSample(SampleBase):
 
   def writeoverlaps(self):
     self.logger.info("writeoverlaps")
-    writetable(self.dest/(self.SlideID+"_overlap.csv"), self.getoverlaps())
+    self.writecsv("overlap", self.getoverlaps())
 
   def getconstants(self):
     constants = [
@@ -417,10 +408,10 @@ class PrepdbSample(SampleBase):
 
   def writeconstants(self):
     self.logger.info("writeconstants")
-    writetable(self.dest/(self.SlideID+"_constants.csv"), self.getconstants())
+    self.writecsv("constants", self.getconstants())
 
   def writemetadata(self):
-    self.dest.mkdir(parents=True, exist_ok=True)
+    self.dbload.mkdir(parents=True, exist_ok=True)
     self.writeannotations()
     self.writebatch()
     self.writeconstants()
@@ -436,10 +427,8 @@ if __name__ == "__main__":
   p = argparse.ArgumentParser()
   p.add_argument("root")
   p.add_argument("samp")
-  p.add_argument("--dest")
   p.add_argument("--units", type=units.setup)
   args = p.parse_args()
   kwargs = {"root": args.root, "samp": args.samp}
-  if args.dest: kwargs["dest"] = args.dest
   s = PrepdbSample(**kwargs)
   s.writemetadata()
