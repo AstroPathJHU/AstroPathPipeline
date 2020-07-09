@@ -200,7 +200,6 @@ class ReadRectangles(FlatwSampleBase, RectangleOverlapCollection):
 
   def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, **kwargs):
     super().__init__(*args, **kwargs)
-    print(selectrectangles)
 
     rectanglefilter = rectangleoroverlapfilter(selectrectangles)
     _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
