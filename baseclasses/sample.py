@@ -173,6 +173,13 @@ class SampleBase(contextlib.ExitStack):
     constants = self.readcsv("constants", Constant, extrakwargs={"pscale": self.pscale})
     return {constant.name: constant.value for constant in constants}
 
+  @property
+  def position(self):
+    return np.array([self.constantsdict["xposition"], self.constantsdict["yposition"]])
+  @property
+  def nclip(self):
+    return self.constantsdict["nclip"]
+
   @abc.abstractproperty
   def logmodule(self):
     "name of the log files for this class (e.g. align)"

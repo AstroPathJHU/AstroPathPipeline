@@ -50,8 +50,6 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
     """
     Read metadata from csv files
     """
-    self.position = np.array([self.constantsdict["xposition"], self.constantsdict["yposition"]])
-    self.nclip    = self.constantsdict["nclip"]
     self.layer    = 1
 
     #self.annotations = self.readcsv("annotations", Annotation)
