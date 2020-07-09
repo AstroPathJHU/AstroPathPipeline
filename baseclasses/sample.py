@@ -1,6 +1,7 @@
 import abc, contextlib, dataclasses, logging, methodtools, numpy as np, pathlib
 
-from ..utilities.misc import dataclass_dc_init, tiffinfo
+from ..utilities import units
+from ..utilities.misc import dataclass_dc_init, memmapcontext, tiffinfo
 from ..utilities.tableio import readtable, writetable
 from .csvclasses import Constant
 from .logging import getlogger
@@ -212,6 +213,37 @@ class ReadRectangles(FlatwSampleBase, RectangleOverlapCollection):
     if onlyrectanglesinoverlaps:
       self.__rectangles = [r for r in self.rectangles if self.selectoverlaprectangles(r)]
     
+  def getrawlayers(self, filetype):
+    self.logger.info("getrawlayers")
+    if filetype=="flatWarpDAPI" :
+      ext = f".fw{self.layer:02d}"
+    elif filetype=="camWarpDAPI" :
+      ext = f".camWarp_layer{self.layer:02d}"
+    else :
+      raise ValueError(f"requested file type {filetype} not recognized by getrawlayers")
+    path = self.root2/self.SlideID
+
+    rawimages = np.ndarray(shape=(len(self.rectangles), units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)), dtype=np.uint16)
+
+    if not self.rectangles:
+      raise IOError("didn't find any rows in the rectangles table for "+self.SlideID, 1)
+
+    for i, rectangle in enumerate(self.rectangles):
+      filename = path/rectangle.file.replace(".im3", ext)
+      self.logger.info(f"loading rectangle {i+1}/{len(self.rectangles)}")
+      with open(filename, "rb") as f:
+        #use fortran order, like matlab!
+        with memmapcontext(
+          f,
+          dtype=np.uint16,
+          shape=(units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)),
+          order="F",
+          mode="r"
+        ) as memmap:
+          rawimages[i] = memmap
+
+    return rawimages
+
   @property
   def overlaps(self): return self.__overlaps
   @property

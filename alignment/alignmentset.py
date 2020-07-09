@@ -3,8 +3,6 @@
 import cv2, methodtools, numpy as np, traceback
 
 from ..baseclasses.sample import ReadRectangles
-from ..utilities import units
-from ..utilities.misc import memmapcontext
 from ..utilities.tableio import readtable, writetable
 from .flatfield import meanimage
 from .imagestats import ImageStats
@@ -15,7 +13,7 @@ class AlignmentSet(ReadRectangles):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, imagefilenameadjustment=lambda x: x, **kwargs):
+  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, **kwargs):
     """
     Directory structure should be
     root1/
@@ -32,8 +30,6 @@ class AlignmentSet(ReadRectangles):
     """
     super().__init__(root1, root2, samp, **kwargs)
     self.interactive = interactive
-
-    self.__imagefilenameadjustment = imagefilenameadjustment
 
     self.gpufftdict = None
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
@@ -117,15 +113,20 @@ class AlignmentSet(ReadRectangles):
   def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, writeimstat=True, mean_image=None, overwrite=True):
     self.logger.info("getDAPI")
     if overwrite or not hasattr(self, "images"):
-      rawimages = self.__getrawlayers(filetype, keep=keeprawimages)
+      images = self.getrawlayers(filetype)
+
+      if keeprawimages:
+        self.rawimages = images.copy()
+        for rectangle, rawimage in zip(self.rectangles, self.rawimages):
+          rectangle.rawimage = rawimage
 
       # apply the extra flattening
 
-      self.meanimage = mean_image if mean_image is not None else meanimage(rawimages, logger=self.logger)
+      self.meanimage = mean_image if mean_image is not None else meanimage(images, logger=self.logger)
 
-      for image in rawimages:
+      for image in images:
         image[:] = np.rint(image / self.meanimage.flatfield)
-      self.images = rawimages
+      self.images = images
 
     if len(self.rectangles) != len(self.images):
       raise ValueError(f"Mismatch in number of rectangles {len(self.rectangles)} and images {len(self.images)}")
@@ -215,42 +216,6 @@ class AlignmentSet(ReadRectangles):
       if force: raise
       self.logger.warningglobal('Failed to create an OpenCL API, no GPU computation will be available!!')
       return None
-
-  def __getrawlayers(self, filetype, keep=False):
-    self.logger.info("getrawlayers")
-    if filetype=="flatWarpDAPI" :
-      ext = f".fw{self.layer:02d}"
-    elif filetype=="camWarpDAPI" :
-      ext = f".camWarp_layer{self.layer:02d}"
-    else :
-      raise ValueError(f"requested file type {filetype} not recognized by getrawlayers")
-    path = self.root2/self.SlideID
-
-    rawimages = np.ndarray(shape=(len(self.rectangles), units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)), dtype=np.uint16)
-
-    if not self.rectangles:
-      raise IOError("didn't find any rows in the rectangles table for "+self.SlideID, 1)
-
-    for i, rectangle in enumerate(self.rectangles):
-      filename = path/self.__imagefilenameadjustment(rectangle.file.replace(".im3", ext))
-      self.logger.info(f"loading rectangle {i+1}/{len(self.rectangles)}")
-      with open(filename, "rb") as f:
-        #use fortran order, like matlab!
-        with memmapcontext(
-          f,
-          dtype=np.uint16,
-          shape=(units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)),
-          order="F",
-          mode="r"
-        ) as memmap:
-          rawimages[i] = memmap
-
-    if keep:
-        self.rawimages = rawimages.copy()
-        for rectangle, rawimage in zip(self.rectangles, self.rawimages):
-            rectangle.rawimage = rawimage
-
-    return rawimages
 
   overlaptype = AlignmentOverlap #can be overridden in subclasses
 
