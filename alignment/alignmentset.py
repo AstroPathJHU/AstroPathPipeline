@@ -389,6 +389,7 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
         overlaps=self.overlaps,
         rectangles=self.rectangles,
         origin=self.position,
+        logger=self.logger,
       )
     except Exception:
       if interactive:
