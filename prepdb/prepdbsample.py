@@ -1,9 +1,9 @@
 import argparse, datetime, fractions, itertools, jxmlease, methodtools, numpy as np, os, PIL, re, skimage, tifffile
+from ..baseclasses.csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
 from ..baseclasses.sample import SampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint
 from .annotationxmlreader import AnnotationXMLReader
-from .csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
 from .overlap import Overlap
 
 jxmleaseversion = jxmlease.__version__.split(".")
@@ -59,7 +59,7 @@ class PrepdbSample(SampleBase):
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        cx, cy = units.microns(r.cxvec, pscale=self.tiffpscale)
+        cx, cy = units.microns(r.cxvec, pscale=self.pscale)
         raise OSError(f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist")
       rf = rfs.pop()
       maxtimediff = max(maxtimediff, abs(rf.t-r.t))
@@ -75,7 +75,7 @@ class PrepdbSample(SampleBase):
   @methodtools.lru_cache()
   def getXMLplan(self):
     xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
-    reader = AnnotationXMLReader(xmlfile, pscale=self.tiffpscale)
+    reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
 
     rectangles = reader.rectangles
     globals = reader.globals
@@ -115,15 +115,15 @@ class PrepdbSample(SampleBase):
       match = re.match(regex, im3.name)
       if not match:
         raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
-      x = units.Distance(microns=int(match.group(1)), pscale=self.tiffpscale)
-      y = units.Distance(microns=int(match.group(2)), pscale=self.tiffpscale)
+      x = units.Distance(microns=int(match.group(1)), pscale=self.pscale)
+      y = units.Distance(microns=int(match.group(2)), pscale=self.pscale)
       t = datetime.datetime.fromtimestamp(os.path.getmtime(im3)).astimezone()
       result.append(
         RectangleFile(
           cx=x,
           cy=y,
           t=t,
-          pscale=self.tiffpscale,
+          pscale=self.pscale,
         )
       )
     result.sort(key=lambda x: x.t)
@@ -162,15 +162,15 @@ class PrepdbSample(SampleBase):
           if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
           regionvertices = []
           for k, vertex in enumerate(vertices, start=1):
-            x = units.Distance(microns=int(vertex.get_xml_attr("X")), pscale=self.tiffpscale)
-            y = units.Distance(microns=int(vertex.get_xml_attr("Y")), pscale=self.tiffpscale)
+            x = units.Distance(microns=int(vertex.get_xml_attr("X")), pscale=self.pscale)
+            y = units.Distance(microns=int(vertex.get_xml_attr("Y")), pscale=self.pscale)
             regionvertices.append(
               Vertex(
                 regionid=regionid,
                 vid=k,
                 x=x,
                 y=y,
-                pscale=self.tiffpscale,
+                pscale=self.pscale,
               )
             )
           allvertices += regionvertices
@@ -191,7 +191,7 @@ class PrepdbSample(SampleBase):
               type=region.get_xml_attr("Type"),
               nvert=len(vertices),
               poly=Polygon(*polygonvertices),
-              pscale=self.tiffpscale,
+              pscale=self.pscale,
             )
           )
 
@@ -338,7 +338,7 @@ class PrepdbSample(SampleBase):
             layer=self.layer,
             nclip=self.nclip,
             rectangles=(r1, r2),
-            pscale=self.tiffpscale,
+            pscale=self.pscale,
             readingfromfile=False,
           )
         )
@@ -352,17 +352,17 @@ class PrepdbSample(SampleBase):
     constants = [
       Constant(
         name='fwidth',
-        value=self.tiffwidth,
+        value=self.fwidth,
         unit='pixels',
         description='field width',
-        pscale=self.tiffpscale,
+        pscale=self.pscale,
       ),
       Constant(
         name='fheight',
-        value=self.tiffheight,
+        value=self.fheight,
         unit='pixels',
         description='field height',
-        pscale=self.tiffpscale,
+        pscale=self.pscale,
       ),
       Constant(
         name='xposition',
@@ -386,16 +386,16 @@ class PrepdbSample(SampleBase):
       ),
       Constant(
         name='pscale',
-        value=self.tiffpscale,
+        value=self.pscale,
         unit='pixels/micron',
         description='scale of the HPF images',
       ),
       Constant(
         name='nclip',
-        value=units.Distance(pixels=self.nclip, pscale=self.tiffpscale),
+        value=units.Distance(pixels=self.nclip, pscale=self.pscale),
         unit='pixels',
         description='pixels to clip off the edge after warping',
-        pscale=self.tiffpscale,
+        pscale=self.pscale,
       ),
       Constant(
         name='layer',

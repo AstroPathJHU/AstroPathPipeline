@@ -3,7 +3,6 @@
 import cv2, methodtools, numpy as np, traceback
 
 from ..baseclasses.sample import FlatwSampleBase
-from ..prepdb.csvclasses import Constant
 from ..prepdb.overlap import RectangleOverlapCollection
 from ..prepdb.rectangle import Rectangle, rectangleoroverlapfilter
 from ..utilities import units
@@ -51,40 +50,6 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
     """
     Read metadata from csv files
     """
-    def intorfloat(string):
-      assert isinstance(string, str)
-      try: return int(string)
-      except ValueError: return float(string)
-
-    width = height = None
-    try:
-      pscale = self.tiffpscale
-      width = self.tiffwidth
-      height = self.tiffheight
-    except OSError:
-      self.logger.warningglobal("couldn't find a component tiff: trusting image size and pscale from constants.csv")
-      tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1})
-      pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
-    self.constants     = self.readcsv("constants", Constant, extrakwargs={"pscale": pscale})
-    self.constantsdict = {constant.name: constant.value for constant in self.constants}
-
-    self.fwidth    = self.constantsdict["fwidth"]
-    self.fheight   = self.constantsdict["fheight"]
-    self.pscale    = float(self.constantsdict["pscale"])
-
-    if width is not None:
-      if (width, height) != (self.fwidth, self.fheight):
-        self.logger.warningglobal(f"component tiff has size {width} {height} which is different from {self.fwidth} {self.fheight} (in constants.csv)")
-        self.fwidth, self.fheight = width, height
-      if self.pscale != pscale:
-        if np.isclose(self.pscale, pscale, rtol=1e-6):
-          warnfunction = self.logger.warning
-        else:
-          warnfunction = self.logger.warningglobal
-        warnfunction(f"component tiff has pscale {pscale} which is different from {self.pscale} (in constants.csv)")
-        self.pscale = pscale
-
-    self.qpscale  = self.constantsdict["qpscale"]
     self.position = np.array([self.constantsdict["xposition"], self.constantsdict["yposition"]])
     self.nclip    = self.constantsdict["nclip"]
     self.layer    = 1

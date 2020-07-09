@@ -16,14 +16,14 @@ class LayerExtractorBase(FlatwSampleBase, collections.abc.Sized):
   def __getnlayers(self):
     filename = next(self.fwfiles)
     with memmapcontext(filename, dtype=np.uint16, mode="r") as memmap:
-      nlayers = len(memmap) / units.pixels(self.tiffwidth * self.tiffheight, pscale=self.tiffpscale, power=2)
+      nlayers = len(memmap) / units.pixels(self.fwidth * self.fheight, pscale=self.pscale, power=2)
     if not nlayers.is_integer():
       raise ValueError(f"file seems to have {nlayers} layers??")
     return int(nlayers)
 
   @property
   def shape(self):
-    return (self.__getnlayers(), units.pixels(self.tiffwidth, pscale=self.tiffpscale), units.pixels(self.tiffheight, pscale=self.tiffpscale))
+    return (self.__getnlayers(), units.pixels(self.fwidth, pscale=self.pscale), units.pixels(self.fheight, pscale=self.pscale))
 
   def extractlayers(self, *, layers={1}, alreadyexistsstrategy="error"):
     (self.root2/self.SlideID).mkdir(parents=True, exist_ok=True)
