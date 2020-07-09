@@ -1,6 +1,6 @@
 import dataclasses, numpy as np
-from ..prepdb.rectangle import Rectangle
-from ..prepdb.overlap import Overlap
+from ..baseclasses.rectangle import Rectangle
+from ..baseclasses.overlap import Overlap
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init
 from ..utilities.units.dataclasses import distancefield

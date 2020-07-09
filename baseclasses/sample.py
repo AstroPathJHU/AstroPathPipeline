@@ -4,6 +4,8 @@ from ..utilities.misc import dataclass_dc_init, tiffinfo
 from ..utilities.tableio import readtable, writetable
 from .csvclasses import Constant
 from .logging import getlogger
+from .rectangle import Rectangle, rectangleoroverlapfilter
+from .overlap import Overlap, RectangleOverlapCollection
 
 @dataclass_dc_init(frozen=True)
 class SampleDef:
@@ -191,3 +193,29 @@ class FlatwSampleBase(SampleBase):
 
   @property
   def root1(self): return self.root
+
+class ReadRectangles(FlatwSampleBase, RectangleOverlapCollection):
+  overlaptype = Overlap #can be overridden in subclasses
+
+  def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, **kwargs):
+    super().__init__(*args, **kwargs)
+    print(selectrectangles)
+
+    rectanglefilter = rectangleoroverlapfilter(selectrectangles)
+    _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
+    overlapfilter = lambda o: _overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
+
+    self.__rectangles  = self.readcsv("rect", Rectangle, extrakwargs={"pscale": self.pscale})
+    self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
+    self.__overlaps  = self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
+    self.__overlaps = [o for o in self.overlaps if overlapfilter(o)]
+    if onlyrectanglesinoverlaps:
+      self.__rectangles = [r for r in self.rectangles if self.selectoverlaprectangles(r)]
+    
+  @property
+  def overlaps(self): return self.__overlaps
+  @property
+  def rectangles(self): return self.__rectangles
+
+  @abc.abstractproperty
+  def layer(self): pass

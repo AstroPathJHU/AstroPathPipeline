@@ -1,7 +1,7 @@
 import abc, dateutil, jxmlease, methodtools, numpy as np, pathlib
 from ..baseclasses.csvclasses import Globals, Perimeter
+from ..baseclasses.rectangle import Rectangle
 from ..utilities import units
-from .rectangle import Rectangle
 
 class AnnotationXMLReader:
   def __init__(self, filename, *, pscale):

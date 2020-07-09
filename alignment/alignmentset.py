@@ -2,9 +2,7 @@
 
 import cv2, methodtools, numpy as np, traceback
 
-from ..baseclasses.sample import FlatwSampleBase
-from ..prepdb.overlap import RectangleOverlapCollection
-from ..prepdb.rectangle import Rectangle, rectangleoroverlapfilter
+from ..baseclasses.sample import ReadRectangles
 from ..utilities import units
 from ..utilities.misc import memmapcontext
 from ..utilities.tableio import readtable, writetable
@@ -13,11 +11,11 @@ from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
 from .stitch import ReadStitchResult, stitch
 
-class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
+class AlignmentSet(ReadRectangles):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, useGPU=False, forceGPU=False, imagefilenameadjustment=lambda x: x, **kwargs):
+  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, imagefilenameadjustment=lambda x: x, **kwargs):
     """
     Directory structure should be
     root1/
@@ -35,56 +33,19 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
     super().__init__(root1, root2, samp, **kwargs)
     self.interactive = interactive
 
-    self.rectanglefilter = rectangleoroverlapfilter(selectrectangles)
-    overlapfilter = rectangleoroverlapfilter(selectoverlaps)
-    self.overlapfilter = lambda o: overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
-
-    self.readmetadata(onlyrectanglesinoverlaps=onlyrectanglesinoverlaps)
-    self.rawimages=None
     self.__imagefilenameadjustment = imagefilenameadjustment
 
     self.gpufftdict = None
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
 
-  def readmetadata(self, *, onlyrectanglesinoverlaps=False):
-    """
-    Read metadata from csv files
-    """
-    self.layer    = 1
-
-    #self.annotations = self.readcsv("annotations", Annotation)
-    #self.batch       = self.readcsv("batch", Batch)
-    #self.regions     = self.readcsv("regions", Region)
-    #self.vertices    = self.readcsv("vertices", Vertex)
-    #self.imagetable  = self.readcsv("qptiff", QPTiffCsv, extrakwargs={"pscale": self.pscale})
-    self.__image     = None
-
-    self.__rectangles  = self.readcsv("rect", Rectangle, extrakwargs={"pscale": self.pscale})
-    self.__rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
-    self.__overlaps  = self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
-    self.__overlaps = [o for o in self.overlaps if self.overlapfilter(o)]
-    if onlyrectanglesinoverlaps:
-      oldfilter = self.rectanglefilter
-      self.rectanglefilter = lambda r: oldfilter(r) and self.selectoverlaprectangles(r)
-      self.__rectangles = [r for r in self.rectangles if self.rectanglefilter(r)]
-
   @property
   def logmodule(self): return "align"
-
-  @property
-  def overlaps(self): return self.__overlaps
-  @property
-  def rectangles(self): return self.__rectangles
 
   @methodtools.lru_cache()
   def image(self):
     return cv2.imread(str(self.dbload/(self.SlideID+"_qptiff.jpg")))
 
   def align(self,*,skip_corners=False,write_result=True,return_on_invalid_result=False,warpwarnings=False,**kwargs):
-    #if the raw images haven't already been loaded, load them with the default argument
-    #if self.rawimages is None :
-    #  self.getDAPI()
-
     self.logger.info("starting alignment")
 
     sum_mse = 0.; norm=0.
@@ -191,7 +152,7 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
       from reikna.fft import FFT
       #set up an FFT for images of each unique size in the set of overlaps
       self.gpufftdict = {}
-      for olap in self.__overlaps :
+      for olap in self.overlaps :
           cutimages_shapes = tuple(im.shape for im in olap.cutimages)
           assert cutimages_shapes[0] == cutimages_shapes[1]
           if cutimages_shapes[0] not in self.gpufftdict.keys() :
@@ -367,20 +328,5 @@ class AlignmentSet(FlatwSampleBase, RectangleOverlapCollection):
     self.logger.info("done reading stitch results")
     return result
 
-  def subset(self, *, selectrectangles=None, selectoverlaps=None):
-    rectanglefilter = rectangleoroverlapfilter(selectrectangles)
-    overlapfilter = rectangleoroverlapfilter(selectoverlaps)
-
-    result = AlignmentSet(
-      self.root1, self.root2, self.SlideID,
-      interactive=self.interactive,
-      selectrectangles=lambda r: self.rectanglefilter(r) and rectanglefilter(r),
-      selectoverlaps=lambda o: self.overlapfilter(o) and overlapfilter(o),
-    )
-    for i, rectangle in enumerate(result.rectangles):
-      result.rectangles[i] = [r for r in self.rectangles if r.n == rectangle.n][0]
-    result.meanimage = self.meanimage
-    result.images = self.images
-    for i, overlap in enumerate(result.overlaps):
-      result.overlaps[i] = [o for o in self.overlaps if o.n == overlap.n][0]
-    return result
+  @property
+  def layer(self): return 1

@@ -1,7 +1,7 @@
 import itertools, numpy as np, os, pathlib, PIL.Image, unittest
 from ..baseclasses.sample import SampleDef
-from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
-from ..prepdb.rectangle import Rectangle
+from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
+from ..baseclasses.rectangle import Rectangle
 from ..prepdb.prepdbsample import Annotation, Batch, Constant, Overlap, QPTiffCsv, Region, PrepdbSample, Vertex
 from ..utilities import units
 from ..utilities.tableio import readtable

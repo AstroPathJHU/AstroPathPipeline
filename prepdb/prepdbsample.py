@@ -1,10 +1,10 @@
 import argparse, datetime, fractions, itertools, jxmlease, methodtools, numpy as np, os, PIL, re, skimage, tifffile
 from ..baseclasses.csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
+from ..baseclasses.overlap import Overlap
 from ..baseclasses.sample import SampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint
 from .annotationxmlreader import AnnotationXMLReader
-from .overlap import Overlap
 
 jxmleaseversion = jxmlease.__version__.split(".")
 jxmleaseversion = [int(_) for _ in jxmleaseversion[:2]] + list(jxmleaseversion[2:])

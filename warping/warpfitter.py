@@ -1,7 +1,7 @@
 #imports
 from .warpset import WarpSet
 from ..alignment.alignmentset import AlignmentSet
-from ..prepdb.rectangle import rectangleoroverlapfilter
+from ..baseclasses.rectangle import rectangleoroverlapfilter
 from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities import units
 from ..utilities.misc import cd
