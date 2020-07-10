@@ -1,6 +1,7 @@
 import abc, argparse, numpy as np, pathlib
 
 from ..baseclasses.sample import ReadRectangles
+from ..utilities import units
 from .dustspeck import DustSpeckFinder
 
 class BadRegionFinderSample(ReadRectangles):
@@ -49,7 +50,10 @@ if __name__ == "__main__":
   p.add_argument("root1")
   p.add_argument("root2")
   p.add_argument("samp")
+  p.add_argument("--units", choices=("fast", "safe"), default="fast")
   p.add_argument("--plotsdir", type=pathlib.Path)
   args = p.parse_args()
+
+  units.setup(args.units)
 
   result = args.cls(args.root1, args.root2, args.samp).run(plotsdir=args.plotsdir)

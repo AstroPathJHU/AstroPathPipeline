@@ -1,6 +1,7 @@
 import abc, argparse, pathlib
 
 from ..baseclasses.cohort import FlatwCohort
+from ..utilities import units
 from .sample import DustSpeckFinderSample
 
 class BadRegionFinderCohort(FlatwCohort):
@@ -30,7 +31,10 @@ if __name__ == "__main__":
   g.add_argument("--dust-speck", dest="cls", action="store_const", const=DustSpeckFinderCohort)
   p.add_argument("root1")
   p.add_argument("root2")
+  p.add_argument("--units", choices=("fast", "safe"), default="fast")
   p.add_argument("--plotsdir", type=pathlib.Path)
   args = p.parse_args()
+
+  units.setup(args.units)
 
   args.cls(args.root1, args.root2).run(plotsdir=args.plotsdir)

@@ -3,6 +3,7 @@ from ..alignment.alignmentset import AlignmentSet
 from ..badregions.cohort import DustSpeckFinderCohort
 from ..badregions.dustspeck import DustSpeckFinder
 from ..badregions.tissuefold import TissueFoldFinderSimple, TissueFoldFinderByCell
+from ..utilities import units
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -92,8 +93,9 @@ class TestBadRegions(TestBaseSaveOutput):
     f.__name__ = f"testDustSpeckFinderNoSpeck_{i}"
     nodust.append(f)
 
-  def testDustSpeckFinderWithSpeck(self):
-    self.generaltest(DustSpeckFinder, 1, 0)
+  def testDustSpeckFinderWithSpeckFastUnits(self):
+    with units.setup_context("fast"):
+      self.generaltest(DustSpeckFinder, 1, 0)
 
   def testCohort(self):
     cohort = DustSpeckFinderCohort(thisfolder/"data", thisfolder/"data"/"flatw", debug=True)
