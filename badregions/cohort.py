@@ -4,7 +4,7 @@ from ..baseclasses.cohort import FlatwCohort
 from .sample import DustSpeckFinderSample
 
 class BadRegionFinderCohort(FlatwCohort):
-  def __init__(self, *args, uselogfiles=False, **kwargs):
+  def __init__(self, *args, uselogfiles=True, **kwargs):
     return super().__init__(*args, uselogfiles=uselogfiles, **kwargs)
 
   def runsample(self, sample, *, plotsdir=None, **kwargs):

@@ -5,7 +5,7 @@ from ..baseclasses.rectangle import Rectangle
 from ..prepdb.prepdbsample import Annotation, Batch, Constant, Overlap, QPTiffCsv, Region, PrepdbSample, Vertex
 from ..utilities import units
 from ..utilities.tableio import readtable
-from .testalignment import assertAlmostEqual
+from .testbase import assertAlmostEqual
 
 thisfolder = pathlib.Path(__file__).parent
 

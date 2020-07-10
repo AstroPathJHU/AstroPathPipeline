@@ -1,12 +1,21 @@
-import numpy as np, pathlib, unittest
+import numpy as np, os, pathlib
 from ..alignment.alignmentset import AlignmentSet
+from ..badregions.cohort import DustSpeckFinderCohort
 from ..badregions.dustspeck import DustSpeckFinder
 from ..badregions.tissuefold import TissueFoldFinderSimple, TissueFoldFinderByCell
+from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
-class TestBadRegions(unittest.TestCase):
+class TestBadRegions(TestBaseSaveOutput):
   savedir = thisfolder/"badregions_test_for_jenkins"
+
+  @property
+  def outputfilenames(self):
+    return [
+      thisfolder/"data"/"logfiles"/"dustspeckfinder.log",
+      thisfolder/"data"/"M21_1"/"logfiles"/"M21_1-dustspeckfinder.log",
+    ]
 
   @classmethod
   def setUpClass(cls):
@@ -28,6 +37,8 @@ class TestBadRegions(unittest.TestCase):
     cls.seenclasses = set()
     cls.savedir.mkdir(exist_ok=True)
 
+    super().setUpClass()
+
   @classmethod
   def tearDownClass(cls):
     unknownkeys = set(cls.reference.keys()) - cls.seenclasses
@@ -38,6 +49,8 @@ class TestBadRegions(unittest.TestCase):
       np.savez_compressed(cls.savedir/"badregions.npz", **cls.reference)
     if unknownkeys:
       raise ValueError(f"Unknown arrays in badregionsreference.npz: {', '.join(unknownkeys)}")
+
+    super().tearDownClass()
 
   def generaltest(self, BRFclass, imagesetindex, imageindex, *, expectallgood=False, **kwargs):
     brf = BRFclass(self.imagesets[imagesetindex][imageindex])
@@ -81,6 +94,21 @@ class TestBadRegions(unittest.TestCase):
 
   def testDustSpeckFinderWithSpeck(self):
     self.generaltest(DustSpeckFinder, 1, 0)
+
+  def testCohort(self):
+    cohort = DustSpeckFinderCohort(thisfolder/"data", thisfolder/"data"/"flatw", debug=True)
+    cohort.run()
+
+    for log in (
+      thisfolder/"data"/"logfiles"/"dustspeckfinder.log",
+      thisfolder/"data"/"M21_1"/"logfiles"/"M21_1-dustspeckfinder.log",
+    ):
+      ref = thisfolder/"reference"/"badregions"/log.name
+      with open(ref) as fref, open(log) as fnew:
+        refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
+        newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
+        self.assertEqual(newcontents, refcontents)
+
 
 for f in TestBadRegions.nodust:
   setattr(TestBadRegions, f.__name__, f)

@@ -1,4 +1,4 @@
-import contextlib, dataclasses, itertools, logging, numbers, numpy as np, os, pathlib, shutil, tempfile, unittest
+import itertools, logging, numpy as np, os, pathlib
 from ..alignment.alignmentcohort import AlignmentCohort
 from ..alignment.alignmentset import AlignmentSet, ImageStats
 from ..alignment.overlap import AlignmentResult
@@ -7,61 +7,13 @@ from ..alignment.stitch import AffineEntry
 from ..baseclasses.sample import SampleDef
 from ..utilities.tableio import readtable
 from ..utilities import units
+from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
-def assertAlmostEqual(a, b, **kwargs):
-  if isinstance(a, units.safe.Distance):
-    return units.np.testing.assert_allclose(a, b, **kwargs)
-  elif isinstance(a, numbers.Number):
-    if isinstance(b, units.safe.Distance): b = float(b)
-    return np.testing.assert_allclose(a, b, **kwargs)
-  elif dataclasses.is_dataclass(type(a)) and type(a) == type(b):
-    try:
-      for field in dataclasses.fields(type(a)):
-        assertAlmostEqual(getattr(a, field.name), getattr(b, field.name), **kwargs)
-    except AssertionError:
-      np.testing.assert_equal(a, b)
-  else:
-    return np.testing.assert_equal(a, b)
-
-def expectedFailureIf(condition):
-  if condition:
-    return unittest.expectedFailure
-  else:
-    return lambda function: function
-
-@contextlib.contextmanager
-def temporarilyremove(filepath):
-  with tempfile.TemporaryDirectory() as d:
-    d = pathlib.Path(d)
-    tmppath = d/filepath.name
-    shutil.move(filepath, tmppath)
-    try:
-      yield
-    finally:
-      shutil.move(tmppath, filepath)
-
-@contextlib.contextmanager
-def temporarilyreplace(filepath, temporarycontents):
-  with tempfile.TemporaryDirectory() as d:
-    d = pathlib.Path(d)
-    tmppath = d/filepath.name
-    shutil.move(filepath, tmppath)
-    with open(filepath, "w") as f:
-      f.write(temporarycontents)
-    try:
-      yield
-    finally:
-      shutil.move(tmppath, filepath)
-
-class TestAlignment(unittest.TestCase):
-  @classmethod
-  def setUpClass(cls):
-    cls.__aligned = None
-
+class TestAlignment(TestBaseSaveOutput):
   @property
-  def alignedfilenames(self):
+  def outputfilenames(self):
     return [
       thisfolder/"data"/"M21_1"/"dbload"/filename.name
       for filename in (thisfolder/"reference"/"alignment").glob("M21_1_*")
@@ -69,29 +21,6 @@ class TestAlignment(unittest.TestCase):
       thisfolder/"data"/"logfiles"/"align.log",
       thisfolder/"data"/"M21_1"/"logfiles"/"M21_1-align.log",
     ]
-
-  def __savealigned(self):
-    if self.__aligned is not None: return
-    type(self).__aligned = contextlib.ExitStack()
-    self.__aligned.__enter__()
-    for filename in self.alignedfilenames:
-      self.__aligned.enter_context(temporarilyremove(filename))
-
-  def setUp(self):
-    self.maxDiff = None
-    for filename in self.alignedfilenames:
-      try:
-        filename.unlink()
-      except FileNotFoundError:
-        pass
-
-  def tearDown(self):
-    pass
-
-  @classmethod
-  def tearDownClass(cls):
-    if cls.__aligned is not None:
-      cls.__aligned.__exit__(None, None, None)
 
   def testAlignment(self):
     samp = SampleDef(SlideID="M21_1", SampleID=0, Project=0, Cohort=0)
@@ -104,7 +33,7 @@ class TestAlignment(unittest.TestCase):
     try:
       self.compareoutput(a)
     finally:
-      self.__savealigned()
+      self.saveoutput()
 
   def compareoutput(self, alignmentset):
     a = alignmentset
