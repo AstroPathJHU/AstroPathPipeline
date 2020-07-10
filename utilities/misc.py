@@ -142,3 +142,4 @@ def tiffinfo(*, filename=None, page=None):
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
+dummylogger.warningglobal = dummylogger.warning
