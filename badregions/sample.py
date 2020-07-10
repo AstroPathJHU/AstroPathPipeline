@@ -22,13 +22,17 @@ class BadRegionFinderSample(ReadRectangles):
         if name in kwargs:
           showkwargs[name] = kwargs.pop("name")
 
+    nbad = 0
     for i, (r, rawimage) in enumerate(zip(self.rectangles, rawimages)):
+      self.logger.info(f"looking for bad regions in HPF {i+1}/{len(self.rectangles)}")
       f = self.makebadregionfinder(rawimage)
       result[i] = f.badregions(**kwargs)
       if plotsdir is not None and np.any(result[i]):
         f.show(saveas=plotsdir/f"{r.n}.pdf", alpha=0.6, **kwargs, **showkwargs)
         f.show(saveas=plotsdir/f"{r.n}_image.pdf", alpha=0, **kwargs, **showkwargs)
 
+    logfunction = self.logger.warningglobal if nbad > 0 else self.logger.info
+    logfunction(f"{nbad} HPFs had bad regions")
     return result
 
 class DustSpeckFinderSample(BadRegionFinderSample):
@@ -49,4 +53,3 @@ if __name__ == "__main__":
   args = p.parse_args()
 
   result = args.cls(args.root1, args.root2, args.samp).run(plotsdir=args.plotsdir)
-  print(f"{np.count_nonzero(np.any(result, axis=(1, 2)))} HPFs had bad regions")
