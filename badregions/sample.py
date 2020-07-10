@@ -5,7 +5,7 @@ from .dustspeck import DustSpeckFinder
 
 class BadRegionFinderSample(ReadRectangles):
   @abc.abstractmethod
-  def makebadregionfinder(self, image): pass
+  def makebadregionfinder(self, *args, **kwargs): pass
 
   @property
   def layer(self): return 1
@@ -32,8 +32,8 @@ class BadRegionFinderSample(ReadRectangles):
     return result
 
 class DustSpeckFinderSample(BadRegionFinderSample):
-  def makebadregionfinder(self, image):
-    return DustSpeckFinder(image)
+  def makebadregionfinder(self, *args, **kwargs):
+    return DustSpeckFinder(*args, **kwargs)
 
   @property
   def logmodule(self): return "dustspeckfinder"
