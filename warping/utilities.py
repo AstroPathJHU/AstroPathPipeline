@@ -148,7 +148,7 @@ def extractRawFileLayers(rawfile_top_dir,sample_name,workingdir,flatfield_file,n
 def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,flatfield_file,n_procs,layer) :
     #start by getting the threshold of this sample layer from the the inputted file
     with open(threshold_file_path) as tfp :
-        vals = [int(l.rstrip()) for l in tfp.readlines() if l!='']
+        vals = [int(l.rstrip()) for l in tfp.readlines() if l.rstrip()!='']
     threshold_value = vals[layer-1]
     #extract the raw file layers to the working directory to run a test alignment
     extractRawFileLayers(rawfile_top_dir,samp,working_dir,flatfield_file,n_procs,layer)
