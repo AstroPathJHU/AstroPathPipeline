@@ -28,9 +28,11 @@ class BadRegionFinderSample(ReadRectangles):
       self.logger.info(f"looking for bad regions in HPF {i+1}/{len(self.rectangles)}")
       f = self.makebadregionfinder(rawimage)
       result[i] = f.badregions(**kwargs)
-      if plotsdir is not None and np.any(result[i]):
-        f.show(saveas=plotsdir/f"{r.n}.pdf", alpha=0.6, **kwargs, **showkwargs)
-        f.show(saveas=plotsdir/f"{r.n}_image.pdf", alpha=0, **kwargs, **showkwargs)
+      if np.any(result[i]):
+        nbad += 1
+        if plotsdir is not None:
+          f.show(saveas=plotsdir/f"{r.n}.pdf", alpha=0.6, **kwargs, **showkwargs)
+          f.show(saveas=plotsdir/f"{r.n}_image.pdf", alpha=0, **kwargs, **showkwargs)
 
     logfunction = self.logger.warningglobal if nbad > 0 else self.logger.info
     logfunction(f"{nbad} HPFs had bad regions")
