@@ -1,6 +1,7 @@
 #imports
 from .warp import CameraWarp
 from .utilities import warp_logger, WarpingError, loadRawImageWorker, WarpImage
+from .config import CONST
 from ..utilities.misc import cd
 import numpy as np, multiprocessing as mp
 import cv2, contextlib
@@ -39,7 +40,7 @@ class WarpSet :
         self.layer=layer
         self.images = []
 
-    def loadRawImageSet(self,rawfiles=None,overlaps=None,rectangles=None,flatfield_layer=None,n_threads=1,smoothsigma=1.0) :
+    def loadRawImageSet(self,rawfiles=None,overlaps=None,rectangles=None,flatfield_layer=None,n_threads=1,smoothsigma=CONST.smoothsigma) :
         """
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
         rawfiles        = list of raw, unwarped image filenames (optional, will use value from init if None)

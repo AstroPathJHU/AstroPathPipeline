@@ -71,11 +71,39 @@ def readOctetsFromFile(octet_run_dir,dbload_top_dir,sample_name,layer) :
             octets[int(linesplit[0])] = this_olap_list
     return octets
 
+#Helper function to load a single raw file, correct its illumination with a flatfield layer, smooth it, 
+#and return information needed to create a new WarpImage
+#meant to be run in parallel
+def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield_layer,overlaps=None,rectangles=None,smoothsigma=None,return_dict=None,return_dict_key=None) :
+    rawimage = (((getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1])/flatfield_layer).astype(np.uint16)
+    rfkey = os.path.basename(os.path.normpath(rfp)).split('.')[0]
+    #find out if this image should be masked when skipping the corner overlaps
+    if overlaps is not None and rectangles is not None :
+        is_corner_only=True
+        this_rect_number = [r.n for r in rectangles if r.file.split('.')[0]==rfkey]
+        assert len(this_rect_number)==1; this_rect_number=this_rect_number[0]
+        for tag in [o.tag for o in overlaps if o.p1==this_rect_number or o.p2==this_rect_number] :
+            if tag not in CONST.CORNER_OVERLAP_TAGS :
+                is_corner_only=False
+                break
+    else :
+        is_corner_only=False #default is to consider every image
+    #if requested, smooth the image and add it to the list, otherwise just add it to the list
+    image_to_add = rawimage
+    if smoothsigma is not None :
+        image_to_add = cv2.GaussianBlur(image_to_add,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
+    return_item = {'rfkey':rfkey,'image':image_to_add,'is_corner_only':is_corner_only}
+    if return_dict is not None and return_dict_key is not None:
+        return_dict[return_dict_key]=return_item
+    else :
+        return return_item
+
 # Helper function to extract a layer of a single raw file to a .fw## file
 #meant to be run in parallel
 def extractRawFileLayerWorker(fp,flatfield_layer,img_height,img_width,img_nlayers,layer=1,dtype=np.uint16) :
-    new_fn = os.path.basename(os.path.normpath(fp)).replace(CONST.RAW_EXT,f'{CONST.FW_EXT}{layer:02d}')
-    writeImageToFile((getRawAsHWL(fp,img_height,img_width,img_nlayers,dtype))[:,:,layer-1]/flatfield_layer,new_fn)
+    rawImageDict = loadRawImageWorker(fp,img_height,img_width,img_nlayers,layer,flatfield_layer,smoothsigma=CONST.smoothsigma)
+    new_fn = f'{rawImageDict["rfkey"]}{CONST.FW_EXT}{layer:02d}'
+    writeImageToFile(rawImageDict['image'],new_fn)
 
 # Helper function to extract a single layer of a sample's raw files into the workingdir/sample_name directory
 def extractRawFileLayers(rawfile_top_dir,sample_name,workingdir,flatfield_file,n_procs,layer=1) :
@@ -107,7 +135,11 @@ def extractRawFileLayers(rawfile_top_dir,sample_name,workingdir,flatfield_file,n
     warp_logger.info('Done!')
 
 # Helper function to get the dictionary of octets
-def findSampleOctets(rawfile_top_dir,dbload_top_dir,samp,working_dir,flatfield_file,n_procs,layer) :
+def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,flatfield_file,n_procs,layer) :
+    #start by getting the threshold of this sample layer from the the inputted file
+    with open(threshold_file_path) as tfp :
+        vals = [int(l.rstrip()) for l in tfp.readlines() if l!='']
+    threshold_value = vals[layer-1]
     #extract the raw file layers to the working directory to run a test alignment
     extractRawFileLayers(rawfile_top_dir,samp,working_dir,flatfield_file,n_procs,layer)
     #create the alignment set and run its alignment
@@ -118,14 +150,14 @@ def findSampleOctets(rawfile_top_dir,dbload_top_dir,samp,working_dir,flatfield_f
     a.align(write_result=False)
     #get the list of overlaps
     overlaps = a.overlaps
-    #filter out any that could not be aligned
+    #filter out any that could not be aligned or that don't show enough bright pixels
     good_overlaps = []; rejected_overlaps = []
     for overlap in overlaps :
-        if overlap.result.exit==0 :
-            good_overlaps.append(overlap)
-        else :
+        if overlap.result.exit!=0 :
             warp_logger.info(f'overlap number {overlap.n} rejected: alignment status {overlap.result.exit}.')
             rejected_overlaps.append(overlap)
+        else :
+            good_overlaps.append(overlap)
     warp_logger.info(f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)}')
     #find the overlaps that form full octets (indexed by p1 number)
     octets = {}
@@ -154,30 +186,3 @@ def findSampleOctets(rawfile_top_dir,dbload_top_dir,samp,working_dir,flatfield_f
         shutil.rmtree(samp)
     #return the dictionary of octets
     return octets
-
-#Helper function to load a single raw file, correct its illumination with a flatfield layer, smooth it, 
-#and return information needed to create a new WarpImage
-#meant to be run in parallel
-def loadRawImageWorker(rf,m,n,nlayers,layer,flatfield_layer,overlaps,rectangles,smoothsigma,return_dict=None,return_dict_key=None) :
-    rawimage = (((getRawAsHWL(rf,m,n,nlayers))[:,:,layer-1])/flatfield_layer).astype(np.uint16)
-    rfkey = (rf.split(os.sep)[-1]).split('.')[0]
-    #find out if this image should be masked when skipping the corner overlaps
-    if overlaps is not None and rectangles is not None :
-        is_corner_only=True
-        this_rect_number = [r.n for r in rectangles if r.file.split('.')[0]==rfkey]
-        assert len(this_rect_number)==1; this_rect_number=this_rect_number[0]
-        for tag in [o.tag for o in overlaps if o.p1==this_rect_number or o.p2==this_rect_number] :
-            if tag not in CONST.CORNER_OVERLAP_TAGS :
-                is_corner_only=False
-                break
-    else :
-        is_corner_only=False #default is to consider every image
-    #if requested, smooth the image and add it to the list, otherwise just add it to the list
-    image_to_add = rawimage
-    if smoothsigma is not None :
-        image_to_add = cv2.GaussianBlur(image_to_add,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
-    return_item = {'rfkey':rfkey,'image':image_to_add,'is_corner_only':is_corner_only}
-    if return_dict is not None and return_dict_key is not None:
-        return_dict[return_dict_key]=return_item
-    else :
-        return return_item

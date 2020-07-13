@@ -14,6 +14,10 @@ class Const :
     @property
     def CORNER_OVERLAP_TAGS(self):
         return [1,3,7,9] #list of tags representing overlaps that are corners 
+    #how to handle images
+    @property
+    def smoothsigma(self):
+        return 1.0 #default sigma for smoothing images loaded for warping
     #files that get created
     @property 
     def OCTET_OVERLAP_CSV_FILE_NAMESTEM(self) :
