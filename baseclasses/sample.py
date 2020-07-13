@@ -225,7 +225,7 @@ class ReadRectangles(FlatwSampleBase, RectangleOverlapCollection):
     rawimages = np.ndarray(shape=(len(self.rectangles), units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)), dtype=np.uint16)
 
     if not self.rectangles:
-      raise IOError("didn't find any rows in the rectangles table for "+self.SlideID, 1)
+      raise IOError(1, "didn't find any rows in the rectangles table for "+self.SlideID)
 
     for i, rectangle in enumerate(self.rectangles):
       filename = path/rectangle.file.replace(".im3", ext)
