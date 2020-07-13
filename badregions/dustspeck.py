@@ -5,7 +5,7 @@ class DustSpeckFinder(BadRegionFinder):
   def badregions(self, *, sigma=101, threshold=500, dilatesize=0, statserodesize=0):
     badregions = cv2.UMat((self.image > threshold).astype(np.uint8))
 
-    ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     badregions = cv2.morphologyEx(badregions, cv2.MORPH_CLOSE, ellipse, borderType=cv2.BORDER_REPLICATE)
     badregions = cv2.morphologyEx(badregions, cv2.MORPH_OPEN,  ellipse, borderType=cv2.BORDER_REPLICATE)
 
