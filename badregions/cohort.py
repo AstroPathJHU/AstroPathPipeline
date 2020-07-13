@@ -1,4 +1,4 @@
-import abc, argparse, pathlib
+import abc, argparse, pathlib, re
 
 from ..baseclasses.cohort import FlatwCohort
 from ..utilities import units
@@ -33,8 +33,15 @@ if __name__ == "__main__":
   p.add_argument("root2")
   p.add_argument("--units", choices=("fast", "safe"), default="fast")
   p.add_argument("--plotsdir", type=pathlib.Path)
+  g = p.add_mutually_exclusive_group()
+  g.add_argument("--sampleregex", type=re.compile)
+  p.add_argument("--debug", action="store_true")
   args = p.parse_args()
 
   units.setup(args.units)
 
-  args.cls(args.root1, args.root2).run(plotsdir=args.plotsdir)
+  kwargs = {"root": args.root1, "root2": args.root2, "debug": args.debug}
+  if args.sampleregex is not None:
+    kwargs["filter"] = lambda sample: args.sampleregex.match(sample.SlideID)
+
+  args.cls(**kwargs).run(plotsdir=args.plotsdir)
