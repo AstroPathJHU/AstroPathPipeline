@@ -45,6 +45,16 @@ def checkDirAndFixedArgs(args) :
     #the octet run workingdir must exist if it's to be used
     if args.octet_run_dir is not None and not os.path.isdir(args.octet_run_dir) :
         raise ValueError(f'ERROR: octet_run_dir ({args.octet_run_dir}) does not exist!')
+    #the threshold file must exist if it's to be used
+    if args.threshold_file_dir is not None :
+        if not os.path.isdir(args.threshold_file_dir) :
+            raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
+        tfp = os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
+        if not os.path.isfile(tfp) :
+            raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this sample ({tfp})!')
+    #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate
+    if args.threshold_file_dir is not None and args.octet_run_dir is not None :
+        raise ValueError(f'ERROR: cannot specify both an octet_run_dir and a threshold_file_dir!')
     #create the working directory if it doesn't already exist
     if not os.path.isdir(args.workingdir_name) :
         os.mkdir(args.workingdir_name)
@@ -156,8 +166,19 @@ def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixe
         if overlap.result.exit!=0 :
             warp_logger.info(f'overlap number {overlap.n} rejected: alignment status {overlap.result.exit}.')
             rejected_overlaps.append(overlap)
-        else :
-            good_overlaps.append(overlap)
+            continue
+        ip1,ip2 = overlap.cutimages
+        p1frac = (np.sum(np.where(ip1>threshold_value,1,0)))/(ip1.shape[0]*ip1.shape[1])
+        p2frac = (np.sum(np.where(ip2>threshold_value,1,0)))/(ip2.shape[0]*ip2.shape[1])
+        if p1frac<req_pixel_frac :
+            warp_logger.info(f'overlap number {overlap.n} rejected: p1 image ({overlap.p1}) only has {100.*p1frac:.2f}% above threshold at flux = {threshold_value}.')
+            rejected_overlaps.append(overlap)
+            continue
+        if p2frac<req_pixel_frac :
+            warp_logger.info(f'overlap number {overlap.n} rejected: p2 image ({overlap.p2}) only has {100.*p2frac:.2f}% above threshold at flux = {threshold_value}.')
+            rejected_overlaps.append(overlap)
+            continue
+        good_overlaps.append(overlap)
     warp_logger.info(f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)}')
     #find the overlaps that form full octets (indexed by p1 number)
     octets = {}

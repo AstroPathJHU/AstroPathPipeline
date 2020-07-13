@@ -1,3 +1,5 @@
+from ..flatfield.config import CONST as FLATFIELD_CONST
+
 #class for shared constant variables
 class Const :
     #file extensions
@@ -10,6 +12,9 @@ class Const :
     @property
     def FW_EXT(self) :
         return '.fw' #extension stem for the flatfielded/warped files
+    @property
+    def THRESHOLD_FILE_EXT(self) :
+        return f'_{FLATFIELD_CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
     #other image properties
     @property
     def CORNER_OVERLAP_TAGS(self):
