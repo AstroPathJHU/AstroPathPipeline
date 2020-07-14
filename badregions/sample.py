@@ -26,7 +26,7 @@ class BadRegionFinderSample(ReadRectangles):
     nbad = 0
     for i, (r, rawimage) in enumerate(zip(self.rectangles, rawimages)):
       self.logger.info(f"looking for bad regions in HPF {i+1}/{len(self.rectangles)}")
-      f = self.makebadregionfinder(rawimage)
+      f = self.makebadregionfinder(rawimage, logger=self.logger)
       result[i] = f.badregions(**kwargs)
       if np.any(result[i]):
         nbad += 1

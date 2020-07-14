@@ -1,17 +1,16 @@
-import abc, cv2, logging, matplotlib.pyplot as plt, methodtools, numpy as np, skimage
+import abc, cv2, matplotlib.pyplot as plt, methodtools, numpy as np, skimage
 
-logger = logging.getLogger("badregions")
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(message)s, %(funcName)s, %(asctime)s"))
-logger.addHandler(handler)
+from ..utilities.misc import dummylogger
 
 class BadRegionFinder(abc.ABC):
-  def __init__(self, image):
+  def __init__(self, image, *, logger=dummylogger):
     self.__image = image
+    self.__logger = logger
 
   @property
   def image(self): return self.__image
+  @property
+  def logger(self): return self.__logger
 
   @abc.abstractmethod
   def badregions(self): pass

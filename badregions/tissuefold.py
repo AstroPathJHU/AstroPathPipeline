@@ -1,5 +1,5 @@
 import cv2, methodtools, numpy as np
-from .badregions import BadRegionFinderRegionMean, BadRegionFinderWatershedSegmentation, logger
+from .badregions import BadRegionFinderRegionMean, BadRegionFinderWatershedSegmentation
 
 class TissueFoldFinderSimple(BadRegionFinderRegionMean):
   """
@@ -74,7 +74,7 @@ class TissueFoldFinderByCell(BadRegionFinderWatershedSegmentation):
 
     for i in np.unique(segmented):
       if i < 2: continue
-      logger.info("processing cell #%d", i)
+      self.logger.info("processing cell #%d", i)
 
       #find the boundary of this region
       thisregion = self.cell(i, **kwargs)
@@ -92,7 +92,7 @@ class TissueFoldFinderByCell(BadRegionFinderWatershedSegmentation):
 
     result = np.zeros_like(self.image, dtype=bool)
     for k, v in cellquantification.items():
-      logger.info("processing cell #%d", k)
+      self.logger.info("processing cell #%d", k)
       if v < threshold:
         result |= self.cell(k, **kwargs)
 
