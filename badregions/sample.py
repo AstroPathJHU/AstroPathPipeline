@@ -21,7 +21,7 @@ class BadRegionFinderSample(ReadRectangles):
       showkwargs = {}
       for name in "scale":
         if name in kwargs:
-          showkwargs[name] = kwargs.pop("name")
+          showkwargs[name] = kwargs.pop(name)
 
     nbad = 0
     for i, (r, rawimage) in enumerate(zip(self.rectangles, rawimages)):
