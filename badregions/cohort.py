@@ -35,6 +35,7 @@ if __name__ == "__main__":
   p.add_argument("--plotsdir", type=pathlib.Path)
   g = p.add_mutually_exclusive_group()
   g.add_argument("--sampleregex", type=re.compile)
+  g.add_argument("--skip-existing-plots", action="store_true")
   p.add_argument("--debug", action="store_true")
   args = p.parse_args()
 
@@ -43,5 +44,7 @@ if __name__ == "__main__":
   kwargs = {"root": args.root1, "root2": args.root2, "debug": args.debug}
   if args.sampleregex is not None:
     kwargs["filter"] = lambda sample: args.sampleregex.match(sample.SlideID)
+  elif args.skip_existing_plots:
+    kwargs["filter"] = lambda sample: not (args.plotsdir/sample.SlideID).exists()
 
   args.cls(**kwargs).run(plotsdir=args.plotsdir)
