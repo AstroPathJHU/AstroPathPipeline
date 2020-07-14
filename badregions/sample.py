@@ -11,17 +11,18 @@ class BadRegionFinderSample(ReadRectangles):
   @property
   def layer(self): return 1
 
-  def run(self, *, plotsdir=None, **kwargs):
+  def run(self, *, plotsdir=None, show=False, **kwargs):
     rawimages = self.getrawlayers("flatWarpDAPI")
     result = np.empty(shape=rawimages.shape, dtype=bool)
 
     if plotsdir is not None:
       plotsdir = pathlib.Path(plotsdir)
       plotsdir.mkdir(exist_ok=True)
-      showkwargs = {}
-      for name in "scale":
-        if name in kwargs:
-          showkwargs[name] = kwargs.pop(name)
+
+    showkwargs = {}
+    for name in "scale":
+      if name in kwargs:
+        showkwargs[name] = kwargs.pop(name)
 
     nbad = 0
     for i, (r, rawimage) in enumerate(zip(self.rectangles, rawimages)):
@@ -33,6 +34,8 @@ class BadRegionFinderSample(ReadRectangles):
         if plotsdir is not None:
           f.show(saveas=plotsdir/f"{r.n}.pdf", alpha=0.6, **kwargs, **showkwargs)
           f.show(saveas=plotsdir/f"{r.n}_image.pdf", alpha=0, **kwargs, **showkwargs)
+        if show:
+          f.show(alpha=0.6, **kwargs, **showkwargs)
 
     logfunction = self.logger.warningglobal if nbad > 0 else self.logger.info
     logfunction(f"{nbad} HPFs had bad regions")
