@@ -115,7 +115,7 @@ if __name__=='__main__' :
                                   help='Maximum number of threads/processes to run at once')
     run_option_group.add_argument('--layer',          default=1,  type=int,         
                                   help='Image layer to use (indexed from 1)')
-    run_option_group.add_argument('--req_pixel_frac', default=0.90, type=float,
+    run_option_group.add_argument('--req_pixel_frac', default=0.75, type=float,
                                   help="What fraction of an overlap image's pixels must be above the threshold to accept it in a valid octet")
     args = parser.parse_args()
     #apply some checks to the arguments to make sure they're valid
