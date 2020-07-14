@@ -228,6 +228,8 @@ def main() :
                                   help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
     run_option_group.add_argument('--other_runs_to_exclude',       default='',  type=split_csv_to_list,
                                   help='Comma-separated list of additional, previously-run, working directories whose filepaths should be excluded')
+    run_option_group.add_argument('--normalize',                   action='store_true',
+                                    help='Add this flag to divide image flux by (exposure time)/(max exposure time in the sample) layer-by-layer')
     args = parser.parse_args()
     #make sure the command line arguments make sense
     checkArgs(args)
@@ -238,7 +240,7 @@ def main() :
     #get the image file dimensions from the .xml file
     dims = getImageHWLFromXMLFile(filepaths_to_run[0][:filepaths_to_run[0].find(sampleNameFromFilepath(filepaths_to_run[0]))],sample_names_to_run[0])
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.dbload_top_dir,args.workingdir_name,args.skip_masking)
+    ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.dbload_top_dir,args.workingdir_name,args.skip_masking,args.normalize)
     #write out the text file of all the raw file paths that will be run
     ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
     if args.mode=='choose_image_files' :
