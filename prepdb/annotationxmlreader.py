@@ -24,10 +24,10 @@ class AnnotationXMLReader:
       ):
         annotation = AnnotationFactory(node, pscale=self.pscale)
         globalkwargs = annotation.globals
-        if globalkwargs is not None: globals.append(Globals(n=len(globals)+1, **globalkwargs))
+        if globalkwargs is not None: globals.append(Globals(**globalkwargs, pscale=self.pscale))
         perimeterkwargs = annotation.perimeters
         if perimeterkwargs is not None: perimeters += [
-          Perimeter(m=len(perimeters)+1, **kwargs)
+          Perimeter(**kwargs, pscale=self.pscale)
             for kwargs in perimeterkwargs
         ]
 
@@ -133,12 +133,12 @@ class ROIAnnotation(AnnotationBase):
   @property
   def globals(self):
     return {
-      "x": units.Distance(microns=self.xmlnode["Bounds"]["Origin"]["X"]),
-      "y": units.Distance(microns=self.xmlnode["Bounds"]["Origin"]["Y"]),
-      "Width": units.Distance(microns=self.xmlnode["Bounds"]["Size"]["Width"]),
-      "Height": units.Distance(microns=self.xmlnode["Bounds"]["Size"]["Height"]),
+      "x": units.Distance(microns=float(self.xmlnode["Bounds"]["Origin"]["X"]), pscale=self.pscale),
+      "y": units.Distance(microns=float(self.xmlnode["Bounds"]["Origin"]["Y"]), pscale=self.pscale),
+      "Width": units.Distance(microns=float(self.xmlnode["Bounds"]["Size"]["Width"]), pscale=self.pscale),
+      "Height": units.Distance(microns=float(self.xmlnode["Bounds"]["Size"]["Height"]), pscale=self.pscale),
       "Unit": "microns",
-      "Tc": self.xmlnode["History"]["History-i"]["TimeStamp"],
+      "Tc": dateutil.parser.parse(self.xmlnode["History"]["History-i"]["TimeStamp"]),
     }
   @property
   def perimeters(self):
@@ -148,8 +148,8 @@ class ROIAnnotation(AnnotationBase):
     for i, perimeter in enumerate(perimeters, start=1):
       result.append({
         "n": i,
-        "x": units.Distance(microns=perimeter["X"]),
-        "y": units.Distance(microns=perimeter["Y"]),
+        "x": units.Distance(microns=float(perimeter["X"]), pscale=self.pscale),
+        "y": units.Distance(microns=float(perimeter["Y"]), pscale=self.pscale),
       })
     return result
 

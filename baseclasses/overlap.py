@@ -95,14 +95,17 @@ class RectangleOverlapList(RectangleOverlapCollection):
   @property
   def overlaps(self): return self.__overlaps
 
-def rectangleoverlaplist_fromcsvs(dbloadfolder, *, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False):
+def rectangleoverlaplist_fromcsvs(dbloadfolder, *, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer_override=None):
   dbload = pathlib.Path(dbloadfolder)
   samp = dbload.parent.name
   tmp = readtable(dbload/(samp+"_constants.csv"), Constant, extrakwargs={"pscale": 1})
   pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
   constants     = readtable(dbload/(samp+"_constants.csv"), Constant, extrakwargs={"pscale": pscale})
   constantsdict = {constant.name: constant.value for constant in constants}
-  layer = constantsdict["layer"]
+  layer = constantsdict["layer"] if "layer" in constantsdict.keys() else layer_override
+  if layer is None :
+    raise RuntimeError(f"""ERROR: {samp}_constants.csv file in {dbload} does not have a layer variable, 
+                           and layer_override in rectangleoverlaplist_fromcsvs is {layer_override}!""")
   nclip = constantsdict["nclip"]
 
   rectanglefilter = rectangleoroverlapfilter(selectrectangles)

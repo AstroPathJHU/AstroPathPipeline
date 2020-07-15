@@ -174,8 +174,7 @@ class AlignmentSet(ReadRectangles):
         thisupdateimg=[(img.raw_image).get() for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
       assert len(thisupdateimg)<2
       if len(thisupdateimg)==1 :
-        np.copyto(r.image,(thisupdateimg[0]/self.meanimage.flatfield).astype(np.uint16),casting='no')
-        #np.copyto(r.image,thisupdateimg[0],casting='no') #applying meanimage?
+        np.copyto(r.image,thisupdateimg[0],casting='no')
 
   def getOverlapComparisonImagesDict(self) :
     """
@@ -272,6 +271,7 @@ class AlignmentSet(ReadRectangles):
         overlaps=self.overlaps,
         rectangles=self.rectangles,
         origin=self.position,
+        logger=self.logger,
       )
     except Exception:
       if interactive:

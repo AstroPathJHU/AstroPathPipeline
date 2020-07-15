@@ -1,19 +1,15 @@
 #imports
 from ..utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
-import numpy as np
+import numpy as np, matplotlib.pyplot as plt, seaborn as sns
 import os, math, cv2
-import matplotlib.pyplot as plt, seaborn as sns
-
-class WarpingError(Exception) :
-    """
-    Class for errors encountered during warping
-    """
-    pass
 
 class Warp :
     """
     Main superclass for applying warping to images
     """
+
+    #################### PUBLIC FUNCTIONS ####################
+
     def __init__(self,n,m) :
         """
         Initializes a general warp to apply to images of a certain size
@@ -23,8 +19,6 @@ class Warp :
         self.n = n
         self.m = m
         self._checkerboard = self.__makeCheckerboard()
-
-    #################### COMMON FUNCTIONS ####################
 
     def getHWLFromRaw(self,fname,nlayers=35) :
         """
@@ -74,6 +68,9 @@ class PolyFieldWarp(Warp) :
     """
     Subclass for applying warping to images based on a polynomial fit to datapoints of warp factors vs. (scaled) distance or distance^2
     """
+
+    #################### PUBLIC FUNCTIONS ####################
+
     def __init__(self,n=1344,m=1004,xc=584,yc=600,max_warp=1.85,pdegree=3,psq=False,interpolation=cv2.INTER_LINEAR,plot_fit=False,plot_warpfields=False) :
         """
         Initializes the warp_field based on a polynomial fit to scaled radial distance or scaled radial distance squared
@@ -94,8 +91,6 @@ class PolyFieldWarp(Warp) :
         self.interp=interpolation
         #plot warp fields if requested
         if plot_warpfields : self.plotWarpFields()
-
-    #################### COMMON FUNCTIONS ####################
 
     def warpAndWriteImage(self,infname,nlayers=35,layers=[1]) :
         """
@@ -251,6 +246,9 @@ class CameraWarp(Warp) :
     """
     Subclass for applying warping to images based on a camera matrix and distortion parameters
     """
+
+    #################### PUBLIC FUNCTIONS ####################
+
     def __init__(self,n=1344,m=1004,cx=None,cy=None,fx=40000.,fy=40000.,k1=0.,k2=0.,p1=0.,p2=0.,k3=0.,k4=None,k5=None,k6=None) :
         """
         Initialize a camera matrix and vector of distortion parameters for a camera warp transformation
@@ -281,8 +279,6 @@ class CameraWarp(Warp) :
         self.__cam_matrix = None 
         self.__dist_pars  = None
         self.__calculateWarpObjects()
-
-    #################### COMMON FUNCTIONS ####################
 
     def warpAndWriteImage(self,infname,nlayers=35,layers=[1]) :
         """
@@ -466,8 +462,8 @@ class CameraWarp(Warp) :
     #################### VISUALIZATION FUNCTIONS ####################
 
     def paramString(self) :
-        parnames=['cx','cy','fx','fy','k1','k2','k3','p1','p2','k4','k5','k6']
-        parvals=[self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.k3,self.p1,self.p2,self.k4,self.k5,self.k6]
+        parnames = ['cx',   'cy',   'fx',   'fy',   'k1',   'k2',   'k3',   'p1',   'p2',   'k4',   'k5',   'k6']
+        parvals  = [self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.k3,self.p1,self.p2,self.k4,self.k5,self.k6]
         s=''
         for n,v in zip(parnames,parvals) :
             if v is not None :
