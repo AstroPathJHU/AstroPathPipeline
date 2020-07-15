@@ -1,7 +1,7 @@
 import dataclasses, matplotlib.pyplot as plt, numpy as np, typing, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
-from ..prepdb.overlap import Overlap
+from ..baseclasses.overlap import Overlap
 from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield

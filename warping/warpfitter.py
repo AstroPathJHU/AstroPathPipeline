@@ -3,7 +3,7 @@ from .warpset import WarpSet
 from .utilities import warp_logger, WarpingError
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSet
-from ..prepdb.rectangle import rectangleoroverlapfilter
+from ..baseclasses.rectangle import rectangleoroverlapfilter
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL
 from ..utilities import units
 from ..utilities.misc import cd

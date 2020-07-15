@@ -1,7 +1,7 @@
 #imports
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds
 from .config import CONST
-from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
+from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
