@@ -34,6 +34,16 @@ def checkArgs(args) :
 
 # Helper function to determine the list of overlaps
 def getOverlaps(args) :
+    #the threshold file must exist if it's to be used
+    if args.threshold_file_dir is not None :
+        if not os.path.isdir(args.threshold_file_dir) :
+            raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
+        tfp = os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
+        if not os.path.isfile(tfp) :
+            raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this sample ({tfp})!')
+    #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate
+    if args.threshold_file_dir is not None and args.octet_run_dir is not None :
+        raise ValueError(f'ERROR: cannot specify both an octet_run_dir and a threshold_file_dir!')
     #set the overlaps variable based on which of the options was used to specify
     overlaps=[]
     #if the overlaps are being specified then they have to be either -1 (to use all), a tuple (to use a range), or a list
