@@ -1,4 +1,4 @@
-import contextlib, dataclasses, itertools, logging, numbers, numpy as np, os, pathlib, shutil, tempfile, unittest
+import itertools, logging, numpy as np, os, pathlib
 from ..alignment.alignmentcohort import AlignmentCohort
 from ..alignment.alignmentset import AlignmentSet, ImageStats
 from ..alignment.overlap import AlignmentResult
@@ -7,91 +7,20 @@ from ..alignment.stitch import AffineEntry
 from ..baseclasses.sample import SampleDef
 from ..utilities.tableio import readtable
 from ..utilities import units
+from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
-def assertAlmostEqual(a, b, **kwargs):
-  if isinstance(a, units.safe.Distance):
-    return units.np.testing.assert_allclose(a, b, **kwargs)
-  elif isinstance(a, numbers.Number):
-    if isinstance(b, units.safe.Distance): b = float(b)
-    return np.testing.assert_allclose(a, b, **kwargs)
-  elif dataclasses.is_dataclass(type(a)) and type(a) == type(b):
-    try:
-      for field in dataclasses.fields(type(a)):
-        assertAlmostEqual(getattr(a, field.name), getattr(b, field.name), **kwargs)
-    except AssertionError:
-      np.testing.assert_equal(a, b)
-  else:
-    return np.testing.assert_equal(a, b)
-
-def expectedFailureIf(condition):
-  if condition:
-    return unittest.expectedFailure
-  else:
-    return lambda function: function
-
-@contextlib.contextmanager
-def temporarilyremove(filepath):
-  with tempfile.TemporaryDirectory() as d:
-    d = pathlib.Path(d)
-    tmppath = d/filepath.name
-    shutil.move(filepath, tmppath)
-    try:
-      yield
-    finally:
-      shutil.move(tmppath, filepath)
-
-@contextlib.contextmanager
-def temporarilyreplace(filepath, temporarycontents):
-  with tempfile.TemporaryDirectory() as d:
-    d = pathlib.Path(d)
-    tmppath = d/filepath.name
-    shutil.move(filepath, tmppath)
-    with open(filepath, "w") as f:
-      f.write(temporarycontents)
-    try:
-      yield
-    finally:
-      shutil.move(tmppath, filepath)
-
-class TestAlignment(unittest.TestCase):
-  @classmethod
-  def setUpClass(cls):
-    cls.__aligned = None
-
+class TestAlignment(TestBaseSaveOutput):
   @property
-  def alignedfilenames(self):
+  def outputfilenames(self):
     return [
       thisfolder/"data"/"M21_1"/"dbload"/filename.name
-      for filename in (thisfolder/"alignmentreference").glob("M21_1_*")
+      for filename in (thisfolder/"reference"/"alignment").glob("M21_1_*")
     ] + [
       thisfolder/"data"/"logfiles"/"align.log",
       thisfolder/"data"/"M21_1"/"logfiles"/"M21_1-align.log",
     ]
-
-  def __savealigned(self):
-    if self.__aligned is not None: return
-    type(self).__aligned = contextlib.ExitStack()
-    self.__aligned.__enter__()
-    for filename in self.alignedfilenames:
-      self.__aligned.enter_context(temporarilyremove(filename))
-
-  def setUp(self):
-    self.maxDiff = None
-    for filename in self.alignedfilenames:
-      try:
-        filename.unlink()
-      except FileNotFoundError:
-        pass
-
-  def tearDown(self):
-    pass
-
-  @classmethod
-  def tearDownClass(cls):
-    if cls.__aligned is not None:
-      cls.__aligned.__exit__(None, None, None)
 
   def testAlignment(self):
     samp = SampleDef(SlideID="M21_1", SampleID=0, Project=0, Cohort=0)
@@ -104,7 +33,7 @@ class TestAlignment(unittest.TestCase):
     try:
       self.compareoutput(a)
     finally:
-      self.__savealigned()
+      self.saveoutput()
 
   def compareoutput(self, alignmentset):
     a = alignmentset
@@ -116,7 +45,7 @@ class TestAlignment(unittest.TestCase):
       ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "layer": a.layer, "nclip": a.nclip}),
     ):
       rows = readtable(thisfolder/"data"/"M21_1"/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-      targetrows = readtable(thisfolder/"alignmentreference"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+      targetrows = readtable(thisfolder/"reference"/"alignment"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
@@ -124,7 +53,7 @@ class TestAlignment(unittest.TestCase):
       thisfolder/"data"/"logfiles"/"align.log",
       thisfolder/"data"/"M21_1"/"logfiles"/"M21_1-align.log",
     ):
-      ref = thisfolder/"alignmentreference"/log.name
+      ref = thisfolder/"reference"/"alignment"/log.name
       with open(ref) as fref, open(log) as fnew:
         refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
         newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
@@ -139,7 +68,7 @@ class TestAlignment(unittest.TestCase):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
     agpu = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", useGPU=True, forceGPU=True)
 
-    readfilename = thisfolder/"alignmentreference"/"M21_1_align.csv"
+    readfilename = thisfolder/"reference"/"alignment"/"M21_1_align.csv"
     a.readalignments(filename=readfilename)
 
     agpu.getDAPI(writeimstat=False)
@@ -150,7 +79,7 @@ class TestAlignment(unittest.TestCase):
 
   def testReadAlignment(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    readfilename = thisfolder/"alignmentreference"/"M21_1_align.csv"
+    readfilename = thisfolder/"reference"/"alignment"/"M21_1_align.csv"
     writefilename = thisfolder/"testreadalignments.csv"
 
     a.readalignments(filename=readfilename)
@@ -166,12 +95,12 @@ class TestAlignment(unittest.TestCase):
 
   def testStitchReadingWriting(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    a.readalignments(filename=thisfolder/"alignmentreference"/"M21_1_align.csv")
-    stitchfilenames = [thisfolder/"alignmentreference"/_.name for _ in a.stitchfilenames]
+    a.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1_align.csv")
+    stitchfilenames = [thisfolder/"reference"/"alignment"/_.name for _ in a.stitchfilenames]
     result = a.readstitchresult(filenames=stitchfilenames)
 
     def newfilename(filename): return thisfolder/("test_"+filename.name)
-    def referencefilename(filename): return thisfolder/"alignmentreference"/filename.name
+    def referencefilename(filename): return thisfolder/"reference"/"alignment"/filename.name
 
     a.writestitchresult(result, filenames=[newfilename(f) for f in a.stitchfilenames])
 
@@ -191,12 +120,12 @@ class TestAlignment(unittest.TestCase):
 
   def testStitchWritingReading(self):
     a1 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    a1.readalignments(filename=thisfolder/"alignmentreference"/"M21_1_align.csv")
+    a1.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1_align.csv")
     a1.stitch()
 
     a2 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    a2.readalignments(filename=thisfolder/"alignmentreference"/"M21_1_align.csv")
-    stitchfilenames = [thisfolder/"alignmentreference"/_.name for _ in a1.stitchfilenames]
+    a2.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1_align.csv")
+    stitchfilenames = [thisfolder/"reference"/"alignment"/_.name for _ in a1.stitchfilenames]
     a2.readstitchresult(filenames=stitchfilenames)
 
     pscale = a1.pscale
@@ -219,7 +148,7 @@ class TestAlignment(unittest.TestCase):
 
   def testStitchCvxpy(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    a.readalignments(filename=thisfolder/"alignmentreference"/"M21_1_align.csv")
+    a.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1_align.csv")
 
     defaultresult = a.stitch(saveresult=False)
     cvxpyresult = a.stitch(saveresult=False, usecvxpy=True)
@@ -273,8 +202,8 @@ class TestAlignment(unittest.TestCase):
 
   def testPscale(self):
     a1 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    readfilename = thisfolder/"alignmentreference"/"M21_1_align.csv"
-    stitchfilenames = [thisfolder/"alignmentreference"/_.name for _ in a1.stitchfilenames]
+    readfilename = thisfolder/"reference"/"alignment"/"M21_1_align.csv"
+    stitchfilenames = [thisfolder/"reference"/"alignment"/_.name for _ in a1.stitchfilenames]
     a1.readalignments(filename=readfilename)
     a1.readstitchresult(filenames=stitchfilenames)
 

@@ -1,7 +1,7 @@
 #imports
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds
 from .config import CONST
-from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
+from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities import units
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer
 from ..utilities.misc import cd

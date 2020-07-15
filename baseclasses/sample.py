@@ -1,7 +1,12 @@
-import abc, contextlib, dataclasses, logging, methodtools, pathlib
+import abc, contextlib, dataclasses, logging, methodtools, numpy as np, pathlib
 
-from ..utilities.misc import dataclass_dc_init, tiffinfo
+from ..utilities import units
+from ..utilities.misc import dataclass_dc_init, memmapcontext, tiffinfo
+from ..utilities.tableio import readtable, writetable
+from .csvclasses import Constant
 from .logging import getlogger
+from .rectangle import Rectangle, rectangleoroverlapfilter
+from .overlap import Overlap, RectangleOverlapCollection
 
 @dataclass_dc_init(frozen=True)
 class SampleDef:
@@ -82,6 +87,13 @@ class SampleBase(contextlib.ExitStack):
   def dbload(self):
     return self.mainfolder/"dbload"
 
+  def csv(self, csv):
+    return self.mainfolder/"dbload"/f"{self.SlideID}_{csv}.csv"
+  def readcsv(self, csv, *args, **kwargs):
+    return readtable(self.csv(csv), *args, **kwargs)
+  def writecsv(self, csv, *args, **kwargs):
+    return writetable(self.csv(csv), *args, **kwargs)
+
   @property
   def im3folder(self):
     return self.mainfolder/"im3"
@@ -94,24 +106,82 @@ class SampleBase(contextlib.ExitStack):
   def componenttiffsfolder(self):
     return self.mainfolder/"inform_data"/"Component_Tiffs"
 
-  @methodtools.lru_cache()
-  def getcomponenttiffinfo(self):
+  def __getimageinfofromcomponenttiff(self):
     try:
       componenttifffilename = next(self.componenttiffsfolder.glob(self.SlideID+"*_component_data.tif"))
     except StopIteration:
       raise OSError(f"No component tiffs for {self}")
     return tiffinfo(filename=componenttifffilename)
 
+  def __getimageinfofromconstants(self, *, pscale=None):
+    if pscale is None:
+      tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1})
+      pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
+    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": pscale})
+    constantsdict = {constant.name: constant.value for constant in constants}
+
+    fwidth    = constantsdict["fwidth"]
+    fheight   = constantsdict["fheight"]
+    pscale    = float(constantsdict["pscale"])
+
+    return pscale, fwidth, fheight
+
+  @methodtools.lru_cache()
+  def __getimageinfo(self):
+    try:
+      tiffpscale, tiffwidth, tiffheight = self.__getimageinfofromcomponenttiff()
+    except OSError:
+      tiffpscale = tiffwidth = tiffheight = None
+
+    try:
+      constpscale, constwidth, constheight = self.__getimageinfofromconstants(pscale=tiffpscale)
+    except FileNotFoundError:
+      constpscale = constwidth = constheight = None
+
+    if tiffpscale is constpscale is None:
+      raise FileNotFoundError("No component tiff and no constants.csv, can't get image info")
+
+    if constpscale is None: return tiffpscale, tiffwidth, tiffheight
+
+    if tiffpscale is None:
+      self.logger.warningglobal("couldn't find a component tiff: trusting image size and pscale from constants.csv")
+      return constpscale, constwidth, constheight
+
+    #both are not None
+    if (tiffwidth, tiffheight) != (constwidth, constheight):
+      self.logger.warningglobal(f"component tiff has size {tiffwidth} {tiffheight} which is different from {constwidth} {constheight} (in constants.csv)")
+    if constpscale != tiffpscale:
+      if np.isclose(constpscale, tiffpscale, rtol=1e-6):
+        warnfunction = self.logger.warning
+      else:
+        warnfunction = self.logger.warningglobal
+      warnfunction(f"component tiff has pscale {tiffpscale} which is different from {constpscale} (in constants.csv)")
+
+    return tiffpscale, tiffwidth, tiffheight
+
   @property
-  def tiffpscale(self): return self.getcomponenttiffinfo()[0]
+  def pscale(self): return self.__getimageinfo()[0]
   @property
-  def tiffwidth(self): return self.getcomponenttiffinfo()[1]
+  def fwidth(self): return self.__getimageinfo()[1]
   @property
-  def tiffheight(self): return self.getcomponenttiffinfo()[2]
+  def fheight(self): return self.__getimageinfo()[2]
 
   def __enter__(self):
     self.enter_context(self.logger)
     return super().__enter__()
+
+  @methodtools.lru_cache()
+  @property
+  def constantsdict(self):
+    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": self.pscale})
+    return {constant.name: constant.value for constant in constants}
+
+  @property
+  def position(self):
+    return np.array([self.constantsdict["xposition"], self.constantsdict["yposition"]])
+  @property
+  def nclip(self):
+    return self.constantsdict["nclip"]
 
   @abc.abstractproperty
   def logmodule(self):
@@ -124,3 +194,59 @@ class FlatwSampleBase(SampleBase):
 
   @property
   def root1(self): return self.root
+
+class ReadRectangles(FlatwSampleBase, RectangleOverlapCollection):
+  overlaptype = Overlap #can be overridden in subclasses
+
+  def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, **kwargs):
+    super().__init__(*args, **kwargs)
+
+    rectanglefilter = rectangleoroverlapfilter(selectrectangles)
+    _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
+    overlapfilter = lambda o: _overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
+
+    self.__rectangles  = self.readcsv("rect", Rectangle, extrakwargs={"pscale": self.pscale})
+    self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
+    self.__overlaps  = self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
+    self.__overlaps = [o for o in self.overlaps if overlapfilter(o)]
+    if onlyrectanglesinoverlaps:
+      self.__rectangles = [r for r in self.rectangles if self.selectoverlaprectangles(r)]
+    
+  def getrawlayers(self, filetype):
+    self.logger.info("getrawlayers")
+    if filetype=="flatWarpDAPI" :
+      ext = f".fw{self.layer:02d}"
+    elif filetype=="camWarpDAPI" :
+      ext = f".camWarp_layer{self.layer:02d}"
+    else :
+      raise ValueError(f"requested file type {filetype} not recognized by getrawlayers")
+    path = self.root2/self.SlideID
+
+    rawimages = np.ndarray(shape=(len(self.rectangles), units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)), dtype=np.uint16)
+
+    if not self.rectangles:
+      raise IOError(1, "didn't find any rows in the rectangles table for "+self.SlideID)
+
+    for i, rectangle in enumerate(self.rectangles):
+      filename = path/rectangle.file.replace(".im3", ext)
+      self.logger.info(f"loading rectangle {i+1}/{len(self.rectangles)}")
+      with open(filename, "rb") as f:
+        #use fortran order, like matlab!
+        with memmapcontext(
+          f,
+          dtype=np.uint16,
+          shape=(units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)),
+          order="F",
+          mode="r"
+        ) as memmap:
+          rawimages[i] = memmap
+
+    return rawimages
+
+  @property
+  def overlaps(self): return self.__overlaps
+  @property
+  def rectangles(self): return self.__rectangles
+
+  @abc.abstractproperty
+  def layer(self): pass

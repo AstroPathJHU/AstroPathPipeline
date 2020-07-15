@@ -1,0 +1,48 @@
+\pdfsuppresswarningpagegroup=1
+
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[subrefformat=simple,labelformat=simple]{subcaption}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\renewcommand\thesubfigure{(\alph{subfigure})}
+
+\begin{document}
+	
+\title{Identifying Bad Regions in Microscope Images}
+\author{Heshy Roskes}
+\date{July 3, 2020}
+
+\section{Introduction}
+
+We would like a way to automatically identify bad regions in images that should be excluded, or at least corrected, before doing any analysis.  For example, a speck of dust on the slide causes light to diffuse over a wide area, or folds in the tissue might make individual cells difficult to identify.
+
+In principle, after the cells have been identified, it might be possible to identify these regions in a general way by looking for clusters of cells that have strange properties that could never arise biologically.  Of course, this has to be done carefully, because the line between ``strange'' properties that indicate bad data and ``interesting'' properties that indicate real biological features is not necessarily easy to draw.  Nevertheless, with this care taken, the general approach is probably worth a try later on.
+
+For now, we try to identify one bad feature at a time.  If we eventually move to a general approach, these studies will help to guide the development of that approach and will also serve as a useful cross check.
+
+\section{Types of bad regions}
+
+\subsection{Dust specks}
+
+Sometimes, a speck of dust on the microscope or slide can cause light to diffuse, resulting in a bright, circular area, as shown in \cref{fig:dustspeck}.  Visually, the dust is easy to distinguish from a cell because it is so much larger.  To detect the dust, we 
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.45\linewidth}
+	\includegraphics[width=\linewidth]{dust}
+	\caption{}
+	\label{fig:dustspeck}
+	\end{subfigure}
+	\begin{subfigure}{0.45\linewidth}
+	\includegraphics[width=\linewidth]{dustdetected}
+	\caption{}
+	\label{fig:dustspeckdetected}
+	\end{subfigure}
+	\caption{\subref{fig:dustspeck} A microscope image with a speck of dust on it. \subref{fig:dustspeckdetected} The same image with the area covered by the dust speck masked in yellow.  Cells in this region should be excluded in data analysis.}
+	\label{fig:dust}
+\end{figure}
+
+\end{document}
