@@ -154,29 +154,35 @@ def moment(hist,n,standardized=True) :
     else :
         return moment
 
+#helper function to get a list of all the Otsu thresholds for a single layer's pixel histogram
+#and a corresponding list of weights for which is the best
+def getLayerOtsuThresholdsAndWeights(hist) :
+    next_it_pixels = hist; skew = 1000.
+    test_thresholds=[]; test_weighted_skew_slopes=[]
+    #iterate calculating and applying the Otsu threshold values
+    while not math.isnan(skew) :
+        #get the threshold from OpenCV's Otsu thresholding procedure
+        test_threshold = getOtsuThreshold(next_it_pixels)
+        #calculate the skew and kurtosis of the pixels that would be background at this threshold
+        bg_pixels = hist[:test_threshold+1]
+        skew = moment(bg_pixels,3)
+        if not math.isnan(skew) :
+            test_thresholds.append(test_threshold)
+            skewslope=(moment(hist[:test_threshold+2],3) - moment(hist[:test_threshold],3))/2.
+            test_weighted_skew_slopes.append(skewslope/skew if not math.isnan(skewslope) else 0)
+        #set the next iteration's pixels
+        next_it_pixels = bg_pixels
+    return test_thresholds, test_weighted_skew_slopes
+
 # a helper function to take a list of layer histograms and return the list of optimal thresholds
 #can be run in parallel with an index and returndict
 def findLayerThresholds(layer_hists,i=None,rdict=None) :
     best_thresholds = []
     #for each layer
     for li in range(layer_hists.shape[-1]) :
-        hist=layer_hists[:,li]
-        #iterate calculating and applying the Otsu threshold values
-        next_it_pixels = hist; skew = 1000.
-        test_thresholds=[]; test_weighted_skew_slopes=[]
-        while not math.isnan(skew) :
-            #get the threshold from OpenCV's Otsu thresholding procedure
-            test_threshold = getOtsuThreshold(next_it_pixels)
-            #calculate the skew and kurtosis of the pixels that would be background at this threshold
-            bg_pixels = hist[:test_threshold+1]
-            skew = moment(bg_pixels,3)
-            if not math.isnan(skew) :
-                test_thresholds.append(test_threshold)
-                skewslope=(moment(hist[:test_threshold+2],3) - moment(hist[:test_threshold],3))/2.
-                test_weighted_skew_slopes.append(skewslope/skew if not math.isnan(skewslope) else 0)
-            #set the next iteration's pixels
-            next_it_pixels = bg_pixels
-        #add the best threshold to the list
+        #get the list of thresholds and their weights
+        test_thresholds, test_weighted_skew_slopes = getLayerOtsuThresholdsAndWeights(layer_hists[:,li])
+        #figure out the best threshold from them and add it to the list
         if len(test_thresholds)<1 :
             best_thresholds.append(0)
         else :
