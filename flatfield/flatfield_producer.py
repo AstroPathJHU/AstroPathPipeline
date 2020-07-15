@@ -3,6 +3,7 @@ from .flatfield_sample import FlatfieldSample
 from .mean_image import MeanImage
 from .utilities import flatfield_logger, chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
 from .config import CONST
+from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer
 from ..utilities.misc import cd
 import os, random
 
