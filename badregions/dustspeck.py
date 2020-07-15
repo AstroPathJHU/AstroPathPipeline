@@ -1,8 +1,13 @@
 import cv2, numpy as np, scipy.ndimage
+from ..flatfield.utilities import getImageArrayLayerHistograms, getLayerOtsuThresholdsAndWeights
 from .badregions import BadRegionFinder
 
 class DustSpeckFinder(BadRegionFinder):
-  def badregions(self, *, sigma=101, threshold=500, dilatesize=0, statserodesize=0):
+  def badregions(self, *, dilatesize=None, statserodesize=None):
+    hist = getImageArrayLayerHistograms(self.image)
+    thresholds, weights = getLayerOtsuThresholdsAndWeights(hist)
+    threshold = thresholds[1]  #first one finds signal, second finds dust speck
+
     badregions = cv2.UMat((self.image > threshold).astype(np.uint8))
 
     ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -13,7 +18,7 @@ class DustSpeckFinder(BadRegionFinder):
     badregions = cv2.morphologyEx(badregions, cv2.MORPH_OPEN,  ellipse, borderType=cv2.BORDER_REPLICATE)
     badregions = cv2.morphologyEx(badregions, cv2.MORPH_CLOSE, ellipse, borderType=cv2.BORDER_REPLICATE)
 
-    if dilatesize:
+    if dilatesize is not None:
       ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilatesize, dilatesize))
       badregions = cv2.dilate(badregions, ellipse)
 
@@ -24,7 +29,7 @@ class DustSpeckFinder(BadRegionFinder):
       if i == 0: continue
 
       selection = (labeled==i).astype(np.uint16)
-      if statserodesize:
+      if statserodesize is not None:
         ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (statserodesize, statserodesize))
         selection = cv2.erode(selection, ellipse)
 
