@@ -178,7 +178,7 @@ def getLayerOtsuThresholdsAndWeights(hist) :
 #can be run in parallel with an index and returndict
 def findLayerThresholds(layer_hists,i=None,rdict=None) :
     #first figure out how many layers there are
-    nlayers = layer_hists.shape[-1] if len(layer_hists.shape)>2 else 1
+    nlayers = layer_hists.shape[-1] if len(layer_hists.shape)>1 else 1
     best_thresholds = []
     #for each layer
     for li in range(nlayers) :
