@@ -177,16 +177,23 @@ def getLayerOtsuThresholdsAndWeights(hist) :
 # a helper function to take a list of layer histograms and return the list of optimal thresholds
 #can be run in parallel with an index and returndict
 def findLayerThresholds(layer_hists,i=None,rdict=None) :
+    #first figure out how many layers there are
+    nlayers = layer_hists.shape[-1] if len(layer_hists.shape)>2 else 1
     best_thresholds = []
     #for each layer
-    for li in range(layer_hists.shape[-1]) :
+    for li in range(nlayers) :
         #get the list of thresholds and their weights
-        test_thresholds, test_weighted_skew_slopes = getLayerOtsuThresholdsAndWeights(layer_hists[:,li])
+        if nlayers>1 :
+            test_thresholds, test_weighted_skew_slopes = getLayerOtsuThresholdsAndWeights(layer_hists[:,li])
+        else : 
+            test_thresholds, test_weighted_skew_slopes = getLayerOtsuThresholdsAndWeights(layer_hists)
         #figure out the best threshold from them and add it to the list
         if len(test_thresholds)<1 :
             best_thresholds.append(0)
         else :
             best_thresholds.append(test_thresholds[test_weighted_skew_slopes.index(max(test_weighted_skew_slopes))])
+    if nlayers==1 :
+        best_thresholds = best_thresholds[0]
     if i is not None and rdict is not None :
         #put the list of thresholds in the return dict
         rdict[i]=best_thresholds
