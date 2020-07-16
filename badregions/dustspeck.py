@@ -62,6 +62,12 @@ class DustSpeckFinder(BadRegionFinder):
       if showdebugplots:
         plt.imshow(thisregion)
 
+      fractionalsize = np.sum(thisregion) / thisregion.size
+      print("fractional size", fractionalsize)
+      if fractionalsize > 0.99:
+        badregions[thisregion] = False
+        continue
+
       selection = thisregion.astype(np.uint16)
       if statserodesize is not None:
         ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (statserodesize, statserodesize))
