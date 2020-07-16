@@ -63,7 +63,8 @@ class DustSpeckFinder(BadRegionFinder):
         plt.imshow(thisregion)
 
       fractionalsize = np.sum(thisregion) / thisregion.size
-      print("fractional size", fractionalsize)
+      if showdebugplots:
+        print("fractional size", fractionalsize)
       if fractionalsize > 0.99:
         badregions[thisregion] = False
         continue
@@ -100,7 +101,7 @@ class DustSpeckFinder(BadRegionFinder):
         thisoldregion = aftersmallcloseopen_labeled == j
         fractionalintersection = np.sum(thisoldregion & thisregion) / np.sum(thisoldregion | thisregion)
         print("fractional intersection", fractionalintersection)
-        if fractionalintersection > 0.5:
+        if fractionalintersection > 0.75:
           break
       else:
         badregions[thisregion] = False
