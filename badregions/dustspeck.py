@@ -6,9 +6,16 @@ class DustSpeckFinder(BadRegionFinder):
   def badregions(self, *, dilatesize=None, statserodesize=None, showdebugplots=False):
     hist = getImageArrayLayerHistograms(self.image)
     thresholds, weights = getLayerOtsuThresholdsAndWeights(hist)
-    threshold = thresholds[1]  #first one finds signal, second finds dust speck
+    try:
+      threshold = thresholds[1]  #first one finds signal, second finds dust speck
+      weight = weights[1]
+    except IndexError:
+      weight = -1
+    if weight <= 0:
+      return np.zeros_like(self.image, dtype=bool)
 
-    badregions = cv2.UMat((self.image > threshold).astype(np.uint8))
+    signalmask = self.image > threshold
+    badregions = cv2.UMat(signalmask.astype(np.uint8))
     if showdebugplots:
       print("image > threshold")
       plt.imshow(badregions.get())
@@ -25,6 +32,7 @@ class DustSpeckFinder(BadRegionFinder):
       print("after small open")
       plt.imshow(badregions.get())
       plt.show()
+    aftersmallcloseopen = badregions.get().astype(bool)
 
     ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (100, 100))
     badregions = cv2.morphologyEx(badregions, cv2.MORPH_OPEN,  ellipse, borderType=cv2.BORDER_REPLICATE)
@@ -45,6 +53,8 @@ class DustSpeckFinder(BadRegionFinder):
     badregions = badregions.get().astype(bool)
 
     labeled, _ = scipy.ndimage.label(badregions)
+    aftersmallcloseopen_labeled = None
+
     for i in np.unique(labeled):
       if i == 0: continue
 
@@ -56,7 +66,31 @@ class DustSpeckFinder(BadRegionFinder):
       intensities = self.image[selection.astype(bool)]
       min, q01, q99, max = np.quantile(intensities, [0, 0.01, 0.99, 1])
 
+      thisregion = labeled == i
+
       if q01 / q99 < 0.1:
-        badregions[labeled == i] = False
+        badregions[thisregion] = False
+        continue
+
+      ratio = np.sum(signalmask[thisregion]) / np.sum(thisregion)
+      #the way this could be < 1 is if there are little holes closed up by
+      #the small scale close
+      #a few of those are ok because we don't want to be sensitive to noise
+      #but if we have a lot of them that probably means this isn't a real dust speck
+      if ratio < 0.95:
+        badregions[thisregion] = False
+        continue
+
+      #make sure the region isn't just a remnant of a huge original region
+      if aftersmallcloseopen_labeled is None:
+        aftersmallcloseopen_labeled, _ = scipy.ndimage.label(aftersmallcloseopen)
+      for j in np.unique(aftersmallcloseopen_labeled):
+        if j == 0: continue
+        thisoldregion = aftersmallcloseopen_labeled == j
+        if np.sum(thisoldregion & thisregion) / np.sum(thisoldregion | thisregion) > 0.5:
+          break
+      else:
+        badregions[thisregion] = False
+        continue
 
     return badregions
