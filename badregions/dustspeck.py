@@ -58,15 +58,18 @@ class DustSpeckFinder(BadRegionFinder):
     for i in np.unique(labeled):
       if i == 0: continue
 
-      selection = (labeled==i).astype(np.uint16)
+      thisregion = labeled == i
+      if showdebugplots:
+        plt.imshow(thisregion)
+
+      selection = thisregion.astype(np.uint16)
       if statserodesize is not None:
         ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (statserodesize, statserodesize))
         selection = cv2.erode(selection, ellipse)
-
       intensities = self.image[selection.astype(bool)]
       min, q01, q99, max = np.quantile(intensities, [0, 0.01, 0.99, 1])
-
-      thisregion = labeled == i
+      if showdebugplots:
+        print("quantiles", min, q01, q99, max, q01/q99)
 
       if q01 / q99 < 0.1:
         badregions[thisregion] = False
@@ -77,6 +80,8 @@ class DustSpeckFinder(BadRegionFinder):
       #the small scale close
       #a few of those are ok because we don't want to be sensitive to noise
       #but if we have a lot of them that probably means this isn't a real dust speck
+      if showdebugplots:
+        print("ratio", ratio)
       if ratio < 0.95:
         badregions[thisregion] = False
         continue
@@ -87,7 +92,9 @@ class DustSpeckFinder(BadRegionFinder):
       for j in np.unique(aftersmallcloseopen_labeled):
         if j == 0: continue
         thisoldregion = aftersmallcloseopen_labeled == j
-        if np.sum(thisoldregion & thisregion) / np.sum(thisoldregion | thisregion) > 0.5:
+        fractionalintersection = np.sum(thisoldregion & thisregion) / np.sum(thisoldregion | thisregion)
+        print("fractional intersection", fractionalintersection)
+        if fractionalintersection > 0.5:
           break
       else:
         badregions[thisregion] = False
