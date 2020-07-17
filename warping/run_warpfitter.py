@@ -2,11 +2,10 @@
 from .warpfitter import WarpFitter
 from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile
 from .config import CONST
-from ..alignment.alignmentset import AlignmentSet
 from ..utilities.misc import split_csv_to_list, split_csv_to_list_of_ints
 from argparse import ArgumentParser
-import numpy as np, multiprocessing as mp
-import os, copy, gc, shutil
+import multiprocessing as mp
+import os, gc
 import cProfile
 
 
