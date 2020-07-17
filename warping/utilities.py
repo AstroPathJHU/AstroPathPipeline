@@ -54,7 +54,7 @@ def checkDirAndFixedArgs(args) :
             raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this sample ({tfp})!')
     #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate
     if args.threshold_file_dir is not None and args.octet_run_dir is not None :
-        raise ValueError(f'ERROR: cannot specify both an octet_run_dir and a threshold_file_dir!')
+        raise ValueError('ERROR: cannot specify both an octet_run_dir and a threshold_file_dir!')
     #create the working directory if it doesn't already exist
     if not os.path.isdir(args.workingdir_name) :
         os.mkdir(args.workingdir_name)
@@ -156,7 +156,6 @@ def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixe
     warp_logger.info("Performing an initial alignment to find this sample's valid octets...")
     a = AlignmentSet(dbload_top_dir,working_dir,samp)
     a.getDAPI(writeimstat=False)
-    whole_sample_meanimage = a.meanimage
     a.align(write_result=False)
     #get the list of overlaps
     overlaps = a.overlaps
