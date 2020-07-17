@@ -101,14 +101,17 @@ class WarpFitter :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def loadRawFiles(self,flatfield_file_path,n_threads) :
+    def loadRawFiles(self,flatfield_file_path=None,n_threads=1) :
         """
         Load the raw files into the warpset, warp/save them, and load them into the alignment set 
         flatfield_file_path = path to the flatfield file to use in correcting the rawfile illumination
         n_threads           = how many different processes to run when loading files
         """
         warp_logger.info(f'Loading flatfield file {flatfield_file_path} to correct raw image illumination')
-        flatfield_file_layer = (getRawAsHWL(flatfield_file_path,self.m,self.n,self.nlayers,np.float64))[:,:,self.layer-1]
+        if flatfield_file_path is not None :
+            flatfield_file_layer = (getRawAsHWL(flatfield_file_path,self.m,self.n,self.nlayers,np.float64))[:,:,self.layer-1] 
+        else :
+            flatfield_file_layer = np.ones((self.m,self.n),dtype=np.float64)
         self.warpset.loadRawImageSet(self.rawfile_paths,self.overlaps,self.rectangles,flatfield_file_layer,n_threads)
         self.warpset.warpLoadedImageSet()
         with cd(self.working_dir) :
