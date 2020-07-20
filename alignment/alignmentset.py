@@ -2,14 +2,15 @@
 
 import cv2, methodtools, numpy as np, traceback
 
-from ..baseclasses.sample import ReadRectangles
+from ..baseclasses.overlap import RectangleOverlapCollection
+from ..baseclasses.sample import FlatwSampleBase, ReadRectangles
 from ..utilities.tableio import readtable, writetable
 from .flatfield import meanimage
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
 from .stitch import ReadStitchResult, stitch
 
-class AlignmentSet(ReadRectangles):
+class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   """
   Main class for aligning a set of images
   """
@@ -36,10 +37,6 @@ class AlignmentSet(ReadRectangles):
 
   @property
   def logmodule(self): return "align"
-
-  @methodtools.lru_cache()
-  def image(self):
-    return cv2.imread(str(self.dbload/(self.SlideID+"_qptiff.jpg")))
 
   def align(self,*,skip_corners=False,write_result=True,return_on_invalid_result=False,warpwarnings=False,**kwargs):
     self.logger.info("starting alignment")
@@ -78,39 +75,7 @@ class AlignmentSet(ReadRectangles):
     self.logger.info("finished align loop for "+self.SlideID)
     return sum_mse/norm
 
-  def writealignments(self, *, filename=None):
-    if filename is None: filename = self.csv("align")
-    writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive)
-
-  def readalignments(self, *, filename=None, interactive=True):
-    interactive = interactive and self.interactive and filename is None
-    if filename is None: filename = self.csv("align")
-    self.logger.info("reading alignments from "+str(filename))
-
-    try:
-      alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult, extrakwargs={"pscale": self.pscale})}
-    except Exception:
-      if interactive:
-        print()
-        traceback.print_exc()
-        print()
-        answer = ""
-        while answer.lower() not in ("y", "n"):
-          answer = input(f"readalignments() gave an exception for {self.SlideID}.  Do the alignment?  [Y/N] ")
-        if answer.lower() == "y":
-          if not hasattr(self, "images"): self.getDAPI()
-          self.align()
-          return self.readalignments(interactive=False)
-      raise
-
-    for o in self.overlaps:
-      try:
-        o.result = alignmentresults[o.n]
-      except KeyError:
-        pass
-    self.logger.info("done reading alignments for "+self.SlideID)
-
-  def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, writeimstat=True, mean_image=None, overwrite=True):
+  def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, mean_image=None, overwrite=True):
     self.logger.info("getDAPI")
     if overwrite or not hasattr(self, "images"):
       images = self.getrawlayers(filetype)
@@ -132,21 +97,6 @@ class AlignmentSet(ReadRectangles):
       raise ValueError(f"Mismatch in number of rectangles {len(self.rectangles)} and images {len(self.images)}")
     for rectangle, image in zip(self.rectangles, self.images):
       rectangle.image = image
-
-    if writeimstat:
-      self.imagestats = [
-        ImageStats(
-          n=rectangle.n,
-          mean=np.mean(rectangle.image),
-          min=np.min(rectangle.image),
-          max=np.max(rectangle.image),
-          std=np.std(rectangle.image),
-          cx=rectangle.cx,
-          cy=rectangle.cy,
-          pscale=self.pscale,
-        ) for rectangle in self.rectangles
-      ]
-      self.writecsv("imstat", self.imagestats, retry=self.interactive)
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -218,24 +168,8 @@ class AlignmentSet(ReadRectangles):
 
   overlaptype = AlignmentOverlap #can be overridden in subclasses
 
-  @property
-  def stitchfilenames(self):
-    return (
-      self.csv("affine"),
-      self.csv("fields"),
-      self.csv("fieldoverlaps"),
-    )
-
-  def stitch(self, *, saveresult=True, checkwriting=False, **kwargs):
-    result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
-
-    if saveresult:
-      result.applytooverlaps()
-      self.__T = result.T
-      self.__fields = result.fields
-      self.writestitchresult(result, check=checkwriting)
-
-    return result
+  def stitch(self, **kwargs):
+    return stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
 
   @property
   def T(self):
@@ -250,6 +184,74 @@ class AlignmentSet(ReadRectangles):
       return self.__fields
     except AttributeError:
       raise AttributeError("Haven't run stitching, so we don't have the stitched fields")
+
+  @property
+  def layer(self): return 1
+
+class AlignmentSet(AlignmentSetBase, ReadRectangles):
+  @methodtools.lru_cache()
+  def image(self):
+    return cv2.imread(str(self.dbload/(self.SlideID+"_qptiff.jpg")))
+
+  def writealignments(self, *, filename=None):
+    if filename is None: filename = self.csv("align")
+    writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive)
+
+  def readalignments(self, *, filename=None, interactive=True):
+    interactive = interactive and self.interactive and filename is None
+    if filename is None: filename = self.csv("align")
+    self.logger.info("reading alignments from "+str(filename))
+
+    try:
+      alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult, extrakwargs={"pscale": self.pscale})}
+    except Exception:
+      if interactive:
+        print()
+        traceback.print_exc()
+        print()
+        answer = ""
+        while answer.lower() not in ("y", "n"):
+          answer = input(f"readalignments() gave an exception for {self.SlideID}.  Do the alignment?  [Y/N] ")
+        if answer.lower() == "y":
+          if not hasattr(self, "images"): self.getDAPI()
+          self.align()
+          return self.readalignments(interactive=False)
+      raise
+
+    for o in self.overlaps:
+      try:
+        o.result = alignmentresults[o.n]
+      except KeyError:
+        pass
+    self.logger.info("done reading alignments for "+self.SlideID)
+
+  def getDAPI(self, *args, writeimstat=True, **kwargs):
+    result = super().getDAPI(*args, **kwargs)
+
+    if writeimstat:
+      self.imagestats = [
+        ImageStats(
+          n=rectangle.n,
+          mean=np.mean(rectangle.image),
+          min=np.min(rectangle.image),
+          max=np.max(rectangle.image),
+          std=np.std(rectangle.image),
+          cx=rectangle.cx,
+          cy=rectangle.cy,
+          pscale=self.pscale,
+        ) for rectangle in self.rectangles
+      ]
+      self.writecsv("imstat", self.imagestats, retry=self.interactive)
+
+    return result
+
+  @property
+  def stitchfilenames(self):
+    return (
+      self.csv("affine"),
+      self.csv("fields"),
+      self.csv("fieldoverlaps"),
+    )
 
   def writestitchresult(self, result, *, filenames=None, check=False):
     if filenames is None: filenames = self.stitchfilenames
@@ -293,5 +295,13 @@ class AlignmentSet(ReadRectangles):
     self.logger.info("done reading stitch results")
     return result
 
-  @property
-  def layer(self): return 1
+  def stitch(self, *, saveresult=True, checkwriting=False, **kwargs):
+    result = super().stitch(**kwargs)
+
+    if saveresult:
+      result.applytooverlaps()
+      self.__T = result.T
+      self.__fields = result.fields
+      self.writestitchresult(result, check=checkwriting)
+
+    return result
