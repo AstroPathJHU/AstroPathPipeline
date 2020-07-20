@@ -3,7 +3,7 @@
 import cv2, methodtools, numpy as np, traceback
 
 from ..baseclasses.overlap import RectangleOverlapCollection
-from ..baseclasses.sample import FlatwSampleBase, ReadRectangles
+from ..baseclasses.sample import FlatwSampleBase, ReadRectangles, ReadRectanglesFromXML
 from ..utilities.tableio import readtable, writetable
 from .flatfield import meanimage
 from .imagestats import ImageStats
@@ -38,7 +38,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   @property
   def logmodule(self): return "align"
 
-  def align(self,*,skip_corners=False,write_result=True,return_on_invalid_result=False,warpwarnings=False,**kwargs):
+  def align(self,*,skip_corners=False,return_on_invalid_result=False,warpwarnings=False,**kwargs):
     self.logger.info("starting alignment")
 
     sum_mse = 0.; norm=0.
@@ -68,9 +68,6 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
         else :
           if warpwarnings: self.logger.warningglobal(f'Overlap number {i} alignment result {reason}: adding 1e10 to sum_mse!!')
           sum_mse+=1e10
-
-    if write_result :
-      self.writealignments()
 
     self.logger.info("finished align loop for "+self.SlideID)
     return sum_mse/norm
@@ -308,3 +305,11 @@ class AlignmentSet(AlignmentSetBase, ReadRectangles):
       self.writestitchresult(result, check=checkwriting)
 
     return result
+
+  def align(self, *args, write_result=True, **kwargs):
+    super().align(*args, **kwargs)
+    if write_result :
+      self.writealignments()
+
+class AlignmentSetFromXML(AlignmentSetBase, ReadRectanglesFromXML):
+  pass

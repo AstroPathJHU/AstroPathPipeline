@@ -1,6 +1,6 @@
 import itertools, logging, numpy as np, os, pathlib
 from ..alignment.alignmentcohort import AlignmentCohort
-from ..alignment.alignmentset import AlignmentSet, ImageStats
+from ..alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
 from ..alignment.overlap import AlignmentResult
 from ..alignment.field import Field, FieldOverlap
 from ..alignment.stitch import AffineEntry
@@ -271,3 +271,19 @@ class TestAlignment(TestBaseSaveOutput):
         contents = f.read().splitlines()
       if len(contents) != 1:
         raise AssertionError(f"Expected only one line of log\n\n{contents}")
+
+  def testFromXML(self):
+    args = thisfolder/"data", thisfolder/"data"/"flatw", "M21_1"
+    kwargs = {"selectrectangles": range(10)}
+    a1 = AlignmentSet(*args, **kwargs)
+    a2 = AlignmentSetFromXML(*args, **kwargs)
+    a1.getDAPI()
+    a2.getDAPI()
+
+    a1.align()
+    result1 = a1.stitch()
+    a2.align()
+    result2 = a2.stitch()
+
+    assertAlmostEqual(units.nominal_values(result1.T), units.nominal_values(result2.T))
+    assertAlmostEqual(units.nominal_values(result1.x()), units.nominal_values(result2.x()))

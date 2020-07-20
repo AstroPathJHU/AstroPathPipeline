@@ -1,7 +1,7 @@
 import argparse, fractions, jxmlease, methodtools, numpy as np, PIL, skimage, tifffile
 from ..baseclasses.csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, Region, Vertex
 from ..baseclasses.overlap import RectangleOverlapCollection
-from ..baseclasses.sample import DbloadSampleBase, SampleBase, XMLLayoutReader
+from ..baseclasses.sample import DbloadSampleBase, XMLLayoutReader
 from ..utilities import units
 
 jxmleaseversion = jxmlease.__version__.split(".")

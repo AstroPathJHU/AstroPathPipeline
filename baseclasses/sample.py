@@ -355,7 +355,7 @@ class XMLLayoutReader(SampleBase):
       if np.all(abs(r1.cxvec - r2.cxvec) < r1.shape):
         tag = int(np.sign(r1.cx-r2.cx)) + 3*int(np.sign(r1.cy-r2.cy)) + 5
         overlaps.append(
-          Overlap(
+          self.overlaptype(
             n=len(overlaps)+1,
             p1=r1.n,
             p2=r2.n,
