@@ -1,10 +1,11 @@
 #imports
 from .warpset import WarpSet
+from .fitparameterset import FitParameterSet
 from .utilities import warp_logger, WarpingError
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSet
 from ..baseclasses.rectangle import rectangleoroverlapfilter
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL
+from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, scipy, matplotlib.pyplot as plt
@@ -23,22 +24,14 @@ class WarpFitter :
     @property
     def n(self) :
         return self.warpset.warp.n #image width
-    @property
-    def nlayers(self) :
-        return self.warpset.nlayers #number of image layers
-    @property
-    def layer(self) :
-        return self.warpset.layer # which layer is being used to fit the warping
 
     #################### CLASS CONSTANTS ####################
 
     IM3_EXT = '.im3'                                                  #to replace in filenames read from *_rect.csv
-    MICROSCOPE_OBJECTIVE_FOCAL_LENGTH = 40000.                        #focal length of the microscope objective (20mm) in pixels
-    FITPAR_NAME_LIST = ['cx','cy','fx','fy','k1','k2','p1','p2','k3'] #ordered list of fit parameters names
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,samplename,rawfile_top_dir,dbload_top_dir,working_dir,overlaps=-1,layer=1,warpset=None,warp=None) :
+    def __init__(self,samplename,rawfile_top_dir,dbload_top_dir,working_dir,overlaps=-1,layer=1) :
         """
         samplename      = name of the microscope data sample to fit to ("M21_1" or equivalent)
         rawfile_top_dir = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
@@ -47,44 +40,27 @@ class WarpFitter :
         overlaps        = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
                           (default=-1 will use all overlaps)
         layer           = image layer number (indexed starting at 1) to consider in the warping/alignment (default=1)
-        warpset         = WarpSet object to initialize with (optional, a new WarpSet will be created if None) 
-        warp            = CameraWarp object whose optimal parameters will be determined (optional, if None a new one will be created)
         """
         #store the directory paths
         self.samp_name = samplename
         self.rawfile_top_dir=rawfile_top_dir
-        self.rawfile_dir=os.path.join(self.rawfile_top_dir,self.samp_name)
         self.dbload_top_dir=dbload_top_dir
-        self.metafile_dir=os.path.join(self.dbload_top_dir,self.samp_name,'dbload')
         self.working_dir=working_dir
-        #make sure we're using fast units before making the alignmentset
-        self.bkp_units_mode = units.currentmode
-        units.setup("fast")
         #make the alignmentset object to use
+        self.bkp_units_mode = units.currentmode
+        units.setup("fast") #be sure to use fast units
         self.alignset = self.__initializeAlignmentSet(overlaps=overlaps)
-        self.rectangles = self.alignset.rectangles
-        self.overlaps = self.alignset.overlaps
-        #setup the working directory and the lists of overlaps and rectangles
-        self.__setupWorkingDirectory()
         #get the list of raw file paths
-        self.rawfile_paths = [os.path.join(self.rawfile_dir,fn.replace(self.IM3_EXT,CONST.RAW_EXT)) for fn in [r.file for r in self.rectangles]]
+        self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.samp_name,fn.replace(self.IM3_EXT,CONST.RAW_EXT)) 
+                              for fn in [r.file for r in self.alignset.rectangles]]
         #get the size of the images in the sample
         m, n, nlayers = getImageHWLFromXMLFile(self.rawfile_top_dir,samplename)
         if layer<1 or layer>nlayers :
-            raise WarpingError(f'Choice of layer ({layer}) is not valid for images with {nlayers} layers!')
+            raise WarpingError(f'ERROR: Choice of layer ({layer}) is not valid for images with {nlayers} layers!')
         #make the warpset object to use
-        if warpset is not None :
-            self.warpset = warpset
-        elif warp is not None :
-            if warp.n!=n or warp.m!=m :
-                msg = f'Warp object passed to WarpFitter is set to run on images of size ({warp.n},{warp.m}),'
-                msg+=f' not of size ({n},{m}) as specified by .xml files'
-                raise WarpingError(msg)
-            self.warpset = WarpSet(warp=warp,rawfiles=self.rawfile_paths,nlayers=nlayers,layer=layer)
-        else :
-            self.warpset = WarpSet(n=n,m=m,rawfiles=self.rawfile_paths,nlayers=nlayers,layer=layer)
-        #the private variable that will hold the best-fit warp
-        self.__best_fit_warp = None
+        self.warpset = WarpSet(n=n,m=m,rawfiles=self.rawfile_paths,nlayers=nlayers,layer=layer)
+        #for now leave the fitparameter set as None (until the actual fit is called)
+        self.fitpars = None
 
     def __del__(self) :
         """
@@ -107,12 +83,7 @@ class WarpFitter :
         flatfield_file_path = path to the flatfield file to use in correcting the rawfile illumination
         n_threads           = how many different processes to run when loading files
         """
-        warp_logger.info(f'Loading flatfield file {flatfield_file_path} to correct raw image illumination')
-        if flatfield_file_path is not None :
-            flatfield_file_layer = (getRawAsHWL(flatfield_file_path,self.m,self.n,self.nlayers,np.float64))[:,:,self.layer-1] 
-        else :
-            flatfield_file_layer = np.ones((self.m,self.n),dtype=np.float64)
-        self.warpset.loadRawImages(self.rawfile_paths,self.overlaps,self.rectangles,flatfield_file_layer,n_threads)
+        self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,flatfield_file_path,n_threads)
         self.warpset.warpLoadedImages()
         with cd(self.working_dir) :
             if not os.path.isdir(self.samp_name) :
@@ -120,17 +91,22 @@ class WarpFitter :
         self.warpset.writeOutWarpedImages(os.path.join(self.working_dir,self.samp_name))
         self.alignset.getDAPI(filetype='camWarpDAPI',writeimstat=False)
 
-    def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2k3=False,fix_p1p2_in_global_fit=False,fix_p1p2_in_polish_fit=False,
-              max_radial_warp=10.,max_tangential_warp=10.,p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000,show_plots=False) :
+    def doFit(self,fixed=None,normalize=None,float_p1p2_in_polish_fit=False,
+              max_radial_warp=10.,max_tangential_warp=10.,p1p2_polish_lasso_lambda=0.,polish=True,
+              print_every=1,maxiter=1000,show_plots=False) :
         """
         Fit the cameraWarp model to the loaded dataset
-        fix_*                    = set True to fix groups of parameters (p1p2 can be fixed separately in the global and polishing minimization steps)
+        fixed                    = list of fit parameter names to keep fixed (p1p2 can be fixed separately in the global and polishing minimization steps)
+        normalize                = list of fit parameter names to rescale within their bounds for fitting instead of using the raw numbers
+        float_p1p2_in_polish_fit = if True, p1 and p2 will not be fixed in the polishing minimization regardless of other arguments
         max_*_warp               = values to use for max warp amount constraints (set to -1 to remove constraints)
         p1p2_polish_lasso_lambda = lambda parameter for LASSO constraint on p1 and p2 during polishing fit
         polish                   = whether to run the polishing fit step at all
         print_every              = print warp parameters and fit results at every [print_every] minimization function calls
         max_iter                 = maximum number of iterations for the global and polishing minimization steps
         """
+        #make the set of fit parameters
+        self.fitpars = FitParameterSet(fixed,normalize,max_radial_warp,max_tangential_warp,self.warpset.warp)
         #make the iteration counter and the lists of costs/warp amounts
         self.minfunc_calls=0
         self.costs=[]
@@ -138,45 +114,43 @@ class WarpFitter :
         self.max_tangential_warps=[]
         #silence the AlignmentSet logger
         self.alignset.logger.setLevel(logging.WARN)
-        #get the list of initial parameters to copy from when necessary
-        self.init_pars = self.warpset.getListOfWarpParameters()
-        #figure out the default bounds to reference when needed
-        self.default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
         #set the variable describing how often to print progress
         self.print_every = print_every
         #do the global minimization
         minimization_start_time = time.time()
-        de_result = self.__runDifferentialEvolution(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2_in_global_fit,max_radial_warp,max_tangential_warp,maxiter)
+        de_result = self.__runDifferentialEvolution(maxiter)
         init_minimization_done_time = time.time()
+        #set the fit parameter values after the global minimization
+        self.fitpars.setInitialResults(de_result.x)
         #do the polishing minimization
         if polish :
-            init_pars = self.__correctParameterList(de_result.x)
-            result = self.__runPolishMinimization(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2_in_polish_fit,max_radial_warp,max_tangential_warp,p1p2_polish_lasso_lambda,init_pars,maxiter)
+            result = self.__runPolishMinimization(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter)
         else :
             result=de_result
         polish_minimization_done_time = time.time()
+        #set the final fit parameter values
+        self.fitpars.setFinalResults(result.x)
         #record the minimization run times
         self.init_min_runtime = init_minimization_done_time-minimization_start_time
         self.polish_min_runtime = polish_minimization_done_time-init_minimization_done_time
         #run all the post-processing stuff
-        self.__runPostProcessing(result,de_result.nfev,show_plots)
-        return result
+        self.__runPostProcessing(de_result.nfev,show_plots)
 
-    def checkFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2k3=False,fix_p1p2_in_global_fit=False,fix_p1p2_in_polish_fit=False,
-              max_radial_warp=10.,max_tangential_warp=10.,p1p2_polish_lasso_lambda=0.,polish=True) :
+    def checkFit(self,fixed=None,normalize=None,float_p1p2_in_polish_fit=False,
+                 max_radial_warp=10.,max_tangential_warp=10.,p1p2_polish_lasso_lambda=0.,polish=True) :
         """
         A function to print some information about how the fits will proceed with the current settings
         (see "doFit" function above for what the arguments to this function are)
         """
-        #figure out the default bounds
-        self.default_bounds = self.__buildDefaultParameterBoundsDict(max_radial_warp,max_tangential_warp)
+        #make the set of fit parameters
+        self.fitpars = FitParameterSet(fixed,normalize,max_radial_warp,max_tangential_warp,self.warpset.warp)
         #stuff from the differential evolution minimization setup
         warp_logger.info('For global minimization setup:')
-        _, _ = self.__getParameterBoundsAndConstraints(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2_in_global_fit,max_radial_warp,max_tangential_warp)
+        _, _, _ = self.fitpars.getGlobalBoundsConstraintsAndInitialPopulation()
         #stuff for the polishing minimization, if applicable
         if polish :
             warp_logger.info('For polishing minimization setup:')
-            _, _ = self.__getParameterBoundsAndConstraints(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2_in_polish_fit,max_radial_warp,max_tangential_warp)
+            _, _ = self.fitpars.getPolishingBoundsAndConstraints(float_p1p2_in_polish_fit)
             if p1p2_polish_lasso_lambda!=0 :
                 warp_logger.info(f'p1 and p2 will be LASSOed in the polishing minimization with lambda = {p1p2_polish_lasso_lambda}')
             else :
@@ -250,11 +224,9 @@ class WarpFitter :
         return (warpresult[self.par_mask]).tolist()
 
     #function to run global minimization with differential evolution and return the result
-    def __runDifferentialEvolution(self,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp,maxiter) :
-        #set up the parameter bounds and constraints
-        parameter_bounds, constraints = self.__getParameterBoundsAndConstraints(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp)
-        #get the array of the initial population
-        initial_population=self.__getInitialPopulation(parameter_bounds)
+    def __runDifferentialEvolution(self,maxiter) :
+        #set up the parameter bounds and constraints and get the initial population
+        parameter_bounds, constraints, initial_population = self.fitpars.getGlobalBoundsConstraintsAndInitialPopulation()
         #run the minimization
         warp_logger.info('Starting initial minimization....')
         self.skip_corners = True
@@ -279,12 +251,12 @@ class WarpFitter :
         return result
 
     #function to run local polishing minimiation with trust-constr and return the result
-    def __runPolishMinimization(self,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp,lasso_lambda,init_pars,maxiter) :
+    def __runPolishMinimization(self,float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter) :
         #set up the parameter bounds and constraints
-        parameter_bounds, constraints = self.__getParameterBoundsAndConstraints(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp)
+        parameter_bounds, constraints = self.fitpars.getPolishingBoundsAndConstraints(float_p1p2_in_polish_fit)
         #get the indices of the p1 and p2 parameters to lasso if those are floating
         lasso_indices = None
-        if (not fix_p1p2) and lasso_lambda!=0. :
+        if float_p1p2 and lasso_lambda!=0. :
             relevant_parnamelist = (np.array(self.FITPAR_NAME_LIST)[self.par_mask]).tolist()
             lasso_indices = (relevant_parnamelist.index('p1'),relevant_parnamelist.index('p2'))
         #figure out the initial parameters and their step sizes
@@ -405,204 +377,13 @@ class WarpFitter :
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
-    # helper function to create the working directory and create/write out lists of overlaps and rectangles
-    def __setupWorkingDirectory(self) :
-        if not os.path.isdir(self.working_dir) :
-            os.mkdir(self.working_dir)
-
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
     def __initializeAlignmentSet(self, *, overlaps) :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
-        a = AlignmentSet(self.dbload_top_dir,self.working_dir,self.samp_name,interactive=customGPUdevice,useGPU=True,selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True)
+        a = AlignmentSet(self.dbload_top_dir,self.working_dir,self.samp_name,interactive=customGPUdevice,useGPU=True,
+                         selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True)
         return a
-
-    #helper function to create and return the lists of fit parameter bounds and fit constraints
-    def __getParameterBoundsAndConstraints(self,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp) :
-        #build the list of parameter bounds
-        parameter_bounds = self.__getParameterBoundsList(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
-        warp_logger.info(f'Floating parameter bounds = {parameter_bounds}')
-        #get the list to use to mask fixed parameters in the minimization functions
-        self.par_mask = self.__getParameterMask(fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2)
-        #get the list of constraints
-        constraints = self.__getConstraints(fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp)
-        return parameter_bounds, constraints
-
-    #helper function to make the list of parameter bounds for fitting
-    def __getParameterBoundsList(self,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2) :
-        #copy the whole set of default
-        bounds_dict = copy.deepcopy(self.default_bounds)
-        #remove any parameters that will be fixed
-        to_remove = []
-        if fix_cxcy :
-            to_remove+=['cx','cy']
-        if fix_fxfy :
-            to_remove+=['fx','fy']
-        if fix_k1k2k3 :
-            to_remove+=['k1','k2','k3']
-        if fix_p1p2 :
-            to_remove+=['p1','p2']
-        for parkey in to_remove :
-            if parkey in bounds_dict.keys() :
-                del bounds_dict[parkey]
-        #print info about the parameters that will be used
-        fixed_par_string=''
-        for name in to_remove :
-            fixed_par_string+=name+', '
-        msg = f'Will fit with {len(bounds_dict.keys())} parameters'
-        if to_remove!=[] :
-            msg+=f' ({fixed_par_string[:-2]} fixed).'
-        else :
-            msg+='.'
-        warp_logger.info(msg)
-        #return the ordered list of parameters
-        return [bounds_dict[name] for name in self.FITPAR_NAME_LIST if name in bounds_dict.keys()]
-
-    #helper function to make the default list of parameter constraints
-    def __buildDefaultParameterBoundsDict(self,max_radial_warp,max_tangential_warp) :
-        bounds = {}
-        # cx/cy bounds are +/- 10% of the center point
-        bounds['cx']=(0.8*(self.n/2.),1.2*(self.n/2.))
-        bounds['cy']=(0.8*(self.m/2.),1.2*(self.m/2.))
-        # fx/fy bounds are +/- 2% of the nominal values 
-        bounds['fx']=(0.98*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
-        bounds['fy']=(0.98*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
-        # k1/k2/k3 and p1/p2 bounds are 1.5x those that would produce the max radial and tangential warp, respectively, with all others zero
-        # (except k1 can't be negative)
-        maxk1 = self.__findDefaultParameterLimit(4,0.1,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
-        bounds['k1']=(0.,1.5*maxk1)
-        maxk2 = self.__findDefaultParameterLimit(5,100,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
-        bounds['k2']=(-1.5*maxk2,1.5*maxk2)
-        maxk3 = self.__findDefaultParameterLimit(8,10000,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
-        bounds['k3']=(-1.5*maxk3,1.5*maxk3)
-        maxp1 = self.__findDefaultParameterLimit(6,0.001,max_tangential_warp,self.warpset.warp.maxTangentialDistortAmount)
-        bounds['p1']=(-1.5*maxp1,1.5*maxp1)
-        maxp2 = self.__findDefaultParameterLimit(7,0.001,max_tangential_warp,self.warpset.warp.maxTangentialDistortAmount)
-        bounds['p2']=(-1.5*maxp2,1.5*maxp2)
-        return bounds
-
-    #helper function to find the limit on a parameter that produces the maximum warp
-    def __findDefaultParameterLimit(self,parindex,parincrement,warplimit,warpamtfunc) :
-        testpars=[self.n/2,self.m/2,self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,0.,0.,0.,0.,0.]
-        warpamt=0.; testparval=0.
-        while warpamt<warplimit :
-            testparval+=parincrement
-            testpars[parindex]=testparval
-            warpamt=warpamtfunc(testpars)
-        return testparval
-
-    #helper function to return the array of the initial population settings for differential_evolution
-    def __getInitialPopulation(self,bounds) :
-        #initial population is a bunch of linear spaces between the bounds for the parameters individually and in pairs
-        init_fit_pars = np.array(self.init_pars)[self.par_mask]
-        parnames = np.array(self.FITPAR_NAME_LIST)[self.par_mask]
-        #make a list of each parameter's grid of possible values
-        par_variations = []
-        nperpar=5
-        for i in range(len(bounds)) :
-            name = parnames[i]
-            bnds = bounds[i]
-            #make the list of this parameter's independent variations to try for the first iteration
-            thisparvalues = None
-            #principal points and focal lengths are evenly spaced between their bounds
-            if name in ['cx','cy','fx','fy'] :
-                thisparvalues = np.linspace(bnds[0],bnds[1],nperpar)
-            #k1 is evenly spaced between zero and half its max value
-            elif name in ['k1'] :
-                thisparvalues = np.linspace(0.,0.5*bnds[1],nperpar+1) #+1 because the zero at the beginning is the default parameter value
-            #k2, k3, and tangential warping parameters are evenly spaced between +/-(1/2) their bounds
-            elif name in ['k2','k3','p1','p2'] :
-                thisparvalues = np.linspace(0.5*bnds[0],0.5*bnds[1],nperpar)
-            else :
-                raise WarpingError(f'ERROR: parameter name {name} is not recognized in __getInitialPopulation!')
-            par_variations.append(thisparvalues)
-        #first member of the population is the nominal initial parameters
-        population_list = []
-        population_list.append(copy.deepcopy(init_fit_pars))
-        #next add a set describing independent parameter variations
-        for i in range(len(par_variations)) :
-            for val in par_variations[i] :
-                if val!=init_fit_pars[i] :
-                    toadd = copy.deepcopy(init_fit_pars)
-                    toadd[i]=val
-                    population_list.append(toadd)
-        #add sets describing corner limits of groups of parameters
-        parameter_group_sets = [np.array([0,0,1,1,2,2,3,3,2])[self.par_mask], #parameters that have the same effect
-                                np.array([0,1,None,None,0,1,None,None,0])[self.par_mask], #principal points and radial warps 1                                  
-                                np.array([0,1,None,None,1,0,None,None,1])[self.par_mask], #principal points and radial warps 2
-                                np.array([0,1,None,None,0,1,None,None,1])[self.par_mask], #principal points and radial warps 3                                  
-                                np.array([0,1,None,None,1,0,None,None,0])[self.par_mask], #principal points and radial warps 4
-                                np.array([None,None,0,1,0,1,None,None,0])[self.par_mask], #focal lengths and radial warps 1
-                                np.array([None,None,0,1,1,0,None,None,1])[self.par_mask], #focal lengths and radial warps 2
-                                np.array([None,None,0,1,0,1,None,None,1])[self.par_mask], #focal lengths and radial warps 3
-                                np.array([None,None,0,1,1,0,None,None,0])[self.par_mask], #focal lengths and radial warps 4
-                                np.array([0,1,None,None,None,None,0,1,None])[self.par_mask], #principal points and tangential warps 1
-                                np.array([0,1,None,None,None,None,1,0,None])[self.par_mask], #principal points and tangential warps 2
-                                np.array([None,None,0,1,None,None,0,1,None])[self.par_mask], #focal lengths and tangential warps 1
-                                np.array([None,None,0,1,None,None,1,0,None])[self.par_mask], #focal lengths and tangential warps 2
-                                ]
-        for parameter_group_numbers in parameter_group_sets :
-            group_numbers_to_consider = set(parameter_group_numbers)
-            if None in group_numbers_to_consider :
-                group_numbers_to_consider.remove(None)
-            for group_number in group_numbers_to_consider :
-                list_indices = [i for i in range(len(par_variations)) if parameter_group_numbers[i]==group_number]
-                combinations = []
-                if len(list_indices)==2 :
-                    combinations = [(1,1),(-2,-2),(1,-2),(-2,1),(0,0),(-1,-1),(0,-1),(-1,0)]
-                elif len(list_indices)==3 :
-                    combinations = [(1,1,1),(-2,-2,1),(1,-2,1),(-2,1,1),(1,1,-2),(-2,-2,-2),(1,-2,-2),(-2,1,-2)]
-                for c in combinations :
-                    toadd = copy.deepcopy(init_fit_pars)
-                    toadd[list_indices[0]]=0.2*par_variations[list_indices[0]][c[0]]
-                    toadd[list_indices[1]]=0.2*par_variations[list_indices[1]][c[1]]
-                    if len(list_indices)==3 :
-                        toadd[list_indices[2]]=0.2*par_variations[list_indices[2]][c[2]]
-                    population_list.append(toadd)
-        to_return = np.array(population_list)
-        warp_logger.info(f'Initial parameter population ({len(population_list)} members):\n{to_return}')
-        return to_return
-
-    #helper function to make the constraints
-    def __getConstraints(self,fix_k1k2k3,fix_p1p2,max_radial_warp,max_tangential_warp) :
-        constraints = []
-        names_to_print = []
-        #if k1 and k2 are being fit for, and max_radial_warp is defined, add the max_radial_warp constraint
-        if (not fix_k1k2k3) and max_radial_warp!=-1 :
-            constraints.append(scipy.optimize.NonlinearConstraint(
-                self._maxRadialDistortAmountForConstraint,
-                -1.*max_radial_warp,
-                max_radial_warp,
-                jac=self._maxRadialDistortAmountJacobianForConstraint,
-                hess=scipy.optimize.BFGS()
-                )
-            )
-            names_to_print.append(f'max radial warp={max_radial_warp} pixels')
-        #if p1 and p2 are being fit for, and max_tangential_warp is defined, add the max_tangential_warp constraint
-        if (not fix_p1p2) and max_tangential_warp!=-1 :
-            constraints.append(scipy.optimize.NonlinearConstraint(
-                self._maxTangentialDistortAmountForConstraint,
-                0.,
-                max_tangential_warp,
-                jac=self._maxTangentialDistortAmountJacobianForConstraint,
-                hess=scipy.optimize.BFGS()
-                )
-            )
-            names_to_print.append(f'max tangential warp={max_tangential_warp} pixels')
-        #print the information about the constraints
-        if len(constraints)==0 :
-            warp_logger.info('No constraints will be applied')
-            return ()
-        else :
-            constraintstring = 'Will apply constraints: '
-            for ntp in names_to_print :
-                constraintstring+=ntp+', '
-            warp_logger.info(constraintstring[:-2]+'.')
-        #return the list of constraints
-        if len(constraints)==1 : #if there's only one it doesn't get passed as a list
-            return constraints[0]
-        else :
-            return constraints
 
     #helper function to get a masking list for the parameters from the warp functions to deal with fixed parameters
     def __getParameterMask(self,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2) :
@@ -634,7 +415,7 @@ class WarpFitter :
         return fixedlist
 
     #helper function to run all of the various post-processing functions after the fit is done
-    def __runPostProcessing(self,fitresult,n_initial_fevs,show_plots) :
+    def __runPostProcessing(self,n_initial_fevs,show_plots) :
         #make the fit progress plots
         self.init_its, self.polish_its = self.__makeFitProgressPlots(n_initial_fevs,show_plots)
         #use the fit result to make the best fit warp object

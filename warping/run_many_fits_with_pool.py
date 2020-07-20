@@ -65,7 +65,7 @@ def getListOfJobCommands(args) :
         if args.float_p1p2_to_polish :
             thisjobcmdstring+=' --float_p1p2_to_polish'
         thisjobcmdstring+=f' --max_radial_warp {args.max_radial_warp} --max_tangential_warp {args.max_tangential_warp}'
-        thisjobcmdstring+=f' --lasso_lambda {args.lasso_lambda} --print_every {args.print_every}'
+        thisjobcmdstring+=f' --p1p2_polish_lasso_lambda {args.p1p2_polish_lasso_lambda} --print_every {args.print_every}'
         thisjobcmdstring+=f' --n_threads 1 --layer {args.layer}'
         
         job_cmds.append(thisjobcmdstring)
@@ -106,7 +106,7 @@ if __name__=='__main__' :
                                   help='Maximum amount of radial warp to use for constraint')
     fit_option_group.add_argument('--max_tangential_warp',  default=4.,          type=float,
                                   help='Maximum amount of radial warp to use for constraint')
-    fit_option_group.add_argument('--lasso_lambda',         default=0.0,         type=float,
+    fit_option_group.add_argument('--p1p2_polish_lasso_lambda',         default=0.0,         type=float,
                                   help="""Lambda magnitude parameter for the LASSO constraint on p1 and p2 
                                           (if those parameters are to float in the polishing minimization)""")
     fit_option_group.add_argument('--print_every',          default=1000,        type=int,

@@ -2,6 +2,7 @@
 from .warp import CameraWarp
 from .utilities import warp_logger, WarpingError, loadRawImageWorker, WarpImage
 from .config import CONST
+from ..utilities.img_file_io import getRawAsHWL
 from ..utilities.misc import cd
 import numpy as np, multiprocessing as mp
 import cv2, contextlib
@@ -40,18 +41,22 @@ class WarpSet :
         self.layer=layer
         self.images = []
 
-    def loadRawImages(self,rawfiles=None,overlaps=None,rectangles=None,flatfield_layer=None,n_threads=1,smoothsigma=CONST.smoothsigma) :
+    def loadRawImages(self,rawfiles=None,overlaps=None,rectangles=None,flatfield_file_path=None,n_threads=1,smoothsigma=CONST.smoothsigma) :
         """
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
-        rawfiles        = list of raw, unwarped image filenames (optional, will use value from init if None)
-        overlaps        = list of overlaps for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
-        rectangles      = list of rectangles for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
-        flatfield_layer = layer of flatfield file to apply when reading in raw images
-        n_threads       = number of parallel processes to run for reading raw files
-        smoothsigma     = sigma for Gaussian smoothing filter applied to raw images on load (set to None to skip smoothing)
+        rawfiles            = list of raw, unwarped image filenames (optional, will use value from init if None)
+        overlaps            = list of overlaps for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
+        rectangles          = list of rectangles for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
+        flatfield_file_path = path to flatfield file to apply when reading in raw images
+        n_threads           = number of parallel processes to run for reading raw files
+        smoothsigma         = sigma for Gaussian smoothing filter applied to raw images on load (set to None to skip smoothing)
         """
-        if flatfield_layer is None :
-            flatfield_layer = np.ones((self.m,self.n),np.float64)
+        #first load the flatfield corrections
+        warp_logger.info(f'Loading flatfield file {flatfield_file_path} to correct raw image illumination')
+        if flatfield_file_path is not None :
+            flatfield_file_layer = (getRawAsHWL(flatfield_file_path,self.m,self.n,self.nlayers,np.float64))[:,:,self.layer-1] 
+        else :
+            flatfield_file_layer = np.ones((self.m,self.n),dtype=np.float64)
         if rawfiles is not None :
             self.raw_filenames=rawfiles
         warp_logger.info("Loading raw images...")
