@@ -468,8 +468,9 @@ class WarpFitter :
         bounds['fx']=(0.98*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
         bounds['fy']=(0.98*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
         # k1/k2/k3 and p1/p2 bounds are 1.5x those that would produce the max radial and tangential warp, respectively, with all others zero
+        # (except k1 can't be negative)
         maxk1 = self.__findDefaultParameterLimit(4,0.1,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
-        bounds['k1']=(-1.5*maxk1,1.5*maxk1)
+        bounds['k1']=(0.,1.5*maxk1)
         maxk2 = self.__findDefaultParameterLimit(5,100,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
         bounds['k2']=(-1.5*maxk2,1.5*maxk2)
         maxk3 = self.__findDefaultParameterLimit(8,10000,max_radial_warp,self.warpset.warp.maxRadialDistortAmount)
