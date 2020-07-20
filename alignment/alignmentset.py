@@ -307,9 +307,10 @@ class AlignmentSet(AlignmentSetBase, ReadRectangles):
     return result
 
   def align(self, *args, write_result=True, **kwargs):
-    super().align(*args, **kwargs)
+    result = super().align(*args, **kwargs)
     if write_result :
       self.writealignments()
+    return result
 
 class AlignmentSetFromXML(AlignmentSetBase, ReadRectanglesFromXML):
   pass
