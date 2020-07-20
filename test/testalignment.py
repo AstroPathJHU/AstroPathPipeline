@@ -276,14 +276,19 @@ class TestAlignment(TestBaseSaveOutput):
     args = thisfolder/"data", thisfolder/"data"/"flatw", "M21_1"
     kwargs = {"selectrectangles": range(10)}
     a1 = AlignmentSet(*args, **kwargs)
-    a2 = AlignmentSetFromXML(*args, **kwargs)
+    a2 = AlignmentSetFromXML(*args, nclip=a1.nclip, position=a1.position, **kwargs)
+    a3 = AlignmentSetFromXML(*args, nclip=a1.nclip, **kwargs)
     a1.getDAPI()
     a2.getDAPI()
+    a3.getDAPI()
 
     a1.align()
     result1 = a1.stitch()
     a2.align()
     result2 = a2.stitch()
+    a3.align()
+    result3 = a3.stitch()
 
-    assertAlmostEqual(units.nominal_values(result1.T), units.nominal_values(result2.T))
-    assertAlmostEqual(units.nominal_values(result1.x()), units.nominal_values(result2.x()))
+    units.np.testing.assert_allclose(units.nominal_values(result1.T), units.nominal_values(result2.T))
+    units.np.testing.assert_allclose(units.nominal_values(result1.x()), units.nominal_values(result2.x()))
+    units.np.testing.assert_allclose(units.nominal_values(result1.T), units.nominal_values(result3.T), atol=1e-8)

@@ -313,4 +313,12 @@ class AlignmentSet(AlignmentSetBase, ReadRectangles):
     return result
 
 class AlignmentSetFromXML(AlignmentSetBase, ReadRectanglesFromXML):
-  pass
+  def __init__(self, *args, nclip, position=None, **kwargs):
+    self.__nclip = nclip
+    super().__init__(*args, **kwargs)
+    if position is None: position = np.array([0, 0])
+    self.__position = position
+  @property
+  def nclip(self): return self.__nclip
+  @property
+  def position(self): return self.__position
