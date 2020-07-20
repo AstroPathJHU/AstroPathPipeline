@@ -1,8 +1,8 @@
 #imports
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSet
+from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, writeImageToFile
-from ..prepdb.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities.misc import cd
 import numpy as np, multiprocessing as mp
 import cv2, os, logging, glob, shutil, dataclasses
