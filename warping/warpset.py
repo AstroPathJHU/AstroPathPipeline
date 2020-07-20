@@ -40,7 +40,7 @@ class WarpSet :
         self.layer=layer
         self.images = []
 
-    def loadRawImageSet(self,rawfiles=None,overlaps=None,rectangles=None,flatfield_layer=None,n_threads=1,smoothsigma=CONST.smoothsigma) :
+    def loadRawImages(self,rawfiles=None,overlaps=None,rectangles=None,flatfield_layer=None,n_threads=1,smoothsigma=CONST.smoothsigma) :
         """
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
         rawfiles        = list of raw, unwarped image filenames (optional, will use value from init if None)
@@ -81,7 +81,7 @@ class WarpSet :
                 self.images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),is_corner_only))
         warp_logger.info("Done.")
 
-    def warpLoadedImageSet(self,skip_corners=False) :
+    def warpLoadedImages(self,skip_corners=False) :
         """
         Warps all the image layers in the raw_images dictionary with the current warp and stores them in memory
         """
@@ -91,7 +91,7 @@ class WarpSet :
                 continue
             self.warp.warpLayerInPlace(warpimg.raw_image,warpimg.warped_image)
 
-    def writeOutWarpedImageSet(self,path=None) :
+    def writeOutWarpedImages(self,path=None) :
         """
         Save the warped images as new files in the directory at "path" (or in the current directory if path=None)
         """

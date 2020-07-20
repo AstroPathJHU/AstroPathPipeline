@@ -112,12 +112,12 @@ class WarpFitter :
             flatfield_file_layer = (getRawAsHWL(flatfield_file_path,self.m,self.n,self.nlayers,np.float64))[:,:,self.layer-1] 
         else :
             flatfield_file_layer = np.ones((self.m,self.n),dtype=np.float64)
-        self.warpset.loadRawImageSet(self.rawfile_paths,self.overlaps,self.rectangles,flatfield_file_layer,n_threads)
-        self.warpset.warpLoadedImageSet()
+        self.warpset.loadRawImages(self.rawfile_paths,self.overlaps,self.rectangles,flatfield_file_layer,n_threads)
+        self.warpset.warpLoadedImages()
         with cd(self.working_dir) :
             if not os.path.isdir(self.samp_name) :
                 os.mkdir(self.samp_name)
-        self.warpset.writeOutWarpedImageSet(os.path.join(self.working_dir,self.samp_name))
+        self.warpset.writeOutWarpedImages(os.path.join(self.working_dir,self.samp_name))
         self.alignset.getDAPI(filetype='camWarpDAPI',writeimstat=False)
 
     def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2k3=False,fix_p1p2_in_global_fit=False,fix_p1p2_in_polish_fit=False,
@@ -196,7 +196,7 @@ class WarpFitter :
         #update the warp with the new parameters
         self.warpset.updateCameraParams(fixedpars)
         #then warp the images
-        self.warpset.warpLoadedImageSet(skip_corners=self.skip_corners)
+        self.warpset.warpLoadedImages(skip_corners=self.skip_corners)
         #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages([warpimg for warpimg in self.warpset.images if not (self.skip_corners and warpimg.is_corner_only)])
         #check the warp amounts to see if the sample should be realigned
@@ -361,7 +361,7 @@ class WarpFitter :
         rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
         raw_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
         #next warp and align the images with the best fit warp
-        self.warpset.warpLoadedImageSet()
+        self.warpset.warpLoadedImages()
         self.alignset.updateRectangleImages(self.warpset.images)
         bestcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
         warped_overlap_comparisons_dict = self.alignset.getOverlapComparisonImagesDict()
