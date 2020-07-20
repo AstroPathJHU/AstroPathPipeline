@@ -461,9 +461,9 @@ class WarpFitter :
     #helper function to make the default list of parameter constraints
     def __buildDefaultParameterBoundsDict(self,max_radial_warp,max_tangential_warp) :
         bounds = {}
-        # cx/cy bounds are +/- 25% of the center point
-        bounds['cx']=(0.5*(self.n/2.),1.5*(self.n/2.))
-        bounds['cy']=(0.5*(self.m/2.),1.5*(self.m/2.))
+        # cx/cy bounds are +/- 10% of the center point
+        bounds['cx']=(0.8*(self.n/2.),1.2*(self.n/2.))
+        bounds['cy']=(0.8*(self.m/2.),1.2*(self.m/2.))
         # fx/fy bounds are +/- 2% of the nominal values 
         bounds['fx']=(0.98*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
         bounds['fy']=(0.98*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*self.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
