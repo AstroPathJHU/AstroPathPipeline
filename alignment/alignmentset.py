@@ -168,8 +168,15 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
 
   overlaptype = AlignmentOverlap #can be overridden in subclasses
 
-  def stitch(self, **kwargs):
-    return stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
+  def stitch(self, saveresult=True, **kwargs):
+    result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
+    if saveresult: self.applystitchresult(result)
+    return result
+
+  def applystitchresult(self, result):
+    result.applytooverlaps()
+    self.__T = result.T
+    self.__fields = result.fields
 
   @property
   def T(self):
@@ -289,19 +296,15 @@ class AlignmentSet(AlignmentSetBase, ReadRectangles):
       raise
 
     if saveresult:
-      result.applytooverlaps()
-      self.__T = result.T
-      self.__fields = result.fields
+      self.applystitchresult(result)
+
     self.logger.info("done reading stitch results")
     return result
 
   def stitch(self, *, saveresult=True, checkwriting=False, **kwargs):
-    result = super().stitch(**kwargs)
+    result = super().stitch(saveresult=saveresult, **kwargs)
 
     if saveresult:
-      result.applytooverlaps()
-      self.__T = result.T
-      self.__fields = result.fields
       self.writestitchresult(result, check=checkwriting)
 
     return result
