@@ -201,9 +201,10 @@ class FlatwSampleBase(SampleBase):
   @property
   def root1(self): return self.root
 
-class ReadRectanglesBase(FlatwSampleBase, DbloadSampleBase, RectangleOverlapCollection):
+class SampleThatReadsOverlaps(SampleBase):
   overlaptype = Overlap #can be overridden in subclasses
 
+class ReadRectanglesBase(FlatwSampleBase, DbloadSampleBase, RectangleOverlapCollection, SampleThatReadsOverlaps):
   @abc.abstractmethod
   def readallrectangles(self): pass
   @abc.abstractmethod
@@ -268,7 +269,7 @@ class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
   def readalloverlaps(self):
     return self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
 
-class XMLLayoutReader(SampleBase):
+class XMLLayoutReader(SampleThatReadsOverlaps):
   @methodtools.lru_cache()
   def getlayout(self):
     rectangles, globals, perimeters = self.getXMLplan()
