@@ -1,7 +1,7 @@
 import argparse, datetime, fractions, itertools, jxmlease, methodtools, numpy as np, os, PIL, re, skimage, tifffile
 from ..baseclasses.csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
 from ..baseclasses.overlap import Overlap
-from ..baseclasses.sample import DbloadSampleBase
+from ..baseclasses.sample import DbloadSampleBase, SampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint
 from .annotationxmlreader import AnnotationXMLReader
@@ -11,7 +11,7 @@ jxmleaseversion = [int(_) for _ in jxmleaseversion[:2]] + list(jxmleaseversion[2
 if jxmleaseversion < [1, 0, '2dev1']:
   raise ImportError(f"You need jxmleaseversion >= 1.0.2dev1 (your version: {jxmlease.__version__})\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
 
-class PrepdbSample(DbloadSampleBase):
+class PrepdbSampleBase(SampleBase):
   @property
   def logmodule(self): return "prepdb"
 
@@ -34,21 +34,11 @@ class PrepdbSample(DbloadSampleBase):
       )
     ]
 
-  def writebatch(self):
-    self.logger.info("writebatch")
-    self.writecsv("batch", self.getbatch())
-
   @property
   def rectangles(self): return self.getlayout()[0]
-  def writerectangles(self):
-    self.logger.info("writerectangles")
-    self.writecsv("rect", self.rectangles)
+
   @property
   def globals(self): return self.getlayout()[1]
-  def writeglobals(self):
-    if not self.globals: return
-    self.logger.info("writeglobals")
-    self.writecsv("globals", self.globals)
 
   @methodtools.lru_cache()
   def getlayout(self):
@@ -204,16 +194,6 @@ class PrepdbSample(DbloadSampleBase):
   @property
   def vertices(self): return self.getXMLpolygonannotations()[2]
 
-  def writeannotations(self):
-    self.logger.info("writeannotations")
-    self.writecsv("annotations", self.annotations, rowclass=Annotation)
-  def writeregions(self):
-    self.logger.info("writeregions")
-    self.writecsv("regions", self.regions, rowclass=Region)
-  def writevertices(self):
-    self.logger.info("writevertices")
-    self.writecsv("vertices", self.vertices, rowclass=Vertex)
-
   @property
   def qptifffilename(self): return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".qptiff")
   @property
@@ -293,15 +273,6 @@ class PrepdbSample(DbloadSampleBase):
   def getqptiffimage(self):
     return self.getqptiffcsvandimage()[1]
 
-  def writeqptiffcsv(self):
-    self.logger.info("writeqptiffcsv")
-    self.writecsv("qptiff", self.getqptiffcsv())
-
-  def writeqptiffjpg(self):
-    self.logger.info("writeqptiffjpg")
-    img = self.getqptiffimage()
-    img.save(self.jpgfilename)
-
   @property
   def xposition(self):
     return self.getqptiffcsv()[0].XPosition
@@ -343,10 +314,6 @@ class PrepdbSample(DbloadSampleBase):
           )
         )
     return overlaps
-
-  def writeoverlaps(self):
-    self.logger.info("writeoverlaps")
-    self.writecsv("overlap", self.getoverlaps())
 
   def getconstants(self):
     constants = [
@@ -405,6 +372,45 @@ class PrepdbSample(DbloadSampleBase):
       ),
     ]
     return constants
+
+class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
+  def writebatch(self):
+    self.logger.info("writebatch")
+    self.writecsv("batch", self.getbatch())
+
+  def writerectangles(self):
+    self.logger.info("writerectangles")
+    self.writecsv("rect", self.rectangles)
+
+  def writeglobals(self):
+    if not self.globals: return
+    self.logger.info("writeglobals")
+    self.writecsv("globals", self.globals)
+
+  def writeannotations(self):
+    self.logger.info("writeannotations")
+    self.writecsv("annotations", self.annotations, rowclass=Annotation)
+
+  def writeregions(self):
+    self.logger.info("writeregions")
+    self.writecsv("regions", self.regions, rowclass=Region)
+
+  def writevertices(self):
+    self.logger.info("writevertices")
+    self.writecsv("vertices", self.vertices, rowclass=Vertex)
+
+  def writeqptiffcsv(self):
+    self.logger.info("writeqptiffcsv")
+    self.writecsv("qptiff", self.getqptiffcsv())
+
+  def writeqptiffjpg(self):
+    self.logger.info("writeqptiffjpg")
+    img = self.getqptiffimage()
+    img.save(self.jpgfilename)
+
+  def writeoverlaps(self):
+    self.logger.info("writeoverlaps")
+    self.writecsv("overlap", self.getoverlaps())
 
   def writeconstants(self):
     self.logger.info("writeconstants")
