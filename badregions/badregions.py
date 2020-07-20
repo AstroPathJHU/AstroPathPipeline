@@ -23,12 +23,13 @@ class BadRegionFinder(abc.ABC):
 
     imagepurple = np.transpose([self.image, self.image//2, self.image], (1, 2, 0))
     imagepurple = (imagepurple * scale).astype(np.uint16)
-    plt.imshow(imagepurple)
 
     badhighlight = np.array(
       [0*self.image+1, 0*self.image+1, 0*self.image, self.badregions(**kwargs)*alpha],
       dtype=float,
     ).transpose(1, 2, 0)
+
+    plt.imshow(imagepurple)
     plt.imshow(badhighlight)
 
     plotstyling(fig, ax)
