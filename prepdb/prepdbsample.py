@@ -1,6 +1,6 @@
 import argparse, datetime, fractions, itertools, jxmlease, methodtools, numpy as np, os, PIL, re, skimage, tifffile
 from ..baseclasses.csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
-from ..baseclasses.overlap import Overlap
+from ..baseclasses.overlap import Overlap, RectangleOverlapCollection
 from ..baseclasses.sample import DbloadSampleBase, SampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint
@@ -11,7 +11,7 @@ jxmleaseversion = [int(_) for _ in jxmleaseversion[:2]] + list(jxmleaseversion[2
 if jxmleaseversion < [1, 0, '2dev1']:
   raise ImportError(f"You need jxmleaseversion >= 1.0.2dev1 (your version: {jxmlease.__version__})\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
 
-class PrepdbSampleBase(SampleBase):
+class PrepdbSampleBase(SampleBase, RectangleOverlapCollection):
   @property
   def logmodule(self): return "prepdb"
 
@@ -314,6 +314,10 @@ class PrepdbSampleBase(SampleBase):
           )
         )
     return overlaps
+
+  @property
+  def overlaps(self):
+    return self.getoverlaps()
 
   def getconstants(self):
     constants = [
