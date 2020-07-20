@@ -84,17 +84,6 @@ class SampleBase(contextlib.ExitStack):
     return self.root/self.SlideID
 
   @property
-  def dbload(self):
-    return self.mainfolder/"dbload"
-
-  def csv(self, csv):
-    return self.mainfolder/"dbload"/f"{self.SlideID}_{csv}.csv"
-  def readcsv(self, csv, *args, **kwargs):
-    return readtable(self.csv(csv), *args, **kwargs)
-  def writecsv(self, csv, *args, **kwargs):
-    return writetable(self.csv(csv), *args, **kwargs)
-
-  @property
   def im3folder(self):
     return self.mainfolder/"im3"
 
@@ -106,14 +95,45 @@ class SampleBase(contextlib.ExitStack):
   def componenttiffsfolder(self):
     return self.mainfolder/"inform_data"/"Component_Tiffs"
 
-  def __getimageinfofromcomponenttiff(self):
+  def getimageinfofromcomponenttiff(self):
     try:
       componenttifffilename = next(self.componenttiffsfolder.glob(self.SlideID+"*_component_data.tif"))
     except StopIteration:
       raise OSError(f"No component tiffs for {self}")
     return tiffinfo(filename=componenttifffilename)
 
-  def __getimageinfofromconstants(self, *, pscale=None):
+  @methodtools.lru_cache()
+  def getimageinfo(self):
+    return self.getimageinfofromcomponenttiff()
+
+  @property
+  def pscale(self): return self.getimageinfo()[0]
+  @property
+  def fwidth(self): return self.getimageinfo()[1]
+  @property
+  def fheight(self): return self.getimageinfo()[2]
+
+  def __enter__(self):
+    self.enter_context(self.logger)
+    return super().__enter__()
+
+  @abc.abstractproperty
+  def logmodule(self):
+    "name of the log files for this class (e.g. align)"
+
+class DbloadSampleBase(SampleBase):
+  @property
+  def dbload(self):
+    return self.mainfolder/"dbload"
+
+  def csv(self, csv):
+    return self.mainfolder/"dbload"/f"{self.SlideID}_{csv}.csv"
+  def readcsv(self, csv, *args, **kwargs):
+    return readtable(self.csv(csv), *args, **kwargs)
+  def writecsv(self, csv, *args, **kwargs):
+    return writetable(self.csv(csv), *args, **kwargs)
+
+  def getimageinfofromconstants(self, *, pscale=None):
     if pscale is None:
       tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1})
       pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
@@ -127,14 +147,14 @@ class SampleBase(contextlib.ExitStack):
     return pscale, fwidth, fheight
 
   @methodtools.lru_cache()
-  def __getimageinfo(self):
+  def getimageinfo(self):
     try:
-      tiffpscale, tiffwidth, tiffheight = self.__getimageinfofromcomponenttiff()
+      tiffpscale, tiffwidth, tiffheight = self.getimageinfofromcomponenttiff()
     except OSError:
       tiffpscale = tiffwidth = tiffheight = None
 
     try:
-      constpscale, constwidth, constheight = self.__getimageinfofromconstants(pscale=tiffpscale)
+      constpscale, constwidth, constheight = self.getimageinfofromconstants(pscale=tiffpscale)
     except FileNotFoundError:
       constpscale = constwidth = constheight = None
 
@@ -159,17 +179,6 @@ class SampleBase(contextlib.ExitStack):
 
     return tiffpscale, tiffwidth, tiffheight
 
-  @property
-  def pscale(self): return self.__getimageinfo()[0]
-  @property
-  def fwidth(self): return self.__getimageinfo()[1]
-  @property
-  def fheight(self): return self.__getimageinfo()[2]
-
-  def __enter__(self):
-    self.enter_context(self.logger)
-    return super().__enter__()
-
   @methodtools.lru_cache()
   @property
   def constantsdict(self):
@@ -183,10 +192,6 @@ class SampleBase(contextlib.ExitStack):
   def nclip(self):
     return self.constantsdict["nclip"]
 
-  @abc.abstractproperty
-  def logmodule(self):
-    "name of the log files for this class (e.g. align)"
-
 class FlatwSampleBase(SampleBase):
   def __init__(self, root, root2, samp, *args, **kwargs):
     super().__init__(root=root, samp=samp, *args, **kwargs)
@@ -195,7 +200,7 @@ class FlatwSampleBase(SampleBase):
   @property
   def root1(self): return self.root
 
-class ReadRectangles(FlatwSampleBase, RectangleOverlapCollection):
+class ReadRectangles(FlatwSampleBase, DbloadSampleBase, RectangleOverlapCollection):
   overlaptype = Overlap #can be overridden in subclasses
 
   def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, **kwargs):
