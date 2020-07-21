@@ -182,7 +182,7 @@ class AlignmentSet(ReadRectangles):
     """
     overlap_shift_comparisons = {}
     for o in self.overlaps :
-      overlap_shift_comparisons[o.getShiftComparisonImageCodeNameTuple()]=o.getShiftComparisonImages()
+      overlap_shift_comparisons[o.getShiftComparisonDetailTuple()]=o.getShiftComparisonImages()
     return overlap_shift_comparisons
 
   def __getGPUthread(self, interactive, force) :

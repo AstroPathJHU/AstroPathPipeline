@@ -1,10 +1,39 @@
 #imports
 from .warp import CameraWarp
 from .fitparameter import FitParameter
-from .utilities import WarpingError
+from .utilities import WarpingError, warp_logger
 
 #class to handle everything to do with the warp fitting parameters
 class FitParameterSet :
+
+    #################### PROPERTIES ####################
+    @property
+    def best_fit_warp_parameters(self) : #the ordered list of the best fit warping parameters
+        if self._best_fit_warp_parameters is None :
+            raise WarpingError('ERROR: bestFitWarpParameters called while best fit parameters is None!')
+        return self._best_fit_warp_parameters
+    @property
+    def result_text_file_lines(self) : # lines of text to be written out in the report file
+        max_r_x, max_r_y = self._getMaxDistanceCoords()
+        lines = {
+            'n':str(self.n),
+            'm':str(self.m),
+            'cx':str(self.cx)+('' if par_mask[0] else ' (fixed)'),
+            'cy':str(self.cy)+('' if par_mask[1] else ' (fixed)'),
+            'fx':str(self.fx)+('' if par_mask[2] else ' (fixed)'),
+            'fy':str(self.fy)+('' if par_mask[3] else ' (fixed)'),
+            'k1':str(self.k1)+('' if par_mask[4] else ' (fixed)'),
+            'k2':str(self.k2)+('' if par_mask[5] else ' (fixed)'),
+            'k3':str(self.k3)+('' if par_mask[8] else ' (fixed)'),
+            'p1':str(self.p1)+('' if par_mask[6] else ' (fixed)'),
+            'p2':str(self.p2)+('' if par_mask[7] else ' (fixed)'),
+            'max_r_x_coord':str(max_r_x),
+            'max_r_y_coord':str(max_r_y),
+            'max_r':str(math.sqrt((max_r_x)**2+(max_r_y)**2)),
+            'max_radial_warp':str(self.maxRadialDistortAmount(pars)),
+            'max_tangential_warp':str(self.maxTangentialDistortAmount(pars)),
+        }
+        return lines
 
     #################### CLASS CONSTANTS ####################
 
@@ -30,33 +59,62 @@ class FitParameterSet :
         bounds_dict = self.__buildDefaultParameterBoundsDict(warp)
         #make an ordered list of the fit parameters
         self.all_ordered_fitpars = [FitParameter(fpn,bounds_dict[fpn],fpn in fixed,fpn in normalize) for fpn in self.FITPAR_NAME_LIST]
+        #initialize the best fit warp parameters
+        self._best_fit_warp_parameters = None
 
-    def getGlobalBoundsConstraintsAndInitialPopulation(self) :
+    def getGlobalSetup(self) :
         """
         Return the lists of parameter bounds and constraints and the initial population for the global fit
         """
         pass
 
-    def getPolishingBoundsAndConstraints(self,force_float_p1p2) :
+    def getPolishingSetup(self,force_float_p1p2,p1p2_lasso_lambda) :
         """
-        Return the lists of parameter bounds and constraints for the polishing fit
-        force_float_p1p2 = True if tangential warping parameters should be allowed to float if they are otherwise fixed
+        Return the lists of parameter bounds, constraints, initial values, relative step sizes, parameter tolerance, and gradient tolerance for the polishing fit
+        force_float_p1p2  = True if tangential warping parameters should be allowed to float (if they were fixed in the global minimization)
+        p1p2_lasso_lambda = numerical value of the LASSO constraint that will be applied to the tangential warping parameters (if they are to float)
         """
+        x_tol = 1e-4
+        g_tol = 1e-5
         pass
 
-    def setInitialResults(self,diff_ev_par_values) :
+    def setInitialResults(self,diff_ev_result) :
         """
         Record the best-fit values of the parameters from the global minimization
         diff_ev_par_values = the list of raw numerical parameter values from differential evolution 
         """
         pass
 
-    def setFinalResults(self,final_par_values) :
+    def setFinalResults(self,polishing_result) :
         """
         Record the best-fit values of the parameters after all minimization is complete
         final_par_values = the list of raw numerical parameter values from the final minimization
         """
         pass
+
+    def warpParsFromFitPars(self,fit_par_values) :
+        """
+        Return a full list of warping parameters given the current numerical values of the fit parameters
+        fit_par_values = list of numerical fit parameter values
+        """
+        pass
+
+    def fitParsFromWarpPars(self,warp_par_values) :
+        """
+        Return a list of just the numerical fit parameters given the full set of warping parameters
+        warp_par_values = list of numerical warp parameter values 
+        """
+        pass
+
+    def getLassoCost(self,fit_par_values) :
+        """
+        Return the cost from the LASSO constraint on the tangential warping parameters
+        """
+        lasso_cost = 0.
+        if lasso_param_indices is not None :
+            for pindex in lasso_param_indices :
+                lasso_cost += lasso_lambda*abs(pars[pindex])
+        return lasso_cost
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -248,3 +306,49 @@ class FitParameterSet :
             return constraints[0]
         else :
             return constraints
+            
+    #helper function to get the indices of the LASSO-constrained parameters (necessary??)
+    def __getLassoParameterIndices(self,float_p1p2,lasso_lambda) :
+        #get the indices of the p1 and p2 parameters to lasso if those are floating
+        lasso_indices = None
+        if float_p1p2 and lasso_lambda!=0. :
+            relevant_parnamelist = (np.array(self.FITPAR_NAME_LIST)[self.par_mask]).tolist()
+            lasso_indices = (relevant_parnamelist.index('p1'),relevant_parnamelist.index('p2'))
+
+    #helper function to get the initial parameter values and relative step sizes for the polishing minimization
+    def __getPolishingInitialParametersAndRelativeSteps(self) :
+        #figure out the initial parameters and their step sizes
+        init_pars_to_use = ((np.array(init_pars))[self.par_mask]).tolist()
+        for i in range(len(init_pars_to_use)) :
+            if init_pars_to_use[i]==0. :
+                init_pars_to_use[i]=0.00000001 # can't send p1/p2=0. to the Jacobian functions in trust-constr
+        relative_steps = np.array([abs(0.05*p) if abs(p)<1. else 0.05 for p in init_pars_to_use])
+
+    #helper function to get a masking list for the parameters from the warp functions to deal with fixed parameters
+    def __getParameterMask(self,fix_cxcy,fix_fxfy,fix_k1k2k3,fix_p1p2) :
+        mask = [True,True,True,True,True,True,True,True,True]
+        if fix_cxcy :
+            mask[0]=False
+            mask[1]=False
+        if fix_fxfy :
+            mask[2]=False
+            mask[3]=False
+        if fix_k1k2k3 :
+            mask[4]=False
+            mask[5]=False
+            mask[8]=False
+        if fix_p1p2 :
+            mask[6]=False
+            mask[7]=False
+        return mask
+
+    #helper function to get a parameter list of the right length so the warp functions always see/return lists of the same length
+    def __correctParameterList(self,pars) :
+        fixedlist = []; pi=0
+        for i,p in enumerate(self.init_pars) :
+            if self.par_mask[i] :
+                fixedlist.append(pars[pi])
+                pi+=1
+            else :
+                fixedlist.append(p)
+        return fixedlist
