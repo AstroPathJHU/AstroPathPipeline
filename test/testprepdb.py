@@ -1,8 +1,8 @@
 import itertools, numpy as np, os, pathlib, PIL.Image, unittest
 from ..baseclasses.sample import SampleDef
-from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
+from ..baseclasses.overlap import Overlap, rectangleoverlaplist_fromcsvs
 from ..baseclasses.rectangle import Rectangle
-from ..prepdb.prepdbsample import Annotation, Batch, Constant, Overlap, QPTiffCsv, Region, PrepdbSample, Vertex
+from ..prepdb.prepdbsample import Annotation, Batch, Constant, QPTiffCsv, Region, PrepdbSample, Vertex
 from ..utilities import units
 from ..utilities.tableio import readtable
 from .testbase import assertAlmostEqual

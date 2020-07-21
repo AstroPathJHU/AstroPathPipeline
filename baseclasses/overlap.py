@@ -121,4 +121,3 @@ def rectangleoverlaplist_fromcsvs(dbloadfolder, *, selectrectangles=None, select
     rectanglefilter = lambda r: oldfilter(r) and overlaps.selectoverlaprectangles(r)
     rectangles = [r for r in rectangles if rectanglefilter(r)]
   return RectangleOverlapList(rectangles, overlaps)
-
