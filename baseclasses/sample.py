@@ -1,9 +1,10 @@
-import abc, contextlib, dataclasses, logging, methodtools, numpy as np, pathlib
+import abc, contextlib, dataclasses, datetime, itertools, logging, methodtools, numpy as np, os, pathlib, re
 
 from ..utilities import units
-from ..utilities.misc import dataclass_dc_init, memmapcontext, tiffinfo
+from ..utilities.misc import dataclass_dc_init, floattoint, memmapcontext, tiffinfo
 from ..utilities.tableio import readtable, writetable
-from .csvclasses import Constant
+from .annotationxmlreader import AnnotationXMLReader
+from .csvclasses import Constant, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, rectangleoroverlapfilter
 from .overlap import Overlap, RectangleOverlapCollection
@@ -200,8 +201,14 @@ class FlatwSampleBase(SampleBase):
   @property
   def root1(self): return self.root
 
-class ReadRectangles(FlatwSampleBase, DbloadSampleBase, RectangleOverlapCollection):
+class SampleThatReadsOverlaps(SampleBase):
   overlaptype = Overlap #can be overridden in subclasses
+
+class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOverlapCollection):
+  @abc.abstractmethod
+  def readallrectangles(self): pass
+  @abc.abstractmethod
+  def readalloverlaps(self): pass
 
   def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, **kwargs):
     super().__init__(*args, **kwargs)
@@ -210,13 +217,13 @@ class ReadRectangles(FlatwSampleBase, DbloadSampleBase, RectangleOverlapCollecti
     _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
     overlapfilter = lambda o: _overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
 
-    self.__rectangles  = self.readcsv("rect", Rectangle, extrakwargs={"pscale": self.pscale})
+    self.__rectangles  = self.readallrectangles()
     self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
-    self.__overlaps  = self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
+    self.__overlaps  = self.readalloverlaps()
     self.__overlaps = [o for o in self.overlaps if overlapfilter(o)]
     if onlyrectanglesinoverlaps:
       self.__rectangles = [r for r in self.rectangles if self.selectoverlaprectangles(r)]
-    
+
   def getrawlayers(self, filetype):
     self.logger.info("getrawlayers")
     if filetype=="flatWarpDAPI" :
@@ -255,3 +262,120 @@ class ReadRectangles(FlatwSampleBase, DbloadSampleBase, RectangleOverlapCollecti
 
   @abc.abstractproperty
   def layer(self): pass
+
+class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
+  def readallrectangles(self):
+    return self.readcsv("rect", Rectangle, extrakwargs={"pscale": self.pscale})
+  def readalloverlaps(self):
+    return self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
+
+class XMLLayoutReader(SampleThatReadsOverlaps):
+  @methodtools.lru_cache()
+  def getlayout(self):
+    rectangles, globals, perimeters = self.getXMLplan()
+    rectanglefiles = self.getdir()
+    maxtimediff = datetime.timedelta(0)
+    for r in rectangles:
+      rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
+      assert len(rfs) <= 1
+      if not rfs:
+        cx, cy = units.microns(r.cxvec, pscale=self.pscale)
+        raise OSError(f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist")
+      rf = rfs.pop()
+      maxtimediff = max(maxtimediff, abs(rf.t-r.t))
+    if maxtimediff >= datetime.timedelta(seconds=5):
+      self.logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
+    rectangles.sort(key=lambda x: x.t)
+    for i, rectangle in enumerate(rectangles, start=1):
+      rectangle.n = i
+    if not rectangles:
+      raise ValueError("No layout annotations")
+    return rectangles, globals
+
+  @methodtools.lru_cache()
+  def getXMLplan(self):
+    xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
+    reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
+
+    rectangles = reader.rectangles
+    globals = reader.globals
+    perimeters = reader.perimeters
+    self.fixM2(rectangles)
+    self.fixrectanglefilenames(rectangles)
+
+    return rectangles, globals, perimeters
+
+  def fixM2(self, rectangles):
+    for rectangle in rectangles[:]:
+      if "_M2" in rectangle.file:
+        duplicates = [r for r in rectangles if r is not rectangle and np.all(r.cxvec == rectangle.cxvec)]
+        if not duplicates:
+          rectangle.file = rectangle.file.replace("_M2", "")
+        for d in duplicates:
+          rectangles.remove(d)
+        self.logger.warningglobal(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
+    for i, rectangle in enumerate(rectangles, start=1):
+      rectangle.n = i
+
+  def fixrectanglefilenames(self, rectangles):
+    for r in rectangles:
+      expected = self.SlideID+f"_[{floattoint(units.microns(r.cx, pscale=r.pscale), atol=1e-10):d},{floattoint(units.microns(r.cy, pscale=r.pscale), atol=1e-10):d}].im3"
+      actual = r.file
+      if expected != actual:
+        self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
+      r.file = expected
+
+  @methodtools.lru_cache()
+  def getdir(self):
+    folder = self.scanfolder/"MSI"
+    im3s = folder.glob("*.im3")
+    result = []
+    for im3 in im3s:
+      regex = self.SlideID+r"_\[([0-9]+),([0-9]+)\].im3"
+      match = re.match(regex, im3.name)
+      if not match:
+        raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
+      x = units.Distance(microns=int(match.group(1)), pscale=self.pscale)
+      y = units.Distance(microns=int(match.group(2)), pscale=self.pscale)
+      t = datetime.datetime.fromtimestamp(os.path.getmtime(im3)).astimezone()
+      result.append(
+        RectangleFile(
+          cx=x,
+          cy=y,
+          t=t,
+          pscale=self.pscale,
+        )
+      )
+    return result
+
+  @methodtools.lru_cache()
+  def getoverlaps(self):
+    overlaps = []
+    for r1, r2 in itertools.product(self.rectangles, repeat=2):
+      if r1 is r2: continue
+      if np.all(abs(r1.cxvec - r2.cxvec) < r1.shape):
+        tag = int(np.sign(r1.cx-r2.cx)) + 3*int(np.sign(r1.cy-r2.cy)) + 5
+        overlaps.append(
+          self.overlaptype(
+            n=len(overlaps)+1,
+            p1=r1.n,
+            p2=r2.n,
+            x1=r1.x,
+            y1=r1.y,
+            x2=r2.x,
+            y2=r2.y,
+            tag=tag,
+            layer=self.layer,
+            nclip=self.nclip,
+            rectangles=(r1, r2),
+            pscale=self.pscale,
+            readingfromfile=False,
+          )
+        )
+    return overlaps
+
+class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
+  def readallrectangles(self):
+    return self.getlayout()[0]
+  def readalloverlaps(self):
+    return self.getoverlaps()

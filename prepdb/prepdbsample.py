@@ -1,17 +1,15 @@
-import argparse, datetime, fractions, itertools, jxmlease, methodtools, numpy as np, os, PIL, re, skimage, tifffile
-from ..baseclasses.csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, RectangleFile, Region, Vertex
-from ..baseclasses.overlap import Overlap
-from ..baseclasses.sample import DbloadSampleBase
+import argparse, fractions, jxmlease, methodtools, numpy as np, PIL, skimage, tifffile
+from ..baseclasses.csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, Region, Vertex
+from ..baseclasses.overlap import RectangleOverlapCollection
+from ..baseclasses.sample import DbloadSampleBase, XMLLayoutReader
 from ..utilities import units
-from ..utilities.misc import floattoint
-from .annotationxmlreader import AnnotationXMLReader
 
 jxmleaseversion = jxmlease.__version__.split(".")
 jxmleaseversion = [int(_) for _ in jxmleaseversion[:2]] + list(jxmleaseversion[2:])
 if jxmleaseversion < [1, 0, '2dev1']:
   raise ImportError(f"You need jxmleaseversion >= 1.0.2dev1 (your version: {jxmlease.__version__})\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
 
-class PrepdbSample(DbloadSampleBase):
+class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
   @property
   def logmodule(self): return "prepdb"
 
@@ -34,100 +32,11 @@ class PrepdbSample(DbloadSampleBase):
       )
     ]
 
-  def writebatch(self):
-    self.logger.info("writebatch")
-    self.writecsv("batch", self.getbatch())
-
   @property
   def rectangles(self): return self.getlayout()[0]
-  def writerectangles(self):
-    self.logger.info("writerectangles")
-    self.writecsv("rect", self.rectangles)
+
   @property
   def globals(self): return self.getlayout()[1]
-  def writeglobals(self):
-    if not self.globals: return
-    self.logger.info("writeglobals")
-    self.writecsv("globals", self.globals)
-
-  @methodtools.lru_cache()
-  def getlayout(self):
-    rectangles, globals, perimeters = self.getXMLplan()
-    rectanglefiles = self.getdir()
-    maxtimediff = datetime.timedelta(0)
-    for r in rectangles:
-      rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
-      assert len(rfs) <= 1
-      if not rfs:
-        cx, cy = units.microns(r.cxvec, pscale=self.pscale)
-        raise OSError(f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist")
-      rf = rfs.pop()
-      maxtimediff = max(maxtimediff, abs(rf.t-r.t))
-    if maxtimediff >= datetime.timedelta(seconds=5):
-      self.logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
-    rectangles.sort(key=lambda x: x.t)
-    for i, rectangle in enumerate(rectangles, start=1):
-      rectangle.n = i
-    if not rectangles:
-      raise ValueError("No layout annotations")
-    return rectangles, globals
-
-  @methodtools.lru_cache()
-  def getXMLplan(self):
-    xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
-    reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
-
-    rectangles = reader.rectangles
-    globals = reader.globals
-    perimeters = reader.perimeters
-    self.fixM2(rectangles)
-    self.fixrectanglefilenames(rectangles)
-
-    return rectangles, globals, perimeters
-
-  def fixM2(self, rectangles):
-    for rectangle in rectangles[:]:
-      if "_M2" in rectangle.file:
-        duplicates = [r for r in rectangles if r is not rectangle and np.all(r.cxvec == rectangle.cxvec)]
-        if not duplicates:
-          rectangle.file = rectangle.file.replace("_M2", "")
-        for d in duplicates:
-          rectangles.remove(d)
-        self.logger.warningglobal(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
-    for i, rectangle in enumerate(rectangles, start=1):
-      rectangle.n = i
-
-  def fixrectanglefilenames(self, rectangles):
-    for r in rectangles:
-      expected = self.SlideID+f"_[{floattoint(units.microns(r.cx, pscale=r.pscale), atol=1e-10):d},{floattoint(units.microns(r.cy, pscale=r.pscale), atol=1e-10):d}].im3"
-      actual = r.file
-      if expected != actual:
-        self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
-      r.file = expected
-
-  @methodtools.lru_cache()
-  def getdir(self):
-    folder = self.scanfolder/"MSI"
-    im3s = folder.glob("*.im3")
-    result = []
-    for im3 in im3s:
-      regex = self.SlideID+r"_\[([0-9]+),([0-9]+)\].im3"
-      match = re.match(regex, im3.name)
-      if not match:
-        raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
-      x = units.Distance(microns=int(match.group(1)), pscale=self.pscale)
-      y = units.Distance(microns=int(match.group(2)), pscale=self.pscale)
-      t = datetime.datetime.fromtimestamp(os.path.getmtime(im3)).astimezone()
-      result.append(
-        RectangleFile(
-          cx=x,
-          cy=y,
-          t=t,
-          pscale=self.pscale,
-        )
-      )
-    result.sort(key=lambda x: x.t)
-    return result
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
@@ -203,16 +112,6 @@ class PrepdbSample(DbloadSampleBase):
   def regions(self): return self.getXMLpolygonannotations()[1]
   @property
   def vertices(self): return self.getXMLpolygonannotations()[2]
-
-  def writeannotations(self):
-    self.logger.info("writeannotations")
-    self.writecsv("annotations", self.annotations, rowclass=Annotation)
-  def writeregions(self):
-    self.logger.info("writeregions")
-    self.writecsv("regions", self.regions, rowclass=Region)
-  def writevertices(self):
-    self.logger.info("writevertices")
-    self.writecsv("vertices", self.vertices, rowclass=Vertex)
 
   @property
   def qptifffilename(self): return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".qptiff")
@@ -293,15 +192,6 @@ class PrepdbSample(DbloadSampleBase):
   def getqptiffimage(self):
     return self.getqptiffcsvandimage()[1]
 
-  def writeqptiffcsv(self):
-    self.logger.info("writeqptiffcsv")
-    self.writecsv("qptiff", self.getqptiffcsv())
-
-  def writeqptiffjpg(self):
-    self.logger.info("writeqptiffjpg")
-    img = self.getqptiffimage()
-    img.save(self.jpgfilename)
-
   @property
   def xposition(self):
     return self.getqptiffcsv()[0].XPosition
@@ -318,35 +208,9 @@ class PrepdbSample(DbloadSampleBase):
   def qpscale(self):
     return self.getqptiffcsv()[0].qpscale
 
-  @methodtools.lru_cache()
-  def getoverlaps(self):
-    overlaps = []
-    for r1, r2 in itertools.product(self.rectangles, repeat=2):
-      if r1 is r2: continue
-      if np.all(abs(r1.cxvec - r2.cxvec) < r1.shape):
-        tag = int(np.sign(r1.cx-r2.cx)) + 3*int(np.sign(r1.cy-r2.cy)) + 5
-        overlaps.append(
-          Overlap(
-            n=len(overlaps)+1,
-            p1=r1.n,
-            p2=r2.n,
-            x1=r1.x,
-            y1=r1.y,
-            x2=r2.x,
-            y2=r2.y,
-            tag=tag,
-            layer=self.layer,
-            nclip=self.nclip,
-            rectangles=(r1, r2),
-            pscale=self.pscale,
-            readingfromfile=False,
-          )
-        )
-    return overlaps
-
-  def writeoverlaps(self):
-    self.logger.info("writeoverlaps")
-    self.writecsv("overlap", self.getoverlaps())
+  @property
+  def overlaps(self):
+    return self.getoverlaps()
 
   def getconstants(self):
     constants = [
@@ -405,6 +269,45 @@ class PrepdbSample(DbloadSampleBase):
       ),
     ]
     return constants
+
+class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
+  def writebatch(self):
+    self.logger.info("writebatch")
+    self.writecsv("batch", self.getbatch())
+
+  def writerectangles(self):
+    self.logger.info("writerectangles")
+    self.writecsv("rect", self.rectangles)
+
+  def writeglobals(self):
+    if not self.globals: return
+    self.logger.info("writeglobals")
+    self.writecsv("globals", self.globals)
+
+  def writeannotations(self):
+    self.logger.info("writeannotations")
+    self.writecsv("annotations", self.annotations, rowclass=Annotation)
+
+  def writeregions(self):
+    self.logger.info("writeregions")
+    self.writecsv("regions", self.regions, rowclass=Region)
+
+  def writevertices(self):
+    self.logger.info("writevertices")
+    self.writecsv("vertices", self.vertices, rowclass=Vertex)
+
+  def writeqptiffcsv(self):
+    self.logger.info("writeqptiffcsv")
+    self.writecsv("qptiff", self.getqptiffcsv())
+
+  def writeqptiffjpg(self):
+    self.logger.info("writeqptiffjpg")
+    img = self.getqptiffimage()
+    img.save(self.jpgfilename)
+
+  def writeoverlaps(self):
+    self.logger.info("writeoverlaps")
+    self.writecsv("overlap", self.getoverlaps())
 
   def writeconstants(self):
     self.logger.info("writeconstants")
