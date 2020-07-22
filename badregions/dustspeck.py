@@ -14,6 +14,12 @@ class DustSpeckFinder(BadRegionFinder):
     if weight <= 0:
       return np.zeros_like(self.image, dtype=bool)
 
+    if showdebugplots:
+      if threshold > thresholds[0]:
+        print("candidate dust is BRIGHTER than signal")
+      else:
+        print("candidate dust is DIMMER than signal")
+
     signalmask = self.image > threshold
     badregions = cv2.UMat(signalmask.astype(np.uint8))
     if showdebugplots:
