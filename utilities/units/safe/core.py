@@ -196,9 +196,9 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
 @np.vectorize
 def pixels(distance, *, pscale=None, power=1):
   if not distance: return 0.
-  if None is not pscale != _pscale(distance) is not None:
+  if None is not pscale != _pscale(distance)[()] is not None:
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
-  if None is not power != _power(distance) is not None:
+  if None is not power != _power(distance)[()] is not None:
     raise ValueError(f"Inconsistent powers {power} {_power(distance)}")
   if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return distance
   return distance._pixels
@@ -208,9 +208,9 @@ __pixels = pixels #for use in functions with a pixels kwarg
 @np.vectorize
 def microns(distance, *, pscale=None, power=1):
   if not distance: return 0.
-  if None is not pscale != _pscale(distance) is not None:
+  if None is not pscale != _pscale(distance)[()] is not None:
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
-  if None is not power != _power(distance) is not None:
+  if None is not power != _power(distance)[()] is not None:
     raise ValueError(f"Inconsistent powers {power} {_power(distance)}")
   if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return distance
   return distance._microns
