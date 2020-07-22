@@ -410,7 +410,7 @@ class CameraWarp(Warp) :
         x, y = self._getMaxDistanceCoords(pars)
         fxfyk1k2k3_dependence = self._radialDistortAmountAtCoordsJacobian(x,y,pars)
         retvec =[0.,0.] # no dependence on cx/cy
-        retvec+=fxfyk1k2k3_dependence[] #add fx, fy, k1, k2, and k3 dependency
+        retvec+=fxfyk1k2k3_dependence #add fx, fy, k1, k2, and k3 dependency
         retvec+=[0.,0.] # no dependence on p1/p2
         return retvec 
 

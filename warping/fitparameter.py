@@ -7,28 +7,24 @@ class FitParameter :
     #################### PROPERTIES ####################
 
     @property
-    @methodtools.lru_cache()
     def fixed(self): # boolean for whether or not the parameter is fixed
         return self._fixed
     @fixed.setter
-    @methodtools.lru_cache()
     def fixed(self,fixed) :
         self._fixed = fixed
     @property
     def warp_bound_string(self) : # a string of the bounds in warp units
-        return f'({self._min_warp_val:.2f}, {self._max_warp_val:.2f})'
+        return f'({self._min_warp_val:.2f},{self._max_warp_val:.2f})'
     @property
     def fit_bound_string(self) : # a string of the bounds in fit units
-        return f'({self._min_fit_val:.2f}, {self._max_fit_val:.2f})'
+        return f'({self._min_fit_val:.2f},{self._max_fit_val:.2f})'
     @property
     def fit_bounds(self) : # a tuple of the bounds in fit units
-        return tuple(self._min_fit_val,self._max_fit_val)
+        return (self._min_fit_val,self._max_fit_val)
     @property
-    @methodtools.lru_cache()
     def current_fit_value(self) : #the current value in fit units
         return self._current_fit_value
     @property
-    @methodtools.lru_cache()
     def current_warp_value(self) : #the current value in warp units
         return self._current_warp_value
     @property
@@ -66,15 +62,15 @@ class FitParameter :
         self.name = name
         self._fixed=fixed
         self._normalize=normalize
-        #set the offset and rescale for normalization
-        self._offset  = 0.0 if self.min_warp_val==0. else 0.5*(bounds[1]-bounds[0])
-        self._rescale = 1.0 if self.min_warp_val==0. else 2.0
         #set the bounds in warping units
         self._min_warp_val = bounds[0]
         self._max_warp_val = bounds[1]
+        #set the offset and rescale for normalization
+        self._offset  = 0.0 if self._min_warp_val==0. else 0.5*(bounds[1]+bounds[0])
+        self._rescale = (bounds[1]-bounds[0]) if self._min_warp_val==0. else 0.5*(bounds[1]-bounds[0])
         #set the bounds in fit units
-        self._min_fit_val = self.fitValueFromWarpValue(self.min_warp_val)
-        self._max_fit_val = self.fitValueFromWarpValue(self.max_warp_val)
+        self._min_fit_val = self.fitValueFromWarpValue(self._min_warp_val)
+        self._max_fit_val = self.fitValueFromWarpValue(self._max_warp_val)
         #set the initial numerical values of the parameter
         self._initial_warp_value = initial_value
         self._initial_fit_value  = self.fitValueFromWarpValue(initial_value)

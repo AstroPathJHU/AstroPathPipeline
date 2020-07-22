@@ -5,7 +5,7 @@ from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, writeImageToFile
 from ..utilities.misc import cd
 import numpy as np, multiprocessing as mp
-import cv2, os, logging, glob, shutil, dataclasses
+import cv2, os, logging, glob, shutil, dataclasses, copy
 
 #set up the logger
 warp_logger = logging.getLogger("warpfitter")
@@ -228,14 +228,14 @@ def buildDefaultParameterBoundsDict(warp,max_rad_warp,max_tan_warp) :
     # k1/k2/k3 and p1/p2 bounds are 1.5x those that would produce the max radial and tangential warp, respectively, with all others zero
     # (except k1 can't be negative)
     testpars=[warp.n/2,warp.m/2,CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,0.,0.,0.,0.,0.]
-    maxk1 = findDefaultParameterLimit(4,0.1,max_rad_warp,warp.maxRadialDistortAmount,testpars)
+    maxk1 = findDefaultParameterLimit(4,1,max_rad_warp,warp.maxRadialDistortAmount,copy.deepcopy(testpars))
     bounds['k1']=(0.,1.5*maxk1)
-    maxk2 = findDefaultParameterLimit(5,100,max_rad_warp,warp.maxRadialDistortAmount,testpars)
+    maxk2 = findDefaultParameterLimit(5,1000,max_rad_warp,warp.maxRadialDistortAmount,copy.deepcopy(testpars))
     bounds['k2']=(-1.5*maxk2,1.5*maxk2)
-    maxk3 = findDefaultParameterLimit(8,10000,max_rad_warp,warp.maxRadialDistortAmount,testpars)
+    maxk3 = findDefaultParameterLimit(6,10000000,max_rad_warp,warp.maxRadialDistortAmount,copy.deepcopy(testpars))
     bounds['k3']=(-1.5*maxk3,1.5*maxk3)
-    maxp1 = findDefaultParameterLimit(6,0.001,max_tan_warp,warp.maxTangentialDistortAmount,testpars)
+    maxp1 = findDefaultParameterLimit(7,0.01,max_tan_warp,warp.maxTangentialDistortAmount,copy.deepcopy(testpars))
     bounds['p1']=(-1.5*maxp1,1.5*maxp1)
-    maxp2 = findDefaultParameterLimit(7,0.001,max_tan_warp,warp.maxTangentialDistortAmount,testpars)
+    maxp2 = findDefaultParameterLimit(8,0.01,max_tan_warp,warp.maxTangentialDistortAmount,copy.deepcopy(testpars))
     bounds['p2']=(-1.5*maxp2,1.5*maxp2)
     return bounds

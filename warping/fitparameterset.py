@@ -2,28 +2,25 @@
 from .warp import CameraWarp
 from .fitparameter import FitParameter
 from .utilities import WarpingError, warp_logger, buildDefaultParameterBoundsDict
+import numpy as np
 import copy, methodtools
 
 #class to handle everything to do with the warp fitting parameters
 class FitParameterSet :
 
     #################### PROPERTIES ####################
-    
+
     @property
-    @methodtools.lru_cache()
     def fixed_parameters(self) : #subset of fit parameters that are fixed
-        return list([p for p in self.fit_parameters if p.fixed])
+        return [p for p in self.fit_parameters if p.fixed]
     @property
-    @methodtools.lru_cache()
     def floating_parameters(self) : #subset of fit parameters that are floating
-        return list([p for p in self.fit_parameters if not p.fixed])
+        return [p for p in self.fit_parameters if not p.fixed]
     @property
-    @methodtools.lru_cache()
     def radial_warp_floating(self): # a boolean of whether the radial warping is floating
         floating_par_names = [p.name for p in self.floating_parameters]
         return ('k1' in floating_par_names and 'k2' in floating_par_names and 'k3' in floating_par_names)
     @property
-    @methodtools.lru_cache()
     def tangential_warp_floating(self): # a boolean of whether the tangential warping is floating
         floating_par_names = [p.name for p in self.floating_parameters]
         return ('p1' in floating_par_names and 'p2' in floating_par_names)
@@ -71,6 +68,7 @@ class FitParameterSet :
         """
         Return a list of the floating parameter bounds in fit units (also print some information)
         """
+        msg=f'Will fit with {len(self.floating_parameters)} parameters'
         fixed_par_string=''
         for fp in self.fixed_parameters :
             fixed_par_string+=fp.name+', '
@@ -79,10 +77,23 @@ class FitParameterSet :
         msg+='.'
         warp_logger.info(msg)
         #print info about the floating parameter bounds
-        msg = f'Will fit with {len(self.floating_parameters)} parameters. Bounds (warping units) (fitting units) : \n'
+        lines = []
+        lines.append(f'Bounds (warping_units) (fitting_units):')
         for p in self.floating_parameters :
-            msg+=f'{p.name}     {p.warp_bound_string}     {p.fit_bound_string}\n'
-        warp_logger.info(msg)
+            lines.append(f'{p.name}     {p.warp_bound_string}     {p.fit_bound_string}')
+        spaces = [len('Bounds'),len('(warping_units)'),len('(fitting_units):')]
+        for line in lines :
+            for fi,field in enumerate(line.split()) :
+                if len(field)>spaces[fi] :
+                    spaces[fi] = len(field)
+        printlns=''
+        for line in lines :
+            println = ''
+            for fi,field in enumerate(line.split()) :
+                println+=f'{field:<{spaces[fi]+2}}'
+            println+='\n'
+            printlns+=println
+        warp_logger.info(printlns)
         #return the list of bounds tuples
         return list([p.fit_bounds for p in self.floating_parameters])
 
@@ -164,10 +175,14 @@ class FitParameterSet :
         self._p1p2_lasso_lambda = p1p2_lasso_lambda
         #now get the parameter bounds
         bounds = self.getFitParameterBounds()
-        #figure out the initial parameters and their step sizes
-        initial_parameter_values = list([p.first_minimization_fit_value for p in self.floating_parameters 
-                                         if (p.first_minimization_fit_value is not None and p.first_minimization_fit_value!=0) 
-                                         else 0.00000001]) # can't send parameter=0. to the Jacobian functions in trust-constr
+        #figure out the initial parameters 
+        initial_parameter_values = []
+        for p in self.floating_parameters :
+            if (p.first_minimization_fit_value is not None and p.first_minimization_fit_value!=0) :
+                initial_parameter_values.append(p.first_minimization_fit_value)
+            else :
+                initial_parameter_values.append(0.00000001) # can't send parameter=0 to the Jacobian functions in trust-constr
+        #figure out the relative step sizes
         relative_steps = np.array([abs(0.03*p) if abs(p)<1. else 0.03 for p in initial_parameter_values])
         #return the information
         return bounds, initial_parameter_values, relative_steps

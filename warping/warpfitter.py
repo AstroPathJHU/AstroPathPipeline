@@ -157,11 +157,11 @@ class WarpFitter :
         self.fitpars = FitParameterSet(fixed,normalize,max_radial_warp,max_tangential_warp,self.warpset.warp)
         #stuff from the differential evolution minimization setup
         warp_logger.info('For global minimization setup:')
-        _, _, _ = self.fitpars.getGlobalBoundsConstraintsAndInitialPopulation()
+        _, _, _ = self.__getGlobalSetup()
         #stuff for the polishing minimization, if applicable
         if polish :
             warp_logger.info('For polishing minimization setup:')
-            _, _ = self.fitpars.getPolishingBoundsAndConstraints(float_p1p2_in_polish_fit)
+            _, _, _, _ = self.__getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
             if p1p2_polish_lasso_lambda!=0 :
                 warp_logger.info(f'p1 and p2 will be LASSOed in the polishing minimization with lambda = {p1p2_polish_lasso_lambda}')
             else :
@@ -388,8 +388,8 @@ class WarpFitter :
         warp_logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
         #build octets and singlets from the alignment set's overlaps
         all_olaps = self.alignset.overlaps
-        olap_octet_p1s   = [olap1.p1 for olap1 in all_olaps if len([olap2 if olap2.p2==olap1.p1 for olap2 in all_olaps])==8]
-        olap_singlet_p1s = [olap1.p1 for olap1 in all_olaps if len([olap2 if olap2.p2==olap1.p1 for olap2 in all_olaps])!=8 and olap.p2 not in olap_octet_p1s]
+        olap_octet_p1s   = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p2==olap1.p1])==8]
+        olap_singlet_p1s = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p2==olap1.p1])!=8 and olap.p2 not in olap_octet_p1s]
         #write out the octet comparison figures
         #for each octet
         for octetp1 in olap_octet_p1s :
@@ -583,7 +583,7 @@ class WarpFitter :
                 hess=scipy.optimize.BFGS()
                 )
             )
-            names_to_print.append(f'max tangential warp={max_tangential_warp} pixels')
+            names_to_print.append(f'max tangential warp={self.fitpars.max_tan_warp} pixels')
         #print the information about the constraints
         if len(constraints)==0 :
             warp_logger.info('No constraints will be applied')
