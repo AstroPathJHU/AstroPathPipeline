@@ -27,5 +27,9 @@ class Const :
     @property 
     def OCTET_OVERLAP_CSV_FILE_NAMESTEM(self) :
         return '_overlap_octets.csv' #stem for the name of the octet overlap csv file name
+    #setup
+    @property
+    def MICROSCOPE_OBJECTIVE_FOCAL_LENGTH(self) :
+        return 40000. #focal length of the microscope objective (20mm) in pixels
     
 CONST=Const()

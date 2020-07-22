@@ -1,4 +1,5 @@
 #imports
+from .utilities import WarpingError
 from ..utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
 import numpy as np, matplotlib.pyplot as plt, seaborn as sns
 import os, math, cv2
@@ -249,7 +250,7 @@ class CameraWarp(Warp) :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,n=1344,m=1004,cx=None,cy=None,fx=40000.,fy=40000.,k1=0.,k2=0.,p1=0.,p2=0.,k3=0.,k4=None,k5=None,k6=None) :
+    def __init__(self,n=1344,m=1004,cx=None,cy=None,fx=40000.,fy=40000.,k1=0.,k2=0.,k3=0.,p1=0.,p2=0.,k4=None,k5=None,k6=None) :
         """
         Initialize a camera matrix and vector of distortion parameters for a camera warp transformation
         See https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html for explanations of parameters/functions
@@ -279,6 +280,37 @@ class CameraWarp(Warp) :
         self.__cam_matrix = None 
         self.__dist_pars  = None
         self.__calculateWarpObjects()
+
+    def parValueFromName(self,pname) :
+        """
+        Given a parameter name string, return the currently-set value of the parameter
+        """
+        if pname=='cx' :
+            return self.cx
+        elif pname=='cy' :
+            return self.cy
+        elif pname=='fx' :
+            return self.fx
+        elif pname=='fy' :
+            return self.fy
+        elif pname=='k1' :
+            return self.k1
+        elif pname=='k2' :
+            return self.k2
+        elif pname=='k3' :
+            return self.k3
+        elif pname=='p1' :
+            return self.p1
+        elif pname=='p2' :
+            return self.p2
+        elif pname=='k4' :
+            return self.k4
+        elif pname=='k5' :
+            return self.k5
+        elif pname=='k6' :
+            return self.k6
+        else :
+            raise WarpingError(f'ERROR: parameter name {pname} not recognized!')
 
     def warpAndWriteImage(self,infname,nlayers=35,layers=[1]) :
         """
@@ -347,16 +379,14 @@ class CameraWarp(Warp) :
     def updateParams(self,pars) :
         """
         Update the camera matrix and distortion parameters for a new transformation on the same images
-        pars = list of transformation parameters in order cx, cy, fx, fy, [dist_vec] (len 4-8, depending)
+        pars = list of transformation parameters in order cx, cy, fx, fy, k1, k2, k3, p1, p2[, k4, k5, k6 (optional)]
         """
         self.cx=pars[0]; self.cy=pars[1]
         self.fx=pars[2]; self.fy=pars[3]
-        self.k1=pars[4]; self.k2=pars[5]
-        self.p1=pars[6]; self.p2=pars[7]
-        if len(pars)>8 :
-            self.k3=pars[8]
-            if len(pars)>9 :
-                self.k4=pars[9]; self.k5=pars[10]; self.k6=pars[11]
+        self.k1=pars[4]; self.k2=pars[5]; self.k3=pars[6]
+        self.p1=pars[7]; self.p2=pars[8]
+        if len(pars)>9 :
+            self.k4=pars[9]; self.k5=pars[10]; self.k6=pars[11]
         self.__calculateWarpObjects()
 
     def maxRadialDistortAmount(self,pars) :
@@ -380,9 +410,8 @@ class CameraWarp(Warp) :
         x, y = self._getMaxDistanceCoords(pars)
         fxfyk1k2k3_dependence = self._radialDistortAmountAtCoordsJacobian(x,y,pars)
         retvec =[0.,0.] # no dependence on cx/cy
-        retvec+=fxfyk1k2k3_dependence[:-1] #add fx, fy, k1, and k2 dependency
+        retvec+=fxfyk1k2k3_dependence[] #add fx, fy, k1, k2, and k3 dependency
         retvec+=[0.,0.] # no dependence on p1/p2
-        retvec+=[fxfyk1k2k3_dependence[-1]] #add k3 dependence
         return retvec 
 
     def maxTangentialDistortAmountJacobian(self,pars) :
@@ -393,9 +422,8 @@ class CameraWarp(Warp) :
         fxfyp1p2_dependence = self._tangentialDistortAmountAtCoordsJacobian(x,y,pars)
         retvec =[0.,0.] # no dependence on cx/cy
         retvec+=fxfyp1p2_dependence[:2]
-        retvec+=[0.,0.] # no dependence on k1/k2
+        retvec+=[0.,0.,0.] # no dependence on k1/k2/k3
         retvec+=fxfyp1p2_dependence[2:]
-        retvec+=[0.] # no dependence on k3
         return retvec
 
     def _getMaxDistanceCoords(self,pars=None) :
@@ -413,7 +441,7 @@ class CameraWarp(Warp) :
         Return the amount of radial warp (in pixels) at the given coordinate-space location
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,k1,k2,_,_,k3 = self.__getEvalPars(pars)
+        _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars(pars)
         r = math.sqrt(coord_x**2+coord_y**2)
         return (k1*(r**2) + k2*(r**4) + k3*(r**6))*math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
 
@@ -422,7 +450,7 @@ class CameraWarp(Warp) :
         Return the amount of tangential warp (in pixels) at the given coordinate-space location
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,_,_,p1,p2,_ = self.__getEvalPars(pars)
+        _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars(pars)
         r = math.sqrt(coord_x**2+coord_y**2)
         dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
         dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
@@ -433,7 +461,7 @@ class CameraWarp(Warp) :
         Return the Jacobian vector of the _radialDistortAmountAtCoords function (used in minimization)
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,k1,k2,_,_,k3 = self.__getEvalPars(pars)
+        _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars(pars)
         r = math.sqrt(coord_x**2+coord_y**2)
         A = math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
         B = k1*(r**2) + k2*(r**4) + k3*(r**6)
@@ -449,7 +477,7 @@ class CameraWarp(Warp) :
         Return the Jacobian of the _tangentialDistortAmountAtCoords function (used in minimization)
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,_,_,p1,p2,_ = self.__getEvalPars(pars)
+        _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars(pars)
         r = math.sqrt(coord_x**2+coord_y**2)
         dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
         dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
@@ -539,6 +567,6 @@ class CameraWarp(Warp) :
     #helper function to return a tuple of parameters for single function evaluations
     def __getEvalPars(self,pars) :
         if pars is None :
-            return self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.p1, self.p2, self.k3
+            return self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.k3, self.p1, self.p2
         else :
             return (*pars, )

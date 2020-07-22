@@ -31,6 +31,8 @@ class WarpFitter :
     DE_TOLERANCE = 0.03                                       #tolerance for the differential evolution minimization
     DE_MUTATION = (0.6,1.00)                                  #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7                                    #recombination parameter for differential evolution minimization
+    POLISHING_X_TOL = 1e-4                                    #parameter tolerance for polishing minimization
+    POLISHING_G_TOL = 1e-5                                    #gradient tolerance for polishing minimization
     FIT_PROGRESS_FIG_SIZE = (3*6.4,2*4.6)                     #(width, height) of the fit progress figure
     PP_RAVG_POINTS = 10                                       #how many points to average over for the polishing minimization progress plots
     OVERLAP_COMPARISON_DIR_NAME = 'overlap_comparison_images' #name of directory holding overlap comparison images
@@ -130,7 +132,7 @@ class WarpFitter :
         de_result = self.__runDifferentialEvolution(maxiter)
         init_minimization_done_time = time.time()
         #set the fit parameter values after the global minimization
-        self.fitpars.setInitialResults(de_result)
+        self.fitpars.setFirstMinimizationResults(de_result)
         #do the polishing minimization
         if polish :
             result = self.__runPolishMinimization(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter)
@@ -231,7 +233,7 @@ class WarpFitter :
     #function to run global minimization with differential evolution and return the result
     def __runDifferentialEvolution(self,maxiter) :
         #set up the parameter bounds and constraints and get the initial population
-        parameter_bounds, constraints, initial_population = self.fitpars.getGlobalSetup()
+        parameter_bounds, constraints, initial_population = self.__getGlobalSetup()
         self._de_population_size = len(initial_population)
         #run the minimization
         warp_logger.info('Starting initial minimization....')
@@ -258,7 +260,7 @@ class WarpFitter :
     #function to run local polishing minimiation with trust-constr and return the result
     def __runPolishMinimization(self,float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter) :
         #set up the parameter bounds, constraints, initial values, and relative step sizes
-        parameter_bounds, constraints, init_pars, rel_steps, x_tol, g_tol = self.fitpars.getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
+        parameter_bounds, constraints, init_pars, rel_steps = self.__getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
         #call minimize with trust_constr
         warp_logger.info('Starting polishing minimization....')
         with cd(self.working_dir) :
@@ -269,7 +271,7 @@ class WarpFitter :
                     method='trust-constr',
                     bounds=parameter_bounds,
                     constraints=constraints,
-                    options={'xtol':x_tol,'gtol':g_tol,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
+                    options={'xtol':self.POLISHING_X_TOL,'gtol':self.POLISHING_G_TOL,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
                     )
             except Exception :
                 raise WarpingError('Something failed in the polishing minimization!')
@@ -505,14 +507,24 @@ class WarpFitter :
 
     #helper function to write the parameter text file
     def __writeFitResultTextFile(self) :
-        to_write = self.fitpars.result_text_file_lines
-        to_write['initial_fit_iterations'] = str(self.init_its)
-        to_write['polishing_fit_iterations'] = str(self.polish_its)
+        to_write = {'n':str(self.n),
+                    'm':str(self.m),
+                   }
+        for k,v in self.fitpars.result_text_file_lines.items() :
+            to_write[k] = v
+        max_r_x, max_r_y = self.warpset.warp._getMaxDistanceCoords()
+        to_write['max_r_x_coord']             = str(max_r_x),
+        to_write['max_r_y_coord']             = str(max_r_y),
+        to_write['max_r']                     = str(math.sqrt((max_r_x)**2+(max_r_y)**2)),
+        to_write['max_radial_warp']           = str(self.warpset.warp.maxRadialDistortAmount(pars)),
+        to_write['max_tangential_warp']       = str(self.warpset.warp.maxTangentialDistortAmount(pars)),
+        to_write['initial_fit_iterations']    = str(self.init_its)
+        to_write['polishing_fit_iterations']  = str(self.polish_its)
         to_write['initial_minimization_time'] = str(self.init_min_runtime)
-        to_write['polish_minimization_time'] = str(self.polish_min_runtime)
-        to_write['raw_cost'] = str(self.raw_cost)
-        to_write['best_cost'] = str(self.best_cost)
-        to_write['cost_reduction'] = f'{(100*(1.-self.best_cost/self.raw_cost))}%'
+        to_write['polish_minimization_time']  = str(self.polish_min_runtime)
+        to_write['raw_cost']                  = str(self.raw_cost)
+        to_write['best_cost']                 = str(self.best_cost)
+        to_write['cost_reduction']            = f'{(100*(1.-self.best_cost/self.raw_cost)):.2f}%'
         max_key_width = 0; max_value_width = 0
         for k,v in to_write.items() :
             if len(k)>max_key_width :
@@ -533,3 +545,56 @@ class WarpFitter :
         a = AlignmentSet(self.dbload_top_dir,self.working_dir,self.samp_name,interactive=customGPUdevice,useGPU=True,
                          selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True)
         return a
+
+    #helper function to return the parameter bounds, constraints, and initial population for the global minimization
+    def __getGlobalSetup(self) :
+        bounds = self.fitpars.getFitParameterBounds()
+        constraints = self.__getConstraints()
+        initial_population = self.fitpars.getInitialPopulation()
+        return bounds, constraints, initial_population
+
+    #helper function to return the lists of parameter bounds, constraints, initial values, and relative step sizes for the polishing fit 
+    def __getPolishingSetup(self,float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda) :
+        bounds, initial_values, relative_step_sizes = self.fitpars.getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
+        constraints = self.__getConstraints()
+        return bounds, constraints, initial_values, relative_step_sizes
+
+    #helper function to make the list of constraints
+    def __getConstraints(self) :
+        constraints = []; names_to_print = []
+        #if the radial warp is being fit, and the max_radial_warp is defined, add the max_radial_warp constraint
+        if self.fitpars.radial_warp_floating and self.fitpars.max_rad_warp>0 :
+            constraints.append(scipy.optimize.NonlinearConstraint(
+                self._maxRadialDistortAmountForConstraint,
+                -1.*self.fitpars.max_rad_warp,
+                self.fitpars.max_rad_warp,
+                jac=self._maxRadialDistortAmountJacobianForConstraint,
+                hess=scipy.optimize.BFGS()
+                )
+            )
+            names_to_print.append(f'max radial warp={self.fitpars.max_rad_warp} pixels')
+        #if the tangential warping is being fit, and the max_tangential_warp is defined, add the max_tangential_warp constraint
+        if self.fitpars.tangential_warp_floating and self.fitpars.max_tan_warp>0 :
+            constraints.append(scipy.optimize.NonlinearConstraint(
+                self._maxTangentialDistortAmountForConstraint,
+                0.,
+                self.fitpars.max_tan_warp,
+                jac=self._maxTangentialDistortAmountJacobianForConstraint,
+                hess=scipy.optimize.BFGS()
+                )
+            )
+            names_to_print.append(f'max tangential warp={max_tangential_warp} pixels')
+        #print the information about the constraints
+        if len(constraints)==0 :
+            warp_logger.info('No constraints will be applied')
+            return ()
+        else :
+            constraintstring = 'Will apply constraints: '
+            for ntp in names_to_print :
+                constraintstring+=ntp+', '
+            warp_logger.info(constraintstring[:-2]+'.')
+        #return the list of constraints
+        if len(constraints)==1 : #if there's only one it doesn't get passed as a list (thanks scipy)
+            return constraints[0]
+        else :
+            return constraints

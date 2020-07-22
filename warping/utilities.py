@@ -206,3 +206,36 @@ def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixe
         shutil.rmtree(samp)
     #return the dictionary of octets
     return octets
+
+#helper function to find the limit on a parameter that produces the maximum warp
+def findDefaultParameterLimit(parindex,parincrement,warplimit,warpamtfunc,testpars) :
+    warpamt=0.; testparval=0.
+    while warpamt<warplimit :
+        testparval+=parincrement
+        testpars[parindex]=testparval
+        warpamt=warpamtfunc(testpars)
+    return testparval
+
+#helper function to make the default list of parameter constraints
+def buildDefaultParameterBoundsDict(warp,max_rad_warp,max_tan_warp) :
+    bounds = {}
+    # cx/cy bounds are +/- 10% of the center point
+    bounds['cx']=(0.8*(warp.n/2.),1.2*(warp.n/2.))
+    bounds['cy']=(0.8*(warp.m/2.),1.2*(warp.m/2.))
+    # fx/fy bounds are +/- 2% of the nominal values 
+    bounds['fx']=(0.98*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
+    bounds['fy']=(0.98*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
+    # k1/k2/k3 and p1/p2 bounds are 1.5x those that would produce the max radial and tangential warp, respectively, with all others zero
+    # (except k1 can't be negative)
+    testpars=[warp.n/2,warp.m/2,CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,0.,0.,0.,0.,0.]
+    maxk1 = findDefaultParameterLimit(4,0.1,max_rad_warp,warp.maxRadialDistortAmount,testpars)
+    bounds['k1']=(0.,1.5*maxk1)
+    maxk2 = findDefaultParameterLimit(5,100,max_rad_warp,warp.maxRadialDistortAmount,testpars)
+    bounds['k2']=(-1.5*maxk2,1.5*maxk2)
+    maxk3 = findDefaultParameterLimit(8,10000,max_rad_warp,warp.maxRadialDistortAmount,testpars)
+    bounds['k3']=(-1.5*maxk3,1.5*maxk3)
+    maxp1 = findDefaultParameterLimit(6,0.001,max_tan_warp,warp.maxTangentialDistortAmount,testpars)
+    bounds['p1']=(-1.5*maxp1,1.5*maxp1)
+    maxp2 = findDefaultParameterLimit(7,0.001,max_tan_warp,warp.maxTangentialDistortAmount,testpars)
+    bounds['p2']=(-1.5*maxp2,1.5*maxp2)
+    return bounds
