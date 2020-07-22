@@ -54,9 +54,9 @@ class WarpSet :
         #first load the flatfield corrections
         warp_logger.info(f'Loading flatfield file {flatfield_file_path} to correct raw image illumination')
         if flatfield_file_path is not None :
-            flatfield_file_layer = (getRawAsHWL(flatfield_file_path,self.m,self.n,self.nlayers,np.float64))[:,:,self.layer-1] 
+            flatfield_layer = (getRawAsHWL(flatfield_file_path,self.m,self.n,self.nlayers,np.float64))[:,:,self.layer-1] 
         else :
-            flatfield_file_layer = np.ones((self.m,self.n),dtype=np.float64)
+            flatfield_layer = np.ones((self.m,self.n),dtype=np.float64)
         if rawfiles is not None :
             self.raw_filenames=rawfiles
         warp_logger.info("Loading raw images...")

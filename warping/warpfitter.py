@@ -9,7 +9,7 @@ from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, scipy, matplotlib.pyplot as plt
-import os, copy, shutil, platform, time, logging
+import os, copy, math, shutil, platform, time, logging
 
 class WarpFitter :
     """
@@ -187,7 +187,7 @@ class WarpFitter :
         #check the warp amounts to see if the sample should be realigned
         rad_warp = self.warpset.warp.maxRadialDistortAmount(warp_pars)
         tan_warp = self.warpset.warp.maxTangentialDistortAmount(warp_pars)
-        align_strategy = 'overwrite' if (abs(rad_warp)<max_rad_warp or max_rad_warp==-1) and (tan_warp<max_tan_warp or max_tan_warp==-1) else 'shift_only'
+        align_strategy = 'overwrite' if (abs(rad_warp)<self.fitpars.max_rad_warp) and (tan_warp<self.fitpars.max_tan_warp) else 'shift_only'
         #align the images and get the cost
         aligncost = self.alignset.align(skip_corners=self.skip_corners,
                                         write_result=False,
@@ -271,7 +271,7 @@ class WarpFitter :
                     method='trust-constr',
                     bounds=parameter_bounds,
                     constraints=constraints,
-                    options={'xtol':self.POLISHING_X_TOL,'gtol':self.POLISHING_G_TOL,'finite_diff_rel_step':relative_steps,'maxiter':maxiter}
+                    options={'xtol':self.POLISHING_X_TOL,'gtol':self.POLISHING_G_TOL,'finite_diff_rel_step':rel_steps,'maxiter':maxiter}
                     )
             except Exception :
                 raise WarpingError('Something failed in the polishing minimization!')
@@ -308,13 +308,13 @@ class WarpFitter :
         f,ax = plt.subplots(2,3,figsize=self.FIT_PROGRESS_FIG_SIZE)
         #global minimization costs
         ax[0][0].plot(inititers,self.costs[:ninitev],label='all')
-        ngenerations = ninitev/self._de_population_size
+        ngenerations = int(ninitev/self._de_population_size)
         pop_avg_costs = []
         for ig in range(ngenerations) :
             pop_avg_cost = np.mean(np.array(self.costs[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_costs.append(pop_avg_cost)
-        ax[0][0].plot(inititers,pop_avg_costs,label='population averages')
+        ax[0][0].plot(inititers[:len(pop_avg_costs)],pop_avg_costs,label='population averages')
         ax[0][0].set_xlabel('initial minimization iteration')
         ax[0][0].set_ylabel('cost')
         ax[0][0].legend(loc='best')
@@ -325,7 +325,7 @@ class WarpFitter :
             pop_avg_rad_warp = np.mean(np.array(self.max_radial_warps[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_rad_warps.append(pop_avg_rad_warp)
-        ax[0][1].plot(inititers,pop_avg_rad_warps,label='population averages')
+        ax[0][1].plot(inititers[:len(pop_avg_rad_warps)],pop_avg_rad_warps,label='population averages')
         ax[0][1].set_xlabel('initial minimization iteration')
         ax[0][1].set_ylabel('max radial warp')
         ax[0][1].legend(loc='best')
@@ -336,7 +336,7 @@ class WarpFitter :
             pop_avg_tan_warp = np.mean(np.array(self.max_tangential_warps[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_tan_warps.append(pop_avg_tan_warp)
-        ax[0][2].plot(inititers,pop_avg_tan_warps,label='population averages')
+        ax[0][2].plot(inititers[:len(pop_avg_tan_warps)],pop_avg_tan_warps,label='population averages')
         ax[0][2].set_xlabel('initial minimization iteration')
         ax[0][2].set_ylabel('max tangential warp')
         ax[0][2].legend(loc='best')
@@ -376,86 +376,102 @@ class WarpFitter :
         with cd(self.working_dir) :
             if not os.path.isdir(self.OVERLAP_COMPARISON_DIR_NAME) :
                 os.mkdir(self.OVERLAP_COMPARISON_DIR_NAME)
-        #start by aligning the raw, unwarped images and getting their shift comparison information/images
+        #build octets and singlets from the alignment set's overlaps
+        all_olaps = self.alignset.overlaps
+        olap_octet_p1s   = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])==8]
+        olap_singlet_p1s = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])!=8 and olap1.p2 not in olap_octet_p1s]
+        nclip1 = all_olaps[0].nclip
+        nclip2 = nclip1+2
+        #start by aligning the raw, unwarped images and getting their shift comparison information/images and the raw p1 images
         self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
         rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
         raw_olap_comps = self.alignset.getOverlapComparisonImagesDict()
-        #next warp and align the images with the best fit warp
+        raw_octet_p1_images = [copy.deepcopy([r.image for r in self.alignset.rectangles if r.n==octetp1][0]) for octetp1 in olap_octet_p1s]
+        #next warp and align the images with the best fit warp and do the same thing
         self.warpset.warpLoadedImages()
         self.alignset.updateRectangleImages(self.warpset.images)
         bestcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
         warped_olap_comps = self.alignset.getOverlapComparisonImagesDict()
+        warped_octet_p1_images = [copy.deepcopy([r.image for r in self.alignset.rectangles if r.n==octetp1][0]) for octetp1 in olap_octet_p1s]
+        #print the cost differences
         warp_logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
-        #build octets and singlets from the alignment set's overlaps
-        all_olaps = self.alignset.overlaps
-        olap_octet_p1s   = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p2==olap1.p1])==8]
-        olap_singlet_p1s = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p2==olap1.p1])!=8 and olap.p2 not in olap_octet_p1s]
         #write out the octet comparison figures
         #for each octet
-        for octetp1 in olap_octet_p1s :
+        for octetp1,raw_p1_image,warped_p1_image in zip(olap_octet_p1s,raw_octet_p1_images,warped_octet_p1_images) :
             #get the ordered lists of overlap comparison images
+            rois = []; raois = []; wois = []; waois = []
             key_order = [1,2,3,4,6,7,8,9]
-            rois  = [raw_olap_comps[oli][0] for oli in raw_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c for c in key_order]
-            raois = [raw_olap_comps[oli][1] for oli in raw_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c for c in key_order]
-            wois  = [warped_olap_comps[oli][0] for oli in warped_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c for c in key_order]
-            waois = [warped_olap_comps[oli][1] for oli in warped_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c for c in key_order]
+            for c in key_order :
+                rois.append([raw_olap_comps[oli][0] for oli in raw_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c][0])
+                raois.append([raw_olap_comps[oli][1] for oli in raw_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c][0])
+                wois.append([warped_olap_comps[oli][0] for oli in warped_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c][0])
+                waois.append([warped_olap_comps[oli][1] for oli in warped_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c][0])
             #make the total images
-            total_image_shape = (rois[3].shape[0],rois[1].shape[1],rois[0].shape[2]); total_image_dtype = rois[0].dtype
+            total_image_shape = (nclip1+rois[3].shape[0]+nclip1,nclip1+rois[1].shape[1]+nclip1,rois[0].shape[2]); total_image_dtype = rois[0].dtype
             total_roi  = np.zeros(total_image_shape,dtype=total_image_dtype)
             total_raoi = np.zeros(total_image_shape,dtype=total_image_dtype) 
             total_woi  = np.zeros(total_image_shape,dtype=total_image_dtype)
             total_waoi = np.zeros(total_image_shape,dtype=total_image_dtype)
-            #fill the top left corner
+            #fill the top left corners
             y2=rois[7].shape[0]  
             x2=rois[7].shape[1]
-            total_roi[:y2,:x2,:]  = np.rint((1./3.)*(rois[7][:,:,:]+rois[6][:,x1:x2,:]+rois[4][:y2,:,:])).astype(total_image_dtype)
-            total_raoi[:y2,:x2,:] = np.rint((1./3.)*(raois[7][:,:,:]+raois[6][:,x1:x2,:]+raois[4][:y2,:,:])).astype(total_image_dtype)
-            total_woi[:y2,:x2,:]  = np.rint((1./3.)*(wois[7][:,:,:]+wois[6][:,x1:x2,:]+wois[4][:y2,:,:])).astype(total_image_dtype)
-            total_waoi[:y2,:x2,:] = np.rint((1./3.)*(waois[7][:,:,:]+waois[6][:,x1:x2,:]+waois[4][:y2,:,:])).astype(total_image_dtype)
-            #fill the center top
+            total_roi[nclip1:y2+nclip1,nclip1:x2+nclip1,:]  = (1./3.)*(rois[7][:,:,:]+rois[6][:,:x2,:]+rois[4][:y2,:,:])
+            total_raoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+nclip2:x2+nclip1-nclip2,:] = (1./3.)*(raois[7][:,:,:]+raois[6][:,:x2-2*nclip2,:]+raois[4][:y2-2*nclip2,:,:])
+            total_woi[nclip1:y2+nclip1,nclip1:x2+nclip1,:]  = (1./3.)*(wois[7][:,:,:]+wois[6][:,:x2,:]+wois[4][:y2,:,:])
+            total_waoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+nclip2:x2+nclip1-nclip2,:] = (1./3.)*(waois[7][:,:,:]+waois[6][:,:x2-2*nclip2,:]+waois[4][:y2-2*nclip2,:,:])
+            #fill the center tops
             x1=x2; x2=rois[6].shape[1]-rois[5].shape[1]
-            total_roi[:y2,x1:x2,:]  = rois[6][:,x1:x2,:]
-            total_raoi[:y2,x1:x2,:] = raois[6][:,x1:x2,:]
-            total_woi[:y2,x1:x2,:]  = wois[6][:,x1:x2,:]
-            total_waoi[:y2,x1:x2,:] = waois[6][:,x1:x2,:]
-            #fill the top right corner
+            total_roi[nclip1:y2+nclip1,nclip1+x1:x2+nclip1,:]  = rois[6][:,x1:x2,:]
+            total_raoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+x1:x2+nclip1,:] = raois[6][:,x1:x2,:]
+            total_woi[nclip1:y2+nclip1,nclip1+x1:x2+nclip1,:]  = wois[6][:,x1:x2,:]
+            total_waoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+x1:x2+nclip1,:] = waois[6][:,x1:x2,:]
+            #fill the top right corners
             x1=x2
-            total_roi[:y2,x1:,:]  = np.rint((1./3.)*(rois[5][:,:,:]+rois[6][:,x1:,:]+rois[3][y1:y2,:,:])).astype(total_image_dtype)
-            total_raoi[:y2,x1:,:] = np.rint((1./3.)*(raois[5][:,:,:]+raois[6][:,x1:,:]+raois[3][y1:y2,:,:])).astype(total_image_dtype)
-            total_woi[:y2,x1:,:]  = np.rint((1./3.)*(wois[5][:,:,:]+wois[6][:,x1:,:]+wois[3][y1:y2,:,:])).astype(total_image_dtype)
-            total_waoi[:y2,x1:,:] = np.rint((1./3.)*(waois[5][:,:,:]+waois[6][:,x1:,:]+waois[3][y1:y2,:,:])).astype(total_image_dtype)
-            #fill the center left
+            total_roi[nclip1:y2+nclip1,nclip1+x1:-nclip1,:]  = (1./3.)*(rois[5][:,:,:]+rois[6][:,x1:,:]+rois[3][:y2,:,:])
+            total_raoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+x1+nclip2:-(nclip1+nclip2),:] = (1./3.)*(raois[5][:,:,:]+raois[6][:,x1:,:]+raois[3][:y2-2*nclip2,:,:])
+            total_woi[nclip1:y2+nclip1,nclip1+x1:-nclip1,:]  = (1./3.)*(wois[5][:,:,:]+wois[6][:,x1:,:]+wois[3][:y2,:,:])
+            total_waoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+x1+nclip2:-(nclip1+nclip2),:] = (1./3.)*(waois[5][:,:,:]+waois[6][:,x1:,:]+waois[3][:y2-2*nclip2,:,:])
+            #fill the center lefts
             y1=rois[7].shape[0]; y2=rois[4].shape[0]-rois[2].shape[0]
             x2=rois[7].shape[1]
-            total_roi[y1:y2,:x2,:]  = rois[4][y1:y2,:,:]
-            total_raoi[y1:y2,:x2,:] = raois[4][y1:y2,:,:]
-            total_woi[y1:y2,:x2,:]  = wois[4][y1:y2,:,:]
-            total_waoi[y1:y2,:x2,:] = waois[4][y1:y2,:,:]
-            #fill the center right
+            total_roi[nclip1+y1:y2+nclip1,nclip1:x2+nclip1,:]  = rois[4][y1:y2,:,:]
+            total_raoi[nclip1+y1:y2+nclip1,nclip1+nclip2:x2+nclip1-nclip2,:] = raois[4][y1:y2,:,:]
+            total_woi[nclip1+y1:y2+nclip1,nclip1:x2+nclip1,:]  = wois[4][y1:y2,:,:]
+            total_waoi[nclip1+y1:y2+nclip1,nclip1+nclip2:x2+nclip1-nclip2,:] = waois[4][y1:y2,:,:]
+            #fill the center rights
             x1=rois[6].shape[1]-rois[5].shape[1]
-            total_roi[y1:y2,x1:,:]  = rois[3][y1:y2,:,:]
-            total_raoi[y1:y2,x1:,:] = raois[3][y1:y2,:,:]
-            total_woi[y1:y2,x1:,:]  = wois[3][y1:y2,:,:]
-            total_waoi[y1:y2,x1:,:] = waois[3][y1:y2,:,:]
-            #fill the bottom left corner
+            total_roi[nclip1+y1:y2+nclip1,nclip1+x1:-nclip1,:]  = rois[3][y1:y2,:,:]
+            total_raoi[nclip1+y1:y2+nclip1,nclip1+x1+nclip2:-(nclip1+nclip2),:] = raois[3][y1:y2,:,:]
+            total_woi[nclip1+y1:y2+nclip1,nclip1+x1:-nclip1,:]  = wois[3][y1:y2,:,:]
+            total_waoi[nclip1+y1:y2+nclip1,nclip1+x1+nclip2:-(nclip1+nclip2),:] = waois[3][y1:y2,:,:]
+            #fill the bottom left corners
             y1=rois[4].shape[0]-rois[2].shape[0]; 
             x2=rois[2].shape[1]
-            total_roi[y1:,:x2,:]  = np.rint((1./3.)*(rois[2][:,:,:]+rois[1][:,:x2,:]+rois[4][y1:,:,:])).astype(total_image_dtype)
-            total_raoi[y1:,:x2,:] = np.rint((1./3.)*(raois[2][:,:,:]+raois[1][:,:x2,:]+raois[4][y1:,:,:])).astype(total_image_dtype)
-            total_woi[y1:,:x2,:]  = np.rint((1./3.)*(wois[2][:,:,:]+wois[1][:,:x2,:]+wois[4][y1:,:,:])).astype(total_image_dtype)
-            total_waoi[y1:,:x2,:] = np.rint((1./3.)*(waois[2][:,:,:]+waois[1][:,:x2,:]+waois[4][y1:,:,:])).astype(total_image_dtype)
-            #fill the center bottom
+            total_roi[nclip1+y1:-nclip1,nclip1:x2+nclip1,:]  = (1./3.)*(rois[2][:,:,:]+rois[1][:,:x2,:]+rois[4][y1:,:,:])
+            total_raoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+nclip2:x2+nclip1-nclip2,:] = (1./3.)*(raois[2][:,:,:]+raois[1][:,:x2-2*nclip2,:]+raois[4][y1:,:,:])
+            total_woi[nclip1+y1:-nclip1,nclip1:x2+nclip1,:]  = (1./3.)*(wois[2][:,:,:]+wois[1][:,:x2,:]+wois[4][y1:,:,:])
+            total_waoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+nclip2:x2+nclip1-nclip2,:] = (1./3.)*(waois[2][:,:,:]+waois[1][:,:x2-2*nclip2,:]+waois[4][y1:,:,:])
+            #fill the center bottoms
             x1=x2; x2=rois[1].shape[1]-rois[0].shape[1]
-            total_roi[y1:,x1:x2,:]  = rois[1][:,x1:x2,:]
-            total_raoi[y1:,x1:x2,:] = raois[1][:,x1:x2,:]
-            total_woi[y1:,x1:x2,:]  = wois[1][:,x1:x2,:]
-            total_waoi[y1:,x1:x2,:] = waois[1][:,x1:x2,:]
-            #fill the bottom right corner
+            total_roi[nclip1+y1:-nclip1,nclip1+x1:x2+nclip1,:]  = rois[1][:,x1:x2,:]
+            total_raoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+x1:x2+nclip1,:] = raois[1][:,x1:x2,:]
+            total_woi[nclip1+y1:-nclip1,nclip1+x1:x2+nclip1,:]  = wois[1][:,x1:x2,:]
+            total_waoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+x1:x2+nclip1,:] = waois[1][:,x1:x2,:]
+            #fill the bottom right corners
             x1=x2
-            total_roi[y1:,x1:,:]  = np.rint((1./3.)*(rois[0][:,:,:]+rois[1][:,x1:,:]+rois[3][y1:,:,:])).astype(total_image_dtype)
-            total_raoi[y1:,x1:,:] = np.rint((1./3.)*(raois[0][:,:,:]+raois[1][:,x1:,:]+raois[3][y1:,:,:])).astype(total_image_dtype)
-            total_woi[y1:,x1:,:]  = np.rint((1./3.)*(wois[0][:,:,:]+wois[1][:,x1:,:]+wois[3][y1:,:,:])).astype(total_image_dtype)
-            total_waoi[y1:,x1:,:] = np.rint((1./3.)*(waois[0][:,:,:]+waois[1][:,x1:,:]+waois[3][y1:,:,:])).astype(total_image_dtype)
+            total_roi[nclip1+y1:-nclip1,nclip1+x1:-nclip1,:]  = (1./3.)*(rois[0][:,:,:]+rois[1][:,x1:,:]+rois[3][y1:,:,:])
+            total_raoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+x1+nclip2:-(nclip1+nclip2),:] =(1./3.)*(raois[0][:,:,:]+raois[1][:,x1:,:]+raois[3][y1:,:,:])
+            total_woi[nclip1+y1:-nclip1,nclip1+x1:-nclip1,:]  = (1./3.)*(wois[0][:,:,:]+wois[1][:,x1:,:]+wois[3][y1:,:,:])
+            total_waoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+x1+nclip2:-(nclip1+nclip2),:] = (1./3.)*(waois[0][:,:,:]+waois[1][:,x1:,:]+waois[3][y1:,:,:])
+            #fill in the rest of the images' clipped portions in just magenta
+            total_roi[:,:,0] = np.where(total_roi[:,:,0]==0,raw_p1_image[:,:]/1000.,total_roi[:,:,0])
+            total_roi[:,:,2] = np.where(total_roi[:,:,2]==0,raw_p1_image[:,:]/2000.,total_roi[:,:,2])
+            total_raoi[:,:,0] = np.where(total_raoi[:,:,0]==0,raw_p1_image[:,:]/1000.,total_raoi[:,:,0])
+            total_raoi[:,:,2] = np.where(total_raoi[:,:,2]==0,raw_p1_image[:,:]/2000.,total_raoi[:,:,2])
+            total_woi[:,:,0] = np.where(total_woi[:,:,0]==0,warped_p1_image[:,:]/1000.,total_woi[:,:,0])
+            total_woi[:,:,2] = np.where(total_woi[:,:,2]==0,warped_p1_image[:,:]/2000.,total_woi[:,:,2])
+            total_waoi[:,:,0] = np.where(total_waoi[:,:,0]==0,warped_p1_image[:,:]/1000.,total_waoi[:,:,0])
+            total_waoi[:,:,2] = np.where(total_waoi[:,:,2]==0,warped_p1_image[:,:]/2000.,total_waoi[:,:,2])
             #plot and save the entire images
             total_images = [total_roi,total_raoi,total_woi,total_waoi]
             image_names = [f'octet_p1={octetp1}_raw_overlap_comparisons',
@@ -513,11 +529,11 @@ class WarpFitter :
         for k,v in self.fitpars.result_text_file_lines.items() :
             to_write[k] = v
         max_r_x, max_r_y = self.warpset.warp._getMaxDistanceCoords()
-        to_write['max_r_x_coord']             = str(max_r_x),
-        to_write['max_r_y_coord']             = str(max_r_y),
-        to_write['max_r']                     = str(math.sqrt((max_r_x)**2+(max_r_y)**2)),
-        to_write['max_radial_warp']           = str(self.warpset.warp.maxRadialDistortAmount(pars)),
-        to_write['max_tangential_warp']       = str(self.warpset.warp.maxTangentialDistortAmount(pars)),
+        to_write['max_r_x_coord']             = str(max_r_x)
+        to_write['max_r_y_coord']             = str(max_r_y)
+        to_write['max_r']                     = str(math.sqrt((max_r_x)**2+(max_r_y)**2))
+        to_write['max_radial_warp']           = str(self.warpset.warp.maxRadialDistortAmount(self.fitpars.best_fit_warp_parameters))
+        to_write['max_tangential_warp']       = str(self.warpset.warp.maxTangentialDistortAmount(self.fitpars.best_fit_warp_parameters))
         to_write['initial_fit_iterations']    = str(self.init_its)
         to_write['polishing_fit_iterations']  = str(self.polish_its)
         to_write['initial_minimization_time'] = str(self.init_min_runtime)

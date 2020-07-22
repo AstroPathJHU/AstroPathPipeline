@@ -28,17 +28,21 @@ class FitParameterSet :
     def best_fit_warp_parameters(self) : #the ordered list of the best fit warping parameters
         if self._best_fit_warp_parameters is None :
             raise WarpingError('ERROR: bestFitWarpParameters called while best fit parameters is None!')
-        return self._best_fit_warp_parameters
+        return [p.current_warp_value for p in self._best_fit_warp_parameters]
     @property
     def result_text_file_lines(self) : # lines of text to be written out in the report file
         lines = {}
         for p in self._best_fit_warp_parameters :
-            lines[p.name] = str(p.value)+(' (fixed)' if p.fixed else '')
+            lines[p.name] = str(p.current_warp_value)
+            if p.fixed :
+                lines[p.name]+=' (fixed)'
         return lines
 
     #################### CLASS CONSTANTS ####################
 
-    FIT_PAR_NAME_LIST  = ['cx','cy','fx','fy','k1','k2','k3','p1','p2'] #list of fit parameter names
+    FIT_PAR_NAME_LIST = ['cx','cy','fx','fy','k1','k2','k3','p1','p2'] #list of fit parameter names
+    DUMMY_NONZERO_VALUE = 0.000001                                     #value to use for initial polishing minimization parameter values that are otherwise 0
+    RELATIVE_STEP_FRAC = 0.03                                          #fractional relative step size for polishing minimiation
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -181,9 +185,16 @@ class FitParameterSet :
             if (p.first_minimization_fit_value is not None and p.first_minimization_fit_value!=0) :
                 initial_parameter_values.append(p.first_minimization_fit_value)
             else :
-                initial_parameter_values.append(0.00000001) # can't send parameter=0 to the Jacobian functions in trust-constr
+                initial_parameter_values.append(self.DUMMY_NONZERO_VALUE) # can't send parameter=0 to the Jacobian functions in trust-constr
         #figure out the relative step sizes
-        relative_steps = np.array([abs(0.03*p) if abs(p)<1. else 0.03 for p in initial_parameter_values])
+        relative_steps = []
+        for pv in initial_parameter_values :
+            if pv==self.DUMMY_NONZERO_VALUE :
+                relative_steps.append(2*self.DUMMY_NONZERO_VALUE)
+            elif abs(pv)<1. :
+                relative_steps.append(abs(self.RELATIVE_STEP_FRAC*pv))
+            else :
+                relative_steps.append(self.RELATIVE_STEP_FRAC)
         #return the information
         return bounds, initial_parameter_values, relative_steps
 
@@ -204,7 +215,6 @@ class FitParameterSet :
             p.second_minimization_fit_value = fitval
         self._best_fit_warp_parameters = copy.deepcopy(self.fit_parameters)
 
-    @methodtools.lru_cache()
     def warpParsFromFitPars(self,fit_par_values) :
         """
         Return a full list of warping parameters given the current numerical values of the fit parameters
@@ -220,7 +230,6 @@ class FitParameterSet :
                 fpi+=1
         return to_return
 
-    @methodtools.lru_cache()
     def fitParsFromWarpPars(self,warp_par_values) :
         """
         Return a list of just the numerical fit parameters given the full set of warping parameters
@@ -228,12 +237,11 @@ class FitParameterSet :
         """
         return [p.fitValueFromWarpValue(wpv) for p, wpv in zip(self.fit_parameters,warp_par_values) if not p.fixed]
 
-    @methodtools.lru_cache()
     def getLassoCost(self,fit_par_values) :
         """
         Return the cost from the LASSO constraint on the tangential warping parameters
         """
-        if self._p1p2_lasso_lambda==0 :
+        if self._p1p2_lasso_lambda is None or self._p1p2_lasso_lambda==0 :
             return 0.
         lasso_cost = 0.
         for pi,p in enumerate(self.floating_parameters) :
