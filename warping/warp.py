@@ -504,6 +504,17 @@ class CameraWarp(Warp) :
         """
         print(self.paramString())
 
+    def getDxDyWarpFields(self) :
+        """
+        Get the dx and dy warp amount fields
+        """
+        map_x, map_y = cv2.initUndistortRectifyMap(self.__cam_matrix, self.__dist_pars, None, self.__cam_matrix, (self.n,self.m), cv2.CV_32FC1)
+        grid = np.mgrid[0:self.m,0:self.n]
+        xpos, ypos = grid[1], grid[0]
+        x_warps = xpos-map_x
+        y_warps = ypos-map_y
+        return x_warps, y_warps
+
     def showCheckerboard(self) :
         """
         Plot a checkerboard image before and after application of the warp
