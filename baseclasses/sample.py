@@ -208,7 +208,7 @@ class DbloadSampleBase(SampleBase):
   def getimageinfos(self):
     result = super().getimageinfos()
     fromtiff = result["component tiff"]
-    if fromtiff is None:
+    if fromtiff is not None:
       tiffpscale, tiffwidth, tiffheight = fromtiff
     else:
       tiffpscale = None
