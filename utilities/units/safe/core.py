@@ -13,18 +13,20 @@ class Distance:
       raise TypeError("Have to provide exactly one of pixels, microns, or centimeters")
     if centimeters is not None:
       microns = centimeters * (1e4**power if power and centimeters else 1)
+    if microns is not None:
+      pixels = microns * (pscale**power if power and microns else 1)
+    if isinstance(pixels, Distance):
+      power += pixels._power
+      pixels = pixels._pixels
 
     if power is None and (pixels or microns or centimeters):
       raise ValueError("Can't set power=None")
     if not power or pixels == 0 or microns == 0: pscale = None
+
     self.__pscale = pscale
     self.__power = power
-    if pixels is not None:
-      self.__pixels = pixels
-      self.__microns = pixels / (pscale**power if power and pixels else 1)
-    if microns is not None:
-      self.__microns = microns
-      self.__pixels = microns * (pscale**power if power and microns else 1)
+    self.__pixels = pixels
+    self.__microns = pixels / (pscale**power if power and pixels else 1)
 
   @property
   def _microns(self):
@@ -46,8 +48,8 @@ class Distance:
     if not self: return other
     if self._power == 0: return self.asdimensionless + other
     if not hasattr(other, "_pscale"): return NotImplemented
-    if self._power != other._power: raise UnitsError("Trying to add distances with different powers")
-    if None is not self._pscale != other._pscale is not None: raise UnitsError("Trying to add distances with different pscales")
+    if self._power != other._power: raise UnitsError(f"Trying to add distances with different powers {self._power} {other._power}")
+    if None is not self._pscale != other._pscale is not None: raise UnitsError(f"Trying to add distances with different pscales {self._pscale} {other._pscale}")
     pscale = self._pscale if self._pscale is not None else other._pscale
     return Distance(pscale=pscale, power=self._power, pixels=self._pixels+other._pixels)
   def __radd__(self, other):
@@ -196,9 +198,9 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
 @np.vectorize
 def pixels(distance, *, pscale=None, power=1):
   if not distance: return 0.
-  if None is not pscale != _pscale(distance) is not None:
+  if None is not pscale != _pscale(distance)[()] is not None:
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
-  if None is not power != _power(distance) is not None:
+  if None is not power != _power(distance)[()] is not None:
     raise ValueError(f"Inconsistent powers {power} {_power(distance)}")
   if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return distance
   return distance._pixels
@@ -208,9 +210,9 @@ __pixels = pixels #for use in functions with a pixels kwarg
 @np.vectorize
 def microns(distance, *, pscale=None, power=1):
   if not distance: return 0.
-  if None is not pscale != _pscale(distance) is not None:
+  if None is not pscale != _pscale(distance)[()] is not None:
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
-  if None is not power != _power(distance) is not None:
+  if None is not power != _power(distance)[()] is not None:
     raise ValueError(f"Inconsistent powers {power} {_power(distance)}")
   if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return distance
   return distance._microns
