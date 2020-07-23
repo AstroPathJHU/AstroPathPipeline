@@ -3,7 +3,7 @@ from .warp import CameraWarp
 from .fitparameter import FitParameter
 from .utilities import WarpingError, warp_logger, buildDefaultParameterBoundsDict
 import numpy as np
-import copy, methodtools
+import copy
 
 #class to handle everything to do with the warp fitting parameters
 class FitParameterSet :
