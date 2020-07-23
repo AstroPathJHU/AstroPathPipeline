@@ -239,3 +239,98 @@ def buildDefaultParameterBoundsDict(warp,max_rad_warp,max_tan_warp) :
     maxp2 = findDefaultParameterLimit(8,0.01,max_tan_warp,warp.maxTangentialDistortAmount,copy.deepcopy(testpars))
     bounds['p2']=(-1.5*maxp2,1.5*maxp2)
     return bounds
+
+#little utility class to help with making the octet overlap comparison images
+class OctetComparisonVisualization :
+
+    def __init__(self,overlaps,shifted,name_stem) :
+        """
+        overlaps  = list of 8 AlignmentOverlap objects to use in building the figure
+        shifted   = whether the figure should be built using the shifted overlap images
+        name_stem = name to use for the title and filename of the figure
+        """
+        self.overlaps = overlaps
+        self.shifted = shifted
+        self.outer_clip = self.overlaps[0].nclip
+        self.shift_clip = self.outer_clip+2
+        self.normalize = CONST.OVERLAY_NORMALIZE
+        self.p1_im = self.overlaps[0].images[0]/self.normalize
+        p1i_shape = self.p1_im.shape
+        self.whole_image = (np.zeros(([p1i_shape,p1i_shape,p1i_shape]),dtype=(self.overlaps[0].getimage(self.normalize,self.shifted)).dtype)).transpose(1,2,0)
+        self.images_stacked_mask = np.zeros(self.whole_image.shape,dtype=np.uint8)
+        self.overlay_dicts = {}
+        for olap in self.overlaps :
+            self.overlay_dicts[olap.tag] = {'image':olap.getimage(self.normalize,self.shifted),'dx':olap.result.dx/2.,'dy':olap.result.dy/2.}
+
+    def stackOverlays(self) :
+        """
+        Stack the overlay images into the whole image
+        """
+        #add each overlay to the total image
+        for code in self.overlay_dicts.keys() :
+            self.__addSingleOverlap(code)
+        #divide the total image by how many overlays are contributing at each point
+        self.whole_image/=self.images_stacked_mask
+        #fill in the holes with the p1 image in magenta
+        magenta_p1 = np.array([self.p1_im,np.zeros_like(self.p1_im),0.5*self.p1_im]).transpose(1,2,0)
+        self.whole_image=np.where(self.whole_image==0,magenta_p1,self.whole_image)
+
+    def writeOutFigure(self,dirpath) :
+        """
+        Write out a .png of the total octet overlay image
+        dirpath = directory to write the figure out to
+        """ 
+        f,ax = plt.subplots(figsize=(CONST.OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH,
+                                     np.rint((self.whole_image.shape[0]/self.whole_image.shape[1])*CONST.OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH)))
+        ax.imshow(self.whole_image)
+        ax.set_title(self.name_stem.replace('_',' '))
+        with cd(dirpath) :
+            plt.savefig(f'{self.name_stem}.png')
+            plt.close()
+
+    #helper function to add a single overlap's set of overlays to the total image
+    def __addSingleOverlap(self,code) :
+        #figure out the total image x and y start and end points
+        tix_1 = 0; tix_2 = 0; tiy_1 = 0; tiy_2 = 0
+        #x positions
+        if code in [3,6,9] : #left column
+            tix_1 = self.outer_clip
+            if self.shifted :
+                tix_1+=self.shift_clip
+            tix_2 = tix_1+self.overlay_dicts[code]['image'].shape[1]
+        elif code in [2,8] : #center column
+            tix_1 = self.outer_clip
+            tix_2 = self.p1_im.shape[1]-self.outer_clip
+            if self.shifted :
+                tix_1+=self.shift_clip
+                tix_2-=self.shift_clip
+        elif code in [1,4,7] : #right column
+            tix_2 = self.p1_im.shape[1]-self.outer_clip
+            if self.shifted :
+                tix_2-=self.shift_clip
+            tix_1 = tix_2-self.overlay_dicts[code]['image'].shape[1]
+        #y positions
+        if code in [7,8,9] : #top row
+            tiy_1 = self.outer_clip
+            if self.shifted :
+                tiy_1+=self.shift_clip
+            tiy_2 = tiy_1+self.overlay_dicts[code]['image'].shape[0]
+        elif code in [4,6] : #center row
+            tiy_1 = self.outer_clip
+            tiy_2 = self.p1_im.shape[0]-self.outer_clip
+            if self.shifted :
+                tiy_1+=self.shift_clip
+                tiy_2-=self.shift_clip
+        elif code in [1,2,3] : #bottom column
+            tiy_2 = self.p1_im.shape[0]-self.outer_clip
+            if self.shifted :
+                tiy_2-=self.shift_clip
+            tiy_1 = tiy_2-self.overlay_dicts[code]['image'].shape[0]
+        #figure out the alignment adjustment if necessary
+        dx = np.rint(self.overlay_dicts[code]['dx']) if self.shifted else 0.
+        dy = np.rint(self.overlay_dicts[code]['dy']) if self.shifted else 0.
+        tix_1+=dx; tix_2+=dx
+        tiy_1+=dy; tiy_2+=dy
+        #add the overlay to the total image and increment the mask
+        self.whole_image[tiy_1:tiy_2,tix_1:tix_2,:]+=self.overlay_dicts[code]['image']
+        self.images_stacked_mask[tiy_1:tiy_2,tix_1:tix_2,:]+=1

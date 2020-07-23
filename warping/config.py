@@ -27,6 +27,12 @@ class Const :
     @property 
     def OCTET_OVERLAP_CSV_FILE_NAMESTEM(self) :
         return '_overlap_octets.csv' #stem for the name of the octet overlap csv file name
+    @property
+    def OVERLAY_NORMALIZE(self) :
+        return 1000. #value to use to normalize the overlay images
+    @property 
+    def OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH(self) :
+        return 3*6.4 #width of the octet overlap comparison figures
     #setup
     @property
     def MICROSCOPE_OBJECTIVE_FOCAL_LENGTH(self) :

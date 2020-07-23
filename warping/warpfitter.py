@@ -1,7 +1,7 @@
 #imports
 from .warpset import WarpSet
 from .fitparameterset import FitParameterSet
-from .utilities import warp_logger, WarpingError
+from .utilities import warp_logger, WarpingError, OctetComparisonVisualization
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSet
 from ..baseclasses.rectangle import rectangleoroverlapfilter
@@ -36,7 +36,6 @@ class WarpFitter :
     FIT_PROGRESS_FIG_SIZE = (3*6.4,2*4.6)                     #(width, height) of the fit progress figure
     PP_RAVG_POINTS = 10                                       #how many points to average over for the polishing minimization progress plots
     OVERLAP_COMPARISON_DIR_NAME = 'overlap_comparison_images' #name of directory holding overlap comparison images
-    OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH = 3*6.4             #width of the octet overlap comparison figures
     FIT_RESULT_TEXT_FILE_NAME = 'warping_parameters.txt'      #the name of the fit result text file that gets written out
 
     #################### PUBLIC FUNCTIONS ####################
@@ -380,112 +379,31 @@ class WarpFitter :
         all_olaps = self.alignset.overlaps
         olap_octet_p1s   = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])==8]
         olap_singlet_p1s = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])!=8 and olap1.p2 not in olap_octet_p1s]
-        nclip1 = all_olaps[0].nclip
-        nclip2 = nclip1+2
         #start by aligning the raw, unwarped images and getting their shift comparison information/images and the raw p1 images
         self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
         rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
         raw_olap_comps = self.alignset.getOverlapComparisonImagesDict()
-        raw_octet_p1_images = [copy.deepcopy([r.image for r in self.alignset.rectangles if r.n==octetp1][0]) for octetp1 in olap_octet_p1s]
+        raw_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
         #next warp and align the images with the best fit warp and do the same thing
         self.warpset.warpLoadedImages()
         self.alignset.updateRectangleImages(self.warpset.images)
         bestcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
         warped_olap_comps = self.alignset.getOverlapComparisonImagesDict()
-        warped_octet_p1_images = [copy.deepcopy([r.image for r in self.alignset.rectangles if r.n==octetp1][0]) for octetp1 in olap_octet_p1s]
+        warped_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
         #print the cost differences
         warp_logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
         #write out the octet comparison figures
-        #for each octet
-        for octetp1,raw_p1_image,warped_p1_image in zip(olap_octet_p1s,raw_octet_p1_images,warped_octet_p1_images) :
-            #get the ordered lists of overlap comparison images
-            rois = []; raois = []; wois = []; waois = []
-            key_order = [1,2,3,4,6,7,8,9]
-            for c in key_order :
-                rois.append([raw_olap_comps[oli][0] for oli in raw_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c][0])
-                raois.append([raw_olap_comps[oli][1] for oli in raw_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c][0])
-                wois.append([warped_olap_comps[oli][0] for oli in warped_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c][0])
-                waois.append([warped_olap_comps[oli][1] for oli in warped_olap_comps.keys() if oli[1]==octetp1 and oli[0]==c][0])
-            #make the total images
-            total_image_shape = (nclip1+rois[3].shape[0]+nclip1,nclip1+rois[1].shape[1]+nclip1,rois[0].shape[2]); total_image_dtype = rois[0].dtype
-            total_roi  = np.zeros(total_image_shape,dtype=total_image_dtype)
-            total_raoi = np.zeros(total_image_shape,dtype=total_image_dtype) 
-            total_woi  = np.zeros(total_image_shape,dtype=total_image_dtype)
-            total_waoi = np.zeros(total_image_shape,dtype=total_image_dtype)
-            #fill the top left corners
-            y2=rois[7].shape[0]  
-            x2=rois[7].shape[1]
-            total_roi[nclip1:y2+nclip1,nclip1:x2+nclip1,:]  = (1./3.)*(rois[7][:,:,:]+rois[6][:,:x2,:]+rois[4][:y2,:,:])
-            total_raoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+nclip2:x2+nclip1-nclip2,:] = (1./3.)*(raois[7][:,:,:]+raois[6][:,:x2-2*nclip2,:]+raois[4][:y2-2*nclip2,:,:])
-            total_woi[nclip1:y2+nclip1,nclip1:x2+nclip1,:]  = (1./3.)*(wois[7][:,:,:]+wois[6][:,:x2,:]+wois[4][:y2,:,:])
-            total_waoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+nclip2:x2+nclip1-nclip2,:] = (1./3.)*(waois[7][:,:,:]+waois[6][:,:x2-2*nclip2,:]+waois[4][:y2-2*nclip2,:,:])
-            #fill the center tops
-            x1=x2; x2=rois[6].shape[1]-rois[5].shape[1]
-            total_roi[nclip1:y2+nclip1,nclip1+x1:x2+nclip1,:]  = rois[6][:,x1:x2,:]
-            total_raoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+x1:x2+nclip1,:] = raois[6][:,x1:x2,:]
-            total_woi[nclip1:y2+nclip1,nclip1+x1:x2+nclip1,:]  = wois[6][:,x1:x2,:]
-            total_waoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+x1:x2+nclip1,:] = waois[6][:,x1:x2,:]
-            #fill the top right corners
-            x1=x2
-            total_roi[nclip1:y2+nclip1,nclip1+x1:-nclip1,:]  = (1./3.)*(rois[5][:,:,:]+rois[6][:,x1:,:]+rois[3][:y2,:,:])
-            total_raoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+x1+nclip2:-(nclip1+nclip2),:] = (1./3.)*(raois[5][:,:,:]+raois[6][:,x1:,:]+raois[3][:y2-2*nclip2,:,:])
-            total_woi[nclip1:y2+nclip1,nclip1+x1:-nclip1,:]  = (1./3.)*(wois[5][:,:,:]+wois[6][:,x1:,:]+wois[3][:y2,:,:])
-            total_waoi[nclip1+nclip2:y2+nclip1-nclip2,nclip1+x1+nclip2:-(nclip1+nclip2),:] = (1./3.)*(waois[5][:,:,:]+waois[6][:,x1:,:]+waois[3][:y2-2*nclip2,:,:])
-            #fill the center lefts
-            y1=rois[7].shape[0]; y2=rois[4].shape[0]-rois[2].shape[0]
-            x2=rois[7].shape[1]
-            total_roi[nclip1+y1:y2+nclip1,nclip1:x2+nclip1,:]  = rois[4][y1:y2,:,:]
-            total_raoi[nclip1+y1:y2+nclip1,nclip1+nclip2:x2+nclip1-nclip2,:] = raois[4][y1:y2,:,:]
-            total_woi[nclip1+y1:y2+nclip1,nclip1:x2+nclip1,:]  = wois[4][y1:y2,:,:]
-            total_waoi[nclip1+y1:y2+nclip1,nclip1+nclip2:x2+nclip1-nclip2,:] = waois[4][y1:y2,:,:]
-            #fill the center rights
-            x1=rois[6].shape[1]-rois[5].shape[1]
-            total_roi[nclip1+y1:y2+nclip1,nclip1+x1:-nclip1,:]  = rois[3][y1:y2,:,:]
-            total_raoi[nclip1+y1:y2+nclip1,nclip1+x1+nclip2:-(nclip1+nclip2),:] = raois[3][y1:y2,:,:]
-            total_woi[nclip1+y1:y2+nclip1,nclip1+x1:-nclip1,:]  = wois[3][y1:y2,:,:]
-            total_waoi[nclip1+y1:y2+nclip1,nclip1+x1+nclip2:-(nclip1+nclip2),:] = waois[3][y1:y2,:,:]
-            #fill the bottom left corners
-            y1=rois[4].shape[0]-rois[2].shape[0]; 
-            x2=rois[2].shape[1]
-            total_roi[nclip1+y1:-nclip1,nclip1:x2+nclip1,:]  = (1./3.)*(rois[2][:,:,:]+rois[1][:,:x2,:]+rois[4][y1:,:,:])
-            total_raoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+nclip2:x2+nclip1-nclip2,:] = (1./3.)*(raois[2][:,:,:]+raois[1][:,:x2-2*nclip2,:]+raois[4][y1:,:,:])
-            total_woi[nclip1+y1:-nclip1,nclip1:x2+nclip1,:]  = (1./3.)*(wois[2][:,:,:]+wois[1][:,:x2,:]+wois[4][y1:,:,:])
-            total_waoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+nclip2:x2+nclip1-nclip2,:] = (1./3.)*(waois[2][:,:,:]+waois[1][:,:x2-2*nclip2,:]+waois[4][y1:,:,:])
-            #fill the center bottoms
-            x1=x2; x2=rois[1].shape[1]-rois[0].shape[1]
-            total_roi[nclip1+y1:-nclip1,nclip1+x1:x2+nclip1,:]  = rois[1][:,x1:x2,:]
-            total_raoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+x1:x2+nclip1,:] = raois[1][:,x1:x2,:]
-            total_woi[nclip1+y1:-nclip1,nclip1+x1:x2+nclip1,:]  = wois[1][:,x1:x2,:]
-            total_waoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+x1:x2+nclip1,:] = waois[1][:,x1:x2,:]
-            #fill the bottom right corners
-            x1=x2
-            total_roi[nclip1+y1:-nclip1,nclip1+x1:-nclip1,:]  = (1./3.)*(rois[0][:,:,:]+rois[1][:,x1:,:]+rois[3][y1:,:,:])
-            total_raoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+x1+nclip2:-(nclip1+nclip2),:] =(1./3.)*(raois[0][:,:,:]+raois[1][:,x1:,:]+raois[3][y1:,:,:])
-            total_woi[nclip1+y1:-nclip1,nclip1+x1:-nclip1,:]  = (1./3.)*(wois[0][:,:,:]+wois[1][:,x1:,:]+wois[3][y1:,:,:])
-            total_waoi[nclip1+y1+nclip2:-(nclip1+nclip2),nclip1+x1+nclip2:-(nclip1+nclip2),:] = (1./3.)*(waois[0][:,:,:]+waois[1][:,x1:,:]+waois[3][y1:,:,:])
-            #fill in the rest of the images' clipped portions in just magenta
-            total_roi[:,:,0] = np.where(total_roi[:,:,0]==0,raw_p1_image[:,:]/1000.,total_roi[:,:,0])
-            total_roi[:,:,2] = np.where(total_roi[:,:,2]==0,raw_p1_image[:,:]/2000.,total_roi[:,:,2])
-            total_raoi[:,:,0] = np.where(total_raoi[:,:,0]==0,raw_p1_image[:,:]/1000.,total_raoi[:,:,0])
-            total_raoi[:,:,2] = np.where(total_raoi[:,:,2]==0,raw_p1_image[:,:]/2000.,total_raoi[:,:,2])
-            total_woi[:,:,0] = np.where(total_woi[:,:,0]==0,warped_p1_image[:,:]/1000.,total_woi[:,:,0])
-            total_woi[:,:,2] = np.where(total_woi[:,:,2]==0,warped_p1_image[:,:]/2000.,total_woi[:,:,2])
-            total_waoi[:,:,0] = np.where(total_waoi[:,:,0]==0,warped_p1_image[:,:]/1000.,total_waoi[:,:,0])
-            total_waoi[:,:,2] = np.where(total_waoi[:,:,2]==0,warped_p1_image[:,:]/2000.,total_waoi[:,:,2])
-            #plot and save the entire images
-            total_images = [total_roi,total_raoi,total_woi,total_waoi]
-            image_names = [f'octet_p1={octetp1}_raw_overlap_comparisons',
-                           f'octet_p1={octetp1}_raw_aligned_overlap_comparisons',
-                           f'octet_p1={octetp1}_warped_overlap_comparisons',
-                           f'octet_p1={octetp1}_warped_aligned_overlap_comparisons']
-            for total_image,image_name in zip(total_images,image_names) :
-                f,ax = plt.subplots(figsize=(self.OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH,
-                                             int((total_image.shape[0]/total_image.shape[1])*self.OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH)))
-                ax.imshow(total_image)
-                ax.set_title(image_name.replace('_',' '))
-                with cd(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME)) :
-                    plt.savefig(f'{image_name}.png')
-                    plt.close()
+        for octetp1,raw_octet_overlaps,warped_octet_overlaps in zip(olap_octet_p1s,raw_octets_olaps,warped_octets_olaps) :
+            #start up the figures
+            raw_octet_image = OctetComparisonVisualization(raw_octet_overlaps,False,f'octet_p1={octetp1}_raw_overlap_comparisons')
+            raw_aligned_octet_image = OctetComparisonVisualization(raw_octet_overlaps,True,f'octet_p1={octetp1}_raw_aligned_overlap_comparisons')
+            warped_octet_image = OctetComparisonVisualization(warped_octet_overlaps,False,f'octet_p1={octetp1}_warped_overlap_comparisons')
+            warped_aligned_octet_image = OctetComparisonVisualization(warped_octet_overlaps,True,f'octet_p1={octetp1}_warped_aligned_overlap_comparisons')
+            all_octet_comparison_images = [raw_octet_image,raw_aligned_octet_image,warped_octet_image,warped_aligned_octet_image]
+            #stack the overlay images and write out the figures
+            for oci in all_octet_comparison_images :
+                oci.stackOverlays()
+                oci.writeOutFigure(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME))
         #plot the singlet overlap comparisons
         for overlap_identifier in raw_olap_comps.keys() :
             code = overlap_identifier[0]
