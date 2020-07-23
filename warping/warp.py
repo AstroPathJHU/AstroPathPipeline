@@ -2,7 +2,7 @@
 from .utilities import WarpingError
 from ..utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
 import numpy as np, matplotlib.pyplot as plt, seaborn as sns
-import os, math, cv2, methodtools
+import os, math, cv2
 
 class Warp :
     """
@@ -426,7 +426,6 @@ class CameraWarp(Warp) :
         retvec+=fxfyp1p2_dependence[2:]
         return retvec
 
-    @methodtools.lru_cache()
     def _getMaxDistanceCoords(self,pars=None) :
         """
         Get the x/y coordinate-space location of the image corner that is furthest from the principal point
@@ -437,7 +436,6 @@ class CameraWarp(Warp) :
         y = 0 if cy>(self.m-1)/2 else self.m-1
         return self.getCoordsFromPixel(x,y)
 
-    @methodtools.lru_cache()
     def _radialDistortAmountAtCoords(self,coord_x,coord_y,pars=None) :
         """
         Return the amount of radial warp (in pixels) at the given coordinate-space location
@@ -447,7 +445,6 @@ class CameraWarp(Warp) :
         r = math.sqrt(coord_x**2+coord_y**2)
         return (k1*(r**2) + k2*(r**4) + k3*(r**6))*math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
 
-    @methodtools.lru_cache()
     def _tangentialDistortAmountAtCoords(self,coord_x,coord_y,pars=None) :
         """
         Return the amount of tangential warp (in pixels) at the given coordinate-space location
@@ -459,7 +456,6 @@ class CameraWarp(Warp) :
         dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
         return math.sqrt((dx)**2 + (dy)**2)
 
-    @methodtools.lru_cache()
     def _radialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
         """
         Return the Jacobian vector of the _radialDistortAmountAtCoords function (used in minimization)
@@ -476,7 +472,6 @@ class CameraWarp(Warp) :
         dfdk3 = A*(r**6)
         return [dfdfx,dfdfy,dfdk1,dfdk2,dfdk3]
 
-    @methodtools.lru_cache()
     def _tangentialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
         """
         Return the Jacobian of the _tangentialDistortAmountAtCoords function (used in minimization)
