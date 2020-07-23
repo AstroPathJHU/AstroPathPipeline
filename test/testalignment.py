@@ -281,15 +281,16 @@ class TestAlignment(TestBaseSaveOutput):
     result1 = a1.stitch()
 
     with temporarilyremove(thisfolder/"data"/"M21_1"/"dbload"):
-      a2 = AlignmentSetFromXML(*args, nclip=a1.nclip, position=a1.position, **kwargs)
+      a2 = AlignmentSetFromXML(*args, nclip=units.pixels(a1.nclip, pscale=a1.pscale), position=a1.position, **kwargs)
       a2.getDAPI()
       a2.align()
       result2 = a2.stitch()
 
-      a3 = AlignmentSetFromXML(*args, nclip=a1.nclip, **kwargs)
-      a3.getDAPI()
-      a3.align()
-      result3 = a3.stitch()
+      with temporarilyremove(thisfolder/"data"/"M21_1"/"inform_data"):
+        a3 = AlignmentSetFromXML(*args, nclip=units.pixels(a1.nclip, pscale=a1.pscale), **kwargs)
+        a3.getDAPI()
+        a3.align()
+        result3 = a3.stitch()
 
     units.np.testing.assert_allclose(units.nominal_values(result1.T), units.nominal_values(result2.T))
     units.np.testing.assert_allclose(units.nominal_values(result1.x()), units.nominal_values(result2.x()))
