@@ -4,7 +4,7 @@ from ..alignment.alignmentset import AlignmentSet
 from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, writeImageToFile
 from ..utilities.misc import cd
-import numpy as np, multiprocessing as mp
+import numpy as np, multiprocessing as mp, matplotlib.pyplot as plt
 import cv2, os, logging, glob, shutil, dataclasses, copy
 
 #set up the logger
@@ -251,16 +251,16 @@ class OctetComparisonVisualization :
         """
         self.overlaps = overlaps
         self.shifted = shifted
+        self.name_stem = name_stem
         self.outer_clip = self.overlaps[0].nclip
         self.shift_clip = self.outer_clip+2
         self.normalize = CONST.OVERLAY_NORMALIZE
         self.p1_im = self.overlaps[0].images[0]/self.normalize
-        p1i_shape = self.p1_im.shape
-        self.whole_image = (np.zeros(([p1i_shape,p1i_shape,p1i_shape]),dtype=(self.overlaps[0].getimage(self.normalize,self.shifted)).dtype)).transpose(1,2,0)
+        self.whole_image = np.zeros((self.p1_im.shape[0],self.p1_im.shape[1],3),dtype=self.p1_im.dtype)
         self.images_stacked_mask = np.zeros(self.whole_image.shape,dtype=np.uint8)
         self.overlay_dicts = {}
         for olap in self.overlaps :
-            self.overlay_dicts[olap.tag] = {'image':olap.getimage(self.normalize,self.shifted),'dx':olap.result.dx/2.,'dy':olap.result.dy/2.}
+            self.overlay_dicts[olap.tag] = {'image':olap.getimage(self.normalize,self.shifted),'dx':-olap.result.dx/2.,'dy':-olap.result.dy/2.}
 
     def stackOverlays(self) :
         """
@@ -270,7 +270,7 @@ class OctetComparisonVisualization :
         for code in self.overlay_dicts.keys() :
             self.__addSingleOverlap(code)
         #divide the total image by how many overlays are contributing at each point
-        self.whole_image/=self.images_stacked_mask
+        self.whole_image[self.images_stacked_mask!=0]/=self.images_stacked_mask[self.images_stacked_mask!=0]
         #fill in the holes with the p1 image in magenta
         magenta_p1 = np.array([self.p1_im,np.zeros_like(self.p1_im),0.5*self.p1_im]).transpose(1,2,0)
         self.whole_image=np.where(self.whole_image==0,magenta_p1,self.whole_image)
@@ -327,10 +327,11 @@ class OctetComparisonVisualization :
                 tiy_2-=self.shift_clip
             tiy_1 = tiy_2-self.overlay_dicts[code]['image'].shape[0]
         #figure out the alignment adjustment if necessary
-        dx = np.rint(self.overlay_dicts[code]['dx']) if self.shifted else 0.
-        dy = np.rint(self.overlay_dicts[code]['dy']) if self.shifted else 0.
+        dx = self.overlay_dicts[code]['dx'] if self.shifted else 0
+        dy = self.overlay_dicts[code]['dy'] if self.shifted else 0
         tix_1+=dx; tix_2+=dx
         tiy_1+=dy; tiy_2+=dy
+        tix_1=int(np.rint(tix_1)); tix_2=int(np.rint(tix_2)); tiy_1=int(np.rint(tiy_1)); tiy_2=int(np.rint(tiy_2))
         #add the overlay to the total image and increment the mask
         self.whole_image[tiy_1:tiy_2,tix_1:tix_2,:]+=self.overlay_dicts[code]['image']
         self.images_stacked_mask[tiy_1:tiy_2,tix_1:tix_2,:]+=1

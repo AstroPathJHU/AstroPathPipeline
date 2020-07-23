@@ -156,7 +156,7 @@ if __name__=='__main__' :
             #load the raw files
             warp_logger.info('Loading raw files')
             fitter.loadRawFiles(args.flatfield_file,args.n_threads)
-            #fit the model to the data
+             #fit the model to the data
             warp_logger.info('Running doFit')
             if args.mode == 'fit' :
                 fitter.doFit(fixed=args.fixed,normalize=args.normalize,float_p1p2_in_polish_fit=args.float_p1p2_to_polish,
