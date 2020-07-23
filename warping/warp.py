@@ -389,7 +389,6 @@ class CameraWarp(Warp) :
             self.k4=pars[9]; self.k5=pars[10]; self.k6=pars[11]
         self.__calculateWarpObjects()
 
-    @methodtools.lru_cache()
     def maxRadialDistortAmount(self,pars) :
         """
         Return the maximum amount of radial distortion (in pixels) observed with the given parameters
@@ -397,7 +396,6 @@ class CameraWarp(Warp) :
         x, y = self._getMaxDistanceCoords(pars)
         return self._radialDistortAmountAtCoords(x,y,pars)
 
-    @methodtools.lru_cache()
     def maxTangentialDistortAmount(self,pars) :
         """
         Return the maximum amount of tangential distortion (in pixels) observed with the given parameters
@@ -405,7 +403,6 @@ class CameraWarp(Warp) :
         x, y = self._getMaxDistanceCoords(pars)
         return self._tangentialDistortAmountAtCoords(x,y,pars)
 
-    @methodtools.lru_cache()
     def maxRadialDistortAmountJacobian(self,pars) :
         """
         Return the Jacobian vector of the maxRadialDistortAmount function (used in minimization)
@@ -417,7 +414,6 @@ class CameraWarp(Warp) :
         retvec+=[0.,0.] # no dependence on p1/p2
         return retvec 
 
-    @methodtools.lru_cache()
     def maxTangentialDistortAmountJacobian(self,pars) :
         """
         Return the Jacobian vector of the maxTangentialDistortAmount function (used in minimization)
@@ -430,7 +426,6 @@ class CameraWarp(Warp) :
         retvec+=fxfyp1p2_dependence[2:]
         return retvec
 
-    @methodtools.lru_cache()
     def _getMaxDistanceCoords(self,pars=None) :
         """
         Get the x/y coordinate-space location of the image corner that is furthest from the principal point
