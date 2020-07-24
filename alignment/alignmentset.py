@@ -4,6 +4,7 @@ import cv2, methodtools, numpy as np, traceback
 
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.sample import FlatwSampleBase, ReadRectangles, ReadRectanglesFromXML
+from ..utilities import units
 from ..utilities.tableio import readtable, writetable
 from .flatfield import meanimage
 from .imagestats import ImageStats
@@ -319,6 +320,6 @@ class AlignmentSetFromXML(AlignmentSetBase, ReadRectanglesFromXML):
     if position is None: position = np.array([0, 0])
     self.__position = position
   @property
-  def nclip(self): return self.__nclip
+  def nclip(self): return units.Distance(pixels=self.__nclip, pscale=self.pscale)
   @property
   def position(self): return self.__position

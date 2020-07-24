@@ -1,4 +1,4 @@
-import abc, contextlib, dataclasses, datetime, itertools, logging, methodtools, numpy as np, os, pathlib, re
+import abc, contextlib, dataclasses, datetime, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re
 
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint, memmapcontext, tiffinfo
@@ -100,12 +100,70 @@ class SampleBase(contextlib.ExitStack):
     try:
       componenttifffilename = next(self.componenttiffsfolder.glob(self.SlideID+"*_component_data.tif"))
     except StopIteration:
-      raise OSError(f"No component tiffs for {self}")
+      raise FileNotFoundError(f"No component tiffs for {self}")
     return tiffinfo(filename=componenttifffilename)
+
+  def getimageinfofromXMLfiles(self):
+    with open(self.im3folder/"xml"/(self.SlideID+".Parameters.xml"), "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
+        if node.xml_attrs["name"] == "Shape":
+          width, height, nlayers = (int(_) for _ in str(node).split())
+        if node.xml_attrs["name"] == "MillimetersPerPixel":
+          pscale = 1e-3/float(node)
+
+    try:
+      width = units.Distance(pixels=width, pscale=pscale)
+      height = units.Distance(pixels=height, pscale=pscale)
+    except NameError:
+      raise IOError(f'Couldn\'t find Shape and/or MillimetersPerPixel in {self.im3folder/"xml"/(self.SlideID+".Parameters.xml")}')
+
+    return pscale, width, height
+
+  def getimageinfos(self):
+    result = {}
+    try:
+      result["component tiff"] = self.getimageinfofromcomponenttiff()
+    except FileNotFoundError:
+      result["component tiff"] = None
+    try:
+      result["xml files"] = self.getimageinfofromXMLfiles()
+    except (FileNotFoundError, IOError):
+      result["xml files"] = None
+    return result
 
   @methodtools.lru_cache()
   def getimageinfo(self):
-    return self.getimageinfofromcomponenttiff()
+    results = self.getimageinfos()
+    result = None
+    warnfunction = None
+    for k, v in results.items():
+      if v is None: continue
+      pscale, width, height = v
+      if result is None:
+        result = resultpscale, resultwidth, resultheight = v
+      elif np.allclose(units.microns(result, power=[0, 1, 1], pscale=result[0]), units.microns(v, power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
+        continue
+      elif np.allclose(units.microns(result, power=[0, 1, 1], pscale=result[0]), units.microns(v, power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
+        if warnfunction != self.logger.warningglobal: warnfunction = self.logger.warning
+      else:
+        warnfunction = self.logger.warningglobal
+
+    if warnfunction is not None:
+      fmt = "{:30} {:30} {:30} {:30}"
+      warninglines = [
+        "Found inconsistent image infos from different sources:",
+        fmt.format("source", "pscale", "field width", "field height"),
+      ]
+      for k, v in results.items():
+        if v is None: continue
+        warninglines.append(fmt.format(k, *(str(_) for _ in v)))
+      for warningline in warninglines:
+        warnfunction(warningline)
+
+    if result is None:
+      raise FileNotFoundError("Didn't find any of the possible ways of finding image info: "+", ".join(results))
+
+    return result
 
   @property
   def pscale(self): return self.getimageinfo()[0]
@@ -147,38 +205,20 @@ class DbloadSampleBase(SampleBase):
 
     return pscale, fwidth, fheight
 
-  @methodtools.lru_cache()
-  def getimageinfo(self):
-    try:
-      tiffpscale, tiffwidth, tiffheight = self.getimageinfofromcomponenttiff()
-    except OSError:
-      tiffpscale = tiffwidth = tiffheight = None
+  def getimageinfos(self):
+    result = super().getimageinfos()
+    fromtiff = result["component tiff"]
+    if fromtiff is not None:
+      tiffpscale, tiffwidth, tiffheight = fromtiff
+    else:
+      tiffpscale = None
 
     try:
-      constpscale, constwidth, constheight = self.getimageinfofromconstants(pscale=tiffpscale)
-    except FileNotFoundError:
-      constpscale = constwidth = constheight = None
+      result["constants.csv"] = self.getimageinfofromconstants(pscale=tiffpscale)
+    except (FileNotFoundError, KeyError):
+      result["constants.csv"] = None
 
-    if tiffpscale is constpscale is None:
-      raise FileNotFoundError("No component tiff and no constants.csv, can't get image info")
-
-    if constpscale is None: return tiffpscale, tiffwidth, tiffheight
-
-    if tiffpscale is None:
-      self.logger.warningglobal("couldn't find a component tiff: trusting image size and pscale from constants.csv")
-      return constpscale, constwidth, constheight
-
-    #both are not None
-    if (tiffwidth, tiffheight) != (constwidth, constheight):
-      self.logger.warningglobal(f"component tiff has size {tiffwidth} {tiffheight} which is different from {constwidth} {constheight} (in constants.csv)")
-    if constpscale != tiffpscale:
-      if np.isclose(constpscale, tiffpscale, rtol=1e-6):
-        warnfunction = self.logger.warning
-      else:
-        warnfunction = self.logger.warningglobal
-      warnfunction(f"component tiff has pscale {tiffpscale} which is different from {constpscale} (in constants.csv)")
-
-    return tiffpscale, tiffwidth, tiffheight
+    return result
 
   @methodtools.lru_cache()
   @property
@@ -280,7 +320,7 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
       assert len(rfs) <= 1
       if not rfs:
         cx, cy = units.microns(r.cxvec, pscale=self.pscale)
-        raise OSError(f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist")
+        raise FileNotFoundError(f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist")
       rf = rfs.pop()
       maxtimediff = max(maxtimediff, abs(rf.t-r.t))
     if maxtimediff >= datetime.timedelta(seconds=5):
