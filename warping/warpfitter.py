@@ -393,6 +393,7 @@ class WarpFitter :
         #print the cost differences
         warp_logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
         #write out the octet comparison figures
+        addl_singlet_p1s_and_codes = set()
         for octetp1,raw_octet_overlaps,warped_octet_overlaps in zip(olap_octet_p1s,raw_octets_olaps,warped_octets_olaps) :
             #start up the figures
             raw_octet_image = OctetComparisonVisualization(raw_octet_overlaps,False,f'octet_p1={octetp1}_raw_overlap_comparisons')
@@ -402,13 +403,21 @@ class WarpFitter :
             all_octet_comparison_images = [raw_octet_image,raw_aligned_octet_image,warped_octet_image,warped_aligned_octet_image]
             #stack the overlay images and write out the figures
             for oci in all_octet_comparison_images :
-                oci.stackOverlays()
+                failed_p1s_and_codes = oci.stackOverlays()
+                for fp1,fc in failed_p1s_and_codes :
+                    addl_singlet_p1s_and_codes.add((fp1,fc))
                 oci.writeOutFigure(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME))
         #plot the singlet overlap comparisons
         for overlap_identifier in raw_olap_comps.keys() :
+            do_overlap = False
             code = overlap_identifier[0]
             p1 = overlap_identifier[1]
-            if p1 not in olap_singlet_p1s :
+            if p1 in olap_singlet_p1s :
+                do_overlap=True
+            for fp1,fc in failed_p1s_and_codes :
+                if p1==fp1 and code==fc :
+                    do_overlap=True
+            if not do_overlap :
                 continue
             p2 = overlap_identifier[2]
             fn   = overlap_identifier[3]

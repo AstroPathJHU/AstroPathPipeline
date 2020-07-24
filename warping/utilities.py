@@ -261,19 +261,25 @@ class OctetComparisonVisualization :
         self.overlay_dicts = {}
         for olap in self.overlaps :
             self.overlay_dicts[olap.tag] = {'image':olap.getimage(self.normalize,self.shifted),'dx':-olap.result.dx/2.,'dy':-olap.result.dy/2.}
+        self.failed_
 
     def stackOverlays(self) :
         """
         Stack the overlay images into the whole image
+        returns a list of tuples of (p1, code) for any overlaps that couldn't be stacked into the whole image
         """
+        failed_p1s_codes = []
         #add each overlay to the total image
         for code in self.overlay_dicts.keys() :
-            self.__addSingleOverlap(code)
+            ret = self.__addSingleOverlap(code)
+            if ret is not True :
+                failed_p1s_codes.append(ret)
         #divide the total image by how many overlays are contributing at each point
         self.whole_image[self.images_stacked_mask!=0]/=self.images_stacked_mask[self.images_stacked_mask!=0]
         #fill in the holes with the p1 image in magenta
         magenta_p1 = np.array([self.p1_im,np.zeros_like(self.p1_im),0.5*self.p1_im]).transpose(1,2,0)
         self.whole_image=np.where(self.whole_image==0,magenta_p1,self.whole_image)
+        return failed_p1s_codes
 
     def writeOutFigure(self,dirpath) :
         """
@@ -333,5 +339,13 @@ class OctetComparisonVisualization :
         tiy_1+=dy; tiy_2+=dy
         tix_1=int(np.rint(tix_1)); tix_2=int(np.rint(tix_2)); tiy_1=int(np.rint(tiy_1)); tiy_2=int(np.rint(tiy_2))
         #add the overlay to the total image and increment the mask
-        self.whole_image[tiy_1:tiy_2,tix_1:tix_2,:]+=self.overlay_dicts[code]['image']
-        self.images_stacked_mask[tiy_1:tiy_2,tix_1:tix_2,:]+=1
+        try :
+            self.whole_image[tiy_1:tiy_2,tix_1:tix_2,:]+=self.overlay_dicts[code]['image']
+            self.images_stacked_mask[tiy_1:tiy_2,tix_1:tix_2,:]+=1
+            return True
+        except Exception as e :
+            fp1 = self.overlaps[0].p1
+            msg=f'WARNING: overlap with p1={fp1} and code {code} could not be stacked into octet overlay comparison'
+            msg+=f' and will be plotted separately. Exception: {e}'
+            warp_logger.warn(msg)
+            return tuple((fp1,code))
