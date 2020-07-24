@@ -29,7 +29,7 @@ class WarpFitter :
 
     IM3_EXT = '.im3'                                          #to replace in filenames read from *_rect.csv
     DE_TOLERANCE = 0.10                                       #tolerance for the differential evolution minimization
-    DE_MUTATION = (0.6,1.00)                                  #mutation bounds for differential evolution minimization
+    DE_MUTATION = (0.2,0.8)                                   #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7                                    #recombination parameter for differential evolution minimization
     POLISHING_X_TOL = 1e-4                                    #parameter tolerance for polishing minimization
     POLISHING_G_TOL = 1e-5                                    #gradient tolerance for polishing minimization
