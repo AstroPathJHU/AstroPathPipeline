@@ -1,6 +1,7 @@
 from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL
 from concurrent.futures import ThreadPoolExecutor
+import matplotlib.pyplot as plt
 import numpy as np
 import os, cv2, logging, math
 
@@ -204,3 +205,32 @@ def findLayerThresholds(layer_hists,i=None,rdict=None) :
         rdict[i]=best_thresholds
     else :
         return best_thresholds
+
+def drawThresholds(img_array, layer_index=0):
+    if len(img_array.shape)>2 :
+        img_array = img_array[layer_index]
+    hist = getImageArrayLayerHistograms(img_array)
+    thresholds, weights = getLayerOtsuThresholdsAndWeights(hist)
+    histmax = np.max(np.argwhere(hist!=0))
+    hist = hist[:histmax+1]
+    #plt.bar(range(len(hist)), hist)
+    plt.hist(np.ravel(img_array), bins=range(np.max(img_array)+1))
+    for threshold, weight in zip(thresholds, weights):
+        plt.axvline(x=threshold, color="red", alpha=0.5+0.5*(weight-min(weights))/(max(weights)-min(weights)))
+    plt.show()
+    import more_itertools
+    for t1, t2 in more_itertools.pairwise([0]+sorted(thresholds)+[float("inf")]):
+        if t1 == t2: continue #can happen if 0 is a threshold
+        print(t1, t2)
+        plt.imshow(img_array)
+        lower = np.array(
+          [0*img_array+1, 0*img_array, 0*img_array, img_array < t1],
+          dtype=float
+        ).transpose(1, 2, 0)
+        higher = np.array(
+          [0*img_array, 0*img_array+1, 0*img_array, img_array > t2],
+          dtype=float
+        ).transpose(1, 2, 0)
+        plt.imshow(lower)
+        plt.imshow(higher)
+        plt.show()
