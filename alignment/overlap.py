@@ -191,8 +191,8 @@ class AlignmentOverlap(Overlap):
       plt.savefig(saveas, **savekwargs)
       plt.close()
 
-  def getShiftComparisonImageCodeNameTuple(self) :
-    return (self.result.code,f'overlap_{self.result.n}_[{self.result.p1}x{self.result.p2},type{self.result.code},layer{self.result.layer:02d}]_shift_comparison.png')
+  def getShiftComparisonDetailTuple(self) :
+    return (self.result.code,self.p1,self.p2,f'overlap_{self.n}_[{self.p1}x{self.p2},type{self.result.code},layer{self.result.layer:02d}]_shift_comparison.png')
 
   def getShiftComparisonImages(self) :
     img_orig = self.getimage(normalize=1000.,shifted=False)
