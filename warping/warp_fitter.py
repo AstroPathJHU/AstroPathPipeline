@@ -438,7 +438,6 @@ class WarpFitter :
                     do_overlap=True
             if not do_overlap :
                 continue
-            p2 = overlap_identifier[2]
             fn   = overlap_identifier[3]
             pix_to_in = 20./self.n
             if code in [2,8] :
