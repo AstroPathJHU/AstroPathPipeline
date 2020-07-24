@@ -181,7 +181,7 @@ class PolyFieldWarp(Warp) :
                 r_warps += coeffs[len(coeffs)-1-i]*np.power(r,i)
         #translate r-dependent corrections to dx and dy shifts and return
         x_warps = np.zeros_like(r_warps); y_warps = np.zeros_like(r_warps)
-        x_warps[r!=0] = r_warps*(x/r); y_warps[r!=0] = r_warps*(y/r)
+        x_warps[r!=0] = r_warps[r!=0]*(x[r!=0]/r[r!=0]); y_warps[r!=0] = r_warps[r!=0]*(y[r!=0]/r[r!=0])
         return r_warps, x_warps, y_warps
 
     #Alex's helper function to fit a polynomial to the warping given a max amount of warp
