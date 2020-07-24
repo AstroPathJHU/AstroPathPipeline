@@ -311,6 +311,9 @@ class WarpFitter :
         self.raw_cost, self.best_cost = self.__makeBestFitAlignmentComparisonImages()
         #write out the fit result text file
         self.__writeFitResult()
+        #write out the warp field binary file and plots
+        with cd(self.working_dir) :
+            self._best_fit_warp.writeOutWarpFields()
 
     #function to plot the costs and warps over all the iterations of the fit
     def __makeFitProgressPlots(self,ninitev) :

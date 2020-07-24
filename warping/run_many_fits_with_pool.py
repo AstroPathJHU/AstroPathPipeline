@@ -72,7 +72,6 @@ def getListOfJobCommands(args) :
         workingdir_names.append(thisjobworkingdir)
     return job_cmds, workingdir_names
 
-
 #################### MAIN SCRIPT ####################
 
 if __name__=='__main__' :
@@ -145,4 +144,5 @@ if __name__=='__main__' :
         results.append(readtable(os.path.join(args.workingdir_name,dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))
     with cd(args.workingdir_name) :
         writetable('all_results.csv',results)
+    warp_logger.info('Done.')
 

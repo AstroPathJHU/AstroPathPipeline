@@ -31,6 +31,15 @@ class Const :
     def FIT_RESULT_CSV_FILE_NAME(self) :
         return 'fit_result.csv' #the name of the fit result text file that gets written out
     @property
+    def X_WARP_BIN_FILENAME(self) :
+        return 'dx_warp_field.bin' #name of the dx warping field binary file
+    @property
+    def Y_WARP_BIN_FILENAME(self) :
+        return 'dy_warp_field.bin' #name of the dy warping field binary file
+    @property
+    def WARP_FIELD_FIGURE_NAME(self) :
+        return 'warp_fields.png'
+    @property
     def OVERLAY_NORMALIZE(self) :
         return 1000. #value to use to normalize the overlay images
     @property 

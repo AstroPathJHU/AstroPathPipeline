@@ -1,5 +1,6 @@
 #imports
 from .utilities import WarpingError
+from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
 import numpy as np, matplotlib.pyplot as plt, seaborn as sns
 import os, math, cv2
@@ -72,7 +73,7 @@ class PolyFieldWarp(Warp) :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,n=1344,m=1004,xc=584,yc=600,max_warp=1.85,pdegree=3,psq=False,interpolation=cv2.INTER_LINEAR,plot_fit=False,plot_warpfields=False) :
+    def __init__(self,n=1344,m=1004,xc=584,yc=600,max_warp=1.85,pdegree=3,psq=False,interpolation=cv2.INTER_LINEAR,plot_fit=False) :
         """
         Initializes the warp_field based on a polynomial fit to scaled radial distance or scaled radial distance squared
         Fit range and warp parameters are hardcoded except for maximum warp at furthest location
@@ -83,15 +84,12 @@ class PolyFieldWarp(Warp) :
         psq             = if True, fit to a polynomial in r^2 instead of in r
         interpolation   = openCV interpolation parameter (see https://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html)
         plot_fit        = if True, show plot of polynomial fit
-        plot_warpfields = if True, show heatmaps of warp as radius and components of resulting gradient warp field
         """
         super().__init__(n,m)
         self.xc=xc
         self.yc=yc
         self.r_warps, self.x_warps, self.y_warps = self.__getWarpFields(xc,yc,max_warp,pdegree,psq,plot_fit)
         self.interp=interpolation
-        #plot warp fields if requested
-        if plot_warpfields : self.plotWarpFields()
 
     def warpAndWriteImage(self,infname,nlayers=35,layers=[1]) :
         """
@@ -134,24 +132,27 @@ class PolyFieldWarp(Warp) :
 
     #################### VISUALIZATION FUNCTIONS ####################
 
-    def plotWarpFields(self) :
+    def writeOutWarpFields(self) :
         """
-        Plot three heatmaps of the r-, x-, and y-dependent warping fields
+        Write out .bin files of the dx and dy warping fields and also make an image showing them 
         """
-        f,(ax1,ax2,ax3) = plt.subplots(1,3)
-        f.set_size_inches(20.,5.)
-        #plot radial field as a heatmap
-        g1 = sns.heatmap(self.r_warps,ax=ax1)
-        ax1.scatter(self.xc,self.yc,marker='*',color='yellow')
-        g1.set_title('radially-dependent warping shifts')
-        #plot x and y shifts
-        g2 = sns.heatmap(self.x_warps,ax=ax2)
-        ax2.scatter(self.xc,self.yc,marker='*',color='yellow')
-        g2.set_title('warping shift x components')
-        g3 = sns.heatmap(self.y_warps,ax=ax3)
-        ax3.scatter(self.xc,self.yc,marker='*',color='yellow')
-        g3.set_title('warping shift y components')
-        plt.show()
+        writeImageToFile(self.x_warps,CONST.X_WARP_BIN_FILENAME,dtype=self.x_warps.dtype())
+        writeImageToFile(self.y_warps,CONST.Y_WARP_BIN_FILENAME,dtype=self.y_warps.dtype())
+        f,ax = plt.subplots(1,3,figsize=(3*6.4,4.6))
+        pos = ax[0].imshow(self.r_warps)
+        ax[0].scatter(self.xc,self.yc,marker='*',color='yellow')
+        ax[0].set_title('total warp')
+        f.colorbar(pos,ax=ax[0])
+        pos = ax[1].imshow(self.x_warps)
+        ax[1].scatter(self.xc,self.yc,marker='*',color='yellow')
+        ax[1].set_title('dx warp')
+        f.colorbar(pos,ax=ax[1])
+        pos = ax[2].imshow(self.y_warps)
+        ax[2].scatter(self.xc,self.yc,marker='*',color='yellow')
+        ax[2].set_title('dy warp')
+        f.colorbar(pos,ax=ax[2])
+        plt.savefig(CONST.WARP_FIELD_FIGURE_NAME)
+        plt.close()
 
     def showCheckerboard(self) :
         """
@@ -517,13 +518,36 @@ class CameraWarp(Warp) :
         y_warps = ypos-map_y
         return np.sqrt(x_warps**2+y_warps**2), x_warps, y_warps
 
+    def writeOutWarpFields(self) :
+        """
+        Write out .bin files of the dx and dy warping fields and also make an image showing them 
+        """
+        r_warps, x_warps, y_warps = self.getWarpFields()
+        writeImageToFile(x_warps,CONST.X_WARP_BIN_FILENAME,dtype=x_warps.dtype())
+        writeImageToFile(y_warps,CONST.Y_WARP_BIN_FILENAME,dtype=y_warps.dtype())
+        f,ax = plt.subplots(1,3,figsize=(3*6.4,4.6))
+        pos = ax[0].imshow(r_warps)
+        ax[0].scatter(self.cx,self.cy,marker='*',color='yellow')
+        ax[0].set_title('total warp')
+        f.colorbar(pos,ax=ax[0])
+        pos = ax[1].imshow(x_warps)
+        ax[1].scatter(self.cx,self.cy,marker='*',color='yellow')
+        ax[1].set_title('dx warp')
+        f.colorbar(pos,ax=ax[1])
+        pos = ax[2].imshow(y_warps)
+        ax[2].scatter(self.cx,self.cy,marker='*',color='yellow')
+        ax[2].set_title('dy warp')
+        f.colorbar(pos,ax=ax[2])
+        plt.savefig(CONST.WARP_FIELD_FIGURE_NAME)
+        plt.close()
+
     def showCheckerboard(self) :
         """
         Plot a checkerboard image before and after application of the warp
         """
         self._plotCheckerboards(self.getWarpedLayer(self._checkerboard))
 
-    def makeWarpAmountFigure(self,show=False,npoints=50) :
+    def makeWarpAmountFigure(self,npoints=50) :
         """
         Plots the radial and tangential warping fields and the curve of the radial warping dependences
         """
@@ -556,8 +580,6 @@ class CameraWarp(Warp) :
         ax3.scatter(self.cx,self.cy,marker='*',color='yellow')
         thm.set_title('tangential warp components',fontsize=14)
         plt.savefig('warp_amounts.png')
-        if show :
-            plt.show()
         plt.close()
 
     #################### PRIVATE HELPER FUNCTIONS ####################
