@@ -1,5 +1,5 @@
 #imports 
-from .warpfitter import WarpFitter
+from .warp_fitter import WarpFitter
 from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile
 from .config import CONST
 from ..utilities.misc import split_csv_to_list, split_csv_to_list_of_ints

@@ -1,6 +1,6 @@
 #imports
-from .warpset import WarpSet
-from .fitparameterset import FitParameterSet
+from .warp_set import WarpSet
+from .fit_parameter_set import FitParameterSet
 from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSet

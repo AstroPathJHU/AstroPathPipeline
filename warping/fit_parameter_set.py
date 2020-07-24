@@ -1,6 +1,6 @@
 #imports
 from .warp import CameraWarp
-from .fitparameter import FitParameter
+from .fit_parameter import FitParameter
 from .utilities import WarpingError, warp_logger, buildDefaultParameterBoundsDict
 import numpy as np
 import copy
