@@ -349,3 +349,31 @@ class OctetComparisonVisualization :
             msg+=f' and will be plotted separately. Exception: {e}'
             warp_logger.warn(msg)
             return tuple((fp1,code))
+
+#little utility class to represent a warp fit result
+@dataclasses.dataclass
+class WarpFitResult :
+    dirname         : str = None
+    n               : int = 0
+    m               : int = 0
+    cx              : float = 0.0
+    cy              : float = 0.0
+    fx              : float = 0.0
+    fy              : float = 0.0
+    k1              : float = 0.0
+    k2              : float = 0.0
+    k3              : float = 0.0
+    p1              : float = 0.0
+    p2              : float = 0.0
+    max_r_x_coord   : float = 0.0
+    max_r_y_coord   : float = 0.0
+    max_r           : float = 0.0
+    max_rad_warp    : float = 0.0
+    max_tan_warp    : float = 0.0
+    global_fit_its  : int = 0
+    polish_fit_its  : int = 0
+    global_fit_time : float = 0.0
+    polish_fit_time : float = 0.0
+    raw_cost        : float = 0.0
+    best_cost       : float = 0.0
+    cost_reduction  : float = 0.0

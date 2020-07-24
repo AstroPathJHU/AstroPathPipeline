@@ -29,14 +29,6 @@ class FitParameterSet :
         if self._best_fit_warp_parameters is None :
             raise WarpingError('ERROR: bestFitWarpParameters called while best fit parameters is None!')
         return [p.current_warp_value for p in self._best_fit_warp_parameters]
-    @property
-    def result_text_file_lines(self) : # lines of text to be written out in the report file
-        lines = {}
-        for p in self._best_fit_warp_parameters :
-            lines[p.name] = str(p.current_warp_value)
-            if p.fixed :
-                lines[p.name]+=' (fixed)'
-        return lines
 
     #################### CLASS CONSTANTS ####################
 

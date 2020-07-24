@@ -28,6 +28,9 @@ class Const :
     def OCTET_OVERLAP_CSV_FILE_NAMESTEM(self) :
         return '_overlap_octets.csv' #stem for the name of the octet overlap csv file name
     @property
+    def FIT_RESULT_CSV_FILE_NAME(self) :
+        return 'fit_result.csv' #the name of the fit result text file that gets written out
+    @property
     def OVERLAY_NORMALIZE(self) :
         return 1000. #value to use to normalize the overlay images
     @property 

@@ -1,11 +1,12 @@
 #imports
 from .warpset import WarpSet
 from .fitparameterset import FitParameterSet
-from .utilities import warp_logger, WarpingError, OctetComparisonVisualization
+from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSet
 from ..baseclasses.rectangle import rectangleoroverlapfilter
 from ..utilities.img_file_io import getImageHWLFromXMLFile
+from ..utilities.tableio import writetable
 from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, scipy, matplotlib.pyplot as plt
@@ -36,7 +37,6 @@ class WarpFitter :
     FIT_PROGRESS_FIG_SIZE = (3*6.4,2*4.6)                     #(width, height) of the fit progress figure
     PP_RAVG_POINTS = 50                                       #how many points to average over for the polishing minimization progress plots
     OVERLAP_COMPARISON_DIR_NAME = 'overlap_comparison_images' #name of directory holding overlap comparison images
-    FIT_RESULT_TEXT_FILE_NAME = 'warping_parameters.txt'      #the name of the fit result text file that gets written out
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -311,7 +311,7 @@ class WarpFitter :
         #write out the set of alignment comparison images
         self.raw_cost, self.best_cost = self.__makeBestFitAlignmentComparisonImages()
         #write out the fit result text file
-        self.__writeFitResultTextFile()
+        self.__writeFitResult()
 
     #function to plot the costs and warps over all the iterations of the fit
     def __makeFitProgressPlots(self,ninitev) :
@@ -462,36 +462,35 @@ class WarpFitter :
         #return the pre- and post-fit alignment costs
         return rawcost, bestcost
 
-    #helper function to write the parameter text file
-    def __writeFitResultTextFile(self) :
-        to_write = {'n':str(self.n),
-                    'm':str(self.m),
-                   }
-        for k,v in self.fitpars.result_text_file_lines.items() :
-            to_write[k] = v
+    #helper function to write the fit result table .csv file
+    def __writeFitResult(self) :
+        result = WarpFitResult()
+        result.dirname = self.working_dir
+        result.n  = self.n
+        result.m  = self.m
+        result.cx = self._best_fit_warp.cx
+        result.cy = self._best_fit_warp.cy
+        result.fx = self._best_fit_warp.fx
+        result.fy = self._best_fit_warp.fy
+        result.k1 = self._best_fit_warp.k1
+        result.k2 = self._best_fit_warp.k2
+        result.k3 = self._best_fit_warp.k3
+        result.p1 = self._best_fit_warp.p1
+        result.p2 = self._best_fit_warp.p2
         max_r_x, max_r_y = self.warpset.warp._getMaxDistanceCoords()
-        to_write['max_r_x_coord']             = str(max_r_x)
-        to_write['max_r_y_coord']             = str(max_r_y)
-        to_write['max_r']                     = str(math.sqrt((max_r_x)**2+(max_r_y)**2))
-        to_write['max_radial_warp']           = str(self.warpset.warp.maxRadialDistortAmount(self.fitpars.best_fit_warp_parameters))
-        to_write['max_tangential_warp']       = str(self.warpset.warp.maxTangentialDistortAmount(self.fitpars.best_fit_warp_parameters))
-        to_write['initial_fit_iterations']    = str(self.init_its)
-        to_write['polishing_fit_iterations']  = str(self.polish_its)
-        to_write['initial_minimization_time'] = str(self.init_min_runtime)
-        to_write['polish_minimization_time']  = str(self.polish_min_runtime)
-        to_write['raw_cost']                  = str(self.raw_cost)
-        to_write['best_cost']                 = str(self.best_cost)
-        to_write['cost_reduction']            = f'{(100*(1.-self.best_cost/self.raw_cost)):.2f}%'
-        max_key_width = 0; max_value_width = 0
-        for k,v in to_write.items() :
-            if len(k)>max_key_width :
-                max_key_width=len(k)
-            if len(v)>max_value_width :
-                max_value_width=len(v)
-        with cd(self.working_dir) :
-            with open(self.FIT_RESULT_TEXT_FILE_NAME,'w') as fp :
-                for k,v in to_write.items() :
-                    fp.write(f'{k:<{max_key_width+3}}{v:<{max_value_width}}\n')
+        result.max_r_x_coord  = max_r_x
+        result.max_r_y_coord  = max_r_y
+        result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)
+        result.max_rad_warp   = self._best_fit_warp.maxRadialDistortAmount()
+        result.max_tan_warp   = self._best_fit_warp.maxTangentialDistortAmount()
+        result.global_fit_its  = self.init_its
+        result.polish_fit_its  = self.polish_its
+        result.global_fit_time = self.init_min_runtime
+        result.polish_fit_time = self.polish_min_runtime
+        result.raw_cost       = self.raw_cost
+        result.best_cost      = self.best_cost
+        result.cost_reduction = (1.-self.best_cost/self.raw_cost)
+        writetable(self.CONST.FIT_RESULT_CSV_FILE_NAME,[result])
 
     #################### OTHER PRIVATE HELPER FUNCTIONS ####################
 
@@ -556,11 +555,11 @@ class WarpFitter :
         else :
             return constraints
 
-        #helper function to calculate the normalization for the cost
-        def __getCostNormalization(self) :
-            corner_codes = [1,3,7,9]
-            norm = 0
-            for olap in self.alignset.overlaps :
-                if (not self.skip_corners) or (self.skip_corners and olap.tag not in corner_codes) : 
-                    norm+=((olap.cutimages[0]).shape[0])*((olap.cutimages[0]).shape[1])
-            return norm
+    #helper function to calculate the normalization for the cost
+    def __getCostNormalization(self) :
+        corner_codes = [1,3,7,9]
+        norm = 0
+        for olap in self.alignset.overlaps :
+            if (not self.skip_corners) or (self.skip_corners and olap.tag not in corner_codes) : 
+                norm+=((olap.cutimages[0]).shape[0])*((olap.cutimages[0]).shape[1])
+        return norm
