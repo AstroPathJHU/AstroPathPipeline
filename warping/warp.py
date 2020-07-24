@@ -523,8 +523,8 @@ class CameraWarp(Warp) :
         Write out .bin files of the dx and dy warping fields and also make an image showing them 
         """
         r_warps, x_warps, y_warps = self.getWarpFields()
-        writeImageToFile(x_warps,CONST.X_WARP_BIN_FILENAME,dtype=x_warps.dtype())
-        writeImageToFile(y_warps,CONST.Y_WARP_BIN_FILENAME,dtype=y_warps.dtype())
+        writeImageToFile(x_warps,CONST.X_WARP_BIN_FILENAME,dtype=x_warps.dtype)
+        writeImageToFile(y_warps,CONST.Y_WARP_BIN_FILENAME,dtype=y_warps.dtype)
         f,ax = plt.subplots(1,3,figsize=(3*6.4,4.6))
         pos = ax[0].imshow(r_warps)
         ax[0].scatter(self.cx,self.cy,marker='*',color='yellow')

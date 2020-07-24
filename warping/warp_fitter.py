@@ -486,8 +486,8 @@ class WarpFitter :
         result.max_r_x_coord  = max_r_x
         result.max_r_y_coord  = max_r_y
         result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)
-        result.max_rad_warp   = self._best_fit_warp.maxRadialDistortAmount()
-        result.max_tan_warp   = self._best_fit_warp.maxTangentialDistortAmount()
+        result.max_rad_warp   = self._best_fit_warp.maxRadialDistortAmount(None)
+        result.max_tan_warp   = self._best_fit_warp.maxTangentialDistortAmount(None)
         result.global_fit_its  = self.init_its
         result.polish_fit_its  = self.polish_its
         result.global_fit_time = self.init_min_runtime
@@ -495,7 +495,8 @@ class WarpFitter :
         result.raw_cost       = self.raw_cost
         result.best_cost      = self.best_cost
         result.cost_reduction = (1.-self.best_cost/self.raw_cost)
-        writetable(self.CONST.FIT_RESULT_CSV_FILE_NAME,[result])
+        with cd(self.working_dir) :
+            writetable(CONST.FIT_RESULT_CSV_FILE_NAME,[result])
 
     #################### OTHER PRIVATE HELPER FUNCTIONS ####################
 
