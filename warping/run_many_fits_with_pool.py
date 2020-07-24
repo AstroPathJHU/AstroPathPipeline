@@ -8,7 +8,7 @@ import os, random, multiprocessing as mp
 
 #################### FILE-SCOPE CONSTANTS ####################
 
-RUN_WARPFITTER_PREFIX = 'python -m microscopealignment.warping.run_warpfitter' #part of the command referencing how to run run_warpfitter.py
+RUN_WARPFITTER_PREFIX = 'python -m microscopealignment.warping.run_warp_fitter' #part of the command referencing how to run run_warpfitter.py
 
 #################### HELPER FUNCTIONS ####################
 
@@ -141,7 +141,7 @@ if __name__=='__main__' :
     warp_logger.info('All jobs in the pool have finished! : ) Collecting results....')
     results = []
     for dirname in dirnames :
-        results.append(readtable(os.path.join(args.workingdir_name,dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))
+        results.append(readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))
     with cd(args.workingdir_name) :
         writetable('all_results.csv',results)
     warp_logger.info('Done.')

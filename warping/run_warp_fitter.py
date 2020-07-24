@@ -30,6 +30,16 @@ def checkArgs(args) :
                  args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS)])
     if nspec!=1 :
         raise ValueError(f'Must specify exactly ONE of overlaps or octets! (overlaps={args.overlaps}, octets={args.octets})')
+    #the threshold file must exist if it's to be used
+    if args.threshold_file_dir is not None :
+        if not os.path.isdir(args.threshold_file_dir) :
+            raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
+        tfp = os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
+        if not os.path.isfile(tfp) :
+            raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this sample ({tfp})!')
+    #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate
+    if args.threshold_file_dir is not None and args.octet_run_dir is not None :
+        raise ValueError('ERROR: cannot specify both an octet_run_dir and a threshold_file_dir!')
 
 # Helper function to determine the list of overlaps
 def getOverlaps(args) :
