@@ -74,7 +74,7 @@ class FitParameterSet :
         warp_logger.info(msg)
         #print info about the floating parameter bounds
         lines = []
-        lines.append(f'Bounds (warping_units) (fitting_units):')
+        lines.append('Bounds (warping_units) (fitting_units):')
         for p in self.floating_parameters :
             lines.append(f'{p.name}     {p.warp_bound_string}     {p.fit_bound_string}')
         spaces = [len('Bounds'),len('(warping_units)'),len('(fitting_units):')]
