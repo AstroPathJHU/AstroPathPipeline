@@ -182,7 +182,7 @@ class PolyFieldWarp(Warp) :
         #translate r-dependent corrections to dx and dy shifts and return
         x_warps = np.zeros_like(r_warps); y_warps = np.zeros_like(r_warps)
         x_warps[r!=0] = r_warps[r!=0]*(x[r!=0]/r[r!=0]); y_warps[r!=0] = r_warps[r!=0]*(y[r!=0]/r[r!=0])
-        return r_warps, x_warps, y_warps
+        return r_warps, -x_warps, -y_warps #signs flipped so they behave like cv2.undistort
 
     #Alex's helper function to fit a polynomial to the warping given a max amount of warp
     def __polyFit(self,max_warp,deg,squared=False,plot=False) :
