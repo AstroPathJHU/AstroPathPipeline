@@ -194,12 +194,17 @@ class WarpFitter :
                                         alreadyalignedstrategy=align_strategy,
                                         warpwarnings=True,
                                     )
-        #normalize the alignment cost by the total number of pixels
-        aligncost/=self.cost_norm
-        #compute the cost from the LASSO constraint on the specified parameters
-        lasso_cost=self.fitpars.getLassoCost(pars)
-        #sum the costs
-        cost = aligncost+lasso_cost
+        #if the alignment was valid add the other parts of the cost
+        if aligncost<1e10 :
+            #normalize the alignment cost by the total number of pixels
+            aligncost/=self.cost_norm
+            #compute the cost from the LASSO constraint on the specified parameters
+            lasso_cost=self.fitpars.getLassoCost(pars)
+            #sum the costs
+            cost = aligncost+lasso_cost
+        #otherwise just leave the cost as the error value
+        else :
+            cost=aligncost
         #add to the lists to plot
         self.costs.append(cost if cost<1e10 else -0.1)
         self.max_radial_warps.append(rad_warp)
