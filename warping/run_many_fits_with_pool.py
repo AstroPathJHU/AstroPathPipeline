@@ -1,7 +1,8 @@
 #imports
-from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile
+from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile, WarpFitResult
 from .config import CONST
-from ..utilities.misc import split_csv_to_list
+from ..utilities.tableio import readtable, writetable
+from ..utilities.misc import cd, split_csv_to_list
 from argparse import ArgumentParser
 import os, random, multiprocessing as mp
 
@@ -46,7 +47,7 @@ def getListOfJobCommands(args) :
         raise ValueError(f"""ERROR: Sample {args.sample} has {len(all_octets_dict)} total valid octets, but you asked for {args.njobs} jobs 
                              with {n_octets_per_job} octets per job!""")
     #build the list of commands
-    job_cmds = []
+    job_cmds = []; workingdir_names = []
     fixedparstring='--fixed '
     for fixedpar in args.fixed :
         fixedparstring+=f'{fixedpar},'
@@ -65,12 +66,11 @@ def getListOfJobCommands(args) :
         if args.float_p1p2_to_polish :
             thisjobcmdstring+=' --float_p1p2_to_polish'
         thisjobcmdstring+=f' --max_radial_warp {args.max_radial_warp} --max_tangential_warp {args.max_tangential_warp}'
-        thisjobcmdstring+=f' --lasso_lambda {args.lasso_lambda} --print_every {args.print_every}'
+        thisjobcmdstring+=f' --p1p2_polish_lasso_lambda {args.p1p2_polish_lasso_lambda} --print_every {args.print_every}'
         thisjobcmdstring+=f' --n_threads 1 --layer {args.layer}'
-        
         job_cmds.append(thisjobcmdstring)
-    return job_cmds
-
+        workingdir_names.append(thisjobworkingdir)
+    return job_cmds, workingdir_names
 
 #################### MAIN SCRIPT ####################
 
@@ -106,7 +106,7 @@ if __name__=='__main__' :
                                   help='Maximum amount of radial warp to use for constraint')
     fit_option_group.add_argument('--max_tangential_warp',  default=4.,          type=float,
                                   help='Maximum amount of radial warp to use for constraint')
-    fit_option_group.add_argument('--lasso_lambda',         default=0.0,         type=float,
+    fit_option_group.add_argument('--p1p2_polish_lasso_lambda',         default=0.0,         type=float,
                                   help="""Lambda magnitude parameter for the LASSO constraint on p1 and p2 
                                           (if those parameters are to float in the polishing minimization)""")
     fit_option_group.add_argument('--print_every',          default=1000,        type=int,
@@ -122,7 +122,7 @@ if __name__=='__main__' :
     #make sure the arguments are valid
     checkArgs(args)
     #get the list of all the job commands
-    job_cmds = getListOfJobCommands(args)
+    job_cmds, dirnames = getListOfJobCommands(args)
     #run the first command in check_run mode to make sure that things will work when they do get going
     warp_logger.info('TESTING first command in the list...')
     test_run_command = f'{RUN_WARPFITTER_PREFIX} check_run {(job_cmds[0])[(len(RUN_WARPFITTER_PREFIX)+len(" fit ")):]}'
@@ -138,4 +138,11 @@ if __name__=='__main__' :
     pool.close()
     warp_logger.info('POOL CLOSED; BATCH RUNNING!!')
     pool.join()
-    warp_logger.info('All jobs in the pool have finished! : )')
+    warp_logger.info('All jobs in the pool have finished! : ) Collecting results....')
+    results = []
+    for dirname in dirnames :
+        results.append(readtable(os.path.join(args.workingdir_name,dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))
+    with cd(args.workingdir_name) :
+        writetable('all_results.csv',results)
+    warp_logger.info('Done.')
+

@@ -1,5 +1,5 @@
 #imports 
-from .warpfitter import WarpFitter
+from .warp_fitter import WarpFitter
 from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile
 from .config import CONST
 from ..utilities.misc import split_csv_to_list, split_csv_to_list_of_ints
@@ -33,6 +33,16 @@ def checkArgs(args) :
 
 # Helper function to determine the list of overlaps
 def getOverlaps(args) :
+    #the threshold file must exist if it's to be used
+    if args.threshold_file_dir is not None :
+        if not os.path.isdir(args.threshold_file_dir) :
+            raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
+        tfp = os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
+        if not os.path.isfile(tfp) :
+            raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this sample ({tfp})!')
+    #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate
+    if args.threshold_file_dir is not None and args.octet_run_dir is not None :
+        raise ValueError('ERROR: cannot specify both an octet_run_dir and a threshold_file_dir!')
     #set the overlaps variable based on which of the options was used to specify
     overlaps=[]
     #if the overlaps are being specified then they have to be either -1 (to use all), a tuple (to use a range), or a list
@@ -90,23 +100,27 @@ if __name__=='__main__' :
                                          help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
     overlap_selection_group.add_argument('--octets',   default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
                                          help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
+    overlap_selection_group.add_argument('--req_pixel_frac', default=0.85, type=float,
+                                         help="What fraction of an overlap image's pixels must be above the threshold to accept it in a valid octet")
     #group for options of how the fit will proceed
     fit_option_group = parser.add_argument_group('fit options', 'how should the fit be done?')
-    fit_option_group.add_argument('--max_iter',             default=1000, type=int,
+    fit_option_group.add_argument('--max_iter',                 default=1000,                                           type=int,
                                   help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
-    fit_option_group.add_argument('--fixed',                default=['fx','fy'],   type=split_csv_to_list,         
+    fit_option_group.add_argument('--fixed',                    default=['fx','fy'],                                    type=split_csv_to_list,         
                                   help='Comma-separated list of parameters to keep fixed during fitting')
-    fit_option_group.add_argument('--float_p1p2_to_polish', action='store_true',
+    fit_option_group.add_argument('--normalize',                default=['cx','cy','fx','fy','k1','k2','k3','p1','p2'], type=split_csv_to_list,
+                                  help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
+    fit_option_group.add_argument('--float_p1p2_to_polish',     action='store_true',
                                   help="""Add this flag to float p1 and p2 in the polishing minimization 
                                           (regardless of whether they are in the list of fixed parameters)""")
-    fit_option_group.add_argument('--max_radial_warp',      default=8.,   type=float,
+    fit_option_group.add_argument('--max_radial_warp',          default=8.,                                             type=float,
                                   help='Maximum amount of radial warp to use for constraint')
-    fit_option_group.add_argument('--max_tangential_warp',  default=4.,   type=float,
+    fit_option_group.add_argument('--max_tangential_warp',      default=4.,                                             type=float,
                                   help='Maximum amount of radial warp to use for constraint')
-    fit_option_group.add_argument('--lasso_lambda',         default=0.0,  type=float,
-                                  help="""Lambda magnitude parameter for the LASSO constraint on p1 and p2 
-                                          (if those parameters are to float in the polishing minimization)""")
-    fit_option_group.add_argument('--print_every',          default=100,  type=int,
+    fit_option_group.add_argument('--p1p2_polish_lasso_lambda', default=0.0,                                            type=float,
+                                  help="""Lambda magnitude parameter for the LASSO constraint on p1 and p2 in the polishing minimization
+                                          (if those parameters will float then)""")
+    fit_option_group.add_argument('--print_every',              default=100,                                            type=int,
                                   help='How many iterations to wait between printing minimization progress')
     #group for other run options
     run_option_group = parser.add_argument_group('run options', 'other options for this run')
@@ -114,8 +128,6 @@ if __name__=='__main__' :
                                   help='Maximum number of threads/processes to run at once')
     run_option_group.add_argument('--layer',          default=1,  type=int,         
                                   help='Image layer to use (indexed from 1)')
-    run_option_group.add_argument('--req_pixel_frac', default=0.90, type=float,
-                                  help="What fraction of an overlap image's pixels must be above the threshold to accept it in a valid octet")
     args = parser.parse_args()
     #apply some checks to the arguments to make sure they're valid
     checkArgs(args)
@@ -136,29 +148,26 @@ if __name__=='__main__' :
         fix_p1p2   = 'p1' in args.fixed and 'p2' in args.fixed
         #check the run if that's what's being asked
         if args.mode in ('check_run') :
-            fitter.checkFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,fix_p1p2_in_global_fit=fix_p1p2,
-                            fix_p1p2_in_polish_fit=(not args.float_p1p2_to_polish),
+            fitter.checkFit(fixed=args.fixed,normalize=args.normalize,float_p1p2_in_polish_fit=args.float_p1p2_to_polish,
                             max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
-                            p1p2_polish_lasso_lambda=args.lasso_lambda,polish=True)
+                            p1p2_polish_lasso_lambda=args.p1p2_polish_lasso_lambda,polish=True)
         #otherwise actually run it
         elif args.mode in ('fit', 'cProfile') :
             #load the raw files
             warp_logger.info('Loading raw files')
             fitter.loadRawFiles(args.flatfield_file,args.n_threads)
-            #fit the model to the data
+             #fit the model to the data
             warp_logger.info('Running doFit')
             if args.mode == 'fit' :
-                result = fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,fix_p1p2_in_global_fit=fix_p1p2,
-                                      fix_p1p2_in_polish_fit=(not args.float_p1p2_to_polish),
-                                      max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
-                                      p1p2_polish_lasso_lambda=args.lasso_lambda,
-                                      polish=True,print_every=args.print_every,maxiter=args.max_iter)
+                fitter.doFit(fixed=args.fixed,normalize=args.normalize,float_p1p2_in_polish_fit=args.float_p1p2_to_polish,
+                             max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
+                             p1p2_polish_lasso_lambda=args.p1p2_polish_lasso_lambda,polish=True,
+                             print_every=args.print_every,maxiter=args.max_iter)
             elif args.mode == 'cProfile' :
-                cProfile.run("""fitter.doFit(fix_cxcy=fix_cxcy,fix_fxfy=fix_fxfy,fix_k1k2k3=fix_k1k2k3,fix_p1p2_in_global_fit=fix_p1p2,
-                                fix_p1p2_in_polish_fit=(not args.float_p1p2_to_polish),
+                cProfile.run("""fitter.doFit(fixed=args.fixed,normalize=args.normalize,float_p1p2_in_polish_fit=args.float_p1p2_to_polish,
                                 max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
-                                p1p2_polish_lasso_lambda=args.lasso_lambda,
-                                polish=True,print_every=args.print_every,maxiter=args.max_iter)""")
+                                p1p2_polish_lasso_lambda=args.p1p2_polish_lasso_lambda,polish=True,
+                                print_every=args.print_every,maxiter=args.max_iter)""")
 
     warp_logger.info('All done : )')
 
