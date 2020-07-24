@@ -34,7 +34,7 @@ class WarpFitter :
     POLISHING_X_TOL = 1e-4                                    #parameter tolerance for polishing minimization
     POLISHING_G_TOL = 1e-5                                    #gradient tolerance for polishing minimization
     FIT_PROGRESS_FIG_SIZE = (3*6.4,2*4.6)                     #(width, height) of the fit progress figure
-    PP_RAVG_POINTS = 10                                       #how many points to average over for the polishing minimization progress plots
+    PP_RAVG_POINTS = 50                                       #how many points to average over for the polishing minimization progress plots
     OVERLAP_COMPARISON_DIR_NAME = 'overlap_comparison_images' #name of directory holding overlap comparison images
     FIT_RESULT_TEXT_FILE_NAME = 'warping_parameters.txt'      #the name of the fit result text file that gets written out
 
