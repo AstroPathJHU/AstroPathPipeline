@@ -194,6 +194,8 @@ class WarpFitter :
                                         alreadyalignedstrategy=align_strategy,
                                         warpwarnings=True,
                                     )
+        #normalize the alignment cost by the total number of pixels
+        aligncost/=self.cost_norm
         #compute the cost from the LASSO constraint on the specified parameters
         lasso_cost=self.fitpars.getLassoCost(pars)
         #sum the costs
@@ -234,9 +236,12 @@ class WarpFitter :
         #set up the parameter bounds and constraints and get the initial population
         parameter_bounds, constraints, initial_population = self.__getGlobalSetup()
         self._de_population_size = len(initial_population)
+        #skip the corner overlaps
+        self.skip_corners = True
+        #figure out the normalization for the image sample used
+        self.cost_norm = self.__getCostNormalization()
         #run the minimization
         warp_logger.info('Starting initial minimization....')
-        self.skip_corners = True
         with cd(self.working_dir) :
             try :
                 result=scipy.optimize.differential_evolution(
@@ -260,6 +265,10 @@ class WarpFitter :
     def __runPolishMinimization(self,float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter) :
         #set up the parameter bounds, constraints, initial values, and relative step sizes
         parameter_bounds, constraints, init_pars, rel_steps = self.__getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
+        #don't skip the corner overlaps
+        self.skip_corners = False
+        #figure out the normalization for the image sample used
+        self.cost_norm = self.__getCostNormalization()
         #call minimize with trust_constr
         warp_logger.info('Starting polishing minimization....')
         with cd(self.working_dir) :
@@ -541,3 +550,12 @@ class WarpFitter :
             return constraints[0]
         else :
             return constraints
+
+        #helper function to calculate the normalization for the cost
+        def __getCostNormalization(self) :
+            corner_codes = [1,3,7,9]
+            norm = 0
+            for olap in self.alignset.overlaps :
+                if (not self.skip_corners) or (self.skip_corners and olap.tag not in corner_codes) : 
+                    norm+=((olap.cutimages[0]).shape[0])*((olap.cutimages[0]).shape[1])
+            return norm
