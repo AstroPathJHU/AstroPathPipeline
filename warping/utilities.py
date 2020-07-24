@@ -261,7 +261,6 @@ class OctetComparisonVisualization :
         self.overlay_dicts = {}
         for olap in self.overlaps :
             self.overlay_dicts[olap.tag] = {'image':olap.getimage(self.normalize,self.shifted),'dx':-olap.result.dx/2.,'dy':-olap.result.dy/2.}
-        self.failed_
 
     def stackOverlays(self) :
         """

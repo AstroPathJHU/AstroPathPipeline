@@ -75,7 +75,7 @@ class FitParameter :
         self._initial_warp_value = initial_value
         self._initial_fit_value  = self.fitValueFromWarpValue(initial_value)
         self._current_warp_value = self._initial_warp_value
-        self._current_fit_value = self._initial_fit_value
+        self._current_fit_value  = self._initial_fit_value
         #initialize the first and second minimization result values
         self._first_minimization_warp_value = None
         self._first_minimization_fit_value  = None

@@ -271,9 +271,8 @@ class WarpFitter :
         #set up the parameter bounds, constraints, initial values, and relative step sizes
         parameter_bounds, constraints, init_pars, rel_steps = self.__getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
         #don't skip the corner overlaps
-        self.skip_corners = False
-        #figure out the normalization for the image sample used
-        self.cost_norm = self.__getCostNormalization()
+        
+
         #call minimize with trust_constr
         warp_logger.info('Starting polishing minimization....')
         with cd(self.working_dir) :
@@ -393,15 +392,18 @@ class WarpFitter :
         all_olaps = self.alignset.overlaps
         olap_octet_p1s   = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])==8]
         olap_singlet_p1s = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])!=8 and olap1.p2 not in olap_octet_p1s]
+        #figure out the normalization for the image sample used
+        self.skip_corners = False
+        self.cost_norm = self.__getCostNormalization()
         #start by aligning the raw, unwarped images and getting their shift comparison information/images and the raw p1 images
         self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
-        rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
+        rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
         raw_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         raw_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
         #next warp and align the images with the best fit warp and do the same thing
         self.warpset.warpLoadedImages()
         self.alignset.updateRectangleImages(self.warpset.images)
-        bestcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)
+        bestcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
         warped_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         warped_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
         #print the cost differences

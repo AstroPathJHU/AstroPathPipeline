@@ -524,6 +524,9 @@ class CameraWarp(Warp) :
         self._plotCheckerboards(self.getWarpedLayer(self._checkerboard))
 
     def makeWarpAmountFigure(self,show=False,npoints=50) :
+        """
+        Plots the radial and tangential warping fields and the curve of the radial warping dependences
+        """
         max_x, max_y = self._getMaxDistanceCoords()
         xvals = np.linspace(0.,max_x,npoints)
         yvals = np.linspace(0.,max_y,npoints)
