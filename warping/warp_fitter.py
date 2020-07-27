@@ -32,7 +32,7 @@ class WarpFitter :
     DE_TOLERANCE = 0.05                                       #tolerance for the differential evolution minimization
     DE_MUTATION = (0.2,0.8)                                   #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7                                    #recombination parameter for differential evolution minimization
-    POLISHING_X_TOL = 1e-4                                    #parameter tolerance for polishing minimization
+    POLISHING_X_TOL = 5e-5                                    #parameter tolerance for polishing minimization
     POLISHING_G_TOL = 1e-5                                    #gradient tolerance for polishing minimization
     FIT_PROGRESS_FIG_SIZE = (3*6.4,2*4.6)                     #(width, height) of the fit progress figure
     PP_RAVG_POINTS = 50                                       #how many points to average over for the polishing minimization progress plots
