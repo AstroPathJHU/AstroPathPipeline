@@ -34,7 +34,7 @@ class FitParameterSet :
 
     FIT_PAR_NAME_LIST = ['cx','cy','fx','fy','k1','k2','k3','p1','p2'] #list of fit parameter names
     DUMMY_NONZERO_VALUE = 0.000001                                     #value to use for initial polishing minimization parameter values that are otherwise 0
-    RELATIVE_STEP_FRAC = 0.03                                          #fractional relative step size for polishing minimiation
+    RELATIVE_STEP_FRAC = 0.005                                          #fractional relative step size for polishing minimiation
 
     #################### PUBLIC FUNCTIONS ####################
 
