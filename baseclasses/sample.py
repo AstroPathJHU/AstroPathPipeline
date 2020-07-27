@@ -256,9 +256,9 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
   @abc.abstractmethod
   def readalloverlaps(self): pass
 
-  def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer=1, readlayer=True, **kwargs):
+  def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer=1, readlayerfile=True, **kwargs):
     self.__layer = layer
-    self.__readlayer = readlayer
+    self.__readlayerfile = readlayerfile
 
     super().__init__(*args, **kwargs)
 
@@ -276,17 +276,17 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
   def getrawlayers(self, filetype):
     self.logger.info("getrawlayers")
     if filetype=="flatWarp" :
-      if self.__readlayer :
+      if self.__readlayerfile :
         ext = f".fw{self.layer:02d}"
       else:
         ext = ".fw"
     elif filetype=="camWarp" :
-      if self.__readlayer:
+      if self.__readlayerfile:
         ext = f".camWarp_layer{self.layer:02d}"
       else:
         ext = ".camWarp"
     elif filetype=="raw" :
-      if self.__readlayer:
+      if self.__readlayerfile:
         ext = f".raw_layer{self.layer:02d}"
       else:
         ext = ".raw"
@@ -299,7 +299,7 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
     if not self.rectangles:
       raise IOError(1, "didn't find any rows in the rectangles table for "+self.SlideID)
 
-    if self.__readlayer:
+    if self.__readlayerfile:
       shape = units.pixels((self.fheight, self.fwidth), pscale=self.pscale)
       transpose = (0, 1)
       slc = slice(None), slice(None)
