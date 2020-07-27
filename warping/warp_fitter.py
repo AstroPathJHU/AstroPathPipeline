@@ -29,10 +29,10 @@ class WarpFitter :
     #################### CLASS CONSTANTS ####################
 
     IM3_EXT = '.im3'                                          #to replace in filenames read from *_rect.csv
-    DE_TOLERANCE = 0.10                                       #tolerance for the differential evolution minimization
+    DE_TOLERANCE = 0.05                                       #tolerance for the differential evolution minimization
     DE_MUTATION = (0.2,0.8)                                   #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7                                    #recombination parameter for differential evolution minimization
-    POLISHING_X_TOL = 1e-4                                    #parameter tolerance for polishing minimization
+    POLISHING_X_TOL = 5e-5                                    #parameter tolerance for polishing minimization
     POLISHING_G_TOL = 1e-5                                    #gradient tolerance for polishing minimization
     FIT_PROGRESS_FIG_SIZE = (3*6.4,2*4.6)                     #(width, height) of the fit progress figure
     PP_RAVG_POINTS = 50                                       #how many points to average over for the polishing minimization progress plots
@@ -270,9 +270,10 @@ class WarpFitter :
     def __runPolishMinimization(self,float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter) :
         #set up the parameter bounds, constraints, initial values, and relative step sizes
         parameter_bounds, constraints, init_pars, rel_steps = self.__getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
-        #don't skip the corner overlaps
-        
-
+        #still do skip the corner overlaps
+        self.skip_corners = True
+        #figure out the normalization for the image sample used
+        self.cost_norm = self.__getCostNormalization()
         #call minimize with trust_constr
         warp_logger.info('Starting polishing minimization....')
         with cd(self.working_dir) :
@@ -395,8 +396,8 @@ class WarpFitter :
         all_olaps = self.alignset.overlaps
         olap_octet_p1s   = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])==8]
         olap_singlet_p1s = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])!=8 and olap1.p2 not in olap_octet_p1s]
-        #figure out the normalization for the image sample used
-        self.skip_corners = False
+        #don't use the corner overlaps in the final cost reduction calculation either
+        self.skip_corners = True
         self.cost_norm = self.__getCostNormalization()
         #start by aligning the raw, unwarped images and getting their shift comparison information/images and the raw p1 images
         self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
