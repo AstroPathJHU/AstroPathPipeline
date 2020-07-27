@@ -295,3 +295,12 @@ class TestAlignment(TestBaseSaveOutput):
     units.np.testing.assert_allclose(units.nominal_values(result1.T), units.nominal_values(result2.T))
     units.np.testing.assert_allclose(units.nominal_values(result1.x()), units.nominal_values(result2.x()))
     units.np.testing.assert_allclose(units.nominal_values(result1.T), units.nominal_values(result3.T), atol=1e-8)
+
+  def testReadingLayer(self):
+    args = thisfolder/"data", thisfolder/"data"/"flatw", "M21_1"
+    kwargs = {"selectrectangles": [17]}
+    a1 = AlignmentSet(*args, **kwargs)
+    a2 = AlignmentSet(*args, **kwargs, readlayer=False, layer=1)
+    i1 = a1.getrawlayers("flatWarp")
+    i2 = a2.getrawlayers("flatWarp")
+    np.testing.assert_array_equal(i1, i2)

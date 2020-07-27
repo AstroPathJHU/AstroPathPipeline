@@ -119,6 +119,17 @@ class SampleBase(contextlib.ExitStack):
 
     return pscale, width, height
 
+  @methodtools.lru_cache()
+  @property
+  def nlayers(self):
+    with open(self.im3folder/"xml"/(self.SlideID+".Parameters.xml"), "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
+        if node.xml_attrs["name"] == "Shape":
+          width, height, nlayers = (int(_) for _ in str(node).split())
+          return nlayers
+      else:
+        raise IOError(f'Couldn\'t find Shape in {self.im3folder/"xml"/(self.SlideID+".Parameters.xml")}')
+
   def getimageinfos(self):
     result = {}
     try:
@@ -245,7 +256,10 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
   @abc.abstractmethod
   def readalloverlaps(self): pass
 
-  def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, **kwargs):
+  def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer=1, readlayer=True, **kwargs):
+    self.__layer = layer
+    self.__readlayer = readlayer
+
     super().__init__(*args, **kwargs)
 
     rectanglefilter = rectangleoroverlapfilter(selectrectangles)
@@ -261,10 +275,21 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
 
   def getrawlayers(self, filetype):
     self.logger.info("getrawlayers")
-    if filetype=="flatWarpDAPI" :
-      ext = f".fw{self.layer:02d}"
-    elif filetype=="camWarpDAPI" :
-      ext = f".camWarp_layer{self.layer:02d}"
+    if filetype=="flatWarp" :
+      if self.__readlayer :
+        ext = f".fw{self.layer:02d}"
+      else:
+        ext = ".fw"
+    elif filetype=="camWarp" :
+      if self.__readlayer:
+        ext = f".camWarp_layer{self.layer:02d}"
+      else:
+        ext = ".camWarp"
+    elif filetype=="raw" :
+      if self.__readlayer:
+        ext = f".raw_layer{self.layer:02d}"
+      else:
+        ext = ".raw"
     else :
       raise ValueError(f"requested file type {filetype} not recognized by getrawlayers")
     path = self.root2/self.SlideID
@@ -274,6 +299,15 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
     if not self.rectangles:
       raise IOError(1, "didn't find any rows in the rectangles table for "+self.SlideID)
 
+    if self.__readlayer:
+      shape = units.pixels((self.fheight, self.fwidth), pscale=self.pscale)
+      transpose = (0, 1)
+      slc = slice(None), slice(None)
+    else:
+      shape = units.pixels((self.nlayers, self.fwidth, self.fheight), pscale=self.pscale, power=[0, 1, 1])
+      transpose = (2, 1, 0)
+      slc = slice(None), slice(None), self.layer-1
+
     for i, rectangle in enumerate(self.rectangles):
       filename = path/rectangle.file.replace(".im3", ext)
       self.logger.info(f"loading rectangle {i+1}/{len(self.rectangles)}")
@@ -282,11 +316,11 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
         with memmapcontext(
           f,
           dtype=np.uint16,
-          shape=(units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)),
+          shape=tuple(shape),
           order="F",
           mode="r"
         ) as memmap:
-          rawimages[i] = memmap
+          rawimages[i] = memmap.transpose(transpose)[slc]
 
     return rawimages
 
@@ -295,8 +329,8 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
   @property
   def rectangles(self): return self.__rectangles
 
-  @abc.abstractproperty
-  def layer(self): pass
+  @property
+  def layer(self): return self.__layer
 
 class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
   def readallrectangles(self):
