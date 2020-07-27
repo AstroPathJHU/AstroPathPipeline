@@ -192,10 +192,10 @@ class DbloadSampleBase(SampleBase):
   def writecsv(self, csv, *args, **kwargs):
     return writetable(self.csv(csv), *args, **kwargs)
 
-  def getimageinfofromconstants(self, *, pscale=None):
-    if pscale is None:
-      tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1})
-      pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
+  def getimageinfofromconstants(self):
+    tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1})
+    pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
+
     constants = self.readcsv("constants", Constant, extrakwargs={"pscale": pscale})
     constantsdict = {constant.name: constant.value for constant in constants}
 
@@ -207,14 +207,9 @@ class DbloadSampleBase(SampleBase):
 
   def getimageinfos(self):
     result = super().getimageinfos()
-    fromtiff = result["component tiff"]
-    if fromtiff is not None:
-      tiffpscale, tiffwidth, tiffheight = fromtiff
-    else:
-      tiffpscale = None
 
     try:
-      result["constants.csv"] = self.getimageinfofromconstants(pscale=tiffpscale)
+      result["constants.csv"] = self.getimageinfofromconstants()
     except (FileNotFoundError, KeyError):
       result["constants.csv"] = None
 
@@ -223,8 +218,12 @@ class DbloadSampleBase(SampleBase):
   @methodtools.lru_cache()
   @property
   def constantsdict(self):
-    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": self.pscale})
-    return {constant.name: constant.value for constant in constants}
+    try:
+      return self.__constantsdict
+    except AttributeError:
+      constants = self.readcsv("constants", Constant, extrakwargs={"pscale": self.pscale})
+      self.__constantsdict = {constant.name: constant.value for constant in constants}
+      return self.constantsdict
 
   @property
   def position(self):
