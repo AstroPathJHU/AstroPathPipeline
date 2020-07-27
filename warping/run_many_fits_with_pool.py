@@ -141,7 +141,7 @@ if __name__=='__main__' :
     warp_logger.info('All jobs in the pool have finished! : ) Collecting results....')
     results = []
     for dirname in dirnames :
-        results.append(readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))
+        results.append((readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))[0])
     with cd(args.workingdir_name) :
         writetable('all_results.csv',results)
     warp_logger.info('Done.')
