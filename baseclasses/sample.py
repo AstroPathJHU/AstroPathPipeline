@@ -218,12 +218,8 @@ class DbloadSampleBase(SampleBase):
   @methodtools.lru_cache()
   @property
   def constantsdict(self):
-    try:
-      return self.__constantsdict
-    except AttributeError:
-      constants = self.readcsv("constants", Constant, extrakwargs={"pscale": self.pscale})
-      self.__constantsdict = {constant.name: constant.value for constant in constants}
-      return self.constantsdict
+    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": self.pscale})
+    return {constant.name: constant.value for constant in constants}
 
   @property
   def position(self):
