@@ -209,9 +209,9 @@ def findDefaultParameterLimit(parindex,parincrement,warplimit,warpamtfunc,testpa
 #helper function to make the default list of parameter constraints
 def buildDefaultParameterBoundsDict(warp,max_rad_warp,max_tan_warp) :
     bounds = {}
-    # cx/cy bounds are +/- 10% of the center point
-    bounds['cx']=(0.8*(warp.n/2.),1.2*(warp.n/2.))
-    bounds['cy']=(0.8*(warp.m/2.),1.2*(warp.m/2.))
+    # cx/cy bounds are +/- 25% of the center point
+    bounds['cx']=(0.5*(warp.n/2.),1.5*(warp.n/2.))
+    bounds['cy']=(0.5*(warp.m/2.),1.5*(warp.m/2.))
     # fx/fy bounds are +/- 2% of the nominal values 
     bounds['fx']=(0.98*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
     bounds['fy']=(0.98*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
