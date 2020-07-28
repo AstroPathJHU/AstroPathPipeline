@@ -213,8 +213,7 @@ def drawThresholds(img_array, layer_index=0):
     thresholds, weights = getLayerOtsuThresholdsAndWeights(hist)
     histmax = np.max(np.argwhere(hist!=0))
     hist = hist[:histmax+1]
-    #plt.bar(range(len(hist)), hist)
-    plt.hist(np.ravel(img_array), bins=range(np.max(img_array)+1))
+    plt.bar(range(len(hist)), hist, width=1)
     for threshold, weight in zip(thresholds, weights):
         plt.axvline(x=threshold, color="red", alpha=0.5+0.5*(weight-min(weights))/(max(weights)-min(weights)))
     plt.show()
