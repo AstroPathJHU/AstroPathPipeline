@@ -19,9 +19,12 @@ class Const :
     @property
     def CORNER_OVERLAP_TAGS(self):
         return [1,3,7,9] #list of tags representing overlaps that are corners 
+    @property
+    def N_CLIP(self) :
+        return 8 #number of pixels to clip from raw image edges
     #how to handle images
     @property
-    def smoothsigma(self):
+    def SMOOTH_SIGMA(self):
         return 1.0 #default sigma for smoothing images loaded for warping
     #files that get created
     @property 

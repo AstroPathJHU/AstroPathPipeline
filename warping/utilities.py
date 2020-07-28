@@ -1,6 +1,6 @@
 #imports
 from .config import CONST
-from ..alignment.alignmentset import AlignmentSet
+from ..alignment.alignmentset import AlignmentSetFromXML
 from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, writeImageToFile
 from ..utilities.misc import cd
@@ -98,54 +98,16 @@ def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield_layer,overlaps=None,recta
     else :
         return return_item
 
-# Helper function to extract a layer of a single raw file to a .fw## file
-#meant to be run in parallel
-def extractRawFileLayerWorker(fp,flatfield_layer,img_height,img_width,img_nlayers,layer=1,dtype=np.uint16) :
-    rawImageDict = loadRawImageWorker(fp,img_height,img_width,img_nlayers,layer,flatfield_layer,smoothsigma=CONST.smoothsigma)
-    new_fn = f'{rawImageDict["rfkey"]}{CONST.FW_EXT}{layer:02d}'
-    writeImageToFile(rawImageDict['image'],new_fn)
-
-# Helper function to extract a single layer of a sample's raw files into the workingdir/sample_name directory
-def extractRawFileLayers(rawfile_top_dir,sample_name,workingdir,flatfield_file,n_procs,layer=1) :
-    warp_logger.info(f'Extracting layer {layer} from all raw files in sample {sample_name} (correcting with flatfield file {flatfield_file})....')
-    #get a list of all the filenames in the sample
-    with cd(os.path.join(rawfile_top_dir,sample_name)) :
-        all_raw_filepaths = [os.path.join(rawfile_top_dir,sample_name,fn) for fn in glob.glob(f'*{CONST.RAW_EXT}')]
-    #get the image dimensions
-    img_h,img_w,img_nlayers=getImageHWLFromXMLFile(rawfile_top_dir,sample_name)
-    #get the corresponding layer of the flatfield file
-    flatfield_layer = (getRawAsHWL(flatfield_file,img_h,img_w,img_nlayers,np.float64))[:,:,layer-1]
-    #extract the given layer from each of the files into the working directory
-    with cd(workingdir) :
-        if not os.path.isdir(sample_name) :
-            os.mkdir(sample_name)
-        with cd(sample_name) :
-            procs = []
-            for ifp,rfp in enumerate(all_raw_filepaths,start=1) :
-                warp_logger.info(f'  extracting layer {layer} from rawfile {rfp} ({ifp} of {len(all_raw_filepaths)})....')
-                p = mp.Process(target=extractRawFileLayerWorker, 
-                               args=(rfp,flatfield_layer,img_h,img_w,img_nlayers,layer))
-                procs.append(p)
-                p.start()
-                if len(procs)>=n_procs :
-                    for proc in procs :
-                        proc.join()
-            for proc in procs:
-                proc.join()
-    warp_logger.info('Done!')
-
 # Helper function to get the dictionary of octets
 def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,flatfield_file,n_procs,layer) :
     #start by getting the threshold of this sample layer from the the inputted file
     with open(threshold_file_path) as tfp :
         vals = [int(l.rstrip()) for l in tfp.readlines() if l.rstrip()!='']
     threshold_value = vals[layer-1]
-    #extract the raw file layers to the working directory to run a test alignment
-    extractRawFileLayers(rawfile_top_dir,samp,working_dir,flatfield_file,n_procs,layer)
     #create the alignment set and run its alignment
     warp_logger.info("Performing an initial alignment to find this sample's valid octets...")
-    a = AlignmentSet(dbload_top_dir,working_dir,samp)
-    a.getDAPI(writeimstat=False)
+    a = AlignmentSetFromXML(dbload_top_dir,rawfile_top_dir,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer)
+    a.getDAPI(filetype='raw')
     a.align(write_result=False)
     #get the list of overlaps
     overlaps = a.overlaps

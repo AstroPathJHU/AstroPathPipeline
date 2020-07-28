@@ -445,7 +445,7 @@ class WarpFitter :
                 f,(ax1,ax2,ax3,ax4) = plt.subplots(4,1,sharex=True)
                 f.set_size_inches(self.n*pix_to_in,4.5*0.2*self.m*pix_to_in)
                 order = [ax1,ax3,ax2,ax4]
-            elif code in [1,3,7,9] :
+            elif code in CONST.CORNER_OVERLAP_TAGS :
                 f,ax = plt.subplots(2,2)
                 f.set_size_inches(2.*0.2*self.n*pix_to_in,2*0.2*self.m*pix_to_in)
                 order = [ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
@@ -563,9 +563,8 @@ class WarpFitter :
 
     #helper function to calculate the normalization for the cost
     def __getCostNormalization(self) :
-        corner_codes = [1,3,7,9]
         norm = 0
         for olap in self.alignset.overlaps :
-            if (not self.skip_corners) or (self.skip_corners and olap.tag not in corner_codes) : 
+            if (not self.skip_corners) or (self.skip_corners and olap.tag not in CONST.CORNER_OVERLAP_TAGS) : 
                 norm+=((olap.cutimages[0]).shape[0])*((olap.cutimages[0]).shape[1])
         return norm
