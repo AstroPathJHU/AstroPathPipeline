@@ -5,7 +5,7 @@ from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, writeImageToFile
 from ..utilities.misc import cd
 import numpy as np, multiprocessing as mp, matplotlib.pyplot as plt
-import cv2, os, logging, glob, shutil, dataclasses, copy
+import cv2, os, logging, glob, dataclasses, copy
 
 #set up the logger
 warp_logger = logging.getLogger("warpfitter")
@@ -108,7 +108,7 @@ def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixe
     warp_logger.info("Performing an initial alignment to find this sample's valid octets...")
     a = AlignmentSetFromXML(dbload_top_dir,rawfile_top_dir,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer)
     a.getDAPI(filetype='raw')
-    a.align(write_result=False)
+    a.align()
     #get the list of overlaps
     overlaps = a.overlaps
     #filter out any that could not be aligned or that don't show enough bright pixels
@@ -153,9 +153,6 @@ def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixe
                 ofp.write(new_line)
     #print how many octets there are 
     warp_logger.info(f'{len(octets)} total octets found.')
-    #remove the extracted layers 
-    with cd(working_dir) :
-        shutil.rmtree(samp)
     #return the dictionary of octets
     return octets
 

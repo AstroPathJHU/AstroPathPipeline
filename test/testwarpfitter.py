@@ -31,9 +31,6 @@ print('Running doFit')
 result = fitter.doFit(fixed=['fx','fy','p1','p2'],normalize=['cx','cy','fx','fy','k1','k2','k3','p1','p2'],float_p1p2_in_polish_fit=True,
 					  max_radial_warp=max_radial_warp,max_tangential_warp=max_tangential_warp,p1p2_polish_lasso_lambda=p1p2_polish_lasso_lambda,
                       polish=True,print_every=print_every,maxiter=max_iter)
-print(f'result:\n{result}')
-with open(working_dir/"warping_parameters.txt") as f:
-  print(f.read())
 print('Removing working directory...')
 shutil.rmtree(working_dir,ignore_errors=True)
 print('Done!')
