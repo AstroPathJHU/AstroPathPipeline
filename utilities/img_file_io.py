@@ -18,7 +18,7 @@ utility_logger.addHandler(handler)
 #helper function to read the binary dump of a raw im3 file 
 def im3readraw(f,dtype=np.uint16) :
   with open(f,mode='rb') as fp : #read as binary
-    content = np.fromfile(fp,dtype=dtype)
+    content = np.memmap(fp,dtype=dtype,mode='r')
   return content
 
 #helper function to write an array of uint16s as an im3 file
