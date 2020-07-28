@@ -68,11 +68,11 @@ def getOverlaps(args) :
         #read in the octets if they have already been defined for this sample
         octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir_name
         if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
-            valid_octets = readOctetsFromFile(octet_run_dir,args.dbload_top_dir,args.sample,args.layer)
+            valid_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
         #otherwise run an alignment to find the valid octets get the dictionary of overlap octets
         else :
             threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
-            valid_octets = findSampleOctets(args.rawfile_top_dir,args.dbload_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,args.workingdir_name,args.flatfield_file,
+            valid_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,args.workingdir_name,args.flatfield_file,
                                            args.n_threads,args.layer)
         if args.mode in ('fit', 'check_run', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
             for i,octet in enumerate([valid_octets[key] for key in sorted(valid_octets.keys())],start=1) :
@@ -94,12 +94,12 @@ if __name__=='__main__' :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #positional arguments
-    parser.add_argument('mode',            help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
-    parser.add_argument('sample',          help='Name of the data sample to use')
-    parser.add_argument('rawfile_top_dir', help='Path to the directory containing the "[sample_name]/*.Data.dat" files')
-    parser.add_argument('dbload_top_dir',  help='Path to the directory containing "[sample name]/dbload" subdirectories')
-    parser.add_argument('flatfield_file',  help='Path to the flatfield.bin file that should be applied to files in this sample')
-    parser.add_argument('workingdir_name', help='Name of the working directory that will be created')
+    parser.add_argument('mode',             help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
+    parser.add_argument('sample',           help='Name of the data sample to use')
+    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[sample_name]/*.Data.dat" files')
+    parser.add_argument('metadata_top_dir', help='Path to the directory containing "[sample name]/im3/xml" subdirectories')
+    parser.add_argument('flatfield_file',   help='Path to the flatfield.bin file that should be applied to files in this sample')
+    parser.add_argument('workingdir_name',  help='Name of the working directory that will be created')
     #group for how to figure out which overlaps will be used
     overlap_selection_group = parser.add_argument_group('overlap selection', 'what set of overlaps should be used?')
     overlap_selection_group.add_argument('--octet_run_dir', 
@@ -150,7 +150,7 @@ if __name__=='__main__' :
         warp_logger.info(f'Will run fit on a sample of {len(overlaps)} total overlaps.')
         #make the WarpFitter Objects
         warp_logger.info('Initializing WarpFitter')
-        fitter = WarpFitter(args.sample,args.rawfile_top_dir,args.dbload_top_dir,args.workingdir_name,overlaps,args.layer)
+        fitter = WarpFitter(args.sample,args.rawfile_top_dir,args.metadata_top_dir,args.workingdir_name,overlaps,args.layer)
         #figure out which parameters will be fixed
         fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
         fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed

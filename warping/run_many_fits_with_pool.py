@@ -37,9 +37,9 @@ def getListOfJobCommands(args) :
     #find the valid octets in the samples and order them by the # of their center rectangle
     octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir_name
     if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
-        all_octets_dict = readOctetsFromFile(octet_run_dir,args.dbload_top_dir,args.sample,args.layer)
+        all_octets_dict = readOctetsFromFile(octet_run_dir,args.metadata_top_dir,args.sample,args.layer)
     else :
-        all_octets_dict = findSampleOctets(args.rawfile_top_dir,args.dbload_top_dir,args.sample,args.workingdir_name,args.flatfield_file,
+        all_octets_dict = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.workingdir_name,args.flatfield_file,
                                            args.njobs,args.layer)
     all_octets_numbers = list(range(1,len(all_octets_dict)+1))
     #make sure that the number of octets per job and the number of jobs will work for this sample
@@ -51,7 +51,7 @@ def getListOfJobCommands(args) :
     fixedparstring='--fixed '
     for fixedpar in args.fixed :
         fixedparstring+=f'{fixedpar},'
-    cmd_base=f'{RUN_WARPFITTER_PREFIX} fit {args.sample} {args.rawfile_top_dir} {args.dbload_top_dir} {args.flatfield_file}'
+    cmd_base=f'{RUN_WARPFITTER_PREFIX} fit {args.sample} {args.rawfile_top_dir} {args.metadata_top_dir} {args.flatfield_file}'
     for i in range(args.njobs) :
         thisjobdirname = args.job_dir_stem+'_octets'
         thisjoboctetstring = ''
@@ -79,12 +79,12 @@ if __name__=='__main__' :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #positional arguments
-    parser.add_argument('sample',          help='Name of the data sample to use')
-    parser.add_argument('rawfile_top_dir', help='Path to the directory containing the "[sample]/*.Data.dat" files')
-    parser.add_argument('dbload_top_dir',  help='Path to the directory containing "[sample]/dbload" subdirectories')
-    parser.add_argument('flatfield_file',  help='Path to the flatfield.bin file that should be applied to files in this sample')
-    parser.add_argument('workingdir_name', help='Name of the working directory that will be created to hold output of all jobs')
-    parser.add_argument('njobs',           help='Number of jobs to run', type=int)
+    parser.add_argument('sample',           help='Name of the data sample to use')
+    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[sample]/*.Data.dat" files')
+    parser.add_argument('metadata_top_dir', help='Path to the directory containing "[sample]/im3/xml" subdirectories')
+    parser.add_argument('flatfield_file',   help='Path to the flatfield.bin file that should be applied to files in this sample')
+    parser.add_argument('workingdir_name',  help='Name of the working directory that will be created to hold output of all jobs')
+    parser.add_argument('njobs',            help='Number of jobs to run', type=int)
     #group for organizing and splitting into jobs
     job_organization_group = parser.add_argument_group('job organization', 'how should the group of jobs me organized?')
     job_organization_group.add_argument('--octet_run_dir', 

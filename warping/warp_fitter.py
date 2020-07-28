@@ -40,20 +40,20 @@ class WarpFitter :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,samplename,rawfile_top_dir,dbload_top_dir,working_dir,overlaps=-1,layer=1) :
+    def __init__(self,samplename,rawfile_top_dir,metadata_top_dir,working_dir,overlaps=-1,layer=1) :
         """
-        samplename      = name of the microscope data sample to fit to ("M21_1" or equivalent)
-        rawfile_top_dir = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
-        dbload_top_dir  = path to directory containing [samplename]/dbload directory (assuming at least a "rect.csv" and "overlap.csv")
-        working_dir     = path to some local directory to store files produced by the WarpFitter
-        overlaps        = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
-                          (default=-1 will use all overlaps)
-        layer           = image layer number (indexed starting at 1) to consider in the warping/alignment (default=1)
+        samplename       = name of the microscope data sample to fit to ("M21_1" or equivalent)
+        rawfile_top_dir  = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
+        metadata_top_dir = path to directory containing [samplename]/im3/xml directory
+        working_dir      = path to some local directory to store files produced by the WarpFitter
+        overlaps         = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
+                           (default=-1 will use all overlaps)
+        layer            = image layer number (indexed starting at 1) to consider in the warping/alignment (default=1)
         """
         #store the directory paths
         self.samp_name = samplename
         self.rawfile_top_dir=rawfile_top_dir
-        self.dbload_top_dir=dbload_top_dir
+        self.metadata_top_dir=metadata_top_dir
         self.working_dir=working_dir
         #make the alignmentset object to use
         self.bkp_units_mode = units.currentmode
@@ -505,7 +505,7 @@ class WarpFitter :
     def __initializeAlignmentSet(self, *, overlaps) :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
-        a = AlignmentSetFromXML(self.dbload_top_dir,self.working_dir,self.samp_name,nclip=CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
+        a = AlignmentSetFromXML(self.metadata_top_dir,self.working_dir,self.samp_name,nclip=CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
                                 selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True)
         return a
 
