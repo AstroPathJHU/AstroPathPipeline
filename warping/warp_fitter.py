@@ -414,6 +414,7 @@ class WarpFitter :
         warp_logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
         #write out the octet comparison figures
         addl_singlet_p1s_and_codes = set()
+        failed_p1s_and_codes = None
         for octetp1,raw_octet_overlaps,warped_octet_overlaps in zip(olap_octet_p1s,raw_octets_olaps,warped_octets_olaps) :
             #start up the figures
             raw_octet_image = OctetComparisonVisualization(raw_octet_overlaps,False,f'octet_p1={octetp1}_raw_overlap_comparisons')
@@ -434,9 +435,10 @@ class WarpFitter :
             p1 = overlap_identifier[1]
             if p1 in olap_singlet_p1s :
                 do_overlap=True
-            for fp1,fc in failed_p1s_and_codes :
-                if p1==fp1 and code==fc :
-                    do_overlap=True
+            if failed_p1s_and_codes is not None :
+                for fp1,fc in failed_p1s_and_codes :
+                    if p1==fp1 and code==fc :
+                        do_overlap=True
             if not do_overlap :
                 continue
             fn   = overlap_identifier[3]
