@@ -287,9 +287,9 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
         ext = ".camWarp"
     elif filetype=="raw" :
       if self.__readlayerfile:
-        ext = f".raw_layer{self.layer:02d}"
+        ext = f".Data.dat_layer{self.layer:02d}"
       else:
-        ext = ".raw"
+        ext = ".Data.dat"
     else :
       raise ValueError(f"requested file type {filetype} not recognized by getrawlayers")
     path = self.root2/self.SlideID
