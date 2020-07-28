@@ -41,7 +41,7 @@ class WarpSet :
         self.layer=layer
         self.images = []
 
-    def loadRawImages(self,rawfiles=None,overlaps=None,rectangles=None,flatfield_file_path=None,n_threads=1,smoothsigma=CONST.smoothsigma) :
+    def loadRawImages(self,rawfiles=None,overlaps=None,rectangles=None,flatfield_file_path=None,n_threads=1,smoothsigma=CONST.SMOOTH_SIGMA) :
         """
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
         rawfiles            = list of raw, unwarped image filenames (optional, will use value from init if None)

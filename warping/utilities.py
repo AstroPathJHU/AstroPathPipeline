@@ -1,11 +1,10 @@
 #imports
 from .config import CONST
-from ..alignment.alignmentset import AlignmentSet
-from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, writeImageToFile
+from ..alignment.alignmentset import AlignmentSetFromXML
+from ..utilities.img_file_io import getRawAsHWL
 from ..utilities.misc import cd
-import numpy as np, multiprocessing as mp, matplotlib.pyplot as plt
-import cv2, os, logging, glob, shutil, dataclasses, copy
+import numpy as np, matplotlib.pyplot as plt
+import cv2, os, logging, dataclasses, copy
 
 #set up the logger
 warp_logger = logging.getLogger("warpfitter")
@@ -32,13 +31,13 @@ def checkDirAndFixedArgs(args) :
     rawfile_dir = os.path.join(args.rawfile_top_dir,args.sample)
     if not os.path.isdir(rawfile_dir) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
-    #dbload top dir must exist
-    if not os.path.isdir(args.dbload_top_dir) :
-        raise ValueError(f'ERROR: dbload_top_dir argument ({args.dbload_top_dir}) does not point to a valid directory!')
-    #dbload top dir dir must be usable to find a metafile directory
-    metafile_dir = os.path.join(args.dbload_top_dir,args.sample,'dbload')
+    #metadata top dir must exist
+    if not os.path.isdir(args.metadata_top_dir) :
+        raise ValueError(f'ERROR: metadata_top_dir argument ({args.metadata_top_dir}) does not point to a valid directory!')
+    #metadata top dir dir must be usable to find a metafile directory
+    metafile_dir = os.path.join(args.metadata_top_dir,args.sample,'im3','xml')
     if not os.path.isdir(metafile_dir) :
-        raise ValueError(f'ERROR: dbload_top_dir ({args.dbload_top_dir}) does not contain "[sample name]/dbload" subdirectories!')
+        raise ValueError(f'ERROR: metadata_top_dir ({args.metadata_top_dir}) does not contain "[sample name]/im3/xml" subdirectories!')
     #make sure the flatfield file exists
     if not os.path.isfile(args.flatfield_file) :
         raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
@@ -57,17 +56,17 @@ def checkDirAndFixedArgs(args) :
         raise ValueError(f'ERROR: Fixed parameters argument ({args.fixed}) does not result in a valid fixed parameter condition!')
 
 # Helper function to read previously-saved octet definitions from a file
-def readOctetsFromFile(octet_run_dir,dbload_top_dir,sample_name,layer) :
+def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_name,layer) :
     #get the .csv file holding the octet p1s and overlaps ns
     octet_filepath = os.path.join(octet_run_dir,f'{sample_name}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
     warp_logger.info(f'Reading octet overlaps numbers from file {octet_filepath}...')
-    #make a list of overlaps for the whole sample from the dbload dir
-    rol = rectangleoverlaplist_fromcsvs(os.path.join(dbload_top_dir,sample_name,'dbload'),layer_override=layer)
+    #make a list of overlaps for the whole sample from the metadata dir
+    a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,sample_name,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer)
     octets = {}
     with open(octet_filepath,'r') as ofp :
         for line in [l.rstrip() for l in ofp.readlines()] :
             linesplit = line.split(',')
-            this_olap_list = [olap for olap in rol.overlaps if olap.n in [int(val) for val in linesplit[1:]]]
+            this_olap_list = [olap for olap in a.overlaps if olap.n in [int(val) for val in linesplit[1:]]]
             octets[int(linesplit[0])] = this_olap_list
     return octets
 
@@ -98,55 +97,17 @@ def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield_layer,overlaps=None,recta
     else :
         return return_item
 
-# Helper function to extract a layer of a single raw file to a .fw## file
-#meant to be run in parallel
-def extractRawFileLayerWorker(fp,flatfield_layer,img_height,img_width,img_nlayers,layer=1,dtype=np.uint16) :
-    rawImageDict = loadRawImageWorker(fp,img_height,img_width,img_nlayers,layer,flatfield_layer,smoothsigma=CONST.smoothsigma)
-    new_fn = f'{rawImageDict["rfkey"]}{CONST.FW_EXT}{layer:02d}'
-    writeImageToFile(rawImageDict['image'],new_fn)
-
-# Helper function to extract a single layer of a sample's raw files into the workingdir/sample_name directory
-def extractRawFileLayers(rawfile_top_dir,sample_name,workingdir,flatfield_file,n_procs,layer=1) :
-    warp_logger.info(f'Extracting layer {layer} from all raw files in sample {sample_name} (correcting with flatfield file {flatfield_file})....')
-    #get a list of all the filenames in the sample
-    with cd(os.path.join(rawfile_top_dir,sample_name)) :
-        all_raw_filepaths = [os.path.join(rawfile_top_dir,sample_name,fn) for fn in glob.glob(f'*{CONST.RAW_EXT}')]
-    #get the image dimensions
-    img_h,img_w,img_nlayers=getImageHWLFromXMLFile(rawfile_top_dir,sample_name)
-    #get the corresponding layer of the flatfield file
-    flatfield_layer = (getRawAsHWL(flatfield_file,img_h,img_w,img_nlayers,np.float64))[:,:,layer-1]
-    #extract the given layer from each of the files into the working directory
-    with cd(workingdir) :
-        if not os.path.isdir(sample_name) :
-            os.mkdir(sample_name)
-        with cd(sample_name) :
-            procs = []
-            for ifp,rfp in enumerate(all_raw_filepaths,start=1) :
-                warp_logger.info(f'  extracting layer {layer} from rawfile {rfp} ({ifp} of {len(all_raw_filepaths)})....')
-                p = mp.Process(target=extractRawFileLayerWorker, 
-                               args=(rfp,flatfield_layer,img_h,img_w,img_nlayers,layer))
-                procs.append(p)
-                p.start()
-                if len(procs)>=n_procs :
-                    for proc in procs :
-                        proc.join()
-            for proc in procs:
-                proc.join()
-    warp_logger.info('Done!')
-
 # Helper function to get the dictionary of octets
-def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,flatfield_file,n_procs,layer) :
+def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,flatfield_file,n_procs,layer) :
     #start by getting the threshold of this sample layer from the the inputted file
     with open(threshold_file_path) as tfp :
         vals = [int(l.rstrip()) for l in tfp.readlines() if l.rstrip()!='']
     threshold_value = vals[layer-1]
-    #extract the raw file layers to the working directory to run a test alignment
-    extractRawFileLayers(rawfile_top_dir,samp,working_dir,flatfield_file,n_procs,layer)
     #create the alignment set and run its alignment
     warp_logger.info("Performing an initial alignment to find this sample's valid octets...")
-    a = AlignmentSet(dbload_top_dir,working_dir,samp)
-    a.getDAPI(writeimstat=False)
-    a.align(write_result=False)
+    a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer)
+    a.getDAPI(filetype='raw')
+    a.align()
     #get the list of overlaps
     overlaps = a.overlaps
     #filter out any that could not be aligned or that don't show enough bright pixels
@@ -191,9 +152,6 @@ def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixe
                 ofp.write(new_line)
     #print how many octets there are 
     warp_logger.info(f'{len(octets)} total octets found.')
-    #remove the extracted layers 
-    with cd(working_dir) :
-        shutil.rmtree(samp)
     #return the dictionary of octets
     return octets
 

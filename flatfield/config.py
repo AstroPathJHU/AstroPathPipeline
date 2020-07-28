@@ -41,5 +41,9 @@ class Const :
     @property
     def OPEN_3_ITERATIONS(self) :
         return 3 #number of iterations for final small-scale open
+    #image information
+    @property
+    def N_CLIP(self) :
+        return 8 #number of pixels to clip from raw image edges
 
 CONST=Const()

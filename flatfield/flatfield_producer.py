@@ -17,28 +17,27 @@ class FlatfieldProducer :
     
     THRESHOLDING_PLOT_DIR_NAME = 'thresholding_info' #name of the directory where the thresholding information will be stored
 
-    #################### INIT FUNCTION ####################
+    #################### PUBLIC FUNCTIONS ####################
     
-    def __init__(self,img_dims,sample_names,all_sample_rawfile_paths_to_run,dbload_top_dir,workingdir_name,skip_masking=False,normalize=False) :
+    def __init__(self,img_dims,sample_names,all_sample_rawfile_paths_to_run,metadata_top_dir,workingdir_name,skip_masking=False,normalize=False) :
         """
         img_dims                        = dimensions of images in files in order as (height, width, # of layers) 
         sample_names                    = list of names of samples that will be considered in this run
         all_sample_rawfile_paths_to_run = list of paths to raw files to stack for all samples that will be run
-        dbload_top_dir                  = path to the directory holding all of the [samplename]/dbload directories
+        metadata_top_dir                = path to the directory holding all of the [samplename]/im3/xml subdirectories
         workingdir_name                 = name of the directory to save everything in
         skip_masking                    = if True, image layers won't be masked before being added to the stack
         normalize                       = if true, image flux will be divided by (exposure time)/(max exposure time in the sample) in each layer
         """
         self.all_sample_rawfile_paths_to_run = all_sample_rawfile_paths_to_run
+        self.metadata_top_dir = metadata_top_dir
         #make a dictionary to hold all of the separate samples we'll be considering (keyed by name)
         self.flatfield_sample_dict = {}
         for sn in sample_names :
-            self.flatfield_sample_dict[sn]=FlatfieldSample(sn,img_dims,os.path.join(dbload_top_dir,sn,'dbload'))
+            self.flatfield_sample_dict[sn]=FlatfieldSample(sn,img_dims)
         #Start up a new mean image to use for making the actual flatfield
         self.mean_image = MeanImage(img_dims[0],img_dims[1],img_dims[2],workingdir_name,skip_masking)
         self.normalize = normalize
-
-    #################### PUBLIC FUNCTIONS ####################
 
     def readInBackgroundThresholds(self,threshold_file_dir) :
         """
@@ -65,6 +64,7 @@ class FlatfieldProducer :
             threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
             flatfield_logger.info(f'Finding background thresholds from tissue edges for sample {sn}...')
             samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
+                                          self.metadata_top_dir,
                                           n_threads,
                                           self.normalize,
                                           os.path.join(self.mean_image.workingdir_name,self.THRESHOLDING_PLOT_DIR_NAME),
@@ -86,7 +86,7 @@ class FlatfieldProducer :
             this_samp_fps_to_run = [fp for fp in self.all_sample_rawfile_paths_to_run if sampleNameFromFilepath(fp)==sn]
             #If they're being neglected, get the filepaths corresponding to HPFs on the edge of the tissue
             if not allow_edge_HPFs :
-                this_samp_edge_HPF_filepaths = samp.findTissueEdgeFilepaths(this_samp_fps_to_run)
+                this_samp_edge_HPF_filepaths = samp.findTissueEdgeFilepaths(this_samp_fps_to_run,self.metadata_top_dir)
                 flatfield_logger.info(f'Neglecting {len(this_samp_edge_HPF_filepaths)} files on the edge of the tissue')
                 this_samp_fps_to_run = [fp for fp in this_samp_fps_to_run if fp not in this_samp_edge_HPF_filepaths]
             #If this sample doesn't have any images to stack, warn the user and continue
