@@ -17,7 +17,7 @@ class FlatfieldProducer :
     
     THRESHOLDING_PLOT_DIR_NAME = 'thresholding_info' #name of the directory where the thresholding information will be stored
 
-    #################### INIT FUNCTION ####################
+    #################### PUBLIC FUNCTIONS ####################
     
     def __init__(self,img_dims,sample_names,all_sample_rawfile_paths_to_run,metadata_top_dir,workingdir_name,skip_masking=False,normalize=False) :
         """
@@ -38,8 +38,6 @@ class FlatfieldProducer :
         #Start up a new mean image to use for making the actual flatfield
         self.mean_image = MeanImage(img_dims[0],img_dims[1],img_dims[2],workingdir_name,skip_masking)
         self.normalize = normalize
-
-    #################### PUBLIC FUNCTIONS ####################
 
     def readInBackgroundThresholds(self,threshold_file_dir) :
         """
