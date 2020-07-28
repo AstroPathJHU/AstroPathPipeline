@@ -118,7 +118,7 @@ class WarpFitter :
             if not os.path.isdir(self.samp_name) :
                 os.mkdir(self.samp_name)
         self.warpset.writeOutWarpedImageSet(os.path.join(self.working_dir,self.samp_name))
-        self.alignset.getDAPI(filetype='camWarpDAPI',writeimstat=False)
+        self.alignset.getDAPI(filetype='camWarp',writeimstat=False)
 
     def doFit(self,fix_cxcy=False,fix_fxfy=False,fix_k1k2k3=False,fix_p1p2_in_global_fit=False,fix_p1p2_in_polish_fit=False,
               max_radial_warp=10.,max_tangential_warp=10.,p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000,show_plots=False) :
