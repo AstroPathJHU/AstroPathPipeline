@@ -21,7 +21,7 @@ class Const :
         return [1,3,7,9] #list of tags representing overlaps that are corners 
     @property
     def N_CLIP(self) :
-        return 8 #number of pixels to clip from raw image edges
+        return FLATFIELD_CONST.N_CLIP #number of pixels to clip from raw image edges
     #how to handle images
     @property
     def SMOOTH_SIGMA(self):
