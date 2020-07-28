@@ -1,8 +1,11 @@
 from .config import CONST
-from ..utilities.img_file_io import getRawAsHWL
+from ..utilities.img_file_io import getRawAsHWL, normalizeImageByExposureTime
 from concurrent.futures import ThreadPoolExecutor
+from typing import List
 import numpy as np
-import os, cv2, logging, math
+import os, cv2, logging, math, dataclasses
+
+#################### GENERAL USEFUL OBJECTS ####################
 
 #Class for errors encountered during flatfielding
 class FlatFieldError(Exception) :
@@ -14,6 +17,8 @@ flatfield_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
 flatfield_logger.addHandler(handler)
+
+#################### GENERAL HELPER FUNCTIONS ####################
 
 #helper function to convert an image array into a flattened pixel histogram
 def getImageArrayLayerHistograms(img_array) :
@@ -40,63 +45,11 @@ def smoothImageWorker(im_array,smoothsigma,return_list=None) :
     else :
         return im_out_umat.get()
 
-#helper function to parallelize calls to getRawAsHWL
-def getRawImageArray(fpt) :
-    flatfield_logger.info(f'  reading file {fpt[0]} {fpt[1]}')
-    raw_img_arr = getRawAsHWL(fpt[0],fpt[2][0],fpt[2][1],fpt[2][2])
-    return raw_img_arr
-
-#helper function to get the result of getRawImageArray as a histogram of pixel fluxes instead of an image
-def getRawImageLayerHists(fpt) :
-    img_array = getRawImageArray(fpt)
-    return getImageArrayLayerHistograms(img_array)
-
-#helper function to parallelize getting and smoothing raw images
-def getSmoothedImageArray(fpt) :
-    raw_img_arr = getRawImageArray(fpt)
-    flatfield_logger.info(f'  smoothing image from file {fpt[0]} {fpt[1]}')
-    smoothed_img_arr = smoothImageWorker(raw_img_arr,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
-    return smoothed_img_arr
-
-#helper function to get the result of getSmoothedImageArray as a histogram of pixel fluxes instead of an image
-def getSmoothedImageLayerHists(fpt) :
-    img_array = getSmoothedImageArray(fpt)
-    return getImageArrayLayerHistograms(img_array)
-
-#helper function to read and return a group of raw images with multithreading
-#set 'smoothed' to True when calling to smooth images with gentle gaussian filter as they're read in
-def readImagesMT(sample_image_filepath_tuples,smoothed=False) :
-    e = ThreadPoolExecutor(len(sample_image_filepath_tuples))
-    if smoothed :
-        new_img_arrays = list(e.map(getSmoothedImageArray,[fp for fp in sample_image_filepath_tuples]))    
-    else :
-        new_img_arrays = list(e.map(getRawImageArray,[fp for fp in sample_image_filepath_tuples]))
-    e.shutdown()
-    return new_img_arrays
-
-#helper function to read and return a group of image pixel histograms with multithreading
-#set 'smoothed' to True when calling to smooth images with gentle gaussian filter as they're read in
-def getImageLayerHistsMT(sample_image_filepath_tuples,smoothed=False) :
-    e = ThreadPoolExecutor(len(sample_image_filepath_tuples))
-    if smoothed :
-        new_img_layer_hists = list(e.map(getSmoothedImageLayerHists,[fp for fp in sample_image_filepath_tuples]))    
-    else :
-        new_img_layer_hists = list(e.map(getRawImageLayerHists,[fp for fp in sample_image_filepath_tuples]))
-    e.shutdown()
-    return new_img_layer_hists
-
-#helper function to split a list of filenames into chunks to be read in in parallel
-def chunkListOfFilepaths(fps,dims,n_threads) :
-    filepath_chunks = [[]]
-    for i,fp in enumerate(fps,start=1) :
-        if len(filepath_chunks[-1])>=n_threads :
-            filepath_chunks.append([])
-        filepath_chunks[-1].append((fp,f'({i} of {len(fps)})',dims))
-    return filepath_chunks
-
 #helper function to return the sample name in an whole filepath
 def sampleNameFromFilepath(fp) :
-    return fp.split(os.sep)[-1].split('[')[0][:-1]
+    return os.path.basename(os.path.normpath(fp)).split('[')[0][:-1]
+
+#################### THRESHOLDING HELPER FUNCTIONS ####################
 
 #helper function to determine the Otsu threshold given a histogram of pixel values 
 #algorithm from python code at https://docs.opencv.org/3.4/d7/d4d/tutorial_py_thresholding.html
@@ -204,3 +157,64 @@ def findLayerThresholds(layer_hists,i=None,rdict=None) :
         rdict[i]=best_thresholds
     else :
         return best_thresholds
+
+#################### IMAGE I/O HELPER FUNCTIONS ####################
+
+#helper dataclass to use in multithreading some image handling
+@dataclasses.dataclass(eq=False, repr=False)
+class FileReadInfo :
+    rawfile_path   : str                # the path to the raw file
+    sequence_print : str                # a string of "({i} of {N})" to print
+    height         : int                # img height
+    width          : int                # img width
+    nlayers        : int                # number of img layers
+    to_smooth      : bool = False       # whether the image should be smoothed
+    max_exp_times  : List[float] = None # a list of the max exposure times in this image's sample by layer (for normalizing)
+
+#helper function to parallelize calls to getRawAsHWL (plus optional smoothing and normalization)
+def getImageArray(fri) :
+    flatfield_logger.info(f'  reading file {fri.rawfile_path} {fri.sequence_print}')
+    img_arr = getRawAsHWL(fri.rawfile_path,fri.height,fri.width,fri.nlayers)
+    if fri.max_exp_times is not None :
+        img_arr = normalizeImageByExposureTime(img_arr,fri.rawfile_path,fri.max_exp_times)
+    if fri.to_smooth :
+        img_arr = smoothImageWorker(img_arr,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
+    return img_arr
+
+#helper function to get the result of getImageArray as a histogram of pixel fluxes instead of an array
+def getImageLayerHists(fri) :
+    img_array = getImageArray(fri)
+    return getImageArrayLayerHistograms(img_array)
+
+#helper function to read and return a group of raw images with multithreading
+#set 'smoothed' to True when calling to smooth images with gentle gaussian filter as they're read in
+#pass in a list of maximum exposure times by layer to normalize image layer flux 
+def readImagesMT(sample_image_filereads,smoothed=False,max_exposure_times_by_layer=None) :
+    for fr in sample_image_filereads :
+        fr.to_smooth = smoothed
+        fr.max_exp_times = max_exposure_times_by_layer
+    e = ThreadPoolExecutor(len(sample_image_filereads))
+    new_img_arrays = list(e.map(getImageArray,[fr for fr in sample_image_filereads]))
+    e.shutdown()
+    return new_img_arrays
+
+#helper function to read and return a group of image pixel histograms with multithreading
+#set 'smoothed' to True when calling to smooth images with gentle gaussian filter as they're read in
+#pass in a list of maximum exposure times by layer to normalize image layer flux 
+def getImageLayerHistsMT(sample_image_filereads,smoothed=False,max_exposure_times_by_layer=None) :
+    for fr in sample_image_filereads :
+        fr.to_smooth = smoothed
+        fr.max_exp_times = max_exposure_times_by_layer
+    e = ThreadPoolExecutor(len(sample_image_filereads))
+    new_img_layer_hists = list(e.map(getImageLayerHists,[fr for fr in sample_image_filereads]))
+    e.shutdown()
+    return new_img_layer_hists
+
+#helper function to split a list of filenames into chunks to be read in in parallel
+def chunkListOfFilepaths(fps,dims,n_threads) :
+    fileread_chunks = [[]]
+    for i,fp in enumerate(fps,start=1) :
+        if len(fileread_chunks[-1])>=n_threads :
+            fileread_chunks.append([])
+        fileread_chunks[-1].append(FileReadInfo(fp,f'({i} of {len(fps)})',dims[0],dims[1],dims[2]))
+    return fileread_chunks
