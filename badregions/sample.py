@@ -8,11 +8,8 @@ class BadRegionFinderSample(ReadRectangles):
   @abc.abstractmethod
   def makebadregionfinder(self, *args, **kwargs): pass
 
-  @property
-  def layer(self): return 1
-
   def run(self, *, plotsdir=None, show=False, **kwargs):
-    rawimages = self.getrawlayers("flatWarpDAPI")
+    rawimages = self.getrawlayers("flatWarp")
     result = np.empty(shape=rawimages.shape, dtype=bool)
 
     if plotsdir is not None:
