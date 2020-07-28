@@ -2,10 +2,10 @@
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, writeImageToFile
+from ..utilities.img_file_io import getRawAsHWL
 from ..utilities.misc import cd
-import numpy as np, multiprocessing as mp, matplotlib.pyplot as plt
-import cv2, os, logging, glob, dataclasses, copy
+import numpy as np, matplotlib.pyplot as plt
+import cv2, os, logging, dataclasses, copy
 
 #set up the logger
 warp_logger = logging.getLogger("warpfitter")
