@@ -1,7 +1,7 @@
 # A script to run a quick example of the warpfitter
 
 #imports
-from ..warping.warpfitter import WarpFitter
+from ..warping.warp_fitter import WarpFitter
 import pathlib, shutil
 
 #some constants
