@@ -121,19 +121,19 @@ class FitParameterSet :
                     population_list.append(toadd)
         #add sets describing corner limits of groups of parameters
         par_mask = [True if p in self.floating_parameters else False for p in self.fit_parameters]
-        parameter_group_sets = [np.array([0,0,1,1,2,2,3,3,2])[par_mask], #parameters that have the same effect
-                                np.array([0,1,None,None,0,1,None,None,0])[par_mask], #principal points and radial warps 1                                  
-                                np.array([0,1,None,None,1,0,None,None,1])[par_mask], #principal points and radial warps 2
-                                np.array([0,1,None,None,0,1,None,None,1])[par_mask], #principal points and radial warps 3                                  
-                                np.array([0,1,None,None,1,0,None,None,0])[par_mask], #principal points and radial warps 4
-                                np.array([None,None,0,1,0,1,None,None,0])[par_mask], #focal lengths and radial warps 1
-                                np.array([None,None,0,1,1,0,None,None,1])[par_mask], #focal lengths and radial warps 2
-                                np.array([None,None,0,1,0,1,None,None,1])[par_mask], #focal lengths and radial warps 3
-                                np.array([None,None,0,1,1,0,None,None,0])[par_mask], #focal lengths and radial warps 4
-                                np.array([0,1,None,None,None,None,0,1,None])[par_mask], #principal points and tangential warps 1
-                                np.array([0,1,None,None,None,None,1,0,None])[par_mask], #principal points and tangential warps 2
-                                np.array([None,None,0,1,None,None,0,1,None])[par_mask], #focal lengths and tangential warps 1
-                                np.array([None,None,0,1,None,None,1,0,None])[par_mask], #focal lengths and tangential warps 2
+        parameter_group_sets = [np.array([None,None,1,1,2,2,2,3,3])[par_mask], #parameters that have the same effect (not the principal points alone)
+                                np.array([0,1,None,None,0,1,0,None,None])[par_mask], #principal points and radial warps 1                                  
+                                np.array([0,1,None,None,1,0,1,None,None])[par_mask], #principal points and radial warps 2
+                                np.array([0,1,None,None,0,1,1,None,None])[par_mask], #principal points and radial warps 3                                  
+                                np.array([0,1,None,None,1,0,0,None,None])[par_mask], #principal points and radial warps 4
+                                np.array([None,None,0,1,0,1,0,None,None])[par_mask], #focal lengths and radial warps 1
+                                np.array([None,None,0,1,1,0,1,None,None])[par_mask], #focal lengths and radial warps 2
+                                np.array([None,None,0,1,0,1,1,None,None])[par_mask], #focal lengths and radial warps 3
+                                np.array([None,None,0,1,1,0,0,None,None])[par_mask], #focal lengths and radial warps 4
+                                np.array([0,1,None,None,None,None,None,0,1])[par_mask], #principal points and tangential warps 1
+                                np.array([0,1,None,None,None,None,None,1,0])[par_mask], #principal points and tangential warps 2
+                                np.array([None,None,0,1,None,None,None,0,1])[par_mask], #focal lengths and tangential warps 1
+                                np.array([None,None,0,1,None,None,None,1,0])[par_mask], #focal lengths and tangential warps 2
                                 ]
         for parameter_group_numbers in parameter_group_sets :
             group_numbers_to_consider = set(parameter_group_numbers)
