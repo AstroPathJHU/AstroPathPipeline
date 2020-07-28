@@ -206,7 +206,8 @@ def findLayerThresholds(layer_hists,i=None,rdict=None) :
     else :
         return best_thresholds
 
-def drawThresholds(img_array, layer_index=0, emphasize_mask=None, show_regions=False):
+def drawThresholds(img_array, *, layer_index=0, emphasize_mask=None, show_regions=False, saveas=None, plotstyling = lambda fig, ax: None):
+    fig, ax = plt.subplots(1, 1)
     if len(img_array.shape)>2 :
         img_array = img_array[layer_index]
     hist = getImageArrayLayerHistograms(img_array)
@@ -221,7 +222,12 @@ def drawThresholds(img_array, layer_index=0, emphasize_mask=None, show_regions=F
         plt.bar(range(len(hist)), hist_emphasize, width=1)
     for threshold, weight in zip(thresholds, weights):
         plt.axvline(x=threshold, color="red", alpha=0.5+0.5*(weight-min(weights))/(max(weights)-min(weights)))
-    plt.show()
+    plotstyling(fig, ax)
+    if saveas is None:
+      plt.show()
+    else:
+      plt.savefig(saveas)
+      plt.close()
     if show_regions:
         for t1, t2 in more_itertools.pairwise([0]+sorted(thresholds)+[float("inf")]):
             if t1 == t2: continue #can happen if 0 is a threshold

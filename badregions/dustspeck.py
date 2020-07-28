@@ -1,4 +1,4 @@
-import cv2, matplotlib.pyplot as plt, numpy as np, scipy.ndimage
+import cv2, matplotlib.pyplot as plt, methodtools, numpy as np, scipy.ndimage
 from ..flatfield.utilities import getImageArrayLayerHistograms, getLayerOtsuThresholdsAndWeights
 from .badregions import BadRegionFinder
 
@@ -106,7 +106,8 @@ class DustSpeckFinder(BadRegionFinder):
         if j == 0: continue
         thisoldregion = aftersmallcloseopen_labeled == j
         fractionalintersection = np.sum(thisoldregion & thisregion) / np.sum(thisoldregion | thisregion)
-        print("fractional intersection", fractionalintersection)
+        if showdebugplots:
+          print("fractional intersection", fractionalintersection)
         if fractionalintersection > 0.75:
           break
       else:
