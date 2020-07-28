@@ -3,7 +3,7 @@ from .warp_set import WarpSet
 from .fit_parameter_set import FitParameterSet
 from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult
 from .config import CONST
-from ..alignment.alignmentset import AlignmentSet
+from ..alignment.alignmentset import AlignmentSetFromXML
 from ..baseclasses.rectangle import rectangleoroverlapfilter
 from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.tableio import writetable
@@ -100,7 +100,7 @@ class WarpFitter :
             if not os.path.isdir(self.samp_name) :
                 os.mkdir(self.samp_name)
         self.warpset.writeOutWarpedImages(os.path.join(self.working_dir,self.samp_name))
-        self.alignset.getDAPI(filetype='camWarpDAPI',writeimstat=False)
+        self.alignset.getDAPI(filetype='camWarp')
 
     def doFit(self,fixed=None,normalize=None,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
              p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000) :
@@ -189,7 +189,6 @@ class WarpFitter :
         align_strategy = 'overwrite' if (abs(rad_warp)<self.fitpars.max_rad_warp) and (tan_warp<self.fitpars.max_tan_warp) else 'shift_only'
         #align the images and get the cost
         aligncost = self.alignset.align(skip_corners=self.skip_corners,
-                                        write_result=False,
                                         return_on_invalid_result=True,
                                         alreadyalignedstrategy=align_strategy,
                                         warpwarnings=True,
@@ -401,13 +400,13 @@ class WarpFitter :
         self.cost_norm = self.__getCostNormalization()
         #start by aligning the raw, unwarped images and getting their shift comparison information/images and the raw p1 images
         self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
-        rawcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
+        rawcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
         raw_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         raw_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
         #next warp and align the images with the best fit warp and do the same thing
         self.warpset.warpLoadedImages()
         self.alignset.updateRectangleImages(self.warpset.images)
-        bestcost = self.alignset.align(write_result=False,alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
+        bestcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
         warped_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         warped_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
         #print the cost differences
@@ -447,7 +446,7 @@ class WarpFitter :
                 f,(ax1,ax2,ax3,ax4) = plt.subplots(4,1,sharex=True)
                 f.set_size_inches(self.n*pix_to_in,4.5*0.2*self.m*pix_to_in)
                 order = [ax1,ax3,ax2,ax4]
-            elif code in [1,3,7,9] :
+            elif code in CONST.CORNER_OVERLAP_TAGS :
                 f,ax = plt.subplots(2,2)
                 f.set_size_inches(2.*0.2*self.n*pix_to_in,2*0.2*self.m*pix_to_in)
                 order = [ax[0][0],ax[0][1],ax[1][0],ax[1][1]]
@@ -506,8 +505,8 @@ class WarpFitter :
     def __initializeAlignmentSet(self, *, overlaps) :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
-        a = AlignmentSet(self.dbload_top_dir,self.working_dir,self.samp_name,interactive=customGPUdevice,useGPU=True,
-                         selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True)
+        a = AlignmentSetFromXML(self.dbload_top_dir,self.working_dir,self.samp_name,nclip=CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
+                                selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True)
         return a
 
     #helper function to return the parameter bounds, constraints, and initial population for the global minimization
@@ -565,9 +564,8 @@ class WarpFitter :
 
     #helper function to calculate the normalization for the cost
     def __getCostNormalization(self) :
-        corner_codes = [1,3,7,9]
         norm = 0
         for olap in self.alignset.overlaps :
-            if (not self.skip_corners) or (self.skip_corners and olap.tag not in corner_codes) : 
+            if (not self.skip_corners) or (self.skip_corners and olap.tag not in CONST.CORNER_OVERLAP_TAGS) : 
                 norm+=((olap.cutimages[0]).shape[0])*((olap.cutimages[0]).shape[1])
         return norm

@@ -563,8 +563,7 @@ class CameraWarp(Warp) :
             for j in range(self.n) :
                 rad_heat_map[i,j] = self.radialDistortAmountAtPixel(j,i)
                 tan_heat_map[i,j] = self.tangentialDistortAmountAtPixel(j,i)                
-        f,(ax1,ax2,ax3) = plt.subplots(1,3)
-        f.set_size_inches(20.,5.)
+        f,(ax1,ax2,ax3) = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         rhm=sns.heatmap(rad_heat_map,ax=ax1)
         ax1.scatter(self.cx,self.cy,marker='*',color='yellow')
         rhm.set_title('radial warp components',fontsize=14)

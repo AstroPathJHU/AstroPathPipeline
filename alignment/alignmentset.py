@@ -72,7 +72,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     self.logger.info("finished align loop for "+self.SlideID)
     return sum_mse
 
-  def getDAPI(self, filetype="flatWarpDAPI", keeprawimages=False, mean_image=None, overwrite=True):
+  def getDAPI(self, filetype="flatWarp", keeprawimages=False, mean_image=None, overwrite=True):
     self.logger.info("getDAPI")
     if overwrite or not hasattr(self, "images"):
       images = self.getrawlayers(filetype)
@@ -188,9 +188,6 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
       return self.__fields
     except AttributeError:
       raise AttributeError("Haven't run stitching, so we don't have the stitched fields")
-
-  @property
-  def layer(self): return 1
 
 class AlignmentSet(AlignmentSetBase, ReadRectangles):
   @methodtools.lru_cache()
