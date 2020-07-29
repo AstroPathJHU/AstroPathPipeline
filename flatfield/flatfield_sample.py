@@ -146,7 +146,8 @@ class FlatfieldSample() :
                 ax1.set_ylabel('n images')
                 ax1.legend(loc='best')
                 ax2.bar(list(range(med+1)),all_tissue_edge_layer_hists[:med+1,li],width=1.0,label='background')
-                ax2.bar(list(range(med+1,max_threshold_found+11)),all_tissue_edge_layer_hists[med+1:max_threshold_found+11,li],width=1.0,label='signal')
+                right_plot_limit = min(max_threshold_found,int(1.5*med))+11
+                ax2.bar(list(range(med+1,right_plot_limit)),all_tissue_edge_layer_hists[med+1:right_plot_limit,li],width=1.0,label='signal')
                 ax2.plot([mode,mode],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='c',label=f'mode={mode}')
                 ax2.plot([mean,mean],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='m',label=f'mean={mean}')
                 ax2.plot([med,med],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='r',label=f'median={med}')
