@@ -102,9 +102,9 @@ class FlatfieldProducer :
             random.shuffle(this_samp_indices_for_masking_plots)
             this_samp_indices_for_masking_plots=this_samp_indices_for_masking_plots[:n_masking_images_per_sample]
             #get the max exposure times by layer if the images should be normalized
-            max_exp_times_by_layer = getSampleMaxExposureTimesByLayer(os.path.dirname(os.path.dirname(this_samp_fps_to_run[0])),sn) if self.normalize else None
+            max_exp_times_by_layer = getSampleMaxExposureTimesByLayer(self.metadata_top_dir,sn) if self.normalize else None
             #break the list of this sample's filepaths into chunks to run in parallel
-            fileread_chunks = chunkListOfFilepaths(this_samp_fps_to_run,self.mean_image.dims,n_threads)
+            fileread_chunks = chunkListOfFilepaths(this_samp_fps_to_run,self.mean_image.dims,n_threads,self.metadata_top_dir)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
             for fr_chunk in fileread_chunks :
                 if len(fr_chunk)<1 :

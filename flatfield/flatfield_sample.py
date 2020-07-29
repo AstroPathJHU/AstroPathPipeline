@@ -70,7 +70,7 @@ class FlatfieldSample() :
         threshold_file_name = name of file to save background thresholds in, one line per layer
         """
         #if the images are to be normalized, we need to get the maximum exposure times by layer across the whole sample
-        max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(os.path.dirname(os.path.dirname(rawfile_paths[0])),self._name) if normalize else None
+        max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(metadata_top_dir,self._name) if normalize else None
         #make sure the plot directory exists
         if not os.path.isdir(top_plotdir_path) :
             with cd(os.path.join(*[pp for pp in top_plotdir_path.split(os.sep)[:-1]])) :
@@ -84,7 +84,7 @@ class FlatfieldSample() :
         flatfield_logger.info(f'Finding tissue edge HPFs for sample {self._name}...')
         tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,metadata_top_dir,plotdir_path)
         #chunk them together to be read in parallel
-        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self.dims,n_threads)
+        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self.dims,n_threads,metadata_top_dir)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
         flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self._name}...')
         nbins=np.iinfo(np.uint16).max+1

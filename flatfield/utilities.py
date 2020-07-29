@@ -45,9 +45,9 @@ def smoothImageWorker(im_array,smoothsigma,return_list=None) :
     else :
         return im_out_umat.get()
 
-#helper function to return the sample name in an whole filepath
+#helper function to return the sample name from a whole filepath
 def sampleNameFromFilepath(fp) :
-    return os.path.basename(os.path.normpath(fp)).split('[')[0][:-1]
+    return os.path.basename(os.path.dirname(os.path.normpath(fp)))
 
 #################### THRESHOLDING HELPER FUNCTIONS ####################
 
@@ -163,20 +163,21 @@ def findLayerThresholds(layer_hists,i=None,rdict=None) :
 #helper dataclass to use in multithreading some image handling
 @dataclasses.dataclass(eq=False, repr=False)
 class FileReadInfo :
-    rawfile_path   : str                # the path to the raw file
-    sequence_print : str                # a string of "({i} of {N})" to print
-    height         : int                # img height
-    width          : int                # img width
-    nlayers        : int                # number of img layers
-    to_smooth      : bool = False       # whether the image should be smoothed
-    max_exp_times  : List[float] = None # a list of the max exposure times in this image's sample by layer (for normalizing)
+    rawfile_path     : str                # the path to the raw file
+    sequence_print   : str                # a string of "({i} of {N})" to print
+    height           : int                # img height
+    width            : int                # img width
+    nlayers          : int                # number of img layers
+    metadata_top_dir : str                # this file's sample's metadata file top directory
+    to_smooth        : bool = False       # whether the image should be smoothed
+    max_exp_times    : List[float] = None # a list of the max exposure times in this image's sample by layer (for normalizing)
 
 #helper function to parallelize calls to getRawAsHWL (plus optional smoothing and normalization)
 def getImageArray(fri) :
     flatfield_logger.info(f'  reading file {fri.rawfile_path} {fri.sequence_print}')
     img_arr = getRawAsHWL(fri.rawfile_path,fri.height,fri.width,fri.nlayers)
     if fri.max_exp_times is not None :
-        img_arr = normalizeImageByExposureTime(img_arr,fri.rawfile_path,fri.max_exp_times)
+        img_arr = normalizeImageByExposureTime(img_arr,fri.rawfile_path,fri.max_exp_times,fri.metadata_top_dir)
     if fri.to_smooth :
         img_arr = smoothImageWorker(img_arr,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
     return img_arr
@@ -211,10 +212,10 @@ def getImageLayerHistsMT(sample_image_filereads,smoothed=False,max_exposure_time
     return new_img_layer_hists
 
 #helper function to split a list of filenames into chunks to be read in in parallel
-def chunkListOfFilepaths(fps,dims,n_threads) :
+def chunkListOfFilepaths(fps,dims,n_threads,metadata_top_dir) :
     fileread_chunks = [[]]
     for i,fp in enumerate(fps,start=1) :
         if len(fileread_chunks[-1])>=n_threads :
             fileread_chunks.append([])
-        fileread_chunks[-1].append(FileReadInfo(fp,f'({i} of {len(fps)})',dims[0],dims[1],dims[2]))
+        fileread_chunks[-1].append(FileReadInfo(fp,f'({i} of {len(fps)})',dims[0],dims[1],dims[2],metadata_top_dir))
     return fileread_chunks

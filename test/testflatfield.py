@@ -25,7 +25,7 @@ with cd(os.path.join(rawfile_top_dir,samp)) :
 
 flatfield_logger.info('Starting test run....')
 #get the image dimensions from the .xml file
-dims=getImageHWLFromXMLFile(rawfile_top_dir,samp)
+dims=getImageHWLFromXMLFile(metadata_top_dir,samp)
 #make the FlatfieldProducer Object
 ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,metadata_top_dir,working_dir,False)
 #write out the text file of all the raw file paths that will be run
