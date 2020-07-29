@@ -6,7 +6,7 @@ from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Constant, RectangleFile
 from .logging import getlogger
-from .rectangle import Rectangle, rectangleoroverlapfilter
+from .rectangle import RectangleWithLayer, rectangleoroverlapfilter
 from .overlap import Overlap, RectangleOverlapCollection
 
 @dataclass_dc_init(frozen=True)
@@ -334,9 +334,9 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
 
 class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
   def readallrectangles(self):
-    return self.readcsv("rect", Rectangle, extrakwargs={"pscale": self.pscale})
+    return self.readcsv("rect", RectangleWithLayer, extrakwargs={"pscale": self.pscale, "layer": self.layer})
   def readalloverlaps(self):
-    return self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
+    return self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip})
 
 class XMLLayoutReader(SampleThatReadsOverlaps):
   @methodtools.lru_cache()
@@ -434,7 +434,6 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
             x2=r2.x,
             y2=r2.y,
             tag=tag,
-            layer=self.layer,
             nclip=self.nclip,
             rectangles=(r1, r2),
             pscale=self.pscale,

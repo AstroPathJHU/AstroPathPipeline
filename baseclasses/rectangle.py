@@ -30,6 +30,13 @@ class Rectangle(DataClassWithDistances):
   def shape(self):
     return np.array([self.w, self.h])
 
+@dataclasses.dataclass
+class RectangleWithLayer(Rectangle):
+  layer: dataclasses.InitVar[int]
+  def __post_init__(self, layer, *args, **kwargs):
+    super().__post_init__(*args, **kwargs)
+    self.layer = layer
+
 class RectangleCollection(abc.ABC):
   @abc.abstractproperty
   def rectangles(self): pass
