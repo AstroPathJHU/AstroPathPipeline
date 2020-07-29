@@ -19,13 +19,38 @@ class Const :
     @property
     def CORNER_OVERLAP_TAGS(self):
         return [1,3,7,9] #list of tags representing overlaps that are corners 
+    @property
+    def N_CLIP(self) :
+        return FLATFIELD_CONST.N_CLIP #number of pixels to clip from raw image edges
     #how to handle images
     @property
-    def smoothsigma(self):
+    def SMOOTH_SIGMA(self):
         return 1.0 #default sigma for smoothing images loaded for warping
     #files that get created
     @property 
     def OCTET_OVERLAP_CSV_FILE_NAMESTEM(self) :
         return '_overlap_octets.csv' #stem for the name of the octet overlap csv file name
+    @property
+    def FIT_RESULT_CSV_FILE_NAME(self) :
+        return 'fit_result.csv' #the name of the fit result text file that gets written out
+    @property
+    def X_WARP_BIN_FILENAME(self) :
+        return 'dx_warp_field.bin' #name of the dx warping field binary file
+    @property
+    def Y_WARP_BIN_FILENAME(self) :
+        return 'dy_warp_field.bin' #name of the dy warping field binary file
+    @property
+    def WARP_FIELD_FIGURE_NAME(self) :
+        return 'warp_fields.png'
+    @property
+    def OVERLAY_NORMALIZE(self) :
+        return 1000. #value to use to normalize the overlay images
+    @property 
+    def OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH(self) :
+        return 3*6.4 #width of the octet overlap comparison figures
+    #setup
+    @property
+    def MICROSCOPE_OBJECTIVE_FOCAL_LENGTH(self) :
+        return 40000. #focal length of the microscope objective (20mm) in pixels
     
 CONST=Const()

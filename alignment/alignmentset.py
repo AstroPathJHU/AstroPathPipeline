@@ -42,7 +42,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   def align(self,*,skip_corners=False,return_on_invalid_result=False,warpwarnings=False,**kwargs):
     self.logger.info("starting alignment")
 
-    sum_mse = 0.; norm=0.
+    sum_mse = 0.
     done = set()
 
     for i, overlap in enumerate(self.overlaps, start=1):
@@ -55,7 +55,6 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
         result = overlap.align(gputhread=self.gputhread, gpufftdict=self.gpufftdict, **kwargs)
       done.add((overlap.p1, overlap.p2))
 
-      norm+=((overlap.cutimages[0]).shape[0])*((overlap.cutimages[0]).shape[1])
       if result is not None and result.exit == 0: 
         sum_mse+=result.mse[2]
       else :
@@ -71,7 +70,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
           sum_mse+=1e10
 
     self.logger.info("finished align loop for "+self.SlideID)
-    return sum_mse/norm
+    return sum_mse
 
   def getDAPI(self, filetype="flatWarp", keeprawimages=False, mean_image=None, overwrite=True):
     self.logger.info("getDAPI")
@@ -130,7 +129,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     """
     overlap_shift_comparisons = {}
     for o in self.overlaps :
-      overlap_shift_comparisons[o.getShiftComparisonImageCodeNameTuple()]=o.getShiftComparisonImages()
+      overlap_shift_comparisons[o.getShiftComparisonDetailTuple()]=o.getShiftComparisonImages()
     return overlap_shift_comparisons
 
   def __getGPUthread(self, interactive, force) :

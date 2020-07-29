@@ -1,11 +1,10 @@
 #imports
 from .config import CONST
-from ..alignment.alignmentset import AlignmentSet
-from ..baseclasses.overlap import rectangleoverlaplist_fromcsvs
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, writeImageToFile
+from ..alignment.alignmentset import AlignmentSetFromXML
+from ..utilities.img_file_io import getRawAsHWL
 from ..utilities.misc import cd
-import numpy as np, multiprocessing as mp
-import cv2, os, logging, glob, shutil, dataclasses
+import numpy as np, matplotlib.pyplot as plt
+import cv2, os, logging, dataclasses, copy
 
 #set up the logger
 warp_logger = logging.getLogger("warpfitter")
@@ -32,29 +31,19 @@ def checkDirAndFixedArgs(args) :
     rawfile_dir = os.path.join(args.rawfile_top_dir,args.sample)
     if not os.path.isdir(rawfile_dir) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
-    #dbload top dir must exist
-    if not os.path.isdir(args.dbload_top_dir) :
-        raise ValueError(f'ERROR: dbload_top_dir argument ({args.dbload_top_dir}) does not point to a valid directory!')
-    #dbload top dir dir must be usable to find a metafile directory
-    metafile_dir = os.path.join(args.dbload_top_dir,args.sample,'dbload')
+    #metadata top dir must exist
+    if not os.path.isdir(args.metadata_top_dir) :
+        raise ValueError(f'ERROR: metadata_top_dir argument ({args.metadata_top_dir}) does not point to a valid directory!')
+    #metadata top dir dir must be usable to find a metafile directory
+    metafile_dir = os.path.join(args.metadata_top_dir,args.sample,'im3','xml')
     if not os.path.isdir(metafile_dir) :
-        raise ValueError(f'ERROR: dbload_top_dir ({args.dbload_top_dir}) does not contain "[sample name]/dbload" subdirectories!')
+        raise ValueError(f'ERROR: metadata_top_dir ({args.metadata_top_dir}) does not contain "[sample name]/im3/xml" subdirectories!')
     #make sure the flatfield file exists
     if not os.path.isfile(args.flatfield_file) :
         raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
     #the octet run workingdir must exist if it's to be used
     if args.octet_run_dir is not None and not os.path.isdir(args.octet_run_dir) :
         raise ValueError(f'ERROR: octet_run_dir ({args.octet_run_dir}) does not exist!')
-    #the threshold file must exist if it's to be used
-    if args.threshold_file_dir is not None :
-        if not os.path.isdir(args.threshold_file_dir) :
-            raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
-        tfp = os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
-        if not os.path.isfile(tfp) :
-            raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this sample ({tfp})!')
-    #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate
-    if args.threshold_file_dir is not None and args.octet_run_dir is not None :
-        raise ValueError('ERROR: cannot specify both an octet_run_dir and a threshold_file_dir!')
     #create the working directory if it doesn't already exist
     if not os.path.isdir(args.workingdir_name) :
         os.mkdir(args.workingdir_name)
@@ -67,17 +56,17 @@ def checkDirAndFixedArgs(args) :
         raise ValueError(f'ERROR: Fixed parameters argument ({args.fixed}) does not result in a valid fixed parameter condition!')
 
 # Helper function to read previously-saved octet definitions from a file
-def readOctetsFromFile(octet_run_dir,dbload_top_dir,sample_name,layer) :
+def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_name,layer) :
     #get the .csv file holding the octet p1s and overlaps ns
     octet_filepath = os.path.join(octet_run_dir,f'{sample_name}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
     warp_logger.info(f'Reading octet overlaps numbers from file {octet_filepath}...')
-    #make a list of overlaps for the whole sample from the dbload dir
-    rol = rectangleoverlaplist_fromcsvs(os.path.join(dbload_top_dir,sample_name,'dbload'),layer_override=layer)
+    #make a list of overlaps for the whole sample from the metadata dir
+    a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,sample_name,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer)
     octets = {}
     with open(octet_filepath,'r') as ofp :
         for line in [l.rstrip() for l in ofp.readlines()] :
             linesplit = line.split(',')
-            this_olap_list = [olap for olap in rol.overlaps if olap.n in [int(val) for val in linesplit[1:]]]
+            this_olap_list = [olap for olap in a.overlaps if olap.n in [int(val) for val in linesplit[1:]]]
             octets[int(linesplit[0])] = this_olap_list
     return octets
 
@@ -108,55 +97,17 @@ def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield_layer,overlaps=None,recta
     else :
         return return_item
 
-# Helper function to extract a layer of a single raw file to a .fw## file
-#meant to be run in parallel
-def extractRawFileLayerWorker(fp,flatfield_layer,img_height,img_width,img_nlayers,layer=1,dtype=np.uint16) :
-    rawImageDict = loadRawImageWorker(fp,img_height,img_width,img_nlayers,layer,flatfield_layer,smoothsigma=CONST.smoothsigma)
-    new_fn = f'{rawImageDict["rfkey"]}{CONST.FW_EXT}{layer:02d}'
-    writeImageToFile(rawImageDict['image'],new_fn)
-
-# Helper function to extract a single layer of a sample's raw files into the workingdir/sample_name directory
-def extractRawFileLayers(rawfile_top_dir,sample_name,workingdir,flatfield_file,n_procs,layer=1) :
-    warp_logger.info(f'Extracting layer {layer} from all raw files in sample {sample_name} (correcting with flatfield file {flatfield_file})....')
-    #get a list of all the filenames in the sample
-    with cd(os.path.join(rawfile_top_dir,sample_name)) :
-        all_raw_filepaths = [os.path.join(rawfile_top_dir,sample_name,fn) for fn in glob.glob(f'*{CONST.RAW_EXT}')]
-    #get the image dimensions
-    img_h,img_w,img_nlayers=getImageHWLFromXMLFile(rawfile_top_dir,sample_name)
-    #get the corresponding layer of the flatfield file
-    flatfield_layer = (getRawAsHWL(flatfield_file,img_h,img_w,img_nlayers,np.float64))[:,:,layer-1]
-    #extract the given layer from each of the files into the working directory
-    with cd(workingdir) :
-        if not os.path.isdir(sample_name) :
-            os.mkdir(sample_name)
-        with cd(sample_name) :
-            procs = []
-            for ifp,rfp in enumerate(all_raw_filepaths,start=1) :
-                warp_logger.info(f'  extracting layer {layer} from rawfile {rfp} ({ifp} of {len(all_raw_filepaths)})....')
-                p = mp.Process(target=extractRawFileLayerWorker, 
-                               args=(rfp,flatfield_layer,img_h,img_w,img_nlayers,layer))
-                procs.append(p)
-                p.start()
-                if len(procs)>=n_procs :
-                    for proc in procs :
-                        proc.join()
-            for proc in procs:
-                proc.join()
-    warp_logger.info('Done!')
-
 # Helper function to get the dictionary of octets
-def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,flatfield_file,n_procs,layer) :
+def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,flatfield_file,n_procs,layer) :
     #start by getting the threshold of this sample layer from the the inputted file
     with open(threshold_file_path) as tfp :
         vals = [int(l.rstrip()) for l in tfp.readlines() if l.rstrip()!='']
     threshold_value = vals[layer-1]
-    #extract the raw file layers to the working directory to run a test alignment
-    extractRawFileLayers(rawfile_top_dir,samp,working_dir,flatfield_file,n_procs,layer)
     #create the alignment set and run its alignment
     warp_logger.info("Performing an initial alignment to find this sample's valid octets...")
-    a = AlignmentSet(dbload_top_dir,working_dir,samp)
-    a.getDAPI(writeimstat=False)
-    a.align(write_result=False)
+    a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer)
+    a.getDAPI(filetype='raw')
+    a.align()
     #get the list of overlaps
     overlaps = a.overlaps
     #filter out any that could not be aligned or that don't show enough bright pixels
@@ -201,8 +152,175 @@ def findSampleOctets(rawfile_top_dir,dbload_top_dir,threshold_file_path,req_pixe
                 ofp.write(new_line)
     #print how many octets there are 
     warp_logger.info(f'{len(octets)} total octets found.')
-    #remove the extracted layers 
-    with cd(working_dir) :
-        shutil.rmtree(samp)
     #return the dictionary of octets
     return octets
+
+#helper function to find the limit on a parameter that produces the maximum warp
+def findDefaultParameterLimit(parindex,parincrement,warplimit,warpamtfunc,testpars) :
+    warpamt=0.; testparval=0.
+    while warpamt<warplimit :
+        testparval+=parincrement
+        testpars[parindex]=testparval
+        warpamt=warpamtfunc(testpars)
+    return testparval
+
+#helper function to make the default list of parameter constraints
+def buildDefaultParameterBoundsDict(warp,max_rad_warp,max_tan_warp) :
+    bounds = {}
+    # cx/cy bounds are +/- 25% of the center point
+    bounds['cx']=(0.5*(warp.n/2.),1.5*(warp.n/2.))
+    bounds['cy']=(0.5*(warp.m/2.),1.5*(warp.m/2.))
+    # fx/fy bounds are +/- 2% of the nominal values 
+    bounds['fx']=(0.98*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
+    bounds['fy']=(0.98*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
+    # k1/k2/k3 and p1/p2 bounds are 1.5x those that would produce the max radial and tangential warp, respectively, with all others zero
+    # (except k1 can't be negative)
+    testpars=[warp.n/2,warp.m/2,CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,0.,0.,0.,0.,0.]
+    maxk1 = findDefaultParameterLimit(4,1,max_rad_warp,warp.maxRadialDistortAmount,copy.deepcopy(testpars))
+    bounds['k1']=(0.,1.5*maxk1)
+    maxk2 = findDefaultParameterLimit(5,1000,max_rad_warp,warp.maxRadialDistortAmount,copy.deepcopy(testpars))
+    bounds['k2']=(-1.5*maxk2,1.5*maxk2)
+    maxk3 = findDefaultParameterLimit(6,10000000,max_rad_warp,warp.maxRadialDistortAmount,copy.deepcopy(testpars))
+    bounds['k3']=(-1.5*maxk3,1.5*maxk3)
+    maxp1 = findDefaultParameterLimit(7,0.01,max_tan_warp,warp.maxTangentialDistortAmount,copy.deepcopy(testpars))
+    bounds['p1']=(-1.5*maxp1,1.5*maxp1)
+    maxp2 = findDefaultParameterLimit(8,0.01,max_tan_warp,warp.maxTangentialDistortAmount,copy.deepcopy(testpars))
+    bounds['p2']=(-1.5*maxp2,1.5*maxp2)
+    return bounds
+
+#little utility class to help with making the octet overlap comparison images
+class OctetComparisonVisualization :
+
+    def __init__(self,overlaps,shifted,name_stem) :
+        """
+        overlaps  = list of 8 AlignmentOverlap objects to use in building the figure
+        shifted   = whether the figure should be built using the shifted overlap images
+        name_stem = name to use for the title and filename of the figure
+        """
+        self.overlaps = overlaps
+        self.shifted = shifted
+        self.name_stem = name_stem
+        self.outer_clip = self.overlaps[0].nclip
+        self.shift_clip = self.outer_clip+2
+        self.normalize = CONST.OVERLAY_NORMALIZE
+        self.p1_im = self.overlaps[0].images[0]/self.normalize
+        self.whole_image = np.zeros((self.p1_im.shape[0],self.p1_im.shape[1],3),dtype=self.p1_im.dtype)
+        self.images_stacked_mask = np.zeros(self.whole_image.shape,dtype=np.uint8)
+        self.overlay_dicts = {}
+        for olap in self.overlaps :
+            self.overlay_dicts[olap.tag] = {'image':olap.getimage(self.normalize,self.shifted),'dx':-olap.result.dx/2.,'dy':-olap.result.dy/2.}
+
+    def stackOverlays(self) :
+        """
+        Stack the overlay images into the whole image
+        returns a list of tuples of (p1, code) for any overlaps that couldn't be stacked into the whole image
+        """
+        failed_p1s_codes = []
+        #add each overlay to the total image
+        for code in self.overlay_dicts.keys() :
+            ret = self.__addSingleOverlap(code)
+            if ret is not True :
+                failed_p1s_codes.append(ret)
+        #divide the total image by how many overlays are contributing at each point
+        self.whole_image[self.images_stacked_mask!=0]/=self.images_stacked_mask[self.images_stacked_mask!=0]
+        #fill in the holes with the p1 image in magenta
+        magenta_p1 = np.array([self.p1_im,np.zeros_like(self.p1_im),0.5*self.p1_im]).transpose(1,2,0)
+        self.whole_image=np.where(self.whole_image==0,magenta_p1,self.whole_image)
+        return failed_p1s_codes
+
+    def writeOutFigure(self,dirpath) :
+        """
+        Write out a .png of the total octet overlay image
+        dirpath = directory to write the figure out to
+        """ 
+        f,ax = plt.subplots(figsize=(CONST.OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH,
+                                     np.rint((self.whole_image.shape[0]/self.whole_image.shape[1])*CONST.OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH)))
+        ax.imshow(self.whole_image)
+        ax.set_title(self.name_stem.replace('_',' '))
+        with cd(dirpath) :
+            plt.savefig(f'{self.name_stem}.png')
+            plt.close()
+
+    #helper function to add a single overlap's set of overlays to the total image
+    def __addSingleOverlap(self,code) :
+        #figure out the total image x and y start and end points
+        tix_1 = 0; tix_2 = 0; tiy_1 = 0; tiy_2 = 0
+        #x positions
+        if code in [3,6,9] : #left column
+            tix_1 = self.outer_clip
+            if self.shifted :
+                tix_1+=self.shift_clip
+            tix_2 = tix_1+self.overlay_dicts[code]['image'].shape[1]
+        elif code in [2,8] : #center column
+            tix_1 = self.outer_clip
+            tix_2 = self.p1_im.shape[1]-self.outer_clip
+            if self.shifted :
+                tix_1+=self.shift_clip
+                tix_2-=self.shift_clip
+        elif code in [1,4,7] : #right column
+            tix_2 = self.p1_im.shape[1]-self.outer_clip
+            if self.shifted :
+                tix_2-=self.shift_clip
+            tix_1 = tix_2-self.overlay_dicts[code]['image'].shape[1]
+        #y positions
+        if code in [7,8,9] : #top row
+            tiy_1 = self.outer_clip
+            if self.shifted :
+                tiy_1+=self.shift_clip
+            tiy_2 = tiy_1+self.overlay_dicts[code]['image'].shape[0]
+        elif code in [4,6] : #center row
+            tiy_1 = self.outer_clip
+            tiy_2 = self.p1_im.shape[0]-self.outer_clip
+            if self.shifted :
+                tiy_1+=self.shift_clip
+                tiy_2-=self.shift_clip
+        elif code in [1,2,3] : #bottom column
+            tiy_2 = self.p1_im.shape[0]-self.outer_clip
+            if self.shifted :
+                tiy_2-=self.shift_clip
+            tiy_1 = tiy_2-self.overlay_dicts[code]['image'].shape[0]
+        #figure out the alignment adjustment if necessary
+        dx = self.overlay_dicts[code]['dx'] if self.shifted else 0
+        dy = self.overlay_dicts[code]['dy'] if self.shifted else 0
+        tix_1+=dx; tix_2+=dx
+        tiy_1+=dy; tiy_2+=dy
+        tix_1=int(np.rint(tix_1)); tix_2=int(np.rint(tix_2)); tiy_1=int(np.rint(tiy_1)); tiy_2=int(np.rint(tiy_2))
+        #add the overlay to the total image and increment the mask
+        try :
+            self.whole_image[tiy_1:tiy_2,tix_1:tix_2,:]+=self.overlay_dicts[code]['image']
+            self.images_stacked_mask[tiy_1:tiy_2,tix_1:tix_2,:]+=1
+            return True
+        except Exception as e :
+            fp1 = self.overlaps[0].p1
+            msg=f'WARNING: overlap with p1={fp1} and code {code} could not be stacked into octet overlay comparison'
+            msg+=f' and will be plotted separately. Exception: {e}'
+            warp_logger.warn(msg)
+            return tuple((fp1,code))
+
+#little utility class to represent a warp fit result
+@dataclasses.dataclass
+class WarpFitResult :
+    dirname         : str = None
+    n               : int = 0
+    m               : int = 0
+    cx              : float = 0.0
+    cy              : float = 0.0
+    fx              : float = 0.0
+    fy              : float = 0.0
+    k1              : float = 0.0
+    k2              : float = 0.0
+    k3              : float = 0.0
+    p1              : float = 0.0
+    p2              : float = 0.0
+    max_r_x_coord   : float = 0.0
+    max_r_y_coord   : float = 0.0
+    max_r           : float = 0.0
+    max_rad_warp    : float = 0.0
+    max_tan_warp    : float = 0.0
+    global_fit_its  : int = 0
+    polish_fit_its  : int = 0
+    global_fit_time : float = 0.0
+    polish_fit_time : float = 0.0
+    raw_cost        : float = 0.0
+    best_cost       : float = 0.0
+    cost_reduction  : float = 0.0

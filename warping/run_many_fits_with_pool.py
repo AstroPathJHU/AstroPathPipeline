@@ -1,13 +1,14 @@
 #imports
-from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile
+from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile, WarpFitResult
 from .config import CONST
-from ..utilities.misc import split_csv_to_list
+from ..utilities.tableio import readtable, writetable
+from ..utilities.misc import cd, split_csv_to_list
 from argparse import ArgumentParser
 import os, random, multiprocessing as mp
 
 #################### FILE-SCOPE CONSTANTS ####################
 
-RUN_WARPFITTER_PREFIX = 'python -m microscopealignment.warping.run_warpfitter' #part of the command referencing how to run run_warpfitter.py
+RUN_WARPFITTER_PREFIX = 'python -m microscopealignment.warping.run_warp_fitter' #part of the command referencing how to run run_warpfitter.py
 
 #################### HELPER FUNCTIONS ####################
 
@@ -36,9 +37,9 @@ def getListOfJobCommands(args) :
     #find the valid octets in the samples and order them by the # of their center rectangle
     octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir_name
     if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
-        all_octets_dict = readOctetsFromFile(octet_run_dir,args.dbload_top_dir,args.sample,args.layer)
+        all_octets_dict = readOctetsFromFile(octet_run_dir,args.metadata_top_dir,args.sample,args.layer)
     else :
-        all_octets_dict = findSampleOctets(args.rawfile_top_dir,args.dbload_top_dir,args.sample,args.workingdir_name,args.flatfield_file,
+        all_octets_dict = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.workingdir_name,args.flatfield_file,
                                            args.njobs,args.layer)
     all_octets_numbers = list(range(1,len(all_octets_dict)+1))
     #make sure that the number of octets per job and the number of jobs will work for this sample
@@ -46,11 +47,11 @@ def getListOfJobCommands(args) :
         raise ValueError(f"""ERROR: Sample {args.sample} has {len(all_octets_dict)} total valid octets, but you asked for {args.njobs} jobs 
                              with {n_octets_per_job} octets per job!""")
     #build the list of commands
-    job_cmds = []
+    job_cmds = []; workingdir_names = []
     fixedparstring='--fixed '
     for fixedpar in args.fixed :
         fixedparstring+=f'{fixedpar},'
-    cmd_base=f'{RUN_WARPFITTER_PREFIX} fit {args.sample} {args.rawfile_top_dir} {args.dbload_top_dir} {args.flatfield_file}'
+    cmd_base=f'{RUN_WARPFITTER_PREFIX} fit {args.sample} {args.rawfile_top_dir} {args.metadata_top_dir} {args.flatfield_file}'
     for i in range(args.njobs) :
         thisjobdirname = args.job_dir_stem+'_octets'
         thisjoboctetstring = ''
@@ -65,12 +66,11 @@ def getListOfJobCommands(args) :
         if args.float_p1p2_to_polish :
             thisjobcmdstring+=' --float_p1p2_to_polish'
         thisjobcmdstring+=f' --max_radial_warp {args.max_radial_warp} --max_tangential_warp {args.max_tangential_warp}'
-        thisjobcmdstring+=f' --lasso_lambda {args.lasso_lambda} --print_every {args.print_every}'
+        thisjobcmdstring+=f' --p1p2_polish_lasso_lambda {args.p1p2_polish_lasso_lambda} --print_every {args.print_every}'
         thisjobcmdstring+=f' --n_threads 1 --layer {args.layer}'
-        
         job_cmds.append(thisjobcmdstring)
-    return job_cmds
-
+        workingdir_names.append(thisjobworkingdir)
+    return job_cmds, workingdir_names
 
 #################### MAIN SCRIPT ####################
 
@@ -79,12 +79,12 @@ if __name__=='__main__' :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #positional arguments
-    parser.add_argument('sample',          help='Name of the data sample to use')
-    parser.add_argument('rawfile_top_dir', help='Path to the directory containing the "[sample]/*.Data.dat" files')
-    parser.add_argument('dbload_top_dir',  help='Path to the directory containing "[sample]/dbload" subdirectories')
-    parser.add_argument('flatfield_file',  help='Path to the flatfield.bin file that should be applied to files in this sample')
-    parser.add_argument('workingdir_name', help='Name of the working directory that will be created to hold output of all jobs')
-    parser.add_argument('njobs',           help='Number of jobs to run', type=int)
+    parser.add_argument('sample',           help='Name of the data sample to use')
+    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[sample]/*.Data.dat" files')
+    parser.add_argument('metadata_top_dir', help='Path to the directory containing "[sample]/im3/xml" subdirectories')
+    parser.add_argument('flatfield_file',   help='Path to the flatfield.bin file that should be applied to files in this sample')
+    parser.add_argument('workingdir_name',  help='Name of the working directory that will be created to hold output of all jobs')
+    parser.add_argument('njobs',            help='Number of jobs to run', type=int)
     #group for organizing and splitting into jobs
     job_organization_group = parser.add_argument_group('job organization', 'how should the group of jobs me organized?')
     job_organization_group.add_argument('--octet_run_dir', 
@@ -106,7 +106,7 @@ if __name__=='__main__' :
                                   help='Maximum amount of radial warp to use for constraint')
     fit_option_group.add_argument('--max_tangential_warp',  default=4.,          type=float,
                                   help='Maximum amount of radial warp to use for constraint')
-    fit_option_group.add_argument('--lasso_lambda',         default=0.0,         type=float,
+    fit_option_group.add_argument('--p1p2_polish_lasso_lambda',         default=0.0,         type=float,
                                   help="""Lambda magnitude parameter for the LASSO constraint on p1 and p2 
                                           (if those parameters are to float in the polishing minimization)""")
     fit_option_group.add_argument('--print_every',          default=1000,        type=int,
@@ -122,7 +122,7 @@ if __name__=='__main__' :
     #make sure the arguments are valid
     checkArgs(args)
     #get the list of all the job commands
-    job_cmds = getListOfJobCommands(args)
+    job_cmds, dirnames = getListOfJobCommands(args)
     #run the first command in check_run mode to make sure that things will work when they do get going
     warp_logger.info('TESTING first command in the list...')
     test_run_command = f'{RUN_WARPFITTER_PREFIX} check_run {(job_cmds[0])[(len(RUN_WARPFITTER_PREFIX)+len(" fit ")):]}'
@@ -138,4 +138,11 @@ if __name__=='__main__' :
     pool.close()
     warp_logger.info('POOL CLOSED; BATCH RUNNING!!')
     pool.join()
-    warp_logger.info('All jobs in the pool have finished! : )')
+    warp_logger.info('All jobs in the pool have finished! : ) Collecting results....')
+    results = []
+    for dirname in dirnames :
+        results.append((readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))[0])
+    with cd(args.workingdir_name) :
+        writetable('all_results.csv',results)
+    warp_logger.info('Done.')
+
