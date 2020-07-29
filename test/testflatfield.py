@@ -27,7 +27,7 @@ flatfield_logger.info('Starting test run....')
 #get the image dimensions from the .xml file
 dims=getImageHWLFromXMLFile(rawfile_top_dir,samp)
 #make the FlatfieldProducer Object
-ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,metadata_top_dir,working_dir,False)
+ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,metadata_top_dir,working_dir,True)
 #write out the text file of all the raw file paths that will be run
 ff_producer.writeFileLog('filepath_log.txt')
 #mask and stack images together
