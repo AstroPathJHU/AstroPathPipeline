@@ -182,7 +182,7 @@ class WarpFitter :
         #then warp the images
         self.warpset.warpLoadedImages(skip_corners=self.skip_corners)
         #reload the (newly-warped) images into the alignment set
-        self.alignset.updateRectangleImages([warpimg for warpimg in self.warpset.images if not (self.skip_corners and warpimg.is_corner_only)])
+        self.alignset.updateRectangleImages(self.warpset.images_no_corners if self.skip_corners else self.warpset.images)
         #check the warp amounts to see if the sample should be realigned
         rad_warp = self.warpset.warp.maxRadialDistortAmount(warp_pars)
         tan_warp = self.warpset.warp.maxTangentialDistortAmount(warp_pars)
