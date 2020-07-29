@@ -60,8 +60,8 @@ def writeImageToFile(img_array,filename_to_write,dtype=np.uint16) :
   im3writeraw(filename_to_write,img_array.flatten(order="F").astype(dtype))
 
 #helper function to get an image dimension tuple from the sample XML file
-def getImageHWLFromXMLFile(topdir,samplename) :
-    xmlfile_path = os.path.join(topdir,samplename,f'{samplename}{PARAMETER_XMLFILE_EXT}')
+def getImageHWLFromXMLFile(metadata_topdir,samplename) :
+    xmlfile_path = os.path.join(metadata_topdir,samplename,'im3','xml',f'{samplename}{PARAMETER_XMLFILE_EXT}')
     tree = et.parse(xmlfile_path)
     for child in tree.getroot() :
         if child.attrib['name']=='Shape' :
@@ -69,11 +69,19 @@ def getImageHWLFromXMLFile(topdir,samplename) :
     return img_height, img_width, img_nlayers
 
 #helper function to get a list of exposure times by each layer for a given raw image
-def getExposureTimesByLayer(rfp,nlayers) :
+#fp can be a path to a raw file or to an exposure XML file 
+#but if it's a raw file the metadata top dir must also be provided
+def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
   layer_exposure_times_to_return = []
-  if not RAWFILE_EXT in rfp :
-    raise ValueError(f"ERROR: file path {rfp} given to getExposureTimesByLayer doesn't represent a recognized raw file!")
-  xmlfile_path = rfp.replace(RAWFILE_EXT,EXPOSURE_XML_EXT)
+  if RAWFILE_EXT in fp :
+    if metadata_top_dir is None :
+      raise RuntimeError(f'ERROR: metadata top dir must be supplied to get exposure times fo raw file path {fp}!')
+    sample_name = os.path.basename(os.path.dirname(os.path.normpath(fp)))
+    xmlfile_path = os.path.join(metadata_top_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(fp)).replace(RAWFILE_EXT,EXPOSURE_XML_EXT))
+  elif EXPOSURE_XML_EXT in fp :
+    xmlfile_path = fp
+  else :
+    raise ValueError(f"ERROR: file path {fp} given to getExposureTimesByLayer doesn't represent a recognized raw or exposure xml file!")
   if not os.path.isfile(xmlfile_path) :
     raise RuntimeError(f"ERROR: {xmlfile_path} searched in getExposureTimesByLayer not found!")
   root = (et.parse(xmlfile_path)).getroot()
@@ -110,30 +118,30 @@ def getExposureTimesByLayer(rfp,nlayers) :
   return layer_exposure_times_to_return
 
 #helper function to return a list of the maximum exposure times observed in each layer of a given sample
-def getSampleMaxExposureTimesByLayer(topdir,samplename) :
-    _,_,nlayers = getImageHWLFromXMLFile(topdir,samplename)
+def getSampleMaxExposureTimesByLayer(metadata_topdir,samplename) :
+    _,_,nlayers = getImageHWLFromXMLFile(metadata_topdir,samplename)
     max_exposure_times_by_layer = []
     for li in range(nlayers) :
         max_exposure_times_by_layer.append(0)
-    with cd(os.path.join(topdir,samplename)) :
-        all_image_fps = [os.path.join(topdir,samplename,fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
-    utility_logger.info(f'Finding maximum exposure times in a sample of {len(all_image_fps)} images with {nlayers} layers each....')
-    for image_fp in all_image_fps :
-        this_image_layer_exposure_times = getExposureTimesByLayer(image_fp,nlayers)
+    with cd(os.path.join(metadata_topdir,samplename,'im3','xml')) :
+        all_fps = [os.path.join(metadata_topdir,samplename,'im3','xml',fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
+    utility_logger.info(f'Finding maximum exposure times in a sample of {len(all_fps)} images with {nlayers} layers each....')
+    for fp in all_fps :
+        this_image_layer_exposure_times = getExposureTimesByLayer(fp,nlayers)
         for li in range(nlayers) :
             if this_image_layer_exposure_times[li]>max_exposure_times_by_layer[li] :
                 max_exposure_times_by_layer[li] = this_image_layer_exposure_times[li]
     return max_exposure_times_by_layer
 
 #helper function to normalize a given image for exposure time layer-by-layer
-def normalizeImageByExposureTime(raw_img,raw_fp,max_exp_times) :
+def normalizeImageByExposureTime(raw_img,raw_fp,max_exp_times,metadata_top_dir) :
   if len(max_exp_times)!=raw_img.shape[-1] :
     raise RuntimeError(f"""ERROR: the list of max exposure times (length {len(max_exp_times)}) and the raw img ({raw_fp}) with shape 
                            {raw_img.shape} passed to normalizeImageByExposureTime don't match!""")
   nlayers = len(max_exp_times)
   raw_img_dtype = raw_img.dtype
   max_value = np.iinfo(raw_img_dtype).max
-  exposure_times = getExposureTimesByLayer(raw_fp,nlayers)
+  exposure_times = getExposureTimesByLayer(raw_fp,nlayers,metadata_top_dir)
   normalized_img = raw_img.copy()
   for li in range(nlayers) :
     if exposure_times[li]!=max_exp_times[li] : #layer is only different if it isn't maximally exposed

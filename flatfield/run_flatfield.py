@@ -1,10 +1,9 @@
 #imports
 from .flatfield_producer import FlatfieldProducer
-from .utilities import flatfield_logger
+from .utilities import flatfield_logger, sampleNameFromFilepath
 from .config import CONST 
 from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.misc import cd, split_csv_to_list
-from .utilities import sampleNameFromFilepath
 from argparse import ArgumentParser
 import os, glob, random, sys
 
@@ -238,7 +237,7 @@ def main() :
     if args.mode=='check_run' :
         sys.exit()
     #get the image file dimensions from the .xml file
-    dims = getImageHWLFromXMLFile(filepaths_to_run[0][:filepaths_to_run[0].find(sampleNameFromFilepath(filepaths_to_run[0]))],sample_names_to_run[0])
+    dims = getImageHWLFromXMLFile(args.metadata_top_dir,sample_names_to_run[0])
     #start up a flatfield producer
     ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.metadata_top_dir,args.workingdir_name,args.skip_masking,args.normalize)
     #write out the text file of all the raw file paths that will be run

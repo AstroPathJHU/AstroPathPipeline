@@ -112,16 +112,20 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   def updateRectangleImages(self,imgs,usewarpedimages=True) :
     """
     Updates the "image" variable in each rectangle based on a dictionary of image layers
-    imgs = list of WarpImages to use for update
+    imgs            = list of WarpImages to use for update
+    usewarpedimages = if True, warped rather than raw images will be read
     """
-    for r in self.rectangles :
+    for img in imgs :
       if usewarpedimages :
-        thisupdateimg=[(img.warped_image).get() for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
+        thisupdateimg=(img.warped_image).get()
       else :
-        thisupdateimg=[(img.raw_image).get() for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
-      assert len(thisupdateimg)<2
-      if len(thisupdateimg)==1 :
-        np.copyto(r.image,thisupdateimg[0],casting='no')
+        thisupdateimg=(img.raw_image).get()
+      if img.rectangle_list_index!=-1 : #if the image comes with its index in the list of rectangles it can be directly updated
+        np.copyto(self.rectangles[img.rectangle_list_index].image,thisupdateimg,casting='no')
+      else : #otherwise all the rectangles have to be searched
+        thisrect = [r for r in self.rectangles if img.rawfile_key==r.file.rstrip('.im3')]
+        assert len(thisrect)==1 
+        np.copyto(thisrect[0].image,thisupdateimg,casting='no')
 
   def getOverlapComparisonImagesDict(self) :
     """

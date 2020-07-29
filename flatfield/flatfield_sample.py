@@ -70,7 +70,7 @@ class FlatfieldSample() :
         threshold_file_name = name of file to save background thresholds in, one line per layer
         """
         #if the images are to be normalized, we need to get the maximum exposure times by layer across the whole sample
-        max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(os.path.dirname(os.path.dirname(rawfile_paths[0])),self._name) if normalize else None
+        max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(metadata_top_dir,self._name) if normalize else None
         #make sure the plot directory exists
         if not os.path.isdir(top_plotdir_path) :
             with cd(os.path.join(*[pp for pp in top_plotdir_path.split(os.sep)[:-1]])) :
@@ -84,7 +84,7 @@ class FlatfieldSample() :
         flatfield_logger.info(f'Finding tissue edge HPFs for sample {self._name}...')
         tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,metadata_top_dir,plotdir_path)
         #chunk them together to be read in parallel
-        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self.dims,n_threads)
+        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self.dims,n_threads,metadata_top_dir)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
         flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self._name}...')
         nbins=np.iinfo(np.uint16).max+1
@@ -146,7 +146,8 @@ class FlatfieldSample() :
                 ax1.set_ylabel('n images')
                 ax1.legend(loc='best')
                 ax2.bar(list(range(med+1)),all_tissue_edge_layer_hists[:med+1,li],width=1.0,label='background')
-                ax2.bar(list(range(med+1,max_threshold_found+11)),all_tissue_edge_layer_hists[med+1:max_threshold_found+11,li],width=1.0,label='signal')
+                right_plot_limit = min(max_threshold_found,int(1.5*med))+11
+                ax2.bar(list(range(med+1,right_plot_limit)),all_tissue_edge_layer_hists[med+1:right_plot_limit,li],width=1.0,label='signal')
                 ax2.plot([mode,mode],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='c',label=f'mode={mode}')
                 ax2.plot([mean,mean],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='m',label=f'mean={mean}')
                 ax2.plot([med,med],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='r',label=f'median={med}')

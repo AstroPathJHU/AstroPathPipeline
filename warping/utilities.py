@@ -20,10 +20,11 @@ class WarpingError(Exception) :
 #helper class to hold a rectangle's rawfile key, raw image, warped image, and tag for whether it's only relevant for overlaps that are corners
 @dataclasses.dataclass(eq=False, repr=False)
 class WarpImage :
-    rawfile_key    : str
-    raw_image      : cv2.UMat
-    warped_image   : cv2.UMat
-    is_corner_only : bool
+    rawfile_key          : str
+    raw_image            : cv2.UMat
+    warped_image         : cv2.UMat
+    is_corner_only       : bool
+    rectangle_list_index : int
 
 #helper function to make sure necessary directories exist and that the input choice of fixed parameters is valid
 def checkDirAndFixedArgs(args) :
@@ -79,19 +80,22 @@ def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield_layer,overlaps=None,recta
     #find out if this image should be masked when skipping the corner overlaps
     if overlaps is not None and rectangles is not None :
         is_corner_only=True
-        this_rect_number = [r.n for r in rectangles if r.file.split('.')[0]==rfkey]
-        assert len(this_rect_number)==1; this_rect_number=this_rect_number[0]
+        this_rect = [r for r in rectangles if r.file.split('.')[0]==rfkey]
+        assert len(this_rect)==1; this_rect=this_rect[0]
+        this_rect_number = this_rect.n
+        this_rect_index = rectangles.index(this_rect)
         for tag in [o.tag for o in overlaps if o.p1==this_rect_number or o.p2==this_rect_number] :
             if tag not in CONST.CORNER_OVERLAP_TAGS :
                 is_corner_only=False
                 break
     else :
         is_corner_only=False #default is to consider every image
+        this_rect_index = -1
     #if requested, smooth the image and add it to the list, otherwise just add it to the list
     image_to_add = rawimage
     if smoothsigma is not None :
         image_to_add = cv2.GaussianBlur(image_to_add,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
-    return_item = {'rfkey':rfkey,'image':image_to_add,'is_corner_only':is_corner_only}
+    return_item = {'rfkey':rfkey,'image':image_to_add,'is_corner_only':is_corner_only,'list_index':this_rect_index}
     if return_dict is not None and return_dict_key is not None:
         return_dict[return_dict_key]=return_item
     else :
