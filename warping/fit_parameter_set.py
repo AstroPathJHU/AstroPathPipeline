@@ -121,7 +121,7 @@ class FitParameterSet :
                     population_list.append(toadd)
         #add sets describing corner limits of groups of parameters
         par_mask = [True if p in self.floating_parameters else False for p in self.fit_parameters]
-        parameter_group_sets = [np.array([None,None,1,1,2,2,2,3,3])[par_mask], #parameters that have the same effect (not the principal points alone)
+        parameter_group_sets = [np.array([0,0,1,1,2,2,2,3,3])[par_mask], #parameters that have the same effect (not the principal points alone)
                                 np.array([0,1,None,None,0,1,0,None,None])[par_mask], #principal points and radial warps 1                                  
                                 np.array([0,1,None,None,1,0,1,None,None])[par_mask], #principal points and radial warps 2
                                 np.array([0,1,None,None,0,1,1,None,None])[par_mask], #principal points and radial warps 3                                  
@@ -148,10 +148,10 @@ class FitParameterSet :
                     combinations = [(1,1,1),(-2,-2,1),(1,-2,1),(-2,1,1),(1,1,-2),(-2,-2,-2),(1,-2,-2),(-2,1,-2)]
                 for c in combinations :
                     toadd = copy.deepcopy(initial_floating_parameter_values)
-                    toadd[list_indices[0]]=0.2*par_variations[list_indices[0]][c[0]]
-                    toadd[list_indices[1]]=0.2*par_variations[list_indices[1]][c[1]]
+                    toadd[list_indices[0]]=par_variations[list_indices[0]][c[0]]
+                    toadd[list_indices[1]]=par_variations[list_indices[1]][c[1]]
                     if len(list_indices)==3 :
-                        toadd[list_indices[2]]=0.2*par_variations[list_indices[2]][c[2]]
+                        toadd[list_indices[2]]=par_variations[list_indices[2]][c[2]]
                     population_list.append(toadd)
         to_return = np.array(population_list)
         warp_logger.info(f'Initial fit parameter population ({len(population_list)} members):\n{to_return}')
