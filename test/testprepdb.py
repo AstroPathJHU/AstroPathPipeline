@@ -33,7 +33,7 @@ class TestPrepDb(unittest.TestCase):
       ("M21_1_annotations.csv", Annotation, {}),
       ("M21_1_batch.csv", Batch, {}),
       ("M21_1_constants.csv", Constant, {"pscale": sample.pscale, "readingfromfile": True}),
-      ("M21_1_overlap.csv", Overlap, {"pscale": sample.pscale, "layer": sample.layer, "nclip": sample.nclip, "rectangles": sample.rectangles}),
+      ("M21_1_overlap.csv", Overlap, {"pscale": sample.pscale, "nclip": sample.nclip, "rectangles": sample.rectangles}),
       ("M21_1_qptiff.csv", QPTiffCsv, {"pscale": sample.pscale}),
       ("M21_1_rect.csv", Rectangle, {"pscale": sample.pscale}),
       ("M21_1_regions.csv", Region, {"pscale": sample.pscale}),

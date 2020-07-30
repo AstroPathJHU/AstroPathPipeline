@@ -33,8 +33,8 @@ class Rectangle(DataClassWithDistances):
 @dataclasses.dataclass
 class RectangleWithLayer(Rectangle):
   layer: dataclasses.InitVar[int]
-  def __post_init__(self, layer, *args, **kwargs):
-    super().__post_init__(*args, **kwargs)
+  def __post_init__(self, pscale, readingfromfile, layer, *args, **kwargs):
+    super().__post_init__(pscale=pscale, readingfromfile=readingfromfile, *args, **kwargs)
     self.layer = layer
 
 class RectangleCollection(abc.ABC):

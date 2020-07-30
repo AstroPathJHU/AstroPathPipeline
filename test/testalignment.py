@@ -42,7 +42,7 @@ class TestAlignment(TestBaseSaveOutput):
       ("M21_1_align.csv", AlignmentResult, {"pscale": a.pscale}),
       ("M21_1_fields.csv", Field, {"pscale": a.pscale}),
       ("M21_1_affine.csv", AffineEntry, {}),
-      ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "layer": a.layer, "nclip": a.nclip}),
+      ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "nclip": a.nclip}),
     ):
       rows = readtable(thisfolder/"data"/"M21_1"/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
       targetrows = readtable(thisfolder/"reference"/"alignment"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
@@ -107,7 +107,7 @@ class TestAlignment(TestBaseSaveOutput):
     for filename, cls, extrakwargs in itertools.zip_longest(
       a.stitchfilenames,
       (AffineEntry, Field, FieldOverlap),
-      ({}, {"pscale": a.pscale}, {"pscale": a.pscale, "layer": a.layer, "nclip": a.nclip, "rectangles": a.rectangles}),
+      ({}, {"pscale": a.pscale}, {"pscale": a.pscale, "nclip": a.nclip, "rectangles": a.rectangles}),
     ):
       rows = readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
       targetrows = readtable(referencefilename(filename), cls, extrakwargs=extrakwargs)

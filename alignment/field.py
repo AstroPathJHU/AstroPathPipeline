@@ -70,7 +70,6 @@ class FieldOverlap(Overlap):
     if overlap is not None:
       overlapkwargs = {
         "pscale": overlap.pscale,
-        "layer": overlap.layer,
         "nclip": overlap.nclip,
         "rectangles": overlap.rectangles,
         **{

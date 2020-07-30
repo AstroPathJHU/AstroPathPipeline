@@ -122,7 +122,7 @@ def rectangleoverlaplist_fromcsvs(dbloadfolder, *, selectrectangles=None, select
 
   rectangles  = readtable(dbload/(samp+"_rect.csv"), Rectangle, extrakwargs={"pscale": pscale})
   rectangles = RectangleList([r for r in rectangles if rectanglefilter(r)])
-  overlaps  = readtable(dbload/(samp+"_overlap.csv"), Overlap, filter=lambda row: row["p1"] in rectangles.rectangleindices and row["p2"] in rectangles.rectangleindices, extrakwargs={"pscale": pscale, "layer": layer, "rectangles": rectangles, "nclip": nclip})
+  overlaps  = readtable(dbload/(samp+"_overlap.csv"), Overlap, filter=lambda row: row["p1"] in rectangles.rectangleindices and row["p2"] in rectangles.rectangleindices, extrakwargs={"pscale": pscale, "rectangles": rectangles, "nclip": nclip})
   overlaps = OverlapList([o for o in overlaps if overlapfilter(o)])
   if onlyrectanglesinoverlaps:
     oldfilter = rectanglefilter
