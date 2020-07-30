@@ -1,5 +1,6 @@
 import abc, collections, dataclasses, datetime, methodtools, numpy as np
 from ..utilities import units
+from ..utilities.misc import dataclass_dc_init
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
@@ -30,9 +31,27 @@ class Rectangle(DataClassWithDistances):
   def shape(self):
     return np.array([self.w, self.h])
 
-@dataclasses.dataclass
+@dataclass_dc_init
 class RectangleWithLayer(Rectangle):
   layer: dataclasses.InitVar[int]
+  def __init__(self, *args, rectangle=None, **kwargs):
+    rectanglekwargs = {}
+    if rectangle is not None:
+      rectanglekwargs = {
+        "pscale": rectangle.pscale,
+        **{
+          field.name: getattr(rectangle, field.name)
+          for field in dataclasses.fields(type(rectangle))
+        }
+      }
+      if hasattr(rectangle, "layer"):
+        rectanglekwargs["layer"] = rectangle.layer
+    return self.__dc_init__(
+      *args,
+      **rectanglekwargs,
+      **kwargs,
+    )
+
   def __post_init__(self, pscale, readingfromfile, layer, *args, **kwargs):
     super().__post_init__(pscale=pscale, readingfromfile=readingfromfile, *args, **kwargs)
     self.layer = layer

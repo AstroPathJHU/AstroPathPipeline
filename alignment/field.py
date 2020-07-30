@@ -1,12 +1,12 @@
 import dataclasses, numpy as np
-from ..baseclasses.rectangle import Rectangle
+from ..baseclasses.rectangle import RectangleWithLayer
 from ..baseclasses.overlap import Overlap
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init
 from ..utilities.units.dataclasses import distancefield
 
 @dataclass_dc_init
-class Field(Rectangle):
+class Field(RectangleWithLayer):
   ix: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   iy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   gc: int
@@ -22,9 +22,8 @@ class Field(Rectangle):
   gx: int
   gy: int
 
-  def __init__(self, *args, rectangle=None, ixvec=None, pxvec=None, gxvec=None, primaryregionx=None, primaryregiony=None, **kwargs):
+  def __init__(self, *args, ixvec=None, pxvec=None, gxvec=None, primaryregionx=None, primaryregiony=None, **kwargs):
     veckwargs = {}
-    rectanglekwargs = {}
     if ixvec is not None:
       veckwargs["ix"], veckwargs["iy"] = ixvec
     if pxvec is not None:
@@ -32,22 +31,13 @@ class Field(Rectangle):
       (veckwargs["cov_x_x"], veckwargs["cov_x_y"]), (veckwargs["cov_x_y"], veckwargs["cov_y_y"]) = units.covariance_matrix(pxvec)
     if gxvec is not None:
       veckwargs["gx"], veckwargs["gy"] = gxvec
-    if rectangle is not None:
-      rectanglekwargs = {
-        "pscale": rectangle.pscale,
-        **{
-          field.name: getattr(rectangle, field.name)
-          for field in dataclasses.fields(type(rectangle))
-        }
-      }
     if primaryregionx is not None:
       veckwargs["mx1"], veckwargs["mx2"] = primaryregionx
     if primaryregiony is not None:
       veckwargs["my1"], veckwargs["my2"] = primaryregiony
-    return self.__dc_init__(
+    return super().__init__(
       *args,
       **veckwargs,
-      **rectanglekwargs,
       **kwargs,
     )
 

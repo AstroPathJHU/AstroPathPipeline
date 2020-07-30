@@ -444,6 +444,7 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   def readallrectangles(self):
-    return self.getlayout()[0]
+    rectangles = self.getlayout()[0]
+    return [RectangleWithLayer(rectangle=r, layer=self.layer, readingfromfile=False) for r in rectangles]
   def readalloverlaps(self):
     return self.getoverlaps()
