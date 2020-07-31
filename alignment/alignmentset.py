@@ -9,13 +9,14 @@ from ..utilities.tableio import readtable, writetable
 from .flatfield import meanimage
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
+from .rectangle import AlignmentRectangle
 from .stitch import ReadStitchResult, stitch
 
 class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, **kwargs):
+  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, filetype="flatWarp", **kwargs):
     """
     Directory structure should be
     root1/
@@ -30,8 +31,11 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     interactive: if this is true, then the script might try to prompt
                  you for input if things go wrong
     """
-    super().__init__(root1, root2, samp, **kwargs)
+    self.__filetype = filetype
     self.interactive = interactive
+    super().__init__(root1, root2, samp, **kwargs)
+    for r in self.rectangles:
+      r.setrectanglelist(self.rectangles)
 
     self.gpufftdict = None
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
@@ -74,26 +78,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
 
   def getDAPI(self, filetype="flatWarp", keeprawimages=False, mean_image=None, overwrite=True):
     self.logger.info("getDAPI")
-    if overwrite or not hasattr(self, "images"):
-      images = self.getrawlayers(filetype)
-
-      if keeprawimages:
-        self.rawimages = images.copy()
-        for rectangle, rawimage in zip(self.rectangles, self.rawimages):
-          rectangle.rawimage = rawimage
-
-      # apply the extra flattening
-
-      self.meanimage = mean_image if mean_image is not None else meanimage(images, logger=self.logger)
-
-      for image in images:
-        image[:] = np.rint(image / self.meanimage.flatfield)
-      self.images = images
-
-    if len(self.rectangles) != len(self.images):
-      raise ValueError(f"Mismatch in number of rectangles {len(self.rectangles)} and images {len(self.images)}")
-    for rectangle, image in zip(self.rectangles, self.images):
-      rectangle.image = image
+    self.images = [r.image for r in self.rectangles]
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -167,7 +152,11 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
       self.logger.warningglobal('Failed to create an OpenCL API, no GPU computation will be available!!')
       return None
 
-  overlaptype = AlignmentOverlap #can be overridden in subclasses
+  rectangletype = AlignmentRectangle
+  overlaptype = AlignmentOverlap
+  @property
+  def rectangleextrakwargs(self):
+    return {**super().rectangleextrakwargs, "layer": self.layer, "imagefolder": self.root2/self.SlideID, "filetype": self.__filetype, "width": self.fwidth, "height": self.fheight}
 
   def stitch(self, saveresult=True, **kwargs):
     result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)

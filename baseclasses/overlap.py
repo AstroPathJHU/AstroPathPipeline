@@ -103,7 +103,7 @@ class RectangleOverlapList(RectangleOverlapCollection):
   @property
   def overlaps(self): return self.__overlaps
 
-def rectangleoverlaplist_fromcsvs(dbloadfolder, *, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer_override=None):
+def rectangleoverlaplist_fromcsvs(dbloadfolder, *, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer_override=None, rectangletype=Rectangle, overlaptype=Overlap):
   dbload = pathlib.Path(dbloadfolder)
   samp = dbload.parent.name
   tmp = readtable(dbload/(samp+"_constants.csv"), Constant, extrakwargs={"pscale": 1})
@@ -120,9 +120,9 @@ def rectangleoverlaplist_fromcsvs(dbloadfolder, *, selectrectangles=None, select
   _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
   overlapfilter = lambda o: _overlapfilter(o) and o.p1 in rectangles.rectangleindices and o.p2 in rectangles.rectangleindices
 
-  rectangles  = readtable(dbload/(samp+"_rect.csv"), Rectangle, extrakwargs={"pscale": pscale})
+  rectangles  = readtable(dbload/(samp+"_rect.csv"), rectangletype, extrakwargs={"pscale": pscale})
   rectangles = RectangleList([r for r in rectangles if rectanglefilter(r)])
-  overlaps  = readtable(dbload/(samp+"_overlap.csv"), Overlap, filter=lambda row: row["p1"] in rectangles.rectangleindices and row["p2"] in rectangles.rectangleindices, extrakwargs={"pscale": pscale, "rectangles": rectangles, "nclip": nclip})
+  overlaps  = readtable(dbload/(samp+"_overlap.csv"), overlaptype, filter=lambda row: row["p1"] in rectangles.rectangleindices and row["p2"] in rectangles.rectangleindices, extrakwargs={"pscale": pscale, "rectangles": rectangles, "nclip": nclip})
   overlaps = OverlapList([o for o in overlaps if overlapfilter(o)])
   if onlyrectanglesinoverlaps:
     oldfilter = rectanglefilter
