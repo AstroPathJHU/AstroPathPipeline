@@ -5,12 +5,17 @@ from ..warping.utilities import WarpImage
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer, getExposureTimesByLayer, getRawAsHWL
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
-import scipy, os, glob, random, cv2, dataclasses
+import scipy, os, glob, random, cv2, dataclasses, platform
 
 #constants
-root1_dir = os.path.join(os.sep,'Volumes','E','Clinical_Specimen')
-root2_dir = os.path.join(os.sep,'Volumes','dat')
-fw01_root2_dir = os.path.join(os.sep,'Volumes','G','heshy','flatw')
+if platform.system()=='Darwin' : #the paths on my Mac
+    root1_dir = os.path.join(os.sep,'Volumes','E','Clinical_Specimen')
+    root2_dir = os.path.join(os.sep,'Volumes','dat')
+    fw01_root2_dir = os.path.join(os.sep,'Volumes','G','heshy','flatw')
+else :
+    root1_dir = os.path.join('W:','Clinical_Specimen')
+    root2_dir = 'X:'
+    fw01_root2_dir = os.path.join('Z:','heshy','flatw')
 #sample = 'M21_1'
 sample = 'M41_1'
 workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT'
@@ -19,7 +24,7 @@ if not os.path.isdir(workingdir_name) :
 flatfield_file = os.path.join('flatfield_batch_3-9_samples_22692_initial_images','flatfield.bin')
 layer = 1
 nclip=8
-overlaps=[500,600] #only load the 500th and 600th overlap to test
+overlaps=list(range(200)) #only load 200 overlaps to test
 
 #helper class for comparing overlap image exposure times
 @dataclasses.dataclass
@@ -75,7 +80,7 @@ class Fit :
                                               bounds=[(0,100)],
                                               options={'disp':True,
                                                        'ftol':1e-20,
-                                                       'gtol':1e-18,
+                                                       'gtol':1e-15,
                                                        'eps':2,
                                                        'maxiter':max_iter,
                                                        'iprint':self.print_every,
@@ -128,6 +133,7 @@ class Fit :
         #return np.abs(np.mean(p2im)-np.mean(p1im))/(p1im.shape[0]*p1im.shape[1])
 
 #first plot all of the exposure times
+print('Plotting all exposure times....')
 with cd(os.path.join(root2_dir,sample)) :
     all_rfps = [os.path.join(root2_dir,sample,fn) for fn in glob.glob('*.Data.dat')]
 exp_times = {}
@@ -145,9 +151,11 @@ plt.close()
 max_exp_times = getSampleMaxExposureTimesByLayer(root1_dir,sample)
 
 #make the alignmentset from the raw files
+print('Making an AlignmentSet from the raw files....')
 a = AlignmentSetFromXML(root1_dir,root2_dir,sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,nclip=nclip,readlayerfile=False,layer=layer)
 a.getDAPI(filetype='raw')
 #correct the rectangle images with the flatfield file
+print('Correcting and updating rectangle images....')
 flatfield_layer = (getRawAsHWL(flatfield_file,1004,1344,35,dtype=np.float64))[:,:,layer-1]
 warp_images = []
 for ri,r in enumerate(a.rectangles) :
@@ -167,8 +175,10 @@ for olap in a.overlaps :
     if p2et-p1et!=0. :
         etolaps.append(ETOverlap(olap,p1et,p2et))
 #sort the overlaps so those with the largest exposure time differences are first
+print(f'Sorting list of {len(etolaps)} aligned overlaps with different exposure times....')
 etolaps.sort(key=lambda x: abs(x.et_diff), reverse=True)
 #save the overlay images for overlaps with the 20 greatest and 20 smallest differences in exposure time
+print('Saving rawfile pre-correction overlap overlays....')
 for io,eto in enumerate(etolaps[:min(20,len(etolaps))],start=1) :
     msg = f'exposure time diff. = {eto.et_diff:.2f}; sum(abs(p2-p1))/(total_pixels) = '
     msg+= f'{np.sum(np.abs(eto.p2_im-eto.p1_im))/(eto.p1_im.shape[0]*eto.p1_im.shape[1]):.2f}'
@@ -185,11 +195,12 @@ for io,eto in reversed(list(enumerate(etolaps[-min(20,len(etolaps)):],start=1)))
     plt.imshow(img)
     plt.title(msg)
     with cd(workingdir_name) :
-        plt.savefig(f'raw_overlap_overlays_least_different_{io}.png')
+        plt.savefig(f'raw_overlap_overlays_least_different_{abs(io-min(20,len(etolaps))-1)}.png')
     plt.close()
 #shuffle the overlaps so they're not ordered
 random.shuffle(etolaps)
 #do a fit to half the overlaps
+print('Doing first fit to raw file overlaps....')
 fit_1 = Fit(etolaps[:int(len(etolaps)/2)],'raw','1')
 fit_1.doFit(initial_offset=50)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
@@ -203,7 +214,8 @@ plt.close()
 fit_1.saveCostReduxes()
 fit_1.saveCorrectedImages(25)
 #do a fit to the other half of the overlaps
-fit_2 = Fit(etolaps[:int(len(etolaps)/2)],'raw','2')
+print('Doing second fit to raw file overlaps....')
+fit_2 = Fit(etolaps[int(len(etolaps)/2):],'raw','2')
 fit_2.doFit(initial_offset=30)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
 ax[0].plot(list(range(1,len(fit_2.costs)+1)),fit_2.costs,marker='*')
@@ -217,6 +229,7 @@ fit_2.saveCostReduxes()
 fit_2.saveCorrectedImages(25)
 
 #do all of the above except with an alignmentset made from the .fw01 files instead
+print('Making an AlignmentSet from the .fw01 files....')
 a = AlignmentSet(root1_dir,fw01_root2_dir,sample)
 a.getDAPI(filetype='flatWarp')
 a.align(write_result=False)
@@ -232,6 +245,7 @@ for olap in a.overlaps :
 #sort the overlaps so those with the largest exposure time differences are first
 etolaps.sort(key=lambda x: abs(x.et_diff), reverse=True)
 #save the overlay images for overlaps with the 20 greatest and 20 smallest differences in exposure time
+print('Saving .fw01 pre-correction overlay images....')
 for io,eto in enumerate(etolaps[:min(20,len(etolaps))],start=1) :
     msg = f'exposure time diff. = {eto.et_diff:.2f}; sum(abs(p2-p1))/(total_pixels) = '
     msg+= f'{np.sum(np.abs(eto.p2_im-eto.p1_im))/(eto.p1_im.shape[0]*eto.p1_im.shape[1]):.2f}'
@@ -248,11 +262,12 @@ for io,eto in reversed(list(enumerate(etolaps[-min(20,len(etolaps)):],start=1)))
     plt.imshow(img)
     plt.title(msg)
     with cd(workingdir_name) :
-        plt.savefig(f'fw_overlap_overlays_least_different_{io}.png')
+        plt.savefig(f'fw_overlap_overlays_least_different_{abs(io-min(20,len(etolaps))-1)}.png')
     plt.close()
 #shuffle the overlaps so they're not ordered
 random.shuffle(etolaps)
 #do a fit to half the overlaps
+print('Doing first fit to .fw01 overlaps....')
 fit_1 = Fit(etolaps[:int(len(etolaps)/2)],'fw','1')
 fit_1.doFit(initial_offset=50)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
@@ -266,7 +281,8 @@ plt.close()
 fit_1.saveCostReduxes()
 fit_1.saveCorrectedImages(25)
 #do a fit to the other half of the overlaps
-fit_2 = Fit(etolaps[:int(len(etolaps)/2)],'fw','2')
+print('Doing second fit to .fw01 overlaps....')
+fit_2 = Fit(etolaps[int(len(etolaps)/2):],'fw','2')
 fit_2.doFit(initial_offset=30)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
 ax[0].plot(list(range(1,len(fit_2.costs)+1)),fit_2.costs,marker='*')
@@ -278,3 +294,5 @@ with cd(workingdir_name) :
 plt.close()
 fit_2.saveCostReduxes()
 fit_2.saveCorrectedImages(25)
+
+print('Done!')
