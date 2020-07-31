@@ -13,9 +13,9 @@ if platform.system()=='Darwin' : #the paths on my Mac
     root2_dir = os.path.join(os.sep,'Volumes','dat')
     fw01_root2_dir = os.path.join(os.sep,'Volumes','G','heshy','flatw')
 else :
-    root1_dir = os.path.join('W:','Clinical_Specimen')
-    root2_dir = 'X:'
-    fw01_root2_dir = os.path.join('Z:','heshy','flatw')
+    root1_dir = r"W:\\Clinical_Specimen"
+    root2_dir = r"X:\\"
+    fw01_root2_dir = r"Z:\\heshy\\flatw"
 #sample = 'M21_1'
 sample = 'M41_1'
 workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT'
