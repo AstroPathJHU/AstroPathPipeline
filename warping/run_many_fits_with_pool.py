@@ -37,7 +37,7 @@ def getListOfJobCommands(args) :
     #find the valid octets in the samples and order them by the # of their center rectangle
     octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir_name
     if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
-        all_octets_dict = readOctetsFromFile(octet_run_dir,args.metadata_top_dir,args.sample,args.layer)
+        all_octets_dict = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
     else :
         all_octets_dict = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.workingdir_name,args.flatfield_file,
                                            args.njobs,args.layer)
