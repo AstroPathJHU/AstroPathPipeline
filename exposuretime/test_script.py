@@ -24,7 +24,7 @@ if not os.path.isdir(workingdir_name) :
 flatfield_file = os.path.join('flatfield_batch_3-9_samples_22692_initial_images','flatfield.bin')
 layer = 1
 nclip=8
-overlaps=list(range(200)) #only load 200 overlaps to test
+#overlaps=list(range(200)) #only load 200 overlaps to test
 
 #helper class for comparing overlap image exposure times
 @dataclasses.dataclass
@@ -152,7 +152,8 @@ max_exp_times = getSampleMaxExposureTimesByLayer(root1_dir,sample)
 
 #make the alignmentset from the raw files
 print('Making an AlignmentSet from the raw files....')
-a = AlignmentSetFromXML(root1_dir,root2_dir,sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,nclip=nclip,readlayerfile=False,layer=layer)
+#a = AlignmentSetFromXML(root1_dir,root2_dir,sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,nclip=nclip,readlayerfile=False,layer=layer)
+a = AlignmentSetFromXML(root1_dir,root2_dir,sample,nclip=nclip,readlayerfile=False,layer=layer)
 a.getDAPI(filetype='raw')
 #correct the rectangle images with the flatfield file
 print('Correcting and updating rectangle images....')
