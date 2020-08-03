@@ -109,7 +109,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
               new_fftc = new_fft.compile(self.gputhread)
               self.gpufftdict[cutimages_shapes[0]] = new_fftc
 
-  def updateRectangleImages(self,imgs,usewarpedimages=True) :
+  def updateRectangleImages(self,imgs,usewarpedimages=True,correct_with_meanimage=True) :
     """
     Updates the "image" variable in each rectangle based on a dictionary of image layers
     imgs            = list of WarpImages to use for update
@@ -120,6 +120,8 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
         thisupdateimg=(img.warped_image).get()
       else :
         thisupdateimg=(img.raw_image).get()
+      if correct_with_meanimage :
+        thisupdateimg=(np.rint(thisupdateimg/self.mean_image.flatfield)).astype(thisupdateimg.dtype)
       if img.rectangle_list_index!=-1 : #if the image comes with its index in the list of rectangles it can be directly updated
         np.copyto(self.rectangles[img.rectangle_list_index].image,thisupdateimg,casting='no')
       else : #otherwise all the rectangles have to be searched

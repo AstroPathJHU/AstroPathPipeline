@@ -182,7 +182,7 @@ class WarpFitter :
         #then warp the images
         self.warpset.warpLoadedImages(skip_corners=self.skip_corners)
         #reload the (newly-warped) images into the alignment set
-        self.alignset.updateRectangleImages(self.warpset.images_no_corners if self.skip_corners else self.warpset.images)
+        self.alignset.updateRectangleImages(self.warpset.images_no_corners if self.skip_corners else self.warpset.images,correct_with_meanimage=False)
         #check the warp amounts to see if the sample should be realigned
         rad_warp = self.warpset.warp.maxRadialDistortAmount(warp_pars)
         tan_warp = self.warpset.warp.maxTangentialDistortAmount(warp_pars)
@@ -399,13 +399,13 @@ class WarpFitter :
         self.skip_corners = True
         self.cost_norm = self.__getCostNormalization()
         #start by aligning the raw, unwarped images and getting their shift comparison information/images and the raw p1 images
-        self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
+        self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False,correct_with_meanimage=False)
         rawcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
         raw_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         raw_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
         #next warp and align the images with the best fit warp and do the same thing
         self.warpset.warpLoadedImages()
-        self.alignset.updateRectangleImages(self.warpset.images)
+        self.alignset.updateRectangleImages(self.warpset.images,correct_with_meanimage=False)
         bestcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
         warped_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         warped_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
