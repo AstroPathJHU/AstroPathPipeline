@@ -41,6 +41,8 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
 
   @property
   def logmodule(self): return "align"
+  @property
+  def filetype(self): return self.__filetype
 
   def align(self,*,skip_corners=False,return_on_invalid_result=False,warpwarnings=False,**kwargs):
     self.logger.info("starting alignment")
@@ -155,7 +157,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   overlaptype = AlignmentOverlap
   @property
   def rectangleextrakwargs(self):
-    return {**super().rectangleextrakwargs, "layer": self.layer, "imagefolder": self.root2/self.SlideID, "filetype": self.__filetype, "width": self.fwidth, "height": self.fheight, "logger": self.logger}
+    return {**super().rectangleextrakwargs, "logger": self.logger}
 
   def stitch(self, saveresult=True, **kwargs):
     result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)

@@ -6,7 +6,7 @@ from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Constant, RectangleFile
 from .logging import getlogger
-from .rectangle import Rectangle, rectangleoroverlapfilter
+from .rectangle import Rectangle, rectangleoroverlapfilter, RectangleWithImage
 from .overlap import Overlap, RectangleOverlapCollection
 
 @dataclass_dc_init(frozen=True)
@@ -254,11 +254,15 @@ class SampleThatReadsOverlaps(SampleBase):
 class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOverlapCollection):
   @abc.abstractmethod
   def readallrectangles(self): pass
+  rectangletype = RectangleWithImage
   @property
   def rectangleextrakwargs(self):
-    return {"pscale": self.pscale}
+    return {"pscale": self.pscale, "imagefolder": self.root2/self.SlideID, "layer": self.layer, "filetype": self.filetype, "width": self.fwidth, "height": self.fheight}
   @abc.abstractmethod
   def readalloverlaps(self): pass
+  @abc.abstractmethod
+  def filetype(self):
+    pass
   @property
   def overlapextrakwargs(self):
     return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}

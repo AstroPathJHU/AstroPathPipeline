@@ -66,6 +66,9 @@ class RectangleWithImage(RectangleWithLayer):
     self.__width = width
     self.__height = height
 
+  @property
+  def imageshape(self): return units.pixels(self.__height, pscale=self.pscale), units.pixels(self.__width, pscale=self.pscale)
+
   #do not override this property
   #override getimage() instead and call super().getimage()
   @methodtools.lru_cache()
@@ -92,7 +95,7 @@ class RectangleWithImage(RectangleWithLayer):
     else :
       raise ValueError(f"requested file type {self.__filetype} not recognized")
 
-    image = np.ndarray(shape=(units.pixels(self.__height, pscale=self.pscale), units.pixels(self.__width, pscale=self.pscale)), dtype=np.uint16)
+    image = np.ndarray(shape=self.imageshape, dtype=np.uint16)
 
     if self.__readlayerfile:
       shape = units.pixels((self.__height, self.__width), pscale=self.pscale)

@@ -5,12 +5,13 @@ from ..utilities import units
 from .dustspeck import DustSpeckFinder
 
 class BadRegionFinderSample(ReadRectangles):
+  @property
+  def filetype(self): return "flatWarp"
   @abc.abstractmethod
   def makebadregionfinder(self, *args, **kwargs): pass
 
   def run(self, *, plotsdir=None, show=False, **kwargs):
-    rawimages = self.getrawlayers("flatWarp")
-    result = np.empty(shape=rawimages.shape, dtype=bool)
+    result = np.empty(shape=(len(self.rectangles), *self.rectangles[0].imageshape), dtype=bool)
 
     if plotsdir is not None:
       plotsdir = pathlib.Path(plotsdir)
@@ -22,9 +23,11 @@ class BadRegionFinderSample(ReadRectangles):
         showkwargs[name] = kwargs.pop(name)
 
     nbad = 0
-    for i, (r, rawimage) in enumerate(zip(self.rectangles, rawimages)):
-      self.logger.info(f"looking for bad regions in HPF {i+1}/{len(self.rectangles)}")
-      f = self.makebadregionfinder(rawimage, logger=self.logger)
+    for i, r in enumerate(self.rectangles):
+      self.logger.info(f"loading image for HPF {i+1}/{len(self.rectangles)}")
+      image = r.image
+      self.logger.info("looking for bad regions")
+      f = self.makebadregionfinder(image, logger=self.logger)
       result[i] = f.badregions(**kwargs)
       if np.any(result[i]):
         nbad += 1
