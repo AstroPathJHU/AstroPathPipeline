@@ -6,16 +6,16 @@ from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.sample import FlatwSampleBase, ReadRectangles, ReadRectanglesFromXML
 from ..utilities import units
 from ..utilities.tableio import readtable, writetable
-from .flatfield import meanimage
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
+from .rectangle import AlignmentRectangle
 from .stitch import ReadStitchResult, stitch
 
 class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, **kwargs):
+  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, filetype="flatWarp", **kwargs):
     """
     Directory structure should be
     root1/
@@ -30,19 +30,24 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     interactive: if this is true, then the script might try to prompt
                  you for input if things go wrong
     """
-    super().__init__(root1, root2, samp, **kwargs)
+    self.__filetype = filetype
     self.interactive = interactive
+    super().__init__(root1, root2, samp, **kwargs)
+    for r in self.rectangles:
+      r.setrectanglelist(self.rectangles)
 
     self.gpufftdict = None
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
 
   @property
   def logmodule(self): return "align"
+  @property
+  def filetype(self): return self.__filetype
 
   def align(self,*,skip_corners=False,return_on_invalid_result=False,warpwarnings=False,**kwargs):
     self.logger.info("starting alignment")
 
-    sum_mse = 0.; norm=0.
+    sum_mse = 0.
     done = set()
 
     for i, overlap in enumerate(self.overlaps, start=1):
@@ -55,7 +60,6 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
         result = overlap.align(gputhread=self.gputhread, gpufftdict=self.gpufftdict, **kwargs)
       done.add((overlap.p1, overlap.p2))
 
-      norm+=((overlap.cutimages[0]).shape[0])*((overlap.cutimages[0]).shape[1])
       if result is not None and result.exit == 0: 
         sum_mse+=result.mse[2]
       else :
@@ -71,30 +75,11 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
           sum_mse+=1e10
 
     self.logger.info("finished align loop for "+self.SlideID)
-    return sum_mse/norm
+    return sum_mse
 
-  def getDAPI(self, filetype="flatWarp", keeprawimages=False, mean_image=None, overwrite=True):
+  def getDAPI(self, keeprawimages=False, mean_image=None, overwrite=True):
     self.logger.info("getDAPI")
-    if overwrite or not hasattr(self, "images"):
-      images = self.getrawlayers(filetype)
-
-      if keeprawimages:
-        self.rawimages = images.copy()
-        for rectangle, rawimage in zip(self.rectangles, self.rawimages):
-          rectangle.rawimage = rawimage
-
-      # apply the extra flattening
-
-      self.meanimage = mean_image if mean_image is not None else meanimage(images, logger=self.logger)
-
-      for image in images:
-        image[:] = np.rint(image / self.meanimage.flatfield)
-      self.images = images
-
-    if len(self.rectangles) != len(self.images):
-      raise ValueError(f"Mismatch in number of rectangles {len(self.rectangles)} and images {len(self.images)}")
-    for rectangle, image in zip(self.rectangles, self.images):
-      rectangle.image = image
+    self.images = [r.image for r in self.rectangles]
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -113,16 +98,20 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   def updateRectangleImages(self,imgs,usewarpedimages=True) :
     """
     Updates the "image" variable in each rectangle based on a dictionary of image layers
-    imgs = list of WarpImages to use for update
+    imgs            = list of WarpImages to use for update
+    usewarpedimages = if True, warped rather than raw images will be read
     """
-    for r in self.rectangles :
+    for img in imgs :
       if usewarpedimages :
-        thisupdateimg=[(img.warped_image).get() for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
+        thisupdateimg=(img.warped_image).get()
       else :
-        thisupdateimg=[(img.raw_image).get() for img in imgs if img.rawfile_key==r.file.rstrip('.im3')]
-      assert len(thisupdateimg)<2
-      if len(thisupdateimg)==1 :
-        np.copyto(r.image,thisupdateimg[0],casting='no')
+        thisupdateimg=(img.raw_image).get()
+      if img.rectangle_list_index!=-1 : #if the image comes with its index in the list of rectangles it can be directly updated
+        np.copyto(self.rectangles[img.rectangle_list_index].image,thisupdateimg,casting='no')
+      else : #otherwise all the rectangles have to be searched
+        thisrect = [r for r in self.rectangles if img.rawfile_key==r.file.rstrip('.im3')]
+        assert len(thisrect)==1 
+        np.copyto(thisrect[0].image,thisupdateimg,casting='no')
 
   def getOverlapComparisonImagesDict(self) :
     """
@@ -130,7 +119,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     """
     overlap_shift_comparisons = {}
     for o in self.overlaps :
-      overlap_shift_comparisons[o.getShiftComparisonImageCodeNameTuple()]=o.getShiftComparisonImages()
+      overlap_shift_comparisons[o.getShiftComparisonDetailTuple()]=o.getShiftComparisonImages()
     return overlap_shift_comparisons
 
   def __getGPUthread(self, interactive, force) :
@@ -164,7 +153,11 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
       self.logger.warningglobal('Failed to create an OpenCL API, no GPU computation will be available!!')
       return None
 
-  overlaptype = AlignmentOverlap #can be overridden in subclasses
+  rectangletype = AlignmentRectangle
+  overlaptype = AlignmentOverlap
+  @property
+  def rectangleextrakwargs(self):
+    return {**super().rectangleextrakwargs, "logger": self.logger}
 
   def stitch(self, saveresult=True, **kwargs):
     result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)

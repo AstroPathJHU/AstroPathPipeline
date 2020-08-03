@@ -1,12 +1,12 @@
 import abc, contextlib, dataclasses, datetime, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re
 
 from ..utilities import units
-from ..utilities.misc import dataclass_dc_init, floattoint, memmapcontext, tiffinfo
+from ..utilities.misc import dataclass_dc_init, floattoint, tiffinfo
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Constant, RectangleFile
 from .logging import getlogger
-from .rectangle import Rectangle, rectangleoroverlapfilter
+from .rectangle import Rectangle, rectangleoroverlapfilter, RectangleWithImage
 from .overlap import Overlap, RectangleOverlapCollection
 
 @dataclass_dc_init(frozen=True)
@@ -248,13 +248,24 @@ class FlatwSampleBase(SampleBase):
   def root1(self): return self.root
 
 class SampleThatReadsOverlaps(SampleBase):
+  rectangletype = Rectangle
   overlaptype = Overlap #can be overridden in subclasses
 
 class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOverlapCollection):
   @abc.abstractmethod
   def readallrectangles(self): pass
+  rectangletype = RectangleWithImage
+  @property
+  def rectangleextrakwargs(self):
+    return {"pscale": self.pscale, "imagefolder": self.root2/self.SlideID, "layer": self.layer, "filetype": self.filetype, "width": self.fwidth, "height": self.fheight}
   @abc.abstractmethod
   def readalloverlaps(self): pass
+  @abc.abstractmethod
+  def filetype(self):
+    pass
+  @property
+  def overlapextrakwargs(self):
+    return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}
 
   def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer=1, readlayerfile=True, **kwargs):
     self.__layer = layer
@@ -273,57 +284,6 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
     if onlyrectanglesinoverlaps:
       self.__rectangles = [r for r in self.rectangles if self.selectoverlaprectangles(r)]
 
-  def getrawlayers(self, filetype):
-    self.logger.info("getrawlayers")
-    if filetype=="flatWarp" :
-      if self.__readlayerfile :
-        ext = f".fw{self.layer:02d}"
-      else:
-        ext = ".fw"
-    elif filetype=="camWarp" :
-      if self.__readlayerfile:
-        ext = f".camWarp_layer{self.layer:02d}"
-      else:
-        ext = ".camWarp"
-    elif filetype=="raw" :
-      if self.__readlayerfile:
-        ext = f".raw_layer{self.layer:02d}"
-      else:
-        ext = ".raw"
-    else :
-      raise ValueError(f"requested file type {filetype} not recognized by getrawlayers")
-    path = self.root2/self.SlideID
-
-    rawimages = np.ndarray(shape=(len(self.rectangles), units.pixels(self.fheight, pscale=self.pscale), units.pixels(self.fwidth, pscale=self.pscale)), dtype=np.uint16)
-
-    if not self.rectangles:
-      raise IOError(1, "didn't find any rows in the rectangles table for "+self.SlideID)
-
-    if self.__readlayerfile:
-      shape = units.pixels((self.fheight, self.fwidth), pscale=self.pscale)
-      transpose = (0, 1)
-      slc = slice(None), slice(None)
-    else:
-      shape = units.pixels((self.nlayers, self.fwidth, self.fheight), pscale=self.pscale, power=[0, 1, 1])
-      transpose = (2, 1, 0)
-      slc = slice(None), slice(None), self.layer-1
-
-    for i, rectangle in enumerate(self.rectangles):
-      filename = path/rectangle.file.replace(".im3", ext)
-      self.logger.info(f"loading rectangle {i+1}/{len(self.rectangles)}")
-      with open(filename, "rb") as f:
-        #use fortran order, like matlab!
-        with memmapcontext(
-          f,
-          dtype=np.uint16,
-          shape=tuple(shape),
-          order="F",
-          mode="r"
-        ) as memmap:
-          rawimages[i] = memmap.transpose(transpose)[slc]
-
-    return rawimages
-
   @property
   def overlaps(self): return self.__overlaps
   @property
@@ -334,9 +294,9 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
 
 class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
   def readallrectangles(self):
-    return self.readcsv("rect", Rectangle, extrakwargs={"pscale": self.pscale})
+    return self.readcsv("rect", self.rectangletype, extrakwargs=self.rectangleextrakwargs)
   def readalloverlaps(self):
-    return self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
+    return self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs=self.overlapextrakwargs)
 
 class XMLLayoutReader(SampleThatReadsOverlaps):
   @methodtools.lru_cache()
@@ -434,7 +394,6 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
             x2=r2.x,
             y2=r2.y,
             tag=tag,
-            layer=self.layer,
             nclip=self.nclip,
             rectangles=(r1, r2),
             pscale=self.pscale,
@@ -445,6 +404,7 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   def readallrectangles(self):
-    return self.getlayout()[0]
+    rectangles = self.getlayout()[0]
+    return [self.rectangletype(rectangle=r, readingfromfile=False, **self.rectangleextrakwargs) for r in rectangles]
   def readalloverlaps(self):
     return self.getoverlaps()

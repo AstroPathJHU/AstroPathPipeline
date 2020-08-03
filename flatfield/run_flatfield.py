@@ -1,10 +1,9 @@
 #imports
 from .flatfield_producer import FlatfieldProducer
-from .utilities import flatfield_logger
+from .utilities import flatfield_logger, sampleNameFromFilepath
 from .config import CONST 
 from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.misc import cd, split_csv_to_list
-from .utilities import sampleNameFromFilepath
 from argparse import ArgumentParser
 import os, glob, random, sys
 
@@ -20,7 +19,7 @@ def checkArgs(a) :
     if a.selected_pixel_cut<0.0 or a.selected_pixel_cut>1.0 :
         raise RuntimeError(f'ERROR: selected pixel cut fraction {a.selected_pixel_cut} must be between 0 and 1!')
     #make sure any specified directory paths exist
-    dirpath_args = [a.prior_run_dir,a.dbload_top_dir,a.threshold_file_dir,a.rawfile_top_dir]
+    dirpath_args = [a.prior_run_dir,a.metadata_top_dir,a.threshold_file_dir,a.rawfile_top_dir]
     for dp in dirpath_args :
         if dp is not None and not os.path.isdir(dp) :
             raise RuntimeError(f'ERROR: Directory {dp} does not exist!')
@@ -28,9 +27,9 @@ def checkArgs(a) :
     if a.sample_names is not None and a.rawfile_top_dir is None :
         raise RuntimeError('ERROR: If sample names are given a rawfile location must also be specified through --rawfile_top_dir!')
     #if the user wants to calculate the thresholds, or exclude the edge HPFs, or they want to apply masking and haven't specified a threshold file directory,
-    # then they or (not a.allow_edge_HPFs) need to supply the dbload directory
-    if (a.mode=='calculate_thresholds' or (not a.allow_edge_HPFs) or (a.threshold_file_dir is None and not a.skip_masking)) and a.dbload_top_dir is None :
-        msg='ERROR: calculating background thresholds, or excluding edge HPFs, needs a dbload directory location specified through --dbload_top_dir!'
+    # then they need to supply the metadata directory
+    if (a.mode=='calculate_thresholds' or (not a.allow_edge_HPFs) or (a.threshold_file_dir is None and not a.skip_masking)) and a.metadata_top_dir is None :
+        msg='ERROR: calculating background thresholds, or excluding edge HPFs, needs a metadata directory location specified through --metadata_top_dir!'
         raise RuntimeError(msg)
     #if the user wants to apply a previously-calculated flatfield, the flatfield itself, and rawfile log, both have to exist in the prior run dir
     if a.mode=='apply_flatfield' :  
@@ -107,14 +106,14 @@ def getFilepathsAndSampleNamesToRun(a) :
         if previously_run_filepaths[0].startswith(os.sep) :
             rawfile_top_dir=os.path.join(os.sep,rawfile_top_dir)
         rawfile_top_dir = os.path.join(rawfile_top_dir,'')
-    #make sure the rawfile (and dbload, if thresholds will be calculated) directories for each sample all exist first
+    #make sure the rawfile (and metadata, if thresholds will be calculated) directories for each sample all exist first
     will_calculate_thresholds = (not a.skip_masking) and a.threshold_file_dir is None
     for sn in all_sample_names :
         if not os.path.isdir(os.path.join(rawfile_top_dir,sn)) :
             raise ValueError(f'ERROR: sample directory {os.path.join(rawfile_top_dir,sn)} does not exist!')
         if will_calculate_thresholds or (not a.allow_edge_HPFs) :
-            if not os.path.isdir(os.path.join(a.dbload_top_dir,sn,'dbload')) :
-                raise ValueError(f"ERROR: dbload directory {os.path.join(a.dbload_top_dir,sn,'dbload')} for sample {sn} does not exist!")
+            if not os.path.isdir(os.path.join(a.metadata_top_dir,sn,'im3','xml')) :
+                raise ValueError(f"ERROR: metadata directory {os.path.join(a.metadata_top_dir,sn,'im3','xml')} for sample {sn} does not exist!")
     #get the (sorted) full list of file names in each sample to choose from
     for sn in all_sample_names :
         #get the list of all the filenames for this sample
@@ -207,8 +206,8 @@ def main() :
                                                      'how many images from the sample set should be used, how to choose them, and where to find them')
     file_selection_group.add_argument('--rawfile_top_dir',
                                       help='Path to directory containing each of the [samplename] directories with raw files in them')
-    file_selection_group.add_argument('--dbload_top_dir',
-                                      help="""Path to directory containing each of the [samplename]/dbload directories with *.csv files in them
+    file_selection_group.add_argument('--metadata_top_dir',
+                                      help="""Path to directory containing each of the [samplename]/im3/xml directories
                                       (Needed to locate HPFs on the edge of the tissue)""")
     file_selection_group.add_argument('--rawfile_ext',     default='.Data.dat',
                                       help='Extension of raw files to load (default is ".Data.dat")')
@@ -228,6 +227,8 @@ def main() :
                                   help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
     run_option_group.add_argument('--other_runs_to_exclude',       default='',  type=split_csv_to_list,
                                   help='Comma-separated list of additional, previously-run, working directories whose filepaths should be excluded')
+    run_option_group.add_argument('--normalize',                   action='store_true',
+                                    help='Add this flag to divide image flux by (exposure time)/(max exposure time in the sample) layer-by-layer')
     args = parser.parse_args()
     #make sure the command line arguments make sense
     checkArgs(args)
@@ -236,9 +237,9 @@ def main() :
     if args.mode=='check_run' :
         sys.exit()
     #get the image file dimensions from the .xml file
-    dims = getImageHWLFromXMLFile(filepaths_to_run[0][:filepaths_to_run[0].find(sampleNameFromFilepath(filepaths_to_run[0]))],sample_names_to_run[0])
+    dims = getImageHWLFromXMLFile(args.metadata_top_dir,sample_names_to_run[0])
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.dbload_top_dir,args.workingdir_name,args.skip_masking)
+    ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.metadata_top_dir,args.workingdir_name,args.skip_masking,args.normalize)
     #write out the text file of all the raw file paths that will be run
     ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
     if args.mode=='choose_image_files' :
@@ -247,7 +248,7 @@ def main() :
     if not args.skip_masking :
         if args.threshold_file_dir is not None :
             ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
-        elif args.dbload_top_dir is not None :
+        elif args.metadata_top_dir is not None :
             ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
     if args.mode in ['make_flatfield', 'apply_flatfield'] :
         #mask and stack images together

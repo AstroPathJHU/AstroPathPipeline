@@ -40,9 +40,9 @@ class TestAlignment(TestBaseSaveOutput):
     for filename, cls, extrakwargs in (
       ("M21_1_imstat.csv", ImageStats, {"pscale": a.pscale}),
       ("M21_1_align.csv", AlignmentResult, {"pscale": a.pscale}),
-      ("M21_1_fields.csv", Field, {"pscale": a.pscale}),
+      ("M21_1_fields.csv", Field, {"pscale": a.pscale, "layer": a.layer}),
       ("M21_1_affine.csv", AffineEntry, {}),
-      ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "layer": a.layer, "nclip": a.nclip}),
+      ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "nclip": a.nclip}),
     ):
       rows = readtable(thisfolder/"data"/"M21_1"/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
       targetrows = readtable(thisfolder/"reference"/"alignment"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
@@ -57,7 +57,7 @@ class TestAlignment(TestBaseSaveOutput):
       with open(ref) as fref, open(log) as fnew:
         refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
         newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
-        self.assertEqual(newcontents, refcontents)
+        self.assertEqual(refcontents, newcontents)
 
   def testAlignmentFastUnits(self):
     with units.setup_context("fast"):
@@ -107,7 +107,7 @@ class TestAlignment(TestBaseSaveOutput):
     for filename, cls, extrakwargs in itertools.zip_longest(
       a.stitchfilenames,
       (AffineEntry, Field, FieldOverlap),
-      ({}, {"pscale": a.pscale}, {"pscale": a.pscale, "layer": a.layer, "nclip": a.nclip, "rectangles": a.rectangles}),
+      ({}, {"pscale": a.pscale, "layer": a.layer}, {"pscale": a.pscale, "nclip": a.nclip, "rectangles": a.rectangles}),
     ):
       rows = readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
       targetrows = readtable(referencefilename(filename), cls, extrakwargs=extrakwargs)
@@ -301,6 +301,6 @@ class TestAlignment(TestBaseSaveOutput):
     kwargs = {"selectrectangles": [17]}
     a1 = AlignmentSet(*args, **kwargs)
     a2 = AlignmentSet(*args, **kwargs, readlayerfile=False, layer=1)
-    i1 = a1.getrawlayers("flatWarp")
-    i2 = a2.getrawlayers("flatWarp")
+    i1 = a1.rectangles[0].image
+    i2 = a2.rectangles[0].image
     np.testing.assert_array_equal(i1, i2)
