@@ -86,16 +86,16 @@ class Fit :
         self.result = scipy.optimize.minimize(self.cost,
                                               [initial_offset],
                                               method='L-BFGS-B',
-                                              jac='3-point',
+                                              jac='2-point',
                                               bounds=[(0,100)],
                                               options={'disp':True,
                                                        'ftol':1e-20,
-                                                       'gtol':1e-8,
+                                                       'gtol':1e-6,
                                                        'eps':2,
                                                        'maxiter':max_iter,
                                                        'iprint':self.print_every,
                                                        'maxls':2*self.n_olaps,
-                                                       'finite_diff_rel_step':[0.2],
+                                                       #'finite_diff_rel_step':[0.2],
                                                       }
                                              )
         print(f'Done! Minimization terminated with exit {self.result.message}')
