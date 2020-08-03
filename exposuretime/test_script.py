@@ -90,7 +90,7 @@ class Fit :
                                               bounds=[(0,100)],
                                               options={'disp':True,
                                                        'ftol':1e-20,
-                                                       'gtol':1e-15,
+                                                       'gtol':1e-8,
                                                        'eps':2,
                                                        'maxiter':max_iter,
                                                        'iprint':self.print_every,
