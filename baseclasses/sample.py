@@ -257,7 +257,18 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
   rectangletype = RectangleWithImage
   @property
   def rectangleextrakwargs(self):
-    return {"pscale": self.pscale, "imagefolder": self.root2/self.SlideID, "layer": self.layer, "filetype": self.filetype, "width": self.fwidth, "height": self.fheight}
+    kwargs = {
+      "pscale": self.pscale,
+      "imagefolder": self.root2/self.SlideID,
+      "layer": self.layer,
+      "filetype": self.filetype,
+      "readlayerfile": self.__readlayerfile,
+      "width": self.fwidth,
+      "height": self.fheight,
+    }
+    if not self.__readlayerfile:
+      kwargs["nlayers"] = self.nlayers
+    return kwargs
   @abc.abstractmethod
   def readalloverlaps(self): pass
   @abc.abstractmethod

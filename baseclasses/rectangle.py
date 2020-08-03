@@ -58,13 +58,16 @@ class RectangleWithLayer(Rectangle):
     self.layer = layer
 
 class RectangleWithImage(RectangleWithLayer):
-  def __init__(self, *args, imagefolder, filetype, width, height, readlayerfile=True, **kwargs):
+  def __init__(self, *args, imagefolder, filetype, width, height, readlayerfile=True, nlayers=None, **kwargs):
     super().__init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__filetype = filetype
     self.__readlayerfile = readlayerfile
     self.__width = width
     self.__height = height
+    self.__nlayers = nlayers
+    if nlayers is None and not readlayerfile:
+      raise TypeError("If readlayerfile is False, you have to provide nlayers")
 
   @property
   def imageshape(self): return units.pixels(self.__height, pscale=self.pscale), units.pixels(self.__width, pscale=self.pscale)
@@ -102,7 +105,7 @@ class RectangleWithImage(RectangleWithLayer):
       transpose = (0, 1)
       slc = slice(None), slice(None)
     else:
-      shape = units.pixels((self.nlayers, self.__width, self.__height), pscale=self.pscale, power=[0, 1, 1])
+      shape = units.pixels((self.__nlayers, self.__width, self.__height), pscale=self.pscale, power=[0, 1, 1])
       transpose = (2, 1, 0)
       slc = slice(None), slice(None), self.layer-1
 
