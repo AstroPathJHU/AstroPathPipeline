@@ -5,7 +5,7 @@ from ..warping.utilities import WarpImage
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer, getExposureTimesByLayer, getRawAsHWL
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
-import scipy, os, glob, random, cv2, dataclasses, platform
+import scipy, os, glob, random, cv2, platform
 
 #constants
 if platform.system()=='Darwin' : #the paths on my Mac
@@ -37,28 +37,36 @@ with cd(workingdir_name) :
             os.mkdir(dn)
 
 #helper class for comparing overlap image exposure times
-@dataclasses.dataclass
 class ETOverlap :
-    olap : AlignmentOverlap
-    p1et : float
-    p2et : float
-    @property
-    def p1_im(self):
-        return self.olap.shifted[0]
-    @property
-    def p2_im(self):
-        return self.olap.shifted[1]
-    @property
-    def et_diff(self):
-        return self.p2et-self.p1et
+
+    def __init__(self,olap,p1et,p2et) :
+        self.olap = olap
+        self.p1et = p1et
+        self.p2et = p2et
+        self.et_diff = self.p2et-self.p1et
+        whole_p1_im, whole_p2_im = self.olap.shifted
+        w=min(whole_p1_im.shape[1],whole_p2_im.shape[1])
+        h=min(whole_p1_im.shape[0],whole_p2_im.shape[0])
+        SLICES = {1:np.index_exp[:int(0.5*h),:int(0.5*w)],
+                  2:np.index_exp[:int(0.5*h),int(0.25*w):int(0.75*w)],
+                  3:np.index_exp[:int(0.5*h),int(0.5*w):],
+                  4:np.index_exp[int(0.25*h):int(0.75*h),:int(0.5*w)],
+                  6:np.index_exp[int(0.25*h):int(0.75*h),int(0.5*w):],
+                  7:np.index_exp[int(0.5*h):,:int(0.5*w)],
+                  8:np.index_exp[int(0.5*h):,int(0.25*w),int(0.75*w)],
+                  9:np.index_exp[int(0.5*h):,int(0.5*w):]
+                }
+        self.p1_im = whole_p1_im[SLICES[self.olap.tag]]
+        self.p2_im = whole_p2_im[SLICES[self.olap.tag]]
 
 #helper class for doing the fitting to find the optimal offset
 class Fit :
     
-    def __init__(self,etos,raw_or_fw,fitn) :
+    def __init__(self,etos,raw_or_fw,fitn,max_exp_time) :
         self.etos = etos
         self.raw_or_fw = raw_or_fw
         self.fitn = fitn
+        self.max_exp_time = max_exp_time
         self.offsets = []
         self.costs = []
         self.iters=0
@@ -134,8 +142,8 @@ class Fit :
         plt.close()
             
     def __correctImages(self,eto,offset) :
-        corr_p1 = offset+(1.*max_exp_times[0]/eto.p1et)*np.clip((eto.p1_im-offset),0,np.iinfo(eto.p1_im.dtype).max)
-        corr_p2 = offset+(1.*max_exp_times[0]/eto.p2et)*np.clip((eto.p2_im-offset),0,np.iinfo(eto.p2_im.dtype).max)
+        corr_p1 = offset+(1.*self.max_exp_time/eto.p1et)*np.clip((eto.p1_im-offset),0,np.iinfo(eto.p1_im.dtype).max)
+        corr_p2 = offset+(1.*self.max_exp_time/eto.p2et)*np.clip((eto.p2_im-offset),0,np.iinfo(eto.p2_im.dtype).max)
         return corr_p1, corr_p2
     
     def __calcSingleCost(self,p1im,p2im) :
@@ -212,7 +220,7 @@ for io,eto in reversed(list(enumerate(etolaps[-min(20,len(etolaps)):],start=1)))
 random.shuffle(etolaps)
 #do a fit to half the overlaps
 print('Doing first fit to raw file overlaps....')
-fit_1 = Fit(etolaps[:int(len(etolaps)/2)],'raw','1')
+fit_1 = Fit(etolaps[:int(len(etolaps)/2)],'raw','1',max_exp_times[layer-1])
 fit_1.doFit(initial_offset=50)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
 ax[0].plot(list(range(1,len(fit_1.costs)+1)),fit_1.costs,marker='*')
@@ -226,7 +234,7 @@ fit_1.saveCostReduxes(os.path.join(workingdir_name,raw_fit_1_dirname))
 fit_1.saveCorrectedImages(25,os.path.join(workingdir_name,raw_fit_1_dirname))
 #do a fit to the other half of the overlaps
 print('Doing second fit to raw file overlaps....')
-fit_2 = Fit(etolaps[int(len(etolaps)/2):],'raw','2')
+fit_2 = Fit(etolaps[int(len(etolaps)/2):],'raw','2',max_exp_times[layer-1])
 fit_2.doFit(initial_offset=30)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
 ax[0].plot(list(range(1,len(fit_2.costs)+1)),fit_2.costs,marker='*')
@@ -279,7 +287,7 @@ for io,eto in reversed(list(enumerate(etolaps[-min(20,len(etolaps)):],start=1)))
 random.shuffle(etolaps)
 #do a fit to half the overlaps
 print('Doing first fit to .fw01 overlaps....')
-fit_1 = Fit(etolaps[:int(len(etolaps)/2)],'fw','1')
+fit_1 = Fit(etolaps[:int(len(etolaps)/2)],'fw','1',max_exp_times[layer-1])
 fit_1.doFit(initial_offset=50)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
 ax[0].plot(list(range(1,len(fit_1.costs)+1)),fit_1.costs,marker='*')
@@ -293,7 +301,7 @@ fit_1.saveCostReduxes(os.path.join(workingdir_name,fw_fit_1_dirname))
 fit_1.saveCorrectedImages(25,os.path.join(workingdir_name,fw_fit_1_dirname))
 #do a fit to the other half of the overlaps
 print('Doing second fit to .fw01 overlaps....')
-fit_2 = Fit(etolaps[int(len(etolaps)/2):],'fw','2')
+fit_2 = Fit(etolaps[int(len(etolaps)/2):],'fw','2',max_exp_times[layer-1])
 fit_2.doFit(initial_offset=30)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
 ax[0].plot(list(range(1,len(fit_2.costs)+1)),fit_2.costs,marker='*')
