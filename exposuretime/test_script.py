@@ -19,12 +19,22 @@ else :
 #sample = 'M21_1'
 sample = 'M41_1'
 workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT'
-if not os.path.isdir(workingdir_name) :
-    os.mkdir(workingdir_name)
 flatfield_file = os.path.join('flatfield_batch_3-9_samples_22692_initial_images','flatfield.bin')
 layer = 1
 nclip=8
 #overlaps=list(range(200)) #only load 200 overlaps to test
+raw_fit_1_dirname = 'raw_fit_1'
+raw_fit_2_dirname = 'raw_fit_2'
+fw_fit_1_dirname  = 'fw_fit_1'
+fw_fit_2_dirname  = 'fw_fit_2'
+#make the working directories
+if not os.path.isdir(workingdir_name) :
+    os.mkdir(workingdir_name)
+with cd(workingdir_name) :
+    dns = [raw_fit_1_dirname,raw_fit_2_dirname,fw_fit_1_dirname,fw_fit_2_dirname]
+    for dn in dns :
+        if not os.path.isdir(dn) :
+            os.mkdir(dn)
 
 #helper class for comparing overlap image exposure times
 @dataclasses.dataclass
@@ -92,7 +102,7 @@ class Fit :
         print(f'Best-fit offset = {self.result.x[0]:.4f} (best cost = {self.result.fun:.4f})')
         self.best_fit_offset=self.result.x[0]
         
-    def saveCorrectedImages(self,n_images) :
+    def saveCorrectedImages(self,n_images,dirpath) :
         if self.best_fit_offset is None :
             raise Exception('ERROR: best fit offset not yet determined')
         for i,eto in enumerate(self.etos[:min(n_images,len(self.etos))],start=1) :
@@ -106,11 +116,11 @@ class Fit :
             ax[0].set_title(f'overlap {i} original (cost={orig_cost:.2f})')
             ax[1].imshow(corr)
             ax[1].set_title(f'overlap {i} corrected (cost={corr_cost:.2f})')
-            with cd(workingdir_name) :
+            with cd(dirpath) :
                 plt.savefig(f'{self.raw_or_fw}_overlap_{eto.olap.n}_postfit_comparison_offset={self.best_fit_offset:.3f}.png')
             plt.close()
             
-    def saveCostReduxes(self) :
+    def saveCostReduxes(self,dirpath) :
         cost_reduxes = []
         for eto in self.etos :
             orig_cost = self.__calcSingleCost(eto.p1_im,eto.p2_im)
@@ -119,7 +129,7 @@ class Fit :
             cost_reduxes.append((orig_cost-corr_cost)/(orig_cost))
         plt.hist(cost_reduxes,bins=60)
         plt.title('fractional cost reductions')
-        with cd(workingdir_name) :
+        with cd(dirpath) :
             plt.savefig(f'{self.raw_or_fw}_fit_{self.fitn}_cost_reductions.png')
         plt.close()
             
@@ -209,11 +219,11 @@ ax[0].plot(list(range(1,len(fit_1.costs)+1)),fit_1.costs,marker='*')
 ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_1.costs)+1)),fit_1.offsets,marker='*')
 ax[1].set_title('offsets')
-with cd(workingdir_name) :
+with cd(os.path.join(workingdir_name,raw_fit_1_dirname)) :
     plt.savefig(f'raw_fit_1_costs_and_offsets.png')
 plt.close()
-fit_1.saveCostReduxes()
-fit_1.saveCorrectedImages(25)
+fit_1.saveCostReduxes(os.path.join(workingdir_name,raw_fit_1_dirname))
+fit_1.saveCorrectedImages(25,os.path.join(workingdir_name,raw_fit_1_dirname))
 #do a fit to the other half of the overlaps
 print('Doing second fit to raw file overlaps....')
 fit_2 = Fit(etolaps[int(len(etolaps)/2):],'raw','2')
@@ -223,11 +233,11 @@ ax[0].plot(list(range(1,len(fit_2.costs)+1)),fit_2.costs,marker='*')
 ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_2.costs)+1)),fit_2.offsets,marker='*')
 ax[1].set_title('offsets')
-with cd(workingdir_name) :
+with cd(os.path.join(workingdir_name,raw_fit_2_dirname)) :
     plt.savefig(f'raw_fit_2_costs_and_offsets.png')
 plt.close()
-fit_2.saveCostReduxes()
-fit_2.saveCorrectedImages(25)
+fit_2.saveCostReduxes(os.path.join(workingdir_name,raw_fit_2_dirname))
+fit_2.saveCorrectedImages(25,os.path.join(workingdir_name,raw_fit_2_dirname))
 
 #do all of the above except with an alignmentset made from the .fw01 files instead
 print('Making an AlignmentSet from the .fw01 files....')
@@ -276,11 +286,11 @@ ax[0].plot(list(range(1,len(fit_1.costs)+1)),fit_1.costs,marker='*')
 ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_1.costs)+1)),fit_1.offsets,marker='*')
 ax[1].set_title('offsets')
-with cd(workingdir_name) :
+with cd(os.path.join(workingdir_name,fw_fit_1_dirname)) :
     plt.savefig(f'fw_fit_1_costs_and_offsets.png')
 plt.close()
-fit_1.saveCostReduxes()
-fit_1.saveCorrectedImages(25)
+fit_1.saveCostReduxes(os.path.join(workingdir_name,fw_fit_1_dirname))
+fit_1.saveCorrectedImages(25,os.path.join(workingdir_name,fw_fit_1_dirname))
 #do a fit to the other half of the overlaps
 print('Doing second fit to .fw01 overlaps....')
 fit_2 = Fit(etolaps[int(len(etolaps)/2):],'fw','2')
@@ -290,10 +300,10 @@ ax[0].plot(list(range(1,len(fit_2.costs)+1)),fit_2.costs,marker='*')
 ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_2.costs)+1)),fit_2.offsets,marker='*')
 ax[1].set_title('offsets')
-with cd(workingdir_name) :
+with cd(os.path.join(workingdir_name,fw_fit_1_dirname)) :
     plt.savefig(f'fw_fit_2_costs_and_offsets.png')
 plt.close()
-fit_2.saveCostReduxes()
-fit_2.saveCorrectedImages(25)
+fit_2.saveCostReduxes(os.path.join(workingdir_name,fw_fit_1_dirname))
+fit_2.saveCorrectedImages(25,os.path.join(workingdir_name,fw_fit_1_dirname))
 
 print('Done!')
