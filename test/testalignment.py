@@ -57,7 +57,7 @@ class TestAlignment(TestBaseSaveOutput):
       with open(ref) as fref, open(log) as fnew:
         refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
         newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
-        self.assertEqual(newcontents, refcontents)
+        self.assertEqual(refcontents, newcontents)
 
   def testAlignmentFastUnits(self):
     with units.setup_context("fast"):

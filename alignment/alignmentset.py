@@ -6,7 +6,6 @@ from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.sample import FlatwSampleBase, ReadRectangles, ReadRectanglesFromXML
 from ..utilities import units
 from ..utilities.tableio import readtable, writetable
-from .flatfield import meanimage
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
 from .rectangle import AlignmentRectangle
@@ -156,7 +155,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   overlaptype = AlignmentOverlap
   @property
   def rectangleextrakwargs(self):
-    return {**super().rectangleextrakwargs, "layer": self.layer, "imagefolder": self.root2/self.SlideID, "filetype": self.__filetype, "width": self.fwidth, "height": self.fheight}
+    return {**super().rectangleextrakwargs, "layer": self.layer, "imagefolder": self.root2/self.SlideID, "filetype": self.__filetype, "width": self.fwidth, "height": self.fheight, "logger": self.logger}
 
   def stitch(self, saveresult=True, **kwargs):
     result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)

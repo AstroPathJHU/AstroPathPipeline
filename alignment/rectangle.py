@@ -1,15 +1,17 @@
 import numpy as np
 
 from ..baseclasses.rectangle import RectangleWithImage
+from ..utilities.misc import dummylogger
 from .flatfield import meanimage
 
 class AlignmentRectangle(RectangleWithImage):
-  def __init__(self, *args, mean_image=None, keepraw=False, **kwargs):
+  def __init__(self, *args, mean_image=None, keepraw=False, logger=dummylogger, **kwargs):
     super().__init__(*args, **kwargs)
     self.__allrectangles = None
     self.__meanimage = mean_image
     self.__rawimage = None
     self.__keeprawimage = False
+    self.__logger = logger
 
   def setrectanglelist(self, allrectangles):
     self.__allrectangles = allrectangles
@@ -36,7 +38,13 @@ class AlignmentRectangle(RectangleWithImage):
     if self.__meanimage is None:
       if mean_image is None:
         if mean_image is None:
-          mean_image = meanimage([r.__getrawimage() for r in self.__allrectangles])
+          allimages = []
+          n = len(self.__allrectangles)
+          for i, r in enumerate(self.__allrectangles, start=1):
+            self.__logger.info(f"loading rectangle {i}/{n}")
+            allimages.append(r.__getrawimage())
+          self.__logger.info("meanimage")
+          mean_image = meanimage(allimages)
       self.__meanimage = mean_image
 
   @property
