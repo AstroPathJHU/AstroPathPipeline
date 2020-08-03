@@ -134,8 +134,8 @@ class Fit :
         plt.close()
             
     def __correctImages(self,eto,offset) :
-        corr_p1 = offset+(max_exp_times[0]/eto.p1et)*(eto.p1_im-offset)
-        corr_p2 = offset+(max_exp_times[0]/eto.p2et)*(eto.p2_im-offset)
+        corr_p1 = offset+(1.*max_exp_times[0]/eto.p1et)*np.clip((eto.p1_im-offset),0,np.iinfo(eto.p1_im.dtype).max)
+        corr_p2 = offset+(1.*max_exp_times[0]/eto.p2et)*np.clip((eto.p2_im-offset),0,np.iinfo(eto.p2_im.dtype).max)
         return corr_p1, corr_p2
     
     def __calcSingleCost(self,p1im,p2im) :
