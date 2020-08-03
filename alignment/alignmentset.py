@@ -77,7 +77,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     self.logger.info("finished align loop for "+self.SlideID)
     return sum_mse
 
-  def getDAPI(self, filetype="flatWarp", keeprawimages=False, mean_image=None, overwrite=True):
+  def getDAPI(self, keeprawimages=False, mean_image=None, overwrite=True):
     self.logger.info("getDAPI")
     self.images = [r.image for r in self.rectangles]
 
