@@ -18,7 +18,7 @@ else :
     fw01_root2_dir = r"Z:\\heshy\\flatw"
 #sample = 'M21_1'
 sample = 'M41_1'
-workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT_M41_1_NEW_FIT_AND_COST'
+workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT_M41_1_OLD_COST_CENTRAL_REGIONS'
 flatfield_file = os.path.join('flatfield_batch_3-9_samples_22692_initial_images','flatfield.bin')
 layer = 1
 nclip=8
