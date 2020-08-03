@@ -139,8 +139,8 @@ class Fit :
         return corr_p1, corr_p2
     
     def __calcSingleCost(self,p1im,p2im) :
-        #return np.sum(np.abs(p2im-p1im))/(p1im.shape[0]*p1im.shape[1])
-        return np.abs(np.mean(p2im)-np.mean(p1im))
+        return np.sum(np.abs(p2im-p1im))/(p1im.shape[0]*p1im.shape[1])
+        #return np.abs(np.mean(p2im)-np.mean(p1im))
 
 #first plot all of the exposure times
 print('Plotting all exposure times....')
