@@ -53,7 +53,7 @@ class ETOverlap :
                   4:np.index_exp[int(0.25*h):int(0.75*h),:int(0.5*w)],
                   6:np.index_exp[int(0.25*h):int(0.75*h),int(0.5*w):],
                   7:np.index_exp[int(0.5*h):,:int(0.5*w)],
-                  8:np.index_exp[int(0.5*h):,int(0.25*w),int(0.75*w)],
+                  8:np.index_exp[int(0.5*h):,int(0.25*w):int(0.75*w)],
                   9:np.index_exp[int(0.5*h):,int(0.5*w):]
                 }
         self.p1_im = whole_p1_im[SLICES[self.olap.tag]]
@@ -142,16 +142,16 @@ class Fit :
         plt.close()
             
     def __correctImages(self,eto,offset) :
-        corr_p1 = offset+(1.*self.max_exp_time/eto.p1et)*np.clip((eto.p1_im-offset),0,np.iinfo(eto.p1_im.dtype).max)
-        corr_p2 = offset+(1.*self.max_exp_time/eto.p2et)*np.clip((eto.p2_im-offset),0,np.iinfo(eto.p2_im.dtype).max)
+        corr_p1 = np.where((eto.p1_im-offset)>0,offset+(1.*self.max_exp_time/eto.p1et)*(eto.p1_im-offset),eto.p1_im)
+        corr_p2 = np.where((eto.p2_im-offset)>0,offset+(1.*self.max_exp_time/eto.p2et)*(eto.p2_im-offset),eto.p2_im)
         return corr_p1, corr_p2
     
     def __calcSingleCost(self,p1im,p2im) :
         return np.sum(np.abs(p2im-p1im))/(p1im.shape[0]*p1im.shape[1])
         #return np.abs(np.mean(p2im)-np.mean(p1im))
 
-#first plot all of the exposure times
-print('Plotting all exposure times....')
+#first gett all of the exposure times
+print('Getting all exposure times....')
 with cd(os.path.join(root2_dir,sample)) :
     all_rfps = [os.path.join(root2_dir,sample,fn) for fn in glob.glob('*.Data.dat')]
 exp_times = {}
@@ -249,6 +249,7 @@ fit_2.saveCorrectedImages(25,os.path.join(workingdir_name,raw_fit_2_dirname))
 
 #do all of the above except with an alignmentset made from the .fw01 files instead
 print('Making an AlignmentSet from the .fw01 files....')
+#a = AlignmentSet(root1_dir,fw01_root2_dir,sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True)
 a = AlignmentSet(root1_dir,fw01_root2_dir,sample)
 a.getDAPI(filetype='flatWarp')
 a.align(write_result=False)
