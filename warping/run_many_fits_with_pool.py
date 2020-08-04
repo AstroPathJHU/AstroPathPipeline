@@ -69,6 +69,8 @@ def getListOfJobCommands(args) :
             thisjobcmdstring+=f' --normalize {args.normalize}'
         if args.init_pars is not None :
             thisjobcmdstring+=f' --init_pars {args.init_pars}'
+        if args.init_bounds is not None :
+            thisjobcmdstring+=f' --init_bounds {args.init_bounds}'
         if args.float_p1p2_to_polish :
             thisjobcmdstring+=' --float_p1p2_to_polish'
         thisjobcmdstring+=f' --max_radial_warp {args.max_radial_warp} --max_tangential_warp {args.max_tangential_warp}'
@@ -108,7 +110,9 @@ if __name__=='__main__' :
     fit_option_group.add_argument('--normalize',
                                   help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
     fit_option_group.add_argument('--init_pars',
-                                  help='Comma-separated list of initial parameter name=value pairs to use.')
+                                  help='Comma-separated list of initial parameter name=value pairs to use in lieu of defaults.')
+    fit_option_group.add_argument('--init_bounds',
+                                  help='Comma-separated list of parameter name=low_bound:high_bound pairs to use in lieu of defaults.')
     fit_option_group.add_argument('--fixed',                default=['fx','fy'], type=split_csv_to_list,         
                                   help='Comma-separated list of parameters to keep fixed during fitting')
     fit_option_group.add_argument('--float_p1p2_to_polish', action='store_true',

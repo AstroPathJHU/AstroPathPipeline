@@ -2,7 +2,7 @@
 from .warp_fitter import WarpFitter
 from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile
 from .config import CONST
-from ..utilities.misc import split_csv_to_list, split_csv_to_list_of_ints, split_csv_to_dict_of_floats
+from ..utilities.misc import split_csv_to_list, split_csv_to_list_of_ints, split_csv_to_dict_of_floats, split_csv_to_dict_of_bounds
 from argparse import ArgumentParser
 import multiprocessing as mp
 import os, gc
@@ -12,11 +12,12 @@ import cProfile
 #################### FILE-SCOPE CONSTANTS ####################
 
 #placeholder default arguments for command line options
-DEFAULT_OVERLAPS  = '-999' 
-DEFAULT_OCTETS    = '-999' 
-DEFAULT_FIXED     = ['fx','fy']
-DEFAULT_NORMALIZE = ['cx','cy','fx','fy','k1','k2','k3','p1','p2']
-DEFAULT_INIT_PARS = {'cx':None,'cy':None,'fx':None,'fy':None,'k1':None,'k2':None,'k3':None,'p1':None,'p2':None}
+DEFAULT_OVERLAPS    = '-999' 
+DEFAULT_OCTETS      = '-999' 
+DEFAULT_FIXED       = ['fx','fy']
+DEFAULT_NORMALIZE   = ['cx','cy','fx','fy','k1','k2','k3','p1','p2']
+DEFAULT_INIT_PARS   = {'cx':None,'cy':None,'fx':None,'fy':None,'k1':None,'k2':None,'k3':None,'p1':None,'p2':None}
+DEFAULT_INIT_BOUNDS = {'cx':None,'cy':None,'fx':None,'fy':None,'k1':None,'k2':None,'k3':None,'p1':None,'p2':None}
 
 #################### HELPER FUNCTIONS ####################
 
@@ -125,7 +126,9 @@ if __name__=='__main__' :
     fit_option_group.add_argument('--normalize',                default=DEFAULT_NORMALIZE,                              type=split_csv_to_list,
                                   help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
     fit_option_group.add_argument('--init_pars',                default=DEFAULT_INIT_PARS,                              type=split_csv_to_dict_of_floats,
-                                  help='Comma-separated list of initial parameter name=value pairs to use.')
+                                  help='Comma-separated list of initial parameter name=value pairs to use in lieu of defaults.')
+    fit_option_group.add_argument('--init_bounds',              default=DEFAULT_INIT_BOUNDS,                            type=split_csv_to_dict_of_bounds,
+                                  help='Comma-separated list of parameter name=low_bound:high_bound pairs to use in lieu of defaults.')
     fit_option_group.add_argument('--float_p1p2_to_polish',     action='store_true',
                                   help="""Add this flag to float p1 and p2 in the polishing minimization 
                                           (regardless of whether they are in the list of fixed parameters)""")
@@ -164,7 +167,8 @@ if __name__=='__main__' :
         fix_p1p2   = 'p1' in args.fixed and 'p2' in args.fixed
         #check the run if that's what's being asked
         if args.mode in ('check_run') :
-            fitter.checkFit(fixed=args.fixed,normalize=args.normalize,init_pars=args.init_pars,float_p1p2_in_polish_fit=args.float_p1p2_to_polish,
+            fitter.checkFit(fixed=args.fixed,normalize=args.normalize,init_pars=args.init_pars,init_bounds=args.init_bounds,
+                            float_p1p2_in_polish_fit=args.float_p1p2_to_polish,
                             max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
                             p1p2_polish_lasso_lambda=args.p1p2_polish_lasso_lambda,polish=True)
         #otherwise actually run it
@@ -175,12 +179,13 @@ if __name__=='__main__' :
              #fit the model to the data
             warp_logger.info('Running doFit')
             if args.mode == 'fit' :
-                fitter.doFit(fixed=args.fixed,normalize=args.normalize,init_pars=args.init_pars,float_p1p2_in_polish_fit=args.float_p1p2_to_polish,
+                fitter.doFit(fixed=args.fixed,normalize=args.normalize,init_pars=args.init_pars,init_bounds=args.init_bounds,
+                             float_p1p2_in_polish_fit=args.float_p1p2_to_polish,
                              max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
                              p1p2_polish_lasso_lambda=args.p1p2_polish_lasso_lambda,polish=True,
                              print_every=args.print_every,maxiter=args.max_iter)
             elif args.mode == 'cProfile' :
-                cProfile.run("""fitter.doFit(fixed=args.fixed,normalize=args.normalize,init_pars=args.init_pars,
+                cProfile.run("""fitter.doFit(fixed=args.fixed,normalize=args.normalize,init_pars=args.init_pars,init_bounds=args.init_bounds,
                                 float_p1p2_in_polish_fit=args.float_p1p2_to_polish,
                                 max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
                                 p1p2_polish_lasso_lambda=args.p1p2_polish_lasso_lambda,polish=True,

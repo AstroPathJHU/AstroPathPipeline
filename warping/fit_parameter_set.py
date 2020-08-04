@@ -38,11 +38,12 @@ class FitParameterSet :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,fixed,normalize,init_pars,max_radial_warp,max_tangential_warp,warp) :
+    def __init__(self,fixed,normalize,init_pars,init_bounds,max_radial_warp,max_tangential_warp,warp) :
         """
         fixed         = list of names of parameters that will be constant during fitting
         normalize     = list of names of parameters that should be numerically rescaled between their bounds for fitting
-        init_pars     = dictionary of initial parameter values keyed by name
+        init_pars     = dictionary of initial parameter values; keyed by name
+        init_bounds   = dictionary of initial parameter bounds; keyed by name
         max_*ial_warp = maximum amounts of radial/tangential warping allowed
         warp          = the warp object this parameter set will be applied to
         """
@@ -57,14 +58,24 @@ class FitParameterSet :
                     if pname not in self.FIT_PAR_NAME_LIST :
                         raise ValueError(f'ERROR: {pname} (requested initial value={pval}) is not recognized as a fit parameter!')
                     if warp.parValueFromName(pname)!=pval :
-                        warp_logger.info(f'Replacing default {pname} value {warp.parValueFromName(pname)} with {pval}')
+                        warp_logger.info(f'Replacing default {pname} value {warp.parValueFromName(pname)} with {pval}.....')
                         update_pars[self.FIT_PAR_NAME_LIST.index(pname)] = pval
             warp.updateParams(update_pars)
         #set the maximum warp amounts (always in units of pixels)
         self.max_rad_warp = max_radial_warp
         self.max_tan_warp = max_tangential_warp
-        #get the dictionary of absolute parameter bounds based on the maximum warp amounts
+        #get the dictionary of absolute parameter bounds based on the maximum warp amounts and the possible overrides
         bounds_dict = buildDefaultParameterBoundsDict(warp,self.max_rad_warp,self.max_tan_warp)
+        if init_bounds is not None :
+            for pname,pbounds in init_bounds.items() :
+                if pbounds is not None :
+                    if pname not in self.FIT_PAR_NAME_LIST :
+                        raise ValueError(f'ERROR: {pname} (requested initial bounds={pbounds}) is not recognized as a fit parameter!')
+                    if pbounds[0]!=bounds_dict[pname][0] or pbounds[1]!=bounds_dict[pname][1] :
+                        warp_logger.info(f'Replacing default {pname} bounds {bounds_dict[pname]} with {pbounds}....')
+                        if pname in fixed :
+                            warp_logger.warn(f'WARNING: Replaced bounds for FIXED PARAMETER {pname}!')
+                        bounds_dict[pname] = pbounds
         #make an ordered list of the fit parameters
         self.fit_parameters = [FitParameter(fpn,fpn in fixed,fpn in normalize,bounds_dict[fpn],warp.parValueFromName(fpn)) for fpn in self.FIT_PAR_NAME_LIST]
         #initialize the best fit warp parameters
