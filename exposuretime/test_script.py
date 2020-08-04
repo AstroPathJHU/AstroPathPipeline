@@ -1,6 +1,7 @@
 #imports
 from ..alignment.alignmentset import AlignmentSet, AlignmentSetFromXML
 from ..alignment.overlap import AlignmentOverlap
+from ..flatfield.utilities import smoothImageWorker
 from ..warping.utilities import WarpImage
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer, getExposureTimesByLayer, getRawAsHWL
 from ..utilities.misc import cd
@@ -18,7 +19,7 @@ else :
     fw01_root2_dir = r"Z:\\heshy\\flatw"
 #sample = 'M21_1'
 sample = 'M41_1'
-workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT_M41_1_OLD_COST_CENTRAL_REGIONS_MEAN_IMAGE'
+workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT_M41_1_OLD_COST_CENTRAL_REGIONS_MEAN_IMAGE_SMOOTHING'
 flatfield_file = os.path.join('flatfield_batch_3-9_samples_22692_initial_images','flatfield.bin')
 layer = 1
 nclip=8
@@ -173,13 +174,14 @@ print('Making an AlignmentSet from the raw files....')
 #a = AlignmentSetFromXML(root1_dir,root2_dir,sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,nclip=nclip,readlayerfile=False,layer=layer)
 a = AlignmentSetFromXML(root1_dir,root2_dir,sample,nclip=nclip,readlayerfile=False,layer=layer)
 a.getDAPI(filetype='raw')
-#correct the rectangle images with the flatfield file
+#correct the rectangle images with the flatfield file and applying some smoothing
 print('Correcting and updating rectangle images....')
 flatfield_layer = (getRawAsHWL(flatfield_file,1004,1344,35,dtype=np.float64))[:,:,layer-1]
 warp_images = []
 for ri,r in enumerate(a.rectangles) :
     rfkey=r.file.rstrip('.im3')
     image = np.rint((r.image)/flatfield_layer).astype(np.uint16)
+    image = smoothImageWorker(image,15)
     warp_images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),False,ri))
 a.updateRectangleImages(warp_images,usewarpedimages=False)
 #align the overlaps
