@@ -309,10 +309,10 @@ ax[0].plot(list(range(1,len(fit_2.costs)+1)),fit_2.costs,marker='*')
 ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_2.costs)+1)),fit_2.offsets,marker='*')
 ax[1].set_title('offsets')
-with cd(os.path.join(workingdir_name,fw_fit_1_dirname)) :
+with cd(os.path.join(workingdir_name,fw_fit_2_dirname)) :
     plt.savefig(f'fw_fit_2_costs_and_offsets.png')
 plt.close()
-fit_2.saveCostReduxes(os.path.join(workingdir_name,fw_fit_1_dirname))
-fit_2.saveCorrectedImages(25,os.path.join(workingdir_name,fw_fit_1_dirname))
+fit_2.saveCostReduxes(os.path.join(workingdir_name,fw_fit_2_dirname))
+fit_2.saveCorrectedImages(25,os.path.join(workingdir_name,fw_fit_2_dirname))
 
 print('Done!')
