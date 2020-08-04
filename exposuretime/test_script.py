@@ -77,11 +77,12 @@ class Fit :
     def cost(self,pars) :
         self.iters+=1
         offset=pars[0]
-        cost=0
+        cost=0.; npix=0.
         for eto in self.etos :
             corr_p1im, corr_p2im = self.__correctImages(eto,offset)
-            cost+=self.__calcSingleCost(corr_p1im,corr_p2im)
-        cost/=self.n_olaps
+            thiscost, thisnpix = self.__getCostAndNPix(corr_p1im,corr_p2im)
+            cost+=thiscost; npix+=thisnpix
+        cost/=npix
         self.offsets.append(offset); self.costs.append(cost)
         if self.iters%self.print_every==0 :
             print(f'iteration {self.iters}: offset = {offset:.4f}, cost = {cost:.4f}')
@@ -116,10 +117,12 @@ class Fit :
             raise Exception('ERROR: best fit offset not yet determined')
         for i,eto in enumerate(self.etos[:min(n_images,len(self.etos))],start=1) :
             orig = np.array([eto.p1_im, eto.p2_im, 0.5*(eto.p1_im+eto.p2_im)]).transpose(1, 2, 0) / 1000.
-            orig_cost = self.__calcSingleCost(eto.p1_im,eto.p2_im)
+            oc,onp = self.__getCostAndNPix(eto.p1_im,eto.p2_im)
+            orig_cost = oc/onp
             corr_p1im, corr_p2im = self.__correctImages(eto,self.best_fit_offset)
             corr = np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000.
-            corr_cost = self.__calcSingleCost(corr_p1im,corr_p2im)
+            cc,cnp = self.__getCostAndNPix(corr_p1im,corr_p2im)
+            corr_cost = cc/cnp
             f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
             ax[0].imshow(orig)
             ax[0].set_title(f'overlap {i} original (cost={orig_cost:.2f})')
@@ -132,9 +135,11 @@ class Fit :
     def saveCostReduxes(self,dirpath) :
         cost_reduxes = []
         for eto in self.etos :
-            orig_cost = self.__calcSingleCost(eto.p1_im,eto.p2_im)
+            oc,onp = self.__getCostAndNPix(eto.p1_im,eto.p2_im)
+            orig_cost = oc/onp
             corr_p1im, corr_p2im = self.__correctImages(eto,self.best_fit_offset)
-            corr_cost = self.__calcSingleCost(corr_p1im,corr_p2im)
+            cc,cnp = self.__getCostAndNPix(corr_p1im,corr_p2im)
+            corr_cost
             cost_reduxes.append((orig_cost-corr_cost)/(orig_cost))
         plt.hist(cost_reduxes,bins=60)
         plt.title('fractional cost reductions')
@@ -147,8 +152,8 @@ class Fit :
         corr_p2 = np.where((eto.p2_im-offset)>0,offset+(1.*self.max_exp_time/eto.p2et)*(eto.p2_im-offset),eto.p2_im)
         return corr_p1, corr_p2
     
-    def __calcSingleCost(self,p1im,p2im) :
-        return np.sum(np.abs(p2im-p1im))/(p1im.shape[0]*p1im.shape[1])
+    def __getCostAndNPix(self,p1im,p2im) :
+        return np.sum(np.abs(p2im-p1im)), (p1im.shape[0]*p1im.shape[1])
         #return np.abs(np.mean(p2im)-np.mean(p1im))
 
 #first gett all of the exposure times
