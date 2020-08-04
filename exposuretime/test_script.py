@@ -139,7 +139,7 @@ class Fit :
             orig_cost = oc/onp
             corr_p1im, corr_p2im = self.__correctImages(eto,self.best_fit_offset)
             cc,cnp = self.__getCostAndNPix(corr_p1im,corr_p2im)
-            corr_cost
+            corr_cost = cc/cnp
             cost_reduxes.append((orig_cost-corr_cost)/(orig_cost))
         plt.hist(cost_reduxes,bins=60)
         plt.title('fractional cost reductions')
@@ -188,7 +188,7 @@ for ri,r in enumerate(a.rectangles) :
     image = np.rint((r.image)/flatfield_layer).astype(np.uint16)
     image = smoothImageWorker(image,15)
     warp_images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),False,ri))
-a.updateRectangleImages(warp_images,usewarpedimages=False)
+a.updateRectangleImages(warp_images,usewarpedimages=False,correct_with_meanimage=True,recalculate_meanimage=True)
 #align the overlaps
 a.align(alreadyalignedstrategy='overwrite')
 #make the exposure time comparison overlap objects
