@@ -121,7 +121,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
       else :
         thisupdateimg=(img.raw_image).get()
       if correct_with_meanimage :
-        thisupdateimg=(np.rint(thisupdateimg/self.mean_image.flatfield)).astype(thisupdateimg.dtype)
+        thisupdateimg=(np.rint(thisupdateimg/self.meanimage.flatfield)).astype(thisupdateimg.dtype)
       if img.rectangle_list_index!=-1 : #if the image comes with its index in the list of rectangles it can be directly updated
         np.copyto(self.rectangles[img.rectangle_list_index].image,thisupdateimg,casting='no')
       else : #otherwise all the rectangles have to be searched
