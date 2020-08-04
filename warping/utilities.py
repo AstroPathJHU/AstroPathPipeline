@@ -179,7 +179,7 @@ def buildDefaultParameterBoundsDict(warp,max_rad_warp,max_tan_warp) :
     bounds['fy']=(0.98*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
     # k1/k2/k3 and p1/p2 bounds are 2x those that would produce the max radial and tangential warp, respectively, with all others zero
     # (except k1 can't be negative)
-    testpars=[warp.n/2,warp.m/2,CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,0.,0.,0.,0.,0.]
+    testpars=[warp.cx,warp.cy,warp.fx,warp.fy,0.,0.,0.,0.,0.]
     maxk1 = findDefaultParameterLimit(4,1,max_rad_warp,warp.maxRadialDistortAmount,copy.deepcopy(testpars))
     bounds['k1']=(0.,2.0*maxk1)
     maxk2 = findDefaultParameterLimit(5,1000,max_rad_warp,warp.maxRadialDistortAmount,copy.deepcopy(testpars))

@@ -38,16 +38,28 @@ class FitParameterSet :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,fixed,normalize,max_radial_warp,max_tangential_warp,warp) :
+    def __init__(self,fixed,normalize,init_pars,max_radial_warp,max_tangential_warp,warp) :
         """
         fixed         = list of names of parameters that will be constant during fitting
         normalize     = list of names of parameters that should be numerically rescaled between their bounds for fitting
+        init_pars     = dictionary of initial parameter values keyed by name
         max_*ial_warp = maximum amounts of radial/tangential warping allowed
         warp          = the warp object this parameter set will be applied to
         """
         #make sure the parameters are going to be relevant to a CameraWarp object
         if not isinstance(warp,CameraWarp) :
             raise WarpingError("ERROR: can only use a FitParameterSet with a CameraWarp!")
+        #replace the warp parameters based on the dictionary of initial values
+        if init_pars is not None :
+            update_pars = [warp.parValueFromName(fpn) for fpn in self.FIT_PAR_NAME_LIST]
+            for pname,pval in init_pars.items() :
+                if pval is not None :
+                    if pname not in self.FIT_PAR_NAME_LIST :
+                        raise ValueError(f'ERROR: {pname} (requested initial value={pval}) is not recognized as a fit parameter!')
+                    if warp.parValueFromName(pname)!=pval :
+                        warp_logger.info(f'Replacing default {pname} value {warp.parValueFromName(pname)} with {pval}')
+                        update_pars[self.FIT_PAR_NAME_LIST.index(pname)] = pval
+            warp.updateParams(update_pars)
         #set the maximum warp amounts (always in units of pixels)
         self.max_rad_warp = max_radial_warp
         self.max_tan_warp = max_tangential_warp

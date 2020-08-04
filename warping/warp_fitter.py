@@ -102,7 +102,7 @@ class WarpFitter :
         self.warpset.writeOutWarpedImages(os.path.join(self.working_dir,self.samp_name))
         self.alignset.getDAPI(filetype='camWarp')
 
-    def doFit(self,fixed=None,normalize=None,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
+    def doFit(self,fixed,normalize,init_pars,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
              p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000) :
         """
         Fit the cameraWarp model to the loaded dataset
@@ -116,7 +116,7 @@ class WarpFitter :
         max_iter                 = maximum number of iterations for the global and polishing minimization steps
         """
         #make the set of fit parameters
-        self.fitpars = FitParameterSet(fixed,normalize,max_radial_warp,max_tangential_warp,self.warpset.warp)
+        self.fitpars = FitParameterSet(fixed,normalize,init_pars,max_radial_warp,max_tangential_warp,self.warpset.warp)
         #make the iteration counter and the lists of costs/warp amounts
         self.minfunc_calls=0
         self.costs=[]
@@ -146,14 +146,14 @@ class WarpFitter :
         #run all the post-processing stuff
         self.__runPostProcessing(de_result.nfev)
 
-    def checkFit(self,fixed=None,normalize=None,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
+    def checkFit(self,fixed,normalize,init_pars,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
                  p1p2_polish_lasso_lambda=0.,polish=True) :
         """
         A function to print some information about how the fits will proceed with the current settings
         (see "doFit" function above for what the arguments to this function are)
         """
         #make the set of fit parameters
-        self.fitpars = FitParameterSet(fixed,normalize,max_radial_warp,max_tangential_warp,self.warpset.warp)
+        self.fitpars = FitParameterSet(fixed,normalize,init_pars,max_radial_warp,max_tangential_warp,self.warpset.warp)
         #stuff from the differential evolution minimization setup
         warp_logger.info('For global minimization setup:')
         _, _, _ = self.__getGlobalSetup()
