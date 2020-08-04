@@ -19,7 +19,7 @@ else :
     fw01_root2_dir = r"Z:\\heshy\\flatw"
 #sample = 'M21_1'
 sample = 'M41_1'
-workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT_M41_1_RF_COST_CENTRAL_REGIONS_MEAN_IMAGE_SMOOTHING'
+workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT_M41_1_LESS_SMOOTHING'
 flatfield_file = os.path.join('flatfield_batch_3-9_samples_22692_initial_images','flatfield.bin')
 layer = 1
 nclip=8
@@ -186,7 +186,7 @@ warp_images = []
 for ri,r in enumerate(a.rectangles) :
     rfkey=r.file.rstrip('.im3')
     image = np.rint((r.image)/flatfield_layer).astype(np.uint16)
-    image = smoothImageWorker(image,15)
+    image = smoothImageWorker(image,5)
     warp_images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),False,ri))
 a.updateRectangleImages(warp_images,usewarpedimages=False,correct_with_meanimage=True,recalculate_meanimage=True)
 #align the overlaps
