@@ -63,6 +63,12 @@ def getListOfJobCommands(args) :
         thisjobworkingdir = os.path.join(args.workingdir_name,thisjobdirname)
         thisjobcmdstring = f'{cmd_base} {thisjobworkingdir} --octet_run_dir {octet_run_dir} --octets {thisjoboctetstring[:-1]}'
         thisjobcmdstring+=f' --max_iter {args.max_iter} {fixedparstring[:-1]}'
+        if args.fixed is not None :
+            thisjobcmdstring+=f' --fixed {args.fixed}'
+        if args.normalize is not None :
+            thisjobcmdstring+=f' --normalize {args.normalize}'
+        if args.init_pars is not None :
+            thisjobcmdstring+=f' --init_pars {args.init_pars}'
         if args.float_p1p2_to_polish :
             thisjobcmdstring+=' --float_p1p2_to_polish'
         thisjobcmdstring+=f' --max_radial_warp {args.max_radial_warp} --max_tangential_warp {args.max_tangential_warp}'
@@ -97,6 +103,12 @@ if __name__=='__main__' :
     fit_option_group = parser.add_argument_group('fit options', 'how should the fits be done?')
     fit_option_group.add_argument('--max_iter',             default=1000,        type=int,
                                   help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
+    fit_option_group.add_argument('--fixed',
+                                  help='Comma-separated list of parameters to keep fixed during fitting')
+    fit_option_group.add_argument('--normalize',
+                                  help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
+    fit_option_group.add_argument('--init_pars',
+                                  help='Comma-separated list of initial parameter name=value pairs to use.')
     fit_option_group.add_argument('--fixed',                default=['fx','fy'], type=split_csv_to_list,         
                                   help='Comma-separated list of parameters to keep fixed during fitting')
     fit_option_group.add_argument('--float_p1p2_to_polish', action='store_true',

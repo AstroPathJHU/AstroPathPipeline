@@ -11,8 +11,12 @@ import cProfile
 
 #################### FILE-SCOPE CONSTANTS ####################
 
-DEFAULT_OVERLAPS = '-999' #the default value of the "overlaps" command-line argument (just a placeholder)
-DEFAULT_OCTETS   = '-999' #the default value of the "octets" command-line argument  (just a placeholder)
+#placeholder default arguments for command line options
+DEFAULT_OVERLAPS  = '-999' 
+DEFAULT_OCTETS    = '-999' 
+DEFAULT_FIXED     = ['fx','fy']
+DEFAULT_NORMALIZE = ['cx','cy','fx','fy','k1','k2','k3','p1','p2']
+DEFAULT_INIT_PARS = {'cx':None,'cy':None,'fx':None,'fy':None,'k1':None,'k2':None,'k3':None,'p1':None,'p2':None}
 
 #################### HELPER FUNCTIONS ####################
 
@@ -116,14 +120,12 @@ if __name__=='__main__' :
     fit_option_group = parser.add_argument_group('fit options', 'how should the fit be done?')
     fit_option_group.add_argument('--max_iter',                 default=1000,                                           type=int,
                                   help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
-    fit_option_group.add_argument('--fixed',                    default=['fx','fy'],                                    type=split_csv_to_list,         
+    fit_option_group.add_argument('--fixed',                    default=DEFAULT_FIXED,                                  type=split_csv_to_list,         
                                   help='Comma-separated list of parameters to keep fixed during fitting')
-    fit_option_group.add_argument('--normalize',                default=['cx','cy','fx','fy','k1','k2','k3','p1','p2'], type=split_csv_to_list,
+    fit_option_group.add_argument('--normalize',                default=DEFAULT_NORMALIZE,                              type=split_csv_to_list,
                                   help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
-    fit_option_group.add_argument('--init_pars',                default={'cx':None,'cy':None,'fx':None,'fy':None,
-                                                                         'k1':None,'k2':None,'k3':None,
-                                                                         'p1':None,'p2':None},                          type=split_csv_to_dict_of_floats,
-                                  help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
+    fit_option_group.add_argument('--init_pars',                default=DEFAULT_INIT_PARS,                              type=split_csv_to_dict_of_floats,
+                                  help='Comma-separated list of initial parameter name=value pairs to use.')
     fit_option_group.add_argument('--float_p1p2_to_polish',     action='store_true',
                                   help="""Add this flag to float p1 and p2 in the polishing minimization 
                                           (regardless of whether they are in the list of fixed parameters)""")
