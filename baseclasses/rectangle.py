@@ -56,8 +56,50 @@ class RectangleWithLayer(Rectangle):
   def __post_init__(self, pscale, readingfromfile, layer, *args, **kwargs):
     super().__post_init__(pscale=pscale, readingfromfile=readingfromfile, *args, **kwargs)
     self.layer = layer
+    if not isinstance(layer, int) and layer != "all":
+      raise ValueError("layer should be an integer or 'all'")
 
-class RectangleWithImage(RectangleWithLayer):
+class RectangleWithImageBase(Rectangle):
+  #do not override this property
+  #override getimage() instead and call super().getimage()
+  @methodtools.lru_cache()
+  @property
+  def image(self):
+    return self.getimage()
+
+  @abc.abstractmethod
+  def getimage(self):
+    pass
+
+class RectangleReadImageBase(RectangleWithImageBase):
+  @abc.abstractproperty
+  def imageshape(self): pass
+  @abc.abstractproperty
+  def imagefile(self): pass
+  @abc.abstractproperty
+  def imageshapeininput(self): pass
+  @abc.abstractproperty
+  def imagetransposefrominput(self): pass
+  @abc.abstractproperty
+  def imageslicefrominput(self): pass
+
+  def getimage(self):
+    image = np.ndarray(shape=self.imageshape, dtype=np.uint16)
+
+    with open(self.imagefile, "rb") as f:
+      #use fortran order, like matlab!
+      with memmapcontext(
+        f,
+        dtype=np.uint16,
+        shape=tuple(self.imageshapeininput),
+        order="F",
+        mode="r"
+      ) as memmap:
+        image[:] = memmap.transpose(self.imagetransposefrominput)[self.imageslicefrominput]
+
+    return image
+
+class RectangleWithImage(RectangleReadImageBase, RectangleWithLayer):
   def __init__(self, *args, imagefolder, filetype, width, height, readlayerfile=True, nlayers=None, **kwargs):
     super().__init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
@@ -70,16 +112,14 @@ class RectangleWithImage(RectangleWithLayer):
       raise TypeError("If readlayerfile is False, you have to provide nlayers")
 
   @property
-  def imageshape(self): return units.pixels(self.__height, pscale=self.pscale), units.pixels(self.__width, pscale=self.pscale)
+  def imageshape(self):
+    return [
+      units.pixels(self.__height, pscale=self.pscale),
+      units.pixels(self.__width, pscale=self.pscale),
+    ]
 
-  #do not override this property
-  #override getimage() instead and call super().getimage()
-  @methodtools.lru_cache()
   @property
-  def image(self):
-    return self.getimage()
-
-  def getimage(self):
+  def imagefile(self):
     if self.__filetype=="flatWarp" :
       if self.__readlayerfile :
         ext = f".fw{self.layer:02d}"
@@ -98,30 +138,26 @@ class RectangleWithImage(RectangleWithLayer):
     else :
       raise ValueError(f"requested file type {self.__filetype} not recognized")
 
-    image = np.ndarray(shape=self.imageshape, dtype=np.uint16)
+    return self.__imagefolder/self.file.replace(".im3", ext)
 
+  @property
+  def imageshapeininput(self):
     if self.__readlayerfile:
-      shape = units.pixels((self.__height, self.__width), pscale=self.pscale)
-      transpose = (0, 1)
-      slc = slice(None), slice(None)
+      return units.pixels((self.__height, self.__width), pscale=self.pscale)
     else:
-      shape = units.pixels((self.__nlayers, self.__width, self.__height), pscale=self.pscale, power=[0, 1, 1])
-      transpose = (2, 1, 0)
-      slc = slice(None), slice(None), self.layer-1
-
-    filename = self.__imagefolder/self.file.replace(".im3", ext)
-    with open(filename, "rb") as f:
-      #use fortran order, like matlab!
-      with memmapcontext(
-        f,
-        dtype=np.uint16,
-        shape=tuple(shape),
-        order="F",
-        mode="r"
-      ) as memmap:
-        image[:] = memmap.transpose(transpose)[slc]
-
-    return image
+      return units.pixels((self.__nlayers, self.__width, self.__height), pscale=self.pscale, power=[0, 1, 1])
+  @property
+  def imagetransposefrominput(self):
+    if self.__readlayerfile:
+      return (0, 1)
+    else:
+      return (0, 2, 1)
+  @property
+  def imageslicefrominput(self):
+    if self.__readlayerfile:
+      return slice(None), slice(None)
+    else:
+      return self.layer-1, slice(None), slice(None)
 
 class RectangleCollection(abc.ABC):
   @abc.abstractproperty
