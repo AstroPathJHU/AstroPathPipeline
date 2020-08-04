@@ -6,7 +6,7 @@ from ..warping.utilities import WarpImage
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer, getExposureTimesByLayer, getRawAsHWL
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
-import scipy, os, glob, random, cv2, platform
+import scipy, os, glob, random, cv2, platform, copy
 
 #constants
 if platform.system()=='Darwin' : #the paths on my Mac
@@ -19,7 +19,7 @@ else :
     fw01_root2_dir = r"Z:\\heshy\\flatw"
 #sample = 'M21_1'
 sample = 'M41_1'
-workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT_M41_1_LESS_SMOOTHING'
+workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT_M41_1_LESS_SMOOTHING_WITH_RAW'
 flatfield_file = os.path.join('flatfield_batch_3-9_samples_22692_initial_images','flatfield.bin')
 layer = 1
 nclip=8
@@ -40,7 +40,7 @@ with cd(workingdir_name) :
 #helper class for comparing overlap image exposure times
 class ETOverlap :
 
-    def __init__(self,olap,p1et,p2et) :
+    def __init__(self,olap,p1et,p2et,raw_olap=None) :
         self.olap = olap
         self.p1et = p1et
         self.p2et = p2et
@@ -59,6 +59,9 @@ class ETOverlap :
                 }
         self.p1_im = whole_p1_im[SLICES[self.olap.tag]]
         self.p2_im = whole_p2_im[SLICES[self.olap.tag]]
+        self.raw_p1_im = None; self.raw_p2_im = None
+        if raw_olap is not None :
+            self.raw_p1_im, self.raw_p2_im = self.raw_olap.shifted
 
 #helper class for doing the fitting to find the optimal offset
 class Fit :
@@ -131,6 +134,22 @@ class Fit :
             with cd(dirpath) :
                 plt.savefig(f'{self.raw_or_fw}_overlap_{eto.olap.n}_postfit_comparison_offset={self.best_fit_offset:.3f}.png')
             plt.close()
+            if eto.raw_p1_im is not None and eto.raw_p2_im is not None :
+                orig = np.array([eto.raw_p1_im, eto.raw_p2_im, 0.5*(eto.raw_p1_im+eto.raw_p2_im)]).transpose(1, 2, 0) / 1000.
+                oc,onp = self.__getCostAndNPix(eto.raw_p1_im,eto.raw_p2_im)
+                orig_cost = oc/onp
+                corr_p1im, corr_p2im = self.__correctImages(eto,self.best_fit_offset,raw=True)
+                corr = np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000.
+                cc,cnp = self.__getCostAndNPix(corr_p1im,corr_p2im)
+                corr_cost = cc/cnp
+                f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
+                ax[0].imshow(orig)
+                ax[0].set_title(f'raw overlap {i} original (cost={orig_cost:.2f})')
+                ax[1].imshow(corr)
+                ax[1].set_title(f'raw overlap {i} corrected (cost={corr_cost:.2f})')
+                with cd(dirpath) :
+                    plt.savefig(f'{self.raw_or_fw}_overlap_{eto.olap.n}_postfit_comparison_offset={self.best_fit_offset:.3f}_not_smoothed.png')
+                plt.close()
             
     def saveCostReduxes(self,dirpath) :
         cost_reduxes = []
@@ -147,9 +166,13 @@ class Fit :
             plt.savefig(f'{self.raw_or_fw}_fit_{self.fitn}_cost_reductions.png')
         plt.close()
             
-    def __correctImages(self,eto,offset) :
-        corr_p1 = np.where((eto.p1_im-offset)>0,offset+(1.*self.max_exp_time/eto.p1et)*(eto.p1_im-offset),eto.p1_im)
-        corr_p2 = np.where((eto.p2_im-offset)>0,offset+(1.*self.max_exp_time/eto.p2et)*(eto.p2_im-offset),eto.p2_im)
+    def __correctImages(self,eto,offset,raw=False) :
+        if raw :
+            corr_p1 = np.where((eto.raw_p1_im-offset)>0,offset+(1.*self.max_exp_time/eto.p1et)*(eto.raw_p1_im-offset),eto.raw_p1_im)
+            corr_p2 = np.where((eto.raw_p2_im-offset)>0,offset+(1.*self.max_exp_time/eto.p2et)*(eto.raw_p2_im-offset),eto.raw_p2_im)
+        else :
+            corr_p1 = np.where((eto.p1_im-offset)>0,offset+(1.*self.max_exp_time/eto.p1et)*(eto.p1_im-offset),eto.p1_im)
+            corr_p2 = np.where((eto.p2_im-offset)>0,offset+(1.*self.max_exp_time/eto.p2et)*(eto.p2_im-offset),eto.p2_im)
         return corr_p1, corr_p2
     
     def __getCostAndNPix(self,p1im,p2im) :
@@ -179,27 +202,31 @@ print('Making an AlignmentSet from the raw files....')
 #a = AlignmentSetFromXML(root1_dir,root2_dir,sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,nclip=nclip,readlayerfile=False,layer=layer)
 a = AlignmentSetFromXML(root1_dir,root2_dir,sample,nclip=nclip,readlayerfile=False,layer=layer)
 a.getDAPI(filetype='raw')
+raw_a = copy.deepcopy(a)
 #correct the rectangle images with the flatfield file and applying some smoothing
 print('Correcting and updating rectangle images....')
 flatfield_layer = (getRawAsHWL(flatfield_file,1004,1344,35,dtype=np.float64))[:,:,layer-1]
-warp_images = []
+warp_images = []; raw_warp_images = []
 for ri,r in enumerate(a.rectangles) :
     rfkey=r.file.rstrip('.im3')
     image = np.rint((r.image)/flatfield_layer).astype(np.uint16)
+    raw_warp_images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),False,ri))
     image = smoothImageWorker(image,5)
     warp_images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),False,ri))
 a.updateRectangleImages(warp_images,usewarpedimages=False,correct_with_meanimage=True,recalculate_meanimage=True)
+raw_a.updateRectangleImages(raw_warp_images,usewarpedimages=False,correct_with_meanimage=True,recalculate_meanimage=True)
 #align the overlaps
 a.align(alreadyalignedstrategy='overwrite')
+raw_a.align(alreadyalignedstrategy='overwrite')
 #make the exposure time comparison overlap objects
 etolaps = []
-for olap in a.overlaps :
+for olap,raw_olap in zip(a.overlaps,raw_a.overlaps) :
     if olap.result.exit!=0 :
         continue
     p1et = exp_times[os.path.join(root2_dir,sample,(([r for r in a.rectangles if r.n==olap.p1])[0].file).replace('.im3','.Data.dat'))]
     p2et = exp_times[os.path.join(root2_dir,sample,(([r for r in a.rectangles if r.n==olap.p2])[0].file).replace('.im3','.Data.dat'))]
     if p2et-p1et!=0. :
-        etolaps.append(ETOverlap(olap,p1et,p2et))
+        etolaps.append(ETOverlap(olap,p1et,p2et,raw_olap))
 #sort the overlaps so those with the largest exposure time differences are first
 print(f'Sorting list of {len(etolaps)} aligned overlaps with different exposure times....')
 etolaps.sort(key=lambda x: abs(x.et_diff), reverse=True)
