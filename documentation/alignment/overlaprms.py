@@ -12,6 +12,7 @@ def printrms(**kwargs):
   shifted = []
   fields = A.fields
   for o in A.overlaps:
+    if o.result.exit: continue
     dxvec = o.result.dxvec
     f1, f2 = fields[rd[o.p1]], fields[rd[o.p2]]
     raw.append(dxvec)
@@ -28,7 +29,7 @@ def printrms(**kwargs):
 
 if __name__ == "__main__":
   p = argparse.ArgumentParser()
-  p.add_argument("sample", choices=("M21_1", "M1_1", "M2_3", "TS19_0181_A_1_3_BMS_MITRE", "L1_4", "ML1603474_BMS069_5_21", "ML1603480_BMS078_5_22", "PZ1"))
+  p.add_argument("sample", choices=("M21_1", "M1_1", "M2_3", "TS19_0181_A_1_3_BMS_MITRE", "L1_4", "ML1603474_BMS069_5_21", "ML1603480_BMS078_5_22", "PZ1", "M115"))
   p.add_argument("--units", choices=("fast", "safe"), default="safe")
   args = p.parse_args()
 

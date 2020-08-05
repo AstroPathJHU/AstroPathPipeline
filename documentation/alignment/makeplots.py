@@ -33,6 +33,7 @@ def __alignmentset(root1, root2, samp, dapi, **kwargs):
     elif samp == "L1_4": root1, root2 = r"\\bki04\Clinical_Specimen_2", r"\\bki02\g\heshy\Clinical_Specimen_2"
     elif samp == "PZ1": root1, root2 = r"\\bki03\Clinical_Specimen_4", r"\\bki02\g\heshy\Clinical_Specimen_4"
     elif samp == "ML1603474_BMS069_5_21" or samp == "ML1603480_BMS078_5_22": root1, root2 = r"\\bki03\Clinical_Specimen_BMS_01", r"\\bki02\g\heshy\Clinical_Specimen_BMS_01"
+    elif samp == "M115": root1, root2 = r"\\bki07\Clinical_Specimen_11", r"\\bki07\flatw_11"
     else: raise ValueError(samp)
     return alignmentset(root1=root1, root2=root2, samp=samp, **kwargs)
 
