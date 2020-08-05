@@ -1,0 +1,85 @@
+#imports
+import numpy as np
+import os, logging, dataclasses
+
+#set up the logger
+et_fit_logger = logging.getLogger("exposure_time_fitter")
+et_fit_logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
+et_fit_logger.addHandler(handler)
+
+#helper function to make sure necessary directories exist and that other arguments are valid
+def checkArgs(args) :
+    #rawfile_top_dir/[sample] must exist
+    rawfile_dir = os.path.join(args.rawfile_top_dir,args.sample)
+    if not os.path.isdir(rawfile_dir) :
+        raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
+    #metadata top dir must exist
+    if not os.path.isdir(args.metadata_top_dir) :
+        raise ValueError(f'ERROR: metadata_top_dir argument ({args.metadata_top_dir}) does not point to a valid directory!')
+    #metadata top dir dir must be usable to find a metafile directory
+    metafile_dir = os.path.join(args.metadata_top_dir,args.sample,'im3','xml')
+    if not os.path.isdir(metafile_dir) :
+        raise ValueError(f'ERROR: metadata_top_dir ({args.metadata_top_dir}) does not contain "[sample name]/im3/xml" subdirectories!')
+    #make sure the flatfield file exists
+    if not os.path.isfile(args.flatfield_file) :
+        raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
+    #create the working directory if it doesn't already exist
+    if not os.path.isdir(args.workingdir_name) :
+        os.mkdir(args.workingdir_name)
+    #make sure the layers argument makes sense
+    if len(args.layers)<1 :
+    	raise ValueError(f'ERROR: layers argument {args.layers} must have at least one layer number (or -1)!')
+    #make sure the overlaps argument makes sense
+    if len(args.overlaps)<1 :
+        raise ValueError(f'ERROR: overlaps argument {args.overlaps} must have at least one overlap number (or -1)!')
+
+#helper class to hold a rectangle's rawfile key, raw image, and index in a list of Rectangles 
+@dataclasses.dataclass(eq=False, repr=False)
+class UpdateImage :
+    rawfile_key          : str
+    raw_image            : np.array
+    rectangle_list_index : int
+
+#helper class for comparing overlap image exposure times
+class OverlapWithExposureTimes :
+
+    def __init__(self,olap,p1et,p2et,cutimages,raw_p1im=None,raw_p2im=None) :
+        self.olap = olap
+        self.p1et = p1et
+        self.p2et = p2et
+        self.et_diff = self.p2et-self.p1et
+        whole_p1_im, whole_p2_im = self.olap.shifted
+        w=min(whole_p1_im.shape[1],whole_p2_im.shape[1])
+        h=min(whole_p1_im.shape[0],whole_p2_im.shape[0])
+        SLICES = {1:np.index_exp[:int(0.5*h),:int(0.5*w)],
+                  2:np.index_exp[:int(0.5*h),int(0.25*w):int(0.75*w)],
+                  3:np.index_exp[:int(0.5*h),int(0.5*w):],
+                  4:np.index_exp[int(0.25*h):int(0.75*h),:int(0.5*w)],
+                  6:np.index_exp[int(0.25*h):int(0.75*h),int(0.5*w):],
+                  7:np.index_exp[int(0.5*h):,:int(0.5*w)],
+                  8:np.index_exp[int(0.5*h):,int(0.25*w):int(0.75*w)],
+                  9:np.index_exp[int(0.5*h):,int(0.5*w):]
+                }
+        if cutimages :
+            self.p1_im = whole_p1_im[SLICES[self.olap.tag]]
+            self.p2_im = whole_p2_im[SLICES[self.olap.tag]]
+        else :
+            self.p1_im = whole_p1_im
+            self.p2_im = whole_p2_im
+        self.raw_p1im = raw_p1im
+        self.raw_p2im = raw_p2im
+        self.npix = self.p1_im.shape[0]*self.p1_im.shape[1]
+        self.raw_npix = self.raw_p1im.shape[0]*self.raw_p1im.shape[1]
+
+    def getCostAndNPix(self,offset,raw=False) :
+        if raw and (self.raw_p1im is not None) and (self.raw_p2im is not None) :
+            corr_p1 = np.where((self.raw_p1im-offset)>0,offset+(1.*self.max_exp_time/self.p1et)*(self.raw_p1im-offset),self.raw_p1im)
+            corr_p2 = np.where((self.raw_p2im-offset)>0,offset+(1.*self.max_exp_time/self.p2et)*(self.raw_p2im-offset),self.raw_p2im)
+            npix = self.raw_npix
+        else :    
+            corr_p1 = np.where((self.p1_im-offset)>0,offset+(1.*self.max_exp_time/self.p1et)*(self.p1_im-offset),self.p1_im)
+            corr_p2 = np.where((self.p2_im-offset)>0,offset+(1.*self.max_exp_time/self.p2et)*(self.p2_im-offset),self.p2_im)
+            npix = self.npix
+        return np.sum(np.abs(corr_p2-corr_p1)), npix
