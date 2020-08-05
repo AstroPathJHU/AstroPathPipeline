@@ -4,9 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
-import os, cv2, logging, math, more_itertools
-import numpy as np
-import os, cv2, logging, math, dataclasses
+import os, cv2, logging, math, dataclasses, more_itertools
 
 #################### GENERAL USEFUL OBJECTS ####################
 

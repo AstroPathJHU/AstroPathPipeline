@@ -536,7 +536,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
     affinefilename, fieldsfilename, fieldoverlapfilename = filenames
 
     layer, = {_.layer for _ in self.rectangles}
-    fields = readtable(fieldsfilename, Field, extrakwargs={"pscale": self.pscale, "layer": layer})
+    fields = readtable(fieldsfilename, Field, extrakwargs={"pscale": self.pscale})
     affines = readtable(affinefilename, AffineEntry)
     nclip, = {_.nclip for _ in self.overlaps}
     fieldoverlaps = readtable(fieldoverlapfilename, FieldOverlap, extrakwargs={"pscale": self.pscale, "rectangles": self.rectangles, "nclip": nclip})

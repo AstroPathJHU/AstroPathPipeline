@@ -1,4 +1,4 @@
-import cv2, matplotlib.pyplot as plt, methodtools, numpy as np, scipy.ndimage
+import cv2, matplotlib.pyplot as plt, numpy as np, scipy.ndimage
 from ..flatfield.utilities import getImageArrayLayerHistograms, getLayerOtsuThresholdsAndWeights
 from .badregions import BadRegionFinder
 
