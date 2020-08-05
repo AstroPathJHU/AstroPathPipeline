@@ -1,12 +1,11 @@
 #imports
 from ..alignment.alignmentset import AlignmentSet, AlignmentSetFromXML
-from ..alignment.overlap import AlignmentOverlap
 from ..flatfield.utilities import smoothImageWorker
 from ..warping.utilities import WarpImage
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer, getExposureTimesByLayer, getRawAsHWL
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
-import scipy, os, glob, random, cv2, platform
+import scipy, os, glob, random, cv2, platform, copy
 
 #constants
 if platform.system()=='Darwin' : #the paths on my Mac
@@ -273,7 +272,7 @@ ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_1.costs)+1)),fit_1.offsets,marker='*')
 ax[1].set_title('offsets')
 with cd(os.path.join(workingdir_name,raw_fit_1_dirname)) :
-    plt.savefig(f'raw_fit_1_costs_and_offsets.png')
+    plt.savefig('raw_fit_1_costs_and_offsets.png')
 plt.close()
 fit_1.saveCostReduxes(os.path.join(workingdir_name,raw_fit_1_dirname))
 fit_1.saveCorrectedImages(50,os.path.join(workingdir_name,raw_fit_1_dirname))
@@ -287,7 +286,7 @@ ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_2.costs)+1)),fit_2.offsets,marker='*')
 ax[1].set_title('offsets')
 with cd(os.path.join(workingdir_name,raw_fit_2_dirname)) :
-    plt.savefig(f'raw_fit_2_costs_and_offsets.png')
+    plt.savefig('raw_fit_2_costs_and_offsets.png')
 plt.close()
 fit_2.saveCostReduxes(os.path.join(workingdir_name,raw_fit_2_dirname))
 fit_2.saveCorrectedImages(50,os.path.join(workingdir_name,raw_fit_2_dirname))
@@ -341,7 +340,7 @@ ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_1.costs)+1)),fit_1.offsets,marker='*')
 ax[1].set_title('offsets')
 with cd(os.path.join(workingdir_name,fw_fit_1_dirname)) :
-    plt.savefig(f'fw_fit_1_costs_and_offsets.png')
+    plt.savefig('fw_fit_1_costs_and_offsets.png')
 plt.close()
 fit_1.saveCostReduxes(os.path.join(workingdir_name,fw_fit_1_dirname))
 fit_1.saveCorrectedImages(50,os.path.join(workingdir_name,fw_fit_1_dirname))
@@ -355,7 +354,7 @@ ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_2.costs)+1)),fit_2.offsets,marker='*')
 ax[1].set_title('offsets')
 with cd(os.path.join(workingdir_name,fw_fit_2_dirname)) :
-    plt.savefig(f'fw_fit_2_costs_and_offsets.png')
+    plt.savefig('fw_fit_2_costs_and_offsets.png')
 plt.close()
 fit_2.saveCostReduxes(os.path.join(workingdir_name,fw_fit_2_dirname))
 fit_2.saveCorrectedImages(50,os.path.join(workingdir_name,fw_fit_2_dirname))
