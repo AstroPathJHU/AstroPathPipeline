@@ -85,7 +85,6 @@ class RectangleReadImageBase(RectangleWithImageBase):
         order="F",
         mode="r"
       ) as memmap:
-        print(self.imagetransposefrominput, self.imageslicefrominput, memmap.shape, memmap.transpose(self.imagetransposefrominput)[self.imageslicefrominput].shape, image.shape)
         image[:] = memmap.transpose(self.imagetransposefrominput)[self.imageslicefrominput]
 
     return image
