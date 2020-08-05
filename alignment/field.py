@@ -1,12 +1,12 @@
 import dataclasses, numpy as np
-from ..baseclasses.rectangle import RectangleWithLayer
+from ..baseclasses.rectangle import Rectangle
 from ..baseclasses.overlap import Overlap
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init
 from ..utilities.units.dataclasses import distancefield
 
 @dataclass_dc_init
-class Field(RectangleWithLayer):
+class Field(Rectangle):
   ix: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   iy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   gc: int

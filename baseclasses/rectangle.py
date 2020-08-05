@@ -3,7 +3,7 @@ from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, memmapcontext
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
-@dataclasses.dataclass
+@dataclass_dc_init
 class Rectangle(DataClassWithDistances):
   pixelsormicrons = "microns"
 
@@ -19,6 +19,24 @@ class Rectangle(DataClassWithDistances):
   pscale: dataclasses.InitVar[float]
   readingfromfile: dataclasses.InitVar[bool]
 
+  def __init__(self, *args, rectangle=None, **kwargs):
+    rectanglekwargs = {}
+    if rectangle is not None:
+      rectanglekwargs = {
+        "pscale": rectangle.pscale,
+        **{
+          field.name: getattr(rectangle, field.name)
+          for field in dataclasses.fields(type(rectangle))
+        }
+      }
+      if "pscale" in kwargs:
+        del rectanglekwargs["pscale"]
+    return self.__dc_init__(
+      *args,
+      **rectanglekwargs,
+      **kwargs,
+    )
+
   @property
   def xvec(self):
     return np.array([self.x, self.y])
@@ -30,34 +48,6 @@ class Rectangle(DataClassWithDistances):
   @property
   def shape(self):
     return np.array([self.w, self.h])
-
-@dataclass_dc_init
-class RectangleWithLayer(Rectangle):
-  layer: dataclasses.InitVar[int]
-  def __init__(self, *args, rectangle=None, **kwargs):
-    rectanglekwargs = {}
-    if rectangle is not None:
-      rectanglekwargs = {
-        "pscale": rectangle.pscale,
-        **{
-          field.name: getattr(rectangle, field.name)
-          for field in dataclasses.fields(type(rectangle))
-        }
-      }
-      if hasattr(rectangle, "layer"):
-        rectanglekwargs["layer"] = rectangle.layer
-      rectanglekwargs = {kw: kwarg for kw, kwarg in rectanglekwargs.items() if kw not in kwargs}
-    return self.__dc_init__(
-      *args,
-      **rectanglekwargs,
-      **kwargs,
-    )
-
-  def __post_init__(self, pscale, readingfromfile, layer, *args, **kwargs):
-    super().__post_init__(pscale=pscale, readingfromfile=readingfromfile, *args, **kwargs)
-    self.layer = layer
-    if not isinstance(layer, int) and layer != "all":
-      raise ValueError("layer should be an integer or 'all'")
 
 class RectangleWithImageBase(Rectangle):
   #do not override this property
@@ -95,25 +85,25 @@ class RectangleReadImageBase(RectangleWithImageBase):
         order="F",
         mode="r"
       ) as memmap:
+        print(self.imagetransposefrominput, self.imageslicefrominput, memmap.shape, memmap.transpose(self.imagetransposefrominput)[self.imageslicefrominput].shape, image.shape)
         image[:] = memmap.transpose(self.imagetransposefrominput)[self.imageslicefrominput]
 
     return image
 
-class RectangleWithImage(RectangleReadImageBase, RectangleWithLayer):
-  def __init__(self, *args, imagefolder, filetype, width, height, readlayerfile=True, nlayers=None, **kwargs):
+class RectangleWithImageMultiLayer(RectangleReadImageBase):
+  def __init__(self, *args, imagefolder, filetype, width, height, layers, nlayers, **kwargs):
     super().__init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__filetype = filetype
-    self.__readlayerfile = readlayerfile
     self.__width = width
     self.__height = height
     self.__nlayers = nlayers
-    if nlayers is None and not readlayerfile:
-      raise TypeError("If readlayerfile is False, you have to provide nlayers")
+    self.__layers = layers
 
   @property
   def imageshape(self):
     return [
+      len(self.__layers),
       units.pixels(self.__height, pscale=self.pscale),
       units.pixels(self.__width, pscale=self.pscale),
     ]
@@ -121,20 +111,11 @@ class RectangleWithImage(RectangleReadImageBase, RectangleWithLayer):
   @property
   def imagefile(self):
     if self.__filetype=="flatWarp" :
-      if self.__readlayerfile :
-        ext = f".fw{self.layer:02d}"
-      else:
-        ext = ".fw"
+      ext = ".fw"
     elif self.__filetype=="camWarp" :
-      if self.__readlayerfile:
-        ext = f".camWarp_layer{self.layer:02d}"
-      else:
-        ext = ".camWarp"
+      ext = ".camWarp"
     elif self.__filetype=="raw" :
-      if self.__readlayerfile:
-        ext = f".Data.dat_layer{self.layer:02d}"
-      else:
-        ext = ".Data.dat"
+      ext = ".Data.dat"
     else :
       raise ValueError(f"requested file type {self.__filetype} not recognized")
 
@@ -142,22 +123,66 @@ class RectangleWithImage(RectangleReadImageBase, RectangleWithLayer):
 
   @property
   def imageshapeininput(self):
+    return units.pixels((self.__nlayers, self.__width, self.__height), pscale=self.pscale, power=[0, 1, 1])
+  @property
+  def imagetransposefrominput(self):
+    return (0, 2, 1)
+  @property
+  def imageslicefrominput(self):
+    return self.layers, slice(None), slice(None)
+
+class RectangleWithImage(RectangleWithImageMultiLayer):
+  def __init__(self, *args, layer, readlayerfile=True, **kwargs):
+    morekwargs = {
+      "layers": (layer,),
+    }
+    if readlayerfile:
+      morekwargs.update({
+        "nlayers": 1,
+      })
+    super().__init__(*args, **kwargs, **morekwargs)
+    self.__readlayerfile = readlayerfile
+    self.__layer = layer
+
+  @property
+  def layer(self): return self.__layer
+
+  @property
+  def imageshape(self):
+    return super().imageshape[1:]
+
+  @property
+  def imagefile(self):
+    result = super().imagefile
     if self.__readlayerfile:
-      return units.pixels((self.__height, self.__width), pscale=self.pscale)
-    else:
-      return units.pixels((self.__nlayers, self.__width, self.__height), pscale=self.pscale, power=[0, 1, 1])
+      folder = result.parent
+      basename = result.name
+      if basename.endswith(".camWarp") or basename.endswith(".dat"):
+        basename += f"_layer{self.__layer:02d}"
+      elif basename.endswith(".fw"):
+        basename += f"{self.__layer:02d}"
+      else:
+        assert False
+      result = folder/basename
+
+    return result
+
+  @property
+  def imageshapeininput(self):
+    result = super().imageshapeininput
+    if self.__readlayerfile:
+      assert result[0] == 1
+      return result[0], result[2], result[1]
+    return result
   @property
   def imagetransposefrominput(self):
     if self.__readlayerfile:
-      return (0, 1)
+      return (0, 1, 2)
     else:
       return (0, 2, 1)
   @property
   def imageslicefrominput(self):
-    if self.__readlayerfile:
-      return slice(None), slice(None)
-    else:
-      return self.layer-1, slice(None), slice(None)
+    return 0, slice(None), slice(None)
 
 class RectangleCollection(abc.ABC):
   @abc.abstractproperty
