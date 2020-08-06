@@ -6,7 +6,7 @@ from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Constant, RectangleFile
 from .logging import getlogger
-from .rectangle import Rectangle, rectangleoroverlapfilter, RectangleWithImage
+from .rectangle import Rectangle, rectangleoroverlapfilter, RectangleWithImage, RectangleWithImageMultiLayer
 from .overlap import Overlap, RectangleOverlapCollection
 
 @dataclass_dc_init(frozen=True)
@@ -254,20 +254,33 @@ class SampleThatReadsOverlaps(SampleBase):
 class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOverlapCollection):
   @abc.abstractmethod
   def readallrectangles(self): pass
-  rectangletype = RectangleWithImage
+  @property
+  def rectangletype(self):
+    if self.multilayer:
+      return RectangleWithImageMultiLayer
+    else:
+      return RectangleWithImage
   @property
   def rectangleextrakwargs(self):
     kwargs = {
       "pscale": self.pscale,
       "imagefolder": self.root2/self.SlideID,
-      "layer": self.layer,
       "filetype": self.filetype,
-      "readlayerfile": self.__readlayerfile,
       "width": self.fwidth,
       "height": self.fheight,
     }
-    if not self.__readlayerfile:
-      kwargs["nlayers"] = self.nlayers
+    if self.multilayer:
+      kwargs.update({
+        "layers": self.layers,
+        "nlayers": self.nlayers,
+      })
+    else:
+      kwargs.update({
+        "layer": self.layer,
+        "readlayerfile": self.__readlayerfile,
+      })
+      if not self.__readlayerfile:
+        kwargs["nlayers"] = self.nlayers
     return kwargs
   @abc.abstractmethod
   def readalloverlaps(self): pass
@@ -278,11 +291,24 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
   def overlapextrakwargs(self):
     return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}
 
-  def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer=1, readlayerfile=True, **kwargs):
-    self.__layer = layer
-    self.__readlayerfile = readlayerfile
+  multilayer = False #can override in subclasses
 
+  def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer=None, layers=None, readlayerfile=True, **kwargs):
     super().__init__(*args, **kwargs)
+
+    if self.multilayer:
+      if layer is not None:
+        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
+      if layers is None:
+        layers = range(1, self.nlayers+1)
+      self.__layers = layers
+    else:
+      if layers is not None:
+        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
+      if layer is None:
+        layer = 1
+      self.__layer = layer
+    self.__readlayerfile = readlayerfile
 
     rectanglefilter = rectangleoroverlapfilter(selectrectangles)
     _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
@@ -301,7 +327,15 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
   def rectangles(self): return self.__rectangles
 
   @property
-  def layer(self): return self.__layer
+  def layer(self):
+    if self.multilayer:
+      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
+    return self.__layer
+  @property
+  def layers(self):
+    if not self.multilayer:
+      raise TypeError(f"Can't get layers for a single layer sample {type(self).__name__}")
+    return self.__layers
 
 class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
   def readallrectangles(self):

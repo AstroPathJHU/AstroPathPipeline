@@ -128,7 +128,7 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
     return (0, 2, 1)
   @property
   def imageslicefrominput(self):
-    return tuple(_-1 for _ in self.layers), slice(None), slice(None)
+    return tuple(_-1 for _ in self.__layers), slice(None), slice(None)
 
 class RectangleWithImage(RectangleWithImageMultiLayer):
   def __init__(self, *args, layer, readlayerfile=True, **kwargs):

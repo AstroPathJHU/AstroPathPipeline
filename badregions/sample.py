@@ -1,5 +1,6 @@
 import abc, argparse, numpy as np, pathlib
 
+from ..baseclasses.rectangle import RectangleWithImageMultiLayer
 from ..baseclasses.sample import ReadRectangles
 from ..utilities import units
 from .dustspeck import DustSpeckFinder
@@ -42,6 +43,7 @@ class BadRegionFinderSample(ReadRectangles):
     return result
 
 class DustSpeckFinderSample(BadRegionFinderSample):
+  multilayer = True
   def makebadregionfinder(self, *args, **kwargs):
     return DustSpeckFinder(*args, **kwargs)
 
