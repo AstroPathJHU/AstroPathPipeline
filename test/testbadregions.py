@@ -1,7 +1,7 @@
 import numpy as np, os, pathlib
 from ..badregions.cohort import DustSpeckFinderCohort
 from ..badregions.dustspeck import DustSpeckFinder
-from ..badregions.sample import DustSpeckFinderSample
+from ..badregions.sample import DustSpeckFinderSample, TissueFoldFinderSample
 from ..badregions.tissuefold import TissueFoldFinderSimple, TissueFoldFinderByCell
 from ..utilities import units
 from .testbase import TestBaseSaveOutput
@@ -20,12 +20,18 @@ class TestBadRegions(TestBaseSaveOutput):
 
   @classmethod
   def setUpClass(cls):
-    cls.imagesets = []
+    cls.imagesetsmultilayer = []
+
     f = DustSpeckFinderSample(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", selectrectangles=[17])
-    cls.imagesets.append([r.image for r in f.rectangles])
+    cls.imagesetsmultilayer.append([r.image for r in f.rectangles])
 
     f = DustSpeckFinderSample(thisfolder/"data", thisfolder/"data"/"flatw", "M55_1", selectrectangles=[678])
-    cls.imagesets.append([f.rectangles[0].image])
+    cls.imagesetsmultilayer.append([f.rectangles[0].image])
+
+    cls.imagesetssinglelayer = []
+
+    f = TissueFoldFinderSample(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
+    cls.imagesetssinglelayer.append([r.image for r in f.rectangles])
 
     cls.writeoutreference = False
     try:
@@ -51,8 +57,8 @@ class TestBadRegions(TestBaseSaveOutput):
 
     super().tearDownClass()
 
-  def generaltest(self, BRFclass, imagesetindex, imageindex, *, expectallgood=False, **kwargs):
-    brf = BRFclass(self.imagesets[imagesetindex][imageindex])
+  def generaltest(self, BRFclass, imagesetindex, imageindex, *, ismultilayer, expectallgood=False, **kwargs):
+    brf = BRFclass((self.imagesetsmultilayer if ismultilayer else self.imagesetssinglelayer)[imagesetindex][imageindex])
     badregions = brf.badregions(**kwargs)
 
     try:
@@ -79,21 +85,21 @@ class TestBadRegions(TestBaseSaveOutput):
       raise
 
   def testTissueFoldFinderSimple(self):
-    self.generaltest(TissueFoldFinderSimple, 0, 0, threshold=0.15)
+    self.generaltest(TissueFoldFinderSimple, 0, 21, threshold=0.15, ismultilayer=False)
 
   def testTissueFoldFinderByCell(self):
-    self.generaltest(TissueFoldFinderByCell, 0, 0, threshold=0.15)
+    self.generaltest(TissueFoldFinderByCell, 0, 21, threshold=0.15, ismultilayer=False)
 
   nodust = []
   for i in range(1):
     def f(self, i=i):
-      self.generaltest(DustSpeckFinder, 0, i, expectallgood=True)
+      self.generaltest(DustSpeckFinder, 0, i, expectallgood=True, ismultilayer=True)
     f.__name__ = f"testDustSpeckFinderNoSpeck_{i}"
     nodust.append(f)
 
   def testDustSpeckFinderWithSpeckFastUnits(self):
     with units.setup_context("fast"):
-      self.generaltest(DustSpeckFinder, 1, 0)
+      self.generaltest(DustSpeckFinder, 1, 0, ismultilayer=True)
 
   def testCohort(self):
     class TestCohort(DustSpeckFinderCohort):

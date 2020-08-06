@@ -49,6 +49,13 @@ class DustSpeckFinderSample(BadRegionFinderSample):
   @property
   def logmodule(self): return "dustspeckfinder"
 
+class TissueFoldFinderSample(BadRegionFinderSample):
+  def makebadregionfinder(self, *args, **kwargs):
+    return TissueFoldFinder(*args, **kwargs)
+
+  @property
+  def logmodule(self): return "tissuefoldfinder"
+
 if __name__ == "__main__":
   p = argparse.ArgumentParser()
   g = p.add_mutually_exclusive_group(required=True)
