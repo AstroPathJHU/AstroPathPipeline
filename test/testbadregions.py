@@ -1,7 +1,7 @@
 import numpy as np, os, pathlib
-from ..alignment.alignmentset import AlignmentSet
 from ..badregions.cohort import DustSpeckFinderCohort
 from ..badregions.dustspeck import DustSpeckFinder
+from ..badregions.sample import DustSpeckFinderSample
 from ..badregions.tissuefold import TissueFoldFinderSimple, TissueFoldFinderByCell
 from ..utilities import units
 from .testbase import TestBaseSaveOutput
@@ -21,13 +21,11 @@ class TestBadRegions(TestBaseSaveOutput):
   @classmethod
   def setUpClass(cls):
     cls.imagesets = []
-    A = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    A.getDAPI(writeimstat=False)
-    cls.imagesets.append([r.image for r in A.rectangles])
+    f = DustSpeckFinderSample(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", selectrectangles=[17])
+    cls.imagesets.append([r.image for r in f.rectangles])
 
-    A = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M55_1", selectrectangles=[678])
-    A.getDAPI(writeimstat=False, keeprawimages=True)
-    cls.imagesets.append([A.rectangles[0].rawimage])
+    f = DustSpeckFinderSample(thisfolder/"data", thisfolder/"data"/"flatw", "M55_1", selectrectangles=[678])
+    cls.imagesets.append([f.rectangles[0].image])
 
     cls.writeoutreference = False
     try:
@@ -81,13 +79,13 @@ class TestBadRegions(TestBaseSaveOutput):
       raise
 
   def testTissueFoldFinderSimple(self):
-    self.generaltest(TissueFoldFinderSimple, 0, 21, threshold=0.15)
+    self.generaltest(TissueFoldFinderSimple, 0, 0, threshold=0.15)
 
   def testTissueFoldFinderByCell(self):
-    self.generaltest(TissueFoldFinderByCell, 0, 21, threshold=0.15)
+    self.generaltest(TissueFoldFinderByCell, 0, 0, threshold=0.15)
 
   nodust = []
-  for i in range(40):
+  for i in range(1):
     def f(self, i=i):
       self.generaltest(DustSpeckFinder, 0, i, expectallgood=True)
     f.__name__ = f"testDustSpeckFinderNoSpeck_{i}"
@@ -98,7 +96,10 @@ class TestBadRegions(TestBaseSaveOutput):
       self.generaltest(DustSpeckFinder, 1, 0)
 
   def testCohort(self):
-    cohort = DustSpeckFinderCohort(thisfolder/"data", thisfolder/"data"/"flatw", debug=True)
+    class TestCohort(DustSpeckFinderCohort):
+      def initiatesample(self, *args, **kwargs):
+        return super().initiatesample(*args, selectrectangles=[17], **kwargs)
+    cohort = TestCohort(thisfolder/"data", thisfolder/"data"/"flatw", debug=True)
     cohort.run()
 
     for log in (
