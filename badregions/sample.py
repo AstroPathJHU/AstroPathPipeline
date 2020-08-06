@@ -1,6 +1,5 @@
 import abc, argparse, numpy as np, pathlib
 
-from ..baseclasses.rectangle import RectangleWithImageMultiLayer
 from ..baseclasses.sample import ReadRectangles
 from ..utilities import units
 from .dustspeck import DustSpeckFinder
