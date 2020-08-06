@@ -4,8 +4,17 @@ from .utilities import et_fit_logger
 from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer
 from ..utilities.misc import cd
-import numpy as np, matplotlib.pyplot as plt
+import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import os, glob
+
+#helper function to create a fit for a single layer
+#can be run in parallel if given a return dictionary
+def getExposureTimeFitWorker(layer_n,exposure_times,max_exp_time,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages,return_dict=None) :
+    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,max_exp_time,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages)
+    if return_dict is not None :
+        return_dict[layer_n] = fit
+    else :
+        return fit
 
 #main class for fitting to find the optimal offset
 class ExposureTimeOffsetFitGroup :
@@ -43,14 +52,39 @@ class ExposureTimeOffsetFitGroup :
         self.flatfield = self.__getFlatfield(flatfield_filepath)
         #initialize all of the single layer fits
         self.all_fits = []
-        for li,ln in enumerate(self.layers) :
-            et_fit_logger.info(f'Setting up fit for layer {ln} ({li+1} of {len(self.layers)})....')
-            this_layer_all_exposure_times = {}
-            for rfs in all_exposure_times.keys() :
-                this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
-            self.all_fits.append(SingleLayerExposureTimeFit(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
-                                                            self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
-                                                            overlaps,smoothsigma,cutimages))
+        if self.n_threads > 1 :
+            manager = mp.Manager()
+            return_dict = manager.dict()
+            procs = []
+            for li,ln in enumerate(self.layers) :
+                et_fit_logger.info(f'Setting up fit for layer {ln} ({li+1} of {len(self.layers)} to run in parallel)....')
+                this_layer_all_exposure_times = {}
+                for rfs in all_exposure_times.keys() :
+                    this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
+                p = mp.Process(target=getExposureTimeFitWorker, 
+                               args=(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
+                                     self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
+                                     overlaps,smoothsigma,cutimages,return_dict)
+                              )
+                procs.append(p)
+                p.start()
+                if len(procs)>=self.n_threads :
+                    for proc in procs :
+                        proc.join()
+                    procs = []
+            for proc in procs:
+                proc.join()
+            for ln in self.layers :
+                self.all_fits.append(return_dict[ln])
+        else :
+            for li,ln in enumerate(self.layers) :
+                et_fit_logger.info(f'Setting up fit for layer {ln} ({li+1} of {len(self.layers)})....')
+                this_layer_all_exposure_times = {}
+                for rfs in all_exposure_times.keys() :
+                    this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
+                self.all_fits.append(getExposureTimeFitWorker(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
+                                                              self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
+                                                              overlaps,smoothsigma,cutimages))
         et_fit_logger.info('All fits prepared.')
 
     def runFits(self,initial_offset,offset_bounds,max_iter,gtol,eps,print_every) :
@@ -64,8 +98,21 @@ class ExposureTimeOffsetFitGroup :
         print_every    = how often to print during minimization
         """
         et_fit_logger.info('Running fits for all layers....')
-        for fit in self.all_fits :
-            fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every)
+        if self.n_threads >1 :
+            procs = []
+            for fit in self.all_fits :
+                p = mp.Process(fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every))
+                procs.append(p)
+                p.start()
+                if len(procs)>=self.n_threads :
+                    for proc in procs :
+                        proc.join()
+                    procs = []
+            for proc in procs:
+                proc.join()
+        else :
+            for fit in self.all_fits :
+                fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every)
         et_fit_logger.info('All fits completed!')
 
     def writeOutResults(self,n_comparisons_to_save) :
