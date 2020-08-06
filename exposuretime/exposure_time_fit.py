@@ -2,8 +2,10 @@
 from .utilities import et_fit_logger, UpdateImage, OverlapWithExposureTimes
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
+from ..utilities.tableio import writetable
+from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
-import copy
+import os, copy, random
 
 #helper class to do the fit in one image layer only
 class SingleLayerExposureTimeFit :
@@ -64,6 +66,25 @@ class SingleLayerExposureTimeFit :
         msg = f'Layer {self.layer} fit done! Minimization terminated with exit {self.result.message}. '
         msg+= f'Best-fit offset = {self.best_fit_offset:.4f} (best cost = {self.best_fit_cost:.4f})'
         et_fit_logger.info(msg)
+
+    def writeOutResults(self,top_plot_dir,n_comparisons_to_save) :
+        """
+        Save some post-processing plots for this fit
+        top_plot_dir          = path to directory in which this fit's subdirectory should be created
+        n_comparisons_to_save = total # of overlap overlay comparisons to write out for each completed fit
+        """
+        if self.best_fit_offset is None :
+            raise RuntimeError('ERROR: best fit offset is None; run fit before calling writeOutResults!')
+        #make this fit's plot directory name/path
+        plotdirname = f'layer_{self.layer}_plots'
+        with cd(top_plot_dir) :
+            if not os.path.isdir(plotdirname) :
+                os.mkdir(plotdirname)
+        self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
+        self.__plotCostsAndOffsets()
+        self.__writeResultsAndPlotCostReductions()
+        self.__saveComparisonImages(n_comparisons_to_save)
+
         
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -128,57 +149,51 @@ class SingleLayerExposureTimeFit :
         #return the whole list
         return etolaps
 
-
-
-    #################### ORIGINAL COPY-PASTE FROM TEST SCRIPT ####################
-    
-    def saveCorrectedImages(self,n_images,dirpath) :
-        if self.best_fit_offset is None :
-            raise Exception('ERROR: best fit offset not yet determined')
-        for i,eto in enumerate(self.etos[:min(n_images,len(self.etos))],start=1) :
-            orig = np.array([eto.p1_im, eto.p2_im, 0.5*(eto.p1_im+eto.p2_im)]).transpose(1, 2, 0) / 1000.
-            oc,onp = self.__getCostAndNPix(eto.p1_im,eto.p2_im)
-            orig_cost = oc/onp
-            corr_p1im, corr_p2im = self.__correctImages(eto,self.best_fit_offset)
-            corr = np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000.
-            cc,cnp = self.__getCostAndNPix(corr_p1im,corr_p2im)
-            corr_cost = cc/cnp
-            f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
-            ax[0].imshow(orig)
-            ax[0].set_title(f'overlap {i} original (cost={orig_cost:.2f})')
-            ax[1].imshow(corr)
-            ax[1].set_title(f'overlap {i} corrected (cost={corr_cost:.2f})')
-            with cd(dirpath) :
-                plt.savefig(f'{self.raw_or_fw}_overlap_{eto.olap.n}_postfit_comparison_offset={self.best_fit_offset:.3f}.png')
-            plt.close()
-            if eto.raw_p1im is not None and eto.raw_p2im is not None :
-                orig = np.array([eto.raw_p1im, eto.raw_p2im, 0.5*(eto.raw_p1im+eto.raw_p2im)]).transpose(1, 2, 0) / 1000.
-                oc,onp = self.__getCostAndNPix(eto.raw_p1im,eto.raw_p2im)
-                orig_cost = oc/onp
-                corr_p1im, corr_p2im = self.__correctImages(eto,self.best_fit_offset,raw=True)
-                corr = np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000.
-                cc,cnp = self.__getCostAndNPix(corr_p1im,corr_p2im)
-                corr_cost = cc/cnp
-                f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
-                ax[0].imshow(orig)
-                ax[0].set_title(f'raw overlap {i} original (cost={orig_cost:.2f})')
-                ax[1].imshow(corr)
-                ax[1].set_title(f'raw overlap {i} corrected (cost={corr_cost:.2f})')
-                with cd(dirpath) :
-                    plt.savefig(f'{self.raw_or_fw}_overlap_{eto.olap.n}_postfit_comparison_offset={self.best_fit_offset:.3f}_not_smoothed.png')
-                plt.close()
-            
-    def saveCostReduxes(self,dirpath) :
-        cost_reduxes = []
-        for eto in self.etos :
-            oc,onp = self.__getCostAndNPix(eto.p1_im,eto.p2_im)
-            orig_cost = oc/onp
-            corr_p1im, corr_p2im = self.__correctImages(eto,self.best_fit_offset)
-            cc,cnp = self.__getCostAndNPix(corr_p1im,corr_p2im)
-            corr_cost = cc/cnp
-            cost_reduxes.append((orig_cost-corr_cost)/(orig_cost))
-        plt.hist(cost_reduxes,bins=60)
-        plt.title('fractional cost reductions')
-        with cd(dirpath) :
-            plt.savefig(f'{self.raw_or_fw}_fit_{self.fitn}_cost_reductions.png')
+    #helper function to plot cost and offset tested at each fit iteration
+    def __plotCostsAndOffsets(self) :
+        f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
+        ax[0].plot(list(range(1,len(self.costs)+1)),self.costs,marker='*')
+        ax[0].set_xlabel('fit iteration')
+        ax[0].set_ylabel('fit cost')
+        ax[1].plot(list(range(1,len(self.costs)+1)),self.offsets,marker='*')
+        ax[1].set_xlabel('fit iteration')
+        ax[1].set_ylabel('offset')
+        with cd(self.plotdirpath) :
+            plt.savefig('costs_and_offsets.png')
         plt.close()
+
+    #helper function to make a plot of each overlap's cost reduction and write out the table of overlap fit results
+    def __writeResultsAndPlotCostReductions(self) :
+        fitresults = []; cost_reduxes = []; frac_cost_reduxes = []
+        for eto in self.exposure_time_overlaps :
+            fitresult = eto.getFitResult(self.best_fit_offset)
+            fitresults.append(fitresult)
+            cost_reduxes.append(fitresult.prefit_cost-fitresult.postfit_cost)
+            frac_cost_reduxes.append((fitresult.prefit_cost-fitresult.postfit_cost)/(fitresult.prefit_cost))
+        f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
+        ax[0].hist(cost_reduxes,bins=60)
+        ax[0].set_xlabel('original cost - post-fit cost')
+        ax[0].set_ylabel('number of overlaps')
+        ax[1].hist(frac_cost_reduxes,bins=60)
+        ax[1].set_xlabel('(original cost - post-fit cost)/(original cost)')
+        ax[1].set_ylabel('number of overlaps')
+        with cd(self.plotdirpath) :
+            plt.savefig(f'cost_reductions.png')
+        plt.close()
+        with cd(self.plotdirpath) :
+            writetable('overlap_fit_results.csv',fitresults)
+
+    #helper function to write out a set of overlap overlay comparisons
+    def __saveComparisonImages(self,n_comparisons_to_save) :
+        self.exposure_time_overlaps.sort(key=lambda x: abs(x.et_diff))
+        n_ends = int(n_comparisons_to_save/3)
+        n_random = max(0,n_comparisons_to_save-(2*n_ends))
+        with cd(self.plotdirpath) :
+            for io,eto in enumerate(self.exposure_time_overlaps[:n_ends],start=1) :
+                eto.saveComparisonImages(self.best_fit_offset,f'overlay_comparison_least_different_{io}')
+            for io,eto in enumerate(reversed(self.exposure_time_overlaps)[:n_ends],start=1) :
+                eto.saveComparisonImages(self.best_fit_offset,f'overlay_comparison_most_different_{io}')
+            if n_random>0 :
+                random_indices = random.sample(range(n_ends,len(self.exposure_time_overlaps)-n_ends),n_random)
+                for ri in random_indices :
+                    self.exposure_time_overlaps[ri].saveComparisonImages(self.best_fit_offset,f'overlay_comparison_random_{ri+1}')

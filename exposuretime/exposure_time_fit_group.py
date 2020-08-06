@@ -12,34 +12,35 @@ class ExposureTimeOffsetFitGroup :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,sample_name,rawfile_top_dir,metadata_top_dir,flatfield_filepath,workingdir_name,layers,n_threads) :
+    def __init__(self,sample_name,rawfile_top_dir,metadata_top_dir,workingdir_name,layers,n_threads) :
         """
-        sample_name        = name of the microscope data sample to fit to ("M21_1" or equivalent)
-        rawfile_top_dir    = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
-        metadata_top_dir   = path to directory containing [samplename]/im3/xml directory
-        flatfield_filepath = path to flatfield file to use in correcting raw image illumination
-        working_dir_name   = path to some local directory to store files produced by the WarpFitter
-        layers             = list of layer numbers to find offsets for
-        n_threads          = max number of processes to open at once for stuff that's parallelized
+        sample_name      = name of the microscope data sample to fit to ("M21_1" or equivalent)
+        rawfile_top_dir  = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
+        metadata_top_dir = path to directory containing [samplename]/im3/xml directory
+        working_dir_name = path to some local directory to store files produced by the WarpFitter
+        layers           = list of layer numbers to find offsets for
+        n_threads        = max number of processes to open at once for stuff that's parallelized
         """
         self.sample = sample_name
         self.rawfile_top_dir = rawfile_top_dir
         self.metadata_top_dir = metadata_top_dir
-        self.flatfield = self.__getFlatfield()
         self.workingdir_name = workingdir_name
         self.layers = self.__getLayers()
         self.n_threads = n_threads
 
-    def prepFits(self,overlaps,smoothsigma,cutimages) :
+    def prepFits(self,flatfield_filepath,overlaps,smoothsigma,cutimages) :
         """
         Load all of the raw file layers and their exposure times, correct the images with the flatfield and smooth them, 
         align the overlaps, and prep the fits
-        overlaps    = list of overlap numbers to consider (should really only use this for testing)
-        smoothsigma = sigma for Gaussian blurring to apply to images
-        cutimages   = True if only the central regions of the images should be considered
+        flatfield_filepath = path to flatfield file to use in correcting raw image illumination
+        overlaps           = list of overlap numbers to consider (should really only use this for testing)
+        smoothsigma        = sigma for Gaussian blurring to apply to images
+        cutimages          = True if only the central regions of the images should be considered
         """
         #first get all of the raw image exposure times, and the maximum exposure times in each layer
         all_exposure_times, max_exp_times_by_layer = self.__getExposureTimes()
+        #next get the flatfield to use
+        self.flatfield = self.__getFlatfield()
         #initialize all of the single layer fits
         self.all_fits = []
         for li,ln in enumerate(self.layers) :
@@ -66,6 +67,14 @@ class ExposureTimeOffsetFitGroup :
         for fit in self.all_fits :
             fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every)
         et_fit_logger.info('All fits completed!')
+
+    def writeOutResults(self,n_comparisons_to_save) :
+        """
+        Write out the post-processing plots in each of this fits
+        n_comparisons_to_save = total # of overlap overlay comparisons to write out for each completed fit
+        """
+        for fit in self.all_fits :
+            fit.writeOutResults(self.workingdir_name,n_comparisons_to_save)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

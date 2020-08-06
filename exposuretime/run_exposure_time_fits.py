@@ -45,22 +45,21 @@ if __name__=='__main__' :
                                   help='CSV list of image layer numbers to use (indexed from 1) [default=-1 runs all layers]')
     run_option_group.add_argument('--overlaps',              default=[-1], type=split_csv_to_list_of_ints,         
                                   help='CSV list of overlap numbers to use [default=-1 runs all of them]. Should really only use this for testing.')
-    run_option_group.add_argument('--n_comparisons_to_save', default=25,   type=int,         
-                                  help='Number of pre/post-fit overlap overlay comparison images to save (default=25)')
+    run_option_group.add_argument('--n_comparisons_to_save', default=30,   type=int,         
+                                  help='Number of pre/post-fit overlap overlay comparison images to save (default=30)')
     args = parser.parse_args()
     #make sure the arguments are valid
     checkArgs(args)
     #initialize a fit
     et_fit_logger.info('Defining group of fits....')
-    fit_group = ExposureTimeOffsetFitGroup(args.sample,args.rawfile_top_dir,args.metadata_top_dir,args.flatfield_file,
-                                           args.workingdir_name,args.layers,args.n_threads)
+    fit_group = ExposureTimeOffsetFitGroup(args.sample,args.rawfile_top_dir,args.metadata_top_dir,args.workingdir_name,args.layers,args.n_threads)
     #prepare the fits to run by reading the files and exposure times etc.
     et_fit_logger.info('Loading files and preparing fits....')
-    fit_group.prepFits(args.overlaps,args.smooth_sigma,args.central_regions_only)
+    fit_group.prepFits(args.flatfield_file,args.overlaps,args.smooth_sigma,args.central_regions_only)
     #run the fits
     et_fit_logger.info('Running fits....')
     fit_group.runFits(args.initial_offset,args.offset_bounds,args.max_iter,args.gtol,args.eps,args.print_every)
     #write out the fit results
     et_fit_logger.info('Writing out fit results....')
-    fit_group.writeOutResults()
+    fit_group.writeOutResults(args.n_comparisons_to_save)
     et_fit_logger.info('Done!')
