@@ -58,7 +58,7 @@ class ExposureTimeOffsetFitGroup :
             return_dict = manager.dict()
             procs = []
             for li,ln in enumerate(self.layers) :
-                et_fit_logger.info(f'Setting up fit for layer {ln} ({li+1} of {len(self.layers)} to run in parallel)....')
+                et_fit_logger.info(f'Setting up fit for layer {ln} ({li+1} of {len(self.layers)} to run in {self.n_threads} parallel threads)....')
                 this_layer_all_exposure_times = {}
                 for rfs in all_exposure_times.keys() :
                     this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
