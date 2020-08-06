@@ -3,24 +3,29 @@ from ..flatfield.utilities import getImageArrayLayerHistograms, getLayerOtsuThre
 from .badregions import BadRegionFinder
 
 class DustSpeckFinder(BadRegionFinder):
-  def badregions(self, *, dilatesize=None, statserodesize=None, showdebugplots=False):
-    hist = getImageArrayLayerHistograms(self.image)
-    thresholds, weights = getLayerOtsuThresholdsAndWeights(hist)
-    try:
-      threshold = thresholds[1]  #first one finds signal, second finds dust speck
-      weight = weights[1]
-    except IndexError:
-      weight = -1
-    if weight <= 0:
-      return np.zeros_like(self.image, dtype=bool)
+  def __init__(self, image, **kwargs):
+    self.fullimage = image
+    super().__init__(image=image[0], *args, **kwargs)
 
-    if showdebugplots:
-      if threshold > thresholds[0]:
-        print("candidate dust is BRIGHTER than signal")
-      else:
-        print("candidate dust is DIMMER than signal")
+  eigenvector = np.array([
+    3.74232724e-01,  3.97916625e-01,  3.96707054e-01,  3.83565923e-01,
+    3.49349573e-01,  3.02937958e-01,  2.63828851e-01,  2.25467130e-01,
+    1.88632897e-01, -3.22435638e-02, -4.60956243e-02, -4.91402069e-02,
+   -3.84106161e-02, -3.22414045e-02, -2.29283253e-02, -1.81406213e-02,
+   -1.99784469e-02, -2.58578890e-02, -6.00813643e-02, -6.16669897e-02,
+   -4.87819064e-02, -3.30696926e-02, -3.75845706e-02, -4.45549348e-02,
+   -4.79685955e-02, -3.46724381e-03, -8.92635498e-03, -1.40048653e-04,
+    5.43894270e-03,  5.74610904e-04, -9.31201613e-03, -1.82879178e-02,
+   -2.67289473e-03, -1.10337250e-02,
+  ])
 
-    signalmask = self.image > threshold
+  def badregions(self, *, threshold=2e-6, dilatesize=None, statserodesize=None, showdebugplots=False):
+    im = self.fullimage
+    transposed = im.transpose(1, 2, 0)
+    scaled = transposed / np.sum(im, axis=(1, 2))
+    projected = scaled @ self.eigenvector
+
+    signalmask = projected > threshold
     badregions = cv2.UMat(signalmask.astype(np.uint8))
     if showdebugplots:
       print("image > threshold")
@@ -58,6 +63,7 @@ class DustSpeckFinder(BadRegionFinder):
 
     badregions = badregions.get().astype(bool)
 
+    """
     labeled, _ = scipy.ndimage.label(badregions)
     aftersmallcloseopen_labeled = None
 
@@ -113,5 +119,6 @@ class DustSpeckFinder(BadRegionFinder):
       else:
         badregions[thisregion] = False
         continue
+    """
 
     return badregions
