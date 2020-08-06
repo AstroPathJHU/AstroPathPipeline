@@ -3,6 +3,7 @@ import abc, argparse, numpy as np, pathlib
 from ..baseclasses.sample import ReadRectangles
 from ..utilities import units
 from .dustspeck import DustSpeckFinder
+from .tissuefold import TissueFoldFinderSimple
 
 class BadRegionFinderSample(ReadRectangles):
   @property
@@ -51,7 +52,7 @@ class DustSpeckFinderSample(BadRegionFinderSample):
 
 class TissueFoldFinderSample(BadRegionFinderSample):
   def makebadregionfinder(self, *args, **kwargs):
-    return TissueFoldFinder(*args, **kwargs)
+    return TissueFoldFinderSimple(*args, **kwargs)
 
   @property
   def logmodule(self): return "tissuefoldfinder"
