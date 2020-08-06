@@ -25,7 +25,7 @@ if __name__=='__main__' :
                                         help='Add this flag to cut out the outer 50%% of each overlap')
     #group for options of how the fits will proceed
     fit_option_group = parser.add_argument_group('fit options', 'how should the fits be done?')
-    fit_option_group.add_argument('--initial_offset', default=50.,      type=float,
+    fit_option_group.add_argument('--initial_offset', default=10.,      type=float,
                                   help='Dark current offset count fit starting point (default=50.)')
     fit_option_group.add_argument('--offset_bounds',  default=[0,1000], type=split_csv_to_list_of_ints,         
                                   help='CSV of low,high bounds for offset [default=(0,1000)]')

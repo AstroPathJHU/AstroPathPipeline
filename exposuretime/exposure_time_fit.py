@@ -153,6 +153,7 @@ class SingleLayerExposureTimeFit :
 
     #helper function to plot cost and offset tested at each fit iteration
     def __plotCostsAndOffsets(self) :
+        et_fit_logger.info(f'Plotting costs and offsets for layer {self.layer}....')
         f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
         ax[0].plot(list(range(1,len(self.costs)+1)),self.costs,marker='*')
         ax[0].set_xlabel('fit iteration')
@@ -166,6 +167,7 @@ class SingleLayerExposureTimeFit :
 
     #helper function to make a plot of each overlap's cost reduction and write out the table of overlap fit results
     def __writeResultsAndPlotCostReductions(self) :
+        et_fit_logger.info(f'Writing out fit results for layer {self.layer}....')
         fitresults = []; cost_reduxes = []; frac_cost_reduxes = []
         for eto in self.exposure_time_overlaps :
             fitresult = eto.getFitResult(self.best_fit_offset)
@@ -187,6 +189,7 @@ class SingleLayerExposureTimeFit :
 
     #helper function to write out a set of overlap overlay comparisons
     def __saveComparisonImages(self,n_comparisons_to_save) :
+        et_fit_logger.info(f'Saving comparison images for layer {self.layer}....')
         self.exposure_time_overlaps.sort(key=lambda x: abs(x.et_diff))
         n_ends = int(n_comparisons_to_save/3)
         n_random = max(0,n_comparisons_to_save-(2*n_ends))

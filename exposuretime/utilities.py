@@ -48,12 +48,19 @@ class OverlapFitResult :
     n            : int
     p1           : int
     p2           : int
+    tag          : int
     p1_et        : float
     p2_et        : float
     et_diff      : float
     npix         : int
     prefit_cost  : float
     postfit_cost : float
+
+@dataclasses.dataclass
+class LayerOffset :
+    layer_n    : int
+    offset     : float
+    final_cost : float
 
 #helper class for comparing overlap image exposure times
 class OverlapWithExposureTimes :
@@ -101,12 +108,12 @@ class OverlapWithExposureTimes :
         self.orig_cost = oc/onp
         cc,cnp = self.getCostAndNPix(best_fit_offset)
         self.corr_cost = cc/cnp
-        return OverlapFitResult(self.olap.n,self.olap.p1,self.olap.p2,self.p1et,self.p2et,self.et_diff,self.npix,self.orig_cost,self.corr_cost)
+        return OverlapFitResult(self.olap.n,self.olap.p1,self.olap.p2,self.olap.tag,self.p1et,self.p2et,self.et_diff,self.npix,self.orig_cost,self.corr_cost)
 
     def saveComparisonImages(self,best_fit_offset,filename_stem) :
-        orig_overlay = np.array([self.p1_im, self.p2_im, 0.5*(self.p1_im+self.p2_im)]).transpose(1, 2, 0) / 1000.
+        orig_overlay = np.clip(np.array([self.p1_im, self.p2_im, 0.5*(self.p1_im+self.p2_im)]).transpose(1, 2, 0) / 1000., 0., 1.)
         corr_p1im, corr_p2im = self.__getCorrectedImages(best_fit_offset,False)
-        corr_overlay = np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000.
+        corr_overlay = np.clip(np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000., 0., 1.)
         f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
         ax[0].imshow(orig_overlay)
         ax[0].set_title(f'overlap {self.olap.n} original (cost={self.orig_cost:.3f})')
@@ -115,9 +122,9 @@ class OverlapWithExposureTimes :
         plt.savefig(f'{filename_stem}_offset={best_fit_offset:.3f}_clipped_and_smoothed.png')
         plt.close()
         if self.raw_p1im is not None and self.raw_p2im is not None :
-            orig_overlay = np.array([self.raw_p1im, self.raw_p2im, 0.5*(self.raw_p1im+self.raw_p2im)]).transpose(1, 2, 0) / 1000.
+            orig_overlay = np.clip(np.array([self.raw_p1im, self.raw_p2im, 0.5*(self.raw_p1im+self.raw_p2im)]).transpose(1, 2, 0) / 1000.,0.,1.)
             corr_p1im, corr_p2im = self.__getCorrectedImages(best_fit_offset,True)
-            corr_overlay = np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000.
+            corr_overlay = np.clip(np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000.,0.,1.)
             f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
             ax[0].imshow(orig_overlay)
             ax[0].set_title(f'raw overlap {self.olap.n} original')

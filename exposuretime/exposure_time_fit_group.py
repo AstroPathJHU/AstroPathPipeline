@@ -1,8 +1,9 @@
 #imports
 from .exposure_time_fit import SingleLayerExposureTimeFit
-from .utilities import et_fit_logger
+from .utilities import et_fit_logger, LayerOffset
 from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer
+from ..utilities.tableio import writetable
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import os, glob
@@ -120,8 +121,19 @@ class ExposureTimeOffsetFitGroup :
         Write out the post-processing plots in each of this fits
         n_comparisons_to_save = total # of overlap overlay comparisons to write out for each completed fit
         """
+        offsets = []
         for fit in self.all_fits :
             fit.writeOutResults(self.workingdir_name,n_comparisons_to_save)
+            offsets.append(LayerOffset(fit.layer,fit.best_fit_offset,fit.best_fit_cost))
+        with cd(self.workingdir_name) :
+            writetable(f'{self.sample}_best_fit_offsets.csv',offsets)
+        _,_,nlayers = getImageHWLFromXMLFile(self.metadata_top_dir,self.sample)
+        plt.plot([o.layer_n for o in offsets],[o.offset for o in offsets],marker='*')
+        plt.xlabel('image layer')
+        plt.ylabel('best-fit offset')
+        with cd(self.workingdir_name) :
+            plt.savefig(f'{self.sample}_best_fit_offsets_by_layer.png')
+        plt.close()
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
