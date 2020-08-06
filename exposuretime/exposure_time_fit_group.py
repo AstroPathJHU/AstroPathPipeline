@@ -25,7 +25,7 @@ class ExposureTimeOffsetFitGroup :
         self.rawfile_top_dir = rawfile_top_dir
         self.metadata_top_dir = metadata_top_dir
         self.workingdir_name = workingdir_name
-        self.layers = self.__getLayers()
+        self.layers = self.__getLayers(layers)
         self.n_threads = n_threads
 
     def prepFits(self,flatfield_filepath,overlaps,smoothsigma,cutimages) :
@@ -40,14 +40,14 @@ class ExposureTimeOffsetFitGroup :
         #first get all of the raw image exposure times, and the maximum exposure times in each layer
         all_exposure_times, max_exp_times_by_layer = self.__getExposureTimes()
         #next get the flatfield to use
-        self.flatfield = self.__getFlatfield()
+        self.flatfield = self.__getFlatfield(flatfield_filepath)
         #initialize all of the single layer fits
         self.all_fits = []
         for li,ln in enumerate(self.layers) :
             et_fit_logger.info(f'Setting up fit for layer {ln} ({li+1} of {len(self.layers)})....')
             this_layer_all_exposure_times = {}
-            for rfs in all_layer_exposure_times.keys() :
-                this_layer_all_exposure_times[rfs] = all_layer_exposure_times[rfs][li]
+            for rfs in all_exposure_times.keys() :
+                this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
             self.all_fits.append(SingleLayerExposureTimeFit(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
                                                             self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
                                                             overlaps,smoothsigma,cutimages))
@@ -79,7 +79,7 @@ class ExposureTimeOffsetFitGroup :
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to get the flatfield from the given arguments
-    def __getFlatfield(self) :
+    def __getFlatfield(self,flatfield_filepath) :
         img_dims = getImageHWLFromXMLFile(self.metadata_top_dir,self.sample)
         if flatfield_filepath is None :
             et_fit_logger.warn('WARNING: No flatfield file path specified; corrections will not be applied!')
@@ -88,7 +88,7 @@ class ExposureTimeOffsetFitGroup :
             return getRawAsHWL(flatfield_filepath,*(img_dims),CONST.FLATFIELD_DTYPE)
 
     #helper function to return the list of layer numbers to run from the given arguments
-    def __getLayers(self) :
+    def __getLayers(self,layers) :
         _,_,nlayers = getImageHWLFromXMLFile(self.metadata_top_dir,self.sample)
         if len(layers)==1 and layers[0]==-1 :
             return list(range(1,nlayers+1))
@@ -103,18 +103,18 @@ class ExposureTimeOffsetFitGroup :
         et_fit_logger.info('Getting all image exposure times....')
         _,_,nlayers = getImageHWLFromXMLFile(self.metadata_top_dir,self.sample)
         with cd(os.path.join(self.rawfile_top_dir,self.sample)) :
-            all_rfps = [os.path.join(self.rawfile_top_dir,self.sample,fn) for fn in glob.glob(CONST.RAW_EXT)]
+            all_rfps = [os.path.join(self.rawfile_top_dir,self.sample,fn) for fn in glob.glob(f'*{CONST.RAW_EXT}')]
         exp_times = {}; max_exp_times = [0 for ln in self.layers]
         for rfp in all_rfps :
             rfs = os.path.basename(rfp).rstrip(CONST.RAW_EXT)
             exp_times[rfs] = []
-            all_layer_exposure_times = getExposureTimesByLayer(rfp,nlayers,root1_dir)[layer-1]
+            all_layer_exposure_times = getExposureTimesByLayer(rfp,nlayers,self.metadata_top_dir)
             for li,ln in enumerate(self.layers) :
                 exp_times[rfs].append(all_layer_exposure_times[ln-1])
                 if all_layer_exposure_times[ln-1] > max_exp_times[li] :
                     max_exp_times[li] = all_layer_exposure_times[ln-1]
         for li,ln in enumerate(self.layers) :
-            this_layer_ets = [all_layer_exposure_times[rfs][li] for rfs in all_layer_exposure_times.keys()]
+            this_layer_ets = [exp_times[rfs][li] for rfs in exp_times.keys()]
             plt.hist(this_layer_ets)
             plt.title(f'{self.sample} layer {ln} exposure times')
             plt.xlabel('exposure time (ms)')

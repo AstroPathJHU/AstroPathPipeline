@@ -1,6 +1,6 @@
 #imports
-import numpy as np
-import os, logging, dataclasses
+import numpy as np, matplotlib.pyplot as plt
+import os, logging, dataclasses, cv2
 
 #set up the logger
 et_fit_logger = logging.getLogger("exposure_time_fitter")
@@ -39,7 +39,7 @@ def checkArgs(args) :
 @dataclasses.dataclass(eq=False, repr=False)
 class UpdateImage :
     rawfile_key          : str
-    raw_image            : np.array
+    raw_image            : cv2.UMat
     rectangle_list_index : int
 
 #helper class to hold the pre- and post-fit details of overlaps
@@ -58,11 +58,12 @@ class OverlapFitResult :
 #helper class for comparing overlap image exposure times
 class OverlapWithExposureTimes :
 
-    def __init__(self,olap,p1et,p2et,cutimages,raw_p1im=None,raw_p2im=None) :
+    def __init__(self,olap,p1et,p2et,max_exp_time,cutimages,raw_p1im=None,raw_p2im=None) :
         self.olap = olap
         self.p1et = p1et
         self.p2et = p2et
         self.et_diff = self.p2et-self.p1et
+        self.max_exp_time = max_exp_time
         whole_p1_im, whole_p2_im = self.olap.shifted
         w=min(whole_p1_im.shape[1],whole_p2_im.shape[1])
         h=min(whole_p1_im.shape[0],whole_p2_im.shape[0])
@@ -111,7 +112,7 @@ class OverlapWithExposureTimes :
         ax[0].set_title(f'overlap {self.olap.n} original (cost={self.orig_cost:.3f})')
         ax[1].imshow(corr_overlay)
         ax[1].set_title(f'overlap {self.olap.n} corrected (cost={self.corr_cost:.3f})')
-        plt.savefig(f'{filename_stem}_offset={self.best_fit_offset:.3f}_clipped_and_smoothed.png')
+        plt.savefig(f'{filename_stem}_offset={best_fit_offset:.3f}_clipped_and_smoothed.png')
         plt.close()
         if self.raw_p1im is not None and self.raw_p2im is not None :
             orig_overlay = np.array([self.raw_p1im, self.raw_p2im, 0.5*(self.raw_p1im+self.raw_p2im)]).transpose(1, 2, 0) / 1000.
@@ -122,10 +123,10 @@ class OverlapWithExposureTimes :
             ax[0].set_title(f'raw overlap {self.olap.n} original')
             ax[1].imshow(corr_overlay)
             ax[1].set_title(f'raw overlap {self.olap.n} corrected')
-            plt.savefig(f'{filename_stem}_offset={self.best_fit_offset:.3f}_raw_and_whole.png')
+            plt.savefig(f'{filename_stem}_offset={best_fit_offset:.3f}_raw_and_whole.png')
             plt.close()
 
-    def __getCorrectedImages(offset,raw) :
+    def __getCorrectedImages(self,offset,raw) :
         if raw and (self.raw_p1im is not None) and (self.raw_p2im is not None) :
             corr_p1 = np.where((self.raw_p1im-offset)>0,offset+(1.*self.max_exp_time/self.p1et)*(self.raw_p1im-offset),self.raw_p1im)
             corr_p2 = np.where((self.raw_p2im-offset)>0,offset+(1.*self.max_exp_time/self.p2et)*(self.raw_p2im-offset),self.raw_p2im)

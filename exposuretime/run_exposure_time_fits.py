@@ -33,7 +33,7 @@ if __name__=='__main__' :
                                   help='Maximum number of fit iterations (default=15000)')
     fit_option_group.add_argument('--gtol',           default=1e-7,     type=float,
                                   help='Minimization stops when the projected gradient is less than this (default=1e-7).')
-    fit_option_group.add_argument('--eps',            default=1,        type=float,
+    fit_option_group.add_argument('--eps',            default=3,        type=float,
                                   help='Step size around current value for Jacobian approximation (default=1).')
     fit_option_group.add_argument('--print_every',    default=10,       type=int,
                                   help='How many iterations to wait between printing minimization progress (default=10)')
