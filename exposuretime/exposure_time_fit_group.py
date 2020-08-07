@@ -126,7 +126,7 @@ class ExposureTimeOffsetFitGroup :
             fit.writeOutResults(self.workingdir_name,n_comparisons_to_save)
             offsets.append(LayerOffset(fit.layer,fit.best_fit_offset,fit.best_fit_cost))
         with cd(self.workingdir_name) :
-            writetable(f'{self.sample}_best_fit_offsets.csv',offsets)
+            writetable(f'{self.sample}_best_fit_offsets_first_layer_{self.layers[0]}.csv',offsets)
         _,_,nlayers = getImageHWLFromXMLFile(self.metadata_top_dir,self.sample)
         plt.plot([o.layer_n for o in offsets],[o.offset for o in offsets],marker='*')
         plt.xlabel('image layer')

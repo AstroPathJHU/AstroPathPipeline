@@ -39,7 +39,7 @@ def checkArgs(args) :
 @dataclasses.dataclass(eq=False, repr=False)
 class UpdateImage :
     rawfile_key          : str
-    raw_image            : np.array()
+    raw_image            : np.array
     rectangle_list_index : int
 
 #helper class to hold the pre- and post-fit details of overlaps

@@ -132,7 +132,7 @@ class SingleLayerExposureTimeFit :
             raw_p1im, raw_p2im = olap.shifted
             raw_olap_p1_images[io] = raw_p1im; raw_olap_p2_images[io] = raw_p2im
         #update and align again with the smoothed images
-        et_fit_logger.info(f'Updating and aligning layer {self.layer} overlaps once to get completely raw images....')
+        et_fit_logger.info(f'Updating and aligning layer {self.layer} overlaps with smoothed images....')
         a.updateRectangleImages(update_images,usewarpedimages=False,correct_with_meanimage=True,recalculate_meanimage=True)
         a.align(alreadyalignedstrategy='overwrite')
         #make the exposure time comparison overlap objects
