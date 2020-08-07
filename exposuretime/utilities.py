@@ -1,6 +1,6 @@
 #imports
 import numpy as np, matplotlib.pyplot as plt
-import os, logging, dataclasses, cv2
+import os, logging, dataclasses
 
 #set up the logger
 et_fit_logger = logging.getLogger("exposure_time_fitter")
@@ -39,7 +39,7 @@ def checkArgs(args) :
 @dataclasses.dataclass(eq=False, repr=False)
 class UpdateImage :
     rawfile_key          : str
-    raw_image            : cv2.UMat
+    raw_image            : np.array()
     rectangle_list_index : int
 
 #helper class to hold the pre- and post-fit details of overlaps

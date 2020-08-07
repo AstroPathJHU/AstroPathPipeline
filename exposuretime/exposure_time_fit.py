@@ -6,7 +6,7 @@ from ..flatfield.utilities import smoothImageWorker
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
-import os, copy, random, cv2, scipy
+import os, copy, random, scipy
 
 #helper class to do the fit in one image layer only
 class SingleLayerExposureTimeFit :
@@ -118,9 +118,9 @@ class SingleLayerExposureTimeFit :
         for ri,r in enumerate(a.rectangles) :
             rfkey=r.file.rstrip('.im3')
             image = np.rint((r.rawimage)/flatfield).astype(np.uint16)
-            raw_update_images.append(UpdateImage(rfkey,cv2.UMat(copy.deepcopy(image)),ri))
+            raw_update_images.append(UpdateImage(rfkey,copy.deepcopy(image),ri))
             image = smoothImageWorker(image,smoothsigma)
-            update_images.append(UpdateImage(rfkey,cv2.UMat(image),ri))
+            update_images.append(UpdateImage(rfkey,image,ri))
         #make dictionaries of the completely raw shifted overlap images to add those to the ETOverlaps
         et_fit_logger.info(f'Updating and aligning layer {self.layer} overlaps once to get completely raw images....')
         raw_olap_p1_images = {}; raw_olap_p2_images = {}

@@ -122,9 +122,9 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     #replace the image in every rectangle
     for img in imgs :
       if usewarpedimages :
-        thisupdateimg=(img.warped_image).get()
+        thisupdateimg=img.warped_image
       else :
-        thisupdateimg=(img.raw_image).get()
+        thisupdateimg=img.raw_image
       #optionally divide by the mean image flatfield
       if correct_with_meanimage :
         thisupdateimg=(np.rint(thisupdateimg/self.meanimage.flatfield)).astype(thisupdateimg.dtype)

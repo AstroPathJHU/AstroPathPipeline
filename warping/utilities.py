@@ -21,10 +21,17 @@ class WarpingError(Exception) :
 @dataclasses.dataclass(eq=False, repr=False)
 class WarpImage :
     rawfile_key          : str
-    raw_image            : cv2.UMat
-    warped_image         : cv2.UMat
+    raw_image_umat       : cv2.UMat
+    warped_image_umat    : cv2.UMat
     is_corner_only       : bool
     rectangle_list_index : int
+    @property
+    def raw_image(self):
+        return self.raw_image_umat.get()
+    @property
+    def warped_image(self):
+        return self.warped_image_umat.get()
+    
 
 #helper function to make sure necessary directories exist and that the input choice of fixed parameters is valid
 def checkDirAndFixedArgs(args) :
