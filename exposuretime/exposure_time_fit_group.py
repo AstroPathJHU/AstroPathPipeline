@@ -74,8 +74,11 @@ class ExposureTimeOffsetFitGroup :
                     layer_batches.append([])
                 layer_batches[-1].append(ln)
             for bi,layer_batch in enumerate(layer_batches,start=1) :
-                batch_fits = self.__getBatchFits(layer_batch,all_exposure_times,max_exp_times,overlaps,smoothsigma,cutimages)
+                li_start = (bi-1)*self.n_threads
+                batch_fits = self.__getBatchFits(layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,overlaps,smoothsigma,cutimages)
+                et_fit_logger.info(f'Done preparing fits in batch {bi} (of {len(layer_batches)}).')
                 et_fit_logger.info('Running fits....')
+                procs = []
                 for fit in batch_fits :
                     p = mp.Process(fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every))
                     procs.append(p)
@@ -165,13 +168,13 @@ class ExposureTimeOffsetFitGroup :
         return exp_times, max_exp_times
 
     #helper function to set up and return a list of single-layer fit objects
-    def __getBatchFits(self,layer_batch,all_exposure_times,max_exp_times,overlaps,smoothsigma,cutimages) :
+    def __getBatchFits(self,layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,overlaps,smoothsigma,cutimages) :
         batch_fits = []
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
-        for li,ln in enumerate(layer_batch,start=1) :
-            et_fit_logger.info(f'Setting up fit for layer {ln} ({li} of {len(layer_batch)} in batch {bi} of {len(layer_batches)})....')
+        for li,ln in enumerate(layer_batch,start=li_start) :
+            et_fit_logger.info(f'Setting up fit for layer {ln} ({li+1-li_start} of {len(layer_batch)} in this batch)....')
             this_layer_all_exposure_times = {}
             for rfs in all_exposure_times.keys() :
                 this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
@@ -187,6 +190,5 @@ class ExposureTimeOffsetFitGroup :
             procs = []
         for ln in layer_batch :
             batch_fits.append(return_dict[ln])
-        et_fit_logger.info(f'Done preparing fits in batch {bi} (of {len(layer_batches)}).')
         return batch_fits
 
