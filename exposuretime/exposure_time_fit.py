@@ -102,29 +102,28 @@ class SingleLayerExposureTimeFit :
 
     #helper function to return a list of OverlapWithExposureTime objects set up to run on this particular image layer
     def __getExposureTimeOverlaps(self,exposure_times,max_exp_time,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages) :
+        #first get the list of overlaps that have different p1 and p2 exposure times
+        overlaps_with_et_diff = self.__getOverlapsWithExposureTimeDifferences(exposure_times,sample,rawfile_top_dir,metadata_top_dir)
+        overlaps = overlaps_with_et_diff if overlaps==[-1] else [n in overlaps if n in overlaps_with_et_diff]
         #make an alignmentset from the raw files
         et_fit_logger.info(f'Making an AlignmentSet for layer {self.layer}....')
-        if overlaps==[-1] :
-            a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,sample,nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer)
-        else :
-            a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,sample,
-                                    selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
-                                    nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer)
+        a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
+                                nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer)
         #get all the raw file layers
-        a.getDAPI(filetype='raw',keeprawimages=True)
+        a.getDAPI(filetype='raw')
         #correct the rectangle images with the flatfield file and applying some smoothing
         et_fit_logger.info(f'Correcting and updating rectangle images for layer {self.layer}....')
         update_images = []; raw_update_images = []
         for ri,r in enumerate(a.rectangles) :
             rfkey=r.file.rstrip('.im3')
-            image = np.rint((r.rawimage)/flatfield).astype(np.uint16)
+            image = np.rint((r.image*a.mean_image.flatfield)/flatfield).astype(np.uint16)
             raw_update_images.append(UpdateImage(rfkey,copy.deepcopy(image),ri))
             image = smoothImageWorker(image,smoothsigma)
             update_images.append(UpdateImage(rfkey,image,ri))
         #make dictionaries of the completely raw shifted overlap images to add those to the ETOverlaps
         et_fit_logger.info(f'Updating and aligning layer {self.layer} overlaps once to get completely raw images....')
         raw_olap_p1_images = {}; raw_olap_p2_images = {}
-        a.updateRectangleImages(raw_update_images,usewarpedimages=False,correct_with_meanimage=True,recalculate_meanimage=True)
+        a.updateRectangleImages(raw_update_images,usewarpedimages=False,correct_with_meanimage=False)
         a.align(alreadyalignedstrategy='overwrite')
         for io,olap in enumerate(a.overlaps) :
             if olap.result.exit!=0 :
@@ -133,7 +132,7 @@ class SingleLayerExposureTimeFit :
             raw_olap_p1_images[io] = raw_p1im; raw_olap_p2_images[io] = raw_p2im
         #update and align again with the smoothed images
         et_fit_logger.info(f'Updating and aligning layer {self.layer} overlaps with smoothed images....')
-        a.updateRectangleImages(update_images,usewarpedimages=False,correct_with_meanimage=True,recalculate_meanimage=True)
+        a.updateRectangleImages(update_images,usewarpedimages=False,correct_with_meanimage=False)
         a.align(alreadyalignedstrategy='overwrite')
         #make the exposure time comparison overlap objects
         etolaps = []
@@ -142,14 +141,24 @@ class SingleLayerExposureTimeFit :
                 continue
             p1et = exposure_times[(([r for r in a.rectangles if r.n==olap.p1])[0].file).rstrip(CONST.IM3_EXT)]
             p2et = exposure_times[(([r for r in a.rectangles if r.n==olap.p2])[0].file).rstrip(CONST.IM3_EXT)]
-            if p2et-p1et!=0. :
-                if (io in raw_olap_p1_images.keys()) and (io in raw_olap_p2_images.keys()) :
-                    etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages,raw_olap_p1_images[io],raw_olap_p2_images[io]))
-                else :
-                    etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages))
+            if (io in raw_olap_p1_images.keys()) and (io in raw_olap_p2_images.keys()) :
+                etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages,raw_olap_p1_images[io],raw_olap_p2_images[io]))
+            else :
+                etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages))
         #return the whole list
         et_fit_logger.info(f'Found {len(etolaps)} overlaps that are aligned and have different p1 and p2 exposure times')
         return etolaps
+
+    #helper function to return a list of overlap ns for overlaps where the p1 and p2 image exposure times are different
+    def __getOverlapsWithExposureTimeDifferences(self,exposure_times,sample,rawfile_top_dir,metadata_top_dir) :
+        a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,sample,nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer)
+        olaps_with_et_diffs = []
+        for olap in a.overlaps :
+            p1et = exp_times[(([r for r in a.rectangles if r.n==olap.p1])[0].file).rstrip('.im3')]
+            p2et = exp_times[(([r for r in a.rectangles if r.n==olap.p2])[0].file).rstrip('.im3')]
+            if p2et!=p1et :
+                olaps_with_et_diffs.append(olap.n)
+        return olaps_with_et_diffs
 
     #helper function to plot cost and offset tested at each fit iteration
     def __plotCostsAndOffsets(self) :
