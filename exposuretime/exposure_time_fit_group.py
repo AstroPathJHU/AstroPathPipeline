@@ -124,7 +124,8 @@ class ExposureTimeOffsetFitGroup :
         offsets = []
         for fit in self.all_fits :
             fit.writeOutResults(self.workingdir_name,n_comparisons_to_save)
-            offsets.append(LayerOffset(fit.layer,fit.best_fit_offset,fit.best_fit_cost))
+            if fit.best_fit_offset is not None :
+                offsets.append(LayerOffset(fit.layer,fit.best_fit_offset,fit.best_fit_cost))
         with cd(self.workingdir_name) :
             writetable(f'{self.sample}_best_fit_offsets_first_layer_{self.layers[0]}.csv',offsets)
         _,_,nlayers = getImageHWLFromXMLFile(self.metadata_top_dir,self.sample)

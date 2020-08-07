@@ -6,7 +6,7 @@ from ..flatfield.utilities import smoothImageWorker
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
-import os, copy, random, scipy
+import os, copy, random, scipy, gc
 
 #helper class to do the fit in one image layer only
 class SingleLayerExposureTimeFit :
@@ -30,10 +30,13 @@ class SingleLayerExposureTimeFit :
         self.max_exp_time = max_exp_time
         self.exposure_time_overlaps = self.__getExposureTimeOverlaps(exposure_times,max_exp_time,sample,rawfile_top_dir,metadata_top_dir,flatfield,
                                                                      overlaps,smoothsigma,cutimages)
+        if len(self.exposure_time_overlaps)<1 :
+            et_fit_logger.warn(f'WARNING: layer {self.layer} does not have any aligned overlaps with exposure time differences. This fit will be skipped!')
         self.offsets = []
         self.costs = []
         self.best_fit_offset = None
         self.best_fit_cost = None
+        gc.collect()
 
     def doFit(self,initial_offset,offset_bounds,max_iter,gtol,eps,print_every) :
         """
@@ -45,6 +48,9 @@ class SingleLayerExposureTimeFit :
         eps            = step size for approximating Jacobian
         print_every    = how often to print during minimization
         """
+        if len(self.exposure_time_overlaps)<1 :
+            et_fit_logger.warn(f'WARNING: skipping fit for layer {self.layer} because there are not enough overlaps!')
+            return
         msg = f'Starting fit for layer {self.layer} at offset = {initial_offset}; will run for a max of {max_iter} '
         msg+= f'iterations printing every {print_every}'
         et_fit_logger.info(msg)
@@ -74,6 +80,9 @@ class SingleLayerExposureTimeFit :
         top_plot_dir          = path to directory in which this fit's subdirectory should be created
         n_comparisons_to_save = total # of overlap overlay comparisons to write out for each completed fit
         """
+        if len(self.exposure_time_overlaps)<1 :
+            et_fit_logger.warn(f'WARNING: skipping layer {self.layer} because there are no results to write out!')
+            return
         if self.best_fit_offset is None :
             raise RuntimeError('ERROR: best fit offset is None; run fit before calling writeOutResults!')
         #make this fit's plot directory name/path
@@ -104,7 +113,9 @@ class SingleLayerExposureTimeFit :
     def __getExposureTimeOverlaps(self,exposure_times,max_exp_time,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages) :
         #first get the list of overlaps that have different p1 and p2 exposure times
         overlaps_with_et_diff = self.__getOverlapsWithExposureTimeDifferences(exposure_times,sample,rawfile_top_dir,metadata_top_dir)
-        overlaps = overlaps_with_et_diff if overlaps==[-1] else [n in overlaps if n in overlaps_with_et_diff]
+        overlaps = overlaps_with_et_diff if overlaps==[-1] else [n for n in overlaps if n in overlaps_with_et_diff]
+        if len(overlaps)<1 :
+            return []
         #make an alignmentset from the raw files
         et_fit_logger.info(f'Making an AlignmentSet for layer {self.layer}....')
         a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
@@ -116,7 +127,7 @@ class SingleLayerExposureTimeFit :
         update_images = []; raw_update_images = []
         for ri,r in enumerate(a.rectangles) :
             rfkey=r.file.rstrip('.im3')
-            image = np.rint((r.image*a.mean_image.flatfield)/flatfield).astype(np.uint16)
+            image = np.rint((r.image*a.meanimage.flatfield)/flatfield).astype(np.uint16)
             raw_update_images.append(UpdateImage(rfkey,copy.deepcopy(image),ri))
             image = smoothImageWorker(image,smoothsigma)
             update_images.append(UpdateImage(rfkey,image,ri))
@@ -150,7 +161,7 @@ class SingleLayerExposureTimeFit :
         return etolaps
 
     #helper function to return a list of overlap ns for overlaps where the p1 and p2 image exposure times are different
-    def __getOverlapsWithExposureTimeDifferences(self,exposure_times,sample,rawfile_top_dir,metadata_top_dir) :
+    def __getOverlapsWithExposureTimeDifferences(self,exp_times,sample,rawfile_top_dir,metadata_top_dir) :
         a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,sample,nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer)
         olaps_with_et_diffs = []
         for olap in a.overlaps :
@@ -200,15 +211,15 @@ class SingleLayerExposureTimeFit :
     def __saveComparisonImages(self,n_comparisons_to_save) :
         et_fit_logger.info(f'Saving comparison images for layer {self.layer}....')
         self.exposure_time_overlaps.sort(key=lambda x: abs(x.et_diff))
-        n_ends = int(n_comparisons_to_save/3)
-        n_random = max(0,n_comparisons_to_save-(2*n_ends))
+        n_ends = max(int(n_comparisons_to_save/3),len(self.exposure_time_overlaps))
+        n_random = max(0,min(n_comparisons_to_save-(2*n_ends),len(self.exposure_time_overlaps)-2*n_ends))
         with cd(self.plotdirpath) :
             if n_ends>0 :
                 for io,eto in enumerate(self.exposure_time_overlaps[:n_ends],start=1) :
                     eto.saveComparisonImages(self.best_fit_offset,f'overlay_comparison_least_different_{io}')
                 for io,eto in enumerate(self.exposure_time_overlaps[:-(n_ends+1):-1],start=1) :
                     eto.saveComparisonImages(self.best_fit_offset,f'overlay_comparison_most_different_{io}')
-            if n_random>0 :
+            if n_random>0 and (len(exposure_time_overlaps)-(2*n_ends)):
                 random_indices = random.sample(range(n_ends,len(self.exposure_time_overlaps)-n_ends),n_random)
                 for ri in random_indices :
                     self.exposure_time_overlaps[ri].saveComparisonImages(self.best_fit_offset,f'overlay_comparison_random_{ri+1}')

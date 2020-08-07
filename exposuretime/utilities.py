@@ -95,7 +95,10 @@ class OverlapWithExposureTimes :
         self.raw_p1im = raw_p1im
         self.raw_p2im = raw_p2im
         self.npix = self.p1_im.shape[0]*self.p1_im.shape[1]
-        self.raw_npix = self.raw_p1im.shape[0]*self.raw_p1im.shape[1]
+        if self.raw_p1im is not None and self.raw_p2im is not None :
+            self.raw_npix = self.raw_p1im.shape[0]*self.raw_p1im.shape[1]
+        else :
+            self.raw_npix = self.npix
 
     def getCostAndNPix(self,offset,raw=False) :
         if offset<0 : #then don't correct the images
