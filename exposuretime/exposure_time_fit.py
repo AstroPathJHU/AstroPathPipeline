@@ -6,7 +6,7 @@ from ..flatfield.utilities import smoothImageWorker
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
-import os, copy, random, scipy, gc
+import os, copy, random, scipy
 
 #helper class to do the fit in one image layer only
 class SingleLayerExposureTimeFit :
@@ -36,7 +36,6 @@ class SingleLayerExposureTimeFit :
         self.costs = []
         self.best_fit_offset = None
         self.best_fit_cost = None
-        gc.collect()
 
     def doFit(self,initial_offset,offset_bounds,max_iter,gtol,eps,print_every) :
         """

@@ -59,6 +59,7 @@ class OverlapFitResult :
 @dataclasses.dataclass
 class LayerOffset :
     layer_n    : int
+    n_overlaps : int
     offset     : float
     final_cost : float
 

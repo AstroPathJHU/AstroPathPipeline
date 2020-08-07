@@ -38,103 +38,83 @@ class ExposureTimeOffsetFitGroup :
         self.layers = self.__getLayers(layers)
         self.n_threads = n_threads
 
-    def prepFits(self,flatfield_filepath,overlaps,smoothsigma,cutimages) :
+    def prepFits(self,) :
         """
         Load all of the raw file layers and their exposure times, correct the images with the flatfield and smooth them, 
         align the overlaps, and prep the fits
-        flatfield_filepath = path to flatfield file to use in correcting raw image illumination
-        overlaps           = list of overlap numbers to consider (should really only use this for testing)
-        smoothsigma        = sigma for Gaussian blurring to apply to images
-        cutimages          = True if only the central regions of the images should be considered
+        
+        """
+        
+
+    def runFits(self,flatfield_filepath,overlaps,smoothsigma,cutimages,initial_offset,offset_bounds,max_iter,gtol,eps,print_every,n_comparisons_to_save) :
+        """
+        Run all of the fits
+        flatfield_filepath    = path to flatfield file to use in correcting raw image illumination
+        overlaps              = list of overlap numbers to consider (should really only use this for testing)
+        smoothsigma           = sigma for Gaussian blurring to apply to images
+        cutimages             = True if only the central regions of the images should be considered
+        initial_offset        = starting point for fits
+        offset_bounds         = bounds for dark current count offset
+        max_iter              = maximum number of iterations for each fit to run
+        gtol                  = gradient projection tolerance for fits
+        eps                   = step size for approximating Jacobian
+        print_every           = how often to print during minimization
+        n_comparisons_to_save = total # of overlap overlay comparisons to write out for each completed fit
         """
         #first get all of the raw image exposure times, and the maximum exposure times in each layer
         all_exposure_times, max_exp_times_by_layer = self.__getExposureTimes()
         #next get the flatfield to use
         self.flatfield = self.__getFlatfield(flatfield_filepath)
-        #initialize all of the single layer fits
-        self.all_fits = []
+        #prep, run, and save the output of all the fits
+        offsets = []
         if self.n_threads > 1 :
-            manager = mp.Manager()
-            return_dict = manager.dict()
-            procs = []
-            for li,ln in enumerate(self.layers) :
-                et_fit_logger.info(f'Setting up fit for layer {ln} ({li+1} of {len(self.layers)} to run in {self.n_threads} parallel threads)....')
-                this_layer_all_exposure_times = {}
-                for rfs in all_exposure_times.keys() :
-                    this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
-                p = mp.Process(target=getExposureTimeFitWorker, 
-                               args=(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
-                                     self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
-                                     overlaps,smoothsigma,cutimages,return_dict)
-                              )
-                procs.append(p)
-                p.start()
-                if len(procs)>=self.n_threads :
-                    for proc in procs :
-                        proc.join()
-                    procs = []
-            for proc in procs:
-                proc.join()
+            layer_batches = []; layer_batches.append([])
             for ln in self.layers :
-                self.all_fits.append(return_dict[ln])
+                if len(layer_batches[-1])>=self.n_threads :
+                    layer_batches.append([])
+                layer_batches[-1].append(ln)
+            for bi,layer_batch in enumerate(layer_batches,start=1) :
+                batch_fits = self.__getBatchFits(layer_batch,all_exposure_times,max_exp_times,overlaps,smoothsigma,cutimages)
+                et_fit_logger.info('Running fits....')
+                for fit in batch_fits :
+                    p = mp.Process(fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every))
+                    procs.append(p)
+                    p.start()
+                for proc in procs :
+                    proc.join()
+                    procs = []
+                et_fit_logger.info(f'Done running fits in batch {bi} (of {len(layer_batches)}).')
+                et_fit_logger.info('Writing output....')
+                for fit in batch_fits :
+                    fit.writeOutResults(self.workingdir_name,n_comparisons_to_save)
+                    if fit.best_fit_offset is not None :
+                        offsets.append(LayerOffset(fit.layer,len(fit.exposure_time_overlaps),fit.best_fit_offset,fit.best_fit_cost))
         else :
             for li,ln in enumerate(self.layers) :
                 et_fit_logger.info(f'Setting up fit for layer {ln} ({li+1} of {len(self.layers)})....')
                 this_layer_all_exposure_times = {}
                 for rfs in all_exposure_times.keys() :
                     this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
-                self.all_fits.append(getExposureTimeFitWorker(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
-                                                              self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
-                                                              overlaps,smoothsigma,cutimages))
-        et_fit_logger.info('All fits prepared.')
-
-    def runFits(self,initial_offset,offset_bounds,max_iter,gtol,eps,print_every) :
-        """
-        Run all of the fits
-        initial_offset = starting point for fits
-        offset_bounds  = bounds for dark current count offset
-        max_iter       = maximum number of iterations for each fit to run
-        gtol           = gradient projection tolerance for fits
-        eps            = step size for approximating Jacobian
-        print_every    = how often to print during minimization
-        """
-        et_fit_logger.info('Running fits for all layers....')
-        if self.n_threads >1 :
-            procs = []
-            for fit in self.all_fits :
-                p = mp.Process(fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every))
-                procs.append(p)
-                p.start()
-                if len(procs)>=self.n_threads :
-                    for proc in procs :
-                        proc.join()
-                    procs = []
-            for proc in procs:
-                proc.join()
-        else :
-            for fit in self.all_fits :
+                fit = getExposureTimeFitWorker(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
+                                               self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
+                                               overlaps,smoothsigma,cutimages)
+                et_fit_logger.info(f'Running fit for layer {ln} ({li+1} of {len(self.layers)})....')
                 fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every)
-        et_fit_logger.info('All fits completed!')
-
-    def writeOutResults(self,n_comparisons_to_save) :
-        """
-        Write out the post-processing plots in each of this fits
-        n_comparisons_to_save = total # of overlap overlay comparisons to write out for each completed fit
-        """
-        offsets = []
-        for fit in self.all_fits :
-            fit.writeOutResults(self.workingdir_name,n_comparisons_to_save)
-            if fit.best_fit_offset is not None :
-                offsets.append(LayerOffset(fit.layer,fit.best_fit_offset,fit.best_fit_cost))
+                et_fit_logger.info(f'Writing output for layer {ln} ({li+1} of {len(self.layers)})....')
+                fit.writeOutResults(self.workingdir_name,n_comparisons_to_save)
+                if fit.best_fit_offset is not None :
+                    offsets.append(LayerOffset(fit.layer,len(fit.exposure_time_overlaps),fit.best_fit_offset,fit.best_fit_cost))
+        #write out all the results
         with cd(self.workingdir_name) :
             writetable(f'{self.sample}_best_fit_offsets_first_layer_{self.layers[0]}.csv',offsets)
-        _,_,nlayers = getImageHWLFromXMLFile(self.metadata_top_dir,self.sample)
+        #save the plot of the offsets by layer
         plt.plot([o.layer_n for o in offsets],[o.offset for o in offsets],marker='*')
         plt.xlabel('image layer')
         plt.ylabel('best-fit offset')
         with cd(self.workingdir_name) :
             plt.savefig(f'{self.sample}_best_fit_offsets_by_layer.png')
         plt.close()
+        et_fit_logger.info('All fits finished.')
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -183,3 +163,30 @@ class ExposureTimeOffsetFitGroup :
                 plt.savefig(f'exposure_times_{self.sample}_layer_{ln}.png')
             plt.close()
         return exp_times, max_exp_times
+
+    #helper function to set up and return a list of single-layer fit objects
+    def __getBatchFits(self,layer_batch,all_exposure_times,max_exp_times,overlaps,smoothsigma,cutimages) :
+        batch_fits = []
+        manager = mp.Manager()
+        return_dict = manager.dict()
+        procs = []
+        for li,ln in enumerate(layer_batch,start=1) :
+            et_fit_logger.info(f'Setting up fit for layer {ln} ({li} of {len(layer_batch)} in batch {bi} of {len(layer_batches)})....')
+            this_layer_all_exposure_times = {}
+            for rfs in all_exposure_times.keys() :
+                this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
+            p = mp.Process(target=getExposureTimeFitWorker, 
+                           args=(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
+                                 self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
+                                 overlaps,smoothsigma,cutimages,return_dict)
+                          )
+            procs.append(p)
+            p.start()
+        for proc in procs:
+            proc.join()
+            procs = []
+        for ln in layer_batch :
+            batch_fits.append(return_dict[ln])
+        et_fit_logger.info(f'Done preparing fits in batch {bi} (of {len(layer_batches)}).')
+        return batch_fits
+
