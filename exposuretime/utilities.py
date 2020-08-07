@@ -66,12 +66,15 @@ class LayerOffset :
 class OverlapWithExposureTimes :
 
     def __init__(self,olap,p1et,p2et,max_exp_time,cutimages,raw_p1im=None,raw_p2im=None) :
-        self.olap = olap
+        self.n    = olap.n
+        self.p1   = olap.p1
+        self.p2   = olap.p2
+        self.tag  = olap.tag
         self.p1et = p1et
         self.p2et = p2et
         self.et_diff = self.p2et-self.p1et
         self.max_exp_time = max_exp_time
-        whole_p1_im, whole_p2_im = self.olap.shifted
+        whole_p1_im, whole_p2_im = olap.shifted
         w=min(whole_p1_im.shape[1],whole_p2_im.shape[1])
         h=min(whole_p1_im.shape[0],whole_p2_im.shape[0])
         SLICES = {1:np.index_exp[:int(0.5*h),:int(0.5*w)],
@@ -84,8 +87,8 @@ class OverlapWithExposureTimes :
                   9:np.index_exp[int(0.5*h):,int(0.5*w):]
                 }
         if cutimages :
-            self.p1_im = whole_p1_im[SLICES[self.olap.tag]]
-            self.p2_im = whole_p2_im[SLICES[self.olap.tag]]
+            self.p1_im = whole_p1_im[SLICES[self.tag]]
+            self.p2_im = whole_p2_im[SLICES[self.tag]]
         else :
             self.p1_im = whole_p1_im
             self.p2_im = whole_p2_im
@@ -108,7 +111,7 @@ class OverlapWithExposureTimes :
         self.orig_cost = oc/onp
         cc,cnp = self.getCostAndNPix(best_fit_offset)
         self.corr_cost = cc/cnp
-        return OverlapFitResult(self.olap.n,self.olap.p1,self.olap.p2,self.olap.tag,self.p1et,self.p2et,self.et_diff,self.npix,self.orig_cost,self.corr_cost)
+        return OverlapFitResult(self.n,self.p1,self.p2,self.tag,self.p1et,self.p2et,self.et_diff,self.npix,self.orig_cost,self.corr_cost)
 
     def saveComparisonImages(self,best_fit_offset,filename_stem) :
         orig_overlay = np.clip(np.array([self.p1_im, self.p2_im, 0.5*(self.p1_im+self.p2_im)]).transpose(1, 2, 0) / 1000., 0., 1.)
@@ -116,9 +119,9 @@ class OverlapWithExposureTimes :
         corr_overlay = np.clip(np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000., 0., 1.)
         f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
         ax[0].imshow(orig_overlay)
-        ax[0].set_title(f'overlap {self.olap.n} original (cost={self.orig_cost:.3f})')
+        ax[0].set_title(f'overlap {self.n} original (cost={self.orig_cost:.3f})')
         ax[1].imshow(corr_overlay)
-        ax[1].set_title(f'overlap {self.olap.n} corrected (cost={self.corr_cost:.3f})')
+        ax[1].set_title(f'overlap {self.n} corrected (cost={self.corr_cost:.3f})')
         plt.savefig(f'{filename_stem}_offset={best_fit_offset:.3f}_clipped_and_smoothed.png')
         plt.close()
         if self.raw_p1im is not None and self.raw_p2im is not None :
@@ -127,9 +130,9 @@ class OverlapWithExposureTimes :
             corr_overlay = np.clip(np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000.,0.,1.)
             f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
             ax[0].imshow(orig_overlay)
-            ax[0].set_title(f'raw overlap {self.olap.n} original')
+            ax[0].set_title(f'raw overlap {self.n} original')
             ax[1].imshow(corr_overlay)
-            ax[1].set_title(f'raw overlap {self.olap.n} corrected')
+            ax[1].set_title(f'raw overlap {self.n} corrected')
             plt.savefig(f'{filename_stem}_offset={best_fit_offset:.3f}_raw_and_whole.png')
             plt.close()
 
