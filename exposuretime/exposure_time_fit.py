@@ -210,7 +210,7 @@ class SingleLayerExposureTimeFit :
     def __saveComparisonImages(self,n_comparisons_to_save) :
         et_fit_logger.info(f'Saving comparison images for layer {self.layer}....')
         self.exposure_time_overlaps.sort(key=lambda x: abs(x.et_diff))
-        n_ends = max(int(n_comparisons_to_save/3),len(self.exposure_time_overlaps))
+        n_ends = min(int(n_comparisons_to_save/3),len(self.exposure_time_overlaps))
         n_random = max(0,min(n_comparisons_to_save-(2*n_ends),len(self.exposure_time_overlaps)-2*n_ends))
         with cd(self.plotdirpath) :
             if n_ends>0 :
