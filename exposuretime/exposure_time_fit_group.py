@@ -84,12 +84,16 @@ class ExposureTimeOffsetFitGroup :
                     procs.append(p)
                     p.start()
                 for proc in procs :
-                    proc.join()
-                    procs = []
+                    proc.join(); procs = []
                 et_fit_logger.info(f'Done running fits in batch {bi} (of {len(layer_batches)}).')
                 et_fit_logger.info('Writing output....')
                 for fit in batch_fits :
-                    fit.writeOutResults(self.workingdir_name,n_comparisons_to_save)
+                    p = mp.Process(fit.writeOutResults(self.workingdir_name,n_comparisons_to_save))
+                    procs.append(p)
+                    p.start()
+                for proc in procs :
+                    proc.join(); procs = []
+                for fit in batch_fits :
                     if fit.best_fit_offset is not None :
                         offsets.append(LayerOffset(fit.layer,len(fit.exposure_time_overlaps),fit.best_fit_offset,fit.best_fit_cost))
         else :
