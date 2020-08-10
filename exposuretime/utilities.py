@@ -1,5 +1,5 @@
 #imports
-import numpy as np, matplotlib.pyplot as plt
+import numpy as np
 import os, logging, dataclasses
 
 #set up the logger

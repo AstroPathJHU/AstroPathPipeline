@@ -195,7 +195,7 @@ class SingleLayerExposureTimeFit :
         ax[1].set_xlabel('(original cost - post-fit cost)/(original cost)')
         ax[1].set_ylabel('number of overlaps')
         with cd(self.plotdirpath) :
-            plt.savefig(f'cost_reductions.png')
+            plt.savefig('cost_reductions.png')
         plt.close()
         with cd(self.plotdirpath) :
             writetable('overlap_fit_results.csv',fitresults)
