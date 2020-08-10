@@ -155,10 +155,13 @@ class SingleLayerExposureTimeFit :
         a = AlignmentSetFromXML(self.metadata_top_dir,self.rawfile_top_dir,self.sample,nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer)
         olaps_with_et_diffs = []
         for olap in a.overlaps :
-            p1et = exp_times[(([r for r in a.rectangles if r.n==olap.p1])[0].file).rstrip('.im3')]
-            p2et = exp_times[(([r for r in a.rectangles if r.n==olap.p2])[0].file).rstrip('.im3')]
-            if p2et!=p1et :
-                olaps_with_et_diffs.append(olap.n)
+            p1key = (([r for r in a.rectangles if r.n==olap.p1])[0].file).rstrip('.im3')
+            p2key = (([r for r in a.rectangles if r.n==olap.p2])[0].file).rstrip('.im3')
+            if p1key in exp_times.keys() and p2key in exp_times.keys() :
+                p1et = exp_times[p1key]
+                p2et = exp_times[p2key]
+                if p2et!=p1et :
+                    olaps_with_et_diffs.append(olap.n)
         return olaps_with_et_diffs
 
     #helper function to plot cost and offset tested at each fit iteration
