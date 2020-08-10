@@ -218,7 +218,7 @@ class SingleLayerExposureTimeFit :
                     eto.saveComparisonImages(self.best_fit_offset,f'overlay_comparison_least_different_{io}')
                 for io,eto in enumerate(self.exposure_time_overlaps[:-(n_ends+1):-1],start=1) :
                     eto.saveComparisonImages(self.best_fit_offset,f'overlay_comparison_most_different_{io}')
-            if n_random>0 and (len(exposure_time_overlaps)-(2*n_ends)):
+            if n_random>0 and (len(self.exposure_time_overlaps)-(2*n_ends)):
                 random_indices = random.sample(range(n_ends,len(self.exposure_time_overlaps)-n_ends),n_random)
                 for ri in random_indices :
                     self.exposure_time_overlaps[ri].saveComparisonImages(self.best_fit_offset,f'overlay_comparison_random_{ri+1}')
