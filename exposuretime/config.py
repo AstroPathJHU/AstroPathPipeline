@@ -13,7 +13,7 @@ class Const :
     #filenames
     @property
     def LAYER_OFFSET_FILE_NAME_STEM(self) :
-    	return FLATFIELD_CONST.LAYER_OFFSET_FILE_NAME_STEM #name of the layer offset result .csv file
+        return FLATFIELD_CONST.LAYER_OFFSET_FILE_NAME_STEM #name of the layer offset result .csv file
     #image properties
     @property
     def FLATFIELD_DTYPE(self):

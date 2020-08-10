@@ -193,6 +193,13 @@ def main() :
                                    help="""Path to the working directory of a previous run whose raw files you want to use again, or whose calculated
                                    flatfield you want to apply to a different, orthogonal, set of files in the same samples
                                    [use this argument instead of defining a new set of samples]""")
+    #mutually exclusive group for how to handle the exposure time correction
+    et_correction_group = parser.add_mutually_exclusive_group(required=True)
+    et_correction_group.add_argument('--exposure_time_correction_dir',
+                                    help="""Path to the directory containing exposure time correction results for the samples in question
+                                    [use this argument to apply corrections for differences in image exposure time]""")
+    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
+                                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
     #mutually exclusive group for how to handle the thresholding
     thresholding_group = parser.add_mutually_exclusive_group()
     thresholding_group.add_argument('--threshold_file_dir',
@@ -201,13 +208,6 @@ def main() :
     thresholding_group.add_argument('--skip_masking',       action='store_true',
                                     help="""Add this flag to entirely skip masking out the background regions of the images as they get added
                                     [use this argument to completely skip the background thresholding and masking]""")
-    #mutually exclusive group for how to handle the exposure time correction
-    et_correction_group = parser.add_mutually_exclusive_group(required=True)
-    et_correction_group.add_argument('--exposure_time_correction_dir',
-                                    help="""Path to the directory containinge exposure time correction results for the samples in question
-                                    [use this argument to apply corrections for differences in image exposure time]""")
-    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
-                                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
     #group for how to select a subset of the samples' files
     file_selection_group = parser.add_argument_group('file selection',
                                                      'how many images from the sample set should be used, how to choose them, and where to find them')

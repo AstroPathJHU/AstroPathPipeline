@@ -117,6 +117,13 @@ if __name__=='__main__' :
                                          help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
     overlap_selection_group.add_argument('--req_pixel_frac', default=0.85, type=float,
                                          help="What fraction of an overlap image's pixels must be above the threshold to accept it in a valid octet")
+    #mutually exclusive group for how to handle the exposure time correction
+    et_correction_group = parser.add_mutually_exclusive_group(required=True)
+    et_correction_group.add_argument('--exposure_time_correction_dir',
+                                    help="""Path to the directory containing exposure time correction results for the samples in question
+                                    [use this argument to apply corrections for differences in image exposure time]""")
+    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
+                                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
     #group for options of how the fit will proceed
     fit_option_group = parser.add_argument_group('fit options', 'how should the fit be done?')
     fit_option_group.add_argument('--max_iter',                 default=1000,                                           type=int,
@@ -175,7 +182,7 @@ if __name__=='__main__' :
         elif args.mode in ('fit', 'cProfile') :
             #load the raw files
             warp_logger.info('Loading raw files')
-            fitter.loadRawFiles(args.flatfield_file,args.n_threads)
+            fitter.loadRawFiles(args.flatfield_file,args.exposure_time_correction_dir,args.skip_exposure_time_correction,args.n_threads)
              #fit the model to the data
             warp_logger.info('Running doFit')
             if args.mode == 'fit' :
