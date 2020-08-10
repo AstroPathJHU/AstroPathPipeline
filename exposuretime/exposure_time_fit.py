@@ -224,7 +224,7 @@ class SingleLayerExposureTimeFit :
         raw_update_images = []
         for ri,r in enumerate(a.rectangles) :
             rfkey=r.file.rstrip('.im3')
-            image = np.rint((r.image*a.meanimage.flatfield)/flatfield).astype(np.uint16)
+            image = np.rint((r.image*a.meanimage.flatfield)/self.flatfield).astype(np.uint16)
             raw_update_images.append(UpdateImage(rfkey,copy.deepcopy(image),ri))
         raw_olap_p1_images = {}; raw_olap_p2_images = {}
         et_fit_logger.info(f'Updating rectangle images and aligning overlaps for plots in layer {self.layer}')
