@@ -197,7 +197,7 @@ class DbloadSampleBase(SampleBase):
     return self.mainfolder/"dbload"
 
   def csv(self, csv):
-    return self.mainfolder/"dbload"/f"{self.SlideID}_{csv}.csv"
+    return self.dbload/f"{self.SlideID}_{csv}.csv"
   def readcsv(self, csv, *args, **kwargs):
     return readtable(self.csv(csv), *args, **kwargs)
   def writecsv(self, csv, *args, **kwargs):
