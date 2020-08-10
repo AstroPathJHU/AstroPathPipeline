@@ -189,7 +189,7 @@ class SingleLayerExposureTimeFit :
             postfit_costs.append(fitresult.postfit_cost)
             cost_reduxes.append(fitresult.prefit_cost-fitresult.postfit_cost)
             frac_cost_reduxes.append((fitresult.prefit_cost-fitresult.postfit_cost)/(fitresult.prefit_cost))
-        f,ax=plt.subplots(1,2,figsize=(3*6.4,4.6))
+        f,ax=plt.subplots(1,3,figsize=(3*6.4,4.6))
         ax[0].hist(prefit_costs,bins=60,alpha=0.7,label='prefit costs')
         ax[0].hist(postfit_costs,bins=60,alpha=0.7,label='postfit costs')
         ax[0].set_xlabel('overlap cost')
