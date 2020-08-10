@@ -20,6 +20,9 @@ class Const :
     @property
     def THRESHOLD_TEXT_FILE_NAME_STEM(self) :
         return 'background_thresholds.txt' #name of the text file holding each layer's background threshold flux
+    @property
+    def LAYER_OFFSET_FILE_NAME_STEM(self) :
+        return 'best_fit_offsets.csv' #name of the .csv file holding each sample's LayerOffset result objects
     #image smoothing
     @property
     def GENTLE_GAUSSIAN_SMOOTHING_SIGMA(self) :

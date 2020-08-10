@@ -1,5 +1,5 @@
 from .config import CONST
-from ..utilities.img_file_io import getRawAsHWL, normalizeImageByExposureTime
+from ..utilities.img_file_io import getRawAsHWL, correctImageForExposureTime
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
 import numpy as np
@@ -170,14 +170,15 @@ class FileReadInfo :
     nlayers          : int                # number of img layers
     metadata_top_dir : str                # this file's sample's metadata file top directory
     to_smooth        : bool = False       # whether the image should be smoothed
-    max_exp_times    : List[float] = None # a list of the max exposure times in this image's sample by layer (for normalizing)
+    max_exp_times    : List[float] = None # a list of the max exposure times in this image's sample by layer 
+    corr_offsets     : List[float] = None # a list of the exposure time correction offsets for this image's sample by layer 
 
 #helper function to parallelize calls to getRawAsHWL (plus optional smoothing and normalization)
 def getImageArray(fri) :
     flatfield_logger.info(f'  reading file {fri.rawfile_path} {fri.sequence_print}')
     img_arr = getRawAsHWL(fri.rawfile_path,fri.height,fri.width,fri.nlayers)
-    if fri.max_exp_times is not None :
-        img_arr = normalizeImageByExposureTime(img_arr,fri.rawfile_path,fri.max_exp_times,fri.metadata_top_dir)
+    if fri.max_exp_times is not None and fri.corr_offsets is not None :
+        img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,fri.metadata_top_dir,fri.max_exp_times,fri.corr_offsets)
     if fri.to_smooth :
         img_arr = smoothImageWorker(img_arr,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
     return img_arr
@@ -189,11 +190,12 @@ def getImageLayerHists(fri) :
 
 #helper function to read and return a group of raw images with multithreading
 #set 'smoothed' to True when calling to smooth images with gentle gaussian filter as they're read in
-#pass in a list of maximum exposure times by layer to normalize image layer flux 
-def readImagesMT(sample_image_filereads,smoothed=False,max_exposure_times_by_layer=None) :
+#pass in a list of maximum exposure times and correction offsets by layer to correct image layer flux 
+def readImagesMT(sample_image_filereads,smoothed=False,max_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
     for fr in sample_image_filereads :
         fr.to_smooth = smoothed
         fr.max_exp_times = max_exposure_times_by_layer
+        fr.corr_offsets = et_corr_offsets_by_layer
     e = ThreadPoolExecutor(len(sample_image_filereads))
     new_img_arrays = list(e.map(getImageArray,[fr for fr in sample_image_filereads]))
     e.shutdown()
@@ -201,11 +203,12 @@ def readImagesMT(sample_image_filereads,smoothed=False,max_exposure_times_by_lay
 
 #helper function to read and return a group of image pixel histograms with multithreading
 #set 'smoothed' to True when calling to smooth images with gentle gaussian filter as they're read in
-#pass in a list of maximum exposure times by layer to normalize image layer flux 
-def getImageLayerHistsMT(sample_image_filereads,smoothed=False,max_exposure_times_by_layer=None) :
+#pass in a list of maximum exposure times and correction offsets by layer to correct image layer flux 
+def getImageLayerHistsMT(sample_image_filereads,smoothed=False,max_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
     for fr in sample_image_filereads :
         fr.to_smooth = smoothed
         fr.max_exp_times = max_exposure_times_by_layer
+        fr.corr_offsets = et_corr_offsets_by_layer
     e = ThreadPoolExecutor(len(sample_image_filereads))
     new_img_layer_hists = list(e.map(getImageLayerHists,[fr for fr in sample_image_filereads]))
     e.shutdown()

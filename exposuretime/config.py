@@ -10,6 +10,10 @@ class Const :
     @property
     def IM3_EXT(self) :
         return '.im3' # extension of .im3 image files
+    #filenames
+    @property
+    def LAYER_OFFSET_FILE_NAME_STEM(self) :
+    	return FLATFIELD_CONST.LAYER_OFFSET_FILE_NAME_STEM #name of the layer offset result .csv file
     #image properties
     @property
     def FLATFIELD_DTYPE(self):

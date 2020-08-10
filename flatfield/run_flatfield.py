@@ -19,7 +19,7 @@ def checkArgs(a) :
     if a.selected_pixel_cut<0.0 or a.selected_pixel_cut>1.0 :
         raise RuntimeError(f'ERROR: selected pixel cut fraction {a.selected_pixel_cut} must be between 0 and 1!')
     #make sure any specified directory paths exist
-    dirpath_args = [a.prior_run_dir,a.metadata_top_dir,a.threshold_file_dir,a.rawfile_top_dir]
+    dirpath_args = [a.prior_run_dir,a.metadata_top_dir,a.threshold_file_dir,a.exposure_time_correction_dir,a.rawfile_top_dir]
     for dp in dirpath_args :
         if dp is not None and not os.path.isdir(dp) :
             raise RuntimeError(f'ERROR: Directory {dp} does not exist!')
@@ -201,6 +201,13 @@ def main() :
     thresholding_group.add_argument('--skip_masking',       action='store_true',
                                     help="""Add this flag to entirely skip masking out the background regions of the images as they get added
                                     [use this argument to completely skip the background thresholding and masking]""")
+    #mutually exclusive group for how to handle the exposure time correction
+    et_correction_group = parser.add_mutually_exclusive_group(required=True)
+    et_correction_group.add_argument('--exposure_time_correction_dir',
+                                    help="""Path to the directory containinge exposure time correction results for the samples in question
+                                    [use this argument to apply corrections for differences in image exposure time]""")
+    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
+                                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
     #group for how to select a subset of the samples' files
     file_selection_group = parser.add_argument_group('file selection',
                                                      'how many images from the sample set should be used, how to choose them, and where to find them')
@@ -227,8 +234,6 @@ def main() :
                                   help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
     run_option_group.add_argument('--other_runs_to_exclude',       default='',  type=split_csv_to_list,
                                   help='Comma-separated list of additional, previously-run, working directories whose filepaths should be excluded')
-    run_option_group.add_argument('--normalize',                   action='store_true',
-                                    help='Add this flag to divide image flux by (exposure time)/(max exposure time in the sample) layer-by-layer')
     args = parser.parse_args()
     #make sure the command line arguments make sense
     checkArgs(args)
@@ -239,12 +244,16 @@ def main() :
     #get the image file dimensions from the .xml file
     dims = getImageHWLFromXMLFile(args.metadata_top_dir,sample_names_to_run[0])
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.metadata_top_dir,args.workingdir_name,args.skip_masking,args.normalize)
+    ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.metadata_top_dir,args.workingdir_name,
+                                    args.skip_masking,args.skip_exposure_time_correction)
     #write out the text file of all the raw file paths that will be run
     ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
     if args.mode=='choose_image_files' :
         sys.exit()
-    #begin by figuring out the background thresholds per layer by looking at the HPFs on the tissue edges
+    #First read in the exposure time correction offsets from the given directory
+    if not args.skip_exposure_time_correction :
+        ff_producer.readInExposureTimeCorrectionOffsets(args.exposure_time_correction_dir)
+    #next figure out the background thresholds per layer by looking at the HPFs on the tissue edges
     if not args.skip_masking :
         if args.threshold_file_dir is not None :
             ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
