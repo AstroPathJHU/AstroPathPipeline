@@ -1,5 +1,6 @@
 #imports
-from .utilities import et_fit_logger, UpdateImage, OverlapWithExposureTimes
+from .overlap_with_exposure_times import OverlapWithExposureTimes
+from .utilities import et_fit_logger, UpdateImage
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..flatfield.utilities import smoothImageWorker
@@ -237,8 +238,8 @@ class SingleLayerExposureTimeFit :
             raw_olap_p1_images[olap.n] = raw_p1im; raw_olap_p2_images[olap.n] = raw_p2im
         #add the raw images to the exposure time overlaps
         for eto in [eto for eto in self.exposure_time_overlaps if (eto.n in raw_olap_ns_for_plots) and (eto.n in raw_olap_p1_images.keys())] :
-            eto.raw_p1_im = raw_olap_p1_images[eto.n]
-            eto.raw_p2_im = raw_olap_p2_images[eto.n]
+            eto.raw_p1im = raw_olap_p1_images[eto.n]
+            eto.raw_p2im = raw_olap_p2_images[eto.n]
         #make the plots
         et_fit_logger.info(f'Saving pre/postfit overlay images for layer {self.layer}')
         with cd(self.plotdirpath) :
