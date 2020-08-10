@@ -66,7 +66,26 @@ class LayerOffset :
 #helper class for comparing overlap image exposure times
 class OverlapWithExposureTimes :
 
-    def __init__(self,olap,p1et,p2et,max_exp_time,cutimages,raw_p1im=None,raw_p2im=None) :
+    @property
+    def raw_p1im(self) :
+        return self._raw_p1_im
+    @raw_p1im.setter
+    def raw_p1im(self,rp1i) :
+        self._raw_p1_im = rp1i
+    @property
+    def raw_p2im(self) :
+        return self._raw_p2_im
+    @raw_p2im.setter
+    def raw_p2im(self,rp2i) :
+        self._raw_p2_im = rp1i
+    @property
+    def raw_npix(self) :
+        if self.raw_p1im is not None and self.raw_p2im is not None :
+            return self.raw_p1im.shape[0]*self.raw_p1im.shape[1]
+        else :
+            return self.npix
+
+    def __init__(self,olap,p1et,p2et,max_exp_time,cutimages) :
         self.n    = olap.n
         self.p1   = olap.p1
         self.p2   = olap.p2
@@ -93,13 +112,7 @@ class OverlapWithExposureTimes :
         else :
             self.p1_im = whole_p1_im
             self.p2_im = whole_p2_im
-        self.raw_p1im = raw_p1im
-        self.raw_p2im = raw_p2im
         self.npix = self.p1_im.shape[0]*self.p1_im.shape[1]
-        if self.raw_p1im is not None and self.raw_p2im is not None :
-            self.raw_npix = self.raw_p1im.shape[0]*self.raw_p1im.shape[1]
-        else :
-            self.raw_npix = self.npix
 
     def getCostAndNPix(self,offset,raw=False) :
         if offset<0 : #then don't correct the images
