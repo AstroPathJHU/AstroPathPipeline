@@ -1,11 +1,11 @@
 #imports
 from ..alignment.alignmentset import AlignmentSet, AlignmentSetFromXML
-from ..alignment.overlap import AlignmentOverlap
+from ..flatfield.utilities import smoothImageWorker
 from ..warping.utilities import WarpImage
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer, getExposureTimesByLayer, getRawAsHWL
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
-import scipy, os, glob, random, cv2, dataclasses, platform
+import scipy, os, glob, random, cv2, platform, copy
 
 #constants
 if platform.system()=='Darwin' : #the paths on my Mac
@@ -18,37 +18,57 @@ else :
     fw01_root2_dir = r"Z:\\heshy\\flatw"
 #sample = 'M21_1'
 sample = 'M41_1'
-workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT'
-if not os.path.isdir(workingdir_name) :
-    os.mkdir(workingdir_name)
+workingdir_name = 'EXPOSURE_TIME_TEST_SCRIPT_OUTPUT_M41_1_LESS_SMOOTHING'
 flatfield_file = os.path.join('flatfield_batch_3-9_samples_22692_initial_images','flatfield.bin')
 layer = 1
 nclip=8
 #overlaps=list(range(200)) #only load 200 overlaps to test
+raw_fit_1_dirname = 'raw_fit_1'
+raw_fit_2_dirname = 'raw_fit_2'
+fw_fit_1_dirname  = 'fw_fit_1'
+fw_fit_2_dirname  = 'fw_fit_2'
+#make the working directories
+if not os.path.isdir(workingdir_name) :
+    os.mkdir(workingdir_name)
+with cd(workingdir_name) :
+    dns = [raw_fit_1_dirname,raw_fit_2_dirname,fw_fit_1_dirname,fw_fit_2_dirname]
+    for dn in dns :
+        if not os.path.isdir(dn) :
+            os.mkdir(dn)
 
 #helper class for comparing overlap image exposure times
-@dataclasses.dataclass
 class ETOverlap :
-    olap : AlignmentOverlap
-    p1et : float
-    p2et : float
-    @property
-    def p1_im(self):
-        return self.olap.shifted[0]
-    @property
-    def p2_im(self):
-        return self.olap.shifted[1]
-    @property
-    def et_diff(self):
-        return self.p2et-self.p1et
+
+    def __init__(self,olap,p1et,p2et,raw_p1im=None,raw_p2im=None) :
+        self.olap = olap
+        self.p1et = p1et
+        self.p2et = p2et
+        self.et_diff = self.p2et-self.p1et
+        whole_p1_im, whole_p2_im = self.olap.shifted
+        w=min(whole_p1_im.shape[1],whole_p2_im.shape[1])
+        h=min(whole_p1_im.shape[0],whole_p2_im.shape[0])
+        SLICES = {1:np.index_exp[:int(0.5*h),:int(0.5*w)],
+                  2:np.index_exp[:int(0.5*h),int(0.25*w):int(0.75*w)],
+                  3:np.index_exp[:int(0.5*h),int(0.5*w):],
+                  4:np.index_exp[int(0.25*h):int(0.75*h),:int(0.5*w)],
+                  6:np.index_exp[int(0.25*h):int(0.75*h),int(0.5*w):],
+                  7:np.index_exp[int(0.5*h):,:int(0.5*w)],
+                  8:np.index_exp[int(0.5*h):,int(0.25*w):int(0.75*w)],
+                  9:np.index_exp[int(0.5*h):,int(0.5*w):]
+                }
+        self.p1_im = whole_p1_im[SLICES[self.olap.tag]]
+        self.p2_im = whole_p2_im[SLICES[self.olap.tag]]
+        self.raw_p1im = raw_p1im
+        self.raw_p2im = raw_p2im
 
 #helper class for doing the fitting to find the optimal offset
 class Fit :
     
-    def __init__(self,etos,raw_or_fw,fitn) :
+    def __init__(self,etos,raw_or_fw,fitn,max_exp_time) :
         self.etos = etos
         self.raw_or_fw = raw_or_fw
         self.fitn = fitn
+        self.max_exp_time = max_exp_time
         self.offsets = []
         self.costs = []
         self.iters=0
@@ -58,11 +78,12 @@ class Fit :
     def cost(self,pars) :
         self.iters+=1
         offset=pars[0]
-        cost=0
+        cost=0.; npix=0.
         for eto in self.etos :
             corr_p1im, corr_p2im = self.__correctImages(eto,offset)
-            cost+=self.__calcSingleCost(corr_p1im,corr_p2im)
-        cost/=self.n_olaps
+            thiscost, thisnpix = self.__getCostAndNPix(corr_p1im,corr_p2im)
+            cost+=thiscost; npix+=thisnpix
+        cost/=npix
         self.offsets.append(offset); self.costs.append(cost)
         if self.iters%self.print_every==0 :
             print(f'iteration {self.iters}: offset = {offset:.4f}, cost = {cost:.4f}')
@@ -76,64 +97,88 @@ class Fit :
         self.result = scipy.optimize.minimize(self.cost,
                                               [initial_offset],
                                               method='L-BFGS-B',
-                                              jac='3-point',
-                                              bounds=[(0,100)],
+                                              jac='2-point',
+                                              bounds=[(0,1000)],
                                               options={'disp':True,
                                                        'ftol':1e-20,
-                                                       'gtol':1e-15,
-                                                       'eps':2,
+                                                       'gtol':1e-5,
+                                                       'eps':3,
                                                        'maxiter':max_iter,
                                                        'iprint':self.print_every,
                                                        'maxls':2*self.n_olaps,
-                                                       'finite_diff_rel_step':[0.2],
+                                                       #'finite_diff_rel_step':[0.2],
                                                       }
                                              )
         print(f'Done! Minimization terminated with exit {self.result.message}')
         print(f'Best-fit offset = {self.result.x[0]:.4f} (best cost = {self.result.fun:.4f})')
         self.best_fit_offset=self.result.x[0]
         
-    def saveCorrectedImages(self,n_images) :
+    def saveCorrectedImages(self,n_images,dirpath) :
         if self.best_fit_offset is None :
             raise Exception('ERROR: best fit offset not yet determined')
         for i,eto in enumerate(self.etos[:min(n_images,len(self.etos))],start=1) :
             orig = np.array([eto.p1_im, eto.p2_im, 0.5*(eto.p1_im+eto.p2_im)]).transpose(1, 2, 0) / 1000.
-            orig_cost = self.__calcSingleCost(eto.p1_im,eto.p2_im)
+            oc,onp = self.__getCostAndNPix(eto.p1_im,eto.p2_im)
+            orig_cost = oc/onp
             corr_p1im, corr_p2im = self.__correctImages(eto,self.best_fit_offset)
             corr = np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000.
-            corr_cost = self.__calcSingleCost(corr_p1im,corr_p2im)
+            cc,cnp = self.__getCostAndNPix(corr_p1im,corr_p2im)
+            corr_cost = cc/cnp
             f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
             ax[0].imshow(orig)
             ax[0].set_title(f'overlap {i} original (cost={orig_cost:.2f})')
             ax[1].imshow(corr)
             ax[1].set_title(f'overlap {i} corrected (cost={corr_cost:.2f})')
-            with cd(workingdir_name) :
+            with cd(dirpath) :
                 plt.savefig(f'{self.raw_or_fw}_overlap_{eto.olap.n}_postfit_comparison_offset={self.best_fit_offset:.3f}.png')
             plt.close()
+            if eto.raw_p1im is not None and eto.raw_p2im is not None :
+                orig = np.array([eto.raw_p1im, eto.raw_p2im, 0.5*(eto.raw_p1im+eto.raw_p2im)]).transpose(1, 2, 0) / 1000.
+                oc,onp = self.__getCostAndNPix(eto.raw_p1im,eto.raw_p2im)
+                orig_cost = oc/onp
+                corr_p1im, corr_p2im = self.__correctImages(eto,self.best_fit_offset,raw=True)
+                corr = np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000.
+                cc,cnp = self.__getCostAndNPix(corr_p1im,corr_p2im)
+                corr_cost = cc/cnp
+                f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
+                ax[0].imshow(orig)
+                ax[0].set_title(f'raw overlap {i} original (cost={orig_cost:.2f})')
+                ax[1].imshow(corr)
+                ax[1].set_title(f'raw overlap {i} corrected (cost={corr_cost:.2f})')
+                with cd(dirpath) :
+                    plt.savefig(f'{self.raw_or_fw}_overlap_{eto.olap.n}_postfit_comparison_offset={self.best_fit_offset:.3f}_not_smoothed.png')
+                plt.close()
             
-    def saveCostReduxes(self) :
+    def saveCostReduxes(self,dirpath) :
         cost_reduxes = []
         for eto in self.etos :
-            orig_cost = self.__calcSingleCost(eto.p1_im,eto.p2_im)
+            oc,onp = self.__getCostAndNPix(eto.p1_im,eto.p2_im)
+            orig_cost = oc/onp
             corr_p1im, corr_p2im = self.__correctImages(eto,self.best_fit_offset)
-            corr_cost = self.__calcSingleCost(corr_p1im,corr_p2im)
+            cc,cnp = self.__getCostAndNPix(corr_p1im,corr_p2im)
+            corr_cost = cc/cnp
             cost_reduxes.append((orig_cost-corr_cost)/(orig_cost))
         plt.hist(cost_reduxes,bins=60)
         plt.title('fractional cost reductions')
-        with cd(workingdir_name) :
+        with cd(dirpath) :
             plt.savefig(f'{self.raw_or_fw}_fit_{self.fitn}_cost_reductions.png')
         plt.close()
             
-    def __correctImages(self,eto,offset) :
-        corr_p1 = offset+(max_exp_times[0]/eto.p1et)*(eto.p1_im-offset)
-        corr_p2 = offset+(max_exp_times[0]/eto.p2et)*(eto.p2_im-offset)
+    def __correctImages(self,eto,offset,raw=False) :
+        if raw and eto.raw_p1im is not None and eto.raw_p2im is not None :
+            corr_p1 = np.where((eto.raw_p1im-offset)>0,offset+(1.*self.max_exp_time/eto.p1et)*(eto.raw_p1im-offset),eto.raw_p1im)
+            corr_p2 = np.where((eto.raw_p2im-offset)>0,offset+(1.*self.max_exp_time/eto.p2et)*(eto.raw_p2im-offset),eto.raw_p2im)
+        else :    
+            corr_p1 = np.where((eto.p1_im-offset)>0,offset+(1.*self.max_exp_time/eto.p1et)*(eto.p1_im-offset),eto.p1_im)
+            corr_p2 = np.where((eto.p2_im-offset)>0,offset+(1.*self.max_exp_time/eto.p2et)*(eto.p2_im-offset),eto.p2_im)
         return corr_p1, corr_p2
     
-    def __calcSingleCost(self,p1im,p2im) :
-        return np.sum(np.abs(p2im-p1im))/(p1im.shape[0]*p1im.shape[1])
-        #return np.abs(np.mean(p2im)-np.mean(p1im))/(p1im.shape[0]*p1im.shape[1])
+    def __getCostAndNPix(self,p1im,p2im) :
+        return np.sum(np.abs(p2im-p1im)), (p1im.shape[0]*p1im.shape[1])
+        #return np.abs(np.mean(p2im)-np.mean(p1im))
 
-#first plot all of the exposure times
-print('Plotting all exposure times....')
+#first gett all of the exposure times
+print('Getting all exposure times....')
 with cd(os.path.join(root2_dir,sample)) :
     all_rfps = [os.path.join(root2_dir,sample,fn) for fn in glob.glob('*.Data.dat')]
 exp_times = {}
@@ -154,27 +199,44 @@ max_exp_times = getSampleMaxExposureTimesByLayer(root1_dir,sample)
 print('Making an AlignmentSet from the raw files....')
 #a = AlignmentSetFromXML(root1_dir,root2_dir,sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,nclip=nclip,readlayerfile=False,layer=layer)
 a = AlignmentSetFromXML(root1_dir,root2_dir,sample,nclip=nclip,readlayerfile=False,layer=layer)
-a.getDAPI(filetype='raw')
-#correct the rectangle images with the flatfield file
+a.getDAPI(filetype='raw',keeprawimages=True)
+#correct the rectangle images with the flatfield file and applying some smoothing
 print('Correcting and updating rectangle images....')
 flatfield_layer = (getRawAsHWL(flatfield_file,1004,1344,35,dtype=np.float64))[:,:,layer-1]
-warp_images = []
+warp_images = []; raw_warp_images = []
 for ri,r in enumerate(a.rectangles) :
     rfkey=r.file.rstrip('.im3')
-    image = np.rint((r.image)/flatfield_layer).astype(np.uint16)
+    image = np.rint((r.rawimage)/flatfield_layer).astype(np.uint16)
+    raw_warp_images.append(WarpImage(rfkey,cv2.UMat(copy.deepcopy(image)),cv2.UMat(np.empty_like(image)),False,ri))
+    image = smoothImageWorker(image,3)
     warp_images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),False,ri))
-a.updateRectangleImages(warp_images,usewarpedimages=False)
-#align the overlaps
+#make dictionaries of the completely raw shifted overlap images to add those to the ETOverlaps
+print('Updating and aligning once to get completely raw images....')
+raw_olap_p1_images = {}; raw_olap_p2_images = {}
+a.updateRectangleImages(raw_warp_images,usewarpedimages=False,correct_with_meanimage=True,recalculate_meanimage=True)
+a.align(alreadyalignedstrategy='overwrite')
+for io,olap in enumerate(a.overlaps) :
+    if olap.result.exit!=0 :
+        continue
+    raw_p1im, raw_p2im = olap.shifted
+    raw_olap_p1_images[io] = raw_p1im
+    raw_olap_p2_images[io] = raw_p2im
+#update and align again with the smoothed images
+print('Updating and aligning once to get completely raw images....')
+a.updateRectangleImages(warp_images,usewarpedimages=False,correct_with_meanimage=True,recalculate_meanimage=True)
 a.align(alreadyalignedstrategy='overwrite')
 #make the exposure time comparison overlap objects
 etolaps = []
-for olap in a.overlaps :
+for io,olap in enumerate(a.overlaps) :
     if olap.result.exit!=0 :
         continue
     p1et = exp_times[os.path.join(root2_dir,sample,(([r for r in a.rectangles if r.n==olap.p1])[0].file).replace('.im3','.Data.dat'))]
     p2et = exp_times[os.path.join(root2_dir,sample,(([r for r in a.rectangles if r.n==olap.p2])[0].file).replace('.im3','.Data.dat'))]
     if p2et-p1et!=0. :
-        etolaps.append(ETOverlap(olap,p1et,p2et))
+        if (io in raw_olap_p1_images.keys()) and (io in raw_olap_p2_images.keys()) :
+            etolaps.append(ETOverlap(olap,p1et,p2et,raw_olap_p1_images[io],raw_olap_p2_images[io]))
+        else :
+            etolaps.append(ETOverlap(olap,p1et,p2et))
 #sort the overlaps so those with the largest exposure time differences are first
 print(f'Sorting list of {len(etolaps)} aligned overlaps with different exposure times....')
 etolaps.sort(key=lambda x: abs(x.et_diff), reverse=True)
@@ -202,35 +264,36 @@ for io,eto in reversed(list(enumerate(etolaps[-min(20,len(etolaps)):],start=1)))
 random.shuffle(etolaps)
 #do a fit to half the overlaps
 print('Doing first fit to raw file overlaps....')
-fit_1 = Fit(etolaps[:int(len(etolaps)/2)],'raw','1')
+fit_1 = Fit(etolaps[:int(len(etolaps)/2)],'raw','1',max_exp_times[layer-1])
 fit_1.doFit(initial_offset=50)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
 ax[0].plot(list(range(1,len(fit_1.costs)+1)),fit_1.costs,marker='*')
 ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_1.costs)+1)),fit_1.offsets,marker='*')
 ax[1].set_title('offsets')
-with cd(workingdir_name) :
+with cd(os.path.join(workingdir_name,raw_fit_1_dirname)) :
     plt.savefig('raw_fit_1_costs_and_offsets.png')
 plt.close()
-fit_1.saveCostReduxes()
-fit_1.saveCorrectedImages(25)
+fit_1.saveCostReduxes(os.path.join(workingdir_name,raw_fit_1_dirname))
+fit_1.saveCorrectedImages(50,os.path.join(workingdir_name,raw_fit_1_dirname))
 #do a fit to the other half of the overlaps
 print('Doing second fit to raw file overlaps....')
-fit_2 = Fit(etolaps[int(len(etolaps)/2):],'raw','2')
+fit_2 = Fit(etolaps[int(len(etolaps)/2):],'raw','2',max_exp_times[layer-1])
 fit_2.doFit(initial_offset=30)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
 ax[0].plot(list(range(1,len(fit_2.costs)+1)),fit_2.costs,marker='*')
 ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_2.costs)+1)),fit_2.offsets,marker='*')
 ax[1].set_title('offsets')
-with cd(workingdir_name) :
+with cd(os.path.join(workingdir_name,raw_fit_2_dirname)) :
     plt.savefig('raw_fit_2_costs_and_offsets.png')
 plt.close()
-fit_2.saveCostReduxes()
-fit_2.saveCorrectedImages(25)
+fit_2.saveCostReduxes(os.path.join(workingdir_name,raw_fit_2_dirname))
+fit_2.saveCorrectedImages(50,os.path.join(workingdir_name,raw_fit_2_dirname))
 
 #do all of the above except with an alignmentset made from the .fw01 files instead
 print('Making an AlignmentSet from the .fw01 files....')
+#a = AlignmentSet(root1_dir,fw01_root2_dir,sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True)
 a = AlignmentSet(root1_dir,fw01_root2_dir,sample)
 a.getDAPI(filetype='flatWarp')
 a.align(write_result=False)
@@ -269,31 +332,31 @@ for io,eto in reversed(list(enumerate(etolaps[-min(20,len(etolaps)):],start=1)))
 random.shuffle(etolaps)
 #do a fit to half the overlaps
 print('Doing first fit to .fw01 overlaps....')
-fit_1 = Fit(etolaps[:int(len(etolaps)/2)],'fw','1')
+fit_1 = Fit(etolaps[:int(len(etolaps)/2)],'fw','1',max_exp_times[layer-1])
 fit_1.doFit(initial_offset=50)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
 ax[0].plot(list(range(1,len(fit_1.costs)+1)),fit_1.costs,marker='*')
 ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_1.costs)+1)),fit_1.offsets,marker='*')
 ax[1].set_title('offsets')
-with cd(workingdir_name) :
+with cd(os.path.join(workingdir_name,fw_fit_1_dirname)) :
     plt.savefig('fw_fit_1_costs_and_offsets.png')
 plt.close()
-fit_1.saveCostReduxes()
-fit_1.saveCorrectedImages(25)
+fit_1.saveCostReduxes(os.path.join(workingdir_name,fw_fit_1_dirname))
+fit_1.saveCorrectedImages(50,os.path.join(workingdir_name,fw_fit_1_dirname))
 #do a fit to the other half of the overlaps
 print('Doing second fit to .fw01 overlaps....')
-fit_2 = Fit(etolaps[int(len(etolaps)/2):],'fw','2')
+fit_2 = Fit(etolaps[int(len(etolaps)/2):],'fw','2',max_exp_times[layer-1])
 fit_2.doFit(initial_offset=30)
 f,ax=plt.subplots(1,2,figsize=(2*6.4,4.6))
 ax[0].plot(list(range(1,len(fit_2.costs)+1)),fit_2.costs,marker='*')
 ax[0].set_title('costs')
 ax[1].plot(list(range(1,len(fit_2.costs)+1)),fit_2.offsets,marker='*')
 ax[1].set_title('offsets')
-with cd(workingdir_name) :
+with cd(os.path.join(workingdir_name,fw_fit_2_dirname)) :
     plt.savefig('fw_fit_2_costs_and_offsets.png')
 plt.close()
-fit_2.saveCostReduxes()
-fit_2.saveCorrectedImages(25)
+fit_2.saveCostReduxes(os.path.join(workingdir_name,fw_fit_2_dirname))
+fit_2.saveCorrectedImages(50,os.path.join(workingdir_name,fw_fit_2_dirname))
 
 print('Done!')

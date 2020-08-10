@@ -104,7 +104,7 @@ class WarpSet :
         for warpimg in self.images :
             if skip_corners and warpimg.is_corner_only :
                 continue
-            self.warp.warpLayerInPlace(warpimg.raw_image,warpimg.warped_image)
+            self.warp.warpLayerInPlace(warpimg.raw_image_umat,warpimg.warped_image_umat)
 
     def writeOutWarpedImages(self,path=None) :
         """
@@ -115,7 +115,7 @@ class WarpSet :
             with cd(path) if path is not None else contextlib.nullcontext():
                 #write out all the image files
                 for warpimg in self.images :
-                    self.warp.writeImageLayer((warpimg.warped_image).get(),warpimg.rawfile_key,self.layer)
+                    self.warp.writeImageLayer(warpimg.warped_image,warpimg.rawfile_key,self.layer)
         except FileNotFoundError :
             raise FileNotFoundError(f'path {path} supplied to writeOutWarpedImageSet is not a valid location')
 

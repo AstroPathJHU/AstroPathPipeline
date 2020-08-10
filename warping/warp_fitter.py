@@ -86,8 +86,6 @@ class WarpFitter :
         except TypeError: #units was garbage collected before the warpfitter
             pass
 
-    #################### PUBLIC FUNCTIONS ####################
-
     def loadRawFiles(self,flatfield_file_path=None,n_threads=1) :
         """
         Load the raw files into the warpset, warp/save them, and load them into the alignment set 
