@@ -29,7 +29,7 @@ class WarpFitter :
     #################### CLASS CONSTANTS ####################
 
     IM3_EXT = '.im3'                                          #to replace in filenames read from *_rect.csv
-    DE_TOLERANCE = 0.05                                       #tolerance for the differential evolution minimization
+    DE_TOLERANCE = 0.03                                       #tolerance for the differential evolution minimization
     DE_MUTATION = (0.2,0.8)                                   #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7                                    #recombination parameter for differential evolution minimization
     POLISHING_X_TOL = 5e-5                                    #parameter tolerance for polishing minimization
@@ -86,8 +86,6 @@ class WarpFitter :
         except TypeError: #units was garbage collected before the warpfitter
             pass
 
-    #################### PUBLIC FUNCTIONS ####################
-
     def loadRawFiles(self,flatfield_file_path=None,n_threads=1) :
         """
         Load the raw files into the warpset, warp/save them, and load them into the alignment set 
@@ -102,12 +100,14 @@ class WarpFitter :
         self.warpset.writeOutWarpedImages(os.path.join(self.working_dir,self.samp_name))
         self.alignset.getDAPI(filetype='camWarp')
 
-    def doFit(self,fixed=None,normalize=None,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
+    def doFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
              p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000) :
         """
         Fit the cameraWarp model to the loaded dataset
         fixed                    = list of fit parameter names to keep fixed (p1p2 can be fixed separately in the global and polishing minimization steps)
         normalize                = list of fit parameter names to rescale within their bounds for fitting instead of using the raw numbers
+        init_pars                = dictionary of initial parameter values to use instead of defaults; keyed by name
+        init_bounds              = dictionary of initial parameter bounds to use instead of defaults; keyed by name
         float_p1p2_in_polish_fit = if True, p1 and p2 will not be fixed in the polishing minimization regardless of other arguments
         max_*_warp               = values to use for max warp amount constraints (set to -1 to remove constraints)
         p1p2_polish_lasso_lambda = lambda parameter for LASSO constraint on p1 and p2 during polishing fit
@@ -116,7 +116,7 @@ class WarpFitter :
         max_iter                 = maximum number of iterations for the global and polishing minimization steps
         """
         #make the set of fit parameters
-        self.fitpars = FitParameterSet(fixed,normalize,max_radial_warp,max_tangential_warp,self.warpset.warp)
+        self.fitpars = FitParameterSet(fixed,normalize,init_pars,init_bounds,max_radial_warp,max_tangential_warp,self.warpset.warp)
         #make the iteration counter and the lists of costs/warp amounts
         self.minfunc_calls=0
         self.costs=[]
@@ -146,14 +146,14 @@ class WarpFitter :
         #run all the post-processing stuff
         self.__runPostProcessing(de_result.nfev)
 
-    def checkFit(self,fixed=None,normalize=None,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
+    def checkFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
                  p1p2_polish_lasso_lambda=0.,polish=True) :
         """
         A function to print some information about how the fits will proceed with the current settings
         (see "doFit" function above for what the arguments to this function are)
         """
         #make the set of fit parameters
-        self.fitpars = FitParameterSet(fixed,normalize,max_radial_warp,max_tangential_warp,self.warpset.warp)
+        self.fitpars = FitParameterSet(fixed,normalize,init_pars,init_bounds,max_radial_warp,max_tangential_warp,self.warpset.warp)
         #stuff from the differential evolution minimization setup
         warp_logger.info('For global minimization setup:')
         _, _, _ = self.__getGlobalSetup()

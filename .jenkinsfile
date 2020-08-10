@@ -89,6 +89,12 @@ pipeline {
 	  }
 	}
 
+	stage('exposure time correction') {
+	  steps {
+	    sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testexposuretimefit'
+	  }
+	}
+
         stage('code checks') {
           steps {
             sh 'python -m pyflakes .'

@@ -95,6 +95,31 @@ def split_csv_to_list_of_ints(value) :
   except ValueError :
       raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
 
+#parser callback function to split a string of comma-separated name=value pairs into a dictionary
+def split_csv_to_dict_of_floats(value) :
+  try :
+    pairs = value.split(',')
+    return_dict = {}
+    for pair in pairs :
+      name,value = pair.split('=')
+      return_dict[name] = float(value)
+    return return_dict
+  except Exception :
+      raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=float pairs!')
+
+#helper function to split a string of comma-separated name=(low bound:high bound) pairs into a dictionary
+def split_csv_to_dict_of_bounds(value) :
+  try :
+    pairs = value.split(',')
+    return_dict = {}
+    for pair in pairs :
+      name,bounds = pair.split('=')
+      low_bound,high_bound = bounds.split(':')
+      return_dict[name] = (float(low_bound),float(high_bound))
+    return return_dict
+  except Exception as e :
+    raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=low_bound:high_bound pairs! Exception: {e}')
+
 @contextlib.contextmanager
 def PILmaximagepixels(pixels):
   import PIL.Image
