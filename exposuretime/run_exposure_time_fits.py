@@ -39,13 +39,13 @@ if __name__=='__main__' :
                                   help='How many iterations to wait between printing minimization progress (default=10)')
     #group for other run options
     run_option_group = parser.add_argument_group('run options', 'other options for this run')
-    run_option_group.add_argument('--n_threads',             default=10,   type=int,         
+    run_option_group.add_argument('--n_threads',             default=5,   type=int,         
                                   help='Maximum number of threads/processes to run at once (different layers run in parallel).')
     run_option_group.add_argument('--layers',                default=[-1], type=split_csv_to_list_of_ints,         
                                   help='CSV list of image layer numbers to use (indexed from 1) [default=-1 runs all layers]')
     run_option_group.add_argument('--overlaps',              default=[-1], type=split_csv_to_list_of_ints,         
                                   help='CSV list of overlap numbers to use [default=-1 runs all of them]. Should really only use this for testing.')
-    run_option_group.add_argument('--n_comparisons_to_save', default=30,   type=int,         
+    run_option_group.add_argument('--n_comparisons_to_save', default=15,   type=int,         
                                   help='Number of pre/post-fit overlap overlay comparison images to save (default=30)')
     args = parser.parse_args()
     #make sure the arguments are valid

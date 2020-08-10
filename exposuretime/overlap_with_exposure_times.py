@@ -18,7 +18,7 @@ class OverlapWithExposureTimes :
         return self._raw_p2_im
     @raw_p2im.setter
     def raw_p2im(self,rp2i) :
-        self._raw_p2_im = rp1i
+        self._raw_p2_im = rp2i
     @property
     def raw_npix(self) :
         if self.raw_p1im is not None and self.raw_p2im is not None :

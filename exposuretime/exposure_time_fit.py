@@ -147,7 +147,7 @@ class SingleLayerExposureTimeFit :
             p2et = exposure_times[(([r for r in a.rectangles if r.n==olap.p2])[0].file).rstrip(CONST.IM3_EXT)]
             etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages))
         #return the whole list
-        et_fit_logger.info(f'Found {len(etolaps)} overlaps that are aligned and have different p1 and p2 exposure times')
+        et_fit_logger.info(f'Found {len(etolaps)} overlaps that are aligned and have different p1 and p2 exposure times in layer {self.layer}')
         return etolaps
 
     #helper function to return a list of overlap ns for overlaps where the p1 and p2 image exposure times are different
@@ -227,7 +227,7 @@ class SingleLayerExposureTimeFit :
             rfkey=r.file.rstrip('.im3')
             image = np.rint((r.image*a.meanimage.flatfield)/self.flatfield).astype(np.uint16)
             raw_update_images.append(UpdateImage(rfkey,copy.deepcopy(image),ri))
-        raw_olap_p1_images = {}; raw_olap_p2_images = {}
+        raw_olap_images = {}
         et_fit_logger.info(f'Updating rectangle images and aligning overlaps for plots in layer {self.layer}')
         a.updateRectangleImages(raw_update_images,usewarpedimages=False,correct_with_meanimage=False)
         a.align(alreadyalignedstrategy='overwrite')
@@ -235,11 +235,11 @@ class SingleLayerExposureTimeFit :
             if olap.result.exit!=0 :
                 continue
             raw_p1im, raw_p2im = olap.shifted
-            raw_olap_p1_images[olap.n] = raw_p1im; raw_olap_p2_images[olap.n] = raw_p2im
+            raw_olap_images[olap.n] = {'p1im':raw_p1im,'p2im':raw_p2im}
         #add the raw images to the exposure time overlaps
-        for eto in [eto for eto in self.exposure_time_overlaps if (eto.n in raw_olap_ns_for_plots) and (eto.n in raw_olap_p1_images.keys())] :
-            eto.raw_p1im = raw_olap_p1_images[eto.n]
-            eto.raw_p2im = raw_olap_p2_images[eto.n]
+        for eto in [eto for eto in self.exposure_time_overlaps if eto.n in raw_olap_images.keys()] :
+            eto.raw_p1im = raw_olap_images[eto.n]['p1im']
+            eto.raw_p2im = raw_olap_images[eto.n]['p2im']
         #make the plots
         et_fit_logger.info(f'Saving pre/postfit overlay images for layer {self.layer}')
         with cd(self.plotdirpath) :
