@@ -31,7 +31,7 @@ if __name__=='__main__' :
                                   help='CSV of low,high bounds for offset [default=(0,1000)]')
     fit_option_group.add_argument('--max_iter',       default=15000,    type=int,
                                   help='Maximum number of fit iterations (default=15000)')
-    fit_option_group.add_argument('--gtol',           default=1e-7,     type=float,
+    fit_option_group.add_argument('--gtol',           default=1e-8,     type=float,
                                   help='Minimization stops when the projected gradient is less than this (default=1e-7).')
     fit_option_group.add_argument('--eps',            default=0.25,        type=float,
                                   help='Step size around current value for Jacobian approximation (default=0.25).')

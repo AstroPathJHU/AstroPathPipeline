@@ -68,7 +68,7 @@ class SingleLayerExposureTimeFit :
                                                        'eps':eps,
                                                        'maxiter':max_iter,
                                                        'iprint':print_every,
-                                                       'maxls':2*len(self.exposure_time_overlaps),
+                                                       'maxls':50,
                                                       }
                                              )
         self.best_fit_offset = self.result.x[0]
