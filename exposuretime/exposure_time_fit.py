@@ -114,18 +114,19 @@ class SingleLayerExposureTimeFit :
     #helper function to return a list of OverlapWithExposureTime objects set up to run on this particular image layer
     def __getExposureTimeOverlaps(self,exposure_times,max_exp_time,overlaps,smoothsigma,cutimages) :
         #first get the list of overlaps that have different p1 and p2 exposure times
+        et_fit_logger.info(f'Finding overlaps with different p1 and p2 exposure times in layer {self.layer}....')
         overlaps_with_et_diff = self.__getOverlapsWithExposureTimeDifferences(exposure_times)
         overlaps = overlaps_with_et_diff if overlaps==[-1] else [n for n in overlaps if n in overlaps_with_et_diff]
         if len(overlaps)<1 :
             return []
         #make an alignmentset from the raw files
-        et_fit_logger.info(f'Making an AlignmentSet for layer {self.layer}....')
+        et_fit_logger.info(f'Making an AlignmentSet for just the overlaps with different exposure times in layer {self.layer}....')
         a = AlignmentSetFromXML(self.metadata_top_dir,self.rawfile_top_dir,self.sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
                                 nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer)
         #get all the raw file layers
         a.getDAPI(filetype='raw')
         #correct the rectangle images with the flatfield file and applying some smoothing
-        et_fit_logger.info(f'Correcting and updating rectangle images for layer {self.layer}....')
+        et_fit_logger.info(f'Correcting rectangle images for layer {self.layer}....')
         update_images = []
         for ri,r in enumerate(a.rectangles) :
             rfkey=r.file.rstrip('.im3')
@@ -133,7 +134,7 @@ class SingleLayerExposureTimeFit :
             image = smoothImageWorker(image,smoothsigma)
             update_images.append(UpdateImage(rfkey,image,ri))
         #update and align with the smoothed images
-        et_fit_logger.info(f'Updating and aligning layer {self.layer} overlaps with smoothed images....')
+        et_fit_logger.info(f'Updating and aligning layer {self.layer} overlaps with corrected/smoothed images....')
         a.updateRectangleImages(update_images,usewarpedimages=False,correct_with_meanimage=False)
         a.align(alreadyalignedstrategy='overwrite')
         #make the exposure time comparison overlap objects
@@ -215,8 +216,10 @@ class SingleLayerExposureTimeFit :
         if len(raw_olap_ns_for_plots)<1 :
             return
         #make an alignmentset for just those overlaps and correct the raw images
+        et_fit_logger.info(f'Making an AlignmentSet for {len(raw_olap_ns_for_plots)} pre/postfit overlay images for layer {self.layer}')
         a = AlignmentSetFromXML(self.metadata_top_dir,self.rawfile_top_dir,self.sample,selectoverlaps=raw_olap_ns_for_plots,
                                 onlyrectanglesinoverlaps=True,nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer)
+        et_fit_logger.info(f'Correcting images for plots in layer {self.layer}')
         a.getDAPI(filetype='raw')
         raw_update_images = []
         for ri,r in enumerate(a.rectangles) :
@@ -224,6 +227,7 @@ class SingleLayerExposureTimeFit :
             image = np.rint((r.image*a.meanimage.flatfield)/flatfield).astype(np.uint16)
             raw_update_images.append(UpdateImage(rfkey,copy.deepcopy(image),ri))
         raw_olap_p1_images = {}; raw_olap_p2_images = {}
+        et_fit_logger.info(f'Updating rectangle images and aligning overlaps for plots in layer {self.layer}')
         a.updateRectangleImages(raw_update_images,usewarpedimages=False,correct_with_meanimage=False)
         a.align(alreadyalignedstrategy='overwrite')
         for olap in a.overlaps :
@@ -236,6 +240,7 @@ class SingleLayerExposureTimeFit :
             eto.raw_p1_im = raw_olap_p1_images[eto.n]
             eto.raw_p2_im = raw_olap_p2_images[eto.n]
         #make the plots
+        et_fit_logger.info(f'Saving pre/postfit overlay images for layer {self.layer}')
         with cd(self.plotdirpath) :
             if n_ends>0 :
                 for io,eto in enumerate(self.exposure_time_overlaps[:n_ends],start=1) :
