@@ -31,10 +31,10 @@ def isotropy(alignmentset, maxfreq=5, bins=24, showplot=True, **kwargs):
 
   return cosintegrals, sinintegrals
 
-def stitchingisotropy(alignmentset, cornerfractions=np.linspace(0, 1, 101)):
+def stitchingisotropy(alignmentset, cornerfractions=np.linspace(0, 1, 101), **kwargs):
   ampfourier = []
   for cornerfraction in cornerfractions:
-    result = alignmentset.stitch(saveresult=False, scaleedges=1-cornerfraction, scalecorners=cornerfraction)
+    result = alignmentset.stitch(saveresult=False, scaleedges=1-cornerfraction, scalecorners=cornerfraction, **kwargs)
     alignmentset.applystitchresult(result)
     cosfourier, sinfourier = isotropy(alignmentset, stitched=True, showplot=False)
     ampfourier.append((cosfourier**2 + sinfourier**2) ** .5)
