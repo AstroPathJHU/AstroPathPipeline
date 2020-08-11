@@ -178,6 +178,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     result.applytooverlaps()
     self.__T = result.T
     self.__fields = result.fields
+    self.__stitchresult = result
 
   @property
   def T(self):
@@ -192,6 +193,13 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
       return self.__fields
     except AttributeError:
       raise AttributeError("Haven't run stitching, so we don't have the stitched fields")
+
+  @property
+  def stitchresult(self):
+    try:
+      return self.__stitchresult
+    except AttributeError:
+      raise AttributeError("Haven't run stitching")
 
 class AlignmentSet(AlignmentSetBase, ReadRectangles):
   @methodtools.lru_cache()

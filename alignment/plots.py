@@ -65,7 +65,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
   plotstyling(fig=fig, ax=ax)
 
   if showplot is None:
-    showplot = saveas is not None
+    showplot = saveas is None
 
   if showplot:
     plt.show()
