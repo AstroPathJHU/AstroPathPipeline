@@ -111,7 +111,7 @@ class ExposureTimeOffsetFitGroup :
                     offsets.append(LayerOffset(fit.layer,len(fit.exposure_time_overlaps),fit.best_fit_offset,fit.best_fit_cost))
         #write out all the results
         with cd(self.workingdir_name) :
-            writetable(f'{self.sample}_{CONST.LAYER_OFFSET_FILE_NAME_STEM}',offsets)
+            writetable(f'{self.sample}_{CONST.LAYER_OFFSET_FILE_NAME_STEM}_first_layers_{self.layers[0]}-{self.layers[-1]}',offsets)
         #save the plot of the offsets by layer
         plt.plot([o.layer_n for o in offsets],[o.offset for o in offsets],marker='*')
         plt.xlabel('image layer')
