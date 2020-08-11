@@ -19,3 +19,7 @@
 !stitch-result-BMS-[1-4].pdf
 !stitch-result-JHUPolaris-[1-4].pdf
 !stitch-result-vectra-big-[1-4].pdf
+!isotropy-histogram-AKY-[1-4]-*.pdf
+!isotropy-histogram-BMS-[1-4]-*.pdf
+!isotropy-histogram-JHUPolaris-[1-4]-*.pdf
+!isotropy-histogram-JHUVectra-[1-4]-*.pdf
