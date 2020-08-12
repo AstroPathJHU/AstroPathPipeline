@@ -2,7 +2,7 @@
 
 import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
 from ...alignment.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
-from ...alignment.isotropy import isotropy
+from ...alignment.isotropy import isotropy, stitchingisotropy
 from ...alignment.alignmentset import AlignmentSet
 from ...utilities import units
 
@@ -430,6 +430,51 @@ def isotropyhist(*, bki, testing, remake):
           if currentstitchresultisfor != "all":
             A.applystitchresult(oldstitchresult)
 
+def isotropyscatter(*, bki, testing, remake):
+  if bki or testing:
+    with plt.rc_context(rc=rc):
+      def plotstyling(fig, ax):
+        ax.set_xlabel(r"$\alpha$")
+        ax.set_ylabel(r"Fourier amplitude")
+        low, hi = ax.get_ylim()
+        ax.set_ylim(top = hi + (hi-low)*.4)
+        plt.legend(ncol=3)
+
+      class Sample(collections.namedtuple("Sample", "samp name")):
+        def __new__(cls, **kwargs):
+          return super().__new__(cls, **kwargs)
+
+      samples = [
+        Sample(samp="M1_1", name="JHUVectra"),
+        Sample(samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY"),
+        Sample(samp="PZ1", name="JHUPolaris"),
+        Sample(samp="ML1603480_BMS078_5_22", name="BMS"),
+      ] if bki else [
+        Sample(samp=None, name="test"),
+      ]
+      figurekwargs = {"figsize": (6, 6)}
+
+      for samp, name in samples:
+        for tag in 1, 2, 3, 4:
+          if testing and tag != 1: continue
+          alignmentsetkwargs = {"samp": samp}
+          alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
+          saveas = here/f"stitching-isotropy-{name}-{tag}.pdf"
+          if saveas.exists() and not remake: continue
+          A = alignmentset(**alignmentsetkwargs)
+          A.logger.info("%s", tag)
+          oldstitchresult = A.stitchresult
+          try:
+            stitchingisotropy(
+              A,
+              tags=[tag],
+              plotstyling=plotstyling,
+              figurekwargs=figurekwargs,
+              saveas=saveas,
+            )
+          finally:
+            A.applystitchresult(oldstitchresult)
+
 if __name__ == "__main__":
   class EqualsEverything:
     def __eq__(self, other): return True
@@ -453,6 +498,7 @@ if __name__ == "__main__":
   g.add_argument("--sinewaves", action="store_const", dest="which", const="sinewaves")
   g.add_argument("--2dplots", action="store_const", dest="which", const="2dplots")
   g.add_argument("--isotropy-histograms", action="store_const", dest="which", const="isotropyhist")
+  g.add_argument("--isotropy-scatter", action="store_const", dest="which", const="isotropyscatter")
   args = p.parse_args()
 
   units.setup(args.units)
@@ -480,3 +526,5 @@ if __name__ == "__main__":
     plots2D(bki=args.bki, testing=args.testing, remake=args.remake)
   if args.which == "isotropyhist":
     isotropyhist(bki=args.bki, testing=args.testing, remake=args.remake)
+  if args.which == "isotropyscatter":
+    isotropyscatter(bki=args.bki, testing=args.testing, remake=args.remake)

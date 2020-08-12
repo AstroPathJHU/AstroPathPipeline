@@ -45,13 +45,13 @@ def stitchingisotropy(alignmentset, cornerfractions=np.linspace(0, 1, 101), show
   ax = fig.add_subplot(1, 1, 1)
   ampfourier = []
   for cornerfraction in cornerfractions:
-    result = alignmentset.stitch(saveresult=False, scaleedges=1-cornerfraction, scalecorners=cornerfraction, **kwargs)
+    result = alignmentset.stitch(saveresult=False, scaleedges=1-cornerfraction, scalecorners=cornerfraction)
     alignmentset.applystitchresult(result)
-    cosfourier, sinfourier = isotropy(alignmentset, stitched=True, showplot=False)
+    cosfourier, sinfourier = isotropy(alignmentset, stitched=True, showplot=False, **kwargs)
     ampfourier.append((cosfourier**2 + sinfourier**2) ** .5)
   ampfourier = np.array(ampfourier)
-  for amps in ampfourier.T:
-    plt.scatter(cornerfractions, amps)
+  for i, amps in enumerate(ampfourier.T):
+    plt.scatter(cornerfractions, amps, label=i)
 
   plotstyling(fig, ax)
 
