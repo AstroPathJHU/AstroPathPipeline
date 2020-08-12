@@ -910,13 +910,13 @@ As a cross check, similar plots are also shown for a second dataset in \cref{fig
 
 \clearpage
 
-\section{Isotropy of residual misalignments}
+\subsection{Isotropy of residual misalignments}
 
 As \cref{fig:stitchresultbig4,fig:stitchresultbig3,fig:stitchresultbig2,fig:stitchresultbig1} show, the residual misalignments after stitching are not isotropic.  To some extent, this is to be expected, because the input to the alignment, the edges and corners, are not isotropic either.  Nevertheless, the lack of isotropy might indicate an imperfection in previous steps of the calibration (such as flatfielding or warping) or may come from an incorrect relative weight assigned to the edge and corner overlaps in the stitching procedure.  We can note that the pull distributions in \cref{sec:pulls} are generally wider for the corner overlaps than for the edge overlaps, lending some credence to this second possibility.
 
-\subsection{JHU Vectra 3.0}
+\subsubsection{JHU Vectra 3.0}
 
-In \cref{fig:stitchfourierseries}, we attempt to quantify this anisotropy by producing a histogram of the angle $\phi$ of the overlaps in \cref{fig:stitchresultbig4,fig:stitchresultbig3,fig:stitchresultbig2,fig:stitchresultbig1}.  Each histogram is
+In \cref{fig:stitchfourierseries}, we attempt to quantify this anisotropy by producing a histogram of the angle $\phi$ of the overlaps in \cref{fig:stitchresultbig4,fig:stitchresultbig3,fig:stitchresultbig2,fig:stitchresultbig1}.  Each histogram is fitted to a Fourier series, and the first four terms are shown on the plot.  An isotropic distribution would produce flat histograms.
 
 \begin{figure}[ht]
 	\centering
