@@ -119,8 +119,8 @@ if __name__=='__main__' :
                                          help="What fraction of an overlap image's pixels must be above the threshold to accept it in a valid octet")
     #mutually exclusive group for how to handle the exposure time correction
     et_correction_group = parser.add_mutually_exclusive_group(required=True)
-    et_correction_group.add_argument('--exposure_time_correction_dir',
-                                    help="""Path to the directory containing exposure time correction results for the samples in question
+    et_correction_group.add_argument('--exposure_time_offset_file',
+                                    help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the samples in question
                                     [use this argument to apply corrections for differences in image exposure time]""")
     et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
                                     help='Add this flag to entirely skip correcting image flux for exposure time differences')
@@ -182,7 +182,7 @@ if __name__=='__main__' :
         elif args.mode in ('fit', 'cProfile') :
             #load the raw files
             warp_logger.info('Loading raw files')
-            fitter.loadRawFiles(args.flatfield_file,args.exposure_time_correction_dir,args.skip_exposure_time_correction,args.n_threads)
+            fitter.loadRawFiles(args.flatfield_file,args.exposure_time_offset_file,args.n_threads)
              #fit the model to the data
             warp_logger.info('Running doFit')
             if args.mode == 'fit' :

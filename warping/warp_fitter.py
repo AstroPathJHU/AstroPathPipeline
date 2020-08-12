@@ -87,30 +87,29 @@ class WarpFitter :
         except TypeError: #units was garbage collected before the warpfitter
             pass
 
-    def loadRawFiles(self,flatfield_file_path,et_correction_dir,skip_et_correction,n_threads=1) :
+    def loadRawFiles(self,flatfield_file_path,et_correction_offset_file,n_threads=1) :
         """
         Load the raw files into the warpset, warp/save them, and load them into the alignment set 
-        flatfield_file_path = path to the flatfield file to use in correcting the rawfile illumination
-        et_correction_dir   = path to a directory holding the LayerOffset table for this sample
-        skip_et_correction  = True if corrections for exposure time should be skipped entirely
-        n_threads           = how many different processes to run when loading files
+        flatfield_file_path       = path to the flatfield file to use in correcting the rawfile illumination
+        et_correction_offset_file = path to file containing records of LayerOffset objects specifying an offset to use 
+                                    for each layer (or None if no correction is to be applied)
+        n_threads                 = how many different processes to run when loading files
         """
         #load the exposure time correction offsets and the max exposure times by layer
         max_exp_time = None; et_correction_offset = None
-        if not skip_et_correction :
+        if et_correction_offset_file is not None :
             warp_logger.info("Loading info for exposure time correction...")
-            max_exp_times = getSampleMaxExposureTimesByLayer(self.metadata_top_dir,self.samp_name)[self.warpset.layer-1]
-            et_correction_file = os.path.join(et_correction_dir,f'{self.samp_name}_{CONST.LAYER_OFFSET_FILE_NAME_STEM}')
-            layer_offsets = readtable(et_correction_file,LayerOffset)
+            max_exp_time = getSampleMaxExposureTimesByLayer(self.metadata_top_dir,self.samp_name)[self.warpset.layer-1]
+            layer_offsets = readtable(et_correction_offset_file,LayerOffset)
             this_layer_offset = [lo.offset for lo in layer_offsets if lo.layer_n==self.warpset.layer]
             if len(this_layer_offset)==1 :
                 et_correction_offset = this_layer_offset[0]
             elif len(this_layer_offset)==0 :
-                warp_logger.warn(f"""WARNING: LayerOffset file {et_correction_file} does not have an entry for layer {self.warpset.layer}; 
+                warp_logger.warn(f"""WARNING: LayerOffset file {et_correction_offset_file} does not have an entry for layer {self.warpset.layer}; 
                                      offset will be set to zero!""")
                 et_correction_offset = 0.
             else :
-                raise WarpingError(f'ERROR: more than one entry found in LayerOffset file {et_correction_file} for layer {self.warpset.layer}!')
+                raise WarpingError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {self.warpset.layer}!')
         #load the raw images
         self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.metadata_top_dir,
                                    flatfield_file_path,max_exp_time,et_correction_offset,

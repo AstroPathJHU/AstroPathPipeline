@@ -1,9 +1,11 @@
 #imports
 from .flatfield_sample import FlatfieldSample 
 from .mean_image import MeanImage
-from .utilities import flatfield_logger, chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
+from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
 from .config import CONST
+from ..exposuretime.utilities import LayerOffset
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer
+from ..utilities.tableio import readtable
 from ..utilities.misc import cd
 import os, random
 
@@ -12,6 +14,12 @@ class FlatfieldProducer :
     """
     Main class used in producing the flatfield correction image
     """
+
+    #################### PROPERTIES ####################
+
+    @property
+    def exposure_time_correction_offsets(self) :
+        return self._et_correction_offsets #the list of offsets to use for exposure time correction in this run
 
     #################### CLASS CONSTANTS ####################
     
@@ -37,6 +45,9 @@ class FlatfieldProducer :
             self.flatfield_sample_dict[sn]=FlatfieldSample(sn,img_dims)
         #Start up a new mean image to use for making the actual flatfield
         self.mean_image = MeanImage(img_dims[0],img_dims[1],img_dims[2],workingdir_name,skip_masking,skip_et_correction)
+        self._et_correction_offsets = []
+        for li in range(img_dims[2]) :
+            self._et_correction_offsets.append(None)
 
     def readInBackgroundThresholds(self,threshold_file_dir) :
         """
@@ -65,22 +76,30 @@ class FlatfieldProducer :
             samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
                                           self.metadata_top_dir,
                                           n_threads,
-                                          self.mean_image.skip_et_correction,
+                                          self.et_corr_offsets_by_layer,
                                           os.path.join(self.mean_image.workingdir_name,self.THRESHOLDING_PLOT_DIR_NAME),
                                           threshold_file_name,
                                           )
 
-    def readInExposureTimeCorrectionOffsets(self,et_correction_dir) :
+    def readInExposureTimeCorrectionOffsets(self,et_correction_file) :
         """
         Function to read in the offset factors for exposure time corrections from the given directory
-        et_correction_dir = path to directory containing [samplename]_best_fit_offsets*.csv records of LayerOffset objects
+        et_correction_file = path to file containing records of LayerOffset objects specifying an offset to use for each layer
         """
-        #make each sample's list of exposure time correction offsets by layer
-        for sn,samp in sorted(self.flatfield_sample_dict.items()) :
-            offset_file_name = f'{sn}_{CONST.LAYER_OFFSET_FILE_NAME_STEM}'
-            offset_file_path = os.path.join(et_correction_dir,offset_file_name)
-            flatfield_logger.info(f'Copying exposure time offsets from file {offset_file_path} for sample {sn}...')
-            samp.readInExposureTimeCorrectionOffsets(offset_file_path)
+        #read in the file and get the offsets by layer
+        flatfield_logger.info(f'Copying exposure time offsets from file {et_correction_file}...')
+        if self._et_correction_offsets[0] is not None :
+            raise FlatFieldError('ERROR: calling readInExposureTimeCorrectionOffsets with an offset list already set!')
+        layer_offsets_from_file = readtable(et_correction_file,LayerOffset)
+        for ln in range(1,len(self._et_correction_offsets)+1) :
+            this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
+            if len(this_layer_offset)==1 :
+                self._et_correction_offsets[ln-1]=this_layer_offset[0]
+            elif len(this_layer_offset)==0 :
+                flatfield_logger.warn(f'WARNING: LayerOffset file {et_correction_file} does not have an entry for layer {ln}; offset will be set to zero!')
+                self._et_correction_offsets[ln-1]=0.
+            else :
+                raise FlatFieldError(f'ERROR: more than one entry found in LayerOffset file {et_correction_file} for layer {ln}!')
 
     def stackImages(self,n_threads,selected_pixel_cut,n_masking_images_per_sample,allow_edge_HPFs) :
         """
@@ -122,7 +141,7 @@ class FlatfieldProducer :
                     continue
                 new_img_arrays = readImagesMT(fr_chunk,
                                               max_exposure_times_by_layer=max_exp_times_by_layer,
-                                              et_corr_offsets_by_layer=samp.exposure_time_correction_offsets)
+                                              et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
                 this_chunk_masking_plot_indices=[fr_chunk.index(fr) for fr in fr_chunk 
                                                  if this_samp_fps_to_run.index(fr.rawfile_path) in this_samp_indices_for_masking_plots]
                 self.mean_image.addGroupOfImages(new_img_arrays,samp,selected_pixel_cut,this_chunk_masking_plot_indices)

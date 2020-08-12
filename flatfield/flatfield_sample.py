@@ -2,10 +2,8 @@
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..exposuretime.utilities import LayerOffset
 from ..utilities import units
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer
-from ..utilities.tableio import readtable
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
 import os, scipy.stats
@@ -19,12 +17,10 @@ class FlatfieldSample() :
     """
 
     #################### PROPERTIES ####################
+
     @property
     def background_thresholds_for_masking(self):
         return self._background_thresholds_for_masking # the list of background thresholds by layer
-    @property
-    def exposure_time_correction_offsets(self) :
-        return self._et_correction_offsets
     @property
     def name(self):
         return self._name # the name of the sample
@@ -45,7 +41,6 @@ class FlatfieldSample() :
         self._name = name
         self.dims = img_dims
         self._background_thresholds_for_masking = None
-        self._et_correction_offsets = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :
         """
@@ -65,18 +60,18 @@ class FlatfieldSample() :
         if not len(self._background_thresholds_for_masking)==self.dims[-1] :
             raise FlatFieldError(f'ERROR: number of background thresholds read from {threshold_file_path} is not equal to the number of image layers!')
 
-    def findBackgroundThresholds(self,rawfile_paths,metadata_top_dir,n_threads,skip_et_correction,top_plotdir_path,threshold_file_name) :
+    def findBackgroundThresholds(self,rawfile_paths,metadata_top_dir,n_threads,et_correction_offsets,top_plotdir_path,threshold_file_name) :
         """
         Function to determine this sample's background pixel flux thresholds per layer
-        rawfile_paths       = a list of the rawfile paths to consider for this sample's background threshold calculations
-        metadata_top_dir    = directory containing [samplename]/im3/xml subdirectory
-        n_threads           = max number of threads/processes to open at once
-        skip_et_correction  = if True, image flux will NOT be corrected for differences in exposure time in each layer before thresholding
-        top_plotdir_path    = path to the directory in which to save plots from the thresholding process
-        threshold_file_name = name of file to save background thresholds in, one line per layer
+        rawfile_paths         = a list of the rawfile paths to consider for this sample's background threshold calculations
+        metadata_top_dir      = directory containing [samplename]/im3/xml subdirectory
+        n_threads             = max number of threads/processes to open at once
+        et_correction_offsets = list of offsets by layer to use for exposure time correction
+        top_plotdir_path      = path to the directory in which to save plots from the thresholding process
+        threshold_file_name   = name of file to save background thresholds in, one line per layer
         """
         #if the images are to be normalized, we need to get the maximum exposure times by layer across the whole sample
-        max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(metadata_top_dir,self._name) if (not skip_et_correction) else None
+        max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(metadata_top_dir,self._name) if et_correction_offsets[0]!=-1. else None
         #make sure the plot directory exists
         if not os.path.isdir(top_plotdir_path) :
             with cd(os.path.join(*[pp for pp in top_plotdir_path.split(os.sep)[:-1]])) :
@@ -104,7 +99,7 @@ class FlatfieldSample() :
             new_smoothed_img_layer_hists = getImageLayerHistsMT(fr_chunk,
                                                                 smoothed=True,
                                                                 max_exposure_times_by_layer=max_exposure_times_by_layer,
-                                                                et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
+                                                                et_corr_offsets_by_layer=et_correction_offsets)
             #add the new histograms to the total layer histograms
             for new_smoothed_img_layer_hist in new_smoothed_img_layer_hists :
                 all_tissue_edge_layer_hists+=new_smoothed_img_layer_hist
@@ -183,25 +178,6 @@ class FlatfieldSample() :
             with open(f'{self._name}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}','w') as tfp :
                 for bgv in self._background_thresholds_for_masking :
                     tfp.write(f'{bgv}\n')
-
-    def readInExposureTimeCorrectionOffsets(self,offset_file_path) :
-        """
-        Function to read in exposure time correction offset values from the output file of an exposure time run with this sample
-        offset_file_path = path to LayerOffset table file
-        """
-        if self._et_correction_offsets is not None :
-            raise FlatFieldError('ERROR: calling readInExposureTimeCorrectionOffsets with non-empty offset list')
-        self._et_correction_offsets=[]
-        layer_offsets_from_file = readtable(offset_file_path,LayerOffset)
-        for li in range(1,self.dims[-1]+1) :
-            this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==li]
-            if len(this_layer_offset)==1 :
-                self._et_correction_offsets.append(this_layer_offset[0])
-            elif len(this_layer_offset)==0 :
-                flatfield_logger.warn(f'WARNING: LayerOffset file {offset_file_path} does not have an entry for layer {li}; offset will be set to zero!')
-                self._et_correction_offsets.append(0.)
-            else :
-                raise FlatFieldError(f'ERROR: more than one entry found in LayerOffset file {offset_file_path} for layer {li}!')
 
     def findTissueEdgeFilepaths(self,rawfile_paths,metadata_top_dir,plotdir_path=None) :
         """

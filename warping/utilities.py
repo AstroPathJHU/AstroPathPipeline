@@ -46,13 +46,10 @@ def checkDirAndFixedArgs(args) :
     metafile_dir = os.path.join(args.metadata_top_dir,args.sample,'im3','xml')
     if not os.path.isdir(metafile_dir) :
         raise ValueError(f'ERROR: metadata_top_dir ({args.metadata_top_dir}) does not contain "[sample name]/im3/xml" subdirectories!')
-    #if images are to be corrected for exposure time, exposure time correction dir must exist and must contain the necessary file
+    #if images are to be corrected for exposure time, exposure time correction file must exist and must contain the necessary file
     if (not args.skip_exposure_time_correction) :
-        if not os.path.isdir(args.exposure_time_correction_dir) :
-            raise ValueError(f'ERROR: exposure_time_correction_dir argument ({args.exposure_time_correction_dir}) does not point to a valid directory!')
-        exposure_time_correction_filepath = os.path.join(args.exposure_time_correction_dir,f'{args.sample}_{CONST.LAYER_OFFSET_FILE_NAME_STEM}')
-        if not os.path.isfile(exposure_time_correction_filepath) :
-            raise ValueError(f'ERROR: exposure_time_correction_dir does not contain expected file ({exposure_time_correction_filepath})!')
+        if not os.path.isfile(args.exposure_time_offset_file) :
+            raise ValueError(f'ERROR: exposure_time_offset_file {args.exposure_time_offset_file} does not exist!')
     #make sure the flatfield file exists
     if not os.path.isfile(args.flatfield_file) :
         raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
@@ -92,7 +89,7 @@ def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,max_et,offset,overlaps,re
     #get the raw image
     rawimage = (np.clip(np.rint(((getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1])/flatfield),0,np.iinfo(np.uint16).max)).astype(np.uint16)
     #correct the raw image for exposure time if requested
-    if max_et is not None and et_correction_offset is not None :
+    if max_et is not None and offset is not None :
         exp_time = (getExposureTimesByLayer(rfp,nlayers,metadata_top_dir))[layer-1]
         rawimage = correctImageLayerForExposureTime(rawimage,exp_time,max_et,offset)
     rfkey = os.path.basename(os.path.normpath(rfp)).split('.')[0]

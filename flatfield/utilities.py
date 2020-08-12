@@ -177,7 +177,7 @@ class FileReadInfo :
 def getImageArray(fri) :
     flatfield_logger.info(f'  reading file {fri.rawfile_path} {fri.sequence_print}')
     img_arr = getRawAsHWL(fri.rawfile_path,fri.height,fri.width,fri.nlayers)
-    if fri.max_exp_times is not None and fri.corr_offsets is not None :
+    if fri.max_exp_times is not None and fri.corr_offsets is not None and fri.corr_offsets[0] is not None :
         img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,fri.metadata_top_dir,fri.max_exp_times,fri.corr_offsets)
     if fri.to_smooth :
         img_arr = smoothImageWorker(img_arr,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
