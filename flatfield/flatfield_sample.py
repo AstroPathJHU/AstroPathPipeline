@@ -136,7 +136,7 @@ class FlatfieldSample() :
             mode=int(round(mode[0]))
             low_percentile_by_layer.append(this_layer_thresholds[int(round(0.1*len(this_layer_thresholds)))])
             high_percentile_by_layer.append(this_layer_thresholds[int(round(0.9*len(this_layer_thresholds)))])
-            self._background_thresholds_for_masking.append(med)
+            self._background_thresholds_for_masking.append(mean)
             flatfield_logger.info(f'  threshold for layer {li+1} found at {self._background_thresholds_for_masking[li]}')
             with cd(plotdir_path) :
                 f,(ax1,ax2) = plt.subplots(1,2,figsize=(2*6.4,4.6))
@@ -149,9 +149,9 @@ class FlatfieldSample() :
                 ax1.set_xlabel('pixel flux')
                 ax1.set_ylabel('n images')
                 ax1.legend(loc='best')
-                ax2.bar(list(range(med+1)),all_tissue_edge_layer_hists[:med+1,li],width=1.0,label='background')
-                right_plot_limit = min(max_threshold_found,int(1.5*med))+100
-                ax2.bar(list(range(med+1,right_plot_limit)),all_tissue_edge_layer_hists[med+1:right_plot_limit,li],width=1.0,label='signal')
+                ax2.bar(list(range(mean+1)),all_tissue_edge_layer_hists[:mean+1,li],width=1.0,label='background')
+                right_plot_limit = min(max_threshold_found,int(1.5*mean))+100
+                ax2.bar(list(range(mean+1,right_plot_limit)),all_tissue_edge_layer_hists[mean+1:right_plot_limit,li],width=1.0,label='signal')
                 ax2.plot([mode,mode],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='c',label=f'mode={mode}')
                 ax2.plot([mean,mean],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='m',label=f'mean={mean}')
                 ax2.plot([med,med],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='r',label=f'median={med}')
@@ -166,7 +166,7 @@ class FlatfieldSample() :
             xvals=list(range(1,self.dims[-1]+1))
             plt.plot(xvals,low_percentile_by_layer,marker='v',color='r',linewidth=2,label='10th %ile thresholds')
             plt.plot(xvals,high_percentile_by_layer,marker='^',color='b',linewidth=2,label='90th %ile thresholds')
-            plt.plot(xvals,self._background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimal thresholds')
+            plt.plot(xvals,self._background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimal (mean) thresholds')
             plt.title('Thresholds chosen from tissue edge HPFs by image layer')
             plt.xlabel('image layer')
             plt.ylabel('pixel flux')
