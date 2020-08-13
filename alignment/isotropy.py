@@ -1,4 +1,4 @@
-import numpy as np
+import collections, numpy as np, pathlib
 from ..utilities import units
 from .plots import plotpairwisealignments, plt
 
@@ -11,14 +11,14 @@ def isotropy(alignmentset, maxfreq=5, bins=24, showplot=None, saveas=None, figur
   rs = []
   phis = []
   for v in vectors:
-    rs.append(1)
-    #rs.append(sum(v**2))
+    rs.append(sum(v**2)**.5)
     phis.append(units.np.arctan2(*v))
-  plt.hist(phis, weights=rs, bins=bins)
+  plt.hist(phis, bins=bins)
+  #plt.hist(phis, weights=units.pixels(rs, power=1, pscale=alignmentset.pscale), bins=bins)
   for r, phi in zip(rs, phis):
     for i in range(maxfreq):
-      cosintegrals[i] += r * np.cos(i*phi) / np.pi
-      sinintegrals[i] += r * np.sin(i*phi) / np.pi
+      cosintegrals[i] += np.cos(i*phi) / np.pi
+      sinintegrals[i] += np.sin(i*phi) / np.pi
   x = np.linspace(-np.pi, np.pi, 1001)
   y = 0*x
   for i in range(maxfreq):
@@ -38,31 +38,51 @@ def isotropy(alignmentset, maxfreq=5, bins=24, showplot=None, saveas=None, figur
   if not showplot:
     plt.close()
 
-  return cosintegrals, sinintegrals
+  return cosintegrals, sinintegrals, np.mean(np.array(rs)**2)**.5
 
-def stitchingisotropy(alignmentset, cornerfractions=np.linspace(0, 1, 101), showplot=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None, **kwargs):
-  fig = plt.figure(**figurekwargs)
-  ax = fig.add_subplot(1, 1, 1)
-  ampfourier = []
+def stitchingisotropy(alignmentset, cornerfractions=np.linspace(0, 1, 26), showplot=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None, **kwargs):
+  saveas = pathlib.Path(saveas)
+  if saveas is not None:
+    assert "{tag}" in saveas.name
+    assert "{isotropyorRMS}" in saveas.name
+  ampfourier = collections.defaultdict(lambda: [])
+  RMS = collections.defaultdict(lambda: [])
   for cornerfraction in cornerfractions:
+    alignmentset.logger.info("%g", cornerfraction)
     result = alignmentset.stitch(saveresult=False, scaleedges=1-cornerfraction, scalecorners=cornerfraction)
     alignmentset.applystitchresult(result)
-    cosfourier, sinfourier = isotropy(alignmentset, stitched=True, showplot=False, **kwargs)
-    ampfourier.append((cosfourier**2 + sinfourier**2) ** .5)
-  ampfourier = np.array(ampfourier)
-  for i, amps in enumerate(ampfourier.T):
-    plt.scatter(cornerfractions, amps, label=i)
+    for tag in 1, 2, 3, 4:
+      cosfourier, sinfourier, rms = isotropy(alignmentset, stitched=True, showplot=False, tags=[tag], **kwargs)
+      ampfourier[tag].append((cosfourier**2 + sinfourier**2) ** .5)
+      RMS[tag].append(rms)
 
-  plotstyling(fig, ax)
+  for tag in 1, 2, 3, 4, "all":
+    for thing in "isotropy", "rms":
+      if tag == "all" and thing == "isotropy": continue
+      fig = plt.figure(**figurekwargs)
+      ax = fig.add_subplot(1, 1, 1)
 
-  if showplot is None:
-    showplot = saveas is None
+      if thing == "isotropy":
+        ampfourier[tag] = np.array(ampfourier[tag])
+        for i, amps in enumerate(ampfourier[tag].T):
+          plt.scatter(cornerfractions, amps, label=i)
+      elif thing == "rms":
+        if tag == "all":
+          y = sum(np.array(RMS[tag])**2 for tag in (1, 2, 3, 4))**.5
+        else:
+          y = RMS[tag]
+        plt.scatter(cornerfractions, units.pixels(y, power=1, pscale=alignmentset.pscale))
 
-  if showplot:
-    plt.show()
-  if saveas is not None:
-    plt.savefig(saveas)
-  if not showplot:
-    plt.close()
+      plotstyling(fig, ax, thing)
 
-  return ampfourier
+      if showplot is None:
+        showplot = saveas is None
+
+      if showplot:
+        plt.show()
+      if saveas is not None:
+        plt.savefig(str(saveas).format(tag=tag, isotropyorRMS=thing))
+      if not showplot:
+        plt.close()
+
+  return ampfourier, RMS

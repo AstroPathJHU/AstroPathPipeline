@@ -433,12 +433,15 @@ def isotropyhist(*, bki, testing, remake):
 def isotropyscatter(*, bki, testing, remake):
   if bki or testing:
     with plt.rc_context(rc=rc):
-      def plotstyling(fig, ax):
+      def plotstyling(fig, ax, isotropyorRMS):
         ax.set_xlabel(r"$\alpha$")
-        ax.set_ylabel(r"Fourier amplitude")
-        low, hi = ax.get_ylim()
-        ax.set_ylim(top = hi + (hi-low)*.4)
-        plt.legend(ncol=3)
+        if isotropyorRMS == "isotropy":
+          ax.set_ylabel(r"Fourier amplitude")
+          low, hi = ax.get_ylim()
+          ax.set_ylim(top = hi + (hi-low)*.4)
+          plt.legend(ncol=3)
+        elif isotropyorRMS == "rms":
+          ax.set_ylabel(r"RMS $\delta\vec{r}$ (pixels)")
 
       class Sample(collections.namedtuple("Sample", "samp name")):
         def __new__(cls, **kwargs):
@@ -455,25 +458,26 @@ def isotropyscatter(*, bki, testing, remake):
       figurekwargs = {"figsize": (6, 6)}
 
       for samp, name in samples:
-        for tag in 1, 2, 3, 4:
-          if testing and tag != 1: continue
-          alignmentsetkwargs = {"samp": samp}
-          alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
-          saveas = here/f"stitching-isotropy-{name}-{tag}.pdf"
-          if saveas.exists() and not remake: continue
-          A = alignmentset(**alignmentsetkwargs)
-          A.logger.info("%s", tag)
-          oldstitchresult = A.stitchresult
-          try:
-            stitchingisotropy(
-              A,
-              tags=[tag],
-              plotstyling=plotstyling,
-              figurekwargs=figurekwargs,
-              saveas=saveas,
-            )
-          finally:
-            A.applystitchresult(oldstitchresult)
+        alignmentsetkwargs = {"samp": samp}
+        alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
+        saveas = here/f"stitching-{{isotropyorRMS}}-{name}-{{tag}}.pdf"
+        if not remake and all(
+          pathlib.Path(str(saveas).format(isotropyorRMS=thing, tag=tag)).exists()
+          for tag in (1, 2, 3, 4, "all")
+          for thing in ("isotropy", "rms")
+          if not (thing == "isotropy" and tag == "all")
+        ): continue
+        A = alignmentset(**alignmentsetkwargs)
+        oldstitchresult = A.stitchresult
+        try:
+          stitchingisotropy(
+            A,
+            plotstyling=plotstyling,
+            figurekwargs=figurekwargs,
+            saveas=saveas,
+          )
+        finally:
+          A.applystitchresult(oldstitchresult)
 
 if __name__ == "__main__":
   class EqualsEverything:
