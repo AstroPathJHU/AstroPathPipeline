@@ -125,11 +125,11 @@ def getLayerOtsuThresholdsAndWeights(hist) :
             test_weighted_skew_slopes.append(skewslope/skew if not math.isnan(skewslope) else 0)
         #set the next iteration's pixels
         next_it_pixels = bg_pixels
-
-    weights_thresholds = list(zip(test_weighted_skew_slopes, test_thresholds))
-    weights_thresholds.sort(reverse=True)
-    test_weighted_skew_slopes, test_thresholds = zip(*weights_thresholds)
-
+    #sort the lists in order of decreasing weight
+    if len(test_weighted_skew_slopes)>0 and len(test_thresholds)>0 :
+        weights_thresholds = list(zip(test_weighted_skew_slopes, test_thresholds))
+        weights_thresholds.sort(reverse=True)
+        test_weighted_skew_slopes, test_thresholds = zip(*weights_thresholds)
     return test_thresholds, test_weighted_skew_slopes
 
 # a helper function to take a list of layer histograms and return the list of optimal thresholds
