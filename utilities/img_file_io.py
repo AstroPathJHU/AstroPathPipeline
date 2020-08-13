@@ -151,7 +151,7 @@ def correctImageForExposureTime(raw_img,raw_fp,metadata_top_dir,max_exp_times,co
   if len(correction_offsets)!=raw_img.shape[-1] :
     raise RuntimeError(f"""ERROR: the list of correction offsets (length {len(correction_offsets)}) and the raw img ({raw_fp}) with shape 
                            {raw_img.shape} passed to correctImageForExposureTime don't match!""")
-  nlayers = raw_img.shape
+  nlayers = raw_img.shape[-1]
   exposure_times = getExposureTimesByLayer(raw_fp,nlayers,metadata_top_dir)
   corrected_img = raw_img.copy()
   for li in range(nlayers) :
