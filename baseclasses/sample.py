@@ -339,6 +339,10 @@ class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
     return self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
 
 class XMLLayoutReader(SampleThatReadsOverlaps):
+  def __init__(self, *args, checkim3s=False, **kwargs):
+    self.__checkim3s = checkim3s
+    super().__init__(*args, **kwargs)
+
   @methodtools.lru_cache()
   def getlayout(self):
     rectangles, globals, perimeters = self.getXMLplan()
@@ -349,7 +353,11 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
       assert len(rfs) <= 1
       if not rfs:
         cx, cy = units.microns(r.cxvec, pscale=self.pscale)
-        raise FileNotFoundError(f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist")
+        errormessage = f"File {self.SlideID}_[{int(cx)},{int(cy)}].im3 (expected from annotations) does not exist"
+        if self.__checkim3s:
+          raise FileNotFoundError(errormessage)
+        else:
+          self.logger.warning(errormessage)
       rf = rfs.pop()
       maxtimediff = max(maxtimediff, abs(rf.t-r.t))
     if maxtimediff >= datetime.timedelta(seconds=5):
