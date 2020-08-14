@@ -12,7 +12,7 @@ def isotropy(alignmentset, maxfreq=5, bins=24, showplot=None, saveas=None, figur
   phis = []
   for v in vectors:
     rs.append(sum(v**2)**.5)
-    phis.append(units.np.arctan2(*v))
+    phis.append(units.np.arctan2(*reversed(v)))
   plt.hist(phis, bins=bins)
   #plt.hist(phis, weights=units.pixels(rs, power=1, pscale=alignmentset.pscale), bins=bins)
   for r, phi in zip(rs, phis):
@@ -25,6 +25,11 @@ def isotropy(alignmentset, maxfreq=5, bins=24, showplot=None, saveas=None, figur
     print(f"{i:3d}  {cosintegrals[i]:.3f}  {sinintegrals[i]:.3f}")
     y += (cosintegrals[i] * np.cos(i*x) + sinintegrals[i] * np.sin(i*x)) / (2 if i==0 else 1) * (2*np.pi / bins)
     plt.plot(x, y, label=f"{i}")
+
+  for s1 in 1, -1:
+    for s2 in 1, -1:
+      corner = np.arctan2(s1*alignmentset.fheight, s2*alignmentset.fwidth)
+      plt.axvline(corner, 0, .65, color='r')
 
   plotstyling(fig, ax)
 
