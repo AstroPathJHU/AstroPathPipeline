@@ -358,8 +358,9 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
           raise FileNotFoundError(errormessage)
         else:
           self.logger.warning(errormessage)
-      rf = rfs.pop()
-      maxtimediff = max(maxtimediff, abs(rf.t-r.t))
+      else:
+        rf = rfs.pop()
+        maxtimediff = max(maxtimediff, abs(rf.t-r.t))
     if maxtimediff >= datetime.timedelta(seconds=5):
       self.logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
     rectangles.sort(key=lambda x: x.t)
