@@ -116,8 +116,6 @@ if __name__=='__main__' :
     fit_option_group = parser.add_argument_group('fit options', 'how should the fits be done?')
     fit_option_group.add_argument('--max_iter',             default=1000,        type=int,
                                   help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
-    fit_option_group.add_argument('--fixed',
-                                  help='Comma-separated list of parameters to keep fixed during fitting')
     fit_option_group.add_argument('--normalize',
                                   help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
     fit_option_group.add_argument('--init_pars',
