@@ -10,6 +10,9 @@ if jxmleaseversion < [1, 0, '2dev1']:
   raise ImportError(f"You need jxmleaseversion >= 1.0.2dev1 (your version: {jxmlease.__version__})\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
 
 class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, checkim3s=True, **kwargs)
+
   @property
   def logmodule(self): return "prepdb"
 

@@ -25,16 +25,16 @@ if __name__=='__main__' :
                                         help='Add this flag to cut out the outer 50%% of each overlap')
     #group for options of how the fits will proceed
     fit_option_group = parser.add_argument_group('fit options', 'how should the fits be done?')
-    fit_option_group.add_argument('--initial_offset', default=10.,      type=float,
+    fit_option_group.add_argument('--initial_offset', default=25.,      type=float,
                                   help='Dark current offset count fit starting point (default=50.)')
     fit_option_group.add_argument('--offset_bounds',  default=[0,1000], type=split_csv_to_list_of_ints,         
                                   help='CSV of low,high bounds for offset [default=(0,1000)]')
     fit_option_group.add_argument('--max_iter',       default=15000,    type=int,
                                   help='Maximum number of fit iterations (default=15000)')
-    fit_option_group.add_argument('--gtol',           default=1e-7,     type=float,
+    fit_option_group.add_argument('--gtol',           default=1e-8,     type=float,
                                   help='Minimization stops when the projected gradient is less than this (default=1e-7).')
-    fit_option_group.add_argument('--eps',            default=3,        type=float,
-                                  help='Step size around current value for Jacobian approximation (default=1).')
+    fit_option_group.add_argument('--eps',            default=0.25,        type=float,
+                                  help='Step size around current value for Jacobian approximation (default=0.25).')
     fit_option_group.add_argument('--print_every',    default=10,       type=int,
                                   help='How many iterations to wait between printing minimization progress (default=10)')
     #group for other run options
@@ -46,7 +46,7 @@ if __name__=='__main__' :
     run_option_group.add_argument('--overlaps',              default=[-1], type=split_csv_to_list_of_ints,         
                                   help='CSV list of overlap numbers to use [default=-1 runs all of them]. Should really only use this for testing.')
     run_option_group.add_argument('--n_comparisons_to_save', default=15,   type=int,         
-                                  help='Number of pre/post-fit overlap overlay comparison images to save (default=30)')
+                                  help='Number of pre/post-fit overlap overlay comparison images to save (default=15)')
     args = parser.parse_args()
     #make sure the arguments are valid
     checkArgs(args)

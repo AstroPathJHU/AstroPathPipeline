@@ -1,7 +1,7 @@
 #imports
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..utilities.img_file_io import getRawAsHWL
+from ..utilities.img_file_io import getRawAsHWL, getExposureTimesByLayer, correctImageLayerForExposureTime
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
 import cv2, os, logging, dataclasses, copy
@@ -46,6 +46,10 @@ def checkDirAndFixedArgs(args) :
     metafile_dir = os.path.join(args.metadata_top_dir,args.sample,'im3','xml')
     if not os.path.isdir(metafile_dir) :
         raise ValueError(f'ERROR: metadata_top_dir ({args.metadata_top_dir}) does not contain "[sample name]/im3/xml" subdirectories!')
+    #if images are to be corrected for exposure time, exposure time correction file must exist and must contain the necessary file
+    if (not args.skip_exposure_time_correction) :
+        if not os.path.isfile(args.exposure_time_offset_file) :
+            raise ValueError(f'ERROR: exposure_time_offset_file {args.exposure_time_offset_file} does not exist!')
     #make sure the flatfield file exists
     if not os.path.isfile(args.flatfield_file) :
         raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
@@ -81,8 +85,13 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_nam
 #Helper function to load a single raw file, correct its illumination with a flatfield layer, smooth it, 
 #and return information needed to create a new WarpImage
 #meant to be run in parallel
-def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield_layer,overlaps=None,rectangles=None,smoothsigma=None,return_dict=None,return_dict_key=None) :
-    rawimage = (((getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1])/flatfield_layer).astype(np.uint16)
+def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,max_et,offset,overlaps,rectangles,metadata_top_dir,smoothsigma,return_dict=None,return_dict_key=None) :
+    #get the raw image
+    rawimage = (np.clip(np.rint(((getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1])/flatfield),0,np.iinfo(np.uint16).max)).astype(np.uint16)
+    #correct the raw image for exposure time if requested
+    if max_et is not None and offset is not None :
+        exp_time = (getExposureTimesByLayer(rfp,nlayers,metadata_top_dir))[layer-1]
+        rawimage = correctImageLayerForExposureTime(rawimage,exp_time,max_et,offset)
     rfkey = os.path.basename(os.path.normpath(rfp)).split('.')[0]
     #find out if this image should be masked when skipping the corner overlaps
     if overlaps is not None and rectangles is not None :

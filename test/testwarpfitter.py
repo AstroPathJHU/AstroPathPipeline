@@ -29,7 +29,7 @@ print('Initializing WarpFitter')
 fitter = WarpFitter(samp,rawfile_top_dir,metadata_top_dir,working_dir,overlaps,layer)
 #load the raw files
 print('Loading raw files')
-fitter.loadRawFiles()
+fitter.loadRawFiles(None,None,True,1)
 #fit the model to the data
 print('Running doFit')
 result = fitter.doFit(fixed=fixed_arg,normalize=normalize_arg,init_pars=init_pars_arg,init_bounds=init_bounds_arg,float_p1p2_in_polish_fit=True,
