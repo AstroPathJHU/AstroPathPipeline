@@ -67,8 +67,6 @@ def getListOfJobCommands(args) :
         else :
             thisjobcmdstring+=f' --exposure_time_offset_file {args.exposure_time_offset_file}'
         thisjobcmdstring+=f' --max_iter {args.max_iter} {fixedparstring[:-1]}'
-        if args.fixed is not None :
-            thisjobcmdstring+=f' --fixed {args.fixed}'
         if args.normalize is not None :
             thisjobcmdstring+=f' --normalize {args.normalize}'
         if args.init_pars is not None :
