@@ -1,4 +1,4 @@
-import cv2, matplotlib.pyplot as plt, numpy as np
+import cv2, matplotlib.pyplot as plt, numpy as np, scipy.ndimage
 from .badregions import BadRegionFinder
 
 class DustSpeckFinder(BadRegionFinder):
@@ -43,15 +43,46 @@ class DustSpeckFinder(BadRegionFinder):
       plt.imshow(badregions.get())
       plt.show()
 
-    ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (100, 100))
+    badregions = badregions.get().astype(bool)
+    regions, nregions = scipy.ndimage.label(badregions)
+    for r in range(1, nregions+1):
+      thisregion = regions==r
+      if np.sum(thisregion) < 5000:
+        badregions[thisregion] = 0
+      else: print(r, np.sum(thisregion))
+
+    if showdebugplots:
+      print("after choosing big regions")
+      plt.imshow(badregions)
+      plt.show()
+
+    badregions = cv2.UMat(badregions.astype(np.uint8))
+    ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (50, 50))
     badregions = cv2.morphologyEx(badregions, cv2.MORPH_OPEN,  ellipse, borderType=cv2.BORDER_REPLICATE)
     if showdebugplots:
-      print("after big open")
+      print("after medium open")
       plt.imshow(badregions.get())
       plt.show()
-    badregions = cv2.morphologyEx(badregions, cv2.MORPH_CLOSE, ellipse, borderType=cv2.BORDER_REPLICATE)
+
+    badregions = badregions.get().astype(bool)
+    regions, nregions = scipy.ndimage.label(badregions)
+    for r in range(1, nregions+1):
+      thisregion = regions==r
+      if np.sum(thisregion) < 5000:
+        badregions[thisregion] = 0
+      else: print(r, np.sum(thisregion))
+
     if showdebugplots:
-      print("after big close")
+      print("after choosing big regions")
+      plt.imshow(badregions)
+      plt.show()
+
+    badregions = cv2.UMat(badregions.astype(np.uint8))
+
+    ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (50, 50))
+    badregions = cv2.morphologyEx(badregions, cv2.MORPH_CLOSE,  ellipse, borderType=cv2.BORDER_REPLICATE)
+    if showdebugplots:
+      print("after medium close")
       plt.imshow(badregions.get())
       plt.show()
 
