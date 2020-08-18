@@ -36,10 +36,10 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
     ]
 
   @property
-  def rectangles(self): return self.getlayout()[0]
+  def rectangles(self): return self.getrectanglelayout()
 
   @property
-  def globals(self): return self.getlayout()[1]
+  def globals(self): return self.getXMLplan()[1]
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
