@@ -38,14 +38,14 @@ def getListOfJobCommands(args) :
     #find the valid octets in the samples and order them by the # of their center rectangle
     octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir_name
     if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
-        all_octets_dict = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
+        all_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
     else :
-        all_octets_dict = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.workingdir_name,args.flatfield_file,
-                                           args.njobs,args.layer)
-    all_octets_numbers = list(range(1,len(all_octets_dict)+1))
+        all_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.workingdir_name,args.flatfield_file,
+                                      args.njobs,args.layer)
+    all_octets_numbers = list(range(1,len(all_octets)+1))
     #make sure that the number of octets per job and the number of jobs will work for this sample
     if args.njobs*n_octets_per_job<1 or args.njobs*n_octets_per_job>len(all_octets_numbers) :
-        raise ValueError(f"""ERROR: Sample {args.sample} has {len(all_octets_dict)} total valid octets, but you asked for {args.njobs} jobs 
+        raise ValueError(f"""ERROR: Sample {args.sample} has {len(all_octets)} total valid octets, but you asked for {args.njobs} jobs 
                              with {n_octets_per_job} octets per job!""")
     #build the list of commands
     job_cmds = []; workingdir_names = []

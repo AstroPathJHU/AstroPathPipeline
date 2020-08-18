@@ -448,7 +448,8 @@ class WarpFitter :
                 failed_p1s_and_codes = oci.stackOverlays()
                 for fp1,fc in failed_p1s_and_codes :
                     addl_singlet_p1s_and_codes.add((fp1,fc))
-                oci.writeOutFigure(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME))
+                with cd(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME)) :
+                    oci.writeOutFigure()
         #plot the singlet overlap comparisons
         for overlap_identifier in raw_olap_comps.keys() :
             do_overlap = False

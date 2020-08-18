@@ -77,14 +77,13 @@ def getOverlaps(args) :
         #otherwise run an alignment to find the valid octets get the dictionary of overlap octets
         else :
             threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
-            valid_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,args.workingdir_name,args.flatfield_file,
-                                           args.n_threads,args.layer)
+            valid_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,
+                                            args.workingdir_name,args.flatfield_file,args.n_threads,args.layer)
         if args.mode in ('fit', 'check_run', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
-            for i,octet in enumerate([valid_octets[key] for key in sorted(valid_octets.keys())],start=1) :
+            for i,octet in enumerate(valid_octets,start=1) :
                 if i in args.octets or args.octets==[-1]:
                     warp_logger.info(f'Adding overlaps in octet #{i}...')
-                    for overlap in octet :
-                        overlaps.append(overlap.n)
+                    overlaps+=octet.overlap_ns :
             if (args.octets!=[-1] and len(overlaps)!=8*len(args.octets)) or (args.octets==[-1] and len(overlaps)!=8*len(valid_octets)) :
                 msg =f'specified octets {args.octets} did not result in the desired set of overlaps! '
                 msg+=f'(asked for {len(args.octets)} octets but found {len(overlaps)} corresponding overlaps)'
