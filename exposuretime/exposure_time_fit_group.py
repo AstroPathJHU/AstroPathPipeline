@@ -112,7 +112,7 @@ class ExposureTimeOffsetFitGroup :
         #write out all the results
         with cd(self.workingdir_name) :
             all_results_fn = f'{self.sample}_layers_{self.layers[0]}-{self.layers[-1]}_'
-            all_results_fn+= f'{CONST.LAYER_OFFSET_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(self.workingdir_name))}'
+            all_results_fn+= f'{CONST.LAYER_OFFSET_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(self.workingdir_name))}.csv'
             writetable(all_results_fn,offsets)
         #save the plot of the offsets by layer
         plt.plot([o.layer_n for o in offsets],[o.offset for o in offsets],marker='*')
