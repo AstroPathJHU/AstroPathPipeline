@@ -335,7 +335,7 @@ class WarpFitter :
         self.__writeFitResult()
         #write out the warp field binary file and plots
         with cd(self.working_dir) :
-            self._best_fit_warp.writeOutWarpFields()
+            self._best_fit_warp.writeOutWarpFields(os.path.basename(os.path.normpath(self.working_dir)))
 
     #function to plot the costs and warps over all the iterations of the fit
     def __makeFitProgressPlots(self,ninitev) :

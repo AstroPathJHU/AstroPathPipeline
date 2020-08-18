@@ -132,12 +132,13 @@ class PolyFieldWarp(Warp) :
 
     #################### VISUALIZATION FUNCTIONS ####################
 
-    def writeOutWarpFields(self) :
+    def writeOutWarpFields(self,file_stem) :
         """
         Write out .bin files of the dx and dy warping fields and also make an image showing them 
+        file_stem = the unique identifier to add to the .bin filenames
         """
-        writeImageToFile(self.x_warps,CONST.X_WARP_BIN_FILENAME,dtype=self.x_warps.dtype())
-        writeImageToFile(self.y_warps,CONST.Y_WARP_BIN_FILENAME,dtype=self.y_warps.dtype())
+        writeImageToFile(self.x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=self.x_warps.dtype())
+        writeImageToFile(self.y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=self.y_warps.dtype())
         f,ax = plt.subplots(1,3,figsize=(3*6.4,4.6))
         pos = ax[0].imshow(self.r_warps)
         ax[0].scatter(self.xc,self.yc,marker='*',color='yellow')
@@ -518,13 +519,14 @@ class CameraWarp(Warp) :
         y_warps = ypos-map_y
         return np.sqrt(x_warps**2+y_warps**2), x_warps, y_warps
 
-    def writeOutWarpFields(self) :
+    def writeOutWarpFields(self,file_stem) :
         """
         Write out .bin files of the dx and dy warping fields and also make an image showing them 
+        file_stem = the unique identifier to add onto the warp field .bin file names
         """
         r_warps, x_warps, y_warps = self.getWarpFields()
-        writeImageToFile(x_warps,CONST.X_WARP_BIN_FILENAME,dtype=x_warps.dtype)
-        writeImageToFile(y_warps,CONST.Y_WARP_BIN_FILENAME,dtype=y_warps.dtype)
+        writeImageToFile(x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=x_warps.dtype)
+        writeImageToFile(y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=y_warps.dtype)
         f,ax = plt.subplots(1,3,figsize=(3*6.4,4.6))
         pos = ax[0].imshow(r_warps)
         ax[0].scatter(self.cx,self.cy,marker='*',color='yellow')

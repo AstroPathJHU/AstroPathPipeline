@@ -35,10 +35,10 @@ class Const :
         return 'fit_result.csv' #the name of the fit result text file that gets written out
     @property
     def X_WARP_BIN_FILENAME(self) :
-        return 'dx_warp_field.bin' #name of the dx warping field binary file
+        return 'dx_warp_field' #name of the dx warping field binary file
     @property
     def Y_WARP_BIN_FILENAME(self) :
-        return 'dy_warp_field.bin' #name of the dy warping field binary file
+        return 'dy_warp_field' #name of the dy warping field binary file
     @property
     def WARP_FIELD_FIGURE_NAME(self) :
         return 'warp_fields.png'
