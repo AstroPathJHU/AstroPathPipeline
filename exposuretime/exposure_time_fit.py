@@ -149,7 +149,7 @@ class SingleLayerExposureTimeFit :
             p2et = exposure_times[(([r for r in a.rectangles if r.n==olap.p2])[0].file).rstrip(CONST.IM3_EXT)]
             etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages))
         #make the metadata summary object
-        metadata_summary = MetadataSummary(a.Project,a.Cohort,a.microscopename,min([r.t for r in a.rectangles]),max([r.t for r in a.rectangles]))
+        metadata_summary = MetadataSummary(self.sample,a.Project,a.Cohort,a.microscopename,min([r.t for r in a.rectangles]),max([r.t for r in a.rectangles]))
         #return the list of exposure time overlaps and the summary of the metadata of the alignmentSet they came from
         et_fit_logger.info(f'Found {len(etolaps)} overlaps that are aligned and have different p1 and p2 exposure times in layer {self.layer}')
         return etolaps, metadata_summary

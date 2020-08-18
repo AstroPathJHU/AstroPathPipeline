@@ -124,6 +124,7 @@ def split_csv_to_dict_of_bounds(value) :
 #helper dataclass for some common metadata information
 @dataclasses.dataclass
 class MetadataSummary :
+  sample_name     : str
   project         : int
   cohort          : int
   microscope_name : str
