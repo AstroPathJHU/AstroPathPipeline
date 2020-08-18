@@ -4,9 +4,10 @@ from .fit_parameter_set import FitParameterSet
 from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
+from ..exposuretime.utilities import LayerOffset
 from ..baseclasses.rectangle import rectangleoroverlapfilter
-from ..utilities.img_file_io import getImageHWLFromXMLFile
-from ..utilities.tableio import writetable
+from ..utilities.img_file_io import getImageHWLFromXMLFile, getSampleMaxExposureTimesByLayer
+from ..utilities.tableio import readtable, writetable
 from ..utilities import units
 from ..utilities.misc import cd
 import numpy as np, scipy, matplotlib.pyplot as plt
@@ -29,7 +30,7 @@ class WarpFitter :
     #################### CLASS CONSTANTS ####################
 
     IM3_EXT = '.im3'                                          #to replace in filenames read from *_rect.csv
-    DE_TOLERANCE = 0.05                                       #tolerance for the differential evolution minimization
+    DE_TOLERANCE = 0.03                                       #tolerance for the differential evolution minimization
     DE_MUTATION = (0.2,0.8)                                   #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7                                    #recombination parameter for differential evolution minimization
     POLISHING_X_TOL = 5e-5                                    #parameter tolerance for polishing minimization
@@ -86,15 +87,34 @@ class WarpFitter :
         except TypeError: #units was garbage collected before the warpfitter
             pass
 
-    #################### PUBLIC FUNCTIONS ####################
-
-    def loadRawFiles(self,flatfield_file_path=None,n_threads=1) :
+    def loadRawFiles(self,flatfield_file_path,et_correction_offset_file,n_threads=1) :
         """
         Load the raw files into the warpset, warp/save them, and load them into the alignment set 
-        flatfield_file_path = path to the flatfield file to use in correcting the rawfile illumination
-        n_threads           = how many different processes to run when loading files
+        flatfield_file_path       = path to the flatfield file to use in correcting the rawfile illumination
+        et_correction_offset_file = path to file containing records of LayerOffset objects specifying an offset to use 
+                                    for each layer (or None if no correction is to be applied)
+        n_threads                 = how many different processes to run when loading files
         """
-        self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,flatfield_file_path,n_threads)
+        #load the exposure time correction offsets and the max exposure times by layer
+        max_exp_time = None; et_correction_offset = None
+        if et_correction_offset_file is not None :
+            warp_logger.info("Loading info for exposure time correction...")
+            max_exp_time = getSampleMaxExposureTimesByLayer(self.metadata_top_dir,self.samp_name)[self.warpset.layer-1]
+            layer_offsets = readtable(et_correction_offset_file,LayerOffset)
+            this_layer_offset = [lo.offset for lo in layer_offsets if lo.layer_n==self.warpset.layer]
+            if len(this_layer_offset)==1 :
+                et_correction_offset = this_layer_offset[0]
+            elif len(this_layer_offset)==0 :
+                warp_logger.warn(f"""WARNING: LayerOffset file {et_correction_offset_file} does not have an entry for layer {self.warpset.layer}; 
+                                     offset will be set to zero!""")
+                et_correction_offset = 0.
+            else :
+                raise WarpingError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {self.warpset.layer}!')
+        #load the raw images
+        self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.metadata_top_dir,
+                                   flatfield_file_path,max_exp_time,et_correction_offset,
+                                   n_threads)
+        #warp the loaded images and write them out once to replace the images in the alignment set
         self.warpset.warpLoadedImages()
         with cd(self.working_dir) :
             if not os.path.isdir(self.samp_name) :
@@ -102,12 +122,14 @@ class WarpFitter :
         self.warpset.writeOutWarpedImages(os.path.join(self.working_dir,self.samp_name))
         self.alignset.getDAPI(filetype='camWarp')
 
-    def doFit(self,fixed=None,normalize=None,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
+    def doFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
              p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000) :
         """
         Fit the cameraWarp model to the loaded dataset
         fixed                    = list of fit parameter names to keep fixed (p1p2 can be fixed separately in the global and polishing minimization steps)
         normalize                = list of fit parameter names to rescale within their bounds for fitting instead of using the raw numbers
+        init_pars                = dictionary of initial parameter values to use instead of defaults; keyed by name
+        init_bounds              = dictionary of initial parameter bounds to use instead of defaults; keyed by name
         float_p1p2_in_polish_fit = if True, p1 and p2 will not be fixed in the polishing minimization regardless of other arguments
         max_*_warp               = values to use for max warp amount constraints (set to -1 to remove constraints)
         p1p2_polish_lasso_lambda = lambda parameter for LASSO constraint on p1 and p2 during polishing fit
@@ -116,7 +138,7 @@ class WarpFitter :
         max_iter                 = maximum number of iterations for the global and polishing minimization steps
         """
         #make the set of fit parameters
-        self.fitpars = FitParameterSet(fixed,normalize,max_radial_warp,max_tangential_warp,self.warpset.warp)
+        self.fitpars = FitParameterSet(fixed,normalize,init_pars,init_bounds,max_radial_warp,max_tangential_warp,self.warpset.warp)
         #make the iteration counter and the lists of costs/warp amounts
         self.minfunc_calls=0
         self.costs=[]
@@ -146,14 +168,14 @@ class WarpFitter :
         #run all the post-processing stuff
         self.__runPostProcessing(de_result.nfev)
 
-    def checkFit(self,fixed=None,normalize=None,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
+    def checkFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
                  p1p2_polish_lasso_lambda=0.,polish=True) :
         """
         A function to print some information about how the fits will proceed with the current settings
         (see "doFit" function above for what the arguments to this function are)
         """
         #make the set of fit parameters
-        self.fitpars = FitParameterSet(fixed,normalize,max_radial_warp,max_tangential_warp,self.warpset.warp)
+        self.fitpars = FitParameterSet(fixed,normalize,init_pars,init_bounds,max_radial_warp,max_tangential_warp,self.warpset.warp)
         #stuff from the differential evolution minimization setup
         warp_logger.info('For global minimization setup:')
         _, _, _ = self.__getGlobalSetup()

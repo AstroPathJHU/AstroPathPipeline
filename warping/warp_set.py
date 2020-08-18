@@ -44,15 +44,18 @@ class WarpSet :
         self.layer=layer
         self.images = []
 
-    def loadRawImages(self,rawfiles=None,overlaps=None,rectangles=None,flatfield_file_path=None,n_threads=1,smoothsigma=CONST.SMOOTH_SIGMA) :
+    def loadRawImages(self,rawfiles,overlaps,rectangles,metadata_top_dir,flatfield_file_path,max_exp_time,et_correction_offset,n_threads=1,smoothsigma=CONST.SMOOTH_SIGMA) :
         """
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
-        rawfiles            = list of raw, unwarped image filenames (optional, will use value from init if None)
-        overlaps            = list of overlaps for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
-        rectangles          = list of rectangles for this particular fit (optional, used to streamline updating an AlignmentSet's rectangle images)
-        flatfield_file_path = path to flatfield file to apply when reading in raw images
-        n_threads           = number of parallel processes to run for reading raw files
-        smoothsigma         = sigma for Gaussian smoothing filter applied to raw images on load (set to None to skip smoothing)
+        rawfiles             = list of raw, unwarped image filenames (optional, will use value from init if None)
+        overlaps             = list of overlaps for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
+        rectangles           = list of rectangles for this particular fit (optional, used to streamline updating an AlignmentSet's rectangle images)
+        metadata_top_dir     = path to directory containing [samplename]/im3/xml directory
+        flatfield_file_path  = path to flatfield file to apply when reading in raw images
+        max_exp_time         = the maximum exposure time for images in this layer of this sample (None if no correction should be applied)
+        et_correction_offset = the offset for the exposure time correction for images in this layer of this sample (None if no correction should be applied)
+        n_threads            = number of parallel processes to run for reading raw files
+        smoothsigma          = sigma for Gaussian smoothing filter applied to raw images on load (set to None to skip smoothing)
         """
         #first load the flatfield corrections
         warp_logger.info(f'Loading flatfield file {flatfield_file_path} to correct raw image illumination')
@@ -62,8 +65,8 @@ class WarpSet :
             flatfield_layer = np.ones((self.m,self.n),dtype=np.float64)
         if rawfiles is not None :
             self.raw_filenames=rawfiles
-        warp_logger.info("Loading raw images...")
         #load the raw images in parallel
+        warp_logger.info("Loading raw images...")
         if n_threads> 1 :
             manager = mp.Manager()
             return_dict = manager.dict()
@@ -71,7 +74,10 @@ class WarpSet :
             for i,rf in enumerate(self.raw_filenames,start=1) :
                 warp_logger.info(f"    loading {rf} ({i} of {len(self.raw_filenames)}) ...")
                 p = mp.Process(target=loadRawImageWorker, 
-                               args=(rf,self.m,self.n,self.nlayers,self.layer,flatfield_layer,overlaps,rectangles,smoothsigma,return_dict,i-1))
+                               args=(rf,self.m,self.n,self.nlayers,self.layer,
+                                     flatfield_layer,max_exp_time,et_correction_offset,
+                                     overlaps,rectangles,metadata_top_dir,
+                                     smoothsigma,return_dict,i-1))
                 procs.append(p)
                 p.start()
                 if len(procs)>=n_threads :
@@ -86,7 +92,10 @@ class WarpSet :
         else :
             for i,rf in enumerate(self.raw_filenames,start=1) :
                 warp_logger.info(f"    loading {rf} ({i} of {len(self.raw_filenames)}) ...")
-                d = loadRawImageWorker(rf,self.m,self.n,self.nlayers,self.layer,flatfield_layer,overlaps,rectangles,smoothsigma)
+                d = loadRawImageWorker(rf,self.m,self.n,self.nlayers,self.layer,
+                                       flatfield_layer,max_exp_time,et_correction_offset,
+                                       overlaps,rectangles,metadata_top_dir,
+                                       smoothsigma)
                 rfkey = d['rfkey']; image = d['image']; is_corner_only = d['is_corner_only']; list_index = d['list_index']
                 self.images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),is_corner_only,list_index))
         #sort them by rectangle index
@@ -104,7 +113,7 @@ class WarpSet :
         for warpimg in self.images :
             if skip_corners and warpimg.is_corner_only :
                 continue
-            self.warp.warpLayerInPlace(warpimg.raw_image,warpimg.warped_image)
+            self.warp.warpLayerInPlace(warpimg.raw_image_umat,warpimg.warped_image_umat)
 
     def writeOutWarpedImages(self,path=None) :
         """
@@ -115,7 +124,7 @@ class WarpSet :
             with cd(path) if path is not None else contextlib.nullcontext():
                 #write out all the image files
                 for warpimg in self.images :
-                    self.warp.writeImageLayer((warpimg.warped_image).get(),warpimg.rawfile_key,self.layer)
+                    self.warp.writeImageLayer(warpimg.warped_image,warpimg.rawfile_key,self.layer)
         except FileNotFoundError :
             raise FileNotFoundError(f'path {path} supplied to writeOutWarpedImageSet is not a valid location')
 

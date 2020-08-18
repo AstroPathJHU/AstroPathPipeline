@@ -17,6 +17,7 @@ class AnnotationXMLReader:
     globals = []
     perimeters = []
     maxdepth = 1
+    microscopename = None
     with open(self.__filename, "rb") as f:
       for path, _, node in jxmlease.parse(
         f,
@@ -57,8 +58,12 @@ class AnnotationXMLReader:
               readingfromfile=False,
             )
           )
+          if microscopename is None:
+            microscopename = str(annotation.microscopename)
+          elif microscopename != annotation.microscopename:
+            raise ValueError("Found multiple different microscope names '{microscopename}' '{annotation.microscopename}'")
 
-    return rectangles, globals, perimeters
+    return rectangles, globals, perimeters, microscopename
 
   @property
   def rectangles(self): return self.getdata()[0]
@@ -66,6 +71,8 @@ class AnnotationXMLReader:
   def globals(self): return self.getdata()[1]
   @property
   def perimeters(self): return self.getdata()[2]
+  @property
+  def microscopename(self): return self.getdata()[3]
 
 class AnnotationBase(abc.ABC):
   def __init__(self, xmlnode, *, pscale, nestdepth=1):
@@ -83,7 +90,7 @@ class AnnotationBase(abc.ABC):
   @abc.abstractproperty
   def globals(self): pass
   @abc.abstractproperty
-  def perimeters(self): pass
+  def microscopename(self): pass
   @property
   def subtype(self): return self.__xmlnode.get_xml_attr("subtype")
 
@@ -101,6 +108,10 @@ class RectangleAnnotation(AnnotationBase):
   @property
   def im3path(self):
     return self.history[-1]["Im3Path"]
+  @property
+  def microscopename(self):
+    if not self.isacquired: return None
+    return self.history[-1]["UserName"]
   @property
   def x(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Origin"]["X"]), pscale=self.pscale)
   @property

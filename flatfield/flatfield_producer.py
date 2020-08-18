@@ -1,9 +1,11 @@
 #imports
 from .flatfield_sample import FlatfieldSample 
 from .mean_image import MeanImage
-from .utilities import flatfield_logger, chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
+from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
 from .config import CONST
+from ..exposuretime.utilities import LayerOffset
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer
+from ..utilities.tableio import readtable
 from ..utilities.misc import cd
 import os, random
 
@@ -13,13 +15,19 @@ class FlatfieldProducer :
     Main class used in producing the flatfield correction image
     """
 
+    #################### PROPERTIES ####################
+
+    @property
+    def exposure_time_correction_offsets(self) :
+        return self._et_correction_offsets #the list of offsets to use for exposure time correction in this run
+
     #################### CLASS CONSTANTS ####################
     
     THRESHOLDING_PLOT_DIR_NAME = 'thresholding_info' #name of the directory where the thresholding information will be stored
 
     #################### PUBLIC FUNCTIONS ####################
     
-    def __init__(self,img_dims,sample_names,all_sample_rawfile_paths_to_run,metadata_top_dir,workingdir_name,skip_masking=False,normalize=False) :
+    def __init__(self,img_dims,sample_names,all_sample_rawfile_paths_to_run,metadata_top_dir,workingdir_name,skip_masking=False,skip_et_correction=False) :
         """
         img_dims                        = dimensions of images in files in order as (height, width, # of layers) 
         sample_names                    = list of names of samples that will be considered in this run
@@ -27,7 +35,7 @@ class FlatfieldProducer :
         metadata_top_dir                = path to the directory holding all of the [samplename]/im3/xml subdirectories
         workingdir_name                 = name of the directory to save everything in
         skip_masking                    = if True, image layers won't be masked before being added to the stack
-        normalize                       = if true, image flux will be divided by (exposure time)/(max exposure time in the sample) in each layer
+        skip_et_correction              = if true, image flux will NOT be corrected for exposure time differences in each layer
         """
         self.all_sample_rawfile_paths_to_run = all_sample_rawfile_paths_to_run
         self.metadata_top_dir = metadata_top_dir
@@ -36,8 +44,10 @@ class FlatfieldProducer :
         for sn in sample_names :
             self.flatfield_sample_dict[sn]=FlatfieldSample(sn,img_dims)
         #Start up a new mean image to use for making the actual flatfield
-        self.mean_image = MeanImage(img_dims[0],img_dims[1],img_dims[2],workingdir_name,skip_masking)
-        self.normalize = normalize
+        self.mean_image = MeanImage(img_dims[0],img_dims[1],img_dims[2],workingdir_name,skip_masking,skip_et_correction)
+        self._et_correction_offsets = []
+        for li in range(img_dims[2]) :
+            self._et_correction_offsets.append(None)
 
     def readInBackgroundThresholds(self,threshold_file_dir) :
         """
@@ -66,10 +76,30 @@ class FlatfieldProducer :
             samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
                                           self.metadata_top_dir,
                                           n_threads,
-                                          self.normalize,
+                                          self.exposure_time_correction_offsets,
                                           os.path.join(self.mean_image.workingdir_name,self.THRESHOLDING_PLOT_DIR_NAME),
                                           threshold_file_name,
                                           )
+
+    def readInExposureTimeCorrectionOffsets(self,et_correction_file) :
+        """
+        Function to read in the offset factors for exposure time corrections from the given directory
+        et_correction_file = path to file containing records of LayerOffset objects specifying an offset to use for each layer
+        """
+        #read in the file and get the offsets by layer
+        flatfield_logger.info(f'Copying exposure time offsets from file {et_correction_file}...')
+        if self._et_correction_offsets[0] is not None :
+            raise FlatFieldError('ERROR: calling readInExposureTimeCorrectionOffsets with an offset list already set!')
+        layer_offsets_from_file = readtable(et_correction_file,LayerOffset)
+        for ln in range(1,len(self._et_correction_offsets)+1) :
+            this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
+            if len(this_layer_offset)==1 :
+                self._et_correction_offsets[ln-1]=this_layer_offset[0]
+            elif len(this_layer_offset)==0 :
+                flatfield_logger.warn(f'WARNING: LayerOffset file {et_correction_file} does not have an entry for layer {ln}; offset will be set to zero!')
+                self._et_correction_offsets[ln-1]=0.
+            else :
+                raise FlatFieldError(f'ERROR: more than one entry found in LayerOffset file {et_correction_file} for layer {ln}!')
 
     def stackImages(self,n_threads,selected_pixel_cut,n_masking_images_per_sample,allow_edge_HPFs) :
         """
@@ -102,14 +132,16 @@ class FlatfieldProducer :
             random.shuffle(this_samp_indices_for_masking_plots)
             this_samp_indices_for_masking_plots=this_samp_indices_for_masking_plots[:n_masking_images_per_sample]
             #get the max exposure times by layer if the images should be normalized
-            max_exp_times_by_layer = getSampleMaxExposureTimesByLayer(self.metadata_top_dir,sn) if self.normalize else None
+            max_exp_times_by_layer = getSampleMaxExposureTimesByLayer(self.metadata_top_dir,sn) if (not self.mean_image.skip_et_correction) else None
             #break the list of this sample's filepaths into chunks to run in parallel
             fileread_chunks = chunkListOfFilepaths(this_samp_fps_to_run,self.mean_image.dims,n_threads,self.metadata_top_dir)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
             for fr_chunk in fileread_chunks :
                 if len(fr_chunk)<1 :
                     continue
-                new_img_arrays = readImagesMT(fr_chunk,max_exposure_times_by_layer=max_exp_times_by_layer)
+                new_img_arrays = readImagesMT(fr_chunk,
+                                              max_exposure_times_by_layer=max_exp_times_by_layer,
+                                              et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
                 this_chunk_masking_plot_indices=[fr_chunk.index(fr) for fr in fr_chunk 
                                                  if this_samp_fps_to_run.index(fr.rawfile_path) in this_samp_indices_for_masking_plots]
                 self.mean_image.addGroupOfImages(new_img_arrays,samp,selected_pixel_cut,this_chunk_masking_plot_indices)

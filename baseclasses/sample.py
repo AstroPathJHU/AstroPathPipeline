@@ -33,6 +33,15 @@ class SampleDef:
 
     if "SlideID" in kwargs and root is not None:
       root = pathlib.Path(root)
+      try:
+        cohorttable = readtable(root/"sampledef.csv", SampleDef)
+      except IOError:
+        pass
+      else:
+        for row in cohorttable:
+          if row.SlideID == kwargs["SlideID"]:
+            return self.__init__(root=root, samp=row)
+
       if "Scan" not in kwargs:
         try:
           kwargs["Scan"] = max(int(folder.name.replace("Scan", "")) for folder in (root/kwargs["SlideID"]/"im3").glob("Scan*/"))
@@ -182,6 +191,16 @@ class SampleBase(contextlib.ExitStack):
   def fwidth(self): return self.getimageinfo()[1]
   @property
   def fheight(self): return self.getimageinfo()[2]
+
+  @methodtools.lru_cache()
+  def getXMLplan(self):
+    xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
+    reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
+    return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
+
+  @property
+  def microscopename(self):
+    return self.getXMLplan()[3]
 
   def __enter__(self):
     self.enter_context(self.logger)
@@ -339,9 +358,15 @@ class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
     return self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={"pscale": self.pscale, "layer": self.layer, "rectangles": self.rectangles, "nclip": self.nclip})
 
 class XMLLayoutReader(SampleThatReadsOverlaps):
+  def __init__(self, *args, checkim3s=False, **kwargs):
+    self.__checkim3s = checkim3s
+    super().__init__(*args, **kwargs)
+
   @methodtools.lru_cache()
-  def getlayout(self):
-    rectangles, globals, perimeters = self.getXMLplan()
+  def getrectanglelayout(self):
+    rectangles, globals, perimeters, microscopename = self.getXMLplan()
+    self.fixM2(rectangles)
+    self.fixrectanglefilenames(rectangles)
     rectanglefiles = self.getdir()
     maxtimediff = datetime.timedelta(0)
     for r in rectangles:
@@ -349,9 +374,14 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
       assert len(rfs) <= 1
       if not rfs:
         cx, cy = units.microns(r.cxvec, pscale=self.pscale)
-        raise FileNotFoundError(f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist")
-      rf = rfs.pop()
-      maxtimediff = max(maxtimediff, abs(rf.t-r.t))
+        errormessage = f"File {self.SlideID}_[{int(cx)},{int(cy)}].im3 (expected from annotations) does not exist"
+        if self.__checkim3s:
+          raise FileNotFoundError(errormessage)
+        else:
+          self.logger.warning(errormessage)
+      else:
+        rf = rfs.pop()
+        maxtimediff = max(maxtimediff, abs(rf.t-r.t))
     if maxtimediff >= datetime.timedelta(seconds=5):
       self.logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
     rectangles.sort(key=lambda x: x.t)
@@ -359,20 +389,7 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
       rectangle.n = i
     if not rectangles:
       raise ValueError("No layout annotations")
-    return rectangles, globals
-
-  @methodtools.lru_cache()
-  def getXMLplan(self):
-    xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
-    reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
-
-    rectangles = reader.rectangles
-    globals = reader.globals
-    perimeters = reader.perimeters
-    self.fixM2(rectangles)
-    self.fixrectanglefilenames(rectangles)
-
-    return rectangles, globals, perimeters
+    return rectangles
 
   def fixM2(self, rectangles):
     for rectangle in rectangles[:]:
@@ -445,6 +462,6 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   def readallrectangles(self):
-    return self.getlayout()[0]
+    return self.getrectanglelayout()
   def readalloverlaps(self):
     return self.getoverlaps()
