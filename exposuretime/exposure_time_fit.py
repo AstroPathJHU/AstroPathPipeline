@@ -5,7 +5,7 @@ from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..flatfield.utilities import smoothImageWorker
 from ..utilities.tableio import writetable
-from ..utilities.misc import cd
+from ..utilities.misc import cd, MetadataSummary
 import numpy as np, matplotlib.pyplot as plt
 import os, copy, random, scipy
 
@@ -33,7 +33,7 @@ class SingleLayerExposureTimeFit :
         self.metadata_top_dir = metadata_top_dir
         self.sample = sample
         self.flatfield = flatfield
-        self.exposure_time_overlaps = self.__getExposureTimeOverlaps(exposure_times,max_exp_time,overlaps,smoothsigma,cutimages)
+        self.exposure_time_overlaps, self.metadata_summary = self.__getExposureTimeOverlaps(exposure_times,max_exp_time,overlaps,smoothsigma,cutimages)
         if len(self.exposure_time_overlaps)<1 :
             et_fit_logger.warn(f'WARNING: layer {self.layer} does not have any aligned overlaps with exposure time differences. This fit will be skipped!')
         self.offsets = []
@@ -94,6 +94,8 @@ class SingleLayerExposureTimeFit :
             if not os.path.isdir(plotdirname) :
                 os.mkdir(plotdirname)
         self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
+        with cd(top_plot_dir) :
+            writetable(f'metadata_summary_exposure_time_{self.sample}_layer_{self.layer}.csv',[self.metadata_summary])
         self.__plotCostsAndOffsets()
         self.__writeResultsAndPlotCostReductions()
         self.__saveComparisonImages(n_comparisons_to_save)
@@ -146,9 +148,11 @@ class SingleLayerExposureTimeFit :
             p1et = exposure_times[(([r for r in a.rectangles if r.n==olap.p1])[0].file).rstrip(CONST.IM3_EXT)]
             p2et = exposure_times[(([r for r in a.rectangles if r.n==olap.p2])[0].file).rstrip(CONST.IM3_EXT)]
             etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages))
-        #return the whole list
+        #make the metadata summary object
+        metadata_summary = MetadataSummary(a.Project,a.Cohort,a.microscopename,min([r.t for r in a.rectangles]),max([r.t for r in a.rectangles]))
+        #return the list of exposure time overlaps and the summary of the metadata of the alignmentSet they came from
         et_fit_logger.info(f'Found {len(etolaps)} overlaps that are aligned and have different p1 and p2 exposure times in layer {self.layer}')
-        return etolaps
+        return etolaps, metadata_summary
 
     #helper function to return a list of overlap ns for overlaps where the p1 and p2 image exposure times are different
     def __getOverlapsWithExposureTimeDifferences(self,exp_times) :
