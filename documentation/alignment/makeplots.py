@@ -401,7 +401,7 @@ def isotropyhist(*, bki, testing, remake):
       for samp, name in samples:
         try:
           currentstitchresultisfor = "all"
-          for overlaps in "all", "edges", "corners":
+          for overlaps in "all", "edges", "corners", "bestRMS":
             for tag in 1, 2, 3, 4:
               alignmentsetkwargs = {"samp": samp}
               alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
@@ -416,6 +416,8 @@ def isotropyhist(*, bki, testing, remake):
                   A.applystitchresult(A.stitch(scalecorners=0, saveresult=False))
                 elif overlaps == "corners":
                   A.applystitchresult(A.stitch(scaleedges=0, saveresult=False))
+                elif overlaps == "bestRMS":
+                  A.applystitchresult(A.stitch(scaleedges=.2, scalecorners=.8, saveresult=False))
                 else:
                   raise ValueError(overlaps)
               isotropy(
