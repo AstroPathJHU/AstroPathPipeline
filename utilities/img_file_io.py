@@ -133,27 +133,28 @@ def getSampleMaxExposureTimesByLayer(metadata_topdir,samplename) :
                 max_exposure_times_by_layer[li] = this_image_layer_exposure_times[li]
     return max_exposure_times_by_layer
 
+#helper function to correct a single image layer for exposure time differences
+def correctImageLayerForExposureTime(raw_img_layer,exp_time,max_exp_time,offset) :
+  raw_img_dtype = raw_img_layer.dtype
+  max_value = np.iinfo(raw_img_dtype).max
+  corr_img_layer = np.where((raw_img_layer-offset)>0,offset+(1.*max_exp_time/exp_time)*(raw_img_layer-offset),raw_img_layer) #converted to a float here
+  return (np.clip(np.rint(corr_img_layer),0,max_value)).astype(raw_img_dtype) #round, clip to range, and convert back to original datatype
+
 #helper function to normalize a given image for exposure time layer-by-layer
-def normalizeImageByExposureTime(raw_img,raw_fp,max_exp_times,metadata_top_dir) :
+def correctImageForExposureTime(raw_img,raw_fp,metadata_top_dir,max_exp_times,correction_offsets) :
+  if len(raw_img.shape)!=3 :
+    raise RuntimeError(f"""ERROR: correctImageForExposureTime only runs on multilayer images but was called on an image with shape {raw_img.shape}.
+                             Use correctImageLayerForExposureTime instead.""")
   if len(max_exp_times)!=raw_img.shape[-1] :
     raise RuntimeError(f"""ERROR: the list of max exposure times (length {len(max_exp_times)}) and the raw img ({raw_fp}) with shape 
-                           {raw_img.shape} passed to normalizeImageByExposureTime don't match!""")
-  nlayers = len(max_exp_times)
-  raw_img_dtype = raw_img.dtype
-  max_value = np.iinfo(raw_img_dtype).max
+                           {raw_img.shape} passed to correctImageForExposureTime don't match!""")
+  if len(correction_offsets)!=raw_img.shape[-1] :
+    raise RuntimeError(f"""ERROR: the list of correction offsets (length {len(correction_offsets)}) and the raw img ({raw_fp}) with shape 
+                           {raw_img.shape} passed to correctImageForExposureTime don't match!""")
+  nlayers = raw_img.shape[-1]
   exposure_times = getExposureTimesByLayer(raw_fp,nlayers,metadata_top_dir)
-  normalized_img = raw_img.copy()
+  corrected_img = raw_img.copy()
   for li in range(nlayers) :
     if exposure_times[li]!=max_exp_times[li] : #layer is only different if it isn't maximally exposed
-      norm = exposure_times[li]/max_exp_times[li]
-      norm_img_layer=(1.0*raw_img[:,:,li])/norm #converted to a float here
-      n_clipped_pixels = np.sum(np.where(norm_img_layer>max_value,1,0))
-      if n_clipped_pixels>0 : #warn the user if any pixels have been clipped as a result
-        msg = f'WARNING: normalizing layer {li+1} of {raw_fp} by '
-        msg+=f'{norm:.5f} = ({exposure_times[li]:.1f})/({max_exp_times[li]:.1f}) clips'
-        msg+=f' {n_clipped_pixels} pixels'
-        msg+=f' ({100.*n_clipped_pixels/(raw_img.shape[0]*raw_img.shape[1])}%)'
-        msg+=f' with resulting flux > {max_value}'
-        utility_logger.warn(msg)
-      normalized_img[:,:,li] = (np.clip(np.rint(norm_img_layer),0,max_value)).astype(raw_img_dtype) #convert back to original datatype
-  return normalized_img
+      corrected_img[:,:,li] = correctImageLayerForExposureTime(raw_img[:,:,li],exposure_times[li],max_exp_times[li],correction_offsets[li])
+  return corrected_img

@@ -17,12 +17,16 @@ FILEPATH_TEXT_FILE_NAME = 'filepath_log.txt' #what the filepath log file is call
 def checkArgs(a) :
     #make sure the selected pixel fraction is a valid number
     if a.selected_pixel_cut<0.0 or a.selected_pixel_cut>1.0 :
-        raise RuntimeError(f'ERROR: selected pixel cut fraction {a.selected_pixel_cut} must be between 0 and 1!')
+        raise ValueError(f'ERROR: selected pixel cut fraction {a.selected_pixel_cut} must be between 0 and 1!')
     #make sure any specified directory paths exist
     dirpath_args = [a.prior_run_dir,a.metadata_top_dir,a.threshold_file_dir,a.rawfile_top_dir]
     for dp in dirpath_args :
         if dp is not None and not os.path.isdir(dp) :
-            raise RuntimeError(f'ERROR: Directory {dp} does not exist!')
+            raise ValueError(f'ERROR: Directory {dp} does not exist!')
+    #if exposure time corrections are being done, make sure the file actually exists
+    if not a.skip_exposure_time_correction :
+        if not os.path.isfile(a.exposure_time_offset_file) :
+            raise ValueError(f'ERROR: exposure time offset file {a.exposure_time_offset_file} does not exist!')
     #if the user is giving a list of samples, they must also specify where the rawfiles are
     if a.sample_names is not None and a.rawfile_top_dir is None :
         raise RuntimeError('ERROR: If sample names are given a rawfile location must also be specified through --rawfile_top_dir!')
@@ -34,14 +38,14 @@ def checkArgs(a) :
     #if the user wants to apply a previously-calculated flatfield, the flatfield itself, and rawfile log, both have to exist in the prior run dir
     if a.mode=='apply_flatfield' :  
         if not os.path.isfile(os.path.join(a.prior_run_dir,f'{CONST.FLATFIELD_FILE_NAME_STEM}{CONST.FILE_EXT}')) :
-            raise RuntimeError(f'ERROR: previously-created flatfield image does not exist in prior run directory {a.prior_run_dir}!')
+            raise ValueError(f'ERROR: previously-created flatfield image does not exist in prior run directory {a.prior_run_dir}!')
         if not os.path.isfile(os.path.join(a.prior_run_dir,f'{FILEPATH_TEXT_FILE_NAME}')) :
-            raise RuntimeError(f'ERROR: raw file path log does not exist in prior run directory {a.prior_run_dir}!')
+            raise ValueError(f'ERROR: raw file path log does not exist in prior run directory {a.prior_run_dir}!')
         #if the user wants to exclude other directories as well, their filepath logs all have to exist
         if a.other_runs_to_exclude!=[''] :
             for prd in a.other_runs_to_exclude :
                 if not os.path.isfile(os.path.join(prd,f'{FILEPATH_TEXT_FILE_NAME}')) :
-                    raise RuntimeError(f'ERROR: raw file path log does not exist in additional prior run directory {prd}!')
+                    raise ValueError(f'ERROR: raw file path log does not exist in additional prior run directory {prd}!')
     #if the user wants to save example masking plots, they can't be skipping masking
     if a.skip_masking and a.n_masking_images_per_sample!=0 :
         raise RuntimeError("ERROR: can't save masking images if masking is being skipped!")
@@ -193,6 +197,13 @@ def main() :
                                    help="""Path to the working directory of a previous run whose raw files you want to use again, or whose calculated
                                    flatfield you want to apply to a different, orthogonal, set of files in the same samples
                                    [use this argument instead of defining a new set of samples]""")
+    #mutually exclusive group for how to handle the exposure time correction
+    et_correction_group = parser.add_mutually_exclusive_group(required=True)
+    et_correction_group.add_argument('--exposure_time_offset_file',
+                                    help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the samples in question
+                                    [use this argument to apply corrections for differences in image exposure time]""")
+    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
+                                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
     #mutually exclusive group for how to handle the thresholding
     thresholding_group = parser.add_mutually_exclusive_group()
     thresholding_group.add_argument('--threshold_file_dir',
@@ -227,8 +238,6 @@ def main() :
                                   help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
     run_option_group.add_argument('--other_runs_to_exclude',       default='',  type=split_csv_to_list,
                                   help='Comma-separated list of additional, previously-run, working directories whose filepaths should be excluded')
-    run_option_group.add_argument('--normalize',                   action='store_true',
-                                    help='Add this flag to divide image flux by (exposure time)/(max exposure time in the sample) layer-by-layer')
     args = parser.parse_args()
     #make sure the command line arguments make sense
     checkArgs(args)
@@ -239,12 +248,16 @@ def main() :
     #get the image file dimensions from the .xml file
     dims = getImageHWLFromXMLFile(args.metadata_top_dir,sample_names_to_run[0])
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.metadata_top_dir,args.workingdir_name,args.skip_masking,args.normalize)
+    ff_producer = FlatfieldProducer(dims,sample_names_to_run,filepaths_to_run,args.metadata_top_dir,args.workingdir_name,
+                                    args.skip_masking,args.skip_exposure_time_correction)
     #write out the text file of all the raw file paths that will be run
     ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
     if args.mode=='choose_image_files' :
         sys.exit()
-    #begin by figuring out the background thresholds per layer by looking at the HPFs on the tissue edges
+    #First read in the exposure time correction offsets from the given directory
+    if not args.skip_exposure_time_correction :
+        ff_producer.readInExposureTimeCorrectionOffsets(args.exposure_time_offset_file)
+    #next figure out the background thresholds per layer by looking at the HPFs on the tissue edges
     if not args.skip_masking :
         if args.threshold_file_dir is not None :
             ff_producer.readInBackgroundThresholds(args.threshold_file_dir)

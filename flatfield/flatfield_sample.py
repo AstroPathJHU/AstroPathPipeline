@@ -17,6 +17,7 @@ class FlatfieldSample() :
     """
 
     #################### PROPERTIES ####################
+
     @property
     def background_thresholds_for_masking(self):
         return self._background_thresholds_for_masking # the list of background thresholds by layer
@@ -59,18 +60,18 @@ class FlatfieldSample() :
         if not len(self._background_thresholds_for_masking)==self.dims[-1] :
             raise FlatFieldError(f'ERROR: number of background thresholds read from {threshold_file_path} is not equal to the number of image layers!')
 
-    def findBackgroundThresholds(self,rawfile_paths,metadata_top_dir,n_threads,normalize,top_plotdir_path,threshold_file_name) :
+    def findBackgroundThresholds(self,rawfile_paths,metadata_top_dir,n_threads,et_correction_offsets,top_plotdir_path,threshold_file_name) :
         """
         Function to determine this sample's background pixel flux thresholds per layer
-        rawfile_paths       = a list of the rawfile paths to consider for this sample's background threshold calculations
-        metadata_top_dir    = directory containing [samplename]/im3/xml subdirectory
-        n_threads           = max number of threads/processes to open at once
-        normalize           = if True, image flux will be divided by (exposure time)/(max exposure time in the sample) in each layer before thresholding
-        top_plotdir_path    = path to the directory in which to save plots from the thresholding process
-        threshold_file_name = name of file to save background thresholds in, one line per layer
+        rawfile_paths         = a list of the rawfile paths to consider for this sample's background threshold calculations
+        metadata_top_dir      = directory containing [samplename]/im3/xml subdirectory
+        n_threads             = max number of threads/processes to open at once
+        et_correction_offsets = list of offsets by layer to use for exposure time correction
+        top_plotdir_path      = path to the directory in which to save plots from the thresholding process
+        threshold_file_name   = name of file to save background thresholds in, one line per layer
         """
         #if the images are to be normalized, we need to get the maximum exposure times by layer across the whole sample
-        max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(metadata_top_dir,self._name) if normalize else None
+        max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(metadata_top_dir,self._name) if et_correction_offsets[0]!=-1. else None
         #make sure the plot directory exists
         if not os.path.isdir(top_plotdir_path) :
             with cd(os.path.join(*[pp for pp in top_plotdir_path.split(os.sep)[:-1]])) :
@@ -95,7 +96,10 @@ class FlatfieldSample() :
             if len(fr_chunk)<1 :
                 continue
             #get the smoothed image layer histograms for this chunk 
-            new_smoothed_img_layer_hists = getImageLayerHistsMT(fr_chunk,smoothed=True,max_exposure_times_by_layer=max_exposure_times_by_layer)
+            new_smoothed_img_layer_hists = getImageLayerHistsMT(fr_chunk,
+                                                                smoothed=True,
+                                                                max_exposure_times_by_layer=max_exposure_times_by_layer,
+                                                                et_corr_offsets_by_layer=et_correction_offsets)
             #add the new histograms to the total layer histograms
             for new_smoothed_img_layer_hist in new_smoothed_img_layer_hists :
                 all_tissue_edge_layer_hists+=new_smoothed_img_layer_hist
@@ -132,7 +136,7 @@ class FlatfieldSample() :
             mode=int(round(mode[0]))
             low_percentile_by_layer.append(this_layer_thresholds[int(round(0.1*len(this_layer_thresholds)))])
             high_percentile_by_layer.append(this_layer_thresholds[int(round(0.9*len(this_layer_thresholds)))])
-            self._background_thresholds_for_masking.append(med)
+            self._background_thresholds_for_masking.append(mean)
             flatfield_logger.info(f'  threshold for layer {li+1} found at {self._background_thresholds_for_masking[li]}')
             with cd(plotdir_path) :
                 f,(ax1,ax2) = plt.subplots(1,2,figsize=(2*6.4,4.6))
@@ -145,9 +149,9 @@ class FlatfieldSample() :
                 ax1.set_xlabel('pixel flux')
                 ax1.set_ylabel('n images')
                 ax1.legend(loc='best')
-                ax2.bar(list(range(med+1)),all_tissue_edge_layer_hists[:med+1,li],width=1.0,label='background')
-                right_plot_limit = min(max_threshold_found,int(1.5*med))+11
-                ax2.bar(list(range(med+1,right_plot_limit)),all_tissue_edge_layer_hists[med+1:right_plot_limit,li],width=1.0,label='signal')
+                ax2.bar(list(range(mean+1)),all_tissue_edge_layer_hists[:mean+1,li],width=1.0,label='background')
+                right_plot_limit = min(max_threshold_found,int(1.5*mean))+100
+                ax2.bar(list(range(mean+1,right_plot_limit)),all_tissue_edge_layer_hists[mean+1:right_plot_limit,li],width=1.0,label='signal')
                 ax2.plot([mode,mode],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='c',label=f'mode={mode}')
                 ax2.plot([mean,mean],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='m',label=f'mean={mean}')
                 ax2.plot([med,med],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='r',label=f'median={med}')
@@ -162,7 +166,7 @@ class FlatfieldSample() :
             xvals=list(range(1,self.dims[-1]+1))
             plt.plot(xvals,low_percentile_by_layer,marker='v',color='r',linewidth=2,label='10th %ile thresholds')
             plt.plot(xvals,high_percentile_by_layer,marker='^',color='b',linewidth=2,label='90th %ile thresholds')
-            plt.plot(xvals,self._background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimal thresholds')
+            plt.plot(xvals,self._background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimal (mean) thresholds')
             plt.title('Thresholds chosen from tissue edge HPFs by image layer')
             plt.xlabel('image layer')
             plt.ylabel('pixel flux')

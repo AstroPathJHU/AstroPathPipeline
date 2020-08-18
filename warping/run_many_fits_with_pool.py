@@ -37,7 +37,7 @@ def getListOfJobCommands(args) :
     #find the valid octets in the samples and order them by the # of their center rectangle
     octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir_name
     if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
-        all_octets_dict = readOctetsFromFile(octet_run_dir,args.metadata_top_dir,args.sample,args.layer)
+        all_octets_dict = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
     else :
         all_octets_dict = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.workingdir_name,args.flatfield_file,
                                            args.njobs,args.layer)
@@ -62,7 +62,17 @@ def getListOfJobCommands(args) :
             thisjoboctetstring+=f'{this_octet_number},'
         thisjobworkingdir = os.path.join(args.workingdir_name,thisjobdirname)
         thisjobcmdstring = f'{cmd_base} {thisjobworkingdir} --octet_run_dir {octet_run_dir} --octets {thisjoboctetstring[:-1]}'
+        if args.skip_exposure_time_correction :
+            thisjobcmdstring+=' --skip_exposure_time_correction'
+        else :
+            thisjobcmdstring+=f' --exposure_time_offset_file {args.exposure_time_offset_file}'
         thisjobcmdstring+=f' --max_iter {args.max_iter} {fixedparstring[:-1]}'
+        if args.normalize is not None :
+            thisjobcmdstring+=f' --normalize {args.normalize}'
+        if args.init_pars is not None :
+            thisjobcmdstring+=f' --init_pars {args.init_pars}'
+        if args.init_bounds is not None :
+            thisjobcmdstring+=f' --init_bounds {args.init_bounds}'
         if args.float_p1p2_to_polish :
             thisjobcmdstring+=' --float_p1p2_to_polish'
         thisjobcmdstring+=f' --max_radial_warp {args.max_radial_warp} --max_tangential_warp {args.max_tangential_warp}'
@@ -93,10 +103,23 @@ if __name__=='__main__' :
                                         help='String for how to select octets for each job: "first_n" or "random_n".')
     job_organization_group.add_argument('--workers',         default=None,       type=int,
                                         help='Number of CPUs to use in the multiprocessing pool (defaults to all available)')
+    #mutually exclusive group for how to handle the exposure time correction
+    et_correction_group = parser.add_mutually_exclusive_group(required=True)
+    et_correction_group.add_argument('--exposure_time_offset_file',
+                                    help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the samples in question
+                                    [use this argument to apply corrections for differences in image exposure time]""")
+    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
+                                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
     #group for options of how the fit will proceed
     fit_option_group = parser.add_argument_group('fit options', 'how should the fits be done?')
     fit_option_group.add_argument('--max_iter',             default=1000,        type=int,
                                   help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
+    fit_option_group.add_argument('--normalize',
+                                  help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
+    fit_option_group.add_argument('--init_pars',
+                                  help='Comma-separated list of initial parameter name=value pairs to use in lieu of defaults.')
+    fit_option_group.add_argument('--init_bounds',
+                                  help='Comma-separated list of parameter name=low_bound:high_bound pairs to use in lieu of defaults.')
     fit_option_group.add_argument('--fixed',                default=['fx','fy'], type=split_csv_to_list,         
                                   help='Comma-separated list of parameters to keep fixed during fitting')
     fit_option_group.add_argument('--float_p1p2_to_polish', action='store_true',
