@@ -41,7 +41,7 @@ class Const :
         return 'dy_warp_field' #name of the dy warping field binary file
     @property
     def WARP_FIELD_FIGURE_NAME(self) :
-        return 'warp_fields.png'
+        return 'warp_fields'
     @property
     def OVERLAY_NORMALIZE(self) :
         return 1000. #value to use to normalize the overlay images

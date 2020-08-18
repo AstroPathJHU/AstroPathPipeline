@@ -152,7 +152,7 @@ class PolyFieldWarp(Warp) :
         ax[2].scatter(self.xc,self.yc,marker='*',color='yellow')
         ax[2].set_title('dy warp')
         f.colorbar(pos,ax=ax[2])
-        plt.savefig(CONST.WARP_FIELD_FIGURE_NAME)
+        plt.savefig(f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png')
         plt.close()
 
     def showCheckerboard(self) :
@@ -540,7 +540,7 @@ class CameraWarp(Warp) :
         ax[2].scatter(self.cx,self.cy,marker='*',color='yellow')
         ax[2].set_title('dy warp')
         f.colorbar(pos,ax=ax[2])
-        plt.savefig(CONST.WARP_FIELD_FIGURE_NAME)
+        plt.savefig(f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png')
         plt.close()
 
     def showCheckerboard(self) :

@@ -1,10 +1,11 @@
 #imports
+from .warp import CameraWarp
 from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile, WarpFitResult
 from .config import CONST
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, split_csv_to_list
 from argparse import ArgumentParser
-import os, random, multiprocessing as mp
+import os, random, math, multiprocessing as mp
 
 #################### FILE-SCOPE CONSTANTS ####################
 
@@ -162,10 +163,49 @@ if __name__=='__main__' :
     warp_logger.info('POOL CLOSED; BATCH RUNNING!!')
     pool.join()
     warp_logger.info('All jobs in the pool have finished! : ) Collecting results....')
+    #write out a list of all the individual results
     results = []
     for dirname in dirnames :
         results.append((readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))[0])
     with cd(args.workingdir_name) :
-        writetable('all_results.csv',results)
+        writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir_name))}.csv',results)
+    #get the weighted average parameters over all the results that reduced the cost
+    warp_logger.info('Writing out info for weighted average warp....')
+    w_cx = 0.; w_cy = 0.; w_fx = 0.; w_fy = 0.
+    w_k1 = 0.; w_k2 = 0.; w_k3 = 0.; w_p1 = 0.; w_p2 = 0.
+    sum_weights = 0.
+    for result in [r for r in results if r.cost_reduction>0] :
+        w = r.cost_reduction
+        w_cx+=(w*result.cx); w_cy+=(w*result.cy); w_fx+=(w*result.fx); w_fy+=(w*result.fy)
+        w_k1+=(w*result.k1); w_k2+=(w*result.k2); w_k3+=(w*result.k3)
+        w_p1+=(w*result.p1); w_p2+=(w*result.p2)
+        sum_weights+=w
+    if sum_weights!=0. :
+        w_cx/=sum_weights; w_cy/=sum_weights; w_fx/=sum_weights; w_fy/=sum_weights
+        w_k1/=sum_weights; w_k2/=sum_weights; w_k3/=sum_weights; w_p1/=sum_weights; w_p2/=sum_weights
+    #make a warp from these w average parameters and write out its info
+    w_avg_warp = CameraWarp(results[0].n,results[0].m,w_cx,w_cy,w_fx,w_fy,w_k1,w_k2,w_k3,w_p1,w_p2)
+    w_avg_result = WarpFitResult()
+    w_avg_result.dirname = args.workingdir_name
+    w_avg_result.n  = results[0].n
+    w_avg_result.m  = results[0].m
+    w_avg_result.cx = w_avg_warp.cx
+    w_avg_result.cy = w_avg_warp.cy
+    w_avg_result.fx = w_avg_warp.fx
+    w_avg_result.fy = w_avg_warp.fy
+    w_avg_result.k1 = w_avg_warp.k1
+    w_avg_result.k2 = w_avg_warp.k2
+    w_avg_result.k3 = w_avg_warp.k3
+    w_avg_result.p1 = w_avg_warp.p1
+    w_avg_result.p2 = w_avg_warp.p2
+    max_r_x, max_r_y = w_avg_warp._getMaxDistanceCoords()
+    w_avg_result.max_r_x_coord  = max_r_x
+    w_avg_result.max_r_y_coord  = max_r_y
+    w_avg_result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)
+    w_avg_result.max_rad_warp   = w_avg_warp.maxRadialDistortAmount(None)
+    w_avg_result.max_tan_warp   = w_avg_warp.maxTangentialDistortAmount(None)
+    with cd(args.workingdir_name) :
+        writetable(f'{os.path.basename(os.path.normpath(args.workingdir_name))}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}',[w_avg_result])
+        w_avg_warp.writeOutWarpFields(os.path.basename(os.path.normpath(args.workingdir_name)))
     warp_logger.info('Done.')
 
