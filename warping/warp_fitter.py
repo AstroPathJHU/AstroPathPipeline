@@ -29,7 +29,7 @@ class WarpFitter :
 
     #################### CLASS CONSTANTS ####################
 
-    IM3_EXT = '.im3'                                          #to replace in filenames read from *_rect.csv
+    IM3_EXT = '.im3'                                          #to replace in rectangle filenames
     DE_TOLERANCE = 0.03                                       #tolerance for the differential evolution minimization
     DE_MUTATION = (0.2,0.8)                                   #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7                                    #recombination parameter for differential evolution minimization

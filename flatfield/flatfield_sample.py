@@ -4,7 +4,7 @@ from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities import units
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer
-from ..utilities.misc import cd
+from ..utilities.misc import cd, MetadataSummary
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
 import os, scipy.stats
 
@@ -28,8 +28,9 @@ class FlatfieldSample() :
 
     #################### CLASS CONSTANTS ####################
 
-    RECTANGLE_LOCATION_PLOT_STEM  = 'rectangle_locations'       #stem for the name of the rectangle location reference plot
-    THRESHOLD_PLOT_DIR_STEM       = 'thresholding_plots'        #stem for the name of the thresholding plot dir for this sample
+    RECTANGLE_LOCATION_PLOT_STEM  = 'rectangle_locations'           #stem for the name of the rectangle location reference plot
+    THRESHOLD_PLOT_DIR_STEM       = 'thresholding_plots'            #stem for the name of the thresholding plot dir for this sample
+    TISSUE_EDGE_MDS_STEM          = 'metadata_summary_tissue_edges' #stem for the metadata summary file from the tissue edge files only
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -193,6 +194,7 @@ class FlatfieldSample() :
         samp_islands = a.islands()
         edge_rect_filenames = [] #use this to return the list of tissue edge filepaths
         edge_rect_xs = []; edge_rect_ys = [] #use these to make the plot of the rectangle locations
+        edge_rect_ts = [] #use this to find the minimum and maximum collection time of the edge rectangle images
         #for each island
         for ii,island in enumerate(samp_islands,start=1) :
             island_rects = [r for r in a.rectangles if r.n in island]
@@ -228,6 +230,14 @@ class FlatfieldSample() :
             edge_rect_filenames+=[r.file.split('.')[0] for r in add_rects]
             edge_rect_xs+=[r.x for r in add_rects]
             edge_rect_ys+=[r.y for r in add_rects]
+            edge_rect_ts+=[r.t for r in add_rects]
+        #save the metadata summary file for the thresholding file group
+        ms = MetadataSummary(self._name,a.Project,a.Cohort,a.microscopename,min(edge_rect_ts),max(edge_rect_ts))
+        if plotdir_path is not None :
+            with cd(plotdir_path) :
+                writetable(f'{self.TISSUE_EDGE_MDS_STEM}_{self._name}.csv',[ms])
+        else :
+            writetable(f'{self.TISSUE_EDGE_MDS_STEM}_{self._name}.csv',[ms])
         #make and save the plot of the edge field locations next to the qptiff for reference
         bulk_rect_xs = [r.x for r in a.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
         bulk_rect_ys = [r.y for r in a.rectangles if r.file.split('.')[0] not in edge_rect_filenames]

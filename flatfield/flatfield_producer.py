@@ -3,10 +3,11 @@ from .flatfield_sample import FlatfieldSample
 from .mean_image import MeanImage
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
 from .config import CONST
+from ..alignment.alignmentset import AlignmentSetFromXML
 from ..exposuretime.utilities import LayerOffset
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer
-from ..utilities.tableio import readtable
-from ..utilities.misc import cd
+from ..utilities.tableio import readtable, writetable
+from ..utilities.misc import cd, MetadataSummary
 import os, random
 
 #main class
@@ -23,7 +24,9 @@ class FlatfieldProducer :
 
     #################### CLASS CONSTANTS ####################
     
-    THRESHOLDING_PLOT_DIR_NAME = 'thresholding_info' #name of the directory where the thresholding information will be stored
+    THRESHOLDING_PLOT_DIR_NAME = 'thresholding_info'               #name of the directory where the thresholding information will be stored
+    IM3_EXT                    = '.im3'                            #to replace in rectangle filenames
+    IMAGE_STACK_MDS_FN_STEM    = 'metadata_summary_stacked_images' #partial filename for the metadata summary file for the stacked images
 
     #################### PUBLIC FUNCTIONS ####################
     
@@ -45,9 +48,12 @@ class FlatfieldProducer :
             self.flatfield_sample_dict[sn]=FlatfieldSample(sn,img_dims)
         #Start up a new mean image to use for making the actual flatfield
         self.mean_image = MeanImage(img_dims[0],img_dims[1],img_dims[2],workingdir_name,skip_masking,skip_et_correction)
+        #Set up the exposure time correction offsets by layer
         self._et_correction_offsets = []
         for li in range(img_dims[2]) :
             self._et_correction_offsets.append(None)
+        #Set up the list of metadata summary objects
+        self._metadata_summaries = []
 
     def readInBackgroundThresholds(self,threshold_file_dir) :
         """
@@ -123,6 +129,11 @@ class FlatfieldProducer :
             if len(this_samp_fps_to_run)<1 :
                 flatfield_logger.warn(f'WARNING: sample {sn} does not have any images to be stacked!')
                 continue
+            #otherwise add the metadata summary for this sample to the producer's list
+            a = AlignmentSetFromXML(self.metadata_top_dir,os.path.dirname(os.path.dirname(this_samp_fps_to_run[0])),sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
+            this_samp_rect_fn_stems = [os.path.basename(os.path.normpath(fp)).split('.')[0] for fp in this_samp_fps_to_run]
+            rect_ts = [r.t for r in a.rectangles if r.file.replace(self.IM3_EXT,'') in this_samp_rect_fn_stems]
+            self._metadata_summaries.append(MetadataSummary(sn,a.Project,a.Cohort,a.microscopename,min(rect_ts),max(rect_ts)))
             #choose which of them will have their masking images saved
             if len(this_samp_fps_to_run)<n_masking_images_per_sample :
                 msg=f'WARNING: Requested to save {n_masking_images_per_sample} masking images for each sample,'
@@ -145,6 +156,9 @@ class FlatfieldProducer :
                 this_chunk_masking_plot_indices=[fr_chunk.index(fr) for fr in fr_chunk 
                                                  if this_samp_fps_to_run.index(fr.rawfile_path) in this_samp_indices_for_masking_plots]
                 self.mean_image.addGroupOfImages(new_img_arrays,samp,selected_pixel_cut,this_chunk_masking_plot_indices)
+        #write out the list of metadata summaries
+        with cd(self.mean_image.workingdir_name) :
+            writetable(f'{IMAGE_STACK_MDS_FN_STEM}_{self.mean_image.workingdir_name}.csv',self._metadata_summaries)
 
     def makeFlatField(self) :
         """
