@@ -15,9 +15,6 @@ class Const :
     @property
     def THRESHOLD_FILE_EXT(self) :
         return f'_{FLATFIELD_CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
-    @property
-    def LAYER_OFFSET_FILE_NAME_STEM(self) :
-        return FLATFIELD_CONST.LAYER_OFFSET_FILE_NAME_STEM #name of the layer offset result .csv file
     #other image properties
     @property
     def CORNER_OVERLAP_TAGS(self):
