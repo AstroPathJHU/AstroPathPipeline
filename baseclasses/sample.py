@@ -33,6 +33,15 @@ class SampleDef:
 
     if "SlideID" in kwargs and root is not None:
       root = pathlib.Path(root)
+      try:
+        cohorttable = readtable(root/"sampledef.csv", SampleDef)
+      except IOError:
+        pass
+      else:
+        for row in cohorttable:
+          if row.SlideID == kwargs["SlideID"]:
+            return self.__init__(root=root, samp=row)
+
       if "Scan" not in kwargs:
         try:
           kwargs["Scan"] = max(int(folder.name.replace("Scan", "")) for folder in (root/kwargs["SlideID"]/"im3").glob("Scan*/"))
