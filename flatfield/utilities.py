@@ -1,5 +1,5 @@
 from .config import CONST
-from ..utilities.img_file_io import getRawAsHWL, correctImageForExposureTime
+from ..utilities.img_file_io import getRawAsHWL, correctImageForExposureTime, smoothImageWorker
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
 import numpy as np

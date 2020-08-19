@@ -109,7 +109,7 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_nam
             msg+= f'{octet_olap_n.sample_name} in octet file {octet_filepath}!'
             raise(WarpingError(msg))
         if octet_olap_n.nclip!=CONST.N_CLIP :
-            msg = f'ERROR: constant nclip {CONST.NCLIP} in readOctetsFromFile does not match '
+            msg = f'ERROR: constant nclip {CONST.N_CLIP} in readOctetsFromFile does not match '
             msg+= f'{octet_olap_n.nclip} in octet file {octet_filepath}!'
             raise(WarpingError(msg))
         if octet_olap_n.layer!=layer :
@@ -198,7 +198,7 @@ def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pi
             overlapswiththisp1.sort(key=lambda x: x.tag)
             ons = [o.n for o in overlapswiththisp1]
             warp_logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
-            octet_overlap_ns.append(OctetOverlapNumbers(metadata_top_dir,rawfile_top_dir,samp,CONST.NCLIP,layer,p1,*(ons)))
+            octet_overlap_ns.append(OctetOverlapNumbers(metadata_top_dir,rawfile_top_dir,samp,CONST.N_CLIP,layer,p1,*(ons)))
     octet_overlap_ns.sort(key=lambda x: x.p1_rect_n)
     #save the file of which overlaps are in each valid octet
     with cd(working_dir) :

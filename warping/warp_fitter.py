@@ -61,7 +61,7 @@ class WarpFitter :
         units.setup("fast") #be sure to use fast units
         self.alignset = self.__initializeAlignmentSet(overlaps=overlaps)
         #save the metadata summary and field logs for this alignment set
-        ms = MetadataSummary(self.samp_name,a.Project,a.Cohort,a.microscopename,
+        ms = MetadataSummary(self.samp_name,self.alignset.Project,self.alignset.Cohort,self.alignset.microscopename,
                              min([r.t for r in self.alignset.rectangles]),max([r.t for r in self.alignset.rectangles]))
         field_logs = []
         for r in self.alignset.rectangles :
