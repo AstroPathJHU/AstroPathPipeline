@@ -1,4 +1,4 @@
-import abc, collections, dataclasses, datetime, methodtools, numpy as np, pathlib
+import abc, collections, contextlib, dataclasses, datetime, methodtools, numpy as np, pathlib
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, memmapcontext
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
@@ -52,14 +52,26 @@ class Rectangle(DataClassWithDistances):
 class RectangleWithImageBase(Rectangle):
   #do not override this property
   #override getimage() instead and call super().getimage()
-  @methodtools.lru_cache()
   @property
   def image(self):
+    return self.__image()
+  @image.deleter
+  def image(self):
+    self.__image.cache_clear()
+  @methodtools.lru_cache()
+  def __image(self):
     return self.getimage()
 
   @abc.abstractmethod
   def getimage(self):
     pass
+
+  @contextlib.contextmanager
+  def using_image(self):
+    try:
+      yield self.image
+    finally:
+      del self.image
 
 class RectangleReadImageBase(RectangleWithImageBase):
   @abc.abstractproperty
