@@ -207,5 +207,17 @@ if __name__=='__main__' :
     with cd(args.workingdir_name) :
         writetable(f'{os.path.basename(os.path.normpath(args.workingdir_name))}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}',[w_avg_result])
         w_avg_warp.writeOutWarpFields(os.path.basename(os.path.normpath(args.workingdir_name)))
+    #aggregate the different metadata summary files into one
+    all_metadata_summaries = []
+    for dirname in dirnames :
+        all_metadata_summaries.append((readtable(os.path.join(dirname,f'metadata_summary_{os.path.basename(os.path.normpath(dirname))}.csv'),MetadataSummary))[0])
+    aggregated_mdss = []
+    for sn in set([mds.sample_name for mds in all_metadata_summaries]) :
+        this_samp_mdss = [mds for mds in all_metadata_summaries if mds.sample_name==sn]
+        new_mds = MetadataSummary(sn,this_samp_mdss[0].project,this_samp_mdss[0].cohort,this_samp_mdss[0].microscope_name,
+                                  min([mds.mindate for mds in this_samp_mdss]),max([mds.maxdate for mds in this_samp_mdss]))
+        aggregated_mdss.append(new_mds)
+    with cd(args.workingdir_name) :
+        writetable(f'metadata_summary_{os.path.basename(os.path.normpath(args.workingdir_name))}.csv',aggregated_mdss)
     warp_logger.info('Done.')
 

@@ -64,7 +64,7 @@ class WarpFitter :
         ms = MetadataSummary(self.samp_name,a.Project,a.Cohort,a.microscopename,
                              min([r.t for r in self.alignset.rectangles]),max([r.t for r in self.alignset.rectangles]))
         with cd(self.working_dir) :
-            writetable(f'metadata_summary_{self.working_dir}.csv',[ms])
+            writetable(f'metadata_summary_{os.path.basename(os.path.normpath(self.working_dir))}.csv',[ms])
         #get the list of raw file paths
         self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.samp_name,fn.replace(self.IM3_EXT,CONST.RAW_EXT)) 
                               for fn in [r.file for r in self.alignset.rectangles]]
