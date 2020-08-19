@@ -9,7 +9,7 @@ from ..baseclasses.rectangle import rectangleoroverlapfilter
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getSampleMaxExposureTimesByLayer
 from ..utilities.tableio import readtable, writetable
 from ..utilities import units
-from ..utilities.misc import cd
+from ..utilities.misc import cd, MetadataSummary
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, copy, math, shutil, platform, time, logging
 
@@ -60,6 +60,11 @@ class WarpFitter :
         self.bkp_units_mode = units.currentmode
         units.setup("fast") #be sure to use fast units
         self.alignset = self.__initializeAlignmentSet(overlaps=overlaps)
+        #save the metadata summary for this alignment set
+        ms = MetadataSummary(self.samp_name,a.Project,a.Cohort,a.microscopename,
+                             min([r.t for r in self.alignset.rectangles]),max([r.t for r in self.alignset.rectangles]))
+        with cd(self.working_dir) :
+            writetable(f'metadata_summary_{self.working_dir}.csv',[ms])
         #get the list of raw file paths
         self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.samp_name,fn.replace(self.IM3_EXT,CONST.RAW_EXT)) 
                               for fn in [r.file for r in self.alignset.rectangles]]
