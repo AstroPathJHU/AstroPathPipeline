@@ -93,6 +93,7 @@ class MeanImage :
         min_selected_pixels  = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
         masking_plot_indices = list of image array list indices whose masking plots will be saved
         """
+        stacked_in_layers = []
         #if the images aren't meant to be masked then we can just add them up trivially
         if self.skip_masking :
             for i,im_array in enumerate(im_array_list,start=1) :
@@ -100,7 +101,8 @@ class MeanImage :
                 self.image_stack+=im_array
                 self.n_images_read+=1
                 self.n_images_stacked_by_layer+=1
-            return
+                stacked_in_layers.append(list(range(1,self.nlayers+1)))
+            return stacked_in_layers
         #otherwise produce the image masks, apply them to the raw images, and be sure to add them to the list in the same order as the images
         with cd(self._workingdir_name) :
             if not os.path.isdir(self.MASKING_PLOT_DIR_NAME) :
@@ -122,6 +124,7 @@ class MeanImage :
         for proc in procs:
             proc.join()
         for stack_i,im_array in enumerate(im_array_list,start=self.n_images_read+1) :
+            stacked_in_layers.append([])
             thismask = return_dict[stack_i]
             #check, layer-by-layer, that this mask would select at least the minimum amount of pixels to be added to the stack
             for li in range(self.nlayers) :
@@ -130,7 +133,9 @@ class MeanImage :
                     self.image_stack[:,:,li]+=(im_array[:,:,li]*thismasklayer)
                     self.mask_stack[:,:,li]+=thismasklayer
                     self.n_images_stacked_by_layer[li]+=1
+                    stacked_in_layers[-1].append(li+1)
             self.n_images_read+=1
+        return stacked_in_layers
 
     def makeFlatFieldImage(self) :
         """

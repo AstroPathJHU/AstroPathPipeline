@@ -18,6 +18,15 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
 flatfield_logger.addHandler(handler)
 
+#helper class for logging included/excluded fields
+@dataclasses.dataclass
+class FieldLog :
+    sample   : str
+    file     : str
+    location : str
+    use      : str
+    stacked_in_layers : List[int] = None
+
 #################### GENERAL HELPER FUNCTIONS ####################
 
 #helper function to convert an image array into a flattened pixel histogram

@@ -1,5 +1,5 @@
 #imports
-from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds
+from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds, FieldLog
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities import units
@@ -93,6 +93,7 @@ class FlatfieldSample() :
         all_image_thresholds_by_layer = np.empty((self.dims[-1],len(tissue_edge_filepaths)),dtype=np.uint16)
         all_tissue_edge_layer_hists = np.zeros((nbins,self.dims[-1]),dtype=np.int64)
         manager = mp.Manager()
+        field_logs = []
         for fr_chunk in tissue_edge_fr_chunks :
             if len(fr_chunk)<1 :
                 continue
@@ -109,6 +110,7 @@ class FlatfieldSample() :
             procs=[]
             for ci,fr in enumerate(fr_chunk) :
                 flatfield_logger.info(f'  determining layer thresholds for file {fr.rawfile_path} {fr.sequence_print}')
+                field_logs.append(FieldLog(self._name,fr.rawfile_path,'edge','thresholding'))
                 ii=int((fr.sequence_print.split())[0][1:])
                 p = mp.Process(target=findLayerThresholds,
                                args=(new_smoothed_img_layer_hists[ci],
@@ -179,6 +181,8 @@ class FlatfieldSample() :
             with open(f'{self._name}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}','w') as tfp :
                 for bgv in self._background_thresholds_for_masking :
                     tfp.write(f'{bgv}\n')
+        #return the field logs
+        return field_logs
 
     def findTissueEdgeFilepaths(self,rawfile_paths,metadata_top_dir,plotdir_path=None) :
         """

@@ -29,16 +29,16 @@ class SingleLayerExposureTimeFit :
         cutimages        = True if only central 50% of overlap images should be used
         """
         self.layer = layer_n
-        #make this fit's plot directory name/path
-        plotdirname = f'layer_{self.layer}_plots'
-        with cd(top_plot_dir) :
-            if not os.path.isdir(plotdirname) :
-                os.mkdir(plotdirname)
         self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
         self.max_exp_time = max_exp_time
         self.rawfile_top_dir = rawfile_top_dir
         self.metadata_top_dir = metadata_top_dir
         self.sample = sample
+        #make this fit's plot directory name/path
+        plotdirname = f'{self.sample}_layer_{self.layer}_plots'
+        with cd(top_plot_dir) :
+            if not os.path.isdir(plotdirname) :
+                os.mkdir(plotdirname)
         self.flatfield = flatfield
         self.exposure_time_overlaps = self.__getExposureTimeOverlaps(exposure_times,max_exp_time,overlaps,smoothsigma,cutimages)
         if len(self.exposure_time_overlaps)<1 :
@@ -97,7 +97,6 @@ class SingleLayerExposureTimeFit :
         self.__plotCostsAndOffsets()
         self.__writeResultsAndPlotCostReductions()
         self.__saveComparisonImages(n_comparisons_to_save)
-
         
     #################### PRIVATE HELPER FUNCTIONS ####################
 
