@@ -10,8 +10,8 @@ import os, glob
 
 #helper function to create a fit for a single layer
 #can be run in parallel if given a return dictionary
-def getExposureTimeFitWorker(layer_n,exposure_times,max_exp_time,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages,return_dict=None) :
-    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,max_exp_time,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages)
+def getExposureTimeFitWorker(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages,return_dict=None) :
+    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages)
     if return_dict is not None :
         return_dict[layer_n] = fit
     else :
@@ -37,14 +37,6 @@ class ExposureTimeOffsetFitGroup :
         self.workingdir_name = workingdir_name
         self.layers = self.__getLayers(layers)
         self.n_threads = n_threads
-
-    def prepFits(self,) :
-        """
-        Load all of the raw file layers and their exposure times, correct the images with the flatfield and smooth them, 
-        align the overlaps, and prep the fits
-        
-        """
-        
 
     def runFits(self,flatfield_filepath,overlaps,smoothsigma,cutimages,initial_offset,offset_bounds,max_iter,gtol,eps,print_every,n_comparisons_to_save) :
         """
@@ -85,7 +77,7 @@ class ExposureTimeOffsetFitGroup :
                 procs = []
                 for fit in batch_fits :
                     p = mp.Process(target=fit.writeOutResults,
-                                   args=(self.workingdir_name,n_comparisons_to_save)
+                                   args=(n_comparisons_to_save)
                                   )
                     procs.append(p)
                     p.start()
@@ -101,12 +93,12 @@ class ExposureTimeOffsetFitGroup :
                 for rfs in all_exposure_times.keys() :
                     this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
                 fit = getExposureTimeFitWorker(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
-                                               self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
+                                               self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
                                                overlaps,smoothsigma,cutimages)
                 et_fit_logger.info(f'Running fit for layer {ln} ({li+1} of {len(self.layers)})....')
                 fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every)
                 et_fit_logger.info(f'Writing output for layer {ln} ({li+1} of {len(self.layers)})....')
-                fit.writeOutResults(self.workingdir_name,n_comparisons_to_save)
+                fit.writeOutResults(n_comparisons_to_save)
                 if fit.best_fit_offset is not None :
                     offsets.append(LayerOffset(fit.layer,len(fit.exposure_time_overlaps),fit.best_fit_offset,fit.best_fit_cost))
         #write out all the results
@@ -184,7 +176,7 @@ class ExposureTimeOffsetFitGroup :
                 this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
             p = mp.Process(target=getExposureTimeFitWorker, 
                            args=(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
-                                 self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
+                                 self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
                                  overlaps,smoothsigma,cutimages,return_dict)
                           )
             procs.append(p)

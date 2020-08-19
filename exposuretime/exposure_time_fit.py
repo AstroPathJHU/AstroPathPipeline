@@ -1,6 +1,6 @@
 #imports
 from .overlap_with_exposure_times import OverlapWithExposureTimes
-from .utilities import et_fit_logger, UpdateImage
+from .utilities import et_fit_logger, UpdateImage, FieldLog
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..flatfield.utilities import smoothImageWorker
@@ -14,11 +14,12 @@ class SingleLayerExposureTimeFit :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,layer_n,exposure_times,max_exp_time,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages) :
+    def __init__(self,layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages) :
         """
         layer_n          = layer number that this fit will run on (indexed from 1)
         exposure_times   = dictionary of raw file exposure times, keyed by filename stem
         max_exp_time     = the maximum exposure time in the entire sample for this layer
+        top_plot_dir     = path to directory in which this fit's subdirectory should be created
         sample           = name of the microscope data sample to fit to ("M21_1" or equivalent)
         rawfile_top_dir  = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
         metadata_top_dir = path to directory containing [samplename]/im3/xml directory
@@ -28,12 +29,18 @@ class SingleLayerExposureTimeFit :
         cutimages        = True if only central 50% of overlap images should be used
         """
         self.layer = layer_n
+        #make this fit's plot directory name/path
+        plotdirname = f'layer_{self.layer}_plots'
+        with cd(top_plot_dir) :
+            if not os.path.isdir(plotdirname) :
+                os.mkdir(plotdirname)
+        self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
         self.max_exp_time = max_exp_time
         self.rawfile_top_dir = rawfile_top_dir
         self.metadata_top_dir = metadata_top_dir
         self.sample = sample
         self.flatfield = flatfield
-        self.exposure_time_overlaps, self.metadata_summary = self.__getExposureTimeOverlaps(exposure_times,max_exp_time,overlaps,smoothsigma,cutimages)
+        self.exposure_time_overlaps = self.__getExposureTimeOverlaps(exposure_times,max_exp_time,overlaps,smoothsigma,cutimages)
         if len(self.exposure_time_overlaps)<1 :
             et_fit_logger.warn(f'WARNING: layer {self.layer} does not have any aligned overlaps with exposure time differences. This fit will be skipped!')
         self.offsets = []
@@ -77,10 +84,9 @@ class SingleLayerExposureTimeFit :
         msg+= f'Best-fit offset = {self.best_fit_offset:.4f} (best cost = {self.best_fit_cost:.4f})'
         et_fit_logger.info(msg)
 
-    def writeOutResults(self,top_plot_dir,n_comparisons_to_save) :
+    def writeOutResults(self,n_comparisons_to_save) :
         """
         Save some post-processing plots for this fit
-        top_plot_dir          = path to directory in which this fit's subdirectory should be created
         n_comparisons_to_save = total # of overlap overlay comparisons to write out for each completed fit
         """
         if len(self.exposure_time_overlaps)<1 :
@@ -88,14 +94,6 @@ class SingleLayerExposureTimeFit :
             return
         if self.best_fit_offset is None :
             raise RuntimeError('ERROR: best fit offset is None; run fit before calling writeOutResults!')
-        #make this fit's plot directory name/path
-        plotdirname = f'layer_{self.layer}_plots'
-        with cd(top_plot_dir) :
-            if not os.path.isdir(plotdirname) :
-                os.mkdir(plotdirname)
-        self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
-        with cd(top_plot_dir) :
-            writetable(f'metadata_summary_exposure_time_{self.sample}_layer_{self.layer}.csv',[self.metadata_summary])
         self.__plotCostsAndOffsets()
         self.__writeResultsAndPlotCostReductions()
         self.__saveComparisonImages(n_comparisons_to_save)
@@ -141,18 +139,30 @@ class SingleLayerExposureTimeFit :
         a.updateRectangleImages(update_images,usewarpedimages=False,correct_with_meanimage=False)
         a.align(alreadyalignedstrategy='overwrite')
         #make the exposure time comparison overlap objects
-        etolaps = []
+        etolaps = []; relevant_rectangles = set()
         for io,olap in enumerate(a.overlaps) :
             if olap.result.exit!=0 :
                 continue
-            p1et = exposure_times[(([r for r in a.rectangles if r.n==olap.p1])[0].file).rstrip(CONST.IM3_EXT)]
-            p2et = exposure_times[(([r for r in a.rectangles if r.n==olap.p2])[0].file).rstrip(CONST.IM3_EXT)]
+            p1rect = ([r for r in a.rectangles if r.n==olap.p1])[0]
+            p2rect = ([r for r in a.rectangles if r.n==olap.p2])[0]
+            p1et = exposure_times[(p1rect.file).rstrip(CONST.IM3_EXT)]
+            p2et = exposure_times[(p2rect.file).rstrip(CONST.IM3_EXT)]
             etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages))
-        #make the metadata summary object
-        metadata_summary = MetadataSummary(self.sample,a.Project,a.Cohort,a.microscopename,min([r.t for r in a.rectangles]),max([r.t for r in a.rectangles]))
+            relevant_rectangles.add(p1rect); relevant_rectangles.add(p2rect)
+        #make the log of the fields used and write it out
+        field_logs = []
+        for r in relevant_rectangles :
+            field_logs.append(FieldLog(r.file,r.n))
+        with cd(self.plotdirpath) :
+            writetable(f'fields_used_in_exposure_time_fit_{self.sample}_layer_{self.layer}.csv',field_logs)
+        #make the metadata summary object and write it out
+        metadata_summary = MetadataSummary(self.sample,a.Project,a.Cohort,a.microscopename,
+                                           min([r.t for r in relevant_rectangles]),max([r.t for r in relevant_rectangles]))
+        with cd(self.plotdirpath) :
+            writetable(f'metadata_summary_exposure_time_{self.sample}_layer_{self.layer}.csv',[metadata_summary])
         #return the list of exposure time overlaps and the summary of the metadata of the alignmentSet they came from
         et_fit_logger.info(f'Found {len(etolaps)} overlaps that are aligned and have different p1 and p2 exposure times in layer {self.layer}')
-        return etolaps, metadata_summary
+        return etolaps
 
     #helper function to return a list of overlap ns for overlaps where the p1 and p2 image exposure times are different
     def __getOverlapsWithExposureTimeDifferences(self,exp_times) :

@@ -3,7 +3,7 @@ from .warp import CameraWarp
 from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile, WarpFitResult
 from .config import CONST
 from ..utilities.tableio import readtable, writetable
-from ..utilities.misc import cd, split_csv_to_list
+from ..utilities.misc import cd, split_csv_to_list, MetadataSummary
 from argparse import ArgumentParser
 import os, random, math, multiprocessing as mp
 
