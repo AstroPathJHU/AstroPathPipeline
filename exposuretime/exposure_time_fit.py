@@ -123,9 +123,9 @@ class SingleLayerExposureTimeFit :
         #make an alignmentset from the raw files
         et_fit_logger.info(f'Making an AlignmentSet for just the overlaps with different exposure times in layer {self.layer}....')
         a = AlignmentSetFromXML(self.metadata_top_dir,self.rawfile_top_dir,self.sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
-                                nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer)
+                                nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer,filetype='raw')
         #get all the raw file layers
-        a.getDAPI(filetype='raw')
+        a.getDAPI()
         #correct the rectangle images with the flatfield file and applying some smoothing
         et_fit_logger.info(f'Correcting rectangle images for layer {self.layer}....')
         update_images = []
