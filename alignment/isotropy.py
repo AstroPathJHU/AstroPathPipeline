@@ -30,6 +30,8 @@ def isotropy(alignmentset, maxfreq=5, bins=24, showplot=None, saveas=None, figur
     for s2 in 1, -1:
       corner = units.np.arctan2(s1*alignmentset.fheight, s2*alignmentset.fwidth)
       plt.axvline(corner, 0, .65, color='r')
+      diagonal = units.np.arctan2(s1, s2)
+      plt.axvline(diagonal, 0, .65, color='b')
 
   plotstyling(fig, ax)
 
