@@ -3,7 +3,7 @@ from .overlap_with_exposure_times import OverlapWithExposureTimes
 from .utilities import et_fit_logger, UpdateImage, FieldLog
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..flatfield.utilities import smoothImageWorker
+from ..utilities.img_file_io import smoothImageWorker
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary
 import numpy as np, matplotlib.pyplot as plt
@@ -14,7 +14,7 @@ class SingleLayerExposureTimeFit :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages) :
+    def __init__(self,layer_n,exposure_times,max_exp_time,top_plot_dir,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages) :
         """
         layer_n          = layer number that this fit will run on (indexed from 1)
         exposure_times   = dictionary of raw file exposure times, keyed by filename stem
@@ -29,7 +29,6 @@ class SingleLayerExposureTimeFit :
         cutimages        = True if only central 50% of overlap images should be used
         """
         self.layer = layer_n
-        self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
         self.max_exp_time = max_exp_time
         self.rawfile_top_dir = rawfile_top_dir
         self.metadata_top_dir = metadata_top_dir
@@ -39,6 +38,7 @@ class SingleLayerExposureTimeFit :
         with cd(top_plot_dir) :
             if not os.path.isdir(plotdirname) :
                 os.mkdir(plotdirname)
+        self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
         self.flatfield = flatfield
         self.exposure_time_overlaps = self.__getExposureTimeOverlaps(exposure_times,max_exp_time,overlaps,smoothsigma,cutimages)
         if len(self.exposure_time_overlaps)<1 :
@@ -138,7 +138,7 @@ class SingleLayerExposureTimeFit :
         a.updateRectangleImages(update_images,usewarpedimages=False,correct_with_meanimage=False)
         a.align(alreadyalignedstrategy='overwrite')
         #make the exposure time comparison overlap objects
-        etolaps = []; relevant_rectangles = set()
+        etolaps = []; relevant_rectangles = {}
         for io,olap in enumerate(a.overlaps) :
             if olap.result.exit!=0 :
                 continue
@@ -147,7 +147,11 @@ class SingleLayerExposureTimeFit :
             p1et = exposure_times[(p1rect.file).rstrip(CONST.IM3_EXT)]
             p2et = exposure_times[(p2rect.file).rstrip(CONST.IM3_EXT)]
             etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages))
-            relevant_rectangles.add(p1rect); relevant_rectangles.add(p2rect)
+            if p1rect.n not in relevant_rectangles.keys() :
+                relevant_rectangles[p1rect.n]=p1rect
+            if p2rect.n not in relevant_rectangles.keys() :
+                relevant_rectangles[p2rect.n]=p2rect
+        relevant_rectangles = list(relevant_rectangles.values())
         #make the log of the fields used and write it out
         field_logs = []
         for r in relevant_rectangles :

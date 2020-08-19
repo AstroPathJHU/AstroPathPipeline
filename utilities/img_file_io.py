@@ -2,7 +2,7 @@
 from .misc import cd
 import numpy as np
 import xml.etree.ElementTree as et
-import os, glob, logging
+import os, glob, cv2, logging
 
 #global variables
 RAWFILE_EXT           = '.Data.dat'
@@ -58,6 +58,17 @@ def getRawAsHW(fname,height,width,dtype=np.uint16) :
 def writeImageToFile(img_array,filename_to_write,dtype=np.uint16) :
   #write out image flattened in fortran order
   im3writeraw(filename_to_write,img_array.flatten(order="F").astype(dtype))
+
+#helper function to smooth an image
+#this can be run in parallel
+def smoothImageWorker(im_array,smoothsigma,return_list=None) :
+  if return_list is not None :
+    im_in_umat = cv2.UMat(im_array)
+    im_out_umat = cv2.UMat(np.empty_like(im_array))
+    cv2.GaussianBlur(im_in_umat,(0,0),smoothsigma,im_out_umat,borderType=cv2.BORDER_REPLICATE)
+    return_list.append(im_out_umat.get())
+  else :
+    return cv2.GaussianBlur(im_array,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
 
 #helper function to get an image dimension tuple from the sample XML file
 def getImageHWLFromXMLFile(metadata_topdir,samplename) :

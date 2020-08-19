@@ -28,7 +28,7 @@ print('Defining group of fits....')
 fit_group = ExposureTimeOffsetFitGroup(samp,rawfile_top_dir,metadata_top_dir,working_dir,layers_arg,1)
 #run the fits
 print('Running fits....')
-fit_group.runFits(None,overlaps_arg,smoothsigma_arg,True,
+fit_group.runFits(None,overlaps_arg,smoothsigma_arg,False,
                   initial_offset_arg,bounds_arg,max_iter_arg,gtol_arg,eps_arg,print_every_arg,
                   n_comparisons_to_save_arg)
 print('Removing working directory...')

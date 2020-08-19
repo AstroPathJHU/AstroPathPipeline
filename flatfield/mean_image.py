@@ -1,7 +1,7 @@
 #imports
-from .utilities import flatfield_logger, FlatFieldError, smoothImageWorker, getImageArrayLayerHistograms, findLayerThresholds
+from .utilities import flatfield_logger, FlatFieldError, getImageArrayLayerHistograms, findLayerThresholds
 from .config import CONST 
-from ..utilities.img_file_io import getRawAsHWL, writeImageToFile
+from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import cv2, os, copy

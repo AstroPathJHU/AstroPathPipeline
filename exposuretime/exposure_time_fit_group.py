@@ -38,13 +38,13 @@ class ExposureTimeOffsetFitGroup :
         self.layers = self.__getLayers(layers)
         self.n_threads = n_threads
 
-    def runFits(self,flatfield_filepath,overlaps,smoothsigma,cutimages,initial_offset,offset_bounds,max_iter,gtol,eps,print_every,n_comparisons_to_save) :
+    def runFits(self,flatfield_filepath,overlaps,smoothsigma,wholeimages,initial_offset,offset_bounds,max_iter,gtol,eps,print_every,n_comparisons_to_save) :
         """
         Run all of the fits
         flatfield_filepath    = path to flatfield file to use in correcting raw image illumination
         overlaps              = list of overlap numbers to consider (should really only use this for testing)
         smoothsigma           = sigma for Gaussian blurring to apply to images
-        cutimages             = True if only the central regions of the images should be considered
+        wholeimages           = True if the whole image (nor just the central regions) should be considered
         initial_offset        = starting point for fits
         offset_bounds         = bounds for dark current count offset
         max_iter              = maximum number of iterations for each fit to run
@@ -53,6 +53,7 @@ class ExposureTimeOffsetFitGroup :
         print_every           = how often to print during minimization
         n_comparisons_to_save = total # of overlap overlay comparisons to write out for each completed fit
         """
+        cutimages = (not wholeimages)
         #first get all of the raw image exposure times, and the maximum exposure times in each layer
         all_exposure_times, max_exp_times_by_layer = self.__getExposureTimes()
         #next get the flatfield to use
