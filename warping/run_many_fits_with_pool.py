@@ -1,6 +1,6 @@
 #imports
 from .warp import CameraWarp
-from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile, WarpFitResult
+from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile, WarpFitResult, FieldLog
 from .config import CONST
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, split_csv_to_list, MetadataSummary
@@ -207,10 +207,11 @@ if __name__=='__main__' :
     with cd(args.workingdir_name) :
         writetable(f'{os.path.basename(os.path.normpath(args.workingdir_name))}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}',[w_avg_result])
         w_avg_warp.writeOutWarpFields(os.path.basename(os.path.normpath(args.workingdir_name)))
-    #aggregate the different metadata summary files into one
-    all_metadata_summaries = []
+    #aggregate the different metadata summary and field log files into one
+    all_metadata_summaries = []; all_field_logs = []
     for dirname in dirnames :
         all_metadata_summaries.append((readtable(os.path.join(dirname,f'metadata_summary_{os.path.basename(os.path.normpath(dirname))}.csv'),MetadataSummary))[0])
+        all_field_logs+=((readtable(os.path.join(dirname,f'field_log_{os.path.basename(os.path.normpath(dirname))}.csv'),FieldLog)))
     aggregated_mdss = []
     for sn in set([mds.sample_name for mds in all_metadata_summaries]) :
         this_samp_mdss = [mds for mds in all_metadata_summaries if mds.sample_name==sn]
@@ -219,5 +220,6 @@ if __name__=='__main__' :
         aggregated_mdss.append(new_mds)
     with cd(args.workingdir_name) :
         writetable(f'metadata_summary_{os.path.basename(os.path.normpath(args.workingdir_name))}.csv',aggregated_mdss)
+        writetable(f'field_log_{os.path.basename(os.path.normpath(args.workingdir_name))}.csv',all_field_logs)
     warp_logger.info('Done.')
 

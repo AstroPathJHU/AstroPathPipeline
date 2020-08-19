@@ -375,3 +375,11 @@ class WarpFitResult :
     raw_cost        : float = 0.0
     best_cost       : float = 0.0
     cost_reduction  : float = 0.0
+
+#little utility class to log the fields used
+@dataclasses.dataclass
+class FieldLog :
+    sample : str
+    file   : str
+    rect_n : int
+

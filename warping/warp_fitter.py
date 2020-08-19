@@ -1,7 +1,7 @@
 #imports
 from .warp_set import WarpSet
 from .fit_parameter_set import FitParameterSet
-from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult
+from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult, FieldLog
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..exposuretime.utilities import LayerOffset
@@ -60,11 +60,15 @@ class WarpFitter :
         self.bkp_units_mode = units.currentmode
         units.setup("fast") #be sure to use fast units
         self.alignset = self.__initializeAlignmentSet(overlaps=overlaps)
-        #save the metadata summary for this alignment set
+        #save the metadata summary and field logs for this alignment set
         ms = MetadataSummary(self.samp_name,a.Project,a.Cohort,a.microscopename,
                              min([r.t for r in self.alignset.rectangles]),max([r.t for r in self.alignset.rectangles]))
+        field_logs = []
+        for r in self.alignset.rectangles :
+            field_logs.append(FieldLog(self.samp_name,r.file,r.n))
         with cd(self.working_dir) :
             writetable(f'metadata_summary_{os.path.basename(os.path.normpath(self.working_dir))}.csv',[ms])
+            writetable(f'field_log_{os.path.basename(os.path.normpath(self.working_dir))}.csv',field_logs)
         #get the list of raw file paths
         self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.samp_name,fn.replace(self.IM3_EXT,CONST.RAW_EXT)) 
                               for fn in [r.file for r in self.alignset.rectangles]]
