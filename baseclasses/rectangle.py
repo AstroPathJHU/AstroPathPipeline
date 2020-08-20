@@ -1,4 +1,4 @@
-import abc, collections, contextlib, dataclasses, datetime, methodtools, numpy as np, pathlib
+import abc, collections, contextlib, dataclasses, datetime, methodtools, numpy as np, pathlib, warnings
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, memmapcontext
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
@@ -50,10 +50,17 @@ class Rectangle(DataClassWithDistances):
     return np.array([self.w, self.h])
 
 class RectangleWithImageBase(Rectangle):
+  __DEBUG = True
+
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.__using_image_property = False
     self.__using_image_counter = 0
+    self.__debug_load_image_counter = 0
+
+  def __del__(self):
+    if self.__DEBUG and self.__debug_load_image_counter > 1:
+      warnings.warn(f"Loaded image for rectangle {self} {self.__debug_load_image_counter} times")
 
   @abc.abstractmethod
   def getimage(self):
@@ -75,6 +82,7 @@ class RectangleWithImageBase(Rectangle):
       self.__image.cache_clear()
   @methodtools.lru_cache()
   def __image(self):
+    self.__debug_load_image_counter += 1
     return self.getimage()
 
   @contextlib.contextmanager

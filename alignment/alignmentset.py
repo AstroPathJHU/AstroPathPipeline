@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2, methodtools, numpy as np, traceback
+import contextlib, cv2, methodtools, numpy as np, traceback
 
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.sample import FlatwSampleBase, ReadRectangles, ReadRectanglesFromXML
@@ -79,7 +79,10 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
 
   def getDAPI(self, keeprawimages=False, mean_image=None, overwrite=True):
     self.logger.info("getDAPI")
-    self.images = [r.image for r in self.rectangles]
+    with contextlib.ExitStack() as stack:
+      for r in self.rectangles:
+        stack.enter_context(r.using_original_image())
+      self.images = [r.image for r in self.rectangles]
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
