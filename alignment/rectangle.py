@@ -1,12 +1,12 @@
 import numpy as np
 
-from ..baseclasses.rectangle import RectangleWithImage
+from ..baseclasses.rectangle import RectangleTransformImageBase, RectangleWithImage
 from ..utilities.misc import dummylogger
 from .flatfield import meanimage
 
-class AlignmentRectangle(RectangleWithImage):
+class AlignmentRectangle(RectangleTransformImageBase):
   def __init__(self, *args, mean_image=None, keepraw=False, logger=dummylogger, **kwargs):
-    super().__init__(*args, **kwargs)
+    super().__init__(originalrectangle=RectangleWithImage(*args, **kwargs))
     self.__allrectangles = None
     self.__meanimage = mean_image
     self.__rawimage = None
@@ -16,38 +16,30 @@ class AlignmentRectangle(RectangleWithImage):
   def setrectanglelist(self, allrectangles):
     self.__allrectangles = allrectangles
 
-  def getimage(self):
+  def transformimage(self, originalimage):
     self.__setmeanimage()
     for r in self.__allrectangles:
       r.__setmeanimage(mean_image=self.__meanimage)
-    img = np.empty_like(self.__rawimage)
-    img[:] = np.rint(self.__rawimage / self.__meanimage.flatfield)
-    if not self.__keeprawimage:
-      self.__rawimage = None
+    img = np.empty_like(originalimage)
+    img[:] = np.rint(originalimage / self.__meanimage.flatfield)
     self.__meanimage = None
     return img
-
-  def __getrawimage(self):
-    if self.__rawimage is None:
-      self.__rawimage = super().getimage()
-    return self.__rawimage
 
   def __setmeanimage(self, mean_image=None):
     if self.__allrectangles is None:
       raise ValueError("Have to call setrectanglelist() before getting any images")
     if self.__meanimage is None:
       if mean_image is None:
-        if mean_image is None:
-          allimages = []
-          n = len(self.__allrectangles)
-          for i, r in enumerate(self.__allrectangles, start=1):
-            self.__logger.info(f"loading rectangle {i}/{n}")
-            allimages.append(r.__getrawimage())
-          self.__logger.info("meanimage")
-          mean_image = meanimage(allimages)
+        allimages = []
+        n = len(self.__allrectangles)
+        for i, r in enumerate(self.__allrectangles, start=1):
+          self.__logger.info(f"loading rectangle {i}/{n}")
+          with r.using_original_image() as rawimage:
+            allimages.append(rawimage)
+        self.__logger.info("meanimage")
+        mean_image = meanimage(allimages)
       self.__meanimage = mean_image
 
-  @property
-  def rawimage(self):
-    self.__keeprawimage = True
-    return self.__getrawimage()
+  def propagateattribute(self, attr):
+    if attr == "layer": return True
+    return super().propagateattribute(attr)

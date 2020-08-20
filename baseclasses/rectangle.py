@@ -50,28 +50,75 @@ class Rectangle(DataClassWithDistances):
     return np.array([self.w, self.h])
 
 class RectangleWithImageBase(Rectangle):
-  #do not override this property
-  #override getimage() instead and call super().getimage()
-  @property
-  def image(self):
-    return self.__image()
-  @image.deleter
-  def image(self):
-    self.__image.cache_clear()
-  @methodtools.lru_cache()
-  def __image(self):
-    return self.getimage()
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__using_image_property = False
+    self.__using_image_counter = 0
 
   @abc.abstractmethod
   def getimage(self):
     pass
 
+  #do not override any of these functions or call them from super()
+  #override getimage() instead and call super().getimage()
+
+  @property
+  def image(self):
+    self.__using_image_property = True
+    return self.__image()
+  @image.deleter
+  def image(self):
+    self.__using_image_property = False
+    self.__check_delete_image()
+  def __check_delete_image(self):
+    if not self.__using_image_counter and not self.__using_image_property:
+      self.__image.cache_clear()
+  @methodtools.lru_cache()
+  def __image(self):
+    return self.getimage()
+
   @contextlib.contextmanager
   def using_image(self):
+    self.__using_image_counter += 1
     try:
-      yield self.image
+      yield self.__image()
     finally:
-      del self.image
+      self.__using_image_counter -= 1
+      self.__check_delete_image()
+
+class RectangleTransformImageBase(RectangleWithImageBase):
+  def __init__(self, *args, originalrectangle, **kwargs):
+    super().__init__(rectangle=originalrectangle, *args, readingfromfile=False, **kwargs)
+    self.__originalrectangle = originalrectangle
+  def getimage(self):
+    with self.__originalrectangle.using_image() as originalimage:
+      return self.transformimage(originalimage)
+  @abc.abstractmethod
+  def transformimage(self, originalimage):
+    pass
+  @property
+  def originalimage(self):
+    return self.__originalrectangle.image
+  def using_original_image(self):
+    return self.__originalrectangle.using_image()
+  @property
+  def rawimage(self):
+    if isinstance(self.originalrectangle, RectangleTransformImageBase):
+      return self.__originalrectangle.rawimage
+    else:
+      return self.__originalimage
+  @property
+  def using_raw_image(self):
+    if isinstance(self.originalrectangle, RectangleTransformImageBase):
+      return self.__originalrectangle.using_raw_image()
+    else:
+      return self.using_original_image()
+
+  def propagateattribute(self, attr): return False
+  def __getattr__(self, attr):
+    if self.propagateattribute(attr):
+      return getattr(self.__originalrectangle, attr)
+    raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr}'")
 
 class RectangleReadImageBase(RectangleWithImageBase):
   @abc.abstractproperty
