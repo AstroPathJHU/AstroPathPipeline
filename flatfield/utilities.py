@@ -46,6 +46,13 @@ def smoothImageWorker(im_array,smoothsigma,return_list=None) :
     else :
         return im_out_umat.get()
 
+class SmoothedRectangle(RectangleTransformImageBase):
+  def __init__(self, *args, smoothsigma, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__smoothsimgma = smoothsigma
+  def transformimage(self, originalimage):
+    return smoothimageworker(originalimage, self.__smoothsigma)
+
 #helper function to return the sample name from a whole filepath
 def sampleNameFromFilepath(fp) :
     return os.path.basename(os.path.dirname(os.path.normpath(fp)))
