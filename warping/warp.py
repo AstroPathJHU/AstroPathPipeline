@@ -137,9 +137,9 @@ class PolyFieldWarp(Warp) :
         Write out .bin files of the dx and dy warping fields and also make an image showing them 
         file_stem = the unique identifier to add to the .bin filenames
         """
-        writeImageToFile(self.x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=self.x_warps.dtype())
-        writeImageToFile(self.y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=self.y_warps.dtype())
-        f,ax = plt.subplots(1,3,figsize=(3*6.4,4.6))
+        writeImageToFile(self.x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        writeImageToFile(self.y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(self.r_warps)
         ax[0].scatter(self.xc,self.yc,marker='*',color='yellow')
         ax[0].set_title('total warp')
@@ -184,7 +184,10 @@ class PolyFieldWarp(Warp) :
         #translate r-dependent corrections to dx and dy shifts and return
         x_warps = np.zeros_like(r_warps); y_warps = np.zeros_like(r_warps)
         x_warps[r!=0] = r_warps[r!=0]*(x[r!=0]/r[r!=0]); y_warps[r!=0] = r_warps[r!=0]*(y[r!=0]/r[r!=0])
-        return r_warps, -x_warps, -y_warps #signs flipped so they behave like cv2.undistort
+        r_warps = r_warps.astype(CONST.OUTPUT_FIELD_DTYPE)
+        x_warps = (-x_warps).astype(CONST.OUTPUT_FIELD_DTYPE) #signs flipped so they behave like cv2.undistort
+        y_warps = (-y_warps).astype(CONST.OUTPUT_FIELD_DTYPE) #signs flipped so they behave like cv2.undistort
+        return r_warps, x_warps, y_warps
 
     #Alex's helper function to fit a polynomial to the warping given a max amount of warp
     def __polyFit(self,max_warp,deg,squared=False,plot=False) :
@@ -517,7 +520,10 @@ class CameraWarp(Warp) :
         xpos, ypos = grid[1], grid[0]
         x_warps = xpos-map_x
         y_warps = ypos-map_y
-        return np.sqrt(x_warps**2+y_warps**2), x_warps, y_warps
+        r_warps = (np.sqrt(x_warps**2+y_warps**2)).astype(CONST.OUTPUT_FIELD_DTYPE)
+        x_warps = (x_warps).astype(CONST.OUTPUT_FIELD_DTYPE)
+        y_warps = (y_warps).astype(CONST.OUTPUT_FIELD_DTYPE)
+        return r_warps, x_warps, y_warps
 
     def writeOutWarpFields(self,file_stem) :
         """
@@ -525,9 +531,9 @@ class CameraWarp(Warp) :
         file_stem = the unique identifier to add onto the warp field .bin file names
         """
         r_warps, x_warps, y_warps = self.getWarpFields()
-        writeImageToFile(x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=x_warps.dtype)
-        writeImageToFile(y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=y_warps.dtype)
-        f,ax = plt.subplots(1,3,figsize=(3*6.4,4.6))
+        writeImageToFile(x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        writeImageToFile(y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(r_warps)
         ax[0].scatter(self.cx,self.cy,marker='*',color='yellow')
         ax[0].set_title('total warp')

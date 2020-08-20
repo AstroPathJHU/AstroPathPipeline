@@ -1,4 +1,6 @@
+#imports
 from ..flatfield.config import CONST as FLATFIELD_CONST
+import numpy as np
 
 #class for shared constant variables
 class Const :
@@ -39,6 +41,9 @@ class Const :
     @property
     def Y_WARP_BIN_FILENAME(self) :
         return 'dy_warp_field' #name of the dy warping field binary file
+    @property
+    def OUTPUT_FIELD_DTYPE(self) :
+        return np.float64 #datatype for outputting the warp fields
     @property
     def WARP_FIELD_FIGURE_NAME(self) :
         return 'warp_fields'

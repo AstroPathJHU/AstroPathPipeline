@@ -6,7 +6,7 @@ from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..exposuretime.utilities import LayerOffset
 from ..baseclasses.rectangle import rectangleoroverlapfilter
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getSampleMaxExposureTimesByLayer
+from ..utilities.img_file_io import getImageHWLFromXMLFile, getMaxExposureTimeAndCorrectionOffsetForSampleLayer
 from ..utilities.tableio import readtable, writetable
 from ..utilities import units
 from ..utilities.misc import cd, MetadataSummary
@@ -105,20 +105,7 @@ class WarpFitter :
         n_threads                 = how many different processes to run when loading files
         """
         #load the exposure time correction offsets and the max exposure times by layer
-        max_exp_time = None; et_correction_offset = None
-        if et_correction_offset_file is not None :
-            warp_logger.info("Loading info for exposure time correction...")
-            max_exp_time = getSampleMaxExposureTimesByLayer(self.metadata_top_dir,self.samp_name)[self.warpset.layer-1]
-            layer_offsets = readtable(et_correction_offset_file,LayerOffset)
-            this_layer_offset = [lo.offset for lo in layer_offsets if lo.layer_n==self.warpset.layer]
-            if len(this_layer_offset)==1 :
-                et_correction_offset = this_layer_offset[0]
-            elif len(this_layer_offset)==0 :
-                warp_logger.warn(f"""WARNING: LayerOffset file {et_correction_offset_file} does not have an entry for layer {self.warpset.layer}; 
-                                     offset will be set to zero!""")
-                et_correction_offset = 0.
-            else :
-                raise WarpingError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {self.warpset.layer}!')
+        max_exp_time, et_correction_offset = getMaxExposureTimeAndCorrectionOffsetForSampleLayer()
         #load the raw images
         self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.metadata_top_dir,
                                    flatfield_file_path,max_exp_time,et_correction_offset,

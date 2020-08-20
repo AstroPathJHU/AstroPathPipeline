@@ -1,7 +1,7 @@
 #imports
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..utilities.img_file_io import getRawAsHWL, getExposureTimesByLayer, correctImageLayerForExposureTime
+from ..utilities.img_file_io import getRawAsHWL, getExposureTimesByLayer, correctImageLayerForExposureTime, correctImageLayerWithFlatfield
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
@@ -124,11 +124,14 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_nam
 #meant to be run in parallel
 def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,max_et,offset,overlaps,rectangles,metadata_top_dir,smoothsigma,return_dict=None,return_dict_key=None) :
     #get the raw image
-    rawimage = (np.clip(np.rint(((getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1])/flatfield),0,np.iinfo(np.uint16).max)).astype(np.uint16)
+    rawimage = (getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1]
+    raw_dtype=rawimage.dtype
     #correct the raw image for exposure time if requested
     if max_et is not None and offset is not None :
         exp_time = (getExposureTimesByLayer(rfp,nlayers,metadata_top_dir))[layer-1]
         rawimage = correctImageLayerForExposureTime(rawimage,exp_time,max_et,offset)
+    #correct the raw image with the flatfield
+    rawimage = correctImageLayerWithFlatfield(rawimage,flatfield)
     rfkey = os.path.basename(os.path.normpath(rfp)).split('.')[0]
     #find out if this image should be masked when skipping the corner overlaps
     if overlaps is not None and rectangles is not None :
