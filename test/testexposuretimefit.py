@@ -2,6 +2,9 @@
 
 #imports
 from ..exposuretime.exposure_time_fit_group import ExposureTimeOffsetFitGroup
+from ..exposuretime.utilities import LayerOffset
+from ..utilities.tableio import readtable
+from .testbase import assertAlmostEqual
 import pathlib, shutil
 
 #some constants
@@ -31,6 +34,12 @@ print('Running fits....')
 fit_group.runFits(None,overlaps_arg,smoothsigma_arg,True,
                   initial_offset_arg,bounds_arg,max_iter_arg,gtol_arg,eps_arg,print_every_arg,
                   n_comparisons_to_save_arg)
+
+new = readtable(working_dir/"M21_1_layers_26-33_best_fit_offsets.csv", LayerOffset)
+ref = readtable(folder/"reference"/"exposuretimefit"/"M21_1_layers_26-33_best_fit_offsets.csv", LayerOffset)
+for offsetnew, offsetref in zip(new, ref):
+  assertAlmostEqual(offsetnew, offsetref, rtol=1e-6)
+
 print('Removing working directory...')
 shutil.rmtree(working_dir,ignore_errors=True)
 print('Done!')
