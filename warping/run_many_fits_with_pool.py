@@ -175,7 +175,7 @@ if __name__=='__main__' :
     w_k1 = 0.; w_k2 = 0.; w_k3 = 0.; w_p1 = 0.; w_p2 = 0.
     sum_weights = 0.
     for result in [r for r in results if r.cost_reduction>0] :
-        w = r.cost_reduction
+        w = result.cost_reduction
         w_cx+=(w*result.cx); w_cy+=(w*result.cy); w_fx+=(w*result.fx); w_fy+=(w*result.fy)
         w_k1+=(w*result.k1); w_k2+=(w*result.k2); w_k3+=(w*result.k3)
         w_p1+=(w*result.p1); w_p2+=(w*result.p2)

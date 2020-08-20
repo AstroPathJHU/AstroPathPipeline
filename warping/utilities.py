@@ -125,7 +125,6 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_nam
 def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,max_et,offset,overlaps,rectangles,metadata_top_dir,smoothsigma,return_dict=None,return_dict_key=None) :
     #get the raw image
     rawimage = (getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1]
-    raw_dtype=rawimage.dtype
     #correct the raw image for exposure time if requested
     if max_et is not None and offset is not None :
         exp_time = (getExposureTimesByLayer(rfp,nlayers,metadata_top_dir))[layer-1]

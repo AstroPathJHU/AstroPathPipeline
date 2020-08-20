@@ -159,10 +159,10 @@ def getMaxExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename
       if len(this_layer_offset)==1 :
         et_correction_offsets.append(this_layer_offset[0])
       elif len(this_layer_offset)==0 :
-        utility_logger.warn(f"""WARNING: LayerOffset file {et_correction_offset_file} does not have an entry for layer {layer}; offset will be set to zero!""")
+        utility_logger.warn(f"""WARNING: LayerOffset file {et_correction_offset_file} does not have an entry for layer {ln}; offset will be set to zero!""")
         et_correction_offsets.append(0.)
       else :
-        raise RuntimeError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {layer}!')
+        raise RuntimeError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {ln}!')
   else :
     utility_logger.warn(f"""WARNING: Exposure time correction info cannot be determined from et_correction_offset_file = {et_correction_offset_file}; 
                             max exposure times and correction offsets will all be None!""")

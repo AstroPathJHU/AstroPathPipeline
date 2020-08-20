@@ -160,11 +160,11 @@ class FlatfieldProducer :
                                                  if this_samp_fps_to_run.index(fr.rawfile_path) in this_samp_indices_for_masking_plots]
                 fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,samp,selected_pixel_cut,this_chunk_masking_plot_indices)
                 for fi in range(len(new_field_logs)) :
-                    new_field_logs[i].stacked_in_layers = fields_stacked_in_layers[fi]
+                    new_field_logs[fi].stacked_in_layers = fields_stacked_in_layers[fi]
                 self._field_logs+=new_field_logs
         #write out the list of metadata summaries
         with cd(self.mean_image.workingdir_name) :
-            writetable(f'{IMAGE_STACK_MDS_FN_STEM}_{self.mean_image.workingdir_name}.csv',self._metadata_summaries)
+            writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{self.mean_image.workingdir_name}.csv',self._metadata_summaries)
 
     def makeFlatField(self) :
         """

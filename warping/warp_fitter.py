@@ -4,10 +4,9 @@ from .fit_parameter_set import FitParameterSet
 from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult, FieldLog
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..exposuretime.utilities import LayerOffset
 from ..baseclasses.rectangle import rectangleoroverlapfilter
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getMaxExposureTimeAndCorrectionOffsetForSampleLayer
-from ..utilities.tableio import readtable, writetable
+from ..utilities.tableio import writetable
 from ..utilities import units
 from ..utilities.misc import cd, MetadataSummary
 import numpy as np, scipy, matplotlib.pyplot as plt

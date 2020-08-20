@@ -103,7 +103,7 @@ class RawfileCorrector :
             pos = ax[2].imshow(self._dy_warp_field)
             ax[2].set_title(f'dy warp from {dy_warp_field_path}')
             f.colorbar(pos,ax=ax[2])
-            plt.savefig(f'applied_warping_correction_model.png')
+            plt.savefig('applied_warping_correction_model.png')
             plt.close()
         else :
             self._dx_warp_field = None
@@ -158,7 +158,7 @@ class RawfileCorrector :
             procs = []
             manager = mp.Manager()
             return_list = manager.list()
-            for irfp,rfp in enumerate(all_rawfile_paths,start==1) :
+            for irfp,rfp in enumerate(all_rawfile_paths,start=1) :
                 p = mp.Process(target=self.__correctAndCopyWorker,args=(rfp,irfp,len(all_rawfile_paths)))
                 procs.append(p)
                 p.start()
@@ -173,7 +173,7 @@ class RawfileCorrector :
                     while len(return_list)>0 :
                         self.__writeLog(return_list.pop(),False)
         else :
-            for irfp,rfp in enumerate(all_rawfile_paths,start==1) :
+            for irfp,rfp in enumerate(all_rawfile_paths,start=1) :
                 self.__correctAndCopyWorker(rfp,irfp,len(all_rawfile_paths))
         correction_logger.info('All files corrected and copied!')
 
@@ -192,9 +192,9 @@ class RawfileCorrector :
     def __correctAndCopyWorker(self,rawfile_path,file_i,n_total_files,return_list=None) :
         #start up the message of what was done
         msg=f'layer {self._layer} of image {rawfile_path} ({file_i} of {n_total_files}) '
-        if ((self._max_exp_time is not None) and (self._et_correction_offset is not None)) or 
-           (self._ff_layer is not None) or 
-           ((self._dx_warp_field is not None) and (self._dy_warp_field is not None)) :
+        if ( ((self._max_exp_time is not None) and (self._et_correction_offset is not None)) or 
+             (self._ff_layer is not None) or 
+             ((self._dx_warp_field is not None) and (self._dy_warp_field is not None)) ) :
             msg+='corrected for '
         #first read in the layer of the rawfile
         rawfile_layer = (getRawAsHWL(rawfile_path,*(self._img_dims)))[:,:,self._layer-1]
