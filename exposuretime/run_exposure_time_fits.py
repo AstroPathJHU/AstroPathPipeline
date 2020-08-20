@@ -21,8 +21,8 @@ if __name__=='__main__' :
     image_processing_group = parser.add_argument_group('fit options', 'how should the fit be done?')
     image_processing_group.add_argument('--smooth_sigma',         default=3., type=float,
                                         help='Minimization stops when the projected gradient is less than this')
-    image_processing_group.add_argument('--central_regions_only', action='store_true',
-                                        help='Add this flag to cut out the outer 50%% of each overlap')
+    image_processing_group.add_argument('--use_whole_image', action='store_true',
+                                        help='Add this flag to use the entire images rather than the outer 50%% of each overlap')
     #group for options of how the fits will proceed
     fit_option_group = parser.add_argument_group('fit options', 'how should the fits be done?')
     fit_option_group.add_argument('--initial_offset', default=25.,      type=float,
@@ -55,7 +55,7 @@ if __name__=='__main__' :
     fit_group = ExposureTimeOffsetFitGroup(args.sample,args.rawfile_top_dir,args.metadata_top_dir,args.workingdir_name,args.layers,args.n_threads)
     #run the fits
     et_fit_logger.info('Running fits....')
-    fit_group.runFits(args.flatfield_file,args.overlaps,args.smooth_sigma,args.central_regions_only,
+    fit_group.runFits(args.flatfield_file,args.overlaps,args.smooth_sigma,args.use_whole_image,
                       args.initial_offset,args.offset_bounds,args.max_iter,args.gtol,args.eps,args.print_every,
                       args.n_comparisons_to_save)
     et_fit_logger.info('Done!')

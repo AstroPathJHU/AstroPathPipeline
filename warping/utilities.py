@@ -1,7 +1,8 @@
 #imports
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..utilities.img_file_io import getRawAsHWL, getExposureTimesByLayer, correctImageLayerForExposureTime
+from ..utilities.img_file_io import getRawAsHWL, getExposureTimesByLayer, correctImageLayerForExposureTime, correctImageLayerWithFlatfield
+from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
 import cv2, os, logging, dataclasses, copy
@@ -31,7 +32,27 @@ class WarpImage :
     @property
     def warped_image(self):
         return self.warped_image_umat.get()
-    
+
+#helper classes to represent octets of overlaps
+@dataclasses.dataclass(eq=False, repr=False)
+class OctetOverlapNumbers :
+    metadata_top_dir : str
+    rawfile_top_dir  : str
+    sample_name      : str
+    nclip            : int
+    layer            : int
+    p1_rect_n        : int
+    olap_1_n         : int
+    olap_2_n         : int
+    olap_3_n         : int
+    olap_4_n         : int
+    olap_6_n         : int
+    olap_7_n         : int
+    olap_8_n         : int
+    olap_9_n         : int
+    @property
+    def overlap_ns(self) :
+        return [self.olap_1_n,self.olap_2_n,self.olap_3_n,self.olap_4_n,self.olap_6_n,self.olap_7_n,self.olap_8_n,self.olap_9_n]
 
 #helper function to make sure necessary directories exist and that the input choice of fixed parameters is valid
 def checkDirAndFixedArgs(args) :
@@ -72,26 +93,44 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_nam
     #get the .csv file holding the octet p1s and overlaps ns
     octet_filepath = os.path.join(octet_run_dir,f'{sample_name}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
     warp_logger.info(f'Reading octet overlaps numbers from file {octet_filepath}...')
-    #make a list of overlaps for the whole sample from the metadata dir
-    a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,sample_name,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer)
-    octets = {}
-    with open(octet_filepath,'r') as ofp :
-        for line in [l.rstrip() for l in ofp.readlines()] :
-            linesplit = line.split(',')
-            this_olap_list = [olap for olap in a.overlaps if olap.n in [int(val) for val in linesplit[1:]]]
-            octets[int(linesplit[0])] = this_olap_list
-    return octets
+    #read the overlap ns from the file
+    octet_olap_ns = readtable(octet_filepath,OctetOverlapNumbers)
+    for octet_olap_n in octet_olap_ns :
+        if octet_olap_n.metadata_top_dir!=metadata_top_dir :
+            msg = f'ERROR: metadata_top_dir {metadata_top_dir} passed to readOctetsFromFile does not match '
+            msg+= f'{octet_olap_n.metadata_top_dir} in octet file {octet_filepath}!'
+            raise(WarpingError(msg))
+        if octet_olap_n.rawfile_top_dir!=rawfile_top_dir :
+            msg = f'ERROR: rawfile_top_dir {rawfile_top_dir} passed to readOctetsFromFile does not match '
+            msg+= f'{octet_olap_n.rawfile_top_dir} in octet file {octet_filepath}!'
+            raise(WarpingError(msg))
+        if octet_olap_n.sample_name!=sample_name :
+            msg = f'ERROR: sample_name {sample_name} passed to readOctetsFromFile does not match '
+            msg+= f'{octet_olap_n.sample_name} in octet file {octet_filepath}!'
+            raise(WarpingError(msg))
+        if octet_olap_n.nclip!=CONST.N_CLIP :
+            msg = f'ERROR: constant nclip {CONST.N_CLIP} in readOctetsFromFile does not match '
+            msg+= f'{octet_olap_n.nclip} in octet file {octet_filepath}!'
+            raise(WarpingError(msg))
+        if octet_olap_n.layer!=layer :
+            msg = f'ERROR: layer {layer} passed to readOctetsFromFile does not match '
+            msg+= f'{octet_olap_n.layer} in octet file {octet_filepath}!'
+            raise(WarpingError(msg))
+    octet_olap_ns.sort(key=lambda x:x.p1_rect_n)
+    return octet_olap_ns
 
 #Helper function to load a single raw file, correct its illumination with a flatfield layer, smooth it, 
 #and return information needed to create a new WarpImage
 #meant to be run in parallel
 def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,max_et,offset,overlaps,rectangles,metadata_top_dir,smoothsigma,return_dict=None,return_dict_key=None) :
     #get the raw image
-    rawimage = (np.clip(np.rint(((getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1])/flatfield),0,np.iinfo(np.uint16).max)).astype(np.uint16)
+    rawimage = (getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1]
     #correct the raw image for exposure time if requested
     if max_et is not None and offset is not None :
         exp_time = (getExposureTimesByLayer(rfp,nlayers,metadata_top_dir))[layer-1]
         rawimage = correctImageLayerForExposureTime(rawimage,exp_time,max_et,offset)
+    #correct the raw image with the flatfield
+    rawimage = correctImageLayerWithFlatfield(rawimage,flatfield)
     rfkey = os.path.basename(os.path.normpath(rfp)).split('.')[0]
     #find out if this image should be masked when skipping the corner overlaps
     if overlaps is not None and rectangles is not None :
@@ -150,30 +189,26 @@ def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pi
             continue
         good_overlaps.append(overlap)
     warp_logger.info(f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)}')
-    #find the overlaps that form full octets (indexed by p1 number)
-    octets = {}
+    #find the overlaps that form full octets
+    octet_overlap_ns = []
     #begin by getting the set of all p1s
     p1s = set([o.p1 for o in good_overlaps])
     #for each p1, if there are eight good overlaps it forms an octet
     for p1 in p1s :
         overlapswiththisp1 = [o for o in good_overlaps if o.p1==p1]
         if len(overlapswiththisp1)==8 :
+            overlapswiththisp1.sort(key=lambda x: x.tag)
             ons = [o.n for o in overlapswiththisp1]
             warp_logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
-            octets[p1]=overlapswiththisp1
+            octet_overlap_ns.append(OctetOverlapNumbers(metadata_top_dir,rawfile_top_dir,samp,CONST.N_CLIP,layer,p1,*(ons)))
+    octet_overlap_ns.sort(key=lambda x: x.p1_rect_n)
     #save the file of which overlaps are in each valid octet
     with cd(working_dir) :
-        with open(f'{samp}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}','w') as ofp :
-            for octet_p1,octet_olaps in octets.items() :
-                new_line=f'{octet_p1},'
-                for octet_olap_n in [oo.n for oo in octet_olaps] :
-                    new_line+=f'{octet_olap_n},'
-                new_line=new_line[:-1]+'\n'
-                ofp.write(new_line)
+        writetable(f'{samp}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',octet_overlap_ns)
     #print how many octets there are 
-    warp_logger.info(f'{len(octets)} total octets found.')
+    warp_logger.info(f'{len(octet_overlap_ns)} total octets found.')
     #return the dictionary of octets
-    return octets
+    return octet_overlap_ns
 
 #helper function to find the limit on a parameter that produces the maximum warp
 def findDefaultParameterLimit(parindex,parincrement,warplimit,warpamtfunc,testpars) :
@@ -248,18 +283,16 @@ class OctetComparisonVisualization :
         self.whole_image=np.where(self.whole_image==0,magenta_p1,self.whole_image)
         return failed_p1s_codes
 
-    def writeOutFigure(self,dirpath) :
+    def writeOutFigure(self) :
         """
         Write out a .png of the total octet overlay image
-        dirpath = directory to write the figure out to
         """ 
         f,ax = plt.subplots(figsize=(CONST.OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH,
                                      np.rint((self.whole_image.shape[0]/self.whole_image.shape[1])*CONST.OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH)))
         ax.imshow(self.whole_image)
         ax.set_title(self.name_stem.replace('_',' '))
-        with cd(dirpath) :
-            plt.savefig(f'{self.name_stem}.png')
-            plt.close()
+        plt.savefig(f'{self.name_stem}.png')
+        plt.close()
 
     #helper function to add a single overlap's set of overlays to the total image
     def __addSingleOverlap(self,code) :
@@ -344,3 +377,11 @@ class WarpFitResult :
     raw_cost        : float = 0.0
     best_cost       : float = 0.0
     cost_reduction  : float = 0.0
+
+#little utility class to log the fields used
+@dataclasses.dataclass
+class FieldLog :
+    sample : str
+    file   : str
+    rect_n : int
+

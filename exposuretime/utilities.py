@@ -56,9 +56,16 @@ class ExposureTimeOverlapFitResult :
     prefit_cost  : float
     postfit_cost : float
 
+#helper class to store offset factors by layer with some extra info
 @dataclasses.dataclass
 class LayerOffset :
     layer_n    : int
     n_overlaps : int
     offset     : float
     final_cost : float
+
+#helper class to log fields used in making the measurement
+@dataclasses.dataclass
+class FieldLog :
+    file : str
+    rect_n : int

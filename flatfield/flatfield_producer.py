@@ -1,12 +1,13 @@
 #imports
 from .flatfield_sample import FlatfieldSample 
 from .mean_image import MeanImage
-from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath
+from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath, FieldLog
 from .config import CONST
+from ..alignment.alignmentset import AlignmentSetFromXML
 from ..exposuretime.utilities import LayerOffset
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer
-from ..utilities.tableio import readtable
-from ..utilities.misc import cd
+from ..utilities.tableio import readtable, writetable
+from ..utilities.misc import cd, MetadataSummary
 import os, random
 
 #main class
@@ -23,7 +24,10 @@ class FlatfieldProducer :
 
     #################### CLASS CONSTANTS ####################
     
-    THRESHOLDING_PLOT_DIR_NAME = 'thresholding_info' #name of the directory where the thresholding information will be stored
+    THRESHOLDING_PLOT_DIR_NAME = 'thresholding_info'               #name of the directory where the thresholding information will be stored
+    IM3_EXT                    = '.im3'                            #to replace in rectangle filenames
+    IMAGE_STACK_MDS_FN_STEM    = 'metadata_summary_stacked_images' #partial filename for the metadata summary file for the stacked images
+    FIELDS_USED_STEM           = 'fields_used'                     #partial filename for the field log file to write out
 
     #################### PUBLIC FUNCTIONS ####################
     
@@ -45,9 +49,12 @@ class FlatfieldProducer :
             self.flatfield_sample_dict[sn]=FlatfieldSample(sn,img_dims)
         #Start up a new mean image to use for making the actual flatfield
         self.mean_image = MeanImage(img_dims[0],img_dims[1],img_dims[2],workingdir_name,skip_masking,skip_et_correction)
+        #Set up the exposure time correction offsets by layer
         self._et_correction_offsets = []
         for li in range(img_dims[2]) :
             self._et_correction_offsets.append(None)
+        self._metadata_summaries = []
+        self._field_logs = []
 
     def readInBackgroundThresholds(self,threshold_file_dir) :
         """
@@ -73,13 +80,14 @@ class FlatfieldProducer :
         for sn,samp in sorted(self.flatfield_sample_dict.items()) :
             threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
             flatfield_logger.info(f'Finding background thresholds from tissue edges for sample {sn}...')
-            samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
-                                          self.metadata_top_dir,
-                                          n_threads,
-                                          self.exposure_time_correction_offsets,
-                                          os.path.join(self.mean_image.workingdir_name,self.THRESHOLDING_PLOT_DIR_NAME),
-                                          threshold_file_name,
-                                          )
+            new_field_logs = samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
+                                                           self.metadata_top_dir,
+                                                           n_threads,
+                                                           self.exposure_time_correction_offsets,
+                                                           os.path.join(self.mean_image.workingdir_name,self.THRESHOLDING_PLOT_DIR_NAME),
+                                                           threshold_file_name,
+                                                        )
+            self._field_logs+=new_field_logs
 
     def readInExposureTimeCorrectionOffsets(self,et_correction_file) :
         """
@@ -115,14 +123,19 @@ class FlatfieldProducer :
             #get all the filepaths in this sample
             this_samp_fps_to_run = [fp for fp in self.all_sample_rawfile_paths_to_run if sampleNameFromFilepath(fp)==sn]
             #If they're being neglected, get the filepaths corresponding to HPFs on the edge of the tissue
+            this_samp_edge_HPF_filepaths = samp.findTissueEdgeFilepaths(this_samp_fps_to_run,self.metadata_top_dir)
             if not allow_edge_HPFs :
-                this_samp_edge_HPF_filepaths = samp.findTissueEdgeFilepaths(this_samp_fps_to_run,self.metadata_top_dir)
                 flatfield_logger.info(f'Neglecting {len(this_samp_edge_HPF_filepaths)} files on the edge of the tissue')
                 this_samp_fps_to_run = [fp for fp in this_samp_fps_to_run if fp not in this_samp_edge_HPF_filepaths]
             #If this sample doesn't have any images to stack, warn the user and continue
             if len(this_samp_fps_to_run)<1 :
                 flatfield_logger.warn(f'WARNING: sample {sn} does not have any images to be stacked!')
                 continue
+            #otherwise add the metadata summary for this sample to the producer's list
+            a = AlignmentSetFromXML(self.metadata_top_dir,os.path.dirname(os.path.dirname(this_samp_fps_to_run[0])),sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
+            this_samp_rect_fn_stems = [os.path.basename(os.path.normpath(fp)).split('.')[0] for fp in this_samp_fps_to_run]
+            rect_ts = [r.t for r in a.rectangles if r.file.replace(self.IM3_EXT,'') in this_samp_rect_fn_stems]
+            self._metadata_summaries.append(MetadataSummary(sn,a.Project,a.Cohort,a.microscopename,min(rect_ts),max(rect_ts)))
             #choose which of them will have their masking images saved
             if len(this_samp_fps_to_run)<n_masking_images_per_sample :
                 msg=f'WARNING: Requested to save {n_masking_images_per_sample} masking images for each sample,'
@@ -139,12 +152,19 @@ class FlatfieldProducer :
             for fr_chunk in fileread_chunks :
                 if len(fr_chunk)<1 :
                     continue
+                new_field_logs = [FieldLog(sn,fr.rawfile_path,'edge' if fr.rawfile_path in this_samp_edge_HPF_filepaths else 'bulk','stacking') for fr in fr_chunk]
                 new_img_arrays = readImagesMT(fr_chunk,
                                               max_exposure_times_by_layer=max_exp_times_by_layer,
                                               et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
                 this_chunk_masking_plot_indices=[fr_chunk.index(fr) for fr in fr_chunk 
                                                  if this_samp_fps_to_run.index(fr.rawfile_path) in this_samp_indices_for_masking_plots]
-                self.mean_image.addGroupOfImages(new_img_arrays,samp,selected_pixel_cut,this_chunk_masking_plot_indices)
+                fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,samp,selected_pixel_cut,this_chunk_masking_plot_indices)
+                for fi in range(len(new_field_logs)) :
+                    new_field_logs[fi].stacked_in_layers = fields_stacked_in_layers[fi]
+                self._field_logs+=new_field_logs
+        #write out the list of metadata summaries
+        with cd(self.mean_image.workingdir_name) :
+            writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{self.mean_image.workingdir_name}.csv',self._metadata_summaries)
 
     def makeFlatField(self) :
         """
@@ -176,7 +196,7 @@ class FlatfieldProducer :
 
     def writeOutInfo(self) :
         """
-        Save layer-by-layer images, some plots, and the list of rawfile paths
+        Save layer-by-layer images, some plots, and the log of fields used
         """
         #save the images
         flatfield_logger.info('Saving layer-by-layer images....')
@@ -184,3 +204,5 @@ class FlatfieldProducer :
         #make some visualizations of the images
         flatfield_logger.info('Saving plots....')
         self.mean_image.savePlots()
+        with cd(self.mean_image.workingdir_name) :
+            writetable(f'{self.FIELDS_USED_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_name))}.csv',self._field_logs)

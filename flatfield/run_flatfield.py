@@ -37,7 +37,8 @@ def checkArgs(a) :
         raise RuntimeError(msg)
     #if the user wants to apply a previously-calculated flatfield, the flatfield itself, and rawfile log, both have to exist in the prior run dir
     if a.mode=='apply_flatfield' :  
-        if not os.path.isfile(os.path.join(a.prior_run_dir,f'{CONST.FLATFIELD_FILE_NAME_STEM}{CONST.FILE_EXT}')) :
+        prior_run_ff_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(a.prior_run_dir))}{CONST.FILE_EXT}'
+        if not os.path.isfile(os.path.join(a.prior_run_dir,prior_run_ff_filename)) :
             raise ValueError(f'ERROR: previously-created flatfield image does not exist in prior run directory {a.prior_run_dir}!')
         if not os.path.isfile(os.path.join(a.prior_run_dir,f'{FILEPATH_TEXT_FILE_NAME}')) :
             raise ValueError(f'ERROR: raw file path log does not exist in prior run directory {a.prior_run_dir}!')
@@ -271,7 +272,8 @@ def main() :
             ff_producer.makeFlatField()
         if args.mode=='apply_flatfield' :
             #apply the flatfield to the image stack
-            ff_producer.applyFlatField(os.path.join(args.prior_run_dir,f'{CONST.FLATFIELD_FILE_NAME_STEM}{CONST.FILE_EXT}'))
+            prior_run_ff_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(args.prior_run_dir))}{CONST.FILE_EXT}'
+            ff_producer.applyFlatField(os.path.join(args.prior_run_dir,prior_run_ff_filename))
         #save the plots, etc.
         ff_producer.writeOutInfo()
     flatfield_logger.info('All Done!')
