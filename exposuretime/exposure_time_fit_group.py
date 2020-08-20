@@ -78,7 +78,7 @@ class ExposureTimeOffsetFitGroup :
                 procs = []
                 for fit in batch_fits :
                     p = mp.Process(target=fit.writeOutResults,
-                                   args=(n_comparisons_to_save)
+                                   args=(n_comparisons_to_save,)
                                   )
                     procs.append(p)
                     p.start()
