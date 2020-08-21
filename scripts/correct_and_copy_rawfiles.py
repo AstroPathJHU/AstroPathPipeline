@@ -155,7 +155,7 @@ class RawfileCorrector :
         #next run the correction and copying of the files
         for irfp,rfp in enumerate(all_rawfile_paths,start=1) :
             self._correctAndCopyWorker(rfp,irfp,len(all_rawfile_paths))
-        correction_logger.info('All files corrected and copied!')
+        self.__writeLog('All files corrected and copied!')
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
