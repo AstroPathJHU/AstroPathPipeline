@@ -5,10 +5,14 @@ from ..utilities.misc import dummylogger
 from .flatfield import meanimage
 
 class AlignmentRectangle(RectangleTransformImageBase):
-  def __init__(self, *args, mean_image=None, keepraw=False, logger=dummylogger, **kwargs):
-    super().__init__(originalrectangle=RectangleWithImage(*args, **kwargs))
+  def __init__(self, *args, mean_image=None, keepraw=False, use_mean_image=True, logger=dummylogger, originalrectangle=None, **kwargs):
+    if originalrectangle is not None:
+      super().__init__(*args, originalrectangle=originalrectangle, **kwargs)
+    else:
+      super().__init__(originalrectangle=RectangleWithImage(*args, **kwargs))
     self.__allrectangles = None
     self.__meanimage = mean_image
+    self.__usemeanimage = use_mean_image
     self.__rawimage = None
     self.__keeprawimage = False
     self.__logger = logger
@@ -17,12 +21,13 @@ class AlignmentRectangle(RectangleTransformImageBase):
     self.__allrectangles = allrectangles
 
   def transformimage(self, originalimage):
+    if not self.__usemeanimage: return originalimage
+
     self.__setmeanimage()
     for r in self.__allrectangles:
       r.__setmeanimage(mean_image=self.__meanimage)
     img = np.empty_like(originalimage)
     img[:] = np.rint(originalimage / self.__meanimage.flatfield)
-    self.__meanimage = None
     return img
 
   def __setmeanimage(self, mean_image=None):
@@ -43,3 +48,7 @@ class AlignmentRectangle(RectangleTransformImageBase):
   @property
   def layer(self):
     return self.originalrectangle.layer
+
+  @property
+  def meanimage(self):
+    return self.__meanimage

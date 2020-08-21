@@ -29,6 +29,9 @@ class Overlap(DataClassWithDistances):
     self.nclip = nclip
     self.result = None
 
+    self.updaterectangles(rectangles)
+
+  def updaterectangles(self, rectangles):
     p1rect = [r for r in rectangles if r.n==self.p1]
     p2rect = [r for r in rectangles if r.n==self.p2]
     if not len(p1rect) == len(p2rect) == 1:

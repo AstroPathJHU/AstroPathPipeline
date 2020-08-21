@@ -114,7 +114,7 @@ class RectangleTransformImageBase(RectangleWithImageBase):
     if isinstance(self.__originalrectangle, RectangleTransformImageBase):
       return self.__originalrectangle.rawimage
     else:
-      return self.__originalimage
+      return self.originalimage
   @property
   def using_raw_image(self):
     if isinstance(self.__originalrectangle, RectangleTransformImageBase):
@@ -287,5 +287,12 @@ def rectangleoroverlapfilter(selection, *, compatibility=False):
     return selection
   else:
     raise ValueError(f"Unknown rectangle or overlap selection: {selection}")
+
+class RectangleProvideImage(RectangleWithImageBase):
+  def __init__(self, *args, image, **kwargs):
+    self.__image = image
+    super().__init__(*args, **kwargs)
+  def getimage(self):
+    return self.__image
 
 rectanglefilter = rectangleoroverlapfilter

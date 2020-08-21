@@ -3,6 +3,7 @@
 import contextlib, cv2, methodtools, numpy as np, traceback
 
 from ..baseclasses.overlap import RectangleOverlapCollection
+from ..baseclasses.rectangle import RectangleProvideImage
 from ..baseclasses.sample import FlatwSampleBase, ReadRectangles, ReadRectanglesFromXML
 from ..utilities import units
 from ..utilities.tableio import readtable, writetable
@@ -111,21 +112,36 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     if correct_with_meanimage and recalculate_meanimage :
       self.updateRectangleImages(imgs,usewarpedimages)
       self.meanimage = meanimage([r.image for r in self.rectangles], logger=self.logger)
-    #replace the image in every rectangle
-    for img in imgs :
+
+    for img in imgs:
       if usewarpedimages :
         thisupdateimg=img.warped_image
       else :
         thisupdateimg=img.raw_image
-      #optionally divide by the mean image flatfield
-      if correct_with_meanimage :
-        thisupdateimg=(np.rint(thisupdateimg/self.meanimage.flatfield)).astype(thisupdateimg.dtype)
+
       if img.rectangle_list_index!=-1 : #if the image comes with its index in the list of rectangles it can be directly updated
-        np.copyto(self.rectangles[img.rectangle_list_index].image,thisupdateimg,casting='no')
+        i = img.rectangle_list_index
       else : #otherwise all the rectangles have to be searched
-        thisrect = [r for r in self.rectangles if img.rawfile_key==r.file.rstrip('.im3')]
-        assert len(thisrect)==1 
-        np.copyto(thisrect[0].image,thisupdateimg,casting='no')
+        i = [i for (i, r) in enumerate(self.rectangles) if img.rawfile_key==r.file.rstrip('.im3')]
+        assert len(i)==1
+        i = i[0]
+
+      r = self.rectangles[i]
+      newr = RectangleProvideImage(rectangle=r, image=thisupdateimg, readingfromfile=False)
+      self.rectangles[i] = newr
+
+      mean_image = None
+      if not recalculate_meanimage:
+        mean_image = r.meanimage
+
+      newr = AlignmentRectangle(originalrectangle=r, mean_image=mean_image, use_mean_image=correct_with_meanimage)
+      self.rectangles[i] = newr
+
+    for r in self.rectangles:
+      r.setrectanglelist(self.rectangles)
+
+    for o in self.overlaps:
+      o.updaterectangles(self.rectangles)
 
   def getOverlapComparisonImagesDict(self) :
     """
