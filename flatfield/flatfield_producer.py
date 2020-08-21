@@ -164,7 +164,7 @@ class FlatfieldProducer :
                 self._field_logs+=new_field_logs
         #write out the list of metadata summaries
         with cd(self.mean_image.workingdir_name) :
-            writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{self.mean_image.workingdir_name}.csv',self._metadata_summaries)
+            writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_name))}.csv',self._metadata_summaries)
 
     def makeFlatField(self) :
         """
