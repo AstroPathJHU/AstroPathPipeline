@@ -40,6 +40,6 @@ class AlignmentRectangle(RectangleTransformImageBase):
         mean_image = meanimage(allimages)
       self.__meanimage = mean_image
 
-  def propagateattribute(self, attr):
-    if attr == "layer": return True
-    return super().propagateattribute(attr)
+  @property
+  def layer(self):
+    return self.originalrectangle.layer

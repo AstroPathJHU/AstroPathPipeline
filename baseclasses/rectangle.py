@@ -111,22 +111,19 @@ class RectangleTransformImageBase(RectangleWithImageBase):
     return self.__originalrectangle.using_image()
   @property
   def rawimage(self):
-    if isinstance(self.originalrectangle, RectangleTransformImageBase):
+    if isinstance(self.__originalrectangle, RectangleTransformImageBase):
       return self.__originalrectangle.rawimage
     else:
       return self.__originalimage
   @property
   def using_raw_image(self):
-    if isinstance(self.originalrectangle, RectangleTransformImageBase):
+    if isinstance(self.__originalrectangle, RectangleTransformImageBase):
       return self.__originalrectangle.using_raw_image()
     else:
       return self.using_original_image()
-
-  def propagateattribute(self, attr): return False
-  def __getattr__(self, attr):
-    if self.propagateattribute(attr):
-      return getattr(self.__originalrectangle, attr)
-    raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr}'")
+  @property
+  def originalrectangle(self):
+    return self.__originalrectangle
 
 class RectangleReadImageBase(RectangleWithImageBase):
   @abc.abstractproperty
