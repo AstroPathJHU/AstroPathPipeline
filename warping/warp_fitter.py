@@ -1,15 +1,14 @@
 #imports
 from .warp_set import WarpSet
 from .fit_parameter_set import FitParameterSet
-from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult
+from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult, FieldLog
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..exposuretime.utilities import LayerOffset
 from ..baseclasses.rectangle import rectangleoroverlapfilter
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getSampleMaxExposureTimesByLayer
-from ..utilities.tableio import readtable, writetable
+from ..utilities.img_file_io import getImageHWLFromXMLFile, getMaxExposureTimeAndCorrectionOffsetForSampleLayer
+from ..utilities.tableio import writetable
 from ..utilities import units
-from ..utilities.misc import cd
+from ..utilities.misc import cd, MetadataSummary
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, copy, math, shutil, platform, time, logging
 
@@ -29,7 +28,7 @@ class WarpFitter :
 
     #################### CLASS CONSTANTS ####################
 
-    IM3_EXT = '.im3'                                          #to replace in filenames read from *_rect.csv
+    IM3_EXT = '.im3'                                          #to replace in rectangle filenames
     DE_TOLERANCE = 0.03                                       #tolerance for the differential evolution minimization
     DE_MUTATION = (0.2,0.8)                                   #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7                                    #recombination parameter for differential evolution minimization
@@ -60,6 +59,15 @@ class WarpFitter :
         self.bkp_units_mode = units.currentmode
         units.setup("fast") #be sure to use fast units
         self.alignset = self.__initializeAlignmentSet(overlaps=overlaps)
+        #save the metadata summary and field logs for this alignment set
+        ms = MetadataSummary(self.samp_name,self.alignset.Project,self.alignset.Cohort,self.alignset.microscopename,
+                             min([r.t for r in self.alignset.rectangles]),max([r.t for r in self.alignset.rectangles]))
+        field_logs = []
+        for r in self.alignset.rectangles :
+            field_logs.append(FieldLog(self.samp_name,r.file,r.n))
+        with cd(self.working_dir) :
+            writetable(f'metadata_summary_{os.path.basename(os.path.normpath(self.working_dir))}.csv',[ms])
+            writetable(f'field_log_{os.path.basename(os.path.normpath(self.working_dir))}.csv',field_logs)
         #get the list of raw file paths
         self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.samp_name,fn.replace(self.IM3_EXT,CONST.RAW_EXT)) 
                               for fn in [r.file for r in self.alignset.rectangles]]
@@ -96,20 +104,8 @@ class WarpFitter :
         n_threads                 = how many different processes to run when loading files
         """
         #load the exposure time correction offsets and the max exposure times by layer
-        max_exp_time = None; et_correction_offset = None
-        if et_correction_offset_file is not None :
-            warp_logger.info("Loading info for exposure time correction...")
-            max_exp_time = getSampleMaxExposureTimesByLayer(self.metadata_top_dir,self.samp_name)[self.warpset.layer-1]
-            layer_offsets = readtable(et_correction_offset_file,LayerOffset)
-            this_layer_offset = [lo.offset for lo in layer_offsets if lo.layer_n==self.warpset.layer]
-            if len(this_layer_offset)==1 :
-                et_correction_offset = this_layer_offset[0]
-            elif len(this_layer_offset)==0 :
-                warp_logger.warn(f"""WARNING: LayerOffset file {et_correction_offset_file} does not have an entry for layer {self.warpset.layer}; 
-                                     offset will be set to zero!""")
-                et_correction_offset = 0.
-            else :
-                raise WarpingError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {self.warpset.layer}!')
+        max_exp_time, et_correction_offset = getMaxExposureTimeAndCorrectionOffsetForSampleLayer(self.metadata_top_dir,self.samp_name,
+                                                                                                 et_correction_offset_file,self.warpset.layer)
         #load the raw images
         self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.metadata_top_dir,
                                    flatfield_file_path,max_exp_time,et_correction_offset,
@@ -335,7 +331,7 @@ class WarpFitter :
         self.__writeFitResult()
         #write out the warp field binary file and plots
         with cd(self.working_dir) :
-            self._best_fit_warp.writeOutWarpFields()
+            self._best_fit_warp.writeOutWarpFields(os.path.basename(os.path.normpath(self.working_dir)))
 
     #function to plot the costs and warps over all the iterations of the fit
     def __makeFitProgressPlots(self,ninitev) :
@@ -448,7 +444,8 @@ class WarpFitter :
                 failed_p1s_and_codes = oci.stackOverlays()
                 for fp1,fc in failed_p1s_and_codes :
                     addl_singlet_p1s_and_codes.add((fp1,fc))
-                oci.writeOutFigure(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME))
+                with cd(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME)) :
+                    oci.writeOutFigure()
         #plot the singlet overlap comparisons
         for overlap_identifier in raw_olap_comps.keys() :
             do_overlap = False
@@ -505,7 +502,7 @@ class WarpFitter :
         result.k3 = self._best_fit_warp.k3
         result.p1 = self._best_fit_warp.p1
         result.p2 = self._best_fit_warp.p2
-        max_r_x, max_r_y = self.warpset.warp._getMaxDistanceCoords()
+        max_r_x, max_r_y = self._best_fit_warp._getMaxDistanceCoords()
         result.max_r_x_coord  = max_r_x
         result.max_r_y_coord  = max_r_y
         result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)

@@ -37,7 +37,7 @@ ff_producer.makeFlatField()
 #save the plots, etc.
 ff_producer.writeOutInfo()
 #apply the flatfield to the same image stack
-ff_producer.applyFlatField(os.path.join(working_dir,f'{CONST.FLATFIELD_FILE_NAME_STEM}{CONST.FILE_EXT}'))
+ff_producer.applyFlatField(os.path.join(working_dir,f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(working_dir))}{CONST.FILE_EXT}'))
 #remove what was made
 flatfield_logger.info('Removing working directory....')
 shutil.rmtree(working_dir,ignore_errors=True)

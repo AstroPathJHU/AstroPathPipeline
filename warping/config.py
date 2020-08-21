@@ -1,4 +1,6 @@
+#imports
 from ..flatfield.config import CONST as FLATFIELD_CONST
+import numpy as np
 
 #class for shared constant variables
 class Const :
@@ -15,9 +17,6 @@ class Const :
     @property
     def THRESHOLD_FILE_EXT(self) :
         return f'_{FLATFIELD_CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
-    @property
-    def LAYER_OFFSET_FILE_NAME_STEM(self) :
-        return FLATFIELD_CONST.LAYER_OFFSET_FILE_NAME_STEM #name of the layer offset result .csv file
     #other image properties
     @property
     def CORNER_OVERLAP_TAGS(self):
@@ -38,13 +37,16 @@ class Const :
         return 'fit_result.csv' #the name of the fit result text file that gets written out
     @property
     def X_WARP_BIN_FILENAME(self) :
-        return 'dx_warp_field.bin' #name of the dx warping field binary file
+        return 'dx_warp_field' #name of the dx warping field binary file
     @property
     def Y_WARP_BIN_FILENAME(self) :
-        return 'dy_warp_field.bin' #name of the dy warping field binary file
+        return 'dy_warp_field' #name of the dy warping field binary file
+    @property
+    def OUTPUT_FIELD_DTYPE(self) :
+        return np.float64 #datatype for outputting the warp fields
     @property
     def WARP_FIELD_FIGURE_NAME(self) :
-        return 'warp_fields.png'
+        return 'warp_fields'
     @property
     def OVERLAY_NORMALIZE(self) :
         return 1000. #value to use to normalize the overlay images

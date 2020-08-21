@@ -42,6 +42,9 @@ def checkArgs(args) :
         tfp = os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
         if not os.path.isfile(tfp) :
             raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this sample ({tfp})!')
+    #The user must specify either an octet run dir or a threshold file dir
+    if args.threshold_file_dir is None and args.octet_run_dir is None :
+        raise ValueError('ERROR: must specify either an octet_run_dir or a threshold_file_dir!')
     #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate
     if args.threshold_file_dir is not None and args.octet_run_dir is not None :
         raise ValueError('ERROR: cannot specify both an octet_run_dir and a threshold_file_dir!')
@@ -77,14 +80,13 @@ def getOverlaps(args) :
         #otherwise run an alignment to find the valid octets get the dictionary of overlap octets
         else :
             threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
-            valid_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,args.workingdir_name,args.flatfield_file,
-                                           args.n_threads,args.layer)
+            valid_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,
+                                            args.workingdir_name,args.flatfield_file,args.n_threads,args.layer)
         if args.mode in ('fit', 'check_run', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
-            for i,octet in enumerate([valid_octets[key] for key in sorted(valid_octets.keys())],start=1) :
+            for i,octet in enumerate(valid_octets,start=1) :
                 if i in args.octets or args.octets==[-1]:
                     warp_logger.info(f'Adding overlaps in octet #{i}...')
-                    for overlap in octet :
-                        overlaps.append(overlap.n)
+                    overlaps+=octet.overlap_ns
             if (args.octets!=[-1] and len(overlaps)!=8*len(args.octets)) or (args.octets==[-1] and len(overlaps)!=8*len(valid_octets)) :
                 msg =f'specified octets {args.octets} did not result in the desired set of overlaps! '
                 msg+=f'(asked for {len(args.octets)} octets but found {len(overlaps)} corresponding overlaps)'

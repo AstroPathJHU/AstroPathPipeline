@@ -1,8 +1,10 @@
 #imports
+from ..exposuretime.utilities import LayerOffset
+from .tableio import readtable
 from .misc import cd
 import numpy as np
 import xml.etree.ElementTree as et
-import os, glob, logging
+import os, glob, cv2, logging
 
 #global variables
 RAWFILE_EXT           = '.Data.dat'
@@ -58,6 +60,17 @@ def getRawAsHW(fname,height,width,dtype=np.uint16) :
 def writeImageToFile(img_array,filename_to_write,dtype=np.uint16) :
   #write out image flattened in fortran order
   im3writeraw(filename_to_write,img_array.flatten(order="F").astype(dtype))
+
+#helper function to smooth an image
+#this can be run in parallel
+def smoothImageWorker(im_array,smoothsigma,return_list=None) :
+  if return_list is not None :
+    im_in_umat = cv2.UMat(im_array)
+    im_out_umat = cv2.UMat(np.empty_like(im_array))
+    cv2.GaussianBlur(im_in_umat,(0,0),smoothsigma,im_out_umat,borderType=cv2.BORDER_REPLICATE)
+    return_list.append(im_out_umat.get())
+  else :
+    return cv2.GaussianBlur(im_array,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
 
 #helper function to get an image dimension tuple from the sample XML file
 def getImageHWLFromXMLFile(metadata_topdir,samplename) :
@@ -133,12 +146,45 @@ def getSampleMaxExposureTimesByLayer(metadata_topdir,samplename) :
                 max_exposure_times_by_layer[li] = this_image_layer_exposure_times[li]
     return max_exposure_times_by_layer
 
+#helper function to return lists of the maximum exposure times and the exposure time correction offsets for all layers of a sample
+def getMaxExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file) :
+  utility_logger.info("Loading info for exposure time correction...")
+  max_exp_times = None; et_correction_offsets = None
+  if et_correction_offset_file is not None :
+    max_exp_times = getSampleMaxExposureTimesByLayer(metadata_top_dir,samplename)
+    et_correction_offsets=[]
+    read_layer_offsets = readtable(et_correction_offset_file,LayerOffset)
+    for ln in range(1,len(max_exp_times)+1) :
+      this_layer_offset = [lo.offset for lo in read_layer_offsets if lo.layer_n==ln]
+      if len(this_layer_offset)==1 :
+        et_correction_offsets.append(this_layer_offset[0])
+      elif len(this_layer_offset)==0 :
+        utility_logger.warn(f"""WARNING: LayerOffset file {et_correction_offset_file} does not have an entry for layer {ln}; offset will be set to zero!""")
+        et_correction_offsets.append(0.)
+      else :
+        raise RuntimeError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {ln}!')
+  else :
+    utility_logger.warn(f"""WARNING: Exposure time correction info cannot be determined from et_correction_offset_file = {et_correction_offset_file}; 
+                            max exposure times and correction offsets will all be None!""")
+  return max_exp_times, et_correction_offsets
+
+#helper function to return the maximum exposure time and the exposure time correction offset for a given layer of a sample
+def getMaxExposureTimeAndCorrectionOffsetForSampleLayer(metadata_top_dir,samplename,et_correction_offset_file,layer) :
+  max_exp_times, et_correction_offsets = getMaxExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file)
+  if max_exp_times is None or et_correction_offsets is None :
+    return None, None
+  else :
+    return max_exp_times[layer-1], et_correction_offsets[layer-1]
+
 #helper function to correct a single image layer for exposure time differences
 def correctImageLayerForExposureTime(raw_img_layer,exp_time,max_exp_time,offset) :
   raw_img_dtype = raw_img_layer.dtype
-  max_value = np.iinfo(raw_img_dtype).max
   corr_img_layer = np.where((raw_img_layer-offset)>0,offset+(1.*max_exp_time/exp_time)*(raw_img_layer-offset),raw_img_layer) #converted to a float here
-  return (np.clip(np.rint(corr_img_layer),0,max_value)).astype(raw_img_dtype) #round, clip to range, and convert back to original datatype
+  if np.issubdtype(raw_img_dtype,np.integer) :
+    max_value = np.iinfo(raw_img_dtype).max
+    return (np.clip(np.rint(corr_img_layer),0,max_value)).astype(raw_img_dtype) #round, clip to range, and convert back to original datatype
+  else :
+    return (corr_img_layer).astype(raw_img_dtype) #otherwise just convert back to original datatype
 
 #helper function to normalize a given image for exposure time layer-by-layer
 def correctImageForExposureTime(raw_img,raw_fp,metadata_top_dir,max_exp_times,correction_offsets) :
@@ -158,3 +204,29 @@ def correctImageForExposureTime(raw_img,raw_fp,metadata_top_dir,max_exp_times,co
     if exposure_times[li]!=max_exp_times[li] : #layer is only different if it isn't maximally exposed
       corrected_img[:,:,li] = correctImageLayerForExposureTime(raw_img[:,:,li],exposure_times[li],max_exp_times[li],correction_offsets[li])
   return corrected_img
+
+#helper function to apply a flatfield to a given image layer
+def correctImageLayerWithFlatfield(raw_img_layer,flatfield_layer) :
+  raw_dtype = raw_img_layer.dtype
+  if np.issubdtype(raw_dtype,np.integer) :
+    ff_corrected_layer = (np.clip(np.rint(raw_img_layer/flatfield_layer),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
+  else :
+    ff_corrected_layer = (raw_img_layer/flatfield_layer).astype(raw_dtype)
+  return ff_corrected_layer
+
+#helper function to apply a multilayer flatfield to a multilayer image
+def correctImageWithFlatfield(raw_img,flatfield) :
+  raw_dtype = raw_img.dtype
+  if np.issubdtype(raw_dtype,np.integer) :
+    ff_corrected = (np.clip(np.rint(raw_img/flatfield),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
+  else :
+    ff_corrected = (raw_img/flatfield).astype(raw_dtype)
+  return ff_corrected
+
+#helper function to correct an image layer with given warp dx and dy fields
+def correctImageLayerWithWarpFields(raw_img_layer,dx_warps,dy_warps) :
+  grid = np.mgrid[0:raw_img_layer.shape[0],0:raw_img_layer.shape[1]]
+  xpos, ypos = grid[1], grid[0]
+  map_x = (xpos-dx_warps).astype(np.float32) 
+  map_y = (ypos-dy_warps).astype(np.float32)
+  return cv2.remap(raw_img_layer,map_x,map_y,cv2.INTER_LINEAR)
