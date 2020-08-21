@@ -289,7 +289,7 @@ class OctetComparisonVisualization :
         """ 
         f,ax = plt.subplots(figsize=(CONST.OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH,
                                      np.rint((self.whole_image.shape[0]/self.whole_image.shape[1])*CONST.OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH)))
-        ax.imshow(self.whole_image)
+        ax.imshow(np.clip(self.whole_image,0.,1.))
         ax.set_title(self.name_stem.replace('_',' '))
         plt.savefig(f'{self.name_stem}.png')
         plt.close()

@@ -104,7 +104,8 @@ class WarpFitter :
         n_threads                 = how many different processes to run when loading files
         """
         #load the exposure time correction offsets and the max exposure times by layer
-        max_exp_time, et_correction_offset = getMaxExposureTimeAndCorrectionOffsetForSampleLayer()
+        max_exp_time, et_correction_offset = getMaxExposureTimeAndCorrectionOffsetForSampleLayer(self.metadata_top_dir,self.samp_name,
+                                                                                                 et_correction_offset_file,self.warpset.layer)
         #load the raw images
         self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.metadata_top_dir,
                                    flatfield_file_path,max_exp_time,et_correction_offset,
