@@ -1,10 +1,11 @@
 #imports
-from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds
+from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds, FieldLog
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities import units
 from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer
-from ..utilities.misc import cd
+from ..utilities.tableio import writetable
+from ..utilities.misc import cd, MetadataSummary
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
 import os, scipy.stats
 
@@ -28,8 +29,9 @@ class FlatfieldSample() :
 
     #################### CLASS CONSTANTS ####################
 
-    RECTANGLE_LOCATION_PLOT_STEM  = 'rectangle_locations'       #stem for the name of the rectangle location reference plot
-    THRESHOLD_PLOT_DIR_STEM       = 'thresholding_plots'        #stem for the name of the thresholding plot dir for this sample
+    RECTANGLE_LOCATION_PLOT_STEM  = 'rectangle_locations'           #stem for the name of the rectangle location reference plot
+    THRESHOLD_PLOT_DIR_STEM       = 'thresholding_plots'            #stem for the name of the thresholding plot dir for this sample
+    TISSUE_EDGE_MDS_STEM          = 'metadata_summary_tissue_edges' #stem for the metadata summary file from the tissue edge files only
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -92,6 +94,7 @@ class FlatfieldSample() :
         all_image_thresholds_by_layer = np.empty((self.dims[-1],len(tissue_edge_filepaths)),dtype=np.uint16)
         all_tissue_edge_layer_hists = np.zeros((nbins,self.dims[-1]),dtype=np.int64)
         manager = mp.Manager()
+        field_logs = []
         for fr_chunk in tissue_edge_fr_chunks :
             if len(fr_chunk)<1 :
                 continue
@@ -108,6 +111,7 @@ class FlatfieldSample() :
             procs=[]
             for ci,fr in enumerate(fr_chunk) :
                 flatfield_logger.info(f'  determining layer thresholds for file {fr.rawfile_path} {fr.sequence_print}')
+                field_logs.append(FieldLog(self._name,fr.rawfile_path,'edge','thresholding'))
                 ii=int((fr.sequence_print.split())[0][1:])
                 p = mp.Process(target=findLayerThresholds,
                                args=(new_smoothed_img_layer_hists[ci],
@@ -178,6 +182,8 @@ class FlatfieldSample() :
             with open(f'{self._name}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}','w') as tfp :
                 for bgv in self._background_thresholds_for_masking :
                     tfp.write(f'{bgv}\n')
+        #return the field logs
+        return field_logs
 
     def findTissueEdgeFilepaths(self,rawfile_paths,metadata_top_dir,plotdir_path=None) :
         """
@@ -193,6 +199,7 @@ class FlatfieldSample() :
         samp_islands = a.islands()
         edge_rect_filenames = [] #use this to return the list of tissue edge filepaths
         edge_rect_xs = []; edge_rect_ys = [] #use these to make the plot of the rectangle locations
+        edge_rect_ts = [] #use this to find the minimum and maximum collection time of the edge rectangle images
         #for each island
         for ii,island in enumerate(samp_islands,start=1) :
             island_rects = [r for r in a.rectangles if r.n in island]
@@ -228,6 +235,12 @@ class FlatfieldSample() :
             edge_rect_filenames+=[r.file.split('.')[0] for r in add_rects]
             edge_rect_xs+=[r.x for r in add_rects]
             edge_rect_ys+=[r.y for r in add_rects]
+            edge_rect_ts+=[r.t for r in add_rects]
+        #save the metadata summary file for the thresholding file group
+        ms = MetadataSummary(self._name,a.Project,a.Cohort,a.microscopename,min(edge_rect_ts),max(edge_rect_ts))
+        if plotdir_path is not None :
+            with cd(plotdir_path) :
+                writetable(f'{self.TISSUE_EDGE_MDS_STEM}_{self._name}.csv',[ms])
         #make and save the plot of the edge field locations next to the qptiff for reference
         bulk_rect_xs = [r.x for r in a.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
         bulk_rect_ys = [r.y for r in a.rectangles if r.file.split('.')[0] not in edge_rect_filenames]

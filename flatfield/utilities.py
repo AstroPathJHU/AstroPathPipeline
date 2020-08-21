@@ -1,9 +1,9 @@
 from .config import CONST
-from ..utilities.img_file_io import getRawAsHWL, correctImageForExposureTime
+from ..utilities.img_file_io import getRawAsHWL, correctImageForExposureTime, smoothImageWorker
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
 import numpy as np
-import os, cv2, logging, math, dataclasses
+import os, logging, math, dataclasses
 
 #################### GENERAL USEFUL OBJECTS ####################
 
@@ -17,6 +17,15 @@ flatfield_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
 flatfield_logger.addHandler(handler)
+
+#helper class for logging included/excluded fields
+@dataclasses.dataclass
+class FieldLog :
+    sample   : str
+    file     : str
+    location : str
+    use      : str
+    stacked_in_layers : List[int] = None
 
 #################### GENERAL HELPER FUNCTIONS ####################
 
@@ -33,17 +42,6 @@ def getImageArrayLayerHistograms(img_array) :
     else :
         layer_hist,_ = np.histogram(img_array,nbins,(0,nbins))
         return layer_hist
-
-#helper function to smooth an image
-#this can be run in parallel
-def smoothImageWorker(im_array,smoothsigma,return_list=None) :
-    im_in_umat = cv2.UMat(im_array)
-    im_out_umat = cv2.UMat(np.empty_like(im_array))
-    cv2.GaussianBlur(im_in_umat,(0,0),smoothsigma,im_out_umat,borderType=cv2.BORDER_REPLICATE)
-    if return_list is not None :
-        return_list.append(im_out_umat.get())
-    else :
-        return im_out_umat.get()
 
 #helper function to return the sample name from a whole filepath
 def sampleNameFromFilepath(fp) :

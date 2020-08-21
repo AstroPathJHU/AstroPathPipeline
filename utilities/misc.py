@@ -1,4 +1,5 @@
-import contextlib, dataclasses, fractions, logging, matplotlib.pyplot as plt, numpy as np, os, uncertainties as unc, scipy.stats, tifffile
+import matplotlib.pyplot as plt, numpy as np, uncertainties as unc
+import contextlib, dataclasses, fractions, logging, os, scipy.stats, tifffile, datetime
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -119,6 +120,16 @@ def split_csv_to_dict_of_bounds(value) :
     return return_dict
   except Exception as e :
     raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=low_bound:high_bound pairs! Exception: {e}')
+
+#helper dataclass for some common metadata information
+@dataclasses.dataclass
+class MetadataSummary :
+  sample_name     : str
+  project         : int
+  cohort          : int
+  microscope_name : str
+  mindate         : datetime.datetime
+  maxdate         : datetime.datetime
 
 @contextlib.contextmanager
 def PILmaximagepixels(pixels):

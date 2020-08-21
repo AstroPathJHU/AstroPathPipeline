@@ -10,8 +10,8 @@ import os, glob
 
 #helper function to create a fit for a single layer
 #can be run in parallel if given a return dictionary
-def getExposureTimeFitWorker(layer_n,exposure_times,max_exp_time,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages,return_dict=None) :
-    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,max_exp_time,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages)
+def getExposureTimeFitWorker(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages,return_dict=None) :
+    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages)
     if return_dict is not None :
         return_dict[layer_n] = fit
     else :
@@ -38,21 +38,13 @@ class ExposureTimeOffsetFitGroup :
         self.layers = self.__getLayers(layers)
         self.n_threads = n_threads
 
-    def prepFits(self,) :
-        """
-        Load all of the raw file layers and their exposure times, correct the images with the flatfield and smooth them, 
-        align the overlaps, and prep the fits
-        
-        """
-        
-
-    def runFits(self,flatfield_filepath,overlaps,smoothsigma,cutimages,initial_offset,offset_bounds,max_iter,gtol,eps,print_every,n_comparisons_to_save) :
+    def runFits(self,flatfield_filepath,overlaps,smoothsigma,wholeimages,initial_offset,offset_bounds,max_iter,gtol,eps,print_every,n_comparisons_to_save) :
         """
         Run all of the fits
         flatfield_filepath    = path to flatfield file to use in correcting raw image illumination
         overlaps              = list of overlap numbers to consider (should really only use this for testing)
         smoothsigma           = sigma for Gaussian blurring to apply to images
-        cutimages             = True if only the central regions of the images should be considered
+        wholeimages           = True if the whole image (nor just the central regions) should be considered
         initial_offset        = starting point for fits
         offset_bounds         = bounds for dark current count offset
         max_iter              = maximum number of iterations for each fit to run
@@ -61,6 +53,7 @@ class ExposureTimeOffsetFitGroup :
         print_every           = how often to print during minimization
         n_comparisons_to_save = total # of overlap overlay comparisons to write out for each completed fit
         """
+        cutimages = (not wholeimages)
         #first get all of the raw image exposure times, and the maximum exposure times in each layer
         all_exposure_times, max_exp_times_by_layer = self.__getExposureTimes()
         #next get the flatfield to use
@@ -85,7 +78,7 @@ class ExposureTimeOffsetFitGroup :
                 procs = []
                 for fit in batch_fits :
                     p = mp.Process(target=fit.writeOutResults,
-                                   args=(self.workingdir_name,n_comparisons_to_save)
+                                   args=(n_comparisons_to_save,)
                                   )
                     procs.append(p)
                     p.start()
@@ -101,17 +94,19 @@ class ExposureTimeOffsetFitGroup :
                 for rfs in all_exposure_times.keys() :
                     this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
                 fit = getExposureTimeFitWorker(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
-                                               self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
+                                               self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
                                                overlaps,smoothsigma,cutimages)
                 et_fit_logger.info(f'Running fit for layer {ln} ({li+1} of {len(self.layers)})....')
                 fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every)
                 et_fit_logger.info(f'Writing output for layer {ln} ({li+1} of {len(self.layers)})....')
-                fit.writeOutResults(self.workingdir_name,n_comparisons_to_save)
+                fit.writeOutResults(n_comparisons_to_save)
                 if fit.best_fit_offset is not None :
                     offsets.append(LayerOffset(fit.layer,len(fit.exposure_time_overlaps),fit.best_fit_offset,fit.best_fit_cost))
         #write out all the results
         with cd(self.workingdir_name) :
-            writetable(f'{self.sample}_layers_{self.layers[0]}-{self.layers[-1]}_{CONST.LAYER_OFFSET_FILE_NAME_STEM}',offsets)
+            all_results_fn = f'{self.sample}_layers_{self.layers[0]}-{self.layers[-1]}_'
+            all_results_fn+= f'{CONST.LAYER_OFFSET_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(self.workingdir_name))}.csv'
+            writetable(all_results_fn,offsets)
         #save the plot of the offsets by layer
         plt.plot([o.layer_n for o in offsets],[o.offset for o in offsets],marker='*')
         plt.xlabel('image layer')
@@ -182,7 +177,7 @@ class ExposureTimeOffsetFitGroup :
                 this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
             p = mp.Process(target=getExposureTimeFitWorker, 
                            args=(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
-                                 self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
+                                 self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
                                  overlaps,smoothsigma,cutimages,return_dict)
                           )
             procs.append(p)
