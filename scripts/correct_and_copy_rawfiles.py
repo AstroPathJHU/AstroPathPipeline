@@ -5,7 +5,7 @@ from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawA
 from ..utilities.img_file_io import getMaxExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer, correctImageLayerForExposureTime
 from ..utilities.img_file_io import correctImageLayerWithFlatfield, correctImageLayerWithWarpFields
 from ..utilities.misc import cd
-import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
+import numpy as np, matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import os, time, logging, glob
 
@@ -14,7 +14,7 @@ import os, time, logging, glob
 correction_logger = logging.getLogger("correct_and_copy")
 correction_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
+handler.setFormatter(logging.Formatter("%(message)s"))
 correction_logger.addHandler(handler)
 
 #################### RawfileCorrector CLASS ####################
@@ -24,7 +24,7 @@ class RawfileCorrector :
     #################### PROPERTIES ####################
     @property
     def logfile_timestamp(self) :
-        return time.strftime("[%Y_%b_%d_at_%H:%M:%S] :    ")
+        return time.strftime("[%Y %b %d at %H:%M:%S] ")
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -55,6 +55,10 @@ class RawfileCorrector :
         if not args.layer in range(1,self._img_dims[-1]+1) :
             raise ValueError(f'ERROR: requested copying layer {args.layer} but raw files have dimensions {self._img_dims}')
         self._layer = args.layer
+        #make the working directory
+        if not os.path.isdir(args.workingdir_path) :
+            os.mkdir(args.workingdir_path)
+        self._working_dir_path = args.workingdir_path
         #make sure the exposure time correction file exists if necessary
         if not args.skip_exposure_time_correction :
             if not os.path.isfile(args.exposure_time_offset_file) :
@@ -75,7 +79,7 @@ class RawfileCorrector :
             with cd(self._working_dir_path) :
                 f,ax=plt.subplots(figsize=(6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
                 pos = ax.imshow(self._ff_layer)
-                ax.set_title(f'correction factors from layer {self._layer} of {ff_filepath}')
+                ax.set_title(f'applied flatfield layer {self._layer}')
                 f.colorbar(pos,ax=ax)
                 plt.savefig('applied_flatfield_correction_factors.png')
                 plt.close()
@@ -93,31 +97,28 @@ class RawfileCorrector :
             self._dx_warp_field = (args.warping_scalefactor)*(getRawAsHW(dx_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
             self._dy_warp_field = (args.warping_scalefactor)*(getRawAsHW(dy_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
             r_warp_field = np.sqrt((self._dx_warp_field**2)+(self._dy_warp_field**2))
-            f,ax = plt.subplots(1,3,figsize=(3*6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
-            pos = ax[0].imshow(r_warp_field)
-            ax[0].set_title('total warp correction')
-            f.colorbar(pos,ax=ax[0])
-            pos = ax[1].imshow(self._dx_warp_field)
-            ax[1].set_title(f'dx warp from {dx_warp_field_path}')
-            f.colorbar(pos,ax=ax[1])
-            pos = ax[2].imshow(self._dy_warp_field)
-            ax[2].set_title(f'dy warp from {dy_warp_field_path}')
-            f.colorbar(pos,ax=ax[2])
-            plt.savefig('applied_warping_correction_model.png')
-            plt.close()
+            with cd(self._working_dir_path) :
+                f,ax = plt.subplots(1,3,figsize=(3*6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
+                pos = ax[0].imshow(r_warp_field)
+                ax[0].set_title('total warp correction')
+                f.colorbar(pos,ax=ax[0])
+                pos = ax[1].imshow(self._dx_warp_field)
+                ax[1].set_title(f'applied dx warp')
+                f.colorbar(pos,ax=ax[1])
+                pos = ax[2].imshow(self._dy_warp_field)
+                ax[2].set_title(f'applied dy warp')
+                f.colorbar(pos,ax=ax[2])
+                plt.savefig('applied_warping_correction_model.png')
+                plt.close()
         else :
             self._dx_warp_field = None
             self._dy_warp_field = None
-        #make the working directory
-        if not os.path.isdir(args.workingdir_path) :
-            os.mkdir(args.workingdir_path)
-        self._working_dir_path = args.workingdir_path
         #start up the logfile and add some information to it
-        logfile_name = f'{args.logfile_name_stem}_{time.strftime("%Y_%b_%d-%H:%M:%S")}.txt'
-        self._logfile_path = os.path.join(self._working_dir_path,logfile_name)
-        with open(self._logfile_path,'w') as fp :
-            fp.write('LOGFILE for correct_and_copy_rawfiles\n')
-            fp.write('-------------------------------------\n\n')
+        self._logfile_name = f'{args.logfile_name_stem}_{time.strftime("%Y_%b_%d-%H%M%S")}.txt'
+        with cd(self._working_dir_path) :
+            with open(self._logfile_name,'w') as fp :
+                fp.write('LOGFILE for correct_and_copy_rawfiles\n')
+                fp.write('-------------------------------------\n\n')
         self.__writeLog(f'Working directory {os.path.basename(os.path.normpath(self._working_dir_path))} has been created in {workingdir_location}.')
         self.__writeLog(f'Corrected layer {self._layer} files will be written out to {self._working_dir_path}.')
         if (self._max_exp_time is not None) and (self._et_correction_offset is not None) :
@@ -137,9 +138,7 @@ class RawfileCorrector :
         #set a couple more instance variables
         self._infile_ext = args.input_file_extension
         self._outfile_ext = f'{args.output_file_extension}{self._layer:02d}'
-        self._n_threads = args.n_threads
         self._max_files = args.max_files
-        self._print_every = args.print_every
 
     def run(self) :
         """
@@ -153,43 +152,25 @@ class RawfileCorrector :
         if self._max_files!=-1 :
             all_rawfile_paths=all_rawfile_paths[:self._max_files]
             self.__writeLog(f'Will correct and write out {len(all_rawfile_paths)} file layers')
-        #next run the correction and copying of the files (in parallel, if requested)
-        if self._n_threads>1 :
-            procs = []
-            manager = mp.Manager()
-            return_list = manager.list()
-            for irfp,rfp in enumerate(all_rawfile_paths,start=1) :
-                p = mp.Process(target=self.__correctAndCopyWorker,args=(rfp,irfp,len(all_rawfile_paths)))
-                procs.append(p)
-                p.start()
-                if len(procs)>=self._n_threads :
-                    for proc in procs :
-                        proc.join()
-                        while len(return_list)>0 :
-                            self.__writeLog(return_list.pop(),False)
-                        procs = []
-                for proc in procs :
-                    proc.join()
-                    while len(return_list)>0 :
-                        self.__writeLog(return_list.pop(),False)
-        else :
-            for irfp,rfp in enumerate(all_rawfile_paths,start=1) :
-                self.__correctAndCopyWorker(rfp,irfp,len(all_rawfile_paths))
+        #next run the correction and copying of the files
+        for irfp,rfp in enumerate(all_rawfile_paths,start=1) :
+            self._correctAndCopyWorker(rfp,irfp,len(all_rawfile_paths))
         correction_logger.info('All files corrected and copied!')
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to write (and optionally print) a timestamped line to the logfile
-    def __writelog(self,txt,printline=True) :
+    def __writeLog(self,txt,printline=True) :
         line = f'{self.logfile_timestamp}{txt}'
         if printline :
             correction_logger.info(line)
-        with open(self._logfile_path,'a') as fp :
-            fp.write(f'{line}\n')
+        with cd(self._working_dir_path) :
+            with open(self._logfile_name,'a') as fp :
+                fp.write(f'{line}\n')
 
     #helper function to read, correct, and write out a single image layer
-    #can be run in parallel if given a return list to which the logfile lines will be appended
-    def __correctAndCopyWorker(self,rawfile_path,file_i,n_total_files,return_list=None) :
+    #can be run in parallel
+    def _correctAndCopyWorker(self,rawfile_path,file_i,n_total_files) :
         #start up the message of what was done
         msg=f'layer {self._layer} of image {rawfile_path} ({file_i} of {n_total_files}) '
         if ( ((self._max_exp_time is not None) and (self._et_correction_offset is not None)) or 
@@ -226,11 +207,7 @@ class RawfileCorrector :
         if os.path.isfile(new_image_path) :
             msg+=f'written as {new_image_path}'
         #log the message
-        if return_list is None :
-            self.__writeLog(msg)
-        else :
-            correction_logger.info(msg)
-            return_list.append(msg)
+        self.__writeLog(msg)
 
 #################### MAIN SCRIPT ####################
 
@@ -271,12 +248,8 @@ if __name__=='__main__' :
                                   help='Extension for the raw files that will be read in')
     run_option_group.add_argument('--output_file_extension', default='.fw',
                                   help='Extension for the corrected files that will be written out (2-digit layer code will be appended)')
-    run_option_group.add_argument('--n_threads',             default=10,    type=int,
-                                  help='Max # of threads to use for multithreaded portions of the code')
     run_option_group.add_argument('--max_files',             default=-1,    type=int,
                                   help='Maximum number of files to use (default = -1 runs all files)')
-    run_option_group.add_argument('--print_every',           default=50,    type=int,
-                                  help='Print progress after how many files are corrected and written out')
     run_option_group.add_argument('--logfile_name_stem',     default='correct_and_copy_rawfiles_log',
                                   help='Filename stem for the log that will be created (timestamp and ".txt" will be appended)')
     args = parser.parse_args()

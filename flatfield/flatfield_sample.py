@@ -241,8 +241,6 @@ class FlatfieldSample() :
         if plotdir_path is not None :
             with cd(plotdir_path) :
                 writetable(f'{self.TISSUE_EDGE_MDS_STEM}_{self._name}.csv',[ms])
-        else :
-            writetable(f'{self.TISSUE_EDGE_MDS_STEM}_{self._name}.csv',[ms])
         #make and save the plot of the edge field locations next to the qptiff for reference
         bulk_rect_xs = [r.x for r in a.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
         bulk_rect_ys = [r.y for r in a.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
