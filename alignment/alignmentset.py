@@ -108,11 +108,6 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     imgs            = list of WarpImages to use for update
     usewarpedimages = if True, warped rather than raw images will be read
     """
-    #correcting with a recalculated mean image requires an initial update to clear the old corrected images
-    if correct_with_meanimage and recalculate_meanimage :
-      self.updateRectangleImages(imgs,usewarpedimages)
-      self.meanimage = meanimage([r.image for r in self.rectangles], logger=self.logger)
-
     for img in imgs:
       if usewarpedimages :
         thisupdateimg=img.warped_image

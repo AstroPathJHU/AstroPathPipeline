@@ -1,13 +1,12 @@
 #imports
 from .overlap_with_exposure_times import OverlapWithExposureTimes
-from .utilities import et_fit_logger, UpdateImage, FieldLog
+from .utilities import et_fit_logger, FieldLog
 from .config import CONST
 from .alignmentset import AlignmentSetForExposureTime
-from ..utilities.img_file_io import smoothImageWorker
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary
-import numpy as np, matplotlib.pyplot as plt
-import os, copy, random, scipy
+import matplotlib.pyplot as plt
+import os, random, scipy
 
 #helper class to do the fit in one image layer only
 class SingleLayerExposureTimeFit :
