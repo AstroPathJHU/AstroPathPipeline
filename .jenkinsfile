@@ -116,6 +116,7 @@ pipeline {
       archiveArtifacts artifacts: 'documentation/flatfield/flatfield_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'test/badregions_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
       archiveArtifacts artifacts: 'test/exposuretimefit_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+      archiveArtifacts artifacts: 'test/warpfitter_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
     }
   }
 }
