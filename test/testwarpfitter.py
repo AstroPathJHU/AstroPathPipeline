@@ -42,6 +42,7 @@ print('Removing working directory...')
 new = readtable(working_dir/"fit_result.csv", WarpFitResult)
 ref = readtable(folder/"reference"/"warping"/"fit_result.csv", WarpFitResult)
 for resultnew, resultref in zip(new, ref):
+  resultnew.dirname = resultref.dirname = ""
   resultnew.global_fit_its = resultref.global_fit_its = \
   resultnew.global_fit_time = resultref.global_fit_time = \
   resultnew.polish_fit_its = resultref.polish_fit_its = \
