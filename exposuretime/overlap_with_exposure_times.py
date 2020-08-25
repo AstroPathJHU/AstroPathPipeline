@@ -74,7 +74,7 @@ class OverlapWithExposureTimes :
         self.best_offset = offsets[costs.index(min(costs))]
         self.raw_cost = cost(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,0.,correct_images=False)
         self.best_cost = min(costs)
-        self.npix = self.p1_im.shape[0]*self.p1_im.shape[1]
+        self.npix = p1_im.shape[0]*p1_im.shape[1]
         self.p1_im = None
         self.p2_im = None
         self._raw_p1_im=None
