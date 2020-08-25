@@ -88,7 +88,7 @@ class SingleLayerExposureTimeFit :
         for eto in self.exposure_time_overlaps :
             this_weight = ((eto.raw_cost-eto.best_cost)/eto.npix)
             if this_weight<0. :
-                msg = f'Overlap {eto.n} with best fit offset = {eto.best_fit_offset} will be skipped because cost was not reduced!'
+                msg = f'Overlap {eto.n} with best fit offset = {eto.best_offset} will be skipped because cost was not reduced!'
                 msg+= f' (Raw cost = {eto.raw_cost}, best cost = {eto.best_cost})'
                 et_fit_logger.info(msg)
                 continue
@@ -166,6 +166,7 @@ class SingleLayerExposureTimeFit :
             p2rect = ([r for r in a.rectangles if r.n==olap.p2])[0]
             p1et = exposure_times[(p1rect.file).rstrip(CONST.IM3_EXT)]
             p2et = exposure_times[(p2rect.file).rstrip(CONST.IM3_EXT)]
+            et_fit_logger.info(f'Finding offset in overlap {olap.n} ({io+1} of {len(a.overlaps)})....')
             etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages))
             if p1rect.n not in relevant_rectangles.keys() :
                 relevant_rectangles[p1rect.n]=p1rect
