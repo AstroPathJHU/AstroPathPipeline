@@ -61,28 +61,48 @@ class SingleLayerExposureTimeFit :
         if len(self.exposure_time_overlaps)<1 :
             et_fit_logger.warn(f'WARNING: skipping fit for layer {self.layer} because there are not enough overlaps!')
             return
-        msg = f'Starting fit for layer {self.layer} at offset = {initial_offset}; will run for a max of {max_iter} '
-        msg+= f'iterations printing every {print_every}'
-        et_fit_logger.info(msg)
-        self.result = scipy.optimize.minimize(self.__cost,
-                                              [initial_offset],
-                                              method='L-BFGS-B',
-                                              jac='2-point',
-                                              bounds=[offset_bounds],
-                                              options={'disp':True,
-                                                       'ftol':1e-20,
-                                                       'gtol':gtol,
-                                                       'eps':eps,
-                                                       'maxiter':max_iter,
-                                                       'iprint':print_every,
-                                                       'maxls':50,
-                                                      }
-                                             )
-        self.best_fit_offset = self.result.x[0]
-        self.best_fit_cost = self.result.fun
-        msg = f'Layer {self.layer} fit done! Minimization terminated with exit {self.result.message}. '
-        msg+= f'Best-fit offset = {self.best_fit_offset:.4f} (best cost = {self.best_fit_cost:.4f})'
-        et_fit_logger.info(msg)
+        #msg = f'Starting fit for layer {self.layer} at offset = {initial_offset}; will run for a max of {max_iter} '
+        #msg+= f'iterations printing every {print_every}'
+        #et_fit_logger.info(msg)
+        #self.result = scipy.optimize.minimize(self.__cost,
+        #                                      [initial_offset],
+        #                                      method='L-BFGS-B',
+        #                                      jac='2-point',
+        #                                      bounds=[offset_bounds],
+        #                                      options={'disp':True,
+        #                                               'ftol':1e-20,
+        #                                               'gtol':gtol,
+        #                                               'eps':eps,
+        #                                               'maxiter':max_iter,
+        #                                               'iprint':print_every,
+        #                                               'maxls':50,
+        #                                              }
+        #                                     )
+        #self.best_fit_offset = self.result.x[0]
+        #self.best_fit_cost = self.result.fun
+        #msg = f'Layer {self.layer} fit done! Minimization terminated with exit {self.result.message}. '
+        #msg+= f'Best-fit offset = {self.best_fit_offset:.4f} (best cost = {self.best_fit_cost:.4f})'
+        #et_fit_logger.info(msg)
+        et_fit_logger.info(f'Finding optimal offset in {self.sample} layer {self.layer} from {len(self.exposure_time_overlaps)} total overlaps....')
+        all_offsets = []; weighted_sum = 0.; sum_weights = 0.
+        for eto in self.exposure_time_overlaps :
+            this_weight = ((eto.raw_cost-eto.best_cost)/eto.npix)
+            if this_weight<0. :
+                msg = f'Overlap {eto.n} with best fit offset = {eto.best_fit_offset} will be skipped because cost was not reduced!'
+                msg+= f' (Raw cost = {eto.raw_cost}, best cost = {eto.best_cost})'
+                et_fit_logger.info(msg)
+                continue
+            all_offsets.append(eto.best_offset)
+            weighted_sum+=this_weight*eto.best_offset
+            sum_weights+=this_weight
+        self.best_fit_offset = weighted_sum/sum_weights
+        et_fit_logger.info(f'Best overall offset for {self.sample} layer {self.layer} found at {self.best_fit_offset}')
+        with cd(self.plotdirpath) :
+            plt.hist(all_offsets,bins=100)
+            plt.title(f'all offsets for {self.sample} layer {self.layer}')
+            plt.savefig(f'all_offsets_{self.sample}_layer_{self.layer}.png')
+            plt.close()
+
 
     def writeOutResults(self,n_comparisons_to_save) :
         """
@@ -94,8 +114,8 @@ class SingleLayerExposureTimeFit :
             return
         if self.best_fit_offset is None :
             raise RuntimeError('ERROR: best fit offset is None; run fit before calling writeOutResults!')
-        self.__plotCostsAndOffsets()
-        self.__writeResultsAndPlotCostReductions()
+        #self.__plotCostsAndOffsets()
+        #self.__writeResultsAndPlotCostReductions()
         self.__saveComparisonImages(n_comparisons_to_save)
         
     #################### PRIVATE HELPER FUNCTIONS ####################

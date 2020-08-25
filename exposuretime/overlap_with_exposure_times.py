@@ -2,6 +2,18 @@
 import numpy as np, matplotlib.pyplot as plt
 from .utilities import ExposureTimeOverlapFitResult
 
+def correctImage(im,et,maxet,offset) :
+    return np.where(im>offset,offset+(maxet/et)*(im-offset),im)
+
+def cost(p1im,p2im,p1et,p2et,maxet,offset,correct_images=True) :
+    if correct_images :
+        corrp1 = correctImage(p1im,p1et,maxet,offset)
+        corrp2 = correctImage(p2im,p2et,maxet,offset)
+    else :
+        corrp1 = p1im
+        corrp2 = p2im
+    return(np.sum(np.abs(corrp1-corrp2))/(p1im.shape[0]*p1im.shape[1]))
+
 #helper class for comparing overlap image exposure times
 class OverlapWithExposureTimes :
 
@@ -50,12 +62,21 @@ class OverlapWithExposureTimes :
                   9:np.index_exp[int(0.5*h):,int(0.5*w):]
                 }
         if cutimages :
-            self.p1_im = whole_p1_im[SLICES[self.tag]]
-            self.p2_im = whole_p2_im[SLICES[self.tag]]
+            p1_im = whole_p1_im[SLICES[self.tag]]
+            p2_im = whole_p2_im[SLICES[self.tag]]
         else :
-            self.p1_im = whole_p1_im
-            self.p2_im = whole_p2_im
+            p1_im = whole_p1_im
+            p2_im = whole_p2_im
+        offsets = []; costs = []
+        for o in range(1000) :
+            offsets.append(o)
+            costs.append(cost(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,o))
+        self.best_offset = offsets[costs.index(min(costs))]
+        self.raw_cost = cost(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,0.,correct_images=False)
+        self.best_cost = min(costs)
         self.npix = self.p1_im.shape[0]*self.p1_im.shape[1]
+        self.p1_im = None
+        self.p2_im = None
         self._raw_p1_im=None
         self._raw_p2_im=None
 
@@ -76,16 +97,17 @@ class OverlapWithExposureTimes :
         return ExposureTimeOverlapFitResult(self.n,self.p1,self.p2,self.tag,self.p1et,self.p2et,self.et_diff,self.npix,self.orig_cost,self.corr_cost)
 
     def saveComparisonImages(self,best_fit_offset,filename_stem) :
-        orig_overlay = np.clip(np.array([self.p1_im, self.p2_im, 0.5*(self.p1_im+self.p2_im)]).transpose(1, 2, 0) / 1000., 0., 1.)
-        corr_p1im, corr_p2im = self.__getCorrectedImages(best_fit_offset,False)
-        corr_overlay = np.clip(np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000., 0., 1.)
-        f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
-        ax[0].imshow(orig_overlay)
-        ax[0].set_title(f'overlap {self.n} original (cost={self.orig_cost:.3f})')
-        ax[1].imshow(corr_overlay)
-        ax[1].set_title(f'overlap {self.n} corrected (cost={self.corr_cost:.3f})')
-        plt.savefig(f'{filename_stem}_offset={best_fit_offset:.3f}_clipped_and_smoothed.png')
-        plt.close()
+        if self.p1_im is not None and self.p2_im is not None :
+            orig_overlay = np.clip(np.array([self.p1_im, self.p2_im, 0.5*(self.p1_im+self.p2_im)]).transpose(1, 2, 0) / 1000., 0., 1.)
+            corr_p1im, corr_p2im = self.__getCorrectedImages(best_fit_offset,False)
+            corr_overlay = np.clip(np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000., 0., 1.)
+            f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
+            ax[0].imshow(orig_overlay)
+            ax[0].set_title(f'overlap {self.n} original (cost={self.orig_cost:.3f})')
+            ax[1].imshow(corr_overlay)
+            ax[1].set_title(f'overlap {self.n} corrected (cost={self.corr_cost:.3f})')
+            plt.savefig(f'{filename_stem}_offset={best_fit_offset:.3f}_clipped_and_smoothed.png')
+            plt.close()
         if self.raw_p1im is not None and self.raw_p2im is not None :
             orig_overlay = np.clip(np.array([self.raw_p1im, self.raw_p2im, 0.5*(self.raw_p1im+self.raw_p2im)]).transpose(1, 2, 0) / 1000.,0.,1.)
             corr_p1im, corr_p2im = self.__getCorrectedImages(best_fit_offset,True)
