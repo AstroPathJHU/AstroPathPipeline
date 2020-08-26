@@ -1,6 +1,6 @@
 #imports
 import numpy as np, matplotlib.pyplot as plt
-from .utilities import ExposureTimeOverlapFitResult, correctImage, costFromImages
+from .utilities import ExposureTimeOverlapFitResult
 from .config import CONST
 from ..utilities.img_file_io import correctImageLayerForExposureTime
 
@@ -14,7 +14,7 @@ def costFromImages(p1im,p2im,p1et,p2et,maxet,offset) :
     else : #if the given offset is negative don't correct the images
         corrp1 = p1im
         corrp2 = p2im
-    return(np.sum(np.abs(corrp1-corrp2))/(p1im.shape[0]*p1im.shape[1]))
+    return np.sum(np.abs(corrp1-corrp2))
 
 #helper class for comparing overlap image exposure times
 class OverlapWithExposureTimes :
@@ -53,7 +53,7 @@ class OverlapWithExposureTimes :
         self.max_exp_time = max_exp_time
         p1_im, p2_im = self.__getp1p2Images(olap,cutimages)
         self.fit_pars = self.__getFitParameters(p1_im,p2_im,offset_bounds)
-        self.uncorrected_cost = costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,0.,correct_images=False)
+        self.uncorrected_cost = costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,-1.)
         self.npix = p1_im.shape[0]*p1_im.shape[1]
         self._raw_p1_im=None
         self._raw_p2_im=None

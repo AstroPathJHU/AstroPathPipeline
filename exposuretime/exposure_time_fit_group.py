@@ -10,8 +10,8 @@ import os, glob
 
 #helper function to create a fit for a single layer
 #can be run in parallel if given a return dictionary
-def getExposureTimeFitWorker(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages,return_dict=None) :
-    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages)
+def getExposureTimeFitWorker(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,offset_bounds,overlaps,smoothsigma,cutimages,return_dict=None) :
+    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,offset_bounds,overlaps,smoothsigma,cutimages)
     if return_dict is not None :
         return_dict[layer_n] = fit
     else :
@@ -68,11 +68,11 @@ class ExposureTimeOffsetFitGroup :
                 layer_batches[-1].append(ln)
             for bi,layer_batch in enumerate(layer_batches,start=1) :
                 li_start = (bi-1)*self.n_threads
-                batch_fits = self.__getBatchFits(layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,overlaps,smoothsigma,cutimages)
+                batch_fits = self.__getBatchFits(layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,offset_bounds,overlaps,smoothsigma,cutimages)
                 et_fit_logger.info(f'Done preparing fits in batch {bi} (of {len(layer_batches)}).')
                 et_fit_logger.info('Running fits....')
                 for fit in batch_fits :
-                    fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every)
+                    fit.doFit(initial_offset,max_iter,gtol,eps,print_every)
                 et_fit_logger.info(f'Done running fits in batch {bi} (of {len(layer_batches)}).')
                 et_fit_logger.info('Writing output....')
                 procs = []
@@ -95,9 +95,9 @@ class ExposureTimeOffsetFitGroup :
                     this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
                 fit = getExposureTimeFitWorker(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
                                                self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
-                                               overlaps,smoothsigma,cutimages)
+                                               offset_bounds,overlaps,smoothsigma,cutimages)
                 et_fit_logger.info(f'Running fit for layer {ln} ({li+1} of {len(self.layers)})....')
-                fit.doFit(initial_offset,offset_bounds,max_iter,gtol,eps,print_every)
+                fit.doFit(initial_offset,max_iter,gtol,eps,print_every)
                 et_fit_logger.info(f'Writing output for layer {ln} ({li+1} of {len(self.layers)})....')
                 fit.writeOutResults(n_comparisons_to_save)
                 if fit.best_fit_offset is not None :
@@ -165,7 +165,7 @@ class ExposureTimeOffsetFitGroup :
         return exp_times, max_exp_times
 
     #helper function to set up and return a list of single-layer fit objects
-    def __getBatchFits(self,layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,overlaps,smoothsigma,cutimages) :
+    def __getBatchFits(self,layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,offset_bounds,overlaps,smoothsigma,cutimages) :
         batch_fits = []
         manager = mp.Manager()
         return_dict = manager.dict()
@@ -178,7 +178,7 @@ class ExposureTimeOffsetFitGroup :
             p = mp.Process(target=getExposureTimeFitWorker, 
                            args=(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
                                  self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
-                                 overlaps,smoothsigma,cutimages,return_dict)
+                                 offset_bounds,overlaps,smoothsigma,cutimages,return_dict)
                           )
             procs.append(p)
             p.start()
