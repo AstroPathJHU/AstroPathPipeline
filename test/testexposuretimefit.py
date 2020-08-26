@@ -19,11 +19,11 @@ layers_arg = [26,33]
 overlaps_arg = [46]
 smoothsigma_arg=3
 initial_offset_arg = 25
-bounds_arg = (0,1000)
+bounds_arg = (0,250)
 max_iter_arg = 15000
-gtol_arg=1e-5
-eps_arg=2
-print_every_arg = 2
+gtol_arg=1e-8
+eps_arg=0.25
+print_every_arg = 10
 n_comparisons_to_save_arg = 1
 
 #initialize a fit
@@ -36,7 +36,7 @@ fit_group.runFits(None,overlaps_arg,smoothsigma_arg,False,
                   n_comparisons_to_save_arg)
 
 new = readtable(working_dir/"M21_1_layers_26-33_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
-ref = readtable(folder/"reference"/"exposuretimefit"/"M21_1_layers_26-33_best_fit_offsets.csv", LayerOffset)
+ref = readtable(folder/"reference"/"exposuretimefit"/"M21_1_layers_26-33_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
 for offsetnew, offsetref in zip(new, ref):
   assertAlmostEqual(offsetnew, offsetref, rtol=1e-5)
 
