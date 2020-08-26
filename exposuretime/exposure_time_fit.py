@@ -147,6 +147,7 @@ class SingleLayerExposureTimeFit :
             p2rect = ([r for r in a.rectangles if r.n==olap.p2])[0]
             p1et = exposure_times[(p1rect.file).rstrip(CONST.IM3_EXT)]
             p2et = exposure_times[(p2rect.file).rstrip(CONST.IM3_EXT)]
+            et_fit_logger.info(f'Parameterizing cost for overlap {olap.n} ({io+1} of {len(a.overlaps)} in {self.sample} layer {self.layer})....')
             etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages,self.offset_bounds))
             if p1rect.n not in relevant_rectangles.keys() :
                 relevant_rectangles[p1rect.n]=p1rect
