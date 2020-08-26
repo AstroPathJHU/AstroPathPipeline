@@ -84,13 +84,16 @@ def getImageHWLFromXMLFile(metadata_topdir,samplename) :
 #helper function to get a list of exposure times by each layer for a given raw image
 #fp can be a path to a raw file or to an exposure XML file 
 #but if it's a raw file the metadata top dir must also be provided
-def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
+def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None,subdirectory=True) :
   layer_exposure_times_to_return = []
   if RAWFILE_EXT in fp :
     if metadata_top_dir is None :
       raise RuntimeError(f'ERROR: metadata top dir must be supplied to get exposure times fo raw file path {fp}!')
     sample_name = os.path.basename(os.path.dirname(os.path.normpath(fp)))
-    xmlfile_path = os.path.join(metadata_top_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(fp)).replace(RAWFILE_EXT,EXPOSURE_XML_EXT))
+    if subdirectory :
+      xmlfile_path = os.path.join(metadata_top_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(fp)).replace(RAWFILE_EXT,EXPOSURE_XML_EXT))
+    else :
+      xmlfile_path = os.path.join(metadata_top_dir,sample_name,os.path.basename(os.path.normpath(fp)).replace(RAWFILE_EXT,EXPOSURE_XML_EXT))
   elif EXPOSURE_XML_EXT in fp :
     xmlfile_path = fp
   else :
