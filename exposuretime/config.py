@@ -21,5 +21,9 @@ class Const :
     @property
     def N_CLIP(self) :
         return FLATFIELD_CONST.N_CLIP #number of pixels to clip from raw image edges
+    #overlap cost parameterization
+    @property
+    def OVERLAP_COST_POLYFIT_DEG(self) :
+        return 4 #quartic polynomial
     
 CONST=Const()

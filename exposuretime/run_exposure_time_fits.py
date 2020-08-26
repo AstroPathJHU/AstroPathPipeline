@@ -27,7 +27,7 @@ if __name__=='__main__' :
     fit_option_group = parser.add_argument_group('fit options', 'how should the fits be done?')
     fit_option_group.add_argument('--initial_offset', default=25.,      type=float,
                                   help='Dark current offset count fit starting point (default=50.)')
-    fit_option_group.add_argument('--offset_bounds',  default=[0,1000], type=split_csv_to_list_of_ints,         
+    fit_option_group.add_argument('--offset_bounds',  default=[0,250], type=split_csv_to_list_of_ints,         
                                   help='CSV of low,high bounds for offset [default=(0,1000)]')
     fit_option_group.add_argument('--max_iter',       default=15000,    type=int,
                                   help='Maximum number of fit iterations (default=15000)')

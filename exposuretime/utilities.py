@@ -1,4 +1,5 @@
 #imports
+from typing import List
 import numpy as np
 import os, logging, dataclasses
 
@@ -69,3 +70,4 @@ class LayerOffset :
 class FieldLog :
     file : str
     rect_n : int
+    in_overlaps : List[int]
