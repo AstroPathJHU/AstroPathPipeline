@@ -69,3 +69,4 @@ class LayerOffset :
 class FieldLog :
     file : str
     rect_n : int
+    in_overlaps : List[int]

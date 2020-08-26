@@ -101,7 +101,7 @@ class OverlapWithExposureTimes :
         ax[2].plot(offsets,raw_image_costs,linewidth=2,label='cost from raw images')
         ax[2].plot(offsets,parameterized_costs,linewidth=2,label='parameterized cost')
         ax[2].plot([best_fit_offset,best_fit_offset],[0.8*y for y in ax[2].get_ylim()],linewidth=2,color='k',label=f'best fit offset ({best_fit_offset:.3f})')
-        ax[2].set_title(f'overlap {self.n} (tag={self.tag}) w/ exp. time diff.={self.et_diff:.1f}')
+        ax[2].set_title(f'overlap {self.n} (tag={self.tag}) w/ exp. time diff. = {self.et_diff:.3f}')
         ax[2].set_xlabel('offset')
         ax[2].set_ylabel('avg. cost per pixel')
         ax[2].legend(loc='best')

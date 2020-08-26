@@ -156,7 +156,8 @@ class SingleLayerExposureTimeFit :
         #make the log of the fields used and write it out
         field_logs = []
         for r in relevant_rectangles :
-            field_logs.append(FieldLog(r.file,r.n))
+            this_rect_overlaps = [o.n for o in a.overlaps if (o.p1==r.n or o.p2==r.n)]
+            field_logs.append(FieldLog(r.file,r.n,this_rect_overlaps))
         with cd(self.plotdirpath) :
             writetable(f'fields_used_in_exposure_time_fit_{self.sample}_layer_{self.layer}.csv',field_logs)
         #make the metadata summary object and write it out
