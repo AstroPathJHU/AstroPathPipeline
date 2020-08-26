@@ -1,7 +1,10 @@
 # A script to run a quick example of the warpfitter
 
 #imports
+from ..utilities.tableio import readtable
+from ..warping.utilities import WarpFitResult
 from ..warping.warp_fitter import WarpFitter
+from .testbase import assertAlmostEqual
 import pathlib, shutil
 
 #some constants
@@ -36,5 +39,16 @@ result = fitter.doFit(fixed=fixed_arg,normalize=normalize_arg,init_pars=init_par
                       max_radial_warp=max_radial_warp,max_tangential_warp=max_tangential_warp,p1p2_polish_lasso_lambda=p1p2_polish_lasso_lambda,
                       polish=True,print_every=print_every,maxiter=max_iter)
 print('Removing working directory...')
+new = readtable(working_dir/"fit_result.csv", WarpFitResult)
+ref = readtable(folder/"reference"/"warping"/"fit_result.csv", WarpFitResult)
+for resultnew, resultref in zip(new, ref):
+  resultnew.dirname = resultref.dirname = ""
+  resultnew.global_fit_its = resultref.global_fit_its = \
+  resultnew.global_fit_time = resultref.global_fit_time = \
+  resultnew.polish_fit_its = resultref.polish_fit_its = \
+  resultnew.polish_fit_time = resultref.polish_fit_time = \
+  0
+  assertAlmostEqual(resultnew, resultref, rtol=1e-3)
+
 shutil.rmtree(working_dir,ignore_errors=True)
 print('Done!')
