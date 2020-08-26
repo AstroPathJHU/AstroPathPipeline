@@ -14,16 +14,17 @@ class SingleLayerExposureTimeFit :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,layer_n,exposure_times,max_exp_time,top_plot_dir,sample,rawfile_top_dir,metadata_top_dir,flatfield,overlaps,smoothsigma,cutimages) :
+    def __init__(self,layer_n,exp_times,max_exp_time,top_plot_dir,sample,rawfile_top_dir,metadata_top_dir,flatfield,offset_bounds,overlaps,smoothsigma,cutimages) :
         """
         layer_n          = layer number that this fit will run on (indexed from 1)
-        exposure_times   = dictionary of raw file exposure times, keyed by filename stem
+        exp_times        = dictionary of raw file exposure times, keyed by filename stem
         max_exp_time     = the maximum exposure time in the entire sample for this layer
         top_plot_dir     = path to directory in which this fit's subdirectory should be created
         sample           = name of the microscope data sample to fit to ("M21_1" or equivalent)
         rawfile_top_dir  = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
         metadata_top_dir = path to directory containing [samplename]/im3/xml directory
         flatfield        = relevant layer of whole sample flatfield file
+        offset_bounds    = bounds for dark current count offset
         overlaps         = list of sample overlaps to run ([-1] if all should be run)
         smoothsigma      = sigma for Gaussian blurring
         cutimages        = True if only central 50% of overlap images should be used
@@ -40,7 +41,8 @@ class SingleLayerExposureTimeFit :
                 os.mkdir(plotdirname)
         self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
         self.flatfield = flatfield
-        self.exposure_time_overlaps = self.__getExposureTimeOverlaps(exposure_times,max_exp_time,overlaps,smoothsigma,cutimages)
+        self.offset_bounds = offset_bounds
+        self.exposure_time_overlaps = self.__getExposureTimeOverlaps(exp_times,max_exp_time,overlaps,smoothsigma,cutimages)
         if len(self.exposure_time_overlaps)<1 :
             et_fit_logger.warn(f'WARNING: layer {self.layer} does not have any aligned overlaps with exposure time differences. This fit will be skipped!')
         self.offsets = []
@@ -48,11 +50,10 @@ class SingleLayerExposureTimeFit :
         self.best_fit_offset = None
         self.best_fit_cost = None
 
-    def doFit(self,initial_offset,offset_bounds,max_iter,gtol,eps,print_every) :
+    def doFit(self,initial_offset,max_iter,gtol,eps,print_every) :
         """
         Run the fit for this layer
         initial_offset = starting point for fits
-        offset_bounds  = bounds for dark current count offset
         max_iter       = maximum number of iterations for each fit to run
         gtol           = gradient projection tolerance for fits
         eps            = step size for approximating Jacobian
@@ -61,48 +62,28 @@ class SingleLayerExposureTimeFit :
         if len(self.exposure_time_overlaps)<1 :
             et_fit_logger.warn(f'WARNING: skipping fit for layer {self.layer} because there are not enough overlaps!')
             return
-        #msg = f'Starting fit for layer {self.layer} at offset = {initial_offset}; will run for a max of {max_iter} '
-        #msg+= f'iterations printing every {print_every}'
-        #et_fit_logger.info(msg)
-        #self.result = scipy.optimize.minimize(self.__cost,
-        #                                      [initial_offset],
-        #                                      method='L-BFGS-B',
-        #                                      jac='2-point',
-        #                                      bounds=[offset_bounds],
-        #                                      options={'disp':True,
-        #                                               'ftol':1e-20,
-        #                                               'gtol':gtol,
-        #                                               'eps':eps,
-        #                                               'maxiter':max_iter,
-        #                                               'iprint':print_every,
-        #                                               'maxls':50,
-        #                                              }
-        #                                     )
-        #self.best_fit_offset = self.result.x[0]
-        #self.best_fit_cost = self.result.fun
-        #msg = f'Layer {self.layer} fit done! Minimization terminated with exit {self.result.message}. '
-        #msg+= f'Best-fit offset = {self.best_fit_offset:.4f} (best cost = {self.best_fit_cost:.4f})'
-        #et_fit_logger.info(msg)
-        et_fit_logger.info(f'Finding optimal offset in {self.sample} layer {self.layer} from {len(self.exposure_time_overlaps)} total overlaps....')
-        all_offsets = []; weighted_sum = 0.; sum_weights = 0.
-        for eto in self.exposure_time_overlaps :
-            this_weight = ((eto.raw_cost-eto.best_cost)/eto.npix)
-            if this_weight<0. :
-                msg = f'Overlap {eto.n} with best fit offset = {eto.best_offset} will be skipped because cost was not reduced!'
-                msg+= f' (Raw cost = {eto.raw_cost}, best cost = {eto.best_cost})'
-                et_fit_logger.info(msg)
-                continue
-            all_offsets.append(eto.best_offset)
-            weighted_sum+=this_weight*eto.best_offset
-            sum_weights+=this_weight
-        self.best_fit_offset = weighted_sum/sum_weights
-        et_fit_logger.info(f'Best overall offset for {self.sample} layer {self.layer} found at {self.best_fit_offset}')
-        with cd(self.plotdirpath) :
-            plt.hist(all_offsets,bins=100)
-            plt.title(f'all offsets for {self.sample} layer {self.layer}')
-            plt.savefig(f'all_offsets_{self.sample}_layer_{self.layer}.png')
-            plt.close()
-
+        msg = f'Starting fit for layer {self.layer} at offset = {initial_offset}; will run for a max of {max_iter} '
+        msg+= f'iterations printing every {print_every}'
+        et_fit_logger.info(msg)
+        self.result = scipy.optimize.minimize(self.__cost,
+                                              [initial_offset],
+                                              method='L-BFGS-B',
+                                              jac='2-point',
+                                              bounds=[self.offset_bounds],
+                                              options={'disp':True,
+                                                       'ftol':1e-20,
+                                                       'gtol':gtol,
+                                                       'eps':eps,
+                                                       'maxiter':max_iter,
+                                                       'iprint':print_every,
+                                                       'maxls':50,
+                                                      }
+                                             )
+        self.best_fit_offset = self.result.x[0]
+        self.best_fit_cost = self.result.fun
+        msg = f'Layer {self.layer} fit done! Minimization terminated with exit {self.result.message}. '
+        msg+= f'Best-fit offset = {self.best_fit_offset:.4f} (best cost = {self.best_fit_cost:.4f})'
+        et_fit_logger.info(msg)
 
     def writeOutResults(self,n_comparisons_to_save) :
         """
@@ -114,8 +95,8 @@ class SingleLayerExposureTimeFit :
             return
         if self.best_fit_offset is None :
             raise RuntimeError('ERROR: best fit offset is None; run fit before calling writeOutResults!')
-        #self.__plotCostsAndOffsets()
-        #self.__writeResultsAndPlotCostReductions()
+        self.__plotCostsAndOffsets()
+        self.__writeResultsAndPlotCostReductions()
         self.__saveComparisonImages(n_comparisons_to_save)
         
     #################### PRIVATE HELPER FUNCTIONS ####################
@@ -123,7 +104,7 @@ class SingleLayerExposureTimeFit :
     #helper function to calculate the fitting cost
     def __cost(self,pars) :
         offset=pars[0]
-        cost=0.; npix=0.
+        cost=0.; npix=0
         for eto in self.exposure_time_overlaps :
             thiscost, thisnpix = eto.getCostAndNPix(offset)
             cost+=thiscost; npix+=thisnpix
@@ -167,7 +148,7 @@ class SingleLayerExposureTimeFit :
             p1et = exposure_times[(p1rect.file).rstrip(CONST.IM3_EXT)]
             p2et = exposure_times[(p2rect.file).rstrip(CONST.IM3_EXT)]
             et_fit_logger.info(f'Finding offset in overlap {olap.n} ({io+1} of {len(a.overlaps)})....')
-            etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages))
+            etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages,self.offset_bounds))
             if p1rect.n not in relevant_rectangles.keys() :
                 relevant_rectangles[p1rect.n]=p1rect
             if p2rect.n not in relevant_rectangles.keys() :
