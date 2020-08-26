@@ -48,7 +48,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     for i, overlap in enumerate(self.overlaps, start=1):
       if skip_corners and overlap.tag in [1,3,7,9] :
         continue
-      self.logger.info(f"aligning overlap {i}/{len(self.overlaps)}")
+      self.logger.info(f"aligning overlap {overlap.n} ({i}/{len(self.overlaps)})")
       if (overlap.p2, overlap.p1) in done:
         result = overlap.getinversealignment(self.overlapsdict[overlap.p2, overlap.p1])
       else:
