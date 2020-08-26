@@ -173,10 +173,13 @@ class SingleLayerExposureTimeFit :
     #helper function to return a list of overlap ns for overlaps where the p1 and p2 image exposure times are different
     def __getOverlapsWithExposureTimeDifferences(self,exp_times) :
         a = AlignmentSetFromXML(self.metadata_top_dir,self.rawfile_top_dir,self.sample,nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer)
+        rect_rfkey_by_n = {}
+        for r in a.rectangles :
+            rect_rfkey_by_n[r.n] = r.file.rstrip('.im3')
         olaps_with_et_diffs = []
         for olap in a.overlaps :
-            p1key = (([r for r in a.rectangles if r.n==olap.p1])[0].file).rstrip('.im3')
-            p2key = (([r for r in a.rectangles if r.n==olap.p2])[0].file).rstrip('.im3')
+            p1key = rect_rfkey_by_n[olap.p1]
+            p2key = rect_rfkey_by_n[olap.p2]
             if p1key in exp_times.keys() and p2key in exp_times.keys() :
                 p1et = exp_times[p1key]
                 p2et = exp_times[p2key]
