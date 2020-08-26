@@ -52,7 +52,8 @@ class OverlapWithExposureTimes :
         self.et_diff = self.p2et-self.p1et
         self.max_exp_time = max_exp_time
         p1_im, p2_im = self.__getp1p2Images(olap,cutimages)
-        self.fit_pars = self.__getFitParameters(p1_im,p2_im,offset_bounds)
+        self.offset_bounds = offset_bounds
+        self.fit_pars = self.__getFitParameters(p1_im,p2_im)
         self.uncorrected_cost = costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,-1.)
         self.npix = p1_im.shape[0]*p1_im.shape[1]
         self._raw_p1_im=None
@@ -86,11 +87,24 @@ class OverlapWithExposureTimes :
         corr_p1im = correctImageLayerForExposureTime(self.raw_p1im,self.p1et,self.max_exp_time,best_fit_offset)
         corr_p2im = correctImageLayerForExposureTime(self.raw_p2im,self.p2et,self.max_exp_time,best_fit_offset)
         corr_overlay = np.clip(np.array([corr_p1im, corr_p2im, 0.5*(corr_p1im+corr_p2im)]).transpose(1, 2, 0) / 1000.,0.,1.)
-        f,ax = plt.subplots(1,2,figsize=(2*6.4,4.6))
+        f,ax = plt.subplots(1,3,figsize=(3*6.4,4.6))
         ax[0].imshow(orig_overlay)
         ax[0].set_title(f'overlap {self.n} original (cost={self.orig_cost:.3f})')
         ax[1].imshow(corr_overlay)
         ax[1].set_title(f'overlap {self.n} corrected (cost={self.corr_cost:.3f})')
+        offsets = list(range(self.offset_bounds[0],self.offset_bounds[1]))
+        raw_image_costs = []; parameterized_costs = []
+        for o in offsets :
+            raw_image_costs.append(costFromImages(self.raw_p1im,self.raw_p2im,self.p1et,self.p2et,self.max_exp_time,o)/self.raw_npix)
+            pcost,npix = self.getCostAndNPix(o)
+            parameterized_costs.append(pcost/npix)
+        ax[2].plot(offsets,raw_image_costs,linewidth=2,label='cost from raw images')
+        ax[2].plot(offsets,parameterized_costs,linewidth=2,label='parameterized cost')
+        ax[2].plot([best_fit_offset,best_fit_offset],[0.8*y for y in ax[2].get_ylim()],linewidth=2,color='k',label=f'best fit offset ({best_fit_offset:.3f})')
+        ax[2].set_title(f'overlap {self.n} (tag={self.tag}) w/ exp. time diff.={self.et_diff:.1f}')
+        ax[2].set_xlabel('offset')
+        ax[2].set_ylabel('avg. cost per pixel')
+        ax[2].legend(loc='best')
         plt.savefig(f'{filename_stem}_offset={best_fit_offset:.3f}.png')
         plt.close()
 
@@ -119,9 +133,9 @@ class OverlapWithExposureTimes :
         return p1_im,p2_im
 
     #helper function to get the cost parameterization
-    def __getFitParameters(self,p1_im,p2_im,offset_bounds) :
+    def __getFitParameters(self,p1_im,p2_im) :
         offsets = []; costs = []
-        for o in range(offset_bounds[0],offset_bounds[1]+1) :
+        for o in range(self.offset_bounds[0],self.offset_bounds[1]+1) :
             offsets.append(o)
             costs.append(costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,o))
         return np.polyfit(offsets,costs,CONST.OVERLAP_COST_POLYFIT_DEG)
