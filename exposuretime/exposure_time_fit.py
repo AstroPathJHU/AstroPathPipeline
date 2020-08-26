@@ -208,8 +208,8 @@ class SingleLayerExposureTimeFit :
             cost_reduxes.append(fitresult.prefit_cost-fitresult.postfit_cost)
             frac_cost_reduxes.append((fitresult.prefit_cost-fitresult.postfit_cost)/(fitresult.prefit_cost))
         f,ax=plt.subplots(1,3,figsize=(3*6.4,4.6))
-        ax[0].hist(prefit_costs,bins=60,alpha=0.7,label='prefit costs')
-        ax[0].hist(postfit_costs,bins=60,alpha=0.7,label='postfit costs')
+        _,bins1,_ = ax[0].hist(prefit_costs,bins=np.linspace(0.,max(max(prefit_costs),max(postfit_costs))+2,80),alpha=0.7,label='prefit costs')
+        ax[0].hist(postfit_costs,bins=bins1,alpha=0.7,label='postfit costs')
         ax[0].set_xlabel('overlap cost')
         ax[0].set_ylabel('number of overlaps')
         ax[0].legend(loc='best')
@@ -274,9 +274,9 @@ class SingleLayerExposureTimeFit :
         with cd(self.plotdirpath) :
             if n_ends>0 :
                 for io,eto in enumerate(self.exposure_time_overlaps[:n_ends],start=1) :
-                    eto.saveComparisonImages(self.best_fit_offset,f'overlay_comparison_least_different_{io}')
+                    eto.saveComparisonImages(self.best_fit_offset,f'overlay_comp_least_diff_{io}')
                 for io,eto in enumerate(self.exposure_time_overlaps[:-(n_ends+1):-1],start=1) :
-                    eto.saveComparisonImages(self.best_fit_offset,f'overlay_comparison_most_different_{io}')
+                    eto.saveComparisonImages(self.best_fit_offset,f'overlay_comp_most_diff_{io}')
             if random_indices is not None :
                 for ri in random_indices :
-                    self.exposure_time_overlaps[ri].saveComparisonImages(self.best_fit_offset,f'overlay_comparison_random_{ri+1}')
+                    self.exposure_time_overlaps[ri].saveComparisonImages(self.best_fit_offset,f'overlay_comp_random_{ri+1}')
