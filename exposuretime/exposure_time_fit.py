@@ -204,31 +204,46 @@ class SingleLayerExposureTimeFit :
     #helper function to make a plot of each overlap's cost reduction and write out the table of overlap fit results
     def __writeResultsAndPlotCostReductions(self) :
         et_fit_logger.info(f'Writing out fit results for layer {self.layer}....')
-        fitresults = []; prefit_costs = []; postfit_costs = []; cost_reduxes = []; frac_cost_reduxes = []
-        for eto in self.exposure_time_overlaps :
-            fitresult = eto.getFitResult(self.best_fit_offset)
-            fitresults.append(fitresult)
-            prefit_costs.append(fitresult.prefit_cost)
-            postfit_costs.append(fitresult.postfit_cost)
-            cost_reduxes.append(fitresult.prefit_cost-fitresult.postfit_cost)
-            frac_cost_reduxes.append((fitresult.prefit_cost-fitresult.postfit_cost)/(fitresult.prefit_cost))
+        #write out table of overlap fit results
+        fitresults = [eto.getFitResult(self.best_fit_offset) for eto in self.exposure_time_overlaps]
+        with cd(self.plotdirpath) :
+            writetable('overlap_fit_results.csv',fitresults)
+        #make 1D pre/postfit cost and cost reduction plots
         f,ax=plt.subplots(1,3,figsize=(3*6.4,4.6))
+        prefit_costs  = [r.prefit_cost for r in fitresults]
+        postfit_costs = [r.postfit_cost for r in fitresults]
         _,bins1,_ = ax[0].hist(prefit_costs,bins=np.linspace(0.,max(max(prefit_costs),max(postfit_costs))+2,80),alpha=0.7,label='prefit costs')
         ax[0].hist(postfit_costs,bins=bins1,alpha=0.7,label='postfit costs')
         ax[0].set_xlabel('overlap cost')
         ax[0].set_ylabel('number of overlaps')
         ax[0].legend(loc='best')
-        ax[1].hist(cost_reduxes,bins=60)
+        ax[1].hist([(r.prefit_cost-r.postfit_cost) for r in fitresults],bins=60)
         ax[1].set_xlabel('original cost - post-fit cost')
         ax[1].set_ylabel('number of overlaps')
-        ax[2].hist(frac_cost_reduxes,bins=60)
+        ax[2].hist([(r.prefit_cost-r.postfit_cost)/r.prefit_cost for r in fitresults],bins=60)
         ax[2].set_xlabel('(original cost - post-fit cost)/(original cost)')
         ax[2].set_ylabel('number of overlaps')
         with cd(self.plotdirpath) :
-            plt.savefig('cost_reductions.png')
+            plt.savefig(f'cost_reductions_1d_{self.sample}_layer_{self.layer}.png')
         plt.close()
-        with cd(self.plotdirpath) :
-            writetable('overlap_fit_results.csv',fitresults)
+        #make 2D pre/postfit cost and cost reduction plots
+        f,ax = plt.subplots(2,2,figsize=(2*6.4,2*4.6))
+        etdiffs = [r.et_diff for r in fitresults]
+        pos = ax[0][0].hist2d(etdiffs,[r.prefit_cost for r in fitresults],bins=80,norm=colors.LogNorm(),cmap='gray')
+        ax[0][0].set_title('prefit cost vs. diff. in exposure time')
+        f.colorbar(pos[3],ax=ax[0][0])
+        pos = ax[0][1].hist2d(etdiffs,[r.postfit_cost for r in fitresults],bins=80,norm=colors.LogNorm(clip=True),cmap='gray')
+        ax[0][1].set_title('postfit cost vs. diff. in exposure time')
+        f.colorbar(pos[3],ax=ax[0][1])
+        pos = ax[1][0].hist2d(etdiffs,[(r.prefit_cost-r.postfit_cost) for r in fitresults],bins=80,norm=colors.LogNorm(),cmap='gray')
+        ax[1][0].set_title('cost redux vs. diff. in exposure time')
+        f.colorbar(pos[3],ax=ax[1][0])
+        pos = ax[1][1].hist2d(etdiffs,[(r.prefit_cost-r.postfit_cost)/r.prefit_cost for r in fitresults],bins=80,norm=colors.LogNorm(),cmap='gray')
+        ax[1][1].set_title('frac. cost redux vs. diff. in exposure time')
+        f.colorbar(pos[3],ax=ax[1][1])
+        with cd(plotdirpath) :
+            plt.savefig(f'cost_reductions_2d_{self.sample}_layer_{self.layer}.png')
+        plt.close()
 
     #helper function to write out a set of overlap overlay comparisons
     def __saveComparisonImages(self,n_comparisons_to_save) :
