@@ -65,6 +65,7 @@ class SampleBase(contextlib.ExitStack):
   def __init__(self, root, samp, *, uselogfiles=False, logthreshold=logging.DEBUG):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
+    self.__otherxmlroots = otherxmlroots
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root/self.SlideID} does not exist")
     self.logger = getlogger(module=self.logmodule, root=self.root, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold)
@@ -112,8 +113,18 @@ class SampleBase(contextlib.ExitStack):
       raise FileNotFoundError(f"No component tiffs for {self}")
     return tiffinfo(filename=componenttifffilename)
 
+  @property
+  def possiblexmlfolders(self):
+    return [self.im3folder/"xml"]
+  @property
+  def xmlfolder(self):
+    possibilities = self.possiblexmlfolders
+    for possibility in possibilities:
+      if possibility/(self.SlideID+".Parameters.xml").exists(): return possibility
+    raise FileNotFoundError(f"Didn't find {self.SlideID}.Parameters.xml in any of these folders:\n" + ", ".join(possibilities))
+
   def getimageinfofromXMLfiles(self):
-    with open(self.im3folder/"xml"/(self.SlideID+".Parameters.xml"), "rb") as f:
+    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "Shape":
           width, height, nlayers = (int(_) for _ in str(node).split())
@@ -124,20 +135,20 @@ class SampleBase(contextlib.ExitStack):
       width = units.Distance(pixels=width, pscale=pscale)
       height = units.Distance(pixels=height, pscale=pscale)
     except NameError:
-      raise IOError(f'Couldn\'t find Shape and/or MillimetersPerPixel in {self.im3folder/"xml"/(self.SlideID+".Parameters.xml")}')
+      raise IOError(f'Couldn\'t find Shape and/or MillimetersPerPixel in {self.xmlfolder/(self.SlideID+".Parameters.xml")}')
 
     return pscale, width, height
 
   @methodtools.lru_cache()
   @property
   def nlayers(self):
-    with open(self.im3folder/"xml"/(self.SlideID+".Parameters.xml"), "rb") as f:
+    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "Shape":
           width, height, nlayers = (int(_) for _ in str(node).split())
           return nlayers
       else:
-        raise IOError(f'Couldn\'t find Shape in {self.im3folder/"xml"/(self.SlideID+".Parameters.xml")}')
+        raise IOError(f'Couldn\'t find Shape in {self.xmlfolder/(self.SlideID+".Parameters.xml")}')
 
   def getimageinfos(self):
     result = {}
@@ -265,6 +276,10 @@ class FlatwSampleBase(SampleBase):
 
   @property
   def root1(self): return self.root
+
+  @property
+  def possiblexmlfolders(self):
+    return super().possiblexmlfolders + [self.root2]
 
 class SampleThatReadsOverlaps(SampleBase):
   overlaptype = Overlap #can be overridden in subclasses
