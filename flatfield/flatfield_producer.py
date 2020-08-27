@@ -148,7 +148,7 @@ class FlatfieldProducer :
             this_samp_indices_for_masking_plots=this_samp_indices_for_masking_plots[:n_masking_images_per_sample]
             #get the max exposure times by layer if the images should be normalized
             if (not self.mean_image.skip_et_correction) :
-                max_exp_times_by_layer = getSampleMaxExposureTimesByLayer(samp.metadata_top_dir,sn)
+                max_exp_times_by_layer = getSampleMaxExposureTimesByLayer(samp.rawfile_top_dir,sn)
             else :
                 max_exp_times_by_layer = None
             #break the list of this sample's filepaths into chunks to run in parallel
