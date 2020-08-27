@@ -4,7 +4,7 @@ from microscopealignment.utilities.img_file_io import getExposureTimesByLayer
 from microscopealignment.utilities.tableio import writetable
 from microscopealignment.utilities.misc import cd
 from typing import List
-import matplotlib.pyplot as plt, multiprocessing as mp
+import multiprocessing as mp
 import os, glob, dataclasses
 
 #constants
@@ -70,7 +70,6 @@ class SampleOverlapsWithDifferentExposureTimes :
     n_overlaps_per_layer_group : List[int]
 
 def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,nlayers,layers,sd,return_dict) :
-    to_return = []
     with cd(os.path.join(rtd,sn)) :
         all_rfps = [os.path.join(rtd,sn,fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
     exp_times = {}
