@@ -40,7 +40,7 @@ def checkArgs(args) :
 
 #helper function to return a list of overlap ns for overlaps where the p1 and p2 image exposure times are different
 #can be run in parallel if given a return_dict (will be keyed by layer)
-def getOverlapsWithExposureTimeDifferences(rtd,mtd,sn,all_exp_times,layer,overlaps=None,return_dict=None) :
+def getOverlapsWithExposureTimeDifferences(rtd,mtd,sn,exp_times,layer,overlaps=None,return_dict=None) :
     et_fit_logger.info(f'Finding overlaps with exposure time differences in {sn} layer {layer}....')
     if overlaps is None or overlaps==[-1] :
         a = AlignmentSetFromXML(mtd,rtd,sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer)
@@ -53,9 +53,9 @@ def getOverlapsWithExposureTimeDifferences(rtd,mtd,sn,all_exp_times,layer,overla
     for olap in a.overlaps :
         p1key = rect_rfkey_by_n[olap.p1]
         p2key = rect_rfkey_by_n[olap.p2]
-        if p1key in all_exp_times.keys() and p2key in all_exp_times.keys() :
-            p1et = all_exp_times[p1key][layer]
-            p2et = all_exp_times[p2key][layer]
+        if p1key in exp_times.keys() and p2key in exp_times.keys() :
+            p1et = exp_times[p1key]
+            p2et = exp_times[p2key]
             if p2et!=p1et :
                 olaps_with_et_diffs.append(olap.n)
     if return_dict is not None :

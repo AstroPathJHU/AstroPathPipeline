@@ -12,7 +12,6 @@ import os, glob
 #can be run in parallel if given a return dictionary
 def getExposureTimeFitWorker(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,offset_bounds,overlaps,smoothsigma,cutimages,return_dict=None) :
     fit = SingleLayerExposureTimeFit(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,offset_bounds,overlaps,smoothsigma,cutimages)
-    print(f'return_dict = {return_dict}, layer_n = {layer_n}')
     if return_dict is not None :
         return_dict[layer_n] = fit
     else :
@@ -136,8 +135,11 @@ class ExposureTimeOffsetFitGroup :
             rdict = manager.dict()
             procs = []
             for layer_n in layer_group_ns :
+                this_layer_all_exp_times = {}
+                for rfs in all_exp_times.keys() :
+                    this_layer_all_exp_times[rfs] = all_exp_times[rfs][self.layers.index(layer_n)]
                 p=mp.Process(target=getOverlapsWithExposureTimeDifferences,
-                             args=(self.rawfile_top_dir,self.metadata_top_dir,self.sample,all_exp_times,layer_n,overlaps,rdict)
+                             args=(self.rawfile_top_dir,self.metadata_top_dir,self.sample,this_layer_all_exp_times,layer_n,overlaps,rdict)
                              )
                 procs.append(p)
                 p.start()
@@ -151,8 +153,11 @@ class ExposureTimeOffsetFitGroup :
                 overlap_dict[layer_n] = rdict[layer_n]
         else :
             for layer_n in layer_group_ns :
+                this_layer_all_exp_times = {}
+                for rfs in all_exp_times.keys() :
+                    this_layer_all_exp_times[rfs] = all_exp_times[rfs][self.layers.index(layer_n)]
                 overlap_dict[layer_n] = getOverlapsWithExposureTimeDifferences(self.rawfile_top_dir,self.metadata_top_dir,self.sample,
-                                                                               all_exp_times,layer_n,overlaps)
+                                                                               this_layer_all_exp_times,layer_n,overlaps)
         return overlap_dict
 
     #helper function to get the flatfield from the given arguments
