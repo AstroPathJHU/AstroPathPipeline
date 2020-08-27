@@ -82,7 +82,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     self.logger.info("getDAPI")
     with contextlib.ExitStack() as stack:
       for r in self.rectangles:
-        stack.enter_context(r.using_original_image())
+        stack.enter_context(r.using_image(-2))
         if keeprawimages:
           for r in self.rectangles:
             r.originalimage

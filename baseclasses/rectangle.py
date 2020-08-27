@@ -52,15 +52,19 @@ class Rectangle(DataClassWithDistances):
 class RectangleWithImageBase(Rectangle):
   __DEBUG = True
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, transformations=[], **kwargs):
     super().__init__(*args, **kwargs)
-    self.__using_image_property = False
-    self.__using_image_counter = 0
-    self.__debug_load_image_counter = 0
+    self.__images_cache = [None for _ in range(len(transformations)+1)]
+    self.__accessed_image = np.zeros(dtype=bool, shape=len(transformations)+1)
+    self.__using_image_counter = np.zeros(dtype=int, shape=len(transformations)+1)
+    self.__debug_load_images_counter = np.zeros(dtype=int, shape=len(transformations)+1)
+    self.__transformations = transformations
 
   def __del__(self):
-    if self.__DEBUG and self.__debug_load_image_counter > 1:
-      warnings.warn(f"Loaded image for rectangle {self} {self.__debug_load_image_counter} times")
+    if self.__DEBUG:
+      for i, ctr in enumerate(self.__debug_load_images_counter):
+        if ctr > 1:
+           warnings.warn(f"Loaded image {i} for rectangle {self} {ctr} times")
 
   @abc.abstractmethod
   def getimage(self):
@@ -69,61 +73,65 @@ class RectangleWithImageBase(Rectangle):
   #do not override any of these functions or call them from super()
   #override getimage() instead and call super().getimage()
 
+  def any_image(self, index):
+    #previous_image(-1) gives the actual image
+    #previous_image(-2) gives the previous image
+    #etc.
+    self.__accessed_image[index] = True
+    return self.__image(index)
+
+  def delete_any_image(self, index):
+    self.__accessed_image[index] = False
+    self.__check_delete_image_sequence()
+
   @property
   def image(self):
-    self.__using_image_property = True
-    return self.__image()
+    return self.any_image(-1)
   @image.deleter
   def image(self):
-    self.__using_image_property = False
-    self.__check_delete_image()
-  def __check_delete_image(self):
-    if not self.__using_image_counter and not self.__using_image_property:
-      self.__image.cache_clear()
-  @methodtools.lru_cache()
-  def __image(self):
-    self.__debug_load_image_counter += 1
-    return self.getimage()
+    self.delete_any_image(-1)
+    self.__check_delete_images()
+
+  @property
+  def all_images(self):
+    return [self.any_image(i) for i in range(len(self.__images_cache))]
+  def delete_all_images(self, index):
+    self.__accessed_image[:] = False
+    self.__check_delete_image_sequence()
+
+  def __check_delete_images(self):
+    for i, (ctr, usingproperty) in enumerate(zip(self.__using_image_counter, self.__accessed_image)):
+      if not ctr and not usingproperty:
+        self.__images_cache[i] = None
+
+  def __image(self, i):
+    if self.__images_cache[i] is None:
+      if i < 0: i = (len(self.__transformations)+1) + i
+      if i == 0:
+        self.__images_cache[i] = self.getimage()
+      else:
+        with self.using_image(i-1) as previous:
+          self.__images_cache[i] = self.__transformations[i-1].transform(previous)
+    return self.__images_cache[i]
 
   @contextlib.contextmanager
-  def using_image(self):
-    self.__using_image_counter += 1
+  def using_image(self, index=-1):
+    self.__using_image_counter[index] += 1
     try:
-      yield self.__image()
+      yield self.__image(index)
     finally:
-      self.__using_image_counter -= 1
-      self.__check_delete_image()
+      self.__using_image_counter[index] -= 1
+      self.__check_delete_images()
+  @contextlib.contextmanager
+  def using_all_images(self):
+    with contextlib.ExitStack() as stack:
+      for i in range(len(self.__images_cache)):
+        stack.enter_context(self.using_image(i))
+      yield stack
 
-class RectangleTransformImageBase(RectangleWithImageBase):
-  def __init__(self, *args, originalrectangle, **kwargs):
-    super().__init__(rectangle=originalrectangle, *args, readingfromfile=False, **kwargs)
-    self.__originalrectangle = originalrectangle
-  def getimage(self):
-    with self.__originalrectangle.using_image() as originalimage:
-      return self.transformimage(originalimage)
+class RectangleTransformationBase(abc.ABC):
   @abc.abstractmethod
-  def transformimage(self, originalimage):
-    pass
-  @property
-  def originalimage(self):
-    return self.__originalrectangle.image
-  def using_original_image(self):
-    return self.__originalrectangle.using_image()
-  @property
-  def rawimage(self):
-    if isinstance(self.__originalrectangle, RectangleTransformImageBase):
-      return self.__originalrectangle.rawimage
-    else:
-      return self.originalimage
-  @property
-  def using_raw_image(self):
-    if isinstance(self.__originalrectangle, RectangleTransformImageBase):
-      return self.__originalrectangle.using_raw_image()
-    else:
-      return self.using_original_image()
-  @property
-  def originalrectangle(self):
-    return self.__originalrectangle
+  def transform(self, previousimage): pass
 
 class RectangleReadImageBase(RectangleWithImageBase):
   @abc.abstractproperty

@@ -1,36 +1,27 @@
 import numpy as np
 
-from ..baseclasses.rectangle import RectangleTransformImageBase, RectangleWithImage
+from ..baseclasses.rectangle import RectangleTransformationBase, RectangleWithImage
 from ..utilities.misc import dummylogger
 from .flatfield import meanimage
 
-class AlignmentRectangle(RectangleTransformImageBase):
-  def __init__(self, *args, mean_image=None, keepraw=False, use_mean_image=True, logger=dummylogger, originalrectangle=None, **kwargs):
-    if originalrectangle is not None:
-      super().__init__(*args, originalrectangle=originalrectangle, **kwargs)
-    else:
-      super().__init__(originalrectangle=RectangleWithImage(*args, **kwargs))
-    self.__allrectangles = None
+class ApplyMeanImage(RectangleTransformationBase):
+  def __init__(self, mean_image=None, logger=dummylogger):
     self.__meanimage = mean_image
-    self.__usemeanimage = use_mean_image
-    self.__rawimage = None
-    self.__keeprawimage = False
+    self.__allrectangles = None
     self.__logger = logger
 
   def setrectanglelist(self, allrectangles):
     self.__allrectangles = allrectangles
 
-  def transformimage(self, originalimage):
-    if not self.__usemeanimage: return originalimage
-
-    self.__setmeanimage()
+  def transform(self, originalimage):
+    self.setmeanimage()
     for r in self.__allrectangles:
-      r.__setmeanimage(mean_image=self.__meanimage)
+      r.setmeanimage(mean_image=self.__meanimage)
     img = np.empty_like(originalimage)
     img[:] = np.rint(originalimage / self.__meanimage.flatfield)
     return img
 
-  def __setmeanimage(self, mean_image=None):
+  def setmeanimage(self, mean_image=None):
     if self.__allrectangles is None:
       raise ValueError("Have to call setrectanglelist() before getting any images")
     if self.__meanimage is None:
@@ -39,16 +30,27 @@ class AlignmentRectangle(RectangleTransformImageBase):
         n = len(self.__allrectangles)
         for i, r in enumerate(self.__allrectangles, start=1):
           self.__logger.info(f"loading rectangle {i}/{n}")
-          with r.using_original_image() as rawimage:
+          with r.using_image(-2) as rawimage:
             allimages.append(rawimage)
         self.__logger.info("meanimage")
         mean_image = meanimage(allimages)
       self.__meanimage = mean_image
 
   @property
-  def layer(self):
-    return self.originalrectangle.layer
-
-  @property
   def meanimage(self):
     return self.__meanimage
+
+class AlignmentRectangle(RectangleWithImage):
+  def __init__(self, *args, mean_image=None, use_mean_image=True, logger=dummylogger, transformations=None, **kwargs):
+    if transformations is None: transformations = []
+    if use_mean_image:
+      self.__meanimagetransformation = ApplyMeanImage(mean_image=mean_image, logger=logger)
+      transformations.append(self.__meanimagetransformation)
+    super().__init__(*args, transformations=transformations, **kwargs)
+    self.__rawimage = None
+    self.__logger = logger
+
+  def setrectanglelist(self, *args, **kwargs):
+    self.__meanimagetransformation.setrectanglelist(*args, **kwargs)
+  def setmeanimage(self, *args, **kwargs):
+    self.__meanimagetransformation.setmeanimage(*args, **kwargs)
