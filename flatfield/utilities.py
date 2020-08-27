@@ -27,6 +27,13 @@ class FieldLog :
     use      : str
     stacked_in_layers : List[int] = None
 
+#helper class for inputting samples with their names and raw/metadata directories
+@dataclasses.dataclass
+class FlatfieldSampleInfo :
+    name : str
+    rawfile_top_dir : str
+    metadata_top_dir : str
+
 #################### GENERAL HELPER FUNCTIONS ####################
 
 #helper function to convert an image array into a flattened pixel histogram

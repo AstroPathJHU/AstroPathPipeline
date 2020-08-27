@@ -3,7 +3,7 @@ from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, g
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities import units
-from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer
+from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer, getImageHWLFromXMLFile
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
@@ -20,12 +20,20 @@ class FlatfieldSample() :
     #################### PROPERTIES ####################
 
     @property
+    def metadata_top_dir(self):
+        return self._metadata_top_dir # location of metadata files
+    @property
+    def metadata_in_subdir(self):
+        return self._metadata_in_subdir # whether metadata files are in "im3/xml" subdirectories
+    @property
     def background_thresholds_for_masking(self):
         return self._background_thresholds_for_masking # the list of background thresholds by layer
     @property
     def name(self):
         return self._name # the name of the sample
-    
+    @property
+    def img_dims(self):
+        return self._img_dims # dimensions of the images in the sample
 
     #################### CLASS CONSTANTS ####################
 
@@ -35,13 +43,14 @@ class FlatfieldSample() :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,name,img_dims) :
+    def __init__(self,sample) :
         """
-        name          = name of the sample
-        img_dims      = dimensions of images in files in order as (height, width, # of layers) 
+        sample = FlatfieldSampleInfo object for this sample
         """
-        self._name = name
-        self.dims = img_dims
+        self._name = sample.name
+        self._metadata_top_dir = sample.metadata_top_dir
+        self._metadata_in_subdir = (sample.rawfile_top_dir!=sample.metadata_top_dir)
+        self._img_dims = getImageHWLFromXMLFile(sample.metadata_top_dir,sample.name,self._metadata_in_subdir)
         self._background_thresholds_for_masking = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :
@@ -59,21 +68,23 @@ class FlatfieldSample() :
                     self._background_thresholds_for_masking.append(int(line))
                 except ValueError :
                     pass
-        if not len(self._background_thresholds_for_masking)==self.dims[-1] :
+        if not len(self._background_thresholds_for_masking)==self._img_dims[-1] :
             raise FlatFieldError(f'ERROR: number of background thresholds read from {threshold_file_path} is not equal to the number of image layers!')
 
-    def findBackgroundThresholds(self,rawfile_paths,metadata_top_dir,n_threads,et_correction_offsets,top_plotdir_path,threshold_file_name) :
+    def findBackgroundThresholds(self,rawfile_paths,n_threads,et_correction_offsets,top_plotdir_path,threshold_file_name) :
         """
         Function to determine this sample's background pixel flux thresholds per layer
         rawfile_paths         = a list of the rawfile paths to consider for this sample's background threshold calculations
-        metadata_top_dir      = directory containing [samplename]/im3/xml subdirectory
         n_threads             = max number of threads/processes to open at once
         et_correction_offsets = list of offsets by layer to use for exposure time correction
         top_plotdir_path      = path to the directory in which to save plots from the thresholding process
         threshold_file_name   = name of file to save background thresholds in, one line per layer
         """
         #if the images are to be normalized, we need to get the maximum exposure times by layer across the whole sample
-        max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(metadata_top_dir,self._name) if et_correction_offsets[0]!=-1. else None
+        if et_correction_offsets[0]!=-1. :
+            max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(self._metadata_top_dir,self._name,subdirectory=self._metadata_in_subdir)
+        else :
+            max_exposure_times_by_layer = None
         #make sure the plot directory exists
         if not os.path.isdir(top_plotdir_path) :
             with cd(os.path.join(*[pp for pp in top_plotdir_path.split(os.sep)[:-1]])) :
@@ -85,14 +96,14 @@ class FlatfieldSample() :
                 os.mkdir(this_samp_threshold_plotdir_name)
         #first find the filepaths corresponding to the edges of the tissue in the samples
         flatfield_logger.info(f'Finding tissue edge HPFs for sample {self._name}...')
-        tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,metadata_top_dir,plotdir_path)
+        tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,self._metadata_top_dir,plotdir_path)
         #chunk them together to be read in parallel
-        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self.dims,n_threads,metadata_top_dir)
+        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self._img_dims,n_threads,self._metadata_top_dir)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
         flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self._name}...')
         nbins=np.iinfo(np.uint16).max+1
-        all_image_thresholds_by_layer = np.empty((self.dims[-1],len(tissue_edge_filepaths)),dtype=np.uint16)
-        all_tissue_edge_layer_hists = np.zeros((nbins,self.dims[-1]),dtype=np.int64)
+        all_image_thresholds_by_layer = np.empty((self._img_dims[-1],len(tissue_edge_filepaths)),dtype=np.uint16)
+        all_tissue_edge_layer_hists = np.zeros((nbins,self._img_dims[-1]),dtype=np.int64)
         manager = mp.Manager()
         field_logs = []
         for fr_chunk in tissue_edge_fr_chunks :
@@ -130,7 +141,7 @@ class FlatfieldSample() :
         #when all the images are done, find the optimal thresholds for each layer
         low_percentile_by_layer=[]; high_percentile_by_layer=[]
         self._background_thresholds_for_masking=[]
-        for li in range(self.dims[-1]) :
+        for li in range(self._img_dims[-1]) :
             this_layer_thresholds=all_image_thresholds_by_layer[li,:]
             this_layer_thresholds=this_layer_thresholds[this_layer_thresholds!=0]
             this_layer_thresholds=np.sort(this_layer_thresholds)
@@ -167,7 +178,7 @@ class FlatfieldSample() :
                 plt.close()
         #make a little plot of the threshold min/max and final values by layer
         with cd(plotdir_path) :
-            xvals=list(range(1,self.dims[-1]+1))
+            xvals=list(range(1,self._img_dims[-1]+1))
             plt.plot(xvals,low_percentile_by_layer,marker='v',color='r',linewidth=2,label='10th %ile thresholds')
             plt.plot(xvals,high_percentile_by_layer,marker='^',color='b',linewidth=2,label='90th %ile thresholds')
             plt.plot(xvals,self._background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimal (mean) thresholds')
@@ -185,16 +196,15 @@ class FlatfieldSample() :
         #return the field logs
         return field_logs
 
-    def findTissueEdgeFilepaths(self,rawfile_paths,metadata_top_dir,plotdir_path=None) :
+    def findTissueEdgeFilepaths(self,rawfile_paths,plotdir_path=None) :
         """
         Return a list of filepaths corresponding to HPFs that are on the edge of the tissue
         rawfile_paths    = The list of filepaths that will be searched for those on the edge of the tissue
-        metadata_top_dir = directory containing [samplename]/im3/xml subdirectory
         plotdir_path     = Add a valid directory to this argument to save a plot of where the edge HPFs are next to the reference qptiff
         """
         #make an AlignmentSet to use in getting the islands
         rawfile_top_dir = os.path.dirname(os.path.dirname(rawfile_paths[0]))
-        a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,self._name,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
+        a = AlignmentSetFromXML(self._metadata_top_dir,rawfile_top_dir,self._name,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
         #get the list of sets of rectangle IDs by island
         samp_islands = a.islands()
         edge_rect_filenames = [] #use this to return the list of tissue edge filepaths
@@ -246,7 +256,7 @@ class FlatfieldSample() :
         bulk_rect_ys = [r.y for r in a.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
         if plotdir_path is not None :
             with cd(plotdir_path) :
-                has_qptiff = os.path.isfile(os.path.join(metadata_top_dir,self._name,'dbload',f'{self._name}_qptiff.jpg'))
+                has_qptiff = os.path.isfile(os.path.join(self._metadata_top_dir,self._name,'dbload',f'{self._name}_qptiff.jpg'))
                 if has_qptiff :
                     f,(ax1,ax2) = plt.subplots(1,2,figsize=(25.6,9.6))
                 else :
@@ -259,7 +269,7 @@ class FlatfieldSample() :
                 ax1.set_xlabel('x position',fontsize=18)
                 ax1.set_ylabel('y position',fontsize=18)
                 if has_qptiff :
-                    ax2.imshow(mpimg.imread(os.path.join(metadata_top_dir,self._name,'dbload',f'{self._name}_qptiff.jpg')))
+                    ax2.imshow(mpimg.imread(os.path.join(self._metadata_top_dir,self._name,'dbload',f'{self._name}_qptiff.jpg')))
                     ax2.set_title('reference qptiff',fontsize=18)
                 plt.savefig(f'{self._name}_{self.RECTANGLE_LOCATION_PLOT_STEM}.png')
                 plt.close()
