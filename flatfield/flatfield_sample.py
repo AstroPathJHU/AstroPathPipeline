@@ -23,9 +23,6 @@ class FlatfieldSample() :
     def metadata_top_dir(self):
         return self._metadata_top_dir # location of metadata files
     @property
-    def metadata_in_subdir(self):
-        return self._metadata_in_subdir # whether metadata files are in "im3/xml" subdirectories
-    @property
     def background_thresholds_for_masking(self):
         return self._background_thresholds_for_masking # the list of background thresholds by layer
     @property
@@ -49,8 +46,7 @@ class FlatfieldSample() :
         """
         self._name = sample.name
         self._metadata_top_dir = sample.metadata_top_dir
-        self._metadata_in_subdir = (sample.rawfile_top_dir!=sample.metadata_top_dir)
-        self._img_dims = getImageHWLFromXMLFile(sample.metadata_top_dir,sample.name,self._metadata_in_subdir)
+        self._img_dims = getImageHWLFromXMLFile(sample.metadata_top_dir,sample.name)
         self._background_thresholds_for_masking = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :
@@ -82,7 +78,7 @@ class FlatfieldSample() :
         """
         #if the images are to be normalized, we need to get the maximum exposure times by layer across the whole sample
         if et_correction_offsets[0]!=-1. :
-            max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(self._metadata_top_dir,self._name,subdirectory=self._metadata_in_subdir)
+            max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(self._metadata_top_dir,self._name)
         else :
             max_exposure_times_by_layer = None
         #make sure the plot directory exists
