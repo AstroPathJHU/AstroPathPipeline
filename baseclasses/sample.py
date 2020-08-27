@@ -65,7 +65,6 @@ class SampleBase(contextlib.ExitStack):
   def __init__(self, root, samp, *, uselogfiles=False, logthreshold=logging.DEBUG):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
-    self.__otherxmlroots = otherxmlroots
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root/self.SlideID} does not exist")
     self.logger = getlogger(module=self.logmodule, root=self.root, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold)
@@ -120,8 +119,8 @@ class SampleBase(contextlib.ExitStack):
   def xmlfolder(self):
     possibilities = self.possiblexmlfolders
     for possibility in possibilities:
-      if possibility/(self.SlideID+".Parameters.xml").exists(): return possibility
-    raise FileNotFoundError(f"Didn't find {self.SlideID}.Parameters.xml in any of these folders:\n" + ", ".join(possibilities))
+      if (possibility/(self.SlideID+".Parameters.xml")).exists(): return possibility
+    raise FileNotFoundError(f"Didn't find {self.SlideID}.Parameters.xml in any of these folders:\n" + ", ".join(str(_) for _ in possibilities))
 
   def getimageinfofromXMLfiles(self):
     with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
@@ -279,7 +278,7 @@ class FlatwSampleBase(SampleBase):
 
   @property
   def possiblexmlfolders(self):
-    return super().possiblexmlfolders + [self.root2]
+    return super().possiblexmlfolders + [self.root2/self.SlideID]
 
 class SampleThatReadsOverlaps(SampleBase):
   overlaptype = Overlap #can be overridden in subclasses
