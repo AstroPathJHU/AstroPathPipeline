@@ -28,35 +28,35 @@ samples_vectra = {
 
 samples_polaris = {
     'dat_4':{'rawfile_top_dir':r"T:\\",
-             'metadata_top_dir':r"T:\\",
+             'metadata_top_dir':r"P:\\",
              'sample_names':[f'PZ{i}' for i in range(1,30)],
              'layers':[1,10,12,18,21,30,37],
              'nlayers':43,
              'working_dir':'exposure_times_all_polaris_samples',
           },
     'dat_5':{'rawfile_top_dir':r"S:\\",
-             'metadata_top_dir':r"S:\\",
+             'metadata_top_dir':r"O:\\",
              'sample_names':[f'YY{i}' for i in range(1,36)],
              'layers':[1,10,12,18,21,30,37],
              'nlayers':43,
              'working_dir':'exposure_times_all_polaris_samples',
           },
     'dat_6':{'rawfile_top_dir':r"R:\\",
-             'metadata_top_dir':r"R:\\",
+             'metadata_top_dir':r"N:\\",
              'sample_names':[f'YX{i}' for i in range(1,36)],
              'layers':[1,10,12,18,21,30,37],
              'nlayers':43,
              'working_dir':'exposure_times_all_polaris_samples',
           },
     'dat_7':{'rawfile_top_dir':r"Q:\\",
-             'metadata_top_dir':r"Q:\\",
+             'metadata_top_dir':r"M:\\",
              'sample_names':[f'ZW{i}' for i in range(1,26)],
              'layers':[1,10,12,18,21,30,37],
              'nlayers':43,
              'working_dir':'exposure_times_all_polaris_samples',
           },
     'dat_8':{'rawfile_top_dir':r"V:\\",
-             'metadata_top_dir':r"V:\\",
+             'metadata_top_dir':r"U:\\",
              'sample_names':[f'YZ{i}' for i in range(50,74)],
              'layers':[1,10,12,18,21,30,37],
              'nlayers':43,
@@ -78,7 +78,7 @@ def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,nlayers,layers,return_dict
             print(f'Getting exposure times for {sn} image {fi} of {len(all_rfps)}....')
         rfkey = os.path.basename(os.path.normpath(rfp)).rstrip(RAWFILE_EXT)
         exp_times[rfkey] = []
-        all_exp_times = getExposureTimesByLayer(rfp,nlayers,metadata_top_dir=mtd)
+        all_exp_times = getExposureTimesByLayer(rfp,nlayers,rtd)
         for ln in layers :
             exp_times[rfkey].append(all_exp_times[ln-1])
     n_overlaps = [0 for ln in layers]
