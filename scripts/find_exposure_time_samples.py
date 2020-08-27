@@ -9,7 +9,9 @@ import os, glob, dataclasses
 
 #constants
 RAWFILE_EXT = '.Data.dat'
-N_THREADS = 64
+N_THREADS = 32
+OUTPUT_FN_VECTRA = 'overlaps_with_different_exposure_times_vectra.csv'
+OUTPUT_FN_POLARIS = 'overlaps_with_different_exposure_times_polaris.csv'
 
 samples_vectra = {
     'dat':{'rawfile_top_dir':r"X:\\",
@@ -97,38 +99,77 @@ def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,nlayers,layers,sd,return_d
     print(f'{sn} # of different overlaps in each layer group = {n_overlaps}')
     return_dict[sn]=n_overlaps
 
-n_diff_olaps_polaris = {}
-manager = mp.Manager()
-rdict = manager.dict()
-procs = []
-for samples in samples_polaris.values() :
-    for si,sn in enumerate(samples['sample_names'],start=1) :
-        print(f'Getting exposure times for images in {sn} ({si} of {len(samples["sample_names"])})')
-        p = mp.Process(target=getNOverlapsWithDifferentExposureTimes,
-                       args=(samples['rawfile_top_dir'],
-                             samples['metadata_top_dir'],
-                             sn,
-                             samples['nlayers'],
-                             samples['layers'],
-                             False,
-                             rdict)
-                       )
-        procs.append(p)
-        p.start()
-        if len(procs)>=N_THREADS :
-            for proc in procs :
-                proc.join()
-            procs = []
-for proc in procs :
-    proc.join()
-for samples in samples_polaris.values() :
-    for si,sn in enumerate(samples['sample_names'],start=1) :
-        n_diff_olaps_polaris[sn] = rdict[sn]
-all_results = []
-for sn in n_diff_olaps_polaris.keys() :
-    all_results.append(SampleOverlapsWithDifferentExposureTimes(sn,n_diff_olaps_polaris[sn]))
-writetable('overlaps_with_different_exposure_times_polaris.csv',all_results)
-for li,ln in enumerate(list(samples_polaris.values())[0]['layers']) :
-    thislayer_n_overlaps_polaris = [(sn,n_diff_olaps_polaris[sn][li]) for sn in n_diff_olaps_polaris.keys()]
-    thislayer_n_overlaps_polaris.sort(key=lambda x : x[1],reverse=True)
-    print(f'Layer {ln} samples sorted by number of overlaps with different exposure times: {thislayer_n_overlaps_polaris}')
+if __name__=='__main__' :
+    mp.freeze_support()
+
+    n_diff_olaps_vectra = {}
+    manager = mp.Manager()
+    rdict_vectra = manager.dict()
+    procs = []
+    for samples in samples_vectra.values() :
+        for si,sn in enumerate(samples['sample_names'],start=1) :
+            print(f'Getting exposure times for images in {sn} ({si} of {len(samples["sample_names"])})')
+            p = mp.Process(target=getNOverlapsWithDifferentExposureTimes,
+                           args=(samples['rawfile_top_dir'],
+                                 samples['metadata_top_dir'],
+                                 sn,
+                                 samples['nlayers'],
+                                 samples['layers'],
+                                 True,
+                                 rdict_vectra)
+                           )
+            procs.append(p)
+            p.start()
+            if len(procs)>=N_THREADS :
+                for proc in procs :
+                    proc.join()
+                procs = []
+    for proc in procs :
+        proc.join()
+    for samples in samples_vectra.values() :
+        for si,sn in enumerate(samples['sample_names'],start=1) :
+            n_diff_olaps_vectra[sn] = rdict_vectra[sn]
+    all_results = []
+    for sn in n_diff_olaps_vectra.keys() :
+        all_results.append(SampleOverlapsWithDifferentExposureTimes(sn,n_diff_olaps_vectra[sn]))
+    writetable(OUTPUT_FN_VECTRA,all_results)
+    for li,ln in enumerate(list(samples_vectra.values())[0]['layers']) :
+        thislayer_n_overlaps_vectra = [(sn,n_diff_olaps_vectra[sn][li]) for sn in n_diff_olaps_vectra.keys()]
+        thislayer_n_overlaps_vectra.sort(key=lambda x : x[1],reverse=True)
+        print(f'Layer {ln} samples sorted by number of overlaps with different exposure times: {thislayer_n_overlaps_vectra}')
+
+    n_diff_olaps_polaris = {}
+    manager = mp.Manager()
+    rdict_polaris = manager.dict()
+    procs = []
+    for samples in samples_polaris.values() :
+        for si,sn in enumerate(samples['sample_names'],start=1) :
+            print(f'Getting exposure times for images in {sn} ({si} of {len(samples["sample_names"])})')
+            p = mp.Process(target=getNOverlapsWithDifferentExposureTimes,
+                           args=(samples['rawfile_top_dir'],
+                                 samples['metadata_top_dir'],
+                                 sn,
+                                 samples['nlayers'],
+                                 samples['layers'],
+                                 False,
+                                 rdict_polaris)
+                           )
+            procs.append(p)
+            p.start()
+            if len(procs)>=N_THREADS :
+                for proc in procs :
+                    proc.join()
+                procs = []
+    for proc in procs :
+        proc.join()
+    for samples in samples_polaris.values() :
+        for si,sn in enumerate(samples['sample_names'],start=1) :
+            n_diff_olaps_polaris[sn] = rdict_polaris[sn]
+    all_results = []
+    for sn in n_diff_olaps_polaris.keys() :
+        all_results.append(SampleOverlapsWithDifferentExposureTimes(sn,n_diff_olaps_polaris[sn]))
+    writetable(OUTPUT_FN_POLARIS,all_results)
+    for li,ln in enumerate(list(samples_polaris.values())[0]['layers']) :
+        thislayer_n_overlaps_polaris = [(sn,n_diff_olaps_polaris[sn][li]) for sn in n_diff_olaps_polaris.keys()]
+        thislayer_n_overlaps_polaris.sort(key=lambda x : x[1],reverse=True)
+        print(f'Layer {ln} samples sorted by number of overlaps with different exposure times: {thislayer_n_overlaps_polaris}')
