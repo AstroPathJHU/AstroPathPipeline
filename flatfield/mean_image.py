@@ -71,11 +71,11 @@ class MeanImage :
         self.skip_et_correction = skip_et_correction
         self.skip_masking = skip_masking
         self.smoothsigma = smoothsigma
-        self.image_stack = np.zeros(self._dims,dtype=np.uint32) #WARNING: may overflow if more than 65,535 images are stacked 
-        self.mask_stack  = np.zeros(self._dims,dtype=np.uint16) #WARNING: may overflow if more than 65,535 masks are stacked 
+        self.image_stack = np.zeros(self._dims,dtype=np.uint64) #WARNING: may overflow if more than 65,535 images are stacked 
+        self.mask_stack  = np.zeros(self._dims,dtype=np.uint64) #WARNING: may overflow if more than 65,535 masks are stacked 
         self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=CONST.IMG_DTYPE_OUT)
         self.n_images_read = 0
-        self.n_images_stacked_by_layer = np.zeros((self.nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 images are stacked 
+        self.n_images_stacked_by_layer = np.zeros((self.nlayers),dtype=np.uint64) #WARNING: may overflow if more than 65,535 images are stacked 
         self.mean_image=None
         self.smoothed_mean_image=None
         self.flatfield_image=None
