@@ -15,7 +15,7 @@ class FlatFieldError(Exception) :
 flatfield_logger = logging.getLogger("flatfield")
 flatfield_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S.%f"))
+handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S"))
 flatfield_logger.addHandler(handler)
 
 #helper class for logging included/excluded fields

@@ -14,7 +14,7 @@ import os, time, logging, glob
 correction_logger = logging.getLogger("correct_and_copy")
 correction_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S.%f"))
+handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S"))
 correction_logger.addHandler(handler)
 
 #################### RawfileCorrector CLASS ####################
@@ -24,7 +24,7 @@ class RawfileCorrector :
     #################### PROPERTIES ####################
     @property
     def logfile_timestamp(self) :
-        return time.strftime("[%Y-%m-%d %H:%M:%S.%f] ")
+        return time.strftime("[%Y-%m-%d %H:%M:%S] ")
 
     #################### PUBLIC FUNCTIONS ####################
 
