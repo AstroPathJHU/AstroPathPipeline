@@ -11,7 +11,7 @@ import cv2, os, logging, dataclasses, copy
 warp_logger = logging.getLogger("warpfitter")
 warp_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
+handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S.%f"))
 warp_logger.addHandler(handler)
 
 #Class for errors encountered during warping

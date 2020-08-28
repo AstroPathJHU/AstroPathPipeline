@@ -9,7 +9,7 @@ import os, logging, dataclasses
 et_fit_logger = logging.getLogger("exposure_time_fitter")
 et_fit_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
+handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S.%f"))
 et_fit_logger.addHandler(handler)
 
 #helper function to make sure necessary directories exist and that other arguments are valid
