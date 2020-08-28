@@ -3,13 +3,12 @@
 import contextlib, cv2, methodtools, numpy as np, traceback
 
 from ..baseclasses.overlap import RectangleOverlapCollection
-from ..baseclasses.rectangle import RectangleProvideImage
 from ..baseclasses.sample import FlatwSampleBase, ReadRectangles, ReadRectanglesFromXML
 from ..utilities import units
 from ..utilities.tableio import readtable, writetable
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
-from .rectangle import AlignmentRectangle
+from .rectangle import AlignmentRectangle, AlignmentRectangleProvideImage
 from .stitch import ReadStitchResult, stitch
 
 class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
@@ -122,14 +121,10 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
         i = i[0]
 
       r = self.rectangles[i]
-      newr = RectangleProvideImage(rectangle=r, image=thisupdateimg, readingfromfile=False)
-      self.rectangles[i] = newr
-
       mean_image = None
       if not recalculate_meanimage:
         mean_image = r.meanimage
-
-      newr = AlignmentRectangle(originalrectangle=r, mean_image=mean_image, use_mean_image=correct_with_meanimage)
+      newr = AlignmentRectangleProvideImage(rectangle=r, layer=r.layer, mean_image=mean_image, use_mean_image=correct_with_meanimage, image=thisupdateimg, readingfromfile=False)
       self.rectangles[i] = newr
 
     for r in self.rectangles:
