@@ -1,0 +1,13 @@
+0;0;0;YZ71;prepdb;2020-Aug-28 11:31:35
+0;0;0;YZ71;writeannotations;2020-Aug-28 11:31:35
+0;0;0;YZ71;writebatch;2020-Aug-28 11:31:35
+0;0;0;YZ71;writeconstants;2020-Aug-28 11:31:35
+0;0;0;YZ71;writeglobals;2020-Aug-28 11:31:46
+0;0;0;YZ71;writeoverlaps;2020-Aug-28 11:31:46
+0;0;0;YZ71;WARNING: Biggest time difference between annotation and file mtime is 205 days, 21:05:31.740052;2020-Aug-28 11:31:46
+0;0;0;YZ71;writeqptiffcsv;2020-Aug-28 11:31:47
+0;0;0;YZ71;writeqptiffjpg;2020-Aug-28 11:31:47
+0;0;0;YZ71;writerectangles;2020-Aug-28 11:31:47
+0;0;0;YZ71;writeregions;2020-Aug-28 11:31:48
+0;0;0;YZ71;writevertices;2020-Aug-28 11:31:48
+0;0;0;YZ71;end prepdb;2020-Aug-28 11:31:48
