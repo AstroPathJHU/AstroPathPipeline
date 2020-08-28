@@ -155,6 +155,11 @@ def getFilepathsAndSamplesToRun(a) :
         flatfield_logger.info('Background thresholds will not be calculated because masking will be skipped')
     elif a.threshold_file_dir is not None :
         flatfield_logger.info(f'Background thresholds will be read from the files at {a.threshold_file_dir}')
+    #tell the user whether the tissue edge HPFs will be included
+    if a.allow_edge_HPFs :
+        flatfield_logger.info('HPFs on tissue edges will be included in the image stack.')
+    else :
+        flatfield_logger.info('HPFs on tissue edges will be found for each sample and excluded from the image stack.')
     #return the lists of filepaths and samplenames
     if len(all_sample_filepaths)<1 or len(filepaths_to_run)<1 or len(samples_to_run)<1 :
         raise RuntimeError('ERROR: The requested options have resulted in no samples or files to run!')
