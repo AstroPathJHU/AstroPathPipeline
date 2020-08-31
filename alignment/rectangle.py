@@ -41,10 +41,6 @@ class ApplyMeanImage(RectangleTransformationBase):
         mean_image = meanimage(allimages)
       self.__meanimage = mean_image
 
-  @property
-  def meanimage(self):
-    return self.__meanimage
-
 class AlignmentRectangleBase(RectangleWithImageBase):
   def __init__(self, *args, mean_image=None, use_mean_image=True, logger=dummylogger, transformations=None, **kwargs):
     if transformations is None: transformations = []

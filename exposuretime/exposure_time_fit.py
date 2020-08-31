@@ -7,7 +7,7 @@ from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary
 import numpy as np, matplotlib.pyplot as plt
 from matplotlib import colors
-import os, copy, random, scipy
+import os, random, scipy
 
 #helper class to do the fit in one image layer only
 class SingleLayerExposureTimeFit :
