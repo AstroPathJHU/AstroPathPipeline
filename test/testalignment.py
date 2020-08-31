@@ -16,44 +16,48 @@ class TestAlignment(TestBaseSaveOutput):
   def outputfilenames(self):
     return [
       thisfolder/"data"/"M21_1"/"dbload"/filename.name
-      for filename in (thisfolder/"reference"/"alignment").glob("M21_1_*")
+      for filename in (thisfolder/"reference"/"alignment"/"M21_1").glob("M21_1_*")
+    ] + [
+      thisfolder/"data"/"YZ71"/"dbload"/filename.name
+      for filename in (thisfolder/"reference"/"alignment"/"YZ71").glob("YZ71_*")
     ] + [
       thisfolder/"data"/"logfiles"/"align.log",
       thisfolder/"data"/"M21_1"/"logfiles"/"M21_1-align.log",
+      thisfolder/"data"/"YZ71"/"logfiles"/"YZ71-align.log",
     ]
 
-  def testAlignment(self):
-    samp = SampleDef(SlideID="M21_1", SampleID=0, Project=0, Cohort=0)
+  def testAlignment(self, SlideID="M21_1"):
+    samp = SampleDef(SlideID=SlideID, SampleID=0, Project=0, Cohort=0)
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", samp, uselogfiles=True)
     with a:
       a.getDAPI()
-      a.align(debug=True)
+      a.align()
       a.stitch(checkwriting=True)
 
     try:
-      self.compareoutput(a)
+      self.compareoutput(a, SlideID=SlideID)
     finally:
       self.saveoutput()
 
-  def compareoutput(self, alignmentset):
+  def compareoutput(self, alignmentset, SlideID="M21_1"):
     a = alignmentset
     for filename, cls, extrakwargs in (
-      ("M21_1_imstat.csv", ImageStats, {"pscale": a.pscale}),
-      ("M21_1_align.csv", AlignmentResult, {"pscale": a.pscale}),
-      ("M21_1_fields.csv", Field, {"pscale": a.pscale}),
-      ("M21_1_affine.csv", AffineEntry, {}),
-      ("M21_1_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "layer": a.layer, "nclip": a.nclip}),
+      (f"{SlideID}_imstat.csv", ImageStats, {"pscale": a.pscale}),
+      (f"{SlideID}_align.csv", AlignmentResult, {"pscale": a.pscale}),
+      (f"{SlideID}_fields.csv", Field, {"pscale": a.pscale}),
+      (f"{SlideID}_affine.csv", AffineEntry, {}),
+      (f"{SlideID}_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "layer": a.layer, "nclip": a.nclip}),
     ):
-      rows = readtable(thisfolder/"data"/"M21_1"/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-      targetrows = readtable(thisfolder/"reference"/"alignment"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+      rows = readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+      targetrows = readtable(thisfolder/"reference"/"alignment"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
       for row, target in itertools.zip_longest(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
     for log in (
       thisfolder/"data"/"logfiles"/"align.log",
-      thisfolder/"data"/"M21_1"/"logfiles"/"M21_1-align.log",
+      thisfolder/"data"/SlideID/"logfiles"/f"{SlideID}-align.log",
     ):
-      ref = thisfolder/"reference"/"alignment"/log.name
+      ref = thisfolder/"reference"/"alignment"/SlideID/log.name
       with open(ref) as fref, open(log) as fnew:
         refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
         newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
@@ -68,7 +72,7 @@ class TestAlignment(TestBaseSaveOutput):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
     agpu = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", useGPU=True, forceGPU=True)
 
-    readfilename = thisfolder/"reference"/"alignment"/"M21_1_align.csv"
+    readfilename = thisfolder/"reference"/"alignment"/"M21_1"/"M21_1_align.csv"
     a.readalignments(filename=readfilename)
 
     agpu.getDAPI(writeimstat=False)
@@ -79,7 +83,7 @@ class TestAlignment(TestBaseSaveOutput):
 
   def testReadAlignment(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    readfilename = thisfolder/"reference"/"alignment"/"M21_1_align.csv"
+    readfilename = thisfolder/"reference"/"alignment"/"M21_1"/"M21_1_align.csv"
     writefilename = thisfolder/"testreadalignments.csv"
 
     a.readalignments(filename=readfilename)
@@ -95,12 +99,12 @@ class TestAlignment(TestBaseSaveOutput):
 
   def testStitchReadingWriting(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    a.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1_align.csv")
-    stitchfilenames = [thisfolder/"reference"/"alignment"/_.name for _ in a.stitchfilenames]
+    a.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1"/"M21_1_align.csv")
+    stitchfilenames = [thisfolder/"reference"/"alignment"/"M21_1"/_.name for _ in a.stitchfilenames]
     result = a.readstitchresult(filenames=stitchfilenames)
 
     def newfilename(filename): return thisfolder/("test_"+filename.name)
-    def referencefilename(filename): return thisfolder/"reference"/"alignment"/filename.name
+    def referencefilename(filename): return thisfolder/"reference"/"alignment"/"M21_1"/filename.name
 
     a.writestitchresult(result, filenames=[newfilename(f) for f in a.stitchfilenames])
 
@@ -120,12 +124,12 @@ class TestAlignment(TestBaseSaveOutput):
 
   def testStitchWritingReading(self):
     a1 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    a1.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1_align.csv")
+    a1.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1"/"M21_1_align.csv")
     a1.stitch()
 
     a2 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    a2.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1_align.csv")
-    stitchfilenames = [thisfolder/"reference"/"alignment"/_.name for _ in a1.stitchfilenames]
+    a2.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1"/"M21_1_align.csv")
+    stitchfilenames = [thisfolder/"reference"/"alignment"/"M21_1"/_.name for _ in a1.stitchfilenames]
     a2.readstitchresult(filenames=stitchfilenames)
 
     pscale = a1.pscale
@@ -148,7 +152,7 @@ class TestAlignment(TestBaseSaveOutput):
 
   def testStitchCvxpy(self):
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    a.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1_align.csv")
+    a.readalignments(filename=thisfolder/"reference"/"alignment"/"M21_1"/"M21_1_align.csv")
 
     defaultresult = a.stitch(saveresult=False)
     cvxpyresult = a.stitch(saveresult=False, usecvxpy=True)
@@ -202,8 +206,8 @@ class TestAlignment(TestBaseSaveOutput):
 
   def testPscale(self):
     a1 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1")
-    readfilename = thisfolder/"reference"/"alignment"/"M21_1_align.csv"
-    stitchfilenames = [thisfolder/"reference"/"alignment"/_.name for _ in a1.stitchfilenames]
+    readfilename = thisfolder/"reference"/"alignment"/"M21_1"/"M21_1_align.csv"
+    stitchfilenames = [thisfolder/"reference"/"alignment"/"M21_1"/_.name for _ in a1.stitchfilenames]
     a1.readalignments(filename=readfilename)
     a1.readstitchresult(filenames=stitchfilenames)
 
@@ -272,21 +276,21 @@ class TestAlignment(TestBaseSaveOutput):
       if len(contents) != 1:
         raise AssertionError(f"Expected only one line of log\n\n{contents}")
 
-  def testFromXML(self):
-    args = thisfolder/"data", thisfolder/"data"/"flatw", "M21_1"
-    kwargs = {"selectrectangles": range(10)}
+  def testFromXML(self, SlideID="M21_1"):
+    args = thisfolder/"data", thisfolder/"data"/"flatw", SlideID
+    kwargs = {"selectrectangles": range(10), "root3": thisfolder/"data"/"raw"}
     a1 = AlignmentSet(*args, **kwargs)
     a1.getDAPI()
     a1.align()
     result1 = a1.stitch()
 
-    with temporarilyremove(thisfolder/"data"/"M21_1"/"dbload"):
+    with temporarilyremove(thisfolder/"data"/SlideID/"dbload"):
       a2 = AlignmentSetFromXML(*args, nclip=units.pixels(a1.nclip, pscale=a1.pscale), position=a1.position, **kwargs)
       a2.getDAPI()
       a2.align()
       result2 = a2.stitch()
 
-      with temporarilyremove(thisfolder/"data"/"M21_1"/"inform_data"):
+      with temporarilyremove(thisfolder/"data"/SlideID/"inform_data"):
         a3 = AlignmentSetFromXML(*args, nclip=units.pixels(a1.nclip, pscale=a1.pscale), **kwargs)
         a3.getDAPI()
         a3.align()
@@ -304,3 +308,14 @@ class TestAlignment(TestBaseSaveOutput):
     i1 = a1.getrawlayers("flatWarp")
     i2 = a2.getrawlayers("flatWarp")
     np.testing.assert_array_equal(i1, i2)
+
+  def testPolaris(self):
+    self.testAlignment("YZ71")
+
+  def testPolarisFastUnits(self):
+    with units.setup_context("fast"):
+      self.testAlignment("YZ71")
+
+  def testPolarisFromXMLFastUnits(self):
+    with units.setup_context("fast"):
+      self.testFromXML("YZ71")
