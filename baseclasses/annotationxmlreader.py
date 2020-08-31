@@ -164,6 +164,15 @@ class ROIAnnotation(AnnotationBase):
       })
     return result
 
+  @property
+  def microscopename(self):
+    names = {field.microscopename for field in self.fields if field.microscopename is not None}
+    if not names:
+      return None
+    if len(names) > 1:
+      raise ValueError("Multiple microscope names: "+", ".join(names))
+    return names.pop()
+
 def AnnotationFactory(xmlnode, **kwargs):
   return {
     "RectangleAnnotation": RectangleAnnotation,

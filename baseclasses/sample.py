@@ -62,12 +62,14 @@ class SampleDef:
     return bool(self.isGood)
 
 class SampleBase(contextlib.ExitStack):
-  def __init__(self, root, samp, *, uselogfiles=False, logthreshold=logging.DEBUG):
+  def __init__(self, root, samp, *, uselogfiles=False, logthreshold=logging.DEBUG, xmlfolders=None):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root/self.SlideID} does not exist")
     self.logger = getlogger(module=self.logmodule, root=self.root, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold)
+    if xmlfolders is None: xmlfolders = []
+    self.__xmlfolders = xmlfolders
     super().__init__()
 
   @property
@@ -114,7 +116,7 @@ class SampleBase(contextlib.ExitStack):
 
   @property
   def possiblexmlfolders(self):
-    return [self.im3folder/"xml"]
+    return self.__xmlfolders + [self.im3folder/"xml"]
   @property
   def xmlfolder(self):
     possibilities = self.possiblexmlfolders
@@ -269,8 +271,10 @@ class DbloadSampleBase(SampleBase):
     return self.constantsdict["nclip"]
 
 class FlatwSampleBase(SampleBase):
-  def __init__(self, root, root2, samp, *args, **kwargs):
-    super().__init__(root=root, samp=samp, *args, **kwargs)
+  def __init__(self, root, root2, samp, *args, root3=None, xmlfolders=None, **kwargs):
+    if xmlfolders is None: xmlfolders = []
+    if root3 is not None: xmlfolders.append(pathlib.Path(root3)/samp)
+    super().__init__(root=root, samp=samp, *args, xmlfolders=xmlfolders, **kwargs)
     self.root2 = pathlib.Path(root2)
 
   @property

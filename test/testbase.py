@@ -50,17 +50,18 @@ def temporarilyreplace(filepath, temporarycontents):
 class TestBaseSaveOutput(abc.ABC, unittest.TestCase):
   @classmethod
   def setUpClass(cls):
-    cls.__output = None
+    cls.__output = contextlib.ExitStack()
+    cls.__output.__enter__()
+    cls.__saved = set()
 
   @abc.abstractproperty
   def outputfilenames(self): pass
 
   def saveoutput(self):
-    if self.__output is not None: return
-    type(self).__output = contextlib.ExitStack()
-    self.__output.__enter__()
     for filename in self.outputfilenames:
-      self.__output.enter_context(temporarilyremove(filename))
+      if filename not in self.__saved and filename.exists():
+        self.__saved.add(filename)
+        self.__output.enter_context(temporarilyremove(filename))
 
   def setUp(self):
     self.maxDiff = None
@@ -75,5 +76,4 @@ class TestBaseSaveOutput(abc.ABC, unittest.TestCase):
 
   @classmethod
   def tearDownClass(cls):
-    if cls.__output is not None:
-      cls.__output.__exit__(None, None, None)
+    cls.__output.__exit__(None, None, None)
