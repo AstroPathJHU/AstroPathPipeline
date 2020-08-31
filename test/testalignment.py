@@ -278,7 +278,7 @@ class TestAlignment(TestBaseSaveOutput):
 
   def testFromXML(self, SlideID="M21_1"):
     args = thisfolder/"data", thisfolder/"data"/"flatw", SlideID
-    kwargs = {"selectrectangles": range(10)}
+    kwargs = {"selectrectangles": range(10), "root3": thisfolder/"data"/"raw"}
     a1 = AlignmentSet(*args, **kwargs)
     a1.getDAPI()
     a1.align()
