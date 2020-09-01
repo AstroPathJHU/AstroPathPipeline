@@ -35,7 +35,7 @@ class ExposureTimeOffsetFitGroup :
         self.rawfile_top_dir = rawfile_top_dir
         self.metadata_top_dir = metadata_top_dir
         self.workingdir_name = workingdir_name
-        self.img_dims = getImageHWLFromXMLFile(self.metadata_top_dir,self.sample)
+        self.img_dims = getImageHWLFromXMLFile(self.rawfile_top_dir,self.sample)
         self.layers = self.__getLayers(layers)
         self.n_threads = n_threads
 
@@ -187,7 +187,7 @@ class ExposureTimeOffsetFitGroup :
         for rfp in all_rfps :
             rfs = os.path.basename(rfp).rstrip(CONST.RAW_EXT)
             exp_times[rfs] = []
-            all_layer_exposure_times = getExposureTimesByLayer(rfp,self.img_dims[-1],self.metadata_top_dir)
+            all_layer_exposure_times = getExposureTimesByLayer(rfp,self.img_dims[-1],self.rawfile_top_dir)
             for li,ln in enumerate(self.layers) :
                 exp_times[rfs].append(all_layer_exposure_times[ln-1])
                 if all_layer_exposure_times[ln-1] > max_exp_times[li] :
