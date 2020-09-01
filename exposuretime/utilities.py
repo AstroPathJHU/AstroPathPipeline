@@ -21,9 +21,9 @@ def checkArgs(args) :
     if not os.path.isdir(args.metadata_top_dir) :
         raise ValueError(f'ERROR: metadata_top_dir argument ({args.metadata_top_dir}) does not point to a valid directory!')
     #metadata top dir dir must be usable to find a metafile directory
-    metafile_dir = os.path.join(args.metadata_top_dir,args.sample,'im3','xml')
+    metafile_dir = os.path.join(args.metadata_top_dir,args.sample)
     if not os.path.isdir(metafile_dir) :
-        raise ValueError(f'ERROR: metadata_top_dir ({args.metadata_top_dir}) does not contain "[sample name]/im3/xml" subdirectories!')
+        raise ValueError(f'ERROR: metadata_top_dir ({args.metadata_top_dir}) does not contain "[sample name]" subdirectory!')
     #make sure the flatfield file exists
     if not os.path.isfile(args.flatfield_file) :
         raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
