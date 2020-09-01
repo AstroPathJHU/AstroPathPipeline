@@ -99,13 +99,6 @@ def getFirstLayerInGroup(layer_n,nlayers) :
     else :
         raise ValueError(f'ERROR: number of image layers ({nlayers}) passed to getFirstLayerInGroup is not a recognized option!')
 
-#helper class to hold a rectangle's rawfile key, raw image, and index in a list of Rectangles 
-@dataclasses.dataclass(eq=False, repr=False)
-class UpdateImage :
-    rawfile_key          : str
-    raw_image            : np.array
-    rectangle_list_index : int
-
 #helper class to hold the pre- and post-fit details of overlaps
 @dataclasses.dataclass
 class ExposureTimeOverlapFitResult :
