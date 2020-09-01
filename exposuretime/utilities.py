@@ -2,7 +2,6 @@
 from .alignmentset import AlignmentSetForExposureTime
 from .config import CONST
 from typing import List
-import numpy as np
 import os, logging, dataclasses
 
 #set up the logger
