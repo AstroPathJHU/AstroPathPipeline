@@ -73,9 +73,18 @@ class OverlapCollection(abc.ABC):
   def islands(self, *args, **kwargs):
     return list(nx.strongly_connected_components(self.overlapgraph(*args, **kwargs)))
 
+  def overlapsdictkey(self, overlap):
+    return overlap.p1, overlap.p2
+
   @property
   def overlapsdict(self):
-    return {(o.p1, o.p2): o for o in self.overlaps}
+    result = {}
+    for o in self.overlaps:
+      key = self.overlapsdictkey(o)
+      if key in result:
+        raise KeyError(f"Multiple overlaps with key {key}")
+      result[key] = o
+    return result
 
   @property
   def overlaprectangleindices(self):

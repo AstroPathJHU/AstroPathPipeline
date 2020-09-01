@@ -1,6 +1,6 @@
-import numpy as np
+import contextlib, numpy as np
 
-from ..baseclasses.rectangle import RectangleWithImageBase, RectangleProvideImage, RectangleTransformationBase, RectangleWithImage
+from ..baseclasses.rectangle import RectangleProvideImage, RectangleTransformationBase, RectangleWithImage, RectangleWithImageBase, RectangleWithImageMultiLayer
 from ..utilities.misc import dummylogger
 from .flatfield import meanimage
 
@@ -31,14 +31,15 @@ class ApplyMeanImage(RectangleTransformationBase):
       raise ValueError("Have to call setrectanglelist() before getting any images")
     if self.__meanimage is None:
       if mean_image is None:
-        allimages = []
-        n = len(self.__allrectangles)
-        for i, r in enumerate(self.__allrectangles, start=1):
-          self.__logger.info(f"loading rectangle {i}/{n}")
-          with r.using_image(-2) as rawimage:
+        with contextlib.ExitStack() as stack:
+          allimages = []
+          n = len(self.__allrectangles)
+          for i, r in enumerate(self.__allrectangles, start=1):
+            self.__logger.info(f"loading rectangle {i}/{n}")
+            rawimage = stack.enter_context(r.using_image(-2))
             allimages.append(rawimage)
-        self.__logger.info("meanimage")
-        mean_image = meanimage(allimages)
+          self.__logger.info("meanimage")
+          mean_image = meanimage(allimages)
       self.__meanimage = mean_image
 
 class AlignmentRectangleBase(RectangleWithImageBase):
@@ -67,6 +68,9 @@ class AlignmentRectangleBase(RectangleWithImageBase):
     return self.__meanimagetransformation.meanimage
 
 class AlignmentRectangle(AlignmentRectangleBase, RectangleWithImage):
+  pass
+
+class AlignmentRectangleMultiLayer(AlignmentRectangleBase, RectangleWithImageMultiLayer):
   pass
 
 class AlignmentRectangleProvideImage(AlignmentRectangleBase, RectangleProvideImage):

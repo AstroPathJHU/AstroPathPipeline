@@ -1,4 +1,5 @@
 import itertools, logging, numpy as np, os, pathlib
+from ..alignment.alignlayers import AlignLayers
 from ..alignment.alignmentcohort import AlignmentCohort
 from ..alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
 from ..alignment.overlap import AlignmentResult
@@ -319,3 +320,9 @@ class TestAlignment(TestBaseSaveOutput):
   def testPolarisFromXMLFastUnits(self):
     with units.setup_context("fast"):
       self.testFromXML("YZ71")
+
+  def testAlignLayers(self):
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", layers=(1, 2, 3), selectrectangles=(17,))
+    a.getDAPI()
+    a.align()
+    for o in a.overlaps: print(o.result)

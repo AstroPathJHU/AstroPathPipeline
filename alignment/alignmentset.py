@@ -44,6 +44,9 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   @property
   def filetype(self): return self.__filetype
 
+  def inverseoverlapsdictkey(self, overlap):
+    return overlap.p2, overlap.p1
+
   def align(self,*,skip_corners=False,return_on_invalid_result=False,warpwarnings=False,**kwargs):
     self.logger.info("starting alignment")
 
@@ -54,11 +57,14 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
       if skip_corners and overlap.tag in [1,3,7,9] :
         continue
       self.logger.info(f"aligning overlap {overlap.n} ({i}/{len(self.overlaps)})")
-      if (overlap.p2, overlap.p1) in done:
-        result = overlap.getinversealignment(self.overlapsdict[overlap.p2, overlap.p1])
-      else:
+      result = None
+      if self.overlapsdictkey(overlap) in done:
+        inverseoverlap = self.overlapsdict[self.inverseoverlapsdictkey(overlap)]
+        if hasattr(inverseoverlap, "result"):
+          result = overlap.getinversealignment(inverseoverlap)
+      if result is None:
         result = overlap.align(gputhread=self.gputhread, gpufftdict=self.gpufftdict, **kwargs)
-      done.add((overlap.p1, overlap.p2))
+      done.add(self.overlapsdictkey(overlap))
 
       if result is not None and result.exit == 0: 
         sum_mse+=result.mse[2]
