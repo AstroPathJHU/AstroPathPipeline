@@ -2,8 +2,9 @@ from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, correctImageForExposureTime, smoothImageWorker
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
+import matplotlib.pyplot as plt
 import numpy as np
-import os, logging, math, dataclasses
+import os, logging, math, dataclasses, more_itertools
 
 #################### GENERAL USEFUL OBJECTS ####################
 
@@ -37,17 +38,17 @@ class FlatfieldSampleInfo :
 #################### GENERAL HELPER FUNCTIONS ####################
 
 #helper function to convert an image array into a flattened pixel histogram
-def getImageArrayLayerHistograms(img_array) :
+def getImageArrayLayerHistograms(img_array, mask=slice(None)) :
     nbins = np.iinfo(img_array.dtype).max+1
     nlayers = img_array.shape[2] if len(img_array.shape)>2 else 1
     if nlayers>1 :
         layer_hists = np.empty((nbins,nlayers),dtype=np.int64)
         for li in range(nlayers) :
-            layer_hist,_ = np.histogram(img_array[:,:,li],nbins,(0,nbins))
+            layer_hist,_ = np.histogram(img_array[:,:,li][mask],nbins,(0,nbins))
             layer_hists[:,li]=layer_hist
         return layer_hists
     else :
-        layer_hist,_ = np.histogram(img_array,nbins,(0,nbins))
+        layer_hist,_ = np.histogram(img_array[mask],nbins,(0,nbins))
         return layer_hist
 
 #helper function to return the sample name from a whole filepath
@@ -227,3 +228,44 @@ def chunkListOfFilepaths(fps,dims,n_threads,metadata_top_dir) :
             fileread_chunks.append([])
         fileread_chunks[-1].append(FileReadInfo(fp,f'({i} of {len(fps)})',dims[0],dims[1],dims[2],metadata_top_dir))
     return fileread_chunks
+
+#################### USEFUL PLOTTING FUNCTION ####################
+
+def drawThresholds(img_array, *, layer_index=0, emphasize_mask=None, show_regions=False, saveas=None, plotstyling = lambda fig, ax: None):
+    fig, ax = plt.subplots(1, 1)
+    if len(img_array.shape)>2 :
+        img_array = img_array[layer_index]
+    hist = getImageArrayLayerHistograms(img_array)
+    if emphasize_mask is not None:
+        hist_emphasize = getImageArrayLayerHistograms(img_array, mask=emphasize_mask)
+    thresholds, weights = getLayerOtsuThresholdsAndWeights(hist)
+    histmax = np.max(np.argwhere(hist!=0))
+    hist = hist[:histmax+1]
+    plt.bar(range(len(hist)), hist, width=1)
+    if emphasize_mask is not None:
+        hist_emphasize = hist_emphasize[:histmax+1]
+        plt.bar(range(len(hist)), hist_emphasize, width=1)
+    for threshold, weight in zip(thresholds, weights):
+        plt.axvline(x=threshold, color="red", alpha=0.5+0.5*(weight-min(weights))/(max(weights)-min(weights)))
+    plotstyling(fig, ax)
+    if saveas is None:
+      plt.show()
+    else:
+      plt.savefig(saveas)
+      plt.close()
+    if show_regions:
+        for t1, t2 in more_itertools.pairwise([0]+sorted(thresholds)+[float("inf")]):
+            if t1 == t2: continue #can happen if 0 is a threshold
+            print(t1, t2)
+            plt.imshow(img_array)
+            lower = np.array(
+              [0*img_array+1, 0*img_array, 0*img_array, img_array < t1],
+              dtype=float
+            ).transpose(1, 2, 0)
+            higher = np.array(
+              [0*img_array, 0*img_array+1, 0*img_array, img_array > t2],
+              dtype=float
+            ).transpose(1, 2, 0)
+            plt.imshow(lower)
+            plt.imshow(higher)
+            plt.show()

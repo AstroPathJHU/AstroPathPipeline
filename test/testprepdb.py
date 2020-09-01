@@ -35,7 +35,7 @@ class TestPrepDb(unittest.TestCase):
       (f"{SlideID}_batch.csv", Batch, {}),
       (f"{SlideID}_constants.csv", Constant, {"pscale": sample.pscale, "readingfromfile": True}),
       (f"{SlideID}_globals.csv", Globals, {"pscale": sample.pscale}),
-      (f"{SlideID}_overlap.csv", Overlap, {"pscale": sample.pscale, "layer": sample.layer, "nclip": sample.nclip, "rectangles": sample.rectangles}),
+      (f"{SlideID}_overlap.csv", Overlap, {"pscale": sample.pscale, "nclip": sample.nclip, "rectangles": sample.rectangles}),
       (f"{SlideID}_qptiff.csv", QPTiffCsv, {"pscale": sample.pscale}),
       (f"{SlideID}_rect.csv", Rectangle, {"pscale": sample.pscale}),
       (f"{SlideID}_regions.csv", Region, {"pscale": sample.pscale}),
