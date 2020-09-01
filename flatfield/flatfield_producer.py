@@ -4,8 +4,7 @@ from .mean_image import MeanImage
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath, FieldLog
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..exposuretime.utilities import LayerOffset
-from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer
+from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer, LayerOffset
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, MetadataSummary
 import os, random

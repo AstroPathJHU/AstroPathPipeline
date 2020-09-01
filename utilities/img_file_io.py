@@ -16,7 +16,7 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
 utility_logger.addHandler(handler)
 
-#helper class to store offset factors by layer with some extra info
+#helper class to store exposure time offset factor for a single layer (with some extra info)
 @dataclasses.dataclass
 class LayerOffset :
   layer_n    : int
