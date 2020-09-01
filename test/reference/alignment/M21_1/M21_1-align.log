@@ -1,266 +1,265 @@
-0;0;0;M21_1;align;26-Aug-2020 14:38:31
-0;0;0;M21_1;getDAPI;26-Aug-2020 14:38:31
-0;0;0;M21_1;getrawlayers;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 1/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 2/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 3/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 4/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 5/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 6/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 7/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 8/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 9/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 10/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 11/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 12/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 13/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 14/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 15/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 16/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 17/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 18/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 19/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 20/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 21/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 22/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 23/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 24/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 25/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 26/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 27/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 28/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 29/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 30/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 31/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 32/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 33/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 34/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 35/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 36/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 37/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 38/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 39/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;loading rectangle 40/40;26-Aug-2020 14:38:31
-0;0;0;M21_1;meanimage;26-Aug-2020 14:38:31
-0;0;0;M21_1;starting alignment;26-Aug-2020 14:38:32
-0;0;0;M21_1;aligning overlap 1 (1/218);26-Aug-2020 14:38:32
-0;0;0;M21_1;aligning overlap 2 (2/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 3 (3/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 4 (4/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 5 (5/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 6 (6/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 7 (7/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 8 (8/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 9 (9/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 10 (10/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 11 (11/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 12 (12/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 13 (13/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 14 (14/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 15 (15/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 16 (16/218);26-Aug-2020 14:38:33
-0;0;0;M21_1;aligning overlap 17 (17/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 18 (18/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 19 (19/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 20 (20/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 21 (21/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 22 (22/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 23 (23/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 24 (24/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 25 (25/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 26 (26/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 27 (27/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 28 (28/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 29 (29/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 30 (30/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 31 (31/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 32 (32/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 33 (33/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 34 (34/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 35 (35/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 36 (36/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 37 (37/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 38 (38/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 39 (39/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 40 (40/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 41 (41/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 42 (42/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 43 (43/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 44 (44/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 45 (45/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 46 (46/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 47 (47/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 48 (48/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 49 (49/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 50 (50/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 51 (51/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 52 (52/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 53 (53/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 54 (54/218);26-Aug-2020 14:38:34
-0;0;0;M21_1;aligning overlap 55 (55/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 56 (56/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 57 (57/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 58 (58/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 59 (59/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 60 (60/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 61 (61/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 62 (62/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 63 (63/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 64 (64/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 65 (65/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 66 (66/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 67 (67/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 68 (68/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 69 (69/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 70 (70/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 71 (71/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 72 (72/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 73 (73/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 74 (74/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 75 (75/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 76 (76/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 77 (77/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 78 (78/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 79 (79/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 80 (80/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 81 (81/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 82 (82/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 83 (83/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 84 (84/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 85 (85/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 86 (86/218);26-Aug-2020 14:38:35
-0;0;0;M21_1;aligning overlap 87 (87/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 88 (88/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 89 (89/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 90 (90/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 91 (91/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 92 (92/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 93 (93/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 94 (94/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 95 (95/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 96 (96/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 97 (97/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 98 (98/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 99 (99/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 100 (100/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 101 (101/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 102 (102/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 103 (103/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 104 (104/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 105 (105/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 106 (106/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 107 (107/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 108 (108/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 109 (109/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 110 (110/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 111 (111/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 112 (112/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 113 (113/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 114 (114/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 115 (115/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 116 (116/218);26-Aug-2020 14:38:36
-0;0;0;M21_1;aligning overlap 117 (117/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 118 (118/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 119 (119/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 120 (120/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 121 (121/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 122 (122/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 123 (123/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 124 (124/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 125 (125/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 126 (126/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 127 (127/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 128 (128/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 129 (129/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 130 (130/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 131 (131/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 132 (132/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 133 (133/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 134 (134/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 135 (135/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 136 (136/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 137 (137/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 138 (138/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 139 (139/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 140 (140/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 141 (141/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 142 (142/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 143 (143/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 144 (144/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 145 (145/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 146 (146/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 147 (147/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 148 (148/218);26-Aug-2020 14:38:37
-0;0;0;M21_1;aligning overlap 149 (149/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 150 (150/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 151 (151/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 152 (152/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 153 (153/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 154 (154/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 155 (155/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 156 (156/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 157 (157/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 158 (158/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 159 (159/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 160 (160/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 161 (161/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 162 (162/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 163 (163/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 164 (164/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 165 (165/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 166 (166/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 167 (167/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 168 (168/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 169 (169/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 170 (170/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 171 (171/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 172 (172/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 173 (173/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 174 (174/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 175 (175/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 176 (176/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 177 (177/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 178 (178/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 179 (179/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 180 (180/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 181 (181/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 182 (182/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 183 (183/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 184 (184/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 185 (185/218);26-Aug-2020 14:38:38
-0;0;0;M21_1;aligning overlap 186 (186/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 187 (187/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 188 (188/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 189 (189/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 190 (190/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 191 (191/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 192 (192/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 193 (193/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 194 (194/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 195 (195/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 196 (196/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 197 (197/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 198 (198/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 199 (199/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 200 (200/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 201 (201/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 202 (202/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 203 (203/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 204 (204/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 205 (205/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 206 (206/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 207 (207/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 208 (208/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 209 (209/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 210 (210/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 211 (211/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 212 (212/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 213 (213/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 214 (214/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 215 (215/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 216 (216/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 217 (217/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;aligning overlap 218 (218/218);26-Aug-2020 14:38:39
-0;0;0;M21_1;finished align loop for M21_1;26-Aug-2020 14:38:39
-0;0;0;M21_1;stitch;26-Aug-2020 14:38:39
-0;0;0;M21_1;end align;26-Aug-2020 14:38:42
+0;0;0;M21_1;align;28-Aug-2020 09:08:41
+0;0;0;M21_1;getDAPI;28-Aug-2020 09:08:41
+0;0;0;M21_1;loading rectangle 1/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 2/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 3/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 4/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 5/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 6/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 7/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 8/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 9/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 10/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 11/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 12/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 13/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 14/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 15/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 16/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 17/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 18/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 19/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 20/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 21/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 22/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 23/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 24/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 25/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 26/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 27/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 28/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 29/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 30/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 31/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 32/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 33/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 34/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 35/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 36/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 37/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 38/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 39/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;loading rectangle 40/40;28-Aug-2020 09:08:42
+0;0;0;M21_1;meanimage;28-Aug-2020 09:08:42
+0;0;0;M21_1;starting alignment;28-Aug-2020 09:08:47
+0;0;0;M21_1;aligning overlap 1 (1/218);28-Aug-2020 09:08:47
+0;0;0;M21_1;aligning overlap 2 (2/218);28-Aug-2020 09:08:48
+0;0;0;M21_1;aligning overlap 3 (3/218);28-Aug-2020 09:08:48
+0;0;0;M21_1;aligning overlap 4 (4/218);28-Aug-2020 09:08:48
+0;0;0;M21_1;aligning overlap 5 (5/218);28-Aug-2020 09:08:48
+0;0;0;M21_1;aligning overlap 6 (6/218);28-Aug-2020 09:08:48
+0;0;0;M21_1;aligning overlap 7 (7/218);28-Aug-2020 09:08:48
+0;0;0;M21_1;aligning overlap 8 (8/218);28-Aug-2020 09:08:48
+0;0;0;M21_1;aligning overlap 9 (9/218);28-Aug-2020 09:08:48
+0;0;0;M21_1;aligning overlap 10 (10/218);28-Aug-2020 09:08:48
+0;0;0;M21_1;aligning overlap 11 (11/218);28-Aug-2020 09:08:48
+0;0;0;M21_1;aligning overlap 12 (12/218);28-Aug-2020 09:08:48
+0;0;0;M21_1;aligning overlap 13 (13/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 14 (14/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 15 (15/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 16 (16/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 17 (17/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 18 (18/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 19 (19/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 20 (20/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 21 (21/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 22 (22/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 23 (23/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 24 (24/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 25 (25/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 26 (26/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 27 (27/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 28 (28/218);28-Aug-2020 09:08:49
+0;0;0;M21_1;aligning overlap 29 (29/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 30 (30/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 31 (31/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 32 (32/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 33 (33/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 34 (34/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 35 (35/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 36 (36/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 37 (37/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 38 (38/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 39 (39/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 40 (40/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 41 (41/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 42 (42/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 43 (43/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 44 (44/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 45 (45/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 46 (46/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 47 (47/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 48 (48/218);28-Aug-2020 09:08:50
+0;0;0;M21_1;aligning overlap 49 (49/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 50 (50/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 51 (51/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 52 (52/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 53 (53/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 54 (54/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 55 (55/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 56 (56/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 57 (57/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 58 (58/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 59 (59/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 60 (60/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 61 (61/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 62 (62/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 63 (63/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 64 (64/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 65 (65/218);28-Aug-2020 09:08:51
+0;0;0;M21_1;aligning overlap 66 (66/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 67 (67/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 68 (68/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 69 (69/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 70 (70/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 71 (71/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 72 (72/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 73 (73/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 74 (74/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 75 (75/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 76 (76/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 77 (77/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 78 (78/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 79 (79/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 80 (80/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 81 (81/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 82 (82/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 83 (83/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 84 (84/218);28-Aug-2020 09:08:52
+0;0;0;M21_1;aligning overlap 85 (85/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 86 (86/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 87 (87/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 88 (88/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 89 (89/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 90 (90/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 91 (91/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 92 (92/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 93 (93/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 94 (94/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 95 (95/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 96 (96/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 97 (97/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 98 (98/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 99 (99/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 100 (100/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 101 (101/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 102 (102/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 103 (103/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 104 (104/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 105 (105/218);28-Aug-2020 09:08:53
+0;0;0;M21_1;aligning overlap 106 (106/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 107 (107/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 108 (108/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 109 (109/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 110 (110/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 111 (111/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 112 (112/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 113 (113/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 114 (114/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 115 (115/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 116 (116/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 117 (117/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 118 (118/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 119 (119/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 120 (120/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 121 (121/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 122 (122/218);28-Aug-2020 09:08:54
+0;0;0;M21_1;aligning overlap 123 (123/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 124 (124/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 125 (125/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 126 (126/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 127 (127/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 128 (128/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 129 (129/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 130 (130/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 131 (131/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 132 (132/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 133 (133/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 134 (134/218);28-Aug-2020 09:08:55
+0;0;0;M21_1;aligning overlap 135 (135/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 136 (136/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 137 (137/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 138 (138/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 139 (139/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 140 (140/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 141 (141/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 142 (142/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 143 (143/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 144 (144/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 145 (145/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 146 (146/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 147 (147/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 148 (148/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 149 (149/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 150 (150/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 151 (151/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 152 (152/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 153 (153/218);28-Aug-2020 09:08:56
+0;0;0;M21_1;aligning overlap 154 (154/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 155 (155/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 156 (156/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 157 (157/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 158 (158/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 159 (159/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 160 (160/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 161 (161/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 162 (162/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 163 (163/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 164 (164/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 165 (165/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 166 (166/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 167 (167/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 168 (168/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 169 (169/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 170 (170/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 171 (171/218);28-Aug-2020 09:08:57
+0;0;0;M21_1;aligning overlap 172 (172/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 173 (173/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 174 (174/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 175 (175/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 176 (176/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 177 (177/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 178 (178/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 179 (179/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 180 (180/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 181 (181/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 182 (182/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 183 (183/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 184 (184/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 185 (185/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 186 (186/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 187 (187/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 188 (188/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 189 (189/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 190 (190/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 191 (191/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 192 (192/218);28-Aug-2020 09:08:58
+0;0;0;M21_1;aligning overlap 193 (193/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 194 (194/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 195 (195/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 196 (196/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 197 (197/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 198 (198/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 199 (199/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 200 (200/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 201 (201/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 202 (202/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 203 (203/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 204 (204/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 205 (205/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 206 (206/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 207 (207/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 208 (208/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 209 (209/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 210 (210/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 211 (211/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 212 (212/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 213 (213/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 214 (214/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 215 (215/218);28-Aug-2020 09:08:59
+0;0;0;M21_1;aligning overlap 216 (216/218);28-Aug-2020 09:09:00
+0;0;0;M21_1;aligning overlap 217 (217/218);28-Aug-2020 09:09:00
+0;0;0;M21_1;aligning overlap 218 (218/218);28-Aug-2020 09:09:00
+0;0;0;M21_1;finished align loop for M21_1;28-Aug-2020 09:09:00
+0;0;0;M21_1;stitch;28-Aug-2020 09:09:00
+0;0;0;M21_1;end align;28-Aug-2020 09:09:01

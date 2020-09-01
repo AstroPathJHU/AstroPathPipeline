@@ -1,10 +1,9 @@
 #imports
-from ..exposuretime.utilities import LayerOffset
 from .tableio import readtable
 from .misc import cd
 import numpy as np
 import xml.etree.ElementTree as et
-import os, glob, cv2, logging
+import os, glob, cv2, logging, dataclasses
 
 #global variables
 RAWFILE_EXT           = '.Data.dat'
@@ -16,6 +15,14 @@ utility_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
 utility_logger.addHandler(handler)
+
+#helper class to store exposure time offset factor for a single layer (with some extra info)
+@dataclasses.dataclass
+class LayerOffset :
+  layer_n    : int
+  n_overlaps : int
+  offset     : float
+  final_cost : float
 
 #helper function to read the binary dump of a raw im3 file 
 def im3readraw(f,dtype=np.uint16) :

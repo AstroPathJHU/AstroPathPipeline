@@ -1,8 +1,7 @@
 #imports
-from ..alignment.alignmentset import AlignmentSetFromXML
+from .alignmentset import AlignmentSetForExposureTime
 from .config import CONST
 from typing import List
-import numpy as np
 import os, logging, dataclasses
 
 #set up the logger
@@ -43,9 +42,10 @@ def checkArgs(args) :
 def getOverlapsWithExposureTimeDifferences(rtd,mtd,sn,exp_times,layer,overlaps=None,return_dict=None) :
     et_fit_logger.info(f'Finding overlaps with exposure time differences in {sn} layer {layer}....')
     if overlaps is None or overlaps==[-1] :
-        a = AlignmentSetFromXML(mtd,rtd,sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer)
+        a = AlignmentSetForExposureTime(mtd,rtd,sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,smoothsigma=None,flatfield=None)
     else :
-        a = AlignmentSetFromXML(mtd,rtd,sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True)
+        a = AlignmentSetForExposureTime(mtd,rtd,sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,
+                                        selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,smoothsigma=None,flatfield=None)
     rect_rfkey_by_n = {}
     for r in a.rectangles :
         rect_rfkey_by_n[r.n] = r.file.rstrip('.im3')
@@ -98,13 +98,6 @@ def getFirstLayerInGroup(layer_n,nlayers) :
     else :
         raise ValueError(f'ERROR: number of image layers ({nlayers}) passed to getFirstLayerInGroup is not a recognized option!')
 
-#helper class to hold a rectangle's rawfile key, raw image, and index in a list of Rectangles 
-@dataclasses.dataclass(eq=False, repr=False)
-class UpdateImage :
-    rawfile_key          : str
-    raw_image            : np.array
-    rectangle_list_index : int
-
 #helper class to hold the pre- and post-fit details of overlaps
 @dataclasses.dataclass
 class ExposureTimeOverlapFitResult :
@@ -118,14 +111,6 @@ class ExposureTimeOverlapFitResult :
     npix         : int
     prefit_cost  : float
     postfit_cost : float
-
-#helper class to store offset factors by layer with some extra info
-@dataclasses.dataclass
-class LayerOffset :
-    layer_n    : int
-    n_overlaps : int
-    offset     : float
-    final_cost : float
 
 #helper class to log fields used in making the measurement
 @dataclasses.dataclass

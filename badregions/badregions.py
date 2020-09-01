@@ -1,5 +1,6 @@
 import abc, cv2, matplotlib.pyplot as plt, methodtools, numpy as np, skimage
 
+from ..flatfield.utilities import drawThresholds
 from ..utilities.misc import dummylogger
 
 class BadRegionFinder(abc.ABC):
@@ -39,6 +40,16 @@ class BadRegionFinder(abc.ABC):
     else:
       plt.savefig(saveas)
       plt.close()
+
+  def histogram(self, **kwargs):
+    badregionskwargs = {}
+    drawkwargs = {}
+    for kw, kwarg in kwargs.items():
+      if kw in ("plotstyling", "saveas"):
+        drawkwargs[kw] = kwarg
+      else:
+        badregionskwargs[kw] = kwarg
+    return drawThresholds(self.image, emphasize_mask=self.badregions(**badregionskwargs), **drawkwargs)
 
   @methodtools.lru_cache()
   def __laplacian(self):

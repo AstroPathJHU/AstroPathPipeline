@@ -1,8 +1,8 @@
 #imports
 from .exposure_time_fit import SingleLayerExposureTimeFit
-from .utilities import et_fit_logger, LayerOffset, getFirstLayerInGroup, getOverlapsWithExposureTimeDifferences
+from .utilities import et_fit_logger, getFirstLayerInGroup, getOverlapsWithExposureTimeDifferences
 from .config import CONST
-from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer
+from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer, LayerOffset
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp

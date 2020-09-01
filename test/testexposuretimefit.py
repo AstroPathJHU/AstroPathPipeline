@@ -2,7 +2,7 @@
 
 #imports
 from ..exposuretime.exposure_time_fit_group import ExposureTimeOffsetFitGroup
-from ..exposuretime.utilities import LayerOffset
+from ..utilities.img_file_io import LayerOffset
 from ..utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 import pathlib, shutil
