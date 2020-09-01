@@ -116,7 +116,7 @@ class WarpFitter :
             if not os.path.isdir(self.samp_name) :
                 os.mkdir(self.samp_name)
         self.warpset.writeOutWarpedImages(os.path.join(self.working_dir,self.samp_name))
-        self.alignset.getDAPI(filetype='camWarp')
+        self.alignset.getDAPI()
 
     def doFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
              p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000) :
@@ -525,7 +525,7 @@ class WarpFitter :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
         a = AlignmentSetFromXML(self.metadata_top_dir,self.working_dir,self.samp_name,nclip=CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
-                                selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True)
+                                selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True,filetype="camWarp")
         return a
 
     #helper function to return the parameter bounds, constraints, and initial population for the global minimization

@@ -1,10 +1,9 @@
 #imports
-from ..exposuretime.utilities import LayerOffset
 from .tableio import readtable
 from .misc import cd
 import numpy as np
 import xml.etree.ElementTree as et
-import os, glob, cv2, logging
+import os, glob, cv2, logging, dataclasses
 
 #global variables
 RAWFILE_EXT           = '.Data.dat'
@@ -16,6 +15,14 @@ utility_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
 utility_logger.addHandler(handler)
+
+#helper class to store exposure time offset factor for a single layer (with some extra info)
+@dataclasses.dataclass
+class LayerOffset :
+  layer_n    : int
+  n_overlaps : int
+  offset     : float
+  final_cost : float
 
 #helper function to read the binary dump of a raw im3 file 
 def im3readraw(f,dtype=np.uint16) :
@@ -74,24 +81,29 @@ def smoothImageWorker(im_array,smoothsigma,return_list=None) :
 
 #helper function to get an image dimension tuple from the sample XML file
 def getImageHWLFromXMLFile(metadata_topdir,samplename) :
-    xmlfile_path = os.path.join(metadata_topdir,samplename,'im3','xml',f'{samplename}{PARAMETER_XMLFILE_EXT}')
-    tree = et.parse(xmlfile_path)
-    for child in tree.getroot() :
-        if child.attrib['name']=='Shape' :
-            img_width, img_height, img_nlayers = tuple([int(val) for val in (child.text).split()])
-    return img_height, img_width, img_nlayers
+  subdir_filepath = os.path.join(metadata_topdir,samplename,'im3','xml',f'{samplename}{PARAMETER_XMLFILE_EXT}')
+  if os.path.isfile(subdir_filepath) :
+    xmlfile_path = subdir_filepath
+  else :
+    xmlfile_path = os.path.join(metadata_topdir,samplename,f'{samplename}{PARAMETER_XMLFILE_EXT}')
+  tree = et.parse(xmlfile_path)
+  for child in tree.getroot() :
+    if child.attrib['name']=='Shape' :
+      img_width, img_height, img_nlayers = tuple([int(val) for val in (child.text).split()])
+  return img_height, img_width, img_nlayers
 
 #helper function to get a list of exposure times by each layer for a given raw image
 #fp can be a path to a raw file or to an exposure XML file 
 #but if it's a raw file the metadata top dir must also be provided
-def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None,subdirectory=True) :
+def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
   layer_exposure_times_to_return = []
   if RAWFILE_EXT in fp :
     if metadata_top_dir is None :
       raise RuntimeError(f'ERROR: metadata top dir must be supplied to get exposure times fo raw file path {fp}!')
     sample_name = os.path.basename(os.path.dirname(os.path.normpath(fp)))
-    if subdirectory :
-      xmlfile_path = os.path.join(metadata_top_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(fp)).replace(RAWFILE_EXT,EXPOSURE_XML_EXT))
+    subdir_filepath = os.path.join(metadata_top_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(fp)).replace(RAWFILE_EXT,EXPOSURE_XML_EXT))
+    if os.path.isfile(subdir_filepath) :
+      xmlfile_path = subdir_filepath
     else :
       xmlfile_path = os.path.join(metadata_top_dir,sample_name,os.path.basename(os.path.normpath(fp)).replace(RAWFILE_EXT,EXPOSURE_XML_EXT))
   elif EXPOSURE_XML_EXT in fp :
@@ -135,19 +147,23 @@ def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None,subdirectory=True) 
 
 #helper function to return a list of the maximum exposure times observed in each layer of a given sample
 def getSampleMaxExposureTimesByLayer(metadata_topdir,samplename) :
-    _,_,nlayers = getImageHWLFromXMLFile(metadata_topdir,samplename)
-    max_exposure_times_by_layer = []
-    for li in range(nlayers) :
-        max_exposure_times_by_layer.append(0)
+  _,_,nlayers = getImageHWLFromXMLFile(metadata_topdir,samplename)
+  max_exposure_times_by_layer = []
+  for li in range(nlayers) :
+    max_exposure_times_by_layer.append(0)
+  if os.path.isdir(os.path.join(metadata_topdir,samplename,'im3','xml')) :
     with cd(os.path.join(metadata_topdir,samplename,'im3','xml')) :
-        all_fps = [os.path.join(metadata_topdir,samplename,'im3','xml',fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
-    utility_logger.info(f'Finding maximum exposure times in a sample of {len(all_fps)} images with {nlayers} layers each....')
-    for fp in all_fps :
-        this_image_layer_exposure_times = getExposureTimesByLayer(fp,nlayers)
-        for li in range(nlayers) :
-            if this_image_layer_exposure_times[li]>max_exposure_times_by_layer[li] :
-                max_exposure_times_by_layer[li] = this_image_layer_exposure_times[li]
-    return max_exposure_times_by_layer
+      all_fps = [os.path.join(metadata_topdir,samplename,'im3','xml',fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
+  else :
+    with cd(os.path.join(metadata_topdir,samplename)) :
+      all_fps = [os.path.join(metadata_topdir,samplename,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
+  utility_logger.info(f'Finding maximum exposure times in a sample of {len(all_fps)} images with {nlayers} layers each....')
+  for fp in all_fps :
+    this_image_layer_exposure_times = getExposureTimesByLayer(fp,nlayers)
+    for li in range(nlayers) :
+      if this_image_layer_exposure_times[li]>max_exposure_times_by_layer[li] :
+        max_exposure_times_by_layer[li] = this_image_layer_exposure_times[li]
+  return max_exposure_times_by_layer
 
 #helper function to return lists of the maximum exposure times and the exposure time correction offsets for all layers of a sample
 def getMaxExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file) :
@@ -173,11 +189,11 @@ def getMaxExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename
 
 #helper function to return the maximum exposure time and the exposure time correction offset for a given layer of a sample
 def getMaxExposureTimeAndCorrectionOffsetForSampleLayer(metadata_top_dir,samplename,et_correction_offset_file,layer) :
-  max_exp_times, et_correction_offsets = getMaxExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file)
-  if max_exp_times is None or et_correction_offsets is None :
+  max_ets, et_offsets = getMaxExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file)
+  if max_ets is None or et_offsets is None :
     return None, None
   else :
-    return max_exp_times[layer-1], et_correction_offsets[layer-1]
+    return max_ets[layer-1], et_offsets[layer-1]
 
 #helper function to correct a single image layer for exposure time differences
 def correctImageLayerForExposureTime(raw_img_layer,exp_time,max_exp_time,offset) :

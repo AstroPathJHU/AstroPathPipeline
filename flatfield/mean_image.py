@@ -50,18 +50,16 @@ class MeanImage :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,y,x,nlayers,workingdir_name,skip_masking=False,skip_et_correction=False,smoothsigma=100) :
+    def __init__(self,dims,workingdir_name,skip_et_correction=False,skip_masking=False,smoothsigma=100) :
         """
-        y                  = image height in pixels
-        x                  = image width in pixels
-        nlayers            = number of layers in images
+        dims               = (height,width,nlayers) for images that will be stacked
         workingdir_name    = name of the directory to save everything in
-        skip_masking       = if True, image layers won't be masked before being added to the stack
         skip_et_correction = if True, image layers won't be corrected for exposure time differences before being added to the stack
+        skip_masking       = if True, image layers won't be masked before being added to the stack
         smoothsigma        = Gaussian sigma for final smoothing of stacked flatfield image
         """
-        self._dims=(y,x,nlayers)
-        self.nlayers = nlayers
+        self._dims=dims
+        self.nlayers = self._dims[-1]
         self.LAST_FILTER_LAYERS = None
         if self.nlayers==35 :
             self.LAST_FILTER_LAYERS=self.LAST_FILTER_LAYERS_35
@@ -70,14 +68,14 @@ class MeanImage :
         else :
             raise FlatFieldError(f'ERROR: no defined list of broadband filter breaks for images with {self.nlayers} layers!')
         self._workingdir_name = workingdir_name
-        self.skip_masking = skip_masking
         self.skip_et_correction = skip_et_correction
+        self.skip_masking = skip_masking
         self.smoothsigma = smoothsigma
-        self.image_stack = np.zeros((y,x,nlayers),dtype=np.uint32) #WARNING: may overflow if more than 65,535 images are stacked 
-        self.mask_stack  = np.zeros((y,x,nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 masks are stacked 
+        self.image_stack = np.zeros(self._dims,dtype=np.uint64)
+        self.mask_stack  = np.zeros(self._dims,dtype=np.uint64)
         self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=CONST.IMG_DTYPE_OUT)
         self.n_images_read = 0
-        self.n_images_stacked_by_layer = np.zeros((nlayers),dtype=np.uint16) #WARNING: may overflow if more than 65,535 images are stacked 
+        self.n_images_stacked_by_layer = np.zeros((self.nlayers),dtype=np.uint64)
         self.mean_image=None
         self.smoothed_mean_image=None
         self.flatfield_image=None
