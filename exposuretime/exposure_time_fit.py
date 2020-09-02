@@ -14,7 +14,7 @@ class SingleLayerExposureTimeFit :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,layer_n,exp_times,max_exp_time,top_plot_dir,sample,rawfile_top_dir,metadata_top_dir,flatfield,offset_bounds,overlaps,smoothsigma,cutimages) :
+    def __init__(self,layer_n,exp_times,max_exp_time,top_plot_dir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages) :
         """
         layer_n          = layer number that this fit will run on (indexed from 1)
         exp_times        = dictionary of raw file exposure times, keyed by filename stem
@@ -24,7 +24,7 @@ class SingleLayerExposureTimeFit :
         rawfile_top_dir  = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
         metadata_top_dir = path to directory containing [samplename]/im3/xml directory
         flatfield        = relevant layer of whole sample flatfield file
-        offset_bounds    = bounds for dark current count offset
+        min_frac         = some image in the dataset must have at least this fraction of pixels with the maximum offset (prevents too low of a maximum)
         overlaps         = list of sample overlaps to run ([-1] if all should be run)
         smoothsigma      = sigma for Gaussian blurring
         cutimages        = True if only central 50% of overlap images should be used
@@ -40,11 +40,27 @@ class SingleLayerExposureTimeFit :
             if not os.path.isdir(plotdirname) :
                 os.mkdir(plotdirname)
         self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
+        #set the flatfield
         self.flatfield = flatfield
-        self.offset_bounds = offset_bounds
-        self.exposure_time_overlaps = self.__getExposureTimeOverlaps(exp_times,max_exp_time,overlaps,smoothsigma,cutimages)
-        if len(self.exposure_time_overlaps)<1 :
+        #make sure the fit will actually use some overlaps
+        if len(overlaps)<1 :
             et_fit_logger.warn(f'WARNING: layer {self.layer} does not have any aligned overlaps with exposure time differences. This fit will be skipped!')
+            self.offset_bounds = [0,100]
+            self.exposure_time_overlaps = []
+            return
+        #make an alignmentset from the raw files, smoothed and corrected with the flatfield
+        et_fit_logger.info(f'Making an AlignmentSet for just the overlaps with different exposure times in layer {self.layer}....')
+        use_GPU = platform.system()!='Darwin'
+        a = AlignmentSetForExposureTime(self.metadata_top_dir,self.rawfile_top_dir,self.sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
+                                nclip=CONST.N_CLIP,useGPU=use_GPU,readlayerfile=False,layer=self.layer,filetype='raw',
+                                smoothsigma=smoothsigma,flatfield=self.flatfield)
+        #get all the raw file layers and align the overlaps
+        a.getDAPI()
+        et_fit_logger.info(f'Aligning layer {self.layer} overlaps with corrected/smoothed images....')
+        a.align(alreadyalignedstrategy='overwrite')
+        #use the alignmentset 
+        self.offset_bounds = self.__getOffsetBounds(a,min_frac)
+        self.exposure_time_overlaps = self.__getExposureTimeOverlaps(a,exp_times,max_exp_time,cutimages)
         self.offsets = []
         self.costs = []
         self.best_fit_offset = None
@@ -112,31 +128,39 @@ class SingleLayerExposureTimeFit :
         self.offsets.append(offset); self.costs.append(cost)
         return cost
 
+    #helper function to automatically set the bounds on the offset to search
+    def __getOffsetBounds(self,alignset,min_frac) :
+        et_fit_logger.info(f'Finding upper bound on offsets to test for {self.sample} layer {self.layer}....')
+        offset_upper_bound = 1000.; nrectpix = alignset.rectangles[0].shape[0]*alignset.rectangles[0].shape[1]
+        for r in alignset.rectangles :
+            this_upper_bound = -1
+            while np.count_nonzero(r.image<this_upper_bound)<(nrectpix*0.0001) :
+                this_upper_bound+=1
+            if this_upper_bound<offset_upper_bound :
+                et_fit_logger.info(f'new min of {this_upper_bound} found in rectangle {r.n} for {self.sample} layer {self.layer}')
+                offset_upper_bound = this_upper_bound
+        upper_bound_pixel_count = 0
+        for r in alignset.rectangles :
+            upper_bound_pixel_count+= np.count_nonzero(r.image<offset_upper_bound)
+        pct=100.*(upper_bound_pixel_count/(len(alignset.rectangles)*(nrectpix)))
+        print(f'Offset upper bound for {self.sample} layer {self.layer} found at {offset_upper_bound} ({upper_bound_pixel_count} total pixels; {pct:.8f}%)')
+        return [0,offset_upper_bound]
+
     #helper function to return a list of OverlapWithExposureTime objects set up to run on this particular image layer
-    def __getExposureTimeOverlaps(self,exposure_times,max_exp_time,overlaps,smoothsigma,cutimages) :
-        if len(overlaps)<1 :
-            return []
-        #make an alignmentset from the raw files
-        et_fit_logger.info(f'Making an AlignmentSet for just the overlaps with different exposure times in layer {self.layer}....')
-        use_GPU = platform.system()!='Darwin'
-        a = AlignmentSetForExposureTime(self.metadata_top_dir,self.rawfile_top_dir,self.sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
-                                nclip=CONST.N_CLIP,useGPU=use_GPU,readlayerfile=False,layer=self.layer,filetype='raw',
-                                smoothsigma=smoothsigma,flatfield=self.flatfield)
-        #get all the raw file layers
-        a.getDAPI()
-        #update and align with the smoothed images
-        et_fit_logger.info(f'Aligning layer {self.layer} overlaps with corrected/smoothed images....')
-        a.align(alreadyalignedstrategy='overwrite')
+    def __getExposureTimeOverlaps(self,alignset,exposure_times,max_exp_time,cutimages) :
         #make the exposure time comparison overlap objects
         etolaps = []; relevant_rectangles = {}
-        for io,olap in enumerate(a.overlaps) :
+        rects_by_n = {}
+        for r in alignset.rectangles :
+            rects_by_n[r.n] = r
+        for io,olap in enumerate(alignset.overlaps) :
             if olap.result.exit!=0 :
                 continue
-            p1rect = ([r for r in a.rectangles if r.n==olap.p1])[0]
-            p2rect = ([r for r in a.rectangles if r.n==olap.p2])[0]
+            p1rect = rects_by_n[olap.p1]
+            p2rect = rects_by_n[olap.p2]
             p1et = exposure_times[(p1rect.file).rstrip(CONST.IM3_EXT)]
             p2et = exposure_times[(p2rect.file).rstrip(CONST.IM3_EXT)]
-            et_fit_logger.info(f'Parameterizing cost for overlap {olap.n} ({io+1} of {len(a.overlaps)} in {self.sample} layer {self.layer})....')
+            et_fit_logger.info(f'Parameterizing cost for overlap {olap.n} ({io+1} of {len(alignset.overlaps)} in {self.sample} layer {self.layer})....')
             etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages,self.offset_bounds))
             if p1rect.n not in relevant_rectangles.keys() :
                 relevant_rectangles[p1rect.n]=p1rect
@@ -146,12 +170,12 @@ class SingleLayerExposureTimeFit :
         #make the log of the fields used and write it out
         field_logs = []
         for r in relevant_rectangles :
-            this_rect_overlaps = [o.n for o in a.overlaps if (o.p1==r.n or o.p2==r.n)]
+            this_rect_overlaps = [o.n for o in alignset.overlaps if (o.p1==r.n or o.p2==r.n)]
             field_logs.append(FieldLog(r.file,r.n,this_rect_overlaps))
         with cd(self.plotdirpath) :
             writetable(f'fields_used_in_exposure_time_fit_{self.sample}_layer_{self.layer}.csv',field_logs)
         #make the metadata summary object and write it out
-        metadata_summary = MetadataSummary(self.sample,a.Project,a.Cohort,a.microscopename,
+        metadata_summary = MetadataSummary(self.sample,alignset.Project,alignset.Cohort,alignset.microscopename,
                                            min([r.t for r in relevant_rectangles]),max([r.t for r in relevant_rectangles]))
         with cd(self.plotdirpath) :
             writetable(f'metadata_summary_exposure_time_{self.sample}_layer_{self.layer}.csv',[metadata_summary])

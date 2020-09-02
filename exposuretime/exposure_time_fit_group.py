@@ -10,8 +10,8 @@ import os, glob
 
 #helper function to create a fit for a single layer
 #can be run in parallel if given a return dictionary
-def getExposureTimeFitWorker(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,offset_bounds,overlaps,smoothsigma,cutimages,return_dict=None) :
-    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,offset_bounds,overlaps,smoothsigma,cutimages)
+def getExposureTimeFitWorker(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages,return_dict=None) :
+    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages)
     if return_dict is not None :
         return_dict[layer_n] = fit
     else :
@@ -39,7 +39,7 @@ class ExposureTimeOffsetFitGroup :
         self.layers = self.__getLayers(layers)
         self.n_threads = n_threads
 
-    def runFits(self,flatfield_filepath,overlaps,smoothsigma,wholeimages,initial_offset,offset_bounds,max_iter,gtol,eps,print_every,n_comparisons_to_save) :
+    def runFits(self,flatfield_filepath,overlaps,smoothsigma,wholeimages,initial_offset,min_frac,max_iter,gtol,eps,print_every,n_comparisons_to_save) :
         """
         Run all of the fits
         flatfield_filepath    = path to flatfield file to use in correcting raw image illumination
@@ -47,7 +47,7 @@ class ExposureTimeOffsetFitGroup :
         smoothsigma           = sigma for Gaussian blurring to apply to images
         wholeimages           = True if the whole image (nor just the central regions) should be considered
         initial_offset        = starting point for fits
-        offset_bounds         = bounds for dark current count offset
+        min_frac              = some image in the dataset must have at least this fraction of pixels with the maximum offset (prevents too low of a maximum)
         max_iter              = maximum number of iterations for each fit to run
         gtol                  = gradient projection tolerance for fits
         eps                   = step size for approximating Jacobian
@@ -71,7 +71,7 @@ class ExposureTimeOffsetFitGroup :
                 layer_batches[-1].append(ln)
             for bi,layer_batch in enumerate(layer_batches,start=1) :
                 li_start = (bi-1)*self.n_threads
-                batch_fits = self.__getBatchFits(layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,offset_bounds,overlaps_to_use_by_layer_group,
+                batch_fits = self.__getBatchFits(layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,min_frac,overlaps_to_use_by_layer_group,
                                                  smoothsigma,cutimages)
                 et_fit_logger.info(f'Done preparing fits in batch {bi} (of {len(layer_batches)}).')
                 et_fit_logger.info('Running fits....')
@@ -100,7 +100,7 @@ class ExposureTimeOffsetFitGroup :
                 this_layer_overlaps = overlaps_to_use_by_layer_group[getFirstLayerInGroup(ln,self.img_dims[-1])]
                 fit = getExposureTimeFitWorker(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
                                                self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
-                                               offset_bounds,this_layer_overlaps,smoothsigma,cutimages)
+                                               min_frac,this_layer_overlaps,smoothsigma,cutimages)
                 et_fit_logger.info(f'Running fit for layer {ln} ({li+1} of {len(self.layers)})....')
                 fit.doFit(initial_offset,max_iter,gtol,eps,print_every)
                 et_fit_logger.info(f'Writing output for layer {ln} ({li+1} of {len(self.layers)})....')
@@ -204,7 +204,7 @@ class ExposureTimeOffsetFitGroup :
         return exp_times, max_exp_times
 
     #helper function to set up and return a list of single-layer fit objects
-    def __getBatchFits(self,layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,offset_bounds,overlaps_by_layer_group,smoothsigma,cutimages) :
+    def __getBatchFits(self,layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,min_frac,overlaps_by_layer_group,smoothsigma,cutimages) :
         batch_fits = []
         manager = mp.Manager()
         return_dict = manager.dict()
@@ -218,7 +218,7 @@ class ExposureTimeOffsetFitGroup :
             p = mp.Process(target=getExposureTimeFitWorker, 
                            args=(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
                                  self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
-                                 offset_bounds,this_layer_overlaps,smoothsigma,cutimages,return_dict)
+                                 min_frac,this_layer_overlaps,smoothsigma,cutimages,return_dict)
                           )
             procs.append(p)
             p.start()
