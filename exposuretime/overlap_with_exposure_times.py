@@ -3,6 +3,7 @@ import numpy as np, matplotlib.pyplot as plt
 from .utilities import ExposureTimeOverlapFitResult
 from .config import CONST
 from ..utilities.img_file_io import correctImageLayerForExposureTime
+import functools
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
@@ -15,6 +16,28 @@ def costFromImages(p1im,p2im,p1et,p2et,maxet,offset) :
         corrp1 = p1im
         corrp2 = p2im
     return np.sum(np.abs(corrp1-corrp2))
+
+#helper function to return the (offset,cost) at a particular index and the slope of the line connecting it to the point to its right
+@functools.lru_cache()
+def getLowerPointAndSlope(offsets,costs,index_below) :
+    if index_below<len(offsets)-1 :
+        x1 = offsets[index_below]; x2 = offsets[index_below+1]
+        y1 = costs[index_below];   y2 = costs[index_below+1]
+        px = x1; py = y1
+    else :
+        x1 = offsets[index_below-1]; x2 = offsets[index_below]
+        y1 = costs[index_below-1];   y2 = costs[index_below]
+        px = x2; py = y2
+    slope = (y2-y1)/(x2-x1)
+    return px, py, slope
+
+#helper function to return the last index in the offset list that's to the left of a given offset
+@functools.lru_cache()
+def getLeftSideIndex(offsets,offset) :
+    below = 0 
+    while offsets[below]<offset and below<len(offsets)-1:
+        below+=1
+    return below
 
 #helper class for comparing overlap image exposure times
 class OverlapWithExposureTimes :
@@ -52,8 +75,8 @@ class OverlapWithExposureTimes :
         self.et_diff = self.p2et-self.p1et
         self.max_exp_time = max_exp_time
         p1_im, p2_im = self.__getp1p2Images(olap,cutimages)
-        self.offsets = list(np.linspace(offset_bounds[0],offset_bounds[1],CONST.OVERLAP_COST_PARAMETERIZATION_N_POINTS))
-        self.costs   = [costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,o) for o in self.offsets]
+        self.offsets = tuple(list(np.linspace(offset_bounds[0],offset_bounds[1],CONST.OVERLAP_COST_PARAMETERIZATION_N_POINTS)))
+        self.costs   = tuple([costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,o) for o in self.offsets])
         self.uncorrected_cost = costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,-1.)
         self.npix = p1_im.shape[0]*p1_im.shape[1]
         self._raw_p1_im=None
@@ -66,8 +89,8 @@ class OverlapWithExposureTimes :
         if offset in self.offsets :
             cost = self.costs[self.offsets.index(offset)]
         else :
-            index_below = self.__getLeftSideIndex(offset)
-            x1, y1, slope = self.__getLowerPointAndSlope(index_below)
+            index_below = getLeftSideIndex(self.offsets,offset)
+            x1, y1, slope = getLowerPointAndSlope(self.offsets,self.costs,index_below)
             cost = slope*(offset-x1)+y1
         return cost, self.npix
 
@@ -111,26 +134,6 @@ class OverlapWithExposureTimes :
         plt.close()
 
     #################### PRIVATE HELPER FUNCTIONS ####################
-
-    #helper function to return the (offset,cost) at a particular index and the slope of the line connecting it to the point to its right
-    def __getLowerPointAndSlope(self,index_below) :
-        if index_below<len(self.offsets)-1 :
-            x1 = self.offsets[index_below]; x2 = self.offsets[index_below+1]
-            y1 = self.costs[index_below];   y2 = self.costs[index_below+1]
-            px = x1; py = y1
-        else :
-            x1 = self.offsets[index_below-1]; x2 = self.offsets[index_below]
-            y1 = self.costs[index_below-1];   y2 = self.costs[index_below]
-            px = x2; py = y2
-        slope = (y2-y1)/(x2-x1)
-        return px, py, slope
-
-    #helper function to return the last index in the offset list that's to the left of a given offset
-    def __getLeftSideIndex(self,offset) :
-        below = 0 
-        while self.offsets[below]<offset and below<len(self.offsets)-1:
-            below+=1
-        return below
 
     #helper function to get the two overlap images
     def __getp1p2Images(self,olap,cutimages) :

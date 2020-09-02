@@ -35,13 +35,18 @@ class SingleLayerExposureTimeFit :
         self.metadata_top_dir = metadata_top_dir
         self.sample = sample
         #make this fit's plot directory name/path
-        plotdirname = f'{self.sample}_layer_{self.layer}_plots'
+        plotdirname = f'{self.sample}_layer_{self.layer}_info'
         with cd(top_plot_dir) :
             if not os.path.isdir(plotdirname) :
                 os.mkdir(plotdirname)
         self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
         #set the flatfield
         self.flatfield = flatfield
+        #set some other variables that are needed
+        self.offsets = []
+        self.costs = []
+        self.best_fit_offset = None
+        self.best_fit_cost = None
         #make sure the fit will actually use some overlaps
         if len(overlaps)<1 :
             et_fit_logger.warn(f'WARNING: layer {self.layer} does not have any aligned overlaps with exposure time differences. This fit will be skipped!')
@@ -61,10 +66,6 @@ class SingleLayerExposureTimeFit :
         #use the alignmentset 
         self.offset_bounds = self.__getOffsetBounds(a,min_frac)
         self.exposure_time_overlaps = self.__getExposureTimeOverlaps(a,exp_times,max_exp_time,cutimages)
-        self.offsets = []
-        self.costs = []
-        self.best_fit_offset = None
-        self.best_fit_cost = None
 
     def doFit(self,initial_offset,max_iter,gtol,eps,print_every) :
         """
