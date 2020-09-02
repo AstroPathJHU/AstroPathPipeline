@@ -52,6 +52,7 @@ class TestAlignment(TestBaseSaveOutput):
       rows = readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
       targetrows = readtable(thisfolder/"reference"/"alignment"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
       for row, target in itertools.zip_longest(rows, targetrows):
+        if cls == AlignmentResult and row.exit != 0 and target.exit != 0: continue
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
     for log in (
