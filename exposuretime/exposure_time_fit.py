@@ -143,7 +143,9 @@ class SingleLayerExposureTimeFit :
         for r in alignset.rectangles :
             upper_bound_pixel_count+= np.count_nonzero(r.image<offset_upper_bound)
         pct=100.*(upper_bound_pixel_count/(len(alignset.rectangles)*(nrectpix)))
-        et_fit_logger.info(f'Offset upper bound for {self.sample} layer {self.layer} found at {offset_upper_bound} ({upper_bound_pixel_count} total pixels; {pct:.8f}%)')
+        msg = f'Offset upper bound for {self.sample} layer {self.layer} found at {offset_upper_bound}'
+        msg+= f' ({upper_bound_pixel_count} total pixels or {pct:.8f}% overall clipped at max)'
+        et_fit_logger.info(msg)
         return [0,offset_upper_bound]
 
     #helper function to return a list of OverlapWithExposureTime objects set up to run on this particular image layer

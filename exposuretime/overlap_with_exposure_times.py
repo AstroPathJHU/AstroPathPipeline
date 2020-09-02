@@ -3,6 +3,7 @@ import numpy as np, matplotlib.pyplot as plt
 from .utilities import ExposureTimeOverlapFitResult
 from .config import CONST
 from ..utilities.img_file_io import correctImageLayerForExposureTime
+import methodtools
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
@@ -52,8 +53,8 @@ class OverlapWithExposureTimes :
         self.et_diff = self.p2et-self.p1et
         self.max_exp_time = max_exp_time
         p1_im, p2_im = self.__getp1p2Images(olap,cutimages)
-        self.offset_bounds = offset_bounds
-        self.fit_pars = self.__getFitParameters(p1_im,p2_im)
+        self.offsets = np.linspace(offset_bounds[0],offset_bounds[1],CONST.OVERLAP_COST_PARAMETERIZATION_N_POINTS)
+        self.costs   = [costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,o) for o in self.offsets]
         self.uncorrected_cost = costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,-1.)
         self.npix = p1_im.shape[0]*p1_im.shape[1]
         self._raw_p1_im=None
@@ -61,12 +62,12 @@ class OverlapWithExposureTimes :
 
     def getCostAndNPix(self,offset) :
         """
-        Calculate the cost at a given offset from the polynomial fit parameterization
+        Calculate the cost at a given offset by interpolating between points
         """
-        cost = 0. 
-        for i in range(CONST.OVERLAP_COST_POLYFIT_DEG+1) :
-            cost+=self.fit_pars[i]*(offset**(CONST.OVERLAP_COST_POLYFIT_DEG-i))
-        return cost, self.npix
+        index_below, index_above = self.__getLeftSideIndex(offset)
+        x1, y1, slope = self.__getLowerPointAndSlope(index_below)
+        interp_cost = slope*(offset-x1)+y1
+        return interp_cost, self.npix
 
     def getFitResult(self,best_fit_offset) :
         """
@@ -93,13 +94,13 @@ class OverlapWithExposureTimes :
         ax[1].imshow(corr_overlay)
         ax[1].set_title(f'overlap {self.n} corrected (cost={self.corr_cost:.3f})')
         offsets = list(range(self.offset_bounds[0],self.offset_bounds[1]))
-        raw_image_costs = []; parameterized_costs = []
-        for o in offsets :
+        raw_image_costs = []; smoothed_clipped_image_costs = []
+        for o in self.offsets :
             raw_image_costs.append(costFromImages(self.raw_p1im,self.raw_p2im,self.p1et,self.p2et,self.max_exp_time,o)/self.raw_npix)
             pcost,npix = self.getCostAndNPix(o)
-            parameterized_costs.append(pcost/npix)
-        ax[2].plot(offsets,raw_image_costs,linewidth=2,label='cost from raw images')
-        ax[2].plot(offsets,parameterized_costs,linewidth=2,label='parameterized cost')
+            smoothed_clipped_image_costs.append(pcost/npix)
+        ax[2].plot(offsets,raw_image_costs,linewidth=2,label='cost per pixel from raw images')
+        ax[2].plot(offsets,smoothed_clipped_image_costs,linewidth=2,label='cost from smoothed/clipped images')
         ax[2].plot([best_fit_offset,best_fit_offset],[0.8*y for y in ax[2].get_ylim()],linewidth=2,color='k',label=f'best fit offset ({best_fit_offset:.3f})')
         ax[2].set_title(f'overlap {self.n} (tag={self.tag}) w/ exp. time diff. = {self.et_diff:.3f}')
         ax[2].set_xlabel('offset')
@@ -109,6 +110,22 @@ class OverlapWithExposureTimes :
         plt.close()
 
     #################### PRIVATE HELPER FUNCTIONS ####################
+
+    #helper function to return the (offset,cost) at a particular index and the slope of the line connecting it to the point to its right
+    @methodtools.lru_cache()
+    def __getLowerPointAndSlope(self,index_below) :
+        x1 = self.offsets[index_below]; x2 = self.offsets[index_below+1]
+        y1 = self.costs[index_below];   y2 = self.costs[index_below+1]
+        slope = (y2-y1)/(x2-x1)
+        return x1, y1, slope
+
+    #helper function to return the last index in the offset list that's to the left of a given offset
+    @methodtools.lru_cache()
+    def __getLeftSideIndex(self,offset) :
+        below = 0 
+        while self.offsets[below]<offset and below<len(self.offsets)-1:
+            below+=1
+        return below
 
     #helper function to get the two overlap images
     def __getp1p2Images(self,olap,cutimages) :
@@ -131,11 +148,3 @@ class OverlapWithExposureTimes :
             p1_im = whole_p1_im
             p2_im = whole_p2_im
         return p1_im,p2_im
-
-    #helper function to get the cost parameterization
-    def __getFitParameters(self,p1_im,p2_im) :
-        offsets = []; costs = []
-        for o in range(self.offset_bounds[0],self.offset_bounds[1]+1) :
-            offsets.append(o)
-            costs.append(costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,o))
-        return np.polyfit(offsets,costs,CONST.OVERLAP_COST_POLYFIT_DEG)
