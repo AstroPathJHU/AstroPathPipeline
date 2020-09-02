@@ -25,7 +25,7 @@ if __name__=='__main__' :
                                         help='Add this flag to use the entire images rather than the outer 50%% of each overlap')
     #group for options of how the fits will proceed
     fit_option_group = parser.add_argument_group('fit options', 'how should the fits be done?')
-    fit_option_group.add_argument('--initial_offset', default=25.,      type=float,
+    fit_option_group.add_argument('--initial_offset', default=5.,      type=float,
                                   help='Dark current offset count fit starting point (default=50.)')
     fit_option_group.add_argument('--min_pixel_frac_for_offset_limit',  default=1e-4, type=float,         
                                   help="""Upper limit of offsets to search will be increased until at least this fraction of pixels in some image 

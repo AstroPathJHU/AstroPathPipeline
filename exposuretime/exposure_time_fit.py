@@ -131,17 +131,18 @@ class SingleLayerExposureTimeFit :
     #helper function to automatically set the bounds on the offset to search
     def __getOffsetBounds(self,alignset,min_frac) :
         et_fit_logger.info(f'Finding upper bound on offsets to test for {self.sample} layer {self.layer}....')
-        offset_upper_bound = 1000.; nrectpix = alignset.rectangles[0].shape[0]*alignset.rectangles[0].shape[1]
+        offset_upper_bound = 1000.; nrectpix = alignset.rectangles[0].image.shape[0]*alignset.rectangles[0].image.shape[1]
         for r in alignset.rectangles :
+            img = r.image
             this_upper_bound = -1
-            while np.count_nonzero(r.image<this_upper_bound)<(nrectpix*0.0001) :
+            while np.count_nonzero(img[img<this_upper_bound])<(nrectpix*min_frac) :
                 this_upper_bound+=1
             if this_upper_bound<offset_upper_bound :
                 et_fit_logger.info(f'Offset upper bound reduced to {this_upper_bound} in rectangle {r.n} for {self.sample} layer {self.layer}')
                 offset_upper_bound = this_upper_bound
         upper_bound_pixel_count = 0
         for r in alignset.rectangles :
-            upper_bound_pixel_count+= np.count_nonzero(r.image<offset_upper_bound)
+            upper_bound_pixel_count+= np.count_nonzero(r.image[r.image<offset_upper_bound])
         pct=100.*(upper_bound_pixel_count/(len(alignset.rectangles)*(nrectpix)))
         msg = f'Offset upper bound for {self.sample} layer {self.layer} found at {offset_upper_bound}'
         msg+= f' ({upper_bound_pixel_count} total pixels or {pct:.8f}% overall clipped at max)'

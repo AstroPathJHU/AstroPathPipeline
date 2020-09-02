@@ -53,7 +53,7 @@ class OverlapWithExposureTimes :
         self.et_diff = self.p2et-self.p1et
         self.max_exp_time = max_exp_time
         p1_im, p2_im = self.__getp1p2Images(olap,cutimages)
-        self.offsets = np.linspace(offset_bounds[0],offset_bounds[1],CONST.OVERLAP_COST_PARAMETERIZATION_N_POINTS)
+        self.offsets = list(np.linspace(offset_bounds[0],offset_bounds[1],CONST.OVERLAP_COST_PARAMETERIZATION_N_POINTS))
         self.costs   = [costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,o) for o in self.offsets]
         self.uncorrected_cost = costFromImages(p1_im,p2_im,self.p1et,self.p2et,self.max_exp_time,-1.)
         self.npix = p1_im.shape[0]*p1_im.shape[1]
@@ -64,10 +64,13 @@ class OverlapWithExposureTimes :
         """
         Calculate the cost at a given offset by interpolating between points
         """
-        index_below, index_above = self.__getLeftSideIndex(offset)
-        x1, y1, slope = self.__getLowerPointAndSlope(index_below)
-        interp_cost = slope*(offset-x1)+y1
-        return interp_cost, self.npix
+        if offset in self.offsets :
+            cost = self.costs[self.offsets.index(offset)]
+        else :
+            index_below = self.__getLeftSideIndex(offset)
+            x1, y1, slope = self.__getLowerPointAndSlope(index_below)
+            cost = slope*(offset-x1)+y1
+        return cost, self.npix
 
     def getFitResult(self,best_fit_offset) :
         """
@@ -93,14 +96,13 @@ class OverlapWithExposureTimes :
         ax[0].set_title(f'overlap {self.n} original (cost={self.orig_cost:.3f})')
         ax[1].imshow(corr_overlay)
         ax[1].set_title(f'overlap {self.n} corrected (cost={self.corr_cost:.3f})')
-        offsets = list(range(self.offset_bounds[0],self.offset_bounds[1]))
         raw_image_costs = []; smoothed_clipped_image_costs = []
         for o in self.offsets :
             raw_image_costs.append(costFromImages(self.raw_p1im,self.raw_p2im,self.p1et,self.p2et,self.max_exp_time,o)/self.raw_npix)
             pcost,npix = self.getCostAndNPix(o)
             smoothed_clipped_image_costs.append(pcost/npix)
-        ax[2].plot(offsets,raw_image_costs,linewidth=2,label='cost per pixel from raw images')
-        ax[2].plot(offsets,smoothed_clipped_image_costs,linewidth=2,label='cost from smoothed/clipped images')
+        ax[2].plot(self.offsets,raw_image_costs,linewidth=2,label='cost per pixel from raw images')
+        ax[2].plot(self.offsets,smoothed_clipped_image_costs,linewidth=2,label='cost from smoothed/clipped images')
         ax[2].plot([best_fit_offset,best_fit_offset],[0.8*y for y in ax[2].get_ylim()],linewidth=2,color='k',label=f'best fit offset ({best_fit_offset:.3f})')
         ax[2].set_title(f'overlap {self.n} (tag={self.tag}) w/ exp. time diff. = {self.et_diff:.3f}')
         ax[2].set_xlabel('offset')
@@ -114,10 +116,16 @@ class OverlapWithExposureTimes :
     #helper function to return the (offset,cost) at a particular index and the slope of the line connecting it to the point to its right
     @methodtools.lru_cache()
     def __getLowerPointAndSlope(self,index_below) :
-        x1 = self.offsets[index_below]; x2 = self.offsets[index_below+1]
-        y1 = self.costs[index_below];   y2 = self.costs[index_below+1]
+        if index_below<len(self.offsets)-1 :
+            x1 = self.offsets[index_below]; x2 = self.offsets[index_below+1]
+            y1 = self.costs[index_below];   y2 = self.costs[index_below+1]
+            px = x1; py = y1
+        else :
+            x1 = self.offsets[index_below-1]; x2 = self.offsets[index_below]
+            y1 = self.costs[index_below-1];   y2 = self.costs[index_below]
+            px = x2; py = y2
         slope = (y2-y1)/(x2-x1)
-        return x1, y1, slope
+        return px, py, slope
 
     #helper function to return the last index in the offset list that's to the left of a given offset
     @methodtools.lru_cache()
