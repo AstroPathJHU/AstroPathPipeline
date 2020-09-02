@@ -101,7 +101,7 @@ class OverlapWithExposureTimes :
             raw_image_costs.append(costFromImages(self.raw_p1im,self.raw_p2im,self.p1et,self.p2et,self.max_exp_time,o)/self.raw_npix)
             pcost,npix = self.getCostAndNPix(o)
             smoothed_clipped_image_costs.append(pcost/npix)
-        ax[2].plot(self.offsets,raw_image_costs,linewidth=2,label='cost per pixel from raw images')
+        ax[2].plot(self.offsets,raw_image_costs,linewidth=2,label='cost from raw images')
         ax[2].plot(self.offsets,smoothed_clipped_image_costs,linewidth=2,label='cost from smoothed/clipped images')
         ax[2].plot([best_fit_offset,best_fit_offset],[0.8*y for y in ax[2].get_ylim()],linewidth=2,color='k',label=f'best fit offset ({best_fit_offset:.3f})')
         ax[2].set_title(f'overlap {self.n} (tag={self.tag}) w/ exp. time diff. = {self.et_diff:.3f}')
