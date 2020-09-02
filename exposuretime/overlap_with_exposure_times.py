@@ -3,7 +3,6 @@ import numpy as np, matplotlib.pyplot as plt
 from .utilities import ExposureTimeOverlapFitResult
 from .config import CONST
 from ..utilities.img_file_io import correctImageLayerForExposureTime
-import methodtools
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
@@ -114,7 +113,6 @@ class OverlapWithExposureTimes :
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to return the (offset,cost) at a particular index and the slope of the line connecting it to the point to its right
-    @methodtools.lru_cache()
     def __getLowerPointAndSlope(self,index_below) :
         if index_below<len(self.offsets)-1 :
             x1 = self.offsets[index_below]; x2 = self.offsets[index_below+1]
@@ -128,7 +126,6 @@ class OverlapWithExposureTimes :
         return px, py, slope
 
     #helper function to return the last index in the offset list that's to the left of a given offset
-    @methodtools.lru_cache()
     def __getLeftSideIndex(self,offset) :
         below = 0 
         while self.offsets[below]<offset and below<len(self.offsets)-1:
