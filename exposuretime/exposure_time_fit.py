@@ -137,13 +137,13 @@ class SingleLayerExposureTimeFit :
             while np.count_nonzero(r.image<this_upper_bound)<(nrectpix*0.0001) :
                 this_upper_bound+=1
             if this_upper_bound<offset_upper_bound :
-                et_fit_logger.info(f'new min of {this_upper_bound} found in rectangle {r.n} for {self.sample} layer {self.layer}')
+                et_fit_logger.info(f'Offset upper bound reduced to {this_upper_bound} in rectangle {r.n} for {self.sample} layer {self.layer}')
                 offset_upper_bound = this_upper_bound
         upper_bound_pixel_count = 0
         for r in alignset.rectangles :
             upper_bound_pixel_count+= np.count_nonzero(r.image<offset_upper_bound)
         pct=100.*(upper_bound_pixel_count/(len(alignset.rectangles)*(nrectpix)))
-        print(f'Offset upper bound for {self.sample} layer {self.layer} found at {offset_upper_bound} ({upper_bound_pixel_count} total pixels; {pct:.8f}%)')
+        et_fit_logger.info(f'Offset upper bound for {self.sample} layer {self.layer} found at {offset_upper_bound} ({upper_bound_pixel_count} total pixels; {pct:.8f}%)')
         return [0,offset_upper_bound]
 
     #helper function to return a list of OverlapWithExposureTime objects set up to run on this particular image layer
