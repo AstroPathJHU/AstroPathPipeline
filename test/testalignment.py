@@ -228,7 +228,7 @@ class TestAlignment(TestBaseSaveOutput):
 
     pscale1 = a1.pscale
     pscale2 = a2.pscale
-    rtol = 1e-6
+    rtol = 2e-6
     atol = 1e-8
 
     for o1, o2 in zip(a1.overlaps, a2.overlaps):
