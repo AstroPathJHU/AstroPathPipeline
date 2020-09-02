@@ -228,8 +228,8 @@ class TestAlignment(TestBaseSaveOutput):
 
     pscale1 = a1.pscale
     pscale2 = a2.pscale
-    rtol = 2e-6
-    atol = 1e-8
+    rtol = 1e-5
+    atol = 1e-7
 
     for o1, o2 in zip(a1.overlaps, a2.overlaps):
       x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale1))
