@@ -3,7 +3,7 @@ from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, g
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities import units
-from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer, getImageHWLFromXMLFile
+from ..utilities.img_file_io import getSampleMedianExposureTimesByLayer, getImageHWLFromXMLFile
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
@@ -80,11 +80,11 @@ class FlatfieldSample() :
         top_plotdir_path      = path to the directory in which to save plots from the thresholding process
         threshold_file_name   = name of file to save background thresholds in, one line per layer
         """
-        #if the images are to be normalized, we need to get the maximum exposure times by layer across the whole sample
+        #if the images are to be normalized, we need to get the median exposure times by layer across the whole sample
         if et_correction_offsets[0]!=-1. :
-            max_exposure_times_by_layer = getSampleMaxExposureTimesByLayer(self._rawfile_top_dir,self._name)
+            med_exposure_times_by_layer = getSampleMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
         else :
-            max_exposure_times_by_layer = None
+            med_exposure_times_by_layer = None
         #make sure the plot directory exists
         if not os.path.isdir(top_plotdir_path) :
             with cd(os.path.join(*[pp for pp in top_plotdir_path.split(os.sep)[:-1]])) :
@@ -112,7 +112,7 @@ class FlatfieldSample() :
             #get the smoothed image layer histograms for this chunk 
             new_smoothed_img_layer_hists = getImageLayerHistsMT(fr_chunk,
                                                                 smoothed=True,
-                                                                max_exposure_times_by_layer=max_exposure_times_by_layer,
+                                                                med_exposure_times_by_layer=med_exposure_times_by_layer,
                                                                 et_corr_offsets_by_layer=et_correction_offsets)
             #add the new histograms to the total layer histograms
             for new_smoothed_img_layer_hist in new_smoothed_img_layer_hists :
