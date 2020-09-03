@@ -39,6 +39,6 @@ ref = readtable(folder/"reference"/"exposuretimefit"/"M21_1_layers_26-33_best_fi
 for offsetnew, offsetref in zip(new, ref):
   assertAlmostEqual(offsetnew, offsetref, rtol=1e-5, atol=1e-8)
 
-#print('Removing working directory...')
-#shutil.rmtree(working_dir,ignore_errors=True)
-#print('Done!')
+print('Removing working directory...')
+shutil.rmtree(working_dir,ignore_errors=True)
+print('Done!')
