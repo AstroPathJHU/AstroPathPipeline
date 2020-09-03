@@ -14,11 +14,11 @@ class SingleLayerExposureTimeFit :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,layer_n,exp_times,max_exp_time,top_plot_dir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages) :
+    def __init__(self,layer_n,exp_times,med_exp_time,top_plot_dir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages) :
         """
         layer_n          = layer number that this fit will run on (indexed from 1)
         exp_times        = dictionary of raw file exposure times, keyed by filename stem
-        max_exp_time     = the maximum exposure time in the entire sample for this layer
+        med_exp_time     = the median exposure time in the entire sample for this layer
         top_plot_dir     = path to directory in which this fit's subdirectory should be created
         sample           = name of the microscope data sample to fit to ("M21_1" or equivalent)
         rawfile_top_dir  = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
@@ -30,7 +30,7 @@ class SingleLayerExposureTimeFit :
         cutimages        = True if only central 50% of overlap images should be used
         """
         self.layer = layer_n
-        self.max_exp_time = max_exp_time
+        self.med_exp_time = med_exp_time
         self.rawfile_top_dir = rawfile_top_dir
         self.metadata_top_dir = metadata_top_dir
         self.sample = sample
@@ -65,7 +65,7 @@ class SingleLayerExposureTimeFit :
         a.align(alreadyalignedstrategy='overwrite')
         #use the alignmentset 
         self.offset_bounds = self.__getOffsetBounds(a,min_frac)
-        self.exposure_time_overlaps = self.__getExposureTimeOverlaps(a,exp_times,max_exp_time,cutimages)
+        self.exposure_time_overlaps = self.__getExposureTimeOverlaps(a,exp_times,med_exp_time,cutimages)
 
     def doFit(self,initial_offset,max_iter,gtol,eps,print_every) :
         """
@@ -151,7 +151,7 @@ class SingleLayerExposureTimeFit :
         return [0,offset_upper_bound]
 
     #helper function to return a list of OverlapWithExposureTime objects set up to run on this particular image layer
-    def __getExposureTimeOverlaps(self,alignset,exposure_times,max_exp_time,cutimages) :
+    def __getExposureTimeOverlaps(self,alignset,exposure_times,med_exp_time,cutimages) :
         #make the exposure time comparison overlap objects
         etolaps = []; relevant_rectangles = {}
         rects_by_n = {}
@@ -165,7 +165,7 @@ class SingleLayerExposureTimeFit :
             p1et = exposure_times[(p1rect.file).rstrip(CONST.IM3_EXT)]
             p2et = exposure_times[(p2rect.file).rstrip(CONST.IM3_EXT)]
             et_fit_logger.info(f'Finding costs for overlap {olap.n} ({io+1} of {len(alignset.overlaps)} in {self.sample} layer {self.layer})....')
-            etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,max_exp_time,cutimages,self.offset_bounds))
+            etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,med_exp_time,cutimages,self.offset_bounds))
             if p1rect.n not in relevant_rectangles.keys() :
                 relevant_rectangles[p1rect.n]=p1rect
             if p2rect.n not in relevant_rectangles.keys() :

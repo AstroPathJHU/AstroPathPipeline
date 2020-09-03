@@ -107,6 +107,7 @@ class ExposureTimeOverlapFitResult :
     tag          : int
     p1_et        : float
     p2_et        : float
+    med_et       : float
     et_diff      : float
     npix         : int
     prefit_cost  : float

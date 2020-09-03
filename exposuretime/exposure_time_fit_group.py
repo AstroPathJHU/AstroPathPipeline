@@ -10,8 +10,8 @@ import os, glob
 
 #helper function to create a fit for a single layer
 #can be run in parallel if given a return dictionary
-def getExposureTimeFitWorker(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages,return_dict=None) :
-    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,max_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages)
+def getExposureTimeFitWorker(layer_n,exposure_times,med_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages,return_dict=None) :
+    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,med_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages)
     if return_dict is not None :
         return_dict[layer_n] = fit
     else :
@@ -55,8 +55,8 @@ class ExposureTimeOffsetFitGroup :
         n_comparisons_to_save = total # of overlap overlay comparisons to write out for each completed fit
         """
         cutimages = (not wholeimages)
-        #first get all of the raw image exposure times, and the maximum exposure times in each layer
-        all_exposure_times, max_exp_times_by_layer = self.__getExposureTimes()
+        #first get all of the raw image exposure times, and the median exposure times in each layer
+        all_exposure_times, med_ets_by_layer = self.__getExposureTimes()
         #next get the flatfield to use
         self.flatfield = self.__getFlatfield(flatfield_filepath)
         #lastly, find the list of overlaps with different exposure times for each layer group
@@ -71,7 +71,7 @@ class ExposureTimeOffsetFitGroup :
                 layer_batches[-1].append(ln)
             for bi,layer_batch in enumerate(layer_batches,start=1) :
                 li_start = (bi-1)*self.n_threads
-                batch_fits = self.__getBatchFits(layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,min_frac,overlaps_to_use_by_layer_group,
+                batch_fits = self.__getBatchFits(layer_batch,li_start,all_exposure_times,med_ets_by_layer,min_frac,overlaps_to_use_by_layer_group,
                                                  smoothsigma,cutimages)
                 et_fit_logger.info(f'Done preparing fits in batch {bi} (of {len(layer_batches)}).')
                 et_fit_logger.info('Running fits....')
@@ -98,7 +98,7 @@ class ExposureTimeOffsetFitGroup :
                 for rfs in all_exposure_times.keys() :
                     this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
                 this_layer_overlaps = overlaps_to_use_by_layer_group[getFirstLayerInGroup(ln,self.img_dims[-1])]
-                fit = getExposureTimeFitWorker(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
+                fit = getExposureTimeFitWorker(ln,this_layer_all_exposure_times,med_ets_by_layer[li],
                                                self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
                                                min_frac,this_layer_overlaps,smoothsigma,cutimages)
                 et_fit_logger.info(f'Running fit for layer {ln} ({li+1} of {len(self.layers)})....')
@@ -178,33 +178,40 @@ class ExposureTimeOffsetFitGroup :
                     raise ValueError(f'ERROR: requested layers {layers} but images in {self.sample} have {self.img_dims[-1]} layers!')
             return layers
 
-    #helper function to get the dictionary of all the image exposure times keyed by the stem of the file name and the list of maximum times by layer
+    #helper function to get the dictionary of all the image exposure times keyed by the stem of the file name and the list of median times by layer
     def __getExposureTimes(self) :
         et_fit_logger.info('Getting all image exposure times....')
         with cd(os.path.join(self.rawfile_top_dir,self.sample)) :
             all_rfps = [os.path.join(self.rawfile_top_dir,self.sample,fn) for fn in glob.glob(f'*{CONST.RAW_EXT}')]
-        exp_times = {}; max_exp_times = [0 for ln in self.layers]
+        #get the dictionary of exposure times keyed by raw file stem
+        exp_times = {}
         for rfp in all_rfps :
             rfs = os.path.basename(rfp).rstrip(CONST.RAW_EXT)
             exp_times[rfs] = []
             all_layer_exposure_times = getExposureTimesByLayer(rfp,self.img_dims[-1],self.rawfile_top_dir)
             for li,ln in enumerate(self.layers) :
                 exp_times[rfs].append(all_layer_exposure_times[ln-1])
-                if all_layer_exposure_times[ln-1] > max_exp_times[li] :
-                    max_exp_times[li] = all_layer_exposure_times[ln-1]
+        #make the list of median exposure times
+        med_exp_times = []
+        for li in range(len(self.layers)) :
+            med_exp_times.append(np.median(np.array([exp_times[rfs][li] for rfs in exp_times.keys()])))
+        #plot the exposure times with their medians
         for li,ln in enumerate(self.layers) :
             this_layer_ets = [exp_times[rfs][li] for rfs in exp_times.keys()]
-            plt.hist(this_layer_ets)
-            plt.title(f'{self.sample} layer {ln} exposure times')
-            plt.xlabel('exposure time (ms)')
-            plt.ylabel('HPF count')
+            f, ax = plt.subplots()
+            ax.hist(this_layer_ets,label='exposure times')
+            ax.plot([med_exp_times[li],med_exp_times[li]],[0.8*y for y in ax.get_ylim()],color='k',linewidth=2,label='median')
+            ax.set_title(f'{self.sample} layer {ln} exposure times')
+            ax.set_xlabel('exposure time (ms)')
+            ax.set_ylabel('HPF count')
+            ax.legend(loc='best')
             with cd(self.workingdir_name) :
                 plt.savefig(f'exposure_times_{self.sample}_layer_{ln}.png')
             plt.close()
-        return exp_times, max_exp_times
+        return exp_times, med_exp_times
 
     #helper function to set up and return a list of single-layer fit objects
-    def __getBatchFits(self,layer_batch,li_start,all_exposure_times,max_exp_times_by_layer,min_frac,overlaps_by_layer_group,smoothsigma,cutimages) :
+    def __getBatchFits(self,layer_batch,li_start,all_exposure_times,med_ets_by_layer,min_frac,overlaps_by_layer_group,smoothsigma,cutimages) :
         batch_fits = []
         manager = mp.Manager()
         return_dict = manager.dict()
@@ -216,7 +223,7 @@ class ExposureTimeOffsetFitGroup :
                 this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
             this_layer_overlaps = overlaps_by_layer_group[getFirstLayerInGroup(ln,self.img_dims[-1])]
             p = mp.Process(target=getExposureTimeFitWorker, 
-                           args=(ln,this_layer_all_exposure_times,max_exp_times_by_layer[li],
+                           args=(ln,this_layer_all_exposure_times,med_ets_by_layer[li],
                                  self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
                                  min_frac,this_layer_overlaps,smoothsigma,cutimages,return_dict)
                           )
