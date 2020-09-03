@@ -48,6 +48,8 @@ if __name__=='__main__' :
                                   help='CSV list of overlap numbers to use [default=-1 runs all of them]. Should really only use this for testing.')
     run_option_group.add_argument('--n_comparisons_to_save', default=15,   type=int,         
                                   help='Number of pre/post-fit overlap overlay comparison images to save (default=15)')
+    run_option_group.add_argument('--allow_edge_HPFs', action='store_true',
+                                  help="""Add this flag to allow overlaps with HPFs on the tissue edges""")
     args = parser.parse_args()
     #make sure the arguments are valid
     checkArgs(args)
@@ -58,5 +60,5 @@ if __name__=='__main__' :
     et_fit_logger.info('Running fits....')
     fit_group.runFits(args.flatfield_file,args.overlaps,args.smooth_sigma,args.use_whole_image,
                       args.initial_offset,args.min_pixel_frac_for_offset_limit,args.max_iter,args.gtol,args.eps,args.print_every,
-                      args.n_comparisons_to_save)
+                      args.n_comparisons_to_save,args.allow_edge_HPFs)
     et_fit_logger.info('Done!')

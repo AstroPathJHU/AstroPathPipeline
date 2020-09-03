@@ -5,7 +5,7 @@ from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities import units
 from ..utilities.img_file_io import getSampleMedianExposureTimesByLayer, getImageHWLFromXMLFile
 from ..utilities.tableio import writetable
-from ..utilities.misc import cd, MetadataSummary
+from ..utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
 import os, scipy.stats
 
@@ -205,47 +205,14 @@ class FlatfieldSample() :
         #make an AlignmentSet to use in getting the islands
         rawfile_top_dir = os.path.dirname(os.path.dirname(rawfile_paths[0]))
         a = AlignmentSetFromXML(self._metadata_top_dir,rawfile_top_dir,self._name,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
-        #get the list of sets of rectangle IDs by island
-        samp_islands = a.islands()
-        edge_rect_filenames = [] #use this to return the list of tissue edge filepaths
-        edge_rect_xs = []; edge_rect_ys = [] #use these to make the plot of the rectangle locations
-        edge_rect_ts = [] #use this to find the minimum and maximum collection time of the edge rectangle images
-        #for each island
-        for ii,island in enumerate(samp_islands,start=1) :
-            island_rects = [r for r in a.rectangles if r.n in island]
-            #get the width and height of the rectangles
-            rw, rh = island_rects[0].w, island_rects[0].h
-            #get the x/y positions of the rectangles in the island
-            x_poss = sorted(list(set([r.x for r in island_rects])))
-            y_poss = sorted(list(set([r.y for r in island_rects])))
-            #make a list of the ns of the rectangles on the edge of this island
-            island_edge_rect_ns = []
-            #iterate over them first from top to bottom to add the vertical edges
-            for row_y in y_poss :
-                row_rects = [r for r in island_rects if r.y==row_y]
-                row_x_poss = sorted([r.x for r in row_rects])
-                #add the rectangles of the ends
-                island_edge_rect_ns+=[r.n for r in row_rects if r.x in (row_x_poss[0],row_x_poss[-1])]
-                #add any rectangles that have a gaps between them and the previous
-                for irxp in range(1,len(row_x_poss)) :
-                    if abs(row_x_poss[irxp]-row_x_poss[irxp-1])>rw :
-                        island_edge_rect_ns+=[r.n for r in row_rects if r.x in (row_x_poss[irxp-1],row_x_poss[irxp])]
-            #iterate over them again from left to right to add the horizontal edges
-            for col_x in x_poss :
-                col_rects = [r for r in island_rects if r.x==col_x]
-                col_y_poss = sorted([r.y for r in col_rects])
-                #add the rectangles of the ends
-                island_edge_rect_ns+=[r.n for r in col_rects if r.y in (col_y_poss[0],col_y_poss[-1])]
-                #add any rectangles that have a gaps between them and the previous
-                for icyp in range(1,len(col_y_poss)) :
-                    if abs(col_y_poss[icyp]-col_y_poss[icyp-1])>rh :
-                        island_edge_rect_ns+=[r.n for r in col_rects if r.y in (col_y_poss[icyp-1],col_y_poss[icyp])]
-            #add this island's edge rectangles' filenames and x/y positions to the total lists
-            add_rects = [r for r in island_rects if r.n in list(set(island_edge_rect_ns))]
-            edge_rect_filenames+=[r.file.split('.')[0] for r in add_rects]
-            edge_rect_xs+=[r.x for r in add_rects]
-            edge_rect_ys+=[r.y for r in add_rects]
-            edge_rect_ts+=[r.t for r in add_rects]
+        edge_rect_ns = getAlignmentSetTissueEdgeRectNs(a)
+        #use this to return the list of tissue edge filepaths
+        edge_rect_filenames = [r.file.split('.')[0] for r in a.rectangles if r.n in edge_rect_ns] 
+        #use these to make the plot of the rectangle locations
+        edge_rect_xs = [r.x for r in a.rectangles if r.n in edge_rect_ns]
+        edge_rect_ys = [r.y for r in a.rectangles if r.n in edge_rect_ns] 
+        #use this to find the minimum and maximum collection time of the edge rectangle images
+        edge_rect_ts = [r.t for r in a.rectangles if r.n in edge_rect_ns] 
         #save the metadata summary file for the thresholding file group
         ms = MetadataSummary(self._name,a.Project,a.Cohort,a.microscopename,min(edge_rect_ts),max(edge_rect_ts))
         if plotdir_path is not None :

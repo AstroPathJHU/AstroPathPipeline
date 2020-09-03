@@ -33,7 +33,7 @@ fit_group = ExposureTimeOffsetFitGroup(samp,rawfile_top_dir,metadata_top_dir,wor
 print('Running fits....')
 fit_group.runFits(None,overlaps_arg,smoothsigma_arg,False,
                   initial_offset_arg,min_pixel_frac_arg,max_iter_arg,gtol_arg,eps_arg,print_every_arg,
-                  n_comparisons_to_save_arg)
+                  n_comparisons_to_save_arg,True)
 new = readtable(working_dir/"M21_1_layers_26-33_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
 ref = readtable(folder/"reference"/"exposuretimefit"/"M21_1_layers_26-33_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
 for offsetnew, offsetref in zip(new, ref):

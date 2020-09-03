@@ -1,6 +1,7 @@
 #imports
 from .alignmentset import AlignmentSetForExposureTime
 from .config import CONST
+from ..utilities.misc import getAlignmentSetTissueEdgeRectNs
 from typing import List
 import os, logging, dataclasses
 
@@ -38,19 +39,30 @@ def checkArgs(args) :
         raise ValueError(f'ERROR: overlaps argument {args.overlaps} must have at least one overlap number (or -1)!')
 
 #helper function to return a list of overlap ns for overlaps where the p1 and p2 image exposure times are different
+#can optionally also exclude rectangles on tissue edges
 #can be run in parallel if given a return_dict (will be keyed by layer)
-def getOverlapsWithExposureTimeDifferences(rtd,mtd,sn,exp_times,layer,overlaps=None,return_dict=None) :
+def getOverlapsWithExposureTimeDifferences(rtd,mtd,sn,exp_times,layer,overlaps=None,include_tissue_edges=False,return_dict=None) :
     et_fit_logger.info(f'Finding overlaps with exposure time differences in {sn} layer {layer}....')
-    if overlaps is None or overlaps==[-1] :
+    if (overlaps is None or overlaps==[-1]) or (not include_tissue_edges) :
         a = AlignmentSetForExposureTime(mtd,rtd,sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,smoothsigma=None,flatfield=None)
     else :
         a = AlignmentSetForExposureTime(mtd,rtd,sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,
                                         selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,smoothsigma=None,flatfield=None)
+    tissue_edge_rect_ns = [] if include_tissue_edges else getAlignmentSetTissueEdgeRectNs(a) 
     rect_rfkey_by_n = {}
     for r in a.rectangles :
+        #skip tissue edge rectangles
+        if (not include_tissue_edges) and r.n in tissue_edge_rect_ns :
+            continue
         rect_rfkey_by_n[r.n] = r.file.rstrip('.im3')
     olaps_with_et_diffs = []
     for olap in a.overlaps :
+        #skip overlaps with tissue edge rectangles
+        if (not include_tissue_edges) and ((olap.p1 in tissue_edge_rect_ns) or (olap.p2 in tissue_edge_rect_ns)) :
+            continue
+        #skip overlaps that aren't in the given list (if applicable)
+        if ((overlaps is not None) or overlaps!=[-1]) and (olap.n not in overlaps) :
+            continue
         p1key = rect_rfkey_by_n[olap.p1]
         p2key = rect_rfkey_by_n[olap.p2]
         if p1key in exp_times.keys() and p2key in exp_times.keys() :

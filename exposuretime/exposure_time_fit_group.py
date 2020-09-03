@@ -39,10 +39,10 @@ class ExposureTimeOffsetFitGroup :
         self.layers = self.__getLayers(layers)
         self.n_threads = n_threads
 
-    def runFits(self,flatfield_filepath,overlaps,smoothsigma,wholeimages,initial_offset,min_frac,max_iter,gtol,eps,print_every,n_comparisons_to_save) :
+    def runFits(self,ff_filepath,overlaps,smoothsigma,wholeimages,initial_offset,min_frac,max_iter,gtol,eps,print_every,n_comparisons_to_save,allow_edges) :
         """
         Run all of the fits
-        flatfield_filepath    = path to flatfield file to use in correcting raw image illumination
+        ff_filepath           = path to flatfield file to use in correcting raw image illumination
         overlaps              = list of overlap numbers to consider (should really only use this for testing)
         smoothsigma           = sigma for Gaussian blurring to apply to images
         wholeimages           = True if the whole image (nor just the central regions) should be considered
@@ -53,14 +53,15 @@ class ExposureTimeOffsetFitGroup :
         eps                   = step size for approximating Jacobian
         print_every           = how often to print during minimization
         n_comparisons_to_save = total # of overlap overlay comparisons to write out for each completed fit
+        allow_edges           = True if overlaps containing rectangles on the edges of the tissue should be considered
         """
         cutimages = (not wholeimages)
         #first get all of the raw image exposure times, and the median exposure times in each layer
         all_exposure_times, med_ets_by_layer = self.__getExposureTimes()
         #next get the flatfield to use
-        self.flatfield = self.__getFlatfield(flatfield_filepath)
+        self.flatfield = self.__getFlatfield(ff_filepath)
         #lastly, find the list of overlaps with different exposure times for each layer group
-        overlaps_to_use_by_layer_group = self.__getOverlapsToUseByLayerGroup(all_exposure_times,overlaps)
+        overlaps_to_use_by_layer_group = self.__getOverlapsToUseByLayerGroup(all_exposure_times,overlaps,allow_edges)
         #prep, run, and save the output of all the fits
         offsets = []
         if self.n_threads > 1 :
@@ -124,7 +125,7 @@ class ExposureTimeOffsetFitGroup :
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to get the list of overlaps to use in each layer group (those with different exposure times)
-    def __getOverlapsToUseByLayerGroup(self,all_exp_times,overlaps) :
+    def __getOverlapsToUseByLayerGroup(self,all_exp_times,overlaps,allow_edges) :
         et_fit_logger.info('Finding overlaps with different exposure times in each layer group....')
         layer_group_ns = set()
         for layer in self.layers :
@@ -139,7 +140,7 @@ class ExposureTimeOffsetFitGroup :
                 for rfs in all_exp_times.keys() :
                     this_layer_all_exp_times[rfs] = all_exp_times[rfs][self.layers.index(layer_n)]
                 p=mp.Process(target=getOverlapsWithExposureTimeDifferences,
-                             args=(self.rawfile_top_dir,self.metadata_top_dir,self.sample,this_layer_all_exp_times,layer_n,overlaps,rdict)
+                             args=(self.rawfile_top_dir,self.metadata_top_dir,self.sample,this_layer_all_exp_times,layer_n,overlaps,allow_edges,rdict)
                              )
                 procs.append(p)
                 p.start()
@@ -157,7 +158,7 @@ class ExposureTimeOffsetFitGroup :
                 for rfs in all_exp_times.keys() :
                     this_layer_all_exp_times[rfs] = all_exp_times[rfs][self.layers.index(layer_n)]
                 overlap_dict[layer_n] = getOverlapsWithExposureTimeDifferences(self.rawfile_top_dir,self.metadata_top_dir,self.sample,
-                                                                               this_layer_all_exp_times,layer_n,overlaps)
+                                                                               this_layer_all_exp_times,layer_n,overlaps,allow_edges)
         return overlap_dict
 
     #helper function to get the flatfield from the given arguments
