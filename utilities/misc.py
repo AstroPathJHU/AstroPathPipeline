@@ -168,7 +168,7 @@ def getAlignmentSetTissueEdgeRectNs(aset) :
                 island_edge_rect_ns+=[r.n for r in col_rects if r.y in (col_y_poss[icyp-1],col_y_poss[icyp])]
     #add this island's edge rectangles' ns to the total list
     edge_rect_ns+=island_edge_rect_ns
-  return edge_rect_ns
+  return list(set(edge_rect_ns))
 
 @contextlib.contextmanager
 def PILmaximagepixels(pixels):

@@ -56,12 +56,14 @@ def getOverlapsWithExposureTimeDifferences(rtd,mtd,sn,exp_times,layer,overlaps=N
             continue
         rect_rfkey_by_n[r.n] = r.file.rstrip('.im3')
     olaps_with_et_diffs = []
+    n_edge_overlaps_skipped=0
     for olap in a.overlaps :
         #skip overlaps with tissue edge rectangles
         if (not include_tissue_edges) and ((olap.p1 in tissue_edge_rect_ns) or (olap.p2 in tissue_edge_rect_ns)) :
+            n_edge_overlaps_skipped+=1
             continue
         #skip overlaps that aren't in the given list (if applicable)
-        if ((overlaps is not None) or overlaps!=[-1]) and (olap.n not in overlaps) :
+        if (overlaps is not None) and overlaps!=[-1] and (olap.n not in overlaps) :
             continue
         p1key = rect_rfkey_by_n[olap.p1]
         p2key = rect_rfkey_by_n[olap.p2]
@@ -70,6 +72,7 @@ def getOverlapsWithExposureTimeDifferences(rtd,mtd,sn,exp_times,layer,overlaps=N
             p2et = exp_times[p2key]
             if p2et!=p1et :
                 olaps_with_et_diffs.append(olap.n)
+    et_fit_logger.info(f'Skipped {n_edge_overlaps_skipped} overlaps with rectangles on tissue edges for {sn} layer {layer}')
     if return_dict is not None :
         return_dict[layer] = olaps_with_et_diffs
     else :

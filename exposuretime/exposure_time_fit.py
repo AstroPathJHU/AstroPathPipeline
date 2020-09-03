@@ -34,12 +34,6 @@ class SingleLayerExposureTimeFit :
         self.rawfile_top_dir = rawfile_top_dir
         self.metadata_top_dir = metadata_top_dir
         self.sample = sample
-        #make this fit's plot directory name/path
-        plotdirname = f'{self.sample}_layer_{self.layer}_info'
-        with cd(top_plot_dir) :
-            if not os.path.isdir(plotdirname) :
-                os.mkdir(plotdirname)
-        self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
         #set the flatfield
         self.flatfield = flatfield
         #set some other variables that are needed
@@ -53,6 +47,12 @@ class SingleLayerExposureTimeFit :
             self.offset_bounds = [0,100]
             self.exposure_time_overlaps = []
             return
+        #make this fit's plot directory name/path
+        plotdirname = f'{self.sample}_layer_{self.layer}_info'
+        with cd(top_plot_dir) :
+            if not os.path.isdir(plotdirname) :
+                os.mkdir(plotdirname)
+        self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
         #make an alignmentset from the raw files, smoothed and corrected with the flatfield
         et_fit_logger.info(f'Making an AlignmentSet for just the overlaps with different exposure times in layer {self.layer}....')
         use_GPU = platform.system()!='Darwin'
@@ -271,7 +271,6 @@ class SingleLayerExposureTimeFit :
         et_fit_logger.info(f'Making an AlignmentSet for {len(raw_olap_ns_for_plots)} pre/postfit overlay images for layer {self.layer}')
         a = AlignmentSetForExposureTime(self.metadata_top_dir,self.rawfile_top_dir,self.sample,selectoverlaps=raw_olap_ns_for_plots,
                                 onlyrectanglesinoverlaps=True,nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer,filetype="raw",smoothsigma=None,flatfield=self.flatfield)
-        et_fit_logger.info(f'Correcting images for plots in layer {self.layer}')
         a.getDAPI()
         raw_olap_images = {}
         et_fit_logger.info(f'Aligning overlaps for plots in layer {self.layer}')
