@@ -18,7 +18,7 @@ working_dir.mkdir(exist_ok=True)
 layers_arg = [26,33]
 overlaps_arg = [46]
 smoothsigma_arg=3
-initial_offset_arg = 25
+initial_offset_arg = 5
 min_pixel_frac_arg = 1e-4
 max_iter_arg = 15000
 gtol_arg=1e-8
@@ -37,8 +37,8 @@ fit_group.runFits(None,overlaps_arg,smoothsigma_arg,False,
 new = readtable(working_dir/"M21_1_layers_26-33_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
 ref = readtable(folder/"reference"/"exposuretimefit"/"M21_1_layers_26-33_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
 for offsetnew, offsetref in zip(new, ref):
-  assertAlmostEqual(offsetnew, offsetref, rtol=1e-5, atol=1e-3)
+  assertAlmostEqual(offsetnew, offsetref, rtol=1e-5, atol=1e-8)
 
-print('Removing working directory...')
-shutil.rmtree(working_dir,ignore_errors=True)
-print('Done!')
+#print('Removing working directory...')
+#shutil.rmtree(working_dir,ignore_errors=True)
+#print('Done!')
