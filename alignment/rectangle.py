@@ -47,6 +47,7 @@ class AlignmentRectangleBase(RectangleWithImageBase):
     if transformations is None: transformations = []
     if use_mean_image:
       self.__meanimagetransformation = ApplyMeanImage(mean_image=mean_image, logger=logger)
+      self.__meanimagetransformationindex = len(transformations)
       transformations.append(self.__meanimagetransformation)
     else:
       self.__meanimagetransformation = None
@@ -66,6 +67,10 @@ class AlignmentRectangleBase(RectangleWithImageBase):
     if self.__meanimagetransformation is None: return None
     self.setmeanimage()
     return self.__meanimagetransformation.meanimage
+
+  def using_image_before_flatfield(self):
+    if self.__meanimagetransformation is None: return contextlib.nullcontext()
+    return self.using_image(self.__meanimagetransformationindex)
 
 class AlignmentRectangle(AlignmentRectangleBase, RectangleWithImage):
   pass

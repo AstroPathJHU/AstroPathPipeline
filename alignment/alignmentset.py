@@ -15,7 +15,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, filetype="flatWarp", **kwargs):
+  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, filetype="flatWarp", use_mean_image=True, **kwargs):
     """
     Directory structure should be
     root1/
@@ -31,6 +31,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
                  you for input if things go wrong
     """
     self.__filetype = filetype
+    self.__use_mean_image = False
     self.interactive = interactive
     super().__init__(root1, root2, samp, **kwargs)
     for r in self.rectangles:
@@ -87,7 +88,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     self.logger.info("getDAPI")
     with contextlib.ExitStack() as stack:
       for r in self.rectangles:
-        stack.enter_context(r.using_image(-2))
+        stack.enter_context(r.using_image_before_flatfield())
         if keeprawimages:
           for r in self.rectangles:
             r.originalimage
@@ -183,7 +184,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   overlaptype = AlignmentOverlap
   @property
   def rectangleextrakwargs(self):
-    return {**super().rectangleextrakwargs, "logger": self.logger}
+    return {**super().rectangleextrakwargs, "logger": self.logger, "use_mean_image": self.__use_mean_image}
 
   def stitch(self, saveresult=True, **kwargs):
     result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
