@@ -23,7 +23,7 @@ class Const :
         return FLATFIELD_CONST.N_CLIP #number of pixels to clip from raw image edges
     #overlap cost parameterization
     @property
-    def OVERLAP_COST_POLYFIT_DEG(self) :
-        return 4 #quartic polynomial
+    def OVERLAP_COST_PARAMETERIZATION_N_POINTS(self) :
+        return 100 #number of points to test between the bounds for each overlap's cost parameterization
     
 CONST=Const()
