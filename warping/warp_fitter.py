@@ -5,7 +5,7 @@ from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, 
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..baseclasses.rectangle import rectangleoroverlapfilter
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getMaxExposureTimeAndCorrectionOffsetForSampleLayer
+from ..utilities.img_file_io import getImageHWLFromXMLFile, getMedianExposureTimeAndCorrectionOffsetForSampleLayer
 from ..utilities.tableio import writetable
 from ..utilities import units
 from ..utilities.misc import cd, MetadataSummary
@@ -103,12 +103,12 @@ class WarpFitter :
                                     for each layer (or None if no correction is to be applied)
         n_threads                 = how many different processes to run when loading files
         """
-        #load the exposure time correction offsets and the max exposure times by layer
-        max_exp_time, et_correction_offset = getMaxExposureTimeAndCorrectionOffsetForSampleLayer(self.metadata_top_dir,self.samp_name,
+        #load the exposure time correction offsets and the median exposure times by layer
+        med_exp_time, et_correction_offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(self.metadata_top_dir,self.samp_name,
                                                                                                  et_correction_offset_file,self.warpset.layer)
         #load the raw images
         self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.metadata_top_dir,
-                                   flatfield_file_path,max_exp_time,et_correction_offset,
+                                   flatfield_file_path,med_exp_time,et_correction_offset,
                                    n_threads)
         #warp the loaded images and write them out once to replace the images in the alignment set
         self.warpset.warpLoadedImages()

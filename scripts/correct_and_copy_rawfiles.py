@@ -2,7 +2,7 @@
 from ..flatfield.config import CONST as FF_CONST
 from ..warping.config import CONST as WARP_CONST
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile
-from ..utilities.img_file_io import getMaxExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer, correctImageLayerForExposureTime
+from ..utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer, correctImageLayerForExposureTime
 from ..utilities.img_file_io import correctImageLayerWithFlatfield, correctImageLayerWithWarpFields
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
@@ -64,12 +64,12 @@ class RawfileCorrector :
             if not os.path.isfile(args.exposure_time_offset_file) :
                 raise ValueError(f'ERROR: exposure time offset file {args.exposure_time_offset_file} does not exist!')
             eto_filepath = args.exposure_time_offset_file
-            self._max_exp_time, self._et_correction_offset = getMaxExposureTimeAndCorrectionOffsetForSampleLayer(self._metadata_top_dir,
-                                                                                                                self._sample_name,
-                                                                                                                eto_filepath,
-                                                                                                                self._layer)
+            self._med_exp_time, self._et_correction_offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(self._metadata_top_dir,
+                                                                                                                    self._sample_name,
+                                                                                                                    eto_filepath,
+                                                                                                                    self._layer)
         else :
-            self._max_exp_time = None; self._et_correction_offset = None
+            self._med_exp_time = None; self._et_correction_offset = None
         #make sure the flatfield file exists if necessary and set the flatfield layer variable
         if not args.skip_flatfielding :
             if not os.path.isfile(args.flatfield_file) :
@@ -121,9 +121,9 @@ class RawfileCorrector :
                 fp.write('-------------------------------------\n\n')
         self.__writeLog(f'Working directory {os.path.basename(os.path.normpath(self._working_dir_path))} has been created in {workingdir_location}.')
         self.__writeLog(f'Corrected layer {self._layer} files will be written out to {self._working_dir_path}.')
-        if (self._max_exp_time is not None) and (self._et_correction_offset is not None) :
+        if (self._med_exp_time is not None) and (self._et_correction_offset is not None) :
             self.__writeLog(f'Exposure time corrections WILL be applied based on offset factors in {eto_filepath}')
-            self.__writeLog(f'(Max sample exposure time={self._max_exp_time}; exposure time correction offset = {self._et_correction_offset})')
+            self.__writeLog(f'(Max sample exposure time={self._med_exp_time}; exposure time correction offset = {self._et_correction_offset})')
         else :
             self.__writeLog('Corrections for exposure time WILL NOT be applied.')
         if self._ff_layer is None :
@@ -173,16 +173,16 @@ class RawfileCorrector :
     def _correctAndCopyWorker(self,rawfile_path,file_i,n_total_files) :
         #start up the message of what was done
         msg=f'layer {self._layer} of image {rawfile_path} ({file_i} of {n_total_files}) '
-        if ( ((self._max_exp_time is not None) and (self._et_correction_offset is not None)) or 
+        if ( ((self._med_exp_time is not None) and (self._et_correction_offset is not None)) or 
              (self._ff_layer is not None) or 
              ((self._dx_warp_field is not None) and (self._dy_warp_field is not None)) ) :
             msg+='corrected for '
         #first read in the layer of the rawfile
         rawfile_layer = (getRawAsHWL(rawfile_path,*(self._img_dims)))[:,:,self._layer-1]
         #correct the layer for exposure time differences
-        if (self._max_exp_time is not None) and (self._et_correction_offset is not None) :
+        if (self._med_exp_time is not None) and (self._et_correction_offset is not None) :
             layer_exp_time = (getExposureTimesByLayer(rawfile_path,self._img_dims[-1],self._metadata_top_dir))[self._layer-1]
-            et_corrected_layer = correctImageLayerForExposureTime(rawfile_layer,layer_exp_time,self._max_exp_time,self._et_correction_offset)
+            et_corrected_layer = correctImageLayerForExposureTime(rawfile_layer,layer_exp_time,self._med_exp_time,self._et_correction_offset)
             msg+='exposure time, '
         else :
             et_corrected_layer = rawfile_layer

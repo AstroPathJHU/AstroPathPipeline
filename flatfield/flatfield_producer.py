@@ -4,7 +4,7 @@ from .mean_image import MeanImage
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, sampleNameFromFilepath, FieldLog
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..utilities.img_file_io import getSampleMaxExposureTimesByLayer, LayerOffset
+from ..utilities.img_file_io import getSampleMedianExposureTimesByLayer, LayerOffset
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, MetadataSummary
 import os, random
@@ -145,11 +145,11 @@ class FlatfieldProducer :
             this_samp_indices_for_masking_plots = list(range(len(this_samp_fps_to_run)))
             random.shuffle(this_samp_indices_for_masking_plots)
             this_samp_indices_for_masking_plots=this_samp_indices_for_masking_plots[:n_masking_images_per_sample]
-            #get the max exposure times by layer if the images should be normalized
+            #get the median exposure times by layer if the images should be normalized
             if (not self.mean_image.skip_et_correction) :
-                max_exp_times_by_layer = getSampleMaxExposureTimesByLayer(samp.rawfile_top_dir,sn)
+                med_exp_times_by_layer = getSampleMedianExposureTimesByLayer(samp.rawfile_top_dir,sn)
             else :
-                max_exp_times_by_layer = None
+                med_exp_times_by_layer = None
             #break the list of this sample's filepaths into chunks to run in parallel
             fileread_chunks = chunkListOfFilepaths(this_samp_fps_to_run,samp.img_dims,n_threads,samp.metadata_top_dir)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
@@ -158,7 +158,7 @@ class FlatfieldProducer :
                     continue
                 new_field_logs = [FieldLog(sn,fr.rawfile_path,'edge' if fr.rawfile_path in this_samp_edge_HPF_filepaths else 'bulk','stacking') for fr in fr_chunk]
                 new_img_arrays = readImagesMT(fr_chunk,
-                                              max_exposure_times_by_layer=max_exp_times_by_layer,
+                                              med_exposure_times_by_layer=med_exp_times_by_layer,
                                               et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
                 this_chunk_masking_plot_indices=[fr_chunk.index(fr) for fr in fr_chunk 
                                                  if this_samp_fps_to_run.index(fr.rawfile_path) in this_samp_indices_for_masking_plots]
