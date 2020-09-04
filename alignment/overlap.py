@@ -204,17 +204,20 @@ class AlignmentOverlap(Overlap):
       "mse": (mse1, mse2, mse(diff))
     }
 
-  def getimage(self,normalize=100.,shifted=True) :
+  def getimage(self,normalize=100.,shifted=True,scale=False) :
     if shifted:
       red, green = self.shifted
+      if scale:
+        red *= self.result.sc ** -.5
+        green *= self.result.sc ** .5
     else:
       red, green = self.cutimages
     blue = (red+green)/2
     img = np.array([red, green, blue]).transpose(1, 2, 0) / normalize
     return img
 
-  def showimages(self, normalize=100., shifted=True, saveas=None, ticks=False, **savekwargs):
-    img=self.getimage(normalize,shifted)
+  def showimages(self, normalize=100., shifted=True, scale=False, saveas=None, ticks=False, **savekwargs):
+    img=self.getimage(normalize=normalize, shifted=shifted, scale=scale)
     plt.imshow(img)
     if ticks:
       plt.xlabel("$x$")
