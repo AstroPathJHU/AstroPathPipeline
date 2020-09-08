@@ -1,11 +1,13 @@
 import itertools
 from ..baseclasses.sample import ReadRectangles, ReadRectanglesBase
-from .alignmentset import AlignmentSetBase
+from .alignmentset import AlignmentSet, AlignmentSetBase
 from .rectangle import AlignmentRectangleMultiLayer
+from .overlap import LayerAlignmentResult
 
 class AlignLayersBase(AlignmentSetBase, ReadRectanglesBase):
   multilayer = True
   rectangletype = AlignmentRectangleMultiLayer
+  alignmentresulttype = LayerAlignmentResult
 
   def overlapsdictkey(self, overlap):
     return super().overlapsdictkey(overlap) + overlap.layers
@@ -34,5 +36,6 @@ class AlignLayersBase(AlignmentSetBase, ReadRectanglesBase):
       for l1, l2 in itertools.permutations(self.layers, 2)
     ]
 
-class AlignLayers(AlignLayersBase, ReadRectangles):
-  pass
+class AlignLayers(AlignLayersBase, AlignmentSet):
+  @property
+  def alignmentsfilename(self): return self.csv("alignlayers")

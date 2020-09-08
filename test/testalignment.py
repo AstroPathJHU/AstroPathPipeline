@@ -2,7 +2,7 @@ import itertools, logging, numpy as np, os, pathlib
 from ..alignment.alignlayers import AlignLayers
 from ..alignment.alignmentcohort import AlignmentCohort
 from ..alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
-from ..alignment.overlap import AlignmentResult
+from ..alignment.overlap import AlignmentResult, LayerAlignmentResult
 from ..alignment.field import Field, FieldOverlap
 from ..alignment.stitch import AffineEntry
 from ..baseclasses.sample import SampleDef
@@ -322,8 +322,16 @@ class TestAlignment(TestBaseSaveOutput):
     with units.setup_context("fast"):
       self.testFromXML("YZ71")
 
-  def testAlignLayers(self):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", layers=(1, 2, 3), selectrectangles=(17,))
+  def testAlignLayers(self, SlideID="M21_1"):
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=(1, 2, 3), selectrectangles=(17,))
     a.getDAPI()
     a.align()
-    for o in a.overlaps: print(o.result)
+
+    for filename, cls, extrakwargs in (
+      (f"{SlideID}_alignlayers.csv", LayerAlignmentResult, {"pscale": a.pscale}),
+    ):
+      rows = readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+      targetrows = readtable(thisfolder/"reference"/"alignment"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+      for row, target in itertools.zip_longest(rows, targetrows):
+        if cls == LayerAlignmentResult and row.exit != 0 and target.exit != 0: continue
+        assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)

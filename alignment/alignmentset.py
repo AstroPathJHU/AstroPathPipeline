@@ -182,6 +182,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
 
   rectangletype = AlignmentRectangle
   overlaptype = AlignmentOverlap
+  alignmentresulttype = AlignmentResult
   @property
   def rectangleextrakwargs(self):
     return {**super().rectangleextrakwargs, "logger": self.logger, "use_mean_image": self.__use_mean_image}
@@ -215,17 +216,20 @@ class AlignmentSet(AlignmentSetBase, ReadRectangles):
   def image(self):
     return cv2.imread(str(self.dbload/(self.SlideID+"_qptiff.jpg")))
 
+  @property
+  def alignmentsfilename(self): return self.csv("align")
+
   def writealignments(self, *, filename=None):
-    if filename is None: filename = self.csv("align")
+    if filename is None: filename = self.alignmentsfilename
     writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive)
 
   def readalignments(self, *, filename=None, interactive=True):
     interactive = interactive and self.interactive and filename is None
-    if filename is None: filename = self.csv("align")
+    if filename is None: filename = self.alignmentsfilename
     self.logger.info("reading alignments from "+str(filename))
 
     try:
-      alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult, extrakwargs={"pscale": self.pscale})}
+      alignmentresults = {o.n: o for o in readtable(filename, self.alignmentresulttype, extrakwargs={"pscale": self.pscale})}
     except Exception:
       if interactive:
         print()
