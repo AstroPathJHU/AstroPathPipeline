@@ -24,6 +24,10 @@ class AlignmentOverlap(Overlap):
 
   @property
   def layers(self): return self.__layers
+  @property
+  def layer1(self): return self.__layers[0]
+  @property
+  def layer2(self): return self.__layers[1]
   @methodtools.lru_cache()
   @property
   def ismultilayer(self):

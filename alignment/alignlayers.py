@@ -3,6 +3,7 @@ from ..baseclasses.sample import ReadRectanglesBase
 from .alignmentset import AlignmentSet, AlignmentSetBase
 from .rectangle import AlignmentRectangleMultiLayer
 from .overlap import LayerAlignmentResult
+from .stitchlayers import stitchlayers
 
 class AlignLayersBase(AlignmentSetBase, ReadRectanglesBase):
   multilayer = True
@@ -36,6 +37,19 @@ class AlignLayersBase(AlignmentSetBase, ReadRectanglesBase):
       for l1, l2 in itertools.permutations(self.layers, 2)
     ]
 
+  def dostitching(self):
+    return stitchlayers(overlaps=self.overlaps, logger=self.logger)
+  def applystitchresult(self, result):
+    self.stitchresult = result
+
 class AlignLayers(AlignLayersBase, AlignmentSet):
   @property
   def alignmentsfilename(self): return self.csv("alignlayers")
+  @property
+  def stitchfilenames(self):
+    return self.csv("layerpositions"), self.csv("layerpositioncovariances")
+  def stitch(self, *, saveresult=True, **kwargs):
+    result = super().stitch(saveresult=saveresult, **kwargs)
+    if saveresult:
+      self.writestitchresult(result)
+    return result

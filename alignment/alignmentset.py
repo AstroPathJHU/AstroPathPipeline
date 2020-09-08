@@ -188,9 +188,12 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     return {**super().rectangleextrakwargs, "logger": self.logger, "use_mean_image": self.__use_mean_image}
 
   def stitch(self, saveresult=True, **kwargs):
-    result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
+    result = self.dostitching(**kwargs)
     if saveresult: self.applystitchresult(result)
     return result
+
+  def dostitching(self, **kwargs):
+    return stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
 
   def applystitchresult(self, result):
     result.applytooverlaps()
