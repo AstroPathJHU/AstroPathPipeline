@@ -323,7 +323,7 @@ class TestAlignment(TestBaseSaveOutput):
       self.testFromXML("YZ71")
 
   def testAlignLayers(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=(1, 2, 3), selectrectangles=(17,))
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=(1, 2, 3), selectrectangles=(17,), use_mean_image=False)
     a.getDAPI()
     a.align()
 
