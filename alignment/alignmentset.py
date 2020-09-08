@@ -31,7 +31,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
                  you for input if things go wrong
     """
     self.__filetype = filetype
-    self.__use_mean_image = False
+    self.__use_mean_image = use_mean_image
     self.interactive = interactive
     super().__init__(root1, root2, samp, **kwargs)
     for r in self.rectangles:
