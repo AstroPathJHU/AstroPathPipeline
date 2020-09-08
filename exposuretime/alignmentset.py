@@ -23,13 +23,13 @@ class RectangleForExposureTime(AlignmentRectangle):
             transformations.append(ApplyFlatfield(flatfield))
         if smoothsigma is not None:
             transformations.append(SmoothImage(smoothsigma))
-        super().__init__(*args, transformations=transformations, use_mean_image=False, **kwargs)
+        super().__init__(*args, transformations=transformations, **kwargs)
 
 class AlignmentSetForExposureTime(AlignmentSetFromXML):
     def __init__(self, *args, flatfield, smoothsigma, **kwargs):
         self.__flatfield = flatfield
         self.__smoothsigma = smoothsigma
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, use_mean_image=False, **kwargs)
 
     rectangletype = RectangleForExposureTime
 
