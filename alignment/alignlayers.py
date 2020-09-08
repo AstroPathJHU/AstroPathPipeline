@@ -1,5 +1,5 @@
 import itertools
-from ..baseclasses.sample import ReadRectangles, ReadRectanglesBase
+from ..baseclasses.sample import ReadRectanglesBase
 from .alignmentset import AlignmentSet, AlignmentSetBase
 from .rectangle import AlignmentRectangleMultiLayer
 from .overlap import LayerAlignmentResult
