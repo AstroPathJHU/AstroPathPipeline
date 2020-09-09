@@ -96,7 +96,7 @@ class FlatfieldSample() :
                 os.mkdir(this_samp_threshold_plotdir_name)
         #first find the filepaths corresponding to the edges of the tissue in the samples
         flatfield_logger.info(f'Finding tissue edge HPFs for sample {self._name}...')
-        tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,self._metadata_top_dir,plotdir_path)
+        tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,plotdir_path)
         #chunk them together to be read in parallel
         tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self._img_dims,n_threads,self._metadata_top_dir)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
