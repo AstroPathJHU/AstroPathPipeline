@@ -25,10 +25,11 @@ if __name__=='__main__' :
                                         help='Add this flag to use the entire images rather than the outer 50%% of each overlap')
     #group for options of how the fits will proceed
     fit_option_group = parser.add_argument_group('fit options', 'how should the fits be done?')
-    fit_option_group.add_argument('--initial_offset', default=25.,      type=float,
+    fit_option_group.add_argument('--initial_offset', default=5.,      type=float,
                                   help='Dark current offset count fit starting point (default=50.)')
-    fit_option_group.add_argument('--offset_bounds',  default=[0,250], type=split_csv_to_list_of_ints,         
-                                  help='CSV of low,high bounds for offset [default=(0,1000)]')
+    fit_option_group.add_argument('--min_pixel_frac_for_offset_limit',  default=1e-4, type=float,         
+                                  help="""Upper limit of offsets to search will be increased until at least this fraction of pixels in some image 
+                                          are less than that value (prevents the upper limit being an outlier single pixel).""")
     fit_option_group.add_argument('--max_iter',       default=15000,    type=int,
                                   help='Maximum number of fit iterations (default=15000)')
     fit_option_group.add_argument('--gtol',           default=1e-8,     type=float,
@@ -47,6 +48,8 @@ if __name__=='__main__' :
                                   help='CSV list of overlap numbers to use [default=-1 runs all of them]. Should really only use this for testing.')
     run_option_group.add_argument('--n_comparisons_to_save', default=15,   type=int,         
                                   help='Number of pre/post-fit overlap overlay comparison images to save (default=15)')
+    run_option_group.add_argument('--allow_edge_HPFs', action='store_true',
+                                  help="""Add this flag to allow overlaps with HPFs on the tissue edges""")
     args = parser.parse_args()
     #make sure the arguments are valid
     checkArgs(args)
@@ -56,6 +59,6 @@ if __name__=='__main__' :
     #run the fits
     et_fit_logger.info('Running fits....')
     fit_group.runFits(args.flatfield_file,args.overlaps,args.smooth_sigma,args.use_whole_image,
-                      args.initial_offset,args.offset_bounds,args.max_iter,args.gtol,args.eps,args.print_every,
-                      args.n_comparisons_to_save)
+                      args.initial_offset,args.min_pixel_frac_for_offset_limit,args.max_iter,args.gtol,args.eps,args.print_every,
+                      args.n_comparisons_to_save,args.allow_edge_HPFs)
     et_fit_logger.info('Done!')

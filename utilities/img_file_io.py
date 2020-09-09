@@ -145,35 +145,34 @@ def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
     layer_exposure_times_to_return.append(thislayer_exposure_time)
   return layer_exposure_times_to_return
 
-#helper function to return a list of the maximum exposure times observed in each layer of a given sample
-def getSampleMaxExposureTimesByLayer(metadata_topdir,samplename) :
+#helper function to return a list of the median exposure times observed in each layer of a given sample
+def getSampleMedianExposureTimesByLayer(metadata_topdir,samplename) :
   _,_,nlayers = getImageHWLFromXMLFile(metadata_topdir,samplename)
-  max_exposure_times_by_layer = []
-  for li in range(nlayers) :
-    max_exposure_times_by_layer.append(0)
   if os.path.isdir(os.path.join(metadata_topdir,samplename,'im3','xml')) :
     with cd(os.path.join(metadata_topdir,samplename,'im3','xml')) :
       all_fps = [os.path.join(metadata_topdir,samplename,'im3','xml',fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
   else :
     with cd(os.path.join(metadata_topdir,samplename)) :
       all_fps = [os.path.join(metadata_topdir,samplename,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
-  utility_logger.info(f'Finding maximum exposure times in a sample of {len(all_fps)} images with {nlayers} layers each....')
+  utility_logger.info(f'Finding median exposure times in a sample of {len(all_fps)} images with {nlayers} layers each....')
+  all_exp_times_by_layer = []
+  for li in range(nlayers) :
+    all_exp_times_by_layer.append([])
   for fp in all_fps :
     this_image_layer_exposure_times = getExposureTimesByLayer(fp,nlayers)
     for li in range(nlayers) :
-      if this_image_layer_exposure_times[li]>max_exposure_times_by_layer[li] :
-        max_exposure_times_by_layer[li] = this_image_layer_exposure_times[li]
-  return max_exposure_times_by_layer
+      all_exp_times_by_layer[li].append(this_image_layer_exposure_times[li])
+  return np.median(np.array(all_exp_times_by_layer),1) #return the medians along the second axis
 
-#helper function to return lists of the maximum exposure times and the exposure time correction offsets for all layers of a sample
-def getMaxExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file) :
+#helper function to return lists of the median exposure times and the exposure time correction offsets for all layers of a sample
+def getMedianExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file) :
   utility_logger.info("Loading info for exposure time correction...")
-  max_exp_times = None; et_correction_offsets = None
+  median_exp_times = None; et_correction_offsets = None
   if et_correction_offset_file is not None :
-    max_exp_times = getSampleMaxExposureTimesByLayer(metadata_top_dir,samplename)
+    median_exp_times = getSampleMedianExposureTimesByLayer(metadata_top_dir,samplename)
     et_correction_offsets=[]
     read_layer_offsets = readtable(et_correction_offset_file,LayerOffset)
-    for ln in range(1,len(max_exp_times)+1) :
+    for ln in range(1,len(median_exp_times)+1) :
       this_layer_offset = [lo.offset for lo in read_layer_offsets if lo.layer_n==ln]
       if len(this_layer_offset)==1 :
         et_correction_offsets.append(this_layer_offset[0])
@@ -184,21 +183,21 @@ def getMaxExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename
         raise RuntimeError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {ln}!')
   else :
     utility_logger.warn(f"""WARNING: Exposure time correction info cannot be determined from et_correction_offset_file = {et_correction_offset_file}; 
-                            max exposure times and correction offsets will all be None!""")
-  return max_exp_times, et_correction_offsets
+                            median exposure times and correction offsets will all be None!""")
+  return median_exp_times, et_correction_offsets
 
-#helper function to return the maximum exposure time and the exposure time correction offset for a given layer of a sample
-def getMaxExposureTimeAndCorrectionOffsetForSampleLayer(metadata_top_dir,samplename,et_correction_offset_file,layer) :
-  max_ets, et_offsets = getMaxExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file)
-  if max_ets is None or et_offsets is None :
+#helper function to return the median exposure time and the exposure time correction offset for a given layer of a sample
+def getMedianExposureTimeAndCorrectionOffsetForSampleLayer(metadata_top_dir,samplename,et_correction_offset_file,layer) :
+  med_ets, et_offsets = getMedianExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file)
+  if med_ets is None or et_offsets is None :
     return None, None
   else :
-    return max_ets[layer-1], et_offsets[layer-1]
+    return med_ets[layer-1], et_offsets[layer-1]
 
 #helper function to correct a single image layer for exposure time differences
-def correctImageLayerForExposureTime(raw_img_layer,exp_time,max_exp_time,offset) :
+def correctImageLayerForExposureTime(raw_img_layer,exp_time,med_exp_time,offset) :
   raw_img_dtype = raw_img_layer.dtype
-  corr_img_layer = np.where((raw_img_layer-offset)>0,offset+(1.*max_exp_time/exp_time)*(raw_img_layer-offset),raw_img_layer) #converted to a float here
+  corr_img_layer = np.where((raw_img_layer-offset)>0,offset+(1.*med_exp_time/exp_time)*(raw_img_layer-offset),raw_img_layer) #converted to a float here
   if np.issubdtype(raw_img_dtype,np.integer) :
     max_value = np.iinfo(raw_img_dtype).max
     return (np.clip(np.rint(corr_img_layer),0,max_value)).astype(raw_img_dtype) #round, clip to range, and convert back to original datatype
@@ -206,12 +205,12 @@ def correctImageLayerForExposureTime(raw_img_layer,exp_time,max_exp_time,offset)
     return (corr_img_layer).astype(raw_img_dtype) #otherwise just convert back to original datatype
 
 #helper function to normalize a given image for exposure time layer-by-layer
-def correctImageForExposureTime(raw_img,raw_fp,metadata_top_dir,max_exp_times,correction_offsets) :
+def correctImageForExposureTime(raw_img,raw_fp,metadata_top_dir,med_exp_times,correction_offsets) :
   if len(raw_img.shape)!=3 :
     raise RuntimeError(f"""ERROR: correctImageForExposureTime only runs on multilayer images but was called on an image with shape {raw_img.shape}.
                              Use correctImageLayerForExposureTime instead.""")
-  if len(max_exp_times)!=raw_img.shape[-1] :
-    raise RuntimeError(f"""ERROR: the list of max exposure times (length {len(max_exp_times)}) and the raw img ({raw_fp}) with shape 
+  if len(med_exp_times)!=raw_img.shape[-1] :
+    raise RuntimeError(f"""ERROR: the list of median exposure times (length {len(med_exp_times)}) and the raw img ({raw_fp}) with shape 
                            {raw_img.shape} passed to correctImageForExposureTime don't match!""")
   if len(correction_offsets)!=raw_img.shape[-1] :
     raise RuntimeError(f"""ERROR: the list of correction offsets (length {len(correction_offsets)}) and the raw img ({raw_fp}) with shape 
@@ -220,8 +219,8 @@ def correctImageForExposureTime(raw_img,raw_fp,metadata_top_dir,max_exp_times,co
   exposure_times = getExposureTimesByLayer(raw_fp,nlayers,metadata_top_dir)
   corrected_img = raw_img.copy()
   for li in range(nlayers) :
-    if exposure_times[li]!=max_exp_times[li] : #layer is only different if it isn't maximally exposed
-      corrected_img[:,:,li] = correctImageLayerForExposureTime(raw_img[:,:,li],exposure_times[li],max_exp_times[li],correction_offsets[li])
+    if exposure_times[li]!=med_exp_times[li] : #layer is only different if it isn't already at the median exposure time
+      corrected_img[:,:,li] = correctImageLayerForExposureTime(raw_img[:,:,li],exposure_times[li],med_exp_times[li],correction_offsets[li])
   return corrected_img
 
 #helper function to apply a flatfield to a given image layer

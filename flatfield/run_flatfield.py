@@ -235,7 +235,7 @@ def main() :
     if not args.skip_masking :
         if args.threshold_file_dir is not None :
             ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
-        elif args.metadata_top_dir is not None :
+        else :
             ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
     if args.mode in ['make_flatfield', 'apply_flatfield'] :
         #mask and stack images together

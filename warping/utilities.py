@@ -122,13 +122,13 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_nam
 #Helper function to load a single raw file, correct its illumination with a flatfield layer, smooth it, 
 #and return information needed to create a new WarpImage
 #meant to be run in parallel
-def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,max_et,offset,overlaps,rectangles,metadata_top_dir,smoothsigma,return_dict=None,return_dict_key=None) :
+def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,med_et,offset,overlaps,rectangles,metadata_top_dir,smoothsigma,return_dict=None,return_dict_key=None) :
     #get the raw image
     rawimage = (getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1]
     #correct the raw image for exposure time if requested
-    if max_et is not None and offset is not None :
+    if med_et is not None and offset is not None :
         exp_time = (getExposureTimesByLayer(rfp,nlayers,metadata_top_dir))[layer-1]
-        rawimage = correctImageLayerForExposureTime(rawimage,exp_time,max_et,offset)
+        rawimage = correctImageLayerForExposureTime(rawimage,exp_time,med_et,offset)
     #correct the raw image with the flatfield
     rawimage = correctImageLayerWithFlatfield(rawimage,flatfield)
     rfkey = os.path.basename(os.path.normpath(rfp)).split('.')[0]
