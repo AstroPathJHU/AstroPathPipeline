@@ -6,8 +6,8 @@ from ..utilities.misc import dummylogger
 from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
-def stitchlayers(*args, **kwargs):
-  return __stitchlayers(*args, **kwargs)
+def stitchlayers(*args, usecvxpy=False, **kwargs):
+  return (__stitchlayerscvxpy if usecvxpy else __stitchlayers)(*args, **kwargs)
 
 def __stitchlayers(*, overlaps, logger=dummylogger):
   layers = sorted(set.union(*(set(o.layers) for o in overlaps)))
@@ -70,9 +70,41 @@ def __stitchlayers(*, overlaps, logger=dummylogger):
 
   logger.debug("done")
 
-  return LayerStitchResult(overlaps=alloverlaps, x=x, logger=logger)
+  return LayerStitchResult(overlaps=alloverlaps, x=x, A=A, b=b, c=c, logger=logger)
 
-class LayerStitchResult(OverlapCollection):
+def __stitchlayerscvxpy(*, overlaps, logger=dummylogger):
+  try:
+    import cvxpy as cp
+  except ImportError:
+    raise ImportError("To stitch with cvxpy, you have to install cvxpy")
+
+  layers = sorted(set.union(*(set(o.layers) for o in overlaps)))
+
+  pscale, = {_.pscale for _ in overlaps}
+
+  x = cp.Variable(shape=len(layers), 2)
+
+  twonll = 0
+  alloverlaps = overlaps
+  overlaps = [o for o in overlaps if not o.result.exit]
+  for o in overlaps[:]:
+    if o.layer2 > o.layer1 and any(o.p1 == oo.p1 and o.p2 == oo.p2 and (oo.layer2, oo.layer1) == (o.layer1, o.layer2) for oo in overlaps):
+      overlaps.remove(o)
+
+  layerx = {layer: xx for layer, xx in itertools.zip_longest(layers, x)}
+
+  for o in overlaps:
+    x1 = layerx[o.layer1]
+    x2 = layerx[o.layer2]
+    twonll += cp.quad_form(x1 - x2 + units.pixels(-units.nominal_values(o.result.dxvec), pscale=pscale, power=1))
+
+  minimize = cp.Minimize(twonll)
+  prob = cp.Problem(minimize)
+  prob.solve()
+
+  return LayerStitchResultCvxpy(overlaps=alloverlaps, x=x, problem=prob, pscale=pscale, logger=logger)
+
+class LayerStitchResultBase(OverlapCollection):
   def __init__(self, *, overlaps, x, logger=dummylogger):
     self.__overlaps = overlaps
     self.__logger = logger
@@ -129,6 +161,24 @@ class LayerStitchResult(OverlapCollection):
     positionfilename, covariancefilename = filenames
     writetable(positionfilename, self.layerpositions)
     writetable(covariancefilename, self.layerpositioncovariances)
+
+class LayerStitchResult(LayerStitchResultBase):
+  def __init__(self, *args, A, b, c, **kwargs):
+    self.A = A
+    self.b = b
+    self.c = c
+    super().__init__(*args, **kwargs)
+
+class LayerStitchResultCvxpy(LayerStitchResultBase):
+  def __init__(self, *, x, problem, pscale, **kwargs):
+    super().__init__(
+      x=units.distances(pixels=x.value, pscale=pscale),
+      **kwargs
+    )
+    self.problem = problem
+    self.xvar = x
+    self.Tvar = T
+
 
 @dataclasses.dataclass(frozen=True)
 class LayerPosition(DataClassWithDistances):
