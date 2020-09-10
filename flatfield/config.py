@@ -40,7 +40,7 @@ class Const :
         return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(16,16)) #element for second close/open
     @property
     def C3_EL(self) :
-        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45)) #element for large-scale close
+        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(25,25)) #element for large-scale close
     @property
     def OPEN_3_ITERATIONS(self) :
         return 3 #number of iterations for final small-scale open
