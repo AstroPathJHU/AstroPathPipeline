@@ -151,7 +151,7 @@ class FlatfieldProducer :
             else :
                 med_exp_times_by_layer = None
             #break the list of this sample's filepaths into chunks to run in parallel
-            fileread_chunks = chunkListOfFilepaths(this_samp_fps_to_run,samp.img_dims,n_threads,samp.metadata_top_dir)
+            fileread_chunks = chunkListOfFilepaths(this_samp_fps_to_run,samp.img_dims,n_threads)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
             for fr_chunk in fileread_chunks :
                 if len(fr_chunk)<1 :
