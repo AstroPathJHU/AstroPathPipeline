@@ -18,6 +18,7 @@
 \newcommand{\refsec}[1]{Section~\ref{#1}}
 \newcommand{\refeq}[1]{Equation~\ref{#1}}
 \DeclareMathOperator*{\argmin}{arg\,min}
+\newcommand{\Iota}{\mathrm{I}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TITLE AND ABSTRACT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -65,6 +66,8 @@ Two example image layers corresponding to those with the minimum and maximum exp
 \label{fig:max_min_M9_1_images}
 \end{figure}
 
+%% Another figure of perhaps one overexposed and one properly exposed Polaris HPF, from a slide where the median was much lower than the max?
+
 But comparing the actual numbers of counts in these image layers shows a challenge that arises from curtailing the exposure of some HPF layers. In the HPF whose FITC layers were exposed for the full, maximum time of 43.8 ms, the fluorescent tissue regions often register over a thousand counts, but the fluorescent tissue visible in the HPF layer exposed for the minimum time of 6.0 ms rarely registers more than a couple hundred counts. While a visual comparison is easily made for a human observer who can recognize that the minimally-exposed image layer shows some dark background, some tissue, and a bright spot, a quantitative comparison of the image counts themselves would not necessarily lead to the same conclusion. When an even greater degree of variation is observed, for example in the DAPI layers of the \texttt{M9\_1} sample, the result is a large number of images whose numbers of counts do not directly translate to the brightness of the fluorescent tissue at each location within the sample.
 
 Differences in exposure time can be simply compensated for by considering counts per unit time rather than total counts, and the inForm and Phenochart softwares both offer ``normalized for exposure'' analysis modes that do exactly that \cite{inform_user_manual,phenochart_user_manual}. While this simple correction may be effective for qualitative or visual analysis of images, it is not sufficient for highly automated and quantitative analyses that rely on image data being as accurate and consistent as possible across large numbers of independent samples. 
@@ -77,25 +80,97 @@ The structure of this note is as follows. \refsec{sec:methods} describes the met
 \section{Methods}
 \label{sec:methods}
 
+\subsection{General procedure}
+\label{ssec:general_procedure}
+
 When a slide is automatically scanned using the Vectra 3.0 or Vectra Polaris systems, an initial overview image is first collected at low magnification to determine where the tissue of interest is located within the slide. The microscope software then determines a rectangular grid overlaid on that tissue region, where each rectangle is a single HPF that must be collected so that the entire tissue region can be imaged at high magnification. The grid of HPFs is arranged with 20\% overlap between adjacent fields, meaning that some portions of the slide are imaged multiple times. These multiply-imaged ``overlap'' regions are used in a number of analyses to improve the quality of the overall composite high-magnification image, including registering individual HPF locations into a global coordinate system with sub-pixel accuracy, as discussed in~\cite{Heshy}.
 
 Sometimes, two overlapping HPFs are recorded with different exposure times. When this happens, both image regions show identical content (within some caveats discussed below) at different scales of illumination. If the total number of counts recorded at a given pixel is modeled as some constant number of dark current counts, plus some number of counts from the fluorescent tissue that increases proportional to the amount of time the tissue is exposed to the camera, the dark current can be determined by minimizing the difference of the two HPF contents within the overlapping region.
 
-To illustrate this concept more explicitly, consider two image regions $I^{ijm}_{1}$ and $I^{ijm}_{2}$, represented as three-dimensional tensors whose contents are the number of counts recorded by the camera and the $i=1, \ldots, H$, $j = 1, \ldots, W$, and $m = 1, \ldots, L$ indices range over the height ($H$ pixels), width ($W$ pixels), and number of image layers $L$, respectively, of the overlap region in question. If the two HPFs of which $I_{1}$ and $I_{2}$ are subsets are recorded with exposure times $t_{1}$ and $t_{2}$, respectively, then the number of counts at each pixel can be modelled linearly as
+To illustrate this concept more explicitly, consider two image regions $I^{ijm}_{1}$ and $I^{ijm}_{2}$, represented as three-dimensional tensors whose contents are the number of counts recorded by the camera and the $i=1, \ldots, H$, $j = 1, \ldots, W$, and $m = 1, \ldots, L$ indices range over the height ($H$ pixels), width ($W$ pixels), and number of image layers $L$, respectively, of the overlap region in question. If the two HPFs of which $I_{1}$ and $I_{2}$ are subsets are recorded with layer-dependent exposure times $t^{m}_{1}$ and $t^{m}_{2}$, respectively, then the number of counts at each pixel can be modelled linearly as
 \begin{equation}
-I^{ijm}_{1} = D^{m} + F^{ijm} t_{1} \hspace{0.08\textwidth} \mathrm{and} \hspace{0.08\textwidth} I^{ijm}_{2} = D^{m} + F^{ijm} t_{2},
+I^{ijm}_{1} = D^{m} + F^{ijm} t^{m}_{1} \hspace{0.08\textwidth} \mathrm{and} \hspace{0.08\textwidth} I^{ijm}_{2} = D^{m} + F^{ijm} t^{m}_{2},
 \end{equation}
 where $D^{m}$ is the constant number of counts from the dark current in the given image layer, and $F^{ijm}$ represents the luminous flux (in counts per unit time) of the underlying fluorescent tissue that is incident on each pixel at each wavelength. Note that while the dark current should, theoretically, be the same in each image layer, the actual noise may vary over time as the multiply-stained samples are successively illuminated at different wavelengths of light, and so we measure the number of dark current counts independently in each image layer.
 
-The dark current in each layer can be determined by minimizing the L1-norm cost representing the difference in overlap region image contents observed in a sufficiently large set of overlaps with different exposure times, averaged over the total number of pixels, like
+Because the true $F^{ijm}$ are unknown, the numbers of dark current counts must be estimated a-posteriori. To that end, for arbitrary dark current offsets $D^{m}$, we define $\Iota^{ijm}_{1}$ and $\Iota^{ijm}_{2}$, the overlapping image regions corrected to the same sample-median exposure times $t^{m}_{\mathrm{med}}$, as
 \begin{equation}
-D = \argmin{ \frac{ \sum_{n=1}^{N} \left( \sum_{i=1}^{H_{n}} \sum_{j=1}^{W_{n}} \left| I^{ijm}_{1,n} - I^{ijm}_{2,n} \right| \right) }{ \sum_{n=1}^{N} H_{n}W_{n}} },
+\Iota^{ijm}_{1} = 
+\begin{cases} 
+      D^{m}+\left(\frac{t^{m}_{\mathrm{med}}}{t^{m}_{1}}\right)\left(I^{ijm}_{1}-D^{m}\right) & S_{ijm} I^{ijm}_{1} > D^{m}  \\
+      I^{ijm}_{1} & I^{ijm}_{1} \leq D^{m} 
+\end{cases}
+\end{equation}
+and
+\begin{equation}
+\Iota^{ijm}_{2} = 
+\begin{cases} 
+      D^{m}+\left(\frac{t^{m}_{\mathrm{med}}}{t^{m}_{2}}\right)\left(I^{ijm}_{2}-D^{m}\right) & S_{ijm} I^{ijm}_{2} > D^{m}  \\
+      I^{ijm}_{2} & I^{ijm}_{2} \leq D^{m} 
+\end{cases}
+.
+\end{equation}
+
+With this correction procedure defined, the best estimate of the dark current in each layer can then be determined by minimizing the L1-norm cost representing the difference in corrected overlap region image contents observed in a sufficiently large set of overlaps with different exposure times, averaged over the total number of pixels, like
+\begin{equation}
+D = \argmin{ \frac{ \sum_{n=1}^{N} \left( \sum_{i=1}^{H_{n}} \sum_{j=1}^{W_{n}} \left| \Iota^{ijm}_{1,n} - \Iota^{ijm}_{2,n} \right| \right) }{ \sum_{n=1}^{N} H_{n}W_{n}} },
 \end{equation} 
-where the $m$ index has been suppressed because the results are independent in each image layer, and the subscript $n=1,\ldots,N$ is used to distinguish each of $N$ total overlap regions of different arbitrary heights $H_{n}$ and widths $W_{n}$. 
+where the $m$ index has been suppressed because the results are independent in each image layer, and the subscript $n=1,\ldots,N$ is used to distinguish each of $N$ total overlap regions with heights $H_{n}$ and widths $W_{n}$. 
+
+This minimization procedure is performed individually for each scanned slide, identically for every image layer, using every overlapping HPF pair where the two images were recorded with different exposure times. The overall optimal values of $D^{m}$ are the average of the results for each slide, weighted by the total number of pixels used in each layer's fit.  
+
+\subsection{Data used}
+\label{ssec:data_used}
+
+The HPF image regions used to determine the numbers of dark current counts come from 19 slides scanned using the Vectra 3.0 and 26 slides scanned using the Vectra Polaris. Not every slide contributes to the measurements in every layer, because the distributions of HPF exposure times are unique for every sample and for every group of layers imaged with the same broadband filter cube. 
+
+The raw image region data themselves, however, are not expected to depict exactly the same content even if they are recorded with identical exposure times. The first modification required is to gently smooth each image region with a 3 pixel-wide Gaussian filter to remove small-scale random noise that may otherwise affect the difference-based cost. 
+
+Another known quantitative difference between the two overlapping image regions is systematic and spatially-dependent variation in the illumination of each HPF. This effect, colloquially called ``flatfielding,'' is particularly important because the overlapping regions come from different portions of the two HPFs: for example, the left-hand side of one image overlaps with the right-hand side of another, and the two sides of the images are overall illuminated differently. Flatfielding, and the method for deriving correction factors for it, are discussed in \cite{flatfielding_note}, and the relevant corrections for each microscope are applied to each HPF. The only difference between the applied corrections and those derived using the full procedure in \cite{flatfielding_note} is that the masking procedure is skipped, as corrections for differences in exposure time are integral to estimation of the background thresholds and therefore the determinations of the tissue region masks.
+
+Next, while the spatial extent of the overlapping regions (i.e. the exact subsets of the total images to use) are technically defined by the 20\% boundary around each HPF, the registrations of these image regions to a shared local coordinate system must be performed using the pair-wise alignment procedure discussed in \cite{Heshy}. Aligning each overlapping image pair ensures that they aren't translated relative to one another.
+
+Finally, a last known difference between the overlap images is spatially-dependent ``warping'' effects introduced by the microscope camera. The exact warping patterns can only be measured following precise corrections for exposure time differences and flatfielding, but it is known that the effects are generally largest on the edges of each HPF. Therefore, the spatial extent of each overlapping region in the local coordinate system is restricted to the central 50\% in each of the height and width dimensions, and only about 25\% of the total overlapping area is used in each pair of images.
+
+%% [image showing an example overlap raw, and then smoothed/corrected/sliced, probably the individual images and then also the overlay]
+
+The slides used in each layer group are those that have at least 1500 overlaps with differing HPF exposure times, after neglecting any overlaps where at least one HPF is located on the edge of the slide's tissue region (to minimize the amount of empty background included), and only counting overlaps that are bright and distinct enough to be pairwise-aligned. Up to ten slides are used in each layer group, sorted by the number of overlaps they provide. \reffig{fig:n_overlaps_used_vectra} shows the numbers of overlaps used to independently estimate the dark current for each sample in each layer for the slides collected using the Vectra 3.0 microscope, and \reffig{fig:n_overlaps_used_polaris} shows the same for the slides collected with the Vectra Polaris microscope. Layers 10 and 11 in the Vectra Polaris slides were all recorded with identical exposure times, and so no estimates of the dark current offsets can (or must) be made for those layers. 
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/methods/n_overlaps_used_vectra}
+\caption{\footnotesize Number of overlaps used from each sample to determine the dark current in each image layer for images collected with the Vectra 3.0 microscope. The thick dotted black lines separate layers imaged with different filter cubes.}
+\label{fig:n_overlaps_used_vectra}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/methods/n_overlaps_used_polaris}
+\caption{\footnotesize Number of overlaps used from each sample to determine the dark current in each image layer for images collected with the Vectra Polaris microscope. The thick dotted black lines separate layers imaged with different filter cubes. Layers 10 and 11 of every image have the same exposure time, so no estimate of the dark current is made for those layers. }
+\label{fig:n_overlaps_used_polaris}
+\end{figure}
+
+%% [A little bit about the bounds of the fitting and the cost parameterization]
+
+\clearpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% RESULTS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Results}
 \label{sec:results}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/dark_current_offsets_vectra}
+\caption{\footnotesize Optimal dark current offsets found independently for each sample (dashed lines) and the overall weighted averages (solid black lines/points) in each layer for images collected with the Vectra 3.0 microscope. The thick dotted black lines separate layers imaged with different filter cubes.}
+\label{fig:dark_current_offsets_vectra}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/dark_current_offsets_polaris}
+\caption{\footnotesize Optimal dark current offsets found independently for each sample (dashed lines) and the overall weighted averages (solid black lines/points) in each layer for images collected with the Vectra Polaris microscope. The thick dotted black lines separate layers imaged with different filter cubes. Layers 10 and 11 of every image have the same exposure time, so no estimate of the dark current is made for those layers.}
+\label{fig:dark_current_offsets_polaris}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SUMMARY SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Summary}
