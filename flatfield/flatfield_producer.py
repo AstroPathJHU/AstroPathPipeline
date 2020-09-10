@@ -50,7 +50,7 @@ class FlatfieldProducer :
             elif img_dims!=ff_sample.img_dims :
                 raise FlatFieldError('ERROR: samples do not all share the same dimensions!')
         #Start up a new mean image to use for making the actual flatfield
-        self.mean_image = MeanImage(img_dims,workingdir_name,skip_masking,skip_et_correction)
+        self.mean_image = MeanImage(img_dims,workingdir_name,skip_et_correction,skip_masking)
         #Set up the exposure time correction offsets by layer
         self._et_correction_offsets = []
         for li in range(img_dims[-1]) :

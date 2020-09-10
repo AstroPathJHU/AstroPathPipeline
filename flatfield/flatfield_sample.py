@@ -149,8 +149,8 @@ class FlatfieldSample() :
             mean = int(round(np.mean(this_layer_thresholds)))
             mode,_ = scipy.stats.mode(this_layer_thresholds)
             mode=int(round(mode[0]))
-            low_percentile_by_layer.append(this_layer_thresholds[int(round(0.1*len(this_layer_thresholds)))])
-            high_percentile_by_layer.append(this_layer_thresholds[int(round(0.9*len(this_layer_thresholds)))])
+            low_percentile_by_layer.append(this_layer_thresholds[int(0.1*len(this_layer_thresholds))])
+            high_percentile_by_layer.append(this_layer_thresholds[int(0.9*len(this_layer_thresholds))])
             self._background_thresholds_for_masking.append(mean)
             flatfield_logger.info(f'  threshold for layer {li+1} found at {self._background_thresholds_for_masking[li]}')
             with cd(plotdir_path) :
