@@ -146,6 +146,7 @@ def getFilepathsAndSamplesToRun(a) :
     else :
         msg = 'Corrections for differences in exposure time will be made'
         msg+=f' based on the correction factors in {a.exposure_time_offset_file}'
+        flatfield_logger.info(msg)
     #alert the user if masking will be applied
     if a.skip_masking :
         flatfield_logger.info('Images will NOT be masked before stacking')
