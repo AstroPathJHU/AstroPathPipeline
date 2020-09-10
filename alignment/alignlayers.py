@@ -37,8 +37,8 @@ class AlignLayersBase(AlignmentSetBase, ReadRectanglesBase):
       for l1, l2 in itertools.permutations(self.layers, 2)
     ]
 
-  def dostitching(self):
-    return stitchlayers(overlaps=self.overlaps, logger=self.logger)
+  def dostitching(self, **kwargs):
+    return stitchlayers(overlaps=self.overlaps, logger=self.logger, **kwargs)
   def applystitchresult(self, result):
     self.stitchresult = result
 

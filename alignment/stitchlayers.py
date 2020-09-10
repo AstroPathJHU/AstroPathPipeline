@@ -82,7 +82,7 @@ def __stitchlayerscvxpy(*, overlaps, logger=dummylogger):
 
   pscale, = {_.pscale for _ in overlaps}
 
-  x = cp.Variable(shape=len(layers), 2)
+  x = cp.Variable(shape=(len(layers), 2))
 
   twonll = 0
   alloverlaps = overlaps
@@ -96,7 +96,10 @@ def __stitchlayerscvxpy(*, overlaps, logger=dummylogger):
   for o in overlaps:
     x1 = layerx[o.layer1]
     x2 = layerx[o.layer2]
-    twonll += cp.quad_form(x1 - x2 + units.pixels(-units.nominal_values(o.result.dxvec), pscale=pscale, power=1))
+    twonll += cp.quad_form(
+      x1 - x2 + units.pixels(-units.nominal_values(o.result.dxvec), pscale=pscale, power=1),
+      units.pixels(units.np.linalg.inv(o.result.covariance), pscale=pscale, power=-2),
+    )
 
   minimize = cp.Minimize(twonll)
   prob = cp.Problem(minimize)
@@ -117,6 +120,8 @@ class LayerStitchResultBase(OverlapCollection):
 
   @property
   def overlaps(self): return self.__overlaps
+  @property
+  def layers(self): return sorted(set.union(*(set(o.layers) for o in self.overlaps)))
 
   @property
   def x(self): return self.__x
@@ -126,7 +131,10 @@ class LayerStitchResultBase(OverlapCollection):
     result = []
     for layer, row in itertools.zip_longest(self.layers, self.x):
       x, y = units.nominal_values(row)
-      (cov_x_x, cov_x_y), (cov_x_y, cov_y_y) = units.covariance_matrix(*row)
+      if np.any(units.std_devs(row)):
+        (cov_x_x, cov_x_y), (cov_x_y, cov_y_y) = units.covariance_matrix(row)
+      else:
+        cov_x_x = cov_x_y = cov_y_y = 0
       result.append(
         LayerPosition(
           n=layer,
@@ -142,9 +150,13 @@ class LayerStitchResultBase(OverlapCollection):
   @property
   def layerpositioncovariances(self):
     result = []
+    pscale = self.pscale
     for (layer1, row1), (layer2, row2) in itertools.product(itertools.zip_longest(self.layers, self.x), repeat=2):
       if layer1 == layer2: continue
-      cov = np.array(units.covariance_matrix(*row1, *row2))
+      if np.any(units.std_devs((*row1, *row2))):
+        cov = np.array(units.covariance_matrix((*row1, *row2)))
+      else:
+        cov = np.zeros(shape=(4, 4))
       result.append(
         LayerPositionCovariance(
           n1=layer1,
@@ -153,14 +165,15 @@ class LayerStitchResultBase(OverlapCollection):
           cov_x1_y2=cov[0,3],
           cov_y1_x2=cov[1,2],
           cov_y1_y2=cov[1,3],
+          pscale=pscale,
         )
       )
     return result
 
-  def writetable(self, *filenames):
+  def writetable(self, *filenames, check=False, **kwargs):
     positionfilename, covariancefilename = filenames
-    writetable(positionfilename, self.layerpositions)
-    writetable(covariancefilename, self.layerpositioncovariances)
+    writetable(positionfilename, self.layerpositions, **kwargs)
+    writetable(covariancefilename, self.layerpositioncovariances, **kwargs)
 
 class LayerStitchResult(LayerStitchResultBase):
   def __init__(self, *args, A, b, c, **kwargs):
@@ -177,7 +190,6 @@ class LayerStitchResultCvxpy(LayerStitchResultBase):
     )
     self.problem = problem
     self.xvar = x
-    self.Tvar = T
 
 
 @dataclasses.dataclass(frozen=True)

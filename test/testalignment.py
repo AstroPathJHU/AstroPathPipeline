@@ -326,7 +326,7 @@ class TestAlignment(TestBaseSaveOutput):
     a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=(1, 2, 3), selectrectangles=(17,), use_mean_image=False)
     a.getDAPI()
     a.align()
-    a.stitch()
+    a.stitch(usecvxpy=True)
 
     for filename, cls, extrakwargs in (
       (f"{SlideID}_alignlayers.csv", LayerAlignmentResult, {"pscale": a.pscale}),
