@@ -41,8 +41,7 @@ class TestAlignLayers(TestBaseSaveOutput):
 
   def testEliminateLayerInvariance(self, SlideID="M21_1"):
     a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17,), use_mean_image=False)
-    a.align()
-    #a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
+    a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
     result1 = a.stitch(eliminatelayer=0)
     result2 = a.stitch(eliminatelayer=1)
     units.np.testing.assert_allclose(units.nominal_values(result1.x), units.nominal_values(result2.x))
@@ -50,21 +49,19 @@ class TestAlignLayers(TestBaseSaveOutput):
 
   def testStitchCvxpy(self, SlideID="M21_1"):
     a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17,), use_mean_image=False)
-    a.align()
-    #a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
+    a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
 
-    defaultresult = a.stitch(saveresult=False, eliminatelayer=2)
+    defaultresult = a.stitch(saveresult=False, eliminatelayer=0)
     cvxpyresult = a.stitch(saveresult=False, usecvxpy=True)
 
     units.np.testing.assert_allclose(cvxpyresult.x, units.nominal_values(defaultresult.x), atol=1e-6, rtol=1e-6)
-    x = units.nominal_values(np.ravel(defaultresult.x))
-    """
+    x = units.nominal_values(np.ravel(defaultresult.x[1:]))
     units.np.testing.assert_allclose(
       cvxpyresult.problem.value,
       x @ defaultresult.A @ x + defaultresult.b @ x + defaultresult.c,
-      rtol=0.1,
+      atol=1e-7,
+      rtol=1e-7,
     )
-    """
 
   def testReadAlignlayers(self, SlideID="M21_1"):
     a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17,), use_mean_image=False)
