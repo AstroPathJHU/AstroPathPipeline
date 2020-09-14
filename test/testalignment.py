@@ -323,16 +323,19 @@ class TestAlignment(TestBaseSaveOutput):
       self.testFromXML("YZ71")
 
   def testAlignLayers(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=(1, 2, 3), selectrectangles=(17,), use_mean_image=False)
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 4), selectrectangles=(17,), use_mean_image=False)
     a.getDAPI()
     a.align()
-    a.stitch(usecvxpy=True)
+    a.stitch(eliminatelayer=1)
 
-    for filename, cls, extrakwargs in (
-      (f"{SlideID}_alignlayers.csv", LayerAlignmentResult, {"pscale": a.pscale}),
-    ):
-      rows = readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-      targetrows = readtable(thisfolder/"reference"/"alignment"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-      for row, target in itertools.zip_longest(rows, targetrows):
-        if cls == LayerAlignmentResult and row.exit != 0 and target.exit != 0: continue
-        assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+    try:
+      for filename, cls, extrakwargs in (
+        (f"{SlideID}_alignlayers.csv", LayerAlignmentResult, {"pscale": a.pscale}),
+      ):
+        rows = readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        targetrows = readtable(thisfolder/"reference"/"alignment"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        for row, target in itertools.zip_longest(rows, targetrows):
+          if cls == LayerAlignmentResult and row.exit != 0 and target.exit != 0: continue
+          assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+    finally:
+      self.saveoutput()

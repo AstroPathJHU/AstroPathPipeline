@@ -22,6 +22,12 @@ class AlignmentOverlap(Overlap):
         raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[1].layers}")
     self.__layers = layer1, layer2
 
+  def __hash__(self):
+    if not self.ismultilayer: return super().__hash__()
+    return hash(super().__hash__(), self.layers)
+  def __eq__(self, other):
+    return super().__eq__(other) and self.layers == other.layers
+
   @property
   def layers(self): return self.__layers
   @property

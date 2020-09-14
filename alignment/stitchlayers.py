@@ -9,50 +9,87 @@ from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 def stitchlayers(*args, usecvxpy=False, **kwargs):
   return (__stitchlayerscvxpy if usecvxpy else __stitchlayers)(*args, **kwargs)
 
-def __stitchlayers(*, overlaps, logger=dummylogger):
+def __stitchlayers(*, overlaps, eliminatelayer=0, logger=dummylogger):
   layers = sorted(set.union(*(set(o.layers) for o in overlaps)))
-  size = 2*len(layers)  #2* for x and y
+  size = 2*len(layers)-2  #2* for x and y, - 2 for global shift
   A = np.zeros(shape=(size, size), dtype=units.unitdtype)
   b = np.zeros(shape=(size,), dtype=units.unitdtype)
   c = 0
-  ld = {layer: i for i, layer in enumerate(layers)}
+  ld = {layer: i for i, layer in enumerate(layer for layer in layers if layer != layers[eliminatelayer])}
+  ld[layers[eliminatelayer]] = None
 
   alloverlaps = overlaps
   overlaps = [o for o in overlaps if not o.result.exit]
   for o in overlaps[:]:
-    if o.layer2 > o.layer1 and any(o.p1 == oo.p1 and o.p2 == oo.p2 and (oo.layer2, oo.layer1) == (o.layer1, o.layer2) for oo in overlaps):
+    hasinverse = any(o.p1 == oo.p1 and o.p2 == oo.p2 and (oo.layer2, oo.layer1) == (o.layer1, o.layer2) for oo in overlaps)
+    if ld[o.layer1] is None:
+      assert hasinverse
       overlaps.remove(o)
+    elif ld[o.layer2] is not None and o.layer2 > o.layer1:
+      if hasinverse:
+        overlaps.remove(o)
 
   for o in overlaps:
-    ix = 2*ld[o.layer1]
-    iy = 2*ld[o.layer1]+1
-    jx = 2*ld[o.layer2]
-    jy = 2*ld[o.layer2]+1
-    assert ix >= 0, ix
-    assert iy < 2*len(layers), iy
-    assert jx >= 0, jx
-    assert jy < 2*len(layers), jy
+    layer1, layer2 = o.layers
 
-    ii = np.ix_((ix,iy), (ix,iy))
-    ij = np.ix_((ix,iy), (jx,jy))
-    ji = np.ix_((jx,jy), (ix,iy))
-    jj = np.ix_((jx,jy), (jx,jy))
     inversecovariance = units.np.linalg.inv(o.result.covariance)
-
-    A[ii] += inversecovariance
-    A[ij] -= inversecovariance
-    A[ji] -= inversecovariance
-    A[jj] += inversecovariance
-
-    i = np.ix_((ix, iy))
-    j = np.ix_((jx, jy))
-
     constpiece = (-units.nominal_values(o.result.dxvec))
 
+    ix = 2*ld[layer1]
+    iy = 2*ld[layer1]+1
+    assert ix >= 0, ix
+    assert iy < 2*len(layers), iy
+
+    ii = np.ix_((ix,iy), (ix,iy))
+    A[ii] += inversecovariance
+
+    i = np.ix_((ix, iy))
     b[i] += 2 * inversecovariance @ constpiece
-    b[j] -= 2 * inversecovariance @ constpiece
 
     c += constpiece @ inversecovariance @ constpiece
+
+    if ld[layer2] is not None:
+      jx = 2*ld[layer2]
+      jy = 2*ld[layer2]+1
+      assert jx >= 0, jx
+      assert jy < 2*len(layers), jy
+
+      ij = np.ix_((ix,iy), (jx,jy))
+      ji = np.ix_((jx,jy), (ix,iy))
+      jj = np.ix_((jx,jy), (jx,jy))
+
+      A[ij] -= inversecovariance
+      A[ji] -= inversecovariance
+      A[jj] += inversecovariance
+
+      j = np.ix_((jx, jy))
+      b[j] -= 2 * inversecovariance @ constpiece
+
+    else:
+      for layer in ld:
+        if layer == layer2: continue
+        jx = 2*ld[layer]
+        jy = 2*ld[layer]+1
+        assert jx >= 0, jx
+        assert jy < 2*len(layers), jy
+
+        ij = np.ix_((ix,iy), (jx,jy))
+        ji = np.ix_((jx,jy), (ix,iy))
+
+        A[ij] += inversecovariance
+        A[ji] += inversecovariance
+
+        for otherlayer in ld:
+          if otherlayer == layer2: continue
+          kx = 2*ld[otherlayer]
+          ky = 2*ld[otherlayer]+1
+          assert kx >= 0, kx
+          assert ky < 2*len(layers), ky
+          jk = np.ix_((jx,jy), (kx,ky))
+          A[jk] += inversecovariance
+
+        j = np.ix_((jx, jy))
+        b[j] += 2 * inversecovariance @ constpiece
 
   logger.debug("assembled A b c")
 
@@ -66,7 +103,10 @@ def __stitchlayers(*, overlaps, logger=dummylogger):
   logger.debug("got covariance matrix")
   result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
-  x = result.reshape(len(layers), 2)
+  x = result.reshape(len(layers)-1, 2)
+  print(units.nominal_values(x))
+  x = np.insert(x, eliminatelayer, [-np.sum(x, axis=0)], axis=0)
+  print(units.nominal_values(x))
 
   logger.debug("done")
 
@@ -143,6 +183,7 @@ class LayerStitchResultBase(OverlapCollection):
           cov_x_x=cov_x_x,
           cov_x_y=cov_x_y,
           cov_y_y=cov_y_y,
+          pscale=self.pscale,
         )
       )
     return result
@@ -217,3 +258,4 @@ class LayerPositionCovariance(DataClassWithDistances):
   cov_y1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
+
