@@ -41,6 +41,16 @@ pipeline {
           }
         }
 
+        stage('align layers') {
+          stages {
+            stage('test align layers') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignlayers'
+              }
+            }
+          }
+        }
+
         stage('warping') {
 	  stages {
 	    stage('test warping') {

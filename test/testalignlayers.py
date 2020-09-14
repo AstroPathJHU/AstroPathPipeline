@@ -1,9 +1,9 @@
 import itertools, numpy as np, pathlib
 from ..alignment.alignlayers import AlignLayers
-from ..alignment.overlap import AlignmentResult, LayerAlignmentResult
+from ..alignment.overlap import LayerAlignmentResult
 from ..utilities import units
 from ..utilities.tableio import readtable
-from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, TestBaseSaveOutput
 thisfolder = pathlib.Path(__file__).parent
 
 class TestAlignLayers(TestBaseSaveOutput):
