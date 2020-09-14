@@ -72,7 +72,8 @@ def getOverlapsWithExposureTimeDifferences(rtd,mtd,sn,exp_times,layer,overlaps=N
             p2et = exp_times[p2key]
             if p2et!=p1et :
                 olaps_with_et_diffs.append(olap.n)
-    et_fit_logger.info(f'Skipped {n_edge_overlaps_skipped} overlaps with rectangles on tissue edges for {sn} layer {layer}')
+    if not include_tissue_edges :
+        et_fit_logger.info(f'Skipped {n_edge_overlaps_skipped} overlaps with rectangles on tissue edges for {sn} layer {layer}')
     if return_dict is not None :
         return_dict[layer] = olaps_with_et_diffs
     else :

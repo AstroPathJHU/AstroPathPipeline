@@ -154,7 +154,7 @@ def getSampleMedianExposureTimesByLayer(metadata_topdir,samplename) :
   else :
     with cd(os.path.join(metadata_topdir,samplename)) :
       all_fps = [os.path.join(metadata_topdir,samplename,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
-  utility_logger.info(f'Finding median exposure times in a sample of {len(all_fps)} images with {nlayers} layers each....')
+  utility_logger.info(f'Finding median exposure times for {samplename} ({len(all_fps)} images with {nlayers} layers each)....')
   all_exp_times_by_layer = []
   for li in range(nlayers) :
     all_exp_times_by_layer.append([])
