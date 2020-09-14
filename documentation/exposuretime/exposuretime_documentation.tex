@@ -43,7 +43,7 @@ An important step in preparing a protocol for scanning a set of fluorescent tiss
 
 The microscopes also include a software feature called ``saturation protection,'' recommended to be included in every scanning protocol, that automatically adjusts the exposure time of individual high-power fields (HPFs) to prevent them being overexposed due to a greater-than-expected amount of fluorescence, bright dust on the slide, or any other reason \cite{vectra_user_manual,polaris_user_manual}. Therefore, while a scanning protocol does specify a \textit{maximum} exposure time for each broadband filter region, that maximum time is not reached in every case, and the actual exposure times of each image layer group can vary independently between HPFs on the same slide (or between slides). 
 
-An example of exposure time variation is shown in \reffig{fig:exposure_time_variation_M9_1} for different layers of HPFs in the sample called \texttt{M9\_1}. The exposure times for image layers corresponding to the DAPI and Texas Red filter groups are different for many images in the sample, while the layers corresponding to the Cy5 filter group were all exposed for the same amount of time. The variations for layers of this sample in particular are very visible, though not entirely atypical.
+An example of exposure time variation is shown in \reffig{fig:exposure_time_variation_M9_1} for different layers of HPFs in the sample called \texttt{M9\_1}. The exposure times for image layers corresponding to the DAPI and Texas Red filter groups are different for many images in the sample, while the exposure times for image layers corresponding to the FITC and Cy3 filter groups are almost always the same with a few exceptions, and the layers corresponding to the Cy5 filter group were all exposed for the same amount of time. The variations for layers of this sample in particular are very visible, though not entirely atypical.
 
 \begin{figure}[!ht]
 \centering
@@ -52,23 +52,31 @@ An example of exposure time variation is shown in \reffig{fig:exposure_time_vari
 \includegraphics[width=0.3\textwidth]{images/introduction/exposure_times_M9_1_layer_19}
 \includegraphics[width=0.3\textwidth]{images/introduction/exposure_times_M9_1_layer_26}
 \includegraphics[width=0.3\textwidth]{images/introduction/exposure_times_M9_1_layer_33}
-\caption{\footnotesize Exposure times for different layers of HPFs in the dataset ``M9\_1.'' Shown from top left to bottom right are layers 1, 10, 19, 26, and 33, respectively, corresponding to the first layers in each of the DAPI, FITC, Cy3, Texas Red, and Cy5 filter groups, respectively. The DAPI and Texas Red layers show substantial variation in exposure time, while the FITC and Cy3 layers show less variation for this sample, and the Cy5 layers of every HPF were all recorded with the same exposure time.}
+\caption{\footnotesize Exposure times for different layers of HPFs in the dataset \texttt{M9\_1}. Shown from top left to bottom right are layers 1, 10, 19, 26, and 33, respectively, corresponding to the first layers in each of the DAPI, FITC, Cy3, Texas Red, and Cy5 filter groups, respectively. The DAPI and Texas Red layers show substantial variation in exposure time, while the FITC and Cy3 layers show less variation for this sample, and the Cy5 layers of every HPF were all recorded with the same exposure time.}
 \label{fig:exposure_time_variation_M9_1}
 \end{figure}
 
-Two example image layers corresponding to those with the minimum and maximum exposure times in the FITC filter group for this sample are shown in \reffig{fig:max_min_M9_1_images} to illustrate the behavior of the saturation protection feature. The minimally-exposed image layer clearly shows the single bright spot that triggered the saturation protection, stopping exposure of that HPF layer before it could be completely washed out by the noise from the spot. The maximally-exposed image layer shows no such localized brightness, and so it was exposed for the full, maximum time specified in the protocol.
+Two example image layers with the minimum and maximum exposure times in the FITC filter group for this sample are shown in \reffig{fig:max_min_M9_1_fitc_images} to illustrate the behavior of the saturation protection feature. The minimally-exposed image layer clearly shows the single bright spot that triggered the saturation protection, stopping exposure of that HPF layer before it could be completely washed out by the noise from the spot. The maximally-exposed image layer shows no such localized brightness, and so it was exposed for the full, maximum time specified in the protocol.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.45\textwidth]{images/introduction/min_exposure_M9_1_image}
-\includegraphics[width=0.45\textwidth]{images/introduction/max_exposure_M9_1_image}
-\caption{\footnotesize Layer 11 (corresponding to the FITC filter group) of images in the dataset ``M9\_1'' with the minimum (left) and maximum (right) recorded exposure time. The image layer with the minimum exposure time shows a clear bright spot that triggered the saturation protection feature in the Vectra 3.0 microscope software.}
-\label{fig:max_min_M9_1_images}
+\includegraphics[width=0.45\textwidth]{images/introduction/min_exposure_M9_1_fitc_image}
+\includegraphics[width=0.45\textwidth]{images/introduction/max_exposure_M9_1_fitc_image}
+\caption{\footnotesize Example images in layer 11 (corresponding to the FITC filter group) in the dataset \texttt{M9\_1} with the minimum (left) and maximum (right) recorded exposure time. The image layer with the minimum exposure time shows a clear bright spot that triggered the saturation protection feature in the Vectra 3.0 microscope software.}
+\label{fig:max_min_M9_1_fitc_images}
 \end{figure}
 
-%% Another figure of perhaps one overexposed and one properly exposed Polaris HPF, from a slide where the median was much lower than the max?
+But comparing the actual numbers of counts in these image layers shows a challenge that arises from curtailing the exposure of some HPF layers. In the HPF whose FITC layers were exposed for the full, maximum time of 43.8 ms, the fluorescent tissue regions often register over a thousand counts, but the fluorescent tissue visible in the HPF layer exposed for the minimum time of 6.0 ms rarely registers more than a couple hundred counts. While a visual comparison is easily made for a human observer who can recognize that the minimally-exposed image layer shows some dark background, some tissue, and a bright spot, a quantitative comparison of the image counts themselves would not necessarily lead to the same conclusion.
 
-But comparing the actual numbers of counts in these image layers shows a challenge that arises from curtailing the exposure of some HPF layers. In the HPF whose FITC layers were exposed for the full, maximum time of 43.8 ms, the fluorescent tissue regions often register over a thousand counts, but the fluorescent tissue visible in the HPF layer exposed for the minimum time of 6.0 ms rarely registers more than a couple hundred counts. While a visual comparison is easily made for a human observer who can recognize that the minimally-exposed image layer shows some dark background, some tissue, and a bright spot, a quantitative comparison of the image counts themselves would not necessarily lead to the same conclusion. When an even greater degree of variation is observed, for example in the DAPI layers of the \texttt{M9\_1} sample, the result is a large number of images whose numbers of counts do not directly translate to the brightness of the fluorescent tissue at each location within the sample.
+Another way in which exposure time settings and the saturation protection feature can complicate analysis happens when the maximum exposure time is set too high for the typical tissue in the specimen. When the maximum exposure time is too high, most images saturate and are recorded with some smaller, often unique exposure time, like what is seen in the DAPI layer for the \texttt{M9\_1} sample. Two example image layers with the median and maximum exposure times in the DAPI filter group for the \texttt{M9\_1} sample are shown in \reffig{fig:med_min_M9_1_dapi_images}. In this case, the epiethilial tissue visible in the image layer with the maximum exposure time (84.0 ms) is relatively dim, but most DAPI layers in the sample show the much brighter cells that are visible in the example image layer with the median exposure time (38.0 ms). When this even greater amount of variation is observed for a group of sample layers, the result is a large number of images whose numbers of counts do not directly translate to the brightness of the fluorescent tissue at each location within the sample.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.45\textwidth]{images/introduction/med_exposure_M9_1_dapi_image}
+\includegraphics[width=0.45\textwidth]{images/introduction/max_exposure_M9_1_dapi_image}
+\caption{\footnotesize Example images in layer 1 (corresponding to the DAPI filter group) in the dataset \texttt{M9\_1} with the median (left) and maximum (right) recorded exposure times. The image layer with the median exposure time shows typically-illuminated cells that were interpreted as bright spots by the saturation protection feature after the maximum exposure time was set using the relatively much dimmer epithelial tissue visible in the image layer with the maximum exposure time.}
+\label{fig:med_min_M9_1_dapi_images}
+\end{figure}
 
 Differences in exposure time can be simply compensated for by considering counts per unit time rather than total counts, and the inForm and Phenochart softwares both offer ``normalized for exposure'' analysis modes that do exactly that \cite{inform_user_manual,phenochart_user_manual}. While this simple correction may be effective for qualitative or visual analysis of images, it is not sufficient for highly automated and quantitative analyses that rely on image data being as accurate and consistent as possible across large numbers of independent samples. 
 
@@ -87,6 +95,8 @@ When a slide is automatically scanned using the Vectra 3.0 or Vectra Polaris sys
 
 Sometimes, two overlapping HPFs are recorded with different exposure times. When this happens, both image regions show identical content (within some caveats discussed below) at different scales of illumination. If the total number of counts recorded at a given pixel is modeled as some constant number of dark current counts, plus some number of counts from the fluorescent tissue that increases proportional to the amount of time the tissue is exposed to the camera, the dark current can be determined by minimizing the difference of the two HPF contents within the overlapping region.
 
+% [EXAMPLE RAW OVERLAP IMAGES AND OVERLAY]
+
 To illustrate this concept more explicitly, consider two image regions $I^{ijm}_{1}$ and $I^{ijm}_{2}$, represented as three-dimensional tensors whose contents are the number of counts recorded by the camera and the $i=1, \ldots, H$, $j = 1, \ldots, W$, and $m = 1, \ldots, L$ indices range over the height ($H$ pixels), width ($W$ pixels), and number of image layers $L$, respectively, of the overlap region in question. If the two HPFs of which $I_{1}$ and $I_{2}$ are subsets are recorded with layer-dependent exposure times $t^{m}_{1}$ and $t^{m}_{2}$, respectively, then the number of counts at each pixel can be modelled linearly as
 \begin{equation}
 I^{ijm}_{1} = D^{m} + F^{ijm} t^{m}_{1} \hspace{0.08\textwidth} \mathrm{and} \hspace{0.08\textwidth} I^{ijm}_{2} = D^{m} + F^{ijm} t^{m}_{2},
@@ -100,6 +110,7 @@ Because the true $F^{ijm}$ are unknown, the numbers of dark current counts must 
       D^{m}+\left(\frac{t^{m}_{\mathrm{med}}}{t^{m}_{1}}\right)\left(I^{ijm}_{1}-D^{m}\right) & S_{ijm} I^{ijm}_{1} > D^{m}  \\
       I^{ijm}_{1} & I^{ijm}_{1} \leq D^{m} 
 \end{cases}
+\label{eq:image_corr_def_1}
 \end{equation}
 and
 \begin{equation}
@@ -109,11 +120,13 @@ and
       I^{ijm}_{2} & I^{ijm}_{2} \leq D^{m} 
 \end{cases}
 .
+\label{eq:image_corr_def_2}
 \end{equation}
 
 With this correction procedure defined, the best estimate of the dark current in each layer can then be determined by minimizing the L1-norm cost representing the difference in corrected overlap region image contents observed in a sufficiently large set of overlaps with different exposure times, averaged over the total number of pixels, like
 \begin{equation}
-D = \argmin{ \frac{ \sum_{n=1}^{N} \left( \sum_{i=1}^{H_{n}} \sum_{j=1}^{W_{n}} \left| \Iota^{ijm}_{1,n} - \Iota^{ijm}_{2,n} \right| \right) }{ \sum_{n=1}^{N} H_{n}W_{n}} },
+D = \argmin{ \left[ \frac{ \sum_{n=1}^{N} \left( \sum_{i=1}^{H_{n}} \sum_{j=1}^{W_{n}} \left| \Iota^{ijm}_{1,n} - \Iota^{ijm}_{2,n} \right| \right) }{ \sum_{n=1}^{N} H_{n}W_{n}} \right] },
+\label{eq:minimization_def}
 \end{equation} 
 where the $m$ index has been suppressed because the results are independent in each image layer, and the subscript $n=1,\ldots,N$ is used to distinguish each of $N$ total overlap regions with heights $H_{n}$ and widths $W_{n}$. 
 
@@ -126,13 +139,20 @@ The HPF image regions used to determine the numbers of dark current counts come 
 
 The raw image region data themselves, however, are not expected to depict exactly the same content even if they are recorded with identical exposure times. The first modification required is to gently smooth each image region with a 3 pixel-wide Gaussian filter to remove small-scale random noise that may otherwise affect the difference-based cost. 
 
+% [EXAMPLE SMOOTHED OVERLAP IMAGES AND OVERLAY]
+
 Another known quantitative difference between the two overlapping image regions is systematic and spatially-dependent variation in the illumination of each HPF. This effect, colloquially called ``flatfielding,'' is particularly important because the overlapping regions come from different portions of the two HPFs: for example, the left-hand side of one image overlaps with the right-hand side of another, and the two sides of the images are overall illuminated differently. Flatfielding, and the method for deriving correction factors for it, are discussed in \cite{flatfielding_note}, and the relevant corrections for each microscope are applied to each HPF. The only difference between the applied corrections and those derived using the full procedure in \cite{flatfielding_note} is that the masking procedure is skipped, as corrections for differences in exposure time are integral to estimation of the background thresholds and therefore the determinations of the tissue region masks.
+
+% [VECTRA AND POLARIS FLATFIELD LAYERS]
+% [EXAMPLE SMOOTHED/FLATFIELDED OVERLAP IMAGES AND OVERLAY]
 
 Next, while the spatial extent of the overlapping regions (i.e. the exact subsets of the total images to use) are technically defined by the 20\% boundary around each HPF, the registrations of these image regions to a shared local coordinate system must be performed using the pair-wise alignment procedure discussed in \cite{Heshy}. Aligning each overlapping image pair ensures that they aren't translated relative to one another.
 
+% [EXAMPLE SMOOTHED/FLATFIELDED/ALIGNED OVERLAP IMAGES AND OVERLAY]
+
 Finally, a last known difference between the overlap images is spatially-dependent ``warping'' effects introduced by the microscope camera. The exact warping patterns can only be measured following precise corrections for exposure time differences and flatfielding, but it is known that the effects are generally largest on the edges of each HPF. Therefore, the spatial extent of each overlapping region in the local coordinate system is restricted to the central 50\% in each of the height and width dimensions, and only about 25\% of the total overlapping area is used in each pair of images.
 
-%% [image showing an example overlap raw, and then smoothed/corrected/sliced, probably the individual images and then also the overlay]
+% [EXAMPLE SMOOTHED/FLATFIELDED/ALIGNED/CLIPPED OVERLAP IMAGES AND OVERLAY]
 
 The slides used in each layer group are those that have at least 1500 overlaps with differing HPF exposure times, after neglecting any overlaps where at least one HPF is located on the edge of the slide's tissue region (to minimize the amount of empty background included), and only counting overlaps that are bright and distinct enough to be pairwise-aligned. Up to ten slides are used in each layer group, sorted by the number of overlaps they provide. \reffig{fig:n_overlaps_used_vectra} shows the numbers of overlaps used to independently estimate the dark current for each sample in each layer for the slides collected using the Vectra 3.0 microscope, and \reffig{fig:n_overlaps_used_polaris} shows the same for the slides collected with the Vectra Polaris microscope. Layers 10 and 11 in the Vectra Polaris slides were all recorded with identical exposure times, and so no estimates of the dark current offsets can (or must) be made for those layers. 
 
@@ -150,7 +170,34 @@ The slides used in each layer group are those that have at least 1500 overlaps w
 \label{fig:n_overlaps_used_polaris}
 \end{figure}
 
-%% [A little bit about the bounds of the fitting and the cost parameterization]
+Theoretically, there should not be any pixels in any image observed with a number of counts less than the constant noise from the dark current, but this is not the case in practice due to random noise and Poisson count error. This possible undercounting is the reason for the cases with $I^{ijm}_{1} \leq D^{m}$ and $I^{ijm}_{1} \leq D^{m}$ in \refeq{eq:image_corr_def_1} and \refeq{eq:image_corr_def_2}, but these cases may also bias the minimization results toward larger values of $D^{m}$. To prevent any bias, then, an upper bound is set on the allowed values of $D^{m}$ for the minimization in each sample and layer. This upper bound is set at the smallest integer value for which more than 0.01\% of the pixels in any image have counts less than the upper bound.
+
+Calculating the cost of any individual overlap as defined in \refeq{eq:minimization_def} requires comparing every pair of individual pixel values, which consumes a significant amount of computational memory when a large number of overlaps is used in the minimization. To reduce the amount of memory required, the cost from each individual overlap is calculated from a pre-determined curve, instead of from the image pixel contents, during minimization. Each overlap's true cost is calculated as the images are first read in at 100 evenly-spaced values between zero and the upper bound on $D$, and then during minimization the cost is calculated by linearly interpolating between the nearest points on that predetermined curve. 
+
+%\reffig{fig:overlap_cost_examples} shows some examples of individual overlap comparisons before and after correction with the optimal $D$ found for their associated layer and sample, along with their associated costs between the fitting bounds as calculated from the raw whole images and from the smoothed central-region images. The overlay images pictured are in false color, where one of the overlapping images is depicted in green and the other in magenta, so that when the two overlaid images have exactly the same contents they appear white, and when they differ their individual colors are more apparent. The images in the overlays do not include the 3 pixel-wide blurring that is applied before minimization, and they show the entire overlapping region, but the costs listed above the overlays are those calculated with the smoothed central-region images.
+
+%\begin{figure}[!ht]
+%\centering
+%\includegraphics[width=0.95\textwidth]{images/methods/}
+%\caption{\footnotesize }
+%\label{fig:overlap_cost_examples}
+%\end{figure}
+%
+%\reffig{fig:cost_reduction_plots_M51_1_layer_30} shows a typical example (for the 30th layer of the Vectra sample called ``M51\_1'') of how the costs from the individual overlaps change as a result of applying corrections for exposure time differences with the best-fit $D$ found for this sample. Before correction, a clear correlation is visible between the difference in an overlap's image exposure times and its cost. This correlation is not present after correction. \reffig{fig:cost_reduction_plots_YZ68_layer_12} shows the same for a typical Vectra Polaris sample, called ``YZ68,'' in the twelfth layer.
+%
+%\begin{figure}[!ht]
+%\centering
+%\includegraphics[width=0.95\textwidth]{images/methods/}
+%\caption{\footnotesize }
+%\label{fig:cost_reduction_plots_M51_1_layer_30}
+%\end{figure}
+%
+%\begin{figure}[!ht]
+%\centering
+%\includegraphics[width=0.95\textwidth]{images/methods/}
+%\caption{\footnotesize }
+%\label{fig:cost_reduction_plots_YZ68_layer_12}
+%\end{figure}
 
 \clearpage
 
