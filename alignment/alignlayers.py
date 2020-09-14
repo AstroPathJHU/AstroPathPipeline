@@ -18,7 +18,7 @@ class AlignLayersBase(AlignmentSetBase, ReadRectanglesBase):
   def readalloverlaps(self):
     return [
       self.overlaptype(
-        n=r.n,
+        n=i,
         p1=r.n,
         p2=r.n,
         x1=r.x,
@@ -33,8 +33,11 @@ class AlignLayersBase(AlignmentSetBase, ReadRectanglesBase):
         pscale=self.pscale,
         readingfromfile=False,
       )
-      for r in self.rectangles
-      for l1, l2 in itertools.permutations(self.layers, 2)
+      for i, (r, l1, l2) in enumerate([
+        (r, l1, l2)
+        for r in self.rectangles
+        for l1, l2 in itertools.permutations(self.layers, 2)
+      ], start=1)
     ]
 
   def dostitching(self, **kwargs):

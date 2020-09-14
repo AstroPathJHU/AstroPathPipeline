@@ -104,9 +104,7 @@ def __stitchlayers(*, overlaps, eliminatelayer=0, logger=dummylogger):
   result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
   x = result.reshape(len(layers)-1, 2)
-  print(units.nominal_values(x))
   x = np.insert(x, eliminatelayer, [-np.sum(x, axis=0)], axis=0)
-  print(units.nominal_values(x))
 
   logger.debug("done")
 
