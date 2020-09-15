@@ -157,12 +157,24 @@ class LayerStitchResultBase(OverlapCollection):
     return pscale
 
   @property
+  def layerdict(self):
+    return {layer: i for i, layer in enumerate(self.layers)}
+
+  @property
   def overlaps(self): return self.__overlaps
   @property
   def layers(self): return sorted(set.union(*(set(o.layers) for o in self.overlaps)))
 
-  @property
-  def x(self): return self.__x
+  def x(self, layer=None):
+    if layer is None:
+      return self.__x
+    elif hasattr(layer, "layer"):
+      return self.x(layer.layer)
+    else:
+      return self.x()[self.layerdict[layer]]
+
+  def dx(self, overlap):
+    return self.x(overlap.layer1) - self.x(overlap.layer2) - (overlap.x1vec - overlap.x2vec)
 
   @property
   def layerpositions(self):
