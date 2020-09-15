@@ -7,7 +7,7 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
 from argparse import ArgumentParser
 import numpy as np, multiprocessing as mp
-import os, time, logging, glob, dataclasses
+import os, time, logging, glob, dataclasses, platform
 
 #################### CONSTANTS ####################
 
@@ -102,9 +102,10 @@ def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_ed
         these_results = []
         #make an AlignmentSet for just those overlaps and align it
         logger.info(f'Getting {len(olaps_with_et_diffs)} overlaps with different exposure times for {sample.name} layer {li+1}')
+        use_GPU = platform.system()!='Darwin'
         a = AlignmentSetForExposureTime(sample.metadata_top_dir,sample.rawfile_top_dir,sample.name,
                                         selectoverlaps=olaps_with_et_diffs,onlyrectanglesinoverlaps=True,
-                                        nclip=CONST.N_CLIP,readlayerfile=False,layer=li+1,filetype='raw',
+                                        nclip=CONST.N_CLIP,useGPU=use_GPU,readlayerfile=False,layer=li+1,filetype='raw',
                                         smoothsigma=smoothsigma,flatfield=flatfield[:,:,li])
         a.getDAPI()
         logger.info(f'Aligning {sample.name} layer {li+1} overlaps with corrected/smoothed images....')
