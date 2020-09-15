@@ -77,6 +77,11 @@ def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_ed
     exp_time_dicts = getExposureTimeDicts(sample.name,sample.rawfile_top_dir,nlayers)
     #for each layer
     for li in range(nlayers) :
+        #see if this layer has already been done
+        output_fn = f'{sample.name}_layer_{li+1}_{RESULT_FILE_STEM}'
+        if os.path.isfile(os.path.join(workingdir,output_fn)) :
+            logger.info(f'Skipping {sample.name} layer {li+1}; results file already exists.')
+            continue
         #get the offset to compare with for this layer
         this_layer_offset = [o.offset for o in offsets if o.layer_n==li+1]
         if len(this_layer_offset)<1 :
@@ -120,7 +125,7 @@ def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_ed
             logger.info(f'Getting results for overlap {olap.n} ({io} of {len(a.overlaps)}) in {sample.name} layer {li+1}')
             these_results.append(getOverlapResult(sample.name,li+1,olap,exp_time_dicts[li],med_exp_times_by_layer[li],this_layer_offset,filestems_by_rect_n))
         with cd(workingdir) :
-            writetable(f'{sample.name}_layer_{li+1}_{RESULT_FILE_STEM}',these_results)
+            writetable(output_fn,these_results)
     logger.info(f'Done evaluating exposure time results for {sample.name}')
 
 #################### MAIN SCRIPT ####################
@@ -160,10 +165,11 @@ def main() :
                            args=(sample,offsets,args.flatfield_file,args.workingdir_name,args.smooth_sigma,args.allow_edge_HPFs))
             p.start()
             procs.append(p)
-            if len(procs)>=args.n_threads :
+            while len(procs)>=args.n_threads :
                 for proc in procs :
-                    proc.join()
-                    procs = []
+                    if not proc.is_alive() :
+                        proc.join()
+                        procs.pop(procs.index(proc))
         for proc in procs :
             proc.join()
 
