@@ -130,7 +130,7 @@ class AlignmentOverlap(Overlap):
     except Exception as e:
       if debug: raise
       self.result = self.alignmentresulttype(
-        exit=3,
+        exit=255,
         dxvec=(units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale), units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale)),
         sc=1.,
         mse=(0., 0., 0.),

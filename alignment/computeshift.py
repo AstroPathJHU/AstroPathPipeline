@@ -112,6 +112,10 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     dy = unc.ufloat(0, 9999.)
     exit = 2
 
+  if np.sqrt(np.sum(r.x**2) >= np.sqrt(np.sum(np.array(x.shape)**2))) / 10:
+    dx = unc.ufloat(0, 9999.)
+    dy = unc.ufloat(0, 9999.)
+    exit = 3
 
   return OptimizeResult(
     dx=dx,
