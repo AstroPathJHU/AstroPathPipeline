@@ -89,6 +89,8 @@ The structure of this note is as follows. \refsec{sec:methods} describes the met
 \section{Methods}
 \label{sec:methods}
 
+The number of counts attributable to the dark current noise is measured as a function of image layer for several samples independently. Each measurement is made using a large set of HPF regions that each correspond to a portion of the whole slide that has been imaged more than once with different exposure times. These HPF regions are refined for known differences in their contents and corrected to identical exposure times, and the dark current offset is found by minimizing the pixel-averaged difference between them. Several independent measurements in each set of layers corresponding to a broadband filter group are combined to find the overall best correction factors to use. 
+
 \subsection{General procedure}
 \label{ssec:general_procedure}
 
@@ -144,9 +146,28 @@ This minimization procedure is performed individually for each scanned slide, id
 \subsection{Data used}
 \label{ssec:data_used}
 
-The HPF image regions used to determine the numbers of dark current counts come from 19 slides scanned using the Vectra 3.0 and 26 slides scanned using the Vectra Polaris. Not every slide contributes to the measurements in every layer, because the distributions of HPF exposure times are unique for every sample and for every group of layers imaged with the same broadband filter cube. The raw image region data themselves, however, are not expected to depict exactly the same content even if they are recorded with identical exposure times, and so the images must be pre-processed to bring them as near to agreement (except for exposure time differences) as possible. 
+The HPF image regions used to determine the numbers of dark current counts come from 19 slides scanned using the Vectra 3.0 and 26 slides scanned using the Vectra Polaris. Not every slide contributes to the measurements in every layer, because the distributions of HPF exposure times are unique for every sample and for every group of layers imaged using the same broadband filter cube. 
 
-The images used are first gently smoothed using a 3 pixel-wide Gaussian filter to remove small-scale random noise. \reffig{fig:smoothed_M9_1_overlap_66} shows the same two overlapping image layer regions as \reffig{fig:raw_M9_1_overlap_66} after this smoothing is performed.
+The slides used in each layer group are those that have at least 1500 overlaps with differing HPF exposure times, after neglecting any overlaps where at least one HPF is located on the edge of the slide's tissue region (to minimize the amount of empty background included), and only counting overlaps that are bright and distinct enough to be pairwise-aligned using the procedure detailed in \cite{Heshy}. Up to ten slides are used in each layer group, sorted by the number of overlaps they contribute. \reffig{fig:n_overlaps_used_vectra} shows the numbers of overlaps used to independently estimate the dark current for each sample in each layer for the slides collected using the Vectra 3.0 microscope, and \reffig{fig:n_overlaps_used_polaris} shows the same for the slides collected with the Vectra Polaris microscope. Layers 10 and 11 in the Vectra Polaris slides were all recorded with identical exposure times, and so no estimates of the dark current offsets can (or must) be made for those layers. 
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/methods/n_overlaps_used_vectra}
+\caption{\footnotesize Number of overlaps used from each sample to determine the dark current in each image layer for images collected with the Vectra 3.0 microscope. The thick dotted black lines separate layers imaged with different filter cubes.}
+\label{fig:n_overlaps_used_vectra}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/methods/n_overlaps_used_polaris}
+\caption{\footnotesize Number of overlaps used from each sample to determine the dark current in each image layer for images collected with the Vectra Polaris microscope. The thick dotted black lines separate layers imaged with different filter cubes. Layers 10 and 11 of every image have the same exposure time, so no estimate of the dark current is made for those layers. }
+\label{fig:n_overlaps_used_polaris}
+\end{figure}
+
+\subsection{Corrections to raw data}
+\label{ssec:corrections_to_raw_data}
+
+The raw image region data are not expected to depict exactly the same content even if they are recorded with identical exposure times due to a number of known effects, and so the images are pre-processed to bring them as near to agreement (except for exposure time differences) as possible. The images used are first gently smoothed using a 3 pixel-wide Gaussian filter to remove small-scale random noise. \reffig{fig:smoothed_M9_1_overlap_66} shows the same two overlapping image layer regions as \reffig{fig:raw_M9_1_overlap_66} after this smoothing is performed.
 
 \begin{figure}[!ht]
 \centering
@@ -156,7 +177,7 @@ The images used are first gently smoothed using a 3 pixel-wide Gaussian filter t
 \label{fig:smoothed_M9_1_overlap_66}
 \end{figure}
 
-Another known quantitative difference between the two overlapping image regions is systematic and spatially-dependent variation in the illumination of each HPF. This effect, colloquially called ``flatfielding,'' is particularly important because the overlapping regions come from different portions of the two HPFs: for example, the left-hand side of one image overlaps with the right-hand side of another, and the two sides of the images are overall illuminated differently. Flatfielding, and the method for deriving correction factors for it, are discussed in \cite{flatfielding_note}, and the relevant corrections for each microscope are applied to each HPF. The only difference between the applied corrections and those derived using the full procedure in \cite{flatfielding_note} is that the masking procedure is skipped, as corrections for differences in exposure time are integral to estimation of the background thresholds and therefore the determinations of the tissue region masks. 
+Another known difference between the two overlapping image regions is systematic and spatially-dependent variation in the illumination of each HPF. This effect, called ``flatfielding,'' is particularly important because the overlapping regions come from different portions of the two HPFs: for example, the left-hand side of one image overlaps with the right-hand side of another, and the two sides of the images are overall illuminated differently. Flatfielding, and the method for deriving correction factors for it, are discussed in \cite{flatfielding_note}, and the relevant corrections for each microscope are applied to each HPF. The only difference between the applied corrections and those derived using the full procedure in \cite{flatfielding_note} is that the masking procedure is skipped, as corrections for differences in exposure time are integral to estimation of the background thresholds and therefore the determinations of the tissue region masks. 
 
 \reffig{fig:applied_flatfield_layers_vectra} shows examples of the flatfielding corrections applied to HPFs imaged with the Vectra 3.0 microscope for the first, middle, and last layers in each broadband filter region. Figures~\ref{fig:applied_flatfield_layers_polaris_1} and \ref{fig:applied_flatfield_layers_polaris_2} show the same, except for the corrections applied to HPFs imaged with the Vectra Polaris microscope. \reffig{fig:smoothed_flatfielded_M9_1_overlap_66} shows the same example overlapping image regions as in \reffig{fig:smoothed_M9_1_overlap_66} after application of the flatfield corrections.
 
@@ -232,7 +253,7 @@ Next, while the spatial extents of the overlapping regions (i.e. the exact subse
 \label{fig:smoothed_flatfielded_aligned_M9_1_overlap_66}
 \end{figure}
 
-Finally, a last known difference between the overlap images is spatially-dependent ``warping'' effects introduced by the microscope camera. The exact warping patterns can only be measured following precise corrections for exposure time differences and flatfielding, but it is known that the effects are generally largest on the edges of each HPF. Therefore, the spatial extent of each overlapping region in the local coordinate system is restricted to the central 50\% in each of the height and width dimensions, and only about 25\% of the total overlapping area is used in each pair of images. \reffig{fig:smoothed_flatfielded_aligned_clipped_M9_1_overlap_66} shows the final images used to calculate the cost from the 66th overlap in \texttt{M9\_1}, after all corrections are applied and the outer 75\% of each image is cut out, as well as the false color overlay of the two images. The predominant remaining difference in the images (as is visible in the false color overlay) is the overall scale of illumination due to the differences in exposure times. 
+Finally, a last known difference between the overlap images is spatially-dependent ``warping'' effects introduced by the microscope camera. The exact warping patterns can only be measured following precise corrections for exposure time differences and flatfielding, but it is known that the effects are generally largest on the edges of each HPF. Therefore, the spatial extent of each overlapping region in the local coordinate system is restricted to the central 50\% in each of the height and width dimensions, and only about 25\% of the total overlapping area is used in each pair of images. This central image portion also corresponds to the extent of the central 64\%, or ``primary region'', of each HPF that is ultimately used for pathology analysis. \reffig{fig:smoothed_flatfielded_aligned_clipped_M9_1_overlap_66} shows the final images used to calculate the cost from the 66th overlap in \texttt{M9\_1}, after all corrections are applied and the outer 75\% of each image is cut out, as well as the false color overlay of the two images. The predominant remaining difference in the images (as is visible in the false color overlay) is the overall scale of illumination due to the differences in exposure times. 
 
 \begin{figure}[!ht]
 \centering
@@ -243,34 +264,23 @@ Finally, a last known difference between the overlap images is spatially-depende
 \label{fig:smoothed_flatfielded_aligned_clipped_M9_1_overlap_66}
 \end{figure}
 
-The slides used in each layer group are those that have at least 1500 overlaps with differing HPF exposure times, after neglecting any overlaps where at least one HPF is located on the edge of the slide's tissue region (to minimize the amount of empty background included), and only counting overlaps that are bright and distinct enough to be pairwise-aligned. Up to ten slides are used in each layer group, sorted by the number of overlaps they contribute. \reffig{fig:n_overlaps_used_vectra} shows the numbers of overlaps used to independently estimate the dark current for each sample in each layer for the slides collected using the Vectra 3.0 microscope, and \reffig{fig:n_overlaps_used_polaris} shows the same for the slides collected with the Vectra Polaris microscope. Layers 10 and 11 in the Vectra Polaris slides were all recorded with identical exposure times, and so no estimates of the dark current offsets can (or must) be made for those layers. 
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.95\textwidth]{images/methods/n_overlaps_used_vectra}
-\caption{\footnotesize Number of overlaps used from each sample to determine the dark current in each image layer for images collected with the Vectra 3.0 microscope. The thick dotted black lines separate layers imaged with different filter cubes.}
-\label{fig:n_overlaps_used_vectra}
-\end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.95\textwidth]{images/methods/n_overlaps_used_polaris}
-\caption{\footnotesize Number of overlaps used from each sample to determine the dark current in each image layer for images collected with the Vectra Polaris microscope. The thick dotted black lines separate layers imaged with different filter cubes. Layers 10 and 11 of every image have the same exposure time, so no estimate of the dark current is made for those layers. }
-\label{fig:n_overlaps_used_polaris}
-\end{figure}
+\subsection{Performing minimization}
+\label{ssec:performing_minimization}
 
 Theoretically, there should not be any pixels in any image observed with a number of counts less than the constant noise from the dark current, but this is not the case in practice due to random noise and Poisson count error. This possible undercounting is the reason for the cases with $I^{ijm}_{1} \leq D^{m}$ and $I^{ijm}_{1} \leq D^{m}$ in \refeq{eq:image_corr_def_1} and \refeq{eq:image_corr_def_2}, but these cases may also bias the minimization results toward larger values of $D^{m}$. To prevent any bias, then, an upper bound is set on the allowed values of $D^{m}$ for the minimization in each sample and layer. This upper bound is set at the smallest integer value for which more than 0.01\% of the pixels in any image have counts less than the upper bound.
 
 Calculating the cost of any individual overlap as defined in \refeq{eq:minimization_def} requires comparing every pair of individual pixel values, which consumes a significant amount of computational memory when a large number of overlaps is used in the minimization. To reduce the amount of memory required, the cost from each individual overlap is calculated from a pre-determined curve, instead of from the image pixel contents, during minimization. Each overlap's true cost is calculated as the images are first read in at 100 evenly-spaced values between zero and the upper bound on $D$, and then during minimization the cost is calculated by linearly interpolating between the nearest points on that predetermined curve. 
 
-Figures ~\ref{fig:overlap_cost_examples_vectra_1}-\ref{fig:overlap_cost_examples_polaris_2} show some examples of individual overlap false color overlay comparisons before and after correction with the optimal $D$ found for their particular sample layer, along with their associated costs between the fitting bounds as calculated from the unsmoothed/flatfielded whole images and from the smoothed/flatfielded aligned central region-only images. Figures~\ref{fig:overlap_cost_examples_vectra_1} and \ref{fig:overlap_cost_examples_vectra_2} show some examples for samples imaged with the Vectra 3.0 microscope, and Figures~\ref{fig:overlap_cost_examples_polaris_1} and \ref{fig:overlap_cost_examples_polaris_2} show examples for samples imaged with the Vectra Polaris microscope. The overlays give a qualitative idea of how applying corrections for differences in exposure time affects comparisons between the overlapping image regions.
+Figures ~\ref{fig:overlap_cost_examples_vectra_1}-\ref{fig:overlap_cost_examples_polaris_2} show some examples of individual overlap false color overlay comparisons before and after correction with the optimal $D$ found for their particular sample layer, along with their associated costs between the fitting bounds as calculated from the unsmoothed/flatfielded whole images and from the smoothed/flatfielded aligned central region-only images. Figures~\ref{fig:overlap_cost_examples_vectra_1} and \ref{fig:overlap_cost_examples_vectra_2} show some examples for samples imaged with the Vectra 3.0 microscope, and Figures~\ref{fig:overlap_cost_examples_polaris_1} and \ref{fig:overlap_cost_examples_polaris_2} show examples for samples imaged with the Vectra Polaris microscope. 
+
+In every figure, the overlays in the left and center columns show the full overlap regions without smoothing, but the costs above them are calculated with the smoothed central regions of the overlaps. Both the whole/unsmoothed and central/smoothed images are corrected for flatfielding and pairwise-aligned. In the right column of each figure, costs calculated using the entire unsmoothed image regions are shown in blue, and costs calculated from the smoothed central image regions are shown in orange, while the vertical black line shows the best-fit value of $D$. The differences in image exposure times are in milliseconds. The overlays give a qualitative idea of how applying corrections for differences in exposure time brings the images closer to a mutual overall scale of illumination corresponding to the median exposure time in each sample and layer.
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_vectra/overlay_comp_random_6761_offset=18.961}
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_vectra/overlay_comp_random_2425_offset=20.326}
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_vectra/overlay_comp_random_3946_offset=20.222}
-\caption{\footnotesize Left and center columns: false color overlay comparisons before (left column) and after (center column) correction for differences in exposure times with the optimal $D^{m}$ determined from the minimization in \refeq{eq:minimization_def} for several sample layers imaged using the Vectra 3.0 microscope. The overlays show the full overlap region without smoothing, but the costs above them are calculated with the smoothed central regions of the overlaps. Right column: L1-norm costs for the same overlaps at 100 values of $D$ between zero and the sample/layer-dependent upper bound. Costs calculated using the entire unsmoothed image regions are shown in blue, and costs calculated from the smoothed central image regions are shown in orange. In both cases corrections for flatfielding are applied and the images are pairwise-aligned. The vertical black line shows the best-fit value of $D$ for each overlap's sample and layer. The differences in image exposure times are given in milliseconds. From the upper to lower rows, the overlaps shown are examples from layer 1 of \texttt{M26\_1}, layer 10 of \texttt{M17\_1}, and layer 23 of \texttt{M3\_1}, respectively.}
+\caption{\footnotesize Left and center columns: false color overlay comparisons before (left column) and after (center column) correction for differences in exposure times with the optimal $D^{m}$ determined from the minimization in \refeq{eq:minimization_def} for several sample layers imaged using the Vectra 3.0 microscope. Right column: L1-norm costs for the same overlaps at 100 values of $D$ between zero and the sample/layer-dependent upper bound. From the upper to lower rows, the overlaps shown are examples from layer 1 of \texttt{M26\_1}, layer 10 of \texttt{M17\_1}, and layer 23 of \texttt{M3\_1}, respectively.}
 \label{fig:overlap_cost_examples_vectra_1}
 \end{figure}
 
@@ -321,6 +331,11 @@ Figures ~\ref{fig:overlap_cost_examples_vectra_1}-\ref{fig:overlap_cost_examples
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% RESULTS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Results}
 \label{sec:results}
+
+The overall best values of the number of counts attributable to dark current noise in each sample and layer are presented for samples imaged using both the Vectra 3.0 and Vectra Polaris microscopes. The effect of applying corrections using these offsets is quantified by seeing how the distributions of differences in mean-normalized counts per millisecond observed in sets of overlaps with different HPF exposure times from other independent samples changes from the uncorrected case, to the naive case where no dark current offset is included in the corrections, to the full case using the best overall offsets found. The qualitative impact of the corrections on finding background thresholds for each sample and image layer is also discussed. 
+
+\subsection{Dark current offsets}
+\label{ssec:dark_current_offsets}
 
 The optimal dark current offsets found for each sample used are pictured in \reffig{fig:dark_current_offsets_vectra} for the 35 layers of the Vectra 3.0 samples, and in \reffig{fig:dark_current_offsets_polaris} for the 43 layers of the Vectra Polaris samples. The figures also show the final weighted average dark current offsets in each layer in black, and these values are also listed in \reftab{tab:best_offsets_vectra} for the Vectra 3.0 samples and in \reftab{tab:best_offsets_polaris} for the Vectra Polaris samples. The values found for the individual samples and overall are all very similar, but there is some dependence on the image layer, particularly for layers near the extremes of the broadband filter groups. Generally, the dark current offsets found for the Vectra Polaris samples are higher than those for the Vectra 3.0 samples.
 
@@ -435,6 +450,12 @@ Image layer & Number of overlaps & Overall best $D$ \\
 \caption{\footnotesize Total number of overlaps used in minimization, and final pixel-weighted averages of best-fit dark current offsets in each layer ($D$), for HPFs imaged using the Vectra Polaris microscope.}
 \label{tab:best_offsets_polaris}
 \end{table}
+
+\subsection{Impact on overlap image differences}
+\label{ssec:impact_on_overlap_image_differences}
+
+\subsection{Impact on background thresholding}
+\label{ssec:impact_on_background_threshold}
 
 \clearpage
 
