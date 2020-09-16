@@ -332,7 +332,7 @@ In every figure, the overlays in the left and center columns show the full overl
 \section{Results}
 \label{sec:results}
 
-The overall best values of the number of counts attributable to dark current noise in each sample and layer are presented for samples imaged using both the Vectra 3.0 and Vectra Polaris microscopes. The effect of applying corrections using these offsets is quantified by seeing how the distributions of differences in mean-normalized counts per millisecond observed in sets of overlaps with different HPF exposure times from other independent samples changes from the uncorrected case, to the naive case where no dark current offset is included in the corrections, to the full case using the best overall offsets found. The qualitative impact of the corrections on finding background thresholds for each sample and image layer is also discussed. 
+The overall best values of the number of counts attributable to dark current noise in each sample and layer are presented for samples imaged using both the Vectra 3.0 and Vectra Polaris microscopes. The effect of applying corrections using these offsets is quantified by seeing how the distributions of differences in mean-normalized counts per millisecond change in each layer, measured using overlaps with different exposure times from samples independent from those used to make the measurements. The qualitative impact of the corrections on finding background thresholds for each sample and image layer is also discussed. 
 
 \subsection{Dark current offsets}
 \label{ssec:dark_current_offsets}
@@ -456,6 +456,92 @@ Image layer & Number of overlaps & Overall best $D$ \\
 
 \subsection{Impact on background thresholding}
 \label{ssec:impact_on_background_threshold}
+
+An important step in the procedure for measuring the flatfield correction factors, as detailed in \cite{flatfielding_note}, is determining threshold numbers of counts for each sample and layer above which a given pixel can be expected to show fluorescent tissue as opposed to dim background. The thresholds are determined as numbers of absolute counts, and so corrections for differences in exposure times are important. In cases where the layers of many HPFs are imaged with different exposure times, it is nearly impossible to find a single number of counts corresponding to background without first correcting the images to equivalent exposure times.
+
+As detailed in \cite{flatfielding_note}, background thresholds are found individually for every layer of every HPF that is located on the edge of the tissue in a given sample, and the final thresholds used to mask out background are the means of the individual thresholds found. When there is a large degree of variability in how long the HPF layers on the edges of the tissue are exposed, the individual measurements are less consistent with one another, and the resulting background threshold does not work equally well for all images. Correcting the image layers for differences in exposure time greatly ameliorates this issue.
+
+Several examples illustrating this are shown in Figures~\ref{fig:background_threshold_impact_vectra_layer_5}-\ref{fig:background_threshold_impact_vectra_layer_29}. In these figures, the left column shows the distributions of the individual HPF thresholds found, the center column shows the summed histogram of all of these HPFs' pixels (with background in blue and signal in orange) on a log scale, and the right column shows a portion of that pixel histogram that is near the threshold used on a linear scale, again with background in blue and signal in orange. In each figure, the top row shows thresholding results without corrections for exposure time, and the bottom row shows them after application of the corrections. Applying corrections for exposure time differences in many cases improves the regularity of both the background and signal pixel count distributions. The resulting image masks better select fluorescent tissue, and behave similarly for all images in the sample, rather than over-selecting underexposed images and/or under-selecting overexposed images as is the case when no corrections for exposure time are applied.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/M9_1_layer_5_background_threshold_plots}
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/M9_1_layer_5_background_threshold_plots}
+\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 5 of the Vectra 3.0 sample \texttt{M9\_1}.}
+\label{fig:background_threshold_impact_vectra_layer_5}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/M24_1_layer_11_background_threshold_plots}
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/M24_1_layer_11_background_threshold_plots}
+\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 11 of the Vectra 3.0 sample \texttt{M24\_1}.}
+\label{fig:background_threshold_impact_vectra_layer_11}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/M27_5_layer_22_background_threshold_plots}
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/M27_5_layer_22_background_threshold_plots}
+\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 29 of the Vectra 3.0 sample \texttt{M27\_5}.}
+\label{fig:background_threshold_impact_vectra_layer_22}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/M54_1_layer_29_background_threshold_plots}
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/M54_1_layer_29_background_threshold_plots}
+\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 29 of the Vectra 3.0 sample \texttt{M1\_1}.}
+\label{fig:background_threshold_impact_vectra_layer_29}
+\end{figure}
+
+%\begin{figure}[!ht]
+%\centering
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
+%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 5 of the Vectra Polaris sample ---}
+%\label{fig:background_threshold_impact_polaris_layer_5}
+%\end{figure}
+%
+%\begin{figure}[!ht]
+%\centering
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
+%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 14 of the Vectra Polaris sample ---}
+%\label{fig:background_threshold_impact_polaris_layer_14}
+%\end{figure}
+%
+%\begin{figure}[!ht]
+%\centering
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
+%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 19 of the Vectra Polaris sample ---}
+%\label{fig:background_threshold_impact_polaris_layer_19}
+%\end{figure}
+%
+%\begin{figure}[!ht]
+%\centering
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
+%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 25 of the Vectra Polaris sample ---}
+%\label{fig:background_threshold_impact_polaris_layer_25}
+%\end{figure}
+%
+%\begin{figure}[!ht]
+%\centering
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
+%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 33 of the Vectra Polaris sample ---}
+%\label{fig:background_threshold_impact_polaris_layer_33}
+%\end{figure}
+%
+%\begin{figure}[!ht]
+%\centering
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
+%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
+%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 40 of the Vectra Polaris sample ---}
+%\label{fig:background_threshold_impact_polaris_layer_40}
+%\end{figure}
 
 \clearpage
 
