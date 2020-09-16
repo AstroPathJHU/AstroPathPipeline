@@ -60,11 +60,24 @@ def getOverlapResult(sn,layer,overlap,exp_times,med_exp_time,offset,fss_by_rect_
 #helper function to get a list of correction results for a single sample
 def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_edges) :
     #make a logger
+    logfile_path = os.path.join(workingdir,f'{sample.name}_{LOGFILE_STEM}')
     logger = logging.getLogger(f'evaluate_exposure_time_{sample.name}')
     logger.setLevel(logging.DEBUG)
     logformat = logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S")
     streamhandler = logging.StreamHandler(); streamhandler.setFormatter(logformat); logger.addHandler(streamhandler)
-    filehandler = logging.FileHandler(os.path.join(workingdir,f'{sample.name}_{LOGFILE_STEM}')); filehandler.setFormatter(logformat); logger.addHandler(filehandler)
+    filehandler = logging.FileHandler(logfile_path); filehandler.setFormatter(logformat); logger.addHandler(filehandler)
+    #check to see if this sample is already done
+    skip = False
+    done_msg = f'Done evaluating exposure time results for {sample.name}'
+    if os.path.isfile(logfile_path) :
+        with open(logfile_path,'r') as fp :
+            for line in fp.readlines :
+                if done_msg in line :
+                    skip=True
+                    break
+        if skip :
+            logger.info(done_msg)
+            return                    
     #get the image dimensions for files from this sample
     h,w,nlayers = getImageHWLFromXMLFile(sample.rawfile_top_dir,sample.name)
     #read the flatfield from the file
@@ -82,13 +95,24 @@ def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_ed
         if os.path.isfile(os.path.join(workingdir,output_fn)) :
             logger.info(f'Skipping {sample.name} layer {li+1}; results file already exists.')
             continue
+        skip = False
+        no_offset_skip_msg = f'No offset found for layer {li+1}; skipping results in this layer'
+        mult_offset_skip_msg = f'Multiple offsets found for layer {li+1}; skipping results in this layer'
+        no_overlaps_skip_msg = f'Skipping {sample.name} layer {li+1} (no overlaps with exposure time differences)'
+        with open(logfile_path,'r') as fp :
+            for line in fp.readlines :
+                if (no_offset_skip_msg in line) or (mult_offset_skip_msg in line) or (no_overlaps_skip_msg) in line :
+                    skip=True
+                    break
+        if skip :
+            continue
         #get the offset to compare with for this layer
         this_layer_offset = [o.offset for o in offsets if o.layer_n==li+1]
         if len(this_layer_offset)<1 :
-            logger.info(f'No offset found for layer {li+1}; skipping results in this layer')
+            logger.info(no_offset_skip_msg)
             continue
         elif len(this_layer_offset)>1 :
-            logger.info(f'Multiple offsets found for layer {li+1}; skipping results in this layer')
+            logger.info(mult_offset_skip_msg)
             continue
         else :
             this_layer_offset = this_layer_offset[0]
@@ -96,7 +120,7 @@ def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_ed
         olaps_with_et_diffs = getOverlapsWithExposureTimeDifferences(sample.rawfile_top_dir,sample.metadata_top_dir,sample.name,
                                                                      exp_time_dicts[li],li+1,include_tissue_edges=allow_edges)
         if len(olaps_with_et_diffs)<1 :
-            logger.info(f'Skipping {sample.name} layer {li+1} (no overlaps with exposure time differences)')
+            logger.info(no_overlaps_skip_msg)
             continue
         #start the list of results
         these_results = []
@@ -127,7 +151,7 @@ def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_ed
             these_results.append(getOverlapResult(sample.name,li+1,olap,exp_time_dicts[li],med_exp_times_by_layer[li],this_layer_offset,filestems_by_rect_n))
         with cd(workingdir) :
             writetable(output_fn,these_results)
-    logger.info(f'Done evaluating exposure time results for {sample.name}')
+    logger.info(done_msg)
 
 #################### MAIN SCRIPT ####################
 
@@ -170,7 +194,9 @@ def main() :
                 for proc in procs :
                     if not proc.is_alive() :
                         proc.join()
-                        procs.pop(procs.index(proc))
+                        delete_p = procs.pop(procs.index(proc))
+                        del delete_p
+                time.sleep(10)
         for proc in procs :
             proc.join()
 
