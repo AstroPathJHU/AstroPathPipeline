@@ -1,5 +1,5 @@
 from .alignmentset import AlignmentSetForExposureTime
-from .utilities import getOverlapsWithExposureTimeDifferences
+from .utilities import getFirstLayerInGroup, getOverlapsWithExposureTimeDifferences
 from .config import CONST
 from ..flatfield.utilities import FlatfieldSampleInfo
 from ..utilities.img_file_io import LayerOffset, getExposureTimesByLayer, getImageHWLFromXMLFile, getRawAsHWL, getSampleMedianExposureTimesByLayer, correctImageLayerForExposureTime
@@ -25,8 +25,11 @@ class OverlapCorrectionResult :
     n_pixels       : int
     et_diff        : float
     raw_cost       : float
+    raw_diff       : float
     naive_cost     : float
+    naive_diff     : float
     corrected_cost : float
+    corrected_diff : float
 
 #helper function to get a list of nlayers dictionaries holding the exposure times in each layer keyed by filename stem
 def getExposureTimeDicts(samp_name,rtd,nlayers) :
@@ -53,9 +56,12 @@ def getOverlapResult(sn,layer,overlap,exp_times,med_exp_time,offset,fss_by_rect_
     corr_p1 = correctImageLayerForExposureTime(raw_p1,p1_et,med_exp_time,offset)
     corr_p2 = correctImageLayerForExposureTime(raw_p2,p2_et,med_exp_time,offset)
     raw_cost = np.sum(np.abs(raw_p1-raw_p2))/npixels
+    raw_diff = np.sum(np.abs((raw_p1/p1_et)-(raw_p2/p2_et)))/npixels
     naive_cost = np.sum(np.abs(naive_p1-naive_p2))/npixels
+    naive_diff = np.sum(np.abs((naive_p1-naive_p2)/med_exp_time))/npixels
     corr_cost = np.sum(np.abs(corr_p1-corr_p2))/npixels
-    return OverlapCorrectionResult(sn,layer,overlap.n,npixels,(p1_et-p2_et),raw_cost,naive_cost,corr_cost)
+    corr_diff = np.sum(np.abs((corr_p1-corr_p2)/med_exp_time))/npixels
+    return OverlapCorrectionResult(sn,layer,overlap.n,npixels,(p1_et-p2_et),raw_cost,raw_diff,naive_cost,naive_diff,corr_cost,corr_diff)
 
 #helper function to get a list of correction results for a single sample
 def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_edges) :
@@ -88,6 +94,8 @@ def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_ed
     #get all of the exposure times keyed by file stem
     logger.info(f'Getting all exposure times for {sample.name}')
     exp_time_dicts = getExposureTimeDicts(sample.name,sample.rawfile_top_dir,nlayers)
+    #start up the dictionary of overlaps with different exposure times by layer group
+    olaps_with_et_diffs_dict = {}
     #for each layer
     for li in range(nlayers) :
         #see if this layer has already been done
@@ -117,8 +125,12 @@ def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_ed
         else :
             this_layer_offset = this_layer_offset[0]
         #find the overlaps with different exposure times
-        olaps_with_et_diffs = getOverlapsWithExposureTimeDifferences(sample.rawfile_top_dir,sample.metadata_top_dir,sample.name,
-                                                                     exp_time_dicts[li],li+1,include_tissue_edges=allow_edges)
+        if getFirstLayerInGroup(li+1,nlayers) in olaps_with_et_diffs_dict.keys() :
+            olaps_with_et_diffs = olaps_with_et_diffs_dict[getFirstLayerInGroup(li+1,nlayers)]
+        else :
+            olaps_with_et_diffs = getOverlapsWithExposureTimeDifferences(sample.rawfile_top_dir,sample.metadata_top_dir,sample.name,
+                                                                         exp_time_dicts[li],li+1,include_tissue_edges=allow_edges)
+            olaps_with_et_diffs_dict[getFirstLayerInGroup(li+1,nlayers)] = olaps_with_et_diffs
         if len(olaps_with_et_diffs)<1 :
             logger.info(no_overlaps_skip_msg)
             continue
