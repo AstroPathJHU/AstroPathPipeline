@@ -77,7 +77,7 @@ def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_ed
     done_msg = f'Done evaluating exposure time results for {sample.name}'
     if os.path.isfile(logfile_path) :
         with open(logfile_path,'r') as fp :
-            for line in fp.readlines :
+            for line in fp.readlines() :
                 if done_msg in line :
                     skip=True
                     break
@@ -108,7 +108,7 @@ def writeResultsForSample(sample,offsets,ff_file,workingdir,smoothsigma,allow_ed
         mult_offset_skip_msg = f'Multiple offsets found for layer {li+1}; skipping results in this layer'
         no_overlaps_skip_msg = f'Skipping {sample.name} layer {li+1} (no overlaps with exposure time differences)'
         with open(logfile_path,'r') as fp :
-            for line in fp.readlines :
+            for line in fp.readlines() :
                 if (no_offset_skip_msg in line) or (mult_offset_skip_msg in line) or (no_overlaps_skip_msg) in line :
                     skip=True
                     break
