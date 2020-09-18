@@ -108,27 +108,27 @@ Sometimes, two overlapping HPFs are recorded with different exposure times. When
 
 If the total number of counts recorded at a given pixel is modeled as some constant number of dark current counts, plus some number of counts from the fluorescent tissue that increases proportional to the amount of time the tissue is exposed to the camera, the dark current can be determined by minimizing the difference of the two HPF contents within the overlapping region.
 
-To illustrate this concept more explicitly, consider two image regions $I^{ijm}_{1}$ and $I^{ijm}_{2}$, represented as three-dimensional tensors whose contents are the number of counts recorded by the camera and the $i=1, \ldots, H$, $j = 1, \ldots, W$, and $m = 1, \ldots, L$ indices range over the height ($H$ pixels), width ($W$ pixels), and number of image layers $L$, respectively, of the overlap region in question. If the two HPFs of which $I_{1}$ and $I_{2}$ are subsets are recorded with layer-dependent exposure times $t^{m}_{1}$ and $t^{m}_{2}$, respectively, then the number of counts at each pixel can be modelled linearly as
+To illustrate this concept more explicitly, consider two overlap image regions $I_{ijm}$ and $I^{\prime}_{ijm}$, represented as three-dimensional tensors whose contents are the number of counts recorded by the camera and the $i=1, \ldots, h$, $j = 1, \ldots, w$, and $m = 1, \ldots, L$ indices range over the height ($h$ pixels), width ($w$ pixels), and number of image layers $L$, respectively, of the overlap in question. If the two HPFs of which $I$ and $I^{\prime}$ are subsets are recorded with layer-dependent exposure times $t_{m}$ and $t^{\prime}_{m}$, respectively, then the number of counts at each pixel can be modelled linearly as
 \begin{equation}
-I^{ijm}_{1} = D^{m} + F^{ijm} t^{m}_{1} \hspace{0.08\textwidth} \mathrm{and} \hspace{0.08\textwidth} I^{ijm}_{2} = D^{m} + F^{ijm} t^{m}_{2},
+I_{ijm} = D_{m} + F_{ijm} t_{m} \hspace{0.08\textwidth} \mathrm{and} \hspace{0.08\textwidth} I^{\prime}_{ijm} = D_{m} + F_{ijm} t^{\prime}_{m},
 \end{equation}
-where $D^{m}$ is the constant number of counts from the dark current in the given image layer, and $F^{ijm}$ represents the luminous flux (in counts per unit time) of the underlying fluorescent tissue that is incident on each pixel at each wavelength. Note that while the dark current should, theoretically, be the same in each image layer, the actual noise may vary over time as the multiply-stained samples are successively illuminated at different wavelengths of light, and so we measure the number of dark current counts independently in each image layer.
+where $D_{m}$ is the constant number of counts from the dark current in the given image layer, and $F_{ijm}$ represents the luminous flux (in counts per unit time) of the underlying fluorescent tissue incident on each pixel. Note that while the dark current should, theoretically, be the same in each image layer, the actual noise may vary over time as the multiply-stained samples are successively illuminated at different wavelengths of light, and so we measure the number of dark current counts independently in each image layer.
 
-Because the true $F^{ijm}$ are unknown, the numbers of dark current counts must be estimated a-posteriori. To that end, for arbitrary dark current offsets $D^{m}$, we define $\Iota^{ijm}_{1}$ and $\Iota^{ijm}_{2}$, the overlapping image regions corrected to the same sample-median exposure times $t^{m}_{\mathrm{med}}$, as
+Because the true $F_{ijm}$ are unknown, the numbers of dark current counts must be estimated a-posteriori. To that end, for arbitrary dark current offsets $D_{m}$, we define $\Iota_{ijm}$ and $\Iota^{\prime}_{ijm}$, the overlapping image regions corrected to the same sample-median exposure times $t_{m}^{\mathrm{med}}$, as
 \begin{equation}
-\Iota^{ijm}_{1} = 
+\Iota_{ijm} = 
 \begin{cases} 
-      D^{m}+\left(\frac{t^{m}_{\mathrm{med}}}{t^{m}_{1}}\right)\left(I^{ijm}_{1}-D^{m}\right) & S_{ijm} I^{ijm}_{1} > D^{m}  \\
-      I^{ijm}_{1} & I^{ijm}_{1} \leq D^{m} 
+      D_{m}+\left(\frac{t_{m}^{\mathrm{med}}}{t_{m}}\right)\left(I_{ijm}-D_{m}\right) & I_{ijm} > D_{m}  \\
+      I_{ijm} & I_{ijm} \leq D_{m} 
 \end{cases}
 \label{eq:image_corr_def_1}
 \end{equation}
 and
 \begin{equation}
-\Iota^{ijm}_{2} = 
+\Iota^{\prime}_{ijm} = 
 \begin{cases} 
-      D^{m}+\left(\frac{t^{m}_{\mathrm{med}}}{t^{m}_{2}}\right)\left(I^{ijm}_{2}-D^{m}\right) & S_{ijm} I^{ijm}_{2} > D^{m}  \\
-      I^{ijm}_{2} & I^{ijm}_{2} \leq D^{m} 
+      D_{m}+\left(\frac{t_{m}^{\mathrm{med}}}{t^{\prime}_{m}}\right)\left(I^{\prime}_{ijm}-D_{m}\right) & I^{\prime}_{ijm} > D_{m}  \\
+      I^{\prime}_{ijm} & I^{\prime}_{ijm} \leq D_{m} 
 \end{cases}
 .
 \label{eq:image_corr_def_2}
@@ -136,12 +136,12 @@ and
 
 With this correction procedure defined, the best estimate of the dark current in each layer can then be determined by minimizing the L1-norm cost representing the difference in corrected overlap region image contents observed in a sufficiently large set of overlaps with different exposure times, averaged over the total number of pixels, like
 \begin{equation}
-D = \argmin{ \left[ \frac{ \sum_{n=1}^{N} \left( \sum_{i=1}^{H_{n}} \sum_{j=1}^{W_{n}} \left| \Iota^{ijm}_{1,n} - \Iota^{ijm}_{2,n} \right| \right) }{ \sum_{n=1}^{N} H_{n}W_{n}} \right] },
+D = \argmin{ \left[ \frac{ \sum_{n=1}^{N} \left( \sum_{i=1}^{h_{n}} \sum_{j=1}^{w_{n}} \left| \Iota_{n} - \Iota^{\prime}_{n} \right| \right) }{ \sum_{n=1}^{N} h_{n}w_{n}} \right] },
 \label{eq:minimization_def}
 \end{equation} 
-where the $m$ index has been suppressed because the results are independent in each image layer, and the subscript $n=1,\ldots,N$ is used to distinguish each of $N$ total overlap regions with heights $H_{n}$ and widths $W_{n}$. 
+where the $m$ index has been suppressed because the results are independent in each image layer, and the subscript $n=1,\ldots,N$ is used to distinguish each of $N$ total overlap regions with independent heights $h_{n}$ and widths $w_{n}$. 
 
-This minimization procedure is performed individually for each scanned slide, identically for every image layer, using every overlapping HPF pair where the two images were recorded with different exposure times. The overall optimal values of $D^{m}$ are the average of the results for each slide, weighted by the total number of pixels used in each layer's fit.  
+This minimization procedure is performed individually for each scanned slide, identically for every image layer, using every overlapping HPF pair where the two images were recorded with different exposure times. The overall optimal values of $D_{m}$ are the average of the results for each slide, weighted by the total number of pixels used in each layer's fit.  
 
 \subsection{Data used}
 \label{ssec:data_used}
@@ -267,7 +267,7 @@ Finally, a last known difference between the overlap images is spatially-depende
 \subsection{Performing minimization}
 \label{ssec:performing_minimization}
 
-Theoretically, there should not be any pixels in any image observed with a number of counts less than the constant noise from the dark current, but this is not the case in practice due to random noise and Poisson count error. This possible undercounting is the reason for the cases with $I^{ijm}_{1} \leq D^{m}$ and $I^{ijm}_{1} \leq D^{m}$ in \refeq{eq:image_corr_def_1} and \refeq{eq:image_corr_def_2}, but these cases may also bias the minimization results toward larger values of $D^{m}$. To prevent any bias, then, an upper bound is set on the allowed values of $D^{m}$ for the minimization in each sample and layer. This upper bound is set at the smallest integer value for which more than 0.01\% of the pixels in any image have counts less than the upper bound.
+Theoretically, there should not be any pixels in any image observed with a number of counts less than the constant noise from the dark current, but this is not the case in practice due to random noise and Poisson count error. This possible undercounting is the reason for the cases with $I_{ijm} \leq D_{m}$ and $I^{\prime}_{ijm} \leq D_{m}$ in \refeq{eq:image_corr_def_1} and \refeq{eq:image_corr_def_2}, but these cases may also bias the minimization results toward larger values of $D_{m}$. To prevent any bias, then, an upper bound is set on the allowed values of $D_{m}$ for the minimization in each sample and layer. This upper bound is set at the smallest integer value for which more than 0.01\% of the pixels in any image have counts less than the upper bound.
 
 Calculating the cost of any individual overlap as defined in \refeq{eq:minimization_def} requires comparing every pair of individual pixel values, which consumes a significant amount of computational memory when a large number of overlaps is used in the minimization. To reduce the amount of memory required, the cost from each individual overlap is calculated from a pre-determined curve, instead of from the image pixel contents, during minimization. Each overlap's true cost is calculated as the images are first read in at 100 evenly-spaced values between zero and the upper bound on $D$, and then during minimization the cost is calculated by linearly interpolating between the nearest points on that predetermined curve. 
 
@@ -280,7 +280,7 @@ In every figure, the overlays in the left and center columns show the full overl
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_vectra/overlay_comp_random_6761_offset=18.961}
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_vectra/overlay_comp_random_2425_offset=20.326}
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_vectra/overlay_comp_random_3946_offset=20.222}
-\caption{\footnotesize Left and center columns: false color overlay comparisons before (left column) and after (center column) correction for differences in exposure times with the optimal $D^{m}$ determined from the minimization in \refeq{eq:minimization_def} for several sample layers imaged using the Vectra 3.0 microscope. Right column: L1-norm costs for the same overlaps at 100 values of $D$ between zero and the sample/layer-dependent upper bound. From the upper to lower rows, the overlaps shown are examples from layer 1 of \texttt{M26\_1}, layer 10 of \texttt{M17\_1}, and layer 23 of \texttt{M3\_1}, respectively.}
+\caption{\footnotesize Left and center columns: false color overlay comparisons before (left column) and after (center column) correction for differences in exposure times with the optimal $D$ for several sample layers imaged using the Vectra 3.0 microscope. Right column: L1-norm costs for the same overlaps at 100 values of $D$ between zero and the sample/layer-dependent upper bound. From the upper to lower rows, the overlaps shown are examples from layer 1 of \texttt{M26\_1}, layer 10 of \texttt{M17\_1}, and layer 23 of \texttt{M3\_1}, respectively.}
 \label{fig:overlap_cost_examples_vectra_1}
 \end{figure}
 
@@ -288,7 +288,7 @@ In every figure, the overlays in the left and center columns show the full overl
 \centering
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_vectra/overlay_comp_random_10478_offset=17.778}
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_vectra/overlay_comp_random_892_offset=21.314}
-\caption{\footnotesize Left and center columns: false color overlay comparisons before (left column) and after (center column) correction for differences in exposure times with the optimal $D^{m}$ determined from the minimization in \refeq{eq:minimization_def} for several sample layers imaged using the Vectra 3.0 microscope. The overlays show the full overlap region without smoothing, but the costs above them are calculated with the smoothed central regions of the overlaps. Right column: L1-norm costs for the same overlaps at 100 values of $D$ between zero and the sample/layer-dependent upper bound. Costs calculated using the entire unsmoothed image regions are shown in blue, and costs calculated from the smoothed central image regions are shown in orange. In both cases corrections for flatfielding are applied and the images are pairwise-aligned. The vertical black line shows the best-fit value of $D$ for each overlap's sample and layer. The differences in image exposure times are given in milliseconds. In the upper and lower rows the overlaps shown are examples from layer 31 of \texttt{M51\_1} and layer 33 of \texttt{M4\_2}, respectively.}
+\caption{\footnotesize Left and center columns: false color overlay comparisons before (left column) and after (center column) correction for differences in exposure times with the optimal $D$ for several sample layers imaged using the Vectra 3.0 microscope. Right column: L1-norm costs for the same overlaps at 100 values of $D$ between zero and the sample/layer-dependent upper bound. From the upper to lower rows, the overlaps shown are examples from layer 31 of \texttt{M51\_1} and layer 33 of \texttt{M4\_2}, respectively.}
 \label{fig:overlap_cost_examples_vectra_2}
 \end{figure}
 
@@ -297,7 +297,7 @@ In every figure, the overlays in the left and center columns show the full overl
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_polaris/overlay_comp_random_4357_offset=51.980}
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_polaris/overlay_comp_random_2668_offset=51.848}
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_polaris/overlay_comp_random_1554_offset=51.000}
-\caption{\footnotesize Left and center columns: false color overlay comparisons before (left column) and after (center column) correction for differences in exposure times with the optimal $D^{m}$ determined from the minimization in \refeq{eq:minimization_def} for several sample layers imaged using the Vectra Polaris microscope. The overlays show the full overlap region without smoothing, but the costs above them are calculated with the smoothed central regions of the overlaps. Right column: L1-norm costs for the same overlaps at 100 values of $D$ between zero and the sample/layer-dependent upper bound. Costs calculated using the entire unsmoothed image regions are shown in blue, and costs calculated from the smoothed central image regions are shown in orange. In both cases corrections for flatfielding are applied and the images are pairwise-aligned. The vertical black line shows the best-fit value of $D$ for each overlap's sample and layer. The differences in image exposure times are given in milliseconds. From the upper to lower rows, the overlaps shown are examples from layer 4 of \texttt{YX10}, layer 16 of \texttt{PZ29}, and layer 19 of \texttt{YY15}, respectively.}
+\caption{\footnotesize Left and center columns: false color overlay comparisons before (left column) and after (center column) correction for differences in exposure times with the optimal $D$ for several sample layers imaged using the Vectra Polaris microscope. Right column: L1-norm costs for the same overlaps at 100 values of $D$ between zero and the sample/layer-dependent upper bound. From the upper to lower rows, the overlaps shown are examples from layer 4 of \texttt{YX10}, layer 16 of \texttt{PZ29}, and layer 19 of \texttt{YY15}, respectively.}
 \label{fig:overlap_cost_examples_polaris_1}
 \end{figure}
 
@@ -306,7 +306,7 @@ In every figure, the overlays in the left and center columns show the full overl
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_polaris/overlay_comp_random_5023_offset=50.770}
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_polaris/overlay_comp_random_4697_offset=49.636}
 \includegraphics[width=0.95\textwidth]{images/methods/cost_examples_polaris/overlay_comp_random_1916_offset=50.424}
-\caption{\footnotesize Left and center columns: false color overlay comparisons before (left column) and after (center column) correction for differences in exposure times with the optimal $D^{m}$ determined from the minimization in \refeq{eq:minimization_def} for several sample layers imaged using the Vectra Polaris microscope. The overlays show the full overlap region without smoothing, but the costs above them are calculated with the smoothed central regions of the overlaps. Right column: L1-norm costs for the same overlaps at 100 values of $D$ between zero and the sample/layer-dependent upper bound. Costs calculated using the entire unsmoothed image regions are shown in blue, and costs calculated from the smoothed central image regions are shown in orange. In both cases corrections for flatfielding are applied and the images are pairwise-aligned. The vertical black line shows the best-fit value of $D$ for each overlap's sample and layer. The differences in image exposure times are given in milliseconds. From the upper to lower rows, the overlaps shown are examples from layer 24 of \texttt{YZ68}, layer 31 of \texttt{YY15}, and layer 40 of \texttt{PZ14}, respectively.}
+\caption{\footnotesize Left and center columns: false color overlay comparisons before (left column) and after (center column) correction for differences in exposure times with the optimal $D$ for several sample layers imaged using the Vectra Polaris microscope. Right column: L1-norm costs for the same overlaps at 100 values of $D$ between zero and the sample/layer-dependent upper bound. From the upper to lower rows, the overlaps shown are examples from layer 24 of \texttt{YZ68}, layer 31 of \texttt{YY15}, and layer 40 of \texttt{PZ14}, respectively.}
 \label{fig:overlap_cost_examples_polaris_2}
 \end{figure}
 
@@ -349,46 +349,46 @@ The optimal dark current offsets found for each sample used are pictured in \ref
 \begin{table}[!htb]
 \centering
 \begin{tabular}{c c c}
-Image layer & Number of overlaps & Overall best $D$ \\
+Image layer $m$ & Number of overlaps & Overall best $D_{m}$ \\
 \hline
-1           & 75706              & 19.07 \\
-2           & 75824              & 19.18 \\
-3           & 75802              & 19.35 \\
-4           & 75758              & 19.57 \\
-5           & 75770              & 18.68 \\
-6           & 75766              & 18.28 \\
-7           & 75758              & 17.98 \\
-8           & 75748              & 17.82 \\
-9           & 75740              & 17.86 \\
-10          & 49698              & 20.22 \\
-11          & 49724              & 20.42 \\
-12          & 49694              & 19.37 \\
-13          & 49674              & 18.19 \\
-14          & 49640              & 17.88 \\
-15          & 49628              & 17.82 \\
-16          & 49614              & 17.83 \\
-17          & 49598              & 17.85 \\
-18          & 49546              & 17.85 \\
-19          & 37340              & 19.41 \\
-20          & 37392              & 20.57 \\
-21          & 37414              & 19.81 \\
-22          & 37412              & 19.63 \\
-23          & 37414              & 19.74 \\
-24          & 37386              & 19.40 \\
-25          & 37354              & 18.97 \\
-26          & 57094              & 16.87 \\
-27          & 60780              & 17.83 \\
-28          & 61010              & 17.87 \\
-29          & 61036              & 17.89 \\
-30          & 61032              & 17.90 \\
-31          & 60926              & 17.84 \\
-32          & 60816              & 17.83 \\
-33          & 13022              & 20.77 \\
-34          & 13022              & 20.83 \\
-35          & 13018              & 19.65 \\
+1               & 75706              & 19.07 \\
+2               & 75824              & 19.18 \\
+3               & 75802              & 19.35 \\
+4               & 75758              & 19.57 \\
+5               & 75770              & 18.68 \\
+6               & 75766              & 18.28 \\
+7               & 75758              & 17.98 \\
+8               & 75748              & 17.82 \\
+9               & 75740              & 17.86 \\
+10              & 49698              & 20.22 \\
+11              & 49724              & 20.42 \\
+12              & 49694              & 19.37 \\
+13              & 49674              & 18.19 \\
+14              & 49640              & 17.88 \\
+15              & 49628              & 17.82 \\
+16              & 49614              & 17.83 \\
+17              & 49598              & 17.85 \\
+18              & 49546              & 17.85 \\
+19              & 37340              & 19.41 \\
+20              & 37392              & 20.57 \\
+21              & 37414              & 19.81 \\
+22              & 37412              & 19.63 \\
+23              & 37414              & 19.74 \\
+24              & 37386              & 19.40 \\
+25              & 37354              & 18.97 \\
+26              & 57094              & 16.87 \\
+27              & 60780              & 17.83 \\
+28              & 61010              & 17.87 \\
+29              & 61036              & 17.89 \\
+30              & 61032              & 17.90 \\
+31              & 60926              & 17.84 \\
+32              & 60816              & 17.83 \\
+33              & 13022              & 20.77 \\
+34              & 13022              & 20.83 \\
+35              & 13018              & 19.65 \\
 \hline
 \end{tabular}
-\caption{\footnotesize Total number of overlaps used in minimization, and final pixel-weighted averages of best-fit dark current offsets in each layer ($D$), for HPFs imaged using the Vectra 3.0 microscope.}
+\caption{\footnotesize Total number of overlaps used in minimization, and final pixel-weighted averages of best-fit dark current offsets in each layer ($D_{m}$), for HPFs imaged using the Vectra 3.0 microscope.}
 \label{tab:best_offsets_vectra}
 \end{table}
 
@@ -402,52 +402,54 @@ Image layer & Number of overlaps & Overall best $D$ \\
 \begin{table}[!htb]
 \centering
 \begin{tabular}{c c c}
-Image layer & Number of overlaps & Overall best $D$ \\
+Image layer $m$ & Number of overlaps & Overall best $D_{m}$ \\
 \hline
-1           & 8944               & 56.55 \\
-2           & 8944               & 60.15 \\
-3           & 8944               & 60.41 \\
-4           & 8942               & 59.02 \\
-5           & 8942               & 57.43 \\
-6           & 8942               & 55.92 \\
-7           & 8944               & 54.06 \\
-8           & 8942               & 53.08 \\
-9           & 8942               & 51.31 \\
-12          & 53598              & 49.76 \\
-13          & 53690              & 52.44 \\
-14          & 53702              & 54.76 \\
-15          & 53706              & 56.19 \\
-16          & 53724              & 56.25 \\
-17          & 53760              & 55.11 \\
-18          & 3416               & 51.01 \\
-19          & 3416               & 52.52 \\
-20          & 3416               & 52.01 \\
-21          & 33336              & 50.06 \\
-22          & 33452              & 50.60 \\
-23          & 33474              & 50.52 \\
-24          & 33470              & 50.26 \\
-25          & 33458              & 50.37 \\
-26          & 33446              & 50.14 \\
-27          & 33446              & 50.43 \\
-28          & 33440              & 50.47 \\
-29          & 33422              & 50.70 \\
-30          & 35330              & 49.84 \\
-31          & 35386              & 50.65 \\
-32          & 35374              & 50.53 \\
-33          & 35350              & 50.56 \\
-34          & 35346              & 50.29 \\
-35          & 35330              & 50.51 \\
-36          & 35300              & 50.48 \\
-37          & 18596              & 50.00 \\
-38          & 22158              & 50.19 \\
-39          & 22214              & 50.99 \\
-40          & 22262              & 50.80 \\
-41          & 22272              & 50.24 \\
-42          & 22256              & 50.01 \\
-43          & 22210              & 49.71 \\
+1               & 8944               & 56.55 \\
+2               & 8944               & 60.15 \\
+3               & 8944               & 60.41 \\
+4               & 8942               & 59.02 \\
+5               & 8942               & 57.43 \\
+6               & 8942               & 55.92 \\
+7               & 8944               & 54.06 \\
+8               & 8942               & 53.08 \\
+9               & 8942               & 51.31 \\
+10              & n/a                & n/a   \\
+11              & n/a                & n/a   \\
+12              & 53598              & 49.76 \\
+13              & 53690              & 52.44 \\
+14              & 53702              & 54.76 \\
+15              & 53706              & 56.19 \\
+16              & 53724              & 56.25 \\
+17              & 53760              & 55.11 \\
+18              & 3416               & 51.01 \\
+19              & 3416               & 52.52 \\
+20              & 3416               & 52.01 \\
+21              & 33336              & 50.06 \\
+22              & 33452              & 50.60 \\
+23              & 33474              & 50.52 \\
+24              & 33470              & 50.26 \\
+25              & 33458              & 50.37 \\
+26              & 33446              & 50.14 \\
+27              & 33446              & 50.43 \\
+28              & 33440              & 50.47 \\
+29              & 33422              & 50.70 \\
+30              & 35330              & 49.84 \\
+31              & 35386              & 50.65 \\
+32              & 35374              & 50.53 \\
+33              & 35350              & 50.56 \\
+34              & 35346              & 50.29 \\
+35              & 35330              & 50.51 \\
+36              & 35300              & 50.48 \\
+37              & 18596              & 50.00 \\
+38              & 22158              & 50.19 \\
+39              & 22214              & 50.99 \\
+40              & 22262              & 50.80 \\
+41              & 22272              & 50.24 \\
+42              & 22256              & 50.01 \\
+43              & 22210              & 49.71 \\
 \hline
 \end{tabular}
-\caption{\footnotesize Total number of overlaps used in minimization, and final pixel-weighted averages of best-fit dark current offsets in each layer ($D$), for HPFs imaged using the Vectra Polaris microscope.}
+\caption{\footnotesize Total number of overlaps used in minimization, and final pixel-weighted averages of best-fit dark current offsets in each layer ($D_{m}$), for HPFs imaged using the Vectra Polaris microscope. Layers 10 and 11 of all HPFs were imaged with the same exposure time, so correction offsets were not measured for these layers.}
 \label{tab:best_offsets_polaris}
 \end{table}
 
@@ -461,7 +463,7 @@ An important step in the procedure for measuring the flatfield correction factor
 
 As detailed in \cite{flatfielding_note}, background thresholds are found individually for every layer of every HPF that is located on the edge of the tissue in a given sample, and the final thresholds used to mask out background are the means of the individual thresholds found. When there is a large degree of variability in how long the HPF layers on the edges of the tissue are exposed, the individual measurements are less consistent with one another, and the resulting background threshold does not work equally well for all images. Correcting the image layers for differences in exposure time greatly ameliorates this issue.
 
-Several examples illustrating this are shown in Figures~\ref{fig:background_threshold_impact_vectra_layer_5}-\ref{fig:background_threshold_impact_vectra_layer_29}. In these figures, the left column shows the distributions of the individual HPF thresholds found, the center column shows the summed histogram of all of these HPFs' pixels (with background in blue and signal in orange) on a log scale, and the right column shows a portion of that pixel histogram that is near the threshold used on a linear scale, again with background in blue and signal in orange. In each figure, the top row shows thresholding results without corrections for exposure time, and the bottom row shows them after application of the corrections. Applying corrections for exposure time differences in many cases improves the regularity of both the background and signal pixel count distributions. The resulting image masks better select fluorescent tissue, and behave similarly for all images in the sample, rather than over-selecting underexposed images and/or under-selecting overexposed images as is the case when no corrections for exposure time are applied.
+Several examples illustrating this are shown in Figures~\ref{fig:background_threshold_impact_vectra_layer_5}-\ref{fig:background_threshold_impact_polaris_layer_33}. In these figures, the left column shows the distributions of the individual HPF thresholds found, the center column shows the summed histogram of all of these HPFs' pixels (with background in blue and signal in orange) on a log scale, and the right column shows a portion of that pixel histogram that is near the threshold used on a linear scale, again with background in blue and signal in orange. In each figure, the top row shows thresholding results without corrections for exposure time, and the bottom row shows them after application of the corrections. Applying corrections for exposure time differences in many cases improves the regularity of both the background and signal pixel count distributions. The resulting image masks better select fluorescent tissue, and behave similarly for all images in the sample, rather than over-selecting underexposed images and/or under-selecting overexposed images as is the case when no corrections for exposure time are applied.
 
 \begin{figure}[!ht]
 \centering
@@ -495,53 +497,37 @@ Several examples illustrating this are shown in Figures~\ref{fig:background_thre
 \label{fig:background_threshold_impact_vectra_layer_29}
 \end{figure}
 
-%\begin{figure}[!ht]
-%\centering
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
-%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 5 of the Vectra Polaris sample ---}
-%\label{fig:background_threshold_impact_polaris_layer_5}
-%\end{figure}
-%
-%\begin{figure}[!ht]
-%\centering
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
-%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 14 of the Vectra Polaris sample ---}
-%\label{fig:background_threshold_impact_polaris_layer_14}
-%\end{figure}
-%
-%\begin{figure}[!ht]
-%\centering
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
-%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 19 of the Vectra Polaris sample ---}
-%\label{fig:background_threshold_impact_polaris_layer_19}
-%\end{figure}
-%
-%\begin{figure}[!ht]
-%\centering
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
-%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 25 of the Vectra Polaris sample ---}
-%\label{fig:background_threshold_impact_polaris_layer_25}
-%\end{figure}
-%
-%\begin{figure}[!ht]
-%\centering
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
-%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 33 of the Vectra Polaris sample ---}
-%\label{fig:background_threshold_impact_polaris_layer_33}
-%\end{figure}
-%
-%\begin{figure}[!ht]
-%\centering
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/}
-%\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/}
-%\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 40 of the Vectra Polaris sample ---}
-%\label{fig:background_threshold_impact_polaris_layer_40}
-%\end{figure}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/YX10_layer_5_background_threshold_plots}
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/YX10_layer_5_background_threshold_plots}
+\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 5 of the Vectra Polaris sample \texttt{YX10}.}
+\label{fig:background_threshold_impact_polaris_layer_5}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/YY17_layer_15_background_threshold_plots}
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/YY17_layer_15_background_threshold_plots}
+\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 14 of the Vectra Polaris sample \texttt{YY17}.}
+\label{fig:background_threshold_impact_polaris_layer_15}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/YZ57_layer_25_background_threshold_plots}
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/YZ57_layer_25_background_threshold_plots}
+\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 25 of the Vectra Polaris sample \texttt{YZ57}.}
+\label{fig:background_threshold_impact_polaris_layer_25}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_pre_correction/YY25_layer_33_background_threshold_plots}
+\includegraphics[width=0.95\textwidth]{images/results/thresholding_post_correction/YY25_layer_33_background_threshold_plots}
+\caption{\footnotesize Left column: background thresholds found for tissue edge HPFs. Center column: pixel histogram summed over all tissue edge HPFs, with background in blue and signal in orange. Right column: portion of pixel histogram near the final background threshold. Plots in the upper row represent findings without corrections for difference in exposure time applied, and plots in the lower row show the same after correction for exposure time. All data are from HPFs in layer 33 of the Vectra Polaris sample \texttt{YY25}.}
+\label{fig:background_threshold_impact_polaris_layer_33}
+\end{figure}
 
 \clearpage
 
