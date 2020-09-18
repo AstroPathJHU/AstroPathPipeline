@@ -22,7 +22,7 @@ class OverlapCorrectionResult :
     sample         : str
     layer_n        : int
     overlap_n      : int
-    n_pixels       : int
+    n_pixels       : float
     et_diff        : float
     raw_cost       : float
     raw_diff       : float
