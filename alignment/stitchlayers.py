@@ -9,7 +9,7 @@ from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 def stitchlayers(*args, usecvxpy=False, **kwargs):
   return (__stitchlayerscvxpy if usecvxpy else __stitchlayers)(*args, **kwargs)
 
-def __stitchlayers(*, overlaps, eliminatelayer=0, logger=dummylogger):
+def __stitchlayers(*, overlaps, eliminatelayer=0, filteroverlaps=lambda o: True, logger=dummylogger):
   layers = sorted(set.union(*(set(o.layers) for o in overlaps)))
   size = 2*len(layers)-2  #2* for x and y, - 2 for global shift
   A = np.zeros(shape=(size, size), dtype=units.unitdtype)
@@ -19,7 +19,7 @@ def __stitchlayers(*, overlaps, eliminatelayer=0, logger=dummylogger):
   ld[layers[eliminatelayer]] = None
 
   alloverlaps = overlaps
-  overlaps = [o for o in overlaps if not o.result.exit]
+  overlaps = [o for o in overlaps if filteroverlaps(o) and not o.result.exit]
   for o in overlaps[:]:
     hasinverse = any(o.p1 == oo.p1 and o.p2 == oo.p2 and (oo.layer2, oo.layer1) == (o.layer1, o.layer2) for oo in overlaps)
     if ld[o.layer1] is None:
