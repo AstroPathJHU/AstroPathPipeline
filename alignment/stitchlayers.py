@@ -226,6 +226,10 @@ class LayerStitchResultBase(OverlapCollection):
     writetable(positionfilename, self.layerpositions, **kwargs)
     writetable(covariancefilename, self.layerpositioncovariances, **kwargs)
 
+  def applytooverlaps(self):
+    for o in self.overlaps:
+      o.stitchresult = self.dx(o)
+
 class LayerStitchResult(LayerStitchResultBase):
   def __init__(self, *args, A, b, c, **kwargs):
     self.A = A

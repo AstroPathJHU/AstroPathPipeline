@@ -43,6 +43,7 @@ class AlignLayersBase(AlignmentSetBase, ReadRectanglesBase):
   def dostitching(self, **kwargs):
     return stitchlayers(overlaps=self.overlaps, logger=self.logger, **kwargs)
   def applystitchresult(self, result):
+    result.applytooverlaps()
     self.stitchresult = result
 
 class AlignLayers(AlignLayersBase, AlignmentSet):
