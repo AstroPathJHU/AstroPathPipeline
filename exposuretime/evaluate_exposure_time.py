@@ -207,6 +207,7 @@ def main() :
                     if not proc.is_alive() :
                         proc.join()
                         delete_p = procs.pop(procs.index(proc))
+                        delete_p = delete_p
                         del delete_p
                 time.sleep(10)
         for proc in procs :
