@@ -7,7 +7,7 @@ from ..utilities.img_file_io import getSampleMedianExposureTimesByLayer, getImag
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
-import os, scipy.stats
+import os
 
 units.setup('fast')
 
@@ -96,9 +96,9 @@ class FlatfieldSample() :
                 os.mkdir(this_samp_threshold_plotdir_name)
         #first find the filepaths corresponding to the edges of the tissue in the samples
         flatfield_logger.info(f'Finding tissue edge HPFs for sample {self._name}...')
-        tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,self._metadata_top_dir,plotdir_path)
+        tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,plotdir_path)
         #chunk them together to be read in parallel
-        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self._img_dims,n_threads,self._metadata_top_dir)
+        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self._img_dims,n_threads)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
         flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self._name}...')
         nbins=np.iinfo(np.uint16).max+1
@@ -146,34 +146,40 @@ class FlatfieldSample() :
             this_layer_thresholds=this_layer_thresholds[this_layer_thresholds!=0]
             this_layer_thresholds=np.sort(this_layer_thresholds)
             med = int(round(np.median(this_layer_thresholds)))
-            mean = int(round(np.mean(this_layer_thresholds)))
-            mode,_ = scipy.stats.mode(this_layer_thresholds)
-            mode=int(round(mode[0]))
-            low_percentile_by_layer.append(this_layer_thresholds[int(round(0.1*len(this_layer_thresholds)))])
-            high_percentile_by_layer.append(this_layer_thresholds[int(round(0.9*len(this_layer_thresholds)))])
+            mean = int(round(np.mean(this_layer_thresholds)))                
+            low_percentile_by_layer.append(this_layer_thresholds[int(0.1*len(this_layer_thresholds))])
+            high_percentile_by_layer.append(this_layer_thresholds[int(0.9*len(this_layer_thresholds))])
             self._background_thresholds_for_masking.append(mean)
             flatfield_logger.info(f'  threshold for layer {li+1} found at {self._background_thresholds_for_masking[li]}')
             with cd(plotdir_path) :
-                f,(ax1,ax2) = plt.subplots(1,2,figsize=(2*6.4,4.6))
+                f,(ax1,ax2,ax3) = plt.subplots(1,3,figsize=(3*6.4,4.6))
                 max_threshold_found = np.max(this_layer_thresholds)
-                ax1.hist(this_layer_thresholds,max_threshold_found+11,(0,max_threshold_found+11))
-                ax1.plot([mode,mode],[0.8*y for y in ax1.get_ylim()],linewidth=2,color='c',label=f'mode={mode}')
+                ax1.hist(this_layer_thresholds,max_threshold_found+11,(0,max_threshold_found+11))            
                 ax1.plot([mean,mean],[0.8*y for y in ax1.get_ylim()],linewidth=2,color='m',label=f'mean={mean}')
                 ax1.plot([med,med],[0.8*y for y in ax1.get_ylim()],linewidth=2,color='r',label=f'median={med}')
                 ax1.set_title(f'optimal thresholds for images in layer {li+1}')
-                ax1.set_xlabel('pixel flux')
+                ax1.set_xlabel('pixel flux (counts)')
                 ax1.set_ylabel('n images')
                 ax1.legend(loc='best')
                 ax2.bar(list(range(mean+1)),all_tissue_edge_layer_hists[:mean+1,li],width=1.0,label='background')
-                right_plot_limit = min(max_threshold_found,int(1.5*mean))+100
-                ax2.bar(list(range(mean+1,right_plot_limit)),all_tissue_edge_layer_hists[mean+1:right_plot_limit,li],width=1.0,label='signal')
-                ax2.plot([mode,mode],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='c',label=f'mode={mode}')
-                ax2.plot([mean,mean],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='m',label=f'mean={mean}')
-                ax2.plot([med,med],[0.8*y for y in ax2.get_ylim()],linewidth=2,color='r',label=f'median={med}')
-                ax2.set_title('partial pixel histogram (summed over all images)')
-                ax2.set_xlabel('pixel flux')
+                right_bin = len(all_tissue_edge_layer_hists[:,li])-1
+                while all_tissue_edge_layer_hists[right_bin,li]==0 :
+                    right_bin-=1
+                ax2.bar(list(range(mean+1,right_bin+1)),all_tissue_edge_layer_hists[mean+1:right_bin+1,li],width=1.0,label='signal')
+                ax2.set_yscale('log')
+                ax2.set_title('pixel histogram (summed over all images)')
+                ax2.set_xlabel('pixel flux (counts)')
                 ax2.set_ylabel('n image pixels')
                 ax2.legend(loc='best')
+                ax3.bar(list(range(mean+1)),all_tissue_edge_layer_hists[:mean+1,li],width=1.0,label='background')
+                right_plot_limit = min(max_threshold_found,int(1.5*mean))+100
+                ax3.bar(list(range(mean+1,right_plot_limit)),all_tissue_edge_layer_hists[mean+1:right_plot_limit,li],width=1.0,label='signal')            
+                ax3.plot([mean,mean],[0.8*y for y in ax3.get_ylim()],linewidth=2,color='m',label=f'mean={mean}')
+                ax3.plot([med,med],[0.8*y for y in ax3.get_ylim()],linewidth=2,color='r',label=f'median={med}')
+                ax3.set_title('partial pixel histogram')
+                ax3.set_xlabel('pixel flux (counts)')
+                ax3.set_ylabel('n image pixels')
+                ax3.legend(loc='best')
                 plt.savefig(f'{self._name}_layer_{li+1}_background_threshold_plots.png')
                 plt.close()
         #make a little plot of the threshold min/max and final values by layer
@@ -184,7 +190,7 @@ class FlatfieldSample() :
             plt.plot(xvals,self._background_thresholds_for_masking,marker='o',color='k',linewidth=2,label='optimal (mean) thresholds')
             plt.title('Thresholds chosen from tissue edge HPFs by image layer')
             plt.xlabel('image layer')
-            plt.ylabel('pixel flux')
+            plt.ylabel('pixel flux (counts)')
             plt.legend(loc='best')
             plt.savefig(f'{self._name}_background_thresholds_by_layer.png')
             plt.close()

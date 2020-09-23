@@ -20,7 +20,7 @@ if __name__=='__main__' :
     #group for options of how the images whould be processed
     image_processing_group = parser.add_argument_group('fit options', 'how should the fit be done?')
     image_processing_group.add_argument('--smooth_sigma',         default=3., type=float,
-                                        help='Minimization stops when the projected gradient is less than this')
+                                        help='sigma (in pixels) for initial Gaussian blur of images')
     image_processing_group.add_argument('--use_whole_image', action='store_true',
                                         help='Add this flag to use the entire images rather than the outer 50%% of each overlap')
     #group for options of how the fits will proceed

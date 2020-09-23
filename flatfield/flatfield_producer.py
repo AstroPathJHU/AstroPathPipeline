@@ -50,7 +50,7 @@ class FlatfieldProducer :
             elif img_dims!=ff_sample.img_dims :
                 raise FlatFieldError('ERROR: samples do not all share the same dimensions!')
         #Start up a new mean image to use for making the actual flatfield
-        self.mean_image = MeanImage(img_dims,workingdir_name,skip_masking,skip_et_correction)
+        self.mean_image = MeanImage(img_dims,workingdir_name,skip_et_correction,skip_masking)
         #Set up the exposure time correction offsets by layer
         self._et_correction_offsets = []
         for li in range(img_dims[-1]) :
@@ -151,7 +151,7 @@ class FlatfieldProducer :
             else :
                 med_exp_times_by_layer = None
             #break the list of this sample's filepaths into chunks to run in parallel
-            fileread_chunks = chunkListOfFilepaths(this_samp_fps_to_run,samp.img_dims,n_threads,samp.metadata_top_dir)
+            fileread_chunks = chunkListOfFilepaths(this_samp_fps_to_run,samp.img_dims,n_threads)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
             for fr_chunk in fileread_chunks :
                 if len(fr_chunk)<1 :
