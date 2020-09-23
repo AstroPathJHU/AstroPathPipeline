@@ -7,7 +7,7 @@ from ..utilities.img_file_io import getSampleMedianExposureTimesByLayer, getImag
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
-import os, scipy.stats
+import os
 
 units.setup('fast')
 
