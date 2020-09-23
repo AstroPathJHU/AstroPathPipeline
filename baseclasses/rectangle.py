@@ -1,4 +1,4 @@
-import abc, collections, contextlib, dataclasses, datetime, methodtools, numpy as np, pathlib, warnings
+import abc, collections, contextlib, dataclasses, datetime, jxmlease, methodtools, numpy as np, pathlib, warnings
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, memmapcontext
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
@@ -162,7 +162,7 @@ class RectangleReadImageBase(RectangleWithImageBase):
     return image
 
 class RectangleWithImageMultiLayer(RectangleReadImageBase):
-  def __init__(self, *args, imagefolder, filetype, width, height, layers, nlayers, **kwargs):
+  def __init__(self, *args, imagefolder, filetype, width, height, layers, nlayers, xmlfolder=None, **kwargs):
     super().__init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__filetype = filetype
@@ -170,6 +170,7 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
     self.__height = height
     self.__nlayers = nlayers
     self.__layers = layers
+    self.__xmlfolder = xmlfolder
 
   @property
   def imageshape(self):
@@ -205,6 +206,38 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
   @property
   def layers(self):
     return self.__layers
+
+  @property
+  def xmlfile(self):
+    if self.__xmlfolder is None:
+      raise ValueError("Can't get xml info if you don't provide the rectangle with an xml folder")
+    return self.__xmlfolder/self.file.replace(".im3", ".SpectralBasisInfo.Exposure.xml")
+
+  @methodtools.lru_cache()
+  @property
+  def __allexposuretimesandbroadbandfilters(self):
+    result = []
+    with open(self.xmlfile, "rb") as f:
+      broadbandfilter = 0
+      for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
+        if node.xml_attrs["name"] == "Exposure":
+          thisbroadbandfilter = [float(_) for _ in str(node).split()]
+          #sanity check
+          assert len(thisbroadbandfilter) == int(node.get_xml_attr("size"))
+          broadbandfilter += 1
+          for exposuretime in thisbroadbandfilter:
+            result.append((exposuretime, broadbandfilter))
+    return result
+
+  @property
+  def exposuretimes(self):
+    all = self.__allexposuretimesandbroadbandfilters
+    return [all[layer-1][0] for layer in self.layers]
+
+  @property
+  def broadbandfilters(self):
+    all = self.__allexposuretimesandbroadbandfilters
+    return [all[layer-1][1] for layer in self.layers]
 
 class RectangleWithImage(RectangleWithImageMultiLayer):
   def __init__(self, *args, layer, readlayerfile=True, **kwargs):
@@ -261,6 +294,15 @@ class RectangleWithImage(RectangleWithImageMultiLayer):
       return 0, slice(None), slice(None)
     else:
       return self.layer-1, slice(None), slice(None)
+
+  @property
+  def exposuretime(self):
+    _, = self.exposuretimes
+    return _
+  @property
+  def broadbandfilter(self):
+    _, = self.broadbandfilters
+    return _
 
 class RectangleCollection(abc.ABC):
   @abc.abstractproperty

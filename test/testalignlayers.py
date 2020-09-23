@@ -74,3 +74,8 @@ class TestAlignLayers(TestBaseSaveOutput):
     targetrows = readtable(readfilename, LayerAlignmentResult, extrakwargs={"pscale": a.pscale})
     for row, target in itertools.zip_longest(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
+
+  def testBroadbandFilters(self, SlideID="M21_1"):
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=(17,), use_mean_image=False)
+    r = a.rectangles[0]
+    np.testing.assert_array_equal(r.broadbandfilters, [1]*9+[2]*9+[3]*7+[4]*7+[5]*3)

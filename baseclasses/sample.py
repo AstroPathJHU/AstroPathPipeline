@@ -305,6 +305,7 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
       "filetype": self.filetype,
       "width": self.fwidth,
       "height": self.fheight,
+      "xmlfolder": self.xmlfolder,
     }
     if self.multilayer:
       kwargs.update({
