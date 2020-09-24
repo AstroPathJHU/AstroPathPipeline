@@ -376,10 +376,10 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
     return self.__layers
 
 class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
-  def readallrectangles(self):
-    return self.readcsv("rect", self.rectangletype, extrakwargs=self.rectangleextrakwargs)
-  def readalloverlaps(self):
-    return self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs=self.overlapextrakwargs)
+  def readallrectangles(self, **extrakwargs):
+    return self.readcsv("rect", self.rectangletype, extrakwargs={**self.rectangleextrakwargs, **extrakwargs})
+  def readalloverlaps(self, **extrakwargs):
+    return self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
 
 class XMLLayoutReader(SampleThatReadsOverlaps):
   def __init__(self, *args, checkim3s=False, **kwargs):
@@ -484,8 +484,8 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
     return overlaps
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
-  def readallrectangles(self):
+  def readallrectangles(self, **extrakwargs):
     rectangles = self.getrectanglelayout()
-    return [self.rectangletype(rectangle=r, readingfromfile=False, **self.rectangleextrakwargs) for r in rectangles]
+    return [self.rectangletype(rectangle=r, readingfromfile=False, **self.rectangleextrakwargs, **extrakwargs) for r in rectangles]
   def readalloverlaps(self):
     return self.getoverlaps()

@@ -24,7 +24,7 @@ class AlignmentOverlap(Overlap):
 
   def __hash__(self):
     if not self.ismultilayer: return super().__hash__()
-    return hash(super().__hash__(), self.layers)
+    return hash((super().__hash__(), self.layers))
   def __eq__(self, other):
     return super().__eq__(other) and self.layers == other.layers
 
@@ -166,8 +166,11 @@ class AlignmentOverlap(Overlap):
       })
     return result
 
+  def isinverseof(self, inverse):
+    return (inverse.p1, inverse.p2) == (self.p2, self.p1) and inverse.layers == tuple(reversed(self.layers))
+
   def getinversealignment(self, inverse):
-    assert (inverse.p1, inverse.p2) == (self.p2, self.p1) and inverse.layers == tuple(reversed(self.layers))
+    assert self.isinverseof(inverse)
     self.result = AlignmentResult(
       exit = inverse.result.exit,
       dxvec = -inverse.result.dxvec,
