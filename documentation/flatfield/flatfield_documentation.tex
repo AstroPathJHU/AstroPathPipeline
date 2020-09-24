@@ -76,7 +76,7 @@ Focus then shifted to correcting illumination variations in images in the raw IM
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textwidth]{images/introduction/second_flatfield_image_layers}
+\includegraphics[width=0.95\textwidth]{images/introduction/second_flatfield_image_layers}
 \caption{\footnotesize Selected layers of the flatfield image from \cite{Alex_flatfielding_2}, stretched from minimum to maximum mean-normalized flux, in the first, middle, and last layer of each broadband filter region as labeled. The patterns are fairly consistent between each broadband filter break. Layer 26, the first layer in the Texas Red region, was not brightly illuminated for the melanoma tissue samples used, and represents an outlier in this and other investigations.}
 \label{fig:second_flatfielding}
 \end{figure}
@@ -265,53 +265,14 @@ This cut on the fraction of selected pixels reduces the phenomenon of overselect
 \label{fig:selected_pixel_fraction_cut_2}
 \end{figure} 
 
-These requirements on the images and their masked layers define a total number of HPFs from all samples to be stacked in each layer, $N_{m}$. \reftab{tab:n_images_stacked_by_layer_vectra} lists $N_{m}$ for the total set of Vectra 3.0 samples used to make the flatfield correction image, which consists of 21,006 initial HPFs, reduced to 17,613 HPFs after removing those on the edges of the tissue. The average $N_{m}$ across all layers was 9,898.
+These requirements on the images and their masked layers define a total number of HPFs from all samples to be stacked in each layer, $N_{m}$. \reffig{fig:n_images_stacked_by_layer} shows this $N_{m}$ for the total set of Vectra 3.0 samples used to make the flatfield correction image, which consists of 21,006 initial HPFs, reduced to 17,613 HPFs after removing those on the edges of the tissue. The average $N_{m}$ across all layers was 9,898.
 
-\begin{table}[!htb]
+\begin{figure}[!ht]
 \centering
-\begin{tabular}{c c}
-Image layer $m$ & Number of HPFs stacked $N_{m}$ \\
-\hline
-1               & 9569 \\
-2               & 10484 \\
-3               & 10710 \\
-4               & 10836 \\
-5               & 10870 \\
-6               & 10681 \\
-7               & 10486 \\
-8               & 10133 \\
-9               & 9904 \\
-10              & 10908 \\
-11              & 11189 \\
-12              & 10944 \\
-13              & 10630 \\
-14              & 10426 \\
-15              & 9759 \\
-16              & 9527 \\
-17              & 9277 \\
-18              & 8100 \\
-19              & 9045 \\
-20              & 10220 \\
-21              & 10155 \\
-22              & 10110 \\
-23              & 9951 \\
-24              & 9549 \\
-25              & 9011 \\
-26              & 1469 \\
-27              & 9350 \\
-28              & 10544 \\
-29              & 10926 \\
-30              & 10821 \\
-31              & 10447 \\
-32              & 9827 \\
-33              & 10482 \\
-34              & 10463 \\
-35              & 9643 \\
-\hline
-\end{tabular}
-\caption{\footnotesize Number of HPFs selected to be stacked in each layer for measuring the Vectra 3.0 microscope flatfield correction model.}
-\label{tab:n_images_stacked_by_layer_vectra}
-\end{table}
+\includegraphics[width=0.98\textwidth]{images/measuring_flatfield_corrections/n_images_stacked_per_layer_vectra}
+\caption{\footnotesize Number of images $N_{m}$ selected to be stacked in each layer for the set of 21,006 initial HPFs from 43 Vectra 3.0 samples.}
+\label{fig:n_images_stacked_by_layer}
+\end{figure}
 
 The previously-defined image and mask tensors $I$ and $M$ can be collected over the whole image set using a new index $\eta=1,\ldots,N_{m}$. The sum of all the masks, $\Mu_{ijm} = \sum_{\eta=1}^{N_{m}} M^{\eta}_{ijm}$ is shown in \reffig{fig:mask_stack_layers} for the first, middle, and last layers in each broadband filter region. A small bias toward selecting the lower right hand corners of the images remains in some cases. 
 
@@ -336,12 +297,12 @@ The previously-defined image and mask tensors $I$ and $M$ can be collected over 
 \label{fig:mask_stack_layers}
 \end{figure}
 
-Only the central 64\% of each fully-corrected HPF is used when pathology analyses are eventually performed, because the outer 20\% of each image's sides are used to determine the alignment and stitching of the individual HPFs to represent an entire sample \cite{Heshy}. Clipping 10\% from all sides of the image layers slightly reduces the edge effects apparent in $\Mu_{ijm}$. \reffig{fig:removing_image_edges_effect_on_mask_stacks} shows how the maximum, minimum, 5th and 95th percentile, and standard deviation of the number of masks stacked in each layer relative to the layer mean changes when the outer 36\% of the image layers are removed. The spread from the 5th to 95th percentile of the number of images stacked divided by the layer mean decreases from 2.3\% to 1.6\% on average over all layers, and the standard deviation of the number of images stacked divided by the layer mean decreases from 0.72\% to 0.49\% on average over all layers, showing that the masking and image layer selection procedures ultimately result in only very small differences in how many images contribute to measurements of the illumination variation at any point, and that those variations are even smaller in the region of interest.
+Only the central 64\% of each fully-corrected HPF is used when pathology analyses are eventually performed, because the outer 20\% of each image's sides are used to determine the alignment and stitching of the individual HPFs to represent an entire sample \cite{Heshy}. Clipping 10\% from all sides of the image layers slightly reduces the edge effects apparent in $\Mu_{ijm}$. \reffig{fig:removing_image_edges_effect_on_mask_stacks} shows how the 5th and 95th percentile and standard deviation of the number of masks stacked in each layer relative to the layer mean changes when the outer 36\% of the image layers are removed. The spread from the 5th to 95th percentile of the number of images stacked divided by the layer mean decreases from 2.5\% to 1.9\% on average over all layers, and the standard deviation of the number of images stacked divided by the layer mean decreases from 0.78\% to 0.58\% on average over all layers, showing that the masking and image layer selection procedures ultimately result in only very small differences in how many images contribute to measurements of the illumination variation at any point, and that those variations are even smaller in the region of interest.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.90\textwidth]{images/measuring_flatfield_corrections/mask_stack_variation_reduction}
-\caption{\footnotesize Maximum, minimum, 5th and 95th percentile, and standard deviation of the number of images stacked relative to the mean in each layer computed using the full images (red lines and green shading) and only the central 64\% of interest (blue lines and orange shading). The relative variation in the number of images stacked is smaller in the central region of interest.}
+\includegraphics[width=0.98\textwidth]{images/measuring_flatfield_corrections/mask_stack_variation_reduction_vectra}
+\caption{\footnotesize 5th and 95th percentile and standard deviation of the number of images stacked relative to the mean in each layer computed using the full images (red lines and green shading) and only the central 64\% of interest (blue lines and orange shading). The relative variation in the number of images stacked is smaller in the central region of interest.}
 \label{fig:removing_image_edges_effect_on_mask_stacks}
 \end{figure} 
 
@@ -365,33 +326,33 @@ The flatfield image $F$ describes the systematic variations in the amount of ill
 \subsection{Flatfield images}
 \label{ssec:flatfield_images}
 
-The flatfield correction image computed from the initial set of 22,692 HPFs in 43 Vectra 3.0 samples is shown in \reffig{fig:flatfield_image_layers} for the first, middle, and last layers in each broadband filter region. The overall maximum and minimum correction factors measured are 1.13 and 0.89, respectively, both observed in layer 19. Disregarding the outer 36\% of these images has only a small effect on the scale and spread of the corrections observed, as shown in \reffig{fig:flatfield_pixel_intensities}; the overall maximum and minimum correction factors in the central regions are 1.11 and 0.90, respectively, again both observed in layer 19. The average spread in the 5th to 95th percentile correction factors is 11.9\% considering the entire images, and 11.6\% considering only the central 64\%. The average standard deviation of the correction factors is 3.8\% considering the entire images, and 3.7\% considering only the central 64\%. 
+The flatfield correction image computed from the initial set of 21,006 HPFs in 43 Vectra 3.0 samples is shown in \reffig{fig:flatfield_image_layers_vectra} for the first, middle, and last layers in each broadband filter region. The overall maximum and minimum correction factors measured are 1.12 and 0.90, respectively, both observed in layer 19. Disregarding the outer 36\% of these images has a small effect on the scale and spread of the corrections observed, as shown in \reffig{fig:flatfield_pixel_intensities}; the overall maximum and minimum correction factors in the central regions are 1.08 and 0.91, respectively, again both observed in layer 19. The average spread in the 5th to 95th percentile correction factors is 11.1\% considering the entire images, and 10.5\% considering only the central 64\%. The average standard deviation of the correction factors is 3.6\% considering the entire images, and 3.4\% considering only the central 64\%. 
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_1}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_5}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_9}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_10}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_14}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_18}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_19}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_22}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_25}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_26}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_29}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_32}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_33}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_34}
-\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers/flatfield_layer_35}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_1}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_5}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_9}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_10}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_14}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_18}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_19}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_22}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_25}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_26}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_29}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_32}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_33}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_34}
+\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers/flatfield_layer_35}
 \caption{\footnotesize Layers of the flatfield image, $F_{ijm}$, for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively.}
-\label{fig:flatfield_image_layers}
+\label{fig:flatfield_image_layers_vectra}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.90\textwidth]{images/results/flatfield_pixel_intensities}
-\caption{\footnotesize Maximum, minimum, 5th and 95th percentile, and standard deviation of the flatfield correction factors measured in each layer computed using the full images (red lines and green shading) and only the central 64\% of interest (blue lines and orange shading).}
+\includegraphics[width=0.98\textwidth]{images/results/flatfield_pixel_intensities_vectra}
+\caption{\footnotesize 5th and 95th percentile and standard deviation of the flatfield correction factors measured in each layer computed using the full images (red lines and green shading) and only the central 64\% of interest (blue lines and orange shading).}
 \label{fig:flatfield_pixel_intensities}
 \end{figure} 
 
@@ -399,157 +360,157 @@ The flatfield correction image computed from the initial set of 22,692 HPFs in 4
 \subsection{Reduction in illumination variation}
 \label{ssec:reduction_in_illumination_variation}
 
-The effects of applying the flatfield corrections are measured using an independent set of 22,692 initial HPF images from the same 43 Vectra 3.0 melanoma samples. The images in the test set are masked and selected identically to those used to produce the flatfield, to characterize the impact on the illumination of the fluorescent tissue alone. The number of images stacked in each layer of the test set is shown in \reffig{fig:test_set_n_images_stacked}; removing images on the edges of the tissue reduces the initial number of HPFs from 22,692 to 19,045, and 11,520 images are selected to be stacked on average.
+The effects of applying the flatfield corrections are measured using an independent set of 21,005 initial HPF images from the same 43 Vectra 3.0 melanoma samples. The images in the test set are masked and selected identically to those used to produce the flatfield, to characterize the impact on the illumination of the fluorescent tissue alone. The number of images stacked in each layer of the test set is shown in \reffig{fig:test_set_n_images_stacked_vectra}; removing images on the edges of the tissue reduces the initial number of HPFs from 21,005 to 19,045, and 9,987 images are selected to be stacked on average.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.80\textwidth]{images/results/n_images_stacked_per_layer_test_set}
-\caption{\footnotesize Number of images $N_{m}$ selected to be stacked in each layer for the test set of 22,692 independent initial HPFs from 43 Vectra 3.0 samples.}
-\label{fig:test_set_n_images_stacked}
+\includegraphics[width=0.98\textwidth]{images/results/n_images_stacked_per_layer_test_set_vectra}
+\caption{\footnotesize Number of images $N_{m}$ selected to be stacked in each layer for the test set of 21,005 independent initial HPFs from 43 Vectra 3.0 samples.}
+\label{fig:test_set_n_images_stacked_vectra}
 \end{figure} 
 
-The masked images are stacked, averaged, and smoothed, using the same procedure described in \refsec{sec:measuring_flatfield_corrections} to produce a mean image $\Iota$ and a smoothed mean image $G$. The smoothed mean image is shown in \reffig{fig:uncorrected_mean_image_layers} for the first, middle, and last layer in each broadband filter region. The patterns in the test image set's $G$ are very similar to those observed in the flatfield image layers shown in \reffig{fig:flatfield_image_layers}. 
+The masked images are stacked, averaged, and smoothed, using the same procedure described in \refsec{sec:measuring_flatfield_corrections} to produce a mean image $\Iota$ and a smoothed mean image $G$. The smoothed mean image is shown in \reffig{fig:uncorrected_mean_image_layers_vectra} for the first, middle, and last layer in each broadband filter region. The patterns in the test image set's $G$ are very similar to those observed in the flatfield image layers shown in \reffig{fig:flatfield_image_layers_vectra}. 
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_1}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_5}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_9}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_10}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_14}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_18}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_19}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_22}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_25}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_26}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_29}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_32}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_33}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_34}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_35}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_1}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_5}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_9}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_10}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_14}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_18}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_19}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_22}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_25}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_26}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_29}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_32}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_33}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_34}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers/smoothed_mean_image_layer_35}
 \caption{\footnotesize Layers of the test dataset smoothed mean image, $G_{ijm}$, for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively.}
-\label{fig:uncorrected_mean_image_layers}
+\label{fig:uncorrected_mean_image_layers_vectra}
 \end{figure}
 
-The flatfield corrections are applied by dividing the mean image by the flatfield image, pixel-by-pixel, to produce a corrected mean image $\Iota'_{ijm}=\Iota_{ijm}/F_{ijm}$. This layers of this corrected mean image are then smoothed with a $100$ pixel-wide Gaussian filter to produce a smoothed corrected mean image $C_{ijm}$. This $C$ image is shown in \reffig{fig:corrected_smoothed_mean_image_layers_same_scale} for the first, middle, and last layers in each broadband filter region, with the $z$-axis scales identical to those in \reffig{fig:uncorrected_mean_image_layers} to show the bulk effects of applying the flatfield corrections.
+The flatfield corrections are applied by dividing the mean image by the flatfield image, pixel-by-pixel, to produce a corrected mean image $\Iota'_{ijm}=\Iota_{ijm}/F_{ijm}$. This layers of this corrected mean image are then smoothed with a 100 pixel-wide Gaussian filter to produce a smoothed corrected mean image $C_{ijm}$. This $C$ image is shown in \reffig{fig:corrected_smoothed_mean_image_layers_same_scale_vectra} for the first, middle, and last layers in each broadband filter region, with the $z$-axis scales identical to those in \reffig{fig:uncorrected_mean_image_layers_vectra} to show the bulk effects of applying the flatfield corrections.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_1_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_5_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_9_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_10_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_14_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_18_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_19_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_22_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_25_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_26_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_29_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_32_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_33_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_34_same_scale}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_35_same_scale}
-\caption{\footnotesize Layers of the test dataset smoothed corrected mean image, $C_{ijm}$, for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively. The scales on these images are identical to those in \reffig{fig:uncorrected_mean_image_layers} to show the overall effects.}
-\label{fig:corrected_smoothed_mean_image_layers_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_1_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_5_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_9_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_10_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_14_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_18_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_19_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_22_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_25_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_26_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_29_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_32_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_33_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_34_same_scale}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_35_same_scale}
+\caption{\footnotesize Layers of the test dataset smoothed corrected mean image, $C_{ijm}$, for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively. The scales on these images are identical to those in \reffig{fig:uncorrected_mean_image_layers_vectra} to show the overall effects.}
+\label{fig:corrected_smoothed_mean_image_layers_same_scale_vectra}
 \end{figure}
 
-The flatfield corrections are, again, most relevant in the central 64\% of HPFs that are used for pathology analysis. \reffig{fig:illumination_variation_reduction} shows the minimum, maximum, 5th and 95th percentile, and standard deviation of the pixel intensity relative to the layer mean for the central region of the uncorrected smoothed mean image $G$ and the corrected smoothed mean image $C$. Applying the flatfield corrections greatly reduces the illumination variation observed in the central regions of HPFs: the average spread in the 5th to 95th percentile of the mean-normalized pixel intensity decreases from 11.2\% to 1.2\% on average over all layers, and the standard deviation of the mean-normalized pixel intensity decreases from 3.64\% to 0.37\% on average over all layers.
+The flatfield corrections are, again, most relevant in the central 64\% of HPFs that are used for pathology analysis. \reffig{fig:illumination_variation_reduction_vectra} shows the 5th and 95th percentile and standard deviation of the pixel intensity relative to the layer mean for the central region of the uncorrected smoothed mean image $G$ and the corrected smoothed mean image $C$. Applying the flatfield corrections greatly reduces the illumination variation observed in the central regions of HPFs: the average spread in the 5th to 95th percentile of the mean-normalized pixel intensity decreases from 10.6\% to 2.3\% on average over all layers, and the standard deviation of the mean-normalized pixel intensity decreases from 3.25\% to 0.71\% on average over all layers.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.90\textwidth]{images/results/illumination_variation_reduction}
-\caption{\footnotesize Maximum, minimum, 5th and 95th percentile, and standard deviation of the pixel intensity flux relative to the layer mean in the central 64\% of the uncorrected smoothed mean image $G$ (red lines and green shading) and the corrected smoothed mean image $C$ (blue lines and orange shading) determined from an independent set of HPFs from 43 samples collected with the Vectra 3.0 microscope.}
-\label{fig:illumination_variation_reduction}
+\includegraphics[width=0.98\textwidth]{images/results/illumination_variation_reduction_vectra}
+\caption{\footnotesize 5th and 95th percentile and standard deviation of pixel intensity flux relative to the layer mean in the central 64\% of the uncorrected smoothed mean image $G$ (red lines and green shading) and the corrected smoothed mean image $C$ (blue lines and orange shading) determined from an independent set of HPFs from 43 samples collected with the Vectra 3.0 microscope.}
+\label{fig:illumination_variation_reduction_vectra}
 \end{figure} 
 
-In addition to reducing the overall amount of illumination variation, applying the flatfielding corrections also greatly reduces the systematic patterns in those variations. \reffig{fig:corrected_smoothed_mean_image_layers} shows the same smoothed corrected mean image $C$ as that in \reffig{fig:corrected_smoothed_mean_image_layers_same_scale}, but with the image scales stretched from maximum to minimum. The observed patterns are distinct from those observed for the flatfield corrections (in \reffig{fig:flatfield_image_layers}) or for the uncorrected smoothed mean image (in \reffig{fig:uncorrected_mean_image_layers}), and they show less correlation between different layers contributing to the same broadband filter region.
+In addition to reducing the overall amount of illumination variation, applying the flatfielding corrections also greatly reduces the systematic patterns in those variations. \reffig{fig:corrected_smoothed_mean_image_layers_vectra} shows the same smoothed corrected mean image $C$ as that in \reffig{fig:corrected_smoothed_mean_image_layers_same_scale_vectra}, but with the image scales stretched from maximum to minimum. The observed patterns are distinct from those observed for the flatfield corrections (in \reffig{fig:flatfield_image_layers_vectra}) or for the uncorrected smoothed mean image (in \reffig{fig:uncorrected_mean_image_layers_vectra}), and they show less correlation between different layers contributing to the same broadband filter region.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_1}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_5}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_9}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_10}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_14}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_18}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_19}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_22}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_25}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_26}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_29}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_32}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_33}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_34}
-\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_35}
-\caption{\footnotesize Layers of the test dataset smoothed corrected mean image, $C_{ijm}$, for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively. The image layers shown here are identical to those in \reffig{fig:corrected_smoothed_mean_image_layers_same_scale}, but with the scales stretched from minimum to maximum to show the patterns more than the overall effects.}
-\label{fig:corrected_smoothed_mean_image_layers}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_1}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_5}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_9}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_10}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_14}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_18}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_19}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_22}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_25}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_26}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_29}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_32}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_33}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_34}
+\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers/smoothed_corrected_mean_image_layer_35}
+\caption{\footnotesize Layers of the test dataset smoothed corrected mean image, $C_{ijm}$, for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively. The image layers shown here are identical to those in \reffig{fig:corrected_smoothed_mean_image_layers_same_scale_vectra}, but with the scales stretched from minimum to maximum to show the patterns more than the overall effects.}
+\label{fig:corrected_smoothed_mean_image_layers_vectra}
 \end{figure}
 
 %%%%%%%%%%% Impact of masking subsection
 \subsection{Impact of masking}
 \label{ssec:impact_of_masking}
 
-To illustrate the improvement provided by masking and selecting images for tissue content, the flatfield corrections were also measured and applied using the same sets of images as above, but with the difference that every image was allowed to contribute all of its pixels instead of discarding any images appearing on the edges of tissue or showing less than 80\% tissue as masked. The flatfield image layers computed using the unmasked set of images are visually very similar to those shown in \reffig{fig:flatfield_image_layers}, with a few specific differences. \reffig{fig:masked_over_unmasked_flatfield_image_layers} shows the masked flatfield divided by the unmasked flatfield for the first, middle, and last layers contributing to each broadband filter region. The major difference is that the unmasked flatfield corrections tend to be larger in scale overall, especially in the lower right hand corners of the images. The maximum and minimum correction factors in the unmasked case are 1.22 and 0.89, respectively, for the entire images, and 1.14 and 0.90, respectively, for the central regions of the images.
+To illustrate the improvement provided by masking and selecting images for tissue content, the flatfield corrections were also measured and applied using the same sets of images as above, but with the difference that every image was allowed to contribute all of its pixels instead of discarding any images appearing on the edges of tissue or showing less than 80\% tissue as masked. The flatfield image layers computed using the unmasked set of images are visually very similar to those shown in \reffig{fig:flatfield_image_layers_vectra}, with a few specific differences. \reffig{fig:masked_over_unmasked_flatfield_image_layers_vectra} shows the masked flatfield divided by the unmasked flatfield for the first, middle, and last layers contributing to each broadband filter region. The major differences appear near the corners and edges: generally the unmasked flatfield correction factors tend to be larger in the lower right hand corner and smaller in the upper left hand corner. The maximum and minimum correction factors in the unmasked case are 1.23 and 0.90, respectively, for the entire images, and 1.14 and 0.91, respectively, for the central regions of the images.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_1}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_5}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_9}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_10}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_14}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_18}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_19}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_22}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_25}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_26}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_29}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_32}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_33}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_34}
-\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_35}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_1}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_5}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_9}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_10}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_14}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_18}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_19}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_22}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_25}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_26}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_29}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_32}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_33}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_34}
+\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers/masked_over_unmasked_flatfield_image_layer_35}
 \caption{\footnotesize Ratios of masked flatfield correction image layers to unmasked flatfield correction image layers for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively.}
-\label{fig:masked_over_unmasked_flatfield_image_layers}
+\label{fig:masked_over_unmasked_flatfield_image_layers_vectra}
 \end{figure}
 
-The unmasked flatfield corrections were applied to the unmasked test image set in the same way as described in \refsec{ssec:reduction_in_illumination_variation}. When no masking and image selection was performed, the central region of interest of the test dataset's mean image 5th to 95th percentile of mean-normalized pixel intensity was 12.1\% before correction and 1.5\% after correction on average over all layers, and the standard deviation was 3.95\% before correction and 0.47\% after correction on average over all layers. \reffig{fig:unmasked_illumination_variation_reduction} shows the illumination variation observed in the central image regions before and after application of unmasked flatfield corrections. These reductions in average illumination variation are slightly less than those observed for the case where images are masked and selected for tissue content. 
+The unmasked flatfield corrections were applied to the unmasked test image set in the same way as described in \refsec{ssec:reduction_in_illumination_variation}. When no masking and image selection was performed, the central region of interest of the test dataset's mean image 5th to 95th percentile of mean-normalized pixel intensity was 11.6\% before correction and 3.2\% after correction on average over all layers, and the standard deviation was 3.78\% before correction and 1.00\% after correction on average over all layers. \reffig{fig:unmasked_illumination_variation_reduction_vectra} shows the illumination variation observed in the central image regions before and after application of unmasked flatfield corrections. These reductions in average illumination variation are slightly less than those observed for the case where images are masked and selected for tissue content. 
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.90\textwidth]{images/results/unmasked_flatfield_illumination_variation_reduction}
-\caption{\footnotesize Maximum, minimum, 5th and 95th percentile, and standard deviation of the pixel intensity flux relative to the layer mean in the central 64\% of the uncorrected smoothed mean image $G$ (red lines and green shading) and the corrected smoothed mean image $C$ (blue lines and orange shading) determined from an independent set of HPFs from 43 samples collected with the Vectra 3.0 microscope without any masking or selection of images for tissue content.}
-\label{fig:unmasked_illumination_variation_reduction}
+\includegraphics[width=0.98\textwidth]{images/results/unmasked_flatfield_illumination_variation_reduction_vectra}
+\caption{\footnotesize 5th and 95th percentile and standard deviation of the pixel intensity flux relative to the layer mean in the central 64\% of the uncorrected smoothed mean image $G$ (red lines and green shading) and the corrected smoothed mean image $C$ (blue lines and orange shading) determined from an independent set of HPFs from 43 samples collected with the Vectra 3.0 microscope without any masking or selection of images for tissue content.}
+\label{fig:unmasked_illumination_variation_reduction_vectra}
 \end{figure} 
 
-The smoothed corrected mean image in the unmasked case is shown in \reffig{fig:unmasked_smoothed_corrected_mean_image_layers} for the first, middle, and last layers contributing to each broadband filter region. Compared to the image layers shown in \reffig{fig:corrected_smoothed_mean_image_layers}, the unmasked case results in slightly more systematic patterns of remaining illumination variation. Also interesting to note is the lower overall values of the average illumination flux in every image layer, due to the inclusion of so much dim background.
+The smoothed corrected mean image in the unmasked case is shown in \reffig{fig:unmasked_smoothed_corrected_mean_image_layers_vectra} for the first, middle, and last layers contributing to each broadband filter region. Compared to the image layers shown in \reffig{fig:corrected_smoothed_mean_image_layers_vectra}, the unmasked case results in slightly more systematic patterns of remaining illumination variation. Also interesting to note is the lower overall values of the average illumination flux in every image layer, due to the inclusion of so much dim background.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_1}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_5}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_9}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_10}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_14}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_18}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_19}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_22}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_25}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_26}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_29}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_32}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_33}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_34}
-\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_35}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_1}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_5}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_9}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_10}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_14}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_18}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_19}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_22}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_25}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_26}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_29}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_32}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_33}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_34}
+\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers/unmasked_smoothed_corrected_mean_image_layer_35}
 \caption{\footnotesize Layers of the unmasked test dataset's smoothed corrected mean image for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively.}
-\label{fig:unmasked_smoothed_corrected_mean_image_layers}
+\label{fig:unmasked_smoothed_corrected_mean_image_layers_vectra}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SUMMARY SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Summary}
 \label{sec:summary}
 
-The Astropath group has developed a method for correcting systematic variations in the illumination of multiplexed microscope HPF images. The method is optimized for application to the fluorescent tissue only, and the measured corrections are minimally biased to illumination variation observed in the background of the images. A set of 45,384 total HPFs from 43 slides of melanoma tissue imaged using the Vectra 3.0 digital microscope was split into two random groups for independently measuring and testing application of the corrections. The average variation in each layer's mean-normalized 5th to 95th percentile flux decreased from 11.2\% to 1.2\% upon application of the measured corrections, and the average variation in the standard deviation of the mean-normalized flux for each layer decreased from 3.64\% to 0.37\%. The systematic patterns in illumination were also reduced to being more random. Procedures used to mask background out of images were shown to slightly improve the reduction in illumination variation over identical methods based on entire images rather than tissue-containing regions.
+The Astropath group has developed a method for correcting systematic variations in the illumination of multiplexed microscope HPF images. The method is optimized for application to the fluorescent tissue only, and the measured corrections are minimally biased to illumination variation observed in the background of the images. A set of 42,011 total HPFs from 43 slides of melanoma tissue imaged using the Vectra 3.0 digital microscope was split into two random groups for independently measuring and testing application of the corrections. The average variation in each layer's mean-normalized 5th to 95th percentile flux decreased from 10.6\% to 2.3\% upon application of the measured corrections, and the average variation in the standard deviation of the mean-normalized flux for each layer decreased from 3.25\% to 0.71\%. The systematic patterns in illumination were also reduced to being more random. Procedures used to mask background out of images were shown to slightly improve the reduction in illumination variation over identical methods based on entire images rather than tissue-containing regions.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BIBLIOGRAPHY %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
