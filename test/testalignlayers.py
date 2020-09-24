@@ -22,7 +22,7 @@ class TestAlignLayers(TestBaseSaveOutput):
     ]
 
   def testAlignLayers(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17,), use_mean_image=False)
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False)
     a.getDAPI()
     a.align()
     a.stitch(eliminatelayer=1)
@@ -40,15 +40,15 @@ class TestAlignLayers(TestBaseSaveOutput):
       self.saveoutput()
 
   def testEliminateLayerInvariance(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17,), use_mean_image=False)
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False)
     a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
     result1 = a.stitch(eliminatelayer=0)
     result2 = a.stitch(eliminatelayer=1)
-    units.np.testing.assert_allclose(units.nominal_values(result1.x()), units.nominal_values(result2.x()))
-    units.np.testing.assert_allclose(units.covariance_matrix(np.ravel(result1.x())), units.covariance_matrix(np.ravel(result2.x())))
+    units.np.testing.assert_allclose(units.nominal_values(result1.x()), units.nominal_values(result2.x()), rtol=1e-7, atol=1e-7)
+    units.np.testing.assert_allclose(units.covariance_matrix(np.ravel(result1.x())), units.covariance_matrix(np.ravel(result2.x())), rtol=1e-7, atol=1e-7)
 
   def testStitchCvxpy(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17,), use_mean_image=False)
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False)
     a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
 
     defaultresult = a.stitch(saveresult=False, eliminatelayer=0)
@@ -64,7 +64,7 @@ class TestAlignLayers(TestBaseSaveOutput):
     )
 
   def testReadAlignlayers(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17,), use_mean_image=False)
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False)
     readfilename = thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv"
     writefilename = thisfolder/"testreadalignlayers.csv"
 
@@ -76,6 +76,6 @@ class TestAlignLayers(TestBaseSaveOutput):
       assertAlmostEqual(row, target, rtol=1e-5)
 
   def testBroadbandFilters(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=(17,), use_mean_image=False)
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=(17, 23), use_mean_image=False)
     r = a.rectangles[0]
     np.testing.assert_array_equal(r.broadbandfilters, [1]*9+[2]*9+[3]*7+[4]*7+[5]*3)
