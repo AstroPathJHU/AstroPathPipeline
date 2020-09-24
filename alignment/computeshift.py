@@ -1,6 +1,6 @@
 import cv2, matplotlib.pyplot as plt, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.feature, skimage.filters, textwrap, uncertainties as unc
 
-def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4):
+def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4, staterrorimages=None):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -85,10 +85,12 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   ])
 
   shifted = shiftimg(images, -r.x[0], -r.x[1], clip=False)
-  staterror = abs(shifted[0] - shifted[1])
-  #cross correlation evaluated at 0
+  if staterrorimages is None:
+    staterror0 = staterror1 = abs(shifted[0] - shifted[1])
+  else:
+    staterror0, staterror1 = staterrorimages
   error_crosscorrelation = np.sqrt(np.sum(
-    staterror**2 * (shifted[0]**2 + shifted[1]**2)
+    (staterror0 * shifted[1])**2 + (staterror1 * shifted[0])**2
   ))
 
   covariance = 2 * error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
