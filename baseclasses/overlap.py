@@ -6,7 +6,7 @@ from ..utilities.tableio import readtable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 from .rectangle import Rectangle, RectangleCollection, RectangleList, rectangleoroverlapfilter, rectangleoroverlapfilter as overlapfilter
 
-@dataclasses.dataclass
+@dataclasses.dataclass(unsafe_hash=True)
 class Overlap(DataClassWithDistances):
   pixelsormicrons = "microns"
 

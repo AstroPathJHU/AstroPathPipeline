@@ -378,8 +378,9 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
 class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
   def readallrectangles(self, **extrakwargs):
     return self.readcsv("rect", self.rectangletype, extrakwargs={**self.rectangleextrakwargs, **extrakwargs})
-  def readalloverlaps(self, **extrakwargs):
-    return self.readcsv("overlap", self.overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
+  def readalloverlaps(self, *, overlaptype=None, **extrakwargs):
+    if overlaptype is None: overlaptype = self.overlaptype
+    return self.readcsv("overlap", overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
 
 class XMLLayoutReader(SampleThatReadsOverlaps):
   def __init__(self, *args, checkim3s=False, **kwargs):
@@ -459,14 +460,15 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
     return result
 
   @methodtools.lru_cache()
-  def getoverlaps(self):
+  def getoverlaps(self, *, overlaptype=None):
+    if overlaptype is None: overlaptype = self.overlaptype
     overlaps = []
     for r1, r2 in itertools.product(self.rectangles, repeat=2):
       if r1 is r2: continue
       if np.all(abs(r1.cxvec - r2.cxvec) < r1.shape):
         tag = int(np.sign(r1.cx-r2.cx)) + 3*int(np.sign(r1.cy-r2.cy)) + 5
         overlaps.append(
-          self.overlaptype(
+          overlaptype(
             n=len(overlaps)+1,
             p1=r1.n,
             p2=r2.n,
@@ -487,5 +489,5 @@ class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   def readallrectangles(self, **extrakwargs):
     rectangles = self.getrectanglelayout()
     return [self.rectangletype(rectangle=r, readingfromfile=False, **self.rectangleextrakwargs, **extrakwargs) for r in rectangles]
-  def readalloverlaps(self):
-    return self.getoverlaps()
+  def readalloverlaps(self, **kwargs):
+    return self.getoverlaps(**kwargs)
