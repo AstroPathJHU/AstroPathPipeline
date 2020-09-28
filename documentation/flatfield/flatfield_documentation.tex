@@ -105,7 +105,7 @@ The work documented in \cite{Ben_flatfielding_1} also gave the first look at the
 
 It is the goal of the work documented in this note to provide detailed, current, and high quality measurements of the illumination variation and associated flatfield corrections for data collected using the Vectra 3.0 and Vectra Polaris microscopes. To this end, an additional step is implemented to only average over regions of images that show tissue, since the inclusion of empty background regions may bias measurements away from noise specifically affecting the tissue used for quantitative clinical pathology. A new type of correction for differences in HPF exposure time is also applied to the raw data used. A secondary goal of this work is to re-implement the analysis pipeline in python, and to develop a single software package that is easy to use and able to scale up to even higher throughput.
 
-The findings presented in this note are prepared using a total set of 42,011 HPFs from 43 individual slides of melanoma tissue samples collected with the Vectra 3.0 digital microscope. The raw each images have 35 layers, a width of 1,344 pixels, and a height of 1,004 pixels. The images were randomly divided into two equally-sized subsamples; one subsample is used to measure the flatfield model, and the other subsample is used to measure the illumination variation before and after application of the corrections.
+The findings presented in this note are prepared using a set of 42,011 HPFs from 43 individual slides of melanoma tissue samples collected with the Vectra 3.0 digital microscope, and a set of 68,962 HPFs from 147 individual slides of various tissue samples collected with the Vectra Polaris microscopy system. The HPFs from the Vectra 3.0 samples have 35 layers, a width of 1,344 pixels, and a height of 1,004 pixels. The HPFs from the Vectra Polaris samples have 43 layers, a width of 1,872 pixels, and a height of 1,404 pixels. Each full set of images is randomly divided into two equally-sized subsamples; one subsample is used to measure the flatfield model for the microscope, and the other subsample is used to measure the illumination variations before and after application of the corrections.
 
 The structure of this note is as follows. \refsec{sec:image_masking} discusses the methods used to identify tissue and mask background out of the HPFs of each sample. \refsec{sec:measuring_flatfield_corrections} explains how images are stacked, averaged, and smoothed to produce measurements of the flatfield corrections. \refsec{sec:results} shows the resulting flatfield image layers and details how their application reduces the illumination variation measured in the independent subsample. A brief summary is presented in \refsec{sec:summary}.
 
@@ -119,13 +119,17 @@ One of the main goals of this work is to ignore as much empty background as poss
 \subsection{Determining background flux thresholds}
 \label{ssec:determining_background_flux_thresholds}
 
-The first step in masking background out of images is to find flux thresholds above which a pixel is more likely to represent bright tissue than dim background. Because of differences in staining, illumination, exposure time, and fluorescence, these background flux thresholds are measured independently for each layer of each sample. A clear threshold is easiest to determine when a given image layer shows both some tissue and some background, which is often not the case in the bulk of the tissue samples, so thresholds are determined using only HPFs located on the edges of the tissue in each sample. The locations of these edge HPFs are shown in \reffig{fig:edge_HPFs} for a few examples. A set of optimal flux thresholds per layer is found for each of these images independently, and the final optimal layer thresholds for each sample are the means of these individual measurements.
+The first step in masking background out of images is to find flux thresholds above which a pixel is more likely to represent bright tissue than dim background. Because of differences in staining, illumination, exposure time, and fluorescence, these background flux thresholds are measured independently for each layer of each sample. A clear threshold is easiest to determine when a given image layer shows both some tissue and some background, which is often not the case in the bulk of the tissue samples, so thresholds are determined using only HPFs located on the edges of the tissue in each sample. The locations of these edge HPFs are shown in \reffig{fig:edge_HPFs} for some examples. A set of optimal flux thresholds per layer is found for each image independently, and the final optimal layer thresholds for each sample are the means of these individual measurements.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textwidth]{images/masking/rectangle_locations_M3_1}
-\includegraphics[width=0.98\textwidth]{images/masking/rectangle_locations_M17_1}
-\caption{\footnotesize Locations of HPFs on edges of tissue (left column) next to low-resolution reference .qptiff images (right column) for samples named M3\_1 (upper row) and M17\_1 (lower row). }
+\includegraphics[width=0.49\textwidth]{images/masking/rectangle_locations_M17_1}
+\includegraphics[width=0.49\textwidth]{images/masking/reference_qptiff_M17_1}
+\includegraphics[width=0.49\textwidth]{images/masking/rectangle_locations_YZ53}
+\hspace{1.7cm}
+\includegraphics[width=0.26\textwidth]{images/masking/reference_qptiff_YZ53}
+\hspace{1.7cm}
+\caption{\footnotesize Locations of HPFs on edges of tissue (left column) next to low-resolution reference .qptiff images (right column) for the Vectra 3.0 sample named M17\_1 (upper row) and the Vectra Polaris sample named YZ53 (lower row). }
 \label{fig:edge_HPFs}
 \end{figure}
 
@@ -169,32 +173,54 @@ This method tends to choose thresholds resulting in $B(\tau)$ with large local $
 \label{fig:histograms_with_otsu_thresholds}
 \end{figure}
 
-For each sample, a set of final background thresholds per layer $\Tau_{m}$ is chosen as the mean of the $\tau$ values found for each tissue edge HPF layer. Figures~\ref{fig:threshold_distributions_1} and ~\ref{fig:threshold_distributions_2} show the distributions of $\tau$ values observed in several example sample layers, the sums of the $H(f)$ histograms for all edge HPFs in the sample, and a zoom in on the portion of that summed histogram near the overall background threshold value. The thresholding method used produces fairly regular distributions of the final background pixel flux distributions. \reffig{fig:all_sample_thresholds} shows severals statistics describing the $\Tau_{m}$ values found for all 43 of the Vectra 3.0 microscope samples analyzed; there is clear dependence on the broadband filter region, and there is nonzero but regular variation amongst the values found by layer for each sample.
+For each sample, a set of final background thresholds per layer $\Tau_{m}$ is chosen as the mean of the $\tau$ values found for each tissue edge HPF layer. Figures~\ref{fig:threshold_distributions_vectra}-\ref{fig:threshold_distributions_polaris_2} show some distributions of $\tau$ values observed in several example sample layers, along with the sums of the $H(f)$ histograms for all edge HPFs in each sample, and zoomed in portions of those summed histogram near the overall background threshold values. The thresholding method used produces fairly regular distributions of the final background pixel flux distributions, and performs comparably across layers, samples, and microscopes. 
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textwidth]{images/masking/M1_1_layer_1_background_threshold_plots}
-\includegraphics[width=0.98\textwidth]{images/masking/M3_1_layer_5_background_threshold_plots}
-\includegraphics[width=0.98\textwidth]{images/masking/M4_2_layer_11_background_threshold_plots}
-\caption{\footnotesize Distribution of $\tau$ values (left column), summed $H(f)$ histograms (center column), and portion of summed histograms near $\Tau$ (right column) for all tissue edge HPFs in the 1st layer of the sample named M1\_1 (upper row), 5th layer of the sample named M3\_1 (middle row), and 11th layer of the sample named M4\_2 (lower row).}
-\label{fig:threshold_distributions_1}
+\includegraphics[width=0.9\textwidth]{images/masking/M1_1_layer_1_background_threshold_plots}
+\includegraphics[width=0.9\textwidth]{images/masking/M4_2_layer_11_background_threshold_plots}
+\includegraphics[width=0.9\textwidth]{images/masking/M6_1_layer_20_background_threshold_plots}
+\includegraphics[width=0.9\textwidth]{images/masking/M10_2_layer_27_background_threshold_plots}
+\includegraphics[width=0.9\textwidth]{images/masking/M11_1_layer_34_background_threshold_plots}
+\caption{\footnotesize Distribution of $\tau$ values (left column), summed $H(f)$ histograms (center column), and portion of summed histograms near $\Tau$ (right column) for all tissue edge HPFs in some Vectra 3.0 samples. From the upper to lower rows, examples are shown for HPFs in the 1st layer of M1\_1, 11th layer of M4\_2, 20th layer of M6\_1, 27th layer of M10\_2, and 34th layer of M11\_1, respectively.}
+\label{fig:threshold_distributions_vectra}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textwidth]{images/masking/M6_1_layer_20_background_threshold_plots}
-\includegraphics[width=0.98\textwidth]{images/masking/M10_2_layer_27_background_threshold_plots}
-\includegraphics[width=0.98\textwidth]{images/masking/M11_1_layer_34_background_threshold_plots}
-\caption{\footnotesize Distribution of $\tau$ values (left column), summed $H(f)$ histograms (center column), and portion of summed histograms near $\Tau$ (right column) for all tissue edge HPFs in the 20th layer of the sample named M6\_1 (upper row), 27th layer of the sample named M10\_2 (middle row), and 34th layer of the sample named M11\_1 (lower row).}
-\label{fig:threshold_distributions_2}
+\includegraphics[width=0.98\textwidth]{images/masking/YX10_layer_1_background_threshold_plots}
+\includegraphics[width=0.98\textwidth]{images/masking/PZ2_layer_12_background_threshold_plots}
+\includegraphics[width=0.98\textwidth]{images/masking/YY15_layer_18_background_threshold_plots}
+\caption{\footnotesize Distribution of $\tau$ values (left column), summed $H(f)$ histograms (center column), and portion of summed histograms near $\Tau$ (right column) for all tissue edge HPFs in some Vectra Polaris samples. From the upper to lower rows, examples are shown for HPFs in the 1st layer of YX10, 12th layer of PZ2, and 18th layer of YY15, respectively.}
+\label{fig:threshold_distributions_polaris_1}
 \end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\textwidth]{images/masking/YZ51_layer_21_background_threshold_plots}
+\includegraphics[width=0.98\textwidth]{images/masking/ZW11_layer_31_background_threshold_plots}
+\includegraphics[width=0.98\textwidth]{images/masking/PZ12_layer_39_background_threshold_plots}
+\caption{\footnotesize Distribution of $\tau$ values (left column), summed $H(f)$ histograms (center column), and portion of summed histograms near $\Tau$ (right column) for all tissue edge HPFs in some Vectra Polaris samples. From the upper to lower rows, examples are shown for HPFs in the 21st layer of YZ51, 31st layer of ZW11, and 39th layer of PZ12, respectively.}
+\label{fig:threshold_distributions_polaris_2}
+\end{figure}
+
+\reffig{fig:all_sample_thresholds_vectra} shows several statistics describing the $\Tau_{m}$ values found for all 43 of the Vectra 3.0 microscope samples analyzed. \reffig{fig:all_sample_thresholds_polaris} shows the same for all 147 of the Vectra Polaris samples analyzed. In both cases, there is clear dependence of the thresholds found on the broadband filter region, and there is nonzero but regular variation amongst the values found by layer for each sample.
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.98\textwidth]{images/masking/optimal_background_thresholds_batches_3-9_vectra_samples}
 \caption{\footnotesize Maximum, minimum, 10th percentile, 90th percentile, median, mean, and standard deviation of $\Tau_{m}$ values determined from tissue edge HPFs for 43 Vectra 3.0 melanoma samples.}
-\label{fig:all_sample_thresholds}
+\label{fig:all_sample_thresholds_vectra}
 \end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\textwidth]{images/masking/optimal_background_thresholds_polaris_samples}
+\caption{\footnotesize Maximum, minimum, 10th percentile, 90th percentile, median, mean, and standard deviation of $\Tau_{m}$ values determined from tissue edge HPFs for 147 Vectra Polaris samples.}
+\label{fig:all_sample_thresholds_polaris}
+\end{figure}
+
+\clearpage
 
 %%%%%%%%%%% Producing image masks subsection
 \subsection{Producing image masks}
@@ -215,27 +241,50 @@ The smoothed image (as opposed to the raw image) is used to reduce the granulari
 
 The initial mask image is first closed and then opened with an elliptical structure element of extent $9 \times 9$ pixels to fill in small holes that are surrounded by larger areas and remove any small, isolated areas. Another close and open is then performed with an elliptical element of size $16 \times 16$ pixels to serve the same purpose on a medium scale. The overall bulk of the mask is then defined by a single close operation with an elliptical element of size $25 \times 25$ pixels. The edges of this bulk are refined, and small areas outside of it are removed, by opening three times with the $9 \times 9$ pixel structure element, to produce the final binary mask $M_{ijm}$.
 
-To illustrate the sequence of morphological operations and exhibit the wide variation in the initial thresholds required, three examples of how initial masks are transformed are shown in Figures~\ref{fig:mask_example_min}, \ref{fig:mask_example_med}, and~\ref{fig:mask_example_max} for image layers whose initial thresholds represent the global minimum, median, and maximum, respectively, of the values shown in \reffig{fig:all_sample_thresholds}. Transforming the initial masks in this way tends to result in masks containing a minimal number of maximally-connected regions that correllate well with the tissue in each image, including smaller-scale features of the bulk but removing them from more isolated areas. The transformations described are performed for all image layers simultaneously on a GPU to maximize efficiency. 
+To illustrate the sequence of morphological operations and exhibit the wide variation in the initial thresholds required, some examples of how initial masks are transformed are shown in Figures~\ref{fig:mask_example_vectra_min}-\ref{fig:mask_example_polaris_max}. Figures~\ref{fig:mask_example_vectra_min}, \ref{fig:mask_example_vectra_med}, and \ref{fig:mask_example_vectra_max} show examples for Vectra 3.0 sample image layers whose initial thresholds represent the global minimum, median, and maximum, respectively, of the values shown in \reffig{fig:all_sample_thresholds_vectra}. Figures~\ref{fig:mask_example_polaris_min}, \ref{fig:mask_example_polaris_med}, and \ref{fig:mask_example_polaris_max} show examples for Vectra Polaris sample image layers whose initial thresholds represent the global minimum, median, and maximum, respectively, of the values shown in \reffig{fig:all_sample_thresholds_polaris} (where the minimum value excludes completely empty image layers). In all of these figures, the raw image layer stretched from maximum to minimum in grayscale is shown in the upper left, and the initial mask layer $M^{\prime}_{ijm}$ from thresholding at $\Tau_{m}$ is shown in the upper right. The results of applying the small-scale and medium-scale close and open operations are shown in the second row on the left and right, respectively. The result of a single large-scale close is shown in the left column of the third row. The final mask $M_{ijm}$ after the repeated small-scale open is shown in the right column of the third row. The lower row shows the final transformed mask overlaid with the raw image (on the left) with flux clipped at $f=255$ to show the background more brightly in red, and overlaid with the raw image in grayscale (on the right).
+
+Transforming the initial masks in this way tends to result in masks containing a minimal number of maximally-connected regions that correllate well with the tissue in each image, including smaller-scale features of the bulk but removing them from more isolated areas. The transformations described are performed for all image layers simultaneously on a GPU to maximize efficiency. 
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.8\textwidth]{images/masking/image_218_layer_26_masks}
-\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks. Image shown is from layer 26 of the sample named M11\_1. The raw image stretched from maximum to minimum in grayscale is shown in the upper left, and the initial mask layer $M^{\prime}_{ij26}$ from thresholding at $\Tau_{26}=27$ is shown in the upper right. The results of applying the small-scale (left) and medium-scale (right) close and open operations are shown in the second row. The result of a single large-scale close is shown in the left column of the third row. The final mask $M_{ij26}$ after the repeated small-scale open is shown in the right column of the third row. The lower row shows the final transformed mask overlaid with (left) the raw image with flux clipped at $f=255$ to show the background more brightly in red, and (right) the raw image in grayscale.}
-\label{fig:mask_example_min}
+\includegraphics[width=0.9\textwidth]{images/masking/image_218_layer_26_masks}
+\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks for Vectra 3.0 samples. Image shown is from layer 26 of the sample named M11\_1, with initial threshold at $\Tau_{26}=27$.}
+\label{fig:mask_example_vectra_min}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.8\textwidth]{images/masking/image_383_layer_15_masks}
-\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks. Image shown is from layer 15 of the sample named M12\_1. The raw image stretched from maximum to minimum in grayscale is shown in the upper left, and the initial mask layer $M^{\prime}_{ij15}$ from thresholding at $\Tau_{15}=44$ is shown in the upper right. The results of applying the small-scale (left) and medium-scale (right) close and open operations are shown in the second row. The result of a single large-scale close is shown in the left column of the third row. The final mask $M_{ij15}$ after the repeated small-scale open is shown in the right column of the third row. The lower row shows the final transformed mask overlaid with (left) the raw image with flux clipped at $f=255$ to show the background more brightly in red, and (right) the raw image in grayscale.}
-\label{fig:mask_example_med}
+\includegraphics[width=0.9\textwidth]{images/masking/image_383_layer_15_masks}
+\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks for Vectra 3.0 samples. Image shown is from layer 15 of the sample named M12\_1, with initial threshold at $\Tau_{15}=44$.}
+\label{fig:mask_example_vectra_med}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.8\textwidth]{images/masking/image_17602_layer_4_masks}
-\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks. Image shown is from layer 4 of the sample named M9\_1. The raw image stretched from maximum to minimum in grayscale is shown in the upper left, and the initial mask layer $M^{\prime}_{ij4}$ from thresholding at $\Tau_{4}=184$ is shown in the upper right. The results of applying the small-scale (left) and medium-scale (right) close and open operations are shown in the second row. The result of a single large-scale close is shown in the left column of the third row. The final mask $M_{ij4}$ after the repeated small-scale open is shown in the right column of the third row. The lower row shows the final transformed mask overlaid with (left) the raw image with flux clipped at $f=255$ to show the background more brightly in red, and (right) the raw image in grayscale.}
-\label{fig:mask_example_max}
+\includegraphics[width=0.9\textwidth]{images/masking/image_17602_layer_4_masks}
+\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks for Vectra 3.0 samples. Image shown is from layer 4 of the sample named M9\_1, with initial threshold at $\Tau_{4}=184$.}
+\label{fig:mask_example_vectra_max}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.9\textwidth]{images/masking/image_614_layer_39_masks}
+\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks for Vectra Polaris samples. Image shown is from layer 39 of the sample named PZ11, with initial threshold at $\Tau_{39}=58$.}
+\label{fig:mask_example_polaris_min}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.9\textwidth]{images/masking/image_19990_layer_2_masks}
+\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks for Vectra Polaris samples. Image shown is from layer 2 of the sample named YY4, with initial threshold at $\Tau_{2}=74$.}
+\label{fig:mask_example_polaris_med}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.9\textwidth]{images/masking/image_16_layer_16_masks}
+\caption{\footnotesize Example application of morphological transformations used to refine initial binary masks for Vectra Polaris samples. Image shown is from layer 16 of the sample named YZ52, with initial threshold at $\Tau_{16}=646$.}
+\label{fig:mask_example_polaris_max}
 \end{figure}
 
 \clearpage
@@ -265,36 +314,75 @@ This cut on the fraction of selected pixels reduces the phenomenon of overselect
 \label{fig:selected_pixel_fraction_cut_2}
 \end{figure} 
 
-These requirements on the images and their masked layers define a total number of HPFs from all samples to be stacked in each layer, $N_{m}$. \reffig{fig:n_images_stacked_by_layer} shows this $N_{m}$ for the total set of Vectra 3.0 samples used to make the flatfield correction image, which consists of 21,006 initial HPFs, reduced to 17,613 HPFs after removing those on the edges of the tissue. The average $N_{m}$ across all layers was 9,898.
+These requirements on the images and their masked layers define a total number of HPFs from all samples to be stacked in each layer, $N_{m}$. \reffig{fig:n_images_stacked_by_layer_vectra} shows this $N_{m}$ for the total set of Vectra 3.0 samples used to make the flatfield correction image, which consists of 21,006 initial HPFs, reduced to 17,613 HPFs after removing those on the edges of the tissue. The average $N_{m}$ across all layers was 9,898. \reffig{fig:n_images_stacked_by_layer_polaris} shows $N_{m}$ for the total set of Vectra Polaris samples, which consists of 34,481 initial HPFs, reduced to 27,611 HPFs after removing those on the edges of the tissue. The average $N_{m}$ across all layers was 15,719.
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.98\textwidth]{images/measuring_flatfield_corrections/n_images_stacked_per_layer_vectra}
 \caption{\footnotesize Number of images $N_{m}$ selected to be stacked in each layer for the set of 21,006 initial HPFs from 43 Vectra 3.0 samples.}
-\label{fig:n_images_stacked_by_layer}
+\label{fig:n_images_stacked_by_layer_vectra}
 \end{figure}
-
-The previously-defined image and mask tensors $I$ and $M$ can be collected over the whole image set using a new index $\eta=1,\ldots,N_{m}$. The sum of all the masks, $\Mu_{ijm} = \sum_{\eta=1}^{N_{m}} M^{\eta}_{ijm}$ is shown in \reffig{fig:mask_stack_layers} for the first, middle, and last layers in each broadband filter region. A small bias toward selecting the lower right hand corners of the images remains in some cases. 
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_1}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_5}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_9}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_10}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_14}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_18}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_19}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_22}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_25}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_26}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_29}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_32}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_33}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_34}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers/mask_stack_layer_35}
-\caption{\footnotesize Layers of the total stack of binary image masks, $\Mu_{ijm}$, for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively. Note the differences in scales for each image.}
-\label{fig:mask_stack_layers}
+\includegraphics[width=0.98\textwidth]{images/measuring_flatfield_corrections/n_images_stacked_per_layer_polaris}
+\caption{\footnotesize Number of images $N_{m}$ selected to be stacked in each layer for the set of 34,481 initial HPFs from 147 Vectra Polaris samples.}
+\label{fig:n_images_stacked_by_layer_polaris}
+\end{figure}
+
+The previously-defined image and mask tensors $I$ and $M$ can be collected over the whole image set using a new index $\eta=1,\ldots,N_{m}$. The sums of all the masks, $\Mu_{ijm} = \sum_{\eta=1}^{N_{m}} M^{\eta}_{ijm}$, are shown in \reffig{fig:mask_stack_layers_vectra} for the Vectra 3.0 samples and in Figures~\ref{fig:mask_stack_layers_polaris_1} and \ref{fig:mask_stack_layers_polaris_2} for the Vectra Polaris samples. The sums of the masks shown in the figures are for the first, middle, and last layers in each broadband filter region. A small bias toward selecting the lower right hand corners of the images remains in some cases in the Vectra 3.0 samples. 
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_1}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_5}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_9}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_10}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_14}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_18}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_19}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_22}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_25}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_26}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_29}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_32}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_33}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_34}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_35}
+\caption{\footnotesize Layers of the total stack of binary image masks, $\Mu_{ijm}$, for the Vectra 3.0 samples, with $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively. Note the differences in scales for each image.}
+\label{fig:mask_stack_layers_vectra}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_1}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_5}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_9}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_10}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_11} \\
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_12}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_14}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_17}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_18}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_19}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_20}
+\caption{\footnotesize Layers of the total stack of binary image masks, $\Mu_{ijm}$, for the Vectra Polaris samples, with $m=$1, 5, 9, 10, 11, 12, 14, 17, 18, 19, and 20 from upper left to lower right, respectively. Note the differences in scales for each image.}
+\label{fig:mask_stack_layers_polaris_1}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_21}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_25}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_29}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_30}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_33}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_36}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_37}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_40}
+\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_43}
+\caption{\footnotesize Layers of the total stack of binary image masks, $\Mu_{ijm}$, for the Vectra Polaris samples, with $m=$21, 25, 29, 30, 33, 36, 37, 40, and 43 from upper left to lower right, respectively. Note the differences in scales for each image.}
+\label{fig:mask_stack_layers_polaris_2}
 \end{figure}
 
 Only the central 64\% of each fully-corrected HPF is used when pathology analyses are eventually performed, because the outer 20\% of each image's sides are used to determine the alignment and stitching of the individual HPFs to represent an entire sample \cite{Heshy}. Clipping 10\% from all sides of the image layers slightly reduces the edge effects apparent in $\Mu_{ijm}$. \reffig{fig:removing_image_edges_effect_on_mask_stacks} shows how the 5th and 95th percentile and standard deviation of the number of masks stacked in each layer relative to the layer mean changes when the outer 36\% of the image layers are removed. The spread from the 5th to 95th percentile of the number of images stacked divided by the layer mean decreases from 2.5\% to 1.9\% on average over all layers, and the standard deviation of the number of images stacked divided by the layer mean decreases from 0.78\% to 0.58\% on average over all layers, showing that the masking and image layer selection procedures ultimately result in only very small differences in how many images contribute to measurements of the illumination variation at any point, and that those variations are even smaller in the region of interest.
