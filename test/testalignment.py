@@ -26,9 +26,9 @@ class TestAlignment(TestBaseSaveOutput):
       thisfolder/"data"/"YZ71"/"logfiles"/"YZ71-align.log",
     ]
 
-  def testAlignment(self, SlideID="M21_1"):
+  def testAlignment(self, SlideID="M21_1", **kwargs):
     samp = SampleDef(SlideID=SlideID, SampleID=0, Project=0, Cohort=0)
-    a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", samp, uselogfiles=True)
+    a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", samp, uselogfiles=True, **kwargs)
     with a:
       a.getDAPI()
       a.align()
@@ -277,9 +277,9 @@ class TestAlignment(TestBaseSaveOutput):
       if len(contents) != 1:
         raise AssertionError(f"Expected only one line of log\n\n{contents}")
 
-  def testFromXML(self, SlideID="M21_1"):
+  def testFromXML(self, SlideID="M21_1", **kwargs):
     args = thisfolder/"data", thisfolder/"data"/"flatw", SlideID
-    kwargs = {"selectrectangles": range(10), "root3": thisfolder/"data"/"raw"}
+    kwargs = {**kwargs, "selectrectangles": range(10), "root3": thisfolder/"data"/"raw"}
     a1 = AlignmentSet(*args, **kwargs)
     a1.getDAPI()
     a1.align()
@@ -311,12 +311,12 @@ class TestAlignment(TestBaseSaveOutput):
     np.testing.assert_array_equal(i1, i2)
 
   def testPolaris(self):
-    self.testAlignment("YZ71")
+    self.testAlignment("YZ71", root3=thisfolder/"data"/"raw")
 
   def testPolarisFastUnits(self):
     with units.setup_context("fast"):
-      self.testAlignment("YZ71")
+      self.testAlignment("YZ71", root3=thisfolder/"data"/"raw")
 
   def testPolarisFromXMLFastUnits(self):
     with units.setup_context("fast"):
-      self.testFromXML("YZ71")
+      self.testFromXML("YZ71", root3=thisfolder/"data"/"raw")

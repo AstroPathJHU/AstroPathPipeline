@@ -1,4 +1,4 @@
-import abc, contextlib, dataclasses, datetime, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re
+import abc, contextlib, dataclasses, datetime, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re
 
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint, tiffinfo
@@ -70,7 +70,14 @@ class SampleBase(contextlib.ExitStack):
     self.logger = getlogger(module=self.logmodule, root=self.root, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
+    self.__logonenter = []
     super().__init__()
+
+  def __enter__(self):
+    result = super().__enter__()
+    for warnfunction, warning in self.__logonenter:
+      warnfunction(warning)
+    return result
 
   @property
   def SampleID(self): return self.samp.SampleID
@@ -181,6 +188,8 @@ class SampleBase(contextlib.ExitStack):
         warnfunction = self.logger.warningglobal
 
     if warnfunction is not None:
+      if not self.logger.nentered:
+        warnfunction = functools.partial(self.logonenter, warnfunction=warnfunction)
       fmt = "{:30} {:30} {:30} {:30}"
       warninglines = [
         "Found inconsistent image infos from different sources:",
@@ -196,6 +205,9 @@ class SampleBase(contextlib.ExitStack):
       raise FileNotFoundError("Didn't find any of the possible ways of finding image info: "+", ".join(results))
 
     return result
+
+  def logonenter(self, warning, warnfunction):
+    self.__logonenter.append((warnfunction, warning))
 
   @property
   def pscale(self): return self.getimageinfo()[0]
@@ -273,16 +285,19 @@ class DbloadSampleBase(SampleBase):
 class FlatwSampleBase(SampleBase):
   def __init__(self, root, root2, samp, *args, root3=None, xmlfolders=None, **kwargs):
     if xmlfolders is None: xmlfolders = []
-    if root3 is not None: xmlfolders.append(pathlib.Path(root3)/samp)
     super().__init__(root=root, samp=samp, *args, xmlfolders=xmlfolders, **kwargs)
     self.root2 = pathlib.Path(root2)
+    self.__root3 = pathlib.Path(root3) if root3 is not None else root3
 
   @property
   def root1(self): return self.root
 
   @property
   def possiblexmlfolders(self):
-    return super().possiblexmlfolders + [self.root2/self.SlideID]
+    result = super().possiblexmlfolders + [self.root2/self.SlideID]
+    if self.__root3 is not None:
+      result.append(self.__root3/self.SlideID)
+    return result
 
 class SampleThatReadsOverlaps(SampleBase):
   rectangletype = Rectangle
