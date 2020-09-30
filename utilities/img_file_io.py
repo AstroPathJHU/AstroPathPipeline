@@ -6,7 +6,6 @@ import xml.etree.ElementTree as et
 import os, glob, cv2, logging, dataclasses
 
 #global variables
-RAWFILE_EXT           = '.Data.dat'
 PARAMETER_XMLFILE_EXT = '.Parameters.xml'
 EXPOSURE_XML_EXT      = '.SpectralBasisInfo.Exposure.xml'
 #logger
@@ -97,19 +96,18 @@ def getImageHWLFromXMLFile(metadata_topdir,samplename) :
 #but if it's a raw file the metadata top dir must also be provided
 def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
   layer_exposure_times_to_return = []
-  if RAWFILE_EXT in fp :
+  if EXPOSURE_XML_EXT in fp :
+    xmlfile_path = fp
+  else :
     if metadata_top_dir is None :
       raise RuntimeError(f'ERROR: metadata top dir must be supplied to get exposure times fo raw file path {fp}!')
+    file_ext = f'.{((os.path.basename(os.path.normpath(fp))).split("."))[-1]}'
     sample_name = os.path.basename(os.path.dirname(os.path.normpath(fp)))
-    subdir_filepath = os.path.join(metadata_top_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(fp)).replace(RAWFILE_EXT,EXPOSURE_XML_EXT))
+    subdir_filepath = os.path.join(metadata_top_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(fp)).replace(file_ext,EXPOSURE_XML_EXT))
     if os.path.isfile(subdir_filepath) :
       xmlfile_path = subdir_filepath
     else :
-      xmlfile_path = os.path.join(metadata_top_dir,sample_name,os.path.basename(os.path.normpath(fp)).replace(RAWFILE_EXT,EXPOSURE_XML_EXT))
-  elif EXPOSURE_XML_EXT in fp :
-    xmlfile_path = fp
-  else :
-    raise ValueError(f"ERROR: file path {fp} given to getExposureTimesByLayer doesn't represent a recognized raw or exposure xml file!")
+      xmlfile_path = os.path.join(metadata_top_dir,sample_name,os.path.basename(os.path.normpath(fp)).replace(file_ext,EXPOSURE_XML_EXT))
   if not os.path.isfile(xmlfile_path) :
     raise RuntimeError(f"ERROR: {xmlfile_path} searched in getExposureTimesByLayer not found!")
   root = (et.parse(xmlfile_path)).getroot()

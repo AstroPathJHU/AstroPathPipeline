@@ -147,11 +147,14 @@ class FlatfieldProducer :
             this_samp_indices_for_masking_plots=this_samp_indices_for_masking_plots[:n_masking_images_per_sample]
             #get the median exposure times by layer if the images should be normalized
             if (not self.mean_image.skip_et_correction) :
-                med_exp_times_by_layer = getSampleMedianExposureTimesByLayer(samp.rawfile_top_dir,sn)
+                try :
+                    med_exp_times_by_layer = getSampleMedianExposureTimesByLayer(samp.rawfile_top_dir,sn)
+                except FileNotFoundError :
+                    med_exp_times_by_layer = getSampleMedianExposureTimesByLayer(samp.metadata_top_dir,sn)
             else :
                 med_exp_times_by_layer = None
             #break the list of this sample's filepaths into chunks to run in parallel
-            fileread_chunks = chunkListOfFilepaths(this_samp_fps_to_run,samp.img_dims,n_threads)
+            fileread_chunks = chunkListOfFilepaths(this_samp_fps_to_run,samp.img_dims,samp.metadata_top_dir,n_threads)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
             for fr_chunk in fileread_chunks :
                 if len(fr_chunk)<1 :
