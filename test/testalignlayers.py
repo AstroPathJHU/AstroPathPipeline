@@ -1,6 +1,7 @@
 import itertools, numpy as np, pathlib
 from ..alignment.alignlayers import AlignLayers
 from ..alignment.overlap import LayerAlignmentResult
+from ..alignment.stitchlayers import LayerPosition, LayerPositionCovariance
 from ..utilities import units
 from ..utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
@@ -30,6 +31,8 @@ class TestAlignLayers(TestBaseSaveOutput):
     try:
       for filename, cls, extrakwargs in (
         (f"{SlideID}_alignlayers.csv", LayerAlignmentResult, {"pscale": a.pscale}),
+        (f"{SlideID}_layerpositions.csv", LayerPosition, {"pscale": a.pscale}),
+        (f"{SlideID}_layerpositioncovariances.csv", LayerPositionCovariance, {"pscale": a.pscale}),
       ):
         rows = readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
         targetrows = readtable(thisfolder/"reference"/"alignlayers"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
@@ -38,6 +41,10 @@ class TestAlignLayers(TestBaseSaveOutput):
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
     finally:
       self.saveoutput()
+
+  def testAlignLayersFastUnits(self, SlideID="M21_1"):
+    with units.setup_context("fast"):
+      self.testAlignLayers(SlideID=SlideID)
 
   def testEliminateLayerInvariance(self, SlideID="M21_1"):
     a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False)
