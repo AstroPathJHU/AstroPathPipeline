@@ -73,12 +73,6 @@ class SampleBase(contextlib.ExitStack):
     self.__logonenter = []
     super().__init__()
 
-  def __enter__(self):
-    result = super().__enter__()
-    for warnfunction, warning in self.__logonenter:
-      warnfunction(warning)
-    return result
-
   @property
   def SampleID(self): return self.samp.SampleID
   @property
@@ -228,6 +222,8 @@ class SampleBase(contextlib.ExitStack):
 
   def __enter__(self):
     self.enter_context(self.logger)
+    for warnfunction, warning in self.__logonenter:
+      warnfunction(warning)
     return super().__enter__()
 
   @abc.abstractproperty
@@ -320,8 +316,13 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
       "filetype": self.filetype,
       "width": self.fwidth,
       "height": self.fheight,
-      "xmlfolder": self.xmlfolder,
     }
+    try:
+      kwargs.update({
+        "xmlfolder": self.xmlfolder,
+      })
+    except FileNotFoundError:
+      pass
     if self.multilayer:
       kwargs.update({
         "layers": self.layers,
