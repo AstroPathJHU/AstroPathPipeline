@@ -1,6 +1,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREAMBLE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %environment setup
+\let\mypdfximage\pdfximage
+\def\pdfximage{\immediate\mypdfximage}
 \documentclass[letterpaper,11pt]{article}
 \usepackage[square,comma,numbers,sort&compress]{natbib}
 \bibliographystyle{ieeetr}
@@ -37,7 +39,7 @@
 \linenumbers
 
 %abstract
-\abstract{This note details a method for correcting systematic variations in the illumination of multiplexed immunofluorescence microscopy images. The variations are measured using regions of image layers that are free of empty background as determined using a thresholding and masking procedure. The illumination flux observed in these regions is averaged over a large number of images, and the resulting variation pattern is smoothed to retain only the large-scale effects. The spatially-dependent corrections are defined as the ratios of these average flux patterns to their mean values in each image layer. The corrections are measured and the effects of their application are characterized using a set of 42,011 melanoma tissue images collected at the Johns Hopkins Hospital using an Akoya Biosciences Vectra 3.0 digital microscope. It is shown that the illumination of the tissue depicted in these images initially varies with an average standard deviation of 3.46\% relative flux in systematic patterns for each image layer, and that applying the corrections reduces the variation to an average standard deviation of 0.61\% relative flux in more random patterns.}
+\abstract{This note details a method for correcting systematic variations in the illumination of multiplexed immunofluorescence microscopy images. The variations are measured using regions of image layers that are free of empty background as determined using a thresholding and masking procedure. The illumination flux observed in these regions is averaged over a large number of images, and the resulting variation pattern is smoothed to retain only the large-scale effects. The spatially-dependent corrections are defined as the ratios of these average flux patterns to their mean values in each image layer. The corrections are measured and the effects of their application are characterized using a set of 42,011 melanoma tissue images collected using an Akoya Biosciences Vectra 3.0 digital microscope and a set of 68,962 images collected using an Akoya Biosciences Vectra Polaris microscope. It is shown that applying the measured corrections decreases the average standard deviation of the pixel flux relative to the mean in each layer by 82.3\% for the Vectra 3.0 and by 63.1\% for the Vectra Polaris.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% INTRODUCTION SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
@@ -163,7 +165,7 @@ We define a background pixel flux distribution $B(t)$ as the subset of $H$ that 
 
 This method tends to choose thresholds resulting in $B(\tau)$ with large local $\widetilde{\mu}$ slopes and small values of $\widetilde{\mu}(\tau)$, indicating a left-weighted peak near $\tau$ that is relatively clustered around a single mean value, as would be expected for approximately-Gaussian background noise at the low end of $H$. \reffig{fig:histograms_with_otsu_thresholds} shows the thresholds $T_{k}$ overlaid on partial pixel intensity histograms for several $H$ distributions from the example dataset named M21\_1, as well as their corresponding $\widetilde{\mu}(T_{k})$ values and weighted and unweighted local $\widetilde{\mu}$ slopes. It can be seen that the choice defined by \refeq{eq:otsu_choice_def} usually selects a $B(\tau)$ that is, visually, the lowest peak in $H$.
 
-\begin{figure}[!ht]
+\begin{figure}[!hb]
 \centering
 \includegraphics[width=0.9\textwidth]{images/masking/thresholds_image_15_layer_1}
 \includegraphics[width=0.9\textwidth]{images/masking/thresholds_image_11_layer_5}
@@ -314,18 +316,18 @@ This cut on the fraction of selected pixels reduces the phenomenon of overselect
 \label{fig:selected_pixel_fraction_cut_2}
 \end{figure} 
 
-These requirements on the images and their masked layers define a total number of HPFs from all samples to be stacked in each layer, $N_{m}$. \reffig{fig:n_images_stacked_by_layer_vectra} shows this $N_{m}$ for the total set of Vectra 3.0 samples used to make the flatfield correction image, which consists of 21,006 initial HPFs, reduced to 17,613 HPFs after removing those on the edges of the tissue. The average $N_{m}$ across all layers was 9,898. \reffig{fig:n_images_stacked_by_layer_polaris} shows $N_{m}$ for the total set of Vectra Polaris samples, which consists of 34,481 initial HPFs, reduced to 27,611 HPFs after removing those on the edges of the tissue. The average $N_{m}$ across all layers was 15,719.
+These requirements on the images and their masked layers define a total number of HPFs from all samples to be stacked in each layer, $N_{m}$. \reffig{fig:n_images_stacked_by_layer_vectra} shows this $N_{m}$ for the total set of Vectra 3.0 samples used to make the flatfield correction image, which consists of 21,006 initial HPFs, reduced to 17,613 HPFs after removing those on the edges of the tissue. The average $N_{m}$ across all layers is 9,898. \reffig{fig:n_images_stacked_by_layer_polaris} shows $N_{m}$ for the total set of Vectra Polaris samples, which consists of 34,481 initial HPFs, reduced to 27,611 HPFs after removing those on the edges of the tissue. The average $N_{m}$ across all layers is 15,719.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textwidth]{images/measuring_flatfield_corrections/n_images_stacked_per_layer_vectra}
+\includegraphics[width=0.8\textwidth]{images/measuring_flatfield_corrections/n_images_stacked_per_layer_vectra}
 \caption{\footnotesize Number of images $N_{m}$ selected to be stacked in each layer for the set of 21,006 initial HPFs from 43 Vectra 3.0 samples.}
 \label{fig:n_images_stacked_by_layer_vectra}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textwidth]{images/measuring_flatfield_corrections/n_images_stacked_per_layer_polaris}
+\includegraphics[width=0.8\textwidth]{images/measuring_flatfield_corrections/n_images_stacked_per_layer_polaris}
 \caption{\footnotesize Number of images $N_{m}$ selected to be stacked in each layer for the set of 34,481 initial HPFs from 147 Vectra Polaris samples.}
 \label{fig:n_images_stacked_by_layer_polaris}
 \end{figure}
@@ -334,26 +336,26 @@ The previously-defined image and mask tensors $I$ and $M$ can be collected over 
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_1}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_5}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_9}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_10}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_14}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_18}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_19}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_22}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_25}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_26}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_29}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_32}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_33}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_34}
-\includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_35}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_1}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_5}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_9}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_10}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_14}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_18}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_19}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_22}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_25}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_26}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_29}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_32}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_33}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_34}
+\includegraphics[width=0.3\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_vectra/mask_stack_layer_35}
 \caption{\footnotesize Layers of the total stack of binary image masks, $\Mu_{ijm}$, for the Vectra 3.0 samples, with $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively. Note the differences in scales for each image.}
 \label{fig:mask_stack_layers_vectra}
 \end{figure}
 
-\begin{figure}[!ht]
+\begin{figure}[!hb]
 \centering
 \includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_1}
 \includegraphics[width=0.32\textwidth]{images/measuring_flatfield_corrections/mask_stack_layers_polaris/mask_stack_layer_5}
@@ -385,9 +387,20 @@ The previously-defined image and mask tensors $I$ and $M$ can be collected over 
 \label{fig:mask_stack_layers_polaris_2}
 \end{figure}
 
-\clearpage
-
 Only the central 64\% of each fully-corrected HPF is used when pathology analyses are eventually performed, because the outer 20\% of each image's sides are used to determine the alignment and stitching of the individual HPFs to represent an entire sample \cite{Heshy}. Clipping 10\% from all sides of the image layers slightly reduces the edge effects apparent in $\Mu_{ijm}$. Figures~\ref{fig:removing_image_edges_effect_on_mask_stacks_vectra} and \ref{fig:removing_image_edges_effect_on_mask_stacks_polaris} show how the 5th and 95th percentile and standard deviation of the number of masks stacked in each layer relative to the layer mean change when the outer 36\% of the image layers are removed. \reffig{fig:removing_image_edges_effect_on_mask_stacks_vectra} shows the effects for the Vectra 3.0 samples, and \reffig{fig:removing_image_edges_effect_on_mask_stacks_polaris} shows them for the Vectra Polaris samples.
+
+For the Vectra 3.0 samples, the spread from the 5th to 95th percentile of the number of images stacked divided by the layer mean decreases from 2.5\% to 1.9\% on average over all layers, and the standard deviation of the number of images stacked divided by the layer mean decreases from 0.78\% to 0.58\% on average over all layers. For the Vectra Polaris samples, the effects are somewhat more pronounced: the spread from the 5th to 95th percentile in the number of images stacked divided by the layer mean decreases from 5.3\% to 2.5\% on average across all layers, and the standard deviation of the number of images stacked divided by the layer mean decreases from 1.7\% to 0.8\% on average across all layers. The greater variations and edge effects in the Vectra Polaris samples are likely a result of the image edges being systematically more dim than the image centers. In general, however, the masking and image layer selection procedures ultimately result in only small differences in how many images contribute to measurements of the illumination variation at any point, and those variations are even smaller in the region of interest.
+
+To measure the flatfield correction factors, an initial mean image $\Iota_{ijm}$ is first defined by summing over all masked raw images and dividing by the number of images stacked so that applying the corrections only changes the relative illumination within each layer, like
+\begin{equation}
+\Iota_{ijm} = \frac{1}{\Mu_{ijm}} \left[ \sum_{\eta=1}^{N_{m}} I^{\eta}_{ijm}*M^{\eta}_{ijm} \right] .
+\end{equation}
+Each layer of $\Iota$ is then smoothed using a 100 pixel-wide Gaussian filter to produce a smoothed mean image $G_{ijm}$ that describes only the large-scale variations. The final flatfield image $F_{ijm}$, whose contents are the pixel-by-pixel correction factors, is this $G$ image, with each layer normalized by its mean,
+\begin{equation}
+F_{ijm} = G_{ijm} \left( \frac{w*l}{\sum_{i=0}^{w-1}\sum_{j=0}^{l-1}G_{ijm}} \right) .
+\end{equation}
+
+\clearpage
 
 \begin{figure}[!ht]
 \centering
@@ -403,17 +416,7 @@ Only the central 64\% of each fully-corrected HPF is used when pathology analyse
 \label{fig:removing_image_edges_effect_on_mask_stacks_polaris}
 \end{figure} 
 
-For the Vectra 3.0 samples, the spread from the 5th to 95th percentile of the number of images stacked divided by the layer mean decreases from 2.5\% to 1.9\% on average over all layers, and the standard deviation of the number of images stacked divided by the layer mean decreases from 0.78\% to 0.58\% on average over all layers. For the Vectra Polaris samples, the effects are somewhat more pronounced: the spread from the 5th to 95th percentile in the number of images stacked divided by the layer mean decreases from 5.3\% to 2.5\% on average across all layers, and the standard deviation of the number of images stacked divided by the layer mean decreases from 1.7\% to 0.8\% on average across all layers. The greater variations and edge effects in the Vectra Polaris samples are likely a result of the image edges being systematically more dim than the image centers. In general, however, the masking and image layer selection procedures ultimately result in only small differences in how many images contribute to measurements of the illumination variation at any point, and those variations are even smaller in the region of interest.
-
-To measure the flatfield correction factors, an initial mean image $\Iota_{ijm}$ is first defined by summing over all masked raw images and dividing by the number of images stacked, like
-\begin{equation}
-\Iota_{ijm} = \frac{1}{\Mu_{ijm}} \left[ \sum_{\eta=1}^{N_{m}} I^{\eta}_{ijm}*M^{\eta}_{ijm} \right] .
-\end{equation}
-Each layer of $\Iota$ is then smoothed using a 100 pixel-wide Gaussian filter to produce a smoothed mean image $G_{ijm}$ that describes only the large-scale variations. The final flatfield image $F_{ijm}$, whose contents are the pixel-by-pixel correction factors, is this $G$ image, with each layer normalized by its mean,
-\begin{equation}
-F_{ijm} = G_{ijm} \left( \frac{w*l}{\sum_{i=0}^{w-1}\sum_{j=0}^{l-1}G_{ijm}} \right) ,
-\end{equation}
-so that applying the corrections only changes the relative illumination within each layer. 
+\clearpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% RESULTS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Results}
@@ -427,35 +430,28 @@ The flatfield image $F$ describes the systematic variations in the amount of ill
 
 The flatfield correction image computed from the initial set of 21,006 HPFs in 43 Vectra 3.0 samples is shown in \reffig{fig:flatfield_image_layers_vectra} for the first, middle, and last layers in each broadband filter region. The overall maximum and minimum correction factors measured are 1.12 and 0.90, respectively, both observed in layer 19. Disregarding the outer 36\% of these images has a small effect on the scale and spread of the corrections observed, as shown in \reffig{fig:flatfield_pixel_intensities_vectra}; the overall maximum and minimum correction factors in the central regions are 1.08 and 0.91, respectively, again both observed in layer 19. The average spread in the 5th to 95th percentile correction factors is 11.1\% considering the entire images, and 10.5\% considering only the central 64\%. The average standard deviation of the correction factors is 3.6\% considering the entire images, and 3.4\% considering only the central 64\%. 
 
+Figures~\ref{fig:flatfield_image_layers_polaris_1} and \ref{fig:flatfield_image_layers_polaris_1} show the first, middle, and last layers in each broadband filter region of the flatfield correction image computed using the initial set of 34,481 HPFs in 147 Vectra Polaris samples. The overall maximum and minimum correction factors measured are 1.04 and 0.94, respectively, both observed in layer 12. Disregarding the outer 36\% of these images has an even smaller effect on the scale and spread of the corrections observed, as shown in \reffig{fig:flatfield_pixel_intensities_polaris}; the overall maximum and minimum correction factors in the central regions are 1.04 and 0.96, respectively, again both observed in layer 12. The average spread in the 5th to 95th percentile correction factors is 3.4\% considering the entire images, and 2.7\% considering only the central 64\%. The average standard deviation of the correction factors is 1.07\% considering the entire images, and 0.84\% considering only the central 64\%. In general, the flatfield corrections are much smaller for the Vectra Polaris samples compared to the Vectra 3.0 samples. 
+
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_1}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_5}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_9}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_10}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_14}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_18}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_19}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_22}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_25}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_26}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_29}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_32}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_33}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_34}
-\includegraphics[width=0.32\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_35}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_1}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_5}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_9}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_10}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_14}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_18}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_19}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_22}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_25}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_26}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_29}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_32}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_33}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_34}
+\includegraphics[width=0.3\textwidth]{images/results/flatfield_layers_vectra/flatfield_layer_35}
 \caption{\footnotesize Layers of the Vectra 3.0 flatfield image, $F_{ijm}$, for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively.}
 \label{fig:flatfield_image_layers_vectra}
 \end{figure}
-
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=0.98\textwidth]{images/results/flatfield_pixel_intensities_vectra}
-\caption{\footnotesize 5th and 95th percentile and standard deviation of the Vectra 3.0 flatfield correction factors measured in each layer computed using the full images (red lines and green shading) and only the central 64\% of interest (blue lines and orange shading).}
-\label{fig:flatfield_pixel_intensities_vectra}
-\end{figure} 
-
-Figures~\ref{fig:flatfield_image_layers_polaris_1} and \ref{fig:flatfield_image_layers_polaris_1} show the first, middle, and last layers in each broadband filter region of the flatfield correction image computed using the initial set of 34,481 HPFs in 147 Vectra Polaris samples. The overall maximum and minimum correction factors measured are 1.04 and 0.94, respectively, both observed in layer 12. Disregarding the outer 36\% of these images has an even smaller effect on the scale and spread of the corrections observed, as shown in \reffig{fig:flatfield_pixel_intensities_polaris}; the overall maximum and minimum correction factors in the central regions are 1.04 and 0.96, respectively, again both observed in layer 12. The average spread in the 5th to 95th percentile correction factors is 3.4\% considering the entire images, and 2.7\% considering only the central 64\%. The average standard deviation of the correction factors is 1.07\% considering the entire images, and 0.84\% considering only the central 64\%. In general, the flatfield corrections are much smaller for the Vectra Polaris samples compared to the Vectra 3.0 samples. 
 
 \begin{figure}[!ht]
 \centering
@@ -489,6 +485,15 @@ Figures~\ref{fig:flatfield_image_layers_polaris_1} and \ref{fig:flatfield_image_
 \label{fig:flatfield_image_layers_polaris_2}
 \end{figure}
 
+\clearpage
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\textwidth]{images/results/flatfield_pixel_intensities_vectra}
+\caption{\footnotesize 5th and 95th percentile and standard deviation of the Vectra 3.0 flatfield correction factors measured in each layer computed using the full images (red lines and green shading) and only the central 64\% of interest (blue lines and orange shading).}
+\label{fig:flatfield_pixel_intensities_vectra}
+\end{figure} 
+
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.98\textwidth]{images/results/flatfield_pixel_intensities_polaris}
@@ -496,77 +501,79 @@ Figures~\ref{fig:flatfield_image_layers_polaris_1} and \ref{fig:flatfield_image_
 \label{fig:flatfield_pixel_intensities_polaris}
 \end{figure} 
 
+\clearpage
+
 %%%%%%%%%%% Reduction in illumination variation subsection
 \subsection{Reduction in illumination variation}
 \label{ssec:reduction_in_illumination_variation}
 
-The effects of applying the flatfield corrections are measured using independent sets of 21,005 initial HPF images from the same 43 Vectra 3.0 melanoma samples and 34,481 initial HPF images from the same 147 Vectra Polaris samples. The images in the test sets are masked and selected identically to those used to produce the flatfield image in order to characterize the impact on the illumination of the fluorescent tissue alone. The numbers of images stacked in each layer of the Vectra 3.0 and Vectra Polaris test sets are shown in Figures~\ref{fig:test_set_n_images_stacked_vectra} and \ref{fig:test_set_n_images_stacked_vectra}, respectively. In the Vectra 3.0 case, removing images on the edges of the tissue reduces the initial number of HPFs from 21,005 to 19,045, and 9,987 images are selected to be stacked on average. For the Vectra Polaris, removing the tissue edge HPFs reduces the initial number from 34,481 to 27,543, and 15,670 HPFs are stacked on average over all layers.
+The effects of applying the flatfield corrections are measured using independent sets of 21,005 initial HPF images from the same 43 Vectra 3.0 melanoma samples and 34,481 initial HPF images from the same 147 Vectra Polaris samples. The images in the test sets are masked and selected identically to those used to produce the flatfield image in order to characterize the impact on the illumination of the fluorescent tissue alone. The numbers of images stacked in each layer of the Vectra 3.0 and Vectra Polaris test sets are shown in Figures~\ref{fig:test_set_n_images_stacked_vectra} and \ref{fig:test_set_n_images_stacked_polaris}, respectively. In the Vectra 3.0 case, removing images on the edges of the tissue reduces the initial number of HPFs from 21,005 to 19,045, and 9,987 images are selected to be stacked on average. For the Vectra Polaris, removing the tissue edge HPFs reduces the initial number from 34,481 to 27,543, and 15,670 HPFs are stacked on average over all layers.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textwidth]{images/results/n_images_stacked_per_layer_test_set_vectra}
+\includegraphics[width=0.8\textwidth]{images/results/n_images_stacked_per_layer_test_set_vectra}
 \caption{\footnotesize Number of images $N_{m}$ selected to be stacked in each layer for the test set of 21,005 independent initial HPFs from 43 Vectra 3.0 samples.}
 \label{fig:test_set_n_images_stacked_vectra}
 \end{figure} 
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textwidth]{images/results/n_images_stacked_per_layer_test_set_polaris}
+\includegraphics[width=0.8\textwidth]{images/results/n_images_stacked_per_layer_test_set_polaris}
 \caption{\footnotesize Number of images $N_{m}$ selected to be stacked in each layer for the test set of 34,481 independent initial HPFs from 147 Vectra Polaris samples.}
 \label{fig:test_set_n_images_stacked_polaris}
 \end{figure} 
 
-The masked images are stacked, averaged, and smoothed, using the same procedure described in \refsec{sec:measuring_flatfield_corrections} to produce a mean image $\Iota$ and a smoothed mean image $G$. The first, middle, and last layers in each broadband filter region of the smoothed mean image is shown in \reffig{fig:uncorrected_mean_image_layers_vectra} for the Vectra 3.0 samples and in Figures~\ref{fig:uncorrected_mean_image_layers_polaris_1} and \ref{fig:uncorrected_mean_image_layers_polaris_2} for the Vectra Polaris. The patterns in the test image sets' $G$ are very similar to those observed in the flatfield image layers shown in Figures~\ref{fig:flatfield_image_layers_vectra}, \ref{fig:flatfield_image_layers_polaris_1}, and \ref{fig:flatfield_image_layers_polaris_2}; the correspondence between them is generally greater for the Vectra 3.0 samples, because the flatfielding effects are more pronounced and systematic for those samples. 
+The masked images are stacked, averaged, and smoothed, using the same procedure described in \refsec{sec:measuring_flatfield_corrections} to produce a mean image $\Iota$ and a smoothed mean image $G$. The first, middle, and last layers in each broadband filter region of the smoothed mean image is shown in \reffig{fig:uncorrected_mean_image_layers_vectra} for the Vectra 3.0 samples and in Figures~\ref{fig:uncorrected_mean_image_layers_polaris_1} and \ref{fig:uncorrected_mean_image_layers_polaris_2} for the Vectra Polaris. The patterns in the test image sets' $G$ are very similar to those observed in the flatfield image layers shown in Figures~\ref{fig:flatfield_image_layers_vectra}, \ref{fig:flatfield_image_layers_polaris_1}, and \ref{fig:flatfield_image_layers_polaris_2}; the correspondence between them is generally greater for the Vectra 3.0 samples. 
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_1}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_5}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_9}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_10}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_14}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_18}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_19}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_22}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_25}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_26}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_29}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_32}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_33}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_34}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_35}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_1}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_5}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_9}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_10}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_14}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_18}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_19}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_22}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_25}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_26}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_29}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_32}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_33}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_34}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_vectra/smoothed_mean_image_layer_35}
 \caption{\footnotesize Layers of the Vectra 3.0 test dataset smoothed mean image, $G_{ijm}$, for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively.}
 \label{fig:uncorrected_mean_image_layers_vectra}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_1}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_5}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_9}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_10}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_11} \\
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_12}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_14}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_17}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_18}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_19}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_20}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_1}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_5}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_9}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_10}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_11} \\
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_12}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_14}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_17}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_18}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_19}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_20}
 \caption{\footnotesize Layers of the Vectra Polaris test dataset smoothed mean image, $G_{ijm}$, for $m=$1, 5, 9, 10, 11, 12, 14, 17, 18, 19, and 20 from upper left to lower right, respectively.}
 \label{fig:uncorrected_mean_image_layers_polaris_1}
 \end{figure}
 
-\begin{figure}[!ht]
+\begin{figure}[!hb]
 \centering
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_21}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_25}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_29}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_30}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_33}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_36}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_37}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_40}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_43}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_21}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_25}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_29}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_30}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_33}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_36}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_37}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_40}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_mean_image_layers_polaris/smoothed_mean_image_layer_43}
 \caption{\footnotesize Layers of the Vectra Polaris test dataset smoothed mean image, $G_{ijm}$, for $m=$21, 25, 29, 30, 33, 36, 37, 40, and 43 from upper left to lower right, respectively.}
 \label{fig:uncorrected_mean_image_layers_polaris_2}
 \end{figure}
@@ -575,21 +582,21 @@ The flatfield corrections are applied by dividing the mean image by the flatfiel
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_1_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_5_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_9_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_10_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_14_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_18_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_19_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_22_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_25_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_26_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_29_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_32_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_33_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_34_same_scale}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_35_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_1_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_5_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_9_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_10_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_14_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_18_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_19_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_22_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_25_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_26_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_29_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_32_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_33_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_34_same_scale}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_35_same_scale}
 \caption{\footnotesize Layers of the test dataset smoothed corrected mean image, $C_{ijm}$, for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively. The scales are identical to those in \reffig{fig:uncorrected_mean_image_layers_vectra} to show the overall effects.}
 \label{fig:corrected_smoothed_mean_image_layers_same_scale_vectra}
 \end{figure}
@@ -626,7 +633,13 @@ The flatfield corrections are applied by dividing the mean image by the flatfiel
 \label{fig:corrected_smoothed_mean_image_layers_same_scale_polaris_2}
 \end{figure}
 
-The flatfield corrections are, again, most relevant in the central 64\% of HPFs that are used for pathology analysis. \reffig{fig:illumination_variation_reduction_vectra} shows the 5th and 95th percentile and standard deviation of the pixel intensity relative to the layer mean for the central region of the Vectra 3.0 uncorrected smoothed mean image $G$ and the corrected smoothed mean image $C$. Applying the flatfield corrections greatly reduces the illumination variation observed in the central regions of HPFs: the average spread in the 5th to 95th percentile of the mean-normalized pixel intensity decreases from 10.6\% to 2.3\% on average over all layers, and the standard deviation of the mean-normalized pixel intensity decreases from 3.25\% to 0.71\% on average over all layers, approximately a 78\% reduction in both cases.
+The flatfield corrections are, again, most relevant in the central 64\% of HPFs that are used for pathology analysis. \reffig{fig:illumination_variation_reduction_vectra} shows the 5th and 95th percentile and standard deviation of the pixel intensity relative to the layer mean for the central region of the Vectra 3.0 uncorrected smoothed mean image $G$ and the corrected smoothed mean image $C$. Applying the flatfield corrections greatly reduces the illumination variation observed in the central regions of HPFs: the average spread in the 5th to 95th percentile of the mean-normalized pixel intensity decreases from 10.62\% to 1.95\% on average over all layers, and the standard deviation of the mean-normalized pixel intensity decreases from 3.45\% to 0.61\% on average over all layers, approximately an 82\% reduction in both cases.
+
+\reffig{fig:illumination_variation_reduction_polaris} shows the same central region pixel intensity variations as \reffig{fig:illumination_variation_reduction_vectra}, except for the Vectra Polaris samples. In this case, applying the flatfield corrections reduces the average spread in the 5th to 95th percentile of the mean-normalized pixel intensity by about 62\%, from 2.86\% to 1.10\% on average over all layers, and reduces the standard deviation of the mean-normalized pixel intensity by about 63\%, from 0.89\% to 0.33\% on average over all layers. The variations in illumination are substantially less for the Vectra Polaris samples than the Vectra 3.0 samples, both before and after correction, but the proportional effects are only slightly smaller.
+
+In addition to reducing the overall amount of illumination variation, applying the flatfielding corrections also greatly reduces the systematic patterns in those variations, especially for the Vectra 3.0 samples. \reffig{fig:corrected_smoothed_mean_image_layers_vectra} shows the same smoothed corrected mean image $C$ as that in \reffig{fig:corrected_smoothed_mean_image_layers_same_scale_vectra}, but with the image scales stretched from maximum to minimum. The observed patterns are distinct from those observed for the flatfield corrections (in \reffig{fig:flatfield_image_layers_vectra}) or for the uncorrected smoothed mean image (in \reffig{fig:uncorrected_mean_image_layers_vectra}), and they show less correlation between different layers contributing to the same broadband filter region. Corresponding $C$ image layers for the Vectra Polaris samples are shown in Figures~\ref{fig:corrected_smoothed_mean_image_layers_polaris_1} and \ref{fig:corrected_smoothed_mean_image_layers_polaris_2}
+
+\clearpage
 
 \begin{figure}[!ht]
 \centering
@@ -635,8 +648,6 @@ The flatfield corrections are, again, most relevant in the central 64\% of HPFs 
 \label{fig:illumination_variation_reduction_vectra}
 \end{figure} 
 
-\reffig{fig:illumination_variation_reduction_polaris} same central region pixel intensity variations as \reffig{fig:illumination_variation_reduction_vectra}, except for the Vectra Polaris samples. In this case, applying the flatfield corrections reduces the average spread in the 5th to 95th percentile of the mean-normalized pixel intensity by about 62\%, from 2.86\% to 1.10\% on average over all layers, and reduces the standard deviation of the mean-normalized pixel intensity by about 63\%, from 0.89\% to 0.33\% on average over all layers. The variations in illumination are substantially less for the Vectra Polaris samples than the Vectra 3.0 samples, both before and after correction, but the proportional effects are only slightly smaller.
-
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.98\textwidth]{images/results/illumination_variation_reduction_polaris}
@@ -644,25 +655,23 @@ The flatfield corrections are, again, most relevant in the central 64\% of HPFs 
 \label{fig:illumination_variation_reduction_polaris}
 \end{figure} 
 
-In addition to reducing the overall amount of illumination variation, applying the flatfielding corrections also greatly reduces the systematic patterns in those variations, especially for the Vectra 3.0 samples. \reffig{fig:corrected_smoothed_mean_image_layers_vectra} shows the same smoothed corrected mean image $C$ as that in \reffig{fig:corrected_smoothed_mean_image_layers_same_scale_vectra}, but with the image scales stretched from maximum to minimum. The observed patterns are distinct from those observed for the flatfield corrections (in \reffig{fig:flatfield_image_layers_vectra}) or for the uncorrected smoothed mean image (in \reffig{fig:uncorrected_mean_image_layers_vectra}), and they show less correlation between different layers contributing to the same broadband filter region. Corresponding $C$ image layers for the Vectra Polaris samples are shown in Figures~\ref{fig:corrected_smoothed_mean_image_layers_polaris_1} and \ref{fig:corrected_smoothed_mean_image_layers_polaris_2}
-
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_1}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_5}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_9}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_10}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_14}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_18}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_19}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_22}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_25}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_26}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_29}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_32}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_33}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_34}
-\includegraphics[width=0.32\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_35}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_1}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_5}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_9}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_10}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_14}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_18}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_19}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_22}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_25}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_26}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_29}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_32}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_33}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_34}
+\includegraphics[width=0.3\textwidth]{images/results/smoothed_corrected_mean_image_layers_vectra/smoothed_corrected_mean_image_layer_35}
 \caption{\footnotesize Layers of the Vectra 3.0 test dataset smoothed corrected mean image, $C_{ijm}$, for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively. The image layers shown here are identical to those in \reffig{fig:corrected_smoothed_mean_image_layers_same_scale_vectra}, but with the scales stretched from minimum to maximum to show the patterns more than the overall effects.}
 \label{fig:corrected_smoothed_mean_image_layers_vectra}
 \end{figure}
@@ -709,21 +718,21 @@ To illustrate the improvement provided by masking and selecting images for tissu
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_1}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_5}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_9}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_10}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_14}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_18}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_19}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_22}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_25}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_26}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_29}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_32}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_33}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_34}
-\includegraphics[width=0.32\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_35}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_1}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_5}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_9}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_10}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_14}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_18}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_19}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_22}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_25}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_26}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_29}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_32}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_33}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_34}
+\includegraphics[width=0.3\textwidth]{images/results/masked_over_unmasked_flatfield_image_layers_vectra/masked_over_unmasked_flatfield_image_layer_35}
 \caption{\footnotesize Ratios of Vectra 3.0 masked flatfield correction image layers to unmasked flatfield correction image layers for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively.}
 \label{fig:masked_over_unmasked_flatfield_image_layers_vectra}
 \end{figure}
@@ -762,7 +771,15 @@ Figures~\ref{fig:masked_over_unmasked_flatfield_image_layers_polaris_1} and \ref
 \label{fig:masked_over_unmasked_flatfield_image_layers_polaris_2}
 \end{figure}
 
-The unmasked flatfield corrections are applied to the unmasked test image sets in the same way as described in \refsec{ssec:reduction_in_illumination_variation}. For the Vectra 3.0 samples, when no masking and image selection is performed, the central region of interest of the test dataset's mean image 5th to 95th percentile of mean-normalized pixel intensity is 11.6\% before correction and 3.2\% after correction on average over all layers, and the standard deviation is 3.78\% before correction and 1.00\% after correction on average over all layers. \reffig{fig:unmasked_illumination_variation_reduction_vectra} shows the illumination variation observed in the central image regions before and after application of unmasked flatfield corrections. These reductions in average illumination variation are about 73\%, slightly less than what is observed for the case where images are masked and selected for tissue content. 
+The unmasked flatfield corrections are applied to the unmasked test image sets in the same way as described in \refsec{ssec:reduction_in_illumination_variation}. For the Vectra 3.0 samples, when no masking and image selection is performed, the central region of interest of the test dataset's mean image 5th to 95th percentile of mean-normalized pixel intensity is 11.60\% before correction and 3.20\% after correction on average over all layers, and the standard deviation is 3.78\% before correction and 1.00\% after correction on average over all layers. \reffig{fig:unmasked_illumination_variation_reduction_vectra} shows the illumination variation observed in the central image regions before and after application of unmasked flatfield corrections. These reductions in average illumination variation are about 73\%, slightly less than what is observed for the case where images are masked and selected for tissue content. 
+
+For the Vectra Polaris samples without masking, the test dataset's mean image central region 5th to 95th percentile mean-normalized pixel intensity is 3.09\% before correction and 1.62\% after correction on average over all layers, and the standard deviation is 0.95\% before correction and 0.48\% after correction on average over all layers. \reffig{fig:unmasked_illumination_variation_reduction_polaris} shows the illumination variation observed in the central image regions before and after application of unmasked flatfield corrections. These reductions in average illumination variation are about 48\%, substantially less than what is observed for the case where images are masked and selected for tissue content. Also interesting to note is that applying the corrections without masking in layers 10, 11, and 39 actually \textit{increases} the amount of illumination variation observed; these layers are largely background, showing that the corrections measured without masking are more random and less systematic.
+
+The smoothed corrected Vectra 3.0 mean image in the unmasked case is shown in \reffig{fig:unmasked_smoothed_corrected_mean_image_layers_vectra} for the first, middle, and last layers contributing to each broadband filter region. Compared to the image layers shown in \reffig{fig:corrected_smoothed_mean_image_layers_vectra}, the unmasked case results in slightly more systematic patterns of remaining illumination variation. Also interesting to note is the lower overall values of the average illumination flux in every image layer, due to the inclusion of so much dim background.
+
+The first, middle, and last layers in each broadband filter region of the smoothed corrected Vectra Polaris mean image without masking are shown in Figures~\ref{fig:unmasked_smoothed_corrected_mean_image_layers_polaris_1} and \ref{fig:unmasked_smoothed_corrected_mean_image_layers_polaris_2}. Compared with the image layers in Figures~\ref{fig:corrected_smoothed_mean_image_layers_polaris_1} and \ref{fig:corrected_smoothed_mean_image_layers_polaris_2}, the unmasked case leaves substantially more systematic variation in illumination after correction.
+
+\clearpage
 
 \begin{figure}[!ht]
 \centering
@@ -771,8 +788,6 @@ The unmasked flatfield corrections are applied to the unmasked test image sets i
 \label{fig:unmasked_illumination_variation_reduction_vectra}
 \end{figure} 
 
-For the Vectra Polaris samples without masking, the test dataset's mean image central region 5th to 95th percentile mean-normalized pixel intensity is 3.09\% before correction and 1.62\% after correction on average over all layers, and the standard deviation is 0.95\% before correction and 0.48\% after correction on average over all layers. \reffig{fig:unmasked_illumination_variation_reduction_polaris} shows the illumination variation observed in the central image regions before and after application of unmasked flatfield corrections. These reductions in average illumination variation are about 48\%, substantially less than what is observed for the case where images are masked and selected for tissue content. Also interesting to note is that applying the corrections without masking in layers 10, 11, and 39 actually \textit{increases} the amount of illumination variation observed.
-
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.98\textwidth]{images/results/unmasked_flatfield_illumination_variation_reduction_polaris}
@@ -780,30 +795,26 @@ For the Vectra Polaris samples without masking, the test dataset's mean image ce
 \label{fig:unmasked_illumination_variation_reduction_polaris}
 \end{figure} 
 
-The smoothed corrected Vectra 3.0 mean image in the unmasked case is shown in \reffig{fig:unmasked_smoothed_corrected_mean_image_layers_vectra} for the first, middle, and last layers contributing to each broadband filter region. Compared to the image layers shown in \reffig{fig:corrected_smoothed_mean_image_layers_vectra}, the unmasked case results in slightly more systematic patterns of remaining illumination variation. Also interesting to note is the lower overall values of the average illumination flux in every image layer, due to the inclusion of so much dim background.
-
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_1}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_5}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_9}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_10}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_14}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_18}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_19}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_22}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_25}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_26}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_29}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_32}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_33}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_34}
-\includegraphics[width=0.32\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_35}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_1}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_5}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_9}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_10}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_14}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_18}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_19}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_22}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_25}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_26}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_29}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_32}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_33}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_34}
+\includegraphics[width=0.3\textwidth]{images/results/unmasked_smoothed_corrected_mean_image_layers_vectra/unmasked_smoothed_corrected_mean_image_layer_35}
 \caption{\footnotesize Layers of the unmasked Vectra 3.0 test dataset's smoothed corrected mean image for $m=$1, 5, 9, 10, 14, 18, 29, 22, 25, 26, 29, 32, 33, 34, and 35 from upper left to lower right, respectively.}
 \label{fig:unmasked_smoothed_corrected_mean_image_layers_vectra}
 \end{figure}
-
-The first, middle, and last layers in each broadband filter region of the smoothed corrected Vectra Polaris mean image without masking are shown in Figures~\ref{fig:unmasked_smoothed_corrected_mean_image_layers_polaris_1} and \ref{fig:unmasked_smoothed_corrected_mean_image_layers_polaris_2}. Compared with the image layers in Figures~\ref{fig:corrected_smoothed_mean_image_layers_polaris_1} and \ref{fig:corrected_smoothed_mean_image_layers_polaris_2}, the unmasked case leaves substantially more systematic variation in illumination after correction.
 
 \begin{figure}[!ht]
 \centering
@@ -843,7 +854,61 @@ The first, middle, and last layers in each broadband filter region of the smooth
 \section{Summary}
 \label{sec:summary}
 
-The Astropath group has developed a method for correcting systematic variations in the illumination of multiplexed microscope HPF images. The method is optimized for application to the fluorescent tissue only, and the measured corrections are minimally biased to illumination variation observed in the background of the images. A set of 42,011 total HPFs from 43 slides of melanoma tissue imaged using the Vectra 3.0 digital microscope was split into two random groups for independently measuring and testing application of the corrections. The average variation in each layer's mean-normalized 5th to 95th percentile flux decreased from 10.6\% to 2.3\% upon application of the measured corrections, and the average variation in the standard deviation of the mean-normalized flux for each layer decreased from 3.25\% to 0.71\%. The systematic patterns in illumination were also reduced to being more random. Procedures used to mask background out of images were shown to slightly improve the reduction in illumination variation over identical methods based on entire images rather than tissue-containing regions.
+The Astropath group has developed a method for correcting systematic variations in the illumination of multiplexed microscope HPF images. The method is optimized for application to the fluorescent tissue only, and the measured corrections are minimally biased to illumination variation observed in the background of the images. Sets of 42,011 HPFs from 43 slides of melanoma tissue imaged using the Vectra 3.0 digital microscope and 68,962 HPFs from 147 slides images using the Vectra Polaris microscope were split into random groups for independently measuring and testing application of the corrections in both microscopes. The general findings about the measured correction factors and the impacts of applying them are summarized in Tables~\ref{tab:summary_flatfield} and \ref{tab:summary_applied_flatfield}. 
+
+\begin{table}[!htb]
+\centering
+\small
+\begin{tabular}{c c c c c}
+\hline \hline
+               & Minimum    & Maximum    & avg. 5th - 95th \%ile & avg. std. dev. \\
+Model          & correction & correction & spread in             & of             \\
+               & factor     & factor     & corr. factors         & corr. factors  \\
+\hline \hline
+Vectra 3.0     &            &            &                       &                \\
+(with masking) & 1.084      & 0.913      & 10.51\%               & 3.41\%         \\[0.1cm]
+\hline
+Vectra 3.0     &            &            &                       &                \\
+(no masking)   & 1.142      & 0.905      & 11.30\%               & 3.68\%         \\[0.1cm]
+\hline
+Vectra Polaris &            &            &                       &                \\
+(with masking) & 1.041      & 0.960      & 2.72\%                & 0.84\%         \\[0.1cm]
+\hline
+Vectra Polaris &            &            &                       &                \\
+(no masking)   & 1.046      & 0.954      & 2.96\%                & 0.91\%         \\[0.1cm]
+\hline \hline
+\end{tabular}
+\caption{\footnotesize Summary of main findings for Vectra 3.0 and Vectra Polaris microscope flatfield correction models, with and without applying masking to remove background from image contents. Listed for each model are the minimum, maximum, average 5th-95th percentile spread, and average standard deviation of the measured correction factors in the central 64\% region.}
+\label{tab:summary_flatfield}
+\end{table}
+
+\begin{table}[!htb]
+\centering
+\footnotesize
+\begin{tabular}{c c c c c c c}
+\hline \hline
+               & initial         & corrected       & 5th-95th \%ile  & initial         & final           & std. dev. of    \\
+Model          & 5th-95th \%ile  & 5th-95th \%ile  & rel. pixel flux & std. dev. of    & std. dev. of    & rel. pixel flux \\
+               & rel. pixel flux & rel. pixel flux & avg. decrease   & rel. pixel flux & rel. pixel flux & avg. decrease   \\
+\hline \hline
+Vectra 3.0     &                 &                 &                 &                 &                 &                 \\
+(with masking) & 10.62\%         & 1.95\%          & 81.6\%          & 3.45\%          & 0.61\%          & 82.3\%          \\[0.1cm]
+\hline
+Vectra 3.0     &                 &                 &                 &                 &                 &                 \\
+(no masking)   & 11.60\%         & 3.20\%          & 72.4\%          & 3.78\%          & 1.00\%          & 73.6\%          \\[0.1cm]
+\hline
+Vectra Polaris &                 &                 &                 &                 &                 &                 \\
+(with masking) & 2.86\%          & 1.10\%          & 61.3\%          & 0.89\%          & 0.33\%          & 63.1\%          \\[0.1cm]
+\hline
+Vectra Polaris &                 &                 &                 &                 &                 &                 \\
+(no masking)   & 3.09\%          & 1.62\%          & 47.7\%          & 0.95\%          & 0.48\%          & 49.1\%          \\[0.1cm]
+\hline \hline
+\end{tabular}
+\caption{\footnotesize Summary of results of applying Vectra 3.0 and Vectra Polaris flatfield corrections to independent sets of HPFs, with and without applying masking to remove background from image contents. Listed for each model are the pre- and post-correction 5th-95th \%ile spread and standard deviation of the pixel flux relative to the layer mean in the central 64\% region, averaged over all image layers.}
+\label{tab:summary_applied_flatfield}
+\end{table}
+
+In both datasets analyzed, applying the measured corrections reduced initially systematic patterns in illumination to being more random, and procedures used to mask background out of images were shown to improve the reduction in illumination variation over identical methods based on entire images rather than tissue-containing regions. Overall, the variations and correction factors measured for the Vectra 3.0 were larger than those measured for the Vectra Polaris. The addition of the masking procedure to remove background was shown to be more effective for the Vectra Polaris than for the Vectra 3.0 in reducing the illumination variation in the fluorescent tissue.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BIBLIOGRAPHY %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
