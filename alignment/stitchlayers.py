@@ -5,6 +5,59 @@ from ..utilities import units
 from ..utilities.misc import dummylogger
 from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from .overlap import LayerAlignmentResult
+
+class ComplementaryOverlapPair:
+  def __init__(self, o1, o2):
+    self.os = (o1, o2)
+  @property
+  def layer1(self):
+    layer1, = {o.layer1 for o in self.os}
+    return layer1
+  @property
+  def layer2(self):
+    layer2, = {o.layer2 for o in self.os}
+    return layer2
+  @property
+  def layers(self):
+    layers, = {o.layers for o in self.os}
+    return layers
+  @property
+  def p1(self):
+    p1, = {self.os[0].p1, self.os[1].p2}
+    return p1
+  @property
+  def p2(self):
+    p2, = {self.os[0].p2, self.os[1].p1}
+    return p2
+  @property
+  def pscale(self):
+    pscale, = {o.pscale for o in self.os}
+    return pscale
+  @property
+  def result(self):
+    dxvecsnominal = [units.nominal_values(o.result.dxvec) for o in self.os]
+    covariances = [o.result.covariance for o in self.os]
+    inversecovariances = [units.np.linalg.inv(cov) for cov in covariances]
+    weightedcovariance = units.np.linalg.inv(sum(inversecovariances))
+    weightedaverage = (
+      weightedcovariance @
+      sum(invcov@dxvec for invcov, dxvec in zip(dxvecsnominal, inversecovariances))
+    )
+    newdxvec = units.correlated_distances(distances=weightedaverage, covariance=weightedcovariance)
+    return LayerAlignmentResult(
+      n=None,
+      p1=self.p1,
+      p2=self.p2,
+      code=None,
+      layer1=self.layer1,
+      layer2=self.layer2,
+      exit=max(o.result.exit for o in self.os),
+      sc=None,
+      mse=(None, None, None),
+      dxvec=newdxvec,
+      pscale=self.pscale,
+    )
 
 def stitchlayers(*args, usecvxpy=False, **kwargs):
   return (__stitchlayerscvxpy if usecvxpy else __stitchlayers)(*args, **kwargs)
@@ -28,6 +81,14 @@ def __stitchlayers(*, overlaps, eliminatelayer=0, filteroverlaps=lambda o: True,
     elif ld[o.layer2] is not None and o.layer2 > o.layer1:
       if hasinverse:
         overlaps.remove(o)
+  for o in overlaps[:]:
+    if o.p2 > o.p1:
+      complement = {oo for oo in overlaps if o.p1 == oo.p2 and o.p2 == oo.p1 and (oo.layer1, oo.layer2) == (o.layer1, o.layer2)}
+      if complement:
+        complement, = complement
+        overlaps.remove(o)
+        overlaps.remove(complement)
+        overlaps.append(ComplementaryOverlapPair(o, complement))
 
   for o in overlaps:
     layer1, layer2 = o.layers
@@ -128,6 +189,14 @@ def __stitchlayerscvxpy(*, overlaps, logger=dummylogger):
   for o in overlaps[:]:
     if o.layer2 > o.layer1 and any(o.p1 == oo.p1 and o.p2 == oo.p2 and (oo.layer2, oo.layer1) == (o.layer1, o.layer2) for oo in overlaps):
       overlaps.remove(o)
+  for o in overlaps[:]:
+    if o.p2 > o.p1:
+      complement = {oo for oo in overlaps if o.p1 == oo.p2 and o.p2 == oo.p1 and (oo.layer1, oo.layer2) == (o.layer1, o.layer2)}
+      if complement:
+        complement, = complement
+        overlaps.remove(o)
+        overlaps.remove(complement)
+        overlaps.append(ComplementaryOverlapPair(o, complement))
 
   layerx = {layer: xx for layer, xx in itertools.zip_longest(layers, x)}
 
