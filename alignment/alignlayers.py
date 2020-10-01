@@ -126,3 +126,5 @@ class AlignLayers(AlignLayersBase, AlignmentSet):
     if saveresult:
       self.writestitchresult(result)
     return result
+  def getDAPI(self, *args, writeimstat=False, **kwargs):
+    return super().getDAPI(*args, writeimstat=writeimstat, **kwargs)
