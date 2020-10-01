@@ -1,10 +1,11 @@
-import itertools, logging, numpy as np, os, pathlib
+import itertools, logging, numpy as np, os, pathlib, re
 from ..alignment.alignmentcohort import AlignmentCohort
 from ..alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
 from ..alignment.overlap import AlignmentResult
 from ..alignment.field import Field, FieldOverlap
 from ..alignment.stitch import AffineEntry
 from ..baseclasses.sample import SampleDef
+from ..utilities.misc import re_subs
 from ..utilities.tableio import readtable
 from ..utilities import units
 from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseSaveOutput
@@ -60,8 +61,9 @@ class TestAlignment(TestBaseSaveOutput):
     ):
       ref = thisfolder/"reference"/"alignment"/SlideID/log.name
       with open(ref) as fref, open(log) as fnew:
-        refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
-        newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
+        subs = (";[^;]*$", ""), (r"(WARNING: (component tiff|xml files|constants\.csv)).*$", r"\1")
+        refcontents = os.linesep.join([re_subs(line, *subs, flags=re.MULTILINE) for line in fref.read().splitlines()])+os.linesep
+        newcontents = os.linesep.join([re_subs(line, *subs, flags=re.MULTILINE) for line in fnew.read().splitlines()])+os.linesep
         self.assertEqual(refcontents, newcontents)
 
   def testAlignmentFastUnits(self):
@@ -284,15 +286,17 @@ class TestAlignment(TestBaseSaveOutput):
     a1.getDAPI()
     a1.align()
     result1 = a1.stitch()
+    nclip = a1.nclip
+    position = a1.position
 
     with temporarilyremove(thisfolder/"data"/SlideID/"dbload"):
-      a2 = AlignmentSetFromXML(*args, nclip=units.pixels(a1.nclip, pscale=a1.pscale), position=a1.position, **kwargs)
+      a2 = AlignmentSetFromXML(*args, nclip=units.pixels(nclip, pscale=a1.pscale), position=position, **kwargs)
       a2.getDAPI()
       a2.align()
       result2 = a2.stitch()
 
       with temporarilyremove(thisfolder/"data"/SlideID/"inform_data"):
-        a3 = AlignmentSetFromXML(*args, nclip=units.pixels(a1.nclip, pscale=a1.pscale), **kwargs)
+        a3 = AlignmentSetFromXML(*args, nclip=units.pixels(nclip, pscale=a1.pscale), **kwargs)
         a3.getDAPI()
         a3.align()
         result3 = a3.stitch()
