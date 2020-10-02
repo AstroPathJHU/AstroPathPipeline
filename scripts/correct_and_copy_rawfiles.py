@@ -263,7 +263,7 @@ if __name__=='__main__' :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #positional arguments
-    parser.add_argument('sample',           help='Name of the data sample to which the warping should be applied')
+    parser.add_argument('sample',           help='Name of the data sample to correct and copy')
     parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[sample]/*.Data.dat" files that should be corrected and rewritten')
     parser.add_argument('metadata_top_dir', help='Path to the directory containing "[sample]/im3/xml" subdirectories')
     parser.add_argument('workingdir_path',  help='Path to the working directory that will be created to hold the corrected files')
