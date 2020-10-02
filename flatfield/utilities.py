@@ -186,8 +186,8 @@ def getImageArray(fri) :
     if fri.med_exp_times is not None and fri.corr_offsets is not None and fri.corr_offsets[0] is not None :
         try :
             img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,fri.metadata_top_dir,fri.med_exp_times,fri.corr_offsets)
-        except ValueError :
-            rtd = os.path.dirname(os.path.dirname(os.path.normpath(fri.rawfile_path)))
+        except (ValueError, RuntimeError) :
+            rtd = os.path.dirname(os.path.dirname(os.path.normpath(fri.rawfile_path)))+os.sep
             img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,rtd,fri.med_exp_times,fri.corr_offsets)
     if fri.to_smooth :
         img_arr = smoothImageWorker(img_arr,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)

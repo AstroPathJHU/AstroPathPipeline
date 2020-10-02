@@ -101,7 +101,10 @@ def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
   else :
     if metadata_top_dir is None :
       raise RuntimeError(f'ERROR: metadata top dir must be supplied to get exposure times fo raw file path {fp}!')
-    file_ext = f'.{((os.path.basename(os.path.normpath(fp))).split("."))[-1]}'
+    file_ext = ''
+    fn_split = (os.path.basename(os.path.normpath(fp))).split(".")
+    for i in range(1,len(fn_split)) :
+      file_ext+=f'.{fn_split[i]}'
     sample_name = os.path.basename(os.path.dirname(os.path.normpath(fp)))
     subdir_filepath = os.path.join(metadata_top_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(fp)).replace(file_ext,EXPOSURE_XML_EXT))
     if os.path.isfile(subdir_filepath) :
