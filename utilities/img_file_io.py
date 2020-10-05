@@ -62,8 +62,16 @@ def getRawAsHW(fname,height,width,dtype=np.uint16) :
     raise ValueError(msg)
   return img_a
 
-#helper function to flatten and write out a given image as binary uint16 content
+#helper function to flatten and write out a given image as binary content
 def writeImageToFile(img_array,filename_to_write,dtype=np.uint16) :
+  #if the image is three dimensional (with the smallest dimension last, probably the number of layers), it has to be transposed
+  if len(img_array.shape)==3 and (img_array.shape[2]<img_array.shape[0] and img_array.shape[2]<img_array.shape[1]) :
+    img_array = img_array.transpose(2,1,0)
+  elif len(img_array.shape)!=2 :
+    msg = f'ERROR: writeImageToFile was passed an image of shape {img_array.shape}'
+    msg+= f' instead of a 2D image, or a 3D multiplexed image with the number of layers last.'
+    msg+= f' This might cause problems in writing it out in the right shape!'
+    raise ValueError(msg)
   #write out image flattened in fortran order
   im3writeraw(filename_to_write,img_array.flatten(order="F").astype(dtype))
 
