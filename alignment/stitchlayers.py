@@ -1,4 +1,4 @@
-import dataclasses, itertools, numpy as np
+import dataclasses, itertools, methodtools, numpy as np, uncertainties as unc
 
 from ..baseclasses.overlap import OverlapCollection
 from ..utilities import units
@@ -35,6 +35,13 @@ class ComplementaryOverlapPair:
     pscale, = {o.pscale for o in self.os}
     return pscale
   @property
+  def x1vec(self):
+    return self.os[0].x1vec
+  @property
+  def x2vec(self):
+    return self.os[0].x2vec
+  @methodtools.lru_cache()
+  @property
   def result(self):
     dxvecsnominal = [units.nominal_values(o.result.dxvec) for o in self.os]
     covariances = [o.result.covariance for o in self.os]
@@ -42,9 +49,31 @@ class ComplementaryOverlapPair:
     weightedcovariance = units.np.linalg.inv(sum(inversecovariances))
     weightedaverage = (
       weightedcovariance @
-      sum(invcov@dxvec for invcov, dxvec in zip(dxvecsnominal, inversecovariances))
+      sum(invcov@dxvec for dxvec, invcov in zip(dxvecsnominal, inversecovariances))
     )
-    newdxvec = units.correlated_distances(distances=weightedaverage, covariance=weightedcovariance)
+
+    #https://stats.stackexchange.com/a/171619
+    # + hand waviness
+    #I hope this works
+    weightedvariancenumerator = np.sum(
+      (dxvec-weightedaverage)@invcov@(dxvec-weightedaverage)
+      for dxvec, invcov in zip(dxvecsnominal, inversecovariances)
+    )
+    weightedvariancedenominator = (
+      sum(inversecovariances)
+      - (
+        sum(invcov**2 for invcov in inversecovariances)
+        @ units.np.linalg.inv(sum(inversecovariances))
+      )
+    )
+    weightedvariance = weightedvariancenumerator * units.np.linalg.inv(weightedvariancedenominator)
+    weightedcovariance += weightedvariance
+    exit = max(o.result.exit for o in self.os)
+    if exit == 0 and all(_>0 for _ in units.np.linalg.eigvals(weightedcovariance)):
+      newdxvec = units.correlated_distances(distances=weightedaverage, covariance=weightedcovariance)
+    else:
+      newdxvec = [unc.ufloat(0, 9999), unc.ufloat(0, 9999)]
+      if exit == 0: exit = 4
     return LayerAlignmentResult(
       n=None,
       p1=self.p1,
@@ -52,7 +81,7 @@ class ComplementaryOverlapPair:
       code=None,
       layer1=self.layer1,
       layer2=self.layer2,
-      exit=max(o.result.exit for o in self.os),
+      exit=exit,
       sc=None,
       mse=(None, None, None),
       dxvec=newdxvec,
@@ -89,6 +118,9 @@ def __stitchlayers(*, overlaps, eliminatelayer=0, filteroverlaps=lambda o: True,
         overlaps.remove(o)
         overlaps.remove(complement)
         overlaps.append(ComplementaryOverlapPair(o, complement))
+  overlaps = [o for o in overlaps if not o.result.exit]
+  print("Complementary:", len([o for o in overlaps if isinstance(o, ComplementaryOverlapPair)]))
+  print("Other:        ", len([o for o in overlaps if not isinstance(o, ComplementaryOverlapPair)]))
 
   for o in overlaps:
     layer1, layer2 = o.layers
