@@ -2,7 +2,7 @@
 import numpy as np, matplotlib.pyplot as plt
 from .utilities import ExposureTimeOverlapFitResult
 from .config import CONST
-from ..utilities.img_file_io import correctImageLayerForExposureTime
+from ..utilities.img_correction import correctImageLayerForExposureTime
 import functools
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################

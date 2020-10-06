@@ -1,5 +1,6 @@
 from .config import CONST
-from ..utilities.img_file_io import getRawAsHWL, correctImageForExposureTime, smoothImageWorker
+from ..utilities.img_file_io import getRawAsHWL, smoothImageWorker
+from ..utilities.img_correction import correctImageForExposureTime
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
 import matplotlib.pyplot as plt

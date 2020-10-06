@@ -1,7 +1,8 @@
 #imports
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..utilities.img_file_io import getRawAsHWL, getExposureTimesByLayer, correctImageLayerForExposureTime, correctImageLayerWithFlatfield
+from ..utilities.img_file_io import getRawAsHWL, getExposureTimesByLayer
+from ..utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt

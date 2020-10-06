@@ -1,8 +1,10 @@
+#imports
 from .alignmentset import AlignmentSetForExposureTime
 from .utilities import getFirstLayerInGroup, getOverlapsWithExposureTimeDifferences
 from .config import CONST
 from ..flatfield.utilities import FlatfieldSampleInfo
-from ..utilities.img_file_io import LayerOffset, getExposureTimesByLayer, getImageHWLFromXMLFile, getRawAsHWL, getSampleMedianExposureTimesByLayer, correctImageLayerForExposureTime
+from ..utilities.img_file_io import LayerOffset, getExposureTimesByLayer, getImageHWLFromXMLFile, getRawAsHWL, getSampleMedianExposureTimesByLayer
+from ..utilities.img_correction import correctImageLayerForExposureTime
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
 from argparse import ArgumentParser
