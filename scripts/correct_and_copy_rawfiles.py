@@ -220,7 +220,7 @@ class RawfileCorrector :
                 et_corrected = correctImageForExposureTime(raw,rawfile_path,self._metadata_top_dir,self._med_exp_time,self._et_correction_offset)
             else :
                 layer_exp_time = (getExposureTimesByLayer(rawfile_path,self._img_dims[-1],self._metadata_top_dir))[self._layer-1]
-                et_corrected = correctImageLayerForExposureTime(rawfile_layer,layer_exp_time,self._med_exp_time,self._et_correction_offset)
+                et_corrected = correctImageLayerForExposureTime(raw,layer_exp_time,self._med_exp_time,self._et_correction_offset)
             msg+='exposure time, '
         else :
             et_corrected = raw

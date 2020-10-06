@@ -69,8 +69,8 @@ def writeImageToFile(img_array,filename_to_write,dtype=np.uint16) :
     img_array = img_array.transpose(2,1,0)
   elif len(img_array.shape)!=2 :
     msg = f'ERROR: writeImageToFile was passed an image of shape {img_array.shape}'
-    msg+= f' instead of a 2D image, or a 3D multiplexed image with the number of layers last.'
-    msg+= f' This might cause problems in writing it out in the right shape!'
+    msg+= ' instead of a 2D image, or a 3D multiplexed image with the number of layers last.'
+    msg+= ' This might cause problems in writing it out in the right shape!'
     raise ValueError(msg)
   #write out image flattened in fortran order
   im3writeraw(filename_to_write,img_array.flatten(order="F").astype(dtype))
