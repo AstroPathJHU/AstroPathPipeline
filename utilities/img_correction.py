@@ -1,6 +1,7 @@
 #imports
 from .img_file_io import getExposureTimesByLayer
 import numpy as np
+import cv2
 
 #helper function to correct a single image layer for exposure time differences
 def correctImageLayerForExposureTime(raw_img_layer,exp_time,med_exp_time,offset) :
