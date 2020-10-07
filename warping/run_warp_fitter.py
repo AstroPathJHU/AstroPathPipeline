@@ -19,7 +19,7 @@ DEFAULT_OCTETS      = '-999'
 #helper function to check all command-line arguments
 def checkArgs(args) :
     #make sure directories exist and fixed parameter choice is valid
-    checkDirAndFixedArgs(args)
+    checkDirAndFixedArgs(args,parse=True)
     #split some of the other arguments
     args.normalize = split_csv_to_list(args.normalize)
     args.init_pars = CONST.DEFAULT_INIT_PARS if args.init_pars is None else split_csv_to_dict_of_floats(args.init_pars)

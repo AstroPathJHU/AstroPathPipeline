@@ -5,7 +5,7 @@ from .config import CONST
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
 from argparse import ArgumentParser
-import os, random, math, sys, multiprocessing as mp
+import os, random, math, subprocess, multiprocessing as mp
 
 #################### FILE-SCOPE CONSTANTS ####################
 
@@ -20,7 +20,7 @@ PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding','f
 
 #function that gets passed to the multiprocessing pool just runs run_warpfitter.py
 def worker(cmd) :
-    os.system(cmd)
+    subprocess.call(cmd)
 
 #helper function to make sure arguments are valid
 def checkArgs(args) :
@@ -43,6 +43,10 @@ def getListOfJobCommands(args) :
     #find the valid octets in the samples and order them by the # of their center rectangle
     octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir_name
     if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
+        if args.threshold_file_dir is not None :
+            msg = 'ERROR: an octet file exists in the working directory, but a threshold file directory was also given!'
+            msg+= ' Get rid of the threshold file dir argument to use the octet file tht already exists, or remove the octet file to recreate it.'
+            raise RuntimeError(msg)
         all_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
     elif args.threshold_file_dir is not None :
         threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
@@ -110,9 +114,8 @@ if __name__=='__main__' :
     warp_logger.info('TESTING first command in the list...')
     test_run_command = f'{RUN_WARPFITTER_PREFIX} check_run {(job_cmds[0])[(len(RUN_WARPFITTER_PREFIX)+len(" fit ")):]}'
     print(test_run_command)
-    os.system(test_run_command)
+    subprocess.call(test_run_command)
     warp_logger.info('TESTING done')
-    sys.exit()
     #run all the job commands on a pool of workers
     nworkers = min(mp.cpu_count(),args.njobs) if args.workers is None else min(args.workers,args.njobs,mp.cpu_count())
     warp_logger.info(f'WILL RUN {args.njobs} COMMANDS ON A POOL OF {nworkers} WORKERS:')
