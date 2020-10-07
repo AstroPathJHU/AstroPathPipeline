@@ -117,7 +117,7 @@ class PolyFieldWarp(Warp) :
         """
         return correctImageLayerWithWarpFields(layer,self.x_warps,self.y_warps,self.interp)
 
-    def warpLayerInPlace(self,layerimg,dest) :
+    def warpLayerInPlace(self,layer,dest) :
         """
         Warps a single inputted image layer into the provided destination
         """
