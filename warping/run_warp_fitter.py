@@ -1,6 +1,6 @@
 #imports 
 from .warp_fitter import WarpFitter
-from .utilities import warp_logger, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile
+from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile
 from .config import CONST
 from ..utilities.misc import split_csv_to_list, split_csv_to_list_of_ints, split_csv_to_dict_of_floats, split_csv_to_dict_of_bounds
 from argparse import ArgumentParser
@@ -8,16 +8,11 @@ import multiprocessing as mp
 import os, gc
 import cProfile
 
-
 #################### FILE-SCOPE CONSTANTS ####################
 
 #placeholder default arguments for command line options
 DEFAULT_OVERLAPS    = '-999' 
 DEFAULT_OCTETS      = '-999' 
-DEFAULT_FIXED       = ['fx','fy']
-DEFAULT_NORMALIZE   = ['cx','cy','fx','fy','k1','k2','k3','p1','p2']
-DEFAULT_INIT_PARS   = {'cx':None,'cy':None,'fx':None,'fy':None,'k1':None,'k2':None,'k3':None,'p1':None,'p2':None}
-DEFAULT_INIT_BOUNDS = {'cx':None,'cy':None,'fx':None,'fy':None,'k1':None,'k2':None,'k3':None,'p1':None,'p2':None}
 
 #################### HELPER FUNCTIONS ####################
 
@@ -25,6 +20,10 @@ DEFAULT_INIT_BOUNDS = {'cx':None,'cy':None,'fx':None,'fy':None,'k1':None,'k2':No
 def checkArgs(args) :
     #make sure directories exist and fixed parameter choice is valid
     checkDirAndFixedArgs(args)
+    #split some of the other arguments
+    args.normalize = split_csv_to_list(args.normalize)
+    args.init_pars = CONST.DEFAULT_INIT_PARS if args.init_pars is None else split_csv_to_dict_of_floats(args.init_pars)
+    args.init_bounds = CONST.DEFAULT_INIT_BOUNDS if args.init_bounds is None else split_csv_to_dict_of_bounds(args.init_bounds)
     #only one of "overlaps" and/or "octets" can be specified
     nspec = sum([args.overlaps!=split_csv_to_list_of_ints(DEFAULT_OVERLAPS),
                  args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS)])
@@ -81,7 +80,7 @@ def getOverlaps(args) :
         else :
             threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
             valid_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,
-                                            args.workingdir_name,args.flatfield_file,args.n_threads,args.layer)
+                                            args.workingdir_name,args.n_threads,args.layer)
         if args.mode in ('fit', 'check_run', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
             for i,octet in enumerate(valid_octets,start=1) :
                 if i in args.octets or args.octets==[-1]:
@@ -102,60 +101,19 @@ if __name__=='__main__' :
     parser = ArgumentParser()
     #positional arguments
     parser.add_argument('mode',             help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
-    parser.add_argument('sample',           help='Name of the data sample to use')
-    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[sample_name]/*.Data.dat" files')
-    parser.add_argument('metadata_top_dir', help='Path to the directory containing "[sample name]/im3/xml" subdirectories')
-    parser.add_argument('flatfield_file',   help='Path to the flatfield.bin file that should be applied to files in this sample')
-    parser.add_argument('workingdir_name',  help='Name of the working directory that will be created')
-    #group for how to figure out which overlaps will be used
+    #add the common arguments
+    addCommonWarpingArgumentsToParser(parser)
+    #additional group for how to figure out which overlaps will be used
     overlap_selection_group = parser.add_argument_group('overlap selection', 'what set of overlaps should be used?')
     overlap_selection_group.add_argument('--octet_run_dir', 
                                          help=f'Path to a previously-created workingdir that contains a [sample]_{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM} file')
-    overlap_selection_group.add_argument('--threshold_file_dir',
-                                         help='Path to the directory holding the background threshold file created for the sample in question')
-    overlap_selection_group.add_argument('--overlaps', default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
+    overlap_selection_group.add_argument('--overlaps',       default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
                                          help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
-    overlap_selection_group.add_argument('--octets',   default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
+    overlap_selection_group.add_argument('--octets',         default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
                                          help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
-    overlap_selection_group.add_argument('--req_pixel_frac', default=0.85, type=float,
-                                         help="What fraction of an overlap image's pixels must be above the threshold to accept it in a valid octet")
-    #mutually exclusive group for how to handle the exposure time correction
-    et_correction_group = parser.add_mutually_exclusive_group(required=True)
-    et_correction_group.add_argument('--exposure_time_offset_file',
-                                    help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the samples in question
-                                    [use this argument to apply corrections for differences in image exposure time]""")
-    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
-                                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
-    #group for options of how the fit will proceed
-    fit_option_group = parser.add_argument_group('fit options', 'how should the fit be done?')
-    fit_option_group.add_argument('--max_iter',                 default=1000,                                           type=int,
-                                  help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
-    fit_option_group.add_argument('--fixed',                    default=DEFAULT_FIXED,                                  type=split_csv_to_list,         
-                                  help='Comma-separated list of parameters to keep fixed during fitting')
-    fit_option_group.add_argument('--normalize',                default=DEFAULT_NORMALIZE,                              type=split_csv_to_list,
-                                  help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
-    fit_option_group.add_argument('--init_pars',                default=DEFAULT_INIT_PARS,                              type=split_csv_to_dict_of_floats,
-                                  help='Comma-separated list of initial parameter name=value pairs to use in lieu of defaults.')
-    fit_option_group.add_argument('--init_bounds',              default=DEFAULT_INIT_BOUNDS,                            type=split_csv_to_dict_of_bounds,
-                                  help='Comma-separated list of parameter name=low_bound:high_bound pairs to use in lieu of defaults.')
-    fit_option_group.add_argument('--float_p1p2_to_polish',     action='store_true',
-                                  help="""Add this flag to float p1 and p2 in the polishing minimization 
-                                          (regardless of whether they are in the list of fixed parameters)""")
-    fit_option_group.add_argument('--max_radial_warp',          default=8.,                                             type=float,
-                                  help='Maximum amount of radial warp to use for constraint')
-    fit_option_group.add_argument('--max_tangential_warp',      default=4.,                                             type=float,
-                                  help='Maximum amount of radial warp to use for constraint')
-    fit_option_group.add_argument('--p1p2_polish_lasso_lambda', default=0.0,                                            type=float,
-                                  help="""Lambda magnitude parameter for the LASSO constraint on p1 and p2 in the polishing minimization
-                                          (if those parameters will float then)""")
-    fit_option_group.add_argument('--print_every',              default=100,                                            type=int,
-                                  help='How many iterations to wait between printing minimization progress')
-    #group for other run options
-    run_option_group = parser.add_argument_group('run options', 'other options for this run')
-    run_option_group.add_argument('--n_threads',      default=10, type=int,         
-                                  help='Maximum number of threads/processes to run at once')
-    run_option_group.add_argument('--layer',          default=1,  type=int,         
-                                  help='Image layer to use (indexed from 1)')
+    #how many threads to use in finding octets/reading files
+    parser.add_argument('--n_threads',      default=10, type=int,         
+                        help='Maximum number of threads/processes to run at once')
     args = parser.parse_args()
     #apply some checks to the arguments to make sure they're valid
     checkArgs(args)

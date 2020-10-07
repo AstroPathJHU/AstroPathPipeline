@@ -4,6 +4,19 @@ import numpy as np
 
 #class for shared constant variables
 class Const :
+    #some default command line arguments
+    @property
+    def DEFAULT_FIXED(self) :
+        return 'fx,fy'
+    @property
+    def DEFAULT_NORMALIZE(self) :
+        return 'cx,cy,fx,fy,k1,k2,k3,p1,p2'
+    @property
+    def DEFAULT_INIT_PARS(self) :
+        return {'cx':None,'cy':None,'fx':None,'fy':None,'k1':None,'k2':None,'k3':None,'p1':None,'p2':None}
+    @property
+    def DEFAULT_INIT_BOUNDS(self) :
+        return {'cx':None,'cy':None,'fx':None,'fy':None,'k1':None,'k2':None,'k3':None,'p1':None,'p2':None}
     #file extensions
     @property
     def RAW_EXT(self) :

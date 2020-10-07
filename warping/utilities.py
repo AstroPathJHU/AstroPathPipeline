@@ -4,7 +4,7 @@ from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities.img_file_io import getRawAsHWL, getExposureTimesByLayer
 from ..utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield
 from ..utilities.tableio import readtable, writetable
-from ..utilities.misc import cd
+from ..utilities.misc import cd, split_csv_to_list
 import numpy as np, matplotlib.pyplot as plt
 import cv2, os, logging, dataclasses, copy
 
@@ -36,7 +36,7 @@ class WarpImage :
 
 #helper classes to represent octets of overlaps
 @dataclasses.dataclass(eq=False, repr=False)
-class OctetOverlapNumbers :
+class OverlapOctet :
     metadata_top_dir : str
     rawfile_top_dir  : str
     sample_name      : str
@@ -55,6 +55,61 @@ class OctetOverlapNumbers :
     def overlap_ns(self) :
         return [self.olap_1_n,self.olap_2_n,self.olap_3_n,self.olap_4_n,self.olap_6_n,self.olap_7_n,self.olap_8_n,self.olap_9_n]
 
+#helper function to either create or mutate an argument parser for some generic options
+def addCommonWarpingArgumentsToParser(parser) :
+    #positional arguments
+    parser.add_argument('sample',           help='Name of the data sample to use')
+    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[sample_name]/*.Data.dat" files')
+    parser.add_argument('metadata_top_dir', help='Path to the directory containing "[sample name]/im3/xml" subdirectories')
+    parser.add_argument('workingdir_name',  help='Path to the working directory (will be created if necessary)')
+    #mutually exclusive group for how to handle the exposure time correction
+    et_correction_group = parser.add_mutually_exclusive_group(required=True)
+    et_correction_group.add_argument('--exposure_time_offset_file',
+                                    help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the samples in question
+                                    [use this argument to apply corrections for differences in image exposure time]""")
+    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
+                                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
+    #mutually exclusive group for how to handle the flatfielding
+    flatfield_group = parser.add_mutually_exclusive_group(required=True)
+    flatfield_group.add_argument('--flatfield_file',
+                                    help="""Path to the flatfield.bin file that should be applied to the files in this sample""")
+    flatfield_group.add_argument('--skip_flatfielding', action='store_true',
+                                    help='Add this flag to entirely skip flatfield corrections')
+    #group for options of how the fit(s) will proceed
+    fit_option_group = parser.add_argument_group('fit options', 'how should the fit be done?')
+    fit_option_group.add_argument('--max_iter',                 default=1000,                                           type=int,
+                                  help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
+    fit_option_group.add_argument('--fixed',                    default=CONST.DEFAULT_FIXED,
+                                  help='Comma-separated list of parameters to keep fixed during fitting')
+    fit_option_group.add_argument('--normalize',                default=CONST.DEFAULT_NORMALIZE,
+                                  help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
+    fit_option_group.add_argument('--init_pars',                default=CONST.DEFAULT_INIT_PARS,
+                                  help='Comma-separated list of initial parameter name=value pairs to use in lieu of defaults.')
+    fit_option_group.add_argument('--init_bounds',              default=CONST.DEFAULT_INIT_BOUNDS,
+                                  help='Comma-separated list of parameter name=low_bound:high_bound pairs to use in lieu of defaults.')
+    fit_option_group.add_argument('--float_p1p2_to_polish',     action='store_true',
+                                  help="""Add this flag to float p1 and p2 in the polishing minimization 
+                                          (regardless of whether they are in the list of fixed parameters)""")
+    fit_option_group.add_argument('--max_radial_warp',          default=8.,                                             type=float,
+                                  help='Maximum amount of radial warp to use for constraint')
+    fit_option_group.add_argument('--max_tangential_warp',      default=4.,                                             type=float,
+                                  help='Maximum amount of radial warp to use for constraint')
+    fit_option_group.add_argument('--p1p2_polish_lasso_lambda', default=0.0,                                            type=float,
+                                  help="""Lambda magnitude parameter for the LASSO constraint on p1 and p2 in the polishing minimization
+                                          (if those parameters will float then)""")
+    fit_option_group.add_argument('--print_every',              default=100,                                            type=int,
+                                  help='How many iterations to wait between printing minimization progress')
+    #group for how to find overlap octets to use
+    octet_finding_group = parser.add_argument_group('octet finding', 'information to find octets for the sample')
+    octet_finding_group.add_argument('--threshold_file_dir',
+                                         help='Path to the directory holding the background threshold file created for the sample in question')
+    octet_finding_group.add_argument('--req_pixel_frac', default=0.85,             type=float,
+                                         help="What fraction of an overlap image's pixels must be above the threshold to accept it in a valid octet")
+    #group for other run options
+    run_option_group = parser.add_argument_group('run options', 'other options for this run')
+    run_option_group.add_argument('--layer',          default=1,  type=int,         
+                                  help='Image layer to use (indexed from 1)')
+
 #helper function to make sure necessary directories exist and that the input choice of fixed parameters is valid
 def checkDirAndFixedArgs(args) :
     #rawfile_top_dir/[sample] must exist
@@ -65,16 +120,16 @@ def checkDirAndFixedArgs(args) :
     if not os.path.isdir(args.metadata_top_dir) :
         raise ValueError(f'ERROR: metadata_top_dir argument ({args.metadata_top_dir}) does not point to a valid directory!')
     #metadata top dir dir must be usable to find a metafile directory
-    metafile_dir = os.path.join(args.metadata_top_dir,args.sample,'im3','xml')
-    if not os.path.isdir(metafile_dir) :
-        raise ValueError(f'ERROR: metadata_top_dir ({args.metadata_top_dir}) does not contain "[sample name]/im3/xml" subdirectories!')
+    if not os.path.isdir(args.metadata_top_dir) :
+        raise ValueError(f'ERROR: metadata_top_dir ({args.metadata_top_dir}) does not exist!')
     #if images are to be corrected for exposure time, exposure time correction file must exist and must contain the necessary file
     if (not args.skip_exposure_time_correction) :
         if not os.path.isfile(args.exposure_time_offset_file) :
             raise ValueError(f'ERROR: exposure_time_offset_file {args.exposure_time_offset_file} does not exist!')
     #make sure the flatfield file exists
-    if not os.path.isfile(args.flatfield_file) :
-        raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
+    if (not args.skip_flatfielding) :
+        if not os.path.isfile(args.flatfield_file) :
+            raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
     #the octet run workingdir must exist if it's to be used
     if args.octet_run_dir is not None and not os.path.isdir(args.octet_run_dir) :
         raise ValueError(f'ERROR: octet_run_dir ({args.octet_run_dir}) does not exist!')
@@ -82,6 +137,7 @@ def checkDirAndFixedArgs(args) :
     if not os.path.isdir(args.workingdir_name) :
         os.mkdir(args.workingdir_name)
     #the parameter fixing string must correspond to some combination of options
+    args.fixed = split_csv_to_list(args.fixed)
     fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
     fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed
     fix_k1k2k3 = 'k1' in args.fixed and 'k2' in args.fixed and 'k3' in args.fixed
@@ -95,8 +151,8 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_nam
     octet_filepath = os.path.join(octet_run_dir,f'{sample_name}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
     warp_logger.info(f'Reading octet overlaps numbers from file {octet_filepath}...')
     #read the overlap ns from the file
-    octet_olap_ns = readtable(octet_filepath,OctetOverlapNumbers)
-    for octet_olap_n in octet_olap_ns :
+    octets = readtable(octet_filepath,OverlapOctet)
+    for octet_olap_n in octets :
         if octet_olap_n.metadata_top_dir!=metadata_top_dir :
             msg = f'ERROR: metadata_top_dir {metadata_top_dir} passed to readOctetsFromFile does not match '
             msg+= f'{octet_olap_n.metadata_top_dir} in octet file {octet_filepath}!'
@@ -117,56 +173,19 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_nam
             msg = f'ERROR: layer {layer} passed to readOctetsFromFile does not match '
             msg+= f'{octet_olap_n.layer} in octet file {octet_filepath}!'
             raise(WarpingError(msg))
-    octet_olap_ns.sort(key=lambda x:x.p1_rect_n)
-    return octet_olap_ns
-
-#Helper function to load a single raw file, correct its illumination with a flatfield layer, smooth it, 
-#and return information needed to create a new WarpImage
-#meant to be run in parallel
-def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,med_et,offset,overlaps,rectangles,metadata_top_dir,smoothsigma,return_dict=None,return_dict_key=None) :
-    #get the raw image
-    rawimage = (getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1]
-    #correct the raw image for exposure time if requested
-    if med_et is not None and offset is not None :
-        exp_time = (getExposureTimesByLayer(rfp,nlayers,metadata_top_dir))[layer-1]
-        rawimage = correctImageLayerForExposureTime(rawimage,exp_time,med_et,offset)
-    #correct the raw image with the flatfield
-    rawimage = correctImageLayerWithFlatfield(rawimage,flatfield)
-    rfkey = os.path.basename(os.path.normpath(rfp)).split('.')[0]
-    #find out if this image should be masked when skipping the corner overlaps
-    if overlaps is not None and rectangles is not None :
-        is_corner_only=True
-        this_rect = [r for r in rectangles if r.file.split('.')[0]==rfkey]
-        assert len(this_rect)==1; this_rect=this_rect[0]
-        this_rect_number = this_rect.n
-        this_rect_index = rectangles.index(this_rect)
-        for tag in [o.tag for o in overlaps if o.p1==this_rect_number or o.p2==this_rect_number] :
-            if tag not in CONST.CORNER_OVERLAP_TAGS :
-                is_corner_only=False
-                break
-    else :
-        is_corner_only=False #default is to consider every image
-        this_rect_index = -1
-    #if requested, smooth the image and add it to the list, otherwise just add it to the list
-    image_to_add = rawimage
-    if smoothsigma is not None :
-        image_to_add = cv2.GaussianBlur(image_to_add,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
-    return_item = {'rfkey':rfkey,'image':image_to_add,'is_corner_only':is_corner_only,'list_index':this_rect_index}
-    if return_dict is not None and return_dict_key is not None:
-        return_dict[return_dict_key]=return_item
-    else :
-        return return_item
+    octets.sort(key=lambda x:x.p1_rect_n)
+    return octets
 
 # Helper function to get the dictionary of octets
-def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,flatfield_file,n_procs,layer) :
+def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,n_procs,layer) :
     #start by getting the threshold of this sample layer from the the inputted file
     with open(threshold_file_path) as tfp :
         vals = [int(l.rstrip()) for l in tfp.readlines() if l.rstrip()!='']
     threshold_value = vals[layer-1]
     #create the alignment set and run its alignment
     warp_logger.info("Performing an initial alignment to find this sample's valid octets...")
-    a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer)
-    a.getDAPI(filetype='raw')
+    a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw')
+    a.getDAPI()
     a.align()
     #get the list of overlaps
     overlaps = a.overlaps
@@ -191,7 +210,7 @@ def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pi
         good_overlaps.append(overlap)
     warp_logger.info(f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)}')
     #find the overlaps that form full octets
-    octet_overlap_ns = []
+    octets = []
     #begin by getting the set of all p1s
     p1s = set([o.p1 for o in good_overlaps])
     #for each p1, if there are eight good overlaps it forms an octet
@@ -201,15 +220,53 @@ def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pi
             overlapswiththisp1.sort(key=lambda x: x.tag)
             ons = [o.n for o in overlapswiththisp1]
             warp_logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
-            octet_overlap_ns.append(OctetOverlapNumbers(metadata_top_dir,rawfile_top_dir,samp,CONST.N_CLIP,layer,p1,*(ons)))
-    octet_overlap_ns.sort(key=lambda x: x.p1_rect_n)
+            octets.append(OverlapOctet(metadata_top_dir,rawfile_top_dir,samp,CONST.N_CLIP,layer,p1,*(ons)))
+    octets.sort(key=lambda x: x.p1_rect_n)
     #save the file of which overlaps are in each valid octet
     with cd(working_dir) :
-        writetable(f'{samp}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',octet_overlap_ns)
+        writetable(f'{samp}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',octets)
     #print how many octets there are 
-    warp_logger.info(f'{len(octet_overlap_ns)} total octets found.')
+    warp_logger.info(f'{len(octets)} total octets found.')
     #return the dictionary of octets
-    return octet_overlap_ns
+    return octets
+
+#Helper function to load a single raw file, correct its illumination with a flatfield layer, smooth it, 
+#and return information needed to create a new WarpImage
+#meant to be run in parallel
+def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,med_et,offset,overlaps,rectangles,metadata_top_dir,smoothsigma,return_dict=None,return_dict_key=None) :
+    #get the raw image
+    rawimage = (getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1]
+    #correct the raw image for exposure time if requested
+    if med_et is not None and offset is not None :
+        exp_time = (getExposureTimesByLayer(rfp,nlayers,metadata_top_dir))[layer-1]
+        rawimage = correctImageLayerForExposureTime(rawimage,exp_time,med_et,offset)
+    #correct the raw image with the flatfield
+    if flatfield is not None :
+        rawimage = correctImageLayerWithFlatfield(rawimage,flatfield)
+    rfkey = os.path.basename(os.path.normpath(rfp)).split('.')[0]
+    #find out if this image should be masked when skipping the corner overlaps
+    if overlaps is not None and rectangles is not None :
+        is_corner_only=True
+        this_rect = [r for r in rectangles if r.file.split('.')[0]==rfkey]
+        assert len(this_rect)==1; this_rect=this_rect[0]
+        this_rect_number = this_rect.n
+        this_rect_index = rectangles.index(this_rect)
+        for tag in [o.tag for o in overlaps if o.p1==this_rect_number or o.p2==this_rect_number] :
+            if tag not in CONST.CORNER_OVERLAP_TAGS :
+                is_corner_only=False
+                break
+    else :
+        is_corner_only=False #default is to consider every image
+        this_rect_index = -1
+    #if requested, smooth the image and add it to the list, otherwise just add it to the list
+    image_to_add = rawimage
+    if smoothsigma is not None :
+        image_to_add = cv2.GaussianBlur(image_to_add,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
+    return_item = {'rfkey':rfkey,'image':image_to_add,'is_corner_only':is_corner_only,'list_index':this_rect_index}
+    if return_dict is not None and return_dict_key is not None:
+        return_dict[return_dict_key]=return_item
+    else :
+        return return_item
 
 #helper function to find the limit on a parameter that produces the maximum warp
 def findDefaultParameterLimit(parindex,parincrement,warplimit,warpamtfunc,testpars) :
