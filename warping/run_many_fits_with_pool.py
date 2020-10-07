@@ -12,9 +12,9 @@ import os, random, math, sys, multiprocessing as mp
 RUN_WARPFITTER_PREFIX = 'python -m microscopealignment.warping.run_warp_fitter' #part of the command referencing how to run run_warpfitter.py
 JOB_DIR_STEM = 'warpfitter_batch'
 POSITIONAL_PASSTHROUGH_ARG_NAMES = ['sample','rawfile_top_dir','metadata_top_dir']
-PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','skip_exposure_time_correction','flatfield_file','skip_flatfielding','max_iter','fixed','normalize']
-PASSTHROUGH_ARG_NAMES+= ['init_pars','init_bounds','float_p1p2_to_polish','max_radial_warp','max_tangential_warp','p1p2_polish_lasso_lambda']
-PASSTHROUGH_ARG_NAMES+= ['print_every','layer']
+PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','max_iter','fixed','normalize','init_pars','init_bounds','max_radial_warp','max_tangential_warp']
+PASSTHROUGH_ARG_NAMES+= ['p1p2_polish_lasso_lambda','print_every','layer']
+PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding','float_p1p2_to_polish']
 
 #################### HELPER FUNCTIONS ####################
 
@@ -63,7 +63,7 @@ def getListOfJobCommands(args) :
     for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
         cmd_base+=f'{argvars[ppan]} '
     for i in range(args.njobs) :
-        thisjobdirname = args.job_dir_stem+'_octets'
+        thisjobdirname = JOB_DIR_STEM+'_octets'
         thisjoboctetstring = ''
         for j in range(n_octets_per_job) :
             index = 0 if octet_select_method=='first' else random.randint(0,len(all_octets_numbers)-1)
@@ -72,9 +72,13 @@ def getListOfJobCommands(args) :
             thisjoboctetstring+=f'{this_octet_number},'
         thisjobworkingdir = os.path.join(args.workingdir_name,thisjobdirname)
         workingdir_names.append(thisjobworkingdir)
-        thisjobcmdstring = f'{cmd_base} {thisjobworkingdir} --octet_run_dir {octet_run_dir} --octets {thisjoboctetstring[:-1]}'
+        thisjobcmdstring = f'{cmd_base} {thisjobworkingdir} --octet_run_dir {octet_run_dir} --octets {thisjoboctetstring[:-1]} '
         for pan in PASSTHROUGH_ARG_NAMES :
-            thisjobcmdstring+=f'--{pan} {argvars[pan]} '
+            if argvars[pan] is not None :
+                thisjobcmdstring+=f'--{pan} {argvars[pan]} '
+        for pfn in PASSTHROUGH_FLAG_NAMES :
+            if argvars[pfn] :
+                thisjobcmdstring+=f'--{pfn} '
         thisjobcmdstring+='--n_threads 1'
         job_cmds.append(thisjobcmdstring)
     return job_cmds, workingdir_names
@@ -102,14 +106,13 @@ if __name__=='__main__' :
     checkArgs(args)
     #get the list of all the job commands
     job_cmds, dirnames = getListOfJobCommands(args)
-    for jc in job_cmds :
-        print(jc)
-    sys.exit()
     #run the first command in check_run mode to make sure that things will work when they do get going
     warp_logger.info('TESTING first command in the list...')
     test_run_command = f'{RUN_WARPFITTER_PREFIX} check_run {(job_cmds[0])[(len(RUN_WARPFITTER_PREFIX)+len(" fit ")):]}'
+    print(test_run_command)
     os.system(test_run_command)
     warp_logger.info('TESTING done')
+    sys.exit()
     #run all the job commands on a pool of workers
     nworkers = min(mp.cpu_count(),args.njobs) if args.workers is None else min(args.workers,args.njobs,mp.cpu_count())
     warp_logger.info(f'WILL RUN {args.njobs} COMMANDS ON A POOL OF {nworkers} WORKERS:')

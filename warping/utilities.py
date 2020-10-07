@@ -83,9 +83,9 @@ def addCommonWarpingArgumentsToParser(parser) :
                                   help='Comma-separated list of parameters to keep fixed during fitting')
     fit_option_group.add_argument('--normalize',                default=CONST.DEFAULT_NORMALIZE,
                                   help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
-    fit_option_group.add_argument('--init_pars',                default=CONST.DEFAULT_INIT_PARS,
+    fit_option_group.add_argument('--init_pars',
                                   help='Comma-separated list of initial parameter name=value pairs to use in lieu of defaults.')
-    fit_option_group.add_argument('--init_bounds',              default=CONST.DEFAULT_INIT_BOUNDS,
+    fit_option_group.add_argument('--init_bounds',
                                   help='Comma-separated list of parameter name=low_bound:high_bound pairs to use in lieu of defaults.')
     fit_option_group.add_argument('--float_p1p2_to_polish',     action='store_true',
                                   help="""Add this flag to float p1 and p2 in the polishing minimization 
@@ -111,7 +111,7 @@ def addCommonWarpingArgumentsToParser(parser) :
                                   help='Image layer to use (indexed from 1)')
 
 #helper function to make sure necessary directories exist and that the input choice of fixed parameters is valid
-def checkDirAndFixedArgs(args) :
+def checkDirAndFixedArgs(args,parse=False) :
     #rawfile_top_dir/[sample] must exist
     rawfile_dir = os.path.join(args.rawfile_top_dir,args.sample)
     if not os.path.isdir(rawfile_dir) :
@@ -137,13 +137,15 @@ def checkDirAndFixedArgs(args) :
     if not os.path.isdir(args.workingdir_name) :
         os.mkdir(args.workingdir_name)
     #the parameter fixing string must correspond to some combination of options
-    args.fixed = split_csv_to_list(args.fixed)
-    fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
-    fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed
-    fix_k1k2k3 = 'k1' in args.fixed and 'k2' in args.fixed and 'k3' in args.fixed
-    fix_p1p2   = 'p1' in args.fixed and 'p2' in args.fixed
-    if args.fixed!=[''] and len(args.fixed)!=2*sum([fix_cxcy,fix_fxfy,fix_p1p2])+(3*int(fix_k1k2k3)) :
+    fixed_arg_parsed = split_csv_to_list(args.fixed)
+    fix_cxcy   = 'cx' in fixed_arg_parsed and 'cy' in fixed_arg_parsed
+    fix_fxfy   = 'fx' in fixed_arg_parsed and 'fy' in fixed_arg_parsed
+    fix_k1k2k3 = 'k1' in fixed_arg_parsed and 'k2' in fixed_arg_parsed and 'k3' in fixed_arg_parsed
+    fix_p1p2   = 'p1' in fixed_arg_parsed and 'p2' in fixed_arg_parsed
+    if fixed_arg_parsed!=[''] and len(fixed_arg_parsed)!=2*sum([fix_cxcy,fix_fxfy,fix_p1p2])+(3*int(fix_k1k2k3)) :
         raise ValueError(f'ERROR: Fixed parameters argument ({args.fixed}) does not result in a valid fixed parameter condition!')
+    if parse :
+        args.fixed = fixed_arg_parsed
 
 # Helper function to read previously-saved octet definitions from a file
 def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_name,layer) :
