@@ -51,9 +51,12 @@ def correctImageWithFlatfield(raw_img,flatfield) :
   return ff_corrected
 
 #helper function to correct an image layer with given warp dx and dy fields
-def correctImageLayerWithWarpFields(raw_img_layer,dx_warps,dy_warps) :
+def correctImageLayerWithWarpFields(raw_img_layer,dx_warps,dy_warps,interp_method=cv2.INTER_LINEAR,dest=None) :
   grid = np.mgrid[0:raw_img_layer.shape[0],0:raw_img_layer.shape[1]]
   xpos, ypos = grid[1], grid[0]
   map_x = (xpos-dx_warps).astype(np.float32) 
   map_y = (ypos-dy_warps).astype(np.float32)
-  return cv2.remap(raw_img_layer,map_x,map_y,cv2.INTER_LINEAR)
+  if dest is not None :
+    return cv2.remap(raw_img_layer,map_x,map_y,interp_method,dest)
+  else :
+    return cv2.remap(raw_img_layer,map_x,map_y,interp_method)

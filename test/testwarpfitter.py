@@ -38,7 +38,6 @@ print('Running doFit')
 result = fitter.doFit(fixed=fixed_arg,normalize=normalize_arg,init_pars=init_pars_arg,init_bounds=init_bounds_arg,float_p1p2_in_polish_fit=True,
                       max_radial_warp=max_radial_warp,max_tangential_warp=max_tangential_warp,p1p2_polish_lasso_lambda=p1p2_polish_lasso_lambda,
                       polish=True,print_every=print_every,maxiter=max_iter)
-print('Removing working directory...')
 new = readtable(working_dir/"fit_result.csv", WarpFitResult)
 ref = readtable(folder/"reference"/"warping"/"fit_result.csv", WarpFitResult)
 for resultnew, resultref in zip(new, ref):
@@ -50,5 +49,6 @@ for resultnew, resultref in zip(new, ref):
   0
   assertAlmostEqual(resultnew, resultref, rtol=1e-3)
 
+print('Removing working directory...')
 shutil.rmtree(working_dir,ignore_errors=True)
 print('Done!')

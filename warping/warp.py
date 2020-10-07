@@ -2,6 +2,7 @@
 from .utilities import WarpingError
 from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
+from ..utilities.img_correction import correctImageLayerWithWarpFields
 import numpy as np, matplotlib.pyplot as plt, seaborn as sns
 import os, math, cv2
 
@@ -112,17 +113,15 @@ class PolyFieldWarp(Warp) :
 
     def getWarpedLayer(self,layer) :
         """
-        Quickly warps and returns a single inputted image layer array
+        Warps and returns a single inputted image layer array
         """
-        map_x, map_y = self.__getMapMatrices()
-        return cv2.remap(layer,map_x,map_y,self.interp)
+        return correctImageLayerWithWarpFields(layer,self.x_warps,self.y_warps,self.interp)
 
     def warpLayerInPlace(self,layerimg,dest) :
         """
-        Quickly warps a single inputted image layer into the provided destination
+        Warps a single inputted image layer into the provided destination
         """
-        map_x, map_y = self.__getMapMatrices()
-        return cv2.remap(layerimg,map_x,map_y,self.interp,dest)
+        return correctImageLayerWithWarpFields(layer,self.x_warps,self.y_warps,self.interp,dest)
 
     def writeImageLayer(self,im,rawfilename,layernumber) :
         """
@@ -237,14 +236,6 @@ class PolyFieldWarp(Warp) :
         plt.text(x[0],0.5*(fit_ys[-1]-fit_ys[0]),ftext)
         plt.legend()
         plt.show()
-
-    #helper function to calculate and return the map matrices for remap
-    def __getMapMatrices(self) :
-        grid = np.mgrid[0:self.m,0:self.n]
-        xpos, ypos = grid[1], grid[0]
-        map_x = (xpos-self.x_warps).astype(np.float32) 
-        map_y = (ypos-self.y_warps).astype(np.float32) #maybe use maps from convertMaps() instead later on?
-        return map_x, map_y
 
     #helper function to convert a raw file name and a layer into a fieldwarped single layer filename
     def __getWarpedLayerFilename(self,rawname,layer) :
