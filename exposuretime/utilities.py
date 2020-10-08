@@ -30,8 +30,8 @@ def checkArgs(args) :
         if not os.path.isfile(args.flatfield_file) :
             raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
     #create the working directory if it doesn't already exist
-    if not os.path.isdir(args.workingdir_name) :
-        os.mkdir(args.workingdir_name)
+    if not os.path.isdir(args.workingdir) :
+        os.mkdir(args.workingdir)
     #make sure the layers argument makes sense
     if len(args.layers)<1 :
     	raise ValueError(f'ERROR: layers argument {args.layers} must have at least one layer number (or -1)!')

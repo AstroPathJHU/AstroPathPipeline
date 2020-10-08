@@ -51,7 +51,7 @@ if __name__=='__main__' :
     checkArgs(args)
     #initialize a fit
     et_fit_logger.info('Defining group of fits....')
-    fit_group = ExposureTimeOffsetFitGroup(args.sample,args.rawfile_top_dir,args.metadata_top_dir,args.workingdir_name,args.layers,args.n_threads)
+    fit_group = ExposureTimeOffsetFitGroup(args.sample,args.rawfile_top_dir,args.metadata_top_dir,args.workingdir,args.layers,args.n_threads)
     #run the fits
     et_fit_logger.info('Running fits....')
     fit_group.runFits(args.flatfield_file,args.overlaps,args.smooth_sigma,args.use_whole_image,

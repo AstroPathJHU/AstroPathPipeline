@@ -22,14 +22,6 @@ PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding','f
 def worker(cmd) :
     subprocess.call(cmd)
 
-#helper function to make sure arguments are valid
-def checkArgs(args) :
-    #check the directory and fixed parameter arguments
-    checkDirAndFixedArgs(args)
-    #make the batch directory
-    if not os.path.isdir(args.workingdir_name) :
-        os.mkdir(args.workingdir_name)
-
 #helper function to make the list of job commands
 def getListOfJobCommands(args) :
     #first split the octet selection argument to get how they should be chosen and 
@@ -41,7 +33,7 @@ def getListOfJobCommands(args) :
     except ValueError :
         raise ValueError(f'ERROR: octet_selection argument ({args.octet_selection}) is not valid! Use "first_n" or "random_n".')
     #find the valid octets in the samples and order them by the # of their center rectangle
-    octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir_name
+    octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir
     if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
         if args.threshold_file_dir is not None :
             msg = 'ERROR: an octet file exists in the working directory, but a threshold file directory was also given!'
@@ -52,7 +44,7 @@ def getListOfJobCommands(args) :
         threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
         n_threads = mp.cpu_count if args.workers is None else min(mp.cpu_count,args.workers)
         all_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,
-                                      args.workingdir_name,n_threads,args.layer)
+                                      args.workingdir,n_threads,args.layer)
     else :
         raise RuntimeError('ERROR: either an octet_run_dir or a threshold_file_dir must be supplied to define octets to run on!')
     all_octets_numbers = list(range(1,len(all_octets)+1))
@@ -74,7 +66,7 @@ def getListOfJobCommands(args) :
             this_octet_number = all_octets_numbers.pop(index)
             thisjobdirname+=f'_{this_octet_number}'
             thisjoboctetstring+=f'{this_octet_number},'
-        thisjobworkingdir = os.path.join(args.workingdir_name,thisjobdirname)
+        thisjobworkingdir = os.path.join(args.workingdir,thisjobdirname)
         workingdir_names.append(thisjobworkingdir)
         thisjobcmdstring = f'{cmd_base} {thisjobworkingdir} --octet_run_dir {octet_run_dir} --octets {thisjoboctetstring[:-1]} '
         for pan in PASSTHROUGH_ARG_NAMES :
@@ -106,8 +98,8 @@ if __name__=='__main__' :
     job_organization_group.add_argument('--workers',         default=None,       type=int,
                                         help='Number of CPUs to use in the multiprocessing pool (defaults to all available)')
     args = parser.parse_args()
-    #make sure the arguments are valid
-    checkArgs(args)
+    #check some of the basic arguments
+    checkDirAndFixedArgs(args)
     #get the list of all the job commands
     job_cmds, dirnames = getListOfJobCommands(args)
     #run the first command in check_run mode to make sure that things will work when they do get going
@@ -131,8 +123,8 @@ if __name__=='__main__' :
     results = []
     for dirname in dirnames :
         results.append((readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))[0])
-    with cd(args.workingdir_name) :
-        writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir_name))}.csv',results)
+    with cd(args.workingdir) :
+        writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv',results)
     #get the weighted average parameters over all the results that reduced the cost
     warp_logger.info('Writing out info for weighted average warp....')
     w_cx = 0.; w_cy = 0.; w_fx = 0.; w_fy = 0.
@@ -150,7 +142,7 @@ if __name__=='__main__' :
     #make a warp from these w average parameters and write out its info
     w_avg_warp = CameraWarp(results[0].n,results[0].m,w_cx,w_cy,w_fx,w_fy,w_k1,w_k2,w_k3,w_p1,w_p2)
     w_avg_result = WarpFitResult()
-    w_avg_result.dirname = args.workingdir_name
+    w_avg_result.dirname = args.workingdir
     w_avg_result.n  = results[0].n
     w_avg_result.m  = results[0].m
     w_avg_result.cx = w_avg_warp.cx
@@ -168,14 +160,14 @@ if __name__=='__main__' :
     w_avg_result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)
     w_avg_result.max_rad_warp   = w_avg_warp.maxRadialDistortAmount(None)
     w_avg_result.max_tan_warp   = w_avg_warp.maxTangentialDistortAmount(None)
-    with cd(args.workingdir_name) :
-        writetable(f'{os.path.basename(os.path.normpath(args.workingdir_name))}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}',[w_avg_result])
-        w_avg_warp.writeOutWarpFields(os.path.basename(os.path.normpath(args.workingdir_name)))
+    with cd(args.workingdir) :
+        writetable(f'{os.path.basename(os.path.normpath(args.workingdir))}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}',[w_avg_result])
+        w_avg_warp.writeOutWarpFields(os.path.basename(os.path.normpath(args.workingdir)))
     #aggregate the different metadata summary and field log files into one
     all_field_logs = []
     for dirname in dirnames :
         all_field_logs+=((readtable(os.path.join(dirname,f'field_log_{os.path.basename(os.path.normpath(dirname))}.csv'),FieldLog)))
-    with cd(args.workingdir_name) :
-        writetable(f'field_log_{os.path.basename(os.path.normpath(args.workingdir_name))}.csv',all_field_logs)
+    with cd(args.workingdir) :
+        writetable(f'field_log_{os.path.basename(os.path.normpath(args.workingdir))}.csv',all_field_logs)
     warp_logger.info('Done.')
 

@@ -11,9 +11,6 @@ import os
 def checkArgs(args) :
     #check to make sure the directories exist and the 'fixed' argument is okay
     checkDirAndFixedArgs(args)
-    #make the working directory if it doesn't already exist
-    if not os.path.isdir(args.workingdir_name) :
-        os.mkdir(args.workingdir_name)
 
 #helper function to make the list of commands to run for the initial pattern fit
 def getInitialPatternFitCmds() :
