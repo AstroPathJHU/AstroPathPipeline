@@ -122,36 +122,15 @@ def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
   if not os.path.isfile(xmlfile_path) :
     raise RuntimeError(f"ERROR: {xmlfile_path} searched in getExposureTimesByLayer not found!")
   root = (et.parse(xmlfile_path)).getroot()
-  for li in range(nlayers) :
-    if nlayers==35 :
-      if li in range(9) :
-        thislayer_exposure_time=float(((root[0].text).split())[li])
-      elif li in range(9,18) :
-        thislayer_exposure_time=float(((root[1].text).split())[li-9])
-      elif li in range(18,25) :
-        thislayer_exposure_time=float(((root[2].text).split())[li-18])
-      elif li in range(25,32) :
-        thislayer_exposure_time=float(((root[3].text).split())[li-25])
-      elif li in range(32,35) :
-        thislayer_exposure_time=float(((root[4].text).split())[li-32])
-    elif nlayers==43 :
-      if li in range(9) :
-        thislayer_exposure_time=float(((root[0].text).split())[li])
-      elif li in range(9,11) :
-        thislayer_exposure_time=float(((root[1].text).split())[li-9])
-      elif li in range(11,17) :
-        thislayer_exposure_time=float(((root[2].text).split())[li-11])
-      elif li in range(17,20) :
-        thislayer_exposure_time=float(((root[3].text).split())[li-17])
-      elif li in range(20,29) :
-        thislayer_exposure_time=float(((root[4].text).split())[li-20])
-      elif li in range(29,36) :
-        thislayer_exposure_time=float(((root[5].text).split())[li-29])
-      elif li in range(36,43) :
-        thislayer_exposure_time=float(((root[6].text).split())[li-36])
-    else :
-      raise ValueError(f"ERROR: number of image layers ({nlayers}) passed to getExposureTimesByLayer is not a recognized option!")
-    layer_exposure_times_to_return.append(thislayer_exposure_time)
+  nlg = 0
+  if nlayers==35 :
+    nlg = 5
+  elif nlayers==43 :
+    nlg = 7
+  else :
+    raise ValueError(f"ERROR: number of image layers ({nlayers}) passed to getExposureTimesByLayer is not a recognized option!")
+  for ilg in range(nlg) :
+      layer_exposure_times_to_return+=[float(v) for v in (root[ilg].text).split()]
   return layer_exposure_times_to_return
 
 #helper function to return a list of the median exposure times observed in each layer of a given sample
