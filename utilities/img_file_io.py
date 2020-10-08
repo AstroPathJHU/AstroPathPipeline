@@ -170,7 +170,7 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False) :
   tree = et.parse(infile_path)
   iet = 0
   for elem in tree.getroot() :
-    old_elem_line = f'<D '
+    old_elem_line = '<D '
     attributes = elem.attrib
     keys = attributes.keys()
     for an in attrib_names :
