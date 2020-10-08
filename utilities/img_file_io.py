@@ -112,23 +112,23 @@ def getImageHWLFromXMLFile(metadata_topdir,samplename) :
 #helper function to figure out where a raw file's exposure time xml file is given the raw file path and the metadata directory
 def findExposureTimeXMLFile(rfp,search_dir) :
   file_ext = ''
-  fn_split = (os.path.basename(os.path.normpath(fp))).split(".")
+  fn_split = (os.path.basename(os.path.normpath(rfp))).split(".")
   for i in range(1,len(fn_split)) :
     file_ext+=f'.{fn_split[i]}'
-  sample_name = os.path.basename(os.path.dirname(os.path.normpath(fp)))
-  subdir_filepath_1 = os.path.join(search_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(fp)).replace(file_ext,EXPOSURE_XML_EXT))
+  sample_name = os.path.basename(os.path.dirname(os.path.normpath(rfp)))
+  subdir_filepath_1 = os.path.join(search_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXT))
   if os.path.isfile(subdir_filepath_1) :
     xmlfile_path = subdir_filepath_1
   else :
-    subdir_filepath_2 = os.path.join(search_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(fp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
+    subdir_filepath_2 = os.path.join(search_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
     if os.path.isfile(subdir_filepath_2) :
       xmlfile_path = subdir_filepath_2
     else :
-      other_path = os.path.join(search_dir,sample_name,os.path.basename(os.path.normpath(fp)).replace(file_ext,EXPOSURE_XML_EXT))
+      other_path = os.path.join(search_dir,sample_name,os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXT))
       if os.path.isfile(other_path) :
         xmlfile_path = other_path
       else :
-        xmlfile_path = os.path.join(search_dir,sample_name,os.path.basename(os.path.normpath(fp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
+        xmlfile_path = os.path.join(search_dir,sample_name,os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
   if not os.path.isfile(xmlfile_path) :
     msg = f"ERROR: findExposureTimeXMLFile could not find a valid path for raw file {rfp} given directory {search_dir}!"
     msg+= f' (None of {subdir_filepath_1}, {subdir_filepath_2}, {other_path}, and {xmlfile_path} exist!)'
@@ -231,7 +231,7 @@ def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
   else :
     if metadata_top_dir is None :
       raise RuntimeError(f'ERROR: metadata top dir must be supplied to get exposure times fo raw file path {fp}!')
-    xmlfilepath = findExposureTimeXMLFile(fp,metadata_top_dir)
+    xmlfile_path = findExposureTimeXMLFile(fp,metadata_top_dir)
   root = (et.parse(xmlfile_path)).getroot()
   nlg = 0
   if nlayers==35 :
