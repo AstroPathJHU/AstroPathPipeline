@@ -1,11 +1,11 @@
 #imports
 from ..flatfield.config import CONST as FF_CONST
 from ..warping.config import CONST as WARP_CONST
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile, writeModifiedExposureTimeXMLFile
+from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile#, writeModifiedExposureTimeXMLFile
 from ..utilities.img_file_io import getMedianExposureTimesAndCorrectionOffsetsForSample, getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer 
 from ..utilities.img_correction import correctImageForExposureTime, correctImageLayerForExposureTime
 from ..utilities.img_correction import correctImageLayerWithFlatfield, correctImageWithFlatfield, correctImageLayerWithWarpFields
-from ..utilities.misc import cd
+from ..utilities.misc import cd, addCommonArgumentsToParser
 import numpy as np, matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import os, time, logging, glob
@@ -260,30 +260,8 @@ class RawfileCorrector :
 if __name__=='__main__' :
     #define and get the command-line arguments
     parser = ArgumentParser()
-    #positional arguments
-    parser.add_argument('sample',           help='Name of the data sample to correct and copy')
-    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[sample]/*.Data.dat" files that should be corrected and rewritten')
-    parser.add_argument('metadata_top_dir', help='Path to the directory containing "[sample]/im3/xml" subdirectories')
-    parser.add_argument('workingdir_path',  help='Path to the working directory that will be created to hold the corrected files')
-    #mutually exclusive group for how to handle the exposure time correction
-    et_correction_group = parser.add_mutually_exclusive_group(required=True)
-    et_correction_group.add_argument('--exposure_time_offset_file',
-                                     help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the samples in question
-                                     [use this argument to apply corrections for differences in image exposure time]""")
-    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
-                                     help='Add this flag to entirely skip correcting image flux for exposure time differences')
-    #mutually exclusive group for how to handle the flatfield correction
-    flatfield_group = parser.add_mutually_exclusive_group(required=True)
-    flatfield_group.add_argument('--flatfield_file',
-                                 help='Path to the flatfield.bin file that should be applied to files in this sample')
-    flatfield_group.add_argument('--skip_flatfielding', action='store_true',
-                                 help='Add this flag to entirely skip flatfield corrections for illumination variation')
-    #mutually exclusive group for how to handle the warping corrections
-    warping_group = parser.add_mutually_exclusive_group(required=True)
-    warping_group.add_argument('--warp_field_dir',   
-                               help='Path to the directory holding the dx and dy warp fields to apply')
-    warping_group.add_argument('--skip_warping', action='store_true',
-                               help='Add this flag to entirely skip warping corrections')
+    #add the common options to the parser
+    addCommonArgumentsToParser(parser)
     #group for other run options
     run_option_group = parser.add_argument_group('run options', 'other options for this run')
     run_option_group.add_argument('--warping_scalefactor',   default=1.0,   type=float,         
@@ -293,7 +271,7 @@ if __name__=='__main__' :
     run_option_group.add_argument('--input_file_extension', default='.Data.dat',
                                   help='Extension for the raw files that will be read in')
     run_option_group.add_argument('--output_file_extension', default='.fw',
-                                  help='Extension for the corrected files that will be written out (2-digit layer code will be appended if layer != 1)')
+                                  help='Extension for the corrected files that will be written out (2-digit layer code will be appended if layer != -1)')
     run_option_group.add_argument('--max_files',             default=-1,    type=int,
                                   help='Maximum number of files to use (default = -1 runs all files)')
     run_option_group.add_argument('--logfile_name_stem',     default='correct_and_copy_rawfiles_log',

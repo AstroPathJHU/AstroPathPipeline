@@ -1,7 +1,7 @@
 #imports
 from .exposure_time_fit_group import ExposureTimeOffsetFitGroup
 from .utilities import et_fit_logger, checkArgs
-from ..utilities.misc import split_csv_to_list_of_ints
+from ..utilities.misc import split_csv_to_list_of_ints, addCommonArgumentsToParser
 from argparse import ArgumentParser
 import multiprocessing as mp
 
@@ -11,12 +11,8 @@ if __name__=='__main__' :
     mp.freeze_support()
     #define and get the command-line arguments
     parser = ArgumentParser()
-    #positional arguments
-    parser.add_argument('sample',           help='Name of the data sample to use')
-    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[sample_name]/*.Data.dat" files')
-    parser.add_argument('metadata_top_dir', help='Path to the directory containing "[sample name]/im3/xml" subdirectories')
-    parser.add_argument('flatfield_file',   help='Path to the flatfield.bin file that should be applied to files in this sample')
-    parser.add_argument('workingdir_name',  help='Name of the working directory that will be created')
+    #add the common arguments, just the positional and flatfielding ones
+    addCommonArgumentsToParser(parser,et_correction=False,warping=False)
     #group for options of how the images whould be processed
     image_processing_group = parser.add_argument_group('fit options', 'how should the fit be done?')
     image_processing_group.add_argument('--smooth_sigma',         default=3., type=float,

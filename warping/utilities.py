@@ -4,7 +4,7 @@ from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities.img_file_io import getRawAsHWL, getExposureTimesByLayer
 from ..utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield
 from ..utilities.tableio import readtable, writetable
-from ..utilities.misc import cd, split_csv_to_list
+from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 import numpy as np, matplotlib.pyplot as plt
 import cv2, os, logging, dataclasses, copy
 
@@ -55,26 +55,10 @@ class OverlapOctet :
     def overlap_ns(self) :
         return [self.olap_1_n,self.olap_2_n,self.olap_3_n,self.olap_4_n,self.olap_6_n,self.olap_7_n,self.olap_8_n,self.olap_9_n]
 
-#helper function to either create or mutate an argument parser for some generic options
+#helper function to mutate an argument parser for some generic warping options
 def addCommonWarpingArgumentsToParser(parser) :
-    #positional arguments
-    parser.add_argument('sample',           help='Name of the data sample to use')
-    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[sample_name]/*.Data.dat" files')
-    parser.add_argument('metadata_top_dir', help='Path to the directory containing "[sample name]/im3/xml" subdirectories')
-    parser.add_argument('workingdir_name',  help='Path to the working directory (will be created if necessary)')
-    #mutually exclusive group for how to handle the exposure time correction
-    et_correction_group = parser.add_mutually_exclusive_group(required=True)
-    et_correction_group.add_argument('--exposure_time_offset_file',
-                                    help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the samples in question
-                                    [use this argument to apply corrections for differences in image exposure time]""")
-    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
-                                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
-    #mutually exclusive group for how to handle the flatfielding
-    flatfield_group = parser.add_mutually_exclusive_group(required=True)
-    flatfield_group.add_argument('--flatfield_file',
-                                    help="""Path to the flatfield.bin file that should be applied to the files in this sample""")
-    flatfield_group.add_argument('--skip_flatfielding', action='store_true',
-                                    help='Add this flag to entirely skip flatfield corrections')
+    #add the common options, except not for warping
+    addCommonArgumentsToParser(parser,warping=False)
     #group for options of how the fit(s) will proceed
     fit_option_group = parser.add_argument_group('fit options', 'how should the fit be done?')
     fit_option_group.add_argument('--max_iter',                 default=1000,                                           type=int,
