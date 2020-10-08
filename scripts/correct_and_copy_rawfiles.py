@@ -1,10 +1,10 @@
 #imports
 from ..flatfield.config import CONST as FF_CONST
 from ..warping.config import CONST as WARP_CONST
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile
+from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile, writeModifiedExposureTimeXMLFile
 from ..utilities.img_file_io import getMedianExposureTimesAndCorrectionOffsetsForSample, getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer 
-from ..utilities.img_file_io import correctImageForExposureTime, correctImageLayerForExposureTime
-from ..utilities.img_file_io import correctImageLayerWithFlatfield, correctImageWithFlatfield, correctImageLayerWithWarpFields
+from ..utilities.img_correction import correctImageForExposureTime, correctImageLayerForExposureTime
+from ..utilities.img_correction import correctImageLayerWithFlatfield, correctImageWithFlatfield, correctImageLayerWithWarpFields
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
 from argparse import ArgumentParser
