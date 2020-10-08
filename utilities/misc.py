@@ -177,7 +177,7 @@ def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,fl
     parser.add_argument('sample',           help='Name of the data sample to use')
     parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[sample_name]/*.Data.dat" files')
     parser.add_argument('metadata_top_dir', help='Path to the directory containing metadata information, possibly in subdirectories')
-    parser.add_argument('workingdir_name',  help='Path to the working directory (will be created if necessary)')
+    parser.add_argument('workingdir',       help='Path to the working directory (will be created if necessary)')
   #mutually exclusive group for how to handle the exposure time correction
   if et_correction :
     et_correction_group = parser.add_mutually_exclusive_group(required=True)

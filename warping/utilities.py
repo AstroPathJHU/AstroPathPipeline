@@ -118,8 +118,8 @@ def checkDirAndFixedArgs(args,parse=False) :
     if args.octet_run_dir is not None and not os.path.isdir(args.octet_run_dir) :
         raise ValueError(f'ERROR: octet_run_dir ({args.octet_run_dir}) does not exist!')
     #create the working directory if it doesn't already exist
-    if not os.path.isdir(args.workingdir_name) :
-        os.mkdir(args.workingdir_name)
+    if not os.path.isdir(args.workingdir) :
+        os.mkdir(args.workingdir)
     #the parameter fixing string must correspond to some combination of options
     fixed_arg_parsed = split_csv_to_list(args.fixed)
     fix_cxcy   = 'cx' in fixed_arg_parsed and 'cy' in fixed_arg_parsed

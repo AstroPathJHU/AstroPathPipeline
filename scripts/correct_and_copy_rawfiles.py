@@ -38,7 +38,7 @@ class RawfileCorrector :
         args = the set of command line arguments from ArgumentParser
         """
         #make sure the directories all exist
-        workingdir_location = os.path.dirname(os.path.normpath(args.workingdir_name))
+        workingdir_location = os.path.dirname(os.path.normpath(args.workingdir))
         dirs_to_check = [args.rawfile_top_dir,args.metadata_top_dir,workingdir_location]
         for dirpath in dirs_to_check :
             if not os.path.isdir(dirpath) :
@@ -61,9 +61,9 @@ class RawfileCorrector :
             raise ValueError(f'ERROR: requested copying layer {args.layer} but raw files have dimensions {self._img_dims}')
         self._layer = args.layer
         #make the working directory
-        if not os.path.isdir(args.workingdir_name) :
-            os.mkdir(args.workingdir_name)
-        self._working_dir_path = args.workingdir_name
+        if not os.path.isdir(args.workingdir) :
+            os.mkdir(args.workingdir)
+        self._working_dir_path = args.workingdir
         #see which layer(s) will be run
         layers_to_run = list(range(1,self._img_dims[-1]+1)) if self._layer==-1 else [self._layer]
         #make sure the exposure time correction file exists if necessary

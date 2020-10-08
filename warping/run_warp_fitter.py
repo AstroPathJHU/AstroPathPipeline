@@ -73,14 +73,14 @@ def getOverlaps(args) :
     #otherwise overlaps will have to be set after finding the octets
     else :
         #read in the octets if they have already been defined for this sample
-        octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir_name
+        octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir
         if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
             valid_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
         #otherwise run an alignment to find the valid octets get the dictionary of overlap octets
         else :
             threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
             valid_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,
-                                            args.workingdir_name,args.n_threads,args.layer)
+                                            args.workingdir,args.n_threads,args.layer)
         if args.mode in ('fit', 'check_run', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
             for i,octet in enumerate(valid_octets,start=1) :
                 if i in args.octets or args.octets==[-1]:
@@ -126,7 +126,7 @@ if __name__=='__main__' :
         warp_logger.info(f'Will run fit on a sample of {len(overlaps)} total overlaps.')
         #make the WarpFitter Objects
         warp_logger.info('Initializing WarpFitter')
-        fitter = WarpFitter(args.sample,args.rawfile_top_dir,args.metadata_top_dir,args.workingdir_name,overlaps,args.layer)
+        fitter = WarpFitter(args.sample,args.rawfile_top_dir,args.metadata_top_dir,args.workingdir,overlaps,args.layer)
         #figure out which parameters will be fixed
         fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
         fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed
