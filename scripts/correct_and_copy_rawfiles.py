@@ -14,6 +14,8 @@ import os, time, logging, glob
 
 #################### FILE-SCOPE VARIABLES ####################
 
+APPLIED_CORRECTION_PLOT_DIR_NAME = 'applied_correction_plots'
+
 correction_logger = logging.getLogger("correct_and_copy")
 correction_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
@@ -89,16 +91,19 @@ class RawfileCorrector :
             if self._layer!=-1 :
                 self._ff = self._ff[:,:,self._layer-1]
             with cd(self._working_dir_path) :
-                for ln in layers_to_run :
-                    f,ax=plt.subplots(figsize=(6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
-                    if self._layer==-1 :
-                        pos = ax.imshow(self._ff[:,:,ln-1])
-                    else :
-                        pos = ax.imshow(self._ff)
-                    ax.set_title(f'applied flatfield, layer {ln}')
-                    f.colorbar(pos,ax=ax)
-                    plt.savefig(f'applied_flatfield_layer_{ln}.png')
-                    plt.close()
+                if not os.path.isdir(APPLIED_CORRECTION_PLOT_DIR_NAME) :
+                    os.mkdir(APPLIED_CORRECTION_PLOT_DIR_NAME)
+                with cd(APPLIED_CORRECTION_PLOT_DIR_NAME) :
+                    for ln in layers_to_run :
+                        f,ax=plt.subplots(figsize=(6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
+                        if self._layer==-1 :
+                            pos = ax.imshow(self._ff[:,:,ln-1])
+                        else :
+                            pos = ax.imshow(self._ff)
+                        ax.set_title(f'applied flatfield, layer {ln}')
+                        f.colorbar(pos,ax=ax)
+                        plt.savefig(f'applied_flatfield_layer_{ln}.png')
+                        plt.close()
         else :
             self._ff = None
         #make sure the dx and dy warping fields can be found if necessary
@@ -114,18 +119,21 @@ class RawfileCorrector :
             self._dy_warp_field = (args.warping_scalefactor)*(getRawAsHW(dy_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
             r_warp_field = np.sqrt((self._dx_warp_field**2)+(self._dy_warp_field**2))
             with cd(self._working_dir_path) :
-                f,ax = plt.subplots(1,3,figsize=(3*6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
-                pos = ax[0].imshow(r_warp_field)
-                ax[0].set_title('total warp correction')
-                f.colorbar(pos,ax=ax[0])
-                pos = ax[1].imshow(self._dx_warp_field)
-                ax[1].set_title('applied dx warp')
-                f.colorbar(pos,ax=ax[1])
-                pos = ax[2].imshow(self._dy_warp_field)
-                ax[2].set_title('applied dy warp')
-                f.colorbar(pos,ax=ax[2])
-                plt.savefig('applied_warping_correction_model.png')
-                plt.close()
+                if not os.path.isdir(APPLIED_CORRECTION_PLOT_DIR_NAME) :
+                    os.mkdir(APPLIED_CORRECTION_PLOT_DIR_NAME)
+                with cd(APPLIED_CORRECTION_PLOT_DIR_NAME) :
+                    f,ax = plt.subplots(1,3,figsize=(3*6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
+                    pos = ax[0].imshow(r_warp_field)
+                    ax[0].set_title('total warp correction')
+                    f.colorbar(pos,ax=ax[0])
+                    pos = ax[1].imshow(self._dx_warp_field)
+                    ax[1].set_title('applied dx warp')
+                    f.colorbar(pos,ax=ax[1])
+                    pos = ax[2].imshow(self._dy_warp_field)
+                    ax[2].set_title('applied dy warp')
+                    f.colorbar(pos,ax=ax[2])
+                    plt.savefig('applied_warping_correction_model.png')
+                    plt.close()
         else :
             self._dx_warp_field = None
             self._dy_warp_field = None
