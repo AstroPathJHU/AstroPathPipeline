@@ -1,13 +1,15 @@
 #imports
 from ..flatfield.config import CONST as FF_CONST
 from ..warping.config import CONST as WARP_CONST
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile#, writeModifiedExposureTimeXMLFile
-from ..utilities.img_file_io import getMedianExposureTimesAndCorrectionOffsetsForSample, getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer 
+from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile, findExposureTimeXMLFile
+from ..utilities.img_file_io import writeModifiedExposureTimeXMLFile, getMedianExposureTimesAndCorrectionOffsetsForSample
+from ..utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer 
 from ..utilities.img_correction import correctImageForExposureTime, correctImageLayerForExposureTime
 from ..utilities.img_correction import correctImageLayerWithFlatfield, correctImageWithFlatfield, correctImageLayerWithWarpFields
 from ..utilities.misc import cd, addCommonArgumentsToParser
 import numpy as np, matplotlib.pyplot as plt
 from argparse import ArgumentParser
+from shutil import copy2
 import os, time, logging, glob
 
 #################### FILE-SCOPE VARIABLES ####################
@@ -215,14 +217,20 @@ class RawfileCorrector :
         if self._layer!=-1 :
             raw = raw[:,:,self._layer-1]
         #correct for exposure time differences
+        original_et_xml_filepath = findExposureTimeXMLFile(rawfile_path,self._metadata_top_dir)
         if (self._med_exp_time is not None) and (self._et_correction_offset is not None) :
+            #correct the file or layer
             if self._layer==-1 :
                 et_corrected = correctImageForExposureTime(raw,rawfile_path,self._metadata_top_dir,self._med_exp_time,self._et_correction_offset)
             else :
                 layer_exp_time = (getExposureTimesByLayer(rawfile_path,self._img_dims[-1],self._metadata_top_dir))[self._layer-1]
                 et_corrected = correctImageLayerForExposureTime(raw,layer_exp_time,self._med_exp_time,self._et_correction_offset)
+            #write out the modified exposure time xml file
+            with cd(self._working_dir_path) :
+                writeModifiedExposureTimeXMLFile(original_et_xml_filepath,self._med_exp_time)
             msg+='exposure time, '
         else :
+            copy2(original_et_xml_filepath,self._working_dir_path)
             et_corrected = raw
         #correct with the flatfield
         if self._ff is not None :
