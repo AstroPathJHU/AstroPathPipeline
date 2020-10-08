@@ -38,7 +38,7 @@ class RawfileCorrector :
         args = the set of command line arguments from ArgumentParser
         """
         #make sure the directories all exist
-        workingdir_location = os.path.dirname(os.path.normpath(args.workingdir_path))
+        workingdir_location = os.path.dirname(os.path.normpath(args.workingdir_name))
         dirs_to_check = [args.rawfile_top_dir,args.metadata_top_dir,workingdir_location]
         for dirpath in dirs_to_check :
             if not os.path.isdir(dirpath) :
@@ -61,9 +61,9 @@ class RawfileCorrector :
             raise ValueError(f'ERROR: requested copying layer {args.layer} but raw files have dimensions {self._img_dims}')
         self._layer = args.layer
         #make the working directory
-        if not os.path.isdir(args.workingdir_path) :
-            os.mkdir(args.workingdir_path)
-        self._working_dir_path = args.workingdir_path
+        if not os.path.isdir(args.workingdir_name) :
+            os.mkdir(args.workingdir_name)
+        self._working_dir_path = args.workingdir_name
         #see which layer(s) will be run
         layers_to_run = list(range(1,self._img_dims[-1]+1)) if self._layer==-1 else [self._layer]
         #make sure the exposure time correction file exists if necessary
@@ -138,7 +138,7 @@ class RawfileCorrector :
             self._dx_warp_field = None
             self._dy_warp_field = None
         #start up the logfile and add some information to it
-        self._logfile_name = f'{args.logfile_name_stem}_{time.strftime("%Y_%m_%d-%H_%M_%S")}.txt'
+        self._logfile_name = f'{args.logfile_name_stem}_{time.strftime("%Y_%m_%d-%H_%M_%S")}.log'
         with cd(self._working_dir_path) :
             with open(self._logfile_name,'w') as fp :
                 fp.write('LOGFILE for correct_and_copy_rawfiles\n')
@@ -281,17 +281,17 @@ if __name__=='__main__' :
     #group for other run options
     run_option_group = parser.add_argument_group('run options', 'other options for this run')
     run_option_group.add_argument('--warping_scalefactor',   default=1.0,   type=float,         
-                                  help='Scalefactor by which the warping fields should be multiplied before application')
+                                  help='Scalefactor by which the warping fields should be multiplied before application (default=1.0)')
     run_option_group.add_argument('--layer',                 default=-1,     type=int,         
                                   help='Image layer to use (indexed from 1; default=-1 does all layers)')
     run_option_group.add_argument('--input_file_extension', default='.Data.dat',
-                                  help='Extension for the raw files that will be read in')
+                                  help='Extension for the raw files that will be read in (default = ".Data.dat")')
     run_option_group.add_argument('--output_file_extension', default='.fw',
-                                  help='Extension for the corrected files that will be written out (2-digit layer code will be appended if layer != -1)')
+                                  help='Extension for the corrected files that will be written out (default = ".fw"; 2-digit layer code will be appended if layer != -1)')
     run_option_group.add_argument('--max_files',             default=-1,    type=int,
                                   help='Maximum number of files to use (default = -1 runs all files)')
-    run_option_group.add_argument('--logfile_name_stem',     default='correct_and_copy_rawfiles_log',
-                                  help='Filename stem for the log that will be created (timestamp and ".txt" will be appended)')
+    run_option_group.add_argument('--logfile_name_stem',     default='correct_and_copy_rawfiles',
+                                  help='Filename stem for the log that will be created (default="correct_and_copy_rawfiles"; timestamp and ".log" will be appended)')
     args = parser.parse_args()
     #start up the corrector from the arguments
     corrector = RawfileCorrector(args)
