@@ -1,6 +1,6 @@
 #imports
 from .warp import CameraWarp
-from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile, WarpFitResult, FieldLog
+from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments, WarpFitResult, FieldLog
 from .config import CONST
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
@@ -12,8 +12,8 @@ import os, random, math, subprocess, multiprocessing as mp
 RUN_WARPFITTER_PREFIX = 'python -m microscopealignment.warping.run_warp_fitter' #part of the command referencing how to run run_warpfitter.py
 JOB_DIR_STEM = 'warpfitter_batch'
 POSITIONAL_PASSTHROUGH_ARG_NAMES = ['sample','rawfile_top_dir','metadata_top_dir']
-PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','max_iter','fixed','normalize','init_pars','init_bounds','max_radial_warp','max_tangential_warp']
-PASSTHROUGH_ARG_NAMES+= ['p1p2_polish_lasso_lambda','print_every','layer']
+PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','max_iter','fixed','normalize','init_pars','init_bounds','max_radial_warp']
+PASSTHROUGH_ARG_NAMES+= ['max_tangential_warp','p1p2_polish_lasso_lambda','print_every','layer']
 PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding','float_p1p2_to_polish']
 
 #################### HELPER FUNCTIONS ####################
@@ -33,23 +33,9 @@ def getListOfJobCommands(args) :
     except ValueError :
         raise ValueError(f'ERROR: octet_selection argument ({args.octet_selection}) is not valid! Use "first_n" or "random_n".')
     #find the valid octets in the samples and order them by the # of their center rectangle
-    octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir
-    if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
-        if args.threshold_file_dir is not None :
-            msg = 'ERROR: an octet file exists in the working directory, but a threshold file directory was also given!'
-            msg+= ' Get rid of the threshold file dir argument to use the octet file tht already exists, or remove the octet file to recreate it.'
-            raise RuntimeError(msg)
-        all_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
-    elif args.threshold_file_dir is not None :
-        threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
-        n_threads = mp.cpu_count if args.workers is None else min(mp.cpu_count,args.workers)
-        all_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,
-                                      args.workingdir,n_threads,args.layer)
-    else :
-        raise RuntimeError('ERROR: either an octet_run_dir or a threshold_file_dir must be supplied to define octets to run on!')
-    all_octets_numbers = list(range(1,len(all_octets)+1))
+    all_octets = getOctetsFromArguments(args)
     #make sure that the number of octets per job and the number of jobs will work for this sample
-    if args.njobs*n_octets_per_job<1 or args.njobs*n_octets_per_job>len(all_octets_numbers) :
+    if args.njobs*n_octets_per_job<1 or args.njobs*n_octets_per_job>len(all_octets) :
         raise ValueError(f"""ERROR: Sample {args.sample} has {len(all_octets)} total valid octets, but you asked for {args.njobs} jobs 
                              with {n_octets_per_job} octets per job!""")
     #build the list of commands
@@ -62,8 +48,8 @@ def getListOfJobCommands(args) :
         thisjobdirname = JOB_DIR_STEM+'_octets'
         thisjoboctetstring = ''
         for j in range(n_octets_per_job) :
-            index = 0 if octet_select_method=='first' else random.randint(0,len(all_octets_numbers)-1)
-            this_octet_number = all_octets_numbers.pop(index)
+            index = 0 if octet_select_method=='first' else random.randint(0,len(all_octets)-1)
+            this_octet_number = (all_octets.pop(index)).p1_rect_n
             thisjobdirname+=f'_{this_octet_number}'
             thisjoboctetstring+=f'{this_octet_number},'
         thisjobworkingdir = os.path.join(args.workingdir,thisjobdirname)
@@ -87,16 +73,8 @@ if __name__=='__main__' :
     parser = ArgumentParser()
     #add the common arguments
     addCommonWarpingArgumentsToParser(parser)
-    #positional arguments
-    parser.add_argument('njobs',            help='Number of jobs to run', type=int)
-    #group for organizing and splitting into jobs
-    job_organization_group = parser.add_argument_group('job organization', 'how should the group of jobs be organized?')
-    job_organization_group.add_argument('--octet_run_dir', 
-                                        help=f'Path to a previously-created workingdir that contains a [sample]_{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM} file')
-    job_organization_group.add_argument('--octet_selection', default='random_2',
-                                        help='String for how to select octets for each job: "first_n" or "random_n".')
-    job_organization_group.add_argument('--workers',         default=None,       type=int,
-                                        help='Number of CPUs to use in the multiprocessing pool (defaults to all available)')
+    #additional positional arguments
+    parser.add_argument('njobs', help='Number of jobs to run', type=int)
     args = parser.parse_args()
     #check some of the basic arguments
     checkDirAndFixedArgs(args)

@@ -1,6 +1,6 @@
 #imports 
 from .warp_fitter import WarpFitter
-from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, findSampleOctets, readOctetsFromFile
+from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments
 from .config import CONST
 from ..utilities.misc import split_csv_to_list, split_csv_to_list_of_ints, split_csv_to_dict_of_floats, split_csv_to_dict_of_bounds
 from argparse import ArgumentParser
@@ -72,15 +72,7 @@ def getOverlaps(args) :
         return overlaps
     #otherwise overlaps will have to be set after finding the octets
     else :
-        #read in the octets if they have already been defined for this sample
-        octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir
-        if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
-            valid_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
-        #otherwise run an alignment to find the valid octets get the dictionary of overlap octets
-        else :
-            threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
-            valid_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,
-                                            args.workingdir,args.n_threads,args.layer)
+        valid_octets = getOctetsFromArguments(args)
         if args.mode in ('fit', 'check_run', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
             for i,octet in enumerate(valid_octets,start=1) :
                 if i in args.octets or args.octets==[-1]:
@@ -100,13 +92,11 @@ if __name__=='__main__' :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #positional arguments
-    parser.add_argument('mode',             help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
+    parser.add_argument('mode', help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
     #add the common arguments
-    addCommonWarpingArgumentsToParser(parser)
+    addCommonWarpingArgumentsToParser(parser,job_organization=False)
     #additional group for how to figure out which overlaps will be used
     overlap_selection_group = parser.add_argument_group('overlap selection', 'what set of overlaps should be used?')
-    overlap_selection_group.add_argument('--octet_run_dir', 
-                                         help=f'Path to a previously-created workingdir that contains a [sample]_{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM} file')
     overlap_selection_group.add_argument('--overlaps',       default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
                                          help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
     overlap_selection_group.add_argument('--octets',         default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         

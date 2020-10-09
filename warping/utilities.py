@@ -56,42 +56,55 @@ class OverlapOctet :
         return [self.olap_1_n,self.olap_2_n,self.olap_3_n,self.olap_4_n,self.olap_6_n,self.olap_7_n,self.olap_8_n,self.olap_9_n]
 
 #helper function to mutate an argument parser for some generic warping options
-def addCommonWarpingArgumentsToParser(parser) :
+def addCommonWarpingArgumentsToParser(parser,fit=True,fitpars=True,job_organization=True) :
     #add the common options, except not for warping
     addCommonArgumentsToParser(parser,warping=False)
-    #group for options of how the fit(s) will proceed
-    fit_option_group = parser.add_argument_group('fit options', 'how should the fit be done?')
-    fit_option_group.add_argument('--max_iter',                 default=1000,                                           type=int,
-                                  help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
-    fit_option_group.add_argument('--fixed',                    default=CONST.DEFAULT_FIXED,
-                                  help='Comma-separated list of parameters to keep fixed during fitting')
-    fit_option_group.add_argument('--normalize',                default=CONST.DEFAULT_NORMALIZE,
-                                  help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
-    fit_option_group.add_argument('--init_pars',
-                                  help='Comma-separated list of initial parameter name=value pairs to use in lieu of defaults.')
-    fit_option_group.add_argument('--init_bounds',
-                                  help='Comma-separated list of parameter name=low_bound:high_bound pairs to use in lieu of defaults.')
-    fit_option_group.add_argument('--float_p1p2_to_polish',     action='store_true',
-                                  help="""Add this flag to float p1 and p2 in the polishing minimization 
-                                          (regardless of whether they are in the list of fixed parameters)""")
-    fit_option_group.add_argument('--max_radial_warp',          default=8.,                                             type=float,
-                                  help='Maximum amount of radial warp to use for constraint')
-    fit_option_group.add_argument('--max_tangential_warp',      default=4.,                                             type=float,
-                                  help='Maximum amount of radial warp to use for constraint')
-    fit_option_group.add_argument('--p1p2_polish_lasso_lambda', default=0.0,                                            type=float,
-                                  help="""Lambda magnitude parameter for the LASSO constraint on p1 and p2 in the polishing minimization
-                                          (if those parameters will float then)""")
-    fit_option_group.add_argument('--print_every',              default=100,                                            type=int,
-                                  help='How many iterations to wait between printing minimization progress')
+    #group for basic options of how the fit(s) should be done
+    if fit :
+        fit_option_group = parser.add_argument_group('general fit options', 'how should the fit(s) be done in general?')
+        fit_option_group.add_argument('--max_iter',                 default=1000,                    type=int,
+                                      help='Maximum number of iterations for differential_evolution and for minimize.trust-constr')
+        fit_option_group.add_argument('--normalize',                default=CONST.DEFAULT_NORMALIZE,
+                                      help='Comma-separated list of parameters to normalize between their default bounds (default is everything).')
+        fit_option_group.add_argument('--max_radial_warp',          default=8.,                      type=float,
+                                      help='Maximum amount of radial warp to use for constraint')
+        fit_option_group.add_argument('--max_tangential_warp',      default=4.,                      type=float,
+                                      help='Maximum amount of radial warp to use for constraint')
+        fit_option_group.add_argument('--print_every',              default=100,                     type=int,
+                                      help='How many iterations to wait between printing minimization progress')
+    #group for fit parameter options (which to use, what their bounds are, etc.)
+    if fitpars:
+        fitpar_option_group = parser.add_argument_group('fit parameter options', 'How should the fit parameters be treated?')
+        fitpar_option_group.add_argument('--fixed',                    default=CONST.DEFAULT_FIXED,
+                                         help='Comma-separated list of parameters to keep fixed during fitting')
+        fitpar_option_group.add_argument('--init_pars',
+                                         help='Comma-separated list of initial parameter name=value pairs to use in lieu of defaults.')
+        fitpar_option_group.add_argument('--init_bounds',
+                                         help='Comma-separated list of parameter name=low_bound:high_bound pairs to use in lieu of defaults.')
+        fitpar_option_group.add_argument('--float_p1p2_to_polish',     action='store_true',
+                                         help="""Add this flag to float p1 and p2 in the polishing minimization 
+                                              (regardless of whether they are in the list of fixed parameters)""")
+        fitpar_option_group.add_argument('--p1p2_polish_lasso_lambda', default=0.0,                 type=float,
+                                         help="""Lambda magnitude parameter for the LASSO constraint on p1 and p2 in the polishing minimization
+                                              (if those parameters will float then)""")
     #group for how to find overlap octets to use
     octet_finding_group = parser.add_argument_group('octet finding', 'information to find octets for the sample')
+    octet_finding_group.add_argument('--octet_run_dir', 
+                                     help=f'Path to a previously-created workingdir that contains a [sample]_{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM} file')
     octet_finding_group.add_argument('--threshold_file_dir',
-                                         help='Path to the directory holding the background threshold file created for the sample in question')
-    octet_finding_group.add_argument('--req_pixel_frac', default=0.85,             type=float,
-                                         help="What fraction of an overlap image's pixels must be above the threshold to accept it in a valid octet")
+                                     help='Path to the directory holding the background threshold file created for the sample in question')
+    octet_finding_group.add_argument('--req_pixel_frac', default=0.85, type=float,
+                                     help="What fraction of an overlap image's pixels must be above the threshold to accept it in a valid octet")
+    #group for organizing and splitting into jobs
+    if job_organization :
+        job_organization_group = parser.add_argument_group('job organization', 'how should the group of jobs be organized?')
+        job_organization_group.add_argument('--octet_selection', default='random_2',
+                                            help='String for how to select octets for each job: "first_n" or "random_n".')
+        job_organization_group.add_argument('--workers',         default=None,       type=int,
+                                            help='Number of CPUs to use in the multiprocessing pool (defaults to all available)')
     #group for other run options
     run_option_group = parser.add_argument_group('run options', 'other options for this run')
-    run_option_group.add_argument('--layer',          default=1,  type=int,         
+    run_option_group.add_argument('--layer', default=1, type=int,         
                                   help='Image layer to use (indexed from 1)')
 
 #helper function to make sure necessary directories exist and that the input choice of fixed parameters is valid
@@ -162,8 +175,8 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_nam
     octets.sort(key=lambda x:x.p1_rect_n)
     return octets
 
-# Helper function to get the dictionary of octets
-def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,n_procs,layer) :
+# Helper function to get the list of octets
+def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,layer) :
     #start by getting the threshold of this sample layer from the the inputted file
     with open(threshold_file_path) as tfp :
         vals = [int(l.rstrip()) for l in tfp.readlines() if l.rstrip()!='']
@@ -213,8 +226,26 @@ def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pi
         writetable(f'{samp}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',octets)
     #print how many octets there are 
     warp_logger.info(f'{len(octets)} total octets found.')
-    #return the dictionary of octets
+    #return the list of octets
     return octets
+
+#helper function to return the octets for a sample given just the command line arguments
+def getOctetsFromArguments(args) :
+    octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir
+    if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
+        if args.threshold_file_dir is not None :
+            msg = 'ERROR: an octet file exists in the working directory, but a threshold file directory was also given!'
+            msg+= ' Get rid of the threshold file dir argument to use the octet file that already exists, or remove the octet file to recreate it.'
+            raise WarpingError(msg)
+        all_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
+    elif args.threshold_file_dir is not None :
+        threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
+        all_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,
+                                      args.workingdir,args.layer)
+    else :
+        raise WarpingError('ERROR: either an octet_run_dir or a threshold_file_dir must be supplied to define octets to run on!')
+    warp_logger.info(f'Found a total set of {len(all_octets)} valid octets for {args.sample}')
+    return all_octets
 
 #Helper function to load a single raw file, correct its illumination with a flatfield layer, smooth it, 
 #and return information needed to create a new WarpImage
