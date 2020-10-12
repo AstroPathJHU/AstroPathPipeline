@@ -68,7 +68,8 @@ def getInitialPatternFitCmd(wdn,args) :
     for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
         cmd+=f' {argvars[ppan]} '
     #add the working directory argument
-    cmd+=f'{wdn} '
+    this_job_dir_path = os.path.abspath(os.path.join(args.workingdir,wdn))
+    cmd+=f'{this_job_dir_path} '
     #add the number of jobs positional argument
     cmd+=f'{args.initial_pattern_octets} '
     #add the passthrough arguments and flags
@@ -77,9 +78,9 @@ def getInitialPatternFitCmd(wdn,args) :
             cmd+=f'--{pan} {argvars[pan]} '
     for pfn in PASSTHROUGH_FLAG_NAMES :
         if argvars[pfn] :
-            thisjobcmdstring+=f'--{pfn} '
+            cmd+=f'--{pfn} '
     #the octets are in the working directory
-    cmd+=f'--octet_run_dir {os.path.join(args.workingdir,wdn)} '
+    cmd+=f'--octet_run_dir {this_job_dir_path} '
     #select the first single octet for every job since we've already split up the octets for the sample
     cmd+='--octet_selection first_1 '
     #fix the focal lengths and tangential warping parameters
@@ -125,10 +126,10 @@ if __name__=='__main__' :
         subprocess.call(cmd_1)
     if args.mode=='fit' :
         #get the command for the central principal point fits and run it
-        cmd_2 = getInitialPatternFitCmd(dirname_2,args)
+        cmd_2 = getPrincipalPointFitCmd(dirname_2,args)
         subprocess.call(cmd_2)
         #get the command for the final pattern fits and run it
-        cmd_3 = getInitialPatternFitCmd(dirname_3,args)
+        cmd_3 = getFinalPatternFitCmd(dirname_3,args)
         subprocess.call(cmd_3)
         warp_logger.info(f'All fits for {args.sample} warping pattern completed')
     warp_logger.info(f'Done.')
