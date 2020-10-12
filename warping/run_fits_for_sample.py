@@ -49,7 +49,7 @@ def setUpFitDirectories(args) :
     #create the working directories for the three fit groups and copy the subsets of the octets files
     wdn_1 = f'{INITIAL_PATTERN_DIR_STEM}_{args.sample}_{len(octets_1)}_octets'
     wdn_2 = f'{PRINCIPAL_POINT_DIR_STEM}_{args.sample}_{len(octets_2)}_octets'
-    wdn_3 = f'{INITIAL_PATTERN_DIR_STEM}_{args.sample}_{len(octets_3)}_octets'
+    wdn_3 = f'{FINAL_PATTERN_DIR_STEM}_{args.sample}_{len(octets_3)}_octets'
     wdns = [wdn_1,wdn_2,wdn_3]
     ols = [octets_1,octets_2,octets_3]
     with cd(args.workingdir) :
