@@ -1,5 +1,5 @@
 #imports
-from .utilities import warp_logger, WarpingError, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments
+from .utilities import warp_logger, WarpingError, addCommonWarpingArgumentsToParser, checkDirArgs, getOctetsFromArguments
 from .config import CONST
 from ..utilities.tableio import writetable
 from argparse import ArgumentParser
@@ -16,7 +16,7 @@ FINAL_PATTERN_DIR_STEM   = 'warping_final_pattern'
 #helper function to make sure th command line arguments are alright
 def checkArgs(args) :
     #check to make sure the directories exist and the 'fixed' argument is okay
-    checkDirAndFixedArgs(args)
+    checkDirArgs(args)
     #tell the user what's going to happen based on the mode/octet splitting arguments
     if args.mode=='fit' :
         warp_logger.info(f'Three groups of fits will be performed, using {args.workers} CPUs each, to find the warping pattern for {args.sample}:')
@@ -34,7 +34,7 @@ def setUpFitDirectories(args) :
     octets = getOctetsFromArguments(args)
     #randomize and split the octets into groups for the three fits
     if len(octets) < args.initial_pattern_octets+args.principal_point_octets+args.final_pattern_octets :
-        msg = f'ERROR: There are {len(octets)} for {args.sample} but you requested using {args.initial_pattern_octets}, then {args.principal_point_octets},'
+        msg = f'ERROR: There are {len(octets)} valid octets for {args.sample} but you requested using {args.initial_pattern_octets}, then {args.principal_point_octets},'
         msg+= f' and then {args.final_pattern_octets} in the fit groups, respectively!'
         raise WarpingError(msg)
     random.shuffle(octets)

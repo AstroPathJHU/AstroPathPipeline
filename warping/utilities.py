@@ -107,9 +107,9 @@ def addCommonWarpingArgumentsToParser(parser,fit=True,fitpars=True,job_organizat
     run_option_group.add_argument('--layer', default=1, type=int,         
                                   help='Image layer to use (indexed from 1)')
 
-#helper function to make sure necessary directories exist and that the input choice of fixed parameters is valid
-def checkDirAndFixedArgs(args,parse=False) :
-    #rawfile_top_dir/[sample] must exist
+#helper function to check directory command-line arguments
+def checkDirArgs(args) :
+     #rawfile_top_dir/[sample] must exist
     rawfile_dir = os.path.join(args.rawfile_top_dir,args.sample)
     if not os.path.isdir(rawfile_dir) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
@@ -133,6 +133,9 @@ def checkDirAndFixedArgs(args,parse=False) :
     #create the working directory if it doesn't already exist
     if not os.path.isdir(args.workingdir) :
         os.mkdir(args.workingdir)
+
+#helper function to check the ``fixed'' command line argument
+def checkFixedArg(args,parse=False) :
     #the parameter fixing string must correspond to some combination of options
     fixed_arg_parsed = split_csv_to_list(args.fixed)
     fix_cxcy   = 'cx' in fixed_arg_parsed and 'cy' in fixed_arg_parsed
@@ -143,6 +146,11 @@ def checkDirAndFixedArgs(args,parse=False) :
         raise ValueError(f'ERROR: Fixed parameters argument ({args.fixed}) does not result in a valid fixed parameter condition!')
     if parse :
         args.fixed = fixed_arg_parsed
+
+#helper function to make sure necessary directories exist and that the input choice of fixed parameters is valid
+def checkDirAndFixedArgs(args,parse=False) :
+    checkDirArgs(args)
+    checkFixedArg(args,parse)
 
 # Helper function to read previously-saved octet definitions from a file
 def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_name,layer) :
