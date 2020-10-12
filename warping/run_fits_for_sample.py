@@ -4,13 +4,17 @@ from .config import CONST
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd
 from argparse import ArgumentParser
-import multiprocessing as mp
 import os, subprocess, random
 
 #################### FILE-SCOPE CONSTANTS ####################
 INITIAL_PATTERN_DIR_STEM = 'warping_initial_pattern'
 PRINCIPAL_POINT_DIR_STEM = 'warping_center_principal_point'
 FINAL_PATTERN_DIR_STEM   = 'warping_final_pattern'
+RUN_MANY_FITS_CMD_BASE = 'python -m microscopealignment.warping.run_many_fits_with_pool'
+POSITIONAL_PASSTHROUGH_ARG_NAMES = ['mode','sample','rawfile_top_dir','metadata_top_dir']
+PASSTHROUGH_ARG_NAMES = ['skip_exposure_time_correction','exposure_time_offset_file','skip_flatfielding','flatfield_file']
+PASSTHROUGH_ARG_NAMES+= ['max_iter','normalize','max_radial_warp','max_tangential_warp','p1p2_polish_lasso_lambda','print_every','layer']
+PASSTHROUGH_FLAG_NAMES = ['float_p1p2_to_polish']
 
 #################### HELPER FUNCTIONS ####################
 
@@ -57,15 +61,37 @@ def setUpFitDirectories(args) :
     return tuple(wdns)
 
 #helper function to make the command to run for the initial pattern fit group
-def getInitialPatternFitCmd(wdn) :
-    pass
+def getInitialPatternFitCmd(wdn,args) :
+    #start with the call to run_many_fits_with_pool
+    cmd = RUN_MANY_FITS_CMD_BASE
+    #add the positional arguments
+    argvars = vars(args)
+    for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
+        cmd+=f'{argvars[ppan]} '
+    #add the number of jobs positional argument
+    cmd+=f'{args.initial_pattern_octets} '
+    #add the passthrough arguments and flags
+    for pan in PASSTHROUGH_ARG_NAMES :
+        if argvars[pan] is not None :
+            cmd+=f'--{pan} {argvars[pan]} '
+    for pfn in PASSTHROUGH_FLAG_NAMES :
+        if argvars[pfn] :
+            cmd+=f'--{pfn} '
+    #select the first single octet for every jobs since we've already split up the octets for the sample
+    cmd+='--octet_selection first_1 '
+    #add the number of workers
+    cmd+=f'--workers {args.workers} '
+    #fix the focal lengths and tangential warping parameters
+    cmd+='--fixed fx,fy,p1,p2 '
+    #return the command
+    return cmd
 
 #helper function to make the command to run for the principal point fit group
-def getPrincipalPointFitCmd(wdn) :
+def getPrincipalPointFitCmd(wdn,args) :
     pass
 
 #helper function to make the command to run for the final pattern fit group
-def getFinalPatternFitCmd(wdn) :
+def getFinalPatternFitCmd(wdn,args) :
     pass
 
 #################### MAIN SCRIPT ####################
@@ -82,19 +108,28 @@ if __name__=='__main__' :
     #arguments for how to split the total group of octets
     octet_splitting_group = parser.add_argument_group('octet splitting', 'how to split the total set of octets for each of the three fit groups')
     octet_splitting_group.add_argument('--initial_pattern_octets', type=int, default=50,
-                                       help=f'Number of octets to use in the initial pattern fit')
+                                       help='Number of octets to use in the initial pattern fit')
     octet_splitting_group.add_argument('--principal_point_octets', type=int, default=50,
-                                       help=f'Number of octets to use in the principal point location fit')
+                                       help='Number of octets to use in the principal point location fit')
     octet_splitting_group.add_argument('--final_pattern_octets',   type=int, default=100,
-                                       help=f'Number of octets to use in the final pattern fit')
+                                       help='Number of octets to use in the final pattern fit')
     args = parser.parse_args()
     #make sure the arguments are alright
     checkArgs(args)
     #set up the three directories with their octet groupings
     dirname_1, dirname_2, dirname_3 = setUpFitDirectories(args)
-    #get the command for the initial pattern fits and run them
-    cmd_1 = getInitialPatternFitCmd(dirname_1)
-    subprocess.call(cmd_1)
+    if args.mode!='find_octets' :
+        #get the command for the initial pattern fits and run it
+        cmd_1 = getInitialPatternFitCmd(dirname_1,args)
+        subprocess.call(cmd_1)
+    if args.mode=='fit' :
+        #get the command for the central principal point fits and run it
+        cmd_2 = getInitialPatternFitCmd(dirname_2,args)
+        subprocess.call(cmd_2)
+        #get the command for the final pattern fits and run it
+        cmd_3 = getInitialPatternFitCmd(dirname_3,args)
+        subprocess.call(cmd_3)
+    warp_logger.info(f'All fits for {args.sample} warping pattern completed')
 
     
 

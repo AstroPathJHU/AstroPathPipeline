@@ -54,6 +54,7 @@ def getListOfJobCommands(args) :
             thisjoboctetstring+=f'{this_octet_number},'
         thisjobworkingdir = os.path.join(args.workingdir,thisjobdirname)
         workingdir_names.append(thisjobworkingdir)
+        octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else thisjobworkingdir
         thisjobcmdstring = f'{cmd_base} {thisjobworkingdir} --octet_run_dir {octet_run_dir} --octets {thisjoboctetstring[:-1]} '
         for pan in PASSTHROUGH_ARG_NAMES :
             if argvars[pan] is not None :
@@ -71,6 +72,8 @@ if __name__=='__main__' :
     mp.freeze_support()
     #define and get the command-line arguments
     parser = ArgumentParser()
+    #add the positional mode argument
+    parser.add_argument('mode', help='What to do', choices=['fit','check_run'])
     #add the common arguments
     addCommonWarpingArgumentsToParser(parser)
     #additional positional arguments
@@ -86,66 +89,67 @@ if __name__=='__main__' :
     print(test_run_command)
     subprocess.call(test_run_command)
     warp_logger.info('TESTING done')
-    #run all the job commands on a pool of workers
-    nworkers = min(mp.cpu_count(),args.njobs) if args.workers is None else min(args.workers,args.njobs,mp.cpu_count())
-    warp_logger.info(f'WILL RUN {args.njobs} COMMANDS ON A POOL OF {nworkers} WORKERS:')
-    pool = mp.Pool(nworkers)
-    for i,cmd in enumerate(job_cmds,start=1) :
-        warp_logger.info(f'  command {i}: {cmd}')
-        pool.apply_async(worker,args=(cmd,))
-    pool.close()
-    warp_logger.info('POOL CLOSED; BATCH RUNNING!!')
-    pool.join()
-    warp_logger.info('All jobs in the pool have finished! : ) Collecting results....')
-    #write out a list of all the individual results
-    results = []
-    for dirname in dirnames :
-        results.append((readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))[0])
-    with cd(args.workingdir) :
-        writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv',results)
-    #get the weighted average parameters over all the results that reduced the cost
-    warp_logger.info('Writing out info for weighted average warp....')
-    w_cx = 0.; w_cy = 0.; w_fx = 0.; w_fy = 0.
-    w_k1 = 0.; w_k2 = 0.; w_k3 = 0.; w_p1 = 0.; w_p2 = 0.
-    sum_weights = 0.
-    for result in [r for r in results if r.cost_reduction>0] :
-        w = result.cost_reduction
-        w_cx+=(w*result.cx); w_cy+=(w*result.cy); w_fx+=(w*result.fx); w_fy+=(w*result.fy)
-        w_k1+=(w*result.k1); w_k2+=(w*result.k2); w_k3+=(w*result.k3)
-        w_p1+=(w*result.p1); w_p2+=(w*result.p2)
-        sum_weights+=w
-    if sum_weights!=0. :
-        w_cx/=sum_weights; w_cy/=sum_weights; w_fx/=sum_weights; w_fy/=sum_weights
-        w_k1/=sum_weights; w_k2/=sum_weights; w_k3/=sum_weights; w_p1/=sum_weights; w_p2/=sum_weights
-    #make a warp from these w average parameters and write out its info
-    w_avg_warp = CameraWarp(results[0].n,results[0].m,w_cx,w_cy,w_fx,w_fy,w_k1,w_k2,w_k3,w_p1,w_p2)
-    w_avg_result = WarpFitResult()
-    w_avg_result.dirname = args.workingdir
-    w_avg_result.n  = results[0].n
-    w_avg_result.m  = results[0].m
-    w_avg_result.cx = w_avg_warp.cx
-    w_avg_result.cy = w_avg_warp.cy
-    w_avg_result.fx = w_avg_warp.fx
-    w_avg_result.fy = w_avg_warp.fy
-    w_avg_result.k1 = w_avg_warp.k1
-    w_avg_result.k2 = w_avg_warp.k2
-    w_avg_result.k3 = w_avg_warp.k3
-    w_avg_result.p1 = w_avg_warp.p1
-    w_avg_result.p2 = w_avg_warp.p2
-    max_r_x, max_r_y = w_avg_warp._getMaxDistanceCoords()
-    w_avg_result.max_r_x_coord  = max_r_x
-    w_avg_result.max_r_y_coord  = max_r_y
-    w_avg_result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)
-    w_avg_result.max_rad_warp   = w_avg_warp.maxRadialDistortAmount(None)
-    w_avg_result.max_tan_warp   = w_avg_warp.maxTangentialDistortAmount(None)
-    with cd(args.workingdir) :
-        writetable(f'{os.path.basename(os.path.normpath(args.workingdir))}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}',[w_avg_result])
-        w_avg_warp.writeOutWarpFields(os.path.basename(os.path.normpath(args.workingdir)))
-    #aggregate the different metadata summary and field log files into one
-    all_field_logs = []
-    for dirname in dirnames :
-        all_field_logs+=((readtable(os.path.join(dirname,f'field_log_{os.path.basename(os.path.normpath(dirname))}.csv'),FieldLog)))
-    with cd(args.workingdir) :
-        writetable(f'field_log_{os.path.basename(os.path.normpath(args.workingdir))}.csv',all_field_logs)
+    if args.mode=='fit' :
+        #run all the job commands on a pool of workers
+        nworkers = min(mp.cpu_count(),args.njobs) if args.workers is None else min(args.workers,args.njobs,mp.cpu_count())
+        warp_logger.info(f'WILL RUN {args.njobs} COMMANDS ON A POOL OF {nworkers} WORKERS:')
+        pool = mp.Pool(nworkers)
+        for i,cmd in enumerate(job_cmds,start=1) :
+            warp_logger.info(f'  command {i}: {cmd}')
+            pool.apply_async(worker,args=(cmd,))
+        pool.close()
+        warp_logger.info('POOL CLOSED; BATCH RUNNING!!')
+        pool.join()
+        warp_logger.info('All jobs in the pool have finished! : ) Collecting results....')
+        #write out a list of all the individual results
+        results = []
+        for dirname in dirnames :
+            results.append((readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))[0])
+        with cd(args.workingdir) :
+            writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv',results)
+        #get the weighted average parameters over all the results that reduced the cost
+        warp_logger.info('Writing out info for weighted average warp....')
+        w_cx = 0.; w_cy = 0.; w_fx = 0.; w_fy = 0.
+        w_k1 = 0.; w_k2 = 0.; w_k3 = 0.; w_p1 = 0.; w_p2 = 0.
+        sum_weights = 0.
+        for result in [r for r in results if r.cost_reduction>0] :
+            w = result.cost_reduction
+            w_cx+=(w*result.cx); w_cy+=(w*result.cy); w_fx+=(w*result.fx); w_fy+=(w*result.fy)
+            w_k1+=(w*result.k1); w_k2+=(w*result.k2); w_k3+=(w*result.k3)
+            w_p1+=(w*result.p1); w_p2+=(w*result.p2)
+            sum_weights+=w
+        if sum_weights!=0. :
+            w_cx/=sum_weights; w_cy/=sum_weights; w_fx/=sum_weights; w_fy/=sum_weights
+            w_k1/=sum_weights; w_k2/=sum_weights; w_k3/=sum_weights; w_p1/=sum_weights; w_p2/=sum_weights
+        #make a warp from these w average parameters and write out its info
+        w_avg_warp = CameraWarp(results[0].n,results[0].m,w_cx,w_cy,w_fx,w_fy,w_k1,w_k2,w_k3,w_p1,w_p2)
+        w_avg_result = WarpFitResult()
+        w_avg_result.dirname = args.workingdir
+        w_avg_result.n  = results[0].n
+        w_avg_result.m  = results[0].m
+        w_avg_result.cx = w_avg_warp.cx
+        w_avg_result.cy = w_avg_warp.cy
+        w_avg_result.fx = w_avg_warp.fx
+        w_avg_result.fy = w_avg_warp.fy
+        w_avg_result.k1 = w_avg_warp.k1
+        w_avg_result.k2 = w_avg_warp.k2
+        w_avg_result.k3 = w_avg_warp.k3
+        w_avg_result.p1 = w_avg_warp.p1
+        w_avg_result.p2 = w_avg_warp.p2
+        max_r_x, max_r_y = w_avg_warp._getMaxDistanceCoords()
+        w_avg_result.max_r_x_coord  = max_r_x
+        w_avg_result.max_r_y_coord  = max_r_y
+        w_avg_result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)
+        w_avg_result.max_rad_warp   = w_avg_warp.maxRadialDistortAmount(None)
+        w_avg_result.max_tan_warp   = w_avg_warp.maxTangentialDistortAmount(None)
+        with cd(args.workingdir) :
+            writetable(f'{os.path.basename(os.path.normpath(args.workingdir))}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}',[w_avg_result])
+            w_avg_warp.writeOutWarpFields(os.path.basename(os.path.normpath(args.workingdir)))
+        #aggregate the different metadata summary and field log files into one
+        all_field_logs = []
+        for dirname in dirnames :
+            all_field_logs+=((readtable(os.path.join(dirname,f'field_log_{os.path.basename(os.path.normpath(dirname))}.csv'),FieldLog)))
+        with cd(args.workingdir) :
+            writetable(f'field_log_{os.path.basename(os.path.normpath(args.workingdir))}.csv',all_field_logs)
     warp_logger.info('Done.')
 
