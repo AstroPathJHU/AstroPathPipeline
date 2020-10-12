@@ -54,7 +54,7 @@ def setUpFitDirectories(args) :
     ols = [octets_1,octets_2,octets_3]
     with cd(args.workingdir) :
         for wdn,o in zip(wdns,ols) :
-            os.mkdir(wdn)
+            os.makedirs(wdn,exist_ok=True)
             with cd(wdn) :
                 writetable(f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',o)
     #return the names of the created directories
