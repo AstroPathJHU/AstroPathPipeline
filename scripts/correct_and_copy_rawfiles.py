@@ -185,7 +185,7 @@ class RawfileCorrector :
         #first get the list of filepaths to run
         with cd(os.path.join(self._rawfile_top_dir,self._sample_name)) :
             all_rawfile_paths = [os.path.join(self._rawfile_top_dir,self._sample_name,fn) for fn in glob.glob(f'*{self._infile_ext}')]
-        self.__writeLog(f'Found {len(all_rawfile_paths)} total raw files in {self._rawfile_top_dir}')
+        self.__writeLog(f'Found {len(all_rawfile_paths)} total raw files in {os.path.join(self._rawfile_top_dir,self._sample_name)}')
         if self._max_files!=-1 :
             all_rawfile_paths=all_rawfile_paths[:self._max_files]
             self.__writeLog(f'Will correct and write out {len(all_rawfile_paths)} file layers')
