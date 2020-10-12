@@ -258,8 +258,8 @@ class WarpFitter :
         #set up the parameter bounds and constraints and get the initial population
         parameter_bounds, constraints, initial_population = self.__getGlobalSetup()
         self._de_population_size = len(initial_population)
-        #skip the corner overlaps
-        self.skip_corners = True
+        #don't skip the corner overlaps
+        self.skip_corners = False
         #figure out the normalization for the image sample used
         self.cost_norm = self.__getCostNormalization()
         #run the minimization
@@ -287,8 +287,8 @@ class WarpFitter :
     def __runPolishMinimization(self,float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter) :
         #set up the parameter bounds, constraints, initial values, and relative step sizes
         parameter_bounds, constraints, init_pars, rel_steps = self.__getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
-        #still do skip the corner overlaps
-        self.skip_corners = True
+        #still don't skip the corner overlaps
+        self.skip_corners = False
         #figure out the normalization for the image sample used
         self.cost_norm = self.__getCostNormalization()
         #call minimize with trust_constr
