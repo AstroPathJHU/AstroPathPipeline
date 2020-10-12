@@ -37,20 +37,30 @@ class WarpImage :
 #helper classes to represent octets of overlaps
 @dataclasses.dataclass(eq=False, repr=False)
 class OverlapOctet :
-    metadata_top_dir : str
-    rawfile_top_dir  : str
-    sample_name      : str
-    nclip            : int
-    layer            : int
-    p1_rect_n        : int
-    olap_1_n         : int
-    olap_2_n         : int
-    olap_3_n         : int
-    olap_4_n         : int
-    olap_6_n         : int
-    olap_7_n         : int
-    olap_8_n         : int
-    olap_9_n         : int
+    metadata_top_dir   : str
+    rawfile_top_dir    : str
+    sample_name        : str
+    nclip              : int
+    layer              : int
+    threshold          : float
+    p1_rect_n          : int
+    p1_rect_pixel_frac : float
+    olap_1_n           : int
+    olap_2_n           : int
+    olap_3_n           : int
+    olap_4_n           : int
+    olap_6_n           : int
+    olap_7_n           : int
+    olap_9_n           : int
+    olap_8_n           : int
+    olap_1_pixel_frac  : float
+    olap_2_pixel_frac  : float
+    olap_3_pixel_frac  : float
+    olap_4_pixel_frac  : float
+    olap_6_pixel_frac  : float
+    olap_7_pixel_frac  : float
+    olap_8_pixel_frac  : float
+    olap_9_pixel_frac  : float
     @property
     def overlap_ns(self) :
         return [self.olap_1_n,self.olap_2_n,self.olap_3_n,self.olap_4_n,self.olap_6_n,self.olap_7_n,self.olap_8_n,self.olap_9_n]
@@ -232,14 +242,15 @@ def findSampleOctets(rtd,mtd,threshold_file_path,req_pixel_frac,samp,working_dir
     a = AlignmentSetFromXML(mtd,rtd,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw')
     a.getDAPI()
     img_dims = getImageHWLFromXMLFile(mtd,samp)
-    flatfield = (getRawAsHWL(flatfield_file,*(img_dims),CONST.FLATFIELD_DTYPE_OUT))[:,:,layer-1] if flatfield_file is not None else None
+    flatfield = (getRawAsHWL(flatfield_file,*(img_dims),CONST.FLATFIELD_DTYPE))[:,:,layer-1] if flatfield_file is not None else None
     med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(mtd,samp,et_offset_file,layer) if et_offset_file is not None else None
     if (flatfield is not None) or ((med_et is not None) and (offset is not None)) :
         for ir,rect in enumerate(a.rectangles) :
             warp_logger.info(f'Correcting alignment set rectangle image {ir+1} of {len(a.rectangles)}')
             rfp = os.path.join(rtd,samp,rect.file.replace(CONST.IM3_EXT,CONST.RAW_EXT))
-            corr_img = loadRawImageWorker(rfp,*(img_dims),layer,flatfield,med_et,offset,None,None,mtd,None)
-            corrected_image = [WarpImage(rect.file.rstrip(CONST.IM3_EXT),cv2.UMat(corr_img),None,False,ir)]
+            d = loadRawImageWorker(rfp,*(img_dims),layer,flatfield,med_et,offset,None,None,mtd,None)
+            rfkey = d['rfkey']; corr_img = d['image']
+            corrected_image = [WarpImage(rfkey,cv2.UMat(corr_img),None,False,ir)]
             a.updateRectangleImages(corrected_image,usewarpedimages=False)
     a.align()
     #get the list of overlaps
@@ -256,26 +267,27 @@ def findSampleOctets(rtd,mtd,threshold_file_path,req_pixel_frac,samp,working_dir
         p2frac = (np.sum(np.where(ip2>threshold_value,1,0)))/(ip2.shape[0]*ip2.shape[1])
         if p1frac<req_pixel_frac :
             warp_logger.info(f'overlap number {overlap.n} rejected: p1 image ({overlap.p1}) only has {100.*p1frac:.2f}% above threshold at flux = {threshold_value}.')
-            rejected_overlaps.append(overlap)
+            rejected_overlaps.append((overlap,p1frac,p2frac))
             continue
         if p2frac<req_pixel_frac :
             warp_logger.info(f'overlap number {overlap.n} rejected: p2 image ({overlap.p2}) only has {100.*p2frac:.2f}% above threshold at flux = {threshold_value}.')
-            rejected_overlaps.append(overlap)
+            rejected_overlaps.append((overlap,p1frac,p2frac))
             continue
-        good_overlaps.append(overlap)
+        good_overlaps.append((overlap,p1frac,p2frac))
     warp_logger.info(f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)}')
     #find the overlaps that form full octets
     octets = []
     #begin by getting the set of all p1s
-    p1s = set([o.p1 for o in good_overlaps])
+    p1s = set([o[0].p1 for o in good_overlaps])
     #for each p1, if there are eight good overlaps it forms an octet
     for p1 in p1s :
-        overlapswiththisp1 = [o for o in good_overlaps if o.p1==p1]
+        overlapswiththisp1 = [o for o in good_overlaps if o[0].p1==p1]
         if len(overlapswiththisp1)==8 :
-            overlapswiththisp1.sort(key=lambda x: x.tag)
-            ons = [o.n for o in overlapswiththisp1]
+            overlapswiththisp1.sort(key=lambda x: x[0].tag)
+            ons = [o[0].n for o in overlapswiththisp1]
+            op2fs = [o[2] for o in overlapswiththisp1]
             warp_logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
-            octets.append(OverlapOctet(mtd,rtd,samp,CONST.N_CLIP,layer,p1,*(ons)))
+            octets.append(OverlapOctet(mtd,rtd,samp,CONST.N_CLIP,layer,threshold_value,p1,overlapswiththisp1[0][1],*(ons),*(op2fs)))
     octets.sort(key=lambda x: x.p1_rect_n)
     #save the file of which overlaps are in each valid octet
     with cd(working_dir) :
