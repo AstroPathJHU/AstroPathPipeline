@@ -12,9 +12,8 @@ PRINCIPAL_POINT_DIR_STEM = 'warping_center_principal_point'
 FINAL_PATTERN_DIR_STEM   = 'warping_final_pattern'
 RUN_MANY_FITS_CMD_BASE = 'python -m microscopealignment.warping.run_many_fits_with_pool'
 POSITIONAL_PASSTHROUGH_ARG_NAMES = ['mode','sample','rawfile_top_dir','metadata_top_dir']
-PASSTHROUGH_ARG_NAMES = ['skip_exposure_time_correction','exposure_time_offset_file','skip_flatfielding','flatfield_file']
-PASSTHROUGH_ARG_NAMES+= ['max_iter','normalize','max_radial_warp','max_tangential_warp','p1p2_polish_lasso_lambda','print_every','layer']
-PASSTHROUGH_FLAG_NAMES = ['float_p1p2_to_polish']
+PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','max_iter','normalize','max_radial_warp','max_tangential_warp','print_every','layer','workers']
+PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding']
 
 #################### HELPER FUNCTIONS ####################
 
@@ -67,7 +66,9 @@ def getInitialPatternFitCmd(wdn,args) :
     #add the positional arguments
     argvars = vars(args)
     for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
-        cmd+=f'{argvars[ppan]} '
+        cmd+=f' {argvars[ppan]} '
+    #add the working directory argument
+    cmd+=f'{wdn} '
     #add the number of jobs positional argument
     cmd+=f'{args.initial_pattern_octets} '
     #add the passthrough arguments and flags
@@ -76,13 +77,13 @@ def getInitialPatternFitCmd(wdn,args) :
             cmd+=f'--{pan} {argvars[pan]} '
     for pfn in PASSTHROUGH_FLAG_NAMES :
         if argvars[pfn] :
-            cmd+=f'--{pfn} '
-    #select the first single octet for every jobs since we've already split up the octets for the sample
+            thisjobcmdstring+=f'--{pfn} '
+    #the octets are in the working directory
+    cmd+=f'--octet_run_dir {os.path.join(args.workingdir,wdn)} '
+    #select the first single octet for every job since we've already split up the octets for the sample
     cmd+='--octet_selection first_1 '
-    #add the number of workers
-    cmd+=f'--workers {args.workers} '
     #fix the focal lengths and tangential warping parameters
-    cmd+='--fixed fx,fy,p1,p2 '
+    cmd+='--fixed fx,fy,p1,p2'
     #return the command
     return cmd
 
@@ -129,7 +130,8 @@ if __name__=='__main__' :
         #get the command for the final pattern fits and run it
         cmd_3 = getInitialPatternFitCmd(dirname_3,args)
         subprocess.call(cmd_3)
-    warp_logger.info(f'All fits for {args.sample} warping pattern completed')
+        warp_logger.info(f'All fits for {args.sample} warping pattern completed')
+    warp_logger.info(f'Done.')
 
     
 

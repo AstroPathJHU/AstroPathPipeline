@@ -1,7 +1,8 @@
 #imports
 from .warp_set import WarpSet
 from .fit_parameter_set import FitParameterSet
-from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult, FieldLog
+from .utilities import warp_logger, WarpingError, WarpFitResult, FieldLog
+from .plotting import OctetComparisonVisualization
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..baseclasses.rectangle import rectangleoroverlapfilter
@@ -28,7 +29,6 @@ class WarpFitter :
 
     #################### CLASS CONSTANTS ####################
 
-    IM3_EXT = '.im3'                                          #to replace in rectangle filenames
     DE_TOLERANCE = 0.03                                       #tolerance for the differential evolution minimization
     DE_MUTATION = (0.2,0.8)                                   #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7                                    #recombination parameter for differential evolution minimization
@@ -69,7 +69,7 @@ class WarpFitter :
             writetable(f'metadata_summary_{os.path.basename(os.path.normpath(self.working_dir))}.csv',[ms])
             writetable(f'field_log_{os.path.basename(os.path.normpath(self.working_dir))}.csv',field_logs)
         #get the list of raw file paths
-        self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.samp_name,fn.replace(self.IM3_EXT,CONST.RAW_EXT)) 
+        self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.samp_name,fn.replace(CONST.IM3_EXT,CONST.RAW_EXT)) 
                               for fn in [r.file for r in self.alignset.rectangles]]
         #get the size of the images in the sample
         m, n, nlayers = getImageHWLFromXMLFile(self.metadata_top_dir,samplename)
