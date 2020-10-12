@@ -2,9 +2,10 @@
 from .utilities import warp_logger, WarpingError, addCommonWarpingArgumentsToParser, checkDirArgs, getOctetsFromArguments
 from .config import CONST
 from ..utilities.tableio import writetable
+from ..utilities.misc import cd
 from argparse import ArgumentParser
 import multiprocessing as mp
-import subprocess, random
+import os, subprocess, random
 
 #################### FILE-SCOPE CONSTANTS ####################
 INITIAL_PATTERN_DIR_STEM = 'warping_initial_pattern'
@@ -46,9 +47,9 @@ def setUpFitDirectories(args) :
     wdn_2 = f'{PRINCIPAL_POINT_DIR_STEM}_{args.sample}_{len(octets_2)}_octets'
     wdn_3 = f'{INITIAL_PATTERN_DIR_STEM}_{args.sample}_{len(octets_3)}_octets'
     wdns = [wdn_1,wdn_2,wdn_3]
-    os = [octets_1,octets_2,octets_3]
-    with cd(args.workdir) :
-        for wdn,o in zip(wdns,os) :
+    ols = [octets_1,octets_2,octets_3]
+    with cd(args.workingdir) :
+        for wdn,o in zip(wdns,ols) :
             os.mkdir(wdn)
             with cd(wdn) :
                 writetable(f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',o)
@@ -92,7 +93,7 @@ if __name__=='__main__' :
     #set up the three directories with their octet groupings
     dirname_1, dirname_2, dirname_3 = setUpFitDirectories(args)
     #get the command for the initial pattern fits and run them
-    cmd_1 = getInitialPatternFitCmds(dirname_1)
+    cmd_1 = getInitialPatternFitCmd(dirname_1)
     subprocess.call(cmd_1)
 
     

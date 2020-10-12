@@ -37,30 +37,37 @@ class WarpImage :
 #helper classes to represent octets of overlaps
 @dataclasses.dataclass(eq=False, repr=False)
 class OverlapOctet :
-    metadata_top_dir   : str
-    rawfile_top_dir    : str
-    sample_name        : str
-    nclip              : int
-    layer              : int
-    threshold          : float
-    p1_rect_n          : int
-    p1_rect_pixel_frac : float
-    olap_1_n           : int
-    olap_2_n           : int
-    olap_3_n           : int
-    olap_4_n           : int
-    olap_6_n           : int
-    olap_7_n           : int
-    olap_9_n           : int
-    olap_8_n           : int
-    olap_1_pixel_frac  : float
-    olap_2_pixel_frac  : float
-    olap_3_pixel_frac  : float
-    olap_4_pixel_frac  : float
-    olap_6_pixel_frac  : float
-    olap_7_pixel_frac  : float
-    olap_8_pixel_frac  : float
-    olap_9_pixel_frac  : float
+    metadata_top_dir     : str
+    rawfile_top_dir      : str
+    sample_name          : str
+    nclip                : int
+    layer                : int
+    threshold            : float
+    p1_rect_n            : int
+    olap_1_n             : int
+    olap_2_n             : int
+    olap_3_n             : int
+    olap_4_n             : int
+    olap_6_n             : int
+    olap_7_n             : int
+    olap_9_n             : int
+    olap_8_n             : int
+    olap_1_p1_pixel_frac : float
+    olap_2_p1_pixel_frac : float
+    olap_3_p1_pixel_frac : float
+    olap_4_p1_pixel_frac : float
+    olap_6_p1_pixel_frac : float
+    olap_7_p1_pixel_frac : float
+    olap_8_p1_pixel_frac : float
+    olap_9_p1_pixel_frac : float
+    olap_1_p2_pixel_frac : float
+    olap_2_p2_pixel_frac : float
+    olap_3_p2_pixel_frac : float
+    olap_4_p2_pixel_frac : float
+    olap_6_p2_pixel_frac : float
+    olap_7_p2_pixel_frac : float
+    olap_8_p2_pixel_frac : float
+    olap_9_p2_pixel_frac : float
     @property
     def overlap_ns(self) :
         return [self.olap_1_n,self.olap_2_n,self.olap_3_n,self.olap_4_n,self.olap_6_n,self.olap_7_n,self.olap_8_n,self.olap_9_n]
@@ -285,9 +292,10 @@ def findSampleOctets(rtd,mtd,threshold_file_path,req_pixel_frac,samp,working_dir
         if len(overlapswiththisp1)==8 :
             overlapswiththisp1.sort(key=lambda x: x[0].tag)
             ons = [o[0].n for o in overlapswiththisp1]
-            op2fs = [o[2] for o in overlapswiththisp1]
+            op1pfs = [o[1] for o in overlapswiththisp1]
+            op2pfs = [o[2] for o in overlapswiththisp1]
             warp_logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
-            octets.append(OverlapOctet(mtd,rtd,samp,CONST.N_CLIP,layer,threshold_value,p1,overlapswiththisp1[0][1],*(ons),*(op2fs)))
+            octets.append(OverlapOctet(mtd,rtd,samp,CONST.N_CLIP,layer,threshold_value,p1,*(ons),*(op1pfs),*(op2pfs)))
     octets.sort(key=lambda x: x.p1_rect_n)
     #save the file of which overlaps are in each valid octet
     with cd(working_dir) :
