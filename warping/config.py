@@ -1,5 +1,6 @@
 #imports
 from ..flatfield.config import CONST as FLATFIELD_CONST
+from ..exposuretime.config import CONST as ET_CONST
 import numpy as np
 
 #class for shared constant variables
@@ -19,8 +20,11 @@ class Const :
         return {'cx':None,'cy':None,'fx':None,'fy':None,'k1':None,'k2':None,'k3':None,'p1':None,'p2':None}
     #file extensions
     @property
+    def IM3_EXT(self) :
+        return ET_CONST.IM3_EXT # extension of im3 files
+    @property
     def RAW_EXT(self) :
-        return '.Data.dat' # extension of completely raw image files
+        return ET_CONST.RAW_EXT # extension of completely raw image files
     @property
     def WARP_EXT(self) :
         return '.camWarp_layer' #extension stem for the warped files
@@ -34,6 +38,9 @@ class Const :
     @property
     def CORNER_OVERLAP_TAGS(self):
         return [1,3,7,9] #list of tags representing overlaps that are corners 
+    @property
+    def FLATFIELD_DTYPE(self):
+        return FLATFIELD_CONST.IMG_DTYPE_OUT #datatype of the flatfield image
     @property
     def N_CLIP(self) :
         return FLATFIELD_CONST.N_CLIP #number of pixels to clip from raw image edges

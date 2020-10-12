@@ -1,7 +1,7 @@
 #imports
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..utilities.img_file_io import getRawAsHWL, getExposureTimesByLayer
+from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer, getMedianExposureTimeAndCorrectionOffsetForSampleLayer
 from ..utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
@@ -152,109 +152,6 @@ def checkDirAndFixedArgs(args,parse=False) :
     checkDirArgs(args)
     checkFixedArg(args,parse)
 
-# Helper function to read previously-saved octet definitions from a file
-def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_name,layer) :
-    #get the .csv file holding the octet p1s and overlaps ns
-    octet_filepath = os.path.join(octet_run_dir,f'{sample_name}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
-    warp_logger.info(f'Reading octet overlaps numbers from file {octet_filepath}...')
-    #read the overlap ns from the file
-    octets = readtable(octet_filepath,OverlapOctet)
-    for octet_olap_n in octets :
-        if octet_olap_n.metadata_top_dir!=metadata_top_dir :
-            msg = f'ERROR: metadata_top_dir {metadata_top_dir} passed to readOctetsFromFile does not match '
-            msg+= f'{octet_olap_n.metadata_top_dir} in octet file {octet_filepath}!'
-            raise(WarpingError(msg))
-        if octet_olap_n.rawfile_top_dir!=rawfile_top_dir :
-            msg = f'ERROR: rawfile_top_dir {rawfile_top_dir} passed to readOctetsFromFile does not match '
-            msg+= f'{octet_olap_n.rawfile_top_dir} in octet file {octet_filepath}!'
-            raise(WarpingError(msg))
-        if octet_olap_n.sample_name!=sample_name :
-            msg = f'ERROR: sample_name {sample_name} passed to readOctetsFromFile does not match '
-            msg+= f'{octet_olap_n.sample_name} in octet file {octet_filepath}!'
-            raise(WarpingError(msg))
-        if octet_olap_n.nclip!=CONST.N_CLIP :
-            msg = f'ERROR: constant nclip {CONST.N_CLIP} in readOctetsFromFile does not match '
-            msg+= f'{octet_olap_n.nclip} in octet file {octet_filepath}!'
-            raise(WarpingError(msg))
-        if octet_olap_n.layer!=layer :
-            msg = f'ERROR: layer {layer} passed to readOctetsFromFile does not match '
-            msg+= f'{octet_olap_n.layer} in octet file {octet_filepath}!'
-            raise(WarpingError(msg))
-    octets.sort(key=lambda x:x.p1_rect_n)
-    return octets
-
-# Helper function to get the list of octets
-def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pixel_frac,samp,working_dir,layer) :
-    #start by getting the threshold of this sample layer from the the inputted file
-    with open(threshold_file_path) as tfp :
-        vals = [int(l.rstrip()) for l in tfp.readlines() if l.rstrip()!='']
-    threshold_value = vals[layer-1]
-    #create the alignment set and run its alignment
-    warp_logger.info("Performing an initial alignment to find this sample's valid octets...")
-    a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw')
-    a.getDAPI()
-    a.align()
-    #get the list of overlaps
-    overlaps = a.overlaps
-    #filter out any that could not be aligned or that don't show enough bright pixels
-    good_overlaps = []; rejected_overlaps = []
-    for overlap in overlaps :
-        if overlap.result.exit!=0 :
-            warp_logger.info(f'overlap number {overlap.n} rejected: alignment status {overlap.result.exit}.')
-            rejected_overlaps.append(overlap)
-            continue
-        ip1,ip2 = overlap.cutimages
-        p1frac = (np.sum(np.where(ip1>threshold_value,1,0)))/(ip1.shape[0]*ip1.shape[1])
-        p2frac = (np.sum(np.where(ip2>threshold_value,1,0)))/(ip2.shape[0]*ip2.shape[1])
-        if p1frac<req_pixel_frac :
-            warp_logger.info(f'overlap number {overlap.n} rejected: p1 image ({overlap.p1}) only has {100.*p1frac:.2f}% above threshold at flux = {threshold_value}.')
-            rejected_overlaps.append(overlap)
-            continue
-        if p2frac<req_pixel_frac :
-            warp_logger.info(f'overlap number {overlap.n} rejected: p2 image ({overlap.p2}) only has {100.*p2frac:.2f}% above threshold at flux = {threshold_value}.')
-            rejected_overlaps.append(overlap)
-            continue
-        good_overlaps.append(overlap)
-    warp_logger.info(f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)}')
-    #find the overlaps that form full octets
-    octets = []
-    #begin by getting the set of all p1s
-    p1s = set([o.p1 for o in good_overlaps])
-    #for each p1, if there are eight good overlaps it forms an octet
-    for p1 in p1s :
-        overlapswiththisp1 = [o for o in good_overlaps if o.p1==p1]
-        if len(overlapswiththisp1)==8 :
-            overlapswiththisp1.sort(key=lambda x: x.tag)
-            ons = [o.n for o in overlapswiththisp1]
-            warp_logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
-            octets.append(OverlapOctet(metadata_top_dir,rawfile_top_dir,samp,CONST.N_CLIP,layer,p1,*(ons)))
-    octets.sort(key=lambda x: x.p1_rect_n)
-    #save the file of which overlaps are in each valid octet
-    with cd(working_dir) :
-        writetable(f'{samp}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',octets)
-    #print how many octets there are 
-    warp_logger.info(f'{len(octets)} total octets found.')
-    #return the list of octets
-    return octets
-
-#helper function to return the octets for a sample given just the command line arguments
-def getOctetsFromArguments(args) :
-    octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir
-    if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
-        if args.threshold_file_dir is not None :
-            msg = 'ERROR: an octet file exists in the working directory, but a threshold file directory was also given!'
-            msg+= ' Get rid of the threshold file dir argument to use the octet file that already exists, or remove the octet file to recreate it.'
-            raise WarpingError(msg)
-        all_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
-    elif args.threshold_file_dir is not None :
-        threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
-        all_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,
-                                      args.workingdir,args.layer)
-    else :
-        raise WarpingError('ERROR: either an octet_run_dir or a threshold_file_dir must be supplied to define octets to run on!')
-    warp_logger.info(f'Found a total set of {len(all_octets)} valid octets for {args.sample}')
-    return all_octets
-
 #Helper function to load a single raw file, correct its illumination with a flatfield layer, smooth it, 
 #and return information needed to create a new WarpImage
 #meant to be run in parallel
@@ -292,6 +189,119 @@ def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,med_et,offset,overlaps,re
         return_dict[return_dict_key]=return_item
     else :
         return return_item
+
+# Helper function to read previously-saved octet definitions from a file
+def readOctetsFromFile(octet_run_dir,rawfile_top_dir,metadata_top_dir,sample_name,layer) :
+    #get the .csv file holding the octet p1s and overlaps ns
+    octet_filepath = os.path.join(octet_run_dir,f'{sample_name}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
+    warp_logger.info(f'Reading octet overlaps numbers from file {octet_filepath}...')
+    #read the overlap ns from the file
+    octets = readtable(octet_filepath,OverlapOctet)
+    for octet_olap_n in octets :
+        if octet_olap_n.metadata_top_dir!=metadata_top_dir :
+            msg = f'ERROR: metadata_top_dir {metadata_top_dir} passed to readOctetsFromFile does not match '
+            msg+= f'{octet_olap_n.metadata_top_dir} in octet file {octet_filepath}!'
+            raise(WarpingError(msg))
+        if octet_olap_n.rawfile_top_dir!=rawfile_top_dir :
+            msg = f'ERROR: rawfile_top_dir {rawfile_top_dir} passed to readOctetsFromFile does not match '
+            msg+= f'{octet_olap_n.rawfile_top_dir} in octet file {octet_filepath}!'
+            raise(WarpingError(msg))
+        if octet_olap_n.sample_name!=sample_name :
+            msg = f'ERROR: sample_name {sample_name} passed to readOctetsFromFile does not match '
+            msg+= f'{octet_olap_n.sample_name} in octet file {octet_filepath}!'
+            raise(WarpingError(msg))
+        if octet_olap_n.nclip!=CONST.N_CLIP :
+            msg = f'ERROR: constant nclip {CONST.N_CLIP} in readOctetsFromFile does not match '
+            msg+= f'{octet_olap_n.nclip} in octet file {octet_filepath}!'
+            raise(WarpingError(msg))
+        if octet_olap_n.layer!=layer :
+            msg = f'ERROR: layer {layer} passed to readOctetsFromFile does not match '
+            msg+= f'{octet_olap_n.layer} in octet file {octet_filepath}!'
+            raise(WarpingError(msg))
+    octets.sort(key=lambda x:x.p1_rect_n)
+    return octets
+
+# Helper function to get the list of octets
+def findSampleOctets(rtd,mtd,threshold_file_path,req_pixel_frac,samp,working_dir,layer,flatfield_file,et_offset_file) :
+    #start by getting the threshold of this sample layer from the the inputted file
+    with open(threshold_file_path) as tfp :
+        vals = [int(l.rstrip()) for l in tfp.readlines() if l.rstrip()!='']
+    threshold_value = vals[layer-1]
+    #create the alignment set, correct its files, and run its alignment
+    warp_logger.info("Performing an initial alignment to find this sample's valid octets...")
+    a = AlignmentSetFromXML(mtd,rtd,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw')
+    a.getDAPI()
+    img_dims = getImageHWLFromXMLFile(mtd,samp)
+    flatfield = (getRawAsHWL(flatfield_file,*(img_dims),CONST.FLATFIELD_DTYPE_OUT))[:,:,layer-1] if flatfield_file is not None else None
+    med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(mtd,samp,et_offset_file,layer) if et_offset_file is not None else None
+    if (flatfield is not None) or ((med_et is not None) and (offset is not None)) :
+        for ir,rect in enumerate(a.rectangles) :
+            warp_logger.info(f'Correcting alignment set rectangle image {ir+1} of {len(a.rectangles)}')
+            rfp = os.path.join(rtd,samp,rect.file.replace(CONST.IM3_EXT,CONST.RAW_EXT))
+            corr_img = loadRawImageWorker(rfp,*(img_dims),layer,flatfield,med_et,offset,None,None,mtd,None)
+            corrected_image = [WarpImage(rect.file.rstrip(CONST.IM3_EXT),cv2.UMat(corr_img),None,False,ir)]
+            a.updateRectangleImages(corrected_image,usewarpedimages=False)
+    a.align()
+    #get the list of overlaps
+    overlaps = a.overlaps
+    #filter out any that could not be aligned or that don't show enough bright pixels
+    good_overlaps = []; rejected_overlaps = []
+    for overlap in overlaps :
+        if overlap.result.exit!=0 :
+            warp_logger.info(f'overlap number {overlap.n} rejected: alignment status {overlap.result.exit}.')
+            rejected_overlaps.append(overlap)
+            continue
+        ip1,ip2 = overlap.cutimages
+        p1frac = (np.sum(np.where(ip1>threshold_value,1,0)))/(ip1.shape[0]*ip1.shape[1])
+        p2frac = (np.sum(np.where(ip2>threshold_value,1,0)))/(ip2.shape[0]*ip2.shape[1])
+        if p1frac<req_pixel_frac :
+            warp_logger.info(f'overlap number {overlap.n} rejected: p1 image ({overlap.p1}) only has {100.*p1frac:.2f}% above threshold at flux = {threshold_value}.')
+            rejected_overlaps.append(overlap)
+            continue
+        if p2frac<req_pixel_frac :
+            warp_logger.info(f'overlap number {overlap.n} rejected: p2 image ({overlap.p2}) only has {100.*p2frac:.2f}% above threshold at flux = {threshold_value}.')
+            rejected_overlaps.append(overlap)
+            continue
+        good_overlaps.append(overlap)
+    warp_logger.info(f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)}')
+    #find the overlaps that form full octets
+    octets = []
+    #begin by getting the set of all p1s
+    p1s = set([o.p1 for o in good_overlaps])
+    #for each p1, if there are eight good overlaps it forms an octet
+    for p1 in p1s :
+        overlapswiththisp1 = [o for o in good_overlaps if o.p1==p1]
+        if len(overlapswiththisp1)==8 :
+            overlapswiththisp1.sort(key=lambda x: x.tag)
+            ons = [o.n for o in overlapswiththisp1]
+            warp_logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
+            octets.append(OverlapOctet(mtd,rtd,samp,CONST.N_CLIP,layer,p1,*(ons)))
+    octets.sort(key=lambda x: x.p1_rect_n)
+    #save the file of which overlaps are in each valid octet
+    with cd(working_dir) :
+        writetable(f'{samp}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',octets)
+    #print how many octets there are 
+    warp_logger.info(f'{len(octets)} total octets found.')
+    #return the list of octets
+    return octets
+
+#helper function to return the octets for a sample given just the command line arguments
+def getOctetsFromArguments(args) :
+    octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else args.workingdir
+    if os.path.isfile(os.path.join(octet_run_dir,f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
+        if args.threshold_file_dir is not None :
+            msg = 'ERROR: an octet file exists in the working directory, but a threshold file directory was also given!'
+            msg+= ' Get rid of the threshold file dir argument to use the octet file that already exists, or remove the octet file to recreate it.'
+            raise WarpingError(msg)
+        all_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.metadata_top_dir,args.sample,args.layer)
+    elif args.threshold_file_dir is not None :
+        threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
+        all_octets = findSampleOctets(args.rawfile_top_dir,args.metadata_top_dir,threshold_file_path,args.req_pixel_frac,args.sample,
+                                      args.workingdir,args.layer,args.flatfield_file,args.exposure_time_offset_file)
+    else :
+        raise WarpingError('ERROR: either an octet_run_dir or a threshold_file_dir must be supplied to define octets to run on!')
+    warp_logger.info(f'Found a total set of {len(all_octets)} valid octets for {args.sample}')
+    return all_octets
 
 #helper function to find the limit on a parameter that produces the maximum warp
 def findDefaultParameterLimit(parindex,parincrement,warplimit,warpamtfunc,testpars) :
