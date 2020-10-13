@@ -190,6 +190,101 @@ def radWarpPCAPlots(all_results,weighted=False,save_stem=None) :
     else :
         plt.show()
 
+######## Several helper functions to translate lists of warp results into various overall warp fields and their variations ########
+def getListsOfWarpFields(all_results) :
+    all_warps = []
+    for r in all_results :
+        all_warps.append(CameraWarp(cx=r.cx, cy=r.cy, k1=r.k1, k2=r.k2, k3=r.k3))
+    all_drs = []; all_dxs = []; all_dys= []
+    for w in all_warps :
+        dr, dx, dy = w.getWarpFields()
+        all_drs.append(dr); all_dxs.append(dx); all_dys.append(dy)
+    return all_drs, all_dxs, all_dys
+
+def getMeanWarpFields(all_results) :
+    all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
+    mean_dr = np.mean(list(all_drs),axis=0)
+    mean_dx = np.mean(list(all_dxs),axis=0)
+    mean_dy = np.mean(list(all_dys),axis=0)
+    return mean_dr, mean_dx, mean_dy
+
+def getWeightedMeanWarpFields(all_results) :
+    all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
+    weighted_mean_dr = np.sum([dr*r.cost_reduction for dr,r in zip(all_drs,all_results)],axis=0)/np.sum([r.cost_reduction for r in all_results])
+    weighted_mean_dx = np.sum([dx*r.cost_reduction for dx,r in zip(all_dxs,all_results)],axis=0)/np.sum([r.cost_reduction for r in all_results])
+    weighted_mean_dy = np.sum([dy*r.cost_reduction for dy,r in zip(all_dys,all_results)],axis=0)/np.sum([r.cost_reduction for r in all_results])
+    return weighted_mean_dr, weighted_mean_dx, weighted_mean_dy
+
+def getWarpFieldStdDevs(all_results) :
+    all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
+    dr_stddev = np.std(list(all_drs),axis=0)
+    dx_stddev = np.std(list(all_dxs),axis=0)
+    dy_stddev = np.std(list(all_dys),axis=0)
+    return dr_stddev, dx_stddev, dy_stddev
+
+###################################################################################################################################
+
+#plots the mean, weighted mean, and standard deviation dr, dx, and dy warp fields from a list of WarpFitResults
+def warpFieldVariationPlots(all_results,save_stem=None) :
+    mean_dr, mean_dx, mean_dy = getMeanWarpFields(all_results)
+    f,ax = plt.subplots(3,3,figsize=(3*6.4,3*(mean_dr.shape[0]/mean_dr.shape[1])*6.4))
+    pos = ax[0][0].imshow(mean_dr)
+    ax[0][0].set_title('mean dr')
+    f.colorbar(pos,ax=ax[0][0])
+    pos = ax[0][1].imshow(mean_dx)
+    ax[0][1].set_title('mean dx')
+    f.colorbar(pos,ax=ax[0][1])
+    pos = ax[0][2].imshow(mean_dy)
+    ax[0][2].set_title('mean dy')
+    f.colorbar(pos,ax=ax[0][2])
+    weighted_mean_dr, weighted_mean_dx, weighted_mean_dy = getWeightedMeanWarpFields(all_results)
+    pos = ax[1][0].imshow(weighted_mean_dr)
+    ax[1][0].set_title('weighted mean dr')
+    f.colorbar(pos,ax=ax[1][0])
+    pos = ax[1][1].imshow(weighted_mean_dx)
+    ax[1][1].set_title('weighted mean dx')
+    f.colorbar(pos,ax=ax[1][1])
+    pos = ax[1][2].imshow(weighted_mean_dy)
+    ax[1][2].set_title('weighted mean dy')
+    f.colorbar(pos,ax=ax[1][2])
+    dr_stddev, dx_stddev, dy_stddev = getWarpFieldStdDevs(all_results)
+    pos = ax[2][0].imshow(dr_stddev)
+    ax[2][0].set_title('dr std. dev.')
+    f.colorbar(pos,ax=ax[2][0])
+    pos = ax[2][1].imshow(dx_stddev)
+    ax[2][1].set_title('dx std. dev')
+    f.colorbar(pos,ax=ax[2][1])
+    pos = ax[2][2].imshow(dy_stddev)
+    ax[2][2].set_title('dy std. dev')
+    f.colorbar(pos,ax=ax[2][2])
+    if save_stem is not None :
+        fn = f'{save_stem}_warp_field_variation_plots.png'
+        plt.savefig(fn)
+        plt.close()
+    else :
+        plt.show()
+
+#plots the total weighted mean dr, dx, and dy fields minus the original polynomial fit warping fields for a list of WarpFitResults
+def compareWithAlexWarp(all_results) :
+    alex_warp = PolyFieldWarp()
+    alex_dr = alex_warp.r_warps
+    alex_dx = alex_warp.x_warps
+    alex_dy = alex_warp.y_warps
+    wm_dr_total, wm_dx_total, wm_dy_total = getWeightedMeanWarpFields(all_results)
+    f,ax=plt.subplots(1,3,figsize=(3*6.4,(wm_dr_total.shape[0]/wm_dr_total.shape[1])*6.4))
+    pos = ax[0].imshow(wm_dr_total-alex_dr)
+    ax[0].set_title("total weighted mean - Alex's warp field dr")
+    f.colorbar(pos,ax=ax[0])
+    pos = ax[1].imshow(wm_dx_total-alex_dx)
+    ax[1].set_title("total weighted mean - Alex's warp field dx")
+    f.colorbar(pos,ax=ax[1])
+    pos = ax[2].imshow(wm_dy_total-alex_dy)
+    ax[2].set_title("total weighted mean - Alex's warp field dy")
+    f.colorbar(pos,ax=ax[2])
+    plt.show()
+
+###################################################################################################################################
+
 #little utility class to help with making the octet overlap comparison images
 class OctetComparisonVisualization :
 
@@ -296,94 +391,3 @@ class OctetComparisonVisualization :
             msg+=f' and will be plotted separately. Exception: {e}'
             warp_logger.warn(msg)
             return tuple((fp1,code))
-
-######## Several helper functions to translate lists of warp results into various overall warp fields and their variations ########
-def getListsOfWarpFields(all_results) :
-    all_warps = []
-    for r in all_results :
-        all_warps.append(CameraWarp(cx=r.cx, cy=r.cy, k1=r.k1, k2=r.k2, k3=r.k3))
-    all_drs = []; all_dxs = []; all_dys= []
-    for w in all_warps :
-        dr, dx, dy = w.getWarpFields()
-        all_drs.append(dr); all_dxs.append(dx); all_dys.append(dy)
-    return all_drs, all_dxs, all_dys
-
-def getMeanWarpFields(all_results) :
-    all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
-    mean_dr = np.mean(list(all_drs),axis=0)
-    mean_dx = np.mean(list(all_dxs),axis=0)
-    mean_dy = np.mean(list(all_dys),axis=0)
-    return mean_dr, mean_dx, mean_dy
-
-def getWeightedMeanWarpFields(all_results) :
-    all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
-    weighted_mean_dr = np.sum([dr*r.cost_reduction for dr,r in zip(all_drs,all_results)],axis=0)/np.sum([r.cost_reduction for r in all_results])
-    weighted_mean_dx = np.sum([dx*r.cost_reduction for dx,r in zip(all_dxs,all_results)],axis=0)/np.sum([r.cost_reduction for r in all_results])
-    weighted_mean_dy = np.sum([dy*r.cost_reduction for dy,r in zip(all_dys,all_results)],axis=0)/np.sum([r.cost_reduction for r in all_results])
-    return weighted_mean_dr, weighted_mean_dx, weighted_mean_dy
-
-def getWarpFieldStdDevs(all_results) :
-    all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
-    dr_stddev = np.std(list(all_drs),axis=0)
-    dx_stddev = np.std(list(all_dxs),axis=0)
-    dy_stddev = np.std(list(all_dys),axis=0)
-    return dr_stddev, dx_stddev, dy_stddev
-###################################################################################################################################
-
-#plots the mean, weighted mean, and standard deviation dr, dx, and dy warp fields from a list of WarpFitResults
-def warpFieldVariationPlots(all_results) :
-    mean_dr, mean_dx, mean_dy = getMeanWarpFields(all_results)
-    f,ax = plt.subplots(1,3,figsize=(3*6.4,(mean_dr.shape[0]/mean_dr.shape[1])*6.4))
-    pos = ax[0].imshow(mean_dr)
-    ax[0].set_title('mean dr')
-    f.colorbar(pos,ax=ax[0])
-    pos = ax[1].imshow(mean_dx)
-    ax[1].set_title('mean dx')
-    f.colorbar(pos,ax=ax[1])
-    pos = ax[2].imshow(mean_dy)
-    ax[2].set_title('mean dy')
-    f.colorbar(pos,ax=ax[2])
-    plt.show()
-    weighted_mean_dr, weighted_mean_dx, weighted_mean_dy = getWeightedMeanWarpFields(all_results)
-    f,ax = plt.subplots(1,3,figsize=(3*6.4,(weighted_mean_dr.shape[0]/weighted_mean_dr.shape[1])*6.4))
-    pos = ax[0].imshow(weighted_mean_dr)
-    ax[0].set_title('weighted mean dr')
-    f.colorbar(pos,ax=ax[0])
-    pos = ax[1].imshow(weighted_mean_dx)
-    ax[1].set_title('weighted mean dx')
-    f.colorbar(pos,ax=ax[1])
-    pos = ax[2].imshow(weighted_mean_dy)
-    ax[2].set_title('weighted mean dy')
-    f.colorbar(pos,ax=ax[2])
-    plt.show()
-    dr_stddev, dx_stddev, dy_stddev = getWarpFieldStdDevs(all_results)
-    f,ax = plt.subplots(1,3,figsize=(3*6.4,(dr_stddev.shape[0]/dr_stddev.shape[1])*6.4))
-    pos = ax[0].imshow(dr_stddev)
-    ax[0].set_title('dr std. dev.')
-    f.colorbar(pos,ax=ax[0])
-    pos = ax[1].imshow(dx_stddev)
-    ax[1].set_title('dx std. dev')
-    f.colorbar(pos,ax=ax[1])
-    pos = ax[2].imshow(dy_stddev)
-    ax[2].set_title('dy std. dev')
-    f.colorbar(pos,ax=ax[2])
-    plt.show()
-
-#plots the total weighted mean dr, dx, and dy fields minus the original polynomial fit warping fields for a list of WarpFitResults
-def compareWithAlexWarp(all_results) :
-    alex_warp = PolyFieldWarp()
-    alex_dr = alex_warp.r_warps
-    alex_dx = alex_warp.x_warps
-    alex_dy = alex_warp.y_warps
-    wm_dr_total, wm_dx_total, wm_dy_total = getWeightedMeanWarpFields(all_results)
-    f,ax=plt.subplots(1,3,figsize=(3*6.4,(wm_dr_total.shape[0]/wm_dr_total.shape[1])*6.4))
-    pos = ax[0].imshow(wm_dr_total-alex_dr)
-    ax[0].set_title("total weighted mean - Alex's warp field dr")
-    f.colorbar(pos,ax=ax[0])
-    pos = ax[1].imshow(wm_dx_total-alex_dx)
-    ax[1].set_title("total weighted mean - Alex's warp field dx")
-    f.colorbar(pos,ax=ax[1])
-    pos = ax[2].imshow(wm_dy_total-alex_dy)
-    ax[2].set_title("total weighted mean - Alex's warp field dy")
-    f.colorbar(pos,ax=ax[2])
-    plt.show()

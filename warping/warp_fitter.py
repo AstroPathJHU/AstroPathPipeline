@@ -35,7 +35,7 @@ class WarpFitter :
     POLISHING_X_TOL = 5e-5                                    #parameter tolerance for polishing minimization
     POLISHING_G_TOL = 1e-5                                    #gradient tolerance for polishing minimization
     FIT_PROGRESS_FIG_SIZE = (3*6.4,2*4.6)                     #(width, height) of the fit progress figure
-    PP_RAVG_POINTS = 50                                       #how many points to average over for the polishing minimization progress plots
+    PP_RAVG_POINTS = 20                                       #how many points to average over for the polishing minimization progress plots
     OVERLAP_COMPARISON_DIR_NAME = 'overlap_comparison_images' #name of directory holding overlap comparison images
 
     #################### PUBLIC FUNCTIONS ####################
@@ -153,7 +153,7 @@ class WarpFitter :
         self.fitpars.setFirstMinimizationResults(de_result)
         #do the polishing minimization
         if polish :
-            result = self.__runPolishMinimization(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter)
+            result = self.__runPolishMinimization(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,(self._de_population_size*maxiter))
         else :
             result=de_result
         polish_minimization_done_time = time.time()
@@ -353,6 +353,9 @@ class WarpFitter :
             pop_avg_cost = np.mean(np.array(self.costs[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_costs.append(pop_avg_cost)
+        last_pop_avg_cost = np.mean(np.array(self.costs[ig*self._de_population_size:]))
+        for ip in range(len(self.costs[ig*self._de_population_size:])) :
+            pop_avg_costs.append(last_pop_avg_cost)
         ax[0][0].plot(inititers[:len(pop_avg_costs)],pop_avg_costs,label='population averages')
         ax[0][0].set_xlabel('initial minimization iteration')
         ax[0][0].set_ylabel('cost')
@@ -364,6 +367,9 @@ class WarpFitter :
             pop_avg_rad_warp = np.mean(np.array(self.max_radial_warps[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_rad_warps.append(pop_avg_rad_warp)
+        last_pop_avg_rad_warp = np.mean(np.array(self.max_radial_warps[ig*self._de_population_size:]))
+        for ip in range(len(self.costs[ig*self._de_population_size:])) :
+            pop_avg_rad_warps.append(last_pop_avg_rad_warp)
         ax[0][1].plot(inititers[:len(pop_avg_rad_warps)],pop_avg_rad_warps,label='population averages')
         ax[0][1].set_xlabel('initial minimization iteration')
         ax[0][1].set_ylabel('max radial warp')
@@ -375,6 +381,9 @@ class WarpFitter :
             pop_avg_tan_warp = np.mean(np.array(self.max_tangential_warps[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_tan_warps.append(pop_avg_tan_warp)
+        last_pop_avg_tan_warp = np.mean(np.array(self.max_tangential_warps[ig*self._de_population_size:]))
+        for ip in range(len(self.costs[ig*self._de_population_size:])) :
+            pop_avg_tan_warps.append(last_pop_avg_tan_warp)
         ax[0][2].plot(inititers[:len(pop_avg_tan_warps)],pop_avg_tan_warps,label='population averages')
         ax[0][2].set_xlabel('initial minimization iteration')
         ax[0][2].set_ylabel('max tangential warp')

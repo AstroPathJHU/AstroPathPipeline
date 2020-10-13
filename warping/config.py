@@ -72,7 +72,7 @@ class Const :
         return 1000. #value to use to normalize the overlay images
     @property 
     def OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH(self) :
-        return 3*6.4 #width of the octet overlap comparison figures
+        return 2*6.4 #width of the octet overlap comparison figures
     #setup
     @property
     def MICROSCOPE_OBJECTIVE_FOCAL_LENGTH(self) :

@@ -180,9 +180,9 @@ if __name__=='__main__' :
                                        help='Number of octets to use in the final pattern fits')
     #arguments for how many iterations to run at maximum in the groups of fits
     max_iters_group = parser.add_argument_group('max iterations', 'how many iterations to run at max for minimization in each of the three fit groups')
-    max_iters_group.add_argument('--initial_pattern_max_iters', type=int, default=20,
+    max_iters_group.add_argument('--initial_pattern_max_iters', type=int, default=30,
                                        help='Max # of iterations to run in the initial pattern fits')
-    max_iters_group.add_argument('--principal_point_max_iters', type=int, default=100,
+    max_iters_group.add_argument('--principal_point_max_iters', type=int, default=250,
                                        help='Max # of iterations to run in the principal point location fits')
     max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=1000,
                                        help='Max # of iterations to run in the final pattern fits')
@@ -193,7 +193,7 @@ if __name__=='__main__' :
     dirname_1, dirname_2, dirname_3 = setUpFitDirectories(args)
     if args.mode!='find_octets' :
         #start up the file that will have the commands written into it
-        cmd_file_path = os.path.abspath(os.path.join(args.workingdir,'run_many_fit_commands.txt'))
+        cmd_file_path = os.path.abspath(os.path.join(args.workingdir,'fit_group_commands.txt'))
         #get the command for the initial pattern fits and run it
         cmd_1 = getInitialPatternFitCmd(dirname_1,args)
         with open(cmd_file_path,'w') as fp :
@@ -216,7 +216,7 @@ if __name__=='__main__' :
             w = r.cost_reduction
             if w<0 :
                 continue
-            w_cx+=(w*r.cx); w_cy=(w*r.cy); sw+=w; sw2+=w**2
+            w_cx+=(w*r.cx); w_cy+=(w*r.cy); sw+=w; sw2+=w**2
         w_cx/=sw; w_cy/=sw
         w_cx_e = np.sqrt(((np.std([r.cx for r in all_results_2 if r.cost_reduction>0])**2)*sw2)/(sw**2))
         w_cy_e = np.sqrt(((np.std([r.cx for r in all_results_2 if r.cost_reduction>0])**2)*sw2)/(sw**2))

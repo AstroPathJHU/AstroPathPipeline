@@ -1,6 +1,6 @@
 #imports
 from .warp import CameraWarp
-from .plotting import principalPointPlot, radWarpAmtPlots, radWarpParPlots, radWarpPCAPlots
+from .plotting import principalPointPlot, radWarpAmtPlots, radWarpParPlots, radWarpPCAPlots, warpFieldVariationPlots
 from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments, WarpFitResult, FieldLog
 from .config import CONST
 from ..utilities.tableio import readtable, writetable
@@ -108,14 +108,23 @@ if __name__=='__main__' :
             results.append((readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))[0])
         with cd(args.workingdir) :
             writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv',results)
+        if os.path.isfile(os.path.join(args.workingdir,f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv')) :
+            for dirname in dirnames :
+                os.remove(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME))
         #write out some plots
         plot_name_stem = f'{os.path.basename(os.path.normpath(args.workingdir))}'
         with cd(args.workingdir) :
-            principalPointPlot(results,save_stem=plot_name_stem)
-            radWarpAmtPlots(results,save_stem=plot_name_stem)
-            radWarpParPlots(results,save_stem=plot_name_stem)
-            radWarpPCAPlots(results,weighted=False,save_stem=plot_name_stem)
-            radWarpPCAPlots(results,weighted=True,save_stem=plot_name_stem)
+            plotdirname = 'batch_plots'
+            if not os.path.isdir(plotdirname) :
+                os.mkdir(plotdirname)
+            with cd(plotdirname) :
+                principalPointPlot(results,save_stem=plot_name_stem)
+                radWarpAmtPlots(results,save_stem=plot_name_stem)
+                radWarpParPlots(results,save_stem=plot_name_stem)
+                if not ('k1' in args.fixed and 'k2' in arg.fixed and 'k3' in args.fixed) :
+                    radWarpPCAPlots(results,weighted=False,save_stem=plot_name_stem)
+                    radWarpPCAPlots(results,weighted=True,save_stem=plot_name_stem)
+                warpFieldVariationPlots(results,save_stem=plot_name_stem)
         #get the weighted average parameters over all the results that reduced the cost
         warp_logger.info('Writing out info for weighted average warp....')
         w_cx = 0.; w_cy = 0.; w_fx = 0.; w_fy = 0.
