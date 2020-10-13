@@ -109,7 +109,7 @@ if __name__=='__main__' :
         with cd(args.workingdir) :
             writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv',results)
         #write out some plots
-        plot_name_stem = {os.path.basename(os.path.normpath(args.workingdir))}
+        plot_name_stem = f'{os.path.basename(os.path.normpath(args.workingdir))}'
         with cd(args.workingdir) :
             principalPointPlot(results,save_stem=plot_name_stem)
             radWarpAmtPlots(results,save_stem=plot_name_stem)
