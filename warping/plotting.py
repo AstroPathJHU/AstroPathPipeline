@@ -6,9 +6,15 @@ from sklearn.decomposition import PCA
 
 #helper function to normalize a list of given raw values by subtracting the mean and dividing by the standard deviations
 #returns the list of standardized values, plus the mean and standard deviation
-def standardizeValues(rawvals,plot=False) :
-    m = np.mean(rawvals); s = np.std(rawvals)
-    print(f'mean = {m}, std. dev. = {s}')
+def standardizeValues(rawvals,weights=None,plot=False) :
+    if weights is None :
+        m = np.mean(rawvals); s = np.std(rawvals)
+    else :
+        m = 0; sw = 0; sw2 = 0;
+        for v,w in zip(rawvals,weights) :
+            m+=(w*v); sw+=w; sw2+=(w**2)
+        m/=sw
+        s = np.sqrt(((np.std(rawvals)**2)*sw2)/(sw**2))
     if plot :
         f,ax = plt.subplots()
         ax.hist(rawvals,bins=20,label='raw values')
@@ -21,13 +27,22 @@ def standardizeValues(rawvals,plot=False) :
 
 #makes a plot of the principal points in a list of results; shaded by cost reduction
 #also prints the mean and weighted mean
-def principalPointPlot(all_results) :
+def principalPointPlot(all_results,save_stem=None) :
     mean_cx = np.mean([r.cx for r in all_results])
     mean_cy = np.mean([r.cy for r in all_results])
-    print(f'Mean center point at ({mean_cx}, {mean_cy})')
     weighted_mean_cx = np.sum([r.cx*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
     weighted_mean_cy = np.sum([r.cy*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
-    print(f'Weighted mean center point at ({weighted_mean_cx}, {weighted_mean_cy})')
+    txt_lines = []
+    txt_lines.append(f'Mean center point at ({mean_cx}, {mean_cy})')
+    txt_lines.append(f'Weighted mean center point at ({weighted_mean_cx}, {weighted_mean_cy})')
+    if save_stem is not None :
+        fn = f'{save_stem}_mean_principal_point.txt'
+        with open(fn,'w') as fp :
+            for tl in txt_lines :
+                fp.write(f'{tl}\n')
+    else :
+        for tl in txt_lines :
+            print(tl)
     f,ax=plt.subplots()
     pos = ax.scatter([r.cx for r in all_results],[r.cy for r in all_results],c=[r.cost_reduction for r in all_results])
     ax.scatter(mean_cx,mean_cy,marker='x',color='tab:red',label='mean')
@@ -37,15 +52,29 @@ def principalPointPlot(all_results) :
     ax.set_ylabel('cy point')
     ax.legend(loc='best')
     f.colorbar(pos,ax=ax)
-    plt.show()
+    if save_stem is not None :
+        fn = f'{save_stem}_principal_point_plot.png'
+        plt.savefig(fn)
+        plt.close()
+    else :
+        plt.show()
 
 #makes plots of the maximum amounts of radial warping, the cost reduction vs. the amount of max. radial warping, 
 #and the principal points locations shaded by max amount of radial warping
-def radWarpAmtPlots(all_results) :
+def radWarpAmtPlots(all_results,save_stem=None) :
     vs = np.array([r.max_rad_warp for r in all_results])
-    print(f'Mean at {np.mean(vs)}')
     weighted_mean = np.sum([r.max_rad_warp*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
-    print(f'Weighted mean at {weighted_mean}')
+    txt_lines = []
+    txt_lines.append(f'Mean at {np.mean(vs)}')
+    txt_lines.append(f'Weighted mean at {weighted_mean}')
+    if save_stem is not None :
+        fn = f'{save_stem}_mean_radial_warp_amount.txt'
+        with open(fn,'w') as fp :
+            for tl in txt_lines :
+                fp.write(f'{tl}\n')
+    else :
+        for tl in txt_lines :
+            print(tl)
     f,ax=plt.subplots(1,3,figsize=(3*6.4,4.6))
     ax[0].hist(vs,bins=25,label='all')
     ax[0].plot([np.mean(vs),np.mean(vs)],[0.8*y for y in ax[0].get_ylim()],label='mean')
@@ -70,17 +99,27 @@ def radWarpAmtPlots(all_results) :
     ax[2].set_ylabel('cy point')
     ax[2].legend(loc='best')
     f.colorbar(pos,ax=ax[2])
-    plt.show()
+    if save_stem is not None :
+        fn = f'{save_stem}_radial_warp_amount_plots.png'
+        plt.savefig(fn)
+        plt.close()
+    else :
+        plt.show()
 
 #makes plots of the radial warping parameters and the cost reductions vs each
-def radWarpParPlots(all_results) :
+def radWarpParPlots(all_results,save_stem=None) :
     f,ax=plt.subplots()
     pos = ax.scatter([r.k1 for r in all_results],[r.k2 for r in all_results],c=[r.k3 for r in all_results])
     ax.set_title('radial warping parameters (color=k3)')
     ax.set_xlabel('k1')
     ax.set_ylabel('k2')
     f.colorbar(pos,ax=ax)
-    plt.show()
+    if save_stem is not None :
+        fn = f'{save_stem}_all_radial_warp_parameters_plot.png'
+        plt.savefig(fn)
+        plt.close()
+    else :
+        plt.show()
     f,ax=plt.subplots(1,3,figsize=(3*6.4,4.6))
     ax[0].scatter([r.k1 for r in all_results],[r.cost_reduction for r in all_results])
     ax[0].set_title('cost reduction vs. k1')
@@ -94,35 +133,62 @@ def radWarpParPlots(all_results) :
     ax[2].set_title('cost reduction vs. k3')
     ax[2].set_ylabel('cost reduction')
     ax[2].set_xlabel('k3')
-    plt.show()
+    if save_stem is not None :
+        fn = f'{save_stem}_cost_redux_vs_radial_warp_parameters_plots.png'
+        plt.savefig(fn)
+        plt.close()
+    else :
+        plt.show()
 
 #plots the radial warping parameters in standardized units and the first and second PCA components thereof
-def radWarpPCAPlots(all_results) :
+def radWarpPCAPlots(all_results,weighted=False,save_stem=None) :
     #plot the standardized radial warping parameters
-    sk1s, k1m, k1std = standardizeValues(np.array([r.k1 for r in all_results]),False)
-    sk2s, k2m, k2std = standardizeValues(np.array([r.k2 for r in all_results]),False)
-    sk3s, k3m, k3std = standardizeValues(np.array([r.k3 for r in all_results]),False)
+    sk1s, k1m, k1std = standardizeValues(np.array([r.k1 for r in all_results]),np.array([r.cost_reduction for r in all_results]) if weighted else None,False)
+    sk2s, k2m, k2std = standardizeValues(np.array([r.k2 for r in all_results]),np.array([r.cost_reduction for r in all_results]) if weighted else None,False)
+    sk3s, k3m, k3std = standardizeValues(np.array([r.k3 for r in all_results]),np.array([r.cost_reduction for r in all_results]) if weighted else None,False)
+    txt_lines = []
+    txt_lines.append(f'k1 {"weighted " if weighted else ""}mean = {k1m} ; {"weighted " if weighted else ""}std. dev. = {k1std}')
+    txt_lines.append(f'k2 {"weighted " if weighted else ""}mean = {k2m} ; {"weighted " if weighted else ""}std. dev. = {k2std}')
+    txt_lines.append(f'k3 {"weighted " if weighted else ""}mean = {k3m} ; {"weighted " if weighted else ""}std. dev. = {k3std}')
     f,ax = plt.subplots()
     pos = ax.scatter(sk1s,sk2s,c=sk3s)
-    ax.set_title('standardized rad. warp parameters')
-    ax.set_xlabel('standardized k1 parameter')
-    ax.set_ylabel('standardized k2 parameter')
+    ax.set_title(f'{"weighted " if weighted else ""}standardized rad. warp parameters')
+    ax.set_xlabel(f'{"weighted " if weighted else ""}standardized k1 parameter')
+    ax.set_ylabel(f'{"weighted " if weighted else ""}standardized k2 parameter')
     f.colorbar(pos, ax=ax)
-    plt.show()
+    if save_stem is not None :
+        fn = f'{save_stem}_all_{"weighted_" if weighted else ""}standardized_radial_warp_parameters_plot.png'
+        plt.savefig(fn)
+        plt.close()
+    else :
+        plt.show()
     #do the principal component analysis
     standardized_parameters = np.array([sk1s,sk2s,sk3s]).transpose(1,0)
     pca = PCA(n_components=2)
     pcs = pca.fit_transform(standardized_parameters)
-    print(f'PCA components: {pca.components_}')
+    txt_lines.append(f'{"weighted " if weighted else ""}PCA components: {pca.components_}')
+    if save_stem is not None :
+        fn = f'{save_stem}_radial_warp_{"weighted_" if weighted else ""}PCA_results.txt'
+        with open(fn,'w') as fp :
+            for tl in txt_lines :
+                fp.write(f'{tl}\n')
+    else :
+        for tl in txt_lines :
+            print(tl)
     pc1s = pcs[:,0]
     pc2s = pcs[:,1]
     f,ax = plt.subplots()
     pos = ax.scatter(pc1s,pc2s,c=[r.cost_reduction for r in all_results])
-    ax.set_title('rad. warp PCs (color=cost redux)')
+    ax.set_title(f'rad. warp {"weighted " if weighted else ""}PCs (color=cost redux)')
     ax.set_xlabel('first principal component')
     ax.set_ylabel('second principal component')
     f.colorbar(pos,ax=ax)
-    plt.show()
+    if save_stem is not None :
+        fn = f'{save_stem}_cost_redux_vs_radial_warp_{"weighted_" if weighted else ""}PCA_components.png'
+        plt.savefig(fn)
+        plt.close()
+    else :
+        plt.show()
 
 #little utility class to help with making the octet overlap comparison images
 class OctetComparisonVisualization :

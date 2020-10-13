@@ -1,7 +1,7 @@
 #imports
-from .utilities import warp_logger, WarpingError, addCommonWarpingArgumentsToParser, checkDirArgs, getOctetsFromArguments
+from .utilities import warp_logger, WarpingError, WarpFitResult, addCommonWarpingArgumentsToParser, checkDirArgs, getOctetsFromArguments
 from .config import CONST
-from ..utilities.tableio import writetable
+from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
 from argparse import ArgumentParser
 import os, subprocess, random
@@ -91,8 +91,37 @@ def getInitialPatternFitCmd(wdn,args) :
     return cmd
 
 #helper function to make the command to run for the principal point fit group
-def getPrincipalPointFitCmd(wdn,args) :
-    pass
+def getPrincipalPointFitCmd(wdn,args,init_k1,init_k2,init_k3) :
+    #start with the call to run_many_fits_with_pool
+    cmd = RUN_MANY_FITS_CMD_BASE
+    #add the positional arguments
+    argvars = vars(args)
+    for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
+        cmd+=f' {argvars[ppan]} '
+    #add the working directory argument
+    this_job_dir_path = os.path.abspath(os.path.join(args.workingdir,wdn))
+    cmd+=f'{this_job_dir_path} '
+    #add the number of jobs positional argument
+    cmd+=f'{args.principal_point_octets} '
+    #add the passthrough arguments and flags
+    for pan in PASSTHROUGH_ARG_NAMES :
+        if argvars[pan] is not None :
+            cmd+=f'--{pan} {argvars[pan]} '
+    for pfn in PASSTHROUGH_FLAG_NAMES :
+        if argvars[pfn] :
+            cmd+=f'--{pfn} '
+    #add the number of iterations to run
+    cmd+=f'--max_iters {args.principal_point_max_iters} '
+    #the octets are in the working directory
+    cmd+=f'--octet_run_dir {this_job_dir_path} '
+    #select the first single octet for every job since we've already split up the octets for the sample
+    cmd+='--octet_selection first_1 '
+    #fix the focal lengths and warping parameters
+    cmd+='--fixed fx,fy,k1,k2,k3,p1,p2 '
+    #add the initial radial warping parameters from the weighted avg. of the last group of fits
+    cmd+=f'--init_pars k1={init_k1},k2={init_k2},k3={init_k3}'
+    #return the command
+    return cmd
 
 #helper function to make the command to run for the final pattern fit group
 def getFinalPatternFitCmd(wdn,args) :
@@ -121,7 +150,7 @@ if __name__=='__main__' :
     max_iters_group = parser.add_argument_group('max iterations', 'how many iterations to run at max for minimization in each of the three fit groups')
     max_iters_group.add_argument('--initial_pattern_max_iters', type=int, default=20,
                                        help='Max # of iterations to run in the initial pattern fits')
-    max_iters_group.add_argument('--principal_point_max_iters', type=int, default=30,
+    max_iters_group.add_argument('--principal_point_max_iters', type=int, default=100,
                                        help='Max # of iterations to run in the principal point location fits')
     max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=1000,
                                        help='Max # of iterations to run in the final pattern fits')
@@ -135,8 +164,10 @@ if __name__=='__main__' :
         cmd_1 = getInitialPatternFitCmd(dirname_1,args)
         subprocess.call(cmd_1)
     if args.mode=='fit' :
+        #figure out the radial warping parameters to use when finding the principal point
+        w_avg_res_1 = readtable(os.path.abspath(os.path.join(args.workingdir,dirname_1,f'{dirname_1}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}')))
         #get the command for the central principal point fits and run it
-        cmd_2 = getPrincipalPointFitCmd(dirname_2,args)
+        cmd_2 = getPrincipalPointFitCmd(dirname_2,args,w_avg_res_1.k1,w_avg_res_1.k2,w_avg_res_1.k3)
         subprocess.call(cmd_2)
         #get the command for the final pattern fits and run it
         cmd_3 = getFinalPatternFitCmd(dirname_3,args)

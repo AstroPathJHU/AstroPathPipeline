@@ -1,5 +1,6 @@
 #imports
 from .warp import CameraWarp
+from .plotting import principalPointPlot, radWarpAmtPlots, radWarpParPlots, radWarpPCAPlots
 from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments, WarpFitResult, FieldLog
 from .config import CONST
 from ..utilities.tableio import readtable, writetable
@@ -107,6 +108,14 @@ if __name__=='__main__' :
             results.append((readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))[0])
         with cd(args.workingdir) :
             writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv',results)
+        #write out some plots
+        plot_name_stem = {os.path.basename(os.path.normpath(args.workingdir))}
+        with cd(args.workingdir) :
+            principalPointPlot(results,save_stem=plot_name_stem)
+            radWarpAmtPlots(results,save_stem=plot_name_stem)
+            radWarpParPlots(results,save_stem=plot_name_stem)
+            radWarpPCAPlots(results,weighted=False,save_stem=plot_name_stem)
+            radWarpPCAPlots(results,weighted=True,save_stem=plot_name_stem)
         #get the weighted average parameters over all the results that reduced the cost
         warp_logger.info('Writing out info for weighted average warp....')
         w_cx = 0.; w_cy = 0.; w_fx = 0.; w_fy = 0.
