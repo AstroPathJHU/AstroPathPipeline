@@ -149,6 +149,3 @@ if __name__=='__main__' :
                                 max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
                                 p1p2_polish_lasso_lambda=args.p1p2_polish_lasso_lambda,polish=True,
                                 print_every=args.print_every,maxiter=args.max_iter,save_fields=args.save_warp_fields)""")
-
-    warp_logger.info('All done : )')
-
