@@ -79,6 +79,8 @@ def getInitialPatternFitCmd(wdn,args) :
     for pfn in PASSTHROUGH_FLAG_NAMES :
         if argvars[pfn] :
             cmd+=f'--{pfn} '
+    #add the number of iterations to run
+    cmd+=f'--max_iters {args.initial_pattern_max_iters} '
     #the octets are in the working directory
     cmd+=f'--octet_run_dir {this_job_dir_path} '
     #select the first single octet for every job since we've already split up the octets for the sample
@@ -110,11 +112,19 @@ if __name__=='__main__' :
     #arguments for how to split the total group of octets
     octet_splitting_group = parser.add_argument_group('octet splitting', 'how to split the total set of octets for each of the three fit groups')
     octet_splitting_group.add_argument('--initial_pattern_octets', type=int, default=100,
-                                       help='Number of octets to use in the initial pattern fit')
+                                       help='Number of octets to use in the initial pattern fits')
     octet_splitting_group.add_argument('--principal_point_octets', type=int, default=100,
-                                       help='Number of octets to use in the principal point location fit')
+                                       help='Number of octets to use in the principal point location fits')
     octet_splitting_group.add_argument('--final_pattern_octets',   type=int, default=100,
-                                       help='Number of octets to use in the final pattern fit')
+                                       help='Number of octets to use in the final pattern fits')
+    #arguments for how many iterations to run at maximum in the groups of fits
+    max_iters_group = parser.add_argument_group('max iterations', 'how many iterations to run at max for minimization in each of the three fit groups')
+    max_iters_group.add_argument('--initial_pattern_max_iters', type=int, default=20,
+                                       help='Max # of iterations to run in the initial pattern fits')
+    max_iters_group.add_argument('--principal_point_max_iters', type=int, default=30,
+                                       help='Max # of iterations to run in the principal point location fits')
+    max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=1000,
+                                       help='Max # of iterations to run in the final pattern fits')
     args = parser.parse_args()
     #make sure the arguments are alright
     checkArgs(args)

@@ -275,7 +275,7 @@ class WarpFitter :
                 result=scipy.optimize.differential_evolution(
                     func=self._evalCamWarpOnAlignmentSet,
                     bounds=parameter_bounds,
-                    strategy='best2bin',
+                    strategy='best1bin',
                     maxiter=maxiter,
                     tol=self.DE_TOLERANCE,
                     mutation=self.DE_MUTATION,
