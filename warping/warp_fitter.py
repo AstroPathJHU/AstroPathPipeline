@@ -367,8 +367,8 @@ class WarpFitter :
             pop_avg_rad_warp = np.mean(np.array(self.max_radial_warps[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_rad_warps.append(pop_avg_rad_warp)
-        last_pop_avg_rad_warp = np.mean(np.array(self.max_radial_warps[ig*self._de_population_size:ninitev]))
-        for ip in range(len(self.costs[ig*self._de_population_size:ninitev])) :
+        last_pop_avg_rad_warp = np.mean(np.array(self.max_radial_warps[(ig+1)*self._de_population_size:ninitev]))
+        for ip in range(len(self.costs[(ig+1)*self._de_population_size:ninitev])) :
             pop_avg_rad_warps.append(last_pop_avg_rad_warp)
         ax[0][1].plot(inititers[:len(pop_avg_rad_warps)],pop_avg_rad_warps,label='population averages')
         ax[0][1].set_xlabel('initial minimization iteration')
@@ -381,8 +381,8 @@ class WarpFitter :
             pop_avg_tan_warp = np.mean(np.array(self.max_tangential_warps[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_tan_warps.append(pop_avg_tan_warp)
-        last_pop_avg_tan_warp = np.mean(np.array(self.max_tangential_warps[ig*self._de_population_size:ninitev]))
-        for ip in range(len(self.costs[ig*self._de_population_size:ninitev])) :
+        last_pop_avg_tan_warp = np.mean(np.array(self.max_tangential_warps[(ig+1)*self._de_population_size:ninitev]))
+        for ip in range(len(self.costs[(ig+1)*self._de_population_size:ninitev])) :
             pop_avg_tan_warps.append(last_pop_avg_tan_warp)
         ax[0][2].plot(inititers[:len(pop_avg_tan_warps)],pop_avg_tan_warps,label='population averages')
         ax[0][2].set_xlabel('initial minimization iteration')
