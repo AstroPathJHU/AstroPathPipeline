@@ -81,7 +81,7 @@ def getInitialPatternFitCmd(wdn,args) :
         if argvars[pfn] :
             cmd+=f'--{pfn} '
     #add the number of iterations to run
-    cmd+=f'--max_iters {args.initial_pattern_max_iters} '
+    cmd+=f'--max_iter {args.initial_pattern_max_iters} '
     #the octets are in the working directory
     cmd+=f'--octet_run_dir {this_job_dir_path} '
     #select the first single octet for every job since we've already split up the octets for the sample
@@ -112,7 +112,7 @@ def getPrincipalPointFitCmd(wdn,args,k1,k2,k3) :
         if argvars[pfn] :
             cmd+=f'--{pfn} '
     #add the number of iterations to run
-    cmd+=f'--max_iters {args.principal_point_max_iters} '
+    cmd+=f'--max_iter {args.principal_point_max_iters} '
     #the octets are in the working directory
     cmd+=f'--octet_run_dir {this_job_dir_path} '
     #select the first single octet for every job since we've already split up the octets for the sample
@@ -145,7 +145,7 @@ def getFinalPatternFitCmd(wdn,args,k1,k2,k3,cx,cx_err,cy,cy_err) :
         if argvars[pfn] :
             cmd+=f'--{pfn} '
     #add the number of iterations to run
-    cmd+=f'--max_iters {args.final_pattern_max_iters} '
+    cmd+=f'--max_iter {args.final_pattern_max_iters} '
     #the octets are in the working directory
     cmd+=f'--octet_run_dir {this_job_dir_path} '
     #select the first single octet for every job since we've already split up the octets for the sample
