@@ -12,7 +12,7 @@ PRINCIPAL_POINT_DIR_STEM = 'warping_center_principal_point'
 FINAL_PATTERN_DIR_STEM   = 'warping_final_pattern'
 RUN_MANY_FITS_CMD_BASE = 'python -m microscopealignment.warping.run_many_fits_with_pool'
 POSITIONAL_PASSTHROUGH_ARG_NAMES = ['mode','sample','rawfile_top_dir','metadata_top_dir']
-PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','max_iter','normalize','max_radial_warp','max_tangential_warp','print_every','layer','workers']
+PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','layer','workers']
 PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding']
 
 #################### HELPER FUNCTIONS ####################
@@ -103,15 +103,15 @@ if __name__=='__main__' :
     parser = ArgumentParser()
     #add the positional mode argument
     parser.add_argument('mode', help='What to do', choices=['fit','find_octets','check_run'])
-    #add the common arguments, without those controlling the fit parameters (since that's automated) or the job organization
-    addCommonWarpingArgumentsToParser(parser,fitpars=False,job_organization=False)
+    #add only a few of the common arguments
+    addCommonWarpingArgumentsToParser(parser,fit=False,fitpars=False,job_organization=False)
     #add the positional number of workers argument
     parser.add_argument('workers', default=None, type=int, help='Max # of CPUs to use in the multiprocessing pools (defaults to all available)')
     #arguments for how to split the total group of octets
     octet_splitting_group = parser.add_argument_group('octet splitting', 'how to split the total set of octets for each of the three fit groups')
-    octet_splitting_group.add_argument('--initial_pattern_octets', type=int, default=50,
+    octet_splitting_group.add_argument('--initial_pattern_octets', type=int, default=100,
                                        help='Number of octets to use in the initial pattern fit')
-    octet_splitting_group.add_argument('--principal_point_octets', type=int, default=50,
+    octet_splitting_group.add_argument('--principal_point_octets', type=int, default=100,
                                        help='Number of octets to use in the principal point location fit')
     octet_splitting_group.add_argument('--final_pattern_octets',   type=int, default=100,
                                        help='Number of octets to use in the final pattern fit')

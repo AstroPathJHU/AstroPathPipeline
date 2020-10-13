@@ -516,14 +516,16 @@ class CameraWarp(Warp) :
         y_warps = (y_warps).astype(CONST.OUTPUT_FIELD_DTYPE)
         return r_warps, x_warps, y_warps
 
-    def writeOutWarpFields(self,file_stem) :
+    def writeOutWarpFields(self,file_stem,save_fields=True) :
         """
         Write out .bin files of the dx and dy warping fields and also make an image showing them 
-        file_stem = the unique identifier to add onto the warp field .bin file names
+        file_stem   = the unique identifier to add onto the warp field .bin file names
+        save_fields = true if the actual fields themselves should be saved in addition to the plots thereof
         """
         r_warps, x_warps, y_warps = self.getWarpFields()
-        writeImageToFile(x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
-        writeImageToFile(y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        if save_fields :
+            writeImageToFile(x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+            writeImageToFile(y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
         f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(r_warps)
         ax[0].scatter(self.cx,self.cy,marker='*',color='yellow')

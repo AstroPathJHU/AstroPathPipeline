@@ -119,7 +119,7 @@ class WarpFitter :
         self.alignset.getDAPI()
 
     def doFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
-             p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000) :
+             p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000,save_fields=False) :
         """
         Fit the cameraWarp model to the loaded dataset
         fixed                    = list of fit parameter names to keep fixed (p1p2 can be fixed separately in the global and polishing minimization steps)
@@ -132,6 +132,7 @@ class WarpFitter :
         polish                   = whether to run the polishing fit step at all
         print_every              = print warp parameters and fit results at every [print_every] minimization function calls
         max_iter                 = maximum number of iterations for the global and polishing minimization steps
+        save_fields              = True if warping fields should be written out for this fit (and not just the result file with the parameter values)
         """
         #make the set of fit parameters
         self.fitpars = FitParameterSet(fixed,normalize,init_pars,init_bounds,max_radial_warp,max_tangential_warp,self.warpset.warp)
@@ -162,10 +163,10 @@ class WarpFitter :
         self.init_min_runtime = init_minimization_done_time-minimization_start_time
         self.polish_min_runtime = polish_minimization_done_time-init_minimization_done_time
         #run all the post-processing stuff
-        self.__runPostProcessing(de_result.nfev)
+        self.__runPostProcessing(de_result.nfev,save_fields)
 
     def checkFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
-                 p1p2_polish_lasso_lambda=0.,polish=True) :
+                 p1p2_polish_lasso_lambda=0.,polish=True,save_fields=False) :
         """
         A function to print some information about how the fits will proceed with the current settings
         (see "doFit" function above for what the arguments to this function are)
@@ -185,6 +186,11 @@ class WarpFitter :
                 warp_logger.info('p1 and p2 will not be LASSOed in the polishing minimization')
         else :
             warp_logger.info('Polishing minimization will be skipped')
+        #print whether the fields will be saved
+        if save_fields :
+            warp_logger.info('dx and dy warp fields will be saved after the fit')
+        else :
+            warp_logger.info('only the parameters will be saved after the fit, in the result file')
 
     #################### MINIMIZATION FUNCTIONS ####################
 
@@ -314,7 +320,7 @@ class WarpFitter :
     #################### VISUALIZATION/OUTPUT FUNCTIONS ####################
 
     #helper function to run all of the various post-processing functions after the fit is done
-    def __runPostProcessing(self,n_initial_fevs) :
+    def __runPostProcessing(self,n_initial_fevs,save_fields) :
         #make the fit progress plots
         self.init_its, self.polish_its = self.__makeFitProgressPlots(n_initial_fevs)
         #use the fit result to make the best fit warp object
@@ -331,7 +337,7 @@ class WarpFitter :
         self.__writeFitResult()
         #write out the warp field binary file and plots
         with cd(self.working_dir) :
-            self._best_fit_warp.writeOutWarpFields(os.path.basename(os.path.normpath(self.working_dir)))
+            self._best_fit_warp.writeOutWarpFields(os.path.basename(os.path.normpath(self.working_dir)),save_fields)
 
     #function to plot the costs and warps over all the iterations of the fit
     def __makeFitProgressPlots(self,ninitev) :
