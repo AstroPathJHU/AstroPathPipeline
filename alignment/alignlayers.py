@@ -115,6 +115,18 @@ class AlignLayersBase(AlignmentSetBase, ReadRectanglesBase):
     result.applytooverlaps()
     self.stitchresult = result
 
+class AlignLayersStep1Base(AlignLayersBase):
+  def __init__(self, *args, selectoverlaps=None, **kwargs):
+    if selectoverlaps is None:
+      def selectoverlaps(o): return True
+    def newselectoverlaps(o):
+      if not selectoverlaps(o): return False
+      alllayers = o.rectangles[0].layers
+      layerindices = alllayers.index(o.layer1), alllayers.index(o.layer2)
+      broadbandfilters = {o.rectangles[0].broadbandfilters[_] for _ in layerindices}
+      return len(broadbandfilters) == 1
+    super().__init__(*args, selectoverlaps=newselectoverlaps, **kwargs)
+
 class AlignLayers(AlignLayersBase, AlignmentSet):
   @property
   def alignmentsfilename(self): return self.csv("alignlayers")

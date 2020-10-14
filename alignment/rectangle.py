@@ -85,3 +85,54 @@ class AlignmentRectangleProvideImage(AlignmentRectangleBase, RectangleProvideIma
   @property
   def layer(self):
     return self.__layer
+
+class ConsolidateBroadbandFilters(RectangleTransformationBase):
+  def __init__(self, layershifts, broadbandfilters=None):
+    self.__layershifts = layershifts
+    self.__broadbandfilters = broadbandfilters
+
+  def setbroadbandfilters(broadbandfilters):
+    self.__broadbandfilters = broadbandfilters
+
+  def transform(self, originalimage):
+    if self.__broadbandfilters is None:
+      raise ValueError("Have to call setbroadbandfilters first")
+    shifted = collections.defaultdict(list)
+    for layer, shift, filter in more_itertools.zip_equal(originalimage, self.__layershifts, self.__broadbandfilters):
+      dx, dy = units.nominal_values(shift)
+      shifted[filter].append(
+        cv2.warpAffine(
+          layer,
+          np.array([[1, 0, dx], [0, 1, dy]]),
+          flags=cv2.INTER_CUBIC,
+          borderMode=cv2.BORDER_REPLICATE,
+          dsize=shifted.T.shape,
+        )
+      )
+
+    pca = sklearn.decomposition.PCA(n_components=1, copy=False)
+    pcas = {
+      filter:
+      pca.fit_transform(
+        np.array(layers)
+        .reshape(
+          layers.shape[0], layers.shape[1]*layers.shape[2]
+        ).T
+      ).reshape(
+        layers.shape[1], layers.shape[2]
+      )
+      for filter, layers in shifted.items()
+    }
+
+    return np.array(list(pcas.values()))
+
+class RectanglePCAByBroadbandFilterBase(RectangleWithImageMultiLayer):
+  def __init__(*args, layershifts, transformations=None, **kwargs):
+    if transformations is None: transformations = []
+    self.__pcabroadbandtransformation = ConsolidateBroadbandFilters(layershifts=layershifts)
+    transformations.append(self.__pcabroadbandtransformation)
+    super().__init__(*args, transformations=transformations, **kwargs)
+    self.__pcabroadbandtransformation.setbroadbandfilters(broadbandfilters=self.broadbandfilters)
+
+class AlignmentRectanglePCAByBroadbandFilter(AlignmentRectangleMultiLayer, AlignmentRectangleBase, RectanglePCAByBroadbandFilterBase):
+  pass

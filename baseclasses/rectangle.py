@@ -232,12 +232,12 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
   @property
   def exposuretimes(self):
     all = self.__allexposuretimesandbroadbandfilters
-    return [all[layer-1][0] for layer in self.layers]
+    return [all[layer-1][0] for layer in self.__layers]
 
   @property
   def broadbandfilters(self):
     all = self.__allexposuretimesandbroadbandfilters
-    return [all[layer-1][1] for layer in self.layers]
+    return [all[layer-1][1] for layer in self.__layers]
 
 class RectangleWithImage(RectangleWithImageMultiLayer):
   def __init__(self, *args, layer, readlayerfile=True, **kwargs):
