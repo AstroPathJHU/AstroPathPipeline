@@ -243,14 +243,14 @@ class FitParameterSet :
             else :
                 to_return.append(p.warpValueFromFitValue(fit_par_values[fpi]))
                 fpi+=1
-        return to_return
+        return tuple(to_return)
 
     def fitParsFromWarpPars(self,warp_par_values) :
         """
         Return a list of just the numerical fit parameters given the full set of warping parameters
         warp_par_values = list of numerical warp parameter values 
         """
-        return [p.fitValueFromWarpValue(wpv) for p, wpv in zip(self.fit_parameters,warp_par_values) if not p.fixed]
+        return tuple([p.fitValueFromWarpValue(wpv) for p, wpv in zip(self.fit_parameters,warp_par_values) if not p.fixed])
 
     def getLassoCost(self,fit_par_values) :
         """

@@ -364,7 +364,7 @@ def findDefaultParameterLimit(parindex,parincrement,warplimit,warpamtfunc,testpa
     while warpamt<warplimit :
         testparval+=parincrement
         testpars[parindex]=testparval
-        warpamt=warpamtfunc(testpars)
+        warpamt=warpamtfunc(tuple(testpars))
     return testparval
 
 #helper function to make the default list of parameter constraints
