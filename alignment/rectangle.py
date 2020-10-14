@@ -36,7 +36,7 @@ class ApplyMeanImage(RectangleTransformationBase):
           n = len(self.__allrectangles)
           for i, r in enumerate(self.__allrectangles, start=1):
             self.__logger.info(f"loading rectangle {i}/{n}")
-            rawimage = stack.enter_context(r.using_image(-2))
+            rawimage = stack.enter_context(r.using_image_before_flatfield())
             allimages.append(rawimage)
           self.__logger.info("meanimage")
           mean_image = meanimage(allimages)
