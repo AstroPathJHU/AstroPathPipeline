@@ -4,8 +4,50 @@ from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
 from ..utilities.img_correction import correctImageLayerWithWarpFields
 import numpy as np, matplotlib.pyplot as plt, seaborn as sns
-import os, math, cv2
+import os, math, cv2, functools, methodtools
 
+#################### SOME CACHED FILE-SCOPE HELPER FUNCTIONS ####################
+
+#cached radial distortion amount
+@functools.lru_cache()
+def radialDistortAmountAtCoords(coord_x,coord_y,fx,fy,k1,k2,k3) :
+    r = math.sqrt(coord_x**2+coord_y**2)
+    return (k1*(r**2) + k2*(r**4) + k3*(r**6))*math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
+
+#cached tangential distortion amount
+@functools.lru_cache()
+def tangentialDistortAmountAtCoords(coord_x,coord_y,fx,fy,p1,p2) :
+    r = math.sqrt(coord_x**2+coord_y**2)
+    dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
+    dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
+    return math.sqrt((dx)**2 + (dy)**2)
+
+#cached radial distortion amount jacobian
+@functools.lru_cache()
+def radialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,k1,k2,k3) :
+    r = math.sqrt(coord_x**2+coord_y**2)
+    A = math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
+    B = k1*(r**2) + k2*(r**4) + k3*(r**6)
+    dfdfx = (B/A)*fx*(coord_x**2)
+    dfdfy = (B/A)*fy*(coord_y**2)
+    dfdk1 = A*(r**2)
+    dfdk2 = A*(r**4)
+    dfdk3 = A*(r**6)
+    return [dfdfx,dfdfy,dfdk1,dfdk2,dfdk3]
+
+#cached tangential distortion amount jacobian
+@functools.lru_cache()
+def tangentialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,p1,p2) :
+    r = math.sqrt(coord_x**2+coord_y**2)
+    dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
+    dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
+    dfdfx = (dx/fx)/(math.sqrt(1+(dy/dx)**2))
+    dfdfy = (dy/fy)/(math.sqrt(1+(dx/dy)**2))
+    dfdp1 = (2*dx*fx*coord_x*coord_y + 2*dy*fy*(coord_y**2) + dy*fy*(r**2))/(math.sqrt(dx**2+dy**2))
+    dfdp2 = (2*dy*fy*coord_x*coord_y + 2*dx*fx*(coord_x**2) + dx*fx*(r**2))/(math.sqrt(dx**2+dy**2))
+    return [dfdfx,dfdfy,dfdp1,dfdp2]
+
+#################### MAIN WARP CLASS ####################
 class Warp :
     """
     Main superclass for applying warping to images
@@ -350,6 +392,7 @@ class CameraWarp(Warp) :
 
     #################### PUBLIC UTILITY FUNCTIONS ####################
 
+    @methodtools.lru_cache()
     def getCoordsFromPixel(self,pixel_x,pixel_y) :
         """
         Convert a pixel to an x/y coordinate with units of x/y focal lengths
@@ -440,8 +483,7 @@ class CameraWarp(Warp) :
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
         _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars(pars)
-        r = math.sqrt(coord_x**2+coord_y**2)
-        return (k1*(r**2) + k2*(r**4) + k3*(r**6))*math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
+        return radialDistortAmountAtCoords(coord_x,coord_y,fx,fy,k1,k2,k3)
 
     def _tangentialDistortAmountAtCoords(self,coord_x,coord_y,pars=None) :
         """
@@ -449,10 +491,7 @@ class CameraWarp(Warp) :
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
         _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars(pars)
-        r = math.sqrt(coord_x**2+coord_y**2)
-        dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
-        dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
-        return math.sqrt((dx)**2 + (dy)**2)
+        return tangentialDistortAmountAtCoords(coord_x,coord_y,fx,fy,p1,p2)
 
     def _radialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
         """
@@ -460,15 +499,7 @@ class CameraWarp(Warp) :
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
         _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars(pars)
-        r = math.sqrt(coord_x**2+coord_y**2)
-        A = math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
-        B = k1*(r**2) + k2*(r**4) + k3*(r**6)
-        dfdfx = (B/A)*fx*(coord_x**2)
-        dfdfy = (B/A)*fy*(coord_y**2)
-        dfdk1 = A*(r**2)
-        dfdk2 = A*(r**4)
-        dfdk3 = A*(r**6)
-        return [dfdfx,dfdfy,dfdk1,dfdk2,dfdk3]
+        return radialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,k1,k2,k3)
 
     def _tangentialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
         """
@@ -476,14 +507,7 @@ class CameraWarp(Warp) :
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
         _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars(pars)
-        r = math.sqrt(coord_x**2+coord_y**2)
-        dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
-        dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
-        dfdfx = (dx/fx)/(math.sqrt(1+(dy/dx)**2))
-        dfdfy = (dy/fy)/(math.sqrt(1+(dx/dy)**2))
-        dfdp1 = (2*dx*fx*coord_x*coord_y + 2*dy*fy*(coord_y**2) + dy*fy*(r**2))/(math.sqrt(dx**2+dy**2))
-        dfdp2 = (2*dy*fy*coord_x*coord_y + 2*dx*fx*(coord_x**2) + dx*fx*(r**2))/(math.sqrt(dx**2+dy**2))
-        return [dfdfx,dfdfy,dfdp1,dfdp2]
+        return tangentialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,p1,p2)
 
     #################### VISUALIZATION FUNCTIONS ####################
 
@@ -603,6 +627,7 @@ class CameraWarp(Warp) :
         return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(layer):02d}"
 
     #helper function to return a tuple of parameters for single function evaluations
+    @methodtools.lru_cache()
     def __getEvalPars(self,pars) :
         if pars is None :
             return self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.k3, self.p1, self.p2
