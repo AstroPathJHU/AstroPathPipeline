@@ -472,7 +472,7 @@ class CameraWarp(Warp) :
         Get the x/y coordinate-space location of the image corner that is furthest from the principal point
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        cx,cy,_,_,_,_,_,_,_ = self.__getEvalPars(pars)
+        cx,cy,_,_,_,_,_,_,_ = self.__getEvalPars(*(pars) if pars is not None else pars)
         x = 0 if cx>(self.n-1)/2 else self.n-1
         y = 0 if cy>(self.m-1)/2 else self.m-1
         return self.getCoordsFromPixel(x,y)
@@ -482,7 +482,7 @@ class CameraWarp(Warp) :
         Return the amount of radial warp (in pixels) at the given coordinate-space location
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars(pars)
+        _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars(*(pars) if pars is not None else pars)
         return radialDistortAmountAtCoords(coord_x,coord_y,fx,fy,k1,k2,k3)
 
     def _tangentialDistortAmountAtCoords(self,coord_x,coord_y,pars=None) :
@@ -490,7 +490,7 @@ class CameraWarp(Warp) :
         Return the amount of tangential warp (in pixels) at the given coordinate-space location
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars(pars)
+        _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars(*(pars) if pars is not None else pars)
         return tangentialDistortAmountAtCoords(coord_x,coord_y,fx,fy,p1,p2)
 
     def _radialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
@@ -498,7 +498,7 @@ class CameraWarp(Warp) :
         Return the Jacobian vector of the _radialDistortAmountAtCoords function (used in minimization)
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars(pars)
+        _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars(*(pars) if pars is not None else pars)
         return radialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,k1,k2,k3)
 
     def _tangentialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
@@ -506,7 +506,7 @@ class CameraWarp(Warp) :
         Return the Jacobian of the _tangentialDistortAmountAtCoords function (used in minimization)
         pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars(pars)
+        _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars(*(pars) if pars is not None else pars)
         return tangentialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,p1,p2)
 
     #################### VISUALIZATION FUNCTIONS ####################
@@ -628,8 +628,8 @@ class CameraWarp(Warp) :
 
     #helper function to return a tuple of parameters for single function evaluations
     @methodtools.lru_cache()
-    def __getEvalPars(self,pars) :
-        if pars is None :
+    def __getEvalPars(self,cx=None,cy=None,fx=None,fy=None,k1=None,k2=None,k3=None,p1=None,p2=None) :
+        if (cx is None or cy is None or fx is None or fy is None or k1 is None or k2 is None or k3 is None or p1 is None or p2 is None) :
             return self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.k3, self.p1, self.p2
         else :
-            return (*pars, )
+            return cx, cy, fx, fy, k1, k2, k3, p1, p2
