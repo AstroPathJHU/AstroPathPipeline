@@ -121,7 +121,7 @@ if __name__=='__main__' :
                 principalPointPlot(results,save_stem=plot_name_stem)
                 radWarpAmtPlots(results,save_stem=plot_name_stem)
                 radWarpParPlots(results,save_stem=plot_name_stem)
-                if not ('k1' in args.fixed and 'k2' in arg.fixed and 'k3' in args.fixed) :
+                if not ('k1' in args.fixed and 'k2' in args.fixed and 'k3' in args.fixed) :
                     radWarpPCAPlots(results,weighted=False,save_stem=plot_name_stem)
                     radWarpPCAPlots(results,weighted=True,save_stem=plot_name_stem)
                 warpFieldVariationPlots(results,save_stem=plot_name_stem)
