@@ -21,9 +21,12 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   z = invfourier
 
   #roll to get the peak in the middle
-  x = doroll(x)
-  y = doroll(y)
-  z = doroll(z)
+  x = np.roll(x, x.shape[0]//2, axis=0)
+  y = np.roll(y, y.shape[0]//2, axis=0)
+  z = np.roll(z, z.shape[0]//2, axis=0)
+  x = np.roll(x, x.shape[1]//2, axis=1)
+  y = np.roll(y, y.shape[1]//2, axis=1)
+  z = np.roll(z, z.shape[1]//2, axis=1)
 
   #change coordinate system, so 0 is in the middle
   x[x > x.shape[1]/2] -= x.shape[1]
@@ -143,13 +146,7 @@ def mse(a):
   return np.mean(a*a)
 
 @nb.njit
-def doroll(a):
-  a = np.roll(a, a.shape[0]//2, axis=0)
-  a = np.roll(a, a.shape[1]//2, axis=1)
-  return a
-
-@nb.njit
-def doravel(a)
+def doravel(a):
   return np.ravel(a)
 
 def shiftimg(images, dx, dy, *, clip=True, use_gpu=False):
@@ -158,8 +155,8 @@ def shiftimg(images, dx, dy, *, clip=True, use_gpu=False):
   a symmetric shift with fractional pixels
   """
   a, b = images
-  a = a.astype(float)
-  b = b.astype(float)
+  a = a.astype(np.float32)
+  b = b.astype(np.float32)
 
   warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.T.shape}
 

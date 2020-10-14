@@ -95,7 +95,7 @@ class AlignmentOverlap(Overlap):
     try:
       if alreadyalignedstrategy != "shift_only":
         kwargs1 = self.__computeshift(**computeshiftkwargs)
-      self.use_gpu = computeshiftkwargs["gputhread"] is not None and computeshiftkwargs["gpufftdict"] is not None
+        self.use_gpu = computeshiftkwargs["gputhread"] is not None and computeshiftkwargs["gpufftdict"] is not None
       kwargs2 = self.__shiftclip(dxvec=kwargs1["dxvec"])
       self.result = AlignmentResult(
         **self.alignmentresultkwargs,
@@ -103,7 +103,7 @@ class AlignmentOverlap(Overlap):
         **kwargs2,
       )
     except Exception as e:
-      if debug: raise
+      if debug: raise e
       self.result = AlignmentResult(
         exit=3,
         dxvec=(units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale), units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale)),

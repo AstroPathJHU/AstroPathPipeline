@@ -42,7 +42,7 @@ class Overlap(DataClassWithDistances):
         p2rect = r
     if (p1rect is None) or (p2rect is None):
       raise ValueError(f"Searched for rectangles with n=p1={self.p1} and n=p2={self.p2} but p1rect={p1rect} and p2rect={p2rect}")
-    self.rectangles = p1rect[0], p2rect[0]
+    self.rectangles = p1rect, p2rect
 
   @property
   def layer(self):
