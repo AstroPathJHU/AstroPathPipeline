@@ -81,8 +81,8 @@ def solve(matrix, vector):
 
   return distances(pixels=solvepixels, pscale=pscale, power=resultpowers)
 
-def eigval(matrix):
-  eigvalpixels = np.linalg.eigval(pixels(matrix, power=None))
+def eigvals(matrix):
+  eigvalspixels = np.linalg.eigvals(pixels(matrix, power=None))
 
   pscale = {_pscale(_)[()] for _ in np.ravel(matrix) if _ and _pscale(_)[()] is not None}
   if len(pscale) > 1: raise UnitsError(f"matrix has multiple different pscales {pscale}")
@@ -93,4 +93,4 @@ def eigval(matrix):
   pscale, = pscale
   power, = power
 
-  return distances(pixels=eigvalpixels, pscale=pscale, power=power)
+  return distances(pixels=eigvalspixels, pscale=pscale, power=power)
