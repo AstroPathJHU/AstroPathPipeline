@@ -20,29 +20,27 @@ class ApplyFlatfield(RectangleTransformationBase):
     def __init__(self, flatfield):
         self.__flatfield = flatfield
     def transform(self, originalimage):
-        return correctImageLayerWithFlatfield(originalimage,flatfield)
+        return correctImageLayerWithFlatfield(originalimage,self.__flatfield)
 
 class RectangleForWarping(AlignmentRectangle):
-    @property
-    def exp_time(self):
-        return self.__exp_time
-    def __init__(self, *args, rtd, mtd, samp, nlayers, layer, med_et, offset, flatfield, transformations=None, **kwargs):
+    def __init__(self, *args, rtd, mtd, samp, number_of_layers, med_et, offset, flatfield, transformations=None, **kwargs):
+        super().__init__(*args, transformations=None, use_mean_image=False, **kwargs)
+        exp_time = None
         if transformations is None: transformations = []
-        self.__exp_time = None
-        if (rtd is not None) and (mtd is not None) and (samp is not None) and (nlayers is not None) and (layer is not None) 
-            and (med_et is not None) and (offset is not None) :
-            transformations.append(CorrectForExposureTime(self.exp_time,med_et,offset))
+        if (med_et is not None) and (offset is not None) :
+            rfp = os.path.join(rtd,samp,self.file.replace(CONST.IM3_EXT,CONST.RAW_EXT))
+            try :
+                exp_time = (getExposureTimesByLayer(rfp,number_of_layers,mtd))[self.layer-1]
+            except Exception :
+                try :
+                    exp_time = (getExposureTimesByLayer(rfp,number_of_layers,rtd))[self.layer-1]
+                except Exception as e :
+                    raise ValueError(f'Could not find rectangle exposure time for raw file {rfp} in metadata top dir {mtd} or rawfile top dir {rtd}! \n Exception: {e}')
+            transformations.append(CorrectForExposureTime(exp_time,med_et,offset))
         if flatfield is not None:
             transformations.append(ApplyFlatfield(flatfield))
         super().__init__(*args, transformations=transformations, use_mean_image=False, **kwargs)
-        rfp = os.path.join(rtd,samp,self.file.replace(CONST.IM3_EXT,CONST.RAW_EXT))
-        try :
-            self.__exp_time = getExposureTimesByLayer(rfp,nlayers,mtd)
-        except Exception :
-            try :
-                self.__exp_time = getExposureTimesByLayer(rfp,nlayers,rtd)
-            except Exception :
-                raise ValueError(f'Could not find rectangle exposure time for raw file {rfp} in metadata top dir {mtd} or rawfile top dir {rtd}!')
+        
 
 class AlignmentSetForWarping(AlignmentSetFromXML):
     def __init__(self, *args, med_et, offset, flatfield, **kwargs):
@@ -59,9 +57,8 @@ class AlignmentSetForWarping(AlignmentSetFromXML):
             **super().rectangleextrakwargs,
             "rtd": self.root2,
             "mtd": self.root,
-            "samp": self.samp,
-            "nlayers": self.nlayers,
-            "layer":self.layer,
+            "samp": self.samp.SlideID,
+            "number_of_layers": self.nlayers,
             "med_et": self.__med_et,
             "offset": self.__offset,
             "flatfield": self.__flatfield,

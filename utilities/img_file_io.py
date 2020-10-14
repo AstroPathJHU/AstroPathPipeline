@@ -287,8 +287,9 @@ def getMedianExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplen
 
 #helper function to return the median exposure time and the exposure time correction offset for a given layer of a sample
 def getMedianExposureTimeAndCorrectionOffsetForSampleLayer(metadata_top_dir,samplename,et_correction_offset_file,layer) :
-  med_ets, et_offsets = getMedianExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file)
+  med_ets, et_offsets = getMedianExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file) 
   if med_ets is None or et_offsets is None :
     return None, None
   else :
-    return med_ets[layer-1], et_offsets[layer-1]
+    med_et = med_ets[layer-1]; et_offset = et_offsets[layer-1]
+    return med_et, et_offset

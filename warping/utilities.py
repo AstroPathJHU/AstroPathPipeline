@@ -283,7 +283,7 @@ def findSampleOctets(rtd,mtd,threshold_file_path,req_pixel_frac,samp,working_dir
     warp_logger.info("Performing an initial alignment to find this sample's valid octets...")
     img_dims = getImageHWLFromXMLFile(mtd,samp)
     flatfield = (getRawAsHWL(flatfield_file,*(img_dims),CONST.FLATFIELD_DTYPE))[:,:,layer-1] if flatfield_file is not None else None
-    med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(mtd,samp,et_offset_file,layer) if et_offset_file is not None else None, None
+    med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(mtd,samp,et_offset_file,layer) if et_offset_file is not None else None
     a = AlignmentSetForWarping(mtd,rtd,samp,med_et=med_et,offset=offset,flatfield=flatfield,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw')
     a.getDAPI()
     a.align()
