@@ -8,6 +8,11 @@ from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
 class AlignmentOverlap(Overlap):
+
+  def __init__(self, *args, **kwargs):
+    self.__use_gpu = False
+    super().__init__(*args, **kwargs)
+
   @property
   def images(self):
     result = tuple(r.image[:] for r in self.rectangles)
@@ -90,6 +95,7 @@ class AlignmentOverlap(Overlap):
     try:
       if alreadyalignedstrategy != "shift_only":
         kwargs1 = self.__computeshift(**computeshiftkwargs)
+      self.use_gpu = computeshiftkwargs["gputhread"] is not None and computeshiftkwargs["gpufftdict"] is not None
       kwargs2 = self.__shiftclip(dxvec=kwargs1["dxvec"])
       self.result = AlignmentResult(
         **self.alignmentresultkwargs,
@@ -144,8 +150,15 @@ class AlignmentOverlap(Overlap):
     }
 
   @property
+  def use_gpu(self) :
+    return self.__use_gpu
+  @use_gpu.setter
+  def use_gpu(self,use_gpu) :
+    self.__use_gpu = use_gpu
+
+  @property
   def shifted(self):
-    return shiftimg(self.cutimages, *units.nominal_values(units.pixels(self.result.dxvec)))
+    return shiftimg(self.cutimages, *units.nominal_values(units.pixels(self.result.dxvec)),use_gpu=self.use_gpu)
 
   def __shiftclip(self, dxvec):
     """
@@ -153,7 +166,7 @@ class AlignmentOverlap(Overlap):
     and save the result. Compute the mse and the
     illumination correction
     """
-    b1, b2 = shiftimg(self.cutimages, *units.nominal_values(units.pixels(dxvec)))
+    b1, b2 = shiftimg(self.cutimages, *units.nominal_values(units.pixels(dxvec)),use_gpu=self.use_gpu)
 
     mse1 = mse(b1)
     mse2 = mse(b2)
