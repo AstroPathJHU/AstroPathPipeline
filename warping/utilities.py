@@ -1,6 +1,6 @@
 #imports
 from .config import CONST
-from ..alignment.alignmentset import AlignmentSetFromXML
+from .alignmentset import AlignmentSetForWarping
 from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer, getMedianExposureTimeAndCorrectionOffsetForSampleLayer
 from ..utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield
 from ..utilities.tableio import readtable, writetable
@@ -281,19 +281,11 @@ def findSampleOctets(rtd,mtd,threshold_file_path,req_pixel_frac,samp,working_dir
     threshold_value = vals[layer-1]
     #create the alignment set, correct its files, and run its alignment
     warp_logger.info("Performing an initial alignment to find this sample's valid octets...")
-    a = AlignmentSetFromXML(mtd,rtd,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw')
-    a.getDAPI()
     img_dims = getImageHWLFromXMLFile(mtd,samp)
     flatfield = (getRawAsHWL(flatfield_file,*(img_dims),CONST.FLATFIELD_DTYPE))[:,:,layer-1] if flatfield_file is not None else None
-    med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(mtd,samp,et_offset_file,layer) if et_offset_file is not None else None
-    if (flatfield is not None) or ((med_et is not None) and (offset is not None)) :
-        for ir,rect in enumerate(a.rectangles) :
-            warp_logger.info(f'Correcting alignment set rectangle image {ir+1} of {len(a.rectangles)}')
-            rfp = os.path.join(rtd,samp,rect.file.replace(CONST.IM3_EXT,CONST.RAW_EXT))
-            d = loadRawImageWorker(rfp,*(img_dims),layer,flatfield,med_et,offset,None,None,mtd,None)
-            rfkey = d['rfkey']; corr_img = d['image']
-            corrected_image = [WarpImage(rfkey,cv2.UMat(corr_img),None,False,ir)]
-            a.updateRectangleImages(corrected_image,usewarpedimages=False)
+    med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(mtd,samp,et_offset_file,layer) if et_offset_file is not None else None, None
+    a = AlignmentSetForWarping(mtd,rtd,samp,med_et=med_et,offset=offset,flatfield=flatfield,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw')
+    a.getDAPI()
     a.align()
     #get the list of overlaps
     overlaps = a.overlaps
