@@ -48,6 +48,12 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignlayers'
               }
             }
+	    stage('layer PCA plots') {
+	      steps {
+	        sh 'cd documentation/layerPCA; pdflatex layerPCA.tex; pdflatex layerPCA.tex; pdflatex layerPCA.tex'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/layerPCA/layerPCA.log'
+	      }
+	    }
           }
         }
 
