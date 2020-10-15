@@ -1,5 +1,5 @@
 import cv2, itertools
-from ..baseclasses.sample import ReadRectanglesBase
+from ..baseclasses.sample import ReadRectangles, ReadRectanglesBase
 from .alignmentset import AlignmentSet, AlignmentSetBase
 from .rectangle import AlignmentRectangleMultiLayer
 from .overlap import AlignmentOverlap, LayerAlignmentResult
@@ -115,18 +115,6 @@ class AlignLayersBase(AlignmentSetBase, ReadRectanglesBase):
     result.applytooverlaps()
     self.stitchresult = result
 
-class AlignLayersStep1Base(AlignLayersBase):
-  def __init__(self, *args, selectoverlaps=None, **kwargs):
-    if selectoverlaps is None:
-      def selectoverlaps(o): return True
-    def newselectoverlaps(o):
-      if not selectoverlaps(o): return False
-      alllayers = o.rectangles[0].layers
-      layerindices = alllayers.index(o.layer1), alllayers.index(o.layer2)
-      broadbandfilters = {o.rectangles[0].broadbandfilters[_] for _ in layerindices}
-      return len(broadbandfilters) == 1
-    super().__init__(*args, selectoverlaps=newselectoverlaps, **kwargs)
-
 class AlignLayers(AlignLayersBase, AlignmentSet):
   @property
   def alignmentsfilename(self): return self.csv("alignlayers")
@@ -140,3 +128,31 @@ class AlignLayers(AlignLayersBase, AlignmentSet):
     return result
   def getDAPI(self, *args, writeimstat=False, **kwargs):
     return super().getDAPI(*args, writeimstat=writeimstat, **kwargs)
+
+class AlignLayersForBroadbandFilterBase(AlignLayersBase):
+  def __init__(self, *args, broadbandfilter, selectoverlaps=None, **kwargs):
+    if selectoverlaps is None:
+      def selectoverlaps(o): return True
+    def newselectoverlaps(o):
+      if not selectoverlaps(o): return False
+      alllayers = o.rectangles[0].layers
+      layerindices = alllayers.index(o.layer1), alllayers.index(o.layer2)
+      return all(o.rectangles[0].broadbandfilters[_] == broadbandfilter for _ in layerindices)
+    self.__broadbandfilter = broadbandfilter
+    super().__init__(*args, selectoverlaps=newselectoverlaps, **kwargs)
+
+class AlignLayersForBroadbandFilter(AlignLayersForBroadbandFilterBase, AlignLayers):
+  @property
+  def alignmentsfilename(self): return self.csv(f"alignlayers_{self.__broadbandfilter}")
+  @property
+  def stitchfilenames(self):
+    return self.csv(f"layerpositions_{self.__broadbandfilter}"), self.csv(f"layerpositioncovariances_{self.__broadbandfilter}")
+
+class AlignLayersByBroadbandFilter(ReadRectangles):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__step1s = [AlignLayersForBroadbandFilter(*args, broadbandfilter=i, **kwargs) for i in sorted(set(self.rectangles[0].broadbandfilters))]
+
+  def align(self, *args, **kwargs):
+    for _ in self.__step1s:
+      _.align(*args, **kwargs)
