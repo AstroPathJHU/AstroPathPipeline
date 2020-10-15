@@ -82,7 +82,7 @@ class RectangleWithImageBase(Rectangle):
 
   def delete_any_image(self, index):
     self.__accessed_image[index] = False
-    self.__check_delete_image_sequence()
+    self.__check_delete_images()
 
   @property
   def image(self):
@@ -97,7 +97,7 @@ class RectangleWithImageBase(Rectangle):
     return [self.any_image(i) for i in range(len(self.__images_cache))]
   def delete_all_images(self, index):
     self.__accessed_image[:] = False
-    self.__check_delete_image_sequence()
+    self.__check_delete_images()
 
   def __check_delete_images(self):
     for i, (ctr, usingproperty) in enumerate(zip(self.__using_image_counter, self.__accessed_image)):
