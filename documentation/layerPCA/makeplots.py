@@ -48,13 +48,13 @@ def makeplots():
     for i, _ in enumerate(image, start=1):
       print(i)
       plt.imshow(_)
-      plt.savefig(here/f"layer_{i}.pdf")
+      plt.savefig(here/f"layer{i}.pdf")
       plt.close()
 
     for i, _ in enumerate(transformed.T, start=1):
       print(i)
       plt.imshow(_.reshape(image.shape[1], image.shape[2]))
-      plt.savefig(here/f"PCA_{i}.pdf")
+      plt.savefig(here/f"PCA{i}.pdf")
       plt.close()
 
 if __name__ == "__main__":
