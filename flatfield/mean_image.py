@@ -509,15 +509,15 @@ def getImageMaskWorker(im_array,thresholds_per_layer,samp_name,min_selected_pixe
                 ax[2][0].set_title('mask after large-scale close',fontsize=14)
                 m = morphed_mask[:,:,li]
                 pixelfrac = 1.*np.sum(m)/(im_array.shape[0]*im_array.shape[1])
-                will_be_stacked_text = 'WILL' if pixelfrac>=min_selected_pixels else 'WILL_NOT'
+                will_be_stacked_text = 'WILL' if pixelfrac>=min_selected_pixels else 'WILL NOT'
                 ax[2][1].imshow(m)
                 ax[2][1].set_title('final mask after repeated small-scale opening',fontsize=14)
                 overlay_clipped = np.array([im,im*m,im*m]).transpose(1,2,0)
                 overlay_grayscale = np.array([im_grayscale*m,im_grayscale*m,0.15*m]).transpose(1,2,0)
                 ax[3][0].imshow(overlay_clipped)
-                ax[3][0].set_title(f'mask overlaid with clipped image; selected fraction={pixelfrac:.3f}')
+                ax[3][0].set_title(f'mask + clipped image; ({100.*pixelfrac:.1f}% selected)')
                 ax[3][1].imshow(overlay_grayscale)
-                ax[3][1].set_title(f'mask overlaid with grayscale image; image {will_be_stacked_text} be stacked')
+                ax[3][1].set_title(f'mask + grayscale image; {will_be_stacked_text} be stacked')
                 figname = f'image_{i}_layer_{li+1}_masks.png'
                 plt.savefig(figname)
                 plt.close()
