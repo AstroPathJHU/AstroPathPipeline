@@ -11,8 +11,8 @@ import os, math, cv2, functools, methodtools
 #cached radial distortion amount
 @functools.lru_cache()
 def radialDistortAmountAtCoords(coord_x,coord_y,fx,fy,k1,k2,k3) :
-    r = math.sqrt(coord_x**2+coord_y**2)
-    return (k1*(r**2) + k2*(r**4) + k3*(r**6))*math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
+    r2 = coord_x**2 + coord_y**2
+    return (k1*r2 + k2*(r2**2) + k3*(r2**3))*math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
 
 #cached tangential distortion amount
 @functools.lru_cache()
@@ -25,27 +25,33 @@ def tangentialDistortAmountAtCoords(coord_x,coord_y,fx,fy,p1,p2) :
 #cached radial distortion amount jacobian
 @functools.lru_cache()
 def radialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,k1,k2,k3) :
-    r = math.sqrt(coord_x**2+coord_y**2)
+    r2 = coord_x**2 + coord_y**2
     A = math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
-    B = k1*(r**2) + k2*(r**4) + k3*(r**6)
-    dfdfx = (B/A)*fx*(coord_x**2)
-    dfdfy = (B/A)*fy*(coord_y**2)
-    dfdk1 = A*(r**2)
-    dfdk2 = A*(r**4)
-    dfdk3 = A*(r**6)
-    return [dfdfx,dfdfy,dfdk1,dfdk2,dfdk3]
+    B = k1*(r2) + k2*(r2**2) + k3*(r2**3)
+    C = 2*k1 + 4*k2*r2 + 6*k3*r2**2
+    dfdcx = ((-1.*A*coord_x)/(fx))*C - (B/A)*fx*coord_x
+    dfdcy = ((-1.*A*coord_y)/(fy))*C - (B/A)*fy*coord_y
+    dfdfx = ((-1.*A*(coord_x**2))/(fx))*C
+    dfdfy = ((-1.*A*(coord_y**2))/(fy))*C
+    dfdk1 = A*(r2)
+    dfdk2 = A*(r2**2)
+    dfdk3 = A*(r2**3)
+    return [dfdcx,dfdcy,dfdfx,dfdfy,dfdk1,dfdk2,dfdk3]
 
 #cached tangential distortion amount jacobian
 @functools.lru_cache()
 def tangentialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,p1,p2) :
-    r = math.sqrt(coord_x**2+coord_y**2)
-    dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
-    dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
-    dfdfx = (dx/fx)/(math.sqrt(1+(dy/dx)**2))
-    dfdfy = (dy/fy)/(math.sqrt(1+(dx/dy)**2))
-    dfdp1 = (2*dx*fx*coord_x*coord_y + 2*dy*fy*(coord_y**2) + dy*fy*(r**2))/(math.sqrt(dx**2+dy**2))
-    dfdp2 = (2*dy*fy*coord_x*coord_y + 2*dx*fx*(coord_x**2) + dx*fx*(r**2))/(math.sqrt(dx**2+dy**2))
-    return [dfdfx,dfdfy,dfdp1,dfdp2]
+    r2 = coord_x**2+coord_y**2
+    dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*r2
+    dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*r2
+    F = math.sqrt(dx**2 + dy**2)
+    dfdcx = (1./F)*(-2.*dx*p1*coord_y - 4.*dx*p2*coord_x - 2.*dx*(fx**2)*p2*coord_x - 2.*dy*(fy/fx)*p2*coord_y - 2.*dy*fx*fy*p1*coord_x)
+    dfdcy = (1./F)*(-2.*dy*p2*coord_x - 4.*dy*p1*coord_y - 2.*dy*(fy**2)*p1*coord_y - 2.*dx*(fx/fy)*p1*coord_x - 2.*dx*fy*fx*p2*coord_y)
+    dfdfx = (1./F)*(dx*(p2*r2 - 2.*p2*(coord_x**2)) - 2.*dy*(fy/fx)*p2*coord_x*coord_y)
+    dfdfy = (1./F)*(dy*(p1*r2 - 2.*p1*(coord_y**2)) - 2.*dx*(fx/fy)*p1*coord_y*coord_x)
+    dfdp1 = (1./F)*(2*dx*fx*coord_x*coord_y + 2*dy*fy*(coord_y**2) + dy*fy*r2)
+    dfdp2 = (1./F)*(2*dy*fy*coord_x*coord_y + 2*dx*fx*(coord_x**2) + dx*fx*r2)
+    return [dfdcx,dfdcy,dfdfx,dfdfy,dfdp1,dfdp2]
 
 #################### MAIN WARP CLASS ####################
 class Warp :
@@ -461,9 +467,8 @@ class CameraWarp(Warp) :
         else :
             cx,cy,fx,fy,k1,k2,k3,_,_ = (*pars,)
         x, y = self._getMaxDistanceCoords(cx,cy)
-        fxfyk1k2k3_dependence = radialDistortAmountAtCoordsJacobian(x,y,fx,fy,k1,k2,k3)
-        retvec =[0.,0.] # no dependence on cx/cy
-        retvec+=fxfyk1k2k3_dependence #add fx, fy, k1, k2, and k3 dependency
+        cxcyfxfyk1k2k3_dependence = radialDistortAmountAtCoordsJacobian(x,y,fx,fy,k1,k2,k3)
+        retvec = cxcyfxfyk1k2k3_dependence #add cx, cy, fx, fy, k1, k2, and k3 dependency
         retvec+=[0.,0.] # no dependence on p1/p2
         return retvec 
 
@@ -476,11 +481,10 @@ class CameraWarp(Warp) :
         else :
             cx,cy,fx,fy,_,_,_,p1,p2 = (*pars,)
         x, y = self._getMaxDistanceCoords(cx,cy)
-        fxfyp1p2_dependence = tangentialDistortAmountAtCoordsJacobian(x,y,fx,fy,p1,p2)
-        retvec =[0.,0.] # no dependence on cx/cy
-        retvec+=fxfyp1p2_dependence[:2]
+        cxcyfxfyp1p2_dependence = tangentialDistortAmountAtCoordsJacobian(x,y,fx,fy,p1,p2)
+        retvec =cxcyfxfyp1p2_dependence[:4] #add dependence on cx, cy, fy, and fy
         retvec+=[0.,0.,0.] # no dependence on k1/k2/k3
-        retvec+=fxfyp1p2_dependence[2:]
+        retvec+=fxfyp1p2_dependence[4:] #add dependence on p1 and p2
         return retvec
 
     def _getMaxDistanceCoords(self,cx,cy) :
