@@ -1,4 +1,4 @@
-import argparse, matplotlib.pyplot as plt, pathlib, pickle, sklearn.decomposition
+import argparse, matplotlib.pyplot as plt, numpy as np, pathlib, pickle, sklearn.decomposition
 
 from microscopealignment.baseclasses.sample import ReadRectangles
 from microscopealignment.utilities import units
@@ -53,7 +53,8 @@ def makeplots():
 
     for i, _ in enumerate(transformed.T, start=1):
       print(i)
-      plt.imshow(_.reshape(image.shape[1], image.shape[2]))
+      vmin, vmax = np.quantile(_, (0.05, 0.95))
+      plt.imshow(_.reshape(image.shape[1], image.shape[2]), vmin=vmin, vmax=vmax)
       plt.savefig(here/f"PCA{i}.pdf")
       plt.close()
 
