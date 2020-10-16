@@ -484,7 +484,7 @@ class CameraWarp(Warp) :
         cxcyfxfyp1p2_dependence = tangentialDistortAmountAtCoordsJacobian(x,y,fx,fy,p1,p2)
         retvec =cxcyfxfyp1p2_dependence[:4] #add dependence on cx, cy, fy, and fy
         retvec+=[0.,0.,0.] # no dependence on k1/k2/k3
-        retvec+=fxfyp1p2_dependence[4:] #add dependence on p1 and p2
+        retvec+=cxcyfxfyp1p2_dependence[4:] #add dependence on p1 and p2
         return retvec
 
     def _getMaxDistanceCoords(self,cx,cy) :
