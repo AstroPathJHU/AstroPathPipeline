@@ -34,7 +34,7 @@ class FitParameterSet :
 
     FIT_PAR_NAME_LIST = ['cx','cy','fx','fy','k1','k2','k3','p1','p2'] #list of fit parameter names
     DUMMY_NONZERO_VALUE = 0.000001                                     #value to use for initial polishing minimization parameter values that are otherwise 0
-    RELATIVE_STEP_FRAC = 0.005                                          #fractional relative step size for polishing minimiation
+    RELATIVE_STEP_FRAC = 0.005                                         #fractional relative step size for polishing minimiation
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -144,7 +144,7 @@ class FitParameterSet :
                     population_list.append(toadd)
         #add sets describing corner limits of groups of parameters
         par_mask = [True if p in self.floating_parameters else False for p in self.fit_parameters]
-        parameter_group_sets = [np.array([0,0,1,1,2,2,2,3,3])[par_mask], #parameters that have the same effect (not the principal points alone)
+        parameter_group_sets = [np.array([0,0,1,1,2,2,2,3,3])[par_mask], #parameters that have the same effect
                                 np.array([0,1,None,None,0,1,0,None,None])[par_mask], #principal points and radial warps 1                                  
                                 np.array([0,1,None,None,1,0,1,None,None])[par_mask], #principal points and radial warps 2
                                 np.array([0,1,None,None,0,1,1,None,None])[par_mask], #principal points and radial warps 3                                  

@@ -3,7 +3,7 @@ from .flatfield_producer import FlatfieldProducer
 from .utilities import flatfield_logger, sampleNameFromFilepath, FlatfieldSampleInfo
 from .config import CONST 
 from ..utilities.tableio import readtable
-from ..utilities.misc import cd, split_csv_to_list
+from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 from argparse import ArgumentParser
 import os, glob, random, sys
 
@@ -188,13 +188,8 @@ def main() :
                         help='Path to .csv file listing FlatfieldSampleInfo objects to use samples from multiple raw/metadata file paths')
     parser.add_argument('workingdir_name', 
                         help='Name of working directory to save created files in')
-    #mutually exclusive group for how to handle the exposure time correction
-    et_correction_group = parser.add_mutually_exclusive_group(required=True)
-    et_correction_group.add_argument('--exposure_time_offset_file',
-                                    help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the samples in question
-                                    [use this argument to apply corrections for differences in image exposure time]""")
-    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
-                                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
+    #add the exposure time correction group to the arguments
+    addCommonArgumentsToParser(parser,positional_args=False,flatfielding=False,warping=False)
     #mutually exclusive group for how to handle the thresholding
     thresholding_group = parser.add_mutually_exclusive_group()
     thresholding_group.add_argument('--threshold_file_dir',

@@ -1,7 +1,8 @@
 #imports
 from .warp_set import WarpSet
 from .fit_parameter_set import FitParameterSet
-from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult, FieldLog
+from .utilities import warp_logger, WarpingError, WarpFitResult, FieldLog
+from .plotting import OctetComparisonVisualization
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..baseclasses.rectangle import rectangleoroverlapfilter
@@ -28,14 +29,13 @@ class WarpFitter :
 
     #################### CLASS CONSTANTS ####################
 
-    IM3_EXT = '.im3'                                          #to replace in rectangle filenames
     DE_TOLERANCE = 0.03                                       #tolerance for the differential evolution minimization
     DE_MUTATION = (0.2,0.8)                                   #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7                                    #recombination parameter for differential evolution minimization
     POLISHING_X_TOL = 5e-5                                    #parameter tolerance for polishing minimization
     POLISHING_G_TOL = 1e-5                                    #gradient tolerance for polishing minimization
     FIT_PROGRESS_FIG_SIZE = (3*6.4,2*4.6)                     #(width, height) of the fit progress figure
-    PP_RAVG_POINTS = 50                                       #how many points to average over for the polishing minimization progress plots
+    PP_RAVG_POINTS = 20                                       #how many points to average over for the polishing minimization progress plots
     OVERLAP_COMPARISON_DIR_NAME = 'overlap_comparison_images' #name of directory holding overlap comparison images
 
     #################### PUBLIC FUNCTIONS ####################
@@ -69,7 +69,7 @@ class WarpFitter :
             writetable(f'metadata_summary_{os.path.basename(os.path.normpath(self.working_dir))}.csv',[ms])
             writetable(f'field_log_{os.path.basename(os.path.normpath(self.working_dir))}.csv',field_logs)
         #get the list of raw file paths
-        self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.samp_name,fn.replace(self.IM3_EXT,CONST.RAW_EXT)) 
+        self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.samp_name,fn.replace(CONST.IM3_EXT,CONST.RAW_EXT)) 
                               for fn in [r.file for r in self.alignset.rectangles]]
         #get the size of the images in the sample
         m, n, nlayers = getImageHWLFromXMLFile(self.metadata_top_dir,samplename)
@@ -119,7 +119,7 @@ class WarpFitter :
         self.alignset.getDAPI()
 
     def doFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
-             p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000) :
+             p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000,save_fields=False) :
         """
         Fit the cameraWarp model to the loaded dataset
         fixed                    = list of fit parameter names to keep fixed (p1p2 can be fixed separately in the global and polishing minimization steps)
@@ -132,6 +132,7 @@ class WarpFitter :
         polish                   = whether to run the polishing fit step at all
         print_every              = print warp parameters and fit results at every [print_every] minimization function calls
         max_iter                 = maximum number of iterations for the global and polishing minimization steps
+        save_fields              = True if warping fields should be written out for this fit (and not just the result file with the parameter values)
         """
         #make the set of fit parameters
         self.fitpars = FitParameterSet(fixed,normalize,init_pars,init_bounds,max_radial_warp,max_tangential_warp,self.warpset.warp)
@@ -152,7 +153,7 @@ class WarpFitter :
         self.fitpars.setFirstMinimizationResults(de_result)
         #do the polishing minimization
         if polish :
-            result = self.__runPolishMinimization(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter)
+            result = self.__runPolishMinimization(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,(self._de_population_size*maxiter))
         else :
             result=de_result
         polish_minimization_done_time = time.time()
@@ -162,10 +163,10 @@ class WarpFitter :
         self.init_min_runtime = init_minimization_done_time-minimization_start_time
         self.polish_min_runtime = polish_minimization_done_time-init_minimization_done_time
         #run all the post-processing stuff
-        self.__runPostProcessing(de_result.nfev)
+        self.__runPostProcessing(de_result.nfev,save_fields)
 
     def checkFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
-                 p1p2_polish_lasso_lambda=0.,polish=True) :
+                 p1p2_polish_lasso_lambda=0.,polish=True,save_fields=False) :
         """
         A function to print some information about how the fits will proceed with the current settings
         (see "doFit" function above for what the arguments to this function are)
@@ -185,6 +186,11 @@ class WarpFitter :
                 warp_logger.info('p1 and p2 will not be LASSOed in the polishing minimization')
         else :
             warp_logger.info('Polishing minimization will be skipped')
+        #print whether the fields will be saved
+        if save_fields :
+            warp_logger.info('dx and dy warp fields will be saved after the fit')
+        else :
+            warp_logger.info('only the parameters will be saved after the fit, in the result file')
 
     #################### MINIMIZATION FUNCTIONS ####################
 
@@ -258,8 +264,8 @@ class WarpFitter :
         #set up the parameter bounds and constraints and get the initial population
         parameter_bounds, constraints, initial_population = self.__getGlobalSetup()
         self._de_population_size = len(initial_population)
-        #skip the corner overlaps
-        self.skip_corners = True
+        #don't skip the corner overlaps
+        self.skip_corners = False
         #figure out the normalization for the image sample used
         self.cost_norm = self.__getCostNormalization()
         #run the minimization
@@ -269,7 +275,7 @@ class WarpFitter :
                 result=scipy.optimize.differential_evolution(
                     func=self._evalCamWarpOnAlignmentSet,
                     bounds=parameter_bounds,
-                    strategy='best2bin',
+                    strategy='best1bin',
                     maxiter=maxiter,
                     tol=self.DE_TOLERANCE,
                     mutation=self.DE_MUTATION,
@@ -287,8 +293,8 @@ class WarpFitter :
     def __runPolishMinimization(self,float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter) :
         #set up the parameter bounds, constraints, initial values, and relative step sizes
         parameter_bounds, constraints, init_pars, rel_steps = self.__getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
-        #still do skip the corner overlaps
-        self.skip_corners = True
+        #still don't skip the corner overlaps
+        self.skip_corners = False
         #figure out the normalization for the image sample used
         self.cost_norm = self.__getCostNormalization()
         #call minimize with trust_constr
@@ -314,7 +320,7 @@ class WarpFitter :
     #################### VISUALIZATION/OUTPUT FUNCTIONS ####################
 
     #helper function to run all of the various post-processing functions after the fit is done
-    def __runPostProcessing(self,n_initial_fevs) :
+    def __runPostProcessing(self,n_initial_fevs,save_fields) :
         #make the fit progress plots
         self.init_its, self.polish_its = self.__makeFitProgressPlots(n_initial_fevs)
         #use the fit result to make the best fit warp object
@@ -331,7 +337,7 @@ class WarpFitter :
         self.__writeFitResult()
         #write out the warp field binary file and plots
         with cd(self.working_dir) :
-            self._best_fit_warp.writeOutWarpFields(os.path.basename(os.path.normpath(self.working_dir)))
+            self._best_fit_warp.writeOutWarpFields(os.path.basename(os.path.normpath(self.working_dir)),save_fields)
 
     #function to plot the costs and warps over all the iterations of the fit
     def __makeFitProgressPlots(self,ninitev) :
@@ -347,6 +353,9 @@ class WarpFitter :
             pop_avg_cost = np.mean(np.array(self.costs[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_costs.append(pop_avg_cost)
+        last_pop_avg_cost = np.mean(np.array(self.costs[(ig+1)*self._de_population_size:ninitev]))
+        for ip in range(len(self.costs[(ig+1)*self._de_population_size:ninitev])) :
+            pop_avg_costs.append(last_pop_avg_cost)
         ax[0][0].plot(inititers[:len(pop_avg_costs)],pop_avg_costs,label='population averages')
         ax[0][0].set_xlabel('initial minimization iteration')
         ax[0][0].set_ylabel('cost')
@@ -358,6 +367,9 @@ class WarpFitter :
             pop_avg_rad_warp = np.mean(np.array(self.max_radial_warps[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_rad_warps.append(pop_avg_rad_warp)
+        last_pop_avg_rad_warp = np.mean(np.array(self.max_radial_warps[(ig+1)*self._de_population_size:ninitev]))
+        for ip in range(len(self.costs[(ig+1)*self._de_population_size:ninitev])) :
+            pop_avg_rad_warps.append(last_pop_avg_rad_warp)
         ax[0][1].plot(inititers[:len(pop_avg_rad_warps)],pop_avg_rad_warps,label='population averages')
         ax[0][1].set_xlabel('initial minimization iteration')
         ax[0][1].set_ylabel('max radial warp')
@@ -369,6 +381,9 @@ class WarpFitter :
             pop_avg_tan_warp = np.mean(np.array(self.max_tangential_warps[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_tan_warps.append(pop_avg_tan_warp)
+        last_pop_avg_tan_warp = np.mean(np.array(self.max_tangential_warps[(ig+1)*self._de_population_size:ninitev]))
+        for ip in range(len(self.costs[(ig+1)*self._de_population_size:ninitev])) :
+            pop_avg_tan_warps.append(last_pop_avg_tan_warp)
         ax[0][2].plot(inititers[:len(pop_avg_tan_warps)],pop_avg_tan_warps,label='population averages')
         ax[0][2].set_xlabel('initial minimization iteration')
         ax[0][2].set_ylabel('max tangential warp')
@@ -502,7 +517,7 @@ class WarpFitter :
         result.k3 = self._best_fit_warp.k3
         result.p1 = self._best_fit_warp.p1
         result.p2 = self._best_fit_warp.p2
-        max_r_x, max_r_y = self._best_fit_warp._getMaxDistanceCoords()
+        max_r_x, max_r_y = self._best_fit_warp._getMaxDistanceCoords(self._best_fit_warp.cx,self._best_fit_warp.cy)
         result.max_r_x_coord  = max_r_x
         result.max_r_y_coord  = max_r_y
         result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)

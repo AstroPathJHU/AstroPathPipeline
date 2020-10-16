@@ -32,11 +32,17 @@ class Overlap(DataClassWithDistances):
     self.updaterectangles(rectangles)
 
   def updaterectangles(self, rectangles):
-    p1rect = [r for r in rectangles if r.n==self.p1]
-    p2rect = [r for r in rectangles if r.n==self.p2]
-    if not len(p1rect) == len(p2rect) == 1:
-      raise ValueError(f"Expected exactly one rectangle each with n={self.p1} and {self.p2}, found {len(p1rect)} and {len(p2rect)}")
-    self.rectangles = p1rect[0], p2rect[0]
+    p1rect = None; p2rect=None
+    for r in rectangles :
+      if (p1rect is not None) and (p2rect is not None) :
+        break
+      elif r.n==self.p1 :
+        p1rect = r
+      elif r.n==self.p2 :
+        p2rect = r
+    if (p1rect is None) or (p2rect is None):
+      raise ValueError(f"Searched for rectangles with n=p1={self.p1} and n=p2={self.p2} but p1rect={p1rect} and p2rect={p2rect}")
+    self.rectangles = p1rect, p2rect
 
   @property
   def layer(self):

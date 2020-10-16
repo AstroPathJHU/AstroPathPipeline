@@ -1,4 +1,4 @@
-import dataclasses, matplotlib.pyplot as plt, numpy as np, typing, uncertainties as unc
+import dataclasses, matplotlib.pyplot as plt, methodtools, numpy as np, typing, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 from ..baseclasses.overlap import Overlap
@@ -8,14 +8,20 @@ from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
 class AlignmentOverlap(Overlap):
+
+  def __init__(self, *args, **kwargs):
+    self.__use_gpu = False
+    super().__init__(*args, **kwargs)
+
   @property
   def images(self):
     result = tuple(r.image[:] for r in self.rectangles)
     for i in result: i.flags.writeable = False
     return result
 
+  @methodtools.lru_cache()
   @property
-  def cutimages(self):
+  def cutimageslices(self):
     image1, image2 = self.images
 
     hh, ww = image1.shape
@@ -68,8 +74,17 @@ class AlignmentOverlap(Overlap):
     #positioncutimage2 = np.array([image2x1 + offsetimage2x1, image2y1 + offsetimage2y1])
 
     return (
-      image1[cutimage1y1:cutimage1y2,cutimage1x1:cutimage1x2],
-      image2[cutimage2y1:cutimage2y2,cutimage2x1:cutimage2x2],
+      (slice(cutimage1y1, cutimage1y2), slice(cutimage1x1, cutimage1x2)),
+      (slice(cutimage2y1, cutimage2y2), slice(cutimage2x1, cutimage2x2)),
+    )
+
+  @property
+  def cutimages(self):
+    image1, image2 = self.images
+    slice1, slice2 = self.cutimageslices
+    return (
+      image1[slice1],
+      image2[slice2],
     )
 
   def align(self, *, debug=False, alreadyalignedstrategy="error", **computeshiftkwargs):
@@ -90,6 +105,8 @@ class AlignmentOverlap(Overlap):
     try:
       if alreadyalignedstrategy != "shift_only":
         kwargs1 = self.__computeshift(**computeshiftkwargs)
+        if "gputhread" in computeshiftkwargs.keys() and "gpufftdict" in computeshiftkwargs.keys() :
+          self.use_gpu = computeshiftkwargs["gputhread"] is not None and computeshiftkwargs["gpufftdict"] is not None
       kwargs2 = self.__shiftclip(dxvec=kwargs1["dxvec"])
       self.result = AlignmentResult(
         **self.alignmentresultkwargs,
@@ -97,7 +114,7 @@ class AlignmentOverlap(Overlap):
         **kwargs2,
       )
     except Exception as e:
-      if debug: raise
+      if debug: raise e
       self.result = AlignmentResult(
         exit=3,
         dxvec=(units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale), units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale)),
@@ -144,8 +161,15 @@ class AlignmentOverlap(Overlap):
     }
 
   @property
+  def use_gpu(self) :
+    return self.__use_gpu
+  @use_gpu.setter
+  def use_gpu(self,use_gpu) :
+    self.__use_gpu = use_gpu
+
+  @property
   def shifted(self):
-    return shiftimg(self.cutimages, *units.nominal_values(units.pixels(self.result.dxvec)))
+    return shiftimg(self.cutimages, *units.nominal_values(units.pixels(self.result.dxvec)),use_gpu=self.use_gpu)
 
   def __shiftclip(self, dxvec):
     """
@@ -153,7 +177,7 @@ class AlignmentOverlap(Overlap):
     and save the result. Compute the mse and the
     illumination correction
     """
-    b1, b2 = shiftimg(self.cutimages, *units.nominal_values(units.pixels(dxvec)))
+    b1, b2 = shiftimg(self.cutimages, *units.nominal_values(units.pixels(dxvec)),use_gpu=self.use_gpu)
 
     mse1 = mse(b1)
     mse2 = mse(b2)

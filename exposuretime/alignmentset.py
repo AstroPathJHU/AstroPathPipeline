@@ -1,14 +1,15 @@
-import numpy as np
+#imports
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..alignment.rectangle import AlignmentRectangle
 from ..baseclasses.rectangle import RectangleTransformationBase
 from ..utilities.img_file_io import smoothImageWorker
+from ..utilities.img_correction import correctImageLayerWithFlatfield
 
 class ApplyFlatfield(RectangleTransformationBase):
     def __init__(self, flatfield):
         self.__flatfield = flatfield
     def transform(self, originalimage):
-        return np.rint(originalimage / self.__flatfield).astype(np.uint16)
+        return correctImageLayerWithFlatfield(originalimage,self.__flatfield)
 
 class SmoothImage(RectangleTransformationBase):
     def __init__(self, smoothsigma):

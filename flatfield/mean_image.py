@@ -174,22 +174,22 @@ class MeanImage :
         with cd(self._workingdir_name) :
             if self.mean_image is not None :
                 meanimage_filename = f'{self.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(np.transpose(self.mean_image,(2,1,0)),meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                writeImageToFile(self.mean_image,meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
             if self.smoothed_mean_image is not None :
                 smoothed_meanimage_filename = f'{self.SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(np.transpose(self.smoothed_mean_image,(2,1,0)),smoothed_meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                writeImageToFile(self.smoothed_mean_image,smoothed_meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
             if self.flatfield_image is not None :
                 flatfieldimage_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(self._workingdir_name))}{CONST.FILE_EXT}'
-                writeImageToFile(np.transpose(self.flatfield_image,(2,1,0)),flatfieldimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                writeImageToFile(self.flatfield_image,flatfieldimage_filename,dtype=CONST.IMG_DTYPE_OUT)
             if self.corrected_mean_image is not None :
                 corrected_mean_image_filename = f'{self.CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(np.transpose(self.corrected_mean_image,(2,1,0)),corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
+                writeImageToFile(self.corrected_mean_image,corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
             if self.smoothed_corrected_mean_image is not None :
                 smoothed_corrected_mean_image_filename = f'{CONST.SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(np.transpose(self.smoothed_corrected_mean_image,(2,1,0)),smoothed_corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
+                writeImageToFile(self.smoothed_corrected_mean_image,smoothed_corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
             #if masks were calculated, save the stack of them
             if (not self.skip_masking) and (self.mask_stack is not None) :
-                writeImageToFile(np.transpose(self.mask_stack,(2,1,0)),f'{self.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}',dtype=np.uint16)
+                writeImageToFile(self.mask_stack,f'{self.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}',dtype=np.uint16)
 
     def savePlots(self) :
         """
