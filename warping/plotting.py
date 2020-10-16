@@ -1,5 +1,6 @@
 #imports
 from .warp import PolyFieldWarp, CameraWarp
+from .utilities import warp_logger
 from .config import CONST
 import numpy as np, matplotlib.pyplot as plt
 from sklearn.decomposition import PCA

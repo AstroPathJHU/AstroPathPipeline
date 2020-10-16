@@ -1,4 +1,4 @@
-import numpy as np
+#imports
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..alignment.rectangle import AlignmentRectangle
 from ..baseclasses.rectangle import RectangleTransformationBase

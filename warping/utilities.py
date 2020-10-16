@@ -5,7 +5,7 @@ from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExpo
 from ..utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
-import numpy as np, matplotlib.pyplot as plt
+import numpy as np
 import cv2, os, logging, dataclasses, copy
 
 #set up the logger

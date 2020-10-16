@@ -5,7 +5,6 @@ from ..alignment.rectangle import AlignmentRectangle
 from ..baseclasses.rectangle import RectangleTransformationBase
 from ..utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield
 from ..utilities.img_file_io import getExposureTimesByLayer
-import numpy as np
 import os
 
 class CorrectForExposureTime(RectangleTransformationBase):

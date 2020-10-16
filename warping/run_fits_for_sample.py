@@ -239,7 +239,7 @@ if __name__=='__main__' :
                                                 f'{CONST.Y_WARP_BIN_FILENAME}_{os.path.basename(os.path.normpath(args.workingdir))}.bin'))
         shutil.move(old_w_avg_dx_wf_fp,new_w_avg_dx_wf_fp)
         shutil.move(old_w_avg_dy_wf_fp,new_w_avg_dy_wf_fp)
-    warp_logger.info(f'Done.')
+    warp_logger.info('Done')
 
     
 
