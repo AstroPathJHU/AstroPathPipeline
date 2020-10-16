@@ -562,12 +562,12 @@ class CameraWarp(Warp) :
         """
         Plots the radial and tangential warping fields and the curve of the radial warping dependences
         """
-        max_x, max_y = self._getMaxDistanceCoords()
+        max_x, max_y = self._getMaxDistanceCoords(self.cx,self.cy)
         xvals = np.linspace(0.,max_x,npoints)
         yvals = np.linspace(0.,max_y,npoints)
         max_r = math.sqrt(max_x**2+max_y**2)
         xaxis_points = np.linspace(0.,max_r,npoints)
-        yaxis_points = np.array([self._radialDistortAmountAtCoords(x,y) for x,y in zip(xvals,yvals)])
+        yaxis_points = np.array([radialDistortAmountAtCoords(x,y,self.fx,self.fy,self.k1,self.k2,self.k3) for x,y in zip(xvals,yvals)])
         rad_heat_map = np.zeros((self.m,self.n))
         tan_heat_map = np.zeros((self.m,self.n))
         for i in range(self.m) :

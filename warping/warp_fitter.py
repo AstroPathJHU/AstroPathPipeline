@@ -517,7 +517,7 @@ class WarpFitter :
         result.k3 = self._best_fit_warp.k3
         result.p1 = self._best_fit_warp.p1
         result.p2 = self._best_fit_warp.p2
-        max_r_x, max_r_y = self._best_fit_warp._getMaxDistanceCoords()
+        max_r_x, max_r_y = self._best_fit_warp._getMaxDistanceCoords(self._best_fit_warp.cx,self._best_fit_warp.cy)
         result.max_r_x_coord  = max_r_x
         result.max_r_y_coord  = max_r_y
         result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)

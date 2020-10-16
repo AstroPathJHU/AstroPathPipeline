@@ -24,7 +24,7 @@ init_bounds_arg = {'cx':(529.3,663.7),'cy':(551.0,651.4)}
 max_radial_warp = 8.
 max_tangential_warp = 4.
 p1p2_polish_lasso_lambda = 1.0
-print_every = 1
+print_every = 25
 max_iter = 1
 
 #make the WarpFitter Objects

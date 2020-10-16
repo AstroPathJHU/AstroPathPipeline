@@ -105,7 +105,8 @@ class AlignmentOverlap(Overlap):
     try:
       if alreadyalignedstrategy != "shift_only":
         kwargs1 = self.__computeshift(**computeshiftkwargs)
-        self.use_gpu = computeshiftkwargs["gputhread"] is not None and computeshiftkwargs["gpufftdict"] is not None
+        if "gputhread" in computeshiftkwargs.keys() and "gpufftdict" in computeshiftkwargs.keys() :
+          self.use_gpu = computeshiftkwargs["gputhread"] is not None and computeshiftkwargs["gpufftdict"] is not None
       kwargs2 = self.__shiftclip(dxvec=kwargs1["dxvec"])
       self.result = AlignmentResult(
         **self.alignmentresultkwargs,
