@@ -404,14 +404,14 @@ class CameraWarp(Warp) :
         Return the amount of radial warp (in pixels) at the given pixel
         """
         x, y = self.getCoordsFromPixel(pixel_x,pixel_y)
-        return self._radialDistortAmountAtCoords(x,y)
+        return radialDistortAmountAtCoords(x,y,self.fx,self.fy,self.k1,self.k2,self.k3)
 
     def tangentialDistortAmountAtPixel(self,pixel_x,pixel_y) :
         """
         Return the amount of tangential warp (in pixels) at the given pixel
         """
         x, y = self.getCoordsFromPixel(pixel_x,pixel_y)
-        return self._tangentialDistortAmountAtCoords(x,y)
+        return tangentialDistortAmountAtCoords(x,y,self.fx,self.fy,self.p1,self.p2)
 
     #################### FUNCTIONS FOR USE WITH MINIMIZATION ####################
 
@@ -434,22 +434,34 @@ class CameraWarp(Warp) :
         """
         Return the maximum amount of radial distortion (in pixels) observed with the given parameters
         """
-        x, y = self._getMaxDistanceCoords(pars)
-        return self._radialDistortAmountAtCoords(x,y,pars)
+        if pars is None :
+            cx, cy, fx, fy, k1, k2, k3 = self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.k3
+        else :
+            cx,cy,fx,fy,k1,k2,k3,_,_ = (*pars,)
+        x, y = self._getMaxDistanceCoords(cx,cy)
+        return radialDistortAmountAtCoords(x,y,fx,fy,k1,k2,k3)
 
     def maxTangentialDistortAmount(self,pars) :
         """
         Return the maximum amount of tangential distortion (in pixels) observed with the given parameters
         """
-        x, y = self._getMaxDistanceCoords(pars)
-        return self._tangentialDistortAmountAtCoords(x,y,pars)
+        if pars is None :
+            cx, cy, fx, fy, p1, p2 = self.cx, self.cy, self.fx, self.fy, self.p1, self.p2
+        else :
+            cx,cy,fx,fy,_,_,_,p1,p2 = (*pars,)
+        x, y = self._getMaxDistanceCoords(cx,cy)
+        return tangentialDistortAmountAtCoords(x,y,fx,fy,p1,p2)
 
     def maxRadialDistortAmountJacobian(self,pars) :
         """
         Return the Jacobian vector of the maxRadialDistortAmount function (used in minimization)
         """
-        x, y = self._getMaxDistanceCoords(pars)
-        fxfyk1k2k3_dependence = self._radialDistortAmountAtCoordsJacobian(x,y,pars)
+        if pars is None :
+            cx, cy, fx, fy, k1, k2, k3 = self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.k3
+        else :
+            cx,cy,fx,fy,k1,k2,k3,_,_ = (*pars,)
+        x, y = self._getMaxDistanceCoords(cx,cy)
+        fxfyk1k2k3_dependence = radialDistortAmountAtCoordsJacobian(x,y,fx,fy,k1,k2,k3)
         retvec =[0.,0.] # no dependence on cx/cy
         retvec+=fxfyk1k2k3_dependence #add fx, fy, k1, k2, and k3 dependency
         retvec+=[0.,0.] # no dependence on p1/p2
@@ -459,55 +471,25 @@ class CameraWarp(Warp) :
         """
         Return the Jacobian vector of the maxTangentialDistortAmount function (used in minimization)
         """
-        x, y = self._getMaxDistanceCoords(pars)
-        fxfyp1p2_dependence = self._tangentialDistortAmountAtCoordsJacobian(x,y,pars)
+        if pars is None :
+            cx, cy, fx, fy, p1, p2 = self.cx, self.cy, self.fx, self.fy, self.p1, self.p2
+        else :
+            cx,cy,fx,fy,_,_,_,p1,p2 = (*pars,)
+        x, y = self._getMaxDistanceCoords(cx,cy)
+        fxfyp1p2_dependence = tangentialDistortAmountAtCoordsJacobian(x,y,fx,fy,p1,p2)
         retvec =[0.,0.] # no dependence on cx/cy
         retvec+=fxfyp1p2_dependence[:2]
         retvec+=[0.,0.,0.] # no dependence on k1/k2/k3
         retvec+=fxfyp1p2_dependence[2:]
         return retvec
 
-    def _getMaxDistanceCoords(self,pars=None) :
+    def _getMaxDistanceCoords(self,cx,cy) :
         """
         Get the x/y coordinate-space location of the image corner that is furthest from the principal point
-        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        cx,cy,_,_,_,_,_,_,_ = self.__getEvalPars((pars if pars is None else (*(pars))))
         x = 0 if cx>(self.n-1)/2 else self.n-1
         y = 0 if cy>(self.m-1)/2 else self.m-1
         return self.getCoordsFromPixel(x,y)
-
-    def _radialDistortAmountAtCoords(self,coord_x,coord_y,pars=None) :
-        """
-        Return the amount of radial warp (in pixels) at the given coordinate-space location
-        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
-        """
-        _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars((pars if pars is None else (*(pars))))
-        return radialDistortAmountAtCoords(coord_x,coord_y,fx,fy,k1,k2,k3)
-
-    def _tangentialDistortAmountAtCoords(self,coord_x,coord_y,pars=None) :
-        """
-        Return the amount of tangential warp (in pixels) at the given coordinate-space location
-        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
-        """
-        _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars((pars if pars is None else (*(pars))))
-        return tangentialDistortAmountAtCoords(coord_x,coord_y,fx,fy,p1,p2)
-
-    def _radialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
-        """
-        Return the Jacobian vector of the _radialDistortAmountAtCoords function (used in minimization)
-        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
-        """
-        _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars((pars if pars is None else (*(pars))))
-        return radialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,k1,k2,k3)
-
-    def _tangentialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
-        """
-        Return the Jacobian of the _tangentialDistortAmountAtCoords function (used in minimization)
-        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
-        """
-        _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars((pars if pars is None else (*(pars))))
-        return tangentialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,p1,p2)
 
     #################### VISUALIZATION FUNCTIONS ####################
 
@@ -625,11 +607,3 @@ class CameraWarp(Warp) :
     #helper function to convert a raw file name and a layer into a camwarped single layer filename
     def __getWarpedLayerFilename(self,rawname,layer) :
         return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(layer):02d}"
-
-    #helper function to return a tuple of parameters for single function evaluations
-    @methodtools.lru_cache()
-    def __getEvalPars(self,cx=None,cy=None,fx=None,fy=None,k1=None,k2=None,k3=None,p1=None,p2=None) :
-        if (cx is None or cy is None or fx is None or fy is None or k1 is None or k2 is None or k3 is None or p1 is None or p2 is None) :
-            return self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.k3, self.p1, self.p2
-        else :
-            return cx, cy, fx, fy, k1, k2, k3, p1, p2
