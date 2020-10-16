@@ -53,7 +53,7 @@ def makeplots():
 
     for i, _ in enumerate(transformed.T, start=1):
       print(i)
-      vmin, vmax = np.quantile(_, (0.05, 0.95))
+      vmin, vmax = np.quantile(_, (0.25, 0.75))
       plt.imshow(_.reshape(image.shape[1], image.shape[2]), vmin=vmin, vmax=vmax)
       plt.savefig(here/f"PCA{i}.pdf")
       plt.close()
