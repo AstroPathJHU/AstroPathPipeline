@@ -90,8 +90,8 @@ class FlatfieldSample() :
             med_exposure_times_by_layer = None
         #make sure the plot directory exists
         if not os.path.isdir(top_plotdir_path) :
-            with cd(os.path.join(*[pp for pp in top_plotdir_path.split(os.sep)[:-1]])) :
-                os.mkdir(top_plotdir_path.split(os.sep)[-1])
+            with cd(os.path.dirname(top_plotdir_path)) :
+                os.mkdir(os.path.basename(top_plotdir_path))
         this_samp_threshold_plotdir_name = f'{self._name}_{self.THRESHOLD_PLOT_DIR_STEM}'
         plotdir_path = os.path.join(top_plotdir_path,this_samp_threshold_plotdir_name)
         if not os.path.isdir(plotdir_path) :
