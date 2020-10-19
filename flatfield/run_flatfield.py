@@ -26,10 +26,22 @@ def checkArgs(a) :
             raise ValueError(f'ERROR: flatfield image {prior_run_ff_filename} does not exist in prior run directory {a.prior_run_dir}!')
         if not os.path.isfile(os.path.join(a.prior_run_dir,f'{FILEPATH_TEXT_FILE_NAME}')) :
             raise ValueError(f'ERROR: rawfile log {FILEPATH_TEXT_FILE_NAME} does not exist in prior run directory {a.prior_run_dir}!')
-    #read in the samples' information
-    if not os.path.isfile(a.samples) :
-        raise ValueError(f'ERROR: FlatfieldSampleInfo file {a.samples} does not exist!')
-    samples = readtable(a.samples,FlatfieldSampleInfo)
+    #figure out and read in the samples' information
+    samples = None
+    if (a.samples is None) == (a.rawfile_top_dir is None and a.metadata_top_dir is None) :
+        raise ValueError(f'ERROR: must use EITHER "samples" OR "rawfile/metadata_top_dir" arguments to define samples!')
+    if (a.samples is not None) :
+        if os.path.isfile(a.samples) :
+            samples = readtable(a.samples,FlatfieldSampleInfo)
+        else :
+            raise ValueError(f'ERROR: FlatfieldSampleInfo file {a.samples} does not exist!')
+    elif (a.rawfile_top_dir is not None) and (a.metadata_top_dir is not None) :
+        samples = []
+        for sn in split_csv_to_list(a.samples) :
+            samples.append(FlatfieldSampleInfo(sn,a.rawfile_top_dir,a.metadata_top_dir))
+    if samples is None or len(samples)<1 :
+        raise ValueError(f"""ERROR: Samples '{a.samples}', rawfile top dir '{a.rawfile_top_dir}', and metadata_top_dir '{a.metadata_top_dir}' 
+                             did not result in a valid list of samples!""")
     #make sure all of the samples' necessary directories exist
     for sample in samples :
         rfd = os.path.join(sample.rawfile_top_dir,sample.name)
@@ -102,7 +114,7 @@ def getFilepathsAndSamplesToRun(a) :
     all_sample_filepaths=[]
     for s in samples_to_run :
         with cd(os.path.join(s.rawfile_top_dir,s.name)) :
-            all_sample_filepaths+=[os.path.join(s.rawfile_top_dir,s.name,fn) for fn in glob.glob(f'{s.name}_[[]*,*[]]{a.rawfile_ext}')]
+            all_sample_filepaths+=[os.path.join(s.rawfile_top_dir,s.name,fn) for fn in glob.glob(f'{s.name}_[[]*,*[]]{CONST.RAW_EXT}')]
     all_sample_filepaths.sort()
     #if the rawfiles haven't already been selected, figure that out
     if filepaths_to_run is None :
@@ -190,6 +202,16 @@ def main() :
                         help='Name of working directory to save created files in')
     #add the exposure time correction group to the arguments
     addCommonArgumentsToParser(parser,positional_args=False,flatfielding=False,warping=False)
+    #add the group for defining the sample(s) to run on
+    sample_definition_group = parser.add_argument_group('sample definition',
+                                                        'what samples should be used, and where to find their files')
+    sample_definition_group.add_argument('--samples',     
+                                         help="""Path to .csv file listing FlatfieldSampleInfo objects (to use samples from multiple raw/metadata file paths),
+                                                 or a comma-separated list of sample names to use with the common raw/metadata file paths""")
+    sample_definition_group.add_argument('--rawfile_top_dir',
+                                         help=f'Path to directory containing [samplename] subdirectories with raw "{CONST.RAW_EXT}" files for all samples')
+    sample_definition_group.add_argument('--metadata_top_dir',
+                                         help='Path to directory holding metadata directories/subdirectories for all samples')
     #mutually exclusive group for how to handle the thresholding
     thresholding_group = parser.add_mutually_exclusive_group()
     thresholding_group.add_argument('--threshold_file_dir',
@@ -204,8 +226,6 @@ def main() :
     file_selection_group.add_argument('--prior_run_dir',     
                                       help="""Path to the working directory of a previous run whose raw files you want to use again, or whose calculated
                                       flatfield you want to apply to a different, orthogonal, set of files in the same samples""")
-    file_selection_group.add_argument('--rawfile_ext',     default='.Data.dat',
-                                      help='Extension of raw files to load (default is ".Data.dat")')
     file_selection_group.add_argument('--max_images',      default=-1,       type=int,         
                                       help='Number of images to load from the inputted list of samples')
     file_selection_group.add_argument('--selection_mode',  default='random', choices=['random','first','last'],

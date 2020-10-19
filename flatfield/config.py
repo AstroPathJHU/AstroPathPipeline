@@ -1,9 +1,17 @@
 #imports
+from ..exposuretime.config import CONST as ET_CONST
 import numpy as np
 import cv2
 
 #class for shared constant variables
 class Const :
+    #file extensions
+    @property
+    def IM3_EXT(self) :
+        return ET_CONST.IM3_EXT # extension of im3 files
+    @property
+    def RAW_EXT(self) :
+        return ET_CONST.RAW_EXT # extension of completely raw image files
     #final overall outputs
     @property
     def IMG_DTYPE_OUT(self) :

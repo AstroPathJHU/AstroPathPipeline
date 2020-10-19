@@ -24,7 +24,6 @@ class FlatfieldProducer :
     #################### CLASS CONSTANTS ####################
     
     THRESHOLDING_PLOT_DIR_NAME = 'thresholding_info'               #name of the directory where the thresholding information will be stored
-    IM3_EXT                    = '.im3'                            #to replace in rectangle filenames
     IMAGE_STACK_MDS_FN_STEM    = 'metadata_summary_stacked_images' #partial filename for the metadata summary file for the stacked images
     FIELDS_USED_STEM           = 'fields_used'                     #partial filename for the field log file to write out
 
@@ -135,7 +134,7 @@ class FlatfieldProducer :
             #otherwise add the metadata summary for this sample to the producer's list
             a = AlignmentSetFromXML(samp.metadata_top_dir,os.path.dirname(os.path.dirname(this_samp_fps_to_run[0])),sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
             this_samp_rect_fn_stems = [os.path.basename(os.path.normpath(fp)).split('.')[0] for fp in this_samp_fps_to_run]
-            rect_ts = [r.t for r in a.rectangles if r.file.replace(self.IM3_EXT,'') in this_samp_rect_fn_stems]
+            rect_ts = [r.t for r in a.rectangles if r.file.replace(CONST.IM3_EXT,'') in this_samp_rect_fn_stems]
             self._metadata_summaries.append(MetadataSummary(sn,a.Project,a.Cohort,a.microscopename,min(rect_ts),max(rect_ts)))
             #choose which of them will have their masking images saved
             if len(this_samp_fps_to_run)<n_masking_images_per_sample :
@@ -165,7 +164,8 @@ class FlatfieldProducer :
                                               et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
                 this_chunk_masking_plot_indices=[fr_chunk.index(fr) for fr in fr_chunk 
                                                  if this_samp_fps_to_run.index(fr.rawfile_path) in this_samp_indices_for_masking_plots]
-                fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,samp,selected_pixel_cut,this_chunk_masking_plot_indices)
+                fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,samp,selected_pixel_cut,med_exp_times_by_layer,
+                                                                            this_chunk_masking_plot_indices)
                 for fi in range(len(new_field_logs)) :
                     new_field_logs[fi].stacked_in_layers = fields_stacked_in_layers[fi]
                 self._field_logs+=new_field_logs

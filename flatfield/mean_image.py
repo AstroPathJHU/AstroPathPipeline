@@ -71,7 +71,7 @@ class MeanImage :
         self.skip_et_correction = skip_et_correction
         self.skip_masking = skip_masking
         self.smoothsigma = smoothsigma
-        self.image_stack = np.zeros(self._dims,dtype=np.uint64)
+        self.image_stack = np.zeros(self._dims,dtype=CONST.IMG_DTYPE_OUT)
         self.mask_stack  = np.zeros(self._dims,dtype=np.uint64)
         self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=CONST.IMG_DTYPE_OUT)
         self.n_images_read = 0
@@ -82,15 +82,19 @@ class MeanImage :
         self.corrected_mean_image=None
         self.smoothed_corrected_mean_image=None
 
-    def addGroupOfImages(self,im_array_list,sample,min_selected_pixels,masking_plot_indices=[]) :
+    def addGroupOfImages(self,im_array_list,sample,min_selected_pixels,ets_for_normalization=None,masking_plot_indices=[]) :
         """
         A function to add a list of raw image arrays to the image stack
         If masking is requested this function's subroutines are parallelized and also run on the GPU
-        im_array_list        = list of image arrays to add
-        sample               = sample object corresponding to this group of images
-        min_selected_pixels  = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
-        masking_plot_indices = list of image array list indices whose masking plots will be saved
+        im_array_list         = list of image arrays to add
+        sample                = sample object corresponding to this group of images
+        min_selected_pixels   = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
+        ets_for_normalization = list of exposure times to use for normalizating images to counts/ms before stacking (but after masking)
+        masking_plot_indices  = list of image array list indices whose masking plots will be saved
         """
+        #make sure the exposure time normalization can be done
+        if (ets_for_normalization is not None) and (len(ets_for_normalization)!=self.nlayers) :
+            raise ValueError(f'ERROR: list of layer exposure times has length {len(ets_for_normalization)} but images have {self.nlayers} layers!')
         stacked_in_layers = []
         #if the images aren't meant to be masked then we can just add them up trivially
         if self.skip_masking :
@@ -128,7 +132,11 @@ class MeanImage :
             for li in range(self.nlayers) :
                 thismasklayer = thismask[:,:,li]
                 if 1.*np.sum(thismasklayer)/(self._dims[0]*self._dims[1])>=min_selected_pixels :
-                    self.image_stack[:,:,li]+=(im_array[:,:,li]*thismasklayer)
+                    #Optionally normalize for exposure time, and add to the stack
+                    im_to_add = 1.*im_array[:,:,li]*thismasklayer
+                    if ets_for_normalization is not None :
+                        im_to_add/=ets_for_normalization[li]
+                    self.image_stack[:,:,li]+=im_to_add
                     self.mask_stack[:,:,li]+=thismasklayer
                     self.n_images_stacked_by_layer[li]+=1
                     stacked_in_layers[-1].append(li+1)
@@ -144,7 +152,7 @@ class MeanImage :
         for li,nlis in enumerate(self.n_images_stacked_by_layer,start=1) :
             if nlis<1 :
                 flatfield_logger.warn(f'WARNING: {nlis} images were stacked in layer {li}; this layer of the meanimage/flatfield will be meaningless!')
-        self.mean_image = self.__makeMeanImage()
+        self.mean_image = self.__getMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
@@ -158,7 +166,7 @@ class MeanImage :
         """
         A function to get the mean of the image stack, smooth it, and divide it by the given flatfield to correct it
         """
-        self.mean_image = self.__makeMeanImage()
+        self.mean_image = self.__getMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
         flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=CONST.IMG_DTYPE_OUT)
         self.corrected_mean_image=self.mean_image/flatfield_image
@@ -215,7 +223,7 @@ class MeanImage :
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to create and return the mean image from the image (and mask, if applicable, stack)
-    def __makeMeanImage(self) :
+    def __getMeanImage(self) :
         #if the images haven't been masked then this is trivial
         if self.skip_masking :
             return self.image_stack/self.n_images_read
