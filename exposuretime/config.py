@@ -6,10 +6,10 @@ class Const :
     #file extensions
     @property
     def RAW_EXT(self) :
-        return '.Data.dat' # extension of completely raw image files
+        return FLATFIELD_CONST.RAW_EXT # extension of completely raw image files
     @property
     def IM3_EXT(self) :
-        return '.im3' # extension of .im3 image files
+        return FLATFIELD_CONST.IM3_EXT # extension of .im3 image files
     #filenames
     @property
     def LAYER_OFFSET_FILE_NAME_STEM(self) :

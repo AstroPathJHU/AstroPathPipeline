@@ -28,14 +28,19 @@ def checkArgs(a) :
             raise ValueError(f'ERROR: rawfile log {FILEPATH_TEXT_FILE_NAME} does not exist in prior run directory {a.prior_run_dir}!')
     #figure out and read in the samples' information
     samples = None
-    if (a.samples is None) == (a.rawfile_top_dir is None and a.metadata_top_dir is None) :
-        raise ValueError(f'ERROR: must use EITHER "samples" OR "rawfile/metadata_top_dir" arguments to define samples!')
-    if (a.samples is not None) :
-        if os.path.isfile(a.samples) :
-            samples = readtable(a.samples,FlatfieldSampleInfo)
-        else :
-            raise ValueError(f'ERROR: FlatfieldSampleInfo file {a.samples} does not exist!')
-    elif (a.rawfile_top_dir is not None) and (a.metadata_top_dir is not None) :
+    if a.samples is None :
+        raise ValueError('ERROR: "samples" argument is required!')
+    if '.csv' in a.samples :
+        if (a.rawfile_top_dir is not None) or (a.metadata_top_dir is not None) :
+            raise ValueError(f'ERROR: samples argument {a.samples} is a file; rawfile/metadata_top_dir arguments are ambiguous!')
+        try:
+            if os.path.isfile(a.samples) :
+                samples = readtable(a.samples,FlatfieldSampleInfo)
+        except FileNotFoundError :
+            raise ValueError(f'Samples file {a.samples} does not exist!')
+    else :
+        if (a.rawfile_top_dir is None) or (a.metadata_top_dir is None) :
+            raise ValueError(f'ERROR: samples argument {a.samples} is not a file, but rawfile/metadata_top_dir arguments are not specified!')
         samples = []
         for sn in split_csv_to_list(a.samples) :
             samples.append(FlatfieldSampleInfo(sn,a.rawfile_top_dir,a.metadata_top_dir))
@@ -75,7 +80,12 @@ def checkArgs(a) :
 #helper function to get the list of filepaths and associated sample names to run on based on the selection method and number of images requested
 def getFilepathsAndSamplesToRun(a) :
     #first we need to read in the inputted samples
-    all_samples = readtable(a.samples,FlatfieldSampleInfo)
+    if '.csv' in a.samples :
+        all_samples = readtable(a.samples,FlatfieldSampleInfo)
+    else :
+        all_samples = []
+        for sn in split_csv_to_list(a.samples) :
+            all_samples.append(FlatfieldSampleInfo(sn,a.rawfile_top_dir,a.metadata_top_dir))
     samples_to_run = None; filepaths_to_run = None; filepaths_to_exclude = None
     #If other runs are being excluded, make sure to save their filenames to remove them
     if a.other_runs_to_exclude!=[''] :
@@ -196,8 +206,6 @@ def main() :
     #general positional arguments
     parser.add_argument('mode', choices=['make_flatfield','apply_flatfield','calculate_thresholds','check_run','choose_image_files'],                  
                         help='Which operation to perform')
-    parser.add_argument('samples',
-                        help='Path to .csv file listing FlatfieldSampleInfo objects to use samples from multiple raw/metadata file paths')
     parser.add_argument('workingdir_name', 
                         help='Name of working directory to save created files in')
     #add the exposure time correction group to the arguments
@@ -236,7 +244,7 @@ def main() :
     run_option_group = parser.add_argument_group('run options','other options for this run')
     run_option_group.add_argument('--n_threads',                   default=10,  type=int,         
                                   help='Number of threads/processes to run at once in parallelized portions of the code')
-    run_option_group.add_argument('--n_masking_images_per_sample', default=0,   type=int,         
+    run_option_group.add_argument('--n_masking_images_per_sample', default=2,   type=int,         
                                   help='How many example masking images to save for each sample (randomly chosen)')
     run_option_group.add_argument('--selected_pixel_cut',          default=0.8, type=float,         
                                   help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
