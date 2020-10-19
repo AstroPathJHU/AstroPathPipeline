@@ -23,7 +23,6 @@ class FlatfieldProducer :
 
     #################### CLASS CONSTANTS ####################
     
-    THRESHOLDING_PLOT_DIR_NAME = 'thresholding_info'               #name of the directory where the thresholding information will be stored
     IMAGE_STACK_MDS_FN_STEM    = 'metadata_summary_stacked_images' #partial filename for the metadata summary file for the stacked images
     FIELDS_USED_STEM           = 'fields_used'                     #partial filename for the field log file to write out
 
@@ -84,7 +83,7 @@ class FlatfieldProducer :
             new_field_logs = samp.findBackgroundThresholds([rfp for rfp in all_sample_rawfile_paths if sampleNameFromFilepath(rfp)==sn],
                                                            n_threads,
                                                            self.exposure_time_correction_offsets,
-                                                           os.path.join(self.mean_image.workingdir_name,self.THRESHOLDING_PLOT_DIR_NAME),
+                                                           os.path.join(self.mean_image.workingdir_name,CONST.THRESHOLDING_PLOT_DIR_NAME),
                                                            threshold_file_name,
                                                         )
             self._field_logs+=new_field_logs

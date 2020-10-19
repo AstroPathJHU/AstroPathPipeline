@@ -30,6 +30,15 @@ class Const :
     @property
     def LAYER_OFFSET_FILE_NAME_STEM(self) :
         return 'best_fit_offsets' #name of the .csv file holding each sample's LayerOffset result objects
+    @property
+    def THRESHOLDING_PLOT_DIR_NAME(self) :
+        return 'thresholding_info' #name of the directory where the thresholding information will be stored
+    @property
+    def INTENSITY_FIG_WIDTH(self) :
+        return 16.8 #width of the intensity plot figure
+    @property
+    def ILLUMINATION_VARIATION_PLOT_WIDTH(self) :
+        return 9.6 #width of the illumination variation plot
     #image smoothing
     @property
     def GENTLE_GAUSSIAN_SMOOTHING_SIGMA(self) :
@@ -55,5 +64,11 @@ class Const :
     @property
     def N_CLIP(self) :
         return 8 #number of pixels to clip from raw image edges
+    @property
+    def LAST_FILTER_LAYERS_35(self) :
+        return [9,18,25,32] #last image layers of each broadband filter for 35-layer images
+    @property
+    def LAST_FILTER_LAYERS_43(self) :
+        return [9,11,17,20,29,36] #last image layers of each broadband filter for 43-layer images
 
 CONST=Const()
