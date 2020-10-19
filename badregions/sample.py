@@ -6,8 +6,8 @@ from .dustspeck import DustSpeckFinder
 from .tissuefold import TissueFoldFinderSimple
 
 class BadRegionFinderSample(ReadRectangles):
-  @property
-  def filetype(self): return "flatWarp"
+  def __init__(self, *args, filetype="flatWarp", **kwargs):
+    super().__init__(*args, filetype=filetype, **kwargs)
   @abc.abstractmethod
   def makebadregionfinder(self, *args, **kwargs): pass
 

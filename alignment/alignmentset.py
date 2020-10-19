@@ -30,10 +30,9 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     interactive: if this is true, then the script might try to prompt
                  you for input if things go wrong
     """
-    self.__filetype = filetype
     self.__use_mean_image = use_mean_image
     self.interactive = interactive
-    super().__init__(root1, root2, samp, **kwargs)
+    super().__init__(root1, root2, samp, filetype=filetype, **kwargs)
     for r in self.rectangles:
       r.setrectanglelist(self.rectangles)
 
@@ -42,8 +41,6 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
 
   @property
   def logmodule(self): return "align"
-  @property
-  def filetype(self): return self.__filetype
 
   def inverseoverlapsdictkey(self, overlap):
     return overlap.p2, overlap.p1

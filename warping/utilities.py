@@ -164,8 +164,8 @@ def findSampleOctets(rawfile_top_dir,metadata_top_dir,threshold_file_path,req_pi
     threshold_value = vals[layer-1]
     #create the alignment set and run its alignment
     warp_logger.info("Performing an initial alignment to find this sample's valid octets...")
-    a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer)
-    a.getDAPI(filetype='raw')
+    a = AlignmentSetFromXML(metadata_top_dir,rawfile_top_dir,samp,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw')
+    a.getDAPI()
     a.align()
     #get the list of overlaps
     overlaps = a.overlaps
