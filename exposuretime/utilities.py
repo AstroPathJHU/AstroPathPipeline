@@ -25,12 +25,13 @@ def checkArgs(args) :
     metafile_dir = os.path.join(args.metadata_top_dir,args.sample)
     if not os.path.isdir(metafile_dir) :
         raise ValueError(f'ERROR: metadata_top_dir ({args.metadata_top_dir}) does not contain "[sample name]" subdirectory!')
-    #make sure the flatfield file exists
-    if not os.path.isfile(args.flatfield_file) :
-        raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
+    #make sure the flatfield file exists (if necessary)
+    if not args.skip_flatfielding :
+        if not os.path.isfile(args.flatfield_file) :
+            raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
     #create the working directory if it doesn't already exist
-    if not os.path.isdir(args.workingdir_name) :
-        os.mkdir(args.workingdir_name)
+    if not os.path.isdir(args.workingdir) :
+        os.mkdir(args.workingdir)
     #make sure the layers argument makes sense
     if len(args.layers)<1 :
     	raise ValueError(f'ERROR: layers argument {args.layers} must have at least one layer number (or -1)!')
@@ -72,7 +73,8 @@ def getOverlapsWithExposureTimeDifferences(rtd,mtd,sn,exp_times,layer,overlaps=N
             p2et = exp_times[p2key]
             if p2et!=p1et :
                 olaps_with_et_diffs.append(olap.n)
-    et_fit_logger.info(f'Skipped {n_edge_overlaps_skipped} overlaps with rectangles on tissue edges for {sn} layer {layer}')
+    if not include_tissue_edges :
+        et_fit_logger.info(f'Skipped {n_edge_overlaps_skipped} overlaps with rectangles on tissue edges for {sn} layer {layer}')
     if return_dict is not None :
         return_dict[layer] = olaps_with_et_diffs
     else :

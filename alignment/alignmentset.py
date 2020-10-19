@@ -131,8 +131,9 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
       newr = AlignmentRectangleProvideImage(rectangle=r, layer=r.layer, mean_image=mean_image, use_mean_image=correct_with_meanimage, image=thisupdateimg, readingfromfile=False)
       self.rectangles[i] = newr
 
-    for r in self.rectangles:
-      r.setrectanglelist(self.rectangles)
+    if correct_with_meanimage :
+      for r in self.rectangles:
+        r.setrectanglelist(self.rectangles)
 
     for o in self.overlaps:
       o.updaterectangles(self.rectangles)

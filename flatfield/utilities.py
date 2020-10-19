@@ -1,5 +1,6 @@
 from .config import CONST
-from ..utilities.img_file_io import getRawAsHWL, correctImageForExposureTime, smoothImageWorker
+from ..utilities.img_file_io import getRawAsHWL, smoothImageWorker
+from ..utilities.img_correction import correctImageForExposureTime
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
 import matplotlib.pyplot as plt
@@ -174,7 +175,7 @@ class FileReadInfo :
     height           : int                # img height
     width            : int                # img width
     nlayers          : int                # number of img layers
-    metadata_top_dir : str                # this file's sample's metadata file top directory
+    metadata_top_dir : str                # top directory with metadata files
     to_smooth        : bool = False       # whether the image should be smoothed
     med_exp_times    : List[float] = None # a list of the median exposure times in this image's sample by layer 
     corr_offsets     : List[float] = None # a list of the exposure time correction offsets for this image's sample by layer 
@@ -184,7 +185,11 @@ def getImageArray(fri) :
     flatfield_logger.info(f'  reading file {fri.rawfile_path} {fri.sequence_print}')
     img_arr = getRawAsHWL(fri.rawfile_path,fri.height,fri.width,fri.nlayers)
     if fri.med_exp_times is not None and fri.corr_offsets is not None and fri.corr_offsets[0] is not None :
-        img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,fri.metadata_top_dir,fri.med_exp_times,fri.corr_offsets)
+        try :
+            img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,fri.metadata_top_dir,fri.med_exp_times,fri.corr_offsets)
+        except (ValueError, RuntimeError) :
+            rtd = os.path.dirname(os.path.dirname(os.path.normpath(fri.rawfile_path)))+os.sep
+            img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,rtd,fri.med_exp_times,fri.corr_offsets)
     if fri.to_smooth :
         img_arr = smoothImageWorker(img_arr,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
     return img_arr
@@ -221,12 +226,12 @@ def getImageLayerHistsMT(sample_image_filereads,smoothed=False,med_exposure_time
     return new_img_layer_hists
 
 #helper function to split a list of filenames into chunks to be read in in parallel
-def chunkListOfFilepaths(fps,dims,n_threads,metadata_top_dir) :
+def chunkListOfFilepaths(fps,dims,mtd,n_threads) :
     fileread_chunks = [[]]
     for i,fp in enumerate(fps,start=1) :
         if len(fileread_chunks[-1])>=n_threads :
             fileread_chunks.append([])
-        fileread_chunks[-1].append(FileReadInfo(fp,f'({i} of {len(fps)})',dims[0],dims[1],dims[2],metadata_top_dir))
+        fileread_chunks[-1].append(FileReadInfo(fp,f'({i} of {len(fps)})',dims[0],dims[1],dims[2],mtd))
     return fileread_chunks
 
 #################### USEFUL PLOTTING FUNCTION ####################

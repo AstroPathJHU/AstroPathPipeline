@@ -3,7 +3,7 @@ from .flatfield_producer import FlatfieldProducer
 from .utilities import flatfield_logger, sampleNameFromFilepath, FlatfieldSampleInfo
 from .config import CONST 
 from ..utilities.tableio import readtable
-from ..utilities.misc import cd, split_csv_to_list
+from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 from argparse import ArgumentParser
 import os, glob, random, sys
 
@@ -140,6 +140,18 @@ def getFilepathsAndSamplesToRun(a) :
             logstring+=f'{s.name}, '
         flatfield_logger.info(logstring[:-2])
         all_sample_filepaths = [fp for fp in all_sample_filepaths if sampleNameFromFilepath(fp) in [s.name for s in samples_to_run]]
+    #alert the user if exposure time corrections will be made
+    if a.skip_exposure_time_correction :
+        flatfield_logger.info('Corrections for differences in exposure time will NOT be made')
+    else :
+        msg = 'Corrections for differences in exposure time will be made'
+        msg+=f' based on the correction factors in {a.exposure_time_offset_file}'
+        flatfield_logger.info(msg)
+    #alert the user if masking will be applied
+    if a.skip_masking :
+        flatfield_logger.info('Images will NOT be masked before stacking')
+    else :
+        flatfield_logger.info('Images WILL be masked before stacking')
     #alert the user if the thresholds will be calculated in this run
     if (not a.skip_masking) and a.threshold_file_dir is None :
         logstring = f'Background thresholds will be calculated for {len(samples_to_run)}'
@@ -176,13 +188,8 @@ def main() :
                         help='Path to .csv file listing FlatfieldSampleInfo objects to use samples from multiple raw/metadata file paths')
     parser.add_argument('workingdir_name', 
                         help='Name of working directory to save created files in')
-    #mutually exclusive group for how to handle the exposure time correction
-    et_correction_group = parser.add_mutually_exclusive_group(required=True)
-    et_correction_group.add_argument('--exposure_time_offset_file',
-                                    help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the samples in question
-                                    [use this argument to apply corrections for differences in image exposure time]""")
-    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
-                                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
+    #add the exposure time correction group to the arguments
+    addCommonArgumentsToParser(parser,positional_args=False,flatfielding=False,warping=False)
     #mutually exclusive group for how to handle the thresholding
     thresholding_group = parser.add_mutually_exclusive_group()
     thresholding_group.add_argument('--threshold_file_dir',
@@ -235,7 +242,7 @@ def main() :
     if not args.skip_masking :
         if args.threshold_file_dir is not None :
             ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
-        elif args.metadata_top_dir is not None :
+        else :
             ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
     if args.mode in ['make_flatfield', 'apply_flatfield'] :
         #mask and stack images together
