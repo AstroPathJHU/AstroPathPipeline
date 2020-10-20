@@ -96,7 +96,7 @@ for xmlfn in xml_filenames :
         ref_lines=fp.readlines()
     for testline,refline in zip(test_lines,ref_lines) :
         if testline!=refline :
-            raise RuntimeError(f'ERROR: xml file {xmlfn} lines are not identical!\ntest line = {testline}reference line={refline}')
+            raise RuntimeError(f'ERROR: xml file {xmlfn} lines are not identical!\ntest line = {testline}ref. line={refline}')
 #check the output image files
 with cd(working_dir) :
     img_filenames = glob.glob('*.fw01')
