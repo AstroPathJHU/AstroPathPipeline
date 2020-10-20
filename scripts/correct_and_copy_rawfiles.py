@@ -143,7 +143,7 @@ class RawfileCorrector :
                         cx_shift = this_ws.cx_shift; cy_shift = this_ws.cy_shift
                     sf = args.warping_scalefactor
                     self._warps[ln] = CameraWarp(self._img_dims[1],self._img_dims[0],wfr.cx+cx_shift,wfr.cy+cy_shift,
-                                                 wfr.fx.,wfr.fy,sf*wfr.k1,sf*wfr.k2,sf*wfr.k3,sf*wfr.p1,sf*wfr.p2)
+                                                 wfr.fx,wfr.fy,sf*wfr.k1,sf*wfr.k2,sf*wfr.k3,sf*wfr.p1,sf*wfr.p2)
                     fs = f'applied_warping_correction_layer_{ln}'
                     with cd(os.path.join(self._working_dir_path,APPLIED_CORRECTION_PLOT_DIR_NAME)) :
                         self._warps[ln].writeOutWarpFields(fs,save_fields=False)
