@@ -17,9 +17,9 @@ def radialDistortAmountAtCoords(coord_x,coord_y,fx,fy,k1,k2,k3) :
 #cached tangential distortion amount
 @functools.lru_cache()
 def tangentialDistortAmountAtCoords(coord_x,coord_y,fx,fy,p1,p2) :
-    r = math.sqrt(coord_x**2+coord_y**2)
-    dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
-    dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
+    r2 = coord_x**2+coord_y**2
+    dx = fx*(2.*p1*coord_x*coord_y + p2*(r2 + 2.*(coord_x**2)))
+    dy = fy*(2.*p2*coord_x*coord_y + p1*(2.*(coord_y**2) + r2))
     return math.sqrt((dx)**2 + (dy)**2)
 
 #cached radial distortion amount jacobian
@@ -42,8 +42,8 @@ def radialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,k1,k2,k3) :
 @functools.lru_cache()
 def tangentialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,p1,p2) :
     r2 = coord_x**2+coord_y**2
-    dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*r2
-    dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*r2
+    dx = fx*(2.*p1*coord_x*coord_y + p2*(r2 + 2.*(coord_x**2)))
+    dy = fy*(2.*p2*coord_x*coord_y + p1*(2.*(coord_y**2) + r2))
     F = math.sqrt(dx**2 + dy**2)
     dfdcx = (1./F)*(-2.*dx*p1*coord_y - 4.*dx*p2*coord_x - 2.*dx*(fx**2)*p2*coord_x - 2.*dy*(fy/fx)*p2*coord_y - 2.*dy*fx*fy*p1*coord_x)
     dfdcy = (1./F)*(-2.*dy*p2*coord_x - 4.*dy*p1*coord_y - 2.*dy*(fy**2)*p1*coord_y - 2.*dx*(fx/fy)*p1*coord_x - 2.*dx*fy*fx*p2*coord_y)

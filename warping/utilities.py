@@ -107,6 +107,13 @@ class FieldLog :
     file   : str
     rect_n : int
 
+#little utilitiy class for logging x and y principal point shifts
+@dataclasses.dataclass
+class WarpShift :
+    layer_n  : int
+    cx_shift : float
+    cy_shift : float
+
 #helper function to mutate an argument parser for some generic warping options
 def addCommonWarpingArgumentsToParser(parser,fit=True,fitpars=True,job_organization=True) :
     #add the common options, except not for warping

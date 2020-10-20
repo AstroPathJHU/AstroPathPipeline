@@ -190,14 +190,15 @@ def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,fl
   if flatfielding :
     flatfield_group = parser.add_mutually_exclusive_group(required=True)
     flatfield_group.add_argument('--flatfield_file',
-                                 help="""Path to the flatfield.bin file that should be applied to the files in this sample""")
+                                 help='Path to the flatfield.bin file that should be applied to the files in this sample')
     flatfield_group.add_argument('--skip_flatfielding', action='store_true',
                                  help='Add this flag to entirely skip flatfield corrections')
   #mutually exclusive group for how to handle the warping corrections
   if warping :
     warping_group = parser.add_mutually_exclusive_group(required=True)
-    warping_group.add_argument('--warp_field_dir',   
-                               help='Path to the directory holding the dx and dy warp fields to apply')
+    warping_group.add_argument('--warp_def',   
+                               help="""Path to the weighted average fit result file of the warp to apply, 
+                                    or to the directory with the warp's dx and dy shift fields""")
     warping_group.add_argument('--skip_warping', action='store_true',
                                help='Add this flag to entirely skip warping corrections')
 

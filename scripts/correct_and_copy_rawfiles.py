@@ -1,11 +1,14 @@
 #imports
+from ..warping.warp import CameraWarp
+from ..warping.utilities import WarpFitResult, WarpShift
 from ..flatfield.config import CONST as FF_CONST
 from ..warping.config import CONST as WARP_CONST
+from ..utilities.img_correction import correctImageForExposureTime, correctImageLayerForExposureTime
+from ..utilities.img_correction import correctImageLayerWithFlatfield, correctImageWithFlatfield, correctImageLayerWithWarpFields
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile, findExposureTimeXMLFile
 from ..utilities.img_file_io import writeModifiedExposureTimeXMLFile, getMedianExposureTimesAndCorrectionOffsetsForSample
 from ..utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer 
-from ..utilities.img_correction import correctImageForExposureTime, correctImageLayerForExposureTime
-from ..utilities.img_correction import correctImageLayerWithFlatfield, correctImageWithFlatfield, correctImageLayerWithWarpFields
+from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, addCommonArgumentsToParser
 import numpy as np, matplotlib.pyplot as plt
 from argparse import ArgumentParser
@@ -69,7 +72,7 @@ class RawfileCorrector :
         #make sure the exposure time correction file exists if necessary
         if not args.skip_exposure_time_correction :
             if not os.path.isfile(args.exposure_time_offset_file) :
-                raise ValueError(f'ERROR: exposure time offset file {args.exposure_time_offset_file} does not exist!')
+                raise FileNotFoundError(f'ERROR: exposure time offset file {args.exposure_time_offset_file} does not exist!')
             eto_filepath = args.exposure_time_offset_file
             if self._layer==-1 :
                 self._med_exp_time, self._et_correction_offset = getMedianExposureTimesAndCorrectionOffsetsForSample(self._metadata_top_dir,
@@ -85,7 +88,7 @@ class RawfileCorrector :
         #make sure the flatfield file exists (if necessary) and set the flatfield variable
         if not args.skip_flatfielding :
             if not os.path.isfile(args.flatfield_file) :
-                raise ValueError(f'ERROR: flatfield file {args.flatfield_file} does not exist!')
+                raise FileNotFoundError(f'ERROR: flatfield file {args.flatfield_file} does not exist!')
             ff_filepath = args.flatfield_file
             self._ff = getRawAsHWL(ff_filepath,*(self._img_dims),dtype=FF_CONST.IMG_DTYPE_OUT)
             if self._layer!=-1 :
@@ -106,22 +109,59 @@ class RawfileCorrector :
                         plt.close()
         else :
             self._ff = None
-        #make sure the dx and dy warping fields can be found if necessary
+        #make sure the dx and dy warping fields can be defined if necessary
+        self._warps = None; self._dx_warp_field = None; self._dy_warp_field = None
         if not args.skip_warping :
-            wf_dirname = os.path.basename(os.path.normpath(args.warp_field_dir))
-            dx_warp_field_path = os.path.join(args.warp_field_dir,f'{WARP_CONST.X_WARP_BIN_FILENAME}_{wf_dirname}.bin')
-            dy_warp_field_path = os.path.join(args.warp_field_dir,f'{WARP_CONST.Y_WARP_BIN_FILENAME}_{wf_dirname}.bin')
-            if not dx_warp_field_path :
-                raise ValueError(f'ERROR: dx warp field {dx_warp_field_path} does not exist!')
-            if not dy_warp_field_path :
-                raise ValueError(f'ERROR: dy warp field {dy_warp_field_path} does not exist!')
-            self._dx_warp_field = (args.warping_scalefactor)*(getRawAsHW(dx_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
-            self._dy_warp_field = (args.warping_scalefactor)*(getRawAsHW(dy_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
-            r_warp_field = np.sqrt((self._dx_warp_field**2)+(self._dy_warp_field**2))
             with cd(self._working_dir_path) :
                 if not os.path.isdir(APPLIED_CORRECTION_PLOT_DIR_NAME) :
                     os.mkdir(APPLIED_CORRECTION_PLOT_DIR_NAME)
-                with cd(APPLIED_CORRECTION_PLOT_DIR_NAME) :
+            #first try to define the warping from a parameter file
+            if args.warp_def.endswith('.csv') :
+                if not os.path.isfile(args.warp_def) :
+                    raise FileNotFoundError(f'ERROR: warp fit result file {args.warp_def} does not exist!')
+                warp_fit_result = readtable(args.warp_def,WarpFitResult)
+                if len(warp_fit_result)==1 :
+                    raise ValueError(f'ERROR: warp fit result file {args.warp_def} has more than one set of parameters!')
+                wfr = warp_fit_result[0]
+                warp_shifts = []
+                if args.warp_shift_file is not None :
+                    if not os.path.isfile(args.warp_shift_file) :
+                        raise FileNotFoundError(f'ERROR: warp shift file {args.warp_shift_file} doe not exist!')
+                    warp_shifts = readtable(args.warp_shift_file,WarpShift)
+                elif args.warp_shift is not None :
+                    cx_shift,cy_shift = args.warp_shift.split(',')
+                    for ln in layers_to_run :
+                        warp_shifts = warp_shifts.append(WarpShift(ln,cx_shift,cy_shift))
+                if len(warp_shifts)>0 :
+                    with cd(os.path.join(self._working_dir_path,APPLIED_CORRECTION_PLOT_DIR_NAME)) :
+                        writetable('applied_warp_shifts.csv',warp_shifts)
+                self._warps = {}
+                for ln in layers_to_run :
+                    cx_shift = 0.; cy_shift = 0.
+                    if ln in [ws.ln for ws in warp_shifts] :
+                        this_ws = ([ws for ws in warp_shifts if ws.ln==ln])[0]
+                        cx_shift = this_ws.cx_shift; cy_shift = this_ws.cy_shift
+                    sf = args.warping_scalefactor
+                    self._warps[ln] = CameraWarp(self._img_dims[1],self._img_dims[0],wfr.cx+cx_shift,wfr.cy+cy_shift,
+                                                 wfr.fx.,wfr.fy,sf*wfr.k1,sf*wfr.k2,sf*wfr.k3,sf*wfr.p1,sf*wfr.p2)
+                    fs = f'applied_warping_correction_layer_{ln}'
+                    with cd(os.path.join(self._working_dir_path,APPLIED_CORRECTION_PLOT_DIR_NAME)) :
+                        self._warps[ln].writeOutWarpFields(fs,save_fields=False)
+            #if not, try to define the fields by the actual .bin file
+            else :
+                if (args.warp_shift_file is not None) or (args.warp_shift is not None) :
+                    raise ValueError(f"ERROR: warp_def argument {args.warp_def} is not a warping parameter fit result file, so its pattern can't be shifted!")
+                wf_dirname = os.path.basename(os.path.normpath(args.warp_def))
+                dx_warp_field_path = os.path.join(args.warp_def,f'{WARP_CONST.X_WARP_BIN_FILENAME}_{wf_dirname}.bin')
+                dy_warp_field_path = os.path.join(args.warp_def,f'{WARP_CONST.Y_WARP_BIN_FILENAME}_{wf_dirname}.bin')
+                if not os.path.isfile(dx_warp_field_path) :
+                    raise FileNotFoundError(f'ERROR: dx warp field {dx_warp_field_path} does not exist!')
+                if not os.path.isfile(dy_warp_field_path) :
+                    raise FileNotFoundError(f'ERROR: dy warp field {dy_warp_field_path} does not exist!')
+                self._dx_warp_field = (args.warping_scalefactor)*(getRawAsHW(dx_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
+                self._dy_warp_field = (args.warping_scalefactor)*(getRawAsHW(dy_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
+                r_warp_field = np.sqrt((self._dx_warp_field**2)+(self._dy_warp_field**2))
+                with cd(os.path.join(self._working_dir_path,APPLIED_CORRECTION_PLOT_DIR_NAME)) :
                     f,ax = plt.subplots(1,3,figsize=(3*6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
                     pos = ax[0].imshow(r_warp_field)
                     ax[0].set_title('total warp correction')
@@ -135,8 +175,8 @@ class RawfileCorrector :
                     plt.savefig('applied_warping_correction_model.png')
                     plt.close()
         else :
-            self._dx_warp_field = None
-            self._dy_warp_field = None
+            if (args.warp_shift_file is not None) or (args.warp_shift is not None) or (args.warping_scalefactor is not None) :
+                raise RuntimeError('ERROR: warping is being skipped, so the requested shifts/rescaling are irrelevant!!')
         #start up the logfile and add some information to it
         self._logfile_name = f'{args.logfile_name_stem}_{time.strftime("%Y_%m_%d-%H_%M_%S")}.log'
         with cd(self._working_dir_path) :
@@ -163,12 +203,20 @@ class RawfileCorrector :
             self.__writeLog('Flatfielding corrections WILL NOT be applied.')
         else :
             self.__writeLog(f'Flatfield corrections WILL be applied as read from {ff_filepath}')
-        if self._dx_warp_field is None and self._dy_warp_field is None :
+        if self._warps is None and self._dx_warp_field is None and self._dy_warp_field is None :
             self.__writeLog('Warping corrections WILL NOT be applied.')
         else :
-            msg=f'Warping corrections will be applied as read from {dx_warp_field_path} and {dy_warp_field_path}'
+            msg='Warping corrections will be applied as read from '
+            if self._warps is not None :
+                msg+=f'{args.warp_def}'
+                if args.warp_shift_file is not None :
+                    msg+=f' and shifted as read from {args.warp_shift_file}'
+                elif args.warp_shift is not None :
+                    msg+=f' and shifted by {args.warp_shift}'
+            elif self._dx_warp_field is not None and self._dy_warp_field is not None :
+                msg+=f'{dx_warp_field_path} and {dy_warp_field_path}'
             if args.warping_scalefactor!=1.0 :
-                msg+=' and multiplied by {args.warping_scalefactor}'
+                msg+=f' and multiplied by {args.warping_scalefactor}'
             self.__writeLog(msg)
         #set a couple more instance variables
         self._infile_ext = args.input_file_extension
@@ -250,7 +298,15 @@ class RawfileCorrector :
         else :
             ff_corrected = et_corrected
         #correct the layers with the warping fields
-        if (self._dx_warp_field is not None) and (self._dy_warp_field is not None) :
+        if self._warps is not None :
+            if self._layer==-1 :
+                unwarped = np.zeros_like(ff_corrected)
+                for li in range(self._img_dims[-1]) :
+                    unwarped[:,:,li] = self._warps[li+1].getWarpedLayer(ff_corrected[:,:,li])
+            else :
+                unwarped = self._warps[self._layer].getWarpedLayer(ff_corrected)
+            msg+='warping, '
+        elif (self._dx_warp_field is not None) and (self._dy_warp_field is not None) :
             if self._layer==-1 :
                 unwarped = np.zeros_like(ff_corrected)
                 for li in range(self._img_dims[-1]) :
@@ -278,6 +334,12 @@ if __name__=='__main__' :
     parser = ArgumentParser()
     #add the common options to the parser
     addCommonArgumentsToParser(parser)
+    #add the arguments for shifting the warp pattern
+    warp_shift_group = parser.add_mutually_exclusive_group()
+    warp_shift_group.add_argument('--warp_shift_file',
+                                 help='Path to the warp_shifts.csv file that should be applied to the files in this sample')
+    warp_shift_group.add_argument('--warp_shift', 
+                                 help='Use this argument to define a (delta-x, delta-y) shift from the inputted warp field')
     #group for other run options
     run_option_group = parser.add_argument_group('run options', 'other options for this run')
     run_option_group.add_argument('--warping_scalefactor',   default=1.0,   type=float,         
@@ -287,11 +349,13 @@ if __name__=='__main__' :
     run_option_group.add_argument('--input_file_extension', default='.Data.dat',
                                   help='Extension for the raw files that will be read in (default = ".Data.dat")')
     run_option_group.add_argument('--output_file_extension', default='.fw',
-                                  help='Extension for the corrected files that will be written out (default = ".fw"; 2-digit layer code will be appended if layer != -1)')
+                                  help="""Extension for the corrected files that will be written out 
+                                       (default = ".fw"; 2-digit layer code will be appended if layer != -1)""")
     run_option_group.add_argument('--max_files',             default=-1,    type=int,
-                                  help='Maximum number of files to use (default = -1 runs all files)')
+                                  help='Maximum number of files to use (default = -1 runs all files for the requested sample)')
     run_option_group.add_argument('--logfile_name_stem',     default='correct_and_copy_rawfiles',
-                                  help='Filename stem for the log that will be created (default="correct_and_copy_rawfiles"; timestamp and ".log" will be appended)')
+                                  help="""Filename stem for the log that will be created (default="correct_and_copy_rawfiles"; 
+                                          timestamp and ".log" will be appended)""")
     args = parser.parse_args()
     #start up the corrector from the arguments
     corrector = RawfileCorrector(args)
