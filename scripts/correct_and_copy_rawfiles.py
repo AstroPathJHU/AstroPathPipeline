@@ -120,7 +120,7 @@ class RawfileCorrector :
                 if not os.path.isfile(args.warp_def) :
                     raise FileNotFoundError(f'ERROR: warp fit result file {args.warp_def} does not exist!')
                 warp_fit_result = readtable(args.warp_def,WarpFitResult)
-                if len(warp_fit_result)==1 :
+                if len(warp_fit_result)>1 :
                     raise ValueError(f'ERROR: warp fit result file {args.warp_def} has more than one set of parameters!')
                 wfr = warp_fit_result[0]
                 warp_shifts = []
@@ -138,8 +138,8 @@ class RawfileCorrector :
                 self._warps = {}
                 for ln in layers_to_run :
                     cx_shift = 0.; cy_shift = 0.
-                    if ln in [ws.ln for ws in warp_shifts] :
-                        this_ws = ([ws for ws in warp_shifts if ws.ln==ln])[0]
+                    if ln in [ws.layer_n for ws in warp_shifts] :
+                        this_ws = ([ws for ws in warp_shifts if ws.layer_n==ln])[0]
                         cx_shift = this_ws.cx_shift; cy_shift = this_ws.cy_shift
                     sf = args.warping_scalefactor
                     self._warps[ln] = CameraWarp(self._img_dims[1],self._img_dims[0],wfr.cx+cx_shift,wfr.cy+cy_shift,
@@ -184,7 +184,7 @@ class RawfileCorrector :
                 fp.write('LOGFILE for correct_and_copy_rawfiles\n')
                 fp.write('-------------------------------------\n\n')
         self.__writeLog(f'Working directory {os.path.basename(os.path.normpath(self._working_dir_path))} has been created in {workingdir_location}.')
-        if args.layer==-1 :
+        if self._layer==-1 :
             self.__writeLog(f'Corrected {self._img_dims[-1]}-layer files will be written out to {self._working_dir_path}')
         else :
             self.__writeLog(f'Corrected layer {self._layer} files will be written out to {self._working_dir_path}.')
@@ -236,7 +236,12 @@ class RawfileCorrector :
         self.__writeLog(f'Found {len(all_rawfile_paths)} total raw files in {os.path.join(self._rawfile_top_dir,self._sample_name)}')
         if self._max_files!=-1 :
             all_rawfile_paths=all_rawfile_paths[:self._max_files]
-            self.__writeLog(f'Will correct and write out {len(all_rawfile_paths)} file layers')
+            msg = f'Will correct and write out {len(all_rawfile_paths)} file'
+            if self._layer==-1 :
+                msg+='s'
+            else :
+                msg+=' layers'
+            self.__writeLog(msg)
         #next run the correction and copying of the files
         for irfp,rfp in enumerate(all_rawfile_paths,start=1) :
             self._correctAndCopyWorker(rfp,irfp,len(all_rawfile_paths))
