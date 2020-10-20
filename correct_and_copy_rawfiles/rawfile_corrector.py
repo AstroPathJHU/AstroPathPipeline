@@ -8,7 +8,7 @@ from ..utilities.img_correction import correctImageForExposureTime, correctImage
 from ..utilities.img_correction import correctImageLayerWithFlatfield, correctImageWithFlatfield, correctImageLayerWithWarpFields
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile, findExposureTimeXMLFile
 from ..utilities.img_file_io import writeModifiedExposureTimeXMLFile, getMedianExposureTimesAndCorrectionOffsetsForSample
-from ..utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer 
+from ..utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer, LayerOffset
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
 import numpy as np, matplotlib.pyplot as plt
@@ -53,7 +53,7 @@ class RawfileCorrector :
         #set the warping correction variables
         self._setWarpingVariables(args.skip_warping,args.warp_def,args.warp_shift_file,args.warp_shift,args.warping_scalefactor,layers_to_run)
         #start up the logfile and add some information to it
-        self._startUpLogFile(args.logfile_name_stem,args.exposure_time_offset_file,args.flatfield_file.args.warp_def,args.warp_shift_file,
+        self._startUpLogFile(args.logfile_name_stem,args.exposure_time_offset_file,args.flatfield_file,args.warp_def,args.warp_shift_file,
                              args.warp_shift,args.warping_scalefactor)
         #set a couple more instance variables
         self._infile_ext = args.input_file_extension
@@ -104,11 +104,18 @@ class RawfileCorrector :
             self._med_exp_time, self._et_correction_offset = getMedianExposureTimesAndCorrectionOffsetsForSample(self._metadata_top_dir,
                                                                                                                  self._sample_name,
                                                                                                                  eto_file)
+            los = [LayerOffset(li+1,-1,self._et_correction_offset[li],-1.) for li in range(self._img_dims[-1])]
         else :
             self._med_exp_time, self._et_correction_offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(self._metadata_top_dir,
                                                                                                                     self._sample_name,
                                                                                                                     eto_file,
                                                                                                                     self._layer)
+            los = [LayerOffset(self._layer,-1,self._et_correction_offset,-1.)]
+        with cd(self._working_dir_path) :
+            if not os.path.isdir(APPLIED_CORRECTION_PLOT_DIR_NAME) :
+                os.mkdir(APPLIED_CORRECTION_PLOT_DIR_NAME)
+            with cd(APPLIED_CORRECTION_PLOT_DIR_NAME) :
+                writetable('applied_exposure_time_correction_offsets.csv',los)
 
     #helper function to set the flatfield correction variable
     def _setFlatfieldVariable(self,skip_ff,ff_file,layers_to_run) :
@@ -154,7 +161,9 @@ class RawfileCorrector :
                 cx_shift,cy_shift = arg_ws.split(',')
                 cx_shift = float(cx_shift); cy_shift = float(cy_shift)
                 for ln in layers_to_run :
-                    warp_shifts = warp_shifts.append(WarpShift(ln,cx_shift,cy_shift))
+                    warp_shifts.append(WarpShift(ln,cx_shift,cy_shift))
+            if self._layer!=-1 :
+                warp_shifts = [ws for ws in warp_shifts if ws.layer_n==self._layer]
             if len(warp_shifts)>0 :
                 with cd(os.path.join(self._working_dir_path,APPLIED_CORRECTION_PLOT_DIR_NAME)) :
                     writetable('applied_warp_shifts.csv',warp_shifts)
@@ -261,11 +270,17 @@ class RawfileCorrector :
             if self._layer==-1 :
                 et_corrected = correctImageForExposureTime(raw,rawfile_path,self._metadata_top_dir,self._med_exp_time,self._et_correction_offset)
             else :
-                layer_exp_time = (getExposureTimesByLayer(rawfile_path,self._img_dims[-1],self._metadata_top_dir))[self._layer-1]
+                layer_exp_times = getExposureTimesByLayer(rawfile_path,self._img_dims[-1],self._metadata_top_dir)
+                layer_exp_time = layer_exp_times[self._layer-1]
                 et_corrected = correctImageLayerForExposureTime(raw,layer_exp_time,self._med_exp_time,self._et_correction_offset)
             #write out the modified exposure time xml file
             with cd(self._working_dir_path) :
-                writeModifiedExposureTimeXMLFile(original_et_xml_filepath,self._med_exp_time)
+                if self._layer==-1 :
+                    writeModifiedExposureTimeXMLFile(original_et_xml_filepath,self._med_exp_time)
+                else :
+                    exp_times_to_write = layer_exp_times
+                    layer_exp_times[self._layer-1] = self._med_exp_time
+                    writeModifiedExposureTimeXMLFile(original_et_xml_filepath,exp_times_to_write)
             msg+='exposure time, '
         else :
             copy2(original_et_xml_filepath,self._working_dir_path)
