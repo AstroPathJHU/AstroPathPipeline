@@ -10,7 +10,7 @@ from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawA
 from ..utilities.img_file_io import writeModifiedExposureTimeXMLFile, getMedianExposureTimesAndCorrectionOffsetsForSample
 from ..utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer, LayerOffset
 from ..utilities.tableio import readtable, writetable
-from ..utilities.misc import cd
+from ..utilities.misc import cd, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt
 from shutil import copy2
 import os, time, glob
@@ -137,8 +137,10 @@ class RawfileCorrector :
                         pos = ax.imshow(self._ff)
                     ax.set_title(f'applied flatfield, layer {ln}')
                     f.colorbar(pos,ax=ax)
-                    plt.savefig(f'applied_flatfield_layer_{ln}.png')
+                    savename = f'applied_flatfield_layer_{ln}.png'
+                    plt.savefig(savename)
                     plt.close()
+                    cropAndOverwriteImage(savename)
 
     #helper function to set the warping variables
     def _setWarpingVariables(self,skip_w,w_def,ws_file,arg_ws,w_sf,layers_to_run) :
@@ -195,8 +197,10 @@ class RawfileCorrector :
                 pos = ax[2].imshow(self._dy_warp_field)
                 ax[2].set_title('applied dy warp')
                 f.colorbar(pos,ax=ax[2])
-                plt.savefig('applied_warping_correction_model.png')
+                savename = 'applied_warping_correction_model.png'
+                plt.savefig(savename)
                 plt.close()
+                cropAndOverwriteImage(savename)
 
     #helper function to start up the log file and add some information to it
     def _startUpLogFile(self,lf_name_stem,eto_filepath,ff_filepath,w_def,ws_file,arg_ws,w_sf) :
