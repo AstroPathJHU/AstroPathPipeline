@@ -1,12 +1,12 @@
 #imports
 from .warp import CameraWarp
 from .plotting import principalPointPlot, radWarpAmtPlots, radWarpParPlots, radWarpPCAPlots, warpFieldVariationPlots
-from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments, WarpFitResult, FieldLog
+from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments, WarpFitResult, FieldLog, WarpingSummary
 from .config import CONST
 from ..utilities.tableio import readtable, writetable
-from ..utilities.misc import cd
+from ..utilities.misc import cd, MetadataSummary
 from argparse import ArgumentParser
-import os, random, math, subprocess, multiprocessing as mp
+import os, random, math, subprocess, datetime, multiprocessing as mp
 
 #################### FILE-SCOPE CONSTANTS ####################
 
@@ -103,9 +103,10 @@ if __name__=='__main__' :
         pool.join()
         warp_logger.info('All jobs in the pool have finished! : ) Collecting results....')
         #write out a list of all the individual results
-        results = []
+        results = []; metadata_summaries = []
         for dirname in dirnames :
             results.append((readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))[0])
+            metadata_summaries.append((readtable(os.path.join(dirname,f'metadata_summary_{os.path.basename(os.path.normpath(dirname))}.csv'),MetadataSummary))[0])
         with cd(args.workingdir) :
             writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv',results)
         if os.path.isfile(os.path.join(args.workingdir,f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv')) :
@@ -139,31 +140,42 @@ if __name__=='__main__' :
         if sum_weights!=0. :
             w_cx/=sum_weights; w_cy/=sum_weights; w_fx/=sum_weights; w_fy/=sum_weights
             w_k1/=sum_weights; w_k2/=sum_weights; w_k3/=sum_weights; w_p1/=sum_weights; w_p2/=sum_weights
+        #find the overall min/max time in the metadata summaries
+        overall_min_time = datetime.datetime.fromisoformat(metadata_summaries[0].mindate)
+        overall_max_time = datetime.datetime.fromisoformat(metadata_summaries[0].maxdate)
+        if len(metadata_summaries)>1 :
+            for mds in metadata_summaries[1:]
+                thismintime = datetime.datetime.fromisoformat(mds.mindate)
+                thismaxtime = datetime.datetime.fromisoformat(mds.maxdate)
+                if thismintime<overall_min_time :
+                    overall_min_time = thismintime
+                if thismaxtime>overall_max_time :
+                    overall_max_time = thismaxtime
         #make a warp from these w average parameters and write out its info
         w_avg_warp = CameraWarp(results[0].n,results[0].m,w_cx,w_cy,w_fx,w_fy,w_k1,w_k2,w_k3,w_p1,w_p2)
-        w_avg_result = WarpFitResult()
-        w_avg_result.dirname = args.workingdir
-        w_avg_result.n  = results[0].n
-        w_avg_result.m  = results[0].m
-        w_avg_result.cx = w_avg_warp.cx
-        w_avg_result.cy = w_avg_warp.cy
-        w_avg_result.fx = w_avg_warp.fx
-        w_avg_result.fy = w_avg_warp.fy
-        w_avg_result.k1 = w_avg_warp.k1
-        w_avg_result.k2 = w_avg_warp.k2
-        w_avg_result.k3 = w_avg_warp.k3
-        w_avg_result.p1 = w_avg_warp.p1
-        w_avg_result.p2 = w_avg_warp.p2
-        max_r_x, max_r_y = w_avg_warp._getMaxDistanceCoords(w_avg_warp.cx,w_avg_warp.cy)
-        w_avg_result.max_r_x_coord  = max_r_x
-        w_avg_result.max_r_y_coord  = max_r_y
-        w_avg_result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)
-        w_avg_result.max_rad_warp   = w_avg_warp.maxRadialDistortAmount(None)
-        w_avg_result.max_tan_warp   = w_avg_warp.maxTangentialDistortAmount(None)
+        w_avg_warp_summary = WarpingSummary(
+                metadata_summaries[0].sample_name,
+                metadata_summaries[0].project,
+                metadata_summaries[0].cohort,
+                metadata_summaries[0].microscope_name,
+                str(overall_min_time),
+                str(overall_max_time),
+                results[0].n,
+                results[0].m,
+                w_avg_warp.cx,
+                w_avg_warp.cy,
+                w_avg_warp.fx,
+                w_avg_warp.fy,
+                w_avg_warp.k1,
+                w_avg_warp.k2,
+                w_avg_warp.k3,
+                w_avg_warp.p1,
+                w_avg_warp.p2
+            )
         with cd(args.workingdir) :
-            writetable(f'{os.path.basename(os.path.normpath(args.workingdir))}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}',[w_avg_result])
+            writetable(f'{os.path.basename(os.path.normpath(args.workingdir))}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}',[w_avg_warp_summary])
             w_avg_warp.writeOutWarpFields(os.path.basename(os.path.normpath(args.workingdir)))
-        #aggregate the different metadata summary and field log files into one
+        #aggregate the different field log files into one
         all_field_logs = []
         for dirname in dirnames :
             all_field_logs+=((readtable(os.path.join(dirname,f'field_log_{os.path.basename(os.path.normpath(dirname))}.csv'),FieldLog)))

@@ -180,7 +180,7 @@ class SingleLayerExposureTimeFit :
             writetable(f'fields_used_in_exposure_time_fit_{self.sample}_layer_{self.layer}.csv',field_logs)
         #make the metadata summary object and write it out
         metadata_summary = MetadataSummary(self.sample,alignset.Project,alignset.Cohort,alignset.microscopename,
-                                           min([r.t for r in relevant_rectangles]),max([r.t for r in relevant_rectangles]))
+                                           str(min([r.t for r in relevant_rectangles])),str(max([r.t for r in relevant_rectangles])))
         with cd(self.plotdirpath) :
             writetable(f'metadata_summary_exposure_time_{self.sample}_layer_{self.layer}.csv',[metadata_summary])
         #return the list of exposure time overlaps and the summary of the metadata of the alignmentSet they came from

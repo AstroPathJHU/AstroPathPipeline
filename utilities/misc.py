@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt, numpy as np, uncertainties as unc
-import contextlib, dataclasses, fractions, logging, os, scipy.stats, tifffile, datetime, cv2
+import contextlib, dataclasses, fractions, logging, os, scipy.stats, tifffile, cv2
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -145,8 +145,8 @@ class MetadataSummary :
   project         : int
   cohort          : int
   microscope_name : str
-  mindate         : datetime.datetime
-  maxdate         : datetime.datetime
+  mindate         : str
+  maxdate         : str
 
 #helper function to return a list of rectangle ns for all rectangles on the edge of the tissue for this sample
 def getAlignmentSetTissueEdgeRectNs(aset) :

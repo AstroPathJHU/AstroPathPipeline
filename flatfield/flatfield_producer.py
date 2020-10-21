@@ -134,7 +134,7 @@ class FlatfieldProducer :
             a = AlignmentSetFromXML(samp.metadata_top_dir,os.path.dirname(os.path.dirname(this_samp_fps_to_run[0])),sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
             this_samp_rect_fn_stems = [os.path.basename(os.path.normpath(fp)).split('.')[0] for fp in this_samp_fps_to_run]
             rect_ts = [r.t for r in a.rectangles if r.file.replace(CONST.IM3_EXT,'') in this_samp_rect_fn_stems]
-            self._metadata_summaries.append(MetadataSummary(sn,a.Project,a.Cohort,a.microscopename,min(rect_ts),max(rect_ts)))
+            self._metadata_summaries.append(MetadataSummary(sn,a.Project,a.Cohort,a.microscopename,str(min(rect_ts)),str(max(rect_ts))))
             #choose which of them will have their masking images saved
             if len(this_samp_fps_to_run)<n_masking_images_per_sample :
                 msg=f'WARNING: Requested to save {n_masking_images_per_sample} masking images for each sample,'

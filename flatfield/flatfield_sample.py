@@ -227,7 +227,7 @@ class FlatfieldSample() :
         #use this to find the minimum and maximum collection time of the edge rectangle images
         edge_rect_ts = [r.t for r in a.rectangles if r.n in edge_rect_ns] 
         #save the metadata summary file for the thresholding file group
-        ms = MetadataSummary(self._name,a.Project,a.Cohort,a.microscopename,min(edge_rect_ts),max(edge_rect_ts))
+        ms = MetadataSummary(self._name,a.Project,a.Cohort,a.microscopename,str(min(edge_rect_ts)),str(max(edge_rect_ts)))
         if plotdir_path is not None :
             with cd(plotdir_path) :
                 writetable(f'{self.TISSUE_EDGE_MDS_STEM}_{self._name}.csv',[ms])

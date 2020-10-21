@@ -127,6 +127,27 @@ class WarpShift :
     cx_shift : float
     cy_shift : float
 
+#utility class for logging warping parameters and the sample they come from
+@dataclasses.dataclass
+class WarpingSummary :
+    sample_name     : str
+    project         : int
+    cohort          : int
+    microscope_name : str
+    mindate         : str
+    maxdate         : str
+    n               : int
+    m               : int
+    cx              : float
+    cy              : float
+    fx              : float
+    fy              : float
+    k1              : float
+    k2              : float
+    k3              : float
+    p1              : float
+    p2              : float
+
 #helper function to mutate an argument parser for some generic warping options
 def addCommonWarpingArgumentsToParser(parser,fit=True,fitpars=True,job_organization=True) :
     #add the common options, except not for warping
