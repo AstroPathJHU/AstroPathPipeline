@@ -1,7 +1,7 @@
 #imports
 from .utilities import correction_logger, getWarpFieldPathsFromWarpDef
 from ..warping.warp import CameraWarp
-from ..warping.utilities import WarpFitResult, WarpShift
+from ..warping.utilities import WarpingSummary, WarpShift
 from ..flatfield.config import CONST as FF_CONST
 from ..warping.config import CONST as WARP_CONST
 from ..utilities.img_correction import correctImageForExposureTime, correctImageLayerForExposureTime
@@ -152,7 +152,7 @@ class RawfileCorrector :
                 os.mkdir(APPLIED_CORRECTION_PLOT_DIR_NAME)
         #first try to define the warping from a parameter file
         if w_def.endswith('.csv') :
-            warp_fit_result = readtable(w_def,WarpFitResult)
+            warp_fit_result = readtable(w_def,WarpingSummary)
             if len(warp_fit_result)>1 :
                 raise ValueError(f'ERROR: warp fit result file {w_def} has more than one set of parameters!')
             wfr = warp_fit_result[0]
