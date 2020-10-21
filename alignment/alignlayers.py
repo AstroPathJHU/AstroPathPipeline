@@ -184,10 +184,10 @@ class AlignBroadbandFiltersBase(AlignLayersBase):
 
 class AlignBroadbandFilters(AlignBroadbandFiltersBase, AlignLayers):
   @property
-  def alignmentsfilename(self): return self.csv(f"alignbroadbandfilters")
+  def alignmentsfilename(self): return self.csv("alignbroadbandfilters")
   @property
   def stitchfilenames(self):
-    return self.csv(f"broadbandfilterpositions"), self.csv(f"broadbandpositioncovariances")
+    return self.csv("broadbandfilterpositions"), self.csv("broadbandpositioncovariances")
 
 class AlignLayersByBroadbandFilter(SampleWithLayerOverlaps, ReadRectangles):
   def __init__(self, *args, filetype="flatWarp", **kwargs):

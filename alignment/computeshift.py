@@ -90,7 +90,6 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     staterror0 = staterror1 = abs(shifted[0] - shifted[1])
   else:
     staterror0, staterror1 = staterrorimages
-  staterror = abs(shifted[0] - shifted[1])
   #cross correlation evaluated at 0
   error_crosscorrelation = np.sqrt(np.sum(
     (staterror0 * shifted[1])**2 + (staterror1 * shifted[0])**2

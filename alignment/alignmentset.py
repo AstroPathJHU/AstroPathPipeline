@@ -256,19 +256,21 @@ class AlignmentSet(AlignmentSetBase, ReadRectangles):
     result = super().getDAPI(*args, **kwargs)
 
     if writeimstat:
-      with rectangle.using_image() as image:
-        self.imagestats = [
-          ImageStats(
-            n=rectangle.n,
-            mean=np.mean(image),
-            min=np.min(image),
-            max=np.max(image),
-            std=np.std(image),
-            cx=rectangle.cx,
-            cy=rectangle.cy,
-            pscale=self.pscale,
-          ) for rectangle in self.rectangles
-        ]
+      self.imagestats = []
+      for rectangle in self.rectangles:
+        with rectangle.using_image() as image:
+          self.imagestats.append(
+            ImageStats(
+              n=rectangle.n,
+              mean=np.mean(image),
+              min=np.min(image),
+              max=np.max(image),
+              std=np.std(image),
+              cx=rectangle.cx,
+              cy=rectangle.cy,
+              pscale=self.pscale,
+            )
+          )
       self.writecsv("imstat", self.imagestats, retry=self.interactive)
 
     return result
