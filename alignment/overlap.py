@@ -1,4 +1,4 @@
-import dataclasses, matplotlib.pyplot as plt, methodtools, numpy as np, typing, uncertainties as unc
+import dataclasses, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, typing, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 from ..baseclasses.overlap import Overlap
@@ -8,16 +8,45 @@ from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
 class AlignmentOverlap(Overlap):
-
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, layer1=None, layer2=None, **kwargs):
     self.__use_gpu = False
     super().__init__(*args, **kwargs)
+    if layer1 is None:
+      try:
+        self.rectangles[0].layer
+      except AttributeError:
+        raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[0].layers}")
+    if layer2 is None:
+      try:
+        self.rectangles[1].layer
+      except AttributeError:
+        raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[1].layers}")
+    self.__layers = layer1, layer2
+
+  def __hash__(self):
+    if not self.ismultilayer: return super().__hash__()
+    return hash((super().__hash__(), self.layers))
+  def __eq__(self, other):
+    return super().__eq__(other) and self.layers == other.layers
+
+  @property
+  def layers(self): return self.__layers
+  @property
+  def layer1(self): return self.__layers[0]
+  @property
+  def layer2(self): return self.__layers[1]
+  @methodtools.lru_cache()
+  @property
+  def ismultilayer(self):
+    return any(_ is not None for _ in self.layers)
 
   @property
   def images(self):
-    result = tuple(r.image[:] for r in self.rectangles)
-    for i in result: i.flags.writeable = False
-    return result
+    images = [None, None]
+    with self.rectangles[0].using_image() as images[0], self.rectangles[1].using_image() as images[1]:
+      result = tuple(image[:, :] if layer is None else image[r.layers.index(layer), :, :] for r, image, layer in more_itertools.zip_equal(self.rectangles, images, self.layers))
+      for i in result: i.flags.writeable = False
+      return result
 
   @methodtools.lru_cache()
   @property
@@ -108,15 +137,15 @@ class AlignmentOverlap(Overlap):
         if "gputhread" in computeshiftkwargs.keys() and "gpufftdict" in computeshiftkwargs.keys() :
           self.use_gpu = computeshiftkwargs["gputhread"] is not None and computeshiftkwargs["gpufftdict"] is not None
       kwargs2 = self.__shiftclip(dxvec=kwargs1["dxvec"])
-      self.result = AlignmentResult(
+      self.result = self.alignmentresulttype(
         **self.alignmentresultkwargs,
         **kwargs1,
         **kwargs2,
       )
     except Exception as e:
-      if debug: raise e
-      self.result = AlignmentResult(
-        exit=3,
+      if debug: raise
+      self.result = self.alignmentresulttype(
+        exit=255,
         dxvec=(units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale), units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale)),
         sc=1.,
         mse=(0., 0., 0.),
@@ -126,18 +155,37 @@ class AlignmentOverlap(Overlap):
     return self.result
 
   @property
+  def alignmentresulttype(self):
+    if self.ismultilayer:
+      return LayerAlignmentResult
+    else:
+      return AlignmentResult
+
+  @property
   def alignmentresultkwargs(self):
-    return dict(
-      n=self.n,
-      p1=self.p1,
-      p2=self.p2,
-      code=self.tag,
-      layer=self.layer,
-      pscale=self.pscale,
-    )
+    result = {
+      "n": self.n,
+      "p1": self.p1,
+      "p2": self.p2,
+      "code": self.tag,
+      "pscale": self.pscale,
+    }
+    if self.ismultilayer:
+      result.update({
+        "layer1": self.layers[0],
+        "layer2": self.layers[1],
+      })
+    else:
+      result.update({
+        "layer": self.layer,
+      })
+    return result
+
+  def isinverseof(self, inverse):
+    return (inverse.p1, inverse.p2) == (self.p2, self.p1) and inverse.layers == tuple(reversed(self.layers))
 
   def getinversealignment(self, inverse):
-    assert (inverse.p1, inverse.p2) == (self.p2, self.p1)
+    assert self.isinverseof(inverse)
     self.result = AlignmentResult(
       exit = inverse.result.exit,
       dxvec = -inverse.result.dxvec,
@@ -191,17 +239,20 @@ class AlignmentOverlap(Overlap):
       "mse": (mse1, mse2, mse(diff))
     }
 
-  def getimage(self,normalize=100.,shifted=True) :
+  def getimage(self,normalize=100.,shifted=True,scale=False) :
     if shifted:
       red, green = self.shifted
+      if scale:
+        red *= self.result.sc ** -.5
+        green *= self.result.sc ** .5
     else:
       red, green = self.cutimages
     blue = (red+green)/2
     img = np.array([red, green, blue]).transpose(1, 2, 0) / normalize
     return img
 
-  def showimages(self, normalize=100., shifted=True, saveas=None, ticks=False, **savekwargs):
-    img=self.getimage(normalize,shifted)
+  def showimages(self, normalize=100., shifted=True, scale=False, saveas=None, ticks=False, **savekwargs):
+    img=self.getimage(normalize=normalize, shifted=shifted, scale=scale)
     plt.imshow(img)
     if ticks:
       plt.xlabel("$x$")
@@ -224,28 +275,7 @@ class AlignmentOverlap(Overlap):
     return (img_orig,img_shifted)
 
 @dataclass_dc_init(frozen=True)
-class AlignmentResult(DataClassWithDistances):
-  pixelsormicrons = "pixels"
-
-  n: int
-  p1: int
-  p2: int
-  code: int
-  layer: int
-  exit: int
-  dx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  dy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  sc: float
-  mse1: float
-  mse2: float
-  mse3: float
-  covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: dataclasses.InitVar[float] = None
-  exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
-  readingfromfile: dataclasses.InitVar[bool] = False
-
+class AlignmentResultBase(DataClassWithDistances):
   def __init__(self, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)
     if dxvec is not None:
@@ -280,3 +310,63 @@ class AlignmentResult(DataClassWithDistances):
   def isedge(self):
     return self.tag % 2 == 0
 
+  @property
+  def iscorner(self):
+    return self.tag % 2 == 1 and self.tag != 5
+
+  @property
+  def issamerectangle(self):
+    return self.tag == 5
+
+@dataclass_dc_init(frozen=True)
+class AlignmentResult(AlignmentResultBase):
+  pixelsormicrons = "pixels"
+
+  n: int
+  p1: int
+  p2: int
+  code: int
+  layer: int
+  exit: int
+  dx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  dy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  sc: float
+  mse1: float
+  mse2: float
+  mse3: float
+  covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  pscale: dataclasses.InitVar[float] = None
+  exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
+  readingfromfile: dataclasses.InitVar[bool] = False
+
+  def __init__(self, *args, **kwargs):
+    return super().__init__(*args, **kwargs)
+
+@dataclass_dc_init(frozen=True)
+class LayerAlignmentResult(AlignmentResultBase):
+  pixelsormicrons = "pixels"
+
+  n: int
+  p1: int
+  p2: int
+  code: int
+  layer1: int
+  layer2: int
+  exit: int
+  dx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  dy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  sc: float
+  mse1: float
+  mse2: float
+  mse3: float
+  covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  pscale: dataclasses.InitVar[float] = None
+  exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
+  readingfromfile: dataclasses.InitVar[bool] = False
+
+  def __init__(self, *args, **kwargs):
+    return super().__init__(*args, **kwargs)

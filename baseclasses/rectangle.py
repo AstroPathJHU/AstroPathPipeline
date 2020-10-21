@@ -1,4 +1,4 @@
-import abc, collections, contextlib, dataclasses, datetime, methodtools, numpy as np, pathlib, warnings
+import abc, collections, contextlib, dataclasses, datetime, jxmlease, methodtools, numpy as np, pathlib, warnings
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, memmapcontext
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
@@ -54,11 +54,11 @@ class RectangleWithImageBase(Rectangle):
 
   def __init__(self, *args, transformations=[], **kwargs):
     super().__init__(*args, **kwargs)
-    self.__images_cache = [None for _ in range(len(transformations)+1)]
-    self.__accessed_image = np.zeros(dtype=bool, shape=len(transformations)+1)
-    self.__using_image_counter = np.zeros(dtype=int, shape=len(transformations)+1)
-    self.__debug_load_images_counter = np.zeros(dtype=int, shape=len(transformations)+1)
     self.__transformations = transformations
+    self.__images_cache = [None for _ in range(self.nimages)]
+    self.__accessed_image = np.zeros(dtype=bool, shape=self.nimages)
+    self.__using_image_counter = np.zeros(dtype=int, shape=self.nimages)
+    self.__debug_load_images_counter = np.zeros(dtype=int, shape=self.nimages)
 
   def __del__(self):
     if self.__DEBUG:
@@ -69,6 +69,10 @@ class RectangleWithImageBase(Rectangle):
   @abc.abstractmethod
   def getimage(self):
     pass
+
+  @property
+  def nimages(self):
+    return len(self.__transformations)+1
 
   #do not override any of these functions or call them from super()
   #override getimage() instead and call super().getimage()
@@ -106,7 +110,7 @@ class RectangleWithImageBase(Rectangle):
 
   def __image(self, i):
     if self.__images_cache[i] is None:
-      if i < 0: i = (len(self.__transformations)+1) + i
+      if i < 0: i = self.nimages + i
       if i == 0:
         self.__images_cache[i] = self.getimage()
       else:
@@ -162,7 +166,7 @@ class RectangleReadImageBase(RectangleWithImageBase):
     return image
 
 class RectangleWithImageMultiLayer(RectangleReadImageBase):
-  def __init__(self, *args, imagefolder, filetype, width, height, layers, nlayers, **kwargs):
+  def __init__(self, *args, imagefolder, filetype, width, height, layers, nlayers, xmlfolder=None, **kwargs):
     super().__init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__filetype = filetype
@@ -170,6 +174,7 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
     self.__height = height
     self.__nlayers = nlayers
     self.__layers = layers
+    self.__xmlfolder = xmlfolder
 
   @property
   def imageshape(self):
@@ -201,6 +206,42 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
   @property
   def imageslicefrominput(self):
     return tuple(_-1 for _ in self.__layers), slice(None), slice(None)
+
+  @property
+  def layers(self):
+    return self.__layers
+
+  @property
+  def xmlfile(self):
+    if self.__xmlfolder is None:
+      raise ValueError("Can't get xml info if you don't provide the rectangle with an xml folder")
+    return self.__xmlfolder/self.file.replace(".im3", ".SpectralBasisInfo.Exposure.xml")
+
+  @methodtools.lru_cache()
+  @property
+  def __allexposuretimesandbroadbandfilters(self):
+    result = []
+    with open(self.xmlfile, "rb") as f:
+      broadbandfilter = 0
+      for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
+        if node.xml_attrs["name"] == "Exposure":
+          thisbroadbandfilter = [float(_) for _ in str(node).split()]
+          #sanity check
+          assert len(thisbroadbandfilter) == int(node.get_xml_attr("size"))
+          broadbandfilter += 1
+          for exposuretime in thisbroadbandfilter:
+            result.append((exposuretime, broadbandfilter))
+    return result
+
+  @property
+  def exposuretimes(self):
+    all = self.__allexposuretimesandbroadbandfilters
+    return [all[layer-1][0] for layer in self.__layers]
+
+  @property
+  def broadbandfilters(self):
+    all = self.__allexposuretimesandbroadbandfilters
+    return [all[layer-1][1] for layer in self.__layers]
 
 class RectangleWithImage(RectangleWithImageMultiLayer):
   def __init__(self, *args, layer, readlayerfile=True, **kwargs):
@@ -258,6 +299,15 @@ class RectangleWithImage(RectangleWithImageMultiLayer):
     else:
       return self.layer-1, slice(None), slice(None)
 
+  @property
+  def exposuretime(self):
+    _, = self.exposuretimes
+    return _
+  @property
+  def broadbandfilter(self):
+    _, = self.broadbandfilters
+    return _
+
 class RectangleCollection(abc.ABC):
   @abc.abstractproperty
   def rectangles(self): pass
@@ -302,5 +352,16 @@ class RectangleProvideImage(RectangleWithImageBase):
     super().__init__(*args, **kwargs)
   def getimage(self):
     return self.__image
+
+class RectangleFromOtherRectangle(RectangleWithImageBase):
+  def __init__(self, *args, originalrectangle, **kwargs):
+    self.__originalrectangle = originalrectangle
+    super().__init__(*args, rectangle=originalrectangle, readingfromfile=False, **kwargs)
+  @property
+  def originalrectangle(self):
+    return self.__originalrectangle
+  def getimage(self):
+    with self.__originalrectangle.using_image() as image:
+      return image
 
 rectanglefilter = rectangleoroverlapfilter

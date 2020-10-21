@@ -1,10 +1,11 @@
-import itertools, logging, numpy as np, os, pathlib
+import itertools, logging, numpy as np, os, pathlib, re
 from ..alignment.alignmentcohort import AlignmentCohort
 from ..alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
 from ..alignment.overlap import AlignmentResult
 from ..alignment.field import Field, FieldOverlap
 from ..alignment.stitch import AffineEntry
 from ..baseclasses.sample import SampleDef
+from ..utilities.misc import re_subs
 from ..utilities.tableio import readtable
 from ..utilities import units
 from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseSaveOutput
@@ -26,9 +27,9 @@ class TestAlignment(TestBaseSaveOutput):
       thisfolder/"data"/"YZ71"/"logfiles"/"YZ71-align.log",
     ]
 
-  def testAlignment(self, SlideID="M21_1"):
+  def testAlignment(self, SlideID="M21_1", **kwargs):
     samp = SampleDef(SlideID=SlideID, SampleID=0, Project=0, Cohort=0)
-    a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", samp, uselogfiles=True)
+    a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", samp, uselogfiles=True, **kwargs)
     with a:
       a.getDAPI()
       a.align()
@@ -51,6 +52,7 @@ class TestAlignment(TestBaseSaveOutput):
       rows = readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
       targetrows = readtable(thisfolder/"reference"/"alignment"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
       for row, target in itertools.zip_longest(rows, targetrows):
+        if cls == AlignmentResult and row.exit != 0 and target.exit != 0: continue
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
     for log in (
@@ -59,8 +61,9 @@ class TestAlignment(TestBaseSaveOutput):
     ):
       ref = thisfolder/"reference"/"alignment"/SlideID/log.name
       with open(ref) as fref, open(log) as fnew:
-        refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
-        newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
+        subs = (";[^;]*$", ""), (r"(WARNING: (component tiff|xml files|constants\.csv)).*$", r"\1")
+        refcontents = os.linesep.join([re_subs(line, *subs, flags=re.MULTILINE) for line in fref.read().splitlines()])+os.linesep
+        newcontents = os.linesep.join([re_subs(line, *subs, flags=re.MULTILINE) for line in fnew.read().splitlines()])+os.linesep
         self.assertEqual(refcontents, newcontents)
 
   def testAlignmentFastUnits(self):
@@ -226,8 +229,8 @@ class TestAlignment(TestBaseSaveOutput):
 
     pscale1 = a1.pscale
     pscale2 = a2.pscale
-    rtol = 1e-6
-    atol = 1e-8
+    rtol = 1e-5
+    atol = 1e-7
 
     for o1, o2 in zip(a1.overlaps, a2.overlaps):
       x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale1))
@@ -276,22 +279,24 @@ class TestAlignment(TestBaseSaveOutput):
       if len(contents) != 1:
         raise AssertionError(f"Expected only one line of log\n\n{contents}")
 
-  def testFromXML(self, SlideID="M21_1"):
+  def testFromXML(self, SlideID="M21_1", **kwargs):
     args = thisfolder/"data", thisfolder/"data"/"flatw", SlideID
-    kwargs = {"selectrectangles": range(10), "root3": thisfolder/"data"/"raw"}
+    kwargs = {**kwargs, "selectrectangles": range(10), "root3": thisfolder/"data"/"raw"}
     a1 = AlignmentSet(*args, **kwargs)
     a1.getDAPI()
     a1.align()
     result1 = a1.stitch()
+    nclip = a1.nclip
+    position = a1.position
 
     with temporarilyremove(thisfolder/"data"/SlideID/"dbload"):
-      a2 = AlignmentSetFromXML(*args, nclip=units.pixels(a1.nclip, pscale=a1.pscale), position=a1.position, **kwargs)
+      a2 = AlignmentSetFromXML(*args, nclip=units.pixels(nclip, pscale=a1.pscale), position=position, **kwargs)
       a2.getDAPI()
       a2.align()
       result2 = a2.stitch()
 
       with temporarilyremove(thisfolder/"data"/SlideID/"inform_data"):
-        a3 = AlignmentSetFromXML(*args, nclip=units.pixels(a1.nclip, pscale=a1.pscale), **kwargs)
+        a3 = AlignmentSetFromXML(*args, nclip=units.pixels(nclip, pscale=a1.pscale), **kwargs)
         a3.getDAPI()
         a3.align()
         result3 = a3.stitch()
@@ -310,12 +315,12 @@ class TestAlignment(TestBaseSaveOutput):
     np.testing.assert_array_equal(i1, i2)
 
   def testPolaris(self):
-    self.testAlignment("YZ71")
+    self.testAlignment("YZ71", root3=thisfolder/"data"/"raw")
 
   def testPolarisFastUnits(self):
     with units.setup_context("fast"):
-      self.testAlignment("YZ71")
+      self.testAlignment("YZ71", root3=thisfolder/"data"/"raw")
 
   def testPolarisFromXMLFastUnits(self):
     with units.setup_context("fast"):
-      self.testFromXML("YZ71")
+      self.testFromXML("YZ71", root3=thisfolder/"data"/"raw")
