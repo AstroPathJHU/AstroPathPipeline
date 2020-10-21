@@ -318,10 +318,13 @@ def compareWithAlexWarp(all_results) :
 
 ###################################################################################################################################
 
+#file-scope dict of the oppostie overlap correspondences
+OPPOSITE_OVERLAP_TAGS = {1:9,2:8,3:7,4:6,6:4,7:3,8:2,9:1}
+
 #little utility class to help with making the octet overlap comparison images
 class OctetComparisonVisualization :
 
-    def __init__(self,overlaps,shifted,name_stem) :
+    def __init__(self,overlaps,shifted,name_stem,opposite=False) :
         """
         overlaps  = list of 8 AlignmentOverlap objects to use in building the figure
         shifted   = whether the figure should be built using the shifted overlap images
@@ -330,15 +333,24 @@ class OctetComparisonVisualization :
         self.overlaps = overlaps
         self.shifted = shifted
         self.name_stem = name_stem
+        self.opposite = opposite
         self.outer_clip = self.overlaps[0].nclip
         self.shift_clip = self.outer_clip+2
         self.normalize = CONST.OVERLAY_NORMALIZE
-        self.p1_im = self.overlaps[0].images[0]/self.normalize
+        if self.opposite :
+            self.p1_im = self.overlaps[0].images[1]/self.normalize
+        else :
+            self.p1_im = self.overlaps[0].images[0]/self.normalize
         self.whole_image = np.zeros((self.p1_im.shape[0],self.p1_im.shape[1],3),dtype=self.p1_im.dtype)
         self.images_stacked_mask = np.zeros(self.whole_image.shape,dtype=np.uint8)
         self.overlay_dicts = {}
         for olap in self.overlaps :
-            self.overlay_dicts[olap.tag] = {'image':olap.getimage(self.normalize,self.shifted),'dx':-olap.result.dx/2.,'dy':-olap.result.dy/2.}
+            if self.opposite:
+                self.overlay_dicts[OPPOSITE_OVERLAP_TAGS[olap.tag]] = {'image':olap.getimage(self.normalize,self.shifted),
+                                                                       'dx':olap.result.dx/2.,'dy':olap.result.dy/2.}
+            else :
+                self.overlay_dicts[olap.tag] = {'image':olap.getimage(self.normalize,self.shifted),
+                                                'dx':-olap.result.dx/2.,'dy':-olap.result.dy/2.}
 
     def stackOverlays(self) :
         """
@@ -353,9 +365,12 @@ class OctetComparisonVisualization :
                 failed_p1s_codes.append(ret)
         #divide the total image by how many overlays are contributing at each point
         self.whole_image[self.images_stacked_mask!=0]/=self.images_stacked_mask[self.images_stacked_mask!=0]
-        #fill in the holes with the p1 image in magenta
-        magenta_p1 = np.array([self.p1_im,np.zeros_like(self.p1_im),0.5*self.p1_im]).transpose(1,2,0)
-        self.whole_image=np.where(self.whole_image==0,magenta_p1,self.whole_image)
+        #fill in the holes with the p1 image in the appropriate color
+        if self.opposite :
+            fill_p1 = np.array([np.zeros_like(self.p1_im),self.p1_im,0.5*self.p1_im]).transpose(1,2,0)
+        else :
+            fill_p1 = np.array([self.p1_im,np.zeros_like(self.p1_im),0.5*self.p1_im]).transpose(1,2,0)
+        self.whole_image=np.where(self.whole_image==0,fill_p1,self.whole_image)
         return failed_p1s_codes
 
     def writeOutFigure(self) :
