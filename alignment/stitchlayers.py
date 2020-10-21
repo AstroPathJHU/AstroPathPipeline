@@ -118,9 +118,7 @@ def __stitchlayers(*, overlaps, eliminatelayer=0, filteroverlaps=lambda o: True,
         overlaps.remove(o)
         overlaps.remove(complement)
         overlaps.append(ComplementaryOverlapPair(o, complement))
-  overlaps = [o for o in overlaps if not o.result.exit]
-  print("Complementary:", len([o for o in overlaps if isinstance(o, ComplementaryOverlapPair)]))
-  print("Other:        ", len([o for o in overlaps if not isinstance(o, ComplementaryOverlapPair)]))
+  overlaps = [o for o in overlaps if isinstance(o, ComplementaryOverlapPair)]
 
   for o in overlaps:
     layer1, layer2 = o.layers
