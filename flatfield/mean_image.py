@@ -400,6 +400,7 @@ def getImageMaskWorker(im_array,thresholds_per_layer,samp_name,min_selected_pixe
                 figname = f'image_{i}_layer_{li+1}_masks.png'
                 plt.savefig(figname)
                 plt.close()
+                cropAndOverwriteImage(figname)
     if i is not None and return_dict is not None :
         #add the total mask to the dict, along with its initial thresholds and number of optimal Otsu iterations per layer
         return_dict[i] = morphed_mask

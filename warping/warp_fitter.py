@@ -9,7 +9,7 @@ from ..baseclasses.rectangle import rectangleoroverlapfilter
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getMedianExposureTimeAndCorrectionOffsetForSampleLayer
 from ..utilities.tableio import writetable
 from ..utilities import units
-from ..utilities.misc import cd, MetadataSummary
+from ..utilities.misc import cd, MetadataSummary, cropAndOverwriteImage
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, copy, math, shutil, platform, time, logging
 
@@ -410,8 +410,10 @@ class WarpFitter :
         ax[1][2].set_ylabel('max tangential warp')
         ax[1][2].legend(loc='best')
         with cd(self.working_dir) :
-            plt.savefig('fit_progress.png')
+            savename = 'fit_progress.png'
+            plt.savefig(savename)
             plt.close()
+            cropAndOverwriteImage(savename)
         return ninitev, nfev
 
     #function to save alignment comparison visualizations in a new directory inside the working directory
@@ -499,6 +501,7 @@ class WarpFitter :
             with cd(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME)) :
                 plt.savefig(fn)
                 plt.close()
+                cropAndOverwriteImage(fn)
         #return the pre- and post-fit alignment costs
         return rawcost, bestcost
 

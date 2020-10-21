@@ -5,7 +5,7 @@ from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities import units
 from ..utilities.img_file_io import getSampleMedianExposureTimesByLayer, getImageHWLFromXMLFile
 from ..utilities.tableio import writetable
-from ..utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs
+from ..utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
 import os
 
@@ -183,8 +183,10 @@ class FlatfieldSample() :
                 ax3.set_xlabel('pixel flux (counts)')
                 ax3.set_ylabel('n image pixels')
                 ax3.legend(loc='best')
-                plt.savefig(f'{self._name}_layer_{li+1}_background_threshold_plots.png')
+                fn = f'{self._name}_layer_{li+1}_background_threshold_plots.png'
+                plt.savefig(fn)
                 plt.close()
+                cropAndOverwriteImage(fn)
         #make a little plot of the threshold min/max and final values by layer
         with cd(plotdir_path) :
             xvals=list(range(1,self._img_dims[-1]+1))
@@ -195,8 +197,10 @@ class FlatfieldSample() :
             plt.xlabel('image layer')
             plt.ylabel('pixel flux (counts)')
             plt.legend(loc='best')
-            plt.savefig(f'{self._name}_background_thresholds_by_layer.png')
+            fn = f'{self._name}_background_thresholds_by_layer.png'
+            plt.savefig(fn)
             plt.close()
+            cropAndOverwriteImage(fn)
         #save the threshold values to a text file
         with cd(top_plotdir_path) :
             with open(f'{self._name}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}','w') as tfp :
@@ -247,7 +251,9 @@ class FlatfieldSample() :
                 if has_qptiff :
                     ax2.imshow(mpimg.imread(os.path.join(self._metadata_top_dir,self._name,'dbload',f'{self._name}_qptiff.jpg')))
                     ax2.set_title('reference qptiff',fontsize=18)
-                plt.savefig(f'{self._name}_{self.RECTANGLE_LOCATION_PLOT_STEM}.png')
+                fn = f'{self._name}_{self.RECTANGLE_LOCATION_PLOT_STEM}.png'
+                plt.savefig(fn)
                 plt.close()
+                cropAndOverwriteImage(fn)
         #return the list of the filepaths whose rectangles are on the edge of the tissue
         return [rfp for rfp in rawfile_paths if rfp.split(os.sep)[-1].split('.')[0] in edge_rect_filenames]

@@ -3,6 +3,7 @@ from .utilities import WarpingError
 from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
 from ..utilities.img_correction import correctImageLayerWithWarpFields
+from ..utilities.misc import cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt, seaborn as sns
 import os, math, cv2, functools, methodtools
 
@@ -199,8 +200,10 @@ class PolyFieldWarp(Warp) :
         ax[2].scatter(self.xc,self.yc,marker='*',color='yellow')
         ax[2].set_title('dy warp')
         f.colorbar(pos,ax=ax[2])
-        plt.savefig(f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png')
+        fn = f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png'
+        plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
 
     def showCheckerboard(self) :
         """
@@ -549,8 +552,10 @@ class CameraWarp(Warp) :
         ax[2].scatter(self.cx,self.cy,marker='*',color='yellow')
         ax[2].set_title('dy warp')
         f.colorbar(pos,ax=ax[2])
-        plt.savefig(f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png')
+        fn = f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png'
+        plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
 
     def showCheckerboard(self) :
         """
@@ -589,8 +594,10 @@ class CameraWarp(Warp) :
         thm=sns.heatmap(tan_heat_map,ax=ax3)
         ax3.scatter(self.cx,self.cy,marker='*',color='yellow')
         thm.set_title('tangential warp components',fontsize=14)
-        plt.savefig('warp_amounts.png')
+        fn = 'warp_amounts.png'
+        plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
