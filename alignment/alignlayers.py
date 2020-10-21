@@ -110,6 +110,9 @@ class SampleWithLayerOverlaps(ReadRectanglesBase):
     ]
 
 class AlignLayersBase(SampleWithLayerOverlaps, AlignmentSetBase, ReadRectanglesBase):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.logger.warningglobal("Layer alignment is not fully implemented.  Results are not necessarily going to be accurate.")
   def dostitching(self, **kwargs):
     return stitchlayers(overlaps=self.overlaps, logger=self.logger, **kwargs)
   def applystitchresult(self, result):
