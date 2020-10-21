@@ -184,7 +184,7 @@ The error estimation procedure also gives us an opportunity to detect when a par
 	\label{fig:badoverlap}
 \end{figure}
 
-The procedure in \cref{sec:measuringalignment} looks at the tallest peak of the cross-correlation function.  For a good overlap, there is often only one peak, or one tall peak and several other, much shorter ones.  \Cref{fig:badxcorrelation}, on the other hand, shows a central peak near $(0, 0)$ and a diagonal structure, similar to the structure in \cref{fig:badoverlap}, containing several yellow areas.  The error estimation tells us whether any of the other peaks are significant: if any other peak at $\delta r'$ has $C(\delta r')\ge C(\delta r_\text{max})-\sigma_C(\delta r_\text{max})$, we do not know, to $1\sigma$ confidence, which peak is the correct one, and therefore we mark the overlap as bad.  The result from bad overlaps are not used in the final stitching procedure.
+The procedure in \cref{sec:measuringalignment} looks at the tallest peak of the cross-correlation function.  For a good overlap, there is often only one peak, or one tall peak and several other, much shorter ones.  \Cref{fig:badxcorrelation}, on the other hand, shows a central peak near $(0, 0)$ and a diagonal structure, similar to the structure in \cref{fig:badoverlap}, containing several yellow areas.  The error estimation tells us whether any of the other peaks are significant: if any other peak at $\delta r'$ has $C(\delta r')\ge C(\delta r_\text{max})-3\sigma_C(\delta r_\text{max})$, we do not know, to $3\sigma$ confidence, which peak is the correct one, and therefore we mark the overlap as bad.  The result from bad overlaps are not used in the final stitching procedure.
 
 \section{Stitching}
 \label{sec:stitching}

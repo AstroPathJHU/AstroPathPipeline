@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt, numpy as np, uncertainties as unc
+import matplotlib.pyplot as plt, numpy as np, re, uncertainties as unc
 import contextlib, dataclasses, fractions, logging, os, scipy.stats, tifffile, datetime
 
 def covariance_matrix(*args, **kwargs):
@@ -245,6 +245,11 @@ def tiffinfo(*, filename=None, page=None):
     height, width = units.distances(pixels=page.shape, pscale=pscale, power=1)
 
     return pscale, width, height
+
+def re_subs(string, *patternsandrepls, **kwargs):
+  for p, r in patternsandrepls:
+    string = re.sub(p, r, string, **kwargs)
+  return string
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())

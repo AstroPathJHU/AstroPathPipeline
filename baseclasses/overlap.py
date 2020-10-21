@@ -6,7 +6,7 @@ from ..utilities.tableio import readtable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 from .rectangle import Rectangle, RectangleCollection, RectangleList, rectangleoroverlapfilter, rectangleoroverlapfilter as overlapfilter
 
-@dataclasses.dataclass
+@dataclasses.dataclass(unsafe_hash=True)
 class Overlap(DataClassWithDistances):
   pixelsormicrons = "microns"
 
@@ -34,12 +34,12 @@ class Overlap(DataClassWithDistances):
   def updaterectangles(self, rectangles):
     p1rect = None; p2rect=None
     for r in rectangles :
+      if r.n==self.p1 :
+        p1rect = r
+      if r.n==self.p2 :
+        p2rect = r
       if (p1rect is not None) and (p2rect is not None) :
         break
-      elif r.n==self.p1 :
-        p1rect = r
-      elif r.n==self.p2 :
-        p2rect = r
     if (p1rect is None) or (p2rect is None):
       raise ValueError(f"Searched for rectangles with n=p1={self.p1} and n=p2={self.p2} but p1rect={p1rect} and p2rect={p2rect}")
     self.rectangles = p1rect, p2rect
@@ -79,9 +79,18 @@ class OverlapCollection(abc.ABC):
   def islands(self, *args, **kwargs):
     return list(nx.strongly_connected_components(self.overlapgraph(*args, **kwargs)))
 
+  def overlapsdictkey(self, overlap):
+    return overlap.p1, overlap.p2
+
   @property
   def overlapsdict(self):
-    return {(o.p1, o.p2): o for o in self.overlaps}
+    result = {}
+    for o in self.overlaps:
+      key = self.overlapsdictkey(o)
+      if key in result:
+        raise KeyError(f"Multiple overlaps with key {key}")
+      result[key] = o
+    return result
 
   @property
   def overlaprectangleindices(self):

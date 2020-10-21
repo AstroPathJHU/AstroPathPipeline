@@ -15,7 +15,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, filetype="flatWarp", **kwargs):
+  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, filetype="flatWarp", use_mean_image=True, **kwargs):
     """
     Directory structure should be
     root1/
@@ -30,9 +30,9 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     interactive: if this is true, then the script might try to prompt
                  you for input if things go wrong
     """
-    self.__filetype = filetype
+    self.__use_mean_image = use_mean_image
     self.interactive = interactive
-    super().__init__(root1, root2, samp, **kwargs)
+    super().__init__(root1, root2, samp, filetype=filetype, **kwargs)
     for r in self.rectangles:
       r.setrectanglelist(self.rectangles)
 
@@ -41,8 +41,9 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
 
   @property
   def logmodule(self): return "align"
-  @property
-  def filetype(self): return self.__filetype
+
+  def inverseoverlapsdictkey(self, overlap):
+    return overlap.p2, overlap.p1
 
   def align(self,*,skip_corners=False,return_on_invalid_result=False,warpwarnings=False,**kwargs):
     self.logger.info("starting alignment")
@@ -54,11 +55,14 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
       if skip_corners and overlap.tag in [1,3,7,9] :
         continue
       self.logger.info(f"aligning overlap {overlap.n} ({i}/{len(self.overlaps)})")
-      if (overlap.p2, overlap.p1) in done:
-        result = overlap.getinversealignment(self.overlapsdict[overlap.p2, overlap.p1])
-      else:
+      result = None
+      if self.overlapsdictkey(overlap) in done:
+        inverseoverlap = self.overlapsdict[self.inverseoverlapsdictkey(overlap)]
+        if hasattr(inverseoverlap, "result"):
+          result = overlap.getinversealignment(inverseoverlap)
+      if result is None:
         result = overlap.align(gputhread=self.gputhread, gpufftdict=self.gpufftdict, **kwargs)
-      done.add((overlap.p1, overlap.p2))
+      done.add(self.overlapsdictkey(overlap))
 
       if result is not None and result.exit == 0: 
         sum_mse+=result.mse[2]
@@ -81,11 +85,11 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     self.logger.info("getDAPI")
     with contextlib.ExitStack() as stack:
       for r in self.rectangles:
-        stack.enter_context(r.using_image(-2))
+        stack.enter_context(r.using_image_before_flatfield())
         if keeprawimages:
           for r in self.rectangles:
-            r.originalimage
-      self.images = [r.image for r in self.rectangles]
+            self.enter_context(r.using_image_before_flatfield())
+      self.images = [self.enter_context(r.using_image()) for r in self.rectangles]
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -176,14 +180,18 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
 
   rectangletype = AlignmentRectangle
   overlaptype = AlignmentOverlap
+  alignmentresulttype = AlignmentResult
   @property
   def rectangleextrakwargs(self):
-    return {**super().rectangleextrakwargs, "logger": self.logger}
+    return {**super().rectangleextrakwargs, "logger": self.logger, "use_mean_image": self.__use_mean_image}
 
   def stitch(self, saveresult=True, **kwargs):
-    result = stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
+    result = self.dostitching(**kwargs)
     if saveresult: self.applystitchresult(result)
     return result
+
+  def dostitching(self, **kwargs):
+    return stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
 
   def applystitchresult(self, result):
     result.applytooverlaps()
@@ -209,17 +217,20 @@ class AlignmentSet(AlignmentSetBase, ReadRectangles):
   def image(self):
     return cv2.imread(str(self.dbload/(self.SlideID+"_qptiff.jpg")))
 
+  @property
+  def alignmentsfilename(self): return self.csv("align")
+
   def writealignments(self, *, filename=None):
-    if filename is None: filename = self.csv("align")
+    if filename is None: filename = self.alignmentsfilename
     writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive)
 
   def readalignments(self, *, filename=None, interactive=True):
     interactive = interactive and self.interactive and filename is None
-    if filename is None: filename = self.csv("align")
+    if filename is None: filename = self.alignmentsfilename
     self.logger.info("reading alignments from "+str(filename))
 
     try:
-      alignmentresults = {o.n: o for o in readtable(filename, AlignmentResult, extrakwargs={"pscale": self.pscale})}
+      alignmentresults = {o.n: o for o in readtable(filename, self.alignmentresulttype, extrakwargs={"pscale": self.pscale})}
     except Exception:
       if interactive:
         print()
@@ -245,18 +256,21 @@ class AlignmentSet(AlignmentSetBase, ReadRectangles):
     result = super().getDAPI(*args, **kwargs)
 
     if writeimstat:
-      self.imagestats = [
-        ImageStats(
-          n=rectangle.n,
-          mean=np.mean(rectangle.image),
-          min=np.min(rectangle.image),
-          max=np.max(rectangle.image),
-          std=np.std(rectangle.image),
-          cx=rectangle.cx,
-          cy=rectangle.cy,
-          pscale=self.pscale,
-        ) for rectangle in self.rectangles
-      ]
+      self.imagestats = []
+      for rectangle in self.rectangles:
+        with rectangle.using_image() as image:
+          self.imagestats.append(
+            ImageStats(
+              n=rectangle.n,
+              mean=np.mean(image),
+              min=np.min(image),
+              max=np.max(image),
+              std=np.std(image),
+              cx=rectangle.cx,
+              cy=rectangle.cy,
+              pscale=self.pscale,
+            )
+          )
       self.writecsv("imstat", self.imagestats, retry=self.interactive)
 
     return result

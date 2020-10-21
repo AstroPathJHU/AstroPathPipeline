@@ -13,6 +13,20 @@ def meanimage(images, *, logger=dummylogger):
 
   logger.info("meanimage")
 
+  if len(np.shape(images)) == 3:
+    #image index, height, width
+    pass
+  elif len(np.shape(images)) == 4:
+    #image index, layer, height, width
+    result = scipy.optimize.OptimizeResult()
+    result.flatfield = [
+      meanimage(layer).flatfield
+      for layer in np.transpose(images, (1, 0, 2, 3))
+    ]
+    return result
+  else:
+    raise ValueError(f"Can't handle shape {np.shape(images)}")
+
   img = np.mean(images, axis=0)
 
   positiveindices = img > 0
