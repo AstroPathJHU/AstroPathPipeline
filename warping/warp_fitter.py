@@ -441,11 +441,14 @@ class WarpFitter :
         rawcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
         raw_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         raw_octets_olaps = [[olap for olap in self.alignset.overlaps if olap.p1==octetp1] for octetp1 in olap_octet_p1s]
-        for octetp1,raw_octet_overlaps in zip(olap_octet_p1s,raw_octets_olaps) :
+        raw_octets_opposite_olaps = [[olap for olap in self.alignset.overlaps if olap.p2==octetp1] for octetp1 in olap_octet_p1s]
+        for octetp1,raw_octet_overlaps,raw_octet_opposite_overlaps in zip(olap_octet_p1s,raw_octets_olaps,raw_octets_opposite_olaps) :
             #start up the figures
             raw_octet_image = OctetComparisonVisualization(raw_octet_overlaps,False,f'octet_p1={octetp1}_raw_overlap_comparisons')
+            raw_octet_opposite_image = OctetComparisonVisualization(raw_octet_opposite_overlaps,False,f'octet_p1={octetp1}_raw_opposite_overlap_comparisons',True)
             raw_aligned_octet_image = OctetComparisonVisualization(raw_octet_overlaps,True,f'octet_p1={octetp1}_raw_aligned_overlap_comparisons')
-            all_octet_comparison_images = [raw_octet_image,raw_aligned_octet_image]
+            raw_aligned_octet_opposite_image = OctetComparisonVisualization(raw_octet_opposite_overlaps,True,f'octet_p1={octetp1}_raw_aligned_opposite_overlap_comparisons',True)
+            all_octet_comparison_images = [raw_octet_image,raw_octet_opposite_image,raw_aligned_octet_image,raw_aligned_octet_opposite_image]
             #stack the overlay images and write out the figures
             for oci in all_octet_comparison_images :
                 failed_p1s_and_codes = oci.stackOverlays()
@@ -459,11 +462,14 @@ class WarpFitter :
         bestcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
         warped_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         warped_octets_olaps = [[olap for olap in self.alignset.overlaps if olap.p1==octetp1] for octetp1 in olap_octet_p1s]
-        for octetp1,warped_octet_overlaps in zip(olap_octet_p1s,warped_octets_olaps) :
+        warped_octets_ooposite_olaps = [[olap for olap in self.alignset.overlaps if olap.p2==octetp1] for octetp1 in olap_octet_p1s]
+        for octetp1,warped_octet_overlaps,warped_octet_opposite_overlaps in zip(olap_octet_p1s,warped_octets_olaps,warped_octets_ooposite_olaps) :
             #start up the figures
             warped_octet_image = OctetComparisonVisualization(warped_octet_overlaps,False,f'octet_p1={octetp1}_warped_overlap_comparisons')
+            warped_octet_opposite_image = OctetComparisonVisualization(warped_octet_opposite_overlaps,False,f'octet_p1={octetp1}_warped_opposite_overlap_comparisons',True)
             warped_aligned_octet_image = OctetComparisonVisualization(warped_octet_overlaps,True,f'octet_p1={octetp1}_warped_aligned_overlap_comparisons')
-            all_octet_comparison_images = [warped_octet_image,warped_aligned_octet_image]
+            warped_aligned_octet_opposite_image = OctetComparisonVisualization(warped_octet_opposite_overlaps,True,f'octet_p1={octetp1}_warped_aligned_opposite_overlap_comparisons',True)
+            all_octet_comparison_images = [warped_octet_image,warped_octet_opposite_image,warped_aligned_octet_image,warped_aligned_octet_opposite_image]
             #stack the overlay images and write out the figures
             for oci in all_octet_comparison_images :
                 failed_p1s_and_codes = oci.stackOverlays()
