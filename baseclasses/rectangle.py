@@ -54,11 +54,11 @@ class RectangleWithImageBase(Rectangle):
 
   def __init__(self, *args, transformations=[], **kwargs):
     super().__init__(*args, **kwargs)
-    self.__images_cache = [None for _ in range(len(transformations)+1)]
-    self.__accessed_image = np.zeros(dtype=bool, shape=len(transformations)+1)
-    self.__using_image_counter = np.zeros(dtype=int, shape=len(transformations)+1)
-    self.__debug_load_images_counter = np.zeros(dtype=int, shape=len(transformations)+1)
     self.__transformations = transformations
+    self.__images_cache = [None for _ in range(self.nimages)]
+    self.__accessed_image = np.zeros(dtype=bool, shape=self.nimages)
+    self.__using_image_counter = np.zeros(dtype=int, shape=self.nimages)
+    self.__debug_load_images_counter = np.zeros(dtype=int, shape=self.nimages)
 
   def __del__(self):
     if self.__DEBUG:
@@ -69,6 +69,10 @@ class RectangleWithImageBase(Rectangle):
   @abc.abstractmethod
   def getimage(self):
     pass
+
+  @property
+  def nimages(self):
+    return len(self.__transformations)+1
 
   #do not override any of these functions or call them from super()
   #override getimage() instead and call super().getimage()
@@ -106,7 +110,7 @@ class RectangleWithImageBase(Rectangle):
 
   def __image(self, i):
     if self.__images_cache[i] is None:
-      if i < 0: i = (len(self.__transformations)+1) + i
+      if i < 0: i = self.nimages + i
       if i == 0:
         self.__images_cache[i] = self.getimage()
       else:
@@ -348,5 +352,16 @@ class RectangleProvideImage(RectangleWithImageBase):
     super().__init__(*args, **kwargs)
   def getimage(self):
     return self.__image
+
+class RectangleFromOtherRectangle(RectangleWithImageBase):
+  def __init__(self, *args, originalrectangle, **kwargs):
+    self.__originalrectangle = originalrectangle
+    super().__init__(*args, rectangle=originalrectangle, readingfromfile=False, **kwargs)
+  @property
+  def originalrectangle(self):
+    return self.__originalrectangle
+  def getimage(self):
+    with self.__originalrectangle.using_image() as image:
+      return image
 
 rectanglefilter = rectangleoroverlapfilter

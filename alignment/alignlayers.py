@@ -1,7 +1,7 @@
-import cv2, itertools, methodtools
+import cv2, itertools, methodtools, numpy as np
 from ..baseclasses.sample import ReadRectangles, ReadRectanglesBase
 from .alignmentset import AlignmentSet, AlignmentSetBase
-from .rectangle import AlignmentRectangleMultiLayer
+from .rectangle import AlignmentRectangleMultiLayer, RectanglePCAByBroadbandFilter
 from .overlap import AlignmentOverlap, LayerAlignmentResult
 from .stitchlayers import stitchlayers
 
@@ -157,12 +157,43 @@ class AlignLayersForBroadbandFilter(AlignLayersForBroadbandFilterBase, AlignLaye
   def stitchfilenames(self):
     return self.csv(f"layerpositions_{self.broadbandfilter}"), self.csv(f"layerpositioncovariances_{self.broadbandfilter}")
 
+class AlignBroadbandFiltersBase(AlignLayersBase):
+  def __init__(self, *args, step1s, inputrectangles, **kwargs):
+    self.__step1s = step1s
+    self.__inputrectangles = inputrectangles
+    super().__init__(*args, **kwargs)
+
+  def readallrectangles(self):
+    stitchresultdict = {
+      layer: step1.stitchresult
+      for step1 in self.__step1s
+      for layer in step1.stitchresult.layers
+    }
+    r = self.__inputrectangles[0]
+    layershifts=np.array([
+      stitchresultdict[layer].x(layer) for layer in r.layers
+    ])
+    return [RectanglePCAByBroadbandFilter(originalrectangle=_, layershifts=layershifts) for _ in self.__inputrectangles]
+
+  @property
+  def layers(self):
+    return list(range(1, len(self.__step1s)+1))
+
+class AlignBroadbandFilters(AlignBroadbandFiltersBase, AlignLayers):
+  @property
+  def alignmentsfilename(self): return self.csv(f"alignbroadbandfilters")
+  @property
+  def stitchfilenames(self):
+    return self.csv(f"broadbandfilterpositions"), self.csv(f"broadbandpositioncovariances")
+
 class AlignLayersByBroadbandFilter(SampleWithLayerOverlaps, ReadRectangles):
   def __init__(self, *args, filetype="flatWarp", **kwargs):
     super().__init__(*args, filetype=filetype, **kwargs)
     self.__step1s = [AlignLayersForBroadbandFilter(*args, broadbandfilter=i, inputrectangles=self.rectangles, inputoverlaps=self.overlaps, **kwargs) for i in sorted(set(self.rectangles[0].broadbandfilters))]
+    self.__initargs = args
+    self.__initkwargs = kwargs
 
-  def getDAPI(self, *args, **kwargs):
+  def getDAPIstep1(self, *args, **kwargs):
     for _ in self.__step1s:
       _.getDAPI(*args, **kwargs)
 
@@ -172,6 +203,28 @@ class AlignLayersByBroadbandFilter(SampleWithLayerOverlaps, ReadRectangles):
   def stitchstep1(self, *args, **kwargs):
     for _ in self.__step1s:
       _.stitch(*args, **kwargs)
+  def readstep1alignments(self, *args, **kwargs):
+    for _ in self.__step1s:
+      _.readalignments(*args, **kwargs)
+  def readstep1stitchresults(self, *args, **kwargs):
+    for _ in self.__step1s:
+      _.readstitchresult(*args, **kwargs)
+
+  @methodtools.lru_cache()
+  @property
+  def __step2(self):
+    return AlignBroadbandFilters(*self.__initargs, step1s=self.__step1s, inputrectangles=self.rectangles, **self.__initkwargs)
+
+  def getDAPIstep2(self, *args, **kwargs):
+    self.__step2.getDAPI(*args, **kwargs)
+  def alignstep2(self, *args, **kwargs):
+    self.__step2.align(*args, **kwargs)
+  def stitchstep2(self, *args, **kwargs):
+    self.__step2.stitch(*args, **kwargs)
+  def readstep2alignments(self, *args, **kwargs):
+    self.__step2.readalignments(*args, **kwargs)
+  def readstep2stitchresult(self, *args, **kwargs):
+    self.__step2.readstitchresult(*args, **kwargs)
 
   @property
   def logmodule(self):

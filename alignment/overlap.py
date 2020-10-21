@@ -1,4 +1,4 @@
-import dataclasses, matplotlib.pyplot as plt, methodtools, numpy as np, typing, uncertainties as unc
+import dataclasses, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, typing, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 from ..baseclasses.overlap import Overlap
@@ -42,9 +42,11 @@ class AlignmentOverlap(Overlap):
 
   @property
   def images(self):
-    result = tuple(r.image[:, :] if layer is None else r.image[r.layers.index(layer), :, :] for r, layer in zip(self.rectangles, self.layers))
-    for i in result: i.flags.writeable = False
-    return result
+    images = [None, None]
+    with self.rectangles[0].using_image() as images[0], self.rectangles[1].using_image() as images[1]:
+      result = tuple(image[:, :] if layer is None else image[r.layers.index(layer), :, :] for r, image, layer in more_itertools.zip_equal(self.rectangles, images, self.layers))
+      for i in result: i.flags.writeable = False
+      return result
 
   @methodtools.lru_cache()
   @property

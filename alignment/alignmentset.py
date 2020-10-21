@@ -88,8 +88,8 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
         stack.enter_context(r.using_image_before_flatfield())
         if keeprawimages:
           for r in self.rectangles:
-            r.originalimage
-      self.images = [r.image for r in self.rectangles]
+            self.enter_context(r.using_image_before_flatfield())
+      self.images = [self.enter_context(r.using_image()) for r in self.rectangles]
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -256,18 +256,19 @@ class AlignmentSet(AlignmentSetBase, ReadRectangles):
     result = super().getDAPI(*args, **kwargs)
 
     if writeimstat:
-      self.imagestats = [
-        ImageStats(
-          n=rectangle.n,
-          mean=np.mean(rectangle.image),
-          min=np.min(rectangle.image),
-          max=np.max(rectangle.image),
-          std=np.std(rectangle.image),
-          cx=rectangle.cx,
-          cy=rectangle.cy,
-          pscale=self.pscale,
-        ) for rectangle in self.rectangles
-      ]
+      with rectangle.using_image() as image:
+        self.imagestats = [
+          ImageStats(
+            n=rectangle.n,
+            mean=np.mean(image),
+            min=np.min(image),
+            max=np.max(image),
+            std=np.std(image),
+            cx=rectangle.cx,
+            cy=rectangle.cy,
+            pscale=self.pscale,
+          ) for rectangle in self.rectangles
+        ]
       self.writecsv("imstat", self.imagestats, retry=self.interactive)
 
     return result

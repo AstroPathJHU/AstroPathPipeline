@@ -1,6 +1,7 @@
-import contextlib, numpy as np
+import collections, contextlib, cv2, more_itertools, numpy as np, sklearn.decomposition
 
-from ..baseclasses.rectangle import RectangleProvideImage, RectangleTransformationBase, RectangleWithImage, RectangleWithImageBase, RectangleWithImageMultiLayer
+from ..baseclasses.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleTransformationBase, RectangleWithImage, RectangleWithImageBase, RectangleWithImageMultiLayer
+from ..utilities import units
 from ..utilities.misc import dummylogger
 from .flatfield import meanimage
 
@@ -71,6 +72,9 @@ class AlignmentRectangleBase(RectangleWithImageBase):
   def using_image_before_flatfield(self):
     if self.__meanimagetransformation is None: return contextlib.nullcontext()
     return self.using_image(self.__meanimagetransformationindex)
+  @property
+  def image_before_flatfield(self):
+    return self.any_image(self.__meanimagetransformationindex)
 
 class AlignmentRectangle(AlignmentRectangleBase, RectangleWithImage):
   pass
@@ -91,7 +95,7 @@ class ConsolidateBroadbandFilters(RectangleTransformationBase):
     self.__layershifts = layershifts
     self.__broadbandfilters = broadbandfilters
 
-  def setbroadbandfilters(broadbandfilters):
+  def setbroadbandfilters(self, broadbandfilters):
     self.__broadbandfilters = broadbandfilters
 
   def transform(self, originalimage):
@@ -106,15 +110,17 @@ class ConsolidateBroadbandFilters(RectangleTransformationBase):
           np.array([[1, 0, dx], [0, 1, dy]]),
           flags=cv2.INTER_CUBIC,
           borderMode=cv2.BORDER_REPLICATE,
-          dsize=shifted.T.shape,
+          dsize=layer.T.shape,
         )
       )
+
+    shifted = {k: np.array(v) for k, v in shifted.items()}
 
     pca = sklearn.decomposition.PCA(n_components=1, copy=False)
     pcas = {
       filter:
       pca.fit_transform(
-        np.array(layers)
+        layers
         .reshape(
           layers.shape[0], layers.shape[1]*layers.shape[2]
         ).T
@@ -126,13 +132,16 @@ class ConsolidateBroadbandFilters(RectangleTransformationBase):
 
     return np.array(list(pcas.values()))
 
-class RectanglePCAByBroadbandFilterBase(RectangleWithImageMultiLayer):
-  def __init__(*args, layershifts, transformations=None, **kwargs):
+class RectanglePCAByBroadbandFilter(RectangleFromOtherRectangle):
+  def __init__(self, *args, layershifts, transformations=None, **kwargs):
     if transformations is None: transformations = []
     self.__pcabroadbandtransformation = ConsolidateBroadbandFilters(layershifts=layershifts)
     transformations.append(self.__pcabroadbandtransformation)
     super().__init__(*args, transformations=transformations, **kwargs)
-    self.__pcabroadbandtransformation.setbroadbandfilters(broadbandfilters=self.broadbandfilters)
+    self.__pcabroadbandtransformation.setbroadbandfilters(broadbandfilters=self.originalrectangle.broadbandfilters)
 
-class AlignmentRectanglePCAByBroadbandFilter(AlignmentRectangleMultiLayer, AlignmentRectangleBase, RectanglePCAByBroadbandFilterBase):
-  pass
+  def setrectanglelist(self, rectanglelist): pass
+  def using_image_before_flatfield(self): return contextlib.nullcontext()
+  @property
+  def layers(self):
+    return self.originalrectangle.layers
