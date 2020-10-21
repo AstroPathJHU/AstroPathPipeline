@@ -30,13 +30,24 @@ def standardizeValues(rawvals,weights=None,plot=False) :
 #makes a plot of the principal points in a list of results; shaded by cost reduction
 #also prints the mean and weighted mean
 def principalPointPlot(all_results,save_stem=None) :
-    mean_cx = np.mean([r.cx for r in all_results])
-    mean_cy = np.mean([r.cy for r in all_results])
-    weighted_mean_cx = np.sum([r.cx*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
-    weighted_mean_cy = np.sum([r.cy*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
+    mean_cx = np.mean([r.cx for r in all_results if r.cost_reduction>0.]); cx_err = np.std([r.cx for r in all_results if r.cost_reduction>0.])
+    mean_cy = np.mean([r.cy for r in all_results if r.cost_reduction>0.]); cy_err = np.std([r.cy for r in all_results if r.cost_reduction>0.])
+    weighted_mean_cx = 0.; weighted_mean_cy = 0.; sw = 0.; sw2 = 0.
+    for r in all_results :
+        w = r.cost_reduction
+        if w<0. :
+            continue
+        weighted_mean_cx+=w*r.cx
+        weighted_mean_cy+=w*r.cy
+        sw+=w
+        sw2+=w**2
+    weighted_mean_cx/=sw; w_mean_cx_err = np.sqrt(((cx_err**2)*sw2)/(sw**2))
+    weighted_mean_cy/=sw; w_mean_cy_err = np.sqrt(((cy_err**2)*sw2)/(sw**2))
     txt_lines = []
-    txt_lines.append(f'Mean center point at ({mean_cx}, {mean_cy})')
-    txt_lines.append(f'Weighted mean center point at ({weighted_mean_cx}, {weighted_mean_cy})')
+    txt_lines.append(f'Mean center point cx = {mean_cx} +/- {cx_err}')
+    txt_lines.append(f'Mean center point cy = {mean_cy} +/- {cy_err}')
+    txt_lines.append(f'Weighted mean center point cx = {weighted_mean_cx} +/- {w_mean_cx_err}')
+    txt_lines.append(f'Weighted mean center point cy = {weighted_mean_cy} +/- {w_mean_cy_err}')
     if save_stem is not None :
         fn = f'{save_stem}_mean_principal_point.txt'
         with open(fn,'w') as fp :
@@ -47,8 +58,8 @@ def principalPointPlot(all_results,save_stem=None) :
             print(tl)
     f,ax=plt.subplots()
     pos = ax.scatter([r.cx for r in all_results],[r.cy for r in all_results],c=[r.cost_reduction for r in all_results])
-    ax.scatter(mean_cx,mean_cy,marker='x',color='tab:red',label='mean')
-    ax.scatter(weighted_mean_cx,weighted_mean_cy,marker='x',color='tab:blue',label='weighted mean')
+    ax.errorbar(mean_cx,mean_cy,yerr=cy_err,xerr=cx_err,marker='x',color='tab:red',label='mean')
+    ax.errorbar(weighted_mean_cx,weighted_mean_cy,yerr=w_mean_cy_err,xerr=w_mean_cx_err,marker='x',color='tab:blue',label='weighted mean')
     ax.set_title('Center point locations with cost redux')
     ax.set_xlabel('cx point')
     ax.set_ylabel('cy point')
@@ -91,12 +102,21 @@ def radWarpAmtPlots(all_results,save_stem=None) :
     ax[1].set_xlabel('max radial warp')
     ax[1].set_ylabel('cost reduction')
     pos = ax[2].scatter([r.cx for r in all_results],[r.cy for r in all_results],c=[r.max_rad_warp for r in all_results])
-    mean_cx = np.mean([r.cx for r in all_results])
-    mean_cy = np.mean([r.cy for r in all_results])
-    weighted_mean_cx = np.sum([r.cx*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
-    weighted_mean_cy = np.sum([r.cy*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
-    ax[2].scatter(mean_cx,mean_cy,marker='x',color='tab:red',label='mean')
-    ax[2].scatter(weighted_mean_cx,weighted_mean_cy,marker='x',color='tab:blue',label='weighted mean')
+    mean_cx = np.mean([r.cx for r in all_results if r.cost_reduction>0.]); cx_err = np.std([r.cx for r in all_results if r.cost_reduction>0.])
+    mean_cy = np.mean([r.cy for r in all_results if r.cost_reduction>0.]); cy_err = np.std([r.cy for r in all_results if r.cost_reduction>0.])
+    weighted_mean_cx = 0.; weighted_mean_cy = 0.; sw = 0.; sw2 = 0.
+    for r in all_results :
+        w = r.cost_reduction
+        if w<0. :
+            continue
+        weighted_mean_cx+=w*r.cx
+        weighted_mean_cy+=w*r.cy
+        sw+=w
+        sw2+=w**2
+    weighted_mean_cx/=sw; w_mean_cx_err = np.sqrt(((cx_err**2)*sw2)/(sw**2))
+    weighted_mean_cy/=sw; w_mean_cy_err = np.sqrt(((cy_err**2)*sw2)/(sw**2))
+    ax[2].errorbar(mean_cx,mean_cy,yerr=cy_err,xerr=cx_err,marker='x',color='tab:red',label='mean')
+    ax[2].errorbar(weighted_mean_cx,weighted_mean_cy,yerr=w_mean_cy_err,xerr=w_mean_cx_err,marker='x',color='tab:blue',label='weighted mean')
     ax[2].set_title('Center point locations colored by max radial warp')
     ax[2].set_xlabel('cx point')
     ax[2].set_ylabel('cy point')
@@ -200,6 +220,7 @@ def radWarpPCAPlots(all_results,weighted=False,save_stem=None) :
 
 ######## Several helper functions to translate lists of warp results into various overall warp fields and their variations ########
 def getListsOfWarpFields(all_results) :
+    all_results = [r for r in all_results if r.cost_reduction>0.]
     all_warps = []
     for r in all_results :
         all_warps.append(CameraWarp(cx=r.cx, cy=r.cy, k1=r.k1, k2=r.k2, k3=r.k3))
@@ -210,6 +231,7 @@ def getListsOfWarpFields(all_results) :
     return all_drs, all_dxs, all_dys
 
 def getMeanWarpFields(all_results) :
+    all_results = [r for r in all_results if r.cost_reduction>0.]
     all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
     mean_dr = np.mean(list(all_drs),axis=0)
     mean_dx = np.mean(list(all_dxs),axis=0)
@@ -217,6 +239,7 @@ def getMeanWarpFields(all_results) :
     return mean_dr, mean_dx, mean_dy
 
 def getWeightedMeanWarpFields(all_results) :
+    all_results = [r for r in all_results if r.cost_reduction>0.]
     all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
     weighted_mean_dr = np.sum([dr*r.cost_reduction for dr,r in zip(all_drs,all_results)],axis=0)/np.sum([r.cost_reduction for r in all_results])
     weighted_mean_dx = np.sum([dx*r.cost_reduction for dx,r in zip(all_dxs,all_results)],axis=0)/np.sum([r.cost_reduction for r in all_results])
@@ -224,6 +247,7 @@ def getWeightedMeanWarpFields(all_results) :
     return weighted_mean_dr, weighted_mean_dx, weighted_mean_dy
 
 def getWarpFieldStdDevs(all_results) :
+    all_results = [r for r in all_results if r.cost_reduction>0.]
     all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
     dr_stddev = np.std(list(all_drs),axis=0)
     dx_stddev = np.std(list(all_dxs),axis=0)
