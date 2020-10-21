@@ -154,7 +154,7 @@ if __name__=='__main__' :
         w_avg_result.k3 = w_avg_warp.k3
         w_avg_result.p1 = w_avg_warp.p1
         w_avg_result.p2 = w_avg_warp.p2
-        max_r_x, max_r_y = w_avg_warp._getMaxDistanceCoords()
+        max_r_x, max_r_y = w_avg_warp._getMaxDistanceCoords(w_avg_warp.cx,w_avg_warp.cy)
         w_avg_result.max_r_x_coord  = max_r_x
         w_avg_result.max_r_y_coord  = max_r_y
         w_avg_result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)
