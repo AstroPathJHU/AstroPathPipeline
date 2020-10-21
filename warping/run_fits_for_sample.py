@@ -180,11 +180,11 @@ if __name__=='__main__' :
                                        help='Number of octets to use in the final pattern fits')
     #arguments for how many iterations to run at maximum in the groups of fits
     max_iters_group = parser.add_argument_group('max iterations', 'how many iterations to run at max for minimization in each of the three fit groups')
-    max_iters_group.add_argument('--initial_pattern_max_iters', type=int, default=30,
+    max_iters_group.add_argument('--initial_pattern_max_iters', type=int, default=3000,
                                        help='Max # of iterations to run in the initial pattern fits')
-    max_iters_group.add_argument('--principal_point_max_iters', type=int, default=250,
+    max_iters_group.add_argument('--principal_point_max_iters', type=int, default=8000,
                                        help='Max # of iterations to run in the principal point location fits')
-    max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=1000,
+    max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=10000,
                                        help='Max # of iterations to run in the final pattern fits')
     args = parser.parse_args()
     #make sure the arguments are alright

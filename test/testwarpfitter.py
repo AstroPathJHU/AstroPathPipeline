@@ -25,7 +25,7 @@ max_radial_warp = 8.
 max_tangential_warp = 4.
 p1p2_polish_lasso_lambda = 1.0
 print_every = 25
-max_iter = 1
+max_iter = 100
 
 #make the WarpFitter Objects
 print('Initializing WarpFitter')
