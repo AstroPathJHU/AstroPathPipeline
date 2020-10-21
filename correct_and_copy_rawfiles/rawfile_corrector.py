@@ -12,7 +12,6 @@ from ..utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForS
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt
-from shutil import copy2
 import os, time, glob
 
 #################### FILE-SCOPE VARIABLES ####################
@@ -287,7 +286,6 @@ class RawfileCorrector :
                     writeModifiedExposureTimeXMLFile(original_et_xml_filepath,exp_times_to_write)
             msg+='exposure time, '
         else :
-            copy2(original_et_xml_filepath,self._working_dir_path)
             et_corrected = raw
         #correct with the flatfield
         if self._ff is not None :
