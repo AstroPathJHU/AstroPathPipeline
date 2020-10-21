@@ -6,7 +6,7 @@ from .config import CONST
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, MetadataSummary
 from argparse import ArgumentParser
-import os, random, math, subprocess, datetime, multiprocessing as mp
+import os, random, subprocess, datetime, multiprocessing as mp
 
 #################### FILE-SCOPE CONSTANTS ####################
 
@@ -144,7 +144,7 @@ if __name__=='__main__' :
         overall_min_time = datetime.datetime.fromisoformat(metadata_summaries[0].mindate)
         overall_max_time = datetime.datetime.fromisoformat(metadata_summaries[0].maxdate)
         if len(metadata_summaries)>1 :
-            for mds in metadata_summaries[1:]
+            for mds in metadata_summaries[1:] :
                 thismintime = datetime.datetime.fromisoformat(mds.mindate)
                 thismaxtime = datetime.datetime.fromisoformat(mds.maxdate)
                 if thismintime<overall_min_time :
