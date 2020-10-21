@@ -50,7 +50,10 @@ class FlatfieldSample() :
         self._name = sample.name
         self._rawfile_top_dir = sample.rawfile_top_dir
         self._metadata_top_dir = sample.metadata_top_dir
-        self._img_dims = getImageHWLFromXMLFile(sample.rawfile_top_dir,sample.name)
+        try :
+            self._img_dims = getImageHWLFromXMLFile(sample.rawfile_top_dir,sample.name)
+        except FileNotFoundError :
+            self._img_dims = getImageHWLFromXMLFile(sample.metadata_top_dir,sample.name)
         self._background_thresholds_for_masking = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :
@@ -98,7 +101,7 @@ class FlatfieldSample() :
         flatfield_logger.info(f'Finding tissue edge HPFs for sample {self._name}...')
         tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,plotdir_path)
         #chunk them together to be read in parallel
-        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self._img_dims,n_threads)
+        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self._img_dims,self._metadata_top_dir,n_threads)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
         flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self._name}...')
         nbins=np.iinfo(np.uint16).max+1

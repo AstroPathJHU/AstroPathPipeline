@@ -30,10 +30,9 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     interactive: if this is true, then the script might try to prompt
                  you for input if things go wrong
     """
-    self.__filetype = filetype
     self.__use_mean_image = use_mean_image
     self.interactive = interactive
-    super().__init__(root1, root2, samp, **kwargs)
+    super().__init__(root1, root2, samp, filetype=filetype, **kwargs)
     for r in self.rectangles:
       r.setrectanglelist(self.rectangles)
 
@@ -42,8 +41,6 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
 
   @property
   def logmodule(self): return "align"
-  @property
-  def filetype(self): return self.__filetype
 
   def inverseoverlapsdictkey(self, overlap):
     return overlap.p2, overlap.p1
@@ -91,8 +88,8 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
         stack.enter_context(r.using_image_before_flatfield())
         if keeprawimages:
           for r in self.rectangles:
-            r.originalimage
-      self.images = [r.image for r in self.rectangles]
+            self.enter_context(r.using_image_before_flatfield())
+      self.images = [self.enter_context(r.using_image()) for r in self.rectangles]
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -134,8 +131,9 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
       newr = AlignmentRectangleProvideImage(rectangle=r, layer=r.layer, mean_image=mean_image, use_mean_image=correct_with_meanimage, image=thisupdateimg, readingfromfile=False)
       self.rectangles[i] = newr
 
-    for r in self.rectangles:
-      r.setrectanglelist(self.rectangles)
+    if correct_with_meanimage :
+      for r in self.rectangles:
+        r.setrectanglelist(self.rectangles)
 
     for o in self.overlaps:
       o.updaterectangles(self.rectangles)
@@ -258,18 +256,19 @@ class AlignmentSet(AlignmentSetBase, ReadRectangles):
     result = super().getDAPI(*args, **kwargs)
 
     if writeimstat:
-      self.imagestats = [
-        ImageStats(
-          n=rectangle.n,
-          mean=np.mean(rectangle.image),
-          min=np.min(rectangle.image),
-          max=np.max(rectangle.image),
-          std=np.std(rectangle.image),
-          cx=rectangle.cx,
-          cy=rectangle.cy,
-          pscale=self.pscale,
-        ) for rectangle in self.rectangles
-      ]
+      with rectangle.using_image() as image:
+        self.imagestats = [
+          ImageStats(
+            n=rectangle.n,
+            mean=np.mean(image),
+            min=np.min(image),
+            max=np.max(image),
+            std=np.std(image),
+            cx=rectangle.cx,
+            cy=rectangle.cy,
+            pscale=self.pscale,
+          ) for rectangle in self.rectangles
+        ]
       self.writecsv("imstat", self.imagestats, retry=self.interactive)
 
     return result

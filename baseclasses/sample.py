@@ -338,17 +338,17 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
     return kwargs
   @abc.abstractmethod
   def readalloverlaps(self): pass
-  @abc.abstractmethod
-  def filetype(self):
-    pass
+  @property
+  def filetype(self): return self.__filetype
   @property
   def overlapextrakwargs(self):
     return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}
 
   multilayer = False #can override in subclasses
 
-  def __init__(self, *args, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer=None, layers=None, readlayerfile=True, **kwargs):
+  def __init__(self, *args, filetype, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer=None, layers=None, readlayerfile=True, **kwargs):
     super().__init__(*args, **kwargs)
+    self.__filetype = filetype
 
     if self.multilayer:
       if layer is not None:
