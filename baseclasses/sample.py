@@ -412,13 +412,17 @@ class ReadRectanglesOverlapsBase(ReadRectanglesBase, SampleThatReadsOverlaps, Re
   def overlaps(self): return self.__overlaps
 
 class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
+  @property
+  def rectanglecsv(self): return "rect"
   def readallrectangles(self, **extrakwargs):
-    return self.readcsv("rect", self.rectangletype, extrakwargs={**self.rectangleextrakwargs, **extrakwargs})
+    return self.readcsv(self.rectanglecsv, self.rectangletype, extrakwargs={**self.rectangleextrakwargs, **extrakwargs})
 
 class ReadRectanglesOverlaps(ReadRectangles, ReadRectanglesOverlapsBase):
+  @property
+  def overlapcsv(self): return "overlap"
   def readalloverlaps(self, *, overlaptype=None, **extrakwargs):
     if overlaptype is None: overlaptype = self.overlaptype
-    return self.readcsv("overlap", overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
+    return self.readcsv(self.overlapcsv, overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
 
 class XMLLayoutReader(SampleThatReadsOverlaps):
   def __init__(self, *args, checkim3s=False, **kwargs):
