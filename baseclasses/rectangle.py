@@ -165,6 +165,48 @@ class RectangleReadImageBase(RectangleWithImageBase):
 
     return image
 
+class RectangleReadComponentTiffMultiLayer(RectangleReadImageBase):
+  def __init__(self, *args, imagefolder, layers, nlayers, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__imagefolder = pathlib.Path(imagefolder)
+    self.__layers = layers
+    self.__nlayers = nlayers
+
+  @property
+  def imagefile(self):
+    return self.__imagefolder/self.file.replace(".im3", "_component_data.tif")
+
+  @property
+  def layers(self):
+    return self.__layers
+
+  def getimage(self):
+    with tifffile.TiffFile(self.imagefile) as f:
+      pages = []
+      shape = None
+      dtype = None
+      for page in f.pages:
+        if len(page.shape) == 2:
+          pages.append(page)
+          if shape is None:
+            shape = page.shape
+          elif shape != page.shape:
+            raise ValueError(f"Found pages with different shapes in the component tiff {shape} {page.shape}")
+          if dtype is None:
+            dtype = page.dtype
+          elif dtype != page.dtype:
+            raise ValueError(f"Found pages with different dtypes in the component tiff {dtype} {page.dtype}")
+      else:
+        assert False
+      if len(pages) != self.__nlayers:
+        raise IOError(f"Wrong number of layers {len(pages)} in the component tiff, expected {self.__nlayers}")
+      image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)
+
+      for i, layer in enumerate(self.__layers):
+        image[layer] = pages[layer-1].asarray()
+
+      return image
+
 class RectangleWithImageMultiLayer(RectangleReadImageBase):
   def __init__(self, *args, imagefolder, filetype, width, height, layers, nlayers, xmlfolder=None, **kwargs):
     super().__init__(*args, **kwargs)

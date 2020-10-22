@@ -1,26 +1,28 @@
 from ..baseclasses.sample import DbloadSampleBase
 
-class FieldWithTiffMultiLayer(Field, RectangleWithTiffMultiLayer):
+class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
   pass
 
 class AssembleImage(ReadRectanglesBase):
-  def __init__(self, *args, imagesize=16384, **kwargs):
-    self.__imagesize = imagesize
+  rectanglecsv = "fields"
+  rectangletype = FieldWithImageMultiLayer
+  def __init__(self, *args, tilesize=16384, **kwargs):
+    self.__tilesize = tilesize
     super().__init__(*args, **kwargs)
   @property
-  def imagesize(self): return self.__imagesize
+  def tilesize(self): return self.__tilesize
   @property
-  def rectanglecsv(self): return "fields"
-  @property
-  def rectangletype(self): return FieldWithImageMultiLayer
+  def zmax(self): return 9
   def assembleimage(self):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     minxy = np.min(units.pixels([field.pxvec for field in self.rectangles], axis=0), pscale=self.pscale)
     maxxy = np.max(units.pixels([field.pxvec+field.shape for field in self.rectangles], axis=0), pscale=self.pscale)
-    npatches = -((-maxxy) // (self.__imagesize*onepixel)
-    bigimage = np.zeros(shape=npatches * self.__imagesize, dtype=np.int8)
+    ntiles = -((-maxxy) // (self.__tilesize*onepixel)
+    bigimage = np.zeros(shape=(len(self.layers),)+tuple(ntiles * self.__tilesize), dtype=np.uint8)
     for field in self.rectangles:
       with field.using_image() as image:
+        image = skimage.img_as_ubyte(image)
+
         globalx1 = field.mx1 // onepixel * onepixel
         globalx2 = field.mx2 // onepixel * onepixel
         globaly1 = field.my1 // onepixel * onepixel
@@ -49,9 +51,21 @@ class AssembleImage(ReadRectanglesBase):
         newlocalx2 = localx2 + shiftby[0]
         newlocaly2 = localy2 + shiftby[1]
         bigimage[
+          :,
           globaly1/onepixel:globaly2/onepixel,
           globalx1/onepixel:globalx2/onepixel,
         ] = image[
+          :,
           floattoint(localy1/onepixel):floattoint(localy2/onepixel),
           floattoint(localx1/onepixel):floattoint(localx2/onepixel),
-        ]          
+        ]
+
+    for tilen, (tilex, tiley) in enumerate(itertools.product(range(ntiles[0]), range(ntiles[1]))):
+      for layer in self.layers:
+        xmin = tilex * self.__tilesize
+        xmax = (tilex+1) * self.__tilesize
+        ymin = tiley * self.__tilesize
+        ymax = (tiley+1) * self.__tilesize
+        image = PIL.Image.fromarray(bigimage[layer, ymin:ymax, xmin:xmax])
+        filename = self.zoomroot/self.SlideID/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+        image.save(filename, "PNG")
