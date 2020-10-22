@@ -6,7 +6,7 @@ from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Constant, RectangleFile
 from .logging import getlogger
-from .rectangle import Rectangle, rectangleoroverlapfilter, RectangleWithImage, RectangleWithImageMultiLayer
+from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleWithImage, RectangleWithImageMultiLayer
 from .overlap import Overlap, RectangleOverlapCollection
 
 @dataclass_dc_init(frozen=True)
@@ -295,11 +295,13 @@ class FlatwSampleBase(SampleBase):
       result.append(self.__root3/self.SlideID)
     return result
 
-class SampleThatReadsOverlaps(SampleBase):
-  rectangletype = Rectangle
+class SampleThatReadsRectangles(SampleBase):
+  rectangletype = Rectangle #can be overridden in subclasses
+
+class SampleThatReadsOverlaps(SampleThatReadsRectangles):
   overlaptype = Overlap #can be overridden in subclasses
 
-class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOverlapCollection):
+class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsRectangles, RectangleCollection):
   @abc.abstractmethod
   def readallrectangles(self): pass
   @property
@@ -336,13 +338,8 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
       if not self.__readlayerfile:
         kwargs["nlayers"] = self.nlayers
     return kwargs
-  @abc.abstractmethod
-  def readalloverlaps(self): pass
   @property
   def filetype(self): return self.__filetype
-  @property
-  def overlapextrakwargs(self):
-    return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}
 
   multilayer = False #can override in subclasses
 
@@ -370,13 +367,14 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
 
     self.__rectangles  = self.readallrectangles()
     self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
-    self.__overlaps  = self.readalloverlaps()
-    self.__overlaps = [o for o in self.overlaps if overlapfilter(o)]
-    if onlyrectanglesinoverlaps:
-      self.__rectangles = [r for r in self.rectangles if self.selectoverlaprectangles(r)]
 
   @property
-  def overlaps(self): return self.__overlaps
+  def _rectangles(self):
+    assert False
+  @_rectangles.setter
+  def _rectangles(self, value):
+    self.__rectangles = value
+
   @property
   def rectangles(self): return self.__rectangles
 
@@ -385,15 +383,41 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsOverlaps, RectangleOver
     if self.multilayer:
       raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
     return self.__layer
+
   @property
   def layers(self):
     if not self.multilayer:
       raise TypeError(f"Can't get layers for a single layer sample {type(self).__name__}")
     return self.__layers
 
+class ReadRectanglesOverlapsBase(ReadRectanglesBase, SampleThatReadsOverlaps, RectangleOverlapCollection):
+  @abc.abstractmethod
+  def readalloverlaps(self): pass
+  @property
+  def overlapextrakwargs(self):
+    return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}
+
+  multilayer = False #can override in subclasses
+
+  def __init__(self, *args, selectoverlaps=None, onlyrectanglesinoverlaps=False, **kwargs):
+    super().__init__(*args, **kwargs)
+
+    _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
+    overlapfilter = lambda o: _overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
+
+    self.__overlaps  = self.readalloverlaps()
+    self.__overlaps = [o for o in self.overlaps if overlapfilter(o)]
+    if onlyrectanglesinoverlaps:
+      self._rectangles = [r for r in self.rectangles if self.selectoverlaprectangles(r)]
+
+  @property
+  def overlaps(self): return self.__overlaps
+
 class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
   def readallrectangles(self, **extrakwargs):
     return self.readcsv("rect", self.rectangletype, extrakwargs={**self.rectangleextrakwargs, **extrakwargs})
+
+class ReadRectanglesOverlaps(ReadRectangles, ReadRectanglesOverlapsBase):
   def readalloverlaps(self, *, overlaptype=None, **extrakwargs):
     if overlaptype is None: overlaptype = self.overlaptype
     return self.readcsv("overlap", overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
@@ -505,5 +529,7 @@ class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   def readallrectangles(self, **extrakwargs):
     rectangles = self.getrectanglelayout()
     return [self.rectangletype(rectangle=r, readingfromfile=False, **self.rectangleextrakwargs, **extrakwargs) for r in rectangles]
+
+class ReadRectanglesOverlapsFromXML(ReadRectanglesFromXML, ReadRectanglesOverlapsBase):
   def readalloverlaps(self, **kwargs):
     return self.getoverlaps(**kwargs)

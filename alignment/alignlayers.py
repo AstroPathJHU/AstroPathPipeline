@@ -1,5 +1,5 @@
 import cv2, itertools, methodtools, numpy as np
-from ..baseclasses.sample import ReadRectangles, ReadRectanglesBase
+from ..baseclasses.sample import ReadRectanglesOverlaps, ReadRectanglesOverlapsBase
 from .alignmentset import AlignmentSet, AlignmentSetBase
 from .rectangle import AlignmentRectangleMultiLayer, RectanglePCAByBroadbandFilter
 from .overlap import AlignmentOverlap, LayerAlignmentResult
@@ -68,7 +68,7 @@ class OverlapForLayerAlignment(AlignmentOverlap):
 
     return super().align(*args, staterrorimages=staterrorimages, **kwargs)
 
-class SampleWithLayerOverlaps(ReadRectanglesBase):
+class SampleWithLayerOverlaps(ReadRectanglesOverlapsBase):
   multilayer = True
   rectangletype = AlignmentRectangleMultiLayer
   overlaptype = OverlapForLayerAlignment
@@ -109,7 +109,7 @@ class SampleWithLayerOverlaps(ReadRectanglesBase):
       ], start=1)
     ]
 
-class AlignLayersBase(SampleWithLayerOverlaps, AlignmentSetBase, ReadRectanglesBase):
+class AlignLayersBase(SampleWithLayerOverlaps, AlignmentSetBase, ReadRectanglesOverlapsBase):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.logger.warningglobal("Layer alignment is not fully implemented.  Results are not necessarily going to be accurate.")
@@ -189,7 +189,7 @@ class AlignBroadbandFilters(AlignBroadbandFiltersBase, AlignLayers):
   def stitchfilenames(self):
     return self.csv("broadbandfilterpositions"), self.csv("broadbandpositioncovariances")
 
-class AlignLayersByBroadbandFilter(SampleWithLayerOverlaps, ReadRectangles):
+class AlignLayersByBroadbandFilter(SampleWithLayerOverlaps, ReadRectanglesOverlaps):
   def __init__(self, *args, filetype="flatWarp", **kwargs):
     super().__init__(*args, filetype=filetype, **kwargs)
     self.__step1s = [AlignLayersForBroadbandFilter(*args, broadbandfilter=i, inputrectangles=self.rectangles, inputoverlaps=self.overlaps, **kwargs) for i in sorted(set(self.rectangles[0].broadbandfilters))]
