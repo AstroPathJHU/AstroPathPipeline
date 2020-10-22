@@ -26,10 +26,27 @@ def checkArgs(a) :
             raise ValueError(f'ERROR: flatfield image {prior_run_ff_filename} does not exist in prior run directory {a.prior_run_dir}!')
         if not os.path.isfile(os.path.join(a.prior_run_dir,f'{FILEPATH_TEXT_FILE_NAME}')) :
             raise ValueError(f'ERROR: rawfile log {FILEPATH_TEXT_FILE_NAME} does not exist in prior run directory {a.prior_run_dir}!')
-    #read in the samples' information
-    if not os.path.isfile(a.samples) :
-        raise ValueError(f'ERROR: FlatfieldSampleInfo file {a.samples} does not exist!')
-    samples = readtable(a.samples,FlatfieldSampleInfo)
+    #figure out and read in the samples' information
+    samples = None
+    if a.samples is None :
+        raise ValueError('ERROR: "samples" argument is required!')
+    if '.csv' in a.samples :
+        if (a.rawfile_top_dir is not None) or (a.metadata_top_dir is not None) :
+            raise ValueError(f'ERROR: samples argument {a.samples} is a file; rawfile/metadata_top_dir arguments are ambiguous!')
+        try:
+            if os.path.isfile(a.samples) :
+                samples = readtable(a.samples,FlatfieldSampleInfo)
+        except FileNotFoundError :
+            raise ValueError(f'Samples file {a.samples} does not exist!')
+    else :
+        if (a.rawfile_top_dir is None) or (a.metadata_top_dir is None) :
+            raise ValueError(f'ERROR: samples argument {a.samples} is not a file, but rawfile/metadata_top_dir arguments are not specified!')
+        samples = []
+        for sn in split_csv_to_list(a.samples) :
+            samples.append(FlatfieldSampleInfo(sn,a.rawfile_top_dir,a.metadata_top_dir))
+    if samples is None or len(samples)<1 :
+        raise ValueError(f"""ERROR: Samples '{a.samples}', rawfile top dir '{a.rawfile_top_dir}', and metadata_top_dir '{a.metadata_top_dir}' 
+                             did not result in a valid list of samples!""")
     #make sure all of the samples' necessary directories exist
     for sample in samples :
         rfd = os.path.join(sample.rawfile_top_dir,sample.name)
@@ -63,7 +80,12 @@ def checkArgs(a) :
 #helper function to get the list of filepaths and associated sample names to run on based on the selection method and number of images requested
 def getFilepathsAndSamplesToRun(a) :
     #first we need to read in the inputted samples
-    all_samples = readtable(a.samples,FlatfieldSampleInfo)
+    if '.csv' in a.samples :
+        all_samples = readtable(a.samples,FlatfieldSampleInfo)
+    else :
+        all_samples = []
+        for sn in split_csv_to_list(a.samples) :
+            all_samples.append(FlatfieldSampleInfo(sn,a.rawfile_top_dir,a.metadata_top_dir))
     samples_to_run = None; filepaths_to_run = None; filepaths_to_exclude = None
     #If other runs are being excluded, make sure to save their filenames to remove them
     if a.other_runs_to_exclude!=[''] :
@@ -102,7 +124,7 @@ def getFilepathsAndSamplesToRun(a) :
     all_sample_filepaths=[]
     for s in samples_to_run :
         with cd(os.path.join(s.rawfile_top_dir,s.name)) :
-            all_sample_filepaths+=[os.path.join(s.rawfile_top_dir,s.name,fn) for fn in glob.glob(f'{s.name}_[[]*,*[]]{a.rawfile_ext}')]
+            all_sample_filepaths+=[os.path.join(s.rawfile_top_dir,s.name,fn) for fn in glob.glob(f'{s.name}_[[]*,*[]]{CONST.RAW_EXT}')]
     all_sample_filepaths.sort()
     #if the rawfiles haven't already been selected, figure that out
     if filepaths_to_run is None :
@@ -184,12 +206,20 @@ def main() :
     #general positional arguments
     parser.add_argument('mode', choices=['make_flatfield','apply_flatfield','calculate_thresholds','check_run','choose_image_files'],                  
                         help='Which operation to perform')
-    parser.add_argument('samples',
-                        help='Path to .csv file listing FlatfieldSampleInfo objects to use samples from multiple raw/metadata file paths')
     parser.add_argument('workingdir_name', 
                         help='Name of working directory to save created files in')
     #add the exposure time correction group to the arguments
     addCommonArgumentsToParser(parser,positional_args=False,flatfielding=False,warping=False)
+    #add the group for defining the sample(s) to run on
+    sample_definition_group = parser.add_argument_group('sample definition',
+                                                        'what samples should be used, and where to find their files')
+    sample_definition_group.add_argument('--samples',     
+                                         help="""Path to .csv file listing FlatfieldSampleInfo objects (to use samples from multiple raw/metadata file paths),
+                                                 or a comma-separated list of sample names to use with the common raw/metadata file paths""")
+    sample_definition_group.add_argument('--rawfile_top_dir',
+                                         help=f'Path to directory containing [samplename] subdirectories with raw "{CONST.RAW_EXT}" files for all samples')
+    sample_definition_group.add_argument('--metadata_top_dir',
+                                         help='Path to directory holding metadata directories/subdirectories for all samples')
     #mutually exclusive group for how to handle the thresholding
     thresholding_group = parser.add_mutually_exclusive_group()
     thresholding_group.add_argument('--threshold_file_dir',
@@ -204,8 +234,6 @@ def main() :
     file_selection_group.add_argument('--prior_run_dir',     
                                       help="""Path to the working directory of a previous run whose raw files you want to use again, or whose calculated
                                       flatfield you want to apply to a different, orthogonal, set of files in the same samples""")
-    file_selection_group.add_argument('--rawfile_ext',     default='.Data.dat',
-                                      help='Extension of raw files to load (default is ".Data.dat")')
     file_selection_group.add_argument('--max_images',      default=-1,       type=int,         
                                       help='Number of images to load from the inputted list of samples')
     file_selection_group.add_argument('--selection_mode',  default='random', choices=['random','first','last'],
@@ -216,7 +244,7 @@ def main() :
     run_option_group = parser.add_argument_group('run options','other options for this run')
     run_option_group.add_argument('--n_threads',                   default=10,  type=int,         
                                   help='Number of threads/processes to run at once in parallelized portions of the code')
-    run_option_group.add_argument('--n_masking_images_per_sample', default=0,   type=int,         
+    run_option_group.add_argument('--n_masking_images_per_sample', default=2,   type=int,         
                                   help='How many example masking images to save for each sample (randomly chosen)')
     run_option_group.add_argument('--selected_pixel_cut',          default=0.8, type=float,         
                                   help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')

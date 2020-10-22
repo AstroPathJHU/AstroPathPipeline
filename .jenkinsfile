@@ -121,6 +121,12 @@ pipeline {
 	  }
 	}
 
+	stage('correct/copy raw files') {
+	  steps {
+	    sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testcorrectandcopyrawfiles'
+	  }
+	}
+
         stage('code checks') {
           steps {
             sh 'python -m pyflakes .'

@@ -5,7 +5,7 @@ from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities import units
 from ..utilities.img_file_io import getSampleMedianExposureTimesByLayer, getImageHWLFromXMLFile
 from ..utilities.tableio import writetable
-from ..utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs
+from ..utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
 import os
 
@@ -90,8 +90,8 @@ class FlatfieldSample() :
             med_exposure_times_by_layer = None
         #make sure the plot directory exists
         if not os.path.isdir(top_plotdir_path) :
-            with cd(os.path.join(*[pp for pp in top_plotdir_path.split(os.sep)[:-1]])) :
-                os.mkdir(top_plotdir_path.split(os.sep)[-1])
+            with cd(os.path.dirname(top_plotdir_path)) :
+                os.mkdir(os.path.basename(top_plotdir_path))
         this_samp_threshold_plotdir_name = f'{self._name}_{self.THRESHOLD_PLOT_DIR_STEM}'
         plotdir_path = os.path.join(top_plotdir_path,this_samp_threshold_plotdir_name)
         if not os.path.isdir(plotdir_path) :
@@ -183,8 +183,10 @@ class FlatfieldSample() :
                 ax3.set_xlabel('pixel flux (counts)')
                 ax3.set_ylabel('n image pixels')
                 ax3.legend(loc='best')
-                plt.savefig(f'{self._name}_layer_{li+1}_background_threshold_plots.png')
+                fn = f'{self._name}_layer_{li+1}_background_threshold_plots.png'
+                plt.savefig(fn)
                 plt.close()
+                cropAndOverwriteImage(fn)
         #make a little plot of the threshold min/max and final values by layer
         with cd(plotdir_path) :
             xvals=list(range(1,self._img_dims[-1]+1))
@@ -195,8 +197,10 @@ class FlatfieldSample() :
             plt.xlabel('image layer')
             plt.ylabel('pixel flux (counts)')
             plt.legend(loc='best')
-            plt.savefig(f'{self._name}_background_thresholds_by_layer.png')
+            fn = f'{self._name}_background_thresholds_by_layer.png'
+            plt.savefig(fn)
             plt.close()
+            cropAndOverwriteImage(fn)
         #save the threshold values to a text file
         with cd(top_plotdir_path) :
             with open(f'{self._name}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}','w') as tfp :
@@ -223,7 +227,7 @@ class FlatfieldSample() :
         #use this to find the minimum and maximum collection time of the edge rectangle images
         edge_rect_ts = [r.t for r in a.rectangles if r.n in edge_rect_ns] 
         #save the metadata summary file for the thresholding file group
-        ms = MetadataSummary(self._name,a.Project,a.Cohort,a.microscopename,min(edge_rect_ts),max(edge_rect_ts))
+        ms = MetadataSummary(self._name,a.Project,a.Cohort,a.microscopename,str(min(edge_rect_ts)),str(max(edge_rect_ts)))
         if plotdir_path is not None :
             with cd(plotdir_path) :
                 writetable(f'{self.TISSUE_EDGE_MDS_STEM}_{self._name}.csv',[ms])
@@ -247,7 +251,9 @@ class FlatfieldSample() :
                 if has_qptiff :
                     ax2.imshow(mpimg.imread(os.path.join(self._metadata_top_dir,self._name,'dbload',f'{self._name}_qptiff.jpg')))
                     ax2.set_title('reference qptiff',fontsize=18)
-                plt.savefig(f'{self._name}_{self.RECTANGLE_LOCATION_PLOT_STEM}.png')
+                fn = f'{self._name}_{self.RECTANGLE_LOCATION_PLOT_STEM}.png'
+                plt.savefig(fn)
                 plt.close()
+                cropAndOverwriteImage(fn)
         #return the list of the filepaths whose rectangles are on the edge of the tissue
         return [rfp for rfp in rawfile_paths if rfp.split(os.sep)[-1].split('.')[0] in edge_rect_filenames]

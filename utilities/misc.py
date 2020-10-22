@@ -1,5 +1,5 @@
-import matplotlib.pyplot as plt, numpy as np, re, uncertainties as unc
-import contextlib, dataclasses, fractions, logging, os, scipy.stats, tifffile, datetime
+import matplotlib.pyplot as plt, numpy as np, uncertainties as unc
+import contextlib, dataclasses, fractions, logging, os, re, scipy.stats, tifffile, cv2
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -85,6 +85,23 @@ def weightedvariance(a, *, subtractaverage=True):
 def weightedstd(*args, **kwargs):
   return weightedvariance(*args, **kwargs) ** 0.5
 
+#small helper function to crop white border out of an image
+def cropAndOverwriteImage(im_path,border=0.03) :
+  im = cv2.imread(im_path)
+  y_border = int(im.shape[0]*(border/2))
+  x_border = int(im.shape[1]*(border/2))
+  min_y = 0; max_y = im.shape[0]
+  min_x = 0; max_x = im.shape[1]
+  while np.min(im[min_y:min_y+y_border,:,:])==255 :
+      min_y+=1
+  while np.min(im[max_y-y_border:max_y,:,:])==255 :
+      max_y-=1
+  while np.min(im[:,min_x:min_x+x_border,:])==255 :
+      min_x+=1
+  while np.min(im[:,max_x-x_border:max_x,:])==255 :
+      max_x-=1
+  cv2.imwrite(im_path,im[min_y:max_y+1,min_x:max_x+1,:])
+
 #parser callback function to split a string of comma-separated values into a list
 def split_csv_to_list(value) :
   return value.split(',')
@@ -128,8 +145,8 @@ class MetadataSummary :
   project         : int
   cohort          : int
   microscope_name : str
-  mindate         : datetime.datetime
-  maxdate         : datetime.datetime
+  mindate         : str
+  maxdate         : str
 
 #helper function to return a list of rectangle ns for all rectangles on the edge of the tissue for this sample
 def getAlignmentSetTissueEdgeRectNs(aset) :
@@ -190,14 +207,15 @@ def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,fl
   if flatfielding :
     flatfield_group = parser.add_mutually_exclusive_group(required=True)
     flatfield_group.add_argument('--flatfield_file',
-                                 help="""Path to the flatfield.bin file that should be applied to the files in this sample""")
+                                 help='Path to the flatfield.bin file that should be applied to the files in this sample')
     flatfield_group.add_argument('--skip_flatfielding', action='store_true',
                                  help='Add this flag to entirely skip flatfield corrections')
   #mutually exclusive group for how to handle the warping corrections
   if warping :
     warping_group = parser.add_mutually_exclusive_group(required=True)
-    warping_group.add_argument('--warp_field_dir',   
-                               help='Path to the directory holding the dx and dy warp fields to apply')
+    warping_group.add_argument('--warp_def',   
+                               help="""Path to the weighted average fit result file of the warp to apply, 
+                                    or to the directory with the warp's dx and dy shift fields""")
     warping_group.add_argument('--skip_warping', action='store_true',
                                help='Add this flag to entirely skip warping corrections')
 

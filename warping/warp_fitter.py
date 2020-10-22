@@ -9,7 +9,7 @@ from ..baseclasses.rectangle import rectangleoroverlapfilter
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getMedianExposureTimeAndCorrectionOffsetForSampleLayer
 from ..utilities.tableio import writetable
 from ..utilities import units
-from ..utilities.misc import cd, MetadataSummary
+from ..utilities.misc import cd, MetadataSummary, cropAndOverwriteImage
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, copy, math, shutil, platform, time, logging
 
@@ -61,7 +61,7 @@ class WarpFitter :
         self.alignset = self.__initializeAlignmentSet(overlaps=overlaps)
         #save the metadata summary and field logs for this alignment set
         ms = MetadataSummary(self.samp_name,self.alignset.Project,self.alignset.Cohort,self.alignset.microscopename,
-                             min([r.t for r in self.alignset.rectangles]),max([r.t for r in self.alignset.rectangles]))
+                             str(min([r.t for r in self.alignset.rectangles])),str(max([r.t for r in self.alignset.rectangles])))
         field_logs = []
         for r in self.alignset.rectangles :
             field_logs.append(FieldLog(self.samp_name,r.file,r.n))
@@ -153,7 +153,7 @@ class WarpFitter :
         self.fitpars.setFirstMinimizationResults(de_result)
         #do the polishing minimization
         if polish :
-            result = self.__runPolishMinimization(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,(self._de_population_size*maxiter))
+            result = self.__runPolishMinimization(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter)
         else :
             result=de_result
         polish_minimization_done_time = time.time()
@@ -276,7 +276,7 @@ class WarpFitter :
                     func=self._evalCamWarpOnAlignmentSet,
                     bounds=parameter_bounds,
                     strategy='best1bin',
-                    maxiter=maxiter,
+                    maxiter=int(maxiter/self._de_population_size)+1,
                     tol=self.DE_TOLERANCE,
                     mutation=self.DE_MUTATION,
                     recombination=self.DE_RECOMBINATION,
@@ -410,8 +410,10 @@ class WarpFitter :
         ax[1][2].set_ylabel('max tangential warp')
         ax[1][2].legend(loc='best')
         with cd(self.working_dir) :
-            plt.savefig('fit_progress.png')
+            savename = 'fit_progress.png'
+            plt.savefig(savename)
             plt.close()
+            cropAndOverwriteImage(savename)
         return ninitev, nfev
 
     #function to save alignment comparison visualizations in a new directory inside the working directory
@@ -428,32 +430,46 @@ class WarpFitter :
         all_olaps = self.alignset.overlaps
         olap_octet_p1s   = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])==8]
         olap_singlet_p1s = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])!=8 and olap1.p2 not in olap_octet_p1s]
-        #don't use the corner overlaps in the final cost reduction calculation either
-        self.skip_corners = True
+        #do use the corner overlaps in the final cost reduction calculation
+        self.skip_corners = False
         self.cost_norm = self.__getCostNormalization()
+        #make the overlap comparison figures
+        addl_singlet_p1s_and_codes = set()
+        failed_p1s_and_codes = None
         #start by aligning the raw, unwarped images and getting their shift comparison information/images and the raw p1 images
         self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
         rawcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
         raw_olap_comps = self.alignset.getOverlapComparisonImagesDict()
-        raw_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
+        raw_octets_olaps = [[olap for olap in self.alignset.overlaps if olap.p1==octetp1] for octetp1 in olap_octet_p1s]
+        raw_octets_opposite_olaps = [[olap for olap in self.alignset.overlaps if olap.p2==octetp1] for octetp1 in olap_octet_p1s]
+        for octetp1,raw_octet_overlaps,raw_octet_opposite_overlaps in zip(olap_octet_p1s,raw_octets_olaps,raw_octets_opposite_olaps) :
+            #start up the figures
+            raw_octet_image = OctetComparisonVisualization(raw_octet_overlaps,False,f'octet_p1={octetp1}_raw_overlap_comparisons')
+            raw_octet_opposite_image = OctetComparisonVisualization(raw_octet_opposite_overlaps,False,f'octet_p1={octetp1}_raw_opposite_overlap_comparisons',True)
+            raw_aligned_octet_image = OctetComparisonVisualization(raw_octet_overlaps,True,f'octet_p1={octetp1}_raw_aligned_overlap_comparisons')
+            raw_aligned_octet_opposite_image = OctetComparisonVisualization(raw_octet_opposite_overlaps,True,f'octet_p1={octetp1}_raw_aligned_opposite_overlap_comparisons',True)
+            all_octet_comparison_images = [raw_octet_image,raw_octet_opposite_image,raw_aligned_octet_image,raw_aligned_octet_opposite_image]
+            #stack the overlay images and write out the figures
+            for oci in all_octet_comparison_images :
+                failed_p1s_and_codes = oci.stackOverlays()
+                for fp1,fc in failed_p1s_and_codes :
+                    addl_singlet_p1s_and_codes.add((fp1,fc))
+                with cd(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME)) :
+                    oci.writeOutFigure()
         #next warp and align the images with the best fit warp and do the same thing
         self.warpset.warpLoadedImages()
         self.alignset.updateRectangleImages(self.warpset.images)
         bestcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
         warped_olap_comps = self.alignset.getOverlapComparisonImagesDict()
-        warped_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
-        #print the cost differences
-        warp_logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
-        #write out the octet comparison figures
-        addl_singlet_p1s_and_codes = set()
-        failed_p1s_and_codes = None
-        for octetp1,raw_octet_overlaps,warped_octet_overlaps in zip(olap_octet_p1s,raw_octets_olaps,warped_octets_olaps) :
+        warped_octets_olaps = [[olap for olap in self.alignset.overlaps if olap.p1==octetp1] for octetp1 in olap_octet_p1s]
+        warped_octets_ooposite_olaps = [[olap for olap in self.alignset.overlaps if olap.p2==octetp1] for octetp1 in olap_octet_p1s]
+        for octetp1,warped_octet_overlaps,warped_octet_opposite_overlaps in zip(olap_octet_p1s,warped_octets_olaps,warped_octets_ooposite_olaps) :
             #start up the figures
-            raw_octet_image = OctetComparisonVisualization(raw_octet_overlaps,False,f'octet_p1={octetp1}_raw_overlap_comparisons')
-            raw_aligned_octet_image = OctetComparisonVisualization(raw_octet_overlaps,True,f'octet_p1={octetp1}_raw_aligned_overlap_comparisons')
             warped_octet_image = OctetComparisonVisualization(warped_octet_overlaps,False,f'octet_p1={octetp1}_warped_overlap_comparisons')
+            warped_octet_opposite_image = OctetComparisonVisualization(warped_octet_opposite_overlaps,False,f'octet_p1={octetp1}_warped_opposite_overlap_comparisons',True)
             warped_aligned_octet_image = OctetComparisonVisualization(warped_octet_overlaps,True,f'octet_p1={octetp1}_warped_aligned_overlap_comparisons')
-            all_octet_comparison_images = [raw_octet_image,raw_aligned_octet_image,warped_octet_image,warped_aligned_octet_image]
+            warped_aligned_octet_opposite_image = OctetComparisonVisualization(warped_octet_opposite_overlaps,True,f'octet_p1={octetp1}_warped_aligned_opposite_overlap_comparisons',True)
+            all_octet_comparison_images = [warped_octet_image,warped_octet_opposite_image,warped_aligned_octet_image,warped_aligned_octet_opposite_image]
             #stack the overlay images and write out the figures
             for oci in all_octet_comparison_images :
                 failed_p1s_and_codes = oci.stackOverlays()
@@ -499,6 +515,9 @@ class WarpFitter :
             with cd(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME)) :
                 plt.savefig(fn)
                 plt.close()
+                cropAndOverwriteImage(fn)
+        #print the cost differences
+        warp_logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
         #return the pre- and post-fit alignment costs
         return rawcost, bestcost
 

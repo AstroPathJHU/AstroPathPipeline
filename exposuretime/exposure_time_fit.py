@@ -4,7 +4,7 @@ from .utilities import et_fit_logger, FieldLog
 from .config import CONST
 from .alignmentset import AlignmentSetForExposureTime
 from ..utilities.tableio import writetable
-from ..utilities.misc import cd, MetadataSummary
+from ..utilities.misc import cd, MetadataSummary, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt
 from matplotlib import colors
 import os, random, scipy, platform
@@ -180,7 +180,7 @@ class SingleLayerExposureTimeFit :
             writetable(f'fields_used_in_exposure_time_fit_{self.sample}_layer_{self.layer}.csv',field_logs)
         #make the metadata summary object and write it out
         metadata_summary = MetadataSummary(self.sample,alignset.Project,alignset.Cohort,alignset.microscopename,
-                                           min([r.t for r in relevant_rectangles]),max([r.t for r in relevant_rectangles]))
+                                           str(min([r.t for r in relevant_rectangles])),str(max([r.t for r in relevant_rectangles])))
         with cd(self.plotdirpath) :
             writetable(f'metadata_summary_exposure_time_{self.sample}_layer_{self.layer}.csv',[metadata_summary])
         #return the list of exposure time overlaps and the summary of the metadata of the alignmentSet they came from
@@ -198,8 +198,10 @@ class SingleLayerExposureTimeFit :
         ax[1].set_xlabel('fit iteration')
         ax[1].set_ylabel('offset')
         with cd(self.plotdirpath) :
-            plt.savefig(f'costs_and_offsets_{self.sample}_layer_{self.layer}.png')
-        plt.close()
+            fn = f'costs_and_offsets_{self.sample}_layer_{self.layer}.png'
+            plt.savefig(fn)
+            plt.close()
+            cropAndOverwriteImage(fn)
 
     #helper function to make a plot of each overlap's cost reduction and write out the table of overlap fit results
     def __writeResultsAndPlotCostReductions(self) :
@@ -224,8 +226,10 @@ class SingleLayerExposureTimeFit :
         ax[2].set_xlabel('(original cost - post-fit cost)/(original cost)')
         ax[2].set_ylabel('number of overlaps')
         with cd(self.plotdirpath) :
-            plt.savefig(f'cost_reduction_plots_1d_{self.sample}_layer_{self.layer}.png')
-        plt.close()
+            fn = f'cost_reduction_plots_1d_{self.sample}_layer_{self.layer}.png'
+            plt.savefig(fn)
+            plt.close()
+            cropAndOverwriteImage(fn)
         #make 2D pre/postfit cost and cost reduction plots
         f,ax = plt.subplots(2,2,figsize=(2*6.4,2*4.6))
         etdiffs = [r.et_diff for r in fitresults]
@@ -244,8 +248,10 @@ class SingleLayerExposureTimeFit :
         f.colorbar(pos[3],ax=ax[1][1])
         ax[1][1].plot([0.98*x for x in ax[1][1].get_xlim()],[0.,0.],linewidth=2)
         with cd(self.plotdirpath) :
-            plt.savefig(f'cost_reduction_plots_2d_{self.sample}_layer_{self.layer}.png')
-        plt.close()
+            fn = f'cost_reduction_plots_2d_{self.sample}_layer_{self.layer}.png'
+            plt.savefig(fn)
+            plt.close()
+            cropAndOverwriteImage(fn)
 
     #helper function to write out a set of overlap overlay comparisons
     def __saveComparisonImages(self,n_comparisons_to_save) :

@@ -1,5 +1,5 @@
 #imports
-from .utilities import warp_logger, WarpingError, WarpFitResult, addCommonWarpingArgumentsToParser, checkDirArgs, getOctetsFromArguments
+from .utilities import warp_logger, WarpingError, WarpFitResult, WarpingSummary, addCommonWarpingArgumentsToParser, checkDirArgs, getOctetsFromArguments
 from .config import CONST
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
@@ -18,13 +18,13 @@ PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding']
 
 #################### HELPER FUNCTIONS ####################
 
-#helper function to make sure th command line arguments are alright
+#helper function to make sure the command line arguments are alright
 def checkArgs(args) :
     #check to make sure the directories exist and the 'fixed' argument is okay
     checkDirArgs(args)
     #tell the user what's going to happen based on the mode/octet splitting arguments
     if args.mode=='fit' :
-        warp_logger.info(f'Three groups of fits will be performed, using {args.workers} CPUs each, to find the warping pattern for {args.sample}:')
+        warp_logger.info(f'Three groups of fits will be performed, using {args.workers} CPUs (max) each, to find the warping pattern for {args.sample}:')
         warp_logger.info(f'{args.initial_pattern_octets} octets will be used to find the initial general pattern')
         warp_logger.info(f'{args.principal_point_octets} octets will be used to define the center principal point location')
         warp_logger.info(f'{args.final_pattern_octets} octets will be used to find the overall best pattern')
@@ -172,19 +172,19 @@ if __name__=='__main__' :
     parser.add_argument('workers', default=None, type=int, help='Max # of CPUs to use in the multiprocessing pools (defaults to all available)')
     #arguments for how to split the total group of octets
     octet_splitting_group = parser.add_argument_group('octet splitting', 'how to split the total set of octets for each of the three fit groups')
-    octet_splitting_group.add_argument('--initial_pattern_octets', type=int, default=100,
+    octet_splitting_group.add_argument('--initial_pattern_octets', type=int, default=50,
                                        help='Number of octets to use in the initial pattern fits')
-    octet_splitting_group.add_argument('--principal_point_octets', type=int, default=100,
+    octet_splitting_group.add_argument('--principal_point_octets', type=int, default=50,
                                        help='Number of octets to use in the principal point location fits')
     octet_splitting_group.add_argument('--final_pattern_octets',   type=int, default=100,
                                        help='Number of octets to use in the final pattern fits')
     #arguments for how many iterations to run at maximum in the groups of fits
     max_iters_group = parser.add_argument_group('max iterations', 'how many iterations to run at max for minimization in each of the three fit groups')
-    max_iters_group.add_argument('--initial_pattern_max_iters', type=int, default=30,
+    max_iters_group.add_argument('--initial_pattern_max_iters', type=int, default=3000,
                                        help='Max # of iterations to run in the initial pattern fits')
-    max_iters_group.add_argument('--principal_point_max_iters', type=int, default=250,
+    max_iters_group.add_argument('--principal_point_max_iters', type=int, default=8000,
                                        help='Max # of iterations to run in the principal point location fits')
-    max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=1000,
+    max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=10000,
                                        help='Max # of iterations to run in the final pattern fits')
     args = parser.parse_args()
     #make sure the arguments are alright
@@ -202,14 +202,14 @@ if __name__=='__main__' :
     if args.mode=='fit' :
         #figure out the radial warping parameters to use when finding the principal point
         w_avg_res_1 = (readtable(os.path.abspath(os.path.join(args.workingdir,dirname_1,
-                                                            f'{dirname_1}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}')),WarpFitResult))[0]
+                                                            f'{dirname_1}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}')),WarpingSummary))[0]
         init_k1 = w_avg_res_1.k1; init_k2 = w_avg_res_1.k2; init_k3 = w_avg_res_1.k3
         #get the command for the central principal point fits and run it
         cmd_2 = getPrincipalPointFitCmd(dirname_2,args,init_k1,init_k2,init_k3)
         with open(cmd_file_path,'a') as fp :
             fp.write(f'{cmd_2}\n\n')
         subprocess.call(cmd_2)
-        #find the weighted mean of the principal point from the previous run results 
+        #find the weighted mean of the principal point and its error from the previous run results 
         all_results_2 = readtable(os.path.abspath(os.path.join(args.workingdir,dirname_2,f'all_results_{dirname_2}.csv')),WarpFitResult)
         w_cx = 0.; w_cy = 0.; sw = 0.; sw2 = 0.
         for r in all_results_2 :
@@ -227,9 +227,9 @@ if __name__=='__main__' :
         subprocess.call(cmd_3)
         warp_logger.info(f'All fits for {args.sample} warping pattern completed')
         #move and rename the final warping field and weighted average result files from the last fit
-        old_w_avg_fit_result_fp = os.path.abspath(os.path.join(args.workingdir,dirname_3,f'{dirname_3}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}'))
+        old_w_avg_fit_result_fp = os.path.abspath(os.path.join(args.workingdir,dirname_3,f'{dirname_3}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}'))
         new_w_avg_fit_result_fp = os.path.abspath(os.path.join(args.workingdir,
-                                                f'{os.path.basename(os.path.normpath(args.workingdir))}_weighted_average_{CONST.FIT_RESULT_CSV_FILE_NAME}'))
+                                                f'{os.path.basename(os.path.normpath(args.workingdir))}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}'))
         shutil.move(old_w_avg_fit_result_fp,new_w_avg_fit_result_fp)
         old_w_avg_dx_wf_fp = os.path.abspath(os.path.join(args.workingdir,dirname_3,f'{CONST.X_WARP_BIN_FILENAME}_{dirname_3}.bin'))
         old_w_avg_dy_wf_fp = os.path.abspath(os.path.join(args.workingdir,dirname_3,f'{CONST.Y_WARP_BIN_FILENAME}_{dirname_3}.bin'))

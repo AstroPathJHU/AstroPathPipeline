@@ -52,6 +52,14 @@ class OverlapOctet :
     olap_7_n             : int
     olap_9_n             : int
     olap_8_n             : int
+    opposite_olap_1_n    : int
+    opposite_olap_2_n    : int
+    opposite_olap_3_n    : int
+    opposite_olap_4_n    : int
+    opposite_olap_6_n    : int
+    opposite_olap_7_n    : int
+    opposite_olap_9_n    : int
+    opposite_olap_8_n    : int
     olap_1_p1_pixel_frac : float
     olap_2_p1_pixel_frac : float
     olap_3_p1_pixel_frac : float
@@ -71,6 +79,11 @@ class OverlapOctet :
     @property
     def overlap_ns(self) :
         return [self.olap_1_n,self.olap_2_n,self.olap_3_n,self.olap_4_n,self.olap_6_n,self.olap_7_n,self.olap_8_n,self.olap_9_n]
+    @property
+    def opposite_overlap_ns(self):
+        return [self.opposite_olap_1_n,self.opposite_olap_2_n,self.opposite_olap_3_n,self.opposite_olap_4_n,
+                self.opposite_olap_6_n,self.opposite_olap_7_n,self.opposite_olap_8_n,self.opposite_olap_9_n]
+    
 
 #little utility class to represent a warp fit result
 @dataclasses.dataclass
@@ -106,6 +119,34 @@ class FieldLog :
     sample : str
     file   : str
     rect_n : int
+
+#little utilitiy class for logging x and y principal point shifts
+@dataclasses.dataclass
+class WarpShift :
+    layer_n  : int
+    cx_shift : float
+    cy_shift : float
+
+#utility class for logging warping parameters and the sample they come from
+@dataclasses.dataclass
+class WarpingSummary :
+    sample_name     : str
+    project         : int
+    cohort          : int
+    microscope_name : str
+    mindate         : str
+    maxdate         : str
+    n               : int
+    m               : int
+    cx              : float
+    cy              : float
+    fx              : float
+    fy              : float
+    k1              : float
+    k2              : float
+    k3              : float
+    p1              : float
+    p2              : float
 
 #helper function to mutate an argument parser for some generic warping options
 def addCommonWarpingArgumentsToParser(parser,fit=True,fitpars=True,job_organization=True) :
@@ -321,8 +362,9 @@ def findSampleOctets(rtd,mtd,threshold_file_path,req_pixel_frac,samp,working_dir
             ons = [o[0].n for o in overlapswiththisp1]
             op1pfs = [o[1] for o in overlapswiththisp1]
             op2pfs = [o[2] for o in overlapswiththisp1]
+            opposite_ons = [[opp_o[0].n for opp_o in good_overlaps if opp_o[0].p1==o[0].p2 and opp_o[0].p2==o[0].p1][0] for o in overlapswiththisp1]
             warp_logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
-            octets.append(OverlapOctet(mtd,rtd,samp,CONST.N_CLIP,layer,threshold_value,p1,*(ons),*(op1pfs),*(op2pfs)))
+            octets.append(OverlapOctet(mtd,rtd,samp,CONST.N_CLIP,layer,threshold_value,p1,*(ons),*(opposite_ons),*(op1pfs),*(op2pfs)))
     octets.sort(key=lambda x: x.p1_rect_n)
     #save the file of which overlaps are in each valid octet
     with cd(working_dir) :

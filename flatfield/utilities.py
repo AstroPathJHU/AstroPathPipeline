@@ -254,10 +254,10 @@ def drawThresholds(img_array, *, layer_index=0, emphasize_mask=None, show_region
         plt.axvline(x=threshold, color="red", alpha=0.5+0.5*(weight-min(weights))/(max(weights)-min(weights)))
     plotstyling(fig, ax)
     if saveas is None:
-      plt.show()
+        plt.show()
     else:
-      plt.savefig(saveas)
-      plt.close()
+        plt.savefig(saveas)
+        plt.close()
     if show_regions:
         for t1, t2 in more_itertools.pairwise([0]+sorted(thresholds)+[float("inf")]):
             if t1 == t2: continue #can happen if 0 is a threshold

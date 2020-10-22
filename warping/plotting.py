@@ -2,6 +2,7 @@
 from .warp import PolyFieldWarp, CameraWarp
 from .utilities import warp_logger
 from .config import CONST
+from ..utilities.misc import cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 
@@ -29,13 +30,24 @@ def standardizeValues(rawvals,weights=None,plot=False) :
 #makes a plot of the principal points in a list of results; shaded by cost reduction
 #also prints the mean and weighted mean
 def principalPointPlot(all_results,save_stem=None) :
-    mean_cx = np.mean([r.cx for r in all_results])
-    mean_cy = np.mean([r.cy for r in all_results])
-    weighted_mean_cx = np.sum([r.cx*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
-    weighted_mean_cy = np.sum([r.cy*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
+    mean_cx = np.mean([r.cx for r in all_results if r.cost_reduction>0.]); cx_err = np.std([r.cx for r in all_results if r.cost_reduction>0.])
+    mean_cy = np.mean([r.cy for r in all_results if r.cost_reduction>0.]); cy_err = np.std([r.cy for r in all_results if r.cost_reduction>0.])
+    weighted_mean_cx = 0.; weighted_mean_cy = 0.; sw = 0.; sw2 = 0.
+    for r in all_results :
+        w = r.cost_reduction
+        if w<0. :
+            continue
+        weighted_mean_cx+=w*r.cx
+        weighted_mean_cy+=w*r.cy
+        sw+=w
+        sw2+=w**2
+    weighted_mean_cx/=sw; w_mean_cx_err = np.sqrt(((cx_err**2)*sw2)/(sw**2))
+    weighted_mean_cy/=sw; w_mean_cy_err = np.sqrt(((cy_err**2)*sw2)/(sw**2))
     txt_lines = []
-    txt_lines.append(f'Mean center point at ({mean_cx}, {mean_cy})')
-    txt_lines.append(f'Weighted mean center point at ({weighted_mean_cx}, {weighted_mean_cy})')
+    txt_lines.append(f'Mean center point cx = {mean_cx} +/- {cx_err}')
+    txt_lines.append(f'Mean center point cy = {mean_cy} +/- {cy_err}')
+    txt_lines.append(f'Weighted mean center point cx = {weighted_mean_cx} +/- {w_mean_cx_err}')
+    txt_lines.append(f'Weighted mean center point cy = {weighted_mean_cy} +/- {w_mean_cy_err}')
     if save_stem is not None :
         fn = f'{save_stem}_mean_principal_point.txt'
         with open(fn,'w') as fp :
@@ -46,8 +58,8 @@ def principalPointPlot(all_results,save_stem=None) :
             print(tl)
     f,ax=plt.subplots()
     pos = ax.scatter([r.cx for r in all_results],[r.cy for r in all_results],c=[r.cost_reduction for r in all_results])
-    ax.scatter(mean_cx,mean_cy,marker='x',color='tab:red',label='mean')
-    ax.scatter(weighted_mean_cx,weighted_mean_cy,marker='x',color='tab:blue',label='weighted mean')
+    ax.errorbar(mean_cx,mean_cy,yerr=cy_err,xerr=cx_err,marker='x',color='tab:red',label='mean')
+    ax.errorbar(weighted_mean_cx,weighted_mean_cy,yerr=w_mean_cy_err,xerr=w_mean_cx_err,marker='x',color='tab:blue',label='weighted mean')
     ax.set_title('Center point locations with cost redux')
     ax.set_xlabel('cx point')
     ax.set_ylabel('cy point')
@@ -57,6 +69,7 @@ def principalPointPlot(all_results,save_stem=None) :
         fn = f'{save_stem}_principal_point_plot.png'
         plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
     else :
         plt.show()
 
@@ -89,12 +102,21 @@ def radWarpAmtPlots(all_results,save_stem=None) :
     ax[1].set_xlabel('max radial warp')
     ax[1].set_ylabel('cost reduction')
     pos = ax[2].scatter([r.cx for r in all_results],[r.cy for r in all_results],c=[r.max_rad_warp for r in all_results])
-    mean_cx = np.mean([r.cx for r in all_results])
-    mean_cy = np.mean([r.cy for r in all_results])
-    weighted_mean_cx = np.sum([r.cx*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
-    weighted_mean_cy = np.sum([r.cy*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
-    ax[2].scatter(mean_cx,mean_cy,marker='x',color='tab:red',label='mean')
-    ax[2].scatter(weighted_mean_cx,weighted_mean_cy,marker='x',color='tab:blue',label='weighted mean')
+    mean_cx = np.mean([r.cx for r in all_results if r.cost_reduction>0.]); cx_err = np.std([r.cx for r in all_results if r.cost_reduction>0.])
+    mean_cy = np.mean([r.cy for r in all_results if r.cost_reduction>0.]); cy_err = np.std([r.cy for r in all_results if r.cost_reduction>0.])
+    weighted_mean_cx = 0.; weighted_mean_cy = 0.; sw = 0.; sw2 = 0.
+    for r in all_results :
+        w = r.cost_reduction
+        if w<0. :
+            continue
+        weighted_mean_cx+=w*r.cx
+        weighted_mean_cy+=w*r.cy
+        sw+=w
+        sw2+=w**2
+    weighted_mean_cx/=sw; w_mean_cx_err = np.sqrt(((cx_err**2)*sw2)/(sw**2))
+    weighted_mean_cy/=sw; w_mean_cy_err = np.sqrt(((cy_err**2)*sw2)/(sw**2))
+    ax[2].errorbar(mean_cx,mean_cy,yerr=cy_err,xerr=cx_err,marker='x',color='tab:red',label='mean')
+    ax[2].errorbar(weighted_mean_cx,weighted_mean_cy,yerr=w_mean_cy_err,xerr=w_mean_cx_err,marker='x',color='tab:blue',label='weighted mean')
     ax[2].set_title('Center point locations colored by max radial warp')
     ax[2].set_xlabel('cx point')
     ax[2].set_ylabel('cy point')
@@ -104,6 +126,7 @@ def radWarpAmtPlots(all_results,save_stem=None) :
         fn = f'{save_stem}_radial_warp_amount_plots.png'
         plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
     else :
         plt.show()
 
@@ -119,6 +142,7 @@ def radWarpParPlots(all_results,save_stem=None) :
         fn = f'{save_stem}_all_radial_warp_parameters_plot.png'
         plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
     else :
         plt.show()
     f,ax=plt.subplots(1,3,figsize=(3*6.4,4.6))
@@ -138,6 +162,7 @@ def radWarpParPlots(all_results,save_stem=None) :
         fn = f'{save_stem}_cost_redux_vs_radial_warp_parameters_plots.png'
         plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
     else :
         plt.show()
 
@@ -161,6 +186,7 @@ def radWarpPCAPlots(all_results,weighted=False,save_stem=None) :
         fn = f'{save_stem}_all_{"weighted_" if weighted else ""}standardized_radial_warp_parameters_plot.png'
         plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
     else :
         plt.show()
     #do the principal component analysis
@@ -188,11 +214,13 @@ def radWarpPCAPlots(all_results,weighted=False,save_stem=None) :
         fn = f'{save_stem}_cost_redux_vs_radial_warp_{"weighted_" if weighted else ""}PCA_components.png'
         plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
     else :
         plt.show()
 
 ######## Several helper functions to translate lists of warp results into various overall warp fields and their variations ########
 def getListsOfWarpFields(all_results) :
+    all_results = [r for r in all_results if r.cost_reduction>0.]
     all_warps = []
     for r in all_results :
         all_warps.append(CameraWarp(cx=r.cx, cy=r.cy, k1=r.k1, k2=r.k2, k3=r.k3))
@@ -203,6 +231,7 @@ def getListsOfWarpFields(all_results) :
     return all_drs, all_dxs, all_dys
 
 def getMeanWarpFields(all_results) :
+    all_results = [r for r in all_results if r.cost_reduction>0.]
     all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
     mean_dr = np.mean(list(all_drs),axis=0)
     mean_dx = np.mean(list(all_dxs),axis=0)
@@ -210,6 +239,7 @@ def getMeanWarpFields(all_results) :
     return mean_dr, mean_dx, mean_dy
 
 def getWeightedMeanWarpFields(all_results) :
+    all_results = [r for r in all_results if r.cost_reduction>0.]
     all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
     weighted_mean_dr = np.sum([dr*r.cost_reduction for dr,r in zip(all_drs,all_results)],axis=0)/np.sum([r.cost_reduction for r in all_results])
     weighted_mean_dx = np.sum([dx*r.cost_reduction for dx,r in zip(all_dxs,all_results)],axis=0)/np.sum([r.cost_reduction for r in all_results])
@@ -217,18 +247,31 @@ def getWeightedMeanWarpFields(all_results) :
     return weighted_mean_dr, weighted_mean_dx, weighted_mean_dy
 
 def getWarpFieldStdDevs(all_results) :
+    all_results = [r for r in all_results if r.cost_reduction>0.]
     all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
     dr_stddev = np.std(list(all_drs),axis=0)
     dx_stddev = np.std(list(all_dxs),axis=0)
     dy_stddev = np.std(list(all_dys),axis=0)
     return dr_stddev, dx_stddev, dy_stddev
 
+def getWarpFieldWeightedStdErr(all_results) :
+    all_results = [r for r in all_results if r.cost_reduction>0.]
+    all_drs, all_dxs, all_dys = getListsOfWarpFields(all_results)
+    dr_stddev = np.std(list(all_drs),axis=0)
+    dx_stddev = np.std(list(all_dxs),axis=0)
+    dy_stddev = np.std(list(all_dys),axis=0)
+    sw = np.sum([r.cost_reduction for r in all_results]); sw2 = np.sum([r.cost_reduction**2 for r in all_results])
+    dr_w_stderr = np.sqrt(((dr_stddev**2)*sw2)/(sw**2))
+    dx_w_stderr = np.sqrt(((dx_stddev**2)*sw2)/(sw**2))
+    dy_w_stderr = np.sqrt(((dy_stddev**2)*sw2)/(sw**2))
+    return dr_w_stderr, dx_w_stderr, dy_w_stderr
+
 ###################################################################################################################################
 
 #plots the mean, weighted mean, and standard deviation dr, dx, and dy warp fields from a list of WarpFitResults
 def warpFieldVariationPlots(all_results,save_stem=None) :
     mean_dr, mean_dx, mean_dy = getMeanWarpFields(all_results)
-    f,ax = plt.subplots(3,3,figsize=(3*6.4,3*(mean_dr.shape[0]/mean_dr.shape[1])*6.4))
+    f,ax = plt.subplots(4,3,figsize=(3*6.4,4*(mean_dr.shape[0]/mean_dr.shape[1])*6.4))
     pos = ax[0][0].imshow(mean_dr)
     ax[0][0].set_title('mean dr')
     f.colorbar(pos,ax=ax[0][0])
@@ -238,30 +281,41 @@ def warpFieldVariationPlots(all_results,save_stem=None) :
     pos = ax[0][2].imshow(mean_dy)
     ax[0][2].set_title('mean dy')
     f.colorbar(pos,ax=ax[0][2])
-    weighted_mean_dr, weighted_mean_dx, weighted_mean_dy = getWeightedMeanWarpFields(all_results)
-    pos = ax[1][0].imshow(weighted_mean_dr)
-    ax[1][0].set_title('weighted mean dr')
-    f.colorbar(pos,ax=ax[1][0])
-    pos = ax[1][1].imshow(weighted_mean_dx)
-    ax[1][1].set_title('weighted mean dx')
-    f.colorbar(pos,ax=ax[1][1])
-    pos = ax[1][2].imshow(weighted_mean_dy)
-    ax[1][2].set_title('weighted mean dy')
-    f.colorbar(pos,ax=ax[1][2])
     dr_stddev, dx_stddev, dy_stddev = getWarpFieldStdDevs(all_results)
-    pos = ax[2][0].imshow(dr_stddev)
-    ax[2][0].set_title('dr std. dev.')
+    pos = ax[1][0].imshow(dr_stddev)
+    ax[1][0].set_title('dr std. dev.')
+    f.colorbar(pos,ax=ax[1][0])
+    pos = ax[1][1].imshow(dx_stddev)
+    ax[1][1].set_title('dx std. dev')
+    f.colorbar(pos,ax=ax[1][1])
+    pos = ax[1][2].imshow(dy_stddev)
+    ax[1][2].set_title('dy std. dev')
+    f.colorbar(pos,ax=ax[1][2])
+    weighted_mean_dr, weighted_mean_dx, weighted_mean_dy = getWeightedMeanWarpFields(all_results)
+    pos = ax[2][0].imshow(weighted_mean_dr)
+    ax[2][0].set_title('weighted mean dr')
     f.colorbar(pos,ax=ax[2][0])
-    pos = ax[2][1].imshow(dx_stddev)
-    ax[2][1].set_title('dx std. dev')
+    pos = ax[2][1].imshow(weighted_mean_dx)
+    ax[2][1].set_title('weighted mean dx')
     f.colorbar(pos,ax=ax[2][1])
-    pos = ax[2][2].imshow(dy_stddev)
-    ax[2][2].set_title('dy std. dev')
+    pos = ax[2][2].imshow(weighted_mean_dy)
+    ax[2][2].set_title('weighted mean dy')
     f.colorbar(pos,ax=ax[2][2])
+    weighted_dr_stderr, weighted_dx_stderr, weighted_dy_stderr = getWarpFieldWeightedStdErr(all_results)
+    pos = ax[3][0].imshow(weighted_dr_stderr)
+    ax[3][0].set_title('weighted dr std. err.')
+    f.colorbar(pos,ax=ax[3][0])
+    pos = ax[3][1].imshow(weighted_dx_stderr)
+    ax[3][1].set_title('weighted dx std. err.')
+    f.colorbar(pos,ax=ax[3][1])
+    pos = ax[3][2].imshow(weighted_dy_stderr)
+    ax[3][2].set_title('weighted dy std. err.')
+    f.colorbar(pos,ax=ax[3][2])
     if save_stem is not None :
         fn = f'{save_stem}_warp_field_variation_plots.png'
         plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
     else :
         plt.show()
 
@@ -286,10 +340,13 @@ def compareWithAlexWarp(all_results) :
 
 ###################################################################################################################################
 
+#file-scope dict of the oppostie overlap correspondences
+OPPOSITE_OVERLAP_TAGS = {1:9,2:8,3:7,4:6,6:4,7:3,8:2,9:1}
+
 #little utility class to help with making the octet overlap comparison images
 class OctetComparisonVisualization :
 
-    def __init__(self,overlaps,shifted,name_stem) :
+    def __init__(self,overlaps,shifted,name_stem,opposite=False) :
         """
         overlaps  = list of 8 AlignmentOverlap objects to use in building the figure
         shifted   = whether the figure should be built using the shifted overlap images
@@ -298,15 +355,24 @@ class OctetComparisonVisualization :
         self.overlaps = overlaps
         self.shifted = shifted
         self.name_stem = name_stem
+        self.opposite = opposite
         self.outer_clip = self.overlaps[0].nclip
         self.shift_clip = self.outer_clip+2
         self.normalize = CONST.OVERLAY_NORMALIZE
-        self.p1_im = self.overlaps[0].images[0]/self.normalize
+        if self.opposite :
+            self.p1_im = self.overlaps[0].images[1]/self.normalize
+        else :
+            self.p1_im = self.overlaps[0].images[0]/self.normalize
         self.whole_image = np.zeros((self.p1_im.shape[0],self.p1_im.shape[1],3),dtype=self.p1_im.dtype)
         self.images_stacked_mask = np.zeros(self.whole_image.shape,dtype=np.uint8)
         self.overlay_dicts = {}
         for olap in self.overlaps :
-            self.overlay_dicts[olap.tag] = {'image':olap.getimage(self.normalize,self.shifted),'dx':-olap.result.dx/2.,'dy':-olap.result.dy/2.}
+            if self.opposite:
+                self.overlay_dicts[OPPOSITE_OVERLAP_TAGS[olap.tag]] = {'image':olap.getimage(self.normalize,self.shifted),
+                                                                       'dx':olap.result.dx/2.,'dy':olap.result.dy/2.}
+            else :
+                self.overlay_dicts[olap.tag] = {'image':olap.getimage(self.normalize,self.shifted),
+                                                'dx':-olap.result.dx/2.,'dy':-olap.result.dy/2.}
 
     def stackOverlays(self) :
         """
@@ -321,9 +387,12 @@ class OctetComparisonVisualization :
                 failed_p1s_codes.append(ret)
         #divide the total image by how many overlays are contributing at each point
         self.whole_image[self.images_stacked_mask!=0]/=self.images_stacked_mask[self.images_stacked_mask!=0]
-        #fill in the holes with the p1 image in magenta
-        magenta_p1 = np.array([self.p1_im,np.zeros_like(self.p1_im),0.5*self.p1_im]).transpose(1,2,0)
-        self.whole_image=np.where(self.whole_image==0,magenta_p1,self.whole_image)
+        #fill in the holes with the p1 image in the appropriate color
+        if self.opposite :
+            fill_p1 = np.array([np.zeros_like(self.p1_im),self.p1_im,0.5*self.p1_im]).transpose(1,2,0)
+        else :
+            fill_p1 = np.array([self.p1_im,np.zeros_like(self.p1_im),0.5*self.p1_im]).transpose(1,2,0)
+        self.whole_image=np.where(self.whole_image==0,fill_p1,self.whole_image)
         return failed_p1s_codes
 
     def writeOutFigure(self) :
@@ -334,8 +403,10 @@ class OctetComparisonVisualization :
                                      np.rint((self.whole_image.shape[0]/self.whole_image.shape[1])*CONST.OCTET_OVERLAP_COMPARISON_FIGURE_WIDTH)))
         ax.imshow(np.clip(self.whole_image,0.,1.))
         ax.set_title(self.name_stem.replace('_',' '))
-        plt.savefig(f'{self.name_stem}.png')
+        savename = f'{self.name_stem}.png'
+        plt.savefig(savename)
         plt.close()
+        cropAndOverwriteImage(savename)
 
     #helper function to add a single overlap's set of overlays to the total image
     def __addSingleOverlap(self,code) :

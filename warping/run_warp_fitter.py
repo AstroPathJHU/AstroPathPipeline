@@ -76,9 +76,10 @@ def getOverlaps(args) :
         if args.mode in ('fit', 'check_run', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
             for octet in valid_octets :
                 if octet.p1_rect_n in args.octets or args.octets==[-1]:
-                    warp_logger.info(f'Adding overlaps in octet with p1={octet.p1_rect_n}...')
+                    warp_logger.info(f'Adding overlaps in octet surrounding rectangle {octet.p1_rect_n}...')
                     overlaps+=octet.overlap_ns
-            if (args.octets!=[-1] and len(overlaps)!=8*len(args.octets)) or (args.octets==[-1] and len(overlaps)!=8*len(valid_octets)) :
+                    overlaps+=octet.opposite_overlap_ns
+            if (args.octets!=[-1] and len(overlaps)!=2*8*len(args.octets)) or (args.octets==[-1] and len(overlaps)!=2*8*len(valid_octets)) :
                 msg =f'specified octets ({args.octets}) did not result in the desired set of overlaps! '
                 msg+=f'(asked for {len(args.octets)} octets but found {len(overlaps)} corresponding overlaps.)'
                 msg+=f' There are {len(valid_octets)} octets to choose from.'

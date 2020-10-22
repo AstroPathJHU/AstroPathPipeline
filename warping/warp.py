@@ -3,6 +3,7 @@ from .utilities import WarpingError
 from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
 from ..utilities.img_correction import correctImageLayerWithWarpFields
+from ..utilities.misc import cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt, seaborn as sns
 import os, math, cv2, functools, methodtools
 
@@ -17,9 +18,9 @@ def radialDistortAmountAtCoords(coord_x,coord_y,fx,fy,k1,k2,k3) :
 #cached tangential distortion amount
 @functools.lru_cache()
 def tangentialDistortAmountAtCoords(coord_x,coord_y,fx,fy,p1,p2) :
-    r = math.sqrt(coord_x**2+coord_y**2)
-    dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
-    dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
+    r2 = coord_x**2+coord_y**2
+    dx = fx*(2.*p1*coord_x*coord_y + p2*(r2 + 2.*(coord_x**2)))
+    dy = fy*(2.*p2*coord_x*coord_y + p1*(2.*(coord_y**2) + r2))
     return math.sqrt((dx)**2 + (dy)**2)
 
 #cached radial distortion amount jacobian
@@ -42,8 +43,8 @@ def radialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,k1,k2,k3) :
 @functools.lru_cache()
 def tangentialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,p1,p2) :
     r2 = coord_x**2+coord_y**2
-    dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*r2
-    dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*r2
+    dx = fx*(2.*p1*coord_x*coord_y + p2*(r2 + 2.*(coord_x**2)))
+    dy = fy*(2.*p2*coord_x*coord_y + p1*(2.*(coord_y**2) + r2))
     F = math.sqrt(dx**2 + dy**2)
     dfdcx = (1./F)*(-2.*dx*p1*coord_y - 4.*dx*p2*coord_x - 2.*dx*(fx**2)*p2*coord_x - 2.*dy*(fy/fx)*p2*coord_y - 2.*dy*fx*fy*p1*coord_x)
     dfdcy = (1./F)*(-2.*dy*p2*coord_x - 4.*dy*p1*coord_y - 2.*dy*(fy**2)*p1*coord_y - 2.*dx*(fx/fy)*p1*coord_x - 2.*dx*fy*fx*p2*coord_y)
@@ -199,8 +200,10 @@ class PolyFieldWarp(Warp) :
         ax[2].scatter(self.xc,self.yc,marker='*',color='yellow')
         ax[2].set_title('dy warp')
         f.colorbar(pos,ax=ax[2])
-        plt.savefig(f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png')
+        fn = f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png'
+        plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
 
     def showCheckerboard(self) :
         """
@@ -549,8 +552,10 @@ class CameraWarp(Warp) :
         ax[2].scatter(self.cx,self.cy,marker='*',color='yellow')
         ax[2].set_title('dy warp')
         f.colorbar(pos,ax=ax[2])
-        plt.savefig(f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png')
+        fn = f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png'
+        plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
 
     def showCheckerboard(self) :
         """
@@ -589,8 +594,10 @@ class CameraWarp(Warp) :
         thm=sns.heatmap(tan_heat_map,ax=ax3)
         ax3.scatter(self.cx,self.cy,marker='*',color='yellow')
         thm.set_title('tangential warp components',fontsize=14)
-        plt.savefig('warp_amounts.png')
+        fn = 'warp_amounts.png'
+        plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

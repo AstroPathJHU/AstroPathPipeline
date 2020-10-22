@@ -4,7 +4,7 @@ from .utilities import et_fit_logger, getFirstLayerInGroup, getOverlapsWithExpos
 from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer, LayerOffset
 from ..utilities.tableio import writetable
-from ..utilities.misc import cd
+from ..utilities.misc import cd, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import os, glob
 
@@ -118,8 +118,10 @@ class ExposureTimeOffsetFitGroup :
         plt.xlabel('image layer')
         plt.ylabel('best-fit offset')
         with cd(self.workingdir_name) :
-            plt.savefig(f'{self.sample}_best_fit_offsets_by_layer.png')
-        plt.close()
+            fn = f'{self.sample}_best_fit_offsets_by_layer.png'
+            plt.savefig(fn)
+            plt.close()
+            cropAndOverwriteImage(fn)
         et_fit_logger.info('All fits finished.')
 
     #################### PRIVATE HELPER FUNCTIONS ####################
@@ -207,8 +209,10 @@ class ExposureTimeOffsetFitGroup :
             ax.set_ylabel('HPF count')
             ax.legend(loc='best')
             with cd(self.workingdir_name) :
-                plt.savefig(f'exposure_times_{self.sample}_layer_{ln}.png')
-            plt.close()
+                fn = f'exposure_times_{self.sample}_layer_{ln}.png'
+                plt.savefig(fn)
+                plt.close()
+                cropAndOverwriteImage(fn)
         return exp_times, med_exp_times
 
     #helper function to set up and return a list of single-layer fit objects
