@@ -172,9 +172,9 @@ if __name__=='__main__' :
     parser.add_argument('workers', default=None, type=int, help='Max # of CPUs to use in the multiprocessing pools (defaults to all available)')
     #arguments for how to split the total group of octets
     octet_splitting_group = parser.add_argument_group('octet splitting', 'how to split the total set of octets for each of the three fit groups')
-    octet_splitting_group.add_argument('--initial_pattern_octets', type=int, default=100,
+    octet_splitting_group.add_argument('--initial_pattern_octets', type=int, default=50,
                                        help='Number of octets to use in the initial pattern fits')
-    octet_splitting_group.add_argument('--principal_point_octets', type=int, default=100,
+    octet_splitting_group.add_argument('--principal_point_octets', type=int, default=50,
                                        help='Number of octets to use in the principal point location fits')
     octet_splitting_group.add_argument('--final_pattern_octets',   type=int, default=100,
                                        help='Number of octets to use in the final pattern fits')
