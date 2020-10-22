@@ -343,7 +343,7 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsRectangles, RectangleCo
 
   multilayer = False #can override in subclasses
 
-  def __init__(self, *args, filetype, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, layer=None, layers=None, readlayerfile=True, **kwargs):
+  def __init__(self, *args, filetype, selectrectangles=None, layer=None, layers=None, readlayerfile=True, **kwargs):
     super().__init__(*args, **kwargs)
     self.__filetype = filetype
 
@@ -362,8 +362,6 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsRectangles, RectangleCo
     self.__readlayerfile = readlayerfile
 
     rectanglefilter = rectangleoroverlapfilter(selectrectangles)
-    _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
-    overlapfilter = lambda o: _overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
 
     self.__rectangles  = self.readallrectangles()
     self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
