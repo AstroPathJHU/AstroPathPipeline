@@ -24,12 +24,16 @@ class AssembleImage(ReadRectanglesComponentTiff):
   def zmax(self): return 9
   @property
   def logmodule(self): return "zoom"
+  @methodtools.lru_cache()
+  @property
+  def ntiles(self):
+    onepixel = units.Distance(pixels=1, pscale=self.pscale)
+    maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
+    return floattoint(-((-maxxy) // (self.__tilesize*onepixel)))
   def assembleimage(self):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
-    maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
-    ntiles = floattoint(-((-maxxy) // (self.__tilesize*onepixel)))
-    bigimage = np.zeros(shape=(len(self.layers),)+tuple(ntiles * self.__tilesize), dtype=np.uint8)
+    bigimage = np.zeros(shape=(len(self.layers),)+tuple(self.ntiles * self.__tilesize), dtype=np.uint8)
     nrectangles = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
       self.logger.info("%d / %d", i, nrectangles)
@@ -77,7 +81,7 @@ class AssembleImage(ReadRectanglesComponentTiff):
         ]
 
     (self.zoomroot/self.SlideID).mkdir(parents=True, exist_ok=True)
-    for tilen, (tilex, tiley) in enumerate(itertools.product(range(ntiles[0]), range(ntiles[1]))):
+    for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))):
       xmin = tilex * self.__tilesize
       xmax = (tilex+1) * self.__tilesize
       ymin = tiley * self.__tilesize
