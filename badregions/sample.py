@@ -1,11 +1,11 @@
 import abc, argparse, numpy as np, pathlib
 
-from ..baseclasses.sample import ReadRectangles
+from ..baseclasses.sample import ReadRectanglesIm3
 from ..utilities import units
 from .dustspeck import DustSpeckFinder
 from .tissuefold import TissueFoldFinderSimple
 
-class BadRegionFinderSample(ReadRectangles):
+class BadRegionFinderSample(ReadRectanglesIm3):
   def __init__(self, *args, filetype="flatWarp", **kwargs):
     super().__init__(*args, filetype=filetype, **kwargs)
   @abc.abstractmethod
