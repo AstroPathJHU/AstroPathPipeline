@@ -238,9 +238,13 @@ class SampleBase(contextlib.ExitStack):
     "name of the log files for this class (e.g. align)"
 
 class DbloadSampleBase(SampleBase):
+  def __init__(self, *args, dbloadfolder=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if dbloadfolder is None: dbloadfolder = self.mainfolder/"dbload"
+    self.__dbloadfolder = dbloadfolder
   @property
   def dbload(self):
-    return self.mainfolder/"dbload"
+    return self.__dbloadfolder
 
   def csv(self, csv):
     return self.dbload/f"{self.SlideID}_{csv}.csv"
