@@ -196,14 +196,12 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
             dtype = page.dtype
           elif dtype != page.dtype:
             raise ValueError(f"Found pages with different dtypes in the component tiff {dtype} {page.dtype}")
-      else:
-        assert False
       if len(pages) != self.__nlayers:
         raise IOError(f"Wrong number of layers {len(pages)} in the component tiff, expected {self.__nlayers}")
       image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)
 
       for i, layer in enumerate(self.__layers):
-        image[layer] = pages[layer-1].asarray()
+        image[layer-1] = pages[layer-1].asarray()
 
       return image
 

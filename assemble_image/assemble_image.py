@@ -2,24 +2,20 @@ import cv2, itertools, numpy as np, PIL, skimage
 
 from ..alignment.field import Field
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
-from ..baseclasses.sample import ReadRectangles
+from ..baseclasses.sample import ReadRectanglesComponentTiff
 from ..utilities import units
 from ..utilities.misc import floattoint
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
   pass
 
-class AssembleImage(ReadRectangles):
+class AssembleImage(ReadRectanglesComponentTiff):
   rectanglecsv = "fields"
   rectangletype = FieldReadComponentTiffMultiLayer
-  def __init__(self, *args, zoomroot, nlayers=8, layers=None, tilesize=16384, **kwargs):
+  def __init__(self, *args, zoomroot, tilesize=16384, **kwargs):
     self.__tilesize = tilesize
     self.__zoomroot = zoomroot
-    if layers is None: layers = np.arange(1, nlayers+1)
-    super().__init__(*args, nlayers=nlayers, layers=layers, **kwargs)
-  @property
-  def rectangleextrakwargs(self):
-    return {**super().rectangleextrakwargs, "nlayers": self.__nlayers, "layers": self.__layers}
+    super().__init__(*args, **kwargs)
   @property
   def zoomroot(self): return self.__zoomroot
   @property
@@ -30,13 +26,13 @@ class AssembleImage(ReadRectangles):
   def logmodule(self): return "zoom"
   def assembleimage(self):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
-    #minxy = np.min(units.pixels([field.pxvec for field in self.rectangles], axis=0), pscale=self.pscale)
-    maxxy = np.max(units.pixels([field.pxvec+field.shape for field in self.rectangles], axis=0), pscale=self.pscale)
+    #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
+    maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
     ntiles = -((-maxxy) // (self.__tilesize*onepixel))
     bigimage = np.zeros(shape=(len(self.layers),)+tuple(ntiles * self.__tilesize), dtype=np.uint8)
     for field in self.rectangles:
       with field.using_image() as image:
-        image = skimage.img_as_ubyte(image)
+        image = skimage.img_as_ubyte(image/np.max(image))
 
         globalx1 = field.mx1 // onepixel * onepixel
         globalx2 = field.mx2 // onepixel * onepixel
@@ -84,3 +80,5 @@ class AssembleImage(ReadRectangles):
         image = PIL.Image.fromarray(bigimage[layer, ymin:ymax, xmin:xmax])
         filename = self.zoomroot/self.SlideID/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
         image.save(filename, "PNG")
+
+    return image
