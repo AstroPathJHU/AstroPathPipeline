@@ -28,7 +28,7 @@ class AssembleImage(ReadRectanglesComponentTiff):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
-    ntiles = -((-maxxy) // (self.__tilesize*onepixel))
+    ntiles = floattoint(-((-maxxy) // (self.__tilesize*onepixel)))
     bigimage = np.zeros(shape=(len(self.layers),)+tuple(ntiles * self.__tilesize), dtype=np.uint8)
     for field in self.rectangles:
       with field.using_image() as image:
@@ -38,9 +38,9 @@ class AssembleImage(ReadRectanglesComponentTiff):
         globaly1 = field.my1 // onepixel * onepixel
         globaly2 = field.my2 // onepixel * onepixel
         localx1 = field.mx1 - field.px
-        localx2 = field.mx2 - field.px
+        localx2 = localx1 + globalx2 - globalx1
         localy1 = field.my1 - field.py
-        localy2 = field.my2 - field.py
+        localy2 = localy1 + globaly2 - globaly1
 
         shiftby = np.array([globalx1 - localx1, globaly1 - localy1]) % onepixel
 
@@ -49,9 +49,10 @@ class AssembleImage(ReadRectanglesComponentTiff):
             layer,
             np.array(
               [
-                [1, 0, shiftby[0]],
-                [0, 1, shiftby[1]],
+                [1, 0, shiftby[0]/onepixel],
+                [0, 1, shiftby[1]/onepixel],
               ],
+              dtype=float,
             ),
             flags=cv2.INTER_CUBIC,
             borderMode=cv2.BORDER_REPLICATE,
@@ -65,22 +66,25 @@ class AssembleImage(ReadRectanglesComponentTiff):
 
         bigimage[
           :,
-          globaly1/onepixel:globaly2/onepixel,
-          globalx1/onepixel:globalx2/onepixel,
+          floattoint(globaly1/onepixel):floattoint(globaly2/onepixel),
+          floattoint(globalx1/onepixel):floattoint(globalx2/onepixel),
         ] = shifted[
           :,
           floattoint(newlocaly1/onepixel):floattoint(newlocaly2/onepixel),
           floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
         ]
 
+    (self.zoomroot/self.SlideID).mkdir(parents=True, exist_ok=True)
     for tilen, (tilex, tiley) in enumerate(itertools.product(range(ntiles[0]), range(ntiles[1]))):
+      xmin = tilex * self.__tilesize
+      xmax = (tilex+1) * self.__tilesize
+      ymin = tiley * self.__tilesize
+      ymax = (tiley+1) * self.__tilesize
+      slc = bigimage[:, ymin:ymax, xmin:xmax]
+      if not np.any(slc): continue
       for layer in self.layers:
-        xmin = tilex * self.__tilesize
-        xmax = (tilex+1) * self.__tilesize
-        ymin = tiley * self.__tilesize
-        ymax = (tiley+1) * self.__tilesize
-        image = PIL.Image.fromarray(bigimage[layer, ymin:ymax, xmin:xmax])
+        image = PIL.Image.fromarray(slc[layer-1])
         filename = self.zoomroot/self.SlideID/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
         image.save(filename, "PNG")
 
-    return image
+    return bigimage
