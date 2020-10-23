@@ -1,23 +1,32 @@
-from ..baseclasses.sample import DbloadSampleBase
+import cv2, itertools, numpy as np, PIL, skimage
+
+from ..alignment.field import Field
+from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
+from ..baseclasses.sample import ReadRectangles
+from ..utilities import units
+from ..utilities.misc import floattoint
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
   pass
 
-class AssembleImage(ReadRectanglesBase):
+class AssembleImage(ReadRectangles):
   rectanglecsv = "fields"
-  rectangletype = FieldWithImageMultiLayer
-  def __init__(self, *args, tilesize=16384, **kwargs):
+  rectangletype = FieldReadComponentTiffMultiLayer
+  def __init__(self, *args, zoomroot, tilesize=16384, **kwargs):
     self.__tilesize = tilesize
+    self.__zoomroot = zoomroot
     super().__init__(*args, **kwargs)
+  @property
+  def zoomroot(self): return self.__zoomroot
   @property
   def tilesize(self): return self.__tilesize
   @property
   def zmax(self): return 9
   def assembleimage(self):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
-    minxy = np.min(units.pixels([field.pxvec for field in self.rectangles], axis=0), pscale=self.pscale)
+    #minxy = np.min(units.pixels([field.pxvec for field in self.rectangles], axis=0), pscale=self.pscale)
     maxxy = np.max(units.pixels([field.pxvec+field.shape for field in self.rectangles], axis=0), pscale=self.pscale)
-    ntiles = -((-maxxy) // (self.__tilesize*onepixel)
+    ntiles = -((-maxxy) // (self.__tilesize*onepixel))
     bigimage = np.zeros(shape=(len(self.layers),)+tuple(ntiles * self.__tilesize), dtype=np.uint8)
     for field in self.rectangles:
       with field.using_image() as image:
@@ -41,10 +50,10 @@ class AssembleImage(ReadRectanglesBase):
               [1, 0, shiftby[0]],
               [0, 1, shiftby[1]],
             ],
-          )
+          ),
           flags=cv2.INTER_CUBIC,
           borderMode=cv2.BORDER_REPLICATE,
-          dsize=shifted.T.shape,
+          dsize=image.T.shape,
         )
         newlocalx1 = localx1 + shiftby[0]
         newlocaly1 = localy1 + shiftby[1]
@@ -54,10 +63,10 @@ class AssembleImage(ReadRectanglesBase):
           :,
           globaly1/onepixel:globaly2/onepixel,
           globalx1/onepixel:globalx2/onepixel,
-        ] = image[
+        ] = shifted[
           :,
-          floattoint(localy1/onepixel):floattoint(localy2/onepixel),
-          floattoint(localx1/onepixel):floattoint(localx2/onepixel),
+          floattoint(newlocaly1/onepixel):floattoint(newlocaly2/onepixel),
+          floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
         ]
 
     for tilen, (tilex, tiley) in enumerate(itertools.product(range(ntiles[0]), range(ntiles[1]))):

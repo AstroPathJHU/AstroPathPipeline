@@ -1,4 +1,4 @@
-import abc, collections, contextlib, dataclasses, datetime, jxmlease, methodtools, numpy as np, pathlib, warnings
+import abc, collections, contextlib, dataclasses, datetime, jxmlease, methodtools, numpy as np, pathlib, tifffile, warnings
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, memmapcontext
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
