@@ -201,7 +201,7 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
       image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)
 
       for i, layer in enumerate(self.__layers):
-        image[layer-1] = pages[layer-1].asarray()
+        image[i-1] = pages[layer-1].asarray()
 
       return image
 
@@ -347,6 +347,17 @@ class RectangleWithImage(RectangleWithImageMultiLayer):
   def broadbandfilter(self):
     _, = self.broadbandfilters
     return _
+
+class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
+  def __init__(self, *args, layer, **kwargs):
+    morekwargs = {
+      "layers": (layer,),
+    }
+    super().__init__(*args, **kwargs, **morekwargs)
+    self.__layer = layer
+
+  @property
+  def layer(self): return self.__layer
 
 class RectangleCollection(abc.ABC):
   @abc.abstractproperty
