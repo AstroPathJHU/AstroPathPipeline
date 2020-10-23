@@ -30,7 +30,9 @@ class AssembleImage(ReadRectanglesComponentTiff):
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
     ntiles = floattoint(-((-maxxy) // (self.__tilesize*onepixel)))
     bigimage = np.zeros(shape=(len(self.layers),)+tuple(ntiles * self.__tilesize), dtype=np.uint8)
-    for field in self.rectangles:
+    nrectangles = len(self.rectangles)
+    for i, field in enumerate(self.rectangles, start=1):
+      self.logger.info("%d / %d", i, nrectangles)
       with field.using_image() as image:
         image = skimage.img_as_ubyte(image/np.max(image))
         globalx1 = field.mx1 // onepixel * onepixel
