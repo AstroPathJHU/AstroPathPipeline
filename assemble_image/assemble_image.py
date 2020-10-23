@@ -33,7 +33,6 @@ class AssembleImage(ReadRectanglesComponentTiff):
     for field in self.rectangles:
       with field.using_image() as image:
         image = skimage.img_as_ubyte(image/np.max(image))
-
         globalx1 = field.mx1 // onepixel * onepixel
         globalx2 = field.mx2 // onepixel * onepixel
         globaly1 = field.my1 // onepixel * onepixel
@@ -45,22 +44,25 @@ class AssembleImage(ReadRectanglesComponentTiff):
 
         shiftby = np.array([globalx1 - localx1, globaly1 - localy1]) % onepixel
 
-        shifted = cv2.warpAffine(
-          image,
-          np.array(
-            [
-              [1, 0, shiftby[0]],
-              [0, 1, shiftby[1]],
-            ],
-          ),
-          flags=cv2.INTER_CUBIC,
-          borderMode=cv2.BORDER_REPLICATE,
-          dsize=image.T.shape,
-        )
+        shifted = np.array([
+          cv2.warpAffine(
+            layer,
+            np.array(
+              [
+                [1, 0, shiftby[0]],
+                [0, 1, shiftby[1]],
+              ],
+            ),
+            flags=cv2.INTER_CUBIC,
+            borderMode=cv2.BORDER_REPLICATE,
+            dsize=layer.T.shape,
+          ) for layer in image
+        ])
         newlocalx1 = localx1 + shiftby[0]
         newlocaly1 = localy1 + shiftby[1]
         newlocalx2 = localx2 + shiftby[0]
         newlocaly2 = localy2 + shiftby[1]
+
         bigimage[
           :,
           globaly1/onepixel:globaly2/onepixel,

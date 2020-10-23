@@ -74,6 +74,8 @@ class Distance:
     return other * oneoverself
   def __floordiv__(self, other):
     return int(self / other)
+  def __mod__(self, other):
+    return self - self // other * other
   def __pow__(self, other):
     return Distance(pscale=self._pscale, power=self._power*other, pixels=self._pixels**other)
   def __bool__(self): return bool(self._pixels)
