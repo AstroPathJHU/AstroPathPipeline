@@ -33,7 +33,7 @@ class AssembleImage(ReadRectanglesComponentTiff):
   def assembleimage(self):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
-    bigimage = np.zeros(shape=(len(self.layers),)+tuple(self.ntiles * self.__tilesize), dtype=np.uint8)
+    bigimage = np.zeros(shape=(len(self.layers),)+tuple(reversed(self.ntiles * self.__tilesize)), dtype=np.uint8)
     nrectangles = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
       self.logger.info("%d / %d", i, nrectangles)
