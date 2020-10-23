@@ -1,4 +1,4 @@
-import cv2, itertools, numpy as np, PIL, skimage
+import cv2, itertools, methodtools, numpy as np, PIL, skimage
 
 from ..alignment.field import Field
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer

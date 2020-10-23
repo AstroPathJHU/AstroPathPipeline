@@ -5,14 +5,19 @@ from ..utilities import units
 from .assemble_image import AssembleImage
 
 class AssembleImageCohort(FlatwCohort):
+  def __init__(self, *args, zoomroot, **kwargs):
+    self.__zoomroot = zoomroot
+    super().__init__(*args, **kwargs)
+
   def initiatesample(self, samp):
-    return AssembleImage(self.root1, self.root2, samp, uselogfiles=self.uselogfiles)
+    return AssembleImage(self.root1, self.root2, samp, uselogfiles=self.uselogfiles, zoomroot=self.__zoomroot)
 
   def runsample(self, sample):
+    #sample.logger.info(f"{sample.ntiles} {len(sample.rectangles)}")
     return sample.assembleimage()
 
   @property
-  def logmodule(self): return "assembleimage"
+  def logmodule(self): return "zoom"
 
 if __name__ == "__main__":
   p = argparse.ArgumentParser()
