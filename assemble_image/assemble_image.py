@@ -12,16 +12,22 @@ class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLay
 class AssembleImage(ReadRectangles):
   rectanglecsv = "fields"
   rectangletype = FieldReadComponentTiffMultiLayer
-  def __init__(self, *args, zoomroot, tilesize=16384, **kwargs):
+  def __init__(self, *args, zoomroot, nlayers=8, layers=None, tilesize=16384, **kwargs):
     self.__tilesize = tilesize
     self.__zoomroot = zoomroot
-    super().__init__(*args, **kwargs)
+    if layers is None: layers = np.arange(1, nlayers+1)
+    super().__init__(*args, nlayers=nlayers, layers=layers, **kwargs)
+  @property
+  def rectangleextrakwargs(self):
+    return {**super().rectangleextrakwargs, "nlayers": self.__nlayers, "layers": self.__layers}
   @property
   def zoomroot(self): return self.__zoomroot
   @property
   def tilesize(self): return self.__tilesize
   @property
   def zmax(self): return 9
+  @property
+  def logmodule(self): return "zoom"
   def assembleimage(self):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     #minxy = np.min(units.pixels([field.pxvec for field in self.rectangles], axis=0), pscale=self.pscale)

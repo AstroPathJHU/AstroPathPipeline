@@ -165,7 +165,7 @@ class RectangleReadImageBase(RectangleWithImageBase):
 
     return image
 
-class RectangleReadComponentTiffMultiLayer(RectangleReadImageBase):
+class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
   def __init__(self, *args, imagefolder, layers, nlayers, **kwargs):
     super().__init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
