@@ -30,7 +30,7 @@ class AssembleImage(ReadRectanglesComponentTiff):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
     return floattoint(-((-maxxy) // (self.__tilesize*onepixel)))
-  def assembleimage(self):
+  def assembleimage(self, fmax=50):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
     bigimage = np.zeros(shape=(len(self.layers),)+tuple(reversed(self.ntiles * self.__tilesize)), dtype=np.uint8)
@@ -38,7 +38,7 @@ class AssembleImage(ReadRectanglesComponentTiff):
     for i, field in enumerate(self.rectangles, start=1):
       self.logger.info("%d / %d", i, nrectangles)
       with field.using_image() as image:
-        image = skimage.img_as_ubyte(image/np.max(image))
+        image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
         globalx1 = field.mx1 // onepixel * onepixel
         globalx2 = field.mx2 // onepixel * onepixel
         globaly1 = field.my1 // onepixel * onepixel

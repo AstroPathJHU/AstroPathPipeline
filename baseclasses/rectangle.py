@@ -201,7 +201,7 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
       image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)
 
       for i, layer in enumerate(self.__layers):
-        image[i-1] = pages[layer-1].asarray()
+        image[i] = pages[layer-1].asarray()
 
       return image
 
