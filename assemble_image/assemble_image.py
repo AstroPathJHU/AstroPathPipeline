@@ -19,6 +19,8 @@ class AssembleImage(ReadRectanglesComponentTiff):
   @property
   def zoomroot(self): return self.__zoomroot
   @property
+  def zoomfolder(self): return self.zoomroot/self.SlideID
+  @property
   def tilesize(self): return self.__tilesize
   @property
   def zmax(self): return 9
@@ -80,7 +82,7 @@ class AssembleImage(ReadRectanglesComponentTiff):
           floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
         ]
 
-    (self.zoomroot/self.SlideID).mkdir(parents=True, exist_ok=True)
+    self.zoomfolder.mkdir(parents=True, exist_ok=True)
     for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))):
       xmin = tilex * self.__tilesize
       xmax = (tilex+1) * self.__tilesize

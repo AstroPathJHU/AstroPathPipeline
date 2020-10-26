@@ -63,13 +63,16 @@ class TestBaseSaveOutput(abc.ABC, unittest.TestCase):
         self.__saved.add(filename)
         self.__output.enter_context(temporarilyremove(filename))
 
-  def setUp(self):
-    self.maxDiff = None
+  def removeoutput(self):
     for filename in self.outputfilenames:
       try:
         filename.unlink()
       except FileNotFoundError:
         pass
+
+  def setUp(self):
+    self.maxDiff = None
+    self.removeoutput()
 
   def tearDown(self):
     pass
