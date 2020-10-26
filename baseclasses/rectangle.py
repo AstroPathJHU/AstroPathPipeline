@@ -53,6 +53,7 @@ class RectangleWithImageBase(Rectangle):
   __DEBUG = True
 
   def __init__(self, *args, transformations=[], **kwargs):
+    self.__debug_load_images_counter = []  #in case something fails in super().__init__(), __del__ will still work
     super().__init__(*args, **kwargs)
     self.__transformations = transformations
     self.__images_cache = [None for _ in range(self.nimages)]
