@@ -38,6 +38,8 @@ class RawfileCorrector :
         self._metadata_top_dir = args.metadata_top_dir
         #set the sample name
         self._sample_name = args.sample
+        #set the working directory path
+        self._working_dir_path = args.workingdir
         #start up the logfile
         self._startUpLogFile(args.logfile_name_stem)
         #get the image dimensions and layer argument
@@ -49,8 +51,6 @@ class RawfileCorrector :
             self.__writeLog(f'Corrected {self._img_dims[-1]}-layer files will be written out to {self._working_dir_path}')
         else :
             self.__writeLog(f'Corrected layer {self._layer} files will be written out to {self._working_dir_path}.')
-        #set the working directory path
-        self._working_dir_path = args.workingdir
         #see which layer(s) will be run
         layers_to_run = list(range(1,self._img_dims[-1]+1)) if self._layer==-1 else [self._layer]
         #set the median sample exposure time and dark current offsets
@@ -132,11 +132,14 @@ class RawfileCorrector :
                                                                                                                     eto_file,
                                                                                                                     self._layer)
             los = [LayerOffset(self._layer,-1,self._et_correction_offset,-1.)]
-        with cd(self._working_dir_path) :
-            if not os.path.isdir(APPLIED_CORRECTION_PLOT_DIR_NAME) :
-                os.mkdir(APPLIED_CORRECTION_PLOT_DIR_NAME)
-            with cd(APPLIED_CORRECTION_PLOT_DIR_NAME) :
-                writetable('applied_exposure_time_correction_offsets.csv',los)
+        try :
+            with cd(self._working_dir_path) :
+                if not os.path.isdir(APPLIED_CORRECTION_PLOT_DIR_NAME) :
+                    os.mkdir(APPLIED_CORRECTION_PLOT_DIR_NAME)
+                with cd(APPLIED_CORRECTION_PLOT_DIR_NAME) :
+                    writetable('applied_exposure_time_correction_offsets.csv',los)
+        except Exception as e :
+            self.__writeLog(f'WARNING: applied exposure time offset file could not be written out. Exception: {e}')
         self.__writeLog(f'Exposure time corrections WILL be applied based on offset factors in {eto_file}')
         if self._layer==-1 :
             for ln in range(1,self._img_dims[-1]+1) :
@@ -155,22 +158,25 @@ class RawfileCorrector :
         self._ff = getRawAsHWL(ff_file,*(self._img_dims),dtype=FF_CONST.IMG_DTYPE_OUT)
         if self._layer!=-1 :
             self._ff = self._ff[:,:,self._layer-1]
-        with cd(self._working_dir_path) :
-            if not os.path.isdir(APPLIED_CORRECTION_PLOT_DIR_NAME) :
-                os.mkdir(APPLIED_CORRECTION_PLOT_DIR_NAME)
-            with cd(APPLIED_CORRECTION_PLOT_DIR_NAME) :
-                for ln in layers_to_run :
-                    f,ax=plt.subplots(figsize=(6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
-                    if self._layer==-1 :
-                        pos = ax.imshow(self._ff[:,:,ln-1])
-                    else :
-                        pos = ax.imshow(self._ff)
-                    ax.set_title(f'applied flatfield, layer {ln}')
-                    f.colorbar(pos,ax=ax)
-                    savename = f'applied_flatfield_layer_{ln}.png'
-                    plt.savefig(savename)
-                    plt.close()
-                    cropAndOverwriteImage(savename)
+        try :
+            with cd(self._working_dir_path) :
+                if not os.path.isdir(APPLIED_CORRECTION_PLOT_DIR_NAME) :
+                    os.mkdir(APPLIED_CORRECTION_PLOT_DIR_NAME)
+                with cd(APPLIED_CORRECTION_PLOT_DIR_NAME) :
+                    for ln in layers_to_run :
+                        f,ax=plt.subplots(figsize=(6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
+                        if self._layer==-1 :
+                            pos = ax.imshow(self._ff[:,:,ln-1])
+                        else :
+                            pos = ax.imshow(self._ff)
+                        ax.set_title(f'applied flatfield, layer {ln}')
+                        f.colorbar(pos,ax=ax)
+                        savename = f'applied_flatfield_layer_{ln}.png'
+                        plt.savefig(savename)
+                        plt.close()
+                        cropAndOverwriteImage(savename)
+        except Exception as e :
+            self.__writeLog(f'WARNING: applied flatfield plots could not be saved. Exception: {e}')
         self.__writeLog(f'Flatfield corrections WILL be applied as read from {ff_filepath}')
 
     #helper function to set the warping variables
@@ -216,9 +222,12 @@ class RawfileCorrector :
                     cx_shift = this_ws.cx_shift; cy_shift = this_ws.cy_shift
                 self._warps[ln] = CameraWarp(self._img_dims[1],self._img_dims[0],wfr.cx+cx_shift,wfr.cy+cy_shift,
                                              wfr.fx,wfr.fy,w_sf*wfr.k1,w_sf*wfr.k2,w_sf*wfr.k3,w_sf*wfr.p1,w_sf*wfr.p2)
-                fs = f'applied_warping_correction_layer_{ln}'
-                with cd(os.path.join(self._working_dir_path,APPLIED_CORRECTION_PLOT_DIR_NAME)) :
-                    self._warps[ln].writeOutWarpFields(fs,save_fields=False)
+                try :
+                    fs = f'applied_warping_correction_layer_{ln}'
+                    with cd(os.path.join(self._working_dir_path,APPLIED_CORRECTION_PLOT_DIR_NAME)) :
+                        self._warps[ln].writeOutWarpFields(fs,save_fields=False)
+                except Exception as e :
+                    self.__writeLog(f'WARNING: applied warp field plots could not be saved. Exception: {e}')
         #otherwise try to define the fields by the actual .bin files
         else :
             dx_warp_field_path, dy_warp_field_path = getWarpFieldPathsFromWarpDef(w_def)
@@ -229,22 +238,25 @@ class RawfileCorrector :
             self._dx_warp_field = (w_sf)*(getRawAsHW(dx_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
             self._dy_warp_field = (w_sf)*(getRawAsHW(dy_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
             msg+=f'{dx_warp_field_path} and {dy_warp_field_path}'
-            r_warp_field = np.sqrt((self._dx_warp_field**2)+(self._dy_warp_field**2))
-            with cd(os.path.join(self._working_dir_path,APPLIED_CORRECTION_PLOT_DIR_NAME)) :
-                f,ax = plt.subplots(1,3,figsize=(3*6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
-                pos = ax[0].imshow(r_warp_field)
-                ax[0].set_title('total warp correction')
-                f.colorbar(pos,ax=ax[0])
-                pos = ax[1].imshow(self._dx_warp_field)
-                ax[1].set_title('applied dx warp')
-                f.colorbar(pos,ax=ax[1])
-                pos = ax[2].imshow(self._dy_warp_field)
-                ax[2].set_title('applied dy warp')
-                f.colorbar(pos,ax=ax[2])
-                savename = 'applied_warping_correction_model.png'
-                plt.savefig(savename)
-                plt.close()
-                cropAndOverwriteImage(savename)
+            try :
+                r_warp_field = np.sqrt((self._dx_warp_field**2)+(self._dy_warp_field**2))
+                with cd(os.path.join(self._working_dir_path,APPLIED_CORRECTION_PLOT_DIR_NAME)) :
+                    f,ax = plt.subplots(1,3,figsize=(3*6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
+                    pos = ax[0].imshow(r_warp_field)
+                    ax[0].set_title('total warp correction')
+                    f.colorbar(pos,ax=ax[0])
+                    pos = ax[1].imshow(self._dx_warp_field)
+                    ax[1].set_title('applied dx warp')
+                    f.colorbar(pos,ax=ax[1])
+                    pos = ax[2].imshow(self._dy_warp_field)
+                    ax[2].set_title('applied dy warp')
+                    f.colorbar(pos,ax=ax[2])
+                    savename = 'applied_warping_correction_model.png'
+                    plt.savefig(savename)
+                    plt.close()
+                    cropAndOverwriteImage(savename)
+            except Exception as e :
+                self.__writeLog(f'WARNING: applied warp field plots could not be saved. Exception: {e}')
         if w_sf!=1.0 :
                 msg+=f' and multiplied by {w_sf}'
         self.__writeLog(msg)
