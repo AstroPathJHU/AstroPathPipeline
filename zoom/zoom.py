@@ -9,7 +9,7 @@ from ..utilities.misc import floattoint
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
   pass
 
-class AssembleImage(ReadRectanglesComponentTiff):
+class Zoom(ReadRectanglesComponentTiff):
   rectanglecsv = "fields"
   rectangletype = FieldReadComponentTiffMultiLayer
   def __init__(self, *args, zoomroot, tilesize=16384, **kwargs):
@@ -32,7 +32,7 @@ class AssembleImage(ReadRectanglesComponentTiff):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
     return floattoint(-((-maxxy) // (self.__tilesize*onepixel)))
-  def assembleimage(self, fmax=50):
+  def zoom(self, fmax=50):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
     bigimage = np.zeros(shape=(len(self.layers),)+tuple(reversed(self.ntiles * self.__tilesize)), dtype=np.uint8)

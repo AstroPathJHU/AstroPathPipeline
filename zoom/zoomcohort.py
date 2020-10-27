@@ -2,19 +2,19 @@ import argparse, pathlib, re
 
 from ..baseclasses.cohort import FlatwCohort
 from ..utilities import units
-from .assemble_image import AssembleImage
+from .zoom import Zoom
 
-class AssembleImageCohort(FlatwCohort):
+class ZoomCohort(FlatwCohort):
   def __init__(self, *args, zoomroot, **kwargs):
     self.__zoomroot = zoomroot
     super().__init__(*args, **kwargs)
 
   def initiatesample(self, samp):
-    return AssembleImage(self.root1, self.root2, samp, uselogfiles=self.uselogfiles, zoomroot=self.__zoomroot)
+    return Zoom(self.root1, self.root2, samp, uselogfiles=self.uselogfiles, zoomroot=self.__zoomroot)
 
   def runsample(self, sample):
     #sample.logger.info(f"{sample.ntiles} {len(sample.rectangles)}")
-    return sample.assembleimage()
+    return sample.zoom()
 
   @property
   def logmodule(self): return "zoom"
@@ -40,7 +40,7 @@ if __name__ == "__main__":
   elif args.skip_aligned:
     kwargs["filter"] = lambda sample: not (args.root1/sample.SlideID/"dbload"/(sample.SlideID+"_fields.csv")).exists()
 
-  cohort = AssembleImageCohort(**kwargs)
+  cohort = ZoomCohort(**kwargs)
   if args.dry_run:
     print("would align the following samples:")
     for samp in cohort: print(samp)

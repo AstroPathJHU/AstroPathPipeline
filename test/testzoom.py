@@ -1,5 +1,5 @@
 import gzip, numpy as np, pathlib, PIL.Image
-from ..assemble_image.assemble_image import AssembleImage
+from ..zoom.zoom import Zoom
 from ..utilities import units
 from ..utilities.misc import PILmaximagepixels
 from .testbase import TestBaseSaveOutput
@@ -16,9 +16,9 @@ class TestZoom(TestBaseSaveOutput):
     ]
 
   def testZoom(self, SlideID="M21_1"):
-    sample = AssembleImage(thisfolder/"data", thisfolder/"flatw", SlideID, zoomroot=thisfolder/"zoom_test_for_jenkins", uselogfiles=True, selectrectangles=[17])
+    sample = Zoom(thisfolder/"data", thisfolder/"flatw", SlideID, zoomroot=thisfolder/"zoom_test_for_jenkins", uselogfiles=True, selectrectangles=[17])
     with sample:
-      sample.assembleimage()
+      sample.zoom()
 
     try:
       for i in range(1, 9):
