@@ -6,7 +6,7 @@ from ..utilities.img_correction import correctImageLayerForExposureTime, correct
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 import numpy as np
-import cv2, os, logging, dataclasses, copy
+import cv2, os, logging, dataclasses, copy, platform
 
 #set up the logger
 warp_logger = logging.getLogger("warpfitter")
@@ -325,7 +325,8 @@ def findSampleOctets(rtd,mtd,threshold_file_path,req_pixel_frac,samp,working_dir
     img_dims = getImageHWLFromXMLFile(mtd,samp)
     flatfield = (getRawAsHWL(flatfield_file,*(img_dims),CONST.FLATFIELD_DTYPE))[:,:,layer-1] if flatfield_file is not None else None
     med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(mtd,samp,et_offset_file,layer) if et_offset_file is not None else None
-    a = AlignmentSetForWarping(mtd,rtd,samp,med_et=med_et,offset=offset,flatfield=flatfield,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw')
+    use_GPU = platform.system()!='Darwin'
+    a = AlignmentSetForWarping(mtd,rtd,samp,med_et=med_et,offset=offset,flatfield=flatfield,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw',useGPU=use_GPU)
     a.getDAPI()
     a.align()
     #get the list of overlaps
