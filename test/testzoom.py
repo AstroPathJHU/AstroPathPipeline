@@ -10,7 +10,11 @@ class TestZoom(TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"zoom_test_for_jenkins"/SlideID/f"{SlideID}-Z9-L{i}-X0-Y0-big.png"
+      thisfolder/"zoom_test_for_jenkins"/SlideID/"big"/f"{SlideID}-Z9-L{i}-X0-Y0-big.png"
+      for SlideID in ("M21_1",)
+      for i in range(1, 9)
+    ] + [
+      thisfolder/"zoom_test_for_jenkins"/SlideID/"wsi"/f"{SlideID}-Z9-L{i}-wsi.png"
       for SlideID in ("M21_1",)
       for i in range(1, 9)
     ]
@@ -23,8 +27,13 @@ class TestZoom(TestBaseSaveOutput):
     try:
       for i in range(1, 9):
         with PILmaximagepixels(sample.tilesize**2), \
-             PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/f"{SlideID}-Z9-L{i}-X0-Y0-big.png") as img, \
+             PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"big"/f"{SlideID}-Z9-L{i}-X0-Y0-big.png") as img, \
              gzip.open(thisfolder/"reference"/"zoom"/SlideID/f"{SlideID}-Z9-L{i}-X0-Y0-big.png.gz") as refgz, \
+             PIL.Image.open(refgz) as targetimg:
+          np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+        with PILmaximagepixels(sample.tilesize**2), \
+             PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"wsi"/f"{SlideID}-Z9-L{i}-wsi.png") as img, \
+             gzip.open(thisfolder/"reference"/"zoom"/SlideID/f"{SlideID}-Z9-L{i}-wsi.png.gz") as refgz, \
              PIL.Image.open(refgz) as targetimg:
           np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
     except:

@@ -19,7 +19,9 @@ class Zoom(ReadRectanglesComponentTiff):
   @property
   def zoomroot(self): return self.__zoomroot
   @property
-  def zoomfolder(self): return self.zoomroot/self.SlideID
+  def zoomfolder(self): return self.zoomroot/self.SlideID/"big"
+  @property
+  def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
   @property
   def tilesize(self): return self.__tilesize
   @property
@@ -91,9 +93,16 @@ class Zoom(ReadRectanglesComponentTiff):
       slc = bigimage[:, ymin:ymax, xmin:xmax]
       if not np.any(slc): continue
       for layer in self.layers:
-        filename = self.zoomroot/self.SlideID/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+        filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
         self.logger.info(f"saving {filename.name}")
         image = PIL.Image.fromarray(slc[layer-1])
         image.save(filename, "PNG")
+
+    self.wsifolder.mkdir(parents=True, exist_ok=True)
+    for layer in self.layers:
+      filename = self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
+      self.logger.info(f"saving {filename.name}")
+      image = PIL.Image.fromarray(bigimage[layer-1])
+      image.save(filename, "PNG")
 
     return bigimage
