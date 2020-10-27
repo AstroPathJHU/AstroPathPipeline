@@ -40,6 +40,8 @@ class RawfileCorrector :
         self._sample_name = args.sample
         #get the image dimensions and layer argument
         self._img_dims = getImageHWLFromXMLFile(self._metadata_top_dir,self._sample_name)
+        if args.layer!=-1 and (args.layer<1 or args.layer>self._img_dims[2]) :
+            raise ValueError(f'ERROR: layer argument {args.layer} is not compatible with image dimensions {self._img_dims}!')
         self._layer = args.layer
         #set the working directory path
         self._working_dir_path = args.workingdir
@@ -157,7 +159,10 @@ class RawfileCorrector :
             wfr = warp_fit_result[0]
             warp_shifts = []
             if ws_file is not None :
-                warp_shifts = readtable(ws_file,WarpShift)
+                try :
+                    warp_shifts = readtable(ws_file,WarpShift)
+                except Exception as e :
+                    raise ValueError(f'ERROR: file {ws_file} is not recognized as a set of WarpShift objects! Exception: {e}')
             elif arg_ws is not None :
                 cx_shift,cy_shift = arg_ws.split(',')
                 cx_shift = float(cx_shift); cy_shift = float(cy_shift)
@@ -182,6 +187,10 @@ class RawfileCorrector :
         #otherwise try to define the fields by the actual .bin files
         else :
             dx_warp_field_path, dy_warp_field_path = getWarpFieldPathsFromWarpDef(w_def)
+            if not os.path.isfile(dx_warp_field_path) :
+                raise FileNotFoundError(f'ERROR: dx warp field path {dx_warp_field_path} does not exist!')
+            if not os.path.isfile(dy_warp_field_path) :
+                raise FileNotFoundError(f'ERROR: dy warp field path {dy_warp_field_path} does not exist!')
             self._dx_warp_field = (w_sf)*(getRawAsHW(dx_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
             self._dy_warp_field = (w_sf)*(getRawAsHW(dy_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
             r_warp_field = np.sqrt((self._dx_warp_field**2)+(self._dy_warp_field**2))

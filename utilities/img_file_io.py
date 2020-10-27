@@ -47,7 +47,10 @@ def im3writeraw(outname,a) :
 #helper function to read a raw image file and return it as an array of shape (height,width,n_layers)
 def getRawAsHWL(fname,height,width,nlayers,dtype=np.uint16) :
   #get the .raw file as a vector of uint16s
-  img = im3readraw(fname,dtype)
+  try :
+    img = im3readraw(fname,dtype)
+  except Exception as e :
+    raise ValueError(f'ERROR: file {fname} cannot be read as binary type {dtype}! Exception: {e}')
   #reshape it to the given dimensions
   try :
     img_a = np.reshape(img,(nlayers,width,height),order="F")
@@ -62,7 +65,10 @@ def getRawAsHWL(fname,height,width,nlayers,dtype=np.uint16) :
 #helper function to read a single-layer image and return it as an array of shape (height,width)
 def getRawAsHW(fname,height,width,dtype=np.uint16) :
   #get the file as a vector of uint16s
-  img = im3readraw(fname,dtype)
+  try :
+    img = im3readraw(fname,dtype)
+  except Exception as e :
+    raise ValueError(f'ERROR: file {fname} cannot be read as binary type {dtype}! Exception: {e}')
   #reshape it
   try :
     img_a = np.reshape(img,(height,width),order="F")
@@ -103,7 +109,10 @@ def getImageHWLFromXMLFile(metadata_topdir,samplename) :
     xmlfile_path = subdir_filepath
   else :
     xmlfile_path = os.path.join(metadata_topdir,samplename,f'{samplename}{PARAMETER_XMLFILE_EXT}')
-  tree = et.parse(xmlfile_path)
+  try :
+    tree = et.parse(xmlfile_path)
+  except Exception as e :
+    raise RuntimeError(f'ERROR: xml file path {xmlfile_path} could not be parsed to get image dimensions! Exception: {e}')
   for child in tree.getroot() :
     if child.attrib['name']=='Shape' :
       img_width, img_height, img_nlayers = tuple([int(val) for val in (child.text).split()])
@@ -230,9 +239,12 @@ def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
       raise RuntimeError(f"ERROR: {xmlfile_path} searched in getExposureTimesByLayer not found!")
   else :
     if metadata_top_dir is None :
-      raise RuntimeError(f'ERROR: metadata top dir must be supplied to get exposure times fo raw file path {fp}!')
+      raise RuntimeError(f'ERROR: metadata top dir must be supplied to get exposure times for raw file path {fp}!')
     xmlfile_path = findExposureTimeXMLFile(fp,metadata_top_dir)
-  root = (et.parse(xmlfile_path)).getroot()
+  try :
+    root = (et.parse(xmlfile_path)).getroot()
+  except Exception as e :
+    raise RuntimeError(f'ERROR: could not parse xml file {xmlfile_path} in getExposureTimesByLayer! Exception: {e}')
   nlg = 0
   if nlayers==35 :
     nlg = 5
@@ -247,12 +259,13 @@ def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
 #helper function to return a list of the median exposure times observed in each layer of a given sample
 def getSampleMedianExposureTimesByLayer(metadata_topdir,samplename) :
   _,_,nlayers = getImageHWLFromXMLFile(metadata_topdir,samplename)
-  if os.path.isdir(os.path.join(metadata_topdir,samplename,'im3','xml')) :
-    with cd(os.path.join(metadata_topdir,samplename,'im3','xml')) :
-      all_fps = [os.path.join(metadata_topdir,samplename,'im3','xml',fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
-  else :
-    with cd(os.path.join(metadata_topdir,samplename)) :
-      all_fps = [os.path.join(metadata_topdir,samplename,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
+  checkdir = os.path.join(metadata_topdir,samplename,'im3','xml')
+  if not os.path.isdir(checkdir) :
+    checkdir = os.path.join(metadata_topdir,samplename)
+  with cd(checkdir) :
+    all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
+  if len(all_fps)<1 :
+    raise ValueError(f'ERROR: no exposure time xml files found in directory {checkdir}!')
   utility_logger.info(f'Finding median exposure times for {samplename} ({len(all_fps)} images with {nlayers} layers each)....')
   all_exp_times_by_layer = []
   for li in range(nlayers) :
@@ -265,31 +278,29 @@ def getSampleMedianExposureTimesByLayer(metadata_topdir,samplename) :
 
 #helper function to return lists of the median exposure times and the exposure time correction offsets for all layers of a sample
 def getMedianExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file) :
+  if not os.path.isfile(et_correction_offset_file) :
+    raise FileNotFoundError(f'ERROR: Exposure time correction info cannot be determined from et_correction_offset_file = {et_correction_offset_file}!')
   utility_logger.info("Loading info for exposure time correction...")
-  median_exp_times = None; et_correction_offsets = None
-  if et_correction_offset_file is not None :
-    median_exp_times = getSampleMedianExposureTimesByLayer(metadata_top_dir,samplename)
-    et_correction_offsets=[]
+  median_exp_times = getSampleMedianExposureTimesByLayer(metadata_top_dir,samplename)
+  et_correction_offsets=[]
+  try :
     read_layer_offsets = readtable(et_correction_offset_file,LayerOffset)
-    for ln in range(1,len(median_exp_times)+1) :
-      this_layer_offset = [lo.offset for lo in read_layer_offsets if lo.layer_n==ln]
-      if len(this_layer_offset)==1 :
-        et_correction_offsets.append(this_layer_offset[0])
-      elif len(this_layer_offset)==0 :
-        utility_logger.warn(f"""WARNING: LayerOffset file {et_correction_offset_file} does not have an entry for layer {ln}; offset will be set to zero!""")
-        et_correction_offsets.append(0.)
-      else :
-        raise RuntimeError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {ln}!')
-  else :
-    utility_logger.warn(f"""WARNING: Exposure time correction info cannot be determined from et_correction_offset_file = {et_correction_offset_file}; 
-                            median exposure times and correction offsets will all be None!""")
+  except Exception as e :
+    msg = f'ERROR: could not read {et_correction_offset_file} as a LayerOffset file in getMedianExposureTimesAndCorrectionOffsetsForSample. Exception: {e}'
+    raise RuntimeError(msg)
+  for ln in range(1,len(median_exp_times)+1) :
+    this_layer_offset = [lo.offset for lo in read_layer_offsets if lo.layer_n==ln]
+    if len(this_layer_offset)==1 :
+      et_correction_offsets.append(this_layer_offset[0])
+    elif len(this_layer_offset)==0 :
+      utility_logger.warn(f'WARNING: LayerOffset file {et_correction_offset_file} does not have an entry for layer {ln}; offset will be set to zero!')
+      et_correction_offsets.append(0.)
+    else :
+      raise RuntimeError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {ln}!')
   return median_exp_times, et_correction_offsets
 
 #helper function to return the median exposure time and the exposure time correction offset for a given layer of a sample
 def getMedianExposureTimeAndCorrectionOffsetForSampleLayer(metadata_top_dir,samplename,et_correction_offset_file,layer) :
   med_ets, et_offsets = getMedianExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file) 
-  if med_ets is None or et_offsets is None :
-    return None, None
-  else :
-    med_et = med_ets[layer-1]; et_offset = et_offsets[layer-1]
-    return med_et, et_offset
+  med_et = med_ets[layer-1]; et_offset = et_offsets[layer-1]
+  return med_et, et_offset
