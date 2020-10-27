@@ -91,8 +91,9 @@ class Zoom(ReadRectanglesComponentTiff):
       slc = bigimage[:, ymin:ymax, xmin:xmax]
       if not np.any(slc): continue
       for layer in self.layers:
-        image = PIL.Image.fromarray(slc[layer-1])
         filename = self.zoomroot/self.SlideID/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+        self.logger.info(f"saving {filename.name}")
+        image = PIL.Image.fromarray(slc[layer-1])
         image.save(filename, "PNG")
 
     return bigimage
