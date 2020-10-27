@@ -35,19 +35,25 @@ def correctImageForExposureTime(raw_img,raw_fp,metadata_top_dir,med_exp_times,co
 #helper function to apply a flatfield to a given image layer
 def correctImageLayerWithFlatfield(raw_img_layer,flatfield_layer) :
   raw_dtype = raw_img_layer.dtype
-  if np.issubdtype(raw_dtype,np.integer) :
-    ff_corrected_layer = (np.clip(np.rint(raw_img_layer/flatfield_layer),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
-  else :
-    ff_corrected_layer = (raw_img_layer/flatfield_layer).astype(raw_dtype)
+  try :
+    if np.issubdtype(raw_dtype,np.integer) :
+      ff_corrected_layer = (np.clip(np.rint(raw_img_layer/flatfield_layer),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
+    else :
+      ff_corrected_layer = (raw_img_layer/flatfield_layer).astype(raw_dtype)
+  except Exception as e :
+    raise RuntimeError(f'ERROR: could not correct image layer with flatfield. Exception: {e}')
   return ff_corrected_layer
 
 #helper function to apply a multilayer flatfield to a multilayer image
 def correctImageWithFlatfield(raw_img,flatfield) :
   raw_dtype = raw_img.dtype
-  if np.issubdtype(raw_dtype,np.integer) :
-    ff_corrected = (np.clip(np.rint(raw_img/flatfield),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
-  else :
-    ff_corrected = (raw_img/flatfield).astype(raw_dtype)
+  try :
+    if np.issubdtype(raw_dtype,np.integer) :
+      ff_corrected = (np.clip(np.rint(raw_img/flatfield),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
+    else :
+      ff_corrected = (raw_img/flatfield).astype(raw_dtype)
+  except Exception as e :
+    raise RuntimeError(f'ERROR: could not correct image with flatfield. Exception: {e}')
   return ff_corrected
 
 #helper function to correct an image layer with given warp dx and dy fields

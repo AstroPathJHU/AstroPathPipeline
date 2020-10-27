@@ -89,10 +89,13 @@ def writeImageToFile(img_array,filename_to_write,dtype=np.uint16) :
     msg+= ' This might cause problems in writing it out in the right shape!'
     raise ValueError(msg)
   #write out image flattened in fortran order
-  im3writeraw(filename_to_write,img_array.flatten(order="F").astype(dtype))
+  try :
+    im3writeraw(filename_to_write,img_array.flatten(order="F").astype(dtype))
+  except Exception as e :
+    raise RuntimeError(f'ERROR: failed to save file {filename_to_write}. Exception: {e}')
 
 #helper function to smooth an image
-#this can be run in parallel
+#this can be run in parallel on the GPU
 def smoothImageWorker(im_array,smoothsigma,return_list=None) :
   if return_list is not None :
     im_in_umat = cv2.UMat(im_array)
@@ -146,9 +149,14 @@ def findExposureTimeXMLFile(rfp,search_dir) :
 
 #helper function to write out a new exposure time xml file with the layer exposure times replaced
 def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False) :
+  if not os.path.isfile(infile_path) :
+    raise FileNotFoundError(f'ERROR: original exposure time .xml file path {infile_path} does not exist!')
   #get all the lines from the original file
-  with open(infile_path,'r') as ifp :
-    all_lines = [l.rstrip() for l in ifp.readlines()]
+  try :
+    with open(infile_path,'r') as ifp :
+      all_lines = [l.rstrip() for l in ifp.readlines()]
+  except Exception as e :
+    raise ValueError(f'ERROR: could not read original exposure time .xml file path {infile_path}. Exception: {e}')
   line_index = 0    
   #make the new header info
   new_header_lines = []
@@ -176,7 +184,10 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False) :
   new_xml_lines = []
   old_elem_lines = []; old_data_texts = []; new_data_texts = []
   attrib_names = ['name','type','size']
-  tree = et.parse(infile_path)
+  try :
+    tree = et.parse(infile_path)
+  except Exception as e :
+    raise ValueError(f'ERROR: could not parse original exposure time .xml file {infile_path}. Exception: {e}')
   iet = 0
   for elem in tree.getroot() :
     old_elem_line = '<D '
@@ -219,13 +230,16 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False) :
     line_index+=1
   #write out the new file
   all_new_lines = new_header_lines+new_xml_lines
-  outfile_name = os.path.basename(os.path.normpath(infile_path)).replace(EXPOSURE_XML_EXT,CORRECTED_EXPOSURE_XML_EXT)
-  with open(outfile_name,'w') as ofp :
-    for il,line in enumerate(all_new_lines) :
-      if il<len(all_new_lines)-1 :
-        ofp.write(f'{line}\n')
-      else :
-        ofp.write(f'{line}')
+  try :
+    outfile_name = os.path.basename(os.path.normpath(infile_path)).replace(EXPOSURE_XML_EXT,CORRECTED_EXPOSURE_XML_EXT)
+    with open(outfile_name,'w') as ofp :
+      for il,line in enumerate(all_new_lines) :
+        if il<len(all_new_lines)-1 :
+          ofp.write(f'{line}\n')
+        else :
+          ofp.write(f'{line}')
+  except Exception as e :
+    raise RuntimeError(f'ERROR: could not write out modified exposure time .xml file. Exception: {e}')
   utility_logger.info(f'Wrote out new exposure time xml file {outfile_name}')
 
 #helper function to get a list of exposure times by each layer for a given raw image

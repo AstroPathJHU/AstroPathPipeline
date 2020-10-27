@@ -90,8 +90,11 @@ class RawfileCorrector :
             self.__writeLog(msg)
         #next run the correction and copying of the files
         for irfp,rfp in enumerate(all_rawfile_paths,start=1) :
-            self._correctAndCopyWorker(rfp,irfp,len(all_rawfile_paths))
-        self.__writeLog('All files corrected and copied!')
+            try :
+                self._correctAndCopyWorker(rfp,irfp,len(all_rawfile_paths))
+            except Exception as e :
+                self.__writeLog(f'WARNING: correcting/copying file {rfp} FAILED with exception: {e}')
+        self.__writeLog('Done looping over files!')
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -177,7 +180,7 @@ class RawfileCorrector :
                         cropAndOverwriteImage(savename)
         except Exception as e :
             self.__writeLog(f'WARNING: applied flatfield plots could not be saved. Exception: {e}')
-        self.__writeLog(f'Flatfield corrections WILL be applied as read from {ff_filepath}')
+        self.__writeLog(f'Flatfield corrections WILL be applied as read from {ff_file}')
 
     #helper function to set the warping variables
     def _setWarpingVariables(self,skip_w,w_def,ws_file,arg_ws,w_sf,layers_to_run) :
