@@ -104,8 +104,11 @@ class WarpFitter :
         n_threads                 = how many different processes to run when loading files
         """
         #load the exposure time correction offsets and the median exposure times by layer
-        med_exp_time, et_correction_offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(self.metadata_top_dir,self.samp_name,
-                                                                                                 et_correction_offset_file,self.warpset.layer)
+        if et_correction_offset_file is not None :
+            med_exp_time, et_correction_offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(self.metadata_top_dir,self.samp_name,
+                                                                                                        et_correction_offset_file,self.warpset.layer)
+        else :
+            med_exp_time, et_correction_offset = None, None
         #load the raw images
         self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.metadata_top_dir,
                                    flatfield_file_path,med_exp_time,et_correction_offset,
