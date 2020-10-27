@@ -1,9 +1,9 @@
-import collections, functools, logging
+import collections, functools, logging, pathlib
 
 class MyLogger:
   def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG):
     self.module = module
-    self.root = root
+    self.root = pathlib.Path(root)
     self.samp = samp
     self.uselogfiles = uselogfiles
     self.nentered = 0
