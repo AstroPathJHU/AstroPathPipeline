@@ -1,4 +1,4 @@
-import cv2, itertools, methodtools, numpy as np, PIL, skimage
+import cv2, itertools, methodtools, numpy as np, os, PIL, skimage
 
 from ..alignment.field import Field
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
@@ -33,11 +33,12 @@ class Zoom(ReadRectanglesComponentTiff):
   def ntiles(self):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
-    return floattoint(-((-maxxy) // (self.__tilesize*onepixel)))
-  def zoom(self, fmax=50):
+    return floattoint(-((-maxxy) // (self.tilesize*onepixel)))
+
+  def zoom_wsi_fast(self, fmax=50):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
-    bigimage = np.zeros(shape=(len(self.layers),)+tuple(reversed(self.ntiles * self.__tilesize)), dtype=np.uint8)
+    bigimage = np.zeros(shape=(len(self.layers),)+tuple(reversed(self.ntiles * self.tilesize)), dtype=np.uint8)
     nrectangles = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
       self.logger.info("%d / %d", i, nrectangles)
@@ -86,10 +87,10 @@ class Zoom(ReadRectanglesComponentTiff):
 
     self.zoomfolder.mkdir(parents=True, exist_ok=True)
     for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))):
-      xmin = tilex * self.__tilesize
-      xmax = (tilex+1) * self.__tilesize
-      ymin = tiley * self.__tilesize
-      ymax = (tiley+1) * self.__tilesize
+      xmin = tilex * self.tilesize
+      xmax = (tilex+1) * self.tilesize
+      ymin = tiley * self.tilesize
+      ymax = (tiley+1) * self.tilesize
       slc = bigimage[:, ymin:ymax, xmin:xmax]
       if not np.any(slc): continue
       for layer in self.layers:
@@ -106,3 +107,24 @@ class Zoom(ReadRectanglesComponentTiff):
       image.save(filename, "PNG")
 
     return bigimage
+
+  def wsi(self):
+    import pyvips
+
+    self.wsifolder.mkdir(parents=True, exist_ok=True)
+    for layer in self.layers:
+      images = []
+      blank = None
+      for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1])):
+        filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+        if filename.exists():
+          images.append(pyvips.Image.new_from_file(os.fspath(filename)))
+        else:
+          if blank is None:
+            blank = pyvips.Image.new_from_memory(np.zeros(shape=(self.tilesize*self.tilesize,), dtype=np.uint8), width=self.tilesize, height=self.tilesize, bands=1, format="uchar")
+          images.append(blank)
+
+      filename = self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
+      self.logger.info(f"saving {filename.name}")
+      output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
+      output.pngsave(os.fspath(filename))

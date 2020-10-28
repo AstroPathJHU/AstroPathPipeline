@@ -19,10 +19,10 @@ class TestZoom(TestBaseSaveOutput):
       for i in range(1, 9)
     ]
 
-  def testZoom(self, SlideID="M21_1"):
+  def testZoomWsi(self, SlideID="M21_1"):
     sample = Zoom(thisfolder/"data", thisfolder/"flatw", SlideID, zoomroot=thisfolder/"zoom_test_for_jenkins", uselogfiles=True, selectrectangles=[17])
     with sample:
-      sample.zoom()
+      sample.zoom_wsi_fast()
 
     try:
       for i in range(1, 9):
