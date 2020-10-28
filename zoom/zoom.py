@@ -118,7 +118,7 @@ class Zoom(ReadRectanglesComponentTiff):
     self.zoomfolder.mkdir(parents=True, exist_ok=True)
 
     for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1])), start=1):
-      tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.tilesize + 2*units.pixels(buffer, pscale=self.pscale))[::-1]), dtype=np.uint8)
+      tileimage = None
 
       self.logger.info("tile %d / %d", tilen, ntiles)
       xmin = tilex * self.tilesize * onepixel - buffer[0]
@@ -143,6 +143,8 @@ class Zoom(ReadRectanglesComponentTiff):
         localy2 = localy1 + tiley2 - tiley1
 
         if tilex2 <= buffer[0] or tiley2 <= buffer[1] or tilex1 >= self.tilesize*onepixel+buffer[0] or tiley1 >= self.tilesize*onepixel+buffer[1]: continue
+
+        if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.tilesize + 2*units.pixels(buffer, pscale=self.pscale))[::-1]), dtype=np.uint8)
 
         with field.using_image() as image:
           image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
