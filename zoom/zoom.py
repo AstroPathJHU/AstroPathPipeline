@@ -38,7 +38,7 @@ class Zoom(ReadRectanglesComponentTiff):
   def zoom_wsi_fast(self, fmax=50):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
-    bigimage = np.zeros(shape=(len(self.layers),)+tuple(reversed(self.ntiles * self.tilesize)), dtype=np.uint8)
+    bigimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.tilesize)[::-1]), dtype=np.uint8)
     nrectangles = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
       self.logger.info("%d / %d", i, nrectangles)
@@ -108,7 +108,90 @@ class Zoom(ReadRectanglesComponentTiff):
 
     return bigimage
 
-  def wsi(self):
+  def zoom_memory(self, fmax=50):
+    onepixel = units.Distance(pixels=1, pscale=self.pscale)
+    #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
+    buffer = -(-self.rectangles[0].shape // onepixel).astype(int) * onepixel
+    print(buffer)
+    nrectangles = len(self.rectangles)
+    ntiles = np.product(self.ntiles)
+    self.zoomfolder.mkdir(parents=True, exist_ok=True)
+
+    for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))):
+      tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.tilesize + 2*units.pixels(buffer, pscale=self.pscale))[::-1]), dtype=np.uint8)
+
+      self.logger.info("tile %d / %d", tilen, ntiles)
+      xmin = tilex * self.tilesize * onepixel - buffer[0]
+      xmax = (tilex+1) * self.tilesize * onepixel + buffer[0]
+      ymin = tiley * self.tilesize * onepixel - buffer[1]
+      ymax = (tiley+1) * self.tilesize * onepixel + buffer[1]
+
+      for i, field in enumerate(self.rectangles, start=1):
+        self.logger.info("  rectangle %d / %d", i, nrectangles)
+
+        globalx1 = field.mx1 // onepixel * onepixel
+        globalx2 = field.mx2 // onepixel * onepixel
+        globaly1 = field.my1 // onepixel * onepixel
+        globaly2 = field.my2 // onepixel * onepixel
+        tilex1 = globalx1 - xmin
+        tilex2 = globalx2 - xmin
+        tiley1 = globaly1 - ymin
+        tiley2 = globaly2 - ymin
+        localx1 = field.mx1 - field.px
+        localx2 = localx1 + tilex2 - tilex1
+        localy1 = field.my1 - field.py
+        localy2 = localy1 + tiley2 - tiley1
+
+        if tilex2 <= buffer[0] or tiley2 <= buffer[1] or tilex1 >= self.tilesize*onepixel+buffer[0] or tiley1 >= self.tilesize*onepixel+buffer[1]: continue
+
+        with field.using_image() as image:
+          image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
+
+          shiftby = np.array([tilex1 - localx1, tiley1 - localy1]) % onepixel
+
+          shifted = np.array([
+            cv2.warpAffine(
+              layer,
+              np.array(
+                [
+                  [1, 0, shiftby[0]/onepixel],
+                  [0, 1, shiftby[1]/onepixel],
+                ],
+                dtype=float,
+              ),
+              flags=cv2.INTER_CUBIC,
+              borderMode=cv2.BORDER_REPLICATE,
+              dsize=layer.T.shape,
+            ) for layer in image
+          ])
+          newlocalx1 = localx1 + shiftby[0]
+          newlocaly1 = localy1 + shiftby[1]
+          newlocalx2 = localx2 + shiftby[0]
+          newlocaly2 = localy2 + shiftby[1]
+
+          tileimage[
+            :,
+            floattoint(tiley1/onepixel):floattoint(tiley2/onepixel),
+            floattoint(tilex1/onepixel):floattoint(tilex2/onepixel),
+          ] = shifted[
+            :,
+            floattoint(newlocaly1/onepixel):floattoint(newlocaly2/onepixel),
+            floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
+          ]
+
+      slc = tileimage[
+        :,
+        units.pixels(buffer[1], pscale=self.pscale):units.pixels(-buffer[1], pscale=self.pscale),
+        units.pixels(buffer[0], pscale=self.pscale):units.pixels(-buffer[0], pscale=self.pscale),
+      ]
+      if not np.any(slc): continue
+      for layer in self.layers:
+        filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+        self.logger.info(f"saving {filename.name}")
+        image = PIL.Image.fromarray(slc[layer-1])
+        image.save(filename, "PNG")
+
+  def wsi_vips(self):
     import pyvips
 
     self.wsifolder.mkdir(parents=True, exist_ok=True)
@@ -128,3 +211,7 @@ class Zoom(ReadRectanglesComponentTiff):
       self.logger.info(f"saving {filename.name}")
       output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
       output.pngsave(os.fspath(filename))
+
+  def zoom_wsi_memory(self, fmax=50):
+    self.zoom_memory(fmax=fmax)
+    self.wsi_vips()
