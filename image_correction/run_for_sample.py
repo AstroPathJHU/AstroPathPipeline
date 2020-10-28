@@ -1,5 +1,5 @@
 #imports
-from .rawfile_corrector import RawfileCorrector
+from .corrector import RawfileCorrector
 from .utilities import getWarpFieldPathsFromWarpDef
 from ..baseclasses.sample import SampleDef
 from ..baseclasses.logging import getlogger

@@ -1,5 +1,5 @@
 #imports
-from ..correct_and_copy_rawfiles.rawfile_corrector import RawfileCorrector
+from ..image_correction.corrector import RawfileCorrector
 from ..utilities.img_file_io import getRawAsHWL, getRawAsHW
 from ..utilities.misc import cd
 import numpy as np
@@ -8,11 +8,11 @@ import pathlib, glob, shutil
 
 #some constants
 folder = pathlib.Path(__file__).parent
-workingdir_name = 'correct_and_copy_rawfiles_test_for_jenkins'
+workingdir_name = 'image_correction_test_for_jenkins'
 working_dir = folder/workingdir_name
 working_dir.mkdir(exist_ok=True)
-multilayer_ref_path = folder/'reference'/'correctandcopyrawfiles'/'multilayer'
-singlelayer_ref_path = folder/'reference'/'correctandcopyrawfiles'/'singlelayer'
+multilayer_ref_path = folder/'reference'/'imagecorrection'/'multilayer'
+singlelayer_ref_path = folder/'reference'/'imagecorrection'/'singlelayer'
 dims = (1004,1344,35)
 
 
