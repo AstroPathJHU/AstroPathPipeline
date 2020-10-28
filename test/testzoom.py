@@ -19,10 +19,10 @@ class TestZoom(TestBaseSaveOutput):
       for i in range(1, 9)
     ]
 
-  def testZoomWsi(self, SlideID="M21_1"):
+  def testZoomWsi(self, SlideID="M21_1", **kwargs):
     sample = Zoom(thisfolder/"data", thisfolder/"flatw", SlideID, zoomroot=thisfolder/"zoom_test_for_jenkins", uselogfiles=True, selectrectangles=[17])
     with sample:
-      sample.zoom_wsi_fast()
+      sample.zoom_wsi(**kwargs)
 
     try:
       for i in range(1, 9):
@@ -42,6 +42,6 @@ class TestZoom(TestBaseSaveOutput):
     else:
       self.removeoutput()
 
-  def testZoomFastUnits(self, SlideID="M21_1"):
+  def testZoomFast(self, SlideID="M21_1"):
     with units.setup_context("fast"):
-      self.testZoom(SlideID)
+      self.testZoom(SlideID, fast=True)

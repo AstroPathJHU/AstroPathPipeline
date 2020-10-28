@@ -215,3 +215,6 @@ class Zoom(ReadRectanglesComponentTiff):
   def zoom_wsi_memory(self, fmax=50):
     self.zoom_memory(fmax=fmax)
     self.wsi_vips()
+
+  def zoom_wsi(self, *args, fast=False, **kwargs):
+    return (self.zoom_wsi_fast if fast else self.zoom_wsi_memory)(*args, **kwargs)
