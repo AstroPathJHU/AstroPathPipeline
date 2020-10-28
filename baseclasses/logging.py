@@ -1,7 +1,7 @@
-import collections, functools, logging, pathlib
+import collections, functools, logging, pathlib, traceback
 
 class MyLogger:
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, mainlog=None, samplelog=None):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, mainlog=None, samplelog=None, reraiseexceptions=True):
     self.module = module
     self.root = pathlib.Path(root)
     self.samp = samp
@@ -14,6 +14,7 @@ class MyLogger:
       samplelog = self.root/self.SlideID/"logfiles"/f"{self.SlideID}-{self.module}.log"
     self.mainlog = pathlib.Path(mainlog)
     self.samplelog = pathlib.Path(samplelog)
+    self.reraiseexceptions = reraiseexceptions
     if uselogfiles and (self.Project is None or self.SampleID is None or self.Cohort is None):
       raise ValueError("Have to give a non-None SampleID, Project, and Cohort when writing to log files")
 
@@ -82,14 +83,18 @@ class MyLogger:
       raise ValueError("log messages aren't supposed to have semicolons:\n\n"+record.msg)
     return True
 
-  def __exit__(self, *exc):
+  def __exit__(self, exc_type, exc_value, exc_traceback):
     self.nentered -= 1
     if self.nentered == 0:
+      if exc_value is not None:
+        self.error(str(exc_value).replace(";", ","))
+        self.info(repr(traceback.format_exception(exc_type, exc_value, exc_traceback)).replace(";", ""))
       self.logger.info(f"end {self.module}")
       for handler in self.handlers[:]:
         handler.close()
         self.removeHandler(handler)
       del self.logger
+    return not self.reraiseexceptions
 
   def __getattr__(self, attr):
     if attr == "logger":
@@ -121,13 +126,15 @@ class MyFileHandler:
 __notgiven = object()
 
 @functools.lru_cache(maxsize=None)
-def getlogger(*, module, root, samp, uselogfiles=__notgiven, threshold=__notgiven, mainlog=__notgiven, samplelog=__notgiven):
+def getlogger(*, module, root, samp, uselogfiles=__notgiven, threshold=__notgiven, mainlog=__notgiven, samplelog=__notgiven, reraiseexceptions=__notgiven):
   if uselogfiles is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=False, threshold=threshold, mainlog=mainlog, samplelog=samplelog)
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=False, threshold=threshold, mainlog=mainlog, samplelog=samplelog, reraiseexceptions=reraiseexceptions)
   if threshold is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=logging.DEBUG, mainlog=mainlog, samplelog=samplelog)
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=logging.DEBUG, mainlog=mainlog, samplelog=samplelog, reraiseexceptions=reraiseexceptions)
   if mainlog is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=None, samplelog=samplelog)
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=None, samplelog=samplelog, reraiseexceptions=reraiseexceptions)
   if samplelog is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=None)
-  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog)
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=None, reraiseexceptions=reraiseexceptions)
+  if reraiseexceptions is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog, reraiseexceptions=True)
+  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog, reraiseexceptions=reraiseexceptions)
