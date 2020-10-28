@@ -121,7 +121,7 @@ pipeline {
 	  }
 	}
 
-	stage('image correction') {
+	stage('test image correction') {
 	  steps {
 	    sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testimagecorrection'
 	  }
