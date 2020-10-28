@@ -86,7 +86,8 @@ class Zoom(ReadRectanglesComponentTiff):
         ]
 
     self.zoomfolder.mkdir(parents=True, exist_ok=True)
-    for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))):
+    ntiles = np.product(self.ntiles)
+    for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1])), start=1):
       xmin = tilex * self.tilesize
       xmax = (tilex+1) * self.tilesize
       ymin = tiley * self.tilesize
@@ -95,7 +96,7 @@ class Zoom(ReadRectanglesComponentTiff):
       if not np.any(slc): continue
       for layer in self.layers:
         filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
-        self.logger.info(f"saving {filename.name}")
+        self.logger.info(f"saving tile {tilen} / {ntiles} {filename.name}")
         image = PIL.Image.fromarray(slc[layer-1])
         image.save(filename, "PNG")
 
@@ -112,12 +113,11 @@ class Zoom(ReadRectanglesComponentTiff):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
     buffer = -(-self.rectangles[0].shape // onepixel).astype(int) * onepixel
-    print(buffer)
     nrectangles = len(self.rectangles)
     ntiles = np.product(self.ntiles)
     self.zoomfolder.mkdir(parents=True, exist_ok=True)
 
-    for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))):
+    for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1])), start=1):
       tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.tilesize + 2*units.pixels(buffer, pscale=self.pscale))[::-1]), dtype=np.uint8)
 
       self.logger.info("tile %d / %d", tilen, ntiles)
@@ -187,7 +187,7 @@ class Zoom(ReadRectanglesComponentTiff):
       if not np.any(slc): continue
       for layer in self.layers:
         filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
-        self.logger.info(f"saving {filename.name}")
+        self.logger.info(f"  saving {filename.name}")
         image = PIL.Image.fromarray(slc[layer-1])
         image.save(filename, "PNG")
 
