@@ -122,9 +122,9 @@ class Zoom(ReadRectanglesComponentTiff):
 
       self.logger.info("tile %d / %d", tilen, ntiles)
       xmin = tilex * self.tilesize * onepixel - buffer[0]
-      xmax = (tilex+1) * self.tilesize * onepixel + buffer[0]
+      #xmax = (tilex+1) * self.tilesize * onepixel + buffer[0]
       ymin = tiley * self.tilesize * onepixel - buffer[1]
-      ymax = (tiley+1) * self.tilesize * onepixel + buffer[1]
+      #ymax = (tiley+1) * self.tilesize * onepixel + buffer[1]
 
       for i, field in enumerate(self.rectangles, start=1):
         self.logger.info("  rectangle %d / %d", i, nrectangles)
