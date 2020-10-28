@@ -1,6 +1,8 @@
 #imports
 from .rawfile_corrector import RawfileCorrector
-from .utilities import correction_logger, getWarpFieldPathsFromWarpDef
+from .utilities import getWarpFieldPathsFromWarpDef
+from ..baseclasses.sample import SampleDef
+from ..baseclasses.logging import getlogger
 from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.misc import addCommonArgumentsToParser
 from argparse import ArgumentParser
@@ -53,9 +55,6 @@ def checkArgs(args) :
                 raise FileNotFoundError(f'ERROR: dx warp field {dx_warp_field_path} does not exist!')
             if not os.path.isfile(dy_warp_field_path) :
                 raise FileNotFoundError(f'ERROR: dy warp field {dy_warp_field_path} does not exist!')
-    #make the working directory
-    if not os.path.isdir(args.workingdir) :
-        os.mkdir(args.workingdir)
 
 #################### MAIN SCRIPT ####################
 
@@ -83,14 +82,19 @@ if __name__=='__main__' :
                                        (default = ".fw"; 2-digit layer code will be appended if layer != -1)""")
     run_option_group.add_argument('--max_files',             default=-1,    type=int,
                                   help='Maximum number of files to use (default = -1 runs all files for the requested sample)')
-    run_option_group.add_argument('--logfile_name_stem',     default='correct_and_copy_rawfiles',
-                                  help="""Filename stem for the log that will be created (default="correct_and_copy_rawfiles"; 
-                                          timestamp and ".log" will be appended)""")
     args = parser.parse_args()
-    #check the arguments
-    checkArgs(args)
-    #start up the corrector from the arguments
-    corrector = RawfileCorrector(args)
-    #read in, correct, and write out file layers
-    corrector.run()
-    correction_logger.info('Done.')
+    #make the working directory
+    if not os.path.isdir(args.workingdir) :
+        os.mkdir(args.workingdir)
+    #set up the logger information and enter its context
+    module='correct_and_copy_rawfiles'
+    mainlog = os.path.join(args.workingdir,f'{module}.log'); samplelog = os.path.join(args.workingdir,f'{args.sample}-{module}.log')
+    samp = SampleDef(SlideID=args.sample,root=args.metadata_top_dir)
+    with getlogger(module=module,root=args.metadata_top_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog) as logger :
+        #check the arguments
+        checkArgs(args)
+        #start up the corrector from the arguments
+        corrector = RawfileCorrector(args,logger)
+        #read in, correct, and write out file layers
+        corrector.run()
+    #exit logger context

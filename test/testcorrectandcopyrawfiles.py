@@ -36,7 +36,6 @@ args = Namespace(
         input_file_extension='.Data.dat',
         output_file_extension='.fw',
         max_files=-1,
-        logfile_name_stem='correct_and_copy_rawfiles',
     )
 corrector = RawfileCorrector(args)
 corrector.run()
@@ -82,7 +81,6 @@ args = Namespace(
         input_file_extension='.Data.dat',
         output_file_extension='.fw',
         max_files=-1,
-        logfile_name_stem='correct_and_copy_rawfiles',
     )
 corrector = RawfileCorrector(args)
 corrector.run()

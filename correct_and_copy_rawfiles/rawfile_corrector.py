@@ -29,9 +29,10 @@ class RawfileCorrector :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,args) :
+    def __init__(self,args,logger=None) :
         """
         args = the set of command line arguments from ArgumentParser
+        logger = the baseclasses.logging.MyLogger logger to use (if None, a custom logger with be used)
         """
         #set the rawfile/metadata top directories to use
         self._rawfile_top_dir = args.rawfile_top_dir
@@ -41,7 +42,7 @@ class RawfileCorrector :
         #set the working directory path
         self._working_dir_path = args.workingdir
         #start up the logfile
-        self._startUpLogFile(args.logfile_name_stem)
+        self._logger_obj, self._logger_fn = self._getLogger(logger)
         #get the image dimensions and layer argument
         self._img_dims = getImageHWLFromXMLFile(self._metadata_top_dir,self._sample_name)
         if args.layer!=-1 and (args.layer<1 or args.layer>self._img_dims[2]) :
@@ -77,9 +78,9 @@ class RawfileCorrector :
         self.__writeLog(f'Found {len(all_rawfile_paths)} total raw files in {os.path.join(self._rawfile_top_dir,self._sample_name)}')
         if self._max_files!=-1 :
             if self._max_files>len(all_rawfile_paths) :
-                msg = f'WARNING: only {len(all_rawfile_paths)} were found for {self._sample_name}, but {self._max_files} were requested;'
+                msg = f'only {len(all_rawfile_paths)} were found for {self._sample_name}, but {self._max_files} were requested;'
                 msg+=f' all {len(all_rawfile_paths)} files will be run for this sample instead.'
-                self.__writeLog(msg)
+                self.__writeLog(msg,level='warning')
             else :
                 all_rawfile_paths=all_rawfile_paths[:self._max_files]
             msg = f'Will correct and write out {len(all_rawfile_paths)} file'
@@ -93,30 +94,60 @@ class RawfileCorrector :
             try :
                 self._correctAndCopyWorker(rfp,irfp,len(all_rawfile_paths))
             except Exception as e :
-                self.__writeLog(f'WARNING: correcting/copying file {rfp} FAILED with exception: {e}')
+                self.__writeLog(f'correcting/copying file {rfp} FAILED with exception: {e}',level='warningglobal')
         self.__writeLog('Done looping over files!')
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to write (and optionally print) a timestamped line to the logfile
-    def __writeLog(self,txt,printline=True) :
-        line = f'{self.logfile_timestamp}{txt}'
-        if printline :
-            correction_logger.info(line)
-        with cd(self._working_dir_path) :
-            with open(self._logfile_name,'a') as fp :
-                fp.write(f'{line}\n')
+    def __writeLog(self,txt,level='info',printline=True) :
+        #try to write using the context-managed logger object
+        if self._logger_obj is not None and self._logger_fn is None :
+            if level=='info' :
+                self._logger_obj.info(txt)
+            elif level=='error' :
+                self._logger_obj.error(txt)
+            elif level=='warningglobal' :
+                self._logger_obj.warningglobal(txt)
+            elif level=='warning' :
+                self._logger_obj.warning(txt)
+            elif level=='debug' :
+                self._logger_obj.debug(txt)
+            else :
+                raise ValueError(f'ERROR: logger level {level} is not recognized!')
+        #otherwise write to the custom file
+        else :
+            if level not in ('info','error','warningglobal','warning','debug') :
+                raise ValueError(f'ERROR: logger level {level} is not recognized!')
+            line = f'{self.logfile_timestamp}'
+            if level=='error' :
+                line+='ERROR: '
+            elif level in ('warningglobal','warning') :
+                line+='WARNING: '
+            line+=f'{txt}'
+            if printline or level=='debug' :
+                correction_logger.info(line)
+            if level!='debug' :
+                with cd(self._working_dir_path) :
+                    with open(self._logger_fn,'a') as fp :
+                        fp.write(f'{line}\n')
 
-    #helper function to start up the log file for the corrector
-    def _startUpLogFile(self,lf_name_stem) :
-        self._logfile_name = f'{lf_name_stem}_{time.strftime("%Y_%m_%d-%H_%M_%S")}.log'
-        with cd(self._working_dir_path) :
-            with open(self._logfile_name,'w') as fp :
-                fp.write('LOGFILE for correct_and_copy_rawfiles\n')
-                fp.write('-------------------------------------\n\n')
+    #helper function to get either the logger object or the name of the logfile (one will be None) for the corrector
+    def _getLogger(self,input_logger) :
+        logger_obj = None; logger_fn = None
+        if input_logger is None :
+            logfile_name = f'correct_and_copy_rawfiles_{time.strftime("%Y_%m_%d-%H_%M_%S")}.log'
+            with cd(self._working_dir_path) :
+                with open(logfile_name,'w') as fp :
+                    fp.write('LOGFILE for correct_and_copy_rawfiles\n')
+                    fp.write('-------------------------------------\n\n')
+            logger_fn = logfile_name
+        else :
+            logger_obj = input_logger
         msg = f'Working directory {os.path.basename(os.path.normpath(self._working_dir_path))} has been created'
         msg+= f' in {os.path.dirname(os.path.normpath(self._working_dir_path))}.'
         self.__writeLog(msg)
+        return logger_obj, logger_fn
 
     #helper function to set the exposure time correction variables
     def _setExposureTimeVariables(self,skip_etc,eto_file) :
@@ -142,7 +173,7 @@ class RawfileCorrector :
                 with cd(APPLIED_CORRECTION_PLOT_DIR_NAME) :
                     writetable('applied_exposure_time_correction_offsets.csv',los)
         except Exception as e :
-            self.__writeLog(f'WARNING: applied exposure time offset file could not be written out. Exception: {e}')
+            self.__writeLog(f'applied exposure time offset file could not be written out. Exception: {e}',level='warning')
         self.__writeLog(f'Exposure time corrections WILL be applied based on offset factors in {eto_file}')
         if self._layer==-1 :
             for ln in range(1,self._img_dims[-1]+1) :
@@ -179,7 +210,7 @@ class RawfileCorrector :
                         plt.close()
                         cropAndOverwriteImage(savename)
         except Exception as e :
-            self.__writeLog(f'WARNING: applied flatfield plots could not be saved. Exception: {e}')
+            self.__writeLog(f'applied flatfield plots could not be saved. Exception: {e}',level='warning')
         self.__writeLog(f'Flatfield corrections WILL be applied as read from {ff_file}')
 
     #helper function to set the warping variables
@@ -230,7 +261,7 @@ class RawfileCorrector :
                     with cd(os.path.join(self._working_dir_path,APPLIED_CORRECTION_PLOT_DIR_NAME)) :
                         self._warps[ln].writeOutWarpFields(fs,save_fields=False)
                 except Exception as e :
-                    self.__writeLog(f'WARNING: applied warp field plots could not be saved. Exception: {e}')
+                    self.__writeLog(f'applied warp field plots could not be saved. Exception: {e}',level='warning')
         #otherwise try to define the fields by the actual .bin files
         else :
             dx_warp_field_path, dy_warp_field_path = getWarpFieldPathsFromWarpDef(w_def)
@@ -259,7 +290,7 @@ class RawfileCorrector :
                     plt.close()
                     cropAndOverwriteImage(savename)
             except Exception as e :
-                self.__writeLog(f'WARNING: applied warp field plots could not be saved. Exception: {e}')
+                self.__writeLog(f'applied warp field plots could not be saved. Exception: {e}',level='warning')
         if w_sf!=1.0 :
                 msg+=f' and multiplied by {w_sf}'
         self.__writeLog(msg)
