@@ -1,4 +1,4 @@
-import abc, pathlib, traceback
+import abc, pathlib
 from ..utilities.tableio import readtable
 from .logging import getlogger
 from .sample import SampleDef
@@ -22,7 +22,7 @@ class Cohort(abc.ABC):
     "actually run whatever is supposed to be run on the sample"
 
   @abc.abstractmethod
-  def initiatesample(self, samp):
+  def initiatesample(self, samp, **kwargs):
     "Create a Sample object (subclass of SampleBase) from SampleDef samp to run on"
 
   @abc.abstractproperty
@@ -31,17 +31,12 @@ class Cohort(abc.ABC):
 
   def run(self, **kwargs):
     for samp in self:
-      with getlogger(module=self.logmodule, root=self.root, samp=samp, uselogfiles=self.uselogfiles) as logger:
-        try:
-          sample = self.initiatesample(samp)
-          if sample.logmodule != self.logmodule:
-            raise ValueError(f"Wrong logmodule: {self.logmodule} != {sample.logmodule}")
-          with sample:
-            self.runsample(sample, **kwargs)
-        except Exception as e:
-          logger.error(str(e).replace(";", ","))
-          logger.info(repr(traceback.format_exc()).replace(";", ""))
-          if self.debug: raise
+      with getlogger(module=self.logmodule, root=self.root, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):  #log exceptions in __init__ of the sample
+        sample = self.initiatesample(samp, reraiseexceptions=self.debug)
+        if sample.logmodule != self.logmodule:
+          raise ValueError(f"Wrong logmodule: {self.logmodule} != {sample.logmodule}")
+        with sample:
+          self.runsample(sample, **kwargs)
 
 class FlatwCohort(Cohort):
   def __init__(self, root, root2, *args, **kwargs):

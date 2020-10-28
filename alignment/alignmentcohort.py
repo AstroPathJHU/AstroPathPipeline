@@ -12,8 +12,8 @@ class AlignmentCohort(FlatwCohort):
     if not doalignment and not dostitching:
       raise ValueError("If you do neither alignment nor stitching, there's nothing to do")
 
-  def initiatesample(self, samp):
-    return AlignmentSet(self.root1, self.root2, samp, uselogfiles=self.uselogfiles)
+  def initiatesample(self, samp, **kwargs):
+    return AlignmentSet(self.root1, self.root2, samp, uselogfiles=self.uselogfiles, **kwargs)
 
   def runsample(self, sample):
     if self.__doalignment:
