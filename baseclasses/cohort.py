@@ -1,4 +1,4 @@
-import abc, pathlib, traceback
+import abc, pathlib
 from ..utilities.tableio import readtable
 from .logging import getlogger
 from .sample import SampleDef
@@ -31,7 +31,7 @@ class Cohort(abc.ABC):
 
   def run(self, **kwargs):
     for samp in self:
-      with getlogger(module=self.logmodule, root=self.root, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug) as logger:
+      with getlogger(module=self.logmodule, root=self.root, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):  #log exceptions in __init__ of the sample
         sample = self.initiatesample(samp, reraiseexceptions=self.debug)
         if sample.logmodule != self.logmodule:
           raise ValueError(f"Wrong logmodule: {self.logmodule} != {sample.logmodule}")
