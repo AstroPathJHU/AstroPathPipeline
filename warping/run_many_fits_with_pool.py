@@ -105,13 +105,19 @@ if __name__=='__main__' :
         #write out a list of all the individual results
         results = []; metadata_summaries = []
         for dirname in dirnames :
-            results.append((readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))[0])
-            metadata_summaries.append((readtable(os.path.join(dirname,f'metadata_summary_{os.path.basename(os.path.normpath(dirname))}.csv'),MetadataSummary))[0])
+            result_fp = os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME)
+            if os.path.isfile(result_fp) :
+                results.append((readtable(result_fp,WarpFitResult))[0])
+                metadata_summaries.append((readtable(os.path.join(dirname,f'metadata_summary_{os.path.basename(os.path.normpath(dirname))}.csv'),MetadataSummary))[0])
+            else :
+                warp_logger.warn(f'WARNING: Expected fit result file {result_fp} does not exist, continuing without it!')
         with cd(args.workingdir) :
             writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv',results)
         if os.path.isfile(os.path.join(args.workingdir,f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv')) :
             for dirname in dirnames :
-                os.remove(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME))
+                result_fp = os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME)
+                if os.path.isfile(result_fp) :
+                    os.remove(result_fp)
         #write out some plots
         plot_name_stem = f'{os.path.basename(os.path.normpath(args.workingdir))}'
         with cd(args.workingdir) :
@@ -178,7 +184,9 @@ if __name__=='__main__' :
         #aggregate the different field log files into one
         all_field_logs = []
         for dirname in dirnames :
-            all_field_logs+=((readtable(os.path.join(dirname,f'field_log_{os.path.basename(os.path.normpath(dirname))}.csv'),FieldLog)))
+            field_log_path = os.path.join(dirname,f'field_log_{os.path.basename(os.path.normpath(dirname))}.csv')
+            if os.path.isfile(field_log_path) :
+                all_field_logs+=((readtable(field_log_path,FieldLog)))
         with cd(args.workingdir) :
             writetable(f'field_log_{os.path.basename(os.path.normpath(args.workingdir))}.csv',all_field_logs)
     warp_logger.info('Done.')

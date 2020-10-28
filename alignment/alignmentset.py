@@ -329,7 +329,6 @@ class AlignmentSet(AlignmentSetBase, ReadRectanglesOverlaps):
 
     if saveresult:
       self.writestitchresult(result, check=checkwriting)
-    raise ValueError("hi")
 
     return result
 
