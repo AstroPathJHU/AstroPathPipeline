@@ -12,7 +12,7 @@ import os
 
 def checkArgs(args) :
     #make sure the directories all exist
-    workingdir_location = os.path.dirname(os.path.normpath(args.workingdir))
+    workingdir_location = os.path.dirname(os.path.abspath(os.path.normpath(args.workingdir)))
     dirs_to_check = [args.rawfile_top_dir,args.metadata_top_dir,workingdir_location]
     for dirpath in dirs_to_check :
         if not os.path.isdir(dirpath) :
@@ -97,4 +97,5 @@ if __name__=='__main__' :
         corrector = RawfileCorrector(args,logger)
         #read in, correct, and write out file layers
         corrector.run()
-    #exit logger context
+    #explicitly exit logger context
+    assert 1==1

@@ -148,7 +148,7 @@ def findExposureTimeXMLFile(rfp,search_dir) :
   return xmlfile_path
 
 #helper function to write out a new exposure time xml file with the layer exposure times replaced
-def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False) :
+def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logger=None) :
   if not os.path.isfile(infile_path) :
     raise FileNotFoundError(f'ERROR: original exposure time .xml file path {infile_path} does not exist!')
   #get all the lines from the original file
@@ -240,7 +240,11 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False) :
           ofp.write(f'{line}')
   except Exception as e :
     raise RuntimeError(f'ERROR: could not write out modified exposure time .xml file. Exception: {e}')
-  utility_logger.info(f'Wrote out new exposure time xml file {outfile_name}')
+  msg = f'Wrote out new exposure time xml file {outfile_name}'
+  if logger is None :
+    utility_logger.info(msg)
+  else :
+    logger.info(msg)
 
 #helper function to get a list of exposure times by each layer for a given raw image
 #fp can be a path to a raw file or to an exposure XML file 

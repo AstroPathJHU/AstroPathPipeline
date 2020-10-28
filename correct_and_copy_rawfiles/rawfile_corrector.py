@@ -8,7 +8,7 @@ from ..utilities.img_correction import correctImageForExposureTime, correctImage
 from ..utilities.img_correction import correctImageLayerWithFlatfield, correctImageWithFlatfield, correctImageLayerWithWarpFields
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile, findExposureTimeXMLFile
 from ..utilities.img_file_io import writeModifiedExposureTimeXMLFile, getMedianExposureTimesAndCorrectionOffsetsForSample
-from ..utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer, LayerOffset
+from ..utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer, LayerOffset, CORRECTED_EXPOSURE_XML_EXT
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt
@@ -42,7 +42,7 @@ class RawfileCorrector :
         #set the working directory path
         self._working_dir_path = args.workingdir
         #start up the logfile
-        self._logger_obj, self._logger_fn = self._getLogger(logger)
+        self._setUpLogger(logger)
         #get the image dimensions and layer argument
         self._img_dims = getImageHWLFromXMLFile(self._metadata_top_dir,self._sample_name)
         if args.layer!=-1 and (args.layer<1 or args.layer>self._img_dims[2]) :
@@ -78,8 +78,8 @@ class RawfileCorrector :
         self.__writeLog(f'Found {len(all_rawfile_paths)} total raw files in {os.path.join(self._rawfile_top_dir,self._sample_name)}')
         if self._max_files!=-1 :
             if self._max_files>len(all_rawfile_paths) :
-                msg = f'only {len(all_rawfile_paths)} were found for {self._sample_name}, but {self._max_files} were requested;'
-                msg+=f' all {len(all_rawfile_paths)} files will be run for this sample instead.'
+                msg = f'only {len(all_rawfile_paths)} were found for {self._sample_name}, but {self._max_files} were requested,'
+                msg+=f' so all {len(all_rawfile_paths)} files will be run for this sample instead.'
                 self.__writeLog(msg,level='warning')
             else :
                 all_rawfile_paths=all_rawfile_paths[:self._max_files]
@@ -133,21 +133,20 @@ class RawfileCorrector :
                         fp.write(f'{line}\n')
 
     #helper function to get either the logger object or the name of the logfile (one will be None) for the corrector
-    def _getLogger(self,input_logger) :
-        logger_obj = None; logger_fn = None
+    def _setUpLogger(self,input_logger) :
+        self._logger_obj = None; self._logger_fn = None
         if input_logger is None :
             logfile_name = f'correct_and_copy_rawfiles_{time.strftime("%Y_%m_%d-%H_%M_%S")}.log'
             with cd(self._working_dir_path) :
                 with open(logfile_name,'w') as fp :
                     fp.write('LOGFILE for correct_and_copy_rawfiles\n')
                     fp.write('-------------------------------------\n\n')
-            logger_fn = logfile_name
+            self._logger_fn = logfile_name
         else :
-            logger_obj = input_logger
+            self._logger_obj = input_logger
         msg = f'Working directory {os.path.basename(os.path.normpath(self._working_dir_path))} has been created'
-        msg+= f' in {os.path.dirname(os.path.normpath(self._working_dir_path))}.'
+        msg+= f' in {os.path.dirname(os.path.abspath(os.path.normpath(self._working_dir_path)))}.'
         self.__writeLog(msg)
-        return logger_obj, logger_fn
 
     #helper function to set the exposure time correction variables
     def _setExposureTimeVariables(self,skip_etc,eto_file) :
@@ -175,13 +174,14 @@ class RawfileCorrector :
         except Exception as e :
             self.__writeLog(f'applied exposure time offset file could not be written out. Exception: {e}',level='warning')
         self.__writeLog(f'Exposure time corrections WILL be applied based on offset factors in {eto_file}')
+        self.__writeLog(f'Corrected *{CORRECTED_EXPOSURE_XML_EXT} files will be written out to {self._working_dir_path}')
         if self._layer==-1 :
             for ln in range(1,self._img_dims[-1]+1) :
-                msg = f'(Layer {ln} median sample exposure time={self._med_exp_time[ln-1]};'
+                msg = f'(Layer {ln} median sample exposure time={self._med_exp_time[ln-1]},'
                 msg+= f' exposure time correction offset = {self._et_correction_offset[ln-1]})'
                 self.__writeLog(msg)
         else :
-            self.__writeLog(f'(Median sample exposure time={self._med_exp_time}; exposure time correction offset = {self._et_correction_offset})')
+            self.__writeLog(f'(Median sample exposure time={self._med_exp_time}, exposure time correction offset = {self._et_correction_offset})')
 
     #helper function to set the flatfield correction variable
     def _setFlatfieldVariable(self,skip_ff,ff_file,layers_to_run) :
@@ -327,11 +327,11 @@ class RawfileCorrector :
             #write out the modified exposure time xml file
             with cd(self._working_dir_path) :
                 if self._layer==-1 :
-                    writeModifiedExposureTimeXMLFile(original_et_xml_filepath,self._med_exp_time)
+                    writeModifiedExposureTimeXMLFile(original_et_xml_filepath,self._med_exp_time,logger=self._logger_obj)
                 else :
                     exp_times_to_write = layer_exp_times
                     layer_exp_times[self._layer-1] = self._med_exp_time
-                    writeModifiedExposureTimeXMLFile(original_et_xml_filepath,exp_times_to_write)
+                    writeModifiedExposureTimeXMLFile(original_et_xml_filepath,exp_times_to_write,logger=self._logger_obj)
             msg+='exposure time, '
         else :
             et_corrected = raw
