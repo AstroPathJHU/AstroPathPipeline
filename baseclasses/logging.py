@@ -12,8 +12,8 @@ class MyLogger:
       mainlog = self.root/"logfiles"/f"{self.module}.log"
     if samplelog is None:
       samplelog = self.root/self.SlideID/"logfiles"/f"{self.SlideID}-{self.module}.log"
-    self.mainlog = mainlog
-    self.samplelog = samplelog
+    self.mainlog = pathlib.Path(mainlog)
+    self.samplelog = pathlib.Path(samplelog)
     if uselogfiles and (self.Project is None or self.SampleID is None or self.Cohort is None):
       raise ValueError("Have to give a non-None SampleID, Project, and Cohort when writing to log files")
 
