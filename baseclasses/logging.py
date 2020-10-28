@@ -33,7 +33,7 @@ class MyLogger:
   def formatter(self):
     return logging.Formatter(
       ";".join(str(_) for _ in (self.Project, self.Cohort, self.SampleID, self.SlideID, "%(message)s", "%(asctime)s") if _ is not None),
-      "%Y-%b-%d %H:%M:%S",
+      "%Y-%m-%d %H:%M:%S",
     )
   def __enter__(self):
     if self.nentered == 0:
