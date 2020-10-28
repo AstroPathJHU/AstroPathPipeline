@@ -1,14 +1,19 @@
 import collections, functools, logging, pathlib
 
 class MyLogger:
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, mainlog=None, samplelog=None):
     self.module = module
     self.root = pathlib.Path(root)
     self.samp = samp
     self.uselogfiles = uselogfiles
     self.nentered = 0
     self.threshold = threshold
-
+    if mainlog is None:
+      mainlog = self.root/"logfiles"/f"{self.module}.log"
+    if samplelog is None:
+      samplelog = self.root/self.SlideID/"logfiles"/f"{self.SlideID}-{self.module}.log"
+    self.mainlog = mainlog
+    self.samplelog = samplelog
     if uselogfiles and (self.Project is None or self.SampleID is None or self.Cohort is None):
       raise ValueError("Have to give a non-None SampleID, Project, and Cohort when writing to log files")
 
@@ -42,15 +47,15 @@ class MyLogger:
       self.logger.addHandler(printhandler)
 
       if self.uselogfiles:
-        (self.root/"logfiles").mkdir(exist_ok=True)
-        mainhandler = MyFileHandler(self.root/"logfiles"/f"{self.module}.log")
+        self.mainlog.parent.mkdir(exist_ok=True, parents=True)
+        mainhandler = MyFileHandler(self.mainlog)
         mainhandler.setFormatter(self.formatter)
         mainhandler.addFilter(self.filter)
         mainhandler.setLevel(logging.WARNING+1)
         self.logger.addHandler(mainhandler)
 
-        (self.root/self.SlideID/"logfiles").mkdir(exist_ok=True)
-        samplehandler = MyFileHandler(self.root/self.SlideID/"logfiles"/f"{self.SlideID}-{self.module}.log")
+        self.samplelog.parent.mkdir(exist_ok=True, parents=True)
+        samplehandler = MyFileHandler(self.samplelog)
         samplehandler.setFormatter(self.formatter)
         samplehandler.addFilter(self.filter)
         samplehandler.setLevel(logging.INFO)
@@ -113,10 +118,16 @@ class MyFileHandler:
   def __getattr__(self, attr):
     return getattr(self.__handler, attr)
 
+__notgiven = object()
+
 @functools.lru_cache(maxsize=None)
-def getlogger(*, module, root, samp, uselogfiles=None, threshold=None):
-  if uselogfiles is None:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=False, threshold=threshold)
-  if threshold is None:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=logging.DEBUG)
-  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold)
+def getlogger(*, module, root, samp, uselogfiles=__notgiven, threshold=__notgiven, mainlog=__notgiven, samplelog=__notgiven):
+  if uselogfiles is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=False, threshold=threshold, mainlog=mainlog, samplelog=samplelog)
+  if threshold is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=logging.DEBUG, mainlog=mainlog, samplelog=samplelog)
+  if mainlog is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=None, samplelog=samplelog)
+  if samplelog is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=None)
+  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog)
