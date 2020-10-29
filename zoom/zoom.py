@@ -175,7 +175,7 @@ class Zoom(ReadRectanglesComponentTiff):
             globaly2 = field.my2 // onepixel * onepixel
 
             if not tile.overlapsrectangle(globalx1=globalx1, globalx2=globalx2, globaly1=globaly1, globaly2=globaly2): continue
-            for othertilen, othertile in enumerate(tiles):
+            for othertilen, othertile in enumerate(tiles, start=1):
               #if any other tile uses the same field:
               #keep the field in memory until we get to that tile
               if othertilen == tilen: assert othertile is tile
