@@ -43,5 +43,4 @@ class TestZoom(TestBaseSaveOutput):
       self.removeoutput()
 
   def testZoomWsiFast(self, SlideID="M21_1"):
-    with units.setup_context("fast"):
-      self.testZoomWsi(SlideID, fast=True)
+    self.testZoomWsi(SlideID, fast=True)
