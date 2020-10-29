@@ -88,11 +88,12 @@ if __name__=='__main__' :
         os.mkdir(args.workingdir)
     #set up the logger information and enter its context
     module='image_correction'
-    mainlog = os.path.join(args.workingdir,f'{module}.log')
-    samplelog = os.path.join(args.workingdir,f'{args.slideID}-{module}.log')
+    #mainlog = os.path.join(args.workingdir,f'{module}.log')
+    #samplelog = os.path.join(args.workingdir,f'{args.slideID}-{module}.log')
     imagelog = os.path.join(args.workingdir,f'{args.slideID}_images-{module}.log')
     samp = SampleDef(SlideID=args.slideID,root=args.root_dir)
-    with getlogger(module=module,root=args.root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,imagelog=imagelog,reraiseexceptions=False) as logger :
+    #with getlogger(module=module,root=args.root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,imagelog=imagelog,reraiseexceptions=False) as logger :
+    with getlogger(module=module,root=args.root_dir,samp=samp,uselogfiles=True,imagelog=imagelog,reraiseexceptions=False) as logger :
         #check the arguments
         checkArgs(args)
         #start up the corrector from the arguments
