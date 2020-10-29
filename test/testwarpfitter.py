@@ -47,7 +47,7 @@ for resultnew, resultref in zip(new, ref):
   resultnew.polish_fit_its = resultref.polish_fit_its = \
   resultnew.polish_fit_time = resultref.polish_fit_time = \
   0
-  assertAlmostEqual(resultnew, resultref, rtol=1e-3)
+  assertAlmostEqual(resultnew, resultref, rtol=5e-3)
 
 print('Removing working directory...')
 shutil.rmtree(working_dir,ignore_errors=True)
