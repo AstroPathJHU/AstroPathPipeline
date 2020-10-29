@@ -244,7 +244,10 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logge
   if logger is None :
     utility_logger.info(msg)
   else :
-    logger.info(msg)
+    if logger.imagelog is not None :
+      logger.imageinfo(msg)
+    else :
+      logger.info(msg)
 
 #helper function to get a list of exposure times by each layer for a given raw image
 #fp can be a path to a raw file or to an exposure XML file 

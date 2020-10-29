@@ -90,6 +90,7 @@ class RawfileCorrector :
                 msg+=' layers'
             self.__writeLog(msg)
         #next run the correction and copying of the files
+        self.__writeLog('Starting loop over files')
         for irfp,rfp in enumerate(all_rawfile_paths,start=1) :
             try :
                 self._correctAndCopyWorker(rfp,irfp,len(all_rawfile_paths))
@@ -105,6 +106,8 @@ class RawfileCorrector :
         if self._logger_obj is not None and self._logger_fn is None :
             if level=='info' :
                 self._logger_obj.info(txt)
+            elif level=='imageinfo' :
+                self._logger_obj.imageinfo(txt)
             elif level=='error' :
                 self._logger_obj.error(txt)
             elif level=='warningglobal' :
@@ -117,7 +120,7 @@ class RawfileCorrector :
                 raise ValueError(f'ERROR: logger level {level} is not recognized!')
         #otherwise write to the custom file
         else :
-            if level not in ('info','error','warningglobal','warning','debug') :
+            if level not in ('info','imageinfo','error','warningglobal','warning','debug') :
                 raise ValueError(f'ERROR: logger level {level} is not recognized!')
             line = f'{self.logfile_timestamp}'
             if level=='error' :
@@ -372,4 +375,4 @@ class RawfileCorrector :
         if os.path.isfile(new_image_path) :
             msg+=f'written as {new_image_path}'
         #log the message
-        self.__writeLog(msg)
+        self.__writeLog(msg,level='imageinfo')
