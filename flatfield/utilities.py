@@ -23,18 +23,18 @@ flatfield_logger.addHandler(handler)
 #helper class for logging included/excluded fields
 @dataclasses.dataclass
 class FieldLog :
-    sample   : str
+    slide   : str
     file     : str
     location : str
     use      : str
     stacked_in_layers : List[int] = None
 
-#helper class for inputting samples with their names and raw/metadata directories
+#helper class for inputting slides with their names and raw/root directories
 @dataclasses.dataclass
-class FlatfieldSampleInfo :
+class FlatfieldSlideInfo :
     name : str
     rawfile_top_dir : str
-    metadata_top_dir : str
+    root_dir : str
 
 #################### GENERAL HELPER FUNCTIONS ####################
 
@@ -52,8 +52,8 @@ def getImageArrayLayerHistograms(img_array, mask=slice(None)) :
         layer_hist,_ = np.histogram(img_array[mask],nbins,(0,nbins))
         return layer_hist
 
-#helper function to return the sample name from a whole filepath
-def sampleNameFromFilepath(fp) :
+#helper function to return the slide name from a whole filepath
+def slideNameFromFilepath(fp) :
     return os.path.basename(os.path.dirname(os.path.normpath(fp)))
 
 #################### THRESHOLDING HELPER FUNCTIONS ####################
@@ -175,10 +175,10 @@ class FileReadInfo :
     height           : int                # img height
     width            : int                # img width
     nlayers          : int                # number of img layers
-    metadata_top_dir : str                # top directory with metadata files
+    root_dir         : str                # Clinical_Specimen directory
     to_smooth        : bool = False       # whether the image should be smoothed
-    med_exp_times    : List[float] = None # a list of the median exposure times in this image's sample by layer 
-    corr_offsets     : List[float] = None # a list of the exposure time correction offsets for this image's sample by layer 
+    med_exp_times    : List[float] = None # a list of the median exposure times in this image's slide by layer 
+    corr_offsets     : List[float] = None # a list of the exposure time correction offsets for this image's slide by layer 
 
 #helper function to parallelize calls to getRawAsHWL (plus optional smoothing and normalization)
 def getImageArray(fri) :
@@ -186,7 +186,7 @@ def getImageArray(fri) :
     img_arr = getRawAsHWL(fri.rawfile_path,fri.height,fri.width,fri.nlayers)
     if fri.med_exp_times is not None and fri.corr_offsets is not None and fri.corr_offsets[0] is not None :
         try :
-            img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,fri.metadata_top_dir,fri.med_exp_times,fri.corr_offsets)
+            img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,fri.root_dir,fri.med_exp_times,fri.corr_offsets)
         except (ValueError, RuntimeError) :
             rtd = os.path.dirname(os.path.dirname(os.path.normpath(fri.rawfile_path)))+os.sep
             img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,rtd,fri.med_exp_times,fri.corr_offsets)
@@ -202,36 +202,36 @@ def getImageLayerHists(fri) :
 #helper function to read and return a group of raw images with multithreading
 #set 'smoothed' to True when calling to smooth images with gentle gaussian filter as they're read in
 #pass in a list of median exposure times and correction offsets by layer to correct image layer flux 
-def readImagesMT(sample_image_filereads,smoothed=False,med_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
-    for fr in sample_image_filereads :
+def readImagesMT(slide_image_filereads,smoothed=False,med_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
+    for fr in slide_image_filereads :
         fr.to_smooth = smoothed
         fr.med_exp_times = med_exposure_times_by_layer
         fr.corr_offsets = et_corr_offsets_by_layer
-    e = ThreadPoolExecutor(len(sample_image_filereads))
-    new_img_arrays = list(e.map(getImageArray,[fr for fr in sample_image_filereads]))
+    e = ThreadPoolExecutor(len(slide_image_filereads))
+    new_img_arrays = list(e.map(getImageArray,[fr for fr in slide_image_filereads]))
     e.shutdown()
     return new_img_arrays
 
 #helper function to read and return a group of image pixel histograms with multithreading
 #set 'smoothed' to True when calling to smooth images with gentle gaussian filter as they're read in
 #pass in a list of median exposure times and correction offsets by layer to correct image layer flux 
-def getImageLayerHistsMT(sample_image_filereads,smoothed=False,med_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
-    for fr in sample_image_filereads :
+def getImageLayerHistsMT(slide_image_filereads,smoothed=False,med_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
+    for fr in slide_image_filereads :
         fr.to_smooth = smoothed
         fr.med_exp_times = med_exposure_times_by_layer
         fr.corr_offsets = et_corr_offsets_by_layer
-    e = ThreadPoolExecutor(len(sample_image_filereads))
-    new_img_layer_hists = list(e.map(getImageLayerHists,[fr for fr in sample_image_filereads]))
+    e = ThreadPoolExecutor(len(slide_image_filereads))
+    new_img_layer_hists = list(e.map(getImageLayerHists,[fr for fr in slide_image_filereads]))
     e.shutdown()
     return new_img_layer_hists
 
 #helper function to split a list of filenames into chunks to be read in in parallel
-def chunkListOfFilepaths(fps,dims,mtd,n_threads) :
+def chunkListOfFilepaths(fps,dims,root_dir,n_threads) :
     fileread_chunks = [[]]
     for i,fp in enumerate(fps,start=1) :
         if len(fileread_chunks[-1])>=n_threads :
             fileread_chunks.append([])
-        fileread_chunks[-1].append(FileReadInfo(fp,f'({i} of {len(fps)})',dims[0],dims[1],dims[2],mtd))
+        fileread_chunks[-1].append(FileReadInfo(fp,f'({i} of {len(fps)})',dims[0],dims[1],dims[2],root_dir))
     return fileread_chunks
 
 #################### USEFUL PLOTTING FUNCTION ####################

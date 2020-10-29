@@ -12,7 +12,7 @@ import os, random, subprocess, datetime, multiprocessing as mp
 
 RUN_WARPFITTER_PREFIX = 'python -m microscopealignment.warping.run_warp_fitter' #part of the command referencing how to run run_warpfitter.py
 JOB_DIR_STEM = 'warpfitter_batch'
-POSITIONAL_PASSTHROUGH_ARG_NAMES = ['sample','rawfile_top_dir','metadata_top_dir']
+POSITIONAL_PASSTHROUGH_ARG_NAMES = ['slideID','rawfile_top_dir','root_dir']
 PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','max_iter','fixed','normalize','init_pars','init_bounds','max_radial_warp']
 PASSTHROUGH_ARG_NAMES+= ['max_tangential_warp','p1p2_polish_lasso_lambda','print_every','layer']
 PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding','float_p1p2_to_polish']
@@ -33,11 +33,11 @@ def getListOfJobCommands(args) :
         n_octets_per_job = int(args.octet_selection.split('_')[1])
     except ValueError :
         raise ValueError(f'ERROR: octet_selection argument ({args.octet_selection}) is not valid! Use "first_n" or "random_n".')
-    #find the valid octets in the samples and order them by the # of their center rectangle
+    #find the valid octets in the slides and order them by the # of their center rectangle
     all_octets = getOctetsFromArguments(args)
-    #make sure that the number of octets per job and the number of jobs will work for this sample
+    #make sure that the number of octets per job and the number of jobs will work for this slide
     if args.njobs*n_octets_per_job<1 or args.njobs*n_octets_per_job>len(all_octets) :
-        raise ValueError(f"""ERROR: Sample {args.sample} has {len(all_octets)} total valid octets, but you asked for {args.njobs} jobs 
+        raise ValueError(f"""ERROR: Slide {args.slideID} has {len(all_octets)} total valid octets, but you asked for {args.njobs} jobs 
                              with {n_octets_per_job} octets per job!""")
     #build the list of commands
     job_cmds = []; workingdir_names = []
@@ -105,13 +105,19 @@ if __name__=='__main__' :
         #write out a list of all the individual results
         results = []; metadata_summaries = []
         for dirname in dirnames :
-            results.append((readtable(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME),WarpFitResult))[0])
-            metadata_summaries.append((readtable(os.path.join(dirname,f'metadata_summary_{os.path.basename(os.path.normpath(dirname))}.csv'),MetadataSummary))[0])
+            result_fp = os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME)
+            if os.path.isfile(result_fp) :
+                results.append((readtable(result_fp,WarpFitResult))[0])
+                metadata_summaries.append((readtable(os.path.join(dirname,f'metadata_summary_{os.path.basename(os.path.normpath(dirname))}.csv'),MetadataSummary))[0])
+            else :
+                warp_logger.warn(f'WARNING: Expected fit result file {result_fp} does not exist, continuing without it!')
         with cd(args.workingdir) :
             writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv',results)
         if os.path.isfile(os.path.join(args.workingdir,f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv')) :
             for dirname in dirnames :
-                os.remove(os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME))
+                result_fp = os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME)
+                if os.path.isfile(result_fp) :
+                    os.remove(result_fp)
         #write out some plots
         plot_name_stem = f'{os.path.basename(os.path.normpath(args.workingdir))}'
         with cd(args.workingdir) :
@@ -154,7 +160,7 @@ if __name__=='__main__' :
         #make a warp from these w average parameters and write out its info
         w_avg_warp = CameraWarp(results[0].n,results[0].m,w_cx,w_cy,w_fx,w_fy,w_k1,w_k2,w_k3,w_p1,w_p2)
         w_avg_warp_summary = WarpingSummary(
-                metadata_summaries[0].sample_name,
+                metadata_summaries[0].slideID,
                 metadata_summaries[0].project,
                 metadata_summaries[0].cohort,
                 metadata_summaries[0].microscope_name,
@@ -178,7 +184,9 @@ if __name__=='__main__' :
         #aggregate the different field log files into one
         all_field_logs = []
         for dirname in dirnames :
-            all_field_logs+=((readtable(os.path.join(dirname,f'field_log_{os.path.basename(os.path.normpath(dirname))}.csv'),FieldLog)))
+            field_log_path = os.path.join(dirname,f'field_log_{os.path.basename(os.path.normpath(dirname))}.csv')
+            if os.path.isfile(field_log_path) :
+                all_field_logs+=((readtable(field_log_path,FieldLog)))
         with cd(args.workingdir) :
             writetable(f'field_log_{os.path.basename(os.path.normpath(args.workingdir))}.csv',all_field_logs)
     warp_logger.info('Done.')

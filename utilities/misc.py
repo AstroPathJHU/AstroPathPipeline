@@ -141,20 +141,20 @@ def split_csv_to_dict_of_bounds(value) :
 #helper dataclass for some common metadata information
 @dataclasses.dataclass
 class MetadataSummary :
-  sample_name     : str
+  slideID         : str
   project         : int
   cohort          : int
   microscope_name : str
   mindate         : str
   maxdate         : str
 
-#helper function to return a list of rectangle ns for all rectangles on the edge of the tissue for this sample
+#helper function to return a list of rectangle ns for all rectangles on the edge of the tissue for this slide
 def getAlignmentSetTissueEdgeRectNs(aset) :
   #get the list of sets of rectangle IDs by island
-  samp_islands = aset.islands()
+  slide_islands = aset.islands()
   edge_rect_ns = []
   #for each island
-  for island in samp_islands :
+  for island in slide_islands :
     island_rects = [r for r in aset.rectangles if r.n in island]
     #get the width and height of the rectangles
     rw, rh = island_rects[0].w, island_rects[0].h
@@ -191,15 +191,15 @@ def getAlignmentSetTissueEdgeRectNs(aset) :
 def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,flatfielding=True,warping=True) :
   #positional arguments
   if positional_args :
-    parser.add_argument('sample',           help='Name of the data sample to use')
-    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[sample_name]/*.Data.dat" files')
-    parser.add_argument('metadata_top_dir', help='Path to the directory containing metadata information, possibly in subdirectories')
+    parser.add_argument('slideID',          help='Name of the slide to use')
+    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[slideID]/*.Data.dat" files')
+    parser.add_argument('root_dir',         help='Path to the Clinical_Specimen directory with info for the given slide')
     parser.add_argument('workingdir',       help='Path to the working directory (will be created if necessary)')
   #mutually exclusive group for how to handle the exposure time correction
   if et_correction :
     et_correction_group = parser.add_mutually_exclusive_group(required=True)
     et_correction_group.add_argument('--exposure_time_offset_file',
-                                     help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the samples in question
+                                     help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
                                     [use this argument to apply corrections for differences in image exposure time]""")
     et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
                                      help='Add this flag to entirely skip correcting image flux for exposure time differences')
@@ -207,7 +207,7 @@ def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,fl
   if flatfielding :
     flatfield_group = parser.add_mutually_exclusive_group(required=True)
     flatfield_group.add_argument('--flatfield_file',
-                                 help='Path to the flatfield.bin file that should be applied to the files in this sample')
+                                 help='Path to the flatfield.bin file that should be applied to the files in this slide')
     flatfield_group.add_argument('--skip_flatfielding', action='store_true',
                                  help='Add this flag to entirely skip flatfield corrections')
   #mutually exclusive group for how to handle the warping corrections

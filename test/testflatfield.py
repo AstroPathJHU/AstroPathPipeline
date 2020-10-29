@@ -2,29 +2,29 @@
 
 #imports
 from ..flatfield.flatfield_producer import FlatfieldProducer
-from ..flatfield.utilities import flatfield_logger, FlatfieldSampleInfo
+from ..flatfield.utilities import flatfield_logger, FlatfieldSlideInfo
 from ..flatfield.config import CONST
 from ..utilities.misc import cd
 import pathlib, glob, os, shutil
 
 #some constants
 folder = pathlib.Path(__file__).parent
-samp = 'M21_1'
+slide_ID = 'M21_1'
 rawfile_top_dir = folder/'data'/'raw'
 rawfile_ext = '.Data.dat'
-metadata_top_dir = folder/'data'
+root_dir = folder/'data'
 workingdir_name = 'flatfield_test_for_jenkins'
 working_dir = folder/workingdir_name
 working_dir.mkdir(exist_ok=True)
 
-samples_to_run = [FlatfieldSampleInfo(samp,rawfile_top_dir,metadata_top_dir)]
+slides_to_run = [FlatfieldSlideInfo(slide_ID,rawfile_top_dir,root_dir)]
 filepaths_to_run = None
-with cd(os.path.join(rawfile_top_dir,samp)) :
-	filepaths_to_run = [os.path.join(rawfile_top_dir,samp,fn) for fn in glob.glob(f'*{rawfile_ext}')]
+with cd(os.path.join(rawfile_top_dir,slide_ID)) :
+	filepaths_to_run = [os.path.join(rawfile_top_dir,slide_ID,fn) for fn in glob.glob(f'*{rawfile_ext}')]
 
 flatfield_logger.info('Starting test run....')
 #make the FlatfieldProducer Object
-ff_producer = FlatfieldProducer(samples_to_run,filepaths_to_run,working_dir,True,True)
+ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,working_dir,True,True)
 #write out the text file of all the raw file paths that will be run
 ff_producer.writeFileLog('filepath_log.txt')
 #mask and stack images together

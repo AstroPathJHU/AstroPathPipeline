@@ -44,16 +44,16 @@ class WarpSet :
         self.layer=layer
         self.images = []
 
-    def loadRawImages(self,rawfiles,overlaps,rectangles,metadata_top_dir,flatfield_file,med_exp_time,et_correction_offset,n_threads=1,smoothsigma=CONST.SMOOTH_SIGMA) :
+    def loadRawImages(self,rawfiles,overlaps,rectangles,root_dir,flatfield_file,med_exp_time,et_correction_offset,n_threads=1,smoothsigma=CONST.SMOOTH_SIGMA) :
         """
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
         rawfiles             = list of raw, unwarped image filenames (optional, will use value from init if None)
         overlaps             = list of overlaps for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
         rectangles           = list of rectangles for this particular fit (optional, used to streamline updating an AlignmentSet's rectangle images)
-        metadata_top_dir     = path to directory containing [samplename]/im3/xml directory
+        root_dir             = path to Clinical_Specimen directory
         flatfield_file       = path to flatfield file to apply when reading in raw images
-        med_exp_time         = the median exposure time for images in this layer of this sample (None if no correction should be applied)
-        et_correction_offset = the offset for the exposure time correction for images in this layer of this sample (None if no correction should be applied)
+        med_exp_time         = the median exposure time for images in this layer of this slide (None if no correction should be applied)
+        et_correction_offset = the offset for the exposure time correction for images in this layer of this slide (None if no correction should be applied)
         n_threads            = number of parallel processes to run for reading raw files
         smoothsigma          = sigma for Gaussian smoothing filter applied to raw images on load (set to None to skip smoothing)
         """
@@ -73,7 +73,7 @@ class WarpSet :
                 p = mp.Process(target=loadRawImageWorker, 
                                args=(rf,self.m,self.n,self.nlayers,self.layer,
                                      flatfield_layer,med_exp_time,et_correction_offset,
-                                     overlaps,rectangles,metadata_top_dir,
+                                     overlaps,rectangles,root_dir,
                                      smoothsigma,return_dict,i-1))
                 procs.append(p)
                 p.start()
@@ -91,7 +91,7 @@ class WarpSet :
                 warp_logger.info(f"    loading {rf} ({i} of {len(self.raw_filenames)}) ...")
                 d = loadRawImageWorker(rf,self.m,self.n,self.nlayers,self.layer,
                                        flatfield_layer,med_exp_time,et_correction_offset,
-                                       overlaps,rectangles,metadata_top_dir,
+                                       overlaps,rectangles,root_dir,
                                        smoothsigma)
                 rfkey = d['rfkey']; image = d['image']; is_corner_only = d['is_corner_only']; list_index = d['list_index']
                 self.images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),is_corner_only,list_index))

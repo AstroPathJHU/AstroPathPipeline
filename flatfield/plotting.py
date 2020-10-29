@@ -184,15 +184,15 @@ def correctedMeanImagePIandIVplots(smoothed_mean_image,smoothed_corrected_mean_i
                 ivrcfp.write(f'{li:d},{uhls:.5f},{chls:.5f},{usd:.5f},{csd:.5f}\n')
 
 #helper function to #plot the max, min, 10th/90th %ile, mean, and std. dev. of the thresholds for each layer
-def sampleBackgroundThresholdsPlot(flatfield_top_dir,nlayers,savename=None) :
-    #get all the background thresholds for every sample by layer
+def slideBackgroundThresholdsPlot(flatfield_top_dir,nlayers,savename=None) :
+    #get all the background thresholds for every slide by layer
     all_bgts_by_layer = [[] for _ in range(nlayers)]
-    sample_names = []
+    slide_names = []
     with cd(os.path.join(flatfield_top_dir,CONST.THRESHOLDING_PLOT_DIR_NAME)) :
         all_threshold_fns = glob.glob(f'*_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}')
         for tfn in all_threshold_fns :
             sn = tfn.split('_')[0]
-            sample_names.append(sn)
+            slide_names.append(sn)
             with open(tfn,'r') as fp :
                 vals=[int(l.rstrip()) for l in fp.readlines() if l!='']
                 for li in range(nlayers) :
@@ -252,7 +252,7 @@ def sampleBackgroundThresholdsPlot(flatfield_top_dir,nlayers,savename=None) :
     ax.legend(loc='best',fontsize=13)
     ax.set_xlabel('image layer',fontsize=14)
     ax.set_ylabel('threshold flux',fontsize=14)
-    ax.set_title(f'background thresholds found for {len(sample_names)} {microscope_name_stem} samples',fontsize=14)
+    ax.set_title(f'background thresholds found for {len(slide_names)} {microscope_name_stem} slides',fontsize=14)
     if savename is not None :
         plt.savefig(savename)
         plt.close()
