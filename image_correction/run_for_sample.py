@@ -90,7 +90,7 @@ if __name__=='__main__' :
     module='correct_and_copy_rawfiles'
     mainlog = os.path.join(args.workingdir,f'{module}.log'); samplelog = os.path.join(args.workingdir,f'{args.sample}-{module}.log')
     samp = SampleDef(SlideID=args.sample,root=args.metadata_top_dir)
-    with getlogger(module=module,root=args.metadata_top_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog) as logger :
+    with getlogger(module=module,root=args.metadata_top_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,reraiseexceptions=False) as logger :
         #check the arguments
         checkArgs(args)
         #start up the corrector from the arguments
