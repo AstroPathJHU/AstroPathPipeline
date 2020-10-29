@@ -31,14 +31,18 @@ class TestZoom(TestBaseSaveOutput):
         for y in {
           "L1_1": (0, 1)
         }[SlideID]:
+          filename = f"{SlideID}-Z9-L{i}-X0-Y{y}-big.png"
+          sample.logger.info("comparing "+filename)
           with PILmaximagepixels(sample.tilesize**2), \
-               PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"big"/f"{SlideID}-Z9-L{i}-X0-Y{i}-big.png") as img, \
-               gzip.open(thisfolder/"reference"/"zoom"/SlideID/f"{SlideID}-Z9-L{i}-X0-Y{y}-big.png.gz") as refgz, \
+               PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"big"/filename) as img, \
+               gzip.open(thisfolder/"reference"/"zoom"/SlideID/(filename+".gz")) as refgz, \
                PIL.Image.open(refgz) as targetimg:
             np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+        filename = f"{SlideID}-Z9-L{i}-wsi.png"
+        sample.logger.info("comparing "+filename)
         with PILmaximagepixels(np.product(sample.ntiles)*sample.tilesize**2), \
-             PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"wsi"/f"{SlideID}-Z9-L{i}-wsi.png") as img, \
-             gzip.open(thisfolder/"reference"/"zoom"/SlideID/f"{SlideID}-Z9-L{i}-wsi.png.gz") as refgz, \
+             PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"wsi"/filename) as img, \
+             gzip.open(thisfolder/"reference"/"zoom"/SlideID/(filename+".gz")) as refgz, \
              PIL.Image.open(refgz) as targetimg:
           np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
     except:

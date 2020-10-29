@@ -249,7 +249,7 @@ class Zoom(ReadRectanglesComponentTiff):
       images = []
       blank = None
       for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1])):
-        filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+        filename = self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
         if filename.exists():
           images.append(pyvips.Image.new_from_file(os.fspath(filename)))
         else:
