@@ -7,8 +7,8 @@ from ..warping.config import CONST as WARP_CONST
 from ..utilities.img_correction import correctImageForExposureTime, correctImageLayerForExposureTime
 from ..utilities.img_correction import correctImageLayerWithFlatfield, correctImageWithFlatfield, correctImageLayerWithWarpFields
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile, findExposureTimeXMLFile
-from ..utilities.img_file_io import writeModifiedExposureTimeXMLFile, getMedianExposureTimesAndCorrectionOffsetsForSample
-from ..utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSampleLayer, getExposureTimesByLayer, LayerOffset, CORRECTED_EXPOSURE_XML_EXT
+from ..utilities.img_file_io import writeModifiedExposureTimeXMLFile, getMedianExposureTimesAndCorrectionOffsetsForSlide
+from ..utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSlideLayer, getExposureTimesByLayer, LayerOffset, CORRECTED_EXPOSURE_XML_EXT
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt
@@ -34,17 +34,17 @@ class RawfileCorrector :
         args = the set of command line arguments from ArgumentParser
         logger = the baseclasses.logging.MyLogger logger to use (if None, a custom logger with be used)
         """
-        #set the rawfile/metadata top directories to use
+        #set the rawfile/root directories to use
         self._rawfile_top_dir = args.rawfile_top_dir
-        self._metadata_top_dir = args.metadata_top_dir
-        #set the sample name
-        self._sample_name = args.sample
+        self._root_dir = args.root_dir
+        #set the slide ID
+        self._slide_ID = args.slideID
         #set the working directory path
         self._working_dir_path = args.workingdir
         #start up the logfile
         self._setUpLogger(logger)
         #get the image dimensions and layer argument
-        self._img_dims = getImageHWLFromXMLFile(self._metadata_top_dir,self._sample_name)
+        self._img_dims = getImageHWLFromXMLFile(self._root_dir,self._slide_ID)
         if args.layer!=-1 and (args.layer<1 or args.layer>self._img_dims[2]) :
             raise ValueError(f'ERROR: layer argument {args.layer} is not compatible with image dimensions {self._img_dims}!')
         self._layer = args.layer
@@ -54,7 +54,7 @@ class RawfileCorrector :
             self.__writeLog(f'Corrected layer {self._layer} files will be written out to {self._working_dir_path}.')
         #see which layer(s) will be run
         layers_to_run = list(range(1,self._img_dims[-1]+1)) if self._layer==-1 else [self._layer]
-        #set the median sample exposure time and dark current offsets
+        #set the median slide exposure time and dark current offsets
         self._setExposureTimeVariables(args.skip_exposure_time_correction,args.exposure_time_offset_file)
         #set the flatfield variable
         self._setFlatfieldVariable(args.skip_flatfielding,args.flatfield_file,layers_to_run)
@@ -73,13 +73,13 @@ class RawfileCorrector :
         and write out the corrected file layers to the working directory
         """
         #first get the list of filepaths to run
-        with cd(os.path.join(self._rawfile_top_dir,self._sample_name)) :
-            all_rawfile_paths = [os.path.join(self._rawfile_top_dir,self._sample_name,fn) for fn in glob.glob(f'*{self._infile_ext}')]
-        self.__writeLog(f'Found {len(all_rawfile_paths)} total raw files in {os.path.join(self._rawfile_top_dir,self._sample_name)}')
+        with cd(os.path.join(self._rawfile_top_dir,self._slide_ID)) :
+            all_rawfile_paths = [os.path.join(self._rawfile_top_dir,self._slide_ID,fn) for fn in glob.glob(f'*{self._infile_ext}')]
+        self.__writeLog(f'Found {len(all_rawfile_paths)} total raw files in {os.path.join(self._rawfile_top_dir,self._slide_ID)}')
         if self._max_files!=-1 :
             if self._max_files>len(all_rawfile_paths) :
-                msg = f'only {len(all_rawfile_paths)} were found for {self._sample_name}, but {self._max_files} were requested,'
-                msg+=f' so all {len(all_rawfile_paths)} files will be run for this sample instead.'
+                msg = f'only {len(all_rawfile_paths)} were found for {self._slide_ID}, but {self._max_files} were requested,'
+                msg+=f' so all {len(all_rawfile_paths)} files will be run for this slide instead.'
                 self.__writeLog(msg,level='warning')
             else :
                 all_rawfile_paths=all_rawfile_paths[:self._max_files]
@@ -158,13 +158,13 @@ class RawfileCorrector :
             self.__writeLog('Corrections for exposure time WILL NOT be applied.')
             return
         if self._layer==-1 :
-            self._med_exp_time, self._et_correction_offset = getMedianExposureTimesAndCorrectionOffsetsForSample(self._metadata_top_dir,
-                                                                                                                 self._sample_name,
+            self._med_exp_time, self._et_correction_offset = getMedianExposureTimesAndCorrectionOffsetsForSlide(self._root_dir,
+                                                                                                                 self._slide_ID,
                                                                                                                  eto_file)
             los = [LayerOffset(li+1,-1,self._et_correction_offset[li],-1.) for li in range(self._img_dims[-1])]
         else :
-            self._med_exp_time, self._et_correction_offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(self._metadata_top_dir,
-                                                                                                                    self._sample_name,
+            self._med_exp_time, self._et_correction_offset = getMedianExposureTimeAndCorrectionOffsetForSlideLayer(self._root_dir,
+                                                                                                                    self._slide_ID,
                                                                                                                     eto_file,
                                                                                                                     self._layer)
             los = [LayerOffset(self._layer,-1,self._et_correction_offset,-1.)]
@@ -180,11 +180,11 @@ class RawfileCorrector :
         self.__writeLog(f'Corrected *{CORRECTED_EXPOSURE_XML_EXT} files will be written out to {self._working_dir_path}')
         if self._layer==-1 :
             for ln in range(1,self._img_dims[-1]+1) :
-                msg = f'(Layer {ln} median sample exposure time={self._med_exp_time[ln-1]},'
+                msg = f'(Layer {ln} median slide exposure time={self._med_exp_time[ln-1]},'
                 msg+= f' exposure time correction offset = {self._et_correction_offset[ln-1]})'
                 self.__writeLog(msg)
         else :
-            self.__writeLog(f'(Median sample exposure time={self._med_exp_time}, exposure time correction offset = {self._et_correction_offset})')
+            self.__writeLog(f'(Median slide exposure time={self._med_exp_time}, exposure time correction offset = {self._et_correction_offset})')
 
     #helper function to set the flatfield correction variable
     def _setFlatfieldVariable(self,skip_ff,ff_file,layers_to_run) :
@@ -318,13 +318,13 @@ class RawfileCorrector :
         if self._layer!=-1 :
             raw = raw[:,:,self._layer-1]
         #correct for exposure time differences
-        original_et_xml_filepath = findExposureTimeXMLFile(rawfile_path,self._metadata_top_dir)
+        original_et_xml_filepath = findExposureTimeXMLFile(rawfile_path,self._root_dir)
         if (self._med_exp_time is not None) and (self._et_correction_offset is not None) :
             #correct the file or layer
             if self._layer==-1 :
-                et_corrected = correctImageForExposureTime(raw,rawfile_path,self._metadata_top_dir,self._med_exp_time,self._et_correction_offset)
+                et_corrected = correctImageForExposureTime(raw,rawfile_path,self._root_dir,self._med_exp_time,self._et_correction_offset)
             else :
-                layer_exp_times = getExposureTimesByLayer(rawfile_path,self._img_dims[-1],self._metadata_top_dir)
+                layer_exp_times = getExposureTimesByLayer(rawfile_path,self._img_dims[-1],self._root_dir)
                 layer_exp_time = layer_exp_times[self._layer-1]
                 et_corrected = correctImageLayerForExposureTime(raw,layer_exp_time,self._med_exp_time,self._et_correction_offset)
             #write out the modified exposure time xml file

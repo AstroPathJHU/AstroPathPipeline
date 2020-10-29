@@ -13,20 +13,20 @@ import os
 def checkArgs(args) :
     #make sure the directories all exist
     workingdir_location = os.path.dirname(os.path.abspath(os.path.normpath(args.workingdir)))
-    dirs_to_check = [args.rawfile_top_dir,args.metadata_top_dir,workingdir_location]
+    dirs_to_check = [args.rawfile_top_dir,args.root_dir,workingdir_location]
     for dirpath in dirs_to_check :
         if not os.path.isdir(dirpath) :
             raise ValueError(f'ERROR: directory {dirpath} does not exist!')
-    #make sure the rawfile directory for this sample exists
-    rawfile_dirpath = os.path.join(args.rawfile_top_dir,args.sample)
+    #make sure the rawfile directory for this slide exists
+    rawfile_dirpath = os.path.join(args.rawfile_top_dir,args.slideID)
     if not os.path.isdir(rawfile_dirpath) :
-        raise ValueError(f'ERROR: rawfile directory {rawfile_dirpath} for sample {args.sample} does not exist!')
-    #make sure the metadata directory for this sample exists
-    metadata_dirpath = os.path.join(args.metadata_top_dir,args.sample)
-    if not os.path.isdir(metadata_dirpath) :
-        raise ValueError(f'ERROR: metadata directory {metadata_dirpath} for sample {args.sample} does not exist!')
+        raise ValueError(f'ERROR: rawfile directory {rawfile_dirpath} for slide {args.slideID} does not exist!')
+    #make sure the root directory for this slide exists
+    root_dirpath = os.path.join(args.root_dir,args.slideID)
+    if not os.path.isdir(root_dirpath) :
+        raise ValueError(f'ERROR: root directory {root_dirpath} for slide {args.slideID} does not exist!')
     #make sure the image dimensions work with the layer argument
-    img_dims = getImageHWLFromXMLFile(args.metadata_top_dir,args.sample)
+    img_dims = getImageHWLFromXMLFile(args.root_dir,args.slideID)
     if (args.layer!=-1) and (not args.layer in range(1,img_dims[-1]+1)) :
         raise ValueError(f'ERROR: requested copying layer {args.layer} but raw files have dimensions {img_dims}!')
     #make sure the exposure time correction file exists if necessary
@@ -66,7 +66,7 @@ if __name__=='__main__' :
     #add the arguments for shifting the warp pattern
     warp_shift_group = parser.add_mutually_exclusive_group()
     warp_shift_group.add_argument('--warp_shift_file',
-                                 help='Path to the warp_shifts.csv file that should be applied to the files in this sample')
+                                 help='Path to the warp_shifts.csv file that should be applied to the files in this slide')
     warp_shift_group.add_argument('--warp_shift', 
                                  help='Use this argument to define a (delta-x, delta-y) shift from the inputted warp field')
     #group for other run options
@@ -81,7 +81,7 @@ if __name__=='__main__' :
                                   help="""Extension for the corrected files that will be written out 
                                        (default = ".fw"; 2-digit layer code will be appended if layer != -1)""")
     run_option_group.add_argument('--max_files',             default=-1,    type=int,
-                                  help='Maximum number of files to use (default = -1 runs all files for the requested sample)')
+                                  help='Maximum number of files to use (default = -1 runs all files for the requested slide)')
     args = parser.parse_args()
     #make the working directory
     if not os.path.isdir(args.workingdir) :
@@ -89,10 +89,10 @@ if __name__=='__main__' :
     #set up the logger information and enter its context
     module='image_correction'
     mainlog = os.path.join(args.workingdir,f'{module}.log')
-    samplelog = os.path.join(args.workingdir,f'{args.sample}-{module}.log')
-    imagelog = os.path.join(args.workingdir,f'{args.sample}_images-{module}.log')
-    samp = SampleDef(SlideID=args.sample,root=args.metadata_top_dir)
-    with getlogger(module=module,root=args.metadata_top_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,imagelog=imagelog,reraiseexceptions=False) as logger :
+    samplelog = os.path.join(args.workingdir,f'{args.slideID}-{module}.log')
+    imagelog = os.path.join(args.workingdir,f'{args.slideID}_images-{module}.log')
+    samp = SampleDef(SlideID=args.slideID,root=args.root_dir)
+    with getlogger(module=module,root=args.root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,imagelog=imagelog,reraiseexceptions=False) as logger :
         #check the arguments
         checkArgs(args)
         #start up the corrector from the arguments

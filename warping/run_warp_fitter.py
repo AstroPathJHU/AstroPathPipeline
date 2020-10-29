@@ -38,9 +38,9 @@ def checkArgs(args) :
     if args.threshold_file_dir is not None :
         if not os.path.isdir(args.threshold_file_dir) :
             raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
-        tfp = os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
+        tfp = os.path.join(args.threshold_file_dir,f'{args.slideID}{CONST.THRESHOLD_FILE_EXT}')
         if not os.path.isfile(tfp) :
-            raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this sample ({tfp})!')
+            raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this slide ({tfp})!')
     #The user must specify either an octet run dir or a threshold file dir
     if args.threshold_file_dir is None and args.octet_run_dir is None :
         raise ValueError('ERROR: must specify either an octet_run_dir or a threshold_file_dir!')
@@ -54,9 +54,9 @@ def getOverlaps(args) :
     if args.threshold_file_dir is not None :
         if not os.path.isdir(args.threshold_file_dir) :
             raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
-        tfp = os.path.join(args.threshold_file_dir,f'{args.sample}{CONST.THRESHOLD_FILE_EXT}')
+        tfp = os.path.join(args.threshold_file_dir,f'{args.slideID}{CONST.THRESHOLD_FILE_EXT}')
         if not os.path.isfile(tfp) :
-            raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this sample ({tfp})!')
+            raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this slide ({tfp})!')
     #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate
     if args.threshold_file_dir is not None and args.octet_run_dir is not None :
         raise ValueError('ERROR: cannot specify both an octet_run_dir and a threshold_file_dir!')
@@ -116,10 +116,10 @@ if __name__=='__main__' :
     #setup and run
     if args.mode in ('fit', 'check_run', 'cProfile') :
         #how many overlaps will be used
-        warp_logger.info(f'Will run fit on a sample of {len(overlaps)} total overlaps.')
+        warp_logger.info(f'Will run fit using {len(overlaps)} total overlaps.')
         #make the WarpFitter Objects
         warp_logger.info('Initializing WarpFitter')
-        fitter = WarpFitter(args.sample,args.rawfile_top_dir,args.metadata_top_dir,args.workingdir,overlaps,args.layer)
+        fitter = WarpFitter(args.slideID,args.rawfile_top_dir,args.root_dir,args.workingdir,overlaps,args.layer)
         #figure out which parameters will be fixed
         fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
         fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed

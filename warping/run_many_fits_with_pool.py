@@ -12,7 +12,7 @@ import os, random, subprocess, datetime, multiprocessing as mp
 
 RUN_WARPFITTER_PREFIX = 'python -m microscopealignment.warping.run_warp_fitter' #part of the command referencing how to run run_warpfitter.py
 JOB_DIR_STEM = 'warpfitter_batch'
-POSITIONAL_PASSTHROUGH_ARG_NAMES = ['sample','rawfile_top_dir','metadata_top_dir']
+POSITIONAL_PASSTHROUGH_ARG_NAMES = ['slideID','rawfile_top_dir','root_dir']
 PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','max_iter','fixed','normalize','init_pars','init_bounds','max_radial_warp']
 PASSTHROUGH_ARG_NAMES+= ['max_tangential_warp','p1p2_polish_lasso_lambda','print_every','layer']
 PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding','float_p1p2_to_polish']
@@ -33,11 +33,11 @@ def getListOfJobCommands(args) :
         n_octets_per_job = int(args.octet_selection.split('_')[1])
     except ValueError :
         raise ValueError(f'ERROR: octet_selection argument ({args.octet_selection}) is not valid! Use "first_n" or "random_n".')
-    #find the valid octets in the samples and order them by the # of their center rectangle
+    #find the valid octets in the slides and order them by the # of their center rectangle
     all_octets = getOctetsFromArguments(args)
-    #make sure that the number of octets per job and the number of jobs will work for this sample
+    #make sure that the number of octets per job and the number of jobs will work for this slide
     if args.njobs*n_octets_per_job<1 or args.njobs*n_octets_per_job>len(all_octets) :
-        raise ValueError(f"""ERROR: Sample {args.sample} has {len(all_octets)} total valid octets, but you asked for {args.njobs} jobs 
+        raise ValueError(f"""ERROR: Slide {args.slideID} has {len(all_octets)} total valid octets, but you asked for {args.njobs} jobs 
                              with {n_octets_per_job} octets per job!""")
     #build the list of commands
     job_cmds = []; workingdir_names = []
@@ -160,7 +160,7 @@ if __name__=='__main__' :
         #make a warp from these w average parameters and write out its info
         w_avg_warp = CameraWarp(results[0].n,results[0].m,w_cx,w_cy,w_fx,w_fy,w_k1,w_k2,w_k3,w_p1,w_p2)
         w_avg_warp_summary = WarpingSummary(
-                metadata_summaries[0].sample_name,
+                metadata_summaries[0].slideID,
                 metadata_summaries[0].project,
                 metadata_summaries[0].cohort,
                 metadata_summaries[0].microscope_name,

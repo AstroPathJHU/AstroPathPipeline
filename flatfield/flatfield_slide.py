@@ -3,7 +3,7 @@ from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, g
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities import units
-from ..utilities.img_file_io import getSampleMedianExposureTimesByLayer, getImageHWLFromXMLFile
+from ..utilities.img_file_io import getSlideMedianExposureTimesByLayer, getImageHWLFromXMLFile
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
@@ -12,53 +12,53 @@ import os
 units.setup('fast')
 
 #main class definition
-class FlatfieldSample() :
+class FlatfieldSlide() :
     """
-    Main class for organizing properties of a particular sample (slide) as they pertain to flatfielding
+    Main class for organizing properties of a particular slide as they pertain to flatfielding
     """
 
     #################### PROPERTIES ####################
 
     @property
     def rawfile_top_dir(self):
-        return self._rawfile_top_dir # location of raw files for all samples
+        return self._rawfile_top_dir # location of raw files for all slides
     @property
-    def metadata_top_dir(self):
-        return self._metadata_top_dir # location of metadata files for all samples
+    def root_dir(self):
+        return self._root_dir # location of Clinical_Specimen directory for all slides
     @property
     def background_thresholds_for_masking(self):
         return self._background_thresholds_for_masking # the list of background thresholds by layer
     @property
     def name(self):
-        return self._name # the name of the sample
+        return self._name # the name of the slide
     @property
     def img_dims(self):
-        return self._img_dims # dimensions of the images in the sample
+        return self._img_dims # dimensions of the images in the slide
 
     #################### CLASS CONSTANTS ####################
 
     RECTANGLE_LOCATION_PLOT_STEM  = 'rectangle_locations'           #stem for the name of the rectangle location reference plot
-    THRESHOLD_PLOT_DIR_STEM       = 'thresholding_plots'            #stem for the name of the thresholding plot dir for this sample
+    THRESHOLD_PLOT_DIR_STEM       = 'thresholding_plots'            #stem for the name of the thresholding plot dir for this slide
     TISSUE_EDGE_MDS_STEM          = 'metadata_summary_tissue_edges' #stem for the metadata summary file from the tissue edge files only
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,sample) :
+    def __init__(self,slide) :
         """
-        sample = FlatfieldSampleInfo object for this sample
+        slide = FlatfieldSlideInfo object for this slide
         """
-        self._name = sample.name
-        self._rawfile_top_dir = sample.rawfile_top_dir
-        self._metadata_top_dir = sample.metadata_top_dir
+        self._name = slide.name
+        self._rawfile_top_dir = slide.rawfile_top_dir
+        self._root_dir = slide.root_dir
         try :
-            self._img_dims = getImageHWLFromXMLFile(sample.rawfile_top_dir,sample.name)
+            self._img_dims = getImageHWLFromXMLFile(slide.rawfile_top_dir,slide.name)
         except FileNotFoundError :
-            self._img_dims = getImageHWLFromXMLFile(sample.metadata_top_dir,sample.name)
+            self._img_dims = getImageHWLFromXMLFile(slide.root_dir,slide.name)
         self._background_thresholds_for_masking = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :
         """
-        Function to read in background threshold values from the output file of a previous run with this sample
+        Function to read in background threshold values from the output file of a previous run with this slide
         threshold_file_path = path to threshold value file
         """
         if self._background_thresholds_for_masking is not None :
@@ -76,34 +76,34 @@ class FlatfieldSample() :
 
     def findBackgroundThresholds(self,rawfile_paths,n_threads,et_correction_offsets,top_plotdir_path,threshold_file_name) :
         """
-        Function to determine this sample's background pixel flux thresholds per layer
-        rawfile_paths         = a list of the rawfile paths to consider for this sample's background threshold calculations
+        Function to determine this slide's background pixel flux thresholds per layer
+        rawfile_paths         = a list of the rawfile paths to consider for this slide's background threshold calculations
         n_threads             = max number of threads/processes to open at once
         et_correction_offsets = list of offsets by layer to use for exposure time correction
         top_plotdir_path      = path to the directory in which to save plots from the thresholding process
         threshold_file_name   = name of file to save background thresholds in, one line per layer
         """
-        #if the images are to be normalized, we need to get the median exposure times by layer across the whole sample
+        #if the images are to be normalized, we need to get the median exposure times by layer across the whole slide
         if et_correction_offsets[0]!=-1. :
-            med_exposure_times_by_layer = getSampleMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
+            med_exposure_times_by_layer = getSlideMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
         else :
             med_exposure_times_by_layer = None
         #make sure the plot directory exists
         if not os.path.isdir(top_plotdir_path) :
             with cd(os.path.dirname(top_plotdir_path)) :
                 os.mkdir(os.path.basename(top_plotdir_path))
-        this_samp_threshold_plotdir_name = f'{self._name}_{self.THRESHOLD_PLOT_DIR_STEM}'
-        plotdir_path = os.path.join(top_plotdir_path,this_samp_threshold_plotdir_name)
+        this_slide_threshold_plotdir_name = f'{self._name}_{self.THRESHOLD_PLOT_DIR_STEM}'
+        plotdir_path = os.path.join(top_plotdir_path,this_slide_threshold_plotdir_name)
         if not os.path.isdir(plotdir_path) :
             with cd(top_plotdir_path) :
-                os.mkdir(this_samp_threshold_plotdir_name)
-        #first find the filepaths corresponding to the edges of the tissue in the samples
-        flatfield_logger.info(f'Finding tissue edge HPFs for sample {self._name}...')
+                os.mkdir(this_slide_threshold_plotdir_name)
+        #first find the filepaths corresponding to the edges of the tissue in the slides
+        flatfield_logger.info(f'Finding tissue edge HPFs for slide {self._name}...')
         tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,plotdir_path)
         #chunk them together to be read in parallel
-        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self._img_dims,self._metadata_top_dir,n_threads)
+        tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self._img_dims,self._root_dir,n_threads)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
-        flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for sample {self._name}...')
+        flatfield_logger.info(f'Getting raw tissue edge images to determine thresholds for slide {self._name}...')
         nbins=np.iinfo(np.uint16).max+1
         all_image_thresholds_by_layer = np.empty((self._img_dims[-1],len(tissue_edge_filepaths)),dtype=np.uint16)
         all_tissue_edge_layer_hists = np.zeros((nbins,self._img_dims[-1]),dtype=np.int64)
@@ -217,7 +217,7 @@ class FlatfieldSample() :
         """
         #make an AlignmentSet to use in getting the islands
         rawfile_top_dir = os.path.dirname(os.path.dirname(rawfile_paths[0]))
-        a = AlignmentSetFromXML(self._metadata_top_dir,rawfile_top_dir,self._name,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
+        a = AlignmentSetFromXML(self._root_dir,rawfile_top_dir,self._name,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
         edge_rect_ns = getAlignmentSetTissueEdgeRectNs(a)
         #use this to return the list of tissue edge filepaths
         edge_rect_filenames = [r.file.split('.')[0] for r in a.rectangles if r.n in edge_rect_ns] 
@@ -236,7 +236,7 @@ class FlatfieldSample() :
         bulk_rect_ys = [r.y for r in a.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
         if plotdir_path is not None :
             with cd(plotdir_path) :
-                has_qptiff = os.path.isfile(os.path.join(self._metadata_top_dir,self._name,'dbload',f'{self._name}_qptiff.jpg'))
+                has_qptiff = os.path.isfile(os.path.join(self._root_dir,self._name,'dbload',f'{self._name}_qptiff.jpg'))
                 if has_qptiff :
                     f,(ax1,ax2) = plt.subplots(1,2,figsize=(25.6,9.6))
                 else :
@@ -249,7 +249,7 @@ class FlatfieldSample() :
                 ax1.set_xlabel('x position',fontsize=18)
                 ax1.set_ylabel('y position',fontsize=18)
                 if has_qptiff :
-                    ax2.imshow(mpimg.imread(os.path.join(self._metadata_top_dir,self._name,'dbload',f'{self._name}_qptiff.jpg')))
+                    ax2.imshow(mpimg.imread(os.path.join(self._root_dir,self._name,'dbload',f'{self._name}_qptiff.jpg')))
                     ax2.set_title('reference qptiff',fontsize=18)
                 fn = f'{self._name}_{self.RECTANGLE_LOCATION_PLOT_STEM}.png'
                 plt.savefig(fn)

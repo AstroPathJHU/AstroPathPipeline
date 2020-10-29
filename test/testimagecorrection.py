@@ -19,9 +19,9 @@ dims = (1004,1344,35)
 #start by running for all layers at once
 print('TESTING MULTILAYER CORRECT/COPY')
 args = Namespace(
-        sample='M21_1',
+        slideID='M21_1',
         rawfile_top_dir=str(folder/'data'/'raw'),
-        metadata_top_dir=str(folder/'data'),
+        root_dir=str(folder/'data'),
         workingdir=str(working_dir),
         exposure_time_offset_file=str(folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'),
         skip_exposure_time_correction=False,
@@ -64,9 +64,9 @@ shutil.rmtree(working_dir,ignore_errors=True)
 print('TESTING SINGLE LAYER CORRECT/COPY')
 working_dir.mkdir(exist_ok=True)
 args = Namespace(
-        sample='M21_1',
+        slideID='M21_1',
         rawfile_top_dir=str(folder/'data'/'raw'),
-        metadata_top_dir=str(folder/'data'),
+        root_dir=str(folder/'data'),
         workingdir=str(working_dir),
         exposure_time_offset_file=str(folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'),
         skip_exposure_time_correction=False,

@@ -105,13 +105,13 @@ def smoothImageWorker(im_array,smoothsigma,return_list=None) :
   else :
     return cv2.GaussianBlur(im_array,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
 
-#helper function to get an image dimension tuple from the sample XML file
-def getImageHWLFromXMLFile(metadata_topdir,samplename) :
-  subdir_filepath = os.path.join(metadata_topdir,samplename,'im3','xml',f'{samplename}{PARAMETER_XMLFILE_EXT}')
+#helper function to get an image dimension tuple from the slide's XML file
+def getImageHWLFromXMLFile(root_dir,slideID) :
+  subdir_filepath = os.path.join(root_dir,slideID,'im3','xml',f'{slideID}{PARAMETER_XMLFILE_EXT}')
   if os.path.isfile(subdir_filepath) :
     xmlfile_path = subdir_filepath
   else :
-    xmlfile_path = os.path.join(metadata_topdir,samplename,f'{samplename}{PARAMETER_XMLFILE_EXT}')
+    xmlfile_path = os.path.join(root_dir,slideID,f'{slideID}{PARAMETER_XMLFILE_EXT}')
   try :
     tree = et.parse(xmlfile_path)
   except Exception as e :
@@ -121,26 +121,26 @@ def getImageHWLFromXMLFile(metadata_topdir,samplename) :
       img_width, img_height, img_nlayers = tuple([int(val) for val in (child.text).split()])
   return img_height, img_width, img_nlayers
 
-#helper function to figure out where a raw file's exposure time xml file is given the raw file path and the metadata directory
+#helper function to figure out where a raw file's exposure time xml file is given the raw file path and the root directory
 def findExposureTimeXMLFile(rfp,search_dir) :
   file_ext = ''
   fn_split = (os.path.basename(os.path.normpath(rfp))).split(".")
   for i in range(1,len(fn_split)) :
     file_ext+=f'.{fn_split[i]}'
-  sample_name = os.path.basename(os.path.dirname(os.path.normpath(rfp)))
-  subdir_filepath_1 = os.path.join(search_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXT))
+  slideID = os.path.basename(os.path.dirname(os.path.normpath(rfp)))
+  subdir_filepath_1 = os.path.join(search_dir,slideID,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXT))
   if os.path.isfile(subdir_filepath_1) :
     xmlfile_path = subdir_filepath_1
   else :
-    subdir_filepath_2 = os.path.join(search_dir,sample_name,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
+    subdir_filepath_2 = os.path.join(search_dir,slideID,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
     if os.path.isfile(subdir_filepath_2) :
       xmlfile_path = subdir_filepath_2
     else :
-      other_path = os.path.join(search_dir,sample_name,os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXT))
+      other_path = os.path.join(search_dir,slideID,os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXT))
       if os.path.isfile(other_path) :
         xmlfile_path = other_path
       else :
-        xmlfile_path = os.path.join(search_dir,sample_name,os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
+        xmlfile_path = os.path.join(search_dir,slideID,os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
   if not os.path.isfile(xmlfile_path) :
     msg = f"ERROR: findExposureTimeXMLFile could not find a valid path for raw file {rfp} given directory {search_dir}!"
     msg+= f' (None of {subdir_filepath_1}, {subdir_filepath_2}, {other_path}, and {xmlfile_path} exist!)'
@@ -251,17 +251,17 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logge
 
 #helper function to get a list of exposure times by each layer for a given raw image
 #fp can be a path to a raw file or to an exposure XML file 
-#but if it's a raw file the metadata top dir must also be provided
-def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
+#but if it's a raw file the root dir must also be provided
+def getExposureTimesByLayer(fp,nlayers,root_dir=None) :
   layer_exposure_times_to_return = []
   if (EXPOSURE_XML_EXT in fp) or (CORRECTED_EXPOSURE_XML_EXT in fp) :
     xmlfile_path = fp
     if not os.path.isfile(xmlfile_path) :
       raise RuntimeError(f"ERROR: {xmlfile_path} searched in getExposureTimesByLayer not found!")
   else :
-    if metadata_top_dir is None :
-      raise RuntimeError(f'ERROR: metadata top dir must be supplied to get exposure times for raw file path {fp}!')
-    xmlfile_path = findExposureTimeXMLFile(fp,metadata_top_dir)
+    if root_dir is None :
+      raise RuntimeError(f'ERROR: root dir must be supplied to get exposure times for raw file path {fp}!')
+    xmlfile_path = findExposureTimeXMLFile(fp,root_dir)
   try :
     root = (et.parse(xmlfile_path)).getroot()
   except Exception as e :
@@ -277,17 +277,17 @@ def getExposureTimesByLayer(fp,nlayers,metadata_top_dir=None) :
       layer_exposure_times_to_return+=[float(v) for v in (root[ilg].text).split()]
   return layer_exposure_times_to_return
 
-#helper function to return a list of the median exposure times observed in each layer of a given sample
-def getSampleMedianExposureTimesByLayer(metadata_topdir,samplename) :
-  _,_,nlayers = getImageHWLFromXMLFile(metadata_topdir,samplename)
-  checkdir = os.path.join(metadata_topdir,samplename,'im3','xml')
+#helper function to return a list of the median exposure times observed in each layer of a given slide
+def getSlideMedianExposureTimesByLayer(root_dir,slideID) :
+  _,_,nlayers = getImageHWLFromXMLFile(root_dir,slideID)
+  checkdir = os.path.join(root_dir,slideID,'im3','xml')
   if not os.path.isdir(checkdir) :
-    checkdir = os.path.join(metadata_topdir,samplename)
+    checkdir = os.path.join(root_dir,slideID)
   with cd(checkdir) :
     all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
   if len(all_fps)<1 :
     raise ValueError(f'ERROR: no exposure time xml files found in directory {checkdir}!')
-  utility_logger.info(f'Finding median exposure times for {samplename} ({len(all_fps)} images with {nlayers} layers each)....')
+  utility_logger.info(f'Finding median exposure times for {slideID} ({len(all_fps)} images with {nlayers} layers each)....')
   all_exp_times_by_layer = []
   for li in range(nlayers) :
     all_exp_times_by_layer.append([])
@@ -297,17 +297,17 @@ def getSampleMedianExposureTimesByLayer(metadata_topdir,samplename) :
       all_exp_times_by_layer[li].append(this_image_layer_exposure_times[li])
   return np.median(np.array(all_exp_times_by_layer),1) #return the medians along the second axis
 
-#helper function to return lists of the median exposure times and the exposure time correction offsets for all layers of a sample
-def getMedianExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file) :
+#helper function to return lists of the median exposure times and the exposure time correction offsets for all layers of a slide
+def getMedianExposureTimesAndCorrectionOffsetsForSlide(root_dir,slideID,et_correction_offset_file) :
   if not os.path.isfile(et_correction_offset_file) :
     raise FileNotFoundError(f'ERROR: Exposure time correction info cannot be determined from et_correction_offset_file = {et_correction_offset_file}!')
   utility_logger.info("Loading info for exposure time correction...")
-  median_exp_times = getSampleMedianExposureTimesByLayer(metadata_top_dir,samplename)
+  median_exp_times = getSlideMedianExposureTimesByLayer(root_dir,slideID)
   et_correction_offsets=[]
   try :
     read_layer_offsets = readtable(et_correction_offset_file,LayerOffset)
   except Exception as e :
-    msg = f'ERROR: could not read {et_correction_offset_file} as a LayerOffset file in getMedianExposureTimesAndCorrectionOffsetsForSample. Exception: {e}'
+    msg = f'ERROR: could not read {et_correction_offset_file} as a LayerOffset file in getMedianExposureTimesAndCorrectionOffsetsForSlide. Exception: {e}'
     raise RuntimeError(msg)
   for ln in range(1,len(median_exp_times)+1) :
     this_layer_offset = [lo.offset for lo in read_layer_offsets if lo.layer_n==ln]
@@ -320,8 +320,8 @@ def getMedianExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplen
       raise RuntimeError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {ln}!')
   return median_exp_times, et_correction_offsets
 
-#helper function to return the median exposure time and the exposure time correction offset for a given layer of a sample
-def getMedianExposureTimeAndCorrectionOffsetForSampleLayer(metadata_top_dir,samplename,et_correction_offset_file,layer) :
-  med_ets, et_offsets = getMedianExposureTimesAndCorrectionOffsetsForSample(metadata_top_dir,samplename,et_correction_offset_file) 
+#helper function to return the median exposure time and the exposure time correction offset for a given layer of a slide
+def getMedianExposureTimeAndCorrectionOffsetForSlideLayer(root_dir,slideID,et_correction_offset_file,layer) :
+  med_ets, et_offsets = getMedianExposureTimesAndCorrectionOffsetsForSlide(root_dir,slideID,et_correction_offset_file) 
   med_et = med_ets[layer-1]; et_offset = et_offsets[layer-1]
   return med_et, et_offset

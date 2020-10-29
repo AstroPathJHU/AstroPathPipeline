@@ -14,7 +14,7 @@ def correctImageLayerForExposureTime(raw_img_layer,exp_time,med_exp_time,offset)
     return (corr_img_layer).astype(raw_img_dtype) #otherwise just convert back to original datatype
 
 #helper function to normalize a given image for exposure time layer-by-layer
-def correctImageForExposureTime(raw_img,raw_fp,metadata_top_dir,med_exp_times,correction_offsets) :
+def correctImageForExposureTime(raw_img,raw_fp,root_dir,med_exp_times,correction_offsets) :
   if len(raw_img.shape)!=3 :
     raise RuntimeError(f"""ERROR: correctImageForExposureTime only runs on multilayer images but was called on an image with shape {raw_img.shape}.
                              Use correctImageLayerForExposureTime instead.""")
@@ -25,7 +25,7 @@ def correctImageForExposureTime(raw_img,raw_fp,metadata_top_dir,med_exp_times,co
     raise RuntimeError(f"""ERROR: the list of correction offsets (length {len(correction_offsets)}) and the raw img ({raw_fp}) with shape 
                            {raw_img.shape} passed to correctImageForExposureTime don't match!""")
   nlayers = raw_img.shape[-1]
-  exposure_times = getExposureTimesByLayer(raw_fp,nlayers,metadata_top_dir)
+  exposure_times = getExposureTimesByLayer(raw_fp,nlayers,root_dir)
   corrected_img = raw_img.copy()
   for li in range(nlayers) :
     if exposure_times[li]!=med_exp_times[li] : #layer is only different if it isn't already at the median exposure time

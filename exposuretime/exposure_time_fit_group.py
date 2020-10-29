@@ -10,8 +10,8 @@ import os, glob
 
 #helper function to create a fit for a single layer
 #can be run in parallel if given a return dictionary
-def getExposureTimeFitWorker(layer_n,exposure_times,med_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages,return_dict=None) :
-    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,med_exp_time,top_plotdir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages)
+def getExposureTimeFitWorker(layer_n,exposure_times,med_exp_time,top_plotdir,slideID,rawfile_top_dir,root_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages,return_dict=None) :
+    fit = SingleLayerExposureTimeFit(layer_n,exposure_times,med_exp_time,top_plotdir,slideID,rawfile_top_dir,root_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages)
     if return_dict is not None :
         return_dict[layer_n] = fit
     else :
@@ -22,20 +22,20 @@ class ExposureTimeOffsetFitGroup :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,sample_name,rawfile_top_dir,metadata_top_dir,workingdir_name,layers,n_threads) :
+    def __init__(self,slide_ID,rawfile_top_dir,root_dir,workingdir_name,layers,n_threads) :
         """
-        sample_name      = name of the microscope data sample to fit to ("M21_1" or equivalent)
-        rawfile_top_dir  = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
-        metadata_top_dir = path to directory containing [samplename]/im3/xml directory
+        slide_ID         = name of the microscope slide to use ("M21_1" or equivalent)
+        rawfile_top_dir  = path to directory containing [slideID] directory with multilayered ".Data.dat" files in it
+        root_dir         = path to Clinical_Specimen directory for this slide
         working_dir_name = path to some local directory to store files produced by the WarpFitter
         layers           = list of layer numbers to find offsets for
         n_threads        = max number of processes to open at once for stuff that's parallelized
         """
-        self.sample = sample_name
+        self.slideID = slide_ID
         self.rawfile_top_dir = rawfile_top_dir
-        self.metadata_top_dir = metadata_top_dir
+        self.root_dir = root_dir
         self.workingdir_name = workingdir_name
-        self.img_dims = getImageHWLFromXMLFile(self.rawfile_top_dir,self.sample)
+        self.img_dims = getImageHWLFromXMLFile(self.rawfile_top_dir,self.slideID)
         self.layers = self.__getLayers(layers)
         self.n_threads = n_threads
 
@@ -100,7 +100,7 @@ class ExposureTimeOffsetFitGroup :
                     this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
                 this_layer_overlaps = overlaps_to_use_by_layer_group[getFirstLayerInGroup(ln,self.img_dims[-1])]
                 fit = getExposureTimeFitWorker(ln,this_layer_all_exposure_times,med_ets_by_layer[li],
-                                               self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
+                                               self.workingdir_name,self.slideID,self.rawfile_top_dir,self.root_dir,self.flatfield[:,:,ln-1],
                                                min_frac,this_layer_overlaps,smoothsigma,cutimages)
                 et_fit_logger.info(f'Running fit for layer {ln} ({li+1} of {len(self.layers)})....')
                 fit.doFit(initial_offset,max_iter,gtol,eps,print_every)
@@ -110,7 +110,7 @@ class ExposureTimeOffsetFitGroup :
                     offsets.append(LayerOffset(fit.layer,len(fit.exposure_time_overlaps),fit.best_fit_offset,fit.best_fit_cost))
         #write out all the results
         with cd(self.workingdir_name) :
-            all_results_fn = f'{self.sample}_layers_{self.layers[0]}-{self.layers[-1]}_'
+            all_results_fn = f'{self.slideID}_layers_{self.layers[0]}-{self.layers[-1]}_'
             all_results_fn+= f'{CONST.LAYER_OFFSET_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(self.workingdir_name))}.csv'
             writetable(all_results_fn,offsets)
         #save the plot of the offsets by layer
@@ -118,7 +118,7 @@ class ExposureTimeOffsetFitGroup :
         plt.xlabel('image layer')
         plt.ylabel('best-fit offset')
         with cd(self.workingdir_name) :
-            fn = f'{self.sample}_best_fit_offsets_by_layer.png'
+            fn = f'{self.slideID}_best_fit_offsets_by_layer.png'
             plt.savefig(fn)
             plt.close()
             cropAndOverwriteImage(fn)
@@ -142,7 +142,7 @@ class ExposureTimeOffsetFitGroup :
                 for rfs in all_exp_times.keys() :
                     this_layer_all_exp_times[rfs] = all_exp_times[rfs][self.layers.index(layer_n)]
                 p=mp.Process(target=getOverlapsWithExposureTimeDifferences,
-                             args=(self.rawfile_top_dir,self.metadata_top_dir,self.sample,this_layer_all_exp_times,layer_n,overlaps,allow_edges,rdict)
+                             args=(self.rawfile_top_dir,self.root_dir,self.slideID,this_layer_all_exp_times,layer_n,overlaps,allow_edges,rdict)
                              )
                 procs.append(p)
                 p.start()
@@ -159,7 +159,7 @@ class ExposureTimeOffsetFitGroup :
                 this_layer_all_exp_times = {}
                 for rfs in all_exp_times.keys() :
                     this_layer_all_exp_times[rfs] = all_exp_times[rfs][self.layers.index(layer_n)]
-                overlap_dict[layer_n] = getOverlapsWithExposureTimeDifferences(self.rawfile_top_dir,self.metadata_top_dir,self.sample,
+                overlap_dict[layer_n] = getOverlapsWithExposureTimeDifferences(self.rawfile_top_dir,self.root_dir,self.slideID,
                                                                                this_layer_all_exp_times,layer_n,overlaps,allow_edges)
         return overlap_dict
 
@@ -178,14 +178,14 @@ class ExposureTimeOffsetFitGroup :
         else :
             for l in layers :
                 if not l in range(1,self.img_dims[-1]+1) :
-                    raise ValueError(f'ERROR: requested layers {layers} but images in {self.sample} have {self.img_dims[-1]} layers!')
+                    raise ValueError(f'ERROR: requested layers {layers} but images in {self.slideID} have {self.img_dims[-1]} layers!')
             return layers
 
     #helper function to get the dictionary of all the image exposure times keyed by the stem of the file name and the list of median times by layer
     def __getExposureTimes(self) :
         et_fit_logger.info('Getting all image exposure times....')
-        with cd(os.path.join(self.rawfile_top_dir,self.sample)) :
-            all_rfps = [os.path.join(self.rawfile_top_dir,self.sample,fn) for fn in glob.glob(f'*{CONST.RAW_EXT}')]
+        with cd(os.path.join(self.rawfile_top_dir,self.slideID)) :
+            all_rfps = [os.path.join(self.rawfile_top_dir,self.slideID,fn) for fn in glob.glob(f'*{CONST.RAW_EXT}')]
         #get the dictionary of exposure times keyed by raw file stem
         exp_times = {}
         for rfp in all_rfps :
@@ -204,12 +204,12 @@ class ExposureTimeOffsetFitGroup :
             f, ax = plt.subplots()
             ax.hist(this_layer_ets,label='exposure times')
             ax.plot([med_exp_times[li],med_exp_times[li]],[0.8*y for y in ax.get_ylim()],color='k',linewidth=2,label='median')
-            ax.set_title(f'{self.sample} layer {ln} exposure times')
+            ax.set_title(f'{self.slideID} layer {ln} exposure times')
             ax.set_xlabel('exposure time (ms)')
             ax.set_ylabel('HPF count')
             ax.legend(loc='best')
             with cd(self.workingdir_name) :
-                fn = f'exposure_times_{self.sample}_layer_{ln}.png'
+                fn = f'exposure_times_{self.slideID}_layer_{ln}.png'
                 plt.savefig(fn)
                 plt.close()
                 cropAndOverwriteImage(fn)
@@ -229,7 +229,7 @@ class ExposureTimeOffsetFitGroup :
             this_layer_overlaps = overlaps_by_layer_group[getFirstLayerInGroup(ln,self.img_dims[-1])]
             p = mp.Process(target=getExposureTimeFitWorker, 
                            args=(ln,this_layer_all_exposure_times,med_ets_by_layer[li],
-                                 self.workingdir_name,self.sample,self.rawfile_top_dir,self.metadata_top_dir,self.flatfield[:,:,ln-1],
+                                 self.workingdir_name,self.slideID,self.rawfile_top_dir,self.root_dir,self.flatfield[:,:,ln-1],
                                  min_frac,this_layer_overlaps,smoothsigma,cutimages,return_dict)
                           )
             procs.append(p)

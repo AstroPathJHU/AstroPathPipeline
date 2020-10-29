@@ -80,12 +80,12 @@ class MeanImage :
         self.corrected_mean_image=None
         self.smoothed_corrected_mean_image=None
 
-    def addGroupOfImages(self,im_array_list,sample,min_selected_pixels,ets_for_normalization=None,masking_plot_indices=[]) :
+    def addGroupOfImages(self,im_array_list,slide,min_selected_pixels,ets_for_normalization=None,masking_plot_indices=[]) :
         """
         A function to add a list of raw image arrays to the image stack
         If masking is requested this function's subroutines are parallelized and also run on the GPU
         im_array_list         = list of image arrays to add
-        sample                = sample object corresponding to this group of images
+        slide                = slide object corresponding to this group of images
         min_selected_pixels   = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
         ets_for_normalization = list of exposure times to use for normalizating images to counts/ms before stacking (but after masking)
         masking_plot_indices  = list of image array list indices whose masking plots will be saved
@@ -116,7 +116,7 @@ class MeanImage :
             flatfield_logger.info(f'  masking and adding image {stack_i} to the stack....')
             make_plots=i in masking_plot_indices
             p = mp.Process(target=getImageMaskWorker, 
-                           args=(im_array,sample.background_thresholds_for_masking,sample.name,min_selected_pixels,
+                           args=(im_array,slide.background_thresholds_for_masking,slide.name,min_selected_pixels,
                                  make_plots,masking_plot_dirpath,
                                  stack_i,return_dict))
             procs.append(p)
@@ -324,7 +324,7 @@ class MeanImage :
 
 #helper function to create a layered binary image mask for a given image array
 #this can be run in parallel with a given index and return dict
-def getImageMaskWorker(im_array,thresholds_per_layer,samp_name,min_selected_pixels,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
+def getImageMaskWorker(im_array,thresholds_per_layer,slide_ID,min_selected_pixels,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
     nlayers = im_array.shape[-1]
     #create a new mask
     init_image_mask = np.empty(im_array.shape,np.uint8)
@@ -362,7 +362,7 @@ def getImageMaskWorker(im_array,thresholds_per_layer,samp_name,min_selected_pixe
     #make the plots if requested
     if make_plots :
         flatfield_logger.info(f'Saving masking plots for image {i}')
-        this_image_masking_plot_dirname = f'image_{i}_from_{samp_name}_mask_layers'
+        this_image_masking_plot_dirname = f'image_{i}_from_{slide_ID}_mask_layers'
         with cd(plotdir_path) :
             if not os.path.isdir(this_image_masking_plot_dirname) :
                 os.mkdir(this_image_masking_plot_dirname)

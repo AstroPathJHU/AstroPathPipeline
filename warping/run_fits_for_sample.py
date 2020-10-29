@@ -12,7 +12,7 @@ INITIAL_PATTERN_DIR_STEM = 'warping_initial_pattern'
 PRINCIPAL_POINT_DIR_STEM = 'warping_center_principal_point'
 FINAL_PATTERN_DIR_STEM   = 'warping_final_pattern'
 RUN_MANY_FITS_CMD_BASE = 'python -m microscopealignment.warping.run_many_fits_with_pool'
-POSITIONAL_PASSTHROUGH_ARG_NAMES = ['mode','sample','rawfile_top_dir','metadata_top_dir']
+POSITIONAL_PASSTHROUGH_ARG_NAMES = ['mode','slideID','rawfile_top_dir','root_dir']
 PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','layer','workers']
 PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding']
 
@@ -24,22 +24,22 @@ def checkArgs(args) :
     checkDirArgs(args)
     #tell the user what's going to happen based on the mode/octet splitting arguments
     if args.mode=='fit' :
-        warp_logger.info(f'Three groups of fits will be performed, using {args.workers} CPUs (max) each, to find the warping pattern for {args.sample}:')
+        warp_logger.info(f'Three groups of fits will be performed, using {args.workers} CPUs (max) each, to find the warping pattern for {args.slideID}:')
         warp_logger.info(f'{args.initial_pattern_octets} octets will be used to find the initial general pattern')
         warp_logger.info(f'{args.principal_point_octets} octets will be used to define the center principal point location')
         warp_logger.info(f'{args.final_pattern_octets} octets will be used to find the overall best pattern')
     elif args.mode=='find_octets' :
-        warp_logger.info(f'The set of valid octets to use will be found for {args.sample}')
+        warp_logger.info(f'The set of valid octets to use will be found for {args.slideID}')
     elif args.mode=='check_run' :
-        warp_logger.info(f'Octets for {args.sample} will be found/split, and a test command will be run for the first group of fits.')
+        warp_logger.info(f'Octets for {args.slideID} will be found/split, and a test command will be run for the first group of fits.')
 
 #helper function to set up the three fit group working directories
 def setUpFitDirectories(args) :
-    #find the octets for the sample
+    #find the octets for the slide
     octets = getOctetsFromArguments(args)
     #randomize and split the octets into groups for the three fits
     if len(octets) < args.initial_pattern_octets+args.principal_point_octets+args.final_pattern_octets :
-        msg = f'ERROR: There are {len(octets)} valid octets for {args.sample} but you requested using {args.initial_pattern_octets}, then {args.principal_point_octets},'
+        msg = f'ERROR: There are {len(octets)} valid octets for {args.slideID} but you requested using {args.initial_pattern_octets}, then {args.principal_point_octets},'
         msg+= f' and then {args.final_pattern_octets} in the fit groups, respectively!'
         raise WarpingError(msg)
     random.shuffle(octets)
@@ -47,16 +47,16 @@ def setUpFitDirectories(args) :
     octets_2 = octets[start:start+args.principal_point_octets]; start+= args.principal_point_octets
     octets_3 = octets[start:start+args.final_pattern_octets]
     #create the working directories for the three fit groups and copy the subsets of the octets files
-    wdn_1 = f'{INITIAL_PATTERN_DIR_STEM}_{args.sample}_{len(octets_1)}_octets'
-    wdn_2 = f'{PRINCIPAL_POINT_DIR_STEM}_{args.sample}_{len(octets_2)}_octets'
-    wdn_3 = f'{FINAL_PATTERN_DIR_STEM}_{args.sample}_{len(octets_3)}_octets'
+    wdn_1 = f'{INITIAL_PATTERN_DIR_STEM}_{args.slideID}_{len(octets_1)}_octets'
+    wdn_2 = f'{PRINCIPAL_POINT_DIR_STEM}_{args.slideID}_{len(octets_2)}_octets'
+    wdn_3 = f'{FINAL_PATTERN_DIR_STEM}_{args.slideID}_{len(octets_3)}_octets'
     wdns = [wdn_1,wdn_2,wdn_3]
     ols = [octets_1,octets_2,octets_3]
     with cd(args.workingdir) :
         for wdn,o in zip(wdns,ols) :
             os.makedirs(wdn,exist_ok=True)
             with cd(wdn) :
-                writetable(f'{args.sample}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',o)
+                writetable(f'{args.slideID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',o)
     #return the names of the created directories
     return tuple(wdns)
 
@@ -84,7 +84,7 @@ def getInitialPatternFitCmd(wdn,args) :
     cmd+=f'--max_iter {args.initial_pattern_max_iters} '
     #the octets are in the working directory
     cmd+=f'--octet_run_dir {this_job_dir_path} '
-    #select the first single octet for every job since we've already split up the octets for the sample
+    #select the first single octet for every job since we've already split up the octets for the slide
     cmd+='--octet_selection first_1 '
     #fix the focal lengths and tangential warping parameters
     cmd+='--fixed fx,fy,p1,p2'
@@ -115,7 +115,7 @@ def getPrincipalPointFitCmd(wdn,args,k1,k2,k3) :
     cmd+=f'--max_iter {args.principal_point_max_iters} '
     #the octets are in the working directory
     cmd+=f'--octet_run_dir {this_job_dir_path} '
-    #select the first single octet for every job since we've already split up the octets for the sample
+    #select the first single octet for every job since we've already split up the octets for the slide
     cmd+='--octet_selection first_1 '
     #fix the focal lengths and warping parameters
     cmd+='--fixed fx,fy,k1,k2,k3,p1,p2 '
@@ -148,7 +148,7 @@ def getFinalPatternFitCmd(wdn,args,k1,k2,k3,cx,cx_err,cy,cy_err) :
     cmd+=f'--max_iter {args.final_pattern_max_iters} '
     #the octets are in the working directory
     cmd+=f'--octet_run_dir {this_job_dir_path} '
-    #select the first single octet for every job since we've already split up the octets for the sample
+    #select the first single octet for every job since we've already split up the octets for the slide
     cmd+='--octet_selection first_1 '
     #fix the focal lengths and tangential warping parameters
     cmd+='--fixed fx,fy,p1,p2 '
@@ -225,7 +225,7 @@ if __name__=='__main__' :
         with open(cmd_file_path,'a') as fp :
             fp.write(f'{cmd_3}\n')
         subprocess.call(cmd_3)
-        warp_logger.info(f'All fits for {args.sample} warping pattern completed')
+        warp_logger.info(f'All fits for {args.slideID} warping pattern completed')
         #move and rename the final warping field and weighted average result files from the last fit
         old_w_avg_fit_result_fp = os.path.abspath(os.path.join(args.workingdir,dirname_3,f'{dirname_3}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}'))
         new_w_avg_fit_result_fp = os.path.abspath(os.path.join(args.workingdir,
