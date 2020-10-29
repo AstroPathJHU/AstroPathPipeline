@@ -1,6 +1,5 @@
 import gzip, numpy as np, pathlib, PIL.Image
 from ..zoom.zoom import Zoom
-from ..utilities import units
 from ..utilities.misc import PILmaximagepixels
 from .testbase import TestBaseSaveOutput
 
