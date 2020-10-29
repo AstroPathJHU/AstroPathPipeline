@@ -192,7 +192,7 @@ class Zoom(ReadRectanglesComponentTiff):
             localy1 = field.my1 - field.py
             localy2 = localy1 + tiley2 - tiley1
 
-            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.tilesize + 2*units.pixels(buffer, pscale=self.pscale))[::-1]), dtype=np.uint8)
+            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.tilesize + 2*units.pixels(buffer, pscale=self.pscale))[::-1]), dtype=np.uint8)
 
             with field.using_image() as image:
               image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
@@ -234,6 +234,7 @@ class Zoom(ReadRectanglesComponentTiff):
           units.pixels(buffer[1], pscale=self.pscale):units.pixels(-buffer[1], pscale=self.pscale),
           units.pixels(buffer[0], pscale=self.pscale):units.pixels(-buffer[0], pscale=self.pscale),
         ]
+        print(slc.shape)
         if not np.any(slc): continue
         for layer in self.layers:
           filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tile.tilex}-Y{tile.tiley}-big.png"
