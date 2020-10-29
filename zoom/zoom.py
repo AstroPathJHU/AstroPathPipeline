@@ -234,7 +234,6 @@ class Zoom(ReadRectanglesComponentTiff):
           units.pixels(buffer[1], pscale=self.pscale):units.pixels(-buffer[1], pscale=self.pscale),
           units.pixels(buffer[0], pscale=self.pscale):units.pixels(-buffer[0], pscale=self.pscale),
         ]
-        print(slc.shape)
         if not np.any(slc): continue
         for layer in self.layers:
           filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tile.tilex}-Y{tile.tiley}-big.png"
