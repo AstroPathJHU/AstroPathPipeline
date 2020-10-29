@@ -29,14 +29,14 @@ def checkArgs(args) :
     img_dims = getImageHWLFromXMLFile(args.root_dir,args.slideID)
     if (args.layer!=-1) and (not args.layer in range(1,img_dims[-1]+1)) :
         raise ValueError(f'ERROR: requested copying layer {args.layer} but raw files have dimensions {img_dims}!')
-    #make sure the exposure time correction file exists if necessary
-    if not args.skip_exposure_time_correction :
-        if not os.path.isfile(args.exposure_time_offset_file) :
-            raise FileNotFoundError(f'ERROR: exposure time offset file {args.exposure_time_offset_file} does not exist!')
-    #make sure the flatfield file exists if necessary
-    if not args.skip_flatfielding :
-        if not os.path.isfile(args.flatfield_file) :
-            raise FileNotFoundError(f'ERROR: flatfield file {args.flatfield_file} does not exist!')
+    ##make sure the exposure time correction file exists if necessary
+    #if not args.skip_exposure_time_correction :
+    #    if not os.path.isfile(args.exposure_time_offset_file) :
+    #        raise FileNotFoundError(f'ERROR: exposure time offset file {args.exposure_time_offset_file} does not exist!')
+    ##make sure the flatfield file exists if necessary
+    #if not args.skip_flatfielding :
+    #    if not os.path.isfile(args.flatfield_file) :
+    #        raise FileNotFoundError(f'ERROR: flatfield file {args.flatfield_file} does not exist!')
     #check some arguments related to the warping
     if args.skip_warping and ((args.warp_shift_file is not None) or (args.warp_shift is not None) or (args.warping_scalefactor is not None)) :
         raise RuntimeError('ERROR: warping is being skipped, so the requested shifts/rescaling are irrelevant!')
@@ -62,7 +62,7 @@ if __name__=='__main__' :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #add the common options to the parser
-    addCommonArgumentsToParser(parser)
+    addCommonArgumentsToParser(parser,et_correction=False)
     #add the arguments for shifting the warp pattern
     warp_shift_group = parser.add_mutually_exclusive_group()
     warp_shift_group.add_argument('--warp_shift_file',

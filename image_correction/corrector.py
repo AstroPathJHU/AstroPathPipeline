@@ -55,7 +55,8 @@ class RawfileCorrector :
         #see which layer(s) will be run
         layers_to_run = list(range(1,self._img_dims[-1]+1)) if self._layer==-1 else [self._layer]
         #set the median slide exposure time and dark current offsets
-        self._setExposureTimeVariables(args.skip_exposure_time_correction,args.exposure_time_offset_file)
+        #self._setExposureTimeVariables(args.skip_exposure_time_correction,args.exposure_time_offset_file)
+        self._setExposureTimeVariables(True,None)
         #set the flatfield variable
         self._setFlatfieldVariable(args.skip_flatfielding,args.flatfield_file,layers_to_run)
         #set the warping correction variables
@@ -218,8 +219,8 @@ class RawfileCorrector :
 
     #helper function to set the warping variables
     def _setWarpingVariables(self,skip_w,w_def,ws_file,arg_ws,w_sf,layers_to_run) :
+        self._warps = None; self._dx_warp_field = None; self._dy_warp_field = None
         if skip_w :
-            self._warps = None; self._dx_warp_field = None; self._dy_warp_field = None
             self.__writeLog('Warping corrections WILL NOT be applied.')
             return
         msg='Warping corrections will be applied as read from '
@@ -310,7 +311,7 @@ class RawfileCorrector :
         msg+=f'of image {rawfile_path} ({file_i} of {n_total_files}) '
         if ( ((self._med_exp_time is not None) and (self._et_correction_offset is not None)) or 
              (self._ff is not None) or 
-             ((self._dx_warp_field is not None) and (self._dy_warp_field is not None)) ) :
+             (self._warps is not None or ((self._dx_warp_field is not None) and (self._dy_warp_field is not None))) ) :
             msg+='corrected for '
         #first read in the rawfile
         raw = getRawAsHWL(rawfile_path,*(self._img_dims))

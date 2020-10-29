@@ -23,8 +23,8 @@ args = Namespace(
         rawfile_top_dir=str(folder/'data'/'raw'),
         root_dir=str(folder/'data'),
         workingdir=str(working_dir),
-        exposure_time_offset_file=str(folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'),
-        skip_exposure_time_correction=False,
+        #exposure_time_offset_file=str(folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'),
+        #skip_exposure_time_correction=False,
         flatfield_file=None,
         skip_flatfielding=True,
         warp_def=str(folder/'data'/'corrections'/'TEST_WARPING_weighted_average_warp.csv'),
@@ -39,17 +39,17 @@ args = Namespace(
     )
 corrector = RawfileCorrector(args)
 corrector.run()
-#check the xmls
-with cd(working_dir) :
-    xml_filenames = glob.glob('*.xml')
-for xmlfn in xml_filenames :
-    with open(working_dir/xmlfn,'r') as fp :
-        test_lines=fp.readlines()
-    with open(multilayer_ref_path/xmlfn,'r') as fp :
-        ref_lines=fp.readlines()
-    for testline,refline in zip(test_lines,ref_lines) :
-        if testline!=refline :
-            raise RuntimeError(f'ERROR: xml file {xmlfn} lines are not identical!\ntest line = {testline}ref. line={refline}')
+##check the xmls
+#with cd(working_dir) :
+#    xml_filenames = glob.glob('*.xml')
+#for xmlfn in xml_filenames :
+#    with open(working_dir/xmlfn,'r') as fp :
+#        test_lines=fp.readlines()
+#    with open(multilayer_ref_path/xmlfn,'r') as fp :
+#        ref_lines=fp.readlines()
+#    for testline,refline in zip(test_lines,ref_lines) :
+#        if testline!=refline :
+#            raise RuntimeError(f'ERROR: xml file {xmlfn} lines are not identical!\ntest line = {testline}ref. line={refline}')
 #check the output image files
 with cd(working_dir) :
     img_filenames = glob.glob('*.fw')
@@ -68,8 +68,8 @@ args = Namespace(
         rawfile_top_dir=str(folder/'data'/'raw'),
         root_dir=str(folder/'data'),
         workingdir=str(working_dir),
-        exposure_time_offset_file=str(folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'),
-        skip_exposure_time_correction=False,
+        #exposure_time_offset_file=str(folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'),
+        #skip_exposure_time_correction=False,
         flatfield_file=None,
         skip_flatfielding=True,
         warp_def=str(folder/'data'/'corrections'/'TEST_WARPING_weighted_average_warp.csv'),
@@ -84,17 +84,17 @@ args = Namespace(
     )
 corrector = RawfileCorrector(args)
 corrector.run()
-#check the xmls
-with cd(working_dir) :
-    xml_filenames = glob.glob('*.xml')
-for xmlfn in xml_filenames :
-    with open(working_dir/xmlfn,'r') as fp :
-        test_lines=fp.readlines()
-    with open(singlelayer_ref_path/xmlfn,'r') as fp :
-        ref_lines=fp.readlines()
-    for testline,refline in zip(test_lines,ref_lines) :
-        if testline!=refline :
-            raise RuntimeError(f'ERROR: xml file {xmlfn} lines are not identical!\ntest line = {testline}ref. line={refline}')
+##check the xmls
+#with cd(working_dir) :
+#    xml_filenames = glob.glob('*.xml')
+#for xmlfn in xml_filenames :
+#    with open(working_dir/xmlfn,'r') as fp :
+#        test_lines=fp.readlines()
+#    with open(singlelayer_ref_path/xmlfn,'r') as fp :
+#        ref_lines=fp.readlines()
+#    for testline,refline in zip(test_lines,ref_lines) :
+#        if testline!=refline :
+#            raise RuntimeError(f'ERROR: xml file {xmlfn} lines are not identical!\ntest line = {testline}ref. line={refline}')
 #check the output image files
 with cd(working_dir) :
     img_filenames = glob.glob('*.fw01')
