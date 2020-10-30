@@ -1,13 +1,66 @@
 #!/usr/bin/env python
 
-import itertools, logging, more_itertools, networkx as nx, numpy as np, uncertainties.unumpy as unp
-from matplotlib import cm, colors, pyplot as plt
+import itertools, logging, matplotlib.cm, matplotlib.collections, matplotlib.colors, matplotlib.patches, more_itertools, networkx as nx, numpy as np, uncertainties.unumpy as unp
+from matplotlib import pyplot as plt
 from more_itertools import pairwise
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from ..utilities import units
 from ..utilities.misc import floattoint, pullhist
 
 logger = logging.getLogger("alignmentplots")
+
+def rectanglelayout(alignmentset, *, figurekwargs={}, showplot=None, saveas=None):
+  fig = plt.figure(**figurekwargs)
+  ax = fig.add_subplot(1, 1, 1)
+  pscale = alignmentset.rectangles[0].pscale
+  shape = units.pixels(alignmentset.rectangles[0].shape, pscale=pscale)
+  xmin, ymin = units.pixels(np.min([r.xvec for r in alignmentset.rectangles], axis=0), pscale=pscale)
+  xmax, ymax = units.pixels(np.max([r.xvec for r in alignmentset.rectangles], axis=0), pscale=pscale)
+  ax.set_xlim(xmin, xmax)
+  ax.set_ylim(ymax, ymin)
+  xparity = {alignmentset.rectangles[0].x: 0}
+  yparity = {alignmentset.rectangles[0].y: 0}
+  colors = ["red", "blue", "green", "yellow"]
+  for r in alignmentset.rectangles:
+    if r.x not in xparity:
+      if r.x < min(xparity):
+        xparity[r.x] = xparity[min(xparity)]-1
+      else:
+        xparity[r.x] = xparity[max(_ for _ in xparity if _<r.x)]+1
+    if r.y not in yparity:
+      if r.y < min(yparity):
+        yparity[r.y] = yparity[min(yparity)]-1
+      else:
+        yparity[r.y] = yparity[max(_ for _ in yparity if _<r.y)]+1
+    parity = xparity[r.x] + 2*yparity[r.y]
+    color = colors[parity % len(colors)]
+    box = matplotlib.patches.Rectangle(
+      units.pixels(r.xvec, pscale=pscale),
+      *units.pixels(r.shape, pscale=pscale),
+      facecolor=color,
+      edgecolor="black",
+      alpha=0.5
+    )
+    ax.add_patch(box)
+  for o in alignmentset.overlaps:
+    r1, r2 = o.rectangles
+    center = (r1.xvec+r1.shape/2 + r2.xvec+r2.shape/2) / 2
+    boxsize = r1.shape/10
+    box = matplotlib.patches.Rectangle(
+      units.pixels(center-boxsize/2, pscale=pscale),
+      *units.pixels(boxsize, pscale=pscale),
+      facecolor="tab:red" if o.result.exit else "tab:green",
+      edgecolor=None,
+      alpha=0.5
+    )
+    ax.add_patch(box)
+  if showplot is None: showplot = saveas is None
+  if showplot:
+    plt.show()
+  if saveas is not None:
+    plt.savefig(saveas)
+  if not showplot:
+    plt.close()
 
 def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pixelsormicrons=None, pullkwargs={}, pullbinning=None):
   logger.debug(alignmentset.samp)
@@ -171,8 +224,8 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
 
   vmin = min(np.min(xyarraypixels[xyarraypixels != -999]), -np.max(xyarraypixels[xyarraypixels != -999]))
   vmax = -vmin
-  norm = colors.Normalize(vmin=vmin, vmax=vmax)
-  cmap = cm.get_cmap()
+  norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+  cmap = matplotlib.cm.get_cmap()
   xycolor = cmap(norm(xyarraypixels))
   xycolor[xyarraypixels == -999] = 0
 
@@ -184,7 +237,7 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
     ax.imshow(colorplot, extent=units.pixels(extent, pscale=alignmentset.pscale))
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
-    cbar = plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
+    cbar = plt.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
     plotstyling(fig=fig, ax=ax, cbar=cbar, xory=xory)
     if showplot:
       plt.show()
