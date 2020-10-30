@@ -328,6 +328,7 @@ class TestAlignment(TestBaseSaveOutput):
   def testIslands(self):
     for island in (
       (4, 5),
+      (5, 6),
     ):
       a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", selectoverlaps=lambda o: not ((o.p1 in island) ^ (o.p2 in island)))
       readfilename = thisfolder/"reference"/"alignment"/"M21_1"/"M21_1_align.csv"

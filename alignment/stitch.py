@@ -428,12 +428,12 @@ class StitchResultBase(RectangleOverlapCollection):
         for (oldmx1, oldmx2), rids in xoverlapstoadjust.items():
           for rid1, rid2 in rids:
             newmx = (oldmx1 + oldmx2)/2
-            assert mx1[rid1] == oldmx1 and mx2[rid2] == oldmx2 or mx1[rid1] == mx2[rid2] == newmx, (mx1[rid1], oldmx1, mx2[rid2], oldmx2, newmx)
+            assert (mx1[rid1] == oldmx1 or mx1[rid1] == newmx) and (mx2[rid2] == oldmx2 or mx2[rid2] == newmx), (mx1[rid1], oldmx1, mx2[rid2], oldmx2, newmx)
             mx1[rid1] = mx2[rid2] = newmx
         for (oldmy1, oldmy2), rids in yoverlapstoadjust.items():
           for rid1, rid2 in rids:
             newmy = (oldmy1 + oldmy2)/2
-            assert my1[rid1] == oldmy1 and my2[rid2] == oldmy2 or my1[rid1] == my2[rid2] == newmy, (my1[rid1], oldmy1, my2[rid2], oldmy2, newmy)
+            assert (my1[rid1] == oldmy1 or my1[rid1] == newmy) and (my2[rid2] == oldmy2 or my2[rid2] == newmy), (my1[rid1], oldmy1, my2[rid2], oldmy2, newmy)
             my1[rid1] = my2[rid2] = newmy
 
         for rid1, rid2 in itertools.product(island1, island2):
