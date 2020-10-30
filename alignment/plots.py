@@ -32,25 +32,15 @@ def rectanglelayout(alignmentset, *, xrange=None, yrange=None, primaryarea=True,
     if yrange is None: yrange = ymax, ymin
   ax.set_xlim(*xrange)
   ax.set_ylim(*yrange)
-  xparity = {alignmentset.fields[0].x: 0}
-  yparity = {alignmentset.fields[0].y: 0}
-  colors = ["red", "blue", "green", "yellow"]
+  xparity = {x: i for i, x in enumerate(sorted({r.x for r in alignmentset.fields}))}
+  yparity = {y: i for i, y in enumerate(sorted({r.y for r in alignmentset.fields}))}
+  colors = ["red", "blue", "green", "yellow", "purple", "orange", "magenta"]
   for r in alignmentset.fields:
-    if r.x not in xparity:
-      if r.x < min(xparity):
-        xparity[r.x] = xparity[min(xparity)]-1
-      else:
-        xparity[r.x] = xparity[max(_ for _ in xparity if _<r.x)]+1
-    if r.y not in yparity:
-      if r.y < min(yparity):
-        yparity[r.y] = yparity[min(yparity)]-1
-      else:
-        yparity[r.y] = yparity[max(_ for _ in yparity if _<r.y)]+1
-    parity = xparity[r.x] + 2*yparity[r.y]
+    parity = xparity[r.x] + 3*yparity[r.y]
     color = colors[parity % len(colors)]
     if primaryarea:
-      xvec = r.mx1, r.my1
-      shape = r.mx2 - r.mx1, r.my2 - r.my1
+      xvec = np.array([r.mx1, r.my1])
+      shape = np.array([r.mx2 - r.mx1, r.my2 - r.my1])
     else:
       xvec = r.xvec
       shape = r.shape
@@ -62,6 +52,7 @@ def rectanglelayout(alignmentset, *, xrange=None, yrange=None, primaryarea=True,
       alpha=0.5
     )
     ax.add_patch(box)
+    plt.text(*xvec+shape/2, str(r.n), horizontalalignment="center", verticalalignment="center")
   for o in alignmentset.overlaps:
     r1, r2 = o.rectangles
     center = (r1.xvec+r1.shape/2 + r2.xvec+r2.shape/2) / 2
