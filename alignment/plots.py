@@ -9,19 +9,33 @@ from ..utilities.misc import floattoint, pullhist
 
 logger = logging.getLogger("alignmentplots")
 
-def rectanglelayout(alignmentset, *, figurekwargs={}, showplot=None, saveas=None):
+def rectanglelayout(alignmentset, *, xrange=None, yrange=None, primaryarea=True, figurekwargs={}, showplot=None, saveas=None):
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
-  pscale = alignmentset.rectangles[0].pscale
-  shape = units.pixels(alignmentset.rectangles[0].shape, pscale=pscale)
-  xmin, ymin = units.pixels(np.min([r.xvec for r in alignmentset.rectangles], axis=0), pscale=pscale)
-  xmax, ymax = units.pixels(np.max([r.xvec for r in alignmentset.rectangles], axis=0), pscale=pscale)
-  ax.set_xlim(xmin, xmax)
-  ax.set_ylim(ymax, ymin)
-  xparity = {alignmentset.rectangles[0].x: 0}
-  yparity = {alignmentset.rectangles[0].y: 0}
+  pscale = alignmentset.fields[0].pscale
+  shape = units.pixels(alignmentset.fields[0].shape, pscale=pscale)
+  if primaryarea:
+    if xrange is None:
+      xrange = (
+        units.pixels(np.min([r.mx1 for r in alignmentset.fields]), pscale=pscale),
+        units.pixels(np.max([r.mx2 for r in alignmentset.fields]), pscale=pscale),
+      )
+    if yrange is None:
+      yrange = (
+        units.pixels(np.max([r.my2 for r in alignmentset.fields]), pscale=pscale),
+        units.pixels(np.min([r.my1 for r in alignmentset.fields]), pscale=pscale),
+      )
+  else:
+    xmin, ymin = units.pixels(np.min([r.xvec for r in alignmentset.fields], axis=0), pscale=pscale)
+    xmax, ymax = units.pixels(np.max([r.xvec+r.shape for r in alignmentset.fields], axis=0), pscale=pscale)
+    if xrange is None: xrange = xmin, xmax
+    if yrange is None: yrange = ymax, ymin
+  ax.set_xlim(*xrange)
+  ax.set_ylim(*yrange)
+  xparity = {alignmentset.fields[0].x: 0}
+  yparity = {alignmentset.fields[0].y: 0}
   colors = ["red", "blue", "green", "yellow"]
-  for r in alignmentset.rectangles:
+  for r in alignmentset.fields:
     if r.x not in xparity:
       if r.x < min(xparity):
         xparity[r.x] = xparity[min(xparity)]-1
@@ -34,9 +48,15 @@ def rectanglelayout(alignmentset, *, figurekwargs={}, showplot=None, saveas=None
         yparity[r.y] = yparity[max(_ for _ in yparity if _<r.y)]+1
     parity = xparity[r.x] + 2*yparity[r.y]
     color = colors[parity % len(colors)]
+    if primaryarea:
+      xvec = r.mx1, r.my1
+      shape = r.mx2 - r.mx1, r.my2 - r.my1
+    else:
+      xvec = r.xvec
+      shape = r.shape
     box = matplotlib.patches.Rectangle(
-      units.pixels(r.xvec, pscale=pscale),
-      *units.pixels(r.shape, pscale=pscale),
+      units.pixels(xvec, pscale=pscale),
+      *units.pixels(shape, pscale=pscale),
       facecolor=color,
       edgecolor="black",
       alpha=0.5
