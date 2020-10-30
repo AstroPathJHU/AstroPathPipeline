@@ -1,6 +1,6 @@
 import abc, collections, dataclasses, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 from ..baseclasses.overlap import RectangleOverlapCollection
-from ..baseclasses.rectangle import Rectangle, rectangledict
+from ..baseclasses.rectangle import Rectangle, rectangledict, RectangleList
 from ..utilities import units
 from ..utilities.misc import dummylogger, weightedstd
 from ..utilities.tableio import readtable, writetable
@@ -271,7 +271,7 @@ class StitchResultBase(RectangleOverlapCollection):
 
   @methodtools.lru_cache()
   def __fields(self):
-    result = []
+    result = RectangleList()
     islands = list(self.islands(useexitstatus=True))
     gxdict = collections.defaultdict(dict)
     gydict = collections.defaultdict(dict)
