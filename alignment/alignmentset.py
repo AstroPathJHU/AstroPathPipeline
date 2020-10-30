@@ -212,6 +212,10 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     except AttributeError:
       raise AttributeError("Haven't run stitching, so we don't have the stitched fields")
 
+  @property
+  def fielddict(self):
+    return self.fields.rectangledict
+
 class AlignmentSet(AlignmentSetBase, ReadRectanglesOverlaps):
   @methodtools.lru_cache()
   def image(self):

@@ -1,6 +1,6 @@
 import abc, collections, dataclasses, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 from ..baseclasses.overlap import RectangleOverlapCollection
-from ..baseclasses.rectangle import Rectangle, rectangledict
+from ..baseclasses.rectangle import Rectangle, rectangledict, RectangleList
 from ..utilities import units
 from ..utilities.misc import dummylogger, weightedstd
 from ..utilities.tableio import readtable, writetable
@@ -271,7 +271,7 @@ class StitchResultBase(RectangleOverlapCollection):
 
   @methodtools.lru_cache()
   def __fields(self):
-    result = []
+    result = RectangleList()
     islands = list(self.islands(useexitstatus=True))
     gxdict = collections.defaultdict(dict)
     gydict = collections.defaultdict(dict)
@@ -318,6 +318,23 @@ class StitchResultBase(RectangleOverlapCollection):
             primaryregions[gc].append(average[0] + (shape[i] - mindiff) / 2)
             primaryregions[gc].append(average[0] + (shape[i] + mindiff) / 2)
 
+    mx1 = {}
+    mx2 = {}
+    my1 = {}
+    my2 = {}
+
+    for i, island in enumerate(islands, start=1):
+      for rid in island:
+        r = self.rectangles[self.rectangledict[rid]]
+
+        gx = gxdict[i][r.cx]
+        gy = gydict[i][r.cy]
+
+        mx1[rid] = primaryregionsx[i][gx-1]
+        mx2[rid] = primaryregionsx[i][gx]
+        my1[rid] = primaryregionsy[i][gy-1]
+        my2[rid] = primaryregionsy[i][gy]
+
     for (i1, island1), (i2, island2) in itertools.combinations(enumerate(islands, start=1), r=2):
       if len(island1) == 1 or len(island2) == 1: continue #orphans are excluded
 
@@ -335,31 +352,106 @@ class StitchResultBase(RectangleOverlapCollection):
         max(x21, x22) - min(x11, x12) + 1e-5*x11 < (x21 - x11) + (x22 - x12)
         and max(y21, y22) - min(y11, y12) + 1e-5*x11 < (y21 - y11) + (y22 - y12)
       ):
+        self.__logger.info(f"Primary regions for islands {i1} and {i2} overlap in both x and y, seeing if any field primary regions overlap")
+
+        xoverlapstoadjust = collections.defaultdict(list)
+        yoverlapstoadjust = collections.defaultdict(list)
+        cornerstoadjust = collections.defaultdict(list)
+
         #if a box around the islands overlaps in both x and y
         for rid1, rid2 in itertools.product(island1, island2):
-          r1 = self.rectangles[self.rectangledict[rid1]]
-          r2 = self.rectangles[self.rectangledict[rid2]]
+          xx11 = mx1[rid1]
+          xx21 = mx2[rid1]
+          xx12 = mx1[rid2]
+          xx22 = mx2[rid2]
 
-          gx1 = gxdict[i1][r1.cx]
-          gy1 = gydict[i1][r1.cy]
-          gx2 = gxdict[i2][r2.cx]
-          gy2 = gydict[i2][r2.cy]
-
-          xx11 = primaryregionsx[i1][gx1-1]
-          xx21 = primaryregionsx[i1][gx1]
-          xx12 = primaryregionsx[i2][gx2-1]
-          xx22 = primaryregionsx[i2][gx2]
-
-          yy11 = primaryregionsy[i1][gy1-1]
-          yy21 = primaryregionsy[i1][gy1]
-          yy12 = primaryregionsy[i2][gy2-1]
-          yy22 = primaryregionsy[i2][gy2]
+          yy11 = my1[rid1]
+          yy21 = my2[rid1]
+          yy12 = my1[rid2]
+          yy22 = my2[rid2]
 
           if (
             max(xx21, xx22) - min(xx11, xx12) + 1e-5*x11 < (xx21 - xx11) + (xx22 - xx12)
             and max(yy21, yy22) - min(yy11, yy12) + 1e-5*x11 < (yy21 - yy11) + (yy22 - yy12)
           ):
-            self.__logger.warningglobal(f"Primary regions for fields {rid1} and {rid2} overlap")
+            self.__logger.warningglobal(f"Primary regions for fields {rid1} and {rid2} overlap, adjusting them")
+
+            threshold = units.Distance(pixels=100, pscale=self.pscale)
+            xs = ys = None
+            ridax = ridbx = riday = ridby = None
+            if abs(xx21 - xx12) <= threshold:
+              xs = xx12, xx21
+              ridax, ridbx = rid2, rid1
+            elif abs(xx11 - xx22) <= threshold:
+              xs = xx11, xx22
+              ridax, ridbx = rid1, rid2
+            if abs(yy21 - yy12) <= threshold:
+              ys = yy12, yy21
+              riday, ridby = rid2, rid1
+            elif abs(yy11 - yy22) <= threshold:
+              ys = yy11, yy22
+              riday, ridby = rid1, rid2
+            if xs is ys is None:
+              raise ValueError(f"Primary regions for fields {rid1} and {rid2} have too big of an overlap")
+
+            if xs is not None and ys is not None:
+              cornerstoadjust[xs, ys].append((ridax, ridbx, riday, ridby))
+            elif xs is not None:
+              xoverlapstoadjust[xs].append((ridax, ridbx))
+            elif ys is not None:
+              yoverlapstoadjust[ys].append((riday, ridby))
+
+        cornerxscounter = collections.Counter(xs for xs, ys in cornerstoadjust)
+        corneryscounter = collections.Counter(ys for xs, ys in cornerstoadjust)
+        xswith2corners = [xs for xs, count in cornerxscounter.items() if count >= 2]
+        yswith2corners = [ys for ys, count in corneryscounter.items() if count >= 2]
+
+        for (xs, ys), rids in cornerstoadjust.items():
+          if xs in xswith2corners:
+            xoverlapstoadjust[xs] += [(ridax, ridbx) for ridax, ridbx, riday, ridby in rids]
+          if ys in yswith2corners:
+            yoverlapstoadjust[ys] += [(riday, ridby) for ridax, ridbx, riday, ridby in rids]
+        for (xs, ys), rids in cornerstoadjust.items():
+          if xs in xoverlapstoadjust:
+            xoverlapstoadjust[xs] += [(ridax, ridbx) for ridax, ridbx, riday, ridby in rids]
+          if ys in yoverlapstoadjust:
+            yoverlapstoadjust[ys] += [(riday, ridby) for ridax, ridbx, riday, ridby in rids]
+
+        for ((oldmx1, oldmx2), (oldmy1, oldmy2)), rids in cornerstoadjust.items():
+          if xs in xoverlapstoadjust or ys in yoverlapstoadjust:
+            pass
+          elif oldmx1 - oldmx2 < oldmy1 - oldmy2:
+            xoverlapstoadjust[oldmx1, oldmx2] += rids
+          else:
+            yoverlapstoadjust[oldmy1, oldmy2] += rids
+
+        for (oldmx1, oldmx2), rids in xoverlapstoadjust.items():
+          for rid1, rid2 in rids:
+            newmx = (oldmx1 + oldmx2)/2
+            assert (mx1[rid1] == oldmx1 or mx1[rid1] == newmx) and (mx2[rid2] == oldmx2 or mx2[rid2] == newmx), (mx1[rid1], oldmx1, mx2[rid2], oldmx2, newmx)
+            mx1[rid1] = mx2[rid2] = newmx
+        for (oldmy1, oldmy2), rids in yoverlapstoadjust.items():
+          for rid1, rid2 in rids:
+            newmy = (oldmy1 + oldmy2)/2
+            assert (my1[rid1] == oldmy1 or my1[rid1] == newmy) and (my2[rid2] == oldmy2 or my2[rid2] == newmy), (my1[rid1], oldmy1, my2[rid2], oldmy2, newmy)
+            my1[rid1] = my2[rid2] = newmy
+
+        for rid1, rid2 in itertools.product(island1, island2):
+          xx11 = mx1[rid1]
+          xx21 = mx2[rid1]
+          xx12 = mx1[rid2]
+          xx22 = mx2[rid2]
+
+          yy11 = my1[rid1]
+          yy21 = my2[rid1]
+          yy12 = my1[rid2]
+          yy22 = my2[rid2]
+
+          if (
+            max(xx21, xx22) - min(xx11, xx12) + 1e-5*x11 < (xx21 - xx11) + (xx22 - xx12)
+            and max(yy21, yy22) - min(yy11, yy12) + 1e-5*x11 < (yy21 - yy11) + (yy22 - yy12)
+          ):
+            raise ValueError(f"Primary regions for fields {rid1} and {rid2} still overlap")
 
     for rectangle in self.rectangles:
       for gc, island in enumerate(islands, start=1):
@@ -376,8 +468,8 @@ class StitchResultBase(RectangleOverlapCollection):
           gc=0 if len(island) == 1 else gc,
           pxvec=self.x(rectangle) - self.origin,
           gxvec=(gx, gy),
-          primaryregionx=np.array([primaryregionsx[gc][gx-1], primaryregionsx[gc][gx]]) - self.origin[0],
-          primaryregiony=np.array([primaryregionsy[gc][gy-1], primaryregionsy[gc][gy]]) - self.origin[1],
+          primaryregionx=np.array([mx1[rectangle.n], mx2[rectangle.n]]) - self.origin[0],
+          primaryregiony=np.array([my1[rectangle.n], my2[rectangle.n]]) - self.origin[1],
           readingfromfile=False,
         )
       )

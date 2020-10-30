@@ -313,10 +313,9 @@ class RectangleCollection(abc.ABC):
   @abc.abstractproperty
   def rectangles(self): pass
   @methodtools.lru_cache()
-  def __rectangledict(self):
-    return rectangledict(self.rectangles)
   @property
-  def rectangledict(self): return self.__rectangledict()
+  def rectangledict(self):
+    return rectangledict(self.rectangles)
   @property
   def rectangleindices(self):
     return {r.n for r in self.rectangles}
