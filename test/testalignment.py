@@ -324,3 +324,12 @@ class TestAlignment(TestBaseSaveOutput):
   def testPolarisFromXMLFastUnits(self):
     with units.setup_context("fast"):
       self.testFromXML("YZ71", root3=thisfolder/"data"/"raw")
+
+  def testIslands(self):
+    for island in (
+      (4, 5),
+    ):
+      a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", "M21_1", selectoverlaps=lambda o: not ((o.p1 in island) ^ (o.p2 in island)))
+      readfilename = thisfolder/"reference"/"alignment"/"M21_1"/"M21_1_align.csv"
+      a.readalignments(filename=readfilename)
+      a.stitch()
