@@ -6,17 +6,17 @@ import os, numpy as np
 
 #constants
 
-#sample name and directories
-samp = r"M21_1"
+#slide name and directories
+slide_ID = r"M21_1"
 folder = os.path.dirname(__file__)
 
 #file stems
-file1stem = samp+'_[46163,12453]'
-file2stem = samp+'_[46698,12453]'
+file1stem = slide_ID+'_[46163,12453]'
+file2stem = slide_ID+'_[46698,12453]'
 
 # .raw file paths
-rawfile1path = os.path.join(folder,'data','raw',samp,file1stem+'.Data.dat')
-rawfile2path = os.path.join(folder,'data','raw',samp,file2stem+'.Data.dat')
+rawfile1path = os.path.join(folder,'data','raw',slide_ID,file1stem+'.Data.dat')
+rawfile2path = os.path.join(folder,'data','raw',slide_ID,file2stem+'.Data.dat')
 
 # warp test file paths
 warp1file1layer1p=os.path.join(folder,'reference','warping',file1stem+'.fieldWarp_layer01')

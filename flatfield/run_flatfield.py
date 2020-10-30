@@ -1,6 +1,6 @@
 #imports
 from .flatfield_producer import FlatfieldProducer
-from .utilities import flatfield_logger, sampleNameFromFilepath, FlatfieldSampleInfo
+from .utilities import flatfield_logger, slideNameFromFilepath, FlatfieldSlideInfo
 from .config import CONST 
 from ..utilities.tableio import readtable
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
@@ -26,35 +26,35 @@ def checkArgs(a) :
             raise ValueError(f'ERROR: flatfield image {prior_run_ff_filename} does not exist in prior run directory {a.prior_run_dir}!')
         if not os.path.isfile(os.path.join(a.prior_run_dir,f'{FILEPATH_TEXT_FILE_NAME}')) :
             raise ValueError(f'ERROR: rawfile log {FILEPATH_TEXT_FILE_NAME} does not exist in prior run directory {a.prior_run_dir}!')
-    #figure out and read in the samples' information
-    samples = None
-    if a.samples is None :
-        raise ValueError('ERROR: "samples" argument is required!')
-    if '.csv' in a.samples :
-        if (a.rawfile_top_dir is not None) or (a.metadata_top_dir is not None) :
-            raise ValueError(f'ERROR: samples argument {a.samples} is a file; rawfile/metadata_top_dir arguments are ambiguous!')
+    #figure out and read in the slides' information
+    slides = None
+    if a.slides is None :
+        raise ValueError('ERROR: "slides" argument is required!')
+    if '.csv' in a.slides :
+        if (a.rawfile_top_dir is not None) or (a.root_dir is not None) :
+            raise ValueError(f'ERROR: slides argument {a.slides} is a file; rawfile/root_dir arguments are ambiguous!')
         try:
-            if os.path.isfile(a.samples) :
-                samples = readtable(a.samples,FlatfieldSampleInfo)
+            if os.path.isfile(a.slides) :
+                slides = readtable(a.slides,FlatfieldSlideInfo)
         except FileNotFoundError :
-            raise ValueError(f'Samples file {a.samples} does not exist!')
+            raise ValueError(f'Slides file {a.slides} does not exist!')
     else :
-        if (a.rawfile_top_dir is None) or (a.metadata_top_dir is None) :
-            raise ValueError(f'ERROR: samples argument {a.samples} is not a file, but rawfile/metadata_top_dir arguments are not specified!')
-        samples = []
-        for sn in split_csv_to_list(a.samples) :
-            samples.append(FlatfieldSampleInfo(sn,a.rawfile_top_dir,a.metadata_top_dir))
-    if samples is None or len(samples)<1 :
-        raise ValueError(f"""ERROR: Samples '{a.samples}', rawfile top dir '{a.rawfile_top_dir}', and metadata_top_dir '{a.metadata_top_dir}' 
-                             did not result in a valid list of samples!""")
-    #make sure all of the samples' necessary directories exist
-    for sample in samples :
-        rfd = os.path.join(sample.rawfile_top_dir,sample.name)
+        if (a.rawfile_top_dir is None) or (a.root_dir is None) :
+            raise ValueError(f'ERROR: slides argument {a.slides} is not a file, but rawfile/root_dir arguments are not specified!')
+        slides = []
+        for sn in split_csv_to_list(a.slides) :
+            slides.append(FlatfieldSlideInfo(sn,a.rawfile_top_dir,a.root_dir))
+    if slides is None or len(slides)<1 :
+        raise ValueError(f"""ERROR: Slides '{a.slides}', rawfile top dir '{a.rawfile_top_dir}', and root_dir '{a.root_dir}' 
+                             did not result in a valid list of slides!""")
+    #make sure all of the slides' necessary directories exist
+    for slide in slides :
+        rfd = os.path.join(slide.rawfile_top_dir,slide.name)
         if not os.path.isdir(rfd) :
             raise ValueError(f'ERROR: rawfile directory {rfd} does not exist!')
-        mfd = os.path.join(sample.metadata_top_dir,sample.name)
+        mfd = os.path.join(slide.root_dir,slide.name)
         if not os.path.isdir(rfd) :
-            raise ValueError(f'ERROR: metadata file directory {mfd} does not exist!')
+            raise ValueError(f'ERROR: slide root directory {mfd} does not exist!')
     #create the working directory if it doesn't already exist
     if not os.path.isdir(a.workingdir_name) :
         os.mkdir(a.workingdir_name)
@@ -63,7 +63,7 @@ def checkArgs(a) :
         if not os.path.isfile(a.exposure_time_offset_file) :
             raise ValueError(f'ERROR: exposure time offset file {a.exposure_time_offset_file} does not exist!')
     #if the user wants to save example masking plots, they can't be skipping masking
-    if a.skip_masking and a.n_masking_images_per_sample!=0 :
+    if a.skip_masking and a.n_masking_images_per_slide!=0 :
         raise RuntimeError("ERROR: can't save masking images if masking is being skipped!")
     #make sure the threshold file directory exists if it's specified
     if a.threshold_file_dir is not None and (not os.path.isdir(a.threshold_file_dir)) :
@@ -77,16 +77,16 @@ def checkArgs(a) :
             if not os.path.isfile(os.path.join(prd,f'{FILEPATH_TEXT_FILE_NAME}')) :
                 raise ValueError(f'ERROR: raw file path log {FILEPATH_TEXT_FILE_NAME} does not exist in additional prior run directory {prd}!')
 
-#helper function to get the list of filepaths and associated sample names to run on based on the selection method and number of images requested
-def getFilepathsAndSamplesToRun(a) :
-    #first we need to read in the inputted samples
-    if '.csv' in a.samples :
-        all_samples = readtable(a.samples,FlatfieldSampleInfo)
+#helper function to get the list of filepaths and associated slide names to run on based on the selection method and number of images requested
+def getFilepathsAndSlidesToRun(a) :
+    #first we need to read in the inputted slides
+    if '.csv' in a.slides :
+        all_slides = readtable(a.slides,FlatfieldSlideInfo)
     else :
-        all_samples = []
-        for sn in split_csv_to_list(a.samples) :
-            all_samples.append(FlatfieldSampleInfo(sn,a.rawfile_top_dir,a.metadata_top_dir))
-    samples_to_run = None; filepaths_to_run = None; filepaths_to_exclude = None
+        all_slides = []
+        for sn in split_csv_to_list(a.slides) :
+            all_slides.append(FlatfieldSlideInfo(sn,a.rawfile_top_dir,a.root_dir))
+    slides_to_run = None; filepaths_to_run = None; filepaths_to_exclude = None
     #If other runs are being excluded, make sure to save their filenames to remove them
     if a.other_runs_to_exclude!=[''] :
         filepaths_to_exclude=[]
@@ -107,29 +107,29 @@ def getFilepathsAndSamplesToRun(a) :
                 filepaths_to_exclude=[]
             filepaths_to_exclude+=previously_run_filepaths
             flatfield_logger.info(f'Will exclude {len(previously_run_filepaths)} files listed in previous run at {a.prior_run_dir}')
-        #otherwise those filepaths are the ones to run; use them to find the subset of the samples to run
+        #otherwise those filepaths are the ones to run; use them to find the subset of the slides to run
         else :
             filepaths_to_run = previously_run_filepaths
-            flatfield_logger.info(f'Will run on a sample of {len(filepaths_to_run)} total files as listed in previous run at {a.prior_run_dir}')
-            sample_names = list(set([sampleNameFromFilepath(fp) for fp in previously_run_filepaths]))
-            samples_to_run = [s for s in all_samples if s.name in sample_names]
+            flatfield_logger.info(f'Will run on {len(filepaths_to_run)} total files as listed in previous run at {a.prior_run_dir}')
+            slide_names = list(set([slideNameFromFilepath(fp) for fp in previously_run_filepaths]))
+            slides_to_run = [s for s in all_slides if s.name in slide_names]
     #make a set of all the filepaths to exclude
     if filepaths_to_exclude is not None :
         filepaths_to_exclude=set(filepaths_to_exclude)
-        flatfield_logger.info(f'{len(filepaths_to_exclude)} total files will be excluded from the samples')
-    #if a prior run didn't define the samples to run, all the samples will be used
-    if samples_to_run is None :
-        samples_to_run = all_samples
-    #get the sorted list of all rawfile paths in the samples that will be run
-    all_sample_filepaths=[]
-    for s in samples_to_run :
+        flatfield_logger.info(f'{len(filepaths_to_exclude)} total files will be excluded from the slides')
+    #if a prior run didn't define the slides to run, all the slides will be used
+    if slides_to_run is None :
+        slides_to_run = all_slides
+    #get the sorted list of all rawfile paths in the slides that will be run
+    all_slide_filepaths=[]
+    for s in slides_to_run :
         with cd(os.path.join(s.rawfile_top_dir,s.name)) :
-            all_sample_filepaths+=[os.path.join(s.rawfile_top_dir,s.name,fn) for fn in glob.glob(f'{s.name}_[[]*,*[]]{CONST.RAW_EXT}')]
-    all_sample_filepaths.sort()
+            all_slide_filepaths+=[os.path.join(s.rawfile_top_dir,s.name,fn) for fn in glob.glob(f'{s.name}_[[]*,*[]]{CONST.RAW_EXT}')]
+    all_slide_filepaths.sort()
     #if the rawfiles haven't already been selected, figure that out
     if filepaths_to_run is None :
-        #start with all of the files in every sample
-        filepaths_to_run = all_sample_filepaths
+        #start with all of the files in every slide
+        filepaths_to_run = all_slide_filepaths
         #remove filepaths to exclude
         if filepaths_to_exclude is not None :
             filepaths_to_run = [fp for fp in filepaths_to_run if fp not in filepaths_to_exclude]
@@ -141,7 +141,7 @@ def getFilepathsAndSamplesToRun(a) :
                 logstring+=' remaining'
             logstring+=' images' 
             if min(a.max_images,len(filepaths_to_run)) > len(filepaths_to_run) :
-                logstring+=f' (not enough images in the sample(s) to deliver all {a.max_images} requested)'
+                logstring+=f' (not enough images in the slide(s) to deliver all {a.max_images} requested)'
             filepaths_to_run = filepaths_to_run
         else :
             if a.selection_mode=='first' :
@@ -154,14 +154,14 @@ def getFilepathsAndSamplesToRun(a) :
                 random.shuffle(filepaths_to_run)
                 filepaths_to_run=filepaths_to_run[:a.max_images]
                 logstring+=f' {a.max_images} randomly-chosen images'
-        #figure out the samples from which those files are coming and reset the list of all of those samples' filepaths
-        samplenames_to_run = list(set([sampleNameFromFilepath(fp) for fp in filepaths_to_run]))
-        samples_to_run = [s for s in samples_to_run if s.name in samplenames_to_run]
-        logstring+=f' from {len(samples_to_run)} sample(s): '
-        for s in samples_to_run :
+        #figure out the slides from which those files are coming and reset the list of all of those slides' filepaths
+        slidenames_to_run = list(set([slideNameFromFilepath(fp) for fp in filepaths_to_run]))
+        slides_to_run = [s for s in slides_to_run if s.name in slidenames_to_run]
+        logstring+=f' from {len(slides_to_run)} slide(s): '
+        for s in slides_to_run :
             logstring+=f'{s.name}, '
         flatfield_logger.info(logstring[:-2])
-        all_sample_filepaths = [fp for fp in all_sample_filepaths if sampleNameFromFilepath(fp) in [s.name for s in samples_to_run]]
+        all_slide_filepaths = [fp for fp in all_slide_filepaths if slideNameFromFilepath(fp) in [s.name for s in slides_to_run]]
     #alert the user if exposure time corrections will be made
     if a.skip_exposure_time_correction :
         flatfield_logger.info('Corrections for differences in exposure time will NOT be made')
@@ -176,13 +176,13 @@ def getFilepathsAndSamplesToRun(a) :
         flatfield_logger.info('Images WILL be masked before stacking')
     #alert the user if the thresholds will be calculated in this run
     if (not a.skip_masking) and a.threshold_file_dir is None :
-        logstring = f'Background thresholds will be calculated for {len(samples_to_run)}'
-        if len(samples_to_run)>1 :
-            logstring+=' different samples:'
+        logstring = f'Background thresholds will be calculated for {len(slides_to_run)}'
+        if len(slides_to_run)>1 :
+            logstring+=' different slides:'
         else :
-            logstring+=' sample'
+            logstring+=' slide'
         logstring+=': '
-        for s in samples_to_run :
+        for s in slides_to_run :
             logstring+=f'{s.name}, '
         flatfield_logger.info(logstring[:-2])
     elif a.skip_masking :
@@ -193,11 +193,11 @@ def getFilepathsAndSamplesToRun(a) :
     if a.allow_edge_HPFs :
         flatfield_logger.info('HPFs on tissue edges will be included in the image stack.')
     else :
-        flatfield_logger.info('HPFs on tissue edges will be found for each sample and excluded from the image stack.')
-    #return the lists of filepaths and samplenames
-    if len(all_sample_filepaths)<1 or len(filepaths_to_run)<1 or len(samples_to_run)<1 :
-        raise RuntimeError('ERROR: The requested options have resulted in no samples or files to run!')
-    return all_sample_filepaths, filepaths_to_run, samples_to_run
+        flatfield_logger.info('HPFs on tissue edges will be found for each slide and excluded from the image stack.')
+    #return the lists of filepaths and slidenames
+    if len(all_slide_filepaths)<1 or len(filepaths_to_run)<1 or len(slides_to_run)<1 :
+        raise RuntimeError('ERROR: The requested options have resulted in no slides or files to run!')
+    return all_slide_filepaths, filepaths_to_run, slides_to_run
 
 #################### MAIN SCRIPT ####################
 def main() :
@@ -210,42 +210,42 @@ def main() :
                         help='Name of working directory to save created files in')
     #add the exposure time correction group to the arguments
     addCommonArgumentsToParser(parser,positional_args=False,flatfielding=False,warping=False)
-    #add the group for defining the sample(s) to run on
-    sample_definition_group = parser.add_argument_group('sample definition',
-                                                        'what samples should be used, and where to find their files')
-    sample_definition_group.add_argument('--samples',     
-                                         help="""Path to .csv file listing FlatfieldSampleInfo objects (to use samples from multiple raw/metadata file paths),
-                                                 or a comma-separated list of sample names to use with the common raw/metadata file paths""")
-    sample_definition_group.add_argument('--rawfile_top_dir',
-                                         help=f'Path to directory containing [samplename] subdirectories with raw "{CONST.RAW_EXT}" files for all samples')
-    sample_definition_group.add_argument('--metadata_top_dir',
-                                         help='Path to directory holding metadata directories/subdirectories for all samples')
+    #add the group for defining the slide(s) to run on
+    slide_definition_group = parser.add_argument_group('slide definition',
+                                                        'what slides should be used, and where to find their files')
+    slide_definition_group.add_argument('--slides',     
+                                         help="""Path to .csv file listing FlatfieldSlideInfo objects (to use slides from multiple raw/root file paths),
+                                                 or a comma-separated list of slide names to use with the common raw/root file paths""")
+    slide_definition_group.add_argument('--rawfile_top_dir',
+                                         help=f'Path to directory containing [slidename] subdirectories with raw "{CONST.RAW_EXT}" files for all slides')
+    slide_definition_group.add_argument('--root_dir',
+                                         help='Path to Clinical_Specimen directory for all slides')
     #mutually exclusive group for how to handle the thresholding
     thresholding_group = parser.add_mutually_exclusive_group()
     thresholding_group.add_argument('--threshold_file_dir',
-                                    help="""Path to the directory holding background threshold files created in previous runs for the samples in question
+                                    help="""Path to the directory holding background threshold files created in previous runs for the slides in question
                                     [use this argument to re-use previously-calculated background thresholds]""")
     thresholding_group.add_argument('--skip_masking',       action='store_true',
                                     help="""Add this flag to entirely skip masking out the background regions of the images as they get added
                                     [use this argument to completely skip the background thresholding and masking]""")
-    #group for how to select a subset of the samples' files
+    #group for how to select a subset of the slides' files
     file_selection_group = parser.add_argument_group('file selection',
-                                                     'how many images from the sample set should be used, how to choose them, and where to find them')
+                                                     'how many images from the slide set should be used, how to choose them, and where to find them')
     file_selection_group.add_argument('--prior_run_dir',     
                                       help="""Path to the working directory of a previous run whose raw files you want to use again, or whose calculated
-                                      flatfield you want to apply to a different, orthogonal, set of files in the same samples""")
+                                      flatfield you want to apply to a different, orthogonal, set of files in the same slides""")
     file_selection_group.add_argument('--max_images',      default=-1,       type=int,         
-                                      help='Number of images to load from the inputted list of samples')
+                                      help='Number of images to load from the inputted list of slides')
     file_selection_group.add_argument('--selection_mode',  default='random', choices=['random','first','last'],
-                                      help='Select "first", "last", or "random" (default) n images (where n=max_images) from the sample group.')
+                                      help='Select "first", "last", or "random" (default) n images (where n=max_images) from the slide group.')
     file_selection_group.add_argument('--allow_edge_HPFs', action='store_true',
                                       help="""Add this flag to allow HPFs on the tissue edges to be stacked (not allowed by default)""")
     #group for some run options
     run_option_group = parser.add_argument_group('run options','other options for this run')
     run_option_group.add_argument('--n_threads',                   default=10,  type=int,         
                                   help='Number of threads/processes to run at once in parallelized portions of the code')
-    run_option_group.add_argument('--n_masking_images_per_sample', default=2,   type=int,         
-                                  help='How many example masking images to save for each sample (randomly chosen)')
+    run_option_group.add_argument('--n_masking_images_per_slide', default=2,   type=int,         
+                                  help='How many example masking images to save for each slide (randomly chosen)')
     run_option_group.add_argument('--selected_pixel_cut',          default=0.8, type=float,         
                                   help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
     run_option_group.add_argument('--other_runs_to_exclude',       default='',  type=split_csv_to_list,
@@ -253,12 +253,12 @@ def main() :
     args = parser.parse_args()
     #make sure the command line arguments make sense
     checkArgs(args)
-    #get the list of filepaths to run and the names of their samples
-    all_filepaths, filepaths_to_run, samples_to_run = getFilepathsAndSamplesToRun(args)
+    #get the list of filepaths to run and the names of their slides
+    all_filepaths, filepaths_to_run, slides_to_run = getFilepathsAndSlidesToRun(args)
     if args.mode=='check_run' :
         sys.exit()
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(samples_to_run,filepaths_to_run,args.workingdir_name,args.skip_exposure_time_correction,args.skip_masking)
+    ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,args.workingdir_name,args.skip_exposure_time_correction,args.skip_masking)
     #write out the text file of all the raw file paths that will be run
     ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
     if args.mode=='choose_image_files' :
@@ -274,7 +274,7 @@ def main() :
             ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
     if args.mode in ['make_flatfield', 'apply_flatfield'] :
         #mask and stack images together
-        ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_sample,args.allow_edge_HPFs)
+        ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_slide,args.allow_edge_HPFs)
         if args.mode=='make_flatfield' :
             #make the flatfield image
             ff_producer.makeFlatField()

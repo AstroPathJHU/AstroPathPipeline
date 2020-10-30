@@ -29,7 +29,7 @@ class Const :
         return 'background_thresholds.txt' #name of the text file holding each layer's background threshold flux
     @property
     def LAYER_OFFSET_FILE_NAME_STEM(self) :
-        return 'best_fit_offsets' #name of the .csv file holding each sample's LayerOffset result objects
+        return 'best_fit_offsets' #name of the .csv file holding each slide's LayerOffset result objects
     @property
     def THRESHOLDING_PLOT_DIR_NAME(self) :
         return 'thresholding_info' #name of the directory where the thresholding information will be stored

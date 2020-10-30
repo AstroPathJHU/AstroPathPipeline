@@ -14,26 +14,26 @@ class SingleLayerExposureTimeFit :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,layer_n,exp_times,med_exp_time,top_plot_dir,sample,rawfile_top_dir,metadata_top_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages) :
+    def __init__(self,layer_n,exp_times,med_exp_time,top_plot_dir,slideID,rawfile_top_dir,root_dir,flatfield,min_frac,overlaps,smoothsigma,cutimages) :
         """
         layer_n          = layer number that this fit will run on (indexed from 1)
         exp_times        = dictionary of raw file exposure times, keyed by filename stem
-        med_exp_time     = the median exposure time in the entire sample for this layer
+        med_exp_time     = the median exposure time in the entire slideID for this layer
         top_plot_dir     = path to directory in which this fit's subdirectory should be created
-        sample           = name of the microscope data sample to fit to ("M21_1" or equivalent)
-        rawfile_top_dir  = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
-        metadata_top_dir = path to directory containing [samplename]/im3/xml directory
-        flatfield        = relevant layer of whole sample flatfield file
+        slideID          = name of the slide to fit to ("M21_1" or equivalent)
+        rawfile_top_dir  = path to directory containing [slideID] directory with multilayered ".Data.dat" files in it
+        root_dir         = path to Clinical_Specimen directory for this slide
+        flatfield        = relevant layer of the flatfield file
         min_frac         = some image in the dataset must have at least this fraction of pixels with the maximum offset (prevents too low of a maximum)
-        overlaps         = list of sample overlaps to run ([-1] if all should be run)
+        overlaps         = list of overlap #s to run ([-1] if all should be run)
         smoothsigma      = sigma for Gaussian blurring
         cutimages        = True if only central 50% of overlap images should be used
         """
         self.layer = layer_n
         self.med_exp_time = med_exp_time
         self.rawfile_top_dir = rawfile_top_dir
-        self.metadata_top_dir = metadata_top_dir
-        self.sample = sample
+        self.root_dir = root_dir
+        self.slideID = slideID
         #set the flatfield
         self.flatfield = flatfield
         #set some other variables that are needed
@@ -48,7 +48,7 @@ class SingleLayerExposureTimeFit :
             self.exposure_time_overlaps = []
             return
         #make this fit's plot directory name/path
-        plotdirname = f'{self.sample}_layer_{self.layer}_info'
+        plotdirname = f'{self.slideID}_layer_{self.layer}_info'
         with cd(top_plot_dir) :
             if not os.path.isdir(plotdirname) :
                 os.mkdir(plotdirname)
@@ -56,7 +56,7 @@ class SingleLayerExposureTimeFit :
         #make an alignmentset from the raw files, smoothed and corrected with the flatfield
         et_fit_logger.info(f'Making an AlignmentSet for just the overlaps with different exposure times in layer {self.layer}....')
         use_GPU = platform.system()!='Darwin'
-        a = AlignmentSetForExposureTime(self.metadata_top_dir,self.rawfile_top_dir,self.sample,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
+        a = AlignmentSetForExposureTime(self.root_dir,self.rawfile_top_dir,self.slideID,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
                                 nclip=CONST.N_CLIP,useGPU=use_GPU,readlayerfile=False,layer=self.layer,filetype='raw',
                                 smoothsigma=smoothsigma,flatfield=self.flatfield)
         #get all the raw file layers and align the overlaps
@@ -131,7 +131,7 @@ class SingleLayerExposureTimeFit :
 
     #helper function to automatically set the bounds on the offset to search
     def __getOffsetBounds(self,alignset,min_frac) :
-        et_fit_logger.info(f'Finding upper bound on offsets to test for {self.sample} layer {self.layer}....')
+        et_fit_logger.info(f'Finding upper bound on offsets to test for {self.slideID} layer {self.layer}....')
         offset_upper_bound = 1000.; nrectpix = alignset.rectangles[0].image.shape[0]*alignset.rectangles[0].image.shape[1]
         for r in alignset.rectangles :
             img = r.image
@@ -139,13 +139,13 @@ class SingleLayerExposureTimeFit :
             while np.count_nonzero(img[img<this_upper_bound])<(nrectpix*min_frac) :
                 this_upper_bound+=1
             if this_upper_bound<offset_upper_bound :
-                et_fit_logger.info(f'Offset upper bound reduced to {this_upper_bound} in rectangle {r.n} for {self.sample} layer {self.layer}')
+                et_fit_logger.info(f'Offset upper bound reduced to {this_upper_bound} in rectangle {r.n} for {self.slideID} layer {self.layer}')
                 offset_upper_bound = this_upper_bound
         upper_bound_pixel_count = 0
         for r in alignset.rectangles :
             upper_bound_pixel_count+= np.count_nonzero(r.image[r.image<offset_upper_bound])
         pct=100.*(upper_bound_pixel_count/(len(alignset.rectangles)*(nrectpix)))
-        msg = f'Offset upper bound for {self.sample} layer {self.layer} found at {offset_upper_bound}'
+        msg = f'Offset upper bound for {self.slideID} layer {self.layer} found at {offset_upper_bound}'
         msg+= f' ({upper_bound_pixel_count} total pixels or {pct:.8f}% overall clipped at max)'
         et_fit_logger.info(msg)
         return [0,offset_upper_bound]
@@ -164,7 +164,7 @@ class SingleLayerExposureTimeFit :
             p2rect = rects_by_n[olap.p2]
             p1et = exposure_times[(p1rect.file).rstrip(CONST.IM3_EXT)]
             p2et = exposure_times[(p2rect.file).rstrip(CONST.IM3_EXT)]
-            et_fit_logger.info(f'Finding costs for overlap {olap.n} ({io+1} of {len(alignset.overlaps)} in {self.sample} layer {self.layer})....')
+            et_fit_logger.info(f'Finding costs for overlap {olap.n} ({io+1} of {len(alignset.overlaps)} in {self.slideID} layer {self.layer})....')
             etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,med_exp_time,cutimages,self.offset_bounds))
             if p1rect.n not in relevant_rectangles.keys() :
                 relevant_rectangles[p1rect.n]=p1rect
@@ -177,12 +177,12 @@ class SingleLayerExposureTimeFit :
             this_rect_overlaps = [o.n for o in alignset.overlaps if (o.p1==r.n or o.p2==r.n)]
             field_logs.append(FieldLog(r.file,r.n,this_rect_overlaps))
         with cd(self.plotdirpath) :
-            writetable(f'fields_used_in_exposure_time_fit_{self.sample}_layer_{self.layer}.csv',field_logs)
+            writetable(f'fields_used_in_exposure_time_fit_{self.slideID}_layer_{self.layer}.csv',field_logs)
         #make the metadata summary object and write it out
-        metadata_summary = MetadataSummary(self.sample,alignset.Project,alignset.Cohort,alignset.microscopename,
+        metadata_summary = MetadataSummary(self.slideID,alignset.Project,alignset.Cohort,alignset.microscopename,
                                            str(min([r.t for r in relevant_rectangles])),str(max([r.t for r in relevant_rectangles])))
         with cd(self.plotdirpath) :
-            writetable(f'metadata_summary_exposure_time_{self.sample}_layer_{self.layer}.csv',[metadata_summary])
+            writetable(f'metadata_summary_exposure_time_{self.slideID}_layer_{self.layer}.csv',[metadata_summary])
         #return the list of exposure time overlaps and the summary of the metadata of the alignmentSet they came from
         et_fit_logger.info(f'Found {len(etolaps)} overlaps that are aligned and have different p1 and p2 exposure times in layer {self.layer}')
         return etolaps
@@ -198,7 +198,7 @@ class SingleLayerExposureTimeFit :
         ax[1].set_xlabel('fit iteration')
         ax[1].set_ylabel('offset')
         with cd(self.plotdirpath) :
-            fn = f'costs_and_offsets_{self.sample}_layer_{self.layer}.png'
+            fn = f'costs_and_offsets_{self.slideID}_layer_{self.layer}.png'
             plt.savefig(fn)
             plt.close()
             cropAndOverwriteImage(fn)
@@ -209,7 +209,7 @@ class SingleLayerExposureTimeFit :
         #write out table of overlap fit results
         fitresults = [eto.getFitResult(self.best_fit_offset) for eto in self.exposure_time_overlaps]
         with cd(self.plotdirpath) :
-            writetable(f'overlap_fit_results_{self.sample}_layer_{self.layer}.csv',fitresults)
+            writetable(f'overlap_fit_results_{self.slideID}_layer_{self.layer}.csv',fitresults)
         #make 1D pre/postfit cost and cost reduction plots
         f,ax=plt.subplots(1,3,figsize=(3*6.4,4.6))
         prefit_costs  = [r.prefit_cost for r in fitresults]
@@ -226,7 +226,7 @@ class SingleLayerExposureTimeFit :
         ax[2].set_xlabel('(original cost - post-fit cost)/(original cost)')
         ax[2].set_ylabel('number of overlaps')
         with cd(self.plotdirpath) :
-            fn = f'cost_reduction_plots_1d_{self.sample}_layer_{self.layer}.png'
+            fn = f'cost_reduction_plots_1d_{self.slideID}_layer_{self.layer}.png'
             plt.savefig(fn)
             plt.close()
             cropAndOverwriteImage(fn)
@@ -248,7 +248,7 @@ class SingleLayerExposureTimeFit :
         f.colorbar(pos[3],ax=ax[1][1])
         ax[1][1].plot([0.98*x for x in ax[1][1].get_xlim()],[0.,0.],linewidth=2)
         with cd(self.plotdirpath) :
-            fn = f'cost_reduction_plots_2d_{self.sample}_layer_{self.layer}.png'
+            fn = f'cost_reduction_plots_2d_{self.slideID}_layer_{self.layer}.png'
             plt.savefig(fn)
             plt.close()
             cropAndOverwriteImage(fn)
@@ -275,7 +275,7 @@ class SingleLayerExposureTimeFit :
             return
         #make an alignmentset for just those overlaps and correct the raw images
         et_fit_logger.info(f'Making an AlignmentSet for {len(raw_olap_ns_for_plots)} pre/postfit overlay images for layer {self.layer}')
-        a = AlignmentSetForExposureTime(self.metadata_top_dir,self.rawfile_top_dir,self.sample,selectoverlaps=raw_olap_ns_for_plots,
+        a = AlignmentSetForExposureTime(self.root_dir,self.rawfile_top_dir,self.slideID,selectoverlaps=raw_olap_ns_for_plots,
                                 onlyrectanglesinoverlaps=True,nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer,filetype="raw",smoothsigma=None,flatfield=self.flatfield)
         a.getDAPI()
         raw_olap_images = {}

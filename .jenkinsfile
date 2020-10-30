@@ -125,9 +125,9 @@ pipeline {
           }
         }
 
-        stage('correct/copy raw files') {
+        stage('test image correction') {
           steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testcorrectandcopyrawfiles'
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testimagecorrection'
           }
         }
 

@@ -6,7 +6,7 @@ from .plotting import OctetComparisonVisualization
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..baseclasses.rectangle import rectangleoroverlapfilter
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getMedianExposureTimeAndCorrectionOffsetForSampleLayer
+from ..utilities.img_file_io import getImageHWLFromXMLFile, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
 from ..utilities.tableio import writetable
 from ..utilities import units
 from ..utilities.misc import cd, MetadataSummary, cropAndOverwriteImage
@@ -40,39 +40,39 @@ class WarpFitter :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,samplename,rawfile_top_dir,metadata_top_dir,working_dir,overlaps=-1,layer=1) :
+    def __init__(self,slideID,rawfile_top_dir,root_dir,working_dir,overlaps=-1,layer=1) :
         """
-        samplename       = name of the microscope data sample to fit to ("M21_1" or equivalent)
-        rawfile_top_dir  = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
-        metadata_top_dir = path to directory containing [samplename]/im3/xml directory
+        slideID       = name of the slide to use ("M21_1" or equivalent)
+        rawfile_top_dir  = path to directory containing [slideID] directory with multilayered ".Data.dat" files in it
+        root_dir = path to Clinical_Specimen directory
         working_dir      = path to some local directory to store files produced by the WarpFitter
         overlaps         = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
                            (default=-1 will use all overlaps)
         layer            = image layer number (indexed starting at 1) to consider in the warping/alignment (default=1)
         """
         #store the directory paths
-        self.samp_name = samplename
+        self.slideID = slideID
         self.rawfile_top_dir=rawfile_top_dir
-        self.metadata_top_dir=metadata_top_dir
+        self.root_dir=root_dir
         self.working_dir=working_dir
         #make the alignmentset object to use
         self.bkp_units_mode = units.currentmode
         units.setup("fast") #be sure to use fast units
         self.alignset = self.__initializeAlignmentSet(overlaps=overlaps)
         #save the metadata summary and field logs for this alignment set
-        ms = MetadataSummary(self.samp_name,self.alignset.Project,self.alignset.Cohort,self.alignset.microscopename,
+        ms = MetadataSummary(self.slideID,self.alignset.Project,self.alignset.Cohort,self.alignset.microscopename,
                              str(min([r.t for r in self.alignset.rectangles])),str(max([r.t for r in self.alignset.rectangles])))
         field_logs = []
         for r in self.alignset.rectangles :
-            field_logs.append(FieldLog(self.samp_name,r.file,r.n))
+            field_logs.append(FieldLog(self.slideID,r.file,r.n))
         with cd(self.working_dir) :
             writetable(f'metadata_summary_{os.path.basename(os.path.normpath(self.working_dir))}.csv',[ms])
             writetable(f'field_log_{os.path.basename(os.path.normpath(self.working_dir))}.csv',field_logs)
         #get the list of raw file paths
-        self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.samp_name,fn.replace(CONST.IM3_EXT,CONST.RAW_EXT)) 
+        self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.slideID,fn.replace(CONST.IM3_EXT,CONST.RAW_EXT)) 
                               for fn in [r.file for r in self.alignset.rectangles]]
-        #get the size of the images in the sample
-        m, n, nlayers = getImageHWLFromXMLFile(self.metadata_top_dir,samplename)
+        #get the size of the images in the slide
+        m, n, nlayers = getImageHWLFromXMLFile(self.root_dir,slideID)
         if layer<1 or layer>nlayers :
             raise WarpingError(f'ERROR: Choice of layer ({layer}) is not valid for images with {nlayers} layers!')
         #make the warpset object to use
@@ -86,10 +86,10 @@ class WarpFitter :
         """
         Remove the placeholder files when the object is being deleted
         """
-        if os.path.isdir(os.path.join(self.working_dir,self.samp_name)) :
+        if os.path.isdir(os.path.join(self.working_dir,self.slideID)) :
             warp_logger.info('Removing copied raw layer files....')
             with cd(self.working_dir) :
-                shutil.rmtree(self.samp_name)
+                shutil.rmtree(self.slideID)
         try:
             units.setup(self.bkp_units_mode)
         except TypeError: #units was garbage collected before the warpfitter
@@ -104,18 +104,21 @@ class WarpFitter :
         n_threads                 = how many different processes to run when loading files
         """
         #load the exposure time correction offsets and the median exposure times by layer
-        med_exp_time, et_correction_offset = getMedianExposureTimeAndCorrectionOffsetForSampleLayer(self.metadata_top_dir,self.samp_name,
-                                                                                                 et_correction_offset_file,self.warpset.layer)
+        if et_correction_offset_file is not None :
+            med_exp_time, et_correction_offset = getMedianExposureTimeAndCorrectionOffsetForSlideLayer(self.root_dir,self.slideID,
+                                                                                                        et_correction_offset_file,self.warpset.layer)
+        else :
+            med_exp_time, et_correction_offset = None, None
         #load the raw images
-        self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.metadata_top_dir,
+        self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.root_dir,
                                    flatfield_file_path,med_exp_time,et_correction_offset,
                                    n_threads)
         #warp the loaded images and write them out once to replace the images in the alignment set
         self.warpset.warpLoadedImages()
         with cd(self.working_dir) :
-            if not os.path.isdir(self.samp_name) :
-                os.mkdir(self.samp_name)
-        self.warpset.writeOutWarpedImages(os.path.join(self.working_dir,self.samp_name))
+            if not os.path.isdir(self.slideID) :
+                os.mkdir(self.slideID)
+        self.warpset.writeOutWarpedImages(os.path.join(self.working_dir,self.slideID))
         self.alignset.getDAPI()
 
     def doFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
@@ -207,7 +210,7 @@ class WarpFitter :
         self.warpset.warpLoadedImages(skip_corners=self.skip_corners)
         #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages(self.warpset.images_no_corners if self.skip_corners else self.warpset.images)
-        #check the warp amounts to see if the sample should be realigned
+        #check the warp amounts to see if the slide should be realigned
         rad_warp = self.warpset.warp.maxRadialDistortAmount(warp_pars)
         tan_warp = self.warpset.warp.maxTangentialDistortAmount(warp_pars)
         align_strategy = 'overwrite' if (abs(rad_warp)<self.fitpars.max_rad_warp) and (tan_warp<self.fitpars.max_tan_warp) else 'shift_only'
@@ -266,7 +269,7 @@ class WarpFitter :
         self._de_population_size = len(initial_population)
         #don't skip the corner overlaps
         self.skip_corners = False
-        #figure out the normalization for the image sample used
+        #figure out the normalization for the image slide used
         self.cost_norm = self.__getCostNormalization()
         #run the minimization
         warp_logger.info('Starting initial minimization....')
@@ -295,7 +298,7 @@ class WarpFitter :
         parameter_bounds, constraints, init_pars, rel_steps = self.__getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
         #still don't skip the corner overlaps
         self.skip_corners = False
-        #figure out the normalization for the image sample used
+        #figure out the normalization for the image slide used
         self.cost_norm = self.__getCostNormalization()
         #call minimize with trust_constr
         warp_logger.info('Starting polishing minimization....')
@@ -558,7 +561,7 @@ class WarpFitter :
     def __initializeAlignmentSet(self, *, overlaps) :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
-        a = AlignmentSetFromXML(self.metadata_top_dir,self.working_dir,self.samp_name,nclip=CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
+        a = AlignmentSetFromXML(self.root_dir,self.working_dir,self.slideID,nclip=CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
                                 selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True,filetype="camWarp")
         return a
 
