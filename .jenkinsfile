@@ -8,6 +8,12 @@ pipeline {
   }
 
   stages {
+    stage('pip install') {
+      steps {
+        sh 'pip install .'
+      }
+    }
+
     stage('setup') {
       parallel {
         stage('setup dbload folder') {
