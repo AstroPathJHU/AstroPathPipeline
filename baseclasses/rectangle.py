@@ -1,4 +1,4 @@
-import abc, collections, contextlib, dataclasses, datetime, jxmlease, methodtools, numpy as np, pathlib, warnings
+import abc, collections, contextlib, dataclasses, datetime, jxmlease, methodtools, numpy as np, pathlib, tifffile, warnings
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, memmapcontext
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
@@ -166,6 +166,46 @@ class RectangleReadImageBase(RectangleWithImageBase):
 
     return image
 
+class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
+  def __init__(self, *args, imagefolder, layers, nlayers, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__imagefolder = pathlib.Path(imagefolder)
+    self.__layers = layers
+    self.__nlayers = nlayers
+
+  @property
+  def imagefile(self):
+    return self.__imagefolder/self.file.replace(".im3", "_component_data.tif")
+
+  @property
+  def layers(self):
+    return self.__layers
+
+  def getimage(self):
+    with tifffile.TiffFile(self.imagefile) as f:
+      pages = []
+      shape = None
+      dtype = None
+      for page in f.pages:
+        if len(page.shape) == 2:
+          pages.append(page)
+          if shape is None:
+            shape = page.shape
+          elif shape != page.shape:
+            raise ValueError(f"Found pages with different shapes in the component tiff {shape} {page.shape}")
+          if dtype is None:
+            dtype = page.dtype
+          elif dtype != page.dtype:
+            raise ValueError(f"Found pages with different dtypes in the component tiff {dtype} {page.dtype}")
+      if len(pages) != self.__nlayers:
+        raise IOError(f"Wrong number of layers {len(pages)} in the component tiff, expected {self.__nlayers}")
+      image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)
+
+      for i, layer in enumerate(self.__layers):
+        image[i] = pages[layer-1].asarray()
+
+      return image
+
 class RectangleWithImageMultiLayer(RectangleReadImageBase):
   def __init__(self, *args, imagefolder, filetype, width, height, layers, nlayers, xmlfolder=None, **kwargs):
     super().__init__(*args, **kwargs)
@@ -308,6 +348,17 @@ class RectangleWithImage(RectangleWithImageMultiLayer):
   def broadbandfilter(self):
     _, = self.broadbandfilters
     return _
+
+class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
+  def __init__(self, *args, layer, **kwargs):
+    morekwargs = {
+      "layers": (layer,),
+    }
+    super().__init__(*args, **kwargs, **morekwargs)
+    self.__layer = layer
+
+  @property
+  def layer(self): return self.__layer
 
 class RectangleCollection(abc.ABC):
   @abc.abstractproperty

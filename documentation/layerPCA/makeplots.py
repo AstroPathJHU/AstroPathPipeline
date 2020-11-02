@@ -1,6 +1,6 @@
 import argparse, matplotlib.pyplot as plt, numpy as np, pathlib, pickle, sklearn.decomposition
 
-from microscopealignment.baseclasses.sample import ReadRectanglesOverlaps
+from microscopealignment.baseclasses.sample import ReadRectanglesOverlapsIm3
 from microscopealignment.utilities import units
 
 here = pathlib.Path(__file__).parent
@@ -9,7 +9,7 @@ root1 = pathlib.Path(r"\\Bki02\e\Clinical_Specimen")
 root2 = pathlib.Path(r"\\BKI04\flatw")
 samp = "M41_1"
 
-class MyReadRectanglesOverlaps(ReadRectanglesOverlaps):
+class MyReadRectanglesOverlapsIm3(ReadRectanglesOverlapsIm3):
   @property
   def filetype(self):
     return "flatWarp"
@@ -20,7 +20,7 @@ class MyReadRectanglesOverlaps(ReadRectanglesOverlaps):
 
 def makePCA():
   pca = sklearn.decomposition.IncrementalPCA(n_components=35)
-  A = MyReadRectanglesOverlaps(root1, root2, samp, layers=range(1, 36))
+  A = MyReadRectanglesOverlapsIm3(root1, root2, samp, layers=range(1, 36))
 
   n = max(len(A.rectangles), 1000)
   for i, r in enumerate(A.rectangles, start=1):
@@ -37,7 +37,7 @@ def makeplots():
   with open(here/"PCA.pkl", "rb") as f:
     pca = pickle.load(f)
 
-  A = MyReadRectanglesOverlaps(root1, root2, samp, layers=range(1, 36))
+  A = MyReadRectanglesOverlapsIm3(root1, root2, samp, layers=range(1, 36))
   r = A.rectangles[1600]
   with r.using_image() as image, plt.rc_context({
       #"figure.figsize": (5, 5)

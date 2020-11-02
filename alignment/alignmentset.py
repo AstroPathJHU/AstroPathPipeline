@@ -3,7 +3,7 @@
 import contextlib, cv2, methodtools, numpy as np, traceback
 
 from ..baseclasses.overlap import RectangleOverlapCollection
-from ..baseclasses.sample import FlatwSampleBase, ReadRectanglesOverlaps, ReadRectanglesOverlapsFromXML
+from ..baseclasses.sample import FlatwSampleBase, ReadRectanglesOverlapsIm3, ReadRectanglesOverlapsIm3FromXML
 from ..utilities import units
 from ..utilities.tableio import readtable, writetable
 from .imagestats import ImageStats
@@ -216,7 +216,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   def fielddict(self):
     return self.fields.rectangledict
 
-class AlignmentSet(AlignmentSetBase, ReadRectanglesOverlaps):
+class AlignmentSet(AlignmentSetBase, ReadRectanglesOverlapsIm3):
   @methodtools.lru_cache()
   def image(self):
     return cv2.imread(str(self.dbload/(self.SlideID+"_qptiff.jpg")))
@@ -342,7 +342,7 @@ class AlignmentSet(AlignmentSetBase, ReadRectanglesOverlaps):
       self.writealignments()
     return result
 
-class AlignmentSetFromXML(AlignmentSetBase, ReadRectanglesOverlapsFromXML):
+class AlignmentSetFromXML(AlignmentSetBase, ReadRectanglesOverlapsIm3FromXML):
   def __init__(self, *args, nclip, position=None, **kwargs):
     self.__nclip = nclip
     super().__init__(*args, **kwargs)

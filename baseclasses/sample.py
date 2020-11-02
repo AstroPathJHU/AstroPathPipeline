@@ -6,7 +6,7 @@ from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Constant, RectangleFile
 from .logging import getlogger
-from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleWithImage, RectangleWithImageMultiLayer
+from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleWithImage, RectangleWithImageMultiLayer
 from .overlap import Overlap, RectangleOverlapCollection
 
 @dataclass_dc_init(frozen=True)
@@ -143,7 +143,7 @@ class SampleBase(contextlib.ExitStack):
 
   @methodtools.lru_cache()
   @property
-  def nlayers(self):
+  def nlayersim3(self):
     with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "Shape":
@@ -151,6 +151,13 @@ class SampleBase(contextlib.ExitStack):
           return nlayers
       else:
         raise IOError(f'Couldn\'t find Shape in {self.xmlfolder/(self.SlideID+".Parameters.xml")}')
+
+  @methodtools.lru_cache()
+  @property
+  def nlayersunmixed(self):
+    with open(self.componenttiffsfolder/"batch_procedure.ifp", "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+        return int(node.xml_attrs["dim"])
 
   def getimageinfos(self):
     result = {}
@@ -308,6 +315,41 @@ class SampleThatReadsOverlaps(SampleThatReadsRectangles):
 class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsRectangles, RectangleCollection):
   @abc.abstractmethod
   def readallrectangles(self): pass
+  @abc.abstractproperty
+  def rectangletype(self): pass
+  @property
+  def rectangleextrakwargs(self):
+    kwargs = {
+      "pscale": self.pscale,
+    }
+    return kwargs
+
+  def __init__(self, *args, selectrectangles=None, layers=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if layers is None:
+      layers = range(1, self.nlayers+1)
+    self.__layers = layers
+    rectanglefilter = rectangleoroverlapfilter(selectrectangles)
+    self.__rectangles  = self.readallrectangles()
+    self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
+
+  @property
+  def _rectangles(self):
+    assert False
+  @_rectangles.setter
+  def _rectangles(self, value):
+    self.__rectangles = value
+
+  @property
+  def rectangles(self): return self.__rectangles
+
+  @property
+  def layers(self): return self.__layers
+
+class ReadRectanglesIm3Base(ReadRectanglesBase):
+  @property
+  def nlayers(self):
+    return self.nlayersim3
   @property
   def rectangletype(self):
     if self.multilayer:
@@ -317,7 +359,7 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsRectangles, RectangleCo
   @property
   def rectangleextrakwargs(self):
     kwargs = {
-      "pscale": self.pscale,
+      **super().rectangleextrakwargs,
       "imagefolder": self.root2/self.SlideID,
       "filetype": self.filetype,
       "width": self.fwidth,
@@ -342,43 +384,28 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsRectangles, RectangleCo
       if not self.__readlayerfile:
         kwargs["nlayers"] = self.nlayers
     return kwargs
+
   @property
   def filetype(self): return self.__filetype
 
   multilayer = False #can override in subclasses
 
-  def __init__(self, *args, filetype, selectrectangles=None, layer=None, layers=None, readlayerfile=True, **kwargs):
-    super().__init__(*args, **kwargs)
+  def __init__(self, *args, filetype, layer=None, layers=None, readlayerfile=True, **kwargs):
     self.__filetype = filetype
 
     if self.multilayer:
       if layer is not None:
         raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
-      if layers is None:
-        layers = range(1, self.nlayers+1)
-      self.__layers = layers
     else:
       if layers is not None:
         raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
       if layer is None:
         layer = 1
       self.__layer = layer
+      layers = layer,
     self.__readlayerfile = readlayerfile
 
-    rectanglefilter = rectangleoroverlapfilter(selectrectangles)
-
-    self.__rectangles  = self.readallrectangles()
-    self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
-
-  @property
-  def _rectangles(self):
-    assert False
-  @_rectangles.setter
-  def _rectangles(self, value):
-    self.__rectangles = value
-
-  @property
-  def rectangles(self): return self.__rectangles
+    super().__init__(*args, layers=layers, **kwargs)
 
   @property
   def layer(self):
@@ -386,11 +413,54 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsRectangles, RectangleCo
       raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
     return self.__layer
 
+class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
   @property
-  def layers(self):
-    if not self.multilayer:
-      raise TypeError(f"Can't get layers for a single layer sample {type(self).__name__}")
-    return self.__layers
+  def nlayers(self):
+    return self.nlayersunmixed
+  @property
+  def rectangletype(self):
+    if self.multilayer:
+      return RectangleReadComponentTiffMultiLayer
+    else:
+      return RectangleReadComponentTiff
+  @property
+  def rectangleextrakwargs(self):
+    kwargs = {
+      **super().rectangleextrakwargs,
+      "imagefolder": self.componenttiffsfolder,
+    }
+    if self.multilayer:
+      kwargs.update({
+        "layers": self.layers,
+        "nlayers": self.nlayers,
+      })
+    else:
+      kwargs.update({
+        "layer": self.layer,
+      })
+    return kwargs
+
+  multilayer = True #can override in subclasses
+
+  def __init__(self, *args, layer=None, layers=None, **kwargs):
+    if self.multilayer:
+      if layer is not None:
+        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
+    else:
+      if layers is not None:
+        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
+      if layer is None:
+        layer = 1
+      self.__layer = layer
+      layers = layer,
+
+    super().__init__(*args, layers=layers, **kwargs)
+
+  @property
+  def layer(self):
+    if self.multilayer:
+      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
+    return self.__layer
 
 class ReadRectanglesOverlapsBase(ReadRectanglesBase, SampleThatReadsOverlaps, RectangleOverlapCollection):
   @abc.abstractmethod
@@ -415,14 +485,30 @@ class ReadRectanglesOverlapsBase(ReadRectanglesBase, SampleThatReadsOverlaps, Re
   @property
   def overlaps(self): return self.__overlaps
 
+class ReadRectanglesOverlapsIm3Base(ReadRectanglesOverlapsBase, ReadRectanglesIm3Base):
+  pass
+
 class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
+  @property
+  def rectanglecsv(self): return "rect"
   def readallrectangles(self, **extrakwargs):
-    return self.readcsv("rect", self.rectangletype, extrakwargs={**self.rectangleextrakwargs, **extrakwargs})
+    return self.readcsv(self.rectanglecsv, self.rectangletype, extrakwargs={**self.rectangleextrakwargs, **extrakwargs})
+
+class ReadRectanglesIm3(ReadRectangles, ReadRectanglesIm3Base):
+  pass
+
+class ReadRectanglesComponentTiff(ReadRectangles, ReadRectanglesComponentTiffBase):
+  pass
 
 class ReadRectanglesOverlaps(ReadRectangles, ReadRectanglesOverlapsBase):
+  @property
+  def overlapcsv(self): return "overlap"
   def readalloverlaps(self, *, overlaptype=None, **extrakwargs):
     if overlaptype is None: overlaptype = self.overlaptype
-    return self.readcsv("overlap", overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
+    return self.readcsv(self.overlapcsv, overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
+
+class ReadRectanglesOverlapsIm3(ReadRectanglesOverlaps, ReadRectanglesOverlapsIm3Base):
+  pass
 
 class XMLLayoutReader(SampleThatReadsOverlaps):
   def __init__(self, *args, checkim3s=False, **kwargs):
@@ -532,6 +618,13 @@ class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
     rectangles = self.getrectanglelayout()
     return [self.rectangletype(rectangle=r, readingfromfile=False, **self.rectangleextrakwargs, **extrakwargs) for r in rectangles]
 
+class ReadRectanglesIm3FromXML(ReadRectanglesIm3Base, ReadRectanglesFromXML):
+  pass
+
 class ReadRectanglesOverlapsFromXML(ReadRectanglesFromXML, ReadRectanglesOverlapsBase):
   def readalloverlaps(self, **kwargs):
     return self.getoverlaps(**kwargs)
+
+class ReadRectanglesOverlapsIm3FromXML(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsFromXML):
+  pass
+
