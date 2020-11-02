@@ -13,13 +13,6 @@ import os, logging, math, dataclasses, more_itertools
 class FlatFieldError(Exception) :
     pass
 
-#logger
-flatfield_logger = logging.getLogger("flatfield")
-flatfield_logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S"))
-flatfield_logger.addHandler(handler)
-
 #helper class for logging included/excluded fields
 @dataclasses.dataclass
 class FieldLog :
@@ -38,19 +31,20 @@ class FlatfieldSlideInfo :
 
 #################### GENERAL HELPER FUNCTIONS ####################
 
-#helper function to convert an image array into a flattened pixel histogram
-def getImageArrayLayerHistograms(img_array, mask=slice(None)) :
-    nbins = np.iinfo(img_array.dtype).max+1
-    nlayers = img_array.shape[2] if len(img_array.shape)>2 else 1
-    if nlayers>1 :
-        layer_hists = np.empty((nbins,nlayers),dtype=np.int64)
-        for li in range(nlayers) :
-            layer_hist,_ = np.histogram(img_array[:,:,li][mask],nbins,(0,nbins))
-            layer_hists[:,li]=layer_hist
-        return layer_hists
-    else :
-        layer_hist,_ = np.histogram(img_array[mask],nbins,(0,nbins))
-        return layer_hist
+#helper function to define a general global logger for the batch run modes
+def getGlobalLogger(modulename,workingdir_path) :
+    logger = logging.getLogger(modulename)
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("-1;-1;-1;None;%(message)s;%(asctime)s","%Y-%m-%d %H:%M:%S")
+    printhandler = logging.StreamHandler()
+    printhandler.setFormatter(formatter)
+    printhandler.setLevel(logging.DEBUG)
+    logger.addHandler(printhandler)
+    filehandler = logging.FileHandler(os.path.join(workingdir_path,f'{modulename}_global.log'))
+    filehandler.setFormatter(formatter)
+    filehandler.setLevel(logging.INFO)
+    logger.addHandler(filehandler)
+    return logger
 
 #helper function to return the slide name from a whole filepath
 def slideNameFromFilepath(fp) :
@@ -65,6 +59,20 @@ def getSlideMeanImageWorkingDirPath(slide) :
     if not os.path.isdir(path) :
         os.mkdir(path)
     return path
+
+#helper function to convert an image array into a flattened pixel histogram
+def getImageArrayLayerHistograms(img_array, mask=slice(None)) :
+    nbins = np.iinfo(img_array.dtype).max+1
+    nlayers = img_array.shape[2] if len(img_array.shape)>2 else 1
+    if nlayers>1 :
+        layer_hists = np.empty((nbins,nlayers),dtype=np.int64)
+        for li in range(nlayers) :
+            layer_hist,_ = np.histogram(img_array[:,:,li][mask],nbins,(0,nbins))
+            layer_hists[:,li]=layer_hist
+        return layer_hists
+    else :
+        layer_hist,_ = np.histogram(img_array[mask],nbins,(0,nbins))
+        return layer_hist
 
 #################### THRESHOLDING HELPER FUNCTIONS ####################
 
