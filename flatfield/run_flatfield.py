@@ -1,13 +1,11 @@
 #imports
 from .flatfield_producer import FlatfieldProducer
-from .utilities import flatfield_logger, slideNameFromFilepath, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath
+from .utilities import flatfield_logger, slideNameFromFilepath, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath, getGlobalLogger
 from .config import CONST 
-from ..baseclasses.sample import SampleDef
-from ..baseclasses.logging import getlogger
 from ..utilities.tableio import readtable
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 from argparse import ArgumentParser
-import os, glob, random, sys
+import os, glob, random, sys, traceback
 
 #################### FILE-SCOPE CONSTANTS ####################
 
@@ -284,61 +282,56 @@ def main() :
     run_option_group.add_argument('--other_runs_to_exclude',       default='',                         type=split_csv_to_list,
                                   help='Comma-separated list of additional, previously-run, working directories whose filepaths should be excluded')
     args = parser.parse_args()
-    #make the working directory and module name
+    #make the working directory, module name, and logger
     if a.mode=='slide_mean_image' :
         workingdir_path = getSlideMeanImageWorkingDirPath(slides_to_run[0])
         module = 'slide_mean_image'
     else :
         workingdir_path = os.path.abspath(os.path.normpath(args.workingdir_name))
+        module='flatfield'
     if not os.path.isdir(workingdir_path) :
         os.path.mkdir(workingdir_path)
-    #set up the logfiles
-    mainlog = os.path.join(workingdir_path,f'{module}.log')
-    samplelog = os.path.join(workingdir_path,f'{args.slideID}-{module}.log')
-    imagelog = os.path.join(args.workingdir,f'{args.slideID}_images-{module}.log')
-    samp = SampleDef(SlideID=args.slideID,root=args.root_dir)
-    #with getlogger(module=module,root=args.root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,imagelog=imagelog,reraiseexceptions=False) as logger :
-
-
-
-
-    #make sure the command line arguments make sense
-    checkArgs(args)
-    #get the list of filepaths to run and the names of their slides
-    all_filepaths, filepaths_to_run, slides_to_run = getFilepathsAndSlidesToRun(args)
-    if args.mode=='check_run' :
-        sys.exit()
-    #see if the code is running in batch mode (i.e. minimal output in automatic locations) and figure out the working directory path if so
-    batch_mode = a.mode=='slide_mean_image'
-    #start up a flatfield producer
-    ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,workingdir_path,args.skip_exposure_time_correction,args.skip_masking)
-    #write out the text file of all the raw file paths that will be run
-    if not batch_mode :
-        ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
-        if args.mode=='choose_image_files' :
+    logger = getGlobalLogger(module,workingdir_path)
+    try :
+        #make sure the command line arguments make sense
+        checkArgs(args)
+        #get the list of filepaths to run and the names of their slides
+        all_filepaths, filepaths_to_run, slides_to_run = getFilepathsAndSlidesToRun(args)
+        if args.mode=='check_run' :
             sys.exit()
-    #First read in the exposure time correction offsets from the given directory
-    if not args.skip_exposure_time_correction :
-        ff_producer.readInExposureTimeCorrectionOffsets(args.exposure_time_offset_file)
-    #next figure out the background thresholds per layer by looking at the HPFs on the tissue edges
-    if not args.skip_masking :
-        if args.threshold_file_dir is not None :
-            ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
-        else :
-            ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
-    if args.mode in ['slide_mean_image','make_flatfield', 'apply_flatfield'] :
-        #mask and stack images together
-        ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_slide,args.allow_edge_HPFs)
-        if args.mode=='make_flatfield' :
-            #make the flatfield image
-            ff_producer.makeFlatField()
-        elif args.mode=='apply_flatfield' :
-            #apply the flatfield to the image stack
-            prior_run_ff_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(args.prior_run_dir))}{CONST.FILE_EXT}'
-            ff_producer.applyFlatField(os.path.join(args.prior_run_dir,prior_run_ff_filename))
-        #save the plots, etc.
-        ff_producer.writeOutInfo()
-    flatfield_logger.info('All Done!')
+        #see if the code is running in batch mode (i.e. minimal output in automatic locations) and figure out the working directory path if so
+        batch_mode = a.mode=='slide_mean_image'
+        #start up a flatfield producer
+        ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,workingdir_path,args.skip_exposure_time_correction,args.skip_masking)
+        #write out the text file of all the raw file paths that will be run
+        if not batch_mode :
+            ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
+            if args.mode=='choose_image_files' :
+                sys.exit()
+        #First read in the exposure time correction offsets from the given directory
+        if not args.skip_exposure_time_correction :
+            ff_producer.readInExposureTimeCorrectionOffsets(args.exposure_time_offset_file)
+        #next figure out the background thresholds per layer by looking at the HPFs on the tissue edges
+        if not args.skip_masking :
+            if args.threshold_file_dir is not None :
+                ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
+            else :
+                ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
+        if args.mode in ['slide_mean_image','make_flatfield', 'apply_flatfield'] :
+            #mask and stack images together
+            ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_slide,args.allow_edge_HPFs)
+            if args.mode=='make_flatfield' :
+                #make the flatfield image
+                ff_producer.makeFlatField()
+            elif args.mode=='apply_flatfield' :
+                #apply the flatfield to the image stack
+                prior_run_ff_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(args.prior_run_dir))}{CONST.FILE_EXT}'
+                ff_producer.applyFlatField(os.path.join(args.prior_run_dir,prior_run_ff_filename))
+            #save the plots, etc.
+            ff_producer.writeOutInfo()
+    except Exception as e :
+        logger.error(f'ERROR: something went wrong in running the flatfield code. Exception: {e}')
+        logger.info(repr(traceback.format_tb(e.__traceback__).replace(";", ""))
 
 if __name__=='__main__' :
     main()
