@@ -1,7 +1,9 @@
 #imports
 from .flatfield_producer import FlatfieldProducer
-from .utilities import flatfield_logger, slideNameFromFilepath, FlatfieldSlideInfo
+from .utilities import flatfield_logger, slideNameFromFilepath, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath
 from .config import CONST 
+from ..baseclasses.sample import SampleDef
+from ..baseclasses.logging import getlogger
 from ..utilities.tableio import readtable
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 from argparse import ArgumentParser
@@ -10,12 +12,39 @@ import os, glob, random, sys
 #################### FILE-SCOPE CONSTANTS ####################
 
 FILEPATH_TEXT_FILE_NAME = 'filepath_log.txt' #what the filepath log file is called
+DEFAULT_SELECTED_PIXEL_CUT = 0.8
 
 #################### HELPER FUNCTIONS ####################
 
 #helper function to make sure arguments are valid
 def checkArgs(a) :
-    #if the user wants to apply a previously-calculated flatfield, the flatfield itself and rawfile log both have to exist in the prior run dir
+    #first check the different batch mode options, which don't accept every argument
+    if a.mode=='slide_mean_image' :
+        #working directory name is automatic
+        if a.workingdir_name is not None :
+            raise ValueError('ERROR: running in slide_mean_image mode uses an automatic working directory, please remove the workingdir_name argument!') 
+        #need rawfile and root directories (i.e. don't use a sample definition csv file)
+        if a.rawfile_top_dir is None or a.root_dir is None :
+            raise ValueError('ERROR: must specify rawfile and root directories to run in slide_mean_image mode!')
+        #make sure it'll run on exactly one sample
+        if len(split_csv_to_list(a.slides))!=1 :
+            raise ValueError(f'ERROR: running in slide_mean_image mode requires running one slide at a time, but slides argument = {a.slides}!')
+        #the whole file selection group is irrelevant (plus also other runs to exclude)
+        if (a.prior_run_dir is not None) or (a.max_images!=-1) or (a.selection_mode!='random') or a.allow_edge_HPFs or a.other_runs_to_exclude!=[''] :
+            raise ValueError('ERROR: file selection is done automatically in slide_mean_image mode!')
+        #only ever run using image masks
+        if a.skip_masking :
+            raise ValueError('ERROR: running in slide_mean_image mode is not compatible with skipping masking! Remove the skip_masking flag!')
+        #can't save masking images
+        if a.n_masking_images_per_slide!=0 :
+            raise ValueError('ERROR: cannot save masking images when running in slide_mean_image mode!')
+        #can only use the default selected pixel cut
+        if a.selected_pixel_cut!=DEFAULT_SELECTED_PIXEL_CUT :
+            raise ValueError(f'ERROR: when running in slide_mean_image mode only the default selected pixel cut of {DEFAULT_SELECTED_PIXEL_CUT} is valid!')
+    #otherwise there needs to be a working directory
+    elif a.workingdir_name is None :
+            raise ValueError('ERROR: the workingdir_name argument is required!') 
+    #otherwise, if the user wants to apply a previously-calculated flatfield, the flatfield itself and rawfile log both have to exist in the prior run dir
     if a.mode=='apply_flatfield' :  
         if a.prior_run_dir is None :
             raise RuntimeError('ERROR: apply_flatfield mode requires a specified prior_run_dir!')
@@ -45,7 +74,7 @@ def checkArgs(a) :
         for sn in split_csv_to_list(a.slides) :
             slides.append(FlatfieldSlideInfo(sn,a.rawfile_top_dir,a.root_dir))
     if slides is None or len(slides)<1 :
-        raise ValueError(f"""ERROR: Slides '{a.slides}', rawfile top dir '{a.rawfile_top_dir}', and root_dir '{a.root_dir}' 
+        raise ValueError(f"""ERROR: Slides '{a.slides}', rawfile top dir '{a.rawfile_top_dir}', and root dir '{a.root_dir}' 
                              did not result in a valid list of slides!""")
     #make sure all of the slides' necessary directories exist
     for slide in slides :
@@ -55,9 +84,6 @@ def checkArgs(a) :
         mfd = os.path.join(slide.root_dir,slide.name)
         if not os.path.isdir(rfd) :
             raise ValueError(f'ERROR: slide root directory {mfd} does not exist!')
-    #create the working directory if it doesn't already exist
-    if not os.path.isdir(a.workingdir_name) :
-        os.mkdir(a.workingdir_name)
     #if exposure time corrections are being done, make sure the file actually exists
     if not a.skip_exposure_time_correction :
         if not os.path.isfile(a.exposure_time_offset_file) :
@@ -65,9 +91,15 @@ def checkArgs(a) :
     #if the user wants to save example masking plots, they can't be skipping masking
     if a.skip_masking and a.n_masking_images_per_slide!=0 :
         raise RuntimeError("ERROR: can't save masking images if masking is being skipped!")
-    #make sure the threshold file directory exists if it's specified
-    if a.threshold_file_dir is not None and (not os.path.isdir(a.threshold_file_dir)) :
-        raise ValueError(f'ERROR: Threshold file directory {a.threshold_file_dir} does not exist!')
+    #make sure the threshold file directory exists if it's specified, with the requisite sample background threshold files
+    if a.threshold_file_dir is not None :
+        if not os.path.isdir(a.threshold_file_dir) :
+            raise ValueError(f'ERROR: Threshold file directory {a.threshold_file_dir} does not exist!')
+        for sn in [s.name for s in slides] :
+            tfn = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
+            tfp = os.path.join(a.threshold_file_dir,tfn)
+            if not os.path.isfile(tfp) :
+                raise FileNotFoundError(f'ERROR: background threshold file {tfp} does not exist!')
     #make sure the selected pixel fraction is a valid number
     if a.selected_pixel_cut<0.0 or a.selected_pixel_cut>1.0 :
         raise ValueError(f'ERROR: selected pixel cut fraction {a.selected_pixel_cut} must be between 0 and 1!')
@@ -204,12 +236,13 @@ def main() :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #general positional arguments
-    parser.add_argument('mode', choices=['make_flatfield','apply_flatfield','calculate_thresholds','check_run','choose_image_files'],                  
+    parser.add_argument('mode', choices=['slide_mean_image','make_flatfield','apply_flatfield','calculate_thresholds','check_run','choose_image_files'],                  
                         help='Which operation to perform')
-    parser.add_argument('workingdir_name', 
-                        help='Name of working directory to save created files in')
     #add the exposure time correction group to the arguments
     addCommonArgumentsToParser(parser,positional_args=False,flatfielding=False,warping=False)
+    #the name of the working directory (optional because it's automatic in batch mode)
+    parser.add_argument('--workingdir_name', 
+                        help='Name of working directory to save created files in')
     #add the group for defining the slide(s) to run on
     slide_definition_group = parser.add_argument_group('slide definition',
                                                         'what slides should be used, and where to find their files')
@@ -242,27 +275,48 @@ def main() :
                                       help="""Add this flag to allow HPFs on the tissue edges to be stacked (not allowed by default)""")
     #group for some run options
     run_option_group = parser.add_argument_group('run options','other options for this run')
-    run_option_group.add_argument('--n_threads',                   default=10,  type=int,         
+    run_option_group.add_argument('--n_threads',                   default=10,                         type=int,         
                                   help='Number of threads/processes to run at once in parallelized portions of the code')
-    run_option_group.add_argument('--n_masking_images_per_slide', default=2,   type=int,         
+    run_option_group.add_argument('--n_masking_images_per_slide',  default=0,                          type=int,         
                                   help='How many example masking images to save for each slide (randomly chosen)')
-    run_option_group.add_argument('--selected_pixel_cut',          default=0.8, type=float,         
+    run_option_group.add_argument('--selected_pixel_cut',          default=DEFAULT_SELECTED_PIXEL_CUT, type=float,         
                                   help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
-    run_option_group.add_argument('--other_runs_to_exclude',       default='',  type=split_csv_to_list,
+    run_option_group.add_argument('--other_runs_to_exclude',       default='',                         type=split_csv_to_list,
                                   help='Comma-separated list of additional, previously-run, working directories whose filepaths should be excluded')
     args = parser.parse_args()
+    #make the working directory and module name
+    if a.mode=='slide_mean_image' :
+        workingdir_path = getSlideMeanImageWorkingDirPath(slides_to_run[0])
+        module = 'slide_mean_image'
+    else :
+        workingdir_path = os.path.abspath(os.path.normpath(args.workingdir_name))
+    if not os.path.isdir(workingdir_path) :
+        os.path.mkdir(workingdir_path)
+    #set up the logfiles
+    mainlog = os.path.join(workingdir_path,f'{module}.log')
+    samplelog = os.path.join(workingdir_path,f'{args.slideID}-{module}.log')
+    imagelog = os.path.join(args.workingdir,f'{args.slideID}_images-{module}.log')
+    samp = SampleDef(SlideID=args.slideID,root=args.root_dir)
+    #with getlogger(module=module,root=args.root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,imagelog=imagelog,reraiseexceptions=False) as logger :
+
+
+
+
     #make sure the command line arguments make sense
     checkArgs(args)
     #get the list of filepaths to run and the names of their slides
     all_filepaths, filepaths_to_run, slides_to_run = getFilepathsAndSlidesToRun(args)
     if args.mode=='check_run' :
         sys.exit()
+    #see if the code is running in batch mode (i.e. minimal output in automatic locations) and figure out the working directory path if so
+    batch_mode = a.mode=='slide_mean_image'
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,args.workingdir_name,args.skip_exposure_time_correction,args.skip_masking)
+    ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,workingdir_path,args.skip_exposure_time_correction,args.skip_masking)
     #write out the text file of all the raw file paths that will be run
-    ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
-    if args.mode=='choose_image_files' :
-        sys.exit()
+    if not batch_mode :
+        ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
+        if args.mode=='choose_image_files' :
+            sys.exit()
     #First read in the exposure time correction offsets from the given directory
     if not args.skip_exposure_time_correction :
         ff_producer.readInExposureTimeCorrectionOffsets(args.exposure_time_offset_file)
@@ -272,13 +326,13 @@ def main() :
             ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
         else :
             ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
-    if args.mode in ['make_flatfield', 'apply_flatfield'] :
+    if args.mode in ['slide_mean_image','make_flatfield', 'apply_flatfield'] :
         #mask and stack images together
         ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_slide,args.allow_edge_HPFs)
         if args.mode=='make_flatfield' :
             #make the flatfield image
             ff_producer.makeFlatField()
-        if args.mode=='apply_flatfield' :
+        elif args.mode=='apply_flatfield' :
             #apply the flatfield to the image stack
             prior_run_ff_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(args.prior_run_dir))}{CONST.FILE_EXT}'
             ff_producer.applyFlatField(os.path.join(args.prior_run_dir,prior_run_ff_filename))

@@ -14,8 +14,8 @@ class MeanImage :
 
     #################### PROPERTIES ####################
     @property
-    def workingdir_name(self):
-        return self._workingdir_name #name of the working directory where everything gets saved
+    def workingdir_path(self):
+        return self._workingdir_path #name of the working directory where everything gets saved
     @property
     def dims(self):
         return self._dims
@@ -65,7 +65,7 @@ class MeanImage :
             self.LAST_FILTER_LAYERS=CONST.LAST_FILTER_LAYERS_43
         else :
             raise FlatFieldError(f'ERROR: no defined list of broadband filter breaks for images with {self.nlayers} layers!')
-        self._workingdir_name = workingdir_name
+        self._workingdir_path = workingdir_name
         self.skip_et_correction = skip_et_correction
         self.skip_masking = skip_masking
         self.smoothsigma = smoothsigma
@@ -85,7 +85,7 @@ class MeanImage :
         A function to add a list of raw image arrays to the image stack
         If masking is requested this function's subroutines are parallelized and also run on the GPU
         im_array_list         = list of image arrays to add
-        slide                = slide object corresponding to this group of images
+        slide                 = slide object corresponding to this group of images
         min_selected_pixels   = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
         ets_for_normalization = list of exposure times to use for normalizating images to counts/ms before stacking (but after masking)
         masking_plot_indices  = list of image array list indices whose masking plots will be saved
@@ -104,10 +104,11 @@ class MeanImage :
                 stacked_in_layers.append(list(range(1,self.nlayers+1)))
             return stacked_in_layers
         #otherwise produce the image masks, apply them to the raw images, and be sure to add them to the list in the same order as the images
-        with cd(self._workingdir_name) :
-            if not os.path.isdir(self.MASKING_PLOT_DIR_NAME) :
-                os.mkdir(self.MASKING_PLOT_DIR_NAME)
-        masking_plot_dirpath = os.path.join(self._workingdir_name,self.MASKING_PLOT_DIR_NAME)
+        if len(masking_plot_indices)>0 :
+            with cd(self._workingdir_path) :
+                if not os.path.isdir(self.MASKING_PLOT_DIR_NAME) :
+                    os.mkdir(self.MASKING_PLOT_DIR_NAME)
+        masking_plot_dirpath = os.path.join(self._workingdir_path,self.MASKING_PLOT_DIR_NAME)
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
@@ -169,7 +170,7 @@ class MeanImage :
         flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=CONST.IMG_DTYPE_OUT)
         self.corrected_mean_image=self.mean_image/flatfield_image
         self.smoothed_corrected_mean_image=smoothImageWorker(self.corrected_mean_image,self.smoothsigma)
-        with cd(self._workingdir_name) :
+        with cd(self._workingdir_path) :
             with open(self.APPLIED_FLATFIELD_TEXT_FILE_NAME,'w') as fp :
                 fp.write(f'{flatfield_file_path}\n')
 
@@ -177,7 +178,7 @@ class MeanImage :
         """
         Save the various images that are created
         """
-        with cd(self._workingdir_name) :
+        with cd(self._workingdir_path) :
             if self.mean_image is not None :
                 meanimage_filename = f'{self.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
                 writeImageToFile(self.mean_image,meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
@@ -185,7 +186,7 @@ class MeanImage :
                 smoothed_meanimage_filename = f'{self.SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
                 writeImageToFile(self.smoothed_mean_image,smoothed_meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
             if self.flatfield_image is not None :
-                flatfieldimage_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(self._workingdir_name))}{CONST.FILE_EXT}'
+                flatfieldimage_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(self._workingdir_path))}{CONST.FILE_EXT}'
                 writeImageToFile(self.flatfield_image,flatfieldimage_filename,dtype=CONST.IMG_DTYPE_OUT)
             if self.corrected_mean_image is not None :
                 corrected_mean_image_filename = f'{self.CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
@@ -201,7 +202,7 @@ class MeanImage :
         """
         Make and save several visualizations of the image layers and details of the masking and flatfielding
         """
-        with cd(self._workingdir_name) :
+        with cd(self._workingdir_path) :
             #make the plot directory if its not already created
             if not os.path.isdir(self.POSTRUN_PLOT_DIRECTORY_NAME) :
                 os.mkdir(self.POSTRUN_PLOT_DIRECTORY_NAME)

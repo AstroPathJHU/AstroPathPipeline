@@ -34,6 +34,9 @@ class Const :
     def THRESHOLDING_PLOT_DIR_NAME(self) :
         return 'thresholding_info' #name of the directory where the thresholding information will be stored
     @property
+    def AUTOMATIC_MEANIMAGE_DIRNAME(self) :
+        return 'meanimage'
+    @property
     def INTENSITY_FIG_WIDTH(self) :
         return 16.8 #width of the intensity plot figure
     @property

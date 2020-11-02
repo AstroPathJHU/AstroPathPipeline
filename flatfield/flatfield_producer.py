@@ -32,9 +32,9 @@ class FlatfieldProducer :
         """
         slides                         = list of FlatfieldSlideInfo objects for this run
         all_slide_rawfile_paths_to_run = list of paths to raw files to stack for all slides that will be run
-        workingdir_name                 = name of the directory to save everything in
-        skip_et_correction              = if True, image flux will NOT be corrected for exposure time differences in each layer
-        skip_masking                    = if True, image layers won't be masked before being added to the stack
+        workingdir_name                = name of the directory to save everything in
+        skip_et_correction             = if True, image flux will NOT be corrected for exposure time differences in each layer
+        skip_masking                   = if True, image layers won't be masked before being added to the stack
         """
         self.all_slide_rawfile_paths_to_run = all_slide_rawfile_paths_to_run
         #make a dictionary to hold all of the separate slides we'll be considering (keyed by name)
@@ -55,6 +55,26 @@ class FlatfieldProducer :
             self._et_correction_offsets.append(None)
         self._metadata_summaries = []
         self._field_logs = []
+
+    def readInExposureTimeCorrectionOffsets(self,et_correction_file) :
+        """
+        Function to read in the offset factors for exposure time corrections from the given directory
+        et_correction_file = path to file containing records of LayerOffset objects specifying an offset to use for each layer
+        """
+        #read in the file and get the offsets by layer
+        flatfield_logger.info(f'Copying exposure time offsets from file {et_correction_file}...')
+        if self._et_correction_offsets[0] is not None :
+            raise FlatFieldError('ERROR: calling readInExposureTimeCorrectionOffsets with an offset list already set!')
+        layer_offsets_from_file = readtable(et_correction_file,LayerOffset)
+        for ln in range(1,len(self._et_correction_offsets)+1) :
+            this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
+            if len(this_layer_offset)==1 :
+                self._et_correction_offsets[ln-1]=this_layer_offset[0]
+            elif len(this_layer_offset)==0 :
+                flatfield_logger.warn(f'WARNING: LayerOffset file {et_correction_file} does not have an entry for layer {ln}; offset will be set to zero!')
+                self._et_correction_offsets[ln-1]=0.
+            else :
+                raise FlatFieldError(f'ERROR: more than one entry found in LayerOffset file {et_correction_file} for layer {ln}!')
 
     def readInBackgroundThresholds(self,threshold_file_dir) :
         """
@@ -83,30 +103,10 @@ class FlatfieldProducer :
             new_field_logs = slide.findBackgroundThresholds([rfp for rfp in all_slide_rawfile_paths if slideNameFromFilepath(rfp)==sn],
                                                            n_threads,
                                                            self.exposure_time_correction_offsets,
-                                                           os.path.join(self.mean_image.workingdir_name,CONST.THRESHOLDING_PLOT_DIR_NAME),
+                                                           os.path.join(self.mean_image.workingdir_path,CONST.THRESHOLDING_PLOT_DIR_NAME),
                                                            threshold_file_name,
                                                         )
             self._field_logs+=new_field_logs
-
-    def readInExposureTimeCorrectionOffsets(self,et_correction_file) :
-        """
-        Function to read in the offset factors for exposure time corrections from the given directory
-        et_correction_file = path to file containing records of LayerOffset objects specifying an offset to use for each layer
-        """
-        #read in the file and get the offsets by layer
-        flatfield_logger.info(f'Copying exposure time offsets from file {et_correction_file}...')
-        if self._et_correction_offsets[0] is not None :
-            raise FlatFieldError('ERROR: calling readInExposureTimeCorrectionOffsets with an offset list already set!')
-        layer_offsets_from_file = readtable(et_correction_file,LayerOffset)
-        for ln in range(1,len(self._et_correction_offsets)+1) :
-            this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
-            if len(this_layer_offset)==1 :
-                self._et_correction_offsets[ln-1]=this_layer_offset[0]
-            elif len(this_layer_offset)==0 :
-                flatfield_logger.warn(f'WARNING: LayerOffset file {et_correction_file} does not have an entry for layer {ln}; offset will be set to zero!')
-                self._et_correction_offsets[ln-1]=0.
-            else :
-                raise FlatFieldError(f'ERROR: more than one entry found in LayerOffset file {et_correction_file} for layer {ln}!')
 
     def stackImages(self,n_threads,selected_pixel_cut,n_masking_images_per_slide,allow_edge_HPFs) :
         """
@@ -169,8 +169,8 @@ class FlatfieldProducer :
                     new_field_logs[fi].stacked_in_layers = fields_stacked_in_layers[fi]
                 self._field_logs+=new_field_logs
         #write out the list of metadata summaries
-        with cd(self.mean_image.workingdir_name) :
-            writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_name))}.csv',self._metadata_summaries)
+        with cd(self.mean_image.workingdir_path) :
+            writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._metadata_summaries)
 
     def makeFlatField(self) :
         """
@@ -192,9 +192,9 @@ class FlatfieldProducer :
         filename = name of the file to write to
         """
         flatfield_logger.info('Writing filepath text file....')
-        if not os.path.isdir(self.mean_image.workingdir_name) :
-            os.mkdir(self.mean_image.workingdir_name)
-        with cd(self.mean_image.workingdir_name) :
+        if not os.path.isdir(self.mean_image.workingdir_path) :
+            os.mkdir(self.mean_image.workingdir_path)
+        with cd(self.mean_image.workingdir_path) :
             with open(filename,'w') as fp :
                 for sn,slide in sorted(self.flatfield_slide_dict.items()) :
                     for path in [fp for fp in self.all_slide_rawfile_paths_to_run if slideNameFromFilepath(fp)==sn] :
@@ -210,5 +210,5 @@ class FlatfieldProducer :
         #make some visualizations of the images
         flatfield_logger.info('Saving plots....')
         self.mean_image.savePlots()
-        with cd(self.mean_image.workingdir_name) :
-            writetable(f'{self.FIELDS_USED_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_name))}.csv',self._field_logs)
+        with cd(self.mean_image.workingdir_path) :
+            writetable(f'{self.FIELDS_USED_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._field_logs)

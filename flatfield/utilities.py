@@ -56,6 +56,16 @@ def getImageArrayLayerHistograms(img_array, mask=slice(None)) :
 def slideNameFromFilepath(fp) :
     return os.path.basename(os.path.dirname(os.path.normpath(fp)))
 
+#helper function to make the automatic directory path for a single slide's mean image (and associated info)
+def getSlideMeanImageWorkingDirPath(slide) :
+    path = os.path.join(os.getcwd,CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
+    #path = os.path.join(os.path.abspath(os.path.normpath(slide.root_dir)),slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
+    if not os.path.isdir(os.path.dirname(path)) :
+        raise FlatFieldError(f'ERROR: working directory location {os.path.dirname(path)} does not exist!')
+    if not os.path.isdir(path) :
+        os.mkdir(path)
+    return path
+
 #################### THRESHOLDING HELPER FUNCTIONS ####################
 
 #helper function to determine the Otsu threshold given a histogram of pixel values 
