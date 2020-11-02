@@ -5,6 +5,7 @@ pipeline {
 
   environment {
     JENKINS_NO_GPU = "1"
+    HOME = "$WORKSPACE"
   }
 
   stages {
