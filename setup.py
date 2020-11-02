@@ -1,6 +1,6 @@
 import setuptools
 
 setuptools.setup(
-  name="astropath_calibration",
+  name="astropath-calibration",
   packages=setuptools.find_packages(),
 )

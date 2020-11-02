@@ -1,9 +1,9 @@
 import numpy as np, os, pathlib
-from ..badregions.cohort import DustSpeckFinderCohort
-from ..badregions.dustspeck import DustSpeckFinder
-from ..badregions.sample import DustSpeckFinderSample, TissueFoldFinderSample
-from ..badregions.tissuefold import TissueFoldFinderSimple, TissueFoldFinderByCell
-from ..utilities import units
+from astropathcalibration.badregions.cohort import DustSpeckFinderCohort
+from astropathcalibration.badregions.dustspeck import DustSpeckFinder
+from astropathcalibration.badregions.sample import DustSpeckFinderSample, TissueFoldFinderSample
+from astropathcalibration.badregions.tissuefold import TissueFoldFinderSimple, TissueFoldFinderByCell
+from astropathcalibration.utilities import units
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent

@@ -1,10 +1,10 @@
 # A script to run a quick test run of a flatfield
 
 #imports
-from ..flatfield.flatfield_producer import FlatfieldProducer
-from ..flatfield.utilities import flatfield_logger, FlatfieldSlideInfo
-from ..flatfield.config import CONST
-from ..utilities.misc import cd
+from astropathcalibration.flatfield.flatfield_producer import FlatfieldProducer
+from astropathcalibration.flatfield.utilities import flatfield_logger, FlatfieldSlideInfo
+from astropathcalibration.flatfield.config import CONST
+from astropathcalibration.utilities.misc import cd
 import pathlib, glob, os, shutil
 
 #some constants

@@ -1,9 +1,9 @@
 # A script to run a quick example of the warpfitter
 
 #imports
-from ..utilities.tableio import readtable
-from ..warping.utilities import WarpFitResult
-from ..warping.warp_fitter import WarpFitter
+from astropathcalibration.utilities.tableio import readtable
+from astropathcalibration.warping.utilities import WarpFitResult
+from astropathcalibration.warping.warp_fitter import WarpFitter
 from .testbase import assertAlmostEqual
 import pathlib, shutil
 

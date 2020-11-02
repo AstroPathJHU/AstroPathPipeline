@@ -1,6 +1,6 @@
 import gzip, numpy as np, pathlib, PIL.Image
-from ..zoom.zoom import Zoom
-from ..utilities.misc import PILmaximagepixels
+from astropathcalibration.zoom.zoom import Zoom
+from astropathcalibration.utilities.misc import PILmaximagepixels
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent

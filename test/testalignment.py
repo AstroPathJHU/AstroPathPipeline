@@ -1,13 +1,13 @@
 import itertools, logging, numpy as np, os, pathlib, re
-from ..alignment.alignmentcohort import AlignmentCohort
-from ..alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
-from ..alignment.overlap import AlignmentResult
-from ..alignment.field import Field, FieldOverlap
-from ..alignment.stitch import AffineEntry
-from ..baseclasses.sample import SampleDef
-from ..utilities.misc import re_subs
-from ..utilities.tableio import readtable
-from ..utilities import units
+from astropathcalibration.alignment.alignmentcohort import AlignmentCohort
+from astropathcalibration.alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
+from astropathcalibration.alignment.overlap import AlignmentResult
+from astropathcalibration.alignment.field import Field, FieldOverlap
+from astropathcalibration.alignment.stitch import AffineEntry
+from astropathcalibration.baseclasses.sample import SampleDef
+from astropathcalibration.utilities.misc import re_subs
+from astropathcalibration.utilities.tableio import readtable
+from astropathcalibration.utilities import units
 from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent

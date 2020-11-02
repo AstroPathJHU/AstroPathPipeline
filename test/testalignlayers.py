@@ -1,9 +1,9 @@
 import itertools, numpy as np, pathlib
-from ..alignment.alignlayers import AlignLayers
-from ..alignment.overlap import LayerAlignmentResult
-from ..alignment.stitchlayers import LayerPosition, LayerPositionCovariance
-from ..utilities import units
-from ..utilities.tableio import readtable
+from astropathcalibration.alignment.alignlayers import AlignLayers
+from astropathcalibration.alignment.overlap import LayerAlignmentResult
+from astropathcalibration.alignment.stitchlayers import LayerPosition, LayerPositionCovariance
+from astropathcalibration.utilities import units
+from astropathcalibration.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 thisfolder = pathlib.Path(__file__).parent
 

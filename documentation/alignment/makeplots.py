@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
-from ...alignment.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
-from ...alignment.alignmentset import AlignmentSet
-from ...utilities import units
+from astropathcalibration.alignment.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
+from astropathcalibration.alignment.alignmentset import AlignmentSet
+from astropathcalibration.utilities import units
 
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"

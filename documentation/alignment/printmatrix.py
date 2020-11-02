@@ -1,5 +1,5 @@
 import argparse, numpy as np
-from ...utilities import units
+from astropathcalibration.utilities import units
 from .makeplots import alignmentset
 
 def printmatrix(**kwargs):
