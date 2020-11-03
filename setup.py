@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
   name = "astropath-calibration",
-  packages = setuptools.find_packages(),
+  packages = ["astropathcalibration"],
   entry_points = {
     "console_scripts": [
       "alignmentcohort.py=astropathcalibration.alignment.alignmentcohort:main",
