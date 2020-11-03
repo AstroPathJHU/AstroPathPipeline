@@ -97,7 +97,7 @@ class MeanImage :
         #if the images aren't meant to be masked then we can just add them up trivially
         if self.skip_masking :
             for i,im_array in enumerate(im_array_list,start=1) :
-                msg = f'  adding image {self.n_images_read+1} to the stack....'
+                msg = f'Adding image {self.n_images_read+1} to the stack'
                 if logger is not None :
                     logger.imageinfo(msg,slide.name,slide.root_dir)
                 else :
@@ -118,7 +118,7 @@ class MeanImage :
         procs = []
         for i,im_array in enumerate(im_array_list,) :
             stack_i = i+self.n_images_read+1
-            msg = f'  masking and adding image {stack_i} to the stack....'
+            msg = f'Masking and adding image {stack_i} to the stack'
             if logger is not None :
                 logger.imageinfo(msg,slide.name,slide.root_dir)
             else :
