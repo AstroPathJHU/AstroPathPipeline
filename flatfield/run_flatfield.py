@@ -1,6 +1,7 @@
 #imports
 from .flatfield_producer import FlatfieldProducer
-from .utilities import flatfield_logger, slideNameFromFilepath, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath, getGlobalLogger
+from .logging import RunLogger
+from .utilities import slideNameFromFilepath, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath, getGlobalLogger
 from .config import CONST 
 from ..utilities.tableio import readtable
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
@@ -282,16 +283,14 @@ def main() :
     run_option_group.add_argument('--other_runs_to_exclude',       default='',                         type=split_csv_to_list,
                                   help='Comma-separated list of additional, previously-run, working directories whose filepaths should be excluded')
     args = parser.parse_args()
-    #make the working directory, module name, and logger
+    #make the working directory and start up the logger
     if a.mode=='slide_mean_image' :
         workingdir_path = getSlideMeanImageWorkingDirPath(slides_to_run[0])
-        module = 'slide_mean_image'
     else :
         workingdir_path = os.path.abspath(os.path.normpath(args.workingdir_name))
-        module='flatfield'
     if not os.path.isdir(workingdir_path) :
         os.path.mkdir(workingdir_path)
-    logger = getGlobalLogger(module,workingdir_path)
+    logger = RunLogger(a.mode,workingdir_path)
     try :
         #make sure the command line arguments make sense
         checkArgs(args)

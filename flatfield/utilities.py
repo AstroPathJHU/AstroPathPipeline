@@ -31,21 +31,6 @@ class FlatfieldSlideInfo :
 
 #################### GENERAL HELPER FUNCTIONS ####################
 
-#helper function to define a general global logger for the batch run modes
-def getGlobalLogger(modulename,workingdir_path) :
-    logger = logging.getLogger(modulename)
-    logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("-1;-1;-1;None;%(message)s;%(asctime)s","%Y-%m-%d %H:%M:%S")
-    printhandler = logging.StreamHandler()
-    printhandler.setFormatter(formatter)
-    printhandler.setLevel(logging.DEBUG)
-    logger.addHandler(printhandler)
-    filehandler = logging.FileHandler(os.path.join(workingdir_path,f'{modulename}_global.log'))
-    filehandler.setFormatter(formatter)
-    filehandler.setLevel(logging.INFO)
-    logger.addHandler(filehandler)
-    return logger
-
 #helper function to return the slide name from a whole filepath
 def slideNameFromFilepath(fp) :
     return os.path.basename(os.path.dirname(os.path.normpath(fp)))
