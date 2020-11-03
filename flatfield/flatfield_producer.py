@@ -65,7 +65,7 @@ class FlatfieldProducer :
         et_correction_file = path to file containing records of LayerOffset objects specifying an offset to use for each layer
         """
         #read in the file and get the offsets by layer
-        self.__writeLog(f'Copying exposure time offsets from file {et_correction_file}...','info')
+        self.__writeLog(f'Copying exposure time offsets from file {et_correction_file}','info')
         if self._et_correction_offsets[0] is not None :
             raise FlatFieldError('ERROR: calling readInExposureTimeCorrectionOffsets with an offset list already set!')
         layer_offsets_from_file = readtable(et_correction_file,LayerOffset)
@@ -124,7 +124,7 @@ class FlatfieldProducer :
         """
         #do one slide at a time
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
-            self.__writeLog(f'Stacking raw images from slide {sn}...','info',sn,slide.root_dir)
+            self.__writeLog(f'Stacking raw images from slide {sn}','info',sn,slide.root_dir)
             #get all the filepaths in this slide
             this_slide_fps_to_run = [fp for fp in self.all_slide_rawfile_paths_to_run if slideNameFromFilepath(fp)==sn]
             #If they're being neglected, get the filepaths corresponding to HPFs on the edge of the tissue
@@ -233,8 +233,9 @@ class FlatfieldProducer :
     @methodtools.lru_cache()
     def __getSingleSlideIDAndRootDir(self) :
         if len(self.flatfield_slide_dict)==1 :
-            sid = self.flatfield_slide_dict[0].name
-            rd = self.flatfield_slide_dict[0].root_dir
+            slide = list(self.flatfield_slide_dict.values())[0]
+            sid = slide.name
+            rd = slide.root_dir
         else :
             sid = None; rd = None
         return sid, rd
