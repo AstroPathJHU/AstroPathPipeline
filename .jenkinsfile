@@ -1,11 +1,11 @@
 pipeline {
   agent {
-    docker { image 'astropathjhu/alignmenttest:v15' }
+    docker { image 'astropathjhu/alignmenttest:v16' }
   }
 
   environment {
     JENKINS_NO_GPU = "1"
-    HOME = "$WORKSPACE"
+    HOME = "/home/circleci"
   }
 
   stages {
