@@ -1,0 +1,75 @@
+0;0;0;YZ71;align;2020-Sep-30 17:15:19
+0;0;0;YZ71;WARNING: Found inconsistent image infos from different sources:;2020-Sep-30 17:15:19
+0;0;0;YZ71;WARNING: source                         pscale                         field width                    field height                  ;2020-Sep-30 17:15:19
+0;0;0;YZ71;WARNING: component tiff                 2.012259789636432              1872 pixels                    1404 pixels                   ;2020-Sep-30 17:15:19
+0;0;0;YZ71;WARNING: xml files                      2.012246532396163              1872 pixels                    1404 pixels                   ;2020-Sep-30 17:15:19
+0;0;0;YZ71;WARNING: constants.csv                  2.0122597896364316             1872 pixels                    1404 pixels                   ;2020-Sep-30 17:15:19
+0;0;0;YZ71;getDAPI;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 1/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 2/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 3/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 4/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 5/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 6/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 7/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 8/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 9/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 10/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 11/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 12/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;loading rectangle 13/13;2020-Sep-30 17:15:19
+0;0;0;YZ71;meanimage;2020-Sep-30 17:15:19
+0;0;0;YZ71;starting alignment;2020-Sep-30 17:15:22
+0;0;0;YZ71;aligning overlap 1 (1/50);2020-Sep-30 17:15:22
+0;0;0;YZ71;aligning overlap 2 (2/50);2020-Sep-30 17:15:22
+0;0;0;YZ71;aligning overlap 3 (3/50);2020-Sep-30 17:15:23
+0;0;0;YZ71;aligning overlap 4 (4/50);2020-Sep-30 17:15:23
+0;0;0;YZ71;aligning overlap 5 (5/50);2020-Sep-30 17:15:23
+0;0;0;YZ71;aligning overlap 6 (6/50);2020-Sep-30 17:15:23
+0;0;0;YZ71;aligning overlap 7 (7/50);2020-Sep-30 17:15:23
+0;0;0;YZ71;aligning overlap 8 (8/50);2020-Sep-30 17:15:23
+0;0;0;YZ71;aligning overlap 9 (9/50);2020-Sep-30 17:15:23
+0;0;0;YZ71;aligning overlap 10 (10/50);2020-Sep-30 17:15:23
+0;0;0;YZ71;aligning overlap 11 (11/50);2020-Sep-30 17:15:23
+0;0;0;YZ71;aligning overlap 12 (12/50);2020-Sep-30 17:15:24
+0;0;0;YZ71;aligning overlap 13 (13/50);2020-Sep-30 17:15:24
+0;0;0;YZ71;aligning overlap 14 (14/50);2020-Sep-30 17:15:24
+0;0;0;YZ71;aligning overlap 15 (15/50);2020-Sep-30 17:15:24
+0;0;0;YZ71;aligning overlap 16 (16/50);2020-Sep-30 17:15:24
+0;0;0;YZ71;aligning overlap 17 (17/50);2020-Sep-30 17:15:24
+0;0;0;YZ71;aligning overlap 18 (18/50);2020-Sep-30 17:15:24
+0;0;0;YZ71;aligning overlap 19 (19/50);2020-Sep-30 17:15:24
+0;0;0;YZ71;aligning overlap 20 (20/50);2020-Sep-30 17:15:24
+0;0;0;YZ71;aligning overlap 21 (21/50);2020-Sep-30 17:15:24
+0;0;0;YZ71;aligning overlap 22 (22/50);2020-Sep-30 17:15:25
+0;0;0;YZ71;aligning overlap 23 (23/50);2020-Sep-30 17:15:25
+0;0;0;YZ71;aligning overlap 24 (24/50);2020-Sep-30 17:15:25
+0;0;0;YZ71;aligning overlap 25 (25/50);2020-Sep-30 17:15:25
+0;0;0;YZ71;aligning overlap 26 (26/50);2020-Sep-30 17:15:25
+0;0;0;YZ71;aligning overlap 27 (27/50);2020-Sep-30 17:15:25
+0;0;0;YZ71;aligning overlap 28 (28/50);2020-Sep-30 17:15:25
+0;0;0;YZ71;aligning overlap 29 (29/50);2020-Sep-30 17:15:25
+0;0;0;YZ71;aligning overlap 30 (30/50);2020-Sep-30 17:15:25
+0;0;0;YZ71;aligning overlap 31 (31/50);2020-Sep-30 17:15:26
+0;0;0;YZ71;aligning overlap 32 (32/50);2020-Sep-30 17:15:26
+0;0;0;YZ71;aligning overlap 33 (33/50);2020-Sep-30 17:15:26
+0;0;0;YZ71;aligning overlap 34 (34/50);2020-Sep-30 17:15:26
+0;0;0;YZ71;aligning overlap 35 (35/50);2020-Sep-30 17:15:26
+0;0;0;YZ71;aligning overlap 36 (36/50);2020-Sep-30 17:15:26
+0;0;0;YZ71;aligning overlap 37 (37/50);2020-Sep-30 17:15:26
+0;0;0;YZ71;aligning overlap 38 (38/50);2020-Sep-30 17:15:26
+0;0;0;YZ71;aligning overlap 39 (39/50);2020-Sep-30 17:15:26
+0;0;0;YZ71;aligning overlap 40 (40/50);2020-Sep-30 17:15:26
+0;0;0;YZ71;aligning overlap 41 (41/50);2020-Sep-30 17:15:27
+0;0;0;YZ71;aligning overlap 42 (42/50);2020-Sep-30 17:15:27
+0;0;0;YZ71;aligning overlap 43 (43/50);2020-Sep-30 17:15:27
+0;0;0;YZ71;aligning overlap 44 (44/50);2020-Sep-30 17:15:27
+0;0;0;YZ71;aligning overlap 45 (45/50);2020-Sep-30 17:15:27
+0;0;0;YZ71;aligning overlap 46 (46/50);2020-Sep-30 17:15:27
+0;0;0;YZ71;aligning overlap 47 (47/50);2020-Sep-30 17:15:27
+0;0;0;YZ71;aligning overlap 48 (48/50);2020-Sep-30 17:15:27
+0;0;0;YZ71;aligning overlap 49 (49/50);2020-Sep-30 17:15:27
+0;0;0;YZ71;aligning overlap 50 (50/50);2020-Sep-30 17:15:28
+0;0;0;YZ71;finished align loop for YZ71;2020-Sep-30 17:15:28
+0;0;0;YZ71;stitch;2020-Sep-30 17:15:28
+0;0;0;YZ71;end align;2020-Sep-30 17:15:28

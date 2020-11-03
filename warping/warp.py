@@ -2,9 +2,59 @@
 from .utilities import WarpingError
 from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
+from ..utilities.img_correction import correctImageLayerWithWarpFields
+from ..utilities.misc import cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt, seaborn as sns
-import os, math, cv2
+import os, math, cv2, functools, methodtools
 
+#################### SOME CACHED FILE-SCOPE HELPER FUNCTIONS ####################
+
+#cached radial distortion amount
+@functools.lru_cache()
+def radialDistortAmountAtCoords(coord_x,coord_y,fx,fy,k1,k2,k3) :
+    r2 = coord_x**2 + coord_y**2
+    return (k1*r2 + k2*(r2**2) + k3*(r2**3))*math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
+
+#cached tangential distortion amount
+@functools.lru_cache()
+def tangentialDistortAmountAtCoords(coord_x,coord_y,fx,fy,p1,p2) :
+    r2 = coord_x**2+coord_y**2
+    dx = fx*(2.*p1*coord_x*coord_y + p2*(r2 + 2.*(coord_x**2)))
+    dy = fy*(2.*p2*coord_x*coord_y + p1*(2.*(coord_y**2) + r2))
+    return math.sqrt((dx)**2 + (dy)**2)
+
+#cached radial distortion amount jacobian
+@functools.lru_cache()
+def radialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,k1,k2,k3) :
+    r2 = coord_x**2 + coord_y**2
+    A = math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
+    B = k1*(r2) + k2*(r2**2) + k3*(r2**3)
+    C = 2*k1 + 4*k2*r2 + 6*k3*r2**2
+    dfdcx = ((-1.*A*coord_x)/(fx))*C - (B/A)*fx*coord_x
+    dfdcy = ((-1.*A*coord_y)/(fy))*C - (B/A)*fy*coord_y
+    dfdfx = ((-1.*A*(coord_x**2))/(fx))*C
+    dfdfy = ((-1.*A*(coord_y**2))/(fy))*C
+    dfdk1 = A*(r2)
+    dfdk2 = A*(r2**2)
+    dfdk3 = A*(r2**3)
+    return [dfdcx,dfdcy,dfdfx,dfdfy,dfdk1,dfdk2,dfdk3]
+
+#cached tangential distortion amount jacobian
+@functools.lru_cache()
+def tangentialDistortAmountAtCoordsJacobian(coord_x,coord_y,fx,fy,p1,p2) :
+    r2 = coord_x**2+coord_y**2
+    dx = fx*(2.*p1*coord_x*coord_y + p2*(r2 + 2.*(coord_x**2)))
+    dy = fy*(2.*p2*coord_x*coord_y + p1*(2.*(coord_y**2) + r2))
+    F = math.sqrt(dx**2 + dy**2)
+    dfdcx = (1./F)*(-2.*dx*p1*coord_y - 4.*dx*p2*coord_x - 2.*dx*(fx**2)*p2*coord_x - 2.*dy*(fy/fx)*p2*coord_y - 2.*dy*fx*fy*p1*coord_x)
+    dfdcy = (1./F)*(-2.*dy*p2*coord_x - 4.*dy*p1*coord_y - 2.*dy*(fy**2)*p1*coord_y - 2.*dx*(fx/fy)*p1*coord_x - 2.*dx*fy*fx*p2*coord_y)
+    dfdfx = (1./F)*(dx*(p2*r2 - 2.*p2*(coord_x**2)) - 2.*dy*(fy/fx)*p2*coord_x*coord_y)
+    dfdfy = (1./F)*(dy*(p1*r2 - 2.*p1*(coord_y**2)) - 2.*dx*(fx/fy)*p1*coord_y*coord_x)
+    dfdp1 = (1./F)*(2*dx*fx*coord_x*coord_y + 2*dy*fy*(coord_y**2) + dy*fy*r2)
+    dfdp2 = (1./F)*(2*dy*fy*coord_x*coord_y + 2*dx*fx*(coord_x**2) + dx*fx*r2)
+    return [dfdcx,dfdcy,dfdfx,dfdfy,dfdp1,dfdp2]
+
+#################### MAIN WARP CLASS ####################
 class Warp :
     """
     Main superclass for applying warping to images
@@ -112,17 +162,15 @@ class PolyFieldWarp(Warp) :
 
     def getWarpedLayer(self,layer) :
         """
-        Quickly warps and returns a single inputted image layer array
+        Warps and returns a single inputted image layer array
         """
-        map_x, map_y = self.__getMapMatrices()
-        return cv2.remap(layer,map_x,map_y,self.interp)
+        return correctImageLayerWithWarpFields(layer,self.x_warps,self.y_warps,self.interp)
 
-    def warpLayerInPlace(self,layerimg,dest) :
+    def warpLayerInPlace(self,layer,dest) :
         """
-        Quickly warps a single inputted image layer into the provided destination
+        Warps a single inputted image layer into the provided destination
         """
-        map_x, map_y = self.__getMapMatrices()
-        return cv2.remap(layerimg,map_x,map_y,self.interp,dest)
+        return correctImageLayerWithWarpFields(layer,self.x_warps,self.y_warps,self.interp,dest)
 
     def writeImageLayer(self,im,rawfilename,layernumber) :
         """
@@ -132,13 +180,14 @@ class PolyFieldWarp(Warp) :
 
     #################### VISUALIZATION FUNCTIONS ####################
 
-    def writeOutWarpFields(self) :
+    def writeOutWarpFields(self,file_stem) :
         """
         Write out .bin files of the dx and dy warping fields and also make an image showing them 
+        file_stem = the unique identifier to add to the .bin filenames
         """
-        writeImageToFile(self.x_warps,CONST.X_WARP_BIN_FILENAME,dtype=self.x_warps.dtype())
-        writeImageToFile(self.y_warps,CONST.Y_WARP_BIN_FILENAME,dtype=self.y_warps.dtype())
-        f,ax = plt.subplots(1,3,figsize=(3*6.4,4.6))
+        writeImageToFile(self.x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        writeImageToFile(self.y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(self.r_warps)
         ax[0].scatter(self.xc,self.yc,marker='*',color='yellow')
         ax[0].set_title('total warp')
@@ -151,8 +200,10 @@ class PolyFieldWarp(Warp) :
         ax[2].scatter(self.xc,self.yc,marker='*',color='yellow')
         ax[2].set_title('dy warp')
         f.colorbar(pos,ax=ax[2])
-        plt.savefig(CONST.WARP_FIELD_FIGURE_NAME)
+        fn = f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png'
+        plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
 
     def showCheckerboard(self) :
         """
@@ -183,7 +234,10 @@ class PolyFieldWarp(Warp) :
         #translate r-dependent corrections to dx and dy shifts and return
         x_warps = np.zeros_like(r_warps); y_warps = np.zeros_like(r_warps)
         x_warps[r!=0] = r_warps[r!=0]*(x[r!=0]/r[r!=0]); y_warps[r!=0] = r_warps[r!=0]*(y[r!=0]/r[r!=0])
-        return r_warps, -x_warps, -y_warps #signs flipped so they behave like cv2.undistort
+        r_warps = r_warps.astype(CONST.OUTPUT_FIELD_DTYPE)
+        x_warps = (-x_warps).astype(CONST.OUTPUT_FIELD_DTYPE) #signs flipped so they behave like cv2.undistort
+        y_warps = (-y_warps).astype(CONST.OUTPUT_FIELD_DTYPE) #signs flipped so they behave like cv2.undistort
+        return r_warps, x_warps, y_warps
 
     #Alex's helper function to fit a polynomial to the warping given a max amount of warp
     def __polyFit(self,max_warp,deg,squared=False,plot=False) :
@@ -233,14 +287,6 @@ class PolyFieldWarp(Warp) :
         plt.text(x[0],0.5*(fit_ys[-1]-fit_ys[0]),ftext)
         plt.legend()
         plt.show()
-
-    #helper function to calculate and return the map matrices for remap
-    def __getMapMatrices(self) :
-        grid = np.mgrid[0:self.m,0:self.n]
-        xpos, ypos = grid[1], grid[0]
-        map_x = (xpos-self.x_warps).astype(np.float32) 
-        map_y = (ypos-self.y_warps).astype(np.float32) #maybe use maps from convertMaps() instead later on?
-        return map_x, map_y
 
     #helper function to convert a raw file name and a layer into a fieldwarped single layer filename
     def __getWarpedLayerFilename(self,rawname,layer) :
@@ -355,6 +401,7 @@ class CameraWarp(Warp) :
 
     #################### PUBLIC UTILITY FUNCTIONS ####################
 
+    @methodtools.lru_cache()
     def getCoordsFromPixel(self,pixel_x,pixel_y) :
         """
         Convert a pixel to an x/y coordinate with units of x/y focal lengths
@@ -366,14 +413,14 @@ class CameraWarp(Warp) :
         Return the amount of radial warp (in pixels) at the given pixel
         """
         x, y = self.getCoordsFromPixel(pixel_x,pixel_y)
-        return self._radialDistortAmountAtCoords(x,y)
+        return radialDistortAmountAtCoords(x,y,self.fx,self.fy,self.k1,self.k2,self.k3)
 
     def tangentialDistortAmountAtPixel(self,pixel_x,pixel_y) :
         """
         Return the amount of tangential warp (in pixels) at the given pixel
         """
         x, y = self.getCoordsFromPixel(pixel_x,pixel_y)
-        return self._tangentialDistortAmountAtCoords(x,y)
+        return tangentialDistortAmountAtCoords(x,y,self.fx,self.fy,self.p1,self.p2)
 
     #################### FUNCTIONS FOR USE WITH MINIMIZATION ####################
 
@@ -396,24 +443,35 @@ class CameraWarp(Warp) :
         """
         Return the maximum amount of radial distortion (in pixels) observed with the given parameters
         """
-        x, y = self._getMaxDistanceCoords(pars)
-        return self._radialDistortAmountAtCoords(x,y,pars)
+        if pars is None :
+            cx, cy, fx, fy, k1, k2, k3 = self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.k3
+        else :
+            cx,cy,fx,fy,k1,k2,k3,_,_ = (*pars,)
+        x, y = self._getMaxDistanceCoords(cx,cy)
+        return radialDistortAmountAtCoords(x,y,fx,fy,k1,k2,k3)
 
     def maxTangentialDistortAmount(self,pars) :
         """
         Return the maximum amount of tangential distortion (in pixels) observed with the given parameters
         """
-        x, y = self._getMaxDistanceCoords(pars)
-        return self._tangentialDistortAmountAtCoords(x,y,pars)
+        if pars is None :
+            cx, cy, fx, fy, p1, p2 = self.cx, self.cy, self.fx, self.fy, self.p1, self.p2
+        else :
+            cx,cy,fx,fy,_,_,_,p1,p2 = (*pars,)
+        x, y = self._getMaxDistanceCoords(cx,cy)
+        return tangentialDistortAmountAtCoords(x,y,fx,fy,p1,p2)
 
     def maxRadialDistortAmountJacobian(self,pars) :
         """
         Return the Jacobian vector of the maxRadialDistortAmount function (used in minimization)
         """
-        x, y = self._getMaxDistanceCoords(pars)
-        fxfyk1k2k3_dependence = self._radialDistortAmountAtCoordsJacobian(x,y,pars)
-        retvec =[0.,0.] # no dependence on cx/cy
-        retvec+=fxfyk1k2k3_dependence #add fx, fy, k1, k2, and k3 dependency
+        if pars is None :
+            cx, cy, fx, fy, k1, k2, k3 = self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.k3
+        else :
+            cx,cy,fx,fy,k1,k2,k3,_,_ = (*pars,)
+        x, y = self._getMaxDistanceCoords(cx,cy)
+        cxcyfxfyk1k2k3_dependence = radialDistortAmountAtCoordsJacobian(x,y,fx,fy,k1,k2,k3)
+        retvec = cxcyfxfyk1k2k3_dependence #add cx, cy, fx, fy, k1, k2, and k3 dependency
         retvec+=[0.,0.] # no dependence on p1/p2
         return retvec 
 
@@ -421,74 +479,24 @@ class CameraWarp(Warp) :
         """
         Return the Jacobian vector of the maxTangentialDistortAmount function (used in minimization)
         """
-        x, y = self._getMaxDistanceCoords(pars)
-        fxfyp1p2_dependence = self._tangentialDistortAmountAtCoordsJacobian(x,y,pars)
-        retvec =[0.,0.] # no dependence on cx/cy
-        retvec+=fxfyp1p2_dependence[:2]
+        if pars is None :
+            cx, cy, fx, fy, p1, p2 = self.cx, self.cy, self.fx, self.fy, self.p1, self.p2
+        else :
+            cx,cy,fx,fy,_,_,_,p1,p2 = (*pars,)
+        x, y = self._getMaxDistanceCoords(cx,cy)
+        cxcyfxfyp1p2_dependence = tangentialDistortAmountAtCoordsJacobian(x,y,fx,fy,p1,p2)
+        retvec =cxcyfxfyp1p2_dependence[:4] #add dependence on cx, cy, fy, and fy
         retvec+=[0.,0.,0.] # no dependence on k1/k2/k3
-        retvec+=fxfyp1p2_dependence[2:]
+        retvec+=cxcyfxfyp1p2_dependence[4:] #add dependence on p1 and p2
         return retvec
 
-    def _getMaxDistanceCoords(self,pars=None) :
+    def _getMaxDistanceCoords(self,cx,cy) :
         """
         Get the x/y coordinate-space location of the image corner that is furthest from the principal point
-        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
         """
-        cx,cy,_,_,_,_,_,_,_ = self.__getEvalPars(pars)
         x = 0 if cx>(self.n-1)/2 else self.n-1
         y = 0 if cy>(self.m-1)/2 else self.m-1
         return self.getCoordsFromPixel(x,y)
-
-    def _radialDistortAmountAtCoords(self,coord_x,coord_y,pars=None) :
-        """
-        Return the amount of radial warp (in pixels) at the given coordinate-space location
-        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
-        """
-        _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars(pars)
-        r = math.sqrt(coord_x**2+coord_y**2)
-        return (k1*(r**2) + k2*(r**4) + k3*(r**6))*math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
-
-    def _tangentialDistortAmountAtCoords(self,coord_x,coord_y,pars=None) :
-        """
-        Return the amount of tangential warp (in pixels) at the given coordinate-space location
-        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
-        """
-        _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars(pars)
-        r = math.sqrt(coord_x**2+coord_y**2)
-        dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
-        dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
-        return math.sqrt((dx)**2 + (dy)**2)
-
-    def _radialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
-        """
-        Return the Jacobian vector of the _radialDistortAmountAtCoords function (used in minimization)
-        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
-        """
-        _,_,fx,fy,k1,k2,k3,_,_ = self.__getEvalPars(pars)
-        r = math.sqrt(coord_x**2+coord_y**2)
-        A = math.sqrt((fx*coord_x)**2 + (fy*coord_y)**2)
-        B = k1*(r**2) + k2*(r**4) + k3*(r**6)
-        dfdfx = (B/A)*fx*(coord_x**2)
-        dfdfy = (B/A)*fy*(coord_y**2)
-        dfdk1 = A*(r**2)
-        dfdk2 = A*(r**4)
-        dfdk3 = A*(r**6)
-        return [dfdfx,dfdfy,dfdk1,dfdk2,dfdk3]
-
-    def _tangentialDistortAmountAtCoordsJacobian(self,coord_x,coord_y,pars=None) :
-        """
-        Return the Jacobian of the _tangentialDistortAmountAtCoords function (used in minimization)
-        pars = parameter list to use for this function evaluation only (if None, use current warp parameters)
-        """
-        _,_,fx,fy,_,_,_,p1,p2 = self.__getEvalPars(pars)
-        r = math.sqrt(coord_x**2+coord_y**2)
-        dx = 2.*fx*p1*coord_x*coord_y + 2.*fx*p2*(coord_x**2) + fx*p2*(r**2)
-        dy = 2.*fy*p2*coord_x*coord_y + 2.*fy*p1*(coord_y**2) + fy*p1*(r**2)
-        dfdfx = (dx/fx)/(math.sqrt(1+(dy/dx)**2))
-        dfdfy = (dy/fy)/(math.sqrt(1+(dx/dy)**2))
-        dfdp1 = (2*dx*fx*coord_x*coord_y + 2*dy*fy*(coord_y**2) + dy*fy*(r**2))/(math.sqrt(dx**2+dy**2))
-        dfdp2 = (2*dy*fy*coord_x*coord_y + 2*dx*fx*(coord_x**2) + dx*fx*(r**2))/(math.sqrt(dx**2+dy**2))
-        return [dfdfx,dfdfy,dfdp1,dfdp2]
 
     #################### VISUALIZATION FUNCTIONS ####################
 
@@ -516,16 +524,22 @@ class CameraWarp(Warp) :
         xpos, ypos = grid[1], grid[0]
         x_warps = xpos-map_x
         y_warps = ypos-map_y
-        return np.sqrt(x_warps**2+y_warps**2), x_warps, y_warps
+        r_warps = (np.sqrt(x_warps**2+y_warps**2)).astype(CONST.OUTPUT_FIELD_DTYPE)
+        x_warps = (x_warps).astype(CONST.OUTPUT_FIELD_DTYPE)
+        y_warps = (y_warps).astype(CONST.OUTPUT_FIELD_DTYPE)
+        return r_warps, x_warps, y_warps
 
-    def writeOutWarpFields(self) :
+    def writeOutWarpFields(self,file_stem,save_fields=True) :
         """
         Write out .bin files of the dx and dy warping fields and also make an image showing them 
+        file_stem   = the unique identifier to add onto the warp field .bin file names
+        save_fields = true if the actual fields themselves should be saved in addition to the plots thereof
         """
         r_warps, x_warps, y_warps = self.getWarpFields()
-        writeImageToFile(x_warps,CONST.X_WARP_BIN_FILENAME,dtype=x_warps.dtype)
-        writeImageToFile(y_warps,CONST.Y_WARP_BIN_FILENAME,dtype=y_warps.dtype)
-        f,ax = plt.subplots(1,3,figsize=(3*6.4,4.6))
+        if save_fields :
+            writeImageToFile(x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+            writeImageToFile(y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(r_warps)
         ax[0].scatter(self.cx,self.cy,marker='*',color='yellow')
         ax[0].set_title('total warp')
@@ -538,8 +552,10 @@ class CameraWarp(Warp) :
         ax[2].scatter(self.cx,self.cy,marker='*',color='yellow')
         ax[2].set_title('dy warp')
         f.colorbar(pos,ax=ax[2])
-        plt.savefig(CONST.WARP_FIELD_FIGURE_NAME)
+        fn = f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png'
+        plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
 
     def showCheckerboard(self) :
         """
@@ -551,12 +567,12 @@ class CameraWarp(Warp) :
         """
         Plots the radial and tangential warping fields and the curve of the radial warping dependences
         """
-        max_x, max_y = self._getMaxDistanceCoords()
+        max_x, max_y = self._getMaxDistanceCoords(self.cx,self.cy)
         xvals = np.linspace(0.,max_x,npoints)
         yvals = np.linspace(0.,max_y,npoints)
         max_r = math.sqrt(max_x**2+max_y**2)
         xaxis_points = np.linspace(0.,max_r,npoints)
-        yaxis_points = np.array([self._radialDistortAmountAtCoords(x,y) for x,y in zip(xvals,yvals)])
+        yaxis_points = np.array([radialDistortAmountAtCoords(x,y,self.fx,self.fy,self.k1,self.k2,self.k3) for x,y in zip(xvals,yvals)])
         rad_heat_map = np.zeros((self.m,self.n))
         tan_heat_map = np.zeros((self.m,self.n))
         for i in range(self.m) :
@@ -578,8 +594,10 @@ class CameraWarp(Warp) :
         thm=sns.heatmap(tan_heat_map,ax=ax3)
         ax3.scatter(self.cx,self.cy,marker='*',color='yellow')
         thm.set_title('tangential warp components',fontsize=14)
-        plt.savefig('warp_amounts.png')
+        fn = 'warp_amounts.png'
+        plt.savefig(fn)
         plt.close()
+        cropAndOverwriteImage(fn)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -600,10 +618,3 @@ class CameraWarp(Warp) :
     #helper function to convert a raw file name and a layer into a camwarped single layer filename
     def __getWarpedLayerFilename(self,rawname,layer) :
         return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(layer):02d}"
-
-    #helper function to return a tuple of parameters for single function evaluations
-    def __getEvalPars(self,pars) :
-        if pars is None :
-            return self.cx, self.cy, self.fx, self.fy, self.k1, self.k2, self.k3, self.p1, self.p2
-        else :
-            return (*pars, )

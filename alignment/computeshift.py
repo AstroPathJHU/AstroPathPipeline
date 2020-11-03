@@ -1,6 +1,6 @@
 import cv2, matplotlib.pyplot as plt, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.feature, skimage.filters, textwrap, uncertainties as unc
 
-def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4):
+def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4, staterrorimages=None):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -9,7 +9,8 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   if window is not None:
     images = tuple(window(image) for image in images)
 
-  if gputhread is not None and gpufftdict is not None :
+  use_gpu = gputhread is not None and gpufftdict is not None
+  if use_gpu :
     images_gpu = tuple(image.astype(np.csingle) for image in images)
     fftc = gpufftdict[images_gpu[0].shape]
     invfourier = crosscorrelation_gpu(images_gpu,gputhread,fftc)
@@ -62,9 +63,9 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     if savesmallimage:
       plt.close()
 
-  xx = np.ravel(xx)
-  yy = np.ravel(yy)
-  zz = np.ravel(zz)
+  xx = doravel(xx)
+  yy = doravel(yy)
+  zz = doravel(zz)
 
   knotsx = ()
   knotsy = ()
@@ -84,11 +85,14 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     [f(*r.x, dx=1, dy=1), f(*r.x, dx=0, dy=2)],
   ])
 
-  shifted = shiftimg(images, -r.x[0], -r.x[1], clip=False)
-  staterror = abs(shifted[0] - shifted[1])
+  shifted = shiftimg(images, -r.x[0], -r.x[1], clip=False, use_gpu=use_gpu)
+  if staterrorimages is None:
+    staterror0 = staterror1 = abs(shifted[0] - shifted[1])
+  else:
+    staterror0, staterror1 = staterrorimages
   #cross correlation evaluated at 0
   error_crosscorrelation = np.sqrt(np.sum(
-    staterror**2 * (shifted[0]**2 + shifted[1]**2)
+    (staterror0 * shifted[1])**2 + (staterror1 * shifted[0])**2
   ))
 
   covariance = 2 * error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
@@ -99,7 +103,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     covariance
   )
 
-  otherbigindices = skimage.feature.corner_peaks(z, min_distance=windowsize, threshold_abs=z[maxidx] - error_crosscorrelation)
+  otherbigindices = skimage.feature.corner_peaks(z, min_distance=windowsize, threshold_abs=z[maxidx] - 3*error_crosscorrelation)
   for idx in otherbigindices:
     if np.all(idx == maxidx): continue
     dx = unc.ufloat(0, 9999.)
@@ -112,6 +116,10 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     dy = unc.ufloat(0, 9999.)
     exit = 2
 
+  if np.sqrt(np.sum(r.x**2) >= np.sqrt(np.sum(np.array(x.shape)**2))) / 10:
+    dx = unc.ufloat(0, 9999.)
+    dy = unc.ufloat(0, 9999.)
+    exit = 3
 
   return OptimizeResult(
     dx=dx,
@@ -144,19 +152,31 @@ def getcrosspower(fourier):
 def mse(a):
   return np.mean(a*a)
 
-def shiftimg(images, dx, dy, *, clip=True):
+@nb.njit
+def doravel(a):
+  return np.ravel(a)
+
+def shiftimg(images, dx, dy, *, clip=True, use_gpu=False):
   """
   Apply the shift to the two images, using
   a symmetric shift with fractional pixels
   """
   a, b = images
-  a = a.astype(float)
-  b = b.astype(float)
+  a = a.astype(np.float32)
+  b = b.astype(np.float32)
 
   warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.T.shape}
 
+  if use_gpu :
+    a = cv2.UMat(a)
+    b = cv2.UMat(b)
+
   a = cv2.warpAffine(a, np.array([[1, 0,  dx/2], [0, 1,  dy/2]]), **warpkwargs)
   b = cv2.warpAffine(b, np.array([[1, 0, -dx/2], [0, 1, -dy/2]]), **warpkwargs)
+
+  if use_gpu :
+    a = a.get()
+    b = b.get()
 
   assert a.shape == b.shape == np.shape(images)[1:], (a.shape, b.shape, np.shape(images))
 

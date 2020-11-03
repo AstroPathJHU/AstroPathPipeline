@@ -1,9 +1,11 @@
 from .config import CONST
-from ..utilities.img_file_io import getRawAsHWL, correctImageForExposureTime
+from ..utilities.img_file_io import getRawAsHWL, smoothImageWorker
+from ..utilities.img_correction import correctImageForExposureTime
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
+import matplotlib.pyplot as plt
 import numpy as np
-import os, cv2, logging, math, dataclasses
+import os, logging, math, dataclasses, more_itertools
 
 #################### GENERAL USEFUL OBJECTS ####################
 
@@ -15,38 +17,43 @@ class FlatFieldError(Exception) :
 flatfield_logger = logging.getLogger("flatfield")
 flatfield_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)s]"))
+handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S"))
 flatfield_logger.addHandler(handler)
+
+#helper class for logging included/excluded fields
+@dataclasses.dataclass
+class FieldLog :
+    slide   : str
+    file     : str
+    location : str
+    use      : str
+    stacked_in_layers : List[int] = None
+
+#helper class for inputting slides with their names and raw/root directories
+@dataclasses.dataclass
+class FlatfieldSlideInfo :
+    name : str
+    rawfile_top_dir : str
+    root_dir : str
 
 #################### GENERAL HELPER FUNCTIONS ####################
 
 #helper function to convert an image array into a flattened pixel histogram
-def getImageArrayLayerHistograms(img_array) :
+def getImageArrayLayerHistograms(img_array, mask=slice(None)) :
     nbins = np.iinfo(img_array.dtype).max+1
     nlayers = img_array.shape[2] if len(img_array.shape)>2 else 1
     if nlayers>1 :
         layer_hists = np.empty((nbins,nlayers),dtype=np.int64)
         for li in range(nlayers) :
-            layer_hist,_ = np.histogram(img_array[:,:,li],nbins,(0,nbins))
+            layer_hist,_ = np.histogram(img_array[:,:,li][mask],nbins,(0,nbins))
             layer_hists[:,li]=layer_hist
         return layer_hists
     else :
-        layer_hist,_ = np.histogram(img_array,nbins,(0,nbins))
+        layer_hist,_ = np.histogram(img_array[mask],nbins,(0,nbins))
         return layer_hist
 
-#helper function to smooth an image
-#this can be run in parallel
-def smoothImageWorker(im_array,smoothsigma,return_list=None) :
-    im_in_umat = cv2.UMat(im_array)
-    im_out_umat = cv2.UMat(np.empty_like(im_array))
-    cv2.GaussianBlur(im_in_umat,(0,0),smoothsigma,im_out_umat,borderType=cv2.BORDER_REPLICATE)
-    if return_list is not None :
-        return_list.append(im_out_umat.get())
-    else :
-        return im_out_umat.get()
-
-#helper function to return the sample name from a whole filepath
-def sampleNameFromFilepath(fp) :
+#helper function to return the slide name from a whole filepath
+def slideNameFromFilepath(fp) :
     return os.path.basename(os.path.dirname(os.path.normpath(fp)))
 
 #################### THRESHOLDING HELPER FUNCTIONS ####################
@@ -168,17 +175,21 @@ class FileReadInfo :
     height           : int                # img height
     width            : int                # img width
     nlayers          : int                # number of img layers
-    metadata_top_dir : str                # this file's sample's metadata file top directory
+    root_dir         : str                # Clinical_Specimen directory
     to_smooth        : bool = False       # whether the image should be smoothed
-    max_exp_times    : List[float] = None # a list of the max exposure times in this image's sample by layer 
-    corr_offsets     : List[float] = None # a list of the exposure time correction offsets for this image's sample by layer 
+    med_exp_times    : List[float] = None # a list of the median exposure times in this image's slide by layer 
+    corr_offsets     : List[float] = None # a list of the exposure time correction offsets for this image's slide by layer 
 
 #helper function to parallelize calls to getRawAsHWL (plus optional smoothing and normalization)
 def getImageArray(fri) :
     flatfield_logger.info(f'  reading file {fri.rawfile_path} {fri.sequence_print}')
     img_arr = getRawAsHWL(fri.rawfile_path,fri.height,fri.width,fri.nlayers)
-    if fri.max_exp_times is not None and fri.corr_offsets is not None and fri.corr_offsets[0] is not None :
-        img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,fri.metadata_top_dir,fri.max_exp_times,fri.corr_offsets)
+    if fri.med_exp_times is not None and fri.corr_offsets is not None and fri.corr_offsets[0] is not None :
+        try :
+            img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,fri.root_dir,fri.med_exp_times,fri.corr_offsets)
+        except (ValueError, RuntimeError) :
+            rtd = os.path.dirname(os.path.dirname(os.path.normpath(fri.rawfile_path)))+os.sep
+            img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,rtd,fri.med_exp_times,fri.corr_offsets)
     if fri.to_smooth :
         img_arr = smoothImageWorker(img_arr,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
     return img_arr
@@ -190,35 +201,76 @@ def getImageLayerHists(fri) :
 
 #helper function to read and return a group of raw images with multithreading
 #set 'smoothed' to True when calling to smooth images with gentle gaussian filter as they're read in
-#pass in a list of maximum exposure times and correction offsets by layer to correct image layer flux 
-def readImagesMT(sample_image_filereads,smoothed=False,max_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
-    for fr in sample_image_filereads :
+#pass in a list of median exposure times and correction offsets by layer to correct image layer flux 
+def readImagesMT(slide_image_filereads,smoothed=False,med_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
+    for fr in slide_image_filereads :
         fr.to_smooth = smoothed
-        fr.max_exp_times = max_exposure_times_by_layer
+        fr.med_exp_times = med_exposure_times_by_layer
         fr.corr_offsets = et_corr_offsets_by_layer
-    e = ThreadPoolExecutor(len(sample_image_filereads))
-    new_img_arrays = list(e.map(getImageArray,[fr for fr in sample_image_filereads]))
+    e = ThreadPoolExecutor(len(slide_image_filereads))
+    new_img_arrays = list(e.map(getImageArray,[fr for fr in slide_image_filereads]))
     e.shutdown()
     return new_img_arrays
 
 #helper function to read and return a group of image pixel histograms with multithreading
 #set 'smoothed' to True when calling to smooth images with gentle gaussian filter as they're read in
-#pass in a list of maximum exposure times and correction offsets by layer to correct image layer flux 
-def getImageLayerHistsMT(sample_image_filereads,smoothed=False,max_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
-    for fr in sample_image_filereads :
+#pass in a list of median exposure times and correction offsets by layer to correct image layer flux 
+def getImageLayerHistsMT(slide_image_filereads,smoothed=False,med_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
+    for fr in slide_image_filereads :
         fr.to_smooth = smoothed
-        fr.max_exp_times = max_exposure_times_by_layer
+        fr.med_exp_times = med_exposure_times_by_layer
         fr.corr_offsets = et_corr_offsets_by_layer
-    e = ThreadPoolExecutor(len(sample_image_filereads))
-    new_img_layer_hists = list(e.map(getImageLayerHists,[fr for fr in sample_image_filereads]))
+    e = ThreadPoolExecutor(len(slide_image_filereads))
+    new_img_layer_hists = list(e.map(getImageLayerHists,[fr for fr in slide_image_filereads]))
     e.shutdown()
     return new_img_layer_hists
 
 #helper function to split a list of filenames into chunks to be read in in parallel
-def chunkListOfFilepaths(fps,dims,n_threads,metadata_top_dir) :
+def chunkListOfFilepaths(fps,dims,root_dir,n_threads) :
     fileread_chunks = [[]]
     for i,fp in enumerate(fps,start=1) :
         if len(fileread_chunks[-1])>=n_threads :
             fileread_chunks.append([])
-        fileread_chunks[-1].append(FileReadInfo(fp,f'({i} of {len(fps)})',dims[0],dims[1],dims[2],metadata_top_dir))
+        fileread_chunks[-1].append(FileReadInfo(fp,f'({i} of {len(fps)})',dims[0],dims[1],dims[2],root_dir))
     return fileread_chunks
+
+#################### USEFUL PLOTTING FUNCTION ####################
+
+def drawThresholds(img_array, *, layer_index=0, emphasize_mask=None, show_regions=False, saveas=None, plotstyling = lambda fig, ax: None):
+    fig, ax = plt.subplots(1, 1)
+    if len(img_array.shape)>2 :
+        img_array = img_array[layer_index]
+    hist = getImageArrayLayerHistograms(img_array)
+    if emphasize_mask is not None:
+        hist_emphasize = getImageArrayLayerHistograms(img_array, mask=emphasize_mask)
+    thresholds, weights = getLayerOtsuThresholdsAndWeights(hist)
+    histmax = np.max(np.argwhere(hist!=0))
+    hist = hist[:histmax+1]
+    plt.bar(range(len(hist)), hist, width=1)
+    if emphasize_mask is not None:
+        hist_emphasize = hist_emphasize[:histmax+1]
+        plt.bar(range(len(hist)), hist_emphasize, width=1)
+    for threshold, weight in zip(thresholds, weights):
+        plt.axvline(x=threshold, color="red", alpha=0.5+0.5*(weight-min(weights))/(max(weights)-min(weights)))
+    plotstyling(fig, ax)
+    if saveas is None:
+        plt.show()
+    else:
+        plt.savefig(saveas)
+        plt.close()
+    if show_regions:
+        for t1, t2 in more_itertools.pairwise([0]+sorted(thresholds)+[float("inf")]):
+            if t1 == t2: continue #can happen if 0 is a threshold
+            print(t1, t2)
+            plt.imshow(img_array)
+            lower = np.array(
+              [0*img_array+1, 0*img_array, 0*img_array, img_array < t1],
+              dtype=float
+            ).transpose(1, 2, 0)
+            higher = np.array(
+              [0*img_array, 0*img_array+1, 0*img_array, img_array > t2],
+              dtype=float
+            ).transpose(1, 2, 0)
+            plt.imshow(lower)
+            plt.imshow(higher)
+            plt.show()

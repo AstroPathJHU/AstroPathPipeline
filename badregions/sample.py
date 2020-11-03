@@ -1,16 +1,18 @@
 import abc, argparse, numpy as np, pathlib
 
-from ..baseclasses.sample import ReadRectangles
+from ..baseclasses.sample import ReadRectanglesIm3
 from ..utilities import units
 from .dustspeck import DustSpeckFinder
+from .tissuefold import TissueFoldFinderSimple
 
-class BadRegionFinderSample(ReadRectangles):
+class BadRegionFinderSample(ReadRectanglesIm3):
+  def __init__(self, *args, filetype="flatWarp", **kwargs):
+    super().__init__(*args, filetype=filetype, **kwargs)
   @abc.abstractmethod
   def makebadregionfinder(self, *args, **kwargs): pass
 
   def run(self, *, plotsdir=None, show=False, **kwargs):
-    rawimages = self.getrawlayers("flatWarp")
-    result = np.empty(shape=rawimages.shape, dtype=bool)
+    result = np.empty(shape=(len(self.rectangles), *self.rectangles[0].imageshape), dtype=bool)
 
     if plotsdir is not None:
       plotsdir = pathlib.Path(plotsdir)
@@ -22,28 +24,38 @@ class BadRegionFinderSample(ReadRectangles):
         showkwargs[name] = kwargs.pop(name)
 
     nbad = 0
-    for i, (r, rawimage) in enumerate(zip(self.rectangles, rawimages)):
-      self.logger.info(f"looking for bad regions in HPF {i+1}/{len(self.rectangles)}")
-      f = self.makebadregionfinder(rawimage, logger=self.logger)
-      result[i] = f.badregions(**kwargs)
-      if np.any(result[i]):
-        nbad += 1
-        if plotsdir is not None:
-          f.show(saveas=plotsdir/f"{r.n}.pdf", alpha=0.6, **kwargs, **showkwargs)
-          f.show(saveas=plotsdir/f"{r.n}_image.pdf", alpha=0, **kwargs, **showkwargs)
-        if show:
-          f.show(alpha=0.6, **kwargs, **showkwargs)
+    for i, r in enumerate(self.rectangles):
+      self.logger.info(f"loading image for HPF {i+1}/{len(self.rectangles)}")
+      with r.using_image() as image:
+        self.logger.info("looking for bad regions")
+        f = self.makebadregionfinder(image, logger=self.logger)
+        result[i] = f.badregions(**kwargs)
+        if np.any(result[i]):
+          nbad += 1
+          if plotsdir is not None:
+            f.show(saveas=plotsdir/f"{r.n}.pdf", alpha=0.6, **kwargs, **showkwargs)
+            f.show(saveas=plotsdir/f"{r.n}_image.pdf", alpha=0, **kwargs, **showkwargs)
+          if show:
+            f.show(alpha=0.6, **kwargs, **showkwargs)
 
     logfunction = self.logger.warningglobal if nbad > 0 else self.logger.info
     logfunction(f"{nbad} HPFs had bad regions")
     return result
 
 class DustSpeckFinderSample(BadRegionFinderSample):
+  multilayer = True
   def makebadregionfinder(self, *args, **kwargs):
     return DustSpeckFinder(*args, **kwargs)
 
   @property
   def logmodule(self): return "dustspeckfinder"
+
+class TissueFoldFinderSample(BadRegionFinderSample):
+  def makebadregionfinder(self, *args, **kwargs):
+    return TissueFoldFinderSimple(*args, **kwargs)
+
+  @property
+  def logmodule(self): return "tissuefoldfinder"
 
 if __name__ == "__main__":
   p = argparse.ArgumentParser()

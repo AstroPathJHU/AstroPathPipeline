@@ -1,15 +1,15 @@
 #imports
 from .warp_set import WarpSet
 from .fit_parameter_set import FitParameterSet
-from .utilities import warp_logger, WarpingError, OctetComparisonVisualization, WarpFitResult
+from .utilities import warp_logger, WarpingError, WarpFitResult, FieldLog
+from .plotting import OctetComparisonVisualization
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..exposuretime.utilities import LayerOffset
 from ..baseclasses.rectangle import rectangleoroverlapfilter
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getSampleMaxExposureTimesByLayer
-from ..utilities.tableio import readtable, writetable
+from ..utilities.img_file_io import getImageHWLFromXMLFile, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
+from ..utilities.tableio import writetable
 from ..utilities import units
-from ..utilities.misc import cd
+from ..utilities.misc import cd, MetadataSummary, cropAndOverwriteImage
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, copy, math, shutil, platform, time, logging
 
@@ -29,42 +29,50 @@ class WarpFitter :
 
     #################### CLASS CONSTANTS ####################
 
-    IM3_EXT = '.im3'                                          #to replace in filenames read from *_rect.csv
     DE_TOLERANCE = 0.03                                       #tolerance for the differential evolution minimization
     DE_MUTATION = (0.2,0.8)                                   #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7                                    #recombination parameter for differential evolution minimization
     POLISHING_X_TOL = 5e-5                                    #parameter tolerance for polishing minimization
     POLISHING_G_TOL = 1e-5                                    #gradient tolerance for polishing minimization
     FIT_PROGRESS_FIG_SIZE = (3*6.4,2*4.6)                     #(width, height) of the fit progress figure
-    PP_RAVG_POINTS = 50                                       #how many points to average over for the polishing minimization progress plots
+    PP_RAVG_POINTS = 20                                       #how many points to average over for the polishing minimization progress plots
     OVERLAP_COMPARISON_DIR_NAME = 'overlap_comparison_images' #name of directory holding overlap comparison images
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,samplename,rawfile_top_dir,metadata_top_dir,working_dir,overlaps=-1,layer=1) :
+    def __init__(self,slideID,rawfile_top_dir,root_dir,working_dir,overlaps=-1,layer=1) :
         """
-        samplename       = name of the microscope data sample to fit to ("M21_1" or equivalent)
-        rawfile_top_dir  = path to directory containing [samplename] directory with multilayered ".Data.dat" files in it
-        metadata_top_dir = path to directory containing [samplename]/im3/xml directory
+        slideID       = name of the slide to use ("M21_1" or equivalent)
+        rawfile_top_dir  = path to directory containing [slideID] directory with multilayered ".Data.dat" files in it
+        root_dir = path to Clinical_Specimen directory
         working_dir      = path to some local directory to store files produced by the WarpFitter
         overlaps         = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
                            (default=-1 will use all overlaps)
         layer            = image layer number (indexed starting at 1) to consider in the warping/alignment (default=1)
         """
         #store the directory paths
-        self.samp_name = samplename
+        self.slideID = slideID
         self.rawfile_top_dir=rawfile_top_dir
-        self.metadata_top_dir=metadata_top_dir
+        self.root_dir=root_dir
         self.working_dir=working_dir
         #make the alignmentset object to use
         self.bkp_units_mode = units.currentmode
         units.setup("fast") #be sure to use fast units
         self.alignset = self.__initializeAlignmentSet(overlaps=overlaps)
+        #save the metadata summary and field logs for this alignment set
+        ms = MetadataSummary(self.slideID,self.alignset.Project,self.alignset.Cohort,self.alignset.microscopename,
+                             str(min([r.t for r in self.alignset.rectangles])),str(max([r.t for r in self.alignset.rectangles])))
+        field_logs = []
+        for r in self.alignset.rectangles :
+            field_logs.append(FieldLog(self.slideID,r.file,r.n))
+        with cd(self.working_dir) :
+            writetable(f'metadata_summary_{os.path.basename(os.path.normpath(self.working_dir))}.csv',[ms])
+            writetable(f'field_log_{os.path.basename(os.path.normpath(self.working_dir))}.csv',field_logs)
         #get the list of raw file paths
-        self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.samp_name,fn.replace(self.IM3_EXT,CONST.RAW_EXT)) 
+        self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.slideID,fn.replace(CONST.IM3_EXT,CONST.RAW_EXT)) 
                               for fn in [r.file for r in self.alignset.rectangles]]
-        #get the size of the images in the sample
-        m, n, nlayers = getImageHWLFromXMLFile(self.metadata_top_dir,samplename)
+        #get the size of the images in the slide
+        m, n, nlayers = getImageHWLFromXMLFile(self.root_dir,slideID)
         if layer<1 or layer>nlayers :
             raise WarpingError(f'ERROR: Choice of layer ({layer}) is not valid for images with {nlayers} layers!')
         #make the warpset object to use
@@ -78,10 +86,10 @@ class WarpFitter :
         """
         Remove the placeholder files when the object is being deleted
         """
-        if os.path.isdir(os.path.join(self.working_dir,self.samp_name)) :
+        if os.path.isdir(os.path.join(self.working_dir,self.slideID)) :
             warp_logger.info('Removing copied raw layer files....')
             with cd(self.working_dir) :
-                shutil.rmtree(self.samp_name)
+                shutil.rmtree(self.slideID)
         try:
             units.setup(self.bkp_units_mode)
         except TypeError: #units was garbage collected before the warpfitter
@@ -95,35 +103,26 @@ class WarpFitter :
                                     for each layer (or None if no correction is to be applied)
         n_threads                 = how many different processes to run when loading files
         """
-        #load the exposure time correction offsets and the max exposure times by layer
-        max_exp_time = None; et_correction_offset = None
+        #load the exposure time correction offsets and the median exposure times by layer
         if et_correction_offset_file is not None :
-            warp_logger.info("Loading info for exposure time correction...")
-            max_exp_time = getSampleMaxExposureTimesByLayer(self.metadata_top_dir,self.samp_name)[self.warpset.layer-1]
-            layer_offsets = readtable(et_correction_offset_file,LayerOffset)
-            this_layer_offset = [lo.offset for lo in layer_offsets if lo.layer_n==self.warpset.layer]
-            if len(this_layer_offset)==1 :
-                et_correction_offset = this_layer_offset[0]
-            elif len(this_layer_offset)==0 :
-                warp_logger.warn(f"""WARNING: LayerOffset file {et_correction_offset_file} does not have an entry for layer {self.warpset.layer}; 
-                                     offset will be set to zero!""")
-                et_correction_offset = 0.
-            else :
-                raise WarpingError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {self.warpset.layer}!')
+            med_exp_time, et_correction_offset = getMedianExposureTimeAndCorrectionOffsetForSlideLayer(self.root_dir,self.slideID,
+                                                                                                        et_correction_offset_file,self.warpset.layer)
+        else :
+            med_exp_time, et_correction_offset = None, None
         #load the raw images
-        self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.metadata_top_dir,
-                                   flatfield_file_path,max_exp_time,et_correction_offset,
+        self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.root_dir,
+                                   flatfield_file_path,med_exp_time,et_correction_offset,
                                    n_threads)
         #warp the loaded images and write them out once to replace the images in the alignment set
         self.warpset.warpLoadedImages()
         with cd(self.working_dir) :
-            if not os.path.isdir(self.samp_name) :
-                os.mkdir(self.samp_name)
-        self.warpset.writeOutWarpedImages(os.path.join(self.working_dir,self.samp_name))
-        self.alignset.getDAPI(filetype='camWarp')
+            if not os.path.isdir(self.slideID) :
+                os.mkdir(self.slideID)
+        self.warpset.writeOutWarpedImages(os.path.join(self.working_dir,self.slideID))
+        self.alignset.getDAPI()
 
     def doFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
-             p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000) :
+             p1p2_polish_lasso_lambda=0.,polish=True,print_every=1,maxiter=1000,save_fields=False) :
         """
         Fit the cameraWarp model to the loaded dataset
         fixed                    = list of fit parameter names to keep fixed (p1p2 can be fixed separately in the global and polishing minimization steps)
@@ -136,6 +135,7 @@ class WarpFitter :
         polish                   = whether to run the polishing fit step at all
         print_every              = print warp parameters and fit results at every [print_every] minimization function calls
         max_iter                 = maximum number of iterations for the global and polishing minimization steps
+        save_fields              = True if warping fields should be written out for this fit (and not just the result file with the parameter values)
         """
         #make the set of fit parameters
         self.fitpars = FitParameterSet(fixed,normalize,init_pars,init_bounds,max_radial_warp,max_tangential_warp,self.warpset.warp)
@@ -166,10 +166,10 @@ class WarpFitter :
         self.init_min_runtime = init_minimization_done_time-minimization_start_time
         self.polish_min_runtime = polish_minimization_done_time-init_minimization_done_time
         #run all the post-processing stuff
-        self.__runPostProcessing(de_result.nfev)
+        self.__runPostProcessing(de_result.nfev,save_fields)
 
     def checkFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
-                 p1p2_polish_lasso_lambda=0.,polish=True) :
+                 p1p2_polish_lasso_lambda=0.,polish=True,save_fields=False) :
         """
         A function to print some information about how the fits will proceed with the current settings
         (see "doFit" function above for what the arguments to this function are)
@@ -189,6 +189,11 @@ class WarpFitter :
                 warp_logger.info('p1 and p2 will not be LASSOed in the polishing minimization')
         else :
             warp_logger.info('Polishing minimization will be skipped')
+        #print whether the fields will be saved
+        if save_fields :
+            warp_logger.info('dx and dy warp fields will be saved after the fit')
+        else :
+            warp_logger.info('only the parameters will be saved after the fit, in the result file')
 
     #################### MINIMIZATION FUNCTIONS ####################
 
@@ -205,7 +210,7 @@ class WarpFitter :
         self.warpset.warpLoadedImages(skip_corners=self.skip_corners)
         #reload the (newly-warped) images into the alignment set
         self.alignset.updateRectangleImages(self.warpset.images_no_corners if self.skip_corners else self.warpset.images)
-        #check the warp amounts to see if the sample should be realigned
+        #check the warp amounts to see if the slide should be realigned
         rad_warp = self.warpset.warp.maxRadialDistortAmount(warp_pars)
         tan_warp = self.warpset.warp.maxTangentialDistortAmount(warp_pars)
         align_strategy = 'overwrite' if (abs(rad_warp)<self.fitpars.max_rad_warp) and (tan_warp<self.fitpars.max_tan_warp) else 'shift_only'
@@ -262,9 +267,9 @@ class WarpFitter :
         #set up the parameter bounds and constraints and get the initial population
         parameter_bounds, constraints, initial_population = self.__getGlobalSetup()
         self._de_population_size = len(initial_population)
-        #skip the corner overlaps
-        self.skip_corners = True
-        #figure out the normalization for the image sample used
+        #don't skip the corner overlaps
+        self.skip_corners = False
+        #figure out the normalization for the image slide used
         self.cost_norm = self.__getCostNormalization()
         #run the minimization
         warp_logger.info('Starting initial minimization....')
@@ -273,8 +278,8 @@ class WarpFitter :
                 result=scipy.optimize.differential_evolution(
                     func=self._evalCamWarpOnAlignmentSet,
                     bounds=parameter_bounds,
-                    strategy='best2bin',
-                    maxiter=maxiter,
+                    strategy='best1bin',
+                    maxiter=int(maxiter/self._de_population_size)+1,
                     tol=self.DE_TOLERANCE,
                     mutation=self.DE_MUTATION,
                     recombination=self.DE_RECOMBINATION,
@@ -291,9 +296,9 @@ class WarpFitter :
     def __runPolishMinimization(self,float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda,maxiter) :
         #set up the parameter bounds, constraints, initial values, and relative step sizes
         parameter_bounds, constraints, init_pars, rel_steps = self.__getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
-        #still do skip the corner overlaps
-        self.skip_corners = True
-        #figure out the normalization for the image sample used
+        #still don't skip the corner overlaps
+        self.skip_corners = False
+        #figure out the normalization for the image slide used
         self.cost_norm = self.__getCostNormalization()
         #call minimize with trust_constr
         warp_logger.info('Starting polishing minimization....')
@@ -318,7 +323,7 @@ class WarpFitter :
     #################### VISUALIZATION/OUTPUT FUNCTIONS ####################
 
     #helper function to run all of the various post-processing functions after the fit is done
-    def __runPostProcessing(self,n_initial_fevs) :
+    def __runPostProcessing(self,n_initial_fevs,save_fields) :
         #make the fit progress plots
         self.init_its, self.polish_its = self.__makeFitProgressPlots(n_initial_fevs)
         #use the fit result to make the best fit warp object
@@ -335,7 +340,7 @@ class WarpFitter :
         self.__writeFitResult()
         #write out the warp field binary file and plots
         with cd(self.working_dir) :
-            self._best_fit_warp.writeOutWarpFields()
+            self._best_fit_warp.writeOutWarpFields(os.path.basename(os.path.normpath(self.working_dir)),save_fields)
 
     #function to plot the costs and warps over all the iterations of the fit
     def __makeFitProgressPlots(self,ninitev) :
@@ -351,6 +356,9 @@ class WarpFitter :
             pop_avg_cost = np.mean(np.array(self.costs[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_costs.append(pop_avg_cost)
+        last_pop_avg_cost = np.mean(np.array(self.costs[(ig+1)*self._de_population_size:ninitev]))
+        for ip in range(len(self.costs[(ig+1)*self._de_population_size:ninitev])) :
+            pop_avg_costs.append(last_pop_avg_cost)
         ax[0][0].plot(inititers[:len(pop_avg_costs)],pop_avg_costs,label='population averages')
         ax[0][0].set_xlabel('initial minimization iteration')
         ax[0][0].set_ylabel('cost')
@@ -362,6 +370,9 @@ class WarpFitter :
             pop_avg_rad_warp = np.mean(np.array(self.max_radial_warps[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_rad_warps.append(pop_avg_rad_warp)
+        last_pop_avg_rad_warp = np.mean(np.array(self.max_radial_warps[(ig+1)*self._de_population_size:ninitev]))
+        for ip in range(len(self.costs[(ig+1)*self._de_population_size:ninitev])) :
+            pop_avg_rad_warps.append(last_pop_avg_rad_warp)
         ax[0][1].plot(inititers[:len(pop_avg_rad_warps)],pop_avg_rad_warps,label='population averages')
         ax[0][1].set_xlabel('initial minimization iteration')
         ax[0][1].set_ylabel('max radial warp')
@@ -373,6 +384,9 @@ class WarpFitter :
             pop_avg_tan_warp = np.mean(np.array(self.max_tangential_warps[ig*self._de_population_size:(ig+1)*self._de_population_size]))
             for ip in range(self._de_population_size) :
                 pop_avg_tan_warps.append(pop_avg_tan_warp)
+        last_pop_avg_tan_warp = np.mean(np.array(self.max_tangential_warps[(ig+1)*self._de_population_size:ninitev]))
+        for ip in range(len(self.costs[(ig+1)*self._de_population_size:ninitev])) :
+            pop_avg_tan_warps.append(last_pop_avg_tan_warp)
         ax[0][2].plot(inititers[:len(pop_avg_tan_warps)],pop_avg_tan_warps,label='population averages')
         ax[0][2].set_xlabel('initial minimization iteration')
         ax[0][2].set_ylabel('max tangential warp')
@@ -399,8 +413,10 @@ class WarpFitter :
         ax[1][2].set_ylabel('max tangential warp')
         ax[1][2].legend(loc='best')
         with cd(self.working_dir) :
-            plt.savefig('fit_progress.png')
+            savename = 'fit_progress.png'
+            plt.savefig(savename)
             plt.close()
+            cropAndOverwriteImage(savename)
         return ninitev, nfev
 
     #function to save alignment comparison visualizations in a new directory inside the working directory
@@ -417,38 +433,53 @@ class WarpFitter :
         all_olaps = self.alignset.overlaps
         olap_octet_p1s   = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])==8]
         olap_singlet_p1s = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])!=8 and olap1.p2 not in olap_octet_p1s]
-        #don't use the corner overlaps in the final cost reduction calculation either
-        self.skip_corners = True
+        #do use the corner overlaps in the final cost reduction calculation
+        self.skip_corners = False
         self.cost_norm = self.__getCostNormalization()
+        #make the overlap comparison figures
+        addl_singlet_p1s_and_codes = set()
+        failed_p1s_and_codes = None
         #start by aligning the raw, unwarped images and getting their shift comparison information/images and the raw p1 images
         self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
         rawcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
         raw_olap_comps = self.alignset.getOverlapComparisonImagesDict()
-        raw_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
-        #next warp and align the images with the best fit warp and do the same thing
-        self.warpset.warpLoadedImages()
-        self.alignset.updateRectangleImages(self.warpset.images)
-        bestcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
-        warped_olap_comps = self.alignset.getOverlapComparisonImagesDict()
-        warped_octets_olaps = [copy.deepcopy([olap for olap in self.alignset.overlaps if olap.p1==octetp1]) for octetp1 in olap_octet_p1s]
-        #print the cost differences
-        warp_logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
-        #write out the octet comparison figures
-        addl_singlet_p1s_and_codes = set()
-        failed_p1s_and_codes = None
-        for octetp1,raw_octet_overlaps,warped_octet_overlaps in zip(olap_octet_p1s,raw_octets_olaps,warped_octets_olaps) :
+        raw_octets_olaps = [[olap for olap in self.alignset.overlaps if olap.p1==octetp1] for octetp1 in olap_octet_p1s]
+        raw_octets_opposite_olaps = [[olap for olap in self.alignset.overlaps if olap.p2==octetp1] for octetp1 in olap_octet_p1s]
+        for octetp1,raw_octet_overlaps,raw_octet_opposite_overlaps in zip(olap_octet_p1s,raw_octets_olaps,raw_octets_opposite_olaps) :
             #start up the figures
             raw_octet_image = OctetComparisonVisualization(raw_octet_overlaps,False,f'octet_p1={octetp1}_raw_overlap_comparisons')
+            raw_octet_opposite_image = OctetComparisonVisualization(raw_octet_opposite_overlaps,False,f'octet_p1={octetp1}_raw_opposite_overlap_comparisons',True)
             raw_aligned_octet_image = OctetComparisonVisualization(raw_octet_overlaps,True,f'octet_p1={octetp1}_raw_aligned_overlap_comparisons')
-            warped_octet_image = OctetComparisonVisualization(warped_octet_overlaps,False,f'octet_p1={octetp1}_warped_overlap_comparisons')
-            warped_aligned_octet_image = OctetComparisonVisualization(warped_octet_overlaps,True,f'octet_p1={octetp1}_warped_aligned_overlap_comparisons')
-            all_octet_comparison_images = [raw_octet_image,raw_aligned_octet_image,warped_octet_image,warped_aligned_octet_image]
+            raw_aligned_octet_opposite_image = OctetComparisonVisualization(raw_octet_opposite_overlaps,True,f'octet_p1={octetp1}_raw_aligned_opposite_overlap_comparisons',True)
+            all_octet_comparison_images = [raw_octet_image,raw_octet_opposite_image,raw_aligned_octet_image,raw_aligned_octet_opposite_image]
             #stack the overlay images and write out the figures
             for oci in all_octet_comparison_images :
                 failed_p1s_and_codes = oci.stackOverlays()
                 for fp1,fc in failed_p1s_and_codes :
                     addl_singlet_p1s_and_codes.add((fp1,fc))
-                oci.writeOutFigure(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME))
+                with cd(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME)) :
+                    oci.writeOutFigure()
+        #next warp and align the images with the best fit warp and do the same thing
+        self.warpset.warpLoadedImages()
+        self.alignset.updateRectangleImages(self.warpset.images)
+        bestcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
+        warped_olap_comps = self.alignset.getOverlapComparisonImagesDict()
+        warped_octets_olaps = [[olap for olap in self.alignset.overlaps if olap.p1==octetp1] for octetp1 in olap_octet_p1s]
+        warped_octets_ooposite_olaps = [[olap for olap in self.alignset.overlaps if olap.p2==octetp1] for octetp1 in olap_octet_p1s]
+        for octetp1,warped_octet_overlaps,warped_octet_opposite_overlaps in zip(olap_octet_p1s,warped_octets_olaps,warped_octets_ooposite_olaps) :
+            #start up the figures
+            warped_octet_image = OctetComparisonVisualization(warped_octet_overlaps,False,f'octet_p1={octetp1}_warped_overlap_comparisons')
+            warped_octet_opposite_image = OctetComparisonVisualization(warped_octet_opposite_overlaps,False,f'octet_p1={octetp1}_warped_opposite_overlap_comparisons',True)
+            warped_aligned_octet_image = OctetComparisonVisualization(warped_octet_overlaps,True,f'octet_p1={octetp1}_warped_aligned_overlap_comparisons')
+            warped_aligned_octet_opposite_image = OctetComparisonVisualization(warped_octet_opposite_overlaps,True,f'octet_p1={octetp1}_warped_aligned_opposite_overlap_comparisons',True)
+            all_octet_comparison_images = [warped_octet_image,warped_octet_opposite_image,warped_aligned_octet_image,warped_aligned_octet_opposite_image]
+            #stack the overlay images and write out the figures
+            for oci in all_octet_comparison_images :
+                failed_p1s_and_codes = oci.stackOverlays()
+                for fp1,fc in failed_p1s_and_codes :
+                    addl_singlet_p1s_and_codes.add((fp1,fc))
+                with cd(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME)) :
+                    oci.writeOutFigure()
         #plot the singlet overlap comparisons
         for overlap_identifier in raw_olap_comps.keys() :
             do_overlap = False
@@ -487,6 +518,9 @@ class WarpFitter :
             with cd(os.path.join(self.working_dir,self.OVERLAP_COMPARISON_DIR_NAME)) :
                 plt.savefig(fn)
                 plt.close()
+                cropAndOverwriteImage(fn)
+        #print the cost differences
+        warp_logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
         #return the pre- and post-fit alignment costs
         return rawcost, bestcost
 
@@ -505,7 +539,7 @@ class WarpFitter :
         result.k3 = self._best_fit_warp.k3
         result.p1 = self._best_fit_warp.p1
         result.p2 = self._best_fit_warp.p2
-        max_r_x, max_r_y = self.warpset.warp._getMaxDistanceCoords()
+        max_r_x, max_r_y = self._best_fit_warp._getMaxDistanceCoords(self._best_fit_warp.cx,self._best_fit_warp.cy)
         result.max_r_x_coord  = max_r_x
         result.max_r_y_coord  = max_r_y
         result.max_r          = math.sqrt((max_r_x)**2+(max_r_y)**2)
@@ -527,8 +561,8 @@ class WarpFitter :
     def __initializeAlignmentSet(self, *, overlaps) :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
-        a = AlignmentSetFromXML(self.metadata_top_dir,self.working_dir,self.samp_name,nclip=CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
-                                selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True)
+        a = AlignmentSetFromXML(self.root_dir,self.working_dir,self.slideID,nclip=CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
+                                selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True,filetype="camWarp")
         return a
 
     #helper function to return the parameter bounds, constraints, and initial population for the global minimization

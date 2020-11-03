@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import argparse, functools, matplotlib.pyplot as plt, pathlib
-from ...alignment.alignmentset import AlignmentSet
 from ...badregions.dustspeck import DustSpeckFinder
+from ...badregions.sample import DustSpeckFinderSample
 from ...utilities import units
 
 here = pathlib.Path(__file__).parent
@@ -19,9 +19,8 @@ rc = {
 @functools.lru_cache()
 def getimage(which, i):
   if which == "dust" and i == 0:
-    A = AlignmentSet(data, data/"flatw", "M55_1", selectrectangles=[678])
-    A.getDAPI(writeimstat=False, keeprawimages=True)
-    return A.rectangles[0].rawimage
+    A = DustSpeckFinderSample(data, data/"flatw", "M55_1", selectrectangles=[678])
+    return A.rectangles[0].image
 
 def dust(*, remake):
   save = {0: here/"dust.pdf", 0.6: here/"dustdetected.pdf"}

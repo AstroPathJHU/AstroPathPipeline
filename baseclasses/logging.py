@@ -1,14 +1,21 @@
-import collections, functools, logging
+import collections, functools, logging, pathlib, traceback
 
 class MyLogger:
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
     self.module = module
-    self.root = root
+    self.root = pathlib.Path(root)
     self.samp = samp
     self.uselogfiles = uselogfiles
     self.nentered = 0
     self.threshold = threshold
-
+    if mainlog is None:
+      mainlog = self.root/"logfiles"/f"{self.module}.log"
+    if samplelog is None:
+      samplelog = self.root/self.SlideID/"logfiles"/f"{self.SlideID}-{self.module}.log"
+    self.mainlog = pathlib.Path(mainlog)
+    self.samplelog = pathlib.Path(samplelog)
+    self.imagelog = None if imagelog is None else pathlib.Path(imagelog)
+    self.reraiseexceptions = reraiseexceptions
     if uselogfiles and (self.Project is None or self.SampleID is None or self.Cohort is None):
       raise ValueError("Have to give a non-None SampleID, Project, and Cohort when writing to log files")
 
@@ -28,7 +35,7 @@ class MyLogger:
   def formatter(self):
     return logging.Formatter(
       ";".join(str(_) for _ in (self.Project, self.Cohort, self.SampleID, self.SlideID, "%(message)s", "%(asctime)s") if _ is not None),
-      "%d-%b-%Y %H:%M:%S",
+      "%Y-%m-%d %H:%M:%S",
     )
   def __enter__(self):
     if self.nentered == 0:
@@ -42,19 +49,27 @@ class MyLogger:
       self.logger.addHandler(printhandler)
 
       if self.uselogfiles:
-        (self.root/"logfiles").mkdir(exist_ok=True)
-        mainhandler = MyFileHandler(self.root/"logfiles"/f"{self.module}.log")
+        self.mainlog.parent.mkdir(exist_ok=True, parents=True)
+        mainhandler = MyFileHandler(self.mainlog)
         mainhandler.setFormatter(self.formatter)
         mainhandler.addFilter(self.filter)
         mainhandler.setLevel(logging.WARNING+1)
         self.logger.addHandler(mainhandler)
 
-        (self.root/self.SlideID/"logfiles").mkdir(exist_ok=True)
-        samplehandler = MyFileHandler(self.root/self.SlideID/"logfiles"/f"{self.SlideID}-{self.module}.log")
+        self.samplelog.parent.mkdir(exist_ok=True, parents=True)
+        samplehandler = MyFileHandler(self.samplelog)
         samplehandler.setFormatter(self.formatter)
         samplehandler.addFilter(self.filter)
         samplehandler.setLevel(logging.INFO)
         self.logger.addHandler(samplehandler)
+
+        if self.imagelog is not None :
+          self.imagelog.parent.mkdir(exist_ok=True, parents=True)
+          imagehandler = MyFileHandler(self.imagelog)
+          imagehandler.setFormatter(self.formatter)
+          imagehandler.addFilter(self.filter)
+          imagehandler.setLevel(logging.INFO-1)
+          self.logger.addHandler(imagehandler)
 
         self.logger.critical(self.module)
 
@@ -77,14 +92,18 @@ class MyLogger:
       raise ValueError("log messages aren't supposed to have semicolons:\n\n"+record.msg)
     return True
 
-  def __exit__(self, *exc):
+  def __exit__(self, exc_type, exc_value, exc_traceback):
     self.nentered -= 1
     if self.nentered == 0:
+      if exc_value is not None:
+        self.error(str(exc_value).replace(";", ","))
+        self.info(repr(traceback.format_exception(exc_type, exc_value, exc_traceback)).replace(";", ""))
       self.logger.info(f"end {self.module}")
       for handler in self.handlers[:]:
         handler.close()
         self.removeHandler(handler)
       del self.logger
+    return not self.reraiseexceptions
 
   def __getattr__(self, attr):
     if attr == "logger":
@@ -92,6 +111,8 @@ class MyLogger:
     return getattr(self.logger, attr)
   def warningglobal(self, *args, **kwargs):
     return self.logger.log(logging.WARNING+1, *args, **kwargs)
+  def imageinfo(self, *args, **kwargs):
+    return self.logger.log(logging.INFO-1, *args, **kwargs)
 
 class MyFileHandler:
   __handlers = {}
@@ -113,10 +134,20 @@ class MyFileHandler:
   def __getattr__(self, attr):
     return getattr(self.__handler, attr)
 
+__notgiven = object()
+
 @functools.lru_cache(maxsize=None)
-def getlogger(*, module, root, samp, uselogfiles=None, threshold=None):
-  if uselogfiles is None:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=False, threshold=threshold)
-  if threshold is None:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=logging.DEBUG)
-  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold)
+def getlogger(*, module, root, samp, uselogfiles=__notgiven, threshold=__notgiven, mainlog=__notgiven, samplelog=__notgiven, imagelog=__notgiven, reraiseexceptions=__notgiven):
+  if uselogfiles is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=False, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+  if threshold is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=logging.DEBUG, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+  if mainlog is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=None, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+  if samplelog is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=None, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+  if imagelog is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=None, reraiseexceptions=reraiseexceptions)
+  if reraiseexceptions is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=True)
+  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)

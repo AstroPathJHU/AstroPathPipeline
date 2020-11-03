@@ -1,0 +1,35 @@
+\pdfsuppresswarningpagegroup=1
+
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage[subrefformat=simple,labelformat=simple]{subcaption}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{pgffor}
+\renewcommand\thesubfigure{(\arabic{subfigure})}
+
+\begin{document}
+\begin{figure}
+\centering
+\foreach \n in {1,...,35}{
+\begin{subfigure}{0.18\linewidth}
+\includegraphics[width=\linewidth]{layer\n}
+\caption{}
+\end{subfigure}
+}
+\caption{The 35 layers of HPF 1600 of \texttt{M41\_1}.}
+\end{figure}
+
+\begin{figure}
+	\centering
+	\foreach \n in {1,...,35}{
+		\begin{subfigure}{0.18\linewidth}
+			\includegraphics[width=\linewidth]{PCA\n}
+			\caption{}
+		\end{subfigure}
+	}
+	\caption{HPF 1600 of \texttt{M41\_1} projected onto the 35 principal components.}
+\end{figure}
+\end{document}

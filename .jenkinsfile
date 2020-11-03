@@ -1,6 +1,6 @@
 pipeline {
   agent {
-    docker { image 'astropathjhu/alignmenttest:v13' }
+    docker { image 'astropathjhu/alignmenttest:v15' }
   }
 
   environment {
@@ -38,62 +38,98 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/alignment/alignment_stitching.log'
               }
             }
+            stage('test zoom') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
+              }
+            }
+          }
+        }
+        stage('align layers') {
+          stages {
+            stage('test align layers') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignlayers'
+              }
+            }
+            stage('layer PCA plots') {
+              steps {
+                sh 'cd documentation/layerPCA; pdflatex layerPCA.tex; pdflatex layerPCA.tex; pdflatex layerPCA.tex'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/layerPCA/layerPCA.log'
+              }
+            }
           }
         }
 
         stage('warping') {
-	  stages {
-	    stage('test warping') {
+          stages {
+            stage('test warping') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
-	      }
-	    }
-	    stage('test warpfitter') {
-	      steps {
+              }
+            }
+            stage('test warpfitter') {
+              steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
               }
-	    }
+            }
           }
         }
 
         stage('bad region detection') {
-	  stages {
-  	    stage('test bad regions') {
-	      steps {
+          stages {
+            stage('test bad regions') {
+              steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testbadregions'
-	      }
-	    }
-	    stage('bad regions documentation') {
-	      steps {
+              }
+            }
+            stage('bad regions documentation') {
+              steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.badregions.makeplots --testing'
-	        sh 'cd documentation/badregions; pdflatex badregions.tex; pdflatex badregions.tex; pdflatex badregions.tex'
+                sh 'cd documentation/badregions; pdflatex badregions.tex; pdflatex badregions.tex; pdflatex badregions.tex'
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/badregions/badregions.log'
-	      }
-	    }
-	  }
+              }
+            }
+          }
         }
 
-	stage('flatfielding') {
-	  stages {
-  	    stage('test flatfield') {
-	      steps {
-	        sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfield'
-	      }
-	    }
-	    stage('flatfield documentation') {
-	      steps {
-	        sh 'cd documentation/flatfield; pdflatex flatfield_documentation.tex; bibtex flatfield_documentation; pdflatex flatfield_documentation.tex; pdflatex flatfield_documentation.tex'
+        stage('flatfielding') {
+          stages {
+            stage('test flatfield') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfield'
+              }
+            }
+            stage('flatfield documentation') {
+              steps {
+                sh 'cd documentation/flatfield; pdflatex flatfield_documentation.tex; bibtex flatfield_documentation; pdflatex flatfield_documentation.tex; pdflatex flatfield_documentation.tex'
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/flatfield/flatfield_documentation.log'
-	      }
-	    }
-	  }
-	}
+              }
+            }
+          }
+        }
 
-	stage('exposure time correction') {
-	  steps {
-	    sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testexposuretimefit'
-	  }
-	}
+        stage('exposure time correction') {
+          stages {
+            stage('test exposuretime') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testexposuretimefit'
+              }
+            }
+            stage('exposuretime documentation') {
+              steps {
+                sh 'cd documentation/exposuretime; pdflatex exposuretime_documentation.tex; bibtex exposuretime_documentation; pdflatex exposuretime_documentation.tex; pdflatex exposuretime_documentation.tex'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/exposuretime/exposuretime_documentation.log'
+              }
+            }
+          }
+        }
+
+        stage('test image correction') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testimagecorrection'
+          }
+        }
 
         stage('code checks') {
           steps {
@@ -114,7 +150,12 @@ pipeline {
       archiveArtifacts artifacts: 'documentation/alignment/alignment_stitching.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/badregions/badregions.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/flatfield/flatfield_documentation.pdf', fingerprint: true
+      archiveArtifacts artifacts: 'documentation/exposuretime/exposuretime_documentation.pdf', fingerprint: true
+      archiveArtifacts artifacts: 'documentation/layerPCA/layerPCA.pdf', fingerprint: true
       archiveArtifacts artifacts: 'test/badregions_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+      archiveArtifacts artifacts: 'test/exposuretimefit_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+      archiveArtifacts artifacts: 'test/warpfitter_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+      archiveArtifacts artifacts: 'test/zoom_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
     }
   }
 }

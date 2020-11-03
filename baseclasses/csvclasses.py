@@ -6,12 +6,12 @@ from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 class Globals(DataClassWithDistances):
   pixelsormicrons = "microns"
 
-  x: distancefield(pixelsormicrons=pixelsormicrons)
-  y: distancefield(pixelsormicrons=pixelsormicrons)
-  Width: distancefield(pixelsormicrons=pixelsormicrons)
-  Height: distancefield(pixelsormicrons=pixelsormicrons)
+  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  Width: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  Height: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   Unit: str
-  Tc: datetime.datetime = dataclasses.field(metadata={"writefunction": datetime.datetime.timestamp})
+  Tc: datetime.datetime = dataclasses.field(metadata={"readfunction": lambda x: datetime.datetime.fromtimestamp(int(x)), "writefunction": lambda x: int(datetime.datetime.timestamp(x))})
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
 
@@ -20,8 +20,8 @@ class Perimeter(DataClassWithDistances):
   pixelsormicrons = "microns"
 
   n: int
-  x: distancefield(pixelsormicrons=pixelsormicrons)
-  y: distancefield(pixelsormicrons=pixelsormicrons)
+  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
 

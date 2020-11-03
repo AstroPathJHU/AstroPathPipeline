@@ -21,7 +21,7 @@ rc = {
 def __alignmentset(root1, root2, samp, dapi, **kwargs):
   if dapi:
     A = alignmentset(root1=root1, root2=root2, samp=samp, **kwargs)
-    A.getDAPI(overwrite=False)
+    A.getDAPI()
     return A
 
   if root1 is root2 is samp is None:
