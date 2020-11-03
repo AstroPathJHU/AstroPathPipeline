@@ -1,5 +1,7 @@
 import collections, functools, logging, pathlib, traceback
 
+from ..version import astropathversion
+
 class MyLogger:
   def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
     self.module = module
@@ -71,7 +73,7 @@ class MyLogger:
           imagehandler.setLevel(logging.INFO-1)
           self.logger.addHandler(imagehandler)
 
-        self.logger.critical(self.module)
+        self.logger.critical(f"{self.module} {astropathversion}")
 
     self.nentered += 1
     return self

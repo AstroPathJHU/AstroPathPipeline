@@ -8,6 +8,7 @@ from astropathcalibration.baseclasses.sample import SampleDef
 from astropathcalibration.utilities.misc import re_subs
 from astropathcalibration.utilities.tableio import readtable
 from astropathcalibration.utilities import units
+from astropathcalibration.version import astropathversion
 from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -62,8 +63,10 @@ class TestAlignment(TestBaseSaveOutput):
       ref = thisfolder/"reference"/"alignment"/SlideID/log.name
       with open(ref) as fref, open(log) as fnew:
         subs = (";[^;]*$", ""), (r"(WARNING: (component tiff|xml files|constants\.csv)).*$", r"\1")
-        refcontents = os.linesep.join([re_subs(line, *subs, flags=re.MULTILINE) for line in fref.read().splitlines()])+os.linesep
-        newcontents = os.linesep.join([re_subs(line, *subs, flags=re.MULTILINE) for line in fnew.read().splitlines()])+os.linesep
+        refsubs = *subs, (r"(align )v[\w+.]+", rf"\1{astropathversion}")
+        newsubs = *subs,
+        refcontents = os.linesep.join([re_subs(line, *refsubs, flags=re.MULTILINE) for line in fref.read().splitlines()])+os.linesep
+        newcontents = os.linesep.join([re_subs(line, *newsubs, flags=re.MULTILINE) for line in fnew.read().splitlines()])+os.linesep
         self.assertEqual(refcontents, newcontents)
 
   def testAlignmentFastUnits(self):
