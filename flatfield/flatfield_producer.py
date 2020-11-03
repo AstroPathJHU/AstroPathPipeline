@@ -28,13 +28,14 @@ class FlatfieldProducer :
 
     #################### PUBLIC FUNCTIONS ####################
     
-    def __init__(self,slides,all_slide_rawfile_paths_to_run,workingdir_name,skip_et_correction=False,skip_masking=False) :
+    def __init__(self,slides,all_slide_rawfile_paths_to_run,workingdir_name,skip_et_correction=False,skip_masking=False,logger=None) :
         """
         slides                         = list of FlatfieldSlideInfo objects for this run
         all_slide_rawfile_paths_to_run = list of paths to raw files to stack for all slides that will be run
         workingdir_name                = name of the directory to save everything in
         skip_et_correction             = if True, image flux will NOT be corrected for exposure time differences in each layer
         skip_masking                   = if True, image layers won't be masked before being added to the stack
+        logger                         = a RunLogger object whose context is entered, if None the default log will be used
         """
         self.all_slide_rawfile_paths_to_run = all_slide_rawfile_paths_to_run
         #make a dictionary to hold all of the separate slides we'll be considering (keyed by name)
@@ -55,6 +56,8 @@ class FlatfieldProducer :
             self._et_correction_offsets.append(None)
         self._metadata_summaries = []
         self._field_logs = []
+        #Set up the logger
+        self._logger = logger
 
     def readInExposureTimeCorrectionOffsets(self,et_correction_file) :
         """
@@ -62,7 +65,11 @@ class FlatfieldProducer :
         et_correction_file = path to file containing records of LayerOffset objects specifying an offset to use for each layer
         """
         #read in the file and get the offsets by layer
-        flatfield_logger.info(f'Copying exposure time offsets from file {et_correction_file}...')
+        msg = f'Copying exposure time offsets from file {et_correction_file}...'
+        if self._logger is not None :
+            self._logger.info(msg)
+        else :
+            flatfield_logger.info(msg)
         if self._et_correction_offsets[0] is not None :
             raise FlatFieldError('ERROR: calling readInExposureTimeCorrectionOffsets with an offset list already set!')
         layer_offsets_from_file = readtable(et_correction_file,LayerOffset)
@@ -71,7 +78,11 @@ class FlatfieldProducer :
             if len(this_layer_offset)==1 :
                 self._et_correction_offsets[ln-1]=this_layer_offset[0]
             elif len(this_layer_offset)==0 :
-                flatfield_logger.warn(f'WARNING: LayerOffset file {et_correction_file} does not have an entry for layer {ln}; offset will be set to zero!')
+                msg = f'WARNING: LayerOffset file {et_correction_file} does not have an entry for layer {ln}; offset will be set to zero!'
+                if self._logger is not None :
+                    self._logger.warning(msg)
+                else :
+                    flatfield_logger.warn(msg)
                 self._et_correction_offsets[ln-1]=0.
             else :
                 raise FlatFieldError(f'ERROR: more than one entry found in LayerOffset file {et_correction_file} for layer {ln}!')
@@ -79,56 +90,77 @@ class FlatfieldProducer :
     def readInBackgroundThresholds(self,threshold_file_dir) :
         """
         Function to read in previously-determined background thresholds for each slide
-        threshold_file_dir       = directory holding [slidename]_[CONST.THRESHOLD_TEXT_FILE_NAME_STEM] files to read thresholds 
-                                   from instead of finding them from the images themselves
+        threshold_file_dir = directory holding [slidename]_[CONST.THRESHOLD_TEXT_FILE_NAME_STEM] files to read thresholds 
+                             from instead of finding them from the images themselves
         """
         #read each slide's list of background thresholds by layer
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
             threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
             threshold_file_path = os.path.join(threshold_file_dir,threshold_file_name)
-            flatfield_logger.info(f'Copying background thresholds from file {threshold_file_path} for slide {sn}...')
-            slide.readInBackgroundThresholds(threshold_file_path)
+            msg = f'Copying background thresholds from file {threshold_file_path} for slide {sn}...'
+            if self._logger is not None :
+                self._logger.info(msg,sn,slide.root_dir)
+            else :
+                flatfield_logger.info(msg)
+            slide.readInBackgroundThresholds(threshold_file_path,self._logger)
 
     def findBackgroundThresholds(self,all_slide_rawfile_paths,n_threads) :
         """
         Function to determine, using HPFs that image edges of the tissue in each slide, what thresholds to use for masking out background
         in each layer of each slide
         all_slide_rawfile_paths = list of every rawfile path for every slide that will be run
-        n_threads                = max number of threads/processes to open at once
+        n_threads               = max number of threads/processes to open at once
         """
         #make each slide's list of background thresholds by layer
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
             threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
-            flatfield_logger.info(f'Finding background thresholds from tissue edges for slide {sn}...')
+            msg = f'Finding background thresholds from tissue edges for slide {sn}...'
+            if self._logger is not None :
+                self._logger.info(msg,sn,slide.root_dir)
+            else :
+                flatfield_logger.info(msg)
             new_field_logs = slide.findBackgroundThresholds([rfp for rfp in all_slide_rawfile_paths if slideNameFromFilepath(rfp)==sn],
                                                            n_threads,
                                                            self.exposure_time_correction_offsets,
                                                            os.path.join(self.mean_image.workingdir_path,CONST.THRESHOLDING_PLOT_DIR_NAME),
                                                            threshold_file_name,
+                                                           self._logger
                                                         )
             self._field_logs+=new_field_logs
 
     def stackImages(self,n_threads,selected_pixel_cut,n_masking_images_per_slide,allow_edge_HPFs) :
         """
         Function to mask out background and stack portions of images up
-        n_threads                   = max number of threads/processes to open at once
-        selected_pixel_cut          = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
+        n_threads                  = max number of threads/processes to open at once
+        selected_pixel_cut         = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
         n_masking_images_per_slide = how many example masking image plots to save for each slide (exactly which are saved will be decided randomly)
-        allow_edge_HPFs             = 'True' if HPFs on the edge of the tissue should NOT be removed before stacking slide images
+        allow_edge_HPFs            = 'True' if HPFs on the edge of the tissue should NOT be removed before stacking slide images
         """
         #do one slide at a time
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
-            flatfield_logger.info(f'Stacking raw images from slide {sn}...')
+            msg=f'Stacking raw images from slide {sn}...'
+            if self._logger is not None :
+                self._logger.info(msg,sn,slide.root_dir)
+            else :
+                flatfield_logger.info(msg)
             #get all the filepaths in this slide
             this_slide_fps_to_run = [fp for fp in self.all_slide_rawfile_paths_to_run if slideNameFromFilepath(fp)==sn]
             #If they're being neglected, get the filepaths corresponding to HPFs on the edge of the tissue
             this_slide_edge_HPF_filepaths = slide.findTissueEdgeFilepaths(this_slide_fps_to_run)
             if not allow_edge_HPFs :
-                flatfield_logger.info(f'Neglecting {len(this_slide_edge_HPF_filepaths)} files on the edge of the tissue')
+                msg = f'Neglecting {len(this_slide_edge_HPF_filepaths)} files on the edge of the tissue'
+                if self._logger is not None :
+                    self._logger.info(msg,sn,slide.root_dir)
+                else :
+                    flatfield_logger.info(msg)
                 this_slide_fps_to_run = [fp for fp in this_slide_fps_to_run if fp not in this_slide_edge_HPF_filepaths]
             #If this slide doesn't have any images to stack, warn the user and continue
             if len(this_slide_fps_to_run)<1 :
-                flatfield_logger.warn(f'WARNING: slide {sn} does not have any images to be stacked!')
+                msg = f'WARNING: slide {sn} does not have any images to be stacked!'
+                if self._logger is not None :
+                    self._logger.warningglobal(msg,sn,slide.root_dir)
+                else :
+                    flatfield_logger.warn(msg)
                 continue
             #otherwise add the metadata summary for this slide to the producer's list
             a = AlignmentSetFromXML(slide.root_dir,os.path.dirname(os.path.dirname(this_slide_fps_to_run[0])),sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
@@ -139,7 +171,10 @@ class FlatfieldProducer :
             if len(this_slide_fps_to_run)<n_masking_images_per_slide :
                 msg=f'WARNING: Requested to save {n_masking_images_per_slide} masking images for each slide,'
                 msg+=f' but {sn} will only stack {len(this_slide_fps_to_run)} total files! (Masking plots will be saved for all of them.)'
-                flatfield_logger.warn(msg)
+                if self._logger is not None :
+                    self._logger.warning(msg,sn,slide.root_dir)
+                else :
+                    flatfield_logger.warn(msg)
             this_slide_indices_for_masking_plots = list(range(len(this_slide_fps_to_run)))
             random.shuffle(this_slide_indices_for_masking_plots)
             this_slide_indices_for_masking_plots=this_slide_indices_for_masking_plots[:n_masking_images_per_slide]
@@ -164,7 +199,7 @@ class FlatfieldProducer :
                 this_chunk_masking_plot_indices=[fr_chunk.index(fr) for fr in fr_chunk 
                                                  if this_slide_fps_to_run.index(fr.rawfile_path) in this_slide_indices_for_masking_plots]
                 fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,slide,selected_pixel_cut,med_exp_times_by_layer,
-                                                                            this_chunk_masking_plot_indices)
+                                                                            this_chunk_masking_plot_indices,self._logger)
                 for fi in range(len(new_field_logs)) :
                     new_field_logs[fi].stacked_in_layers = fields_stacked_in_layers[fi]
                 self._field_logs+=new_field_logs
@@ -176,14 +211,22 @@ class FlatfieldProducer :
         """
         Take the mean of the stacked images, smooth it and make the flatfield image by dividing each layer by its mean pixel value
         """
-        flatfield_logger.info('Getting/smoothing mean image and making flatfield....')
-        self.mean_image.makeFlatFieldImage()
+        msg = 'Getting/smoothing mean image and making flatfield'
+        if self._logger is not None :
+            self._logger.info(msg)
+        else :
+            flatfield_logger.info(msg)
+        self.mean_image.makeFlatFieldImage(self._logger)
 
     def applyFlatField(self,flatfield_file_path) :
         """
         Take the mean of the stacked images, smooth it, and make the corrected mean image by dividing the mean image by the existing flatfield
         """
-        flatfield_logger.info(f'Applying flatfield at {flatfield_file_path} to mean image....')
+        msg = f'Applying flatfield at {flatfield_file_path} to mean image'
+        if self._logger is not None :
+            self._logger.info(msg)
+        else :
+            flatfield_logger.info(msg)
         self.mean_image.makeCorrectedMeanImage(flatfield_file_path)
 
     def writeFileLog(self,filename) :
@@ -191,7 +234,11 @@ class FlatfieldProducer :
         Write out a text file of all the filenames that were added
         filename = name of the file to write to
         """
-        flatfield_logger.info('Writing filepath text file....')
+        msg = 'Writing filepath text file'
+        if self._logger is not None :
+            self._logger.imageinfo(msg)
+        else :
+            flatfield_logger.info(msg)
         if not os.path.isdir(self.mean_image.workingdir_path) :
             os.mkdir(self.mean_image.workingdir_path)
         with cd(self.mean_image.workingdir_path) :
@@ -205,10 +252,18 @@ class FlatfieldProducer :
         Save layer-by-layer images, some plots, and the log of fields used
         """
         #save the images
-        flatfield_logger.info('Saving layer-by-layer images....')
+        msg = 'Saving layer-by-layer images'
+        if self._logger is not None :
+            self._logger.imageinfo(msg)
+        else :
+            flatfield_logger.info(msg)
         self.mean_image.saveImages()
         #make some visualizations of the images
-        flatfield_logger.info('Saving plots....')
+        msg = 'Saving plots'
+        if self._logger is not None :
+            self._logger.imageinfo(msg)
+        else :
+            flatfield_logger.info(msg)
         self.mean_image.savePlots()
         with cd(self.mean_image.workingdir_path) :
             writetable(f'{self.FIELDS_USED_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._field_logs)

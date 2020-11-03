@@ -278,7 +278,7 @@ def getExposureTimesByLayer(fp,nlayers,root_dir=None) :
   return layer_exposure_times_to_return
 
 #helper function to return a list of the median exposure times observed in each layer of a given slide
-def getSlideMedianExposureTimesByLayer(root_dir,slideID) :
+def getSlideMedianExposureTimesByLayer(root_dir,slideID,logger=None) :
   _,_,nlayers = getImageHWLFromXMLFile(root_dir,slideID)
   checkdir = os.path.join(root_dir,slideID,'im3','xml')
   if not os.path.isdir(checkdir) :
@@ -287,7 +287,15 @@ def getSlideMedianExposureTimesByLayer(root_dir,slideID) :
     all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
   if len(all_fps)<1 :
     raise ValueError(f'ERROR: no exposure time xml files found in directory {checkdir}!')
-  utility_logger.info(f'Finding median exposure times for {slideID} ({len(all_fps)} images with {nlayers} layers each)....')
+  msg = f'Finding median exposure times for {slideID} ({len(all_fps)} images with {nlayers} layers each)....'
+  if logger is not None :
+    try :
+      logger.imageinfo(msg,slideID,root_dir)
+    except Exception :
+      try :
+        logger.imageinfo(msg)
+      except Exception :
+        utility_logger.info(msg)
   all_exp_times_by_layer = []
   for li in range(nlayers) :
     all_exp_times_by_layer.append([])

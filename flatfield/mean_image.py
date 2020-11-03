@@ -20,7 +20,6 @@ class MeanImage :
     def dims(self):
         return self._dims
     
-    
     #################### CLASS CONSTANTS ####################
 
     #outputted images
@@ -80,7 +79,7 @@ class MeanImage :
         self.corrected_mean_image=None
         self.smoothed_corrected_mean_image=None
 
-    def addGroupOfImages(self,im_array_list,slide,min_selected_pixels,ets_for_normalization=None,masking_plot_indices=[]) :
+    def addGroupOfImages(self,im_array_list,slide,min_selected_pixels,ets_for_normalization=None,masking_plot_indices=[],logger=None) :
         """
         A function to add a list of raw image arrays to the image stack
         If masking is requested this function's subroutines are parallelized and also run on the GPU
@@ -89,6 +88,7 @@ class MeanImage :
         min_selected_pixels   = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
         ets_for_normalization = list of exposure times to use for normalizating images to counts/ms before stacking (but after masking)
         masking_plot_indices  = list of image array list indices whose masking plots will be saved
+        logger                = a RunLogger object whose context is entered, if None the default log will be used
         """
         #make sure the exposure time normalization can be done
         if (ets_for_normalization is not None) and (len(ets_for_normalization)!=self.nlayers) :
@@ -97,7 +97,11 @@ class MeanImage :
         #if the images aren't meant to be masked then we can just add them up trivially
         if self.skip_masking :
             for i,im_array in enumerate(im_array_list,start=1) :
-                flatfield_logger.info(f'  adding image {self.n_images_read+1} to the stack....')
+                msg = f'  adding image {self.n_images_read+1} to the stack....'
+                if logger is not None :
+                    logger.imageinfo(msg,slide.name,slide.root_dir)
+                else :
+                    flatfield_logger.info(msg)
                 self.image_stack+=im_array
                 self.n_images_read+=1
                 self.n_images_stacked_by_layer+=1
@@ -114,7 +118,11 @@ class MeanImage :
         procs = []
         for i,im_array in enumerate(im_array_list,) :
             stack_i = i+self.n_images_read+1
-            flatfield_logger.info(f'  masking and adding image {stack_i} to the stack....')
+            msg = f'  masking and adding image {stack_i} to the stack....'
+            if logger is not None :
+                logger.imageinfo(msg,slide.name,slide.root_dir)
+            else :
+                flatfield_logger.info(msg)
             make_plots=i in masking_plot_indices
             p = mp.Process(target=getImageMaskWorker, 
                            args=(im_array,slide.background_thresholds_for_masking,slide.name,min_selected_pixels,
@@ -142,15 +150,20 @@ class MeanImage :
             self.n_images_read+=1
         return stacked_in_layers
 
-    def makeFlatFieldImage(self) :
+    def makeFlatFieldImage(self,logger=None) :
         """
         A function to get the mean of the image stack and smooth/normalize each of its layers to make the flatfield image
+        logger = a RunLogger object whose context is entered, if None the default log will be used
         """
         if self.n_images_read<1 :
             raise FlatFieldError('ERROR: not enough images were read to produce a meanimage!')
         for li,nlis in enumerate(self.n_images_stacked_by_layer,start=1) :
             if nlis<1 :
-                flatfield_logger.warn(f'WARNING: {nlis} images were stacked in layer {li}; this layer of the meanimage/flatfield will be meaningless!')
+                msg = f'WARNING: {nlis} images were stacked in layer {li}; this layer of the meanimage/flatfield will be meaningless!'
+                if logger is not None :
+                    logger.warningglobal(msg)
+                else :
+                    flatfield_logger.warn(msg)
         self.mean_image = self.__getMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
