@@ -120,11 +120,6 @@ def main(args=None) :
         #make the WarpFitter Objects
         warp_logger.info('Initializing WarpFitter')
         fitter = WarpFitter(args.slideID,args.rawfile_top_dir,args.root_dir,args.workingdir,overlaps,args.layer)
-        #figure out which parameters will be fixed
-        fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
-        fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed
-        fix_k1k2k3 = 'k1' in args.fixed and 'k2' in args.fixed and 'k3' in args.fixed
-        fix_p1p2   = 'p1' in args.fixed and 'p2' in args.fixed
         #check the run if that's what's being asked
         if args.mode in ('check_run') :
             fitter.checkFit(fixed=args.fixed,normalize=args.normalize,init_pars=args.init_pars,init_bounds=args.init_bounds,

@@ -70,7 +70,7 @@ def main(args=None):
 
   units.setup(args.units)
 
-  result = args.cls(args.root1, args.root2, args.samp).run(plotsdir=args.plotsdir)
+  return args.cls(args.root1, args.root2, args.samp).run(plotsdir=args.plotsdir)
 
 if __name__ == "__main__":
   main()
