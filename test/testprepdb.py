@@ -7,7 +7,7 @@ from astropathcalibration.prepdb.prepdbsample import PrepdbSample
 from astropathcalibration.utilities import units
 from astropathcalibration.utilities.misc import re_subs
 from astropathcalibration.utilities.tableio import readtable
-from astropathcalibration.version import astropathversion
+from astropathcalibration.utilities.version import astropathversion
 from .testbase import assertAlmostEqual
 
 thisfolder = pathlib.Path(__file__).parent

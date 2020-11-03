@@ -5,10 +5,10 @@ from astropathcalibration.alignment.overlap import AlignmentResult
 from astropathcalibration.alignment.field import Field, FieldOverlap
 from astropathcalibration.alignment.stitch import AffineEntry
 from astropathcalibration.baseclasses.sample import SampleDef
+from astropathcalibration.utilities import units
 from astropathcalibration.utilities.misc import re_subs
 from astropathcalibration.utilities.tableio import readtable
-from astropathcalibration.utilities import units
-from astropathcalibration.version import astropathversion
+from astropathcalibration.utilities.version import astropathversion
 from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent

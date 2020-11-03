@@ -1,6 +1,6 @@
 import collections, functools, logging, pathlib, traceback
 
-from ..version import astropathversion
+from ..utilities.version import astropathversion
 
 class MyLogger:
   def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):

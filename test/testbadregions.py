@@ -5,7 +5,7 @@ from astropathcalibration.badregions.sample import DustSpeckFinderSample, Tissue
 from astropathcalibration.badregions.tissuefold import TissueFoldFinderSimple, TissueFoldFinderByCell
 from astropathcalibration.utilities import units
 from astropathcalibration.utilities.misc import re_subs
-from astropathcalibration.version import astropathversion
+from astropathcalibration.utilities.version import astropathversion
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
