@@ -39,6 +39,7 @@ setuptools.setup(
     "scikit-image",
     "scikit-learn",
     "scipy",
+    "setuptools-scm",
     "uncertainties",
   ],
   extras_require = {
