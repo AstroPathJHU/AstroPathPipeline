@@ -7,7 +7,7 @@ from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities.img_file_io import getSlideMedianExposureTimesByLayer, LayerOffset
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, MetadataSummary
-import os, random
+import os, random, methodtools
 
 #main class
 class FlatfieldProducer :
@@ -65,11 +65,7 @@ class FlatfieldProducer :
         et_correction_file = path to file containing records of LayerOffset objects specifying an offset to use for each layer
         """
         #read in the file and get the offsets by layer
-        msg = f'Copying exposure time offsets from file {et_correction_file}...'
-        if self._logger is not None :
-            self._logger.info(msg)
-        else :
-            flatfield_logger.info(msg)
+        self.__writeLog(f'Copying exposure time offsets from file {et_correction_file}...','info')
         if self._et_correction_offsets[0] is not None :
             raise FlatFieldError('ERROR: calling readInExposureTimeCorrectionOffsets with an offset list already set!')
         layer_offsets_from_file = readtable(et_correction_file,LayerOffset)
@@ -78,11 +74,9 @@ class FlatfieldProducer :
             if len(this_layer_offset)==1 :
                 self._et_correction_offsets[ln-1]=this_layer_offset[0]
             elif len(this_layer_offset)==0 :
-                msg = f'WARNING: LayerOffset file {et_correction_file} does not have an entry for layer {ln}, so that offset will be set to zero!'
-                if self._logger is not None :
-                    self._logger.warning(msg)
-                else :
-                    flatfield_logger.warn(msg)
+                msg = f'WARNING: LayerOffset file {et_correction_file} does not have an entry for layer {ln}'
+                msg+=  ', so that offset will be set to zero!'
+                self.__writeLog(msg,'warning')
                 self._et_correction_offsets[ln-1]=0.
             else :
                 raise FlatFieldError(f'ERROR: more than one entry found in LayerOffset file {et_correction_file} for layer {ln}!')
@@ -97,11 +91,7 @@ class FlatfieldProducer :
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
             threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
             threshold_file_path = os.path.join(threshold_file_dir,threshold_file_name)
-            msg = f'Copying background thresholds from file {threshold_file_path} for slide {sn}...'
-            if self._logger is not None :
-                self._logger.info(msg,sn,slide.root_dir)
-            else :
-                flatfield_logger.info(msg)
+            self.__writeLog(f'Copying background thresholds from file {threshold_file_path} for slide {sn}...','info',sn,slide.root_dir)
             slide.readInBackgroundThresholds(threshold_file_path,self._logger)
 
     def findBackgroundThresholds(self,all_slide_rawfile_paths,n_threads) :
@@ -114,11 +104,7 @@ class FlatfieldProducer :
         #make each slide's list of background thresholds by layer
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
             threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
-            msg = f'Finding background thresholds from tissue edges for slide {sn}'
-            if self._logger is not None :
-                self._logger.info(msg,sn,slide.root_dir)
-            else :
-                flatfield_logger.info(msg)
+            self.__writeLog(f'Finding background thresholds from tissue edges for slide {sn}','info',sn,slide.root_dir)
             new_field_logs = slide.findBackgroundThresholds([rfp for rfp in all_slide_rawfile_paths if slideNameFromFilepath(rfp)==sn],
                                                            n_threads,
                                                            self.exposure_time_correction_offsets,
@@ -138,29 +124,17 @@ class FlatfieldProducer :
         """
         #do one slide at a time
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
-            msg=f'Stacking raw images from slide {sn}...'
-            if self._logger is not None :
-                self._logger.info(msg,sn,slide.root_dir)
-            else :
-                flatfield_logger.info(msg)
+            self.__writeLog(f'Stacking raw images from slide {sn}...','info',sn,slide.root_dir)
             #get all the filepaths in this slide
             this_slide_fps_to_run = [fp for fp in self.all_slide_rawfile_paths_to_run if slideNameFromFilepath(fp)==sn]
             #If they're being neglected, get the filepaths corresponding to HPFs on the edge of the tissue
             this_slide_edge_HPF_filepaths = slide.findTissueEdgeFilepaths(this_slide_fps_to_run)
             if not allow_edge_HPFs :
-                msg = f'Neglecting {len(this_slide_edge_HPF_filepaths)} files on the edge of the tissue'
-                if self._logger is not None :
-                    self._logger.info(msg,sn,slide.root_dir)
-                else :
-                    flatfield_logger.info(msg)
+                self.__writeLog(f'Neglecting {len(this_slide_edge_HPF_filepaths)} files on the edge of the tissue','info',sn,slide.root_dir)
                 this_slide_fps_to_run = [fp for fp in this_slide_fps_to_run if fp not in this_slide_edge_HPF_filepaths]
             #If this slide doesn't have any images to stack, warn the user and continue
             if len(this_slide_fps_to_run)<1 :
-                msg = f'WARNING: slide {sn} does not have any images to be stacked!'
-                if self._logger is not None :
-                    self._logger.warningglobal(msg,sn,slide.root_dir)
-                else :
-                    flatfield_logger.warn(msg)
+                self.__writeLog(f'WARNING: slide {sn} does not have any images to be stacked!','warningglobal',sn,slide.root_dir)
                 continue
             #otherwise add the metadata summary for this slide to the producer's list
             a = AlignmentSetFromXML(slide.root_dir,os.path.dirname(os.path.dirname(this_slide_fps_to_run[0])),sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
@@ -171,10 +145,7 @@ class FlatfieldProducer :
             if len(this_slide_fps_to_run)<n_masking_images_per_slide :
                 msg=f'WARNING: Requested to save {n_masking_images_per_slide} masking images for each slide,'
                 msg+=f' but {sn} will only stack {len(this_slide_fps_to_run)} total files! (Masking plots will be saved for all of them.)'
-                if self._logger is not None :
-                    self._logger.warning(msg,sn,slide.root_dir)
-                else :
-                    flatfield_logger.warn(msg)
+                self.__writeLog(msg,'warning',sn,slide.root_dir)
             this_slide_indices_for_masking_plots = list(range(len(this_slide_fps_to_run)))
             random.shuffle(this_slide_indices_for_masking_plots)
             this_slide_indices_for_masking_plots=this_slide_indices_for_masking_plots[:n_masking_images_per_slide]
@@ -211,33 +182,21 @@ class FlatfieldProducer :
         """
         Take the mean of the stacked images
         """
-        msg = 'Creating mean image'
-        if self._logger is not None :
-            self._logger.info(msg)
-        else :
-            flatfield_logger.info(msg)
+        self.__writeLog('Creating mean image','info')
         self.mean_image.makeMeanImage(self._logger)
 
     def makeFlatField(self) :
         """
         Smooth the mean image and make the flatfield image by dividing each layer by its mean pixel value
         """
-        msg = 'Creating flatfield image'
-        if self._logger is not None :
-            self._logger.info(msg)
-        else :
-            flatfield_logger.info(msg)
+        self.__writeLog('Creating flatfield image','info')
         self.mean_image.makeFlatFieldImage(self._logger)
 
     def applyFlatField(self,flatfield_file_path) :
         """
         Take the mean of the stacked images, smooth it, and make the corrected mean image by dividing the mean image by the existing flatfield
         """
-        msg = f'Applying flatfield at {flatfield_file_path} to mean image'
-        if self._logger is not None :
-            self._logger.info(msg)
-        else :
-            flatfield_logger.info(msg)
+        self.__writeLog(f'Applying flatfield at {flatfield_file_path} to mean image','info')
         self.mean_image.makeCorrectedMeanImage(flatfield_file_path)
 
     def writeFileLog(self,filename) :
@@ -245,11 +204,7 @@ class FlatfieldProducer :
         Write out a text file of all the filenames that were added
         filename = name of the file to write to
         """
-        msg = 'Writing filepath text file'
-        if self._logger is not None :
-            self._logger.imageinfo(msg)
-        else :
-            flatfield_logger.info(msg)
+        self.__writeLog('Writing filepath text file','imageinfo')
         if not os.path.isdir(self.mean_image.workingdir_path) :
             os.mkdir(self.mean_image.workingdir_path)
         with cd(self.mean_image.workingdir_path) :
@@ -263,18 +218,54 @@ class FlatfieldProducer :
         Save layer-by-layer images, some plots, and the log of fields used
         """
         #save the images
-        msg = 'Saving layer-by-layer images'
-        if self._logger is not None :
-            self._logger.imageinfo(msg)
-        else :
-            flatfield_logger.info(msg)
+        self.__writeLog('Saving layer-by-layer images','imageinfo')
         self.mean_image.saveImages()
         #make some visualizations of the images
-        msg = 'Saving plots'
-        if self._logger is not None :
-            self._logger.imageinfo(msg)
-        else :
-            flatfield_logger.info(msg)
+        self.__writeLog('Saving plots','imageinfo')
         self.mean_image.savePlots()
         with cd(self.mean_image.workingdir_path) :
             writetable(f'{self.FIELDS_USED_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._field_logs)
+
+    #################### PRIVATE HELPER FUNCTIONS ####################
+
+    #helper function to return the slideID and root_dir for the only slide in this run
+    #if there is more than one slide it returns None, None
+    @methodtools.lru_cache()
+    def __getSingleSlideIDAndRootDir(self) :
+        if len(self.flatfield_slide_dict)==1 :
+            sid = self.flatfield_slide_dict[0].name
+            rd = self.flatfield_slide_dict[0].root_dir
+        else :
+            sid = None; rd = None
+        return sid, rd
+
+    #helper function to handle logging a line
+    def __writeLog(self,msg,level,sid=None,rd=None) :
+        if self._logger is not None :
+            if sid is None and rd is None :
+                sid,rd = self.__getSingleSlideIDAndRootDir()
+            if level=='info' :
+                self._logger.info(msg,sid,rd)
+            elif level=='imageinfo' :
+                self._logger.imageinfo(msg,sid,rd)
+            elif level=='error' :
+                self._logger.error(msg,sid,rd)
+            elif level=='warningglobal' :
+                self._logger.warningglobal(msg,sid,rd)
+            elif level=='warning' :
+                self._logger.warning(msg,sid,rd)
+            elif level=='debug' :
+                self._logger.debug(msg,sid,rd)
+        else :
+            if level=='info' :
+                flatfield_logger.info(msg)
+            elif level=='imageinfo' :
+                flatfield_logger.info(msg)
+            elif level=='error' :
+                flatfield_logger.error(msg)
+            elif level=='warningglobal' :
+                flatfield_logger.warn(msg)
+            elif level=='warning' :
+                flatfield_logger.warn(msg)
+            elif level=='debug' :
+                flatfield_logger.debug(msg)

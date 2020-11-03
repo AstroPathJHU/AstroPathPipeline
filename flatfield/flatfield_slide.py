@@ -99,20 +99,12 @@ class FlatfieldSlide() :
             with cd(top_plotdir_path) :
                 os.mkdir(this_slide_threshold_plotdir_name)
         #first find the filepaths corresponding to the edges of the tissue in the slides
-        msg = f'Finding tissue edge HPFs for slide {self._name}'
-        if logger is not None :
-            logger.imageinfo(msg,self._name,self._root_dir)
-        else :
-            flatfield_logger.info(msg)
+        self.__writeLogInfo(logger,f'Finding tissue edge HPFs for slide {self._name}')
         tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,plotdir_path)
         #chunk them together to be read in parallel
         tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self._img_dims,self._root_dir,n_threads)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
-        msg=f'Getting raw tissue edge images to determine thresholds for slide {self._name}'
-        if logger is not None :
-            logger.imageinfo(msg,self._name,self._root_dir)
-        else :
-            flatfield_logger.info(msg)
+        self.__writeLogInfo(logger,f'Getting raw tissue edge images to determine thresholds for slide {self._name}')
         nbins=np.iinfo(np.uint16).max+1
         all_image_thresholds_by_layer = np.empty((self._img_dims[-1],len(tissue_edge_filepaths)),dtype=np.uint16)
         all_tissue_edge_layer_hists = np.zeros((nbins,self._img_dims[-1]),dtype=np.int64)
@@ -133,11 +125,7 @@ class FlatfieldSlide() :
             return_dict = manager.dict()
             procs=[]
             for ci,fr in enumerate(fr_chunk) :
-                msg=f'determining layer thresholds for file {fr.rawfile_path} {fr.sequence_print}'
-                if logger is not None :
-                    logger.imageinfo(msg,self._name,self._root_dir)
-                else :
-                    flatfield_logger.info(msg)
+                self.__writeLogImageInfo(logger,f'determining layer thresholds for file {fr.rawfile_path} {fr.sequence_print}')
                 field_logs.append(FieldLog(self._name,fr.rawfile_path,'edge','thresholding'))
                 ii=int((fr.sequence_print.split())[0][1:])
                 p = mp.Process(target=findLayerThresholds,
@@ -166,11 +154,7 @@ class FlatfieldSlide() :
             low_percentile_by_layer.append(this_layer_thresholds[int(0.1*len(this_layer_thresholds))])
             high_percentile_by_layer.append(this_layer_thresholds[int(0.9*len(this_layer_thresholds))])
             self._background_thresholds_for_masking.append(mean)
-            msg = f'threshold for layer {li+1} found at {self._background_thresholds_for_masking[li]}'
-            if logger is not None :
-                logger.info(msg,self._name,self._root_dir)
-            else :
-                flatfield_logger.info(msg)
+            self.__writeLogInfo(logger,f'threshold for layer {li+1} found at {self._background_thresholds_for_masking[li]}')
             with cd(plotdir_path) :
                 f,(ax1,ax2,ax3) = plt.subplots(1,3,figsize=(3*6.4,4.6))
                 max_threshold_found = np.max(this_layer_thresholds)
@@ -274,3 +258,18 @@ class FlatfieldSlide() :
                 cropAndOverwriteImage(fn)
         #return the list of the filepaths whose rectangles are on the edge of the tissue
         return [rfp for rfp in rawfile_paths if rfp.split(os.sep)[-1].split('.')[0] in edge_rect_filenames]
+
+    #################### PRIVATE HELPER FUNCTIONS ####################
+
+    #helper function to write an info message to a given log (if None, the default logger is used)
+    def __writeLogInfo(self,logger,msg) :
+        if logger is not None :
+            logger.info(msg,self._name,self._root_dir)
+        else :
+            flatfield_logger.info(msg)
+    #helper function to write an imageinfo message to a given log (if None, the default logger is used)
+    def __writeLogImageInfo(self,logger,msg) :
+        if logger is not None :
+            logger.imageinfo(msg,self._name,self._root_dir)
+        else :
+            flatfield_logger.info(msg)
