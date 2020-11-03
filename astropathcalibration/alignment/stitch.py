@@ -9,7 +9,7 @@ from .field import Field, FieldOverlap
 def stitch(*, usecvxpy=False, **kwargs):
   return (__stitch_cvxpy if usecvxpy else __stitch)(**kwargs)
 
-def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverlaperror=1, fixpoint="origin", origin=np.array([0, 0]), logger=dummylogger):
+def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverlaperror=1, scaleedges=1, scalecorners=1, fixpoint="origin", origin=np.array([0, 0]), logger=dummylogger):
   """
   \begin{align}
   -2 \ln L =&
@@ -50,6 +50,17 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     if o.p2 > o.p1 and any((oo.p2, oo.p1) == (o.p1, o.p2) for oo in overlaps):
       overlaps.remove(o)
 
+  scaleoverlap = {
+    1: scalecorners,
+    2: scaleedges,
+    3: scalecorners,
+    4: scaleedges,
+    6: scaleedges,
+    7: scalecorners,
+    8: scaleedges,
+    9: scalecorners,
+  }
+
   for o in overlaps:
     ix = 2*rd[o.p1]
     iy = 2*rd[o.p1]+1
@@ -66,20 +77,20 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     jj = np.ix_((jx,jy), (jx,jy))
     inversecovariance = units.np.linalg.inv(o.result.covariance) * scaleby**2 / scaleoverlaperror**2
 
-    A[ii] += inversecovariance
-    A[ij] -= inversecovariance
-    A[ji] -= inversecovariance
-    A[jj] += inversecovariance
+    A[ii] += inversecovariance * scaleoverlap[o.tag]
+    A[ij] -= inversecovariance * scaleoverlap[o.tag]
+    A[ji] -= inversecovariance * scaleoverlap[o.tag]
+    A[jj] += inversecovariance * scaleoverlap[o.tag]
 
     i = np.ix_((ix, iy))
     j = np.ix_((jx, jy))
 
     constpiece = (-units.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec) / scaleby
 
-    b[i] += 2 * inversecovariance @ constpiece
-    b[j] -= 2 * inversecovariance @ constpiece
+    b[i] += 2 * inversecovariance @ constpiece * scaleoverlap[o.tag]
+    b[j] -= 2 * inversecovariance @ constpiece * scaleoverlap[o.tag]
 
-    c += constpiece @ inversecovariance @ constpiece
+    c += constpiece @ inversecovariance @ constpiece * scaleoverlap[o.tag]
 
   dxs, dys = zip(*(o.result.dxvec for o in overlaps))
 

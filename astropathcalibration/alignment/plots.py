@@ -73,7 +73,7 @@ def rectanglelayout(alignmentset, *, xrange=None, yrange=None, primaryarea=True,
   if not showplot:
     plt.close()
 
-def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, figurekwargs={}, pull=False, pixelsormicrons=None, pullkwargs={}, pullbinning=None):
+def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, showplot=None, figurekwargs={}, pull=False, pixelsormicrons=None, pullkwargs={}, pullbinning=None):
   logger.debug(alignmentset.samp)
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
@@ -127,10 +127,15 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
       )
 
   plotstyling(fig=fig, ax=ax)
-  if saveas is None:
+
+  if showplot is None:
+    showplot = saveas is None
+
+  if showplot:
     plt.show()
-  else:
+  if saveas is not None:
     plt.savefig(saveas)
+  if not showplot:
     plt.close()
 
   logger.debug("done")

@@ -21,6 +21,10 @@ def allclose(*args, **kwargs):
 def angle(distance, *args, **kwargs):
   return np.angle(pixels(distance, power=None), *args, **kwargs)
 
+def arctan2(distance1, distance2, **kwargs):
+  distance1 + distance2
+  return np.arctan2(pixels(distance1, power=None), pixels(distance2, power=None))
+
 def linspace(start, stop, *args, **kwargs):
   stop - start
   pscale = _pscale(start)
@@ -82,5 +86,5 @@ def polyfit(x, y, deg):
 
 __all__ = [
   "fft", "linalg", "testing",
-  "angle", "isclose", "linspace", "polyfit",
+  "angle", "arctan2", "isclose", "linspace", "polyfit",
 ]

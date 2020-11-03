@@ -10,6 +10,10 @@
 !alignment-result-vectra-big-[1-4].pdf
 !diamondpull1.pdf
 !diamondpull2.pdf
+!isotropy-histogram-AKY-[1-4]-*.pdf
+!isotropy-histogram-BMS-[1-4]-*.pdf
+!isotropy-histogram-JHUPolaris-[1-4]-*.pdf
+!isotropy-histogram-JHUVectra-[1-4]-*.pdf
 !sine-wave-[xy][xy]-[1-2].pdf
 !sine-wave-[xy][xy]-AKY.pdf
 !squarepull1.pdf
@@ -19,3 +23,11 @@
 !stitch-result-BMS-[1-4].pdf
 !stitch-result-JHUPolaris-[1-4].pdf
 !stitch-result-vectra-big-[1-4].pdf
+!stitching-isotropy-AKY-[1-4].pdf
+!stitching-isotropy-BMS-[1-4].pdf
+!stitching-isotropy-JHUPolaris-[1-4].pdf
+!stitching-isotropy-JHUVectra-[1-4].pdf
+!stitching-rms-AKY-[1-4].pdf
+!stitching-rms-BMS-[1-4].pdf
+!stitching-rms-JHUPolaris-[1-4].pdf
+!stitching-rms-JHUVectra-[1-4].pdf
