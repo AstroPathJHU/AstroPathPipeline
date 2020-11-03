@@ -24,7 +24,7 @@ pipeline {
         }
         stage('extract flatw layer') {
           steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.extractlayer.extractlayer ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
+            sh 'folder=$(basename $(pwd)); cd ..; extractlayer.py ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
           }
         }
       }
