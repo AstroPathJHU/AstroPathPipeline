@@ -159,7 +159,7 @@ class MeanImage :
             raise FlatFieldError('ERROR: not enough images were read to produce a meanimage!')
         for li,nlis in enumerate(self.n_images_stacked_by_layer,start=1) :
             if nlis<1 :
-                msg = f'WARNING: {nlis} images were stacked in layer {li}; this layer of the meanimage/flatfield will be meaningless!'
+                msg = f'WARNING: {nlis} images were stacked in layer {li}, so this layer of the meanimage/flatfield will be meaningless!'
                 if logger is not None :
                     logger.warningglobal(msg)
                 else :

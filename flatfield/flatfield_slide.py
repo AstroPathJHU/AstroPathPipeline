@@ -99,7 +99,7 @@ class FlatfieldSlide() :
             with cd(top_plotdir_path) :
                 os.mkdir(this_slide_threshold_plotdir_name)
         #first find the filepaths corresponding to the edges of the tissue in the slides
-        msg = f'Finding tissue edge HPFs for slide {self._name}...'
+        msg = f'Finding tissue edge HPFs for slide {self._name}'
         if logger is not None :
             logger.imageinfo(msg,self._name,self._root_dir)
         else :
@@ -108,7 +108,7 @@ class FlatfieldSlide() :
         #chunk them together to be read in parallel
         tissue_edge_fr_chunks = chunkListOfFilepaths(tissue_edge_filepaths,self._img_dims,self._root_dir,n_threads)
         #make histograms of all the tissue edge rectangle pixel fluxes per layer
-        msg=f'Getting raw tissue edge images to determine thresholds for slide {self._name}...'
+        msg=f'Getting raw tissue edge images to determine thresholds for slide {self._name}'
         if logger is not None :
             logger.imageinfo(msg,self._name,self._root_dir)
         else :
@@ -133,7 +133,7 @@ class FlatfieldSlide() :
             return_dict = manager.dict()
             procs=[]
             for ci,fr in enumerate(fr_chunk) :
-                msg=f'  determining layer thresholds for file {fr.rawfile_path} {fr.sequence_print}'
+                msg=f'determining layer thresholds for file {fr.rawfile_path} {fr.sequence_print}'
                 if logger is not None :
                     logger.imageinfo(msg,self._name,self._root_dir)
                 else :
@@ -166,7 +166,7 @@ class FlatfieldSlide() :
             low_percentile_by_layer.append(this_layer_thresholds[int(0.1*len(this_layer_thresholds))])
             high_percentile_by_layer.append(this_layer_thresholds[int(0.9*len(this_layer_thresholds))])
             self._background_thresholds_for_masking.append(mean)
-            msg = f'  threshold for layer {li+1} found at {self._background_thresholds_for_masking[li]}'
+            msg = f'threshold for layer {li+1} found at {self._background_thresholds_for_masking[li]}'
             if logger is not None :
                 logger.info(msg,self._name,self._root_dir)
             else :

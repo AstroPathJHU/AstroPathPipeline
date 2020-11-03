@@ -25,13 +25,13 @@ class RunLogger(ExitStack) :
         self._module = mode
         self._batch_mode = self._module in ('slide_mean_image')
         self._workingdir_path = workingdir_path
-        self._global_logger, self._global_logger_filepath = self._getGlobalLogger()
+        self._global_logger = self._getGlobalLogger()
         self._slide_loggers = {}
 
     def __enter__(self) :
         super().__enter__()
-        logger_filepath = os.path.join(self._workingdir_path,f'global-{self._module}.log')
-        filehandler = logging.FileHandler(logger_filepath)
+        self._global_logger_filepath = os.path.join(self._workingdir_path,f'global-{self._module}.log')
+        filehandler = logging.FileHandler(self._global_logger_filepath)
         filehandler.setFormatter(self.formatter)
         filehandler.setLevel(logging.INFO-1)
         self._global_logger.addHandler(filehandler)

@@ -3,7 +3,6 @@ from ..utilities.img_file_io import getRawAsHWL, smoothImageWorker
 from ..utilities.img_correction import correctImageForExposureTime
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
-import matplotlib.pyplot as plt
 import numpy as np
 import os, logging, math, dataclasses, more_itertools
 
@@ -44,7 +43,8 @@ def slideNameFromFilepath(fp) :
 
 #helper function to make the automatic directory path for a single slide's mean image (and associated info)
 def getSlideMeanImageWorkingDirPath(slide) :
-    path = os.path.join(os.getcwd,CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
+    ############################ switch which of the below two lines is commented to run for real ##########################
+    path = os.path.join(os.path.abspath(os.getcwd()),CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
     #path = os.path.join(os.path.abspath(os.path.normpath(slide.root_dir)),slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
     if not os.path.isdir(os.path.dirname(path)) :
         raise FlatFieldError(f'ERROR: working directory location {os.path.dirname(path)} does not exist!')
@@ -247,6 +247,7 @@ def chunkListOfFilepaths(fps,dims,root_dir,n_threads) :
 #################### USEFUL PLOTTING FUNCTION ####################
 
 def drawThresholds(img_array, *, layer_index=0, emphasize_mask=None, show_regions=False, saveas=None, plotstyling = lambda fig, ax: None):
+    import matplotlib.pyplot as plt
     fig, ax = plt.subplots(1, 1)
     if len(img_array.shape)>2 :
         img_array = img_array[layer_index]

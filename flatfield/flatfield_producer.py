@@ -78,7 +78,7 @@ class FlatfieldProducer :
             if len(this_layer_offset)==1 :
                 self._et_correction_offsets[ln-1]=this_layer_offset[0]
             elif len(this_layer_offset)==0 :
-                msg = f'WARNING: LayerOffset file {et_correction_file} does not have an entry for layer {ln}; offset will be set to zero!'
+                msg = f'WARNING: LayerOffset file {et_correction_file} does not have an entry for layer {ln}, so that offset will be set to zero!'
                 if self._logger is not None :
                     self._logger.warning(msg)
                 else :
@@ -114,7 +114,7 @@ class FlatfieldProducer :
         #make each slide's list of background thresholds by layer
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
             threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
-            msg = f'Finding background thresholds from tissue edges for slide {sn}...'
+            msg = f'Finding background thresholds from tissue edges for slide {sn}'
             if self._logger is not None :
                 self._logger.info(msg,sn,slide.root_dir)
             else :

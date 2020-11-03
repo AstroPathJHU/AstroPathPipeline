@@ -60,7 +60,7 @@ def checkArgs(a) :
         raise ValueError('ERROR: "slides" argument is required!')
     if '.csv' in a.slides :
         if (a.rawfile_top_dir is not None) or (a.root_dir is not None) :
-            raise ValueError(f'ERROR: slides argument {a.slides} is a file; rawfile/root_dir arguments are ambiguous!')
+            raise ValueError(f'ERROR: slides argument {a.slides} is a file, so rawfile/root_dir arguments are ambiguous!')
         try:
             if os.path.isfile(a.slides) :
                 slides = readtable(a.slides,FlatfieldSlideInfo)
@@ -302,33 +302,33 @@ def main() :
         #see if the code is running in batch mode (i.e. minimal output in automatic locations) and figure out the working directory path if so
         batch_mode = args.mode=='slide_mean_image'
         #start up a flatfield producer
-        ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,workingdir_path,args.skip_exposure_time_correction,args.skip_masking)
+        ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,workingdir_path,args.skip_exposure_time_correction,args.skip_masking,logger)
         #write out the text file of all the raw file paths that will be run
         if not batch_mode :
-            ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME,logger)
+            ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
             if args.mode=='choose_image_files' :
                 sys.exit()
         #First read in the exposure time correction offsets from the given directory
         if not args.skip_exposure_time_correction :
-            ff_producer.readInExposureTimeCorrectionOffsets(args.exposure_time_offset_file,logger)
+            ff_producer.readInExposureTimeCorrectionOffsets(args.exposure_time_offset_file)
         #next figure out the background thresholds per layer by looking at the HPFs on the tissue edges
         if not args.skip_masking :
             if args.threshold_file_dir is not None :
-                ff_producer.readInBackgroundThresholds(args.threshold_file_dir,logger)
+                ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
             else :
-                ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads,logger)
+                ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
         if args.mode in ['slide_mean_image','make_flatfield', 'apply_flatfield'] :
             #mask and stack images together
-            ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_slide,args.allow_edge_HPFs,logger)
+            ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_slide,args.allow_edge_HPFs)
             if args.mode=='make_flatfield' :
                 #make the flatfield image
-                ff_producer.makeFlatField(logger)
+                ff_producer.makeFlatField()
             elif args.mode=='apply_flatfield' :
                 #apply the flatfield to the image stack
                 prior_run_ff_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(args.prior_run_dir))}{CONST.FILE_EXT}'
-                ff_producer.applyFlatField(os.path.join(args.prior_run_dir,prior_run_ff_filename),logger)
+                ff_producer.applyFlatField(os.path.join(args.prior_run_dir,prior_run_ff_filename))
             #save the plots, etc.
-            ff_producer.writeOutInfo(logger)
+            ff_producer.writeOutInfo()
 
 if __name__=='__main__' :
     main()
