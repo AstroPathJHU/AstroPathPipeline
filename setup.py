@@ -21,4 +21,27 @@ setuptools.setup(
       "zoomcohort.py=astropathcalibration.zoom.zoomcohort:main",
     ],
   },
+  install_requires = [
+    "cvxpy",
+    "imagecodecs",
+    "jxmlease",
+    "matplotlib",
+    "methodtools",
+    "more_itertools",
+    "networkx",
+    "numba",
+    "numpy",
+    "opencv-python",
+    "pyopencl",
+    "pyvips",
+    "reikna",
+    "seaborn",
+    "scikit-image",
+    "scikit-learn",
+    "scipy",
+    "uncertainties",
+  ],
+  extras_require = {
+    "test": ["flake8", "texoutparse"],
+  }
 )

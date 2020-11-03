@@ -22,10 +22,7 @@ In addition to 64-bit Python 3, The following packages are required to run code 
 - uncertainties ([homepage](https://uncertainties-python-package.readthedocs.io/en/latest/))
 - methodtools ([PyPi page](https://pypi.org/project/methodtools/))
 - more_itertools ([homepage](https://more-itertools.readthedocs.io/en/stable/))
-- exifreader ([PyPi page](https://pypi.org/project/ExifReader/))
 - jxmlease ([GitHub page](https://github.com/Juniper/jxmlease))
-- texoutparse ([PyPi page](https://pypi.org/project/texoutparse/))
-- flake8 ([homepage](https://flake8.pycqa.org/en/latest/))
 
 All of the above packages are available through the Python Package Index PyPi using `pip install`.
 
