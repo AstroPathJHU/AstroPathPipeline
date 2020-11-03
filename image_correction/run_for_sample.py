@@ -38,7 +38,7 @@ def checkArgs(args) :
     #    if not os.path.isfile(args.flatfield_file) :
     #        raise FileNotFoundError(f'ERROR: flatfield file {args.flatfield_file} does not exist!')
     #check some arguments related to the warping
-    if args.skip_warping and ((args.warp_shift_file is not None) or (args.warp_shift is not None) or (args.warping_scalefactor is not None)) :
+    if args.skip_warping and ((args.warp_shift_file is not None) or (args.warp_shift is not None) or (args.warping_scalefactor!=1.0)) :
         raise RuntimeError('ERROR: warping is being skipped, so the requested shifts/rescaling are irrelevant!')
     if not args.skip_warping :
         if args.warp_def.endswith('.csv') :
