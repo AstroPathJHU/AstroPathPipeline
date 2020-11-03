@@ -318,8 +318,9 @@ def main() :
             else :
                 ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
         if args.mode in ['slide_mean_image','make_flatfield', 'apply_flatfield'] :
-            #mask and stack images together
+            #mask and stack images together to make the mean image
             ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_slide,args.allow_edge_HPFs)
+            ff_producer.makeMeanImage()
             if args.mode=='make_flatfield' :
                 #make the flatfield image
                 ff_producer.makeFlatField()

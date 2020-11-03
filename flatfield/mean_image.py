@@ -150,21 +150,38 @@ class MeanImage :
             self.n_images_read+=1
         return stacked_in_layers
 
-    def makeFlatFieldImage(self,logger=None) :
+    def makeMeanImage(self,logger=None) :
         """
-        A function to get the mean of the image stack and smooth/normalize each of its layers to make the flatfield image
+        A function to get the mean of the image stack
         logger = a RunLogger object whose context is entered, if None the default log will be used
         """
         if self.n_images_read<1 :
             raise FlatFieldError('ERROR: not enough images were read to produce a meanimage!')
         for li,nlis in enumerate(self.n_images_stacked_by_layer,start=1) :
             if nlis<1 :
-                msg = f'WARNING: {nlis} images were stacked in layer {li}, so this layer of the meanimage/flatfield will be meaningless!'
+                msg = f'WARNING: {nlis} images were stacked in layer {li}, so this layer of the meanimage will be meaningless!'
                 if logger is not None :
                     logger.warningglobal(msg)
                 else :
                     flatfield_logger.warn(msg)
         self.mean_image = self.__getMeanImage()
+
+    def makeFlatFieldImage(self,logger=None) :
+        """
+        A function to smooth/normalize each of the mean image layers to make the flatfield image
+        logger = a RunLogger object whose context is entered, if None the default log will be used
+        """
+        if self.n_images_read<1 :
+            raise FlatFieldError('ERROR: not enough images were read to produce a flatfield!')
+        for li,nlis in enumerate(self.n_images_stacked_by_layer,start=1) :
+            if nlis<1 :
+                msg = f'WARNING: {nlis} images were stacked in layer {li}, so this layer of the flatfield will be meaningless!'
+                if logger is not None :
+                    logger.warningglobal(msg)
+                else :
+                    flatfield_logger.warn(msg)
+        if self.mean_image is None :
+            self.mean_image = self.__getMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
@@ -178,7 +195,8 @@ class MeanImage :
         """
         A function to get the mean of the image stack, smooth it, and divide it by the given flatfield to correct it
         """
-        self.mean_image = self.__getMeanImage()
+        if self.mean_image is None :
+            self.mean_image = self.__getMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
         flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=CONST.IMG_DTYPE_OUT)
         self.corrected_mean_image=self.mean_image/flatfield_image
@@ -262,14 +280,13 @@ class MeanImage :
                 layer_titlestem = f'layer {layer_i+1}'
                 layer_fnstem = f'layer_{layer_i+1}'
                 #save a little figure of each layer in each image
-                if self.mean_image is not None :
-                    #for the mean image
-                    f,ax = plt.subplots(figsize=fig_size)
-                    pos = ax.imshow(self.mean_image[:,:,layer_i])
-                    ax.set_title(f'mean image, {layer_titlestem}')
-                    f.colorbar(pos,ax=ax)
-                    fig_name = f'mean_image_{layer_fnstem}.png'
-                    plt.savefig(fig_name); plt.close(); cropAndOverwriteImage(fig_name)
+                #for the mean image
+                f,ax = plt.subplots(figsize=fig_size)
+                pos = ax.imshow(self.mean_image[:,:,layer_i])
+                ax.set_title(f'mean image, {layer_titlestem}')
+                f.colorbar(pos,ax=ax)
+                fig_name = f'mean_image_{layer_fnstem}.png'
+                plt.savefig(fig_name); plt.close(); cropAndOverwriteImage(fig_name)
                 if self.smoothed_mean_image is not None :
                     #for the smoothed mean image
                     f,ax = plt.subplots(figsize=fig_size)

@@ -207,11 +207,22 @@ class FlatfieldProducer :
         with cd(self.mean_image.workingdir_path) :
             writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._metadata_summaries)
 
+    def makeMeanImage(self) :
+        """
+        Take the mean of the stacked images
+        """
+        msg = 'Creating mean image'
+        if self._logger is not None :
+            self._logger.info(msg)
+        else :
+            flatfield_logger.info(msg)
+        self.mean_image.makeMeanImage(self._logger)
+
     def makeFlatField(self) :
         """
-        Take the mean of the stacked images, smooth it and make the flatfield image by dividing each layer by its mean pixel value
+        Smooth the mean image and make the flatfield image by dividing each layer by its mean pixel value
         """
-        msg = 'Getting/smoothing mean image and making flatfield'
+        msg = 'Creating flatfield image'
         if self._logger is not None :
             self._logger.info(msg)
         else :
