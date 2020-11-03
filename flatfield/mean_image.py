@@ -270,6 +270,8 @@ class MeanImage :
 
     #helper function to make and save the .png images of the mean image, flatfield, and mask stack layers
     def __saveImageLayerPlots(self) :
+        if self.mean_image is None :
+            self.makeMeanImage()
         if not os.path.isdir(self.IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
             os.mkdir(self.IMAGE_LAYER_PLOT_DIRECTORY_NAME)
         with cd(self.IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
