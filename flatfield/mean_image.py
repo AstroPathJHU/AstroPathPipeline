@@ -164,6 +164,11 @@ class MeanImage :
                     logger.warningglobal(msg)
                 else :
                     flatfield_logger.warn(msg)
+        msg = 'Creating mean image from stacks'
+        if logger is None :
+            logger.info(msg)
+        else :
+            flatfield_logger.info(msg)
         self.mean_image = self.__getMeanImage()
 
     def makeFlatFieldImage(self,logger=None) :
