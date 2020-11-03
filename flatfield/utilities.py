@@ -52,6 +52,27 @@ def getSlideMeanImageWorkingDirPath(slide) :
         os.mkdir(path)
     return path
 
+#helper function to make the automatic directory path for running the flatfield for a batch of slides
+def getBatchFlatfieldWorkingDirPath(rootdir,batchID) :
+    ############################ switch which of the below two lines is commented to run for real ##########################
+    path = os.path.join(os.path.abspath(os.getcwd()),f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
+    #path = os.path.join(os.path.abspath(os.path.normpath(rootdir)),'Flatfield',f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
+    if not os.path.isdir(os.path.dirname(path)) :
+        raise FlatFieldError(f'ERROR: working directory location {os.path.dirname(path)} does not exist!')
+    if not os.path.isdir(path) :
+        os.mkdir(path)
+    return path
+
+#helper function to return the automatic path to a given slide's mean image file
+def getSlideMeanImageFilepath(slide) :
+    p = os.path.join(slide.root_dir,slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME,f'{slide.name}-{CONST.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    return p
+
+#helper function to return the automatic path to a given slide's mean image file
+def getSlideMaskStackFilepath(slide) :
+    p = os.path.join(slide.root_dir,slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME,f'{slide.name}-{CONST.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    return p
+
 #helper function to convert an image array into a flattened pixel histogram
 def getImageArrayLayerHistograms(img_array, mask=slice(None)) :
     nbins = np.iinfo(img_array.dtype).max+1

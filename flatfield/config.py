@@ -22,6 +22,12 @@ class Const :
     def FLATFIELD_FILE_NAME_STEM(self) :
         return 'flatfield' #what the flatfield file is called
     @property
+    def MEAN_IMAGE_FILE_NAME_STEM(self) :
+        return 'mean_image' #name of the outputted mean image file
+    @property
+    def MASK_STACK_FILE_NAME_STEM(self) :
+        return 'mask_stack' #name of the outputted mask stack file
+    @property
     def SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM(self) :
         return 'smoothed_corrected_mean_image' #name of the outputted smoothed corrected mean image file
     @property
@@ -36,6 +42,9 @@ class Const :
     @property
     def AUTOMATIC_MEANIMAGE_DIRNAME(self) :
         return 'meanimage'
+    @property
+    def BATCH_FF_DIRNAME_STEM(self) :
+        return 'flatfield_BatchID'
     @property
     def INTENSITY_FIG_WIDTH(self) :
         return 16.8 #width of the intensity plot figure

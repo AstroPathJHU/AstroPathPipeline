@@ -23,10 +23,8 @@ class MeanImage :
     #################### CLASS CONSTANTS ####################
 
     #outputted images
-    MEAN_IMAGE_FILE_NAME_STEM                    = 'mean_image'                      #name of the outputted mean image file
     SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM           = 'smoothed_mean_image'             #name of the outputted smoothed mean image file
     CORRECTED_MEAN_IMAGE_FILE_NAME_STEM          = 'corrected_mean_image'            #name of the outputted corrected mean image file
-    MASK_STACK_FILE_NAME_STEM                    = 'mask_stack'                      #name of the outputted mask stack file
     APPLIED_FLATFIELD_TEXT_FILE_NAME             = 'applied_flatfield_file_path.txt' #name of the text file to write out the applied flatfield file path
     #postrun plot directory
     POSTRUN_PLOT_DIRECTORY_NAME = 'postrun_info' #name of directory to hold postrun plots (pixel intensity, image layers, etc.) and other info
@@ -211,7 +209,7 @@ class MeanImage :
         """
         with cd(self._workingdir_path) :
             if self.mean_image is not None :
-                meanimage_filename = f'{self.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
+                meanimage_filename = f'{CONST.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
                 writeImageToFile(self.mean_image,meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
             if self.smoothed_mean_image is not None :
                 smoothed_meanimage_filename = f'{self.SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
@@ -227,7 +225,7 @@ class MeanImage :
                 writeImageToFile(self.smoothed_corrected_mean_image,smoothed_corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
             #if masks were calculated, save the stack of them
             if (not self.skip_masking) and (self.mask_stack is not None) :
-                writeImageToFile(self.mask_stack,f'{self.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}',dtype=np.uint16)
+                writeImageToFile(self.mask_stack,f'{CONST.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}',dtype=np.uint16)
 
     def savePlots(self) :
         """

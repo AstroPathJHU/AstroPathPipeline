@@ -1,7 +1,8 @@
 #imports
 from .flatfield_producer import FlatfieldProducer
 from .logging import RunLogger
-from .utilities import flatfield_logger, slideNameFromFilepath, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath
+from .utilities import flatfield_logger, slideNameFromFilepath, FlatfieldSlideInfo
+from .utilities import getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath, getSlideMeanImageFilepath, getSlideMaskStackFilepath
 from .config import CONST 
 from ..utilities.tableio import readtable
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
@@ -18,28 +19,36 @@ DEFAULT_SELECTED_PIXEL_CUT = 0.8
 #helper function to make sure arguments are valid
 def checkArgs(a) :
     #first check the different batch mode options, which don't accept every argument
-    if a.mode=='slide_mean_image' :
+    if a.mode=='slide_mean_image' or a.mode=='batch_flatfield' :
         #working directory name is automatic
         if a.workingdir_name is not None :
-            raise ValueError('ERROR: running in slide_mean_image mode uses an automatic working directory, please remove the workingdir_name argument!') 
+            raise ValueError(f'ERROR: running in {a.mode} mode uses an automatic working directory, please remove the workingdir_name argument!') 
         #need rawfile and root directories (i.e. don't use a sample definition csv file)
         if a.rawfile_top_dir is None or a.root_dir is None :
-            raise ValueError('ERROR: must specify rawfile and root directories to run in slide_mean_image mode!')
-        #make sure it'll run on exactly one sample
-        if len(split_csv_to_list(a.slides))!=1 :
-            raise ValueError(f'ERROR: running in slide_mean_image mode requires running one slide at a time, but slides argument = {a.slides}!')
+            raise ValueError(f'ERROR: must specify rawfile and root directories to run in {a.mode} mode!')
         #the whole file selection group is irrelevant (plus also other runs to exclude)
         if (a.prior_run_dir is not None) or (a.max_images!=-1) or (a.selection_mode!='random') or a.allow_edge_HPFs or a.other_runs_to_exclude!=[''] :
-            raise ValueError('ERROR: file selection is done automatically in slide_mean_image mode!')
+            raise ValueError('ERROR: file selection is done automatically in {a.mode} mode!')
         #only ever run using image masks
         if a.skip_masking :
-            raise ValueError('ERROR: running in slide_mean_image mode is not compatible with skipping masking! Remove the skip_masking flag!')
+            raise ValueError('ERROR: running in {a.mode} mode is not compatible with skipping masking! Remove the skip_masking flag!')
         #can't save masking images
         if a.n_masking_images_per_slide!=0 :
-            raise ValueError('ERROR: cannot save masking images when running in slide_mean_image mode!')
+            raise ValueError('ERROR: cannot save masking images when running in {a.mode} mode!')
         #can only use the default selected pixel cut
         if a.selected_pixel_cut!=DEFAULT_SELECTED_PIXEL_CUT :
-            raise ValueError(f'ERROR: when running in slide_mean_image mode only the default selected pixel cut of {DEFAULT_SELECTED_PIXEL_CUT} is valid!')
+            raise ValueError(f'ERROR: when running in {a.mode} mode only the default selected pixel cut of {DEFAULT_SELECTED_PIXEL_CUT} is valid!')
+        if a.mode=='slide_mean_image' :
+            #batchID not needed
+            if a.batchID is not None :
+                raise ValueError('ERROR: batchID argument is only valid in batch_flatfield mode!')
+            #make sure it'll run on exactly one slide
+            if len(split_csv_to_list(a.slides))!=1 :
+                raise ValueError(f'ERROR: running in slide_mean_image mode requires running one slide at a time, but slides argument = {a.slides}!')
+        elif a.mode=='batch_flatfield' :
+            #explicitly NEED a batch ID
+            if a.batchID is None :
+                raise ValueError('ERROR: batchID argument is REQUIRED when running in batch_flatfield mode')
     #otherwise there needs to be a working directory
     elif a.workingdir_name is None :
             raise ValueError('ERROR: the workingdir_name argument is required!') 
@@ -83,6 +92,13 @@ def checkArgs(a) :
         mfd = os.path.join(slide.root_dir,slide.name)
         if not os.path.isdir(rfd) :
             raise ValueError(f'ERROR: slide root directory {mfd} does not exist!')
+        if a.mode=='batch_flatfield' :
+            mi = getSlideMeanImageFilepath(slide)
+            if not os.path.isfile(mi) :
+                raise FileNotFoundError(f'ERROR: Required mean image file {mi} does not exist!')
+            ms = getSlideMaskStackFilepath(slide)
+            if not os.path.isfile(ms) :
+                raise FileNotFoundError(f'ERROR: Required mask stack file {ms} does not exist!')
     #if exposure time corrections are being done, make sure the file actually exists
     if not a.skip_exposure_time_correction :
         if not os.path.isfile(a.exposure_time_offset_file) :
@@ -237,13 +253,17 @@ def main() :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #general positional arguments
-    parser.add_argument('mode', choices=['slide_mean_image','make_flatfield','apply_flatfield','calculate_thresholds','check_run','choose_image_files'],                  
+    parser.add_argument('mode', 
+                choices=['slide_mean_image','batch_flatfield','make_flatfield','apply_flatfield','calculate_thresholds','check_run','choose_image_files'],                  
                         help='Which operation to perform')
     #add the exposure time correction group to the arguments
     addCommonArgumentsToParser(parser,positional_args=False,flatfielding=False,warping=False)
     #the name of the working directory (optional because it's automatic in batch mode)
     parser.add_argument('--workingdir_name', 
                         help='Name of working directory to save created files in')
+    #the batchID (optional because it's only needed in batch_flatfield mode)
+    parser.add_argument('--batchID', type=int,
+                        help='BatchID for the created flatfield file and directory')
     #add the group for defining the slide(s) to run on
     slide_definition_group = parser.add_argument_group('slide definition',
                                                         'what slides should be used, and where to find their files')
@@ -288,6 +308,8 @@ def main() :
     #make the working directory and start up the logger
     if args.mode=='slide_mean_image' :
         workingdir_path = getSlideMeanImageWorkingDirPath(FlatfieldSlideInfo((split_csv_to_list(args.slides))[0],args.rawfile_top_dir,args.root_dir))
+    elif args.mode=='batch_flatfield' :
+        workingdir_path = getBatchFlatfieldWorkingDirPath(args.root_dir,args.batchID)
     else :
         workingdir_path = os.path.abspath(os.path.normpath(args.workingdir_name))
     if not os.path.isdir(workingdir_path) :
