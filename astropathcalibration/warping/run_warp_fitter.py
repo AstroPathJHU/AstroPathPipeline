@@ -88,7 +88,7 @@ def getOverlaps(args) :
 
 #################### MAIN SCRIPT ####################
 
-if __name__=='__main__' :
+def main(args=None) :
     mp.freeze_support()
     #define and get the command-line arguments
     parser = ArgumentParser()
@@ -107,7 +107,7 @@ if __name__=='__main__' :
                         help='Maximum number of threads/processes to run at once')
     parser.add_argument('--save_warp_fields', action='store_true',
                      help='Add this flag to save the warping fields for this fit and not just the result file')
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
     #apply some checks to the arguments to make sure they're valid
     checkArgs(args)
     #get the overlaps to use for fitting
@@ -150,3 +150,6 @@ if __name__=='__main__' :
                                 max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
                                 p1p2_polish_lasso_lambda=args.p1p2_polish_lasso_lambda,polish=True,
                                 print_every=args.print_every,maxiter=args.max_iter,save_fields=args.save_warp_fields)""")
+
+if __name__=='__main__' :
+    main()

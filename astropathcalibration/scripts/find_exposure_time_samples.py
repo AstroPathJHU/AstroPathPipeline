@@ -98,7 +98,7 @@ def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,nlayers,layers,return_dict
     print(f'{sn} # of different overlaps in each layer group = {n_overlaps}')
     return_dict[sn]=n_overlaps
 
-if __name__=='__main__' :
+def main() :
     mp.freeze_support()
 
     #n_diff_olaps_vectra = {}
@@ -170,3 +170,6 @@ if __name__=='__main__' :
         thislayer_n_overlaps_polaris = [(sn,n_diff_olaps_polaris[sn][li]) for sn in n_diff_olaps_polaris.keys()]
         thislayer_n_overlaps_polaris.sort(key=lambda x : x[1],reverse=True)
         print(f'Layer {ln} samples sorted by number of overlaps with different exposure times: {thislayer_n_overlaps_polaris}')
+
+if __name__=='__main__' :
+    main()

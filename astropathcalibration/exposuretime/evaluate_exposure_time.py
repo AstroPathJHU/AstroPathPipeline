@@ -169,7 +169,7 @@ def writeResultsForSlide(slide,offsets,ff_file,workingdir,smoothsigma,allow_edge
 
 #################### MAIN SCRIPT ####################
 
-def main() :
+def main(args=None) :
     #define and get the command-line arguments
     parser = ArgumentParser()
     parser.add_argument('slides',
@@ -186,7 +186,7 @@ def main() :
                         help='sigma (in pixels) for initial Gaussian blur of images')
     parser.add_argument('--allow_edge_HPFs', action='store_true',
                         help='Add this flag to allow overlaps with HPFs on the tissue edges')
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
     #read in all the slides and the exposure time offsets
     slides = readtable(args.slides,FlatfieldSlideInfo)
     offsets = readtable(args.exposure_time_offset_file,LayerOffset)

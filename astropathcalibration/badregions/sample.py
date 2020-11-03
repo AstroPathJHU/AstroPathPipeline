@@ -57,7 +57,7 @@ class TissueFoldFinderSample(BadRegionFinderSample):
   @property
   def logmodule(self): return "tissuefoldfinder"
 
-if __name__ == "__main__":
+def main(args=None):
   p = argparse.ArgumentParser()
   g = p.add_mutually_exclusive_group(required=True)
   g.add_argument("--dust-speck", dest="cls", action="store_const", const=DustSpeckFinderSample)
@@ -66,8 +66,11 @@ if __name__ == "__main__":
   p.add_argument("samp")
   p.add_argument("--units", choices=("fast", "safe"), default="fast")
   p.add_argument("--plotsdir", type=pathlib.Path)
-  args = p.parse_args()
+  args = p.parse_args(args=args)
 
   units.setup(args.units)
 
   result = args.cls(args.root1, args.root2, args.samp).run(plotsdir=args.plotsdir)
+
+if __name__ == "__main__":
+  main()

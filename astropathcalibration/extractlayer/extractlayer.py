@@ -99,7 +99,7 @@ class ShredderAndLayerExtractor(LayerExtractorBase):
     rawfile.rename(fwfile)
     return fwfile
 
-if __name__ == "__main__":
+def main(args=None):
   p = argparse.ArgumentParser()
   p.add_argument("root1")
   p.add_argument("root2")
@@ -110,10 +110,13 @@ if __name__ == "__main__":
   g.add_argument("--error-if-exists", action="store_const", const="error", dest="alreadyexistsstrategy", default="error")
   g.add_argument("--overwrite", action="store_const", const="overwrite", dest="alreadyexistsstrategy")
   g.add_argument("--skip-existing", action="store_const", const="keep", dest="alreadyexistsstrategy")
-  args = p.parse_args()
+  args = p.parse_args(args=args)
 
   with args.ShredderClass(root=args.root1, root2=args.root2, samp=args.samp) as le:
     kwargs = {}
     kwargs["alreadyexistsstrategy"] = args.alreadyexistsstrategy
     if args.layer: kwargs["layers"] = args.layer
     le.extractlayers(**kwargs)
+
+if __name__ == "__main__":
+  main()

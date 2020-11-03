@@ -58,7 +58,7 @@ def checkArgs(args) :
 
 #################### MAIN SCRIPT ####################
 
-if __name__=='__main__' :
+def main(args=None) :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #add the common options to the parser
@@ -82,7 +82,7 @@ if __name__=='__main__' :
                                        (default = ".fw"; 2-digit layer code will be appended if layer != -1)""")
     run_option_group.add_argument('--max_files',             default=-1,    type=int,
                                   help='Maximum number of files to use (default = -1 runs all files for the requested slide)')
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
     #make the working directory
     if not os.path.isdir(args.workingdir) :
         os.mkdir(args.workingdir)
@@ -102,3 +102,6 @@ if __name__=='__main__' :
         corrector.run()
     #explicitly exit logger context
     assert 1==1
+
+if __name__=='__main__' :
+    main()

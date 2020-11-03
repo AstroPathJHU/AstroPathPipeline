@@ -161,7 +161,7 @@ def getFinalPatternFitCmd(wdn,args,k1,k2,k3,cx,cx_err,cy,cy_err) :
 
 #################### MAIN SCRIPT ####################
 
-if __name__=='__main__' :
+def main(args=None) :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #add the positional mode argument
@@ -186,7 +186,7 @@ if __name__=='__main__' :
                                        help='Max # of iterations to run in the principal point location fits')
     max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=10000,
                                        help='Max # of iterations to run in the final pattern fits')
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
     #make sure the arguments are alright
     checkArgs(args)
     #set up the three directories with their octet groupings
@@ -241,7 +241,6 @@ if __name__=='__main__' :
         shutil.move(old_w_avg_dy_wf_fp,new_w_avg_dy_wf_fp)
     warp_logger.info('Done')
 
-    
-
-
+if __name__=='__main__' :
+    main()
 

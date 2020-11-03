@@ -7,7 +7,7 @@ import multiprocessing as mp
 
 #################### MAIN SCRIPT ####################
 
-if __name__=='__main__' :
+def main(args=None) :
     mp.freeze_support()
     #define and get the command-line arguments
     parser = ArgumentParser()
@@ -46,7 +46,7 @@ if __name__=='__main__' :
                                   help='Number of pre/post-fit overlap overlay comparison images to save (default=15)')
     run_option_group.add_argument('--allow_edge_HPFs', action='store_true',
                                   help="""Add this flag to allow overlaps with HPFs on the tissue edges""")
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
     #make sure the arguments are valid
     checkArgs(args)
     #initialize a fit
@@ -58,3 +58,6 @@ if __name__=='__main__' :
                       args.initial_offset,args.min_pixel_frac_for_offset_limit,args.max_iter,args.gtol,args.eps,args.print_every,
                       args.n_comparisons_to_save,args.allow_edge_HPFs)
     et_fit_logger.info('Done!')
+
+if __name__=='__main__' :
+    main()

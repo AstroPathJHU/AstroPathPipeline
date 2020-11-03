@@ -19,7 +19,7 @@ class ZoomCohort(FlatwCohort):
   @property
   def logmodule(self): return "zoom"
 
-if __name__ == "__main__":
+def main(args=None):
   p = argparse.ArgumentParser()
   p.add_argument("root1", type=pathlib.Path)
   p.add_argument("root2", type=pathlib.Path)
@@ -29,7 +29,7 @@ if __name__ == "__main__":
   g.add_argument("--skip-aligned", action="store_true")
   p.add_argument("--units", choices=("safe", "fast"), default="fast")
   p.add_argument("--dry-run", action="store_true")
-  args = p.parse_args()
+  args = p.parse_args(args=args)
 
   units.setup(args.units)
 
@@ -46,3 +46,6 @@ if __name__ == "__main__":
     for samp in cohort: print(samp)
   else:
     cohort.run()
+
+if __name__ == "__main__":
+  main()

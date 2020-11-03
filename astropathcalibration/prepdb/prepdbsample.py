@@ -329,12 +329,15 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
     self.writeregions()
     self.writevertices()
 
-if __name__ == "__main__":
+def main(args=None):
   p = argparse.ArgumentParser()
   p.add_argument("root")
   p.add_argument("samp")
   p.add_argument("--units", type=units.setup)
-  args = p.parse_args()
+  args = p.parse_args(args=args)
   kwargs = {"root": args.root, "samp": args.samp}
   s = PrepdbSample(**kwargs)
   s.writemetadata()
+
+if __name__ == "__main__":
+  main()

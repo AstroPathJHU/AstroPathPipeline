@@ -28,7 +28,7 @@ class AlignmentCohort(FlatwCohort):
   @property
   def logmodule(self): return "align"
 
-if __name__ == "__main__":
+def main(args=None):
   p = argparse.ArgumentParser()
   p.add_argument("root1", type=pathlib.Path)
   p.add_argument("root2", type=pathlib.Path)
@@ -41,7 +41,7 @@ if __name__ == "__main__":
   g = p.add_mutually_exclusive_group()
   g.add_argument("--dont-align", action="store_true")
   g.add_argument("--dont-stitch", action="store_true")
-  args = p.parse_args()
+  args = p.parse_args(args=args)
 
   units.setup(args.units)
 
@@ -61,3 +61,6 @@ if __name__ == "__main__":
     for samp in cohort: print(samp)
   else:
     cohort.run()
+
+if __name__ == "__main__":
+  main()
