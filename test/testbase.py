@@ -1,6 +1,6 @@
 import abc, contextlib, dataclasses, numbers, numpy as np, pathlib, shutil, tempfile, unittest
 
-from astropathcalibration.utilities import units
+from astropath_calibration.utilities import units
 
 def assertAlmostEqual(a, b, **kwargs):
   if isinstance(a, units.safe.Distance):

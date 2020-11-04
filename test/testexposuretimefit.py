@@ -1,9 +1,9 @@
 # A script to run a quick example of the warpfitter
 
 #imports
-from astropathcalibration.exposuretime.exposure_time_fit_group import ExposureTimeOffsetFitGroup
-from astropathcalibration.utilities.img_file_io import LayerOffset
-from astropathcalibration.utilities.tableio import readtable
+from astropath_calibration.exposuretime.exposure_time_fit_group import ExposureTimeOffsetFitGroup
+from astropath_calibration.utilities.img_file_io import LayerOffset
+from astropath_calibration.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 import pathlib, shutil
 

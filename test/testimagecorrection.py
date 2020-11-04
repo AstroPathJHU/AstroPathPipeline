@@ -1,7 +1,7 @@
 #imports
-from astropathcalibration.image_correction.corrector import RawfileCorrector
-from astropathcalibration.utilities.img_file_io import getRawAsHWL, getRawAsHW
-from astropathcalibration.utilities.misc import cd
+from astropath_calibration.image_correction.corrector import RawfileCorrector
+from astropath_calibration.utilities.img_file_io import getRawAsHWL, getRawAsHW
+from astropath_calibration.utilities.misc import cd
 import numpy as np
 from argparse import Namespace
 import pathlib, glob, shutil

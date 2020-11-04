@@ -1,7 +1,7 @@
 # a small script to test the results of some warps applied to a few images
 
 #imports
-from astropathcalibration.warping.warp import PolyFieldWarp, CameraWarp
+from astropath_calibration.warping.warp import PolyFieldWarp, CameraWarp
 import os, numpy as np
 
 #constants
