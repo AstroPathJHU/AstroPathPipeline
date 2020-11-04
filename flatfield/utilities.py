@@ -26,7 +26,7 @@ class FieldLog :
     file     : str
     location : str
     use      : str
-    stacked_in_layers : List[int] = None
+    stacked_in_layers : str = ''
 
 #helper class for inputting slides with their names and raw/root directories
 @dataclasses.dataclass

@@ -194,7 +194,7 @@ class FlatfieldProducer :
                 fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,slide,selected_pixel_cut,med_exp_times_by_layer,
                                                                             this_chunk_masking_plot_indices,self._logger)
                 for fi in range(len(new_field_logs)) :
-                    new_field_logs[fi].stacked_in_layers = fields_stacked_in_layers[fi]
+                    new_field_logs[fi].stacked_in_layers = ','.join([str(ln) for ln in fields_stacked_in_layers[fi]])
                 self._field_logs+=new_field_logs
         #write out the list of metadata summaries
         with cd(self.mean_image.workingdir_path) :
