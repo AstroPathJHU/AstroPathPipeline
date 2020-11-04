@@ -4,11 +4,6 @@ from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.sample import DbloadSampleBase, XMLLayoutReader
 from ..utilities import units
 
-jxmleaseversion = jxmlease.__version__.split(".")
-jxmleaseversion = [int(_) for _ in jxmleaseversion[:2]] + list(jxmleaseversion[2:])
-if jxmleaseversion < [1, 0, '2dev1']:
-  raise ImportError(f"You need jxmleaseversion >= 1.0.2dev1 (your version: {jxmlease.__version__})\n(earlier one has bug in reading vertices, https://github.com/Juniper/jxmlease/issues/16)")
-
 class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, checkim3s=True, **kwargs)

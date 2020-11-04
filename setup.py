@@ -24,7 +24,7 @@ setuptools.setup(
   install_requires = [
     "cvxpy",
     "imagecodecs",
-    "jxmlease",
+    "jxmlease>=1.0.2dev1",
     "matplotlib",
     "methodtools",
     "more_itertools",
