@@ -21,8 +21,8 @@ def checkArgs(a) :
     #first check the different batch mode options, which don't accept every argument
     if a.mode=='slide_mean_image' or a.mode=='batch_flatfield' :
         #working directory name is automatic
-        if a.workingdir_name is not None :
-            raise ValueError(f'ERROR: running in {a.mode} mode uses an automatic working directory, please remove the workingdir_name argument!') 
+        if a.workingdir is not None :
+            raise ValueError(f'ERROR: running in {a.mode} mode uses an automatic working directory, please remove the workingdir argument!') 
         #need rawfile and root directories (i.e. don't use a sample definition csv file)
         if a.rawfile_top_dir is None or a.root_dir is None :
             raise ValueError(f'ERROR: must specify rawfile and root directories to run in {a.mode} mode!')
@@ -50,15 +50,19 @@ def checkArgs(a) :
             if a.batchID is None :
                 raise ValueError('ERROR: batchID argument is REQUIRED when running in batch_flatfield mode')
     #otherwise there needs to be a working directory
-    elif a.workingdir_name is None :
-            raise ValueError('ERROR: the workingdir_name argument is required!') 
+    elif a.workingdir is None :
+            raise ValueError('ERROR: the workingdir argument is required!') 
     #otherwise, if the user wants to apply a previously-calculated flatfield, the flatfield itself and rawfile log both have to exist in the prior run dir
     if a.mode=='apply_flatfield' :  
         if a.prior_run_dir is None :
             raise RuntimeError('ERROR: apply_flatfield mode requires a specified prior_run_dir!')
         if not os.path.isdir(a.prior_run_dir) :
             raise ValueError(f'ERROR: prior run directory {a.prior_run_dir} does not exist!')
-        prior_run_ff_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(a.prior_run_dir))}{CONST.FILE_EXT}'
+        with cd(a.prior_run_dir) :
+            prior_run_ff_filename = glob.glob(f'*{CONST.FLATFIELD_FILE_NAME_STEM}*{CONST.FILE_EXT}')
+        if len(prior_run_ff_filename)!=1 :
+            raise ValueError(f'ERROR: {len(prior_run_ff_filename)} flatfield files to apply found in {a.prior_run_dir}')
+        prior_run_ff_filename = prior_run_ff_filename[0]
         if not os.path.isfile(os.path.join(a.prior_run_dir,prior_run_ff_filename)) :
             raise ValueError(f'ERROR: flatfield image {prior_run_ff_filename} does not exist in prior run directory {a.prior_run_dir}!')
         if not os.path.isfile(os.path.join(a.prior_run_dir,f'{FILEPATH_TEXT_FILE_NAME}')) :
@@ -290,7 +294,8 @@ def doRun(args,workingdir_path,logger=None) :
             ff_producer.makeFlatField()
         elif args.mode=='apply_flatfield' :
             #apply the flatfield to the image stack
-            prior_run_ff_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(args.prior_run_dir))}{CONST.FILE_EXT}'
+            with cd(args.prior_run_dir) :
+                prior_run_ff_filename = (glob.glob(f'*{CONST.FLATFIELD_FILE_NAME_STEM}*{CONST.FILE_EXT}'))[0]
             ff_producer.applyFlatField(os.path.join(args.prior_run_dir,prior_run_ff_filename))
         #save the plots, etc.
         ff_producer.writeOutInfo()
@@ -306,8 +311,8 @@ def main() :
     #add the exposure time correction group to the arguments
     addCommonArgumentsToParser(parser,positional_args=False,flatfielding=False,warping=False)
     #the name of the working directory (optional because it's automatic in batch mode)
-    parser.add_argument('--workingdir_name', 
-                        help='Name of working directory to save created files in')
+    parser.add_argument('--workingdir', 
+                        help='Name of working directory to save created files in (set automatically in slide_mean_image and batch_flatfield modes)')
     #the batchID (optional because it's only needed in batch_flatfield mode)
     parser.add_argument('--batchID', type=int,
                         help='BatchID for the created flatfield file and directory')
@@ -358,7 +363,7 @@ def main() :
     elif args.mode=='batch_flatfield' :
         workingdir_path = getBatchFlatfieldWorkingDirPath(args.root_dir,args.batchID)
     else :
-        workingdir_path = os.path.abspath(os.path.normpath(args.workingdir_name))
+        workingdir_path = os.path.abspath(os.path.normpath(args.workingdir))
     if not os.path.isdir(workingdir_path) :
         os.path.mkdir(workingdir_path)
     with RunLogger(args.mode,workingdir_path) as logger :

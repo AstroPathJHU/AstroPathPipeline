@@ -5,7 +5,7 @@ from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandI
 from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker
 from ..utilities.misc import cd, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import cv2, os, copy
+import cv2, os, copy, platform
 
 class MeanImage :
     """
@@ -127,6 +127,10 @@ class MeanImage :
                     logger.imageinfo(msg,slide.name,slide.root_dir)
                 else :
                     flatfield_logger.info(msg)
+                im_array=1.*im_array
+                if ets_for_normalization is not None :
+                    for li in range(self.nlayers) :
+                        im_array[:,:,li]/=ets_for_normalization[li]
                 self.image_stack+=im_array
                 self.n_images_read+=1
                 self.n_images_stacked_by_layer+=1
@@ -298,7 +302,7 @@ class MeanImage :
                 flatfield_logger.warn(msg)
             return self.image_stack
         if np.max(self.n_images_stacked_by_layer<1) :
-            msg = f'WARNING: There are no layers with images stacked in them and so the mean image will be zero everywhere!'
+            msg = 'WARNING: There are no layers with images stacked in them and so the mean image will be zero everywhere!'
             if logger is not None :
                 logger.warningglobal(msg)
             else :
@@ -421,16 +425,27 @@ def getImageMaskWorker(im_array,thresholds_per_layer,slide_ID,min_selected_pixel
     #for each layer, save the mask and its threshold
     for li in range(nlayers) :
         init_image_mask[:,:,li] = np.where(smoothed_image[:,:,li]>thresholds[li],1,0)
-    #morph each layer of the mask through a series of operations on the GPU
-    init_mask_umat  = cv2.UMat(init_image_mask)
-    intermediate_mask=cv2.UMat(np.empty_like(init_image_mask))
-    co1_mask=cv2.UMat(np.empty_like(init_image_mask))
-    co2_mask=cv2.UMat(np.empty_like(init_image_mask))
-    close3_mask=cv2.UMat(np.empty_like(init_image_mask))
-    open3_mask=cv2.UMat(np.empty_like(init_image_mask))
+    useGPU = platform.system()!='Darwin'
+    #morph each layer of the mask through a series of operations
+    if useGPU :
+        init_mask_umat  = cv2.UMat(init_image_mask)
+        intermediate_mask=cv2.UMat(np.empty_like(init_image_mask))
+        co1_mask=cv2.UMat(np.empty_like(init_image_mask))
+        co2_mask=cv2.UMat(np.empty_like(init_image_mask))
+        close3_mask=cv2.UMat(np.empty_like(init_image_mask))
+        open3_mask=cv2.UMat(np.empty_like(init_image_mask))
+    else :
+        intermediate_mask=np.empty_like(init_image_mask)
+        co1_mask=np.empty_like(init_image_mask)
+        co2_mask=np.empty_like(init_image_mask)
+        close3_mask=np.empty_like(init_image_mask)
+        open3_mask=np.empty_like(init_image_mask)
     #do the morphology transformations
     #small-scale close/open to remove noise and fill in small holes
-    cv2.morphologyEx(init_mask_umat,cv2.MORPH_CLOSE,CONST.CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
+    if useGPU :
+        cv2.morphologyEx(init_mask_umat,cv2.MORPH_CLOSE,CONST.CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
+    else :
+        cv2.morphologyEx(init_image_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
     cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,CONST.CO1_EL,co1_mask,borderType=cv2.BORDER_REPLICATE)
     #medium-scale close/open for the same reason with larger regions
     cv2.morphologyEx(co1_mask,cv2.MORPH_CLOSE,CONST.CO2_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
@@ -440,7 +455,10 @@ def getImageMaskWorker(im_array,thresholds_per_layer,slide_ID,min_selected_pixel
     #repeated small open to eat its edges and remove small regions outside of the bulk of the mask
     cv2.morphologyEx(close3_mask,cv2.MORPH_OPEN,CONST.CO1_EL,open3_mask,iterations=CONST.OPEN_3_ITERATIONS,borderType=cv2.BORDER_REPLICATE)
     #the final mask is this last mask
-    morphed_mask = open3_mask.get()
+    if useGPU :
+        morphed_mask = open3_mask.get()
+    else :
+        morphed_mask=open3_mask
     #make the plots if requested
     if make_plots :
         flatfield_logger.info(f'Saving masking plots for image {i}')
