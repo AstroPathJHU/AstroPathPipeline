@@ -180,8 +180,6 @@ class MeanImage :
         A function to get the mean of the image stack
         logger = a RunLogger object whose context is entered, if None the default log will be used
         """
-        if self.n_images_read<1 :
-            raise FlatFieldError('ERROR: not enough images were read to produce a meanimage!')
         for li,nlis in enumerate(self.n_images_stacked_by_layer,start=1) :
             if nlis<1 :
                 msg = f'WARNING: {nlis} images were stacked in layer {li}, so this layer of the meanimage will be meaningless!'
@@ -189,7 +187,7 @@ class MeanImage :
                     logger.warningglobal(msg)
                 else :
                     flatfield_logger.warn(msg)
-        self.mean_image = self.__getMeanImage()
+        self.mean_image = self.__getMeanImage(logger)
 
     def makeFlatFieldImage(self,logger=None) :
         """
@@ -206,7 +204,7 @@ class MeanImage :
                 else :
                     flatfield_logger.warn(msg)
         if self.mean_image is None :
-            self.mean_image = self.__getMeanImage()
+            self.mean_image = self.__getMeanImage(logger)
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
@@ -290,7 +288,22 @@ class MeanImage :
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to create and return the mean image from the image (and mask, if applicable, stack)
-    def __getMeanImage(self) :
+    def __getMeanImage(self,logger=None) :
+        #make sure there actually was at least some number of images used
+        if self.n_images_read<1 :
+            msg = f'WARNING: {self.n_images_read} images were read in and so the mean image will be zero everywhere!'
+            if logger is not None :
+                logger.warningglobal(msg)
+            else :
+                flatfield_logger.warn(msg)
+            return self.image_stack
+        if np.max(self.n_images_stacked_by_layer<1) :
+            msg = f'WARNING: There are no layers with images stacked in them and so the mean image will be zero everywhere!'
+            if logger is not None :
+                logger.warningglobal(msg)
+            else :
+                flatfield_logger.warn(msg)
+            return self.image_stack
         #if the images haven't been masked then this is trivial
         if self.skip_masking :
             return self.image_stack/self.n_images_read
