@@ -43,9 +43,8 @@ def slideNameFromFilepath(fp) :
 
 #helper function to make the automatic directory path for a single slide's mean image (and associated info)
 def getSlideMeanImageWorkingDirPath(slide) :
-    ############################ switch which of the below two lines is commented to run for real ##########################
-    path = os.path.join(os.path.abspath(os.getcwd()),CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
-    #path = os.path.join(os.path.abspath(os.path.normpath(slide.root_dir)),slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
+    #path = os.path.join(os.path.abspath(os.getcwd()),CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
+    path = os.path.join(os.path.abspath(os.path.normpath(slide.root_dir)),slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
     if not os.path.isdir(os.path.dirname(path)) :
         raise FlatFieldError(f'ERROR: working directory location {os.path.dirname(path)} does not exist!')
     if not os.path.isdir(path) :
@@ -54,9 +53,8 @@ def getSlideMeanImageWorkingDirPath(slide) :
 
 #helper function to make the automatic directory path for running the flatfield for a batch of slides
 def getBatchFlatfieldWorkingDirPath(rootdir,batchID) :
-    ############################ switch which of the below two lines is commented to run for real ##########################
-    path = os.path.join(os.path.abspath(os.getcwd()),f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
-    #path = os.path.join(os.path.abspath(os.path.normpath(rootdir)),'Flatfield',f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
+    #path = os.path.join(os.path.abspath(os.getcwd()),f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
+    path = os.path.join(os.path.abspath(os.path.normpath(rootdir)),'Flatfield',f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
     if not os.path.isdir(os.path.dirname(path)) :
         raise FlatFieldError(f'ERROR: working directory location {os.path.dirname(path)} does not exist!')
     if not os.path.isdir(path) :

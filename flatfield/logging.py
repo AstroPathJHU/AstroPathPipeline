@@ -23,13 +23,14 @@ class RunLogger(ExitStack) :
         """
         super().__init__()
         self._module = mode
-        self._batch_mode = self._module in ('slide_mean_image')
+        self._batch_mode = self._module in ('slide_mean_image','batch_flatfield')
         self._workingdir_path = workingdir_path
         self._global_logger = self._getGlobalLogger()
         self._slide_loggers = {}
 
     def __enter__(self) :
         super().__enter__()
+        #add the imageinfo-level file in the working directory
         self._global_logger_filepath = os.path.join(self._workingdir_path,f'global-{self._module}.log')
         filehandler = logging.FileHandler(self._global_logger_filepath)
         filehandler.setFormatter(self.formatter)
@@ -67,7 +68,7 @@ class RunLogger(ExitStack) :
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
-    #helper function to set up the global logger, which is a debug-level print and an info-level file in the working directory
+    #helper function to set up the global logger, which is a debug-level print to start with
     def _getGlobalLogger(self) :
         logger = logging.getLogger(self._module)
         logger.setLevel(logging.DEBUG)
@@ -80,9 +81,8 @@ class RunLogger(ExitStack) :
     #helper function to add a new single slide logger to the global logger's dictionary
     def _addSlideLogger(self,slideid,root_dir) :
         samp = SampleDef(SlideID=slideid,root=root_dir)
-        ########### uncomment the conditionals at the ends of the two lines below to actually put the logs in the right place ################
-        mainlog = os.path.join(self._workingdir_path,f'{self._module}.log') #if not self._batch_mode else None
-        samplelog = os.path.join(self._workingdir_path,f'{slideid}-{self._module}.log') #if not self._batch_mode else None
+        mainlog = os.path.join(self._workingdir_path,f'{self._module}.log') if not self._batch_mode else None
+        samplelog = os.path.join(self._workingdir_path,f'{slideid}-{self._module}.log') if not self._batch_mode else None
         newlogger = getlogger(module=self._module,root=root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,
                               imagelog=self._global_logger_filepath,reraiseexceptions=(not self._batch_mode))
         self.enter_context(newlogger)
