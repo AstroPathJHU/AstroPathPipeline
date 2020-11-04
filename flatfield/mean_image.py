@@ -40,6 +40,7 @@ class MeanImage :
     #images stacked per layer
     N_IMAGES_STACKED_PER_LAYER_PLOT_NAME      = 'n_images_stacked_per_layer.png' #name of the images stacked per layer plot
     N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME = 'n_images_stacked_per_layer.txt' #name of the images stacked per layer text file
+    N_IMAGES_READ_TEXT_FILE_NAME = 'n_images_read.txt' #name of the images stacked per layer text file
     #masking plots
     MASKING_PLOT_DIR_NAME = 'masking_plots' #name of the masking plot directory
 
@@ -67,15 +68,41 @@ class MeanImage :
         self.skip_masking = skip_masking
         self.smoothsigma = smoothsigma
         self.image_stack = np.zeros(self._dims,dtype=CONST.IMG_DTYPE_OUT)
-        self.mask_stack  = np.zeros(self._dims,dtype=np.uint64)
-        self.smoothed_image_stack = np.zeros(self.image_stack.shape,dtype=CONST.IMG_DTYPE_OUT)
+        self.mask_stack  = np.zeros(self._dims,dtype=CONST.MASK_STACK_DTYPE_OUT)
         self.n_images_read = 0
-        self.n_images_stacked_by_layer = np.zeros((self.nlayers),dtype=np.uint64)
+        self.n_images_stacked_by_layer = np.zeros((self.nlayers),dtype=CONST.MASK_STACK_DTYPE_OUT)
         self.mean_image=None
         self.smoothed_mean_image=None
         self.flatfield_image=None
         self.corrected_mean_image=None
         self.smoothed_corrected_mean_image=None
+
+    def addSlideMeanImageAndMaskStack(self,mean_image_fp,mask_stack_fp) :
+        """
+        A function to add a mean image and mask stack from a particular slide to the running total, including updating the aggregated metadata
+        mean_image_fp = path to this slide's already existing mean image file
+        mask_stack_fp = path to this slide's already existing mask_stack file
+        """
+        #add the mean image times the mask stack to the image stack, and the mask stack to the running total
+        thismeanimage = getRawAsHWL(mean_image_fp,*(self._dims),CONST.IMG_DTYPE_OUT)
+        thismaskstack = getRawAsHWL(mask_stack_fp,*(self._dims),CONST.MASK_STACK_DTYPE_OUT)
+        self.mask_stack+=thismaskstack
+        self.image_stack+=thismaskstack*thismeanimage
+        #aggregate some of the metadata also
+        nisblfp = os.path.join(os.path.dirname(mean_image_fp),self.POSTRUN_PLOT_DIRECTORY_NAME,self.N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME)
+        with open(nisblfp,'r') as fp :
+            nisbl = np.array([int(l.rstrip()) for l in fp.readlines() if l.rstrip()!=''],dtype=CONST.MASK_STACK_DTYPE_OUT)
+        if len(nisbl)!=self._dims[-1] :
+            msg = f'ERROR: number of images stacked by layer in {nisblfp} has {len(nisbl)} entries'
+            msg+= f' but there are {self._dims[-1]} image layers!'
+            raise FlatFieldError(msg)
+        self.n_images_stacked_by_layer+=nisbl
+        nirfp = os.path.join(os.path.dirname(mean_image_fp),self.POSTRUN_PLOT_DIRECTORY_NAME,self.N_IMAGES_READ_TEXT_FILE_NAME)
+        with open(nirfp,'r') as fp :
+            nir = [int(l.rstrip() for l in fp.readlines() if l.rstrip()!='')]
+        if len(nir)!=1 :
+            raise FlatFieldError(f'ERROR: getting number of images read from {nirfp} yielded {len(nir)} values, not exactly 1')
+        self.n_images_read+=nir[0]
 
     def addGroupOfImages(self,im_array_list,slide,min_selected_pixels,ets_for_normalization=None,masking_plot_indices=[],logger=None) :
         """
@@ -203,29 +230,38 @@ class MeanImage :
             with open(self.APPLIED_FLATFIELD_TEXT_FILE_NAME,'w') as fp :
                 fp.write(f'{flatfield_file_path}\n')
 
-    def saveImages(self) :
+    def saveImages(self,batch_or_slide_ID=None) :
         """
         Save the various images that are created
+        batch_or_slide_ID = the integer batch ID or string slideID to append to the outputted file names
         """
+        #figure out what to append to the filenames
+        prepend = ''; append = ''
+        if batch_or_slide_ID is not None :
+            if isinstance(batch_or_slide_ID,int) :
+                append = f'_BatchID_{batch_or_slide_ID:02d}'
+            else :
+                prepend = f'{batch_or_slide_ID}-'
+        #write out the files
         with cd(self._workingdir_path) :
             if self.mean_image is not None :
-                meanimage_filename = f'{CONST.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
+                meanimage_filename = f'{prepend}{CONST.MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
                 writeImageToFile(self.mean_image,meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
-            if self.smoothed_mean_image is not None :
-                smoothed_meanimage_filename = f'{self.SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(self.smoothed_mean_image,smoothed_meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
-            if self.flatfield_image is not None :
-                flatfieldimage_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(self._workingdir_path))}{CONST.FILE_EXT}'
-                writeImageToFile(self.flatfield_image,flatfieldimage_filename,dtype=CONST.IMG_DTYPE_OUT)
-            if self.corrected_mean_image is not None :
-                corrected_mean_image_filename = f'{self.CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(self.corrected_mean_image,corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
-            if self.smoothed_corrected_mean_image is not None :
-                smoothed_corrected_mean_image_filename = f'{CONST.SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}'
-                writeImageToFile(self.smoothed_corrected_mean_image,smoothed_corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
-            #if masks were calculated, save the stack of them
             if (not self.skip_masking) and (self.mask_stack is not None) :
-                writeImageToFile(self.mask_stack,f'{CONST.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}',dtype=np.uint16)
+                writeImageToFile(self.mask_stack,f'{prepend}{CONST.MASK_STACK_FILE_NAME_STEM}{append}{CONST.FILE_EXT}',dtype=CONST.MASK_STACK_DTYPE_OUT)
+            if self.flatfield_image is not None :
+                flatfieldimage_filename = f'{prepend}{CONST.FLATFIELD_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
+                writeImageToFile(self.flatfield_image,flatfieldimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+            if append=='' :
+                if self.smoothed_mean_image is not None :
+                    smoothed_meanimage_filename = f'{prepend}{self.SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
+                    writeImageToFile(self.smoothed_mean_image,smoothed_meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                if self.corrected_mean_image is not None :
+                    corrected_mean_image_filename = f'{prepend}{self.CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
+                    writeImageToFile(self.corrected_mean_image,corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
+                if self.smoothed_corrected_mean_image is not None :
+                    smoothed_corrected_mean_image_filename = f'{prepend}{CONST.SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
+                    writeImageToFile(self.smoothed_corrected_mean_image,smoothed_corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
 
     def savePlots(self) :
         """
@@ -350,6 +386,8 @@ class MeanImage :
         with open(self.N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME,'w') as fp :
             for li in range(self.nlayers) :
                 fp.write(f'{self.n_images_stacked_by_layer[li]}\n')
+        with open(self.N_IMAGES_READ_TEXT_FILE_NAME,'w') as fp :
+            fp.write(f'{self.n_images_read}\n')
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 

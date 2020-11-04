@@ -7,7 +7,7 @@ from .config import CONST
 from ..utilities.tableio import readtable
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 from argparse import ArgumentParser
-import os, glob, random, sys
+import os, glob, random
 
 #################### FILE-SCOPE CONSTANTS ####################
 
@@ -248,6 +248,53 @@ def getFilepathsAndSlidesToRun(a,logger=None) :
         raise RuntimeError('ERROR: The requested options have resulted in no slides or files to run!')
     return all_slide_filepaths, filepaths_to_run, slides_to_run
 
+#helper function to do a whole run in any of the possible modes
+def doRun(args,workingdir_path,logger=None) :
+    #get the list of filepaths to run and the names of their slides
+    if args.mode=='batch_flatfield' :
+        all_filepaths = None; filepaths_to_run = None
+        slides_to_run = [FlatfieldSlideInfo(sn,args.rawfile_top_dir,args.root_dir) for sn in split_csv_to_list(args.slides)]
+    else :
+        all_filepaths, filepaths_to_run, slides_to_run = getFilepathsAndSlidesToRun(args,logger)
+    if args.mode=='check_run' :
+        return
+    #start up a flatfield producer
+    ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,workingdir_path,args.skip_exposure_time_correction,args.skip_masking,logger)
+    #in batch_flatfield mode, just make the flatfield from all the files that already exist
+    if args.mode=='batch_flatfield' :
+        ff_producer.makeFlatfieldFromSlideMeanImages()
+        ff_producer.writeOutInfo(args.batchID)
+        return
+    #see if the code is running in batch mode (i.e. minimal output in automatic locations) and figure out the working directory path if so
+    batch_mode = args.mode in ('slide_mean_image','batch_flatfield')
+    #write out the text file of all the raw file paths that will be run
+    if not batch_mode :
+        ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
+        if args.mode=='choose_image_files' :
+            return
+    #Read in the exposure time correction offsets from the given directory
+    if not args.skip_exposure_time_correction :
+        ff_producer.readInExposureTimeCorrectionOffsets(args.exposure_time_offset_file)
+    #Figure out the background thresholds per layer by looking at the HPFs on the tissue edges
+    if not args.skip_masking :
+        if args.threshold_file_dir is not None :
+            ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
+        else :
+            ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
+    if args.mode in ['slide_mean_image','make_flatfield', 'apply_flatfield'] :
+        #mask and stack images together to make the mean image
+        ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_slide,args.allow_edge_HPFs)
+        ff_producer.makeMeanImage()
+        if args.mode=='make_flatfield' :
+            #make the flatfield image
+            ff_producer.makeFlatField()
+        elif args.mode=='apply_flatfield' :
+            #apply the flatfield to the image stack
+            prior_run_ff_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(args.prior_run_dir))}{CONST.FILE_EXT}'
+            ff_producer.applyFlatField(os.path.join(args.prior_run_dir,prior_run_ff_filename))
+        #save the plots, etc.
+        ff_producer.writeOutInfo()
+
 #################### MAIN SCRIPT ####################
 def main() :
     #define and get the command-line arguments
@@ -317,41 +364,8 @@ def main() :
     with RunLogger(args.mode,workingdir_path) as logger :
         #make sure the command line arguments make sense
         checkArgs(args)
-        #get the list of filepaths to run and the names of their slides
-        all_filepaths, filepaths_to_run, slides_to_run = getFilepathsAndSlidesToRun(args,logger)
-        if args.mode=='check_run' :
-            sys.exit()
-        #see if the code is running in batch mode (i.e. minimal output in automatic locations) and figure out the working directory path if so
-        batch_mode = args.mode=='slide_mean_image'
-        #start up a flatfield producer
-        ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,workingdir_path,args.skip_exposure_time_correction,args.skip_masking,logger)
-        #write out the text file of all the raw file paths that will be run
-        if not batch_mode :
-            ff_producer.writeFileLog(FILEPATH_TEXT_FILE_NAME)
-            if args.mode=='choose_image_files' :
-                sys.exit()
-        #First read in the exposure time correction offsets from the given directory
-        if not args.skip_exposure_time_correction :
-            ff_producer.readInExposureTimeCorrectionOffsets(args.exposure_time_offset_file)
-        #next figure out the background thresholds per layer by looking at the HPFs on the tissue edges
-        if not args.skip_masking :
-            if args.threshold_file_dir is not None :
-                ff_producer.readInBackgroundThresholds(args.threshold_file_dir)
-            else :
-                ff_producer.findBackgroundThresholds(all_filepaths,args.n_threads)
-        if args.mode in ['slide_mean_image','make_flatfield', 'apply_flatfield'] :
-            #mask and stack images together to make the mean image
-            ff_producer.stackImages(args.n_threads,args.selected_pixel_cut,args.n_masking_images_per_slide,args.allow_edge_HPFs)
-            ff_producer.makeMeanImage()
-            if args.mode=='make_flatfield' :
-                #make the flatfield image
-                ff_producer.makeFlatField()
-            elif args.mode=='apply_flatfield' :
-                #apply the flatfield to the image stack
-                prior_run_ff_filename = f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(args.prior_run_dir))}{CONST.FILE_EXT}'
-                ff_producer.applyFlatField(os.path.join(args.prior_run_dir,prior_run_ff_filename))
-            #save the plots, etc.
-            ff_producer.writeOutInfo()
+        #do the whole run
+        doRun(args,workingdir_path,logger)
 
 if __name__=='__main__' :
     main()

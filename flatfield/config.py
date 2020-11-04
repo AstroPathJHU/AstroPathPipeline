@@ -16,6 +16,9 @@ class Const :
     def IMG_DTYPE_OUT(self) :
         return np.float64 #datatype for the main output images
     @property
+    def MASK_STACK_DTYPE_OUT(self) :
+        return np.uint64 #datatype for the mask stack output image
+    @property
     def FILE_EXT(self) :
         return '.bin' #file extension for the main output files
     @property

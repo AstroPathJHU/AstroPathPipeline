@@ -2,6 +2,7 @@
 from .flatfield_slide import FlatfieldSlide 
 from .mean_image import MeanImage
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, slideNameFromFilepath, FieldLog
+from .utilities import getSlideMeanImageFilepath, getSlideMaskStackFilepath
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities.img_file_io import getSlideMedianExposureTimesByLayer, LayerOffset
@@ -31,7 +32,7 @@ class FlatfieldProducer :
     def __init__(self,slides,all_slide_rawfile_paths_to_run,workingdir_name,skip_et_correction=False,skip_masking=False,logger=None) :
         """
         slides                         = list of FlatfieldSlideInfo objects for this run
-        all_slide_rawfile_paths_to_run = list of paths to raw files to stack for all slides that will be run
+        all_slide_rawfile_paths_to_run = list of paths to raw files to stack for all slides that will be run (may be None in batch_flatfield mode)
         workingdir_name                = name of the directory to save everything in
         skip_et_correction             = if True, image flux will NOT be corrected for exposure time differences in each layer
         skip_masking                   = if True, image layers won't be masked before being added to the stack
@@ -58,6 +59,27 @@ class FlatfieldProducer :
         self._field_logs = []
         #Set up the logger
         self._logger = logger
+
+    def makeFlatfieldFromSlideMeanImages(self) :
+        """
+        Function to make a flatfield using all the slides' individual mean_image and mask_stack files that already exist
+        """
+        #first read in all of the individual slides' information
+        for sn,slide in sorted(self.flatfield_slide_dict.items()) :
+            #get and add this slide's mean image and mask stack
+            mifp = getSlideMeanImageFilepath(slide)
+            msfp = getSlideMaskStackFilepath(slide)
+            self.__writeLog(f'Reading and adding mean image for slide {sn}','info',sn,slide.root_dir)
+            self.mean_image.addSlideMeanImageAndMaskStack(mifp,msfp)
+            #aggregate the slide's metadata as well
+            mds = readtable(os.path.join(os.path.dirname(mifp),f'{self.IMAGE_STACK_MDS_FN_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),MetadataSummary)
+            self._metadata_summaries+=mds
+            fl = readtable(os.path.join(os.path.dirname(mifp),f'{self.FIELDS_USED_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'))
+            self._field_logs+=fl
+        #make the meanimage
+        self.makeMeanImage()
+        #make the flatfield
+        self.makeFlatField()
 
     def readInExposureTimeCorrectionOffsets(self,et_correction_file) :
         """
@@ -185,7 +207,7 @@ class FlatfieldProducer :
         self.__writeLog('Creating mean image','info')
         self.mean_image.makeMeanImage(self._logger)
 
-    def makeFlatField(self) :
+    def makeFlatField(self,batchID=None) :
         """
         Smooth the mean image and make the flatfield image by dividing each layer by its mean pixel value
         """
@@ -213,13 +235,20 @@ class FlatfieldProducer :
                     for path in [fp for fp in self.all_slide_rawfile_paths_to_run if slideNameFromFilepath(fp)==sn] :
                         fp.write(f'{path}\n')
 
-    def writeOutInfo(self) :
+    def writeOutInfo(self,batchID=None) :
         """
         Save layer-by-layer images, some plots, and the log of fields used
+        batchID = the integer batch ID to append to the outputted file names
         """
+        #figure out what to append to the filenames
+        batch_or_slide_ID = None
+        if batchID is not None :
+            batch_or_slide_ID=batchID
+        elif len(self.flatfield_slide_dict)==1 :
+            batch_or_slide_ID = (list(self.flatfield_slide_dict.values())[0]).name
         #save the images
         self.__writeLog('Saving layer-by-layer images','imageinfo')
-        self.mean_image.saveImages()
+        self.mean_image.saveImages(batch_or_slide_ID)
         #make some visualizations of the images
         self.__writeLog('Saving plots','imageinfo')
         self.mean_image.savePlots()
