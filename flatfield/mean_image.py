@@ -99,7 +99,7 @@ class MeanImage :
         self.n_images_stacked_by_layer+=nisbl
         nirfp = os.path.join(os.path.dirname(mean_image_fp),self.POSTRUN_PLOT_DIRECTORY_NAME,self.N_IMAGES_READ_TEXT_FILE_NAME)
         with open(nirfp,'r') as fp :
-            nir = [int(l.rstrip() for l in fp.readlines() if l.rstrip()!='')]
+            nir = [int(l.rstrip()) for l in fp.readlines() if l.rstrip()!='']
         if len(nir)!=1 :
             raise FlatFieldError(f'ERROR: getting number of images read from {nirfp} yielded {len(nir)} values, not exactly 1')
         self.n_images_read+=nir[0]
@@ -246,15 +246,15 @@ class MeanImage :
                 prepend = f'{batch_or_slide_ID}-'
         #write out the files
         with cd(self._workingdir_path) :
-            if self.mean_image is not None :
-                meanimage_filename = f'{prepend}{CONST.MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                writeImageToFile(self.mean_image,meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
-            if (not self.skip_masking) and (self.mask_stack is not None) :
-                writeImageToFile(self.mask_stack,f'{prepend}{CONST.MASK_STACK_FILE_NAME_STEM}{append}{CONST.FILE_EXT}',dtype=CONST.MASK_STACK_DTYPE_OUT)
             if self.flatfield_image is not None :
                 flatfieldimage_filename = f'{prepend}{CONST.FLATFIELD_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
                 writeImageToFile(self.flatfield_image,flatfieldimage_filename,dtype=CONST.IMG_DTYPE_OUT)
             if append=='' :
+                if self.mean_image is not None :
+                    meanimage_filename = f'{prepend}{CONST.MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
+                    writeImageToFile(self.mean_image,meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                if (not self.skip_masking) and (self.mask_stack is not None) :
+                    writeImageToFile(self.mask_stack,f'{prepend}{CONST.MASK_STACK_FILE_NAME_STEM}{append}{CONST.FILE_EXT}',dtype=CONST.MASK_STACK_DTYPE_OUT)
                 if self.smoothed_mean_image is not None :
                     smoothed_meanimage_filename = f'{prepend}{self.SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
                     writeImageToFile(self.smoothed_mean_image,smoothed_meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)

@@ -101,10 +101,16 @@ class RunLogger(ExitStack) :
         elif level=='imageinfo' :
             logger.log(logging.INFO-1,msg)
         elif level=='error' :
-            for logger in [self._global_logger]+list(self._slide_loggers.values()) :
+            loggerlist = list(self._slide_loggers.values())
+            if len(loggerlist)==0 :
+                loggerlist=[self._global_logger]
+            for logger in loggerlist :
                 logger.error(msg)
         elif level=='warningglobal' :
-            for logger in [self._global_logger]+list(self._slide_loggers.values()) :
+            loggerlist = list(self._slide_loggers.values())
+            if len(loggerlist)==0 :
+                loggerlist=[self._global_logger]
+            for logger in loggerlist :
                 logger.log(logging.WARNING+1,msg)
         elif level=='warning' :
             logger.warning(msg)

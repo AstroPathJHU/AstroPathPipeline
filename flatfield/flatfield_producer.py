@@ -74,7 +74,7 @@ class FlatfieldProducer :
             #aggregate the slide's metadata as well
             mds = readtable(os.path.join(os.path.dirname(mifp),f'{self.IMAGE_STACK_MDS_FN_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),MetadataSummary)
             self._metadata_summaries+=mds
-            fl = readtable(os.path.join(os.path.dirname(mifp),f'{self.FIELDS_USED_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'))
+            fl = readtable(os.path.join(os.path.dirname(mifp),f'{self.FIELDS_USED_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),FieldLog)
             self._field_logs+=fl
         #make the meanimage
         self.makeMeanImage()
