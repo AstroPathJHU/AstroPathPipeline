@@ -60,7 +60,7 @@ class FlatfieldProducer :
         #Set up the logger
         self._logger = logger
 
-    def makeFlatfieldFromSlideMeanImages(self) :
+    def makeFlatfieldFromSlideMeanImages(self,batchID) :
         """
         Function to make a flatfield using all the slides' individual mean_image and mask_stack files that already exist
         """
@@ -69,7 +69,7 @@ class FlatfieldProducer :
             #get and add this slide's mean image and mask stack
             mifp = getSlideMeanImageFilepath(slide)
             msfp = getSlideMaskStackFilepath(slide)
-            self.__writeLog(f'Reading and adding mean image for slide {sn}','info',sn,slide.root_dir)
+            self.__writeLog(f'Reading and adding slide {sn} mean image for flatfield model with BatchID = {batchID:02d}','info',sn,slide.root_dir)
             self.mean_image.addSlideMeanImageAndMaskStack(mifp,msfp)
             #aggregate the slide's metadata as well
             mds = readtable(os.path.join(os.path.dirname(mifp),f'{self.IMAGE_STACK_MDS_FN_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),MetadataSummary)

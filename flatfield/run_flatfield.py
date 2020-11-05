@@ -276,7 +276,7 @@ def doRun(args,workingdir_path,logger=None) :
     ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,workingdir_path,args.skip_exposure_time_correction,args.skip_masking,logger)
     #in batch_flatfield mode, just make the flatfield from all the files that already exist
     if args.mode=='batch_flatfield' :
-        ff_producer.makeFlatfieldFromSlideMeanImages()
+        ff_producer.makeFlatfieldFromSlideMeanImages(args.batchID)
         ff_producer.writeOutInfo(args.batchID)
         fffn = f'{CONST.FLATFIELD_FILE_NAME_STEM}_BatchID_{args.batchID:02d}{CONST.FILE_EXT}'
         if os.path.isfile(os.path.join(workingdir_path,fffn)) :
