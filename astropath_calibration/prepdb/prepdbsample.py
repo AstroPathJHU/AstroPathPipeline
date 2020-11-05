@@ -112,8 +112,6 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
   def vertices(self): return self.getXMLpolygonannotations()[2]
 
   @property
-  def qptifffilename(self): return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".qptiff")
-  @property
   def jpgfilename(self): return self.dbload/(self.SlideID+"_qptiff.jpg")
 
   @methodtools.lru_cache()

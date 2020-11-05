@@ -105,6 +105,10 @@ class SampleBase(contextlib.ExitStack):
     return self.im3folder/f"Scan{self.Scan}"
 
   @property
+  def qptifffilename(self):
+    return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".qptiff")
+
+  @property
   def componenttiffsfolder(self):
     return self.mainfolder/"inform_data"/"Component_Tiffs"
 
@@ -308,6 +312,7 @@ class FlatwSampleBase(SampleBase):
 
 class ZoomSampleBase(SampleBase):
   def __init__(self, *args, zoomroot, **kwargs):
+    super().__init__(*args, **kwargs)
     self.__zoomroot = zoomroot
   @property
   def zoomroot(self): return self.__zoomroot
