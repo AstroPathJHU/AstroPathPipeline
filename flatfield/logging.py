@@ -102,9 +102,9 @@ class RunLogger(ExitStack) :
                     self._doLog(level,msg,slideinfo[0],slideinfo[1])
         elif level=='warningglobal' :
             if slideID is not None and slide_root is not None :
-                self._slide_loggers[(slideID,slide_root)].log(logging.WARNING+1,msg)error(msg)
-            if len(self._slide_loggers)==0 :
-                self._global_logger.log(logging.WARNING+1,msg)error(msg)
+                self._slide_loggers[(slideID,slide_root)].log(logging.WARNING+1,msg)
+            elif len(self._slide_loggers)==0 :
+                self._global_logger.log(logging.WARNING+1,msg)
             else :
                 for slideinfo in self._slide_loggers.keys() :
                     self._doLog(level,msg,slideinfo[0],slideinfo[1])
