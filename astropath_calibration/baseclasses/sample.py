@@ -316,6 +316,13 @@ class ZoomSampleBase(SampleBase):
   @property
   def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
 
+  @property
+  def zmax(self): return 9
+  def zoomfilename(self, layer, tilex, tiley):
+    return self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+  def wsifilename(self, layer):
+    return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
+
 class SampleThatReadsRectangles(SampleBase):
   rectangletype = Rectangle #can be overridden in subclasses
 

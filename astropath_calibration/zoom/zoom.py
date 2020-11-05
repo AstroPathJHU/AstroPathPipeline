@@ -88,14 +88,14 @@ class Zoom(ReadRectanglesComponentTiff, ZoomSampleBase):
       slc = bigimage[:, ymin:ymax, xmin:xmax]
       if not np.any(slc): continue
       for layer in self.layers:
-        filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+        filename = self.zoomfilename(layer, tilex, tiley)
         self.logger.info(f"saving tile {tilen} / {ntiles} {filename.name}")
         image = PIL.Image.fromarray(slc[layer-1])
         image.save(filename, "PNG")
 
     self.wsifolder.mkdir(parents=True, exist_ok=True)
     for layer in self.layers:
-      filename = self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
+      filename = self.wsifilename(layer)
       self.logger.info(f"saving {filename.name}")
       image = PIL.Image.fromarray(bigimage[layer-1])
       image.save(filename, "PNG")
@@ -229,7 +229,7 @@ class Zoom(ReadRectanglesComponentTiff, ZoomSampleBase):
         ]
         if not np.any(slc): continue
         for layer in self.layers:
-          filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tile.tilex}-Y{tile.tiley}-big.png"
+          filename = self.zoomfilename(layer, tile.tilex, tile.tiley)
           self.logger.info(f"  saving {filename.name}")
           image = PIL.Image.fromarray(slc[layer-1])
           image.save(filename, "PNG")
@@ -242,7 +242,7 @@ class Zoom(ReadRectanglesComponentTiff, ZoomSampleBase):
       images = []
       blank = None
       for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1])):
-        filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+        filename = self.zoomfilename(layer, tilex, tiley)
         if filename.exists():
           images.append(pyvips.Image.new_from_file(os.fspath(filename)))
         else:
@@ -250,7 +250,7 @@ class Zoom(ReadRectanglesComponentTiff, ZoomSampleBase):
             blank = pyvips.Image.new_from_memory(np.zeros(shape=(self.tilesize*self.tilesize,), dtype=np.uint8), width=self.tilesize, height=self.tilesize, bands=1, format="uchar")
           images.append(blank)
 
-      filename = self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
+      filename = self.wsifilename(layer)
       self.logger.info(f"saving {filename.name}")
       output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
       output.pngsave(os.fspath(filename))
