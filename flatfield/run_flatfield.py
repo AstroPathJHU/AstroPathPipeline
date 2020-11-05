@@ -47,7 +47,7 @@ def checkArgs(a) :
                 raise ValueError(f'ERROR: running in slide_mean_image mode requires running one slide at a time, but slides argument = {a.slides}!')
         elif a.mode=='batch_flatfield' :
             #explicitly NEED a batch ID
-            if a.batchID is None :
+            if a.batchID==-1 :
                 raise ValueError('ERROR: batchID argument is REQUIRED when running in batch_flatfield mode')
             #shouldn't use exposure time arguments
             if a.skip_exposure_time_correction or a.exposure_time_offset_file is not None :
@@ -56,7 +56,7 @@ def checkArgs(a) :
     elif a.workingdir is None :
             raise ValueError('ERROR: the workingdir argument is required!') 
     #batchID not needed
-    if a.mode!='batch_flatfield' and a.batchID is not None :
+    if a.mode!='batch_flatfield' and (a.batchID!=-1) :
         raise ValueError('ERROR: batchID argument is only valid in batch_flatfield mode!')
     #every mode except for batch_flatfield needs exposure time correction arguments
     if a.mode!='batch_flatfield' and (not a.skip_exposure_time_correction) and a.exposure_time_offset_file is None :
@@ -321,7 +321,7 @@ def main() :
     parser.add_argument('--workingdir', 
                         help='Name of working directory to save created files in (set automatically in slide_mean_image and batch_flatfield modes)')
     #the batchID (optional because it's only needed in batch_flatfield mode)
-    parser.add_argument('--batchID', type=int,
+    parser.add_argument('--batchID', type=int, default=-1,
                         help='BatchID for the created flatfield file and directory')
     #add the exposure time correction arguments
     et_correction_group = parser.add_mutually_exclusive_group()
