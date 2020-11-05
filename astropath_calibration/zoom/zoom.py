@@ -2,26 +2,19 @@ import contextlib, cv2, itertools, methodtools, numpy as np, os, PIL, skimage
 
 from ..alignment.field import Field
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
-from ..baseclasses.sample import ReadRectanglesComponentTiff
+from ..baseclasses.sample import ReadRectanglesComponentTiff, ZoomSampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
   pass
 
-class Zoom(ReadRectanglesComponentTiff):
+class Zoom(ReadRectanglesComponentTiff, ZoomSampleBase):
   rectanglecsv = "fields"
   rectangletype = FieldReadComponentTiffMultiLayer
-  def __init__(self, *args, zoomroot, tilesize=16384, **kwargs):
+  def __init__(self, *args, tilesize=16384, **kwargs):
     self.__tilesize = tilesize
-    self.__zoomroot = zoomroot
     super().__init__(*args, **kwargs)
-  @property
-  def zoomroot(self): return self.__zoomroot
-  @property
-  def zoomfolder(self): return self.zoomroot/self.SlideID/"big"
-  @property
-  def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
   @property
   def tilesize(self): return self.__tilesize
   @property

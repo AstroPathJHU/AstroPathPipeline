@@ -306,6 +306,16 @@ class FlatwSampleBase(SampleBase):
       result.append(self.__root3/self.SlideID)
     return result
 
+class ZoomSampleBase(SampleBase):
+  def __init__(self, *args, zoomroot, **kwargs):
+    self.__zoomroot = zoomroot
+  @property
+  def zoomroot(self): return self.__zoomroot
+  @property
+  def zoomfolder(self): return self.zoomroot/self.SlideID/"big"
+  @property
+  def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
+
 class SampleThatReadsRectangles(SampleBase):
   rectangletype = Rectangle #can be overridden in subclasses
 
