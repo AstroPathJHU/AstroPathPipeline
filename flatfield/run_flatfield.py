@@ -61,6 +61,10 @@ def checkArgs(a) :
     #every mode except for batch_flatfield needs exposure time correction arguments
     if a.mode!='batch_flatfield' and (not a.skip_exposure_time_correction) and a.exposure_time_offset_file is None :
         raise ValueError('ERROR: must either skip exposure time correction or give an offset file in every run mode except for batch_flatfield')
+    #if exposure time corrections are being done, make sure the file actually exists
+    elif not a.skip_exposure_time_correction :
+        if not os.path.isfile(a.exposure_time_offset_file) :
+            raise ValueError(f'ERROR: exposure time offset file {a.exposure_time_offset_file} does not exist!')
     #if the user wants to apply a previously-calculated flatfield, the flatfield itself and rawfile log both have to exist in the prior run dir
     if a.mode=='apply_flatfield' :  
         if a.prior_run_dir is None :
@@ -112,10 +116,6 @@ def checkArgs(a) :
             ms = getSlideMaskStackFilepath(slide)
             if not os.path.isfile(ms) :
                 raise FileNotFoundError(f'ERROR: Required mask stack file {ms} does not exist!')
-    #if exposure time corrections are being done, make sure the file actually exists
-    if not a.skip_exposure_time_correction :
-        if not os.path.isfile(a.exposure_time_offset_file) :
-            raise ValueError(f'ERROR: exposure time offset file {a.exposure_time_offset_file} does not exist!')
     #if the user wants to save example masking plots, they can't be skipping masking
     if a.skip_masking and a.n_masking_images_per_slide!=0 :
         raise RuntimeError("ERROR: can't save masking images if masking is being skipped!")
