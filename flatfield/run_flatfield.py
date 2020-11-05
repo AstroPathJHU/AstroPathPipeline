@@ -5,7 +5,7 @@ from .utilities import flatfield_logger, slideNameFromFilepath, FlatfieldSlideIn
 from .utilities import getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath, getSlideMeanImageFilepath, getSlideMaskStackFilepath
 from .config import CONST 
 from ..utilities.tableio import readtable
-from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
+from ..utilities.misc import cd, split_csv_to_list
 from argparse import ArgumentParser
 import os, glob, random, shutil
 
@@ -279,6 +279,7 @@ def doRun(args,workingdir_path,logger=None) :
         ff_producer.makeFlatfieldFromSlideMeanImages(args.batchID)
         ff_producer.writeOutInfo(args.batchID)
         fffn = f'{CONST.FLATFIELD_FILE_NAME_STEM}_BatchID_{args.batchID:02d}{CONST.FILE_EXT}'
+        ff_producer.makeBatchFlatfieldSummaryPDF(args.root_dir,args.batchID)
         if os.path.isfile(os.path.join(workingdir_path,fffn)) :
             shutil.move(os.path.join(workingdir_path,fffn),os.path.join(os.path.dirname(workingdir_path),fffn))
         return

@@ -1,6 +1,7 @@
 #imports
 from .flatfield_slide import FlatfieldSlide 
 from .mean_image import MeanImage
+from .latex_summary import LatexSummary
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, slideNameFromFilepath, FieldLog
 from .utilities import getSlideMeanImageFilepath, getSlideMaskStackFilepath
 from .config import CONST
@@ -80,6 +81,18 @@ class FlatfieldProducer :
         self.makeMeanImage()
         #make the flatfield
         self.makeFlatField()
+
+    def makeBatchFlatfieldSummaryPDF(self,rootdir,batchID) :
+        """
+        Function to call the LatexSummary object and make the summary.pdf file for a batch_flatfield run
+        rootdir  = path to the Clinical_Specimen directory for all the slides that contributed to this flatfield model
+        batchID  = the batchID of this flatfield model
+        """
+        summary_obj = LatexSummary(rootdir,batchID,len(self.flatfield_slide_dict),self.mean_image.dims)
+        summary_obj.buildTemplateFile()
+        retval = summary_obj.compile()
+        if retval!=0 :
+            self.__writeLog(f'WARNING: failed while compiling summary LaTeX file into a PDF for batch {batchID}','warning')
 
     def readInExposureTimeCorrectionOffsets(self,et_correction_file) :
         """

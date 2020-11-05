@@ -26,21 +26,15 @@ class MeanImage :
     SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM           = 'smoothed_mean_image'             #name of the outputted smoothed mean image file
     CORRECTED_MEAN_IMAGE_FILE_NAME_STEM          = 'corrected_mean_image'            #name of the outputted corrected mean image file
     APPLIED_FLATFIELD_TEXT_FILE_NAME             = 'applied_flatfield_file_path.txt' #name of the text file to write out the applied flatfield file path
-    #postrun plot directory
-    POSTRUN_PLOT_DIRECTORY_NAME = 'postrun_info' #name of directory to hold postrun plots (pixel intensity, image layers, etc.) and other info
     #image layer plots
-    IMAGE_LAYER_PLOT_DIRECTORY_NAME = 'image_layer_pngs' #name of directory to hold image layer plots within postrun plot directory
-    IMG_LAYER_FIG_WIDTH             = 6.4                #width of image layer figures created in inches
+    IMG_LAYER_FIG_WIDTH = 6.4 #width of image layer figures created in inches
     #pixel intensity plots
-    PIXEL_INTENSITY_PLOT_NAME                      = 'pixel_intensity_plot.png' #name of the pixel intensity plot
     CORRECTED_MEAN_IMAGE_PIXEL_INTENSITY_PLOT_NAME = 'corrected_mean_image_pixel_intensity_plot.png' #name of the corrected mean image pixel intensity plot
     #illumination variation reduction
     ILLUMINATION_VARIATION_PLOT_NAME     = 'ilumination_variation_by_layer.png'  #name of the illumination variation plot
     ILLUMINATION_VARIATION_CSV_FILE_NAME = 'illumination_variation_by_layer.csv' #name of the illumination variation .csv file
     #images stacked per layer
-    N_IMAGES_STACKED_PER_LAYER_PLOT_NAME      = 'n_images_stacked_per_layer.png' #name of the images stacked per layer plot
     N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME = 'n_images_stacked_per_layer.txt' #name of the images stacked per layer text file
-    N_IMAGES_READ_TEXT_FILE_NAME = 'n_images_read.txt' #name of the images stacked per layer text file
     #masking plots
     MASKING_PLOT_DIR_NAME = 'masking_plots' #name of the masking plot directory
 
@@ -89,7 +83,7 @@ class MeanImage :
         self.mask_stack+=thismaskstack
         self.image_stack+=thismaskstack*thismeanimage
         #aggregate some of the metadata also
-        nisblfp = os.path.join(os.path.dirname(mean_image_fp),self.POSTRUN_PLOT_DIRECTORY_NAME,self.N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME)
+        nisblfp = os.path.join(os.path.dirname(mean_image_fp),CONST.POSTRUN_PLOT_DIRECTORY_NAME,self.N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME)
         with open(nisblfp,'r') as fp :
             nisbl = np.array([int(l.rstrip()) for l in fp.readlines() if l.rstrip()!=''],dtype=CONST.MASK_STACK_DTYPE_OUT)
         if len(nisbl)!=self._dims[-1] :
@@ -97,7 +91,7 @@ class MeanImage :
             msg+= f' but there are {self._dims[-1]} image layers!'
             raise FlatFieldError(msg)
         self.n_images_stacked_by_layer+=nisbl
-        nirfp = os.path.join(os.path.dirname(mean_image_fp),self.POSTRUN_PLOT_DIRECTORY_NAME,self.N_IMAGES_READ_TEXT_FILE_NAME)
+        nirfp = os.path.join(os.path.dirname(mean_image_fp),CONST.POSTRUN_PLOT_DIRECTORY_NAME,CONST.N_IMAGES_READ_TEXT_FILE_NAME)
         with open(nirfp,'r') as fp :
             nir = [int(l.rstrip()) for l in fp.readlines() if l.rstrip()!='']
         if len(nir)!=1 :
@@ -271,15 +265,15 @@ class MeanImage :
         """
         with cd(self._workingdir_path) :
             #make the plot directory if its not already created
-            if not os.path.isdir(self.POSTRUN_PLOT_DIRECTORY_NAME) :
-                os.mkdir(self.POSTRUN_PLOT_DIRECTORY_NAME)
-            with cd(self.POSTRUN_PLOT_DIRECTORY_NAME) :
+            if not os.path.isdir(CONST.POSTRUN_PLOT_DIRECTORY_NAME) :
+                os.mkdir(CONST.POSTRUN_PLOT_DIRECTORY_NAME)
+            with cd(CONST.POSTRUN_PLOT_DIRECTORY_NAME) :
                 #.pngs of the mean image, flatfield, and mask stack layers
                 self.__saveImageLayerPlots()
                 #plots of the minimum and and maximum (and 5/95%ile) pixel intensities
                 if self.flatfield_image is not None :
                     #for the flatfield image
-                    flatfieldImagePixelIntensityPlot(self.flatfield_image,self.PIXEL_INTENSITY_PLOT_NAME)
+                    flatfieldImagePixelIntensityPlot(self.flatfield_image,CONST.PIXEL_INTENSITY_PLOT_NAME)
                 if self.smoothed_mean_image is not None and self.smoothed_corrected_mean_image is not None :
                     #for the corrected mean image
                     correctedMeanImagePIandIVplots(self.smoothed_mean_image,self.smoothed_corrected_mean_image,
@@ -323,9 +317,9 @@ class MeanImage :
     def __saveImageLayerPlots(self) :
         if self.mean_image is None :
             self.makeMeanImage()
-        if not os.path.isdir(self.IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
-            os.mkdir(self.IMAGE_LAYER_PLOT_DIRECTORY_NAME)
-        with cd(self.IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
+        if not os.path.isdir(CONST.IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
+            os.mkdir(CONST.IMAGE_LAYER_PLOT_DIRECTORY_NAME)
+        with cd(CONST.IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
             #figure out the size of the figures to save
             fig_size=(self.IMG_LAYER_FIG_WIDTH,self.IMG_LAYER_FIG_WIDTH*(self.mean_image.shape[0]/self.mean_image.shape[1]))
             #iterate over the layers
@@ -397,13 +391,13 @@ class MeanImage :
         ax.set_xlabel('image layer')
         ax.set_ylabel('number of images')
         ax.legend(loc='best')
-        plt.savefig(self.N_IMAGES_STACKED_PER_LAYER_PLOT_NAME)
+        plt.savefig(CONST.N_IMAGES_STACKED_PER_LAYER_PLOT_NAME)
         plt.close()
-        cropAndOverwriteImage(self.N_IMAGES_STACKED_PER_LAYER_PLOT_NAME)
+        cropAndOverwriteImage(CONST.N_IMAGES_STACKED_PER_LAYER_PLOT_NAME)
         with open(self.N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME,'w') as fp :
             for li in range(self.nlayers) :
                 fp.write(f'{self.n_images_stacked_by_layer[li]}\n')
-        with open(self.N_IMAGES_READ_TEXT_FILE_NAME,'w') as fp :
+        with open(CONST.N_IMAGES_READ_TEXT_FILE_NAME,'w') as fp :
             fp.write(f'{self.n_images_read}\n')
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
