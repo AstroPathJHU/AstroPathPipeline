@@ -196,9 +196,6 @@ class FlatfieldProducer :
                 for fi in range(len(new_field_logs)) :
                     new_field_logs[fi].stacked_in_layers = ','.join([str(ln) for ln in fields_stacked_in_layers[fi]])
                 self._field_logs+=new_field_logs
-        #write out the list of metadata summaries
-        with cd(self.mean_image.workingdir_path) :
-            writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._metadata_summaries)
 
     def makeMeanImage(self) :
         """
@@ -240,6 +237,12 @@ class FlatfieldProducer :
         Save layer-by-layer images, some plots, and the log of fields used
         batchID = the integer batch ID to append to the outputted file names
         """
+        #write out the metadata summaries
+        with cd(self.mean_image.workingdir_path) :
+            writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._metadata_summaries)
+        #write out the field logs
+        with cd(self.mean_image.workingdir_path) :
+            writetable(f'{self.FIELDS_USED_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._field_logs)
         #figure out what to append to the filenames
         batch_or_slide_ID = None
         if batchID is not None :
@@ -252,8 +255,6 @@ class FlatfieldProducer :
         #make some visualizations of the images
         self.__writeLog('Saving plots','imageinfo')
         self.mean_image.savePlots()
-        with cd(self.mean_image.workingdir_path) :
-            writetable(f'{self.FIELDS_USED_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._field_logs)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
