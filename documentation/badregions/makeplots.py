@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import argparse, functools, matplotlib.pyplot as plt, pathlib
-from ...badregions.dustspeck import DustSpeckFinder
-from ...badregions.sample import DustSpeckFinderSample
-from ...utilities import units
+from astropath_calibration.badregions.dustspeck import DustSpeckFinder
+from astropath_calibration.badregions.sample import DustSpeckFinderSample
+from astropath_calibration.utilities import units
 
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"

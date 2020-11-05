@@ -69,7 +69,7 @@ def getListOfJobCommands(args) :
 
 #################### MAIN SCRIPT ####################
 
-if __name__=='__main__' :
+def main(args=None) :
     mp.freeze_support()
     #define and get the command-line arguments
     parser = ArgumentParser()
@@ -79,7 +79,7 @@ if __name__=='__main__' :
     addCommonWarpingArgumentsToParser(parser)
     #additional positional arguments
     parser.add_argument('njobs', help='Number of jobs to run', type=int)
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
     #check some of the basic arguments
     checkDirAndFixedArgs(args)
     #get the list of all the job commands
@@ -191,3 +191,5 @@ if __name__=='__main__' :
             writetable(f'field_log_{os.path.basename(os.path.normpath(args.workingdir))}.csv',all_field_logs)
     warp_logger.info('Done.')
 
+if __name__=='__main__' :
+    main()

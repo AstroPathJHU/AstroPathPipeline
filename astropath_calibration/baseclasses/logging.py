@@ -71,7 +71,8 @@ class MyLogger:
           imagehandler.setLevel(logging.INFO-1)
           self.logger.addHandler(imagehandler)
 
-        self.logger.critical(self.module)
+        from ..utilities.version import astropathversion
+        self.logger.critical(f"{self.module} {astropathversion}")
 
     self.nentered += 1
     return self

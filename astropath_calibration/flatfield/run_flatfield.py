@@ -200,7 +200,7 @@ def getFilepathsAndSlidesToRun(a) :
     return all_slide_filepaths, filepaths_to_run, slides_to_run
 
 #################### MAIN SCRIPT ####################
-def main() :
+def main(args=None) :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #general positional arguments
@@ -250,7 +250,7 @@ def main() :
                                   help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
     run_option_group.add_argument('--other_runs_to_exclude',       default='',  type=split_csv_to_list,
                                   help='Comma-separated list of additional, previously-run, working directories whose filepaths should be excluded')
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
     #make sure the command line arguments make sense
     checkArgs(args)
     #get the list of filepaths to run and the names of their slides

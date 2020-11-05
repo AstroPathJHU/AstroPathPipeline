@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
-from ...alignment.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
-from ...alignment.isotropy import isotropy, stitchingisotropy
-from ...alignment.alignmentset import AlignmentSet
-from ...utilities import units
+from astropath_calibration.alignment.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
+from astropath_calibration.alignment.isotropy import isotropy, stitchingisotropy
+from astropath_calibration.alignment.alignmentset import AlignmentSet
+from astropath_calibration.utilities import units
 
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"

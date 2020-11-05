@@ -25,7 +25,7 @@ class DustSpeckFinderCohort(BadRegionFinderCohort):
   badregionfindersampleclass = DustSpeckFinderSample
   logmodule = badregionfindersampleclass.logmodule
 
-if __name__ == "__main__":
+def main(args=None):
   p = argparse.ArgumentParser()
   g = p.add_mutually_exclusive_group(required=True)
   g.add_argument("--dust-speck", dest="cls", action="store_const", const=DustSpeckFinderCohort)
@@ -37,7 +37,7 @@ if __name__ == "__main__":
   g.add_argument("--sampleregex", type=re.compile)
   g.add_argument("--skip-existing-plots", action="store_true")
   p.add_argument("--debug", action="store_true")
-  args = p.parse_args()
+  args = p.parse_args(args=args)
 
   units.setup(args.units)
 
@@ -48,3 +48,6 @@ if __name__ == "__main__":
     kwargs["filter"] = lambda sample: not (args.plotsdir/sample.SlideID).exists()
 
   args.cls(**kwargs).run(plotsdir=args.plotsdir)
+
+if __name__ == "__main__":
+  main()

@@ -88,7 +88,7 @@ def getOverlaps(args) :
 
 #################### MAIN SCRIPT ####################
 
-if __name__=='__main__' :
+def main(args=None) :
     mp.freeze_support()
     #define and get the command-line arguments
     parser = ArgumentParser()
@@ -107,7 +107,7 @@ if __name__=='__main__' :
                         help='Maximum number of threads/processes to run at once')
     parser.add_argument('--save_warp_fields', action='store_true',
                      help='Add this flag to save the warping fields for this fit and not just the result file')
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
     #apply some checks to the arguments to make sure they're valid
     checkArgs(args)
     #get the overlaps to use for fitting
@@ -120,11 +120,6 @@ if __name__=='__main__' :
         #make the WarpFitter Objects
         warp_logger.info('Initializing WarpFitter')
         fitter = WarpFitter(args.slideID,args.rawfile_top_dir,args.root_dir,args.workingdir,overlaps,args.layer)
-        #figure out which parameters will be fixed
-        fix_cxcy   = 'cx' in args.fixed and 'cy' in args.fixed
-        fix_fxfy   = 'fx' in args.fixed and 'fy' in args.fixed
-        fix_k1k2k3 = 'k1' in args.fixed and 'k2' in args.fixed and 'k3' in args.fixed
-        fix_p1p2   = 'p1' in args.fixed and 'p2' in args.fixed
         #check the run if that's what's being asked
         if args.mode in ('check_run') :
             fitter.checkFit(fixed=args.fixed,normalize=args.normalize,init_pars=args.init_pars,init_bounds=args.init_bounds,
@@ -150,3 +145,6 @@ if __name__=='__main__' :
                                 max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
                                 p1p2_polish_lasso_lambda=args.p1p2_polish_lasso_lambda,polish=True,
                                 print_every=args.print_every,maxiter=args.max_iter,save_fields=args.save_warp_fields)""")
+
+if __name__=='__main__' :
+    main()
