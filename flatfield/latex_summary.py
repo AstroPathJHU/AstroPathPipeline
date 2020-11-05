@@ -6,7 +6,6 @@ import os, subprocess
 
 #################### FILE-SCOPE CONSTANTS ####################
 
-TEX_FILE_NAME = 'summary.tex'
 VECTRA_3_NAME = 'Vectra 3.0'
 VECTRA_POLARIS_NAME = 'Vectra Polaris'
 
@@ -34,6 +33,7 @@ class LatexSummary :
             self.microscope = VECTRA_POLARIS_NAME
         else :
             raise ValueError(f'ERROR: image dimensions {img_dims} not recognized as a microscope!')
+        self.tex_file_namestem=f'flatfield_BatchID_{batchID:02d}_summary'
 
     def buildTemplateFile(self) :
         """
@@ -49,9 +49,9 @@ class LatexSummary :
         template_file_lines+=self._getNImagesStackedSection()
         template_file_lines.append('\\clearpage\n\n')
         template_file_lines+=self._getMaskStackLayersSection()
-        template_file_lines.append('\\end{{document}}\n')
+        template_file_lines.append('\\end{document}\n')
         with cd(self.workingdir_path) :
-            with open(TEX_FILE_NAME,'w') as fp :
+            with open(f'{self.tex_file_namestem}.tex','w') as fp :
                 for line in template_file_lines :
                     fp.write(line)
 
@@ -59,19 +59,23 @@ class LatexSummary :
         """
         Function to compile the summary.tex file that was created
         """
-        retval = 0
-        cmd = f'pdflatex {TEX_FILE_NAME}'
+        cmd = f'pdflatex {self.tex_file_namestem}.tex'
         with cd(self.workingdir_path) :
             try :
                 subprocess.check_call(cmd)
-            except subprocess.CalledProcessError :
-                retval=1
+            except Exception :
+                return 1
             try :
                 subprocess.check_call(cmd)
-            except subprocess.CalledProcessError :
-                retval=1
-            os.remove(TEX_FILE_NAME)
-        return retval
+            except Exception :
+                return 1
+            if os.path.isfile(f'{self.tex_file_namestem}.pdf') :
+                exts_to_rm = ('.log','.aux','.tex')
+                for ext in exts_to_rm :
+                    fn = f'{self.tex_file_namestem}{ext}'
+                    if os.path.isfile(fn) :
+                        os.remove(fn)
+        return 0
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
