@@ -86,35 +86,40 @@ class RunLogger(ExitStack) :
         newlogger = getlogger(module=self._module,root=root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,
                               imagelog=self._global_logger_filepath,reraiseexceptions=(not self._batch_mode))
         self.enter_context(newlogger)
-        self._slide_loggers[slideid] = newlogger
+        self._slide_loggers[(slideid,root_dir)] = newlogger
 
     #helper function to find which log to use and send a message at a given level to it
     def _doLog(self,level,msg,slideID,slide_root) :
-        if slideID is None and slide_root is None :
-            logger = self._global_logger
-        else :
-            if slideID not in self._slide_loggers.keys() :
-                self._addSlideLogger(slideID,slide_root)
-            logger = self._slide_loggers[slideID]
-        if level=='info' :
-            logger.info(msg)
-        elif level=='imageinfo' :
-            logger.log(logging.INFO-1,msg)
-        elif level=='error' :
-            loggerlist = list(self._slide_loggers.values())
-            if len(loggerlist)==0 :
-                loggerlist=[self._global_logger]
-            for logger in loggerlist :
-                logger.error(msg)
+        if slideID is not None and slide_root is not None and (slideID,slide_root) not in self._slide_loggers.keys() :
+            self._addSlideLogger(slideID,slide_root)
+        if level=='error' :
+            if slideID is not None and slide_root is not None :
+                self._slide_loggers[(slideID,slide_root)].error(msg)
+            elif len(self._slide_loggers)==0 :
+                self._global_logger.error(msg)
+            else :
+                for slideinfo in self._slide_loggers.keys() :
+                    self._doLog(level,msg,slideinfo[0],slideinfo[1])
         elif level=='warningglobal' :
-            loggerlist = list(self._slide_loggers.values())
-            if len(loggerlist)==0 :
-                loggerlist=[self._global_logger]
-            for logger in loggerlist :
-                logger.log(logging.WARNING+1,msg)
-        elif level=='warning' :
-            logger.warning(msg)
-        elif level=='debug' :
-            logger.debug(msg)
+            if slideID is not None and slide_root is not None :
+                self._slide_loggers[(slideID,slide_root)].log(logging.WARNING+1,msg)error(msg)
+            if len(self._slide_loggers)==0 :
+                self._global_logger.log(logging.WARNING+1,msg)error(msg)
+            else :
+                for slideinfo in self._slide_loggers.keys() :
+                    self._doLog(level,msg,slideinfo[0],slideinfo[1])
         else :
-            raise ValueError(f'ERROR: logger level {level} is not recognized!')
+            if slideID is None and slide_root is None :
+                logger = self._global_logger
+            else :
+                logger = self._slide_loggers[(slideID,slide_root)]
+            if level=='info' :
+                logger.info(msg)
+            elif level=='imageinfo' :
+                logger.log(logging.INFO-1,msg)
+            elif level=='warning' :
+                logger.warning(msg)
+            elif level=='debug' :
+                logger.debug(msg)
+            else :
+                raise ValueError(f'ERROR: logger level {level} is not recognized!')
