@@ -301,7 +301,7 @@ class MeanImage :
             else :
                 flatfield_logger.warn(msg)
             return self.image_stack
-        if np.max(self.n_images_stacked_by_layer<1) :
+        if np.max(self.n_images_stacked_by_layer)<1 :
             msg = 'WARNING: There are no layers with images stacked in them and so the mean image will be zero everywhere!'
             if logger is not None :
                 logger.warningglobal(msg)
