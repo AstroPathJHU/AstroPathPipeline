@@ -39,9 +39,9 @@ def checkArgs(a) :
         if a.selected_pixel_cut!=DEFAULT_SELECTED_PIXEL_CUT :
             raise ValueError(f'ERROR: when running in {a.mode} mode only the default selected pixel cut of {DEFAULT_SELECTED_PIXEL_CUT} is valid!')
         if a.mode=='slide_mean_image' :
-            #batchID not needed
-            if a.batchID is not None :
-                raise ValueError('ERROR: batchID argument is only valid in batch_flatfield mode!')
+            #need to apply exposure time corrections
+            if a.exposure_time_offset_file is None :
+                raise ValueError('ERROR: must give an exposure time offset file in slide_mean_image mode')
             #make sure it'll run on exactly one slide
             if len(split_csv_to_list(a.slides))!=1 :
                 raise ValueError(f'ERROR: running in slide_mean_image mode requires running one slide at a time, but slides argument = {a.slides}!')
@@ -49,10 +49,19 @@ def checkArgs(a) :
             #explicitly NEED a batch ID
             if a.batchID is None :
                 raise ValueError('ERROR: batchID argument is REQUIRED when running in batch_flatfield mode')
+            #shouldn't use exposure time arguments
+            if a.skip_exposure_time_correction or a.exposure_time_offset_file is not None :
+                raise ValueError('ERROR: exposure time arguments are irrelevant in batch_flatfield mode!')
     #otherwise there needs to be a working directory
     elif a.workingdir is None :
             raise ValueError('ERROR: the workingdir argument is required!') 
-    #otherwise, if the user wants to apply a previously-calculated flatfield, the flatfield itself and rawfile log both have to exist in the prior run dir
+    #batchID not needed
+    if a.mode!='batch_flatfield' and a.batchID is not None :
+        raise ValueError('ERROR: batchID argument is only valid in batch_flatfield mode!')
+    #every mode except for batch_flatfield needs exposure time correction arguments
+    if a.mode!='batch_flatfield' and (not a.skip_exposure_time_correction) and a.exposure_time_offset_file is None :
+        raise ValueError('ERROR: must either skip exposure time correction or give an offset file in every run mode except for batch_flatfield')
+    #if the user wants to apply a previously-calculated flatfield, the flatfield itself and rawfile log both have to exist in the prior run dir
     if a.mode=='apply_flatfield' :  
         if a.prior_run_dir is None :
             raise RuntimeError('ERROR: apply_flatfield mode requires a specified prior_run_dir!')
@@ -308,14 +317,19 @@ def main() :
     parser.add_argument('mode', 
                 choices=['slide_mean_image','batch_flatfield','make_flatfield','apply_flatfield','calculate_thresholds','check_run','choose_image_files'],                  
                         help='Which operation to perform')
-    #add the exposure time correction group to the arguments
-    addCommonArgumentsToParser(parser,positional_args=False,flatfielding=False,warping=False)
     #the name of the working directory (optional because it's automatic in batch mode)
     parser.add_argument('--workingdir', 
                         help='Name of working directory to save created files in (set automatically in slide_mean_image and batch_flatfield modes)')
     #the batchID (optional because it's only needed in batch_flatfield mode)
     parser.add_argument('--batchID', type=int,
                         help='BatchID for the created flatfield file and directory')
+    #add the exposure time correction arguments
+    et_correction_group = parser.add_mutually_exclusive_group()
+    et_correction_group.add_argument('--exposure_time_offset_file',
+                                     help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
+                                    [use this argument to apply corrections for differences in image exposure time]""")
+    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
+                                     help='Add this flag to entirely skip correcting image flux for exposure time differences')
     #add the group for defining the slide(s) to run on
     slide_definition_group = parser.add_argument_group('slide definition',
                                                         'what slides should be used, and where to find their files')
