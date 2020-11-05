@@ -59,12 +59,13 @@ def checkArgs(a) :
     if a.mode!='batch_flatfield' and (a.batchID!=-1) :
         raise ValueError('ERROR: batchID argument is only valid in batch_flatfield mode!')
     #every mode except for batch_flatfield needs exposure time correction arguments
-    if a.mode!='batch_flatfield' and (not a.skip_exposure_time_correction) and a.exposure_time_offset_file is None :
-        raise ValueError('ERROR: must either skip exposure time correction or give an offset file in every run mode except for batch_flatfield')
-    #if exposure time corrections are being done, make sure the file actually exists
-    elif not a.skip_exposure_time_correction :
-        if not os.path.isfile(a.exposure_time_offset_file) :
-            raise ValueError(f'ERROR: exposure time offset file {a.exposure_time_offset_file} does not exist!')
+    if a.mode!='batch_flatfield' :
+        if (not a.skip_exposure_time_correction) and a.exposure_time_offset_file is None :
+            raise ValueError('ERROR: must either skip exposure time correction or give an offset file in every run mode except for batch_flatfield')
+        #if exposure time corrections are being done, make sure the file actually exists
+        elif not a.skip_exposure_time_correction :
+            if not os.path.isfile(a.exposure_time_offset_file) :
+                raise ValueError(f'ERROR: exposure time offset file {a.exposure_time_offset_file} does not exist!')
     #if the user wants to apply a previously-calculated flatfield, the flatfield itself and rawfile log both have to exist in the prior run dir
     if a.mode=='apply_flatfield' :  
         if a.prior_run_dir is None :
