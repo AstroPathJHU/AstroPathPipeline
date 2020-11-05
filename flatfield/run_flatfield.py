@@ -7,7 +7,7 @@ from .config import CONST
 from ..utilities.tableio import readtable
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 from argparse import ArgumentParser
-import os, glob, random
+import os, glob, random, shutil
 
 #################### FILE-SCOPE CONSTANTS ####################
 
@@ -278,6 +278,9 @@ def doRun(args,workingdir_path,logger=None) :
     if args.mode=='batch_flatfield' :
         ff_producer.makeFlatfieldFromSlideMeanImages()
         ff_producer.writeOutInfo(args.batchID)
+        fffn = f'{CONST.FLATFIELD_FILE_NAME_STEM}_BatchID_{args.batchID:02d}{CONST.FILE_EXT}'
+        if os.path.isfile(os.path.join(workingdir_path,fffn)) :
+            shutil.move(os.path.join(workingdir_path,fffn),os.path.join(os.path.dirname(workingdir_path),fffn))
         return
     #see if the code is running in batch mode (i.e. minimal output in automatic locations) and figure out the working directory path if so
     batch_mode = args.mode in ('slide_mean_image','batch_flatfield')
