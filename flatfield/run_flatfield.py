@@ -49,6 +49,9 @@ def checkArgs(a) :
             #explicitly NEED a batch ID
             if a.batchID==-1 :
                 raise ValueError('ERROR: batchID argument is REQUIRED when running in batch_flatfield mode')
+            #it has to be between 0 and 99
+            if a.batchID<0 or a.batchID>99 :
+                raise ValueError('ERROR: only batch IDs between 0 and 99 are supported')
             #shouldn't use exposure time arguments
             if a.skip_exposure_time_correction or a.exposure_time_offset_file is not None :
                 raise ValueError('ERROR: exposure time arguments are irrelevant in batch_flatfield mode!')
