@@ -27,7 +27,7 @@ setuptools.setup(
     "jxmlease>=1.0.2dev1",
     "matplotlib",
     "methodtools",
-    "more_itertools",
+    "more_itertools>=8.3.0",
     "networkx",
     "numba",
     "numpy",
