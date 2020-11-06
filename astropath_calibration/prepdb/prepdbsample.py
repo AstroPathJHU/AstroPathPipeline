@@ -1,6 +1,7 @@
 import argparse, fractions, jxmlease, methodtools, numpy as np, PIL, skimage, tifffile
 from ..baseclasses.csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, Region, Vertex
 from ..baseclasses.overlap import RectangleOverlapCollection
+from ..baseclasses.qptiff import QPTiff
 from ..baseclasses.sample import DbloadSampleBase, XMLLayoutReader
 from ..utilities import units
 
@@ -116,29 +117,19 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
 
   @methodtools.lru_cache()
   def getqptiffcsvandimage(self):
-    with tifffile.TiffFile(self.qptifffilename) as f:
-      layeriterator = iter(enumerate(f.pages))
-      for qplayeridx, page in layeriterator:
-        #get to after the small RGB one
-        if len(page.shape) == 3:
+    with QPTiff(self.qptifffilename) as f:
+      for zoomlevel in f.zoomlevels:
+        if zoomlevel[0].imagewidth < 4000:
           break
-      else:
-        raise ValueError("Unexpected qptiff layout: expected to find an RGB layer (with a 3D array shape).  Array shapes:\n" + "\n".join(f"  {page.shape}" for page in f.pages))
-      for qplayeridx, page in layeriterator:
-        if page.imagewidth < 4000:
-          break
-      else:
-        raise ValueError("Unexpected qptiff layout: expected layer with width < 4000 sometime after the first RGB layer (with a 3D array shape).  Shapes and widths:\n" + "\n".join(f"  {page.shape:20} {page.imagewidth:10}" for page in f.pages))
 
-      firstpage = f.pages[0]
-      resolutionunit = firstpage.tags["ResolutionUnit"].value
-      xposition = firstpage.tags["XPosition"].value
+      resolutionunit = zoomlevel.tags["ResolutionUnit"]
+      xposition = zoomlevel.tags["XPosition"]
       xposition = float(fractions.Fraction(*xposition))
-      yposition = firstpage.tags["YPosition"].value
+      yposition = zoomlevel.tags["YPosition"]
       yposition = float(fractions.Fraction(*yposition))
-      xresolution = page.tags["XResolution"].value
+      xresolution = zoomlevel.tags["XResolution"]
       xresolution = float(fractions.Fraction(*xresolution))
-      yresolution = page.tags["YResolution"].value
+      yresolution = zoomlevel.tags["YResolution"]
       yresolution = float(fractions.Fraction(*yresolution))
 
       kw = {
@@ -172,12 +163,12 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
         [1.0, 0.0, 0.0, 0.0, 0.0],
       ])/120
 
-      shape = *f.pages[qplayeridx].shape, 3
+      shape = *zoomlevel.shape, 3
       finalimg = np.zeros(shape)
 
-      for i in range(qplayeridx, qplayeridx+5):
-        img = f.pages[i].asarray()
-        finalimg += np.tensordot(img, mix[:,i-qplayeridx], axes=0)
+      for i, page in enumerate(zoomlevel[:5]):
+        img = page.asarray()
+        finalimg += np.tensordot(img, mix[:,i], axes=0)
 #    finalimg /= np.max(finalimg)
     finalimg[finalimg > 1] = 1
     qptiffimg = skimage.img_as_ubyte(finalimg)
