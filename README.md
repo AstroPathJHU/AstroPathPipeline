@@ -57,7 +57,7 @@ The "flatfielding" portion of the code provides routines to determine background
 
 The `slide_mean_image` run mode finds the background flux thresholds for a given slide, uses those thresholds to mask background out of HPFs, and stacks the tissue regions, normalized by exposure time, to create a mean image that can later be combined with those of other slides to make the flatfield model for a batch of slides. To run it in the most common use case, enter the following command and arguments:
 
-`python -m microscopealignment.flatfield.run_flatfield slide_mean_image --slides [slide_ID] --rawfile_top_dir [rawfile_directory] --root_dir [root_directory] --exposure_time_offset_file [path_to_exposure_time_offset_file] --n_threads [n_threads]`
+`run_flatfield slide_mean_image --slides [slide_ID] --rawfile_top_dir [rawfile_directory] --root_dir [root_directory] --exposure_time_offset_file [path_to_exposure_time_offset_file] --n_threads [n_threads]`
 
 where:
 - `[slide_ID]` is the name of the slide whose meanimage should be created (i.e. "`M21_1`")
@@ -84,7 +84,7 @@ The number of threads is currently the ONLY option the user can change, in order
 
 The `batch_flatfield` mode reads the `[slideID]-mean_image.bin` and `[slideID]-mask_stack.bin` files created for a batch of slides and combines them to produce a flatfield correction model. To run it in the most common use case, after running `slide_mean_image` for a batch of slides, enter the following command and arguments :
 
-`python -m microscopealignment.flatfield.run_flatfield batch_flatfield --slides [comma_separated_list_of_slide_IDs] --rawfile_top_dir [rawfile_directory] --root_dir [root_directory] --batchID [batch_ID]`
+`run_flatfield batch_flatfield --slides [comma_separated_list_of_slide_IDs] --rawfile_top_dir [rawfile_directory] --root_dir [root_directory] --batchID [batch_ID]`
 
 where:
 - `[comma_separated_list_of_slide_IDs]` is a comma-separated list of slide IDs whose mean images should be combined (i.e. "`M107_1,M109_1,M110_1,M111_1,M112_1`")
@@ -101,13 +101,13 @@ Running the above command will produce:
     - **field log** and **metadata summary** files like in the above run mode, combined for every slide in the batch
     - **a "`postrun_info`" subdirectory** containing similar low-leve info to that of the previous run mode
 
-There are currently NO OPTIONS for the user to change in this run mode, again to ensure consistency between the mean images used in making the flatfield model. Also please note that producing the summary PDF file requires running on a system that recognizes `pdflatex` as a command. If the runtime environment doesn't have LaTeX installed, the template .tex file for the PDF is still created but the output PDF is not, and a mild low-level warning is output to the log files.
+There are currently NO OPTIONS for the user to change in this run mode, again to ensure consistency between the mean images used in making the flatfield model. Also please note that producing the summary PDF file requires running on a system that recognizes `pdflatex` as a command. If the runtime environment doesn't have LaTeX installed (along with the `graphicx` and `geometry` packages), the template .tex file for the PDF is still created but the output PDF is not, and a low-level warning is output to the log files.
 
 ## Image Correction
 
 The "image correction" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents as ".fw" files. It runs for one slide at a time. To run it in the most common use case, enter the following command and arguments:
 
-`run_for_sample.py [slide_ID] [rawfile_directory] [root_directory] [working_directory] --flatfield_file [path_to_flatfield_bin_file] --warp_def [path_to_warp_csv_file]`
+`run_image_correction [slide_ID] [rawfile_directory] [root_directory] [working_directory] --flatfield_file [path_to_flatfield_bin_file] --warp_def [path_to_warp_csv_file]`
 
 where:
 - `[slide_ID]` is the name of the slide whose files should be corrected and re-written out (i.e. "`M21_1`")

@@ -104,7 +104,7 @@ pipeline {
           }
         }
 
-        stage('flatfielding') {
+        stage('interactive flatfielding') {
           stages {
             stage('test flatfield') {
               steps {
@@ -117,6 +117,12 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/flatfield/flatfield_documentation.log'
               }
             }
+          }
+        }
+
+        stage('test batch mode flatfield') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfieldbatchmodes'
           }
         }
 
