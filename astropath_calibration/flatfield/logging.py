@@ -1,6 +1,7 @@
 #imports
 from ..baseclasses.sample import SampleDef
 from ..baseclasses.logging import getlogger
+from ..utilities.version import astropathversion
 from contextlib import ExitStack
 import os, logging, traceback
 
@@ -36,7 +37,7 @@ class RunLogger(ExitStack) :
         filehandler.setFormatter(self.formatter)
         filehandler.setLevel(logging.INFO-1)
         self._global_logger.addHandler(filehandler)
-        self._global_logger.info(f'{self._module}')
+        self._global_logger.info(f'{self._module} {astropathversion}')
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback) :
