@@ -2,7 +2,7 @@
 
 This is the main repository for the Astropath group's code that has been ported to Python. 
 
-#Installation
+## Installation
 
 To install the code, first check out the repository, enter its directory, and run
 ```bash
