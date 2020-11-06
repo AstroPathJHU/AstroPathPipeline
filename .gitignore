@@ -8,6 +8,7 @@
 *.exe
 *.o
 *.so
+*.egg-info
 
 # Packages #
 ############

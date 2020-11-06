@@ -910,6 +910,80 @@ As a cross check, similar plots are also shown for a second dataset in \cref{fig
 
 \clearpage
 
+\subsection{Isotropy of residual misalignments}
+
+As \cref{fig:stitchresultbig4,fig:stitchresultbig3,fig:stitchresultbig2,fig:stitchresultbig1} show, the residual misalignments after stitching are not isotropic.  To some extent, this is to be expected, because the input to the alignment, the edges and corners, are not isotropic either.  Nevertheless, the lack of isotropy might indicate an imperfection in previous steps of the calibration (such as flatfielding or warping) or may come from an incorrect relative weight assigned to the edge and corner overlaps in the stitching procedure.  We can note that the pull distributions in \cref{sec:pulls} are generally wider for the corner overlaps than for the edge overlaps, lending some credence to this second possibility.
+
+\subsubsection{JHU Vectra 3.0}
+
+In \cref{fig:stitchfourierseries}, we attempt to quantify this anisotropy by producing a histogram of the angle $\phi$ of the overlaps in \cref{fig:stitchresultbig4,fig:stitchresultbig3,fig:stitchresultbig2,fig:stitchresultbig1}.  Each histogram is fitted to a Fourier series, and the first four terms are shown on the plot.  An isotropic distribution would produce flat histograms.
+
+\begin{figure}[ht]
+	\centering
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-4-all}
+		\caption{}
+		\label{fig:isotropyhistvectra4all}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-3-all}
+		\caption{}
+		\label{fig:isotropyhistvectra3all}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-2-all}
+		\caption{}
+		\label{fig:isotropyhistvectra2all}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-1-all}
+		\caption{}
+		\label{fig:isotropyhistvectra1all}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-4-edges}
+		\caption{}
+		\label{fig:isotropyhistvectra4edges}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-3-edges}
+		\caption{}
+		\label{fig:isotropyhistvectra3edges}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-2-edges}
+		\caption{}
+		\label{fig:isotropyhistvectra2edges}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-1-edges}
+		\caption{}
+		\label{fig:isotropyhistvectra1edges}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-4-corners}
+		\caption{}
+		\label{fig:isotropyhistvectra4corners}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-3-corners}
+		\caption{}
+		\label{fig:isotropyhistvectra3corners}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-2-corners}
+		\caption{}
+		\label{fig:isotropyhistvectra2corners}
+	\end{subfigure}
+	\begin{subfigure}{0.24\linewidth}
+		\includegraphics[width=\linewidth]{isotropy-histogram-JHUVectra-1-corners}
+		\caption{}
+		\label{fig:isotropyhistvectra1corners}
+	\end{subfigure}
+	\caption{Distributions of the angles $\phi$ of the residual misalignments, after stitching, for the overlaps in the \M11 dataset, taken with the Vectra 3.0 microscope.  The plots show overlaps between one field and the field \subref{fig:isotropyhistvectra4all} to its right, \subref{fig:isotropyhistvectra3all} under it and to the right, \subref{fig:isotropyhistvectra2all} under it, and \subref{fig:isotropyhistvectra1all} under it and to the left.  The histograms count the number of overlaps, and the curves show the first few terms in the Fourier series.  \subref{fig:isotropyhistvectra4edges}--\subref{fig:isotropyhistvectra1edges} The same distributions when stitching using only edge overlaps.  \subref{fig:isotropyhistvectra4corners}--\subref{fig:isotropyhistvectra1corners} The same distributions when stitching using only corner overlaps.}
+	\label{fig:stitchfourierseries}
+\end{figure}
+
 \section{Summary}
 
 In this note, we describe the alignment and stitching of a microscope image composed of up to $1000$ fields.  Our procedure includes an estimation of the error on each field, which are propagated throughout the procedure to obtain a final error estimate and covariance matrix for the positions of the fields.  To demonstrate the method, we run it over several data samples collected by different microscopes.  \Cref{table:microscopes} compares the alignment behavior of the different microscopes used.  The method provided here, which runs in a few minutes, forms an important part of the data calibration in the astropath framework.

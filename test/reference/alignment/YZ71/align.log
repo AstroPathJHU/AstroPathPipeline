@@ -1,4 +1,4 @@
-0;0;0;YZ71;align;2020-Sep-30 17:17:14
+0;0;0;YZ71;align v0.1.dev1861+g4b9e72d.d20201103;2020-Sep-30 17:17:14
 0;0;0;YZ71;WARNING: Found inconsistent image infos from different sources:;2020-Sep-30 17:17:14
 0;0;0;YZ71;WARNING: source                         pscale                         field width                    field height                  ;2020-Sep-30 17:17:14
 0;0;0;YZ71;WARNING: component tiff                 2.012259789636432              1872 pixels                    1404 pixels                   ;2020-Sep-30 17:17:14

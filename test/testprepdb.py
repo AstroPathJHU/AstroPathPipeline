@@ -1,11 +1,13 @@
-import itertools, numpy as np, os, pathlib, PIL.Image, unittest
-from ..baseclasses.csvclasses import Annotation, Batch, Constant, Globals, QPTiffCsv, Region, Vertex
-from ..baseclasses.sample import SampleDef
-from ..baseclasses.overlap import Overlap, rectangleoverlaplist_fromcsvs
-from ..baseclasses.rectangle import Rectangle
-from ..prepdb.prepdbsample import PrepdbSample
-from ..utilities import units
-from ..utilities.tableio import readtable
+import itertools, numpy as np, os, pathlib, PIL.Image, re, unittest
+from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, Globals, QPTiffCsv, Region, Vertex
+from astropath_calibration.baseclasses.sample import SampleDef
+from astropath_calibration.baseclasses.overlap import Overlap, rectangleoverlaplist_fromcsvs
+from astropath_calibration.baseclasses.rectangle import Rectangle
+from astropath_calibration.prepdb.prepdbsample import PrepdbSample
+from astropath_calibration.utilities import units
+from astropath_calibration.utilities.misc import re_subs
+from astropath_calibration.utilities.tableio import readtable
+from astropath_calibration.utilities.version import astropathversion
 from .testbase import assertAlmostEqual
 
 thisfolder = pathlib.Path(__file__).parent
@@ -57,8 +59,11 @@ class TestPrepDb(unittest.TestCase):
       for log in logs:
         ref = thisfolder/"reference"/"prepdb"/SlideID/log.name
         with open(ref) as fref, open(log) as fnew:
-          refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines() if "Biggest time difference" not in line])+os.linesep
-          newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines() if "Biggest time difference" not in line])+os.linesep
+          subs = (";[^;]*$", ""),
+          refsubs = *subs, (r"(prepdb )v[\w+.]+", rf"\1{astropathversion}")
+          newsubs = *subs,
+          refcontents = os.linesep.join([re_subs(line, *refsubs, flags=re.MULTILINE) for line in fref.read().splitlines() if "Biggest time difference" not in line])+os.linesep
+          newcontents = os.linesep.join([re_subs(line, *newsubs, flags=re.MULTILINE) for line in fnew.read().splitlines() if "Biggest time difference" not in line])+os.linesep
           self.assertEqual(newcontents, refcontents)
 
   def testPrepDbFastUnits(self, SlideID="M21_1"):

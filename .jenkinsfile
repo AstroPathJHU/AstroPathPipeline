@@ -1,13 +1,24 @@
 pipeline {
   agent {
-    docker { image 'astropathjhu/alignmenttest:v15' }
+    docker { image 'astropathjhu/alignmenttest:v17' }
   }
 
   environment {
     JENKINS_NO_GPU = "1"
+    HOME = "/home/circleci"
+    GITHUB_TOKEN = credentials('astropath-github')
   }
 
   stages {
+    stage('pip install') {
+      steps {
+        sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags "$url"'
+        sh 'pip install .'
+        sh '''echo "from astropath_calibration.utilities.version import astropathversion; print(astropathversion); assert astropathversion != 'unknown version'" | python'''
+        sh '''cd ..; echo "from astropath_calibration.utilities.version import astropathversion; print(astropathversion); assert astropathversion != 'unknown version'" | python'''
+      }
+    }
+
     stage('setup') {
       parallel {
         stage('setup dbload folder') {
@@ -17,7 +28,7 @@ pipeline {
         }
         stage('extract flatw layer') {
           steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.extractlayer.extractlayer ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
+            sh 'folder=$(basename $(pwd)); cd ..; extractlayer.py ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
           }
         }
       }

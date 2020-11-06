@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
-from ...alignment.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
-from ...alignment.alignmentset import AlignmentSet
-from ...utilities import units
+from astropath_calibration.alignment.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
+from astropath_calibration.alignment.isotropy import isotropy, stitchingisotropy
+from astropath_calibration.alignment.alignmentset import AlignmentSet
+from astropath_calibration.utilities import units
 
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"
@@ -373,6 +374,113 @@ def plots2D(*, bki, testing, remake):
           plotstyling=functools.partial(plotstyling, subplotkwargs=subplotkwargs),
         )
 
+def isotropyhist(*, bki, testing, remake):
+  if bki or testing:
+    with plt.rc_context(rc=rc):
+      def plotstyling(fig, ax):
+        ax.set_xlabel(r"$\phi$")
+        ax.set_ylabel(r"number of overlaps")
+        low, hi = ax.get_ylim()
+        ax.set_ylim(top = hi + (hi-low)*.4)
+        plt.legend(title="Fourier series up to order", ncol=3)
+
+      class Sample(collections.namedtuple("Sample", "samp name")):
+        def __new__(cls, **kwargs):
+          return super().__new__(cls, **kwargs)
+
+      samples = [
+        Sample(samp="M1_1", name="JHUVectra"),
+        Sample(samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY"),
+        Sample(samp="PZ1", name="JHUPolaris"),
+        Sample(samp="ML1603480_BMS078_5_22", name="BMS"),
+      ] if bki else [
+        Sample(samp=None, name="test"),
+      ]
+      figurekwargs = {"figsize": (6, 6)}
+
+      for samp, name in samples:
+        try:
+          currentstitchresultisfor = "all"
+          for overlaps in "all", "edges", "corners", "bestRMS":
+            for tag in 1, 2, 3, 4:
+              alignmentsetkwargs = {"samp": samp}
+              alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
+              saveas = here/f"isotropy-histogram-{name}-{tag}-{overlaps}.pdf"
+              if saveas.exists() and not remake: continue
+              A = alignmentset(**alignmentsetkwargs)
+              A.logger.info("%s %s", tag, overlaps)
+              if currentstitchresultisfor != overlaps:
+                if currentstitchresultisfor == "all": oldstitchresult = A.stitchresult
+                currentstitchresultisfor = overlaps
+                if overlaps == "edges":
+                  A.applystitchresult(A.stitch(scalecorners=0, saveresult=False))
+                elif overlaps == "corners":
+                  A.applystitchresult(A.stitch(scaleedges=0, saveresult=False))
+                elif overlaps == "bestRMS":
+                  A.applystitchresult(A.stitch(scaleedges=.2, scalecorners=.8, saveresult=False))
+                else:
+                  raise ValueError(overlaps)
+              isotropy(
+                A,
+                tags=[tag],
+                stitched=True,
+                plotstyling=plotstyling,
+                figurekwargs=figurekwargs,
+                saveas=saveas,
+              )
+        finally:
+          if currentstitchresultisfor != "all":
+            A.applystitchresult(oldstitchresult)
+
+def isotropyscatter(*, bki, testing, remake):
+  if bki or testing:
+    with plt.rc_context(rc=rc):
+      def plotstyling(fig, ax, isotropyorRMS):
+        ax.set_xlabel(r"$\alpha$")
+        if isotropyorRMS == "isotropy":
+          ax.set_ylabel(r"Fourier amplitude")
+          low, hi = ax.get_ylim()
+          ax.set_ylim(top = hi + (hi-low)*.4)
+          plt.legend(ncol=3)
+        elif isotropyorRMS == "rms":
+          ax.set_ylabel(r"RMS $\delta\vec{r}$ (pixels)")
+
+      class Sample(collections.namedtuple("Sample", "samp name")):
+        def __new__(cls, **kwargs):
+          return super().__new__(cls, **kwargs)
+
+      samples = [
+        Sample(samp="M1_1", name="JHUVectra"),
+        Sample(samp="TS19_0181_A_1_3_BMS_MITRE", name="AKY"),
+        Sample(samp="PZ1", name="JHUPolaris"),
+        Sample(samp="ML1603480_BMS078_5_22", name="BMS"),
+      ] if bki else [
+        Sample(samp=None, name="test"),
+      ]
+      figurekwargs = {"figsize": (6, 6)}
+
+      for samp, name in samples:
+        alignmentsetkwargs = {"samp": samp}
+        alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
+        saveas = here/f"stitching-{{isotropyorRMS}}-{name}-{{tag}}.pdf"
+        if not remake and all(
+          pathlib.Path(str(saveas).format(isotropyorRMS=thing, tag=tag)).exists()
+          for tag in (1, 2, 3, 4, "all")
+          for thing in ("isotropy", "rms")
+          if not (thing == "isotropy" and tag == "all")
+        ): continue
+        A = alignmentset(**alignmentsetkwargs)
+        oldstitchresult = A.stitchresult
+        try:
+          stitchingisotropy(
+            A,
+            plotstyling=plotstyling,
+            figurekwargs=figurekwargs,
+            saveas=saveas,
+          )
+        finally:
+          A.applystitchresult(oldstitchresult)
+
 if __name__ == "__main__":
   class EqualsEverything:
     def __eq__(self, other): return True
@@ -395,6 +503,8 @@ if __name__ == "__main__":
   g.add_argument("--stitchpulls", action="store_const", dest="which", const="stitchpulls")
   g.add_argument("--sinewaves", action="store_const", dest="which", const="sinewaves")
   g.add_argument("--2dplots", action="store_const", dest="which", const="2dplots")
+  g.add_argument("--isotropy-histograms", action="store_const", dest="which", const="isotropyhist")
+  g.add_argument("--isotropy-scatter", action="store_const", dest="which", const="isotropyscatter")
   args = p.parse_args()
 
   units.setup(args.units)
@@ -420,3 +530,7 @@ if __name__ == "__main__":
     sinewaves(bki=args.bki, testing=args.testing, remake=args.remake)
   if args.which == "2dplots":
     plots2D(bki=args.bki, testing=args.testing, remake=args.remake)
+  if args.which == "isotropyhist":
+    isotropyhist(bki=args.bki, testing=args.testing, remake=args.remake)
+  if args.which == "isotropyscatter":
+    isotropyscatter(bki=args.bki, testing=args.testing, remake=args.remake)

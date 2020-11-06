@@ -1,9 +1,11 @@
-import numpy as np, os, pathlib
-from ..badregions.cohort import DustSpeckFinderCohort
-from ..badregions.dustspeck import DustSpeckFinder
-from ..badregions.sample import DustSpeckFinderSample, TissueFoldFinderSample
-from ..badregions.tissuefold import TissueFoldFinderSimple, TissueFoldFinderByCell
-from ..utilities import units
+import numpy as np, os, pathlib, re
+from astropath_calibration.badregions.cohort import DustSpeckFinderCohort
+from astropath_calibration.badregions.dustspeck import DustSpeckFinder
+from astropath_calibration.badregions.sample import DustSpeckFinderSample, TissueFoldFinderSample
+from astropath_calibration.badregions.tissuefold import TissueFoldFinderSimple, TissueFoldFinderByCell
+from astropath_calibration.utilities import units
+from astropath_calibration.utilities.misc import re_subs
+from astropath_calibration.utilities.version import astropathversion
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -114,8 +116,11 @@ class TestBadRegions(TestBaseSaveOutput):
     ):
       ref = thisfolder/"reference"/"badregions"/log.name
       with open(ref) as fref, open(log) as fnew:
-        refcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fref.read().splitlines()])+os.linesep
-        newcontents = os.linesep.join([line.rsplit(";", 1)[0] for line in fnew.read().splitlines()])+os.linesep
+        subs = (";[^;]*$", ""),
+        refsubs = *subs, (r"(dustspeckfinder )v[\w+.]+", rf"\1{astropathversion}")
+        newsubs = *subs,
+        refcontents = os.linesep.join([re_subs(line, *refsubs, flags=re.MULTILINE) for line in fref.read().splitlines()])+os.linesep
+        newcontents = os.linesep.join([re_subs(line, *newsubs, flags=re.MULTILINE) for line in fnew.read().splitlines()])+os.linesep
         self.assertEqual(refcontents, newcontents)
 
 

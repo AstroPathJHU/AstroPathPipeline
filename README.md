@@ -2,7 +2,24 @@
 
 This is the main repository for the Astropath group's code that has been ported to Python. 
 
-# Dependencies
+#Installation
+
+To install the code, first check out the repository, enter its directory, and run
+```bash
+pip install .
+```
+If you want to continue developing the code after installing, run instead
+```bash
+pip install --editable .
+```
+
+Once the code is installed using either of those lines, you can run
+```python
+import astropath_calibration
+```
+from any directory.
+
+## Dependencies
 
 In addition to 64-bit Python 3, The following packages are required to run code in this repository:
 - NumPy  ([homepage](https://numpy.org/))
@@ -22,12 +39,9 @@ In addition to 64-bit Python 3, The following packages are required to run code 
 - uncertainties ([homepage](https://uncertainties-python-package.readthedocs.io/en/latest/))
 - methodtools ([PyPi page](https://pypi.org/project/methodtools/))
 - more_itertools ([homepage](https://more-itertools.readthedocs.io/en/stable/))
-- exifreader ([PyPi page](https://pypi.org/project/ExifReader/))
 - jxmlease ([GitHub page](https://github.com/Juniper/jxmlease))
-- texoutparse ([PyPi page](https://pypi.org/project/texoutparse/))
-- flake8 ([homepage](https://flake8.pycqa.org/en/latest/))
 
-All of the above packages are available through the Python Package Index PyPi using `pip install`.
+These packages will all be installed automatically when you install this repository.
 
 A testing environment exists for this code, with a corresponding minimal environment inside a Docker container. The current environment setup for that container can be found in a sister repository [here](https://github.com/AstropathJHU/astropathtest/blob/master/Dockerfile).
 
@@ -93,7 +107,7 @@ There are currently NO OPTIONS for the user to change in this run mode, again to
 
 The "image correction" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents as ".fw" files. It runs for one slide at a time. To run it in the most common use case, enter the following command and arguments:
 
-`python -m microscopealignment.image_correction.run_for_sample [slide_ID] [rawfile_directory] [root_directory] [working_directory] --flatfield_file [path_to_flatfield_bin_file] --warp_def [path_to_warp_csv_file]`
+`run_for_sample.py [slide_ID] [rawfile_directory] [root_directory] [working_directory] --flatfield_file [path_to_flatfield_bin_file] --warp_def [path_to_warp_csv_file]`
 
 where:
 - `[slide_ID]` is the name of the slide whose files should be corrected and re-written out (i.e. "`M21_1`")

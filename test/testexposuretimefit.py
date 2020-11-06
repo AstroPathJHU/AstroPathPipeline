@@ -1,9 +1,9 @@
 # A script to run a quick example of the warpfitter
 
 #imports
-from ..exposuretime.exposure_time_fit_group import ExposureTimeOffsetFitGroup
-from ..utilities.img_file_io import LayerOffset
-from ..utilities.tableio import readtable
+from astropath_calibration.exposuretime.exposure_time_fit_group import ExposureTimeOffsetFitGroup
+from astropath_calibration.utilities.img_file_io import LayerOffset
+from astropath_calibration.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 import pathlib, shutil
 
@@ -37,7 +37,7 @@ fit_group.runFits(None,overlaps_arg,smoothsigma_arg,False,
 new = readtable(working_dir/f"{slideID}_layers_{layers_arg[0]}-{layers_arg[-1]}_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
 ref = readtable(folder/"reference"/"exposuretimefit"/f"{slideID}_layers_{layers_arg[0]}-{layers_arg[-1]}_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
 for offsetnew, offsetref in zip(new, ref):
-  assertAlmostEqual(offsetnew, offsetref, rtol=1e-5, atol=1e-8)
+  assertAlmostEqual(offsetnew, offsetref, rtol=1e-4, atol=1e-8)
 
 print('Removing working directory...')
 shutil.rmtree(working_dir,ignore_errors=True)

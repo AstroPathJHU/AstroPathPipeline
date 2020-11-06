@@ -1,9 +1,9 @@
 # A script to run a quick test run of a flatfield
 
 #imports
-from ..flatfield.run_flatfield import checkArgs, doRun
-from ..flatfield.logging import RunLogger
-from ..flatfield.utilities import flatfield_logger, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath
+from astropath_calibration.flatfield.run_flatfield import checkArgs, doRun
+from astropath_calibration.flatfield.logging import RunLogger
+from astropath_calibration.flatfield.utilities import flatfield_logger, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath
 from argparse import Namespace
 import pathlib, os, shutil
 
