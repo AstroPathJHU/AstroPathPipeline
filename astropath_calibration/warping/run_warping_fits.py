@@ -11,7 +11,7 @@ import os, subprocess, random, shutil
 INITIAL_PATTERN_DIR_STEM = 'warping_initial_pattern'
 PRINCIPAL_POINT_DIR_STEM = 'warping_center_principal_point'
 FINAL_PATTERN_DIR_STEM   = 'warping_final_pattern'
-RUN_MANY_FITS_CMD_BASE = 'python -m microscopealignment.warping.run_many_fits_with_pool'
+RUN_MANY_FITS_CMD_BASE = 'run_many_warp_fits_with_pool'
 POSITIONAL_PASSTHROUGH_ARG_NAMES = ['mode','slideID','rawfile_top_dir','root_dir']
 PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','layer','workers']
 PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding']
