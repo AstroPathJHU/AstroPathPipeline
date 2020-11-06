@@ -1,11 +1,10 @@
 # A script to run a quick test run of a flatfield
 
 #imports
-from astropath_calibration.flatfield.flatfield_producer import FlatfieldProducer
-from astropath_calibration.flatfield.utilities import flatfield_logger, FlatfieldSlideInfo
-from astropath_calibration.flatfield.config import CONST
-from astropath_calibration.utilities.misc import cd
-import pathlib, glob, os, shutil
+from astropath_calibration.flatfield.run_flatfield import checkArgs, doRun
+from astropath_calibration.flatfield.utilities import flatfield_logger
+from argparse import Namespace
+import pathlib, os, shutil
 
 #some constants
 folder = pathlib.Path(__file__).parent
@@ -13,29 +12,71 @@ slide_ID = 'M21_1'
 rawfile_top_dir = folder/'data'/'raw'
 rawfile_ext = '.Data.dat'
 root_dir = folder/'data'
-workingdir_name = 'flatfield_test_for_jenkins'
-working_dir = folder/workingdir_name
-working_dir.mkdir(exist_ok=True)
+dims = (1004,1344,35)
 
-slides_to_run = [FlatfieldSlideInfo(slide_ID,rawfile_top_dir,root_dir)]
-filepaths_to_run = None
-with cd(os.path.join(rawfile_top_dir,slide_ID)) :
-	filepaths_to_run = [os.path.join(rawfile_top_dir,slide_ID,fn) for fn in glob.glob(f'*{rawfile_ext}')]
+#First make a flatfield
+flatfield_logger.info('TESTING make_flatfield')
+make_flatfield_workingdir_name = 'make_flatfield_test_for_jenkins'
+make_flatfield_working_dir = folder/make_flatfield_workingdir_name
+make_flatfield_working_dir.mkdir(exist_ok=True)
+args = Namespace(
+        mode='make_flatfield',
+        exposure_time_offset_file=str(folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'),
+        skip_exposure_time_correction=False,
+        workingdir=str(make_flatfield_working_dir),
+        batchID=-1,
+        slides=f'{slide_ID}',
+        rawfile_top_dir=str(folder/'data'/'raw'),
+        root_dir=str(folder/'data'),
+        threshold_file_dir=None,
+        skip_masking=True,
+        prior_run_dir=None,
+        max_images=-1,
+        selection_mode='random',
+        allow_edge_HPFs=True,
+        n_threads=10,
+        n_masking_images_per_slide=0,
+        selected_pixel_cut=0.8,
+        other_runs_to_exclude=['']
+    )
+checkArgs(args)
+doRun(args,make_flatfield_working_dir,None)
+#overwrite the file log so that applying the flatfield doesn't crash because it's using the same files
+flp = make_flatfield_working_dir/'filepath_log.txt'
+os.remove(flp)
+with open(flp,'w') as fp :
+    fp.write('hello : )\n')
 
-flatfield_logger.info('Starting test run....')
-#make the FlatfieldProducer Object
-ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,working_dir,True,True)
-#write out the text file of all the raw file paths that will be run
-ff_producer.writeFileLog('filepath_log.txt')
-#mask and stack images together
-ff_producer.stackImages(1,0.0,0,True)
-#make the flatfield image
-ff_producer.makeFlatField()
-#save the plots, etc.
-ff_producer.writeOutInfo()
-#apply the flatfield to the same image stack
-ff_producer.applyFlatField(os.path.join(working_dir,f'{CONST.FLATFIELD_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(working_dir))}{CONST.FILE_EXT}'))
-#remove what was made
-flatfield_logger.info('Removing working directory....')
-shutil.rmtree(working_dir,ignore_errors=True)
+#Then apply it to the same images
+flatfield_logger.info('TESTING apply_flatfield')
+apply_flatfield_workingdir_name = 'apply_flatfield_test_for_jenkins'
+apply_flatfield_working_dir = folder/apply_flatfield_workingdir_name
+apply_flatfield_working_dir.mkdir(exist_ok=True)
+args = Namespace(
+        mode='apply_flatfield',
+        exposure_time_offset_file=str(folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'),
+        skip_exposure_time_correction=False,
+        workingdir=str(apply_flatfield_working_dir),
+        batchID=-1,
+        slides=f'{slide_ID}',
+        rawfile_top_dir=str(folder/'data'/'raw'),
+        root_dir=str(folder/'data'),
+        threshold_file_dir=None,
+        skip_masking=True,
+        prior_run_dir=str(make_flatfield_working_dir),
+        max_images=-1,
+        selection_mode='random',
+        allow_edge_HPFs=True,
+        n_threads=10,
+        n_masking_images_per_slide=0,
+        selected_pixel_cut=0.8,
+        other_runs_to_exclude=['']
+    )
+checkArgs(args)
+doRun(args,apply_flatfield_working_dir,None)
+
+#get rid of both working directories
+flatfield_logger.info('Removing working directories....')
+shutil.rmtree(make_flatfield_working_dir,ignore_errors=True)
+shutil.rmtree(apply_flatfield_working_dir,ignore_errors=True)
 flatfield_logger.info('All Done!')

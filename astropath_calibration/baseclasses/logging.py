@@ -125,6 +125,9 @@ class MyFileHandler:
       self.__handlers[filename] = logging.FileHandler(filename)
     self.__handler = self.__handlers[filename]
     self.__counts[filename] += 1
+    self.__formatter = self.__handler.formatter
+    self.__filters = self.__handler.filters
+    self.__level = self.__handler.level
 
   def close(self):
     self.__counts[self.__filename] -= 1
@@ -132,8 +135,26 @@ class MyFileHandler:
       self.__handler.close()
       del self.__handlers[self.__filename]
 
-  def __getattr__(self, attr):
-    return getattr(self.__handler, attr)
+  def setFormatter(self, formatter):
+    self.__formatter = formatter
+  def addFilter(self, filter):
+    if filter not in self.__filters:
+      self.__filters.append(filter)
+  def setLevel(self, level):
+    self.__level = level
+
+  @property
+  def level(self):
+    return self.__level
+
+  def handle(self, record):
+    self.__handler.setFormatter(self.__formatter)
+    self.__handler.setLevel(self.__level)
+    self.__handler.filters = self.__filters
+    self.__handler.handle(record)
+
+  def __repr__(self):
+    return f"{type(self).__name__}({self.__filename})"
 
 __notgiven = object()
 

@@ -3,7 +3,6 @@ from ..utilities.img_file_io import getRawAsHWL, smoothImageWorker
 from ..utilities.img_correction import correctImageForExposureTime
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
-import matplotlib.pyplot as plt
 import numpy as np
 import os, logging, math, dataclasses, more_itertools
 
@@ -27,7 +26,7 @@ class FieldLog :
     file     : str
     location : str
     use      : str
-    stacked_in_layers : List[int] = None
+    stacked_in_layers : str = ''
 
 #helper class for inputting slides with their names and raw/root directories
 @dataclasses.dataclass
@@ -37,6 +36,40 @@ class FlatfieldSlideInfo :
     root_dir : str
 
 #################### GENERAL HELPER FUNCTIONS ####################
+
+#helper function to return the slide name from a whole filepath
+def slideNameFromFilepath(fp) :
+    return os.path.basename(os.path.dirname(os.path.normpath(fp)))
+
+#helper function to make the automatic directory path for a single slide's mean image (and associated info)
+def getSlideMeanImageWorkingDirPath(slide) :
+    #path = os.path.join(os.path.abspath(os.getcwd()),CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
+    path = os.path.join(os.path.abspath(os.path.normpath(slide.root_dir)),slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
+    if not os.path.isdir(os.path.dirname(path)) :
+        raise FlatFieldError(f'ERROR: working directory location {os.path.dirname(path)} does not exist!')
+    if not os.path.isdir(path) :
+        os.mkdir(path)
+    return path
+
+#helper function to make the automatic directory path for running the flatfield for a batch of slides
+def getBatchFlatfieldWorkingDirPath(rootdir,batchID) :
+    #path = os.path.join(os.path.abspath(os.getcwd()),f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
+    path = os.path.join(os.path.abspath(os.path.normpath(rootdir)),'Flatfield',f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
+    if not os.path.isdir(os.path.dirname(path)) :
+        raise FlatFieldError(f'ERROR: working directory location {os.path.dirname(path)} does not exist!')
+    if not os.path.isdir(path) :
+        os.mkdir(path)
+    return path
+
+#helper function to return the automatic path to a given slide's mean image file
+def getSlideMeanImageFilepath(slide) :
+    p = os.path.join(slide.root_dir,slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME,f'{slide.name}-{CONST.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    return p
+
+#helper function to return the automatic path to a given slide's mean image file
+def getSlideMaskStackFilepath(slide) :
+    p = os.path.join(slide.root_dir,slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME,f'{slide.name}-{CONST.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    return p
 
 #helper function to convert an image array into a flattened pixel histogram
 def getImageArrayLayerHistograms(img_array, mask=slice(None)) :
@@ -51,10 +84,6 @@ def getImageArrayLayerHistograms(img_array, mask=slice(None)) :
     else :
         layer_hist,_ = np.histogram(img_array[mask],nbins,(0,nbins))
         return layer_hist
-
-#helper function to return the slide name from a whole filepath
-def slideNameFromFilepath(fp) :
-    return os.path.basename(os.path.dirname(os.path.normpath(fp)))
 
 #################### THRESHOLDING HELPER FUNCTIONS ####################
 
@@ -237,6 +266,7 @@ def chunkListOfFilepaths(fps,dims,root_dir,n_threads) :
 #################### USEFUL PLOTTING FUNCTION ####################
 
 def drawThresholds(img_array, *, layer_index=0, emphasize_mask=None, show_regions=False, saveas=None, plotstyling = lambda fig, ax: None):
+    import matplotlib.pyplot as plt
     fig, ax = plt.subplots(1, 1)
     if len(img_array.shape)>2 :
         img_array = img_array[layer_index]
