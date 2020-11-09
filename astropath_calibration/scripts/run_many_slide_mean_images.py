@@ -8,7 +8,7 @@ ET_OFFSET_FILE = '\\\\bki08/maggie/best_exposure_time_offsets_Vectra_9_8_2020.cs
 RAWFILE_TOP_DIR = '\\\\bki07/dat'
 ROOT_DIR = '\\\\bki02/e/Clinical_Specimen'
 CMD_BASE = f'run_flatfield slide_mean_image --exposure_time_offset_file {ET_OFFSET_FILE} --rawfile_top_dir {RAWFILE_TOP_DIR}'
-CMD_BASE+= f' --root_dir {ROOT_DIR} --n_threads {int(64/N_PROCS)}'
+CMD_BASE+= f' --root_dir {ROOT_DIR} --n_threads {int(40/N_PROCS)}'
 SLIDE_IDS = [
 'M1_1',
 'M2_3',
