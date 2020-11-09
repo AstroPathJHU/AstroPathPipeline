@@ -339,6 +339,8 @@ class ReadRectanglesBase(SampleThatReadsRectangles, RectangleCollection):
   def readallrectangles(self): pass
   @abc.abstractproperty
   def rectangletype(self): pass
+  @abc.abstractproperty
+  def nlayers(self): pass
   @property
   def rectangleextrakwargs(self):
     kwargs = {
