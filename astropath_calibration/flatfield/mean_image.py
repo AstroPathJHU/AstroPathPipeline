@@ -62,10 +62,12 @@ class MeanImage :
         self.skip_masking = skip_masking
         self.smoothsigma = smoothsigma
         self.image_stack = np.zeros(self._dims,dtype=CONST.IMG_DTYPE_OUT)
+        self.image_squared_stack = np.zeros(self._dims,dtype=CONST.IMG_DTYPE_OUT)
         self.mask_stack  = np.zeros(self._dims,dtype=CONST.MASK_STACK_DTYPE_OUT)
         self.n_images_read = 0
         self.n_images_stacked_by_layer = np.zeros((self.nlayers),dtype=CONST.MASK_STACK_DTYPE_OUT)
         self.mean_image=None
+        self.std_err_of_mean_image=None
         self.smoothed_mean_image=None
         self.flatfield_image=None
         self.corrected_mean_image=None
@@ -126,6 +128,7 @@ class MeanImage :
                     for li in range(self.nlayers) :
                         im_array[:,:,li]/=ets_for_normalization[li]
                 self.image_stack+=im_array
+                self.image_squared_stack+=(im_array*im_array)
                 self.n_images_read+=1
                 self.n_images_stacked_by_layer+=1
                 stacked_in_layers.append(list(range(1,self.nlayers+1)))
@@ -167,6 +170,7 @@ class MeanImage :
                     if ets_for_normalization is not None :
                         im_to_add/=ets_for_normalization[li]
                     self.image_stack[:,:,li]+=im_to_add
+                    self.image_squared_stack[:,:,li]+=(im_to_add*im_to_add)
                     self.mask_stack[:,:,li]+=thismasklayer
                     self.n_images_stacked_by_layer[li]+=1
                     stacked_in_layers[-1].append(li+1)
@@ -185,7 +189,7 @@ class MeanImage :
                     logger.warningglobal(msg)
                 else :
                     flatfield_logger.warn(msg)
-        self.mean_image = self.__getMeanImage(logger)
+        self.mean_image, self.std_err_of_mean_image = self.__getMeanImage(logger)
 
     def makeFlatFieldImage(self,logger=None) :
         """
@@ -202,7 +206,7 @@ class MeanImage :
                 else :
                     flatfield_logger.warn(msg)
         if self.mean_image is None :
-            self.mean_image = self.__getMeanImage(logger)
+            self.mean_image, self.std_err_of_mean_image = self.__getMeanImage(logger)
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
@@ -217,7 +221,7 @@ class MeanImage :
         A function to get the mean of the image stack, smooth it, and divide it by the given flatfield to correct it
         """
         if self.mean_image is None :
-            self.mean_image = self.__getMeanImage()
+            self.mean_image, self.std_err_of_mean_image = self.__getMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
         flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=CONST.IMG_DTYPE_OUT)
         self.corrected_mean_image=self.mean_image/flatfield_image
@@ -247,6 +251,9 @@ class MeanImage :
                 if self.mean_image is not None :
                     meanimage_filename = f'{prepend}{CONST.MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
                     writeImageToFile(self.mean_image,meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                if self.std_err_of_mean_image is not None :
+                    std_err_of_meanimage_filename = f'{prepend}{CONST.STD_ERR_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
+                    writeImageToFile(self.std_err_of_mean_image,std_err_of_meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
                 if (not self.skip_masking) and (self.mask_stack is not None) :
                     writeImageToFile(self.mask_stack,f'{prepend}{CONST.MASK_STACK_FILE_NAME_STEM}{append}{CONST.FILE_EXT}',dtype=CONST.MASK_STACK_DTYPE_OUT)
                 if self.smoothed_mean_image is not None :
@@ -294,22 +301,26 @@ class MeanImage :
                 logger.warningglobal(msg)
             else :
                 flatfield_logger.warn(msg)
-            return self.image_stack
+            return self.image_stack, self.image_squared_stack
         if np.max(self.n_images_stacked_by_layer)<1 :
             msg = 'WARNING: There are no layers with images stacked in them and so the mean image will be zero everywhere!'
             if logger is not None :
                 logger.warningglobal(msg)
             else :
                 flatfield_logger.warn(msg)
-            return self.image_stack
+            return self.image_stack, self.image_squared_stack
         #if the images haven't been masked then this is trivial
         if self.skip_masking :
-            return self.image_stack/self.n_images_read
+            meanimage = self.image_stack/self.n_images_read
+            std_err_of_meanimage = np.sqrt(np.abs(self.image_squared_stack/self.n_images_read-(meanimage*meanimage))/self.n_images_read)
+            return meanimage, std_err_of_meanimage
         #otherwise though we have to be a bit careful and take the mean value pixel-wise, 
         #being careful to fix any pixels that never got added to so there's no division by zero
         zero_fixed_mask_stack = copy.deepcopy(self.mask_stack)
         zero_fixed_mask_stack[zero_fixed_mask_stack==0] = np.min(zero_fixed_mask_stack[zero_fixed_mask_stack!=0])
-        return self.image_stack/zero_fixed_mask_stack
+        meanimage = self.image_stack/zero_fixed_mask_stack
+        std_err_of_meanimage = np.sqrt(np.abs(self.image_squared_stack/zero_fixed_mask_stack-(meanimage*meanimage))/zero_fixed_mask_stack)
+        return meanimage, std_err_of_meanimage
 
     #################### VISUALIZATION HELPER FUNCTIONS ####################
 
@@ -334,6 +345,14 @@ class MeanImage :
                 f.colorbar(pos,ax=ax)
                 fig_name = f'mean_image_{layer_fnstem}.png'
                 plt.savefig(fig_name); plt.close(); cropAndOverwriteImage(fig_name)
+                if self.std_err_of_mean_image is not None :
+                    #for the uncertainty on the mean image
+                    f,ax = plt.subplots(figsize=fig_size)
+                    pos = ax.imshow(self.std_err_of_mean_image[:,:,layer_i])
+                    ax.set_title(f'std. error of mean image, {layer_titlestem}')
+                    f.colorbar(pos,ax=ax)
+                    fig_name = f'std_err_of_mean_image_{layer_fnstem}.png'
+                    plt.savefig(fig_name); plt.close(); cropAndOverwriteImage(fig_name)
                 if self.smoothed_mean_image is not None :
                     #for the smoothed mean image
                     f,ax = plt.subplots(figsize=fig_size)

@@ -28,6 +28,9 @@ class Const :
     def MEAN_IMAGE_FILE_NAME_STEM(self) :
         return 'mean_image' #name of the outputted mean image file
     @property
+    def STD_ERR_MEAN_IMAGE_FILE_NAME_STEM(self) :
+        return 'std_error_of_mean_image' #name of the outputted standard error of the mean image file
+    @property
     def MASK_STACK_FILE_NAME_STEM(self) :
         return 'mask_stack' #name of the outputted mask stack file
     @property
