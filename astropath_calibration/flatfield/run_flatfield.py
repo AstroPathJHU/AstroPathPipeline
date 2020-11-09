@@ -387,7 +387,7 @@ def main(args=None) :
     else :
         workingdir_path = os.path.abspath(os.path.normpath(args.workingdir))
     if not os.path.isdir(workingdir_path) :
-        os.path.mkdir(workingdir_path)
+        os.mkdir(workingdir_path)
     with RunLogger(args.mode,workingdir_path) as logger :
         #make sure the command line arguments make sense
         checkArgs(args)
