@@ -22,7 +22,7 @@ class TestZoom(TestBaseSaveOutput):
     ]
 
   def testZoomWsi(self, SlideID="L1_1", **kwargs):
-    sample = Zoom(thisfolder/"data", thisfolder/"flatw", SlideID, zoomroot=thisfolder/"zoom_test_for_jenkins", selectrectangles=[85], layers=(1, 2))
+    sample = Zoom(thisfolder/"data", SlideID, zoomroot=thisfolder/"zoom_test_for_jenkins", selectrectangles=[85], layers=(1, 2))
     with sample:
       sample.zoom_wsi(**kwargs)
 
