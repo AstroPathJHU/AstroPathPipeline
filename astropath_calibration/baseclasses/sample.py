@@ -368,7 +368,7 @@ class ReadRectanglesBase(SampleThatReadsRectangles, RectangleCollection):
   @property
   def layers(self): return self.__layers
 
-class ReadRectanglesIm3Base(ReadRectanglesBase):
+class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
   @property
   def nlayers(self):
     return self.nlayersim3
