@@ -1,6 +1,6 @@
 #imports
 import multiprocessing as mp
-import os, subprocess
+import os, subprocess, time
 
 #constants
 N_PROCS = 4
