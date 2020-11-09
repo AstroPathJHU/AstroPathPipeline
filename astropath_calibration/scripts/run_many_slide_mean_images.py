@@ -4,9 +4,9 @@ import os, subprocess, time
 
 #constants
 N_PROCS = 4
-ET_OFFSET_FILE = '\\bki08\\maggie\\best_exposure_time_offsets_Vectra_9_8_2020.csv'
-RAWFILE_TOP_DIR = '\\bki07\\dat'
-ROOT_DIR = '\\bki02\\e\\Clinical_Specimen'
+ET_OFFSET_FILE = '\\\\bki08/maggie/best_exposure_time_offsets_Vectra_9_8_2020.csv'
+RAWFILE_TOP_DIR = '\\\\bki07/dat'
+ROOT_DIR = '\\\\bki02/e/Clinical_Specimen'
 CMD_BASE = f'run_flatfield slide_mean_image --exposure_time_offset_file {ET_OFFSET_FILE} --rawfile_top_dir {RAWFILE_TOP_DIR}'
 CMD_BASE+= f' --root_dir {ROOT_DIR} --n_threads {int(64/N_PROCS)}'
 SLIDE_IDS = [
@@ -62,31 +62,33 @@ SLIDE_IDS = [
 
 #helper function to run one command with subprocess
 def runOneCmd(cmd) :
-	subprocess.call(cmd)
+    subprocess.call(cmd)
 
-cmds = []
-for slideID in SLIDE_IDS :
-	thiscmd = f'{CMD_BASE} --slides {slideID}'
-	cmds.append(thiscmd)
+def main(args=None) :
+    mp.freeze_support()
+    cmds = []
+    for slideID in SLIDE_IDS :
+        thiscmd = f'{CMD_BASE} --slides {slideID}'
+        cmds.append(thiscmd)
+    print(f'Will run the follow commands in {N_PROCS} processes at once:')
+    for cmd in cmds :
+        print(cmd)
+    procs = []
+    for cmd in cmds :
+        p = mp.Process(target=runOneCmd,args=(cmd,))
+        procs.append(p)
+        p.start()
+        while len(procs)>=N_PROCS :
+            for proc in procs :
+                if not proc.is_alive() :
+                    proc.join()
+                    delete_p = procs.pop(procs.index(proc))
+                    delete_p = delete_p
+                    del delete_p
+            time.sleep(10)
+    for proc in procs:
+        proc.join()
+    print('All processes done!')
 
-print(f'Will run the follow commands in {N_PROCS} at once:')
-for cmd in cmds :
-	print(cmds)
-
-procs = []
-for cmd in cmds :
-	p = mp.Process(target=runOneCmd,args=(cmd,))
-    procs.append(p)
-    p.start()
-    while len(procs)>=N_PROCS :
-    	for proc in procs :
-            if not proc.is_alive() :
-                proc.join()
-                delete_p = procs.pop(procs.index(proc))
-                delete_p = delete_p
-                del delete_p
-        time.sleep(10)
-for proc in procs:
-    proc.join()
-
-print('All processes done!')
+if __name__ == '__main__' :
+    main()
