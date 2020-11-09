@@ -1,21 +1,28 @@
-import contextlib
+import numpy as np, PIL
 
-from ..baseclasses.sample import ZoomSampleBase
+from ..zoom.zoom import ZoomSample
+from ..baseclasses.qptiff import QPTiff
 
-class QPTiffAlignmentSample(ZoomSampleBase):
-  @contextlib.contextmanager
-  def wsi(self, *, layer):
-    with PIL.image.open(self.wsifilename(layer=layer)) as wsi: yield wsi
+class QPTiffAlignmentSample(ZoomSample):
+  def loadwsi(self, *, layer):
+    with self.PILmaximagepixels(), PIL.Image.open(self.wsifilename(layer=layer)) as wsi:
+      return np.array(wsi)
 
-  @contextlib.contextmanager
-  def qptiff(self):
+  def loadqptiff(self, *, maxwidth, layer):
     with QPTiff(self.qptifffilename) as f:
-      bestpage = None
-      for zoomlevel in f:
-        if zoomlevel.imagewidth < 2000:
+      for zoomlevel in f.zoomlevels:
+        if zoomlevel.imagewidth <= maxwidth:
           break
-      yield zoomlevel
+      return zoomlevel[layer-1].asarray(), zoomlevel.qpscale, f.apscale
 
   def align(self):
-    with self.wsi(layer=1) as wsi, self.qptiff() as qptiff:
-      ...
+    wsi = self.loadwsi(layer=1)
+    qptiff, qpscale, apscale = self.loadqptiff(maxwidth=2000, layer=1)
+    pscale = self.pscale
+    print(float(qpscale))
+    print(float(apscale))
+    print(pscale)
+
+  @property
+  def logmodule(self):
+    return "annowarp"

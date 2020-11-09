@@ -4,12 +4,12 @@ from ..alignment.field import Field
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
 from ..baseclasses.sample import ReadRectanglesComponentTiff, ZoomSampleBase
 from ..utilities import units
-from ..utilities.misc import floattoint
+from ..utilities.misc import floattoint, PILmaximagepixels
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
   pass
 
-class Zoom(ReadRectanglesComponentTiff, ZoomSampleBase):
+class ZoomSample(ReadRectanglesComponentTiff, ZoomSampleBase):
   rectanglecsv = "fields"
   rectangletype = FieldReadComponentTiffMultiLayer
   def __init__(self, *args, tilesize=16384, **kwargs):
@@ -17,17 +17,18 @@ class Zoom(ReadRectanglesComponentTiff, ZoomSampleBase):
     super().__init__(*args, **kwargs)
   @property
   def tilesize(self): return self.__tilesize
-  @property
-  def zmax(self): return 9
-  @property
-  def logmodule(self): return "zoom"
   @methodtools.lru_cache()
   @property
   def ntiles(self):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
     return floattoint(-((-maxxy) // (self.tilesize*onepixel)))
+  def PILmaximagepixels(self):
+    return PILmaximagepixels(np.product(self.ntiles) * self.tilesize**2)
 
+class Zoom(ZoomSample):
+  @property
+  def logmodule(self): return "zoom"
   def zoom_wsi_fast(self, fmax=50):
     onepixel = units.Distance(pixels=1, pscale=self.pscale)
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)

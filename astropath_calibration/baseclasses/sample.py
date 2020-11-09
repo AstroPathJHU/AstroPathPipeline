@@ -334,7 +334,7 @@ class SampleThatReadsRectangles(SampleBase):
 class SampleThatReadsOverlaps(SampleThatReadsRectangles):
   overlaptype = Overlap #can be overridden in subclasses
 
-class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsRectangles, RectangleCollection):
+class ReadRectanglesBase(SampleThatReadsRectangles, RectangleCollection):
   @abc.abstractmethod
   def readallrectangles(self): pass
   @abc.abstractproperty

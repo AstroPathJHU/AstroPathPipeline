@@ -121,26 +121,11 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
       for zoomlevel in f.zoomlevels:
         if zoomlevel[0].imagewidth < 4000:
           break
-
-      resolutionunit = zoomlevel.tags["ResolutionUnit"]
-      xposition = zoomlevel.tags["XPosition"]
-      xposition = float(fractions.Fraction(*xposition))
-      yposition = zoomlevel.tags["YPosition"]
-      yposition = float(fractions.Fraction(*yposition))
-      xresolution = zoomlevel.tags["XResolution"]
-      xresolution = float(fractions.Fraction(*xresolution))
-      yresolution = zoomlevel.tags["YResolution"]
-      yresolution = float(fractions.Fraction(*yresolution))
-
-      kw = {
-        tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
-      }[resolutionunit]
-      xresolution = units.Distance(pixels=xresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
-      yresolution = units.Distance(pixels=yresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
-      qpscale = xresolution
-
-      xposition = units.Distance(**{kw: xposition}, pscale=qpscale)
-      yposition = units.Distance(**{kw: yposition}, pscale=qpscale)
+      xresolution = zoomlevel.xresolution
+      yresolution = zoomlevel.yresolution
+      qpscale = zoomlevel.qpscale
+      xposition = zoomlevel.xposition
+      yposition = zoomlevel.yposition
       qptiffcsv = [
         QPTiffCsv(
           SampleID=0,
