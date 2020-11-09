@@ -69,6 +69,7 @@ where:
 Running the above command will produce:
 1. **a "`meanimage`" directory** in `[root_directory]\[slide_ID]\im3` that contains the following:
     - **a `[slideID]-mean_image.bin` file** that is the mean of the counts/ms in all of the selected HPFs' tissue regions, stored as 64-bit floats
+    - **a `[slideID]-std_error_of_mean_image.bin` file** that is the standard error on the mean counts/ms in all of the selected HPFs' tissue regions, stored as 64-bit floats
     - **a `[slideID]-mask_stack.bin` file** that is the stack of the binary image masks from every selected HPF, stored as 64-bit unsigned integers
     - **a very detailed "global" log file** called "`global-slide_mean_image.log`"
     - **a list of every field used** in finding the background thresholds and in making the mean image, called "`fields_used_meanimage.csv`", stored as a ["FieldLog" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath_calibration/flatfield/utilities.py#L22-L29)
