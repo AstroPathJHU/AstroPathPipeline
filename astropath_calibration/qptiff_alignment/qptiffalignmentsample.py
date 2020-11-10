@@ -1,10 +1,11 @@
-import numpy as np, PIL, skimage.filters
+import dataclasses, itertools, numpy as np, PIL, skimage.filters
 
 from ..alignment.computeshift import computeshift
 from ..baseclasses.qptiff import QPTiff
 from ..zoom.zoom import ZoomSample
 from ..utilities import units
-from ..utilities.misc import floattoint
+from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 class QPTiffAlignmentSample(ZoomSample):
   def __init__(self, *args, **kwargs):
@@ -80,29 +81,75 @@ class QPTiffAlignmentSample(ZoomSample):
     m1 = floattoint(mx1//tilesize)-1
     m2 = floattoint(mx2//tilesize)+1
 
-    for iy in np.arange(n1, n2+1):
+    results = []
+    for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1))):
+      x = tilesize * (ix-1)
       y = tilesize * (iy-1)
-      for ix in np.arange(m1, m2+1):
-        x = tilesize * (ix-1)
-        if y+onepixel-qshifty <= 0: return
-        wsitile = wsi[
-          units.pixels(y, pscale=imscale):units.pixels(y+tilesize, pscale=imscale),
-          units.pixels(x, pscale=imscale):units.pixels(x+tilesize, pscale=imscale),
-        ]
-        if np.mean(wsitile>self.tilebrightnessthreshold) < self.mintilebrightfraction: continue
-        if np.max(wsitile) - np.min(wsitile) < self.mintilerange: continue
-        qptifftile = qptiff[
-          units.pixels(y, pscale=imscale):units.pixels(y+tilesize, pscale=imscale),
-          units.pixels(x, pscale=imscale):units.pixels(x+tilesize, pscale=imscale),
-        ]
+      if y+onepixel-qshifty <= 0: continue
+      wsitile = wsi[
+        units.pixels(y, pscale=imscale):units.pixels(y+tilesize, pscale=imscale),
+        units.pixels(x, pscale=imscale):units.pixels(x+tilesize, pscale=imscale),
+      ]
+      brightfraction = np.mean(wsitile>self.tilebrightnessthreshold)
+      if brightfraction < self.mintilebrightfraction: continue
+      if np.max(wsitile) - np.min(wsitile) < self.mintilerange: continue
+      qptifftile = qptiff[
+        units.pixels(y, pscale=imscale):units.pixels(y+tilesize, pscale=imscale),
+        units.pixels(x, pscale=imscale):units.pixels(x+tilesize, pscale=imscale),
+      ]
 
-        wsitile = wsitile - skimage.filters.gaussian(wsitile, sigma=20)
-        wsitile = skimage.filters.gaussian(wsitile, sigma=3)
-        qptifftile = qptifftile - skimage.filters.gaussian(qptifftile, sigma=20)
-        qptifftile = skimage.filters.gaussian(qptifftile, sigma=3)
-        result = computeshift((wsitile, qptifftile))
-        print(result.dx, result.dy)
+      wsitile = wsitile - skimage.filters.gaussian(wsitile, sigma=20)
+      wsitile = skimage.filters.gaussian(wsitile, sigma=3)
+      qptifftile = qptifftile - skimage.filters.gaussian(qptifftile, sigma=20)
+      qptifftile = skimage.filters.gaussian(qptifftile, sigma=3)
+      shiftresult = computeshift((wsitile, qptifftile))
+
+      results.append(
+        QPTiffAlignmentResult(
+          n=n,
+          x=x,
+          y=y,
+          dxvec=units.correlated_distances(
+            pixels=(shiftresult.dx, shiftresult.dy),
+            pscale=imscale,
+            power=1,
+          ),
+          exit=shiftresult.exit,
+          mi=brightfraction,
+          pscale=imscale,
+        )
+      )
+    return results
 
   @property
   def logmodule(self):
     return "annowarp"
+
+@dataclass_dc_init(frozen=True)
+class QPTiffAlignmentResult(DataClassWithDistances):
+  pixelsormicrons = "pixels"
+  n: int
+  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  dx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  dy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  mi: float
+  exit: int
+  pscale: dataclasses.InitVar[float] = None
+
+  def __init__(self, *args, **kwargs):
+    dxvec = kwargs.pop("dxvec", None)
+    if dxvec is not None:
+      kwargs["dx"] = dxvec[0].n
+      kwargs["dy"] = dxvec[1].n
+      kwargs["covariance"] = covariance_matrix(dxvec)
+
+    covariancematrix = kwargs.pop("covariance", None)
+    if covariancematrix is not None:
+      units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
+      (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
+
+    return self.__dc_init__(*args, **kwargs)
