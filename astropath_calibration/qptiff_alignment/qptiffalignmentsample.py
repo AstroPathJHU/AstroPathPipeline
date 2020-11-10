@@ -1,5 +1,6 @@
-import numpy as np, PIL
+import numpy as np, PIL, skimage.filters
 
+from ..alignment.computeshift import computeshift
 from ..baseclasses.qptiff import QPTiff
 from ..zoom.zoom import ZoomSample
 from ..utilities import units
@@ -14,6 +15,9 @@ class QPTiffAlignmentSample(ZoomSample):
     self.deltax = 1400
     self.deltay = 2100
     self.tilesize = 100
+    self.tilebrightnessthreshold = 45
+    self.mintilebrightfraction = 0.2
+    self.mintilerange = 45
 
   def align(self):
     with self.PILmaximagepixels(), PIL.Image.open(self.wsifilename(layer=self.wsilayer)) as wsi, QPTiff(self.qptifffilename) as fqptiff:
@@ -79,13 +83,25 @@ class QPTiffAlignmentSample(ZoomSample):
     for iy in np.arange(n1, n2+1):
       y = tilesize * (iy-1)
       for ix in np.arange(m1, m2+1):
-          x = tilesize * (ix-1)
-          if y+onepixel-qshifty <= 0: return
-          wsitile = wsi[
-            units.pixels(y, pscale=imscale):units.pixels(y+tilesize, pscale=imscale),
-            units.pixels(x, pscale=imscale):units.pixels(x+tilesize, pscale=imscale)
-          ]
-          print(np.min(wsitile), np.max(wsitile))
+        x = tilesize * (ix-1)
+        if y+onepixel-qshifty <= 0: return
+        wsitile = wsi[
+          units.pixels(y, pscale=imscale):units.pixels(y+tilesize, pscale=imscale),
+          units.pixels(x, pscale=imscale):units.pixels(x+tilesize, pscale=imscale),
+        ]
+        if np.mean(wsitile>self.tilebrightnessthreshold) < self.mintilebrightfraction: continue
+        if np.max(wsitile) - np.min(wsitile) < self.mintilerange: continue
+        qptifftile = qptiff[
+          units.pixels(y, pscale=imscale):units.pixels(y+tilesize, pscale=imscale),
+          units.pixels(x, pscale=imscale):units.pixels(x+tilesize, pscale=imscale),
+        ]
+
+        wsitile = wsitile - skimage.filters.gaussian(wsitile, sigma=20)
+        wsitile = skimage.filters.gaussian(wsitile, sigma=3)
+        qptifftile = qptifftile - skimage.filters.gaussian(qptifftile, sigma=20)
+        qptifftile = skimage.filters.gaussian(qptifftile, sigma=3)
+        result = computeshift((wsitile, qptifftile))
+        print(result.dx, result.dy)
 
   @property
   def logmodule(self):
