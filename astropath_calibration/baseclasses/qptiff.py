@@ -94,3 +94,10 @@ class QPTiff(tifffile.TiffFile):
   @property
   def apscale(self):
     return self.zoomlevels[0].qpscale
+
+  @property
+  def xposition(self):
+    return self.zoomlevels[0].xposition
+  @property
+  def yposition(self):
+    return self.zoomlevels[0].yposition

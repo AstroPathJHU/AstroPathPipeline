@@ -1,6 +1,5 @@
 import gzip, numpy as np, pathlib, PIL.Image
 from astropath_calibration.zoom.zoom import Zoom
-from astropath_calibration.utilities.misc import PILmaximagepixels
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -33,14 +32,14 @@ class TestZoom(TestBaseSaveOutput):
         }[SlideID]:
           filename = f"{SlideID}-Z9-L{i}-X0-Y{y}-big.png"
           sample.logger.info("comparing "+filename)
-          with PILmaximagepixels(sample.tilesize**2), \
+          with sample.PILmaximagepixels(), \
                PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"big"/filename) as img, \
                gzip.open(thisfolder/"reference"/"zoom"/SlideID/(filename+".gz")) as refgz, \
                PIL.Image.open(refgz) as targetimg:
             np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
         filename = f"{SlideID}-Z9-L{i}-wsi.png"
         sample.logger.info("comparing "+filename)
-        with PILmaximagepixels(np.product(sample.ntiles)*sample.tilesize**2), \
+        with sample.PILmaximagepixels(), \
              PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"wsi"/filename) as img, \
              gzip.open(thisfolder/"reference"/"zoom"/SlideID/(filename+".gz")) as refgz, \
              PIL.Image.open(refgz) as targetimg:
