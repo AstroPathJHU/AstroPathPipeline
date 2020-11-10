@@ -1,4 +1,4 @@
-import argparse, fractions, jxmlease, methodtools, numpy as np, PIL, skimage, tifffile
+import argparse, jxmlease, methodtools, numpy as np, PIL, skimage
 from ..baseclasses.csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, Region, Vertex
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.qptiff import QPTiff

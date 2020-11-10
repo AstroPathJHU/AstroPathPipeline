@@ -1,4 +1,4 @@
-import collections, fractions, methodtools, tifffile
+import fractions, methodtools, tifffile
 
 from ..utilities import units
 
