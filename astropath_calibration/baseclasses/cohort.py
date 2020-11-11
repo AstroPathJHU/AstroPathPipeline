@@ -56,13 +56,12 @@ class FlatwCohort(Cohort):
 
   @property
   def initiatesamplekwargs(self):
-    result = super().initiatesamplekwargs
-    result["root1"] = result.pop("root")
-    return {**result, "root2": self.root2}
+    return {**super().initiatesamplekwargs, "root2": self.root2}
 
 class DbloadCohort(Cohort):
   def __init__(self, *args, dbloadroot=None, **kwargs):
     super().__init__(*args, **kwargs)
+    if dbloadroot is None: dbloadroot = self.root
     self.dbloadroot = pathlib.Path(dbloadroot)
 
   @property

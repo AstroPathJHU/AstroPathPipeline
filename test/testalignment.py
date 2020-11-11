@@ -1,4 +1,4 @@
-import contextlib, itertools, logging, numpy as np, os, pathlib, re, shutil
+import contextlib, itertools, logging, numpy as np, os, pathlib, re
 from astropath_calibration.alignment.alignmentcohort import AlignmentCohort
 from astropath_calibration.alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
 from astropath_calibration.alignment.overlap import AlignmentResult
