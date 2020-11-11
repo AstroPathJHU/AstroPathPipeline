@@ -28,7 +28,7 @@ pipeline {
         }
         stage('extract flatw layer') {
           steps {
-            sh 'folder=$(basename $(pwd)); cd ..; extractlayer.py ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
+            sh 'folder=$(basename $(pwd)); cd ..; extractlayer ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
           }
         }
       }
@@ -40,6 +40,15 @@ pipeline {
             stage('test alignment') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
+              }
+            }
+          }
+        }
+        stage('alignment zoom annowarp pipeline') {
+          stages {
+            stage('align') {
+              steps {
+                sh 'alignmentcohort test/data test/data/flatw'
               }
             }
             stage('alignment documentation') {
@@ -104,7 +113,7 @@ pipeline {
           }
         }
 
-        stage('flatfielding') {
+        stage('interactive flatfielding') {
           stages {
             stage('test flatfield') {
               steps {
@@ -117,6 +126,12 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/flatfield/flatfield_documentation.log'
               }
             }
+          }
+        }
+
+        stage('test batch mode flatfield') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfieldbatchmodes'
           }
         }
 

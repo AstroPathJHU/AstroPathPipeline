@@ -105,8 +105,9 @@ class TestBadRegions(TestBaseSaveOutput):
 
   def testCohort(self):
     class TestCohort(DustSpeckFinderCohort):
-      def initiatesample(self, *args, **kwargs):
-        return super().initiatesample(*args, selectrectangles=[17], **kwargs)
+      @property
+      def initiatesamplekwargs(self):
+        return {**super().initiatesamplekwargs, "selectrectangles": [17]}
     cohort = TestCohort(thisfolder/"data", thisfolder/"data"/"flatw", debug=True)
     cohort.run()
 

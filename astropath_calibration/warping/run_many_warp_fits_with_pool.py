@@ -10,7 +10,7 @@ import os, random, subprocess, datetime, multiprocessing as mp
 
 #################### FILE-SCOPE CONSTANTS ####################
 
-RUN_WARPFITTER_PREFIX = 'python -m microscopealignment.warping.run_warp_fitter' #part of the command referencing how to run run_warpfitter.py
+RUN_WARPFITTER_PREFIX = 'run_warp_fitter' #part of the command referencing how to run run_warpfitter.py
 JOB_DIR_STEM = 'warpfitter_batch'
 POSITIONAL_PASSTHROUGH_ARG_NAMES = ['slideID','rawfile_top_dir','root_dir']
 PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','max_iter','fixed','normalize','init_pars','init_bounds','max_radial_warp']
