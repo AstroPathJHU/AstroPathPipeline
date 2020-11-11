@@ -62,12 +62,14 @@ class SampleDef:
     return bool(self.isGood)
 
 class SampleBase(contextlib.ExitStack):
-  def __init__(self, root, samp, *, uselogfiles=False, logthreshold=logging.DEBUG, xmlfolders=None, reraiseexceptions=True):
+  def __init__(self, root, samp, *, uselogfiles=False, logthreshold=logging.DEBUG, xmlfolders=None, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root/self.SlideID} does not exist")
-    self.logger = getlogger(module=self.logmodule, root=self.root, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions)
+    if logroot is None: logroot = root
+    self.logroot = pathlib.Path(logroot)
+    self.logger = getlogger(module=self.logmodule, root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__logonenter = []
@@ -238,9 +240,12 @@ class SampleBase(contextlib.ExitStack):
     "name of the log files for this class (e.g. align)"
 
 class DbloadSampleBase(SampleBase):
-  def __init__(self, *args, dbloadfolder=None, **kwargs):
+  def __init__(self, *args, dbloadroot=None, dbloadfolder=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if dbloadfolder is None: dbloadfolder = self.mainfolder/"dbload"
+    if dbloadroot is not None and dbloadfolder is not None:
+      raise TypeError("Can't provide both dbloadroot and dbloadfolder")
+    if dbloadroot is None: dbloadroot = self.mainfolder
+    if dbloadfolder is None: dbloadfolder = dbloadroot/self.SlideID/"dbload"
     self.__dbloadfolder = dbloadfolder
   @property
   def dbload(self):
