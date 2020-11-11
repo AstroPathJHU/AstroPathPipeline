@@ -296,8 +296,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       a.stitch()
 
     for log in (
-      thisfolder/"data"/"logfiles"/"align.log",
-      thisfolder/"data"/SlideID/"logfiles"/f"{SlideID}-align.log",
+      thisfolder/"alignment_test_for_jenkins"/"logfiles"/"align.log",
+      thisfolder/"alignment_test_for_jenkins"/SlideID/"logfiles"/f"{SlideID}-align.log",
     ):
       with open(log) as f:
         contents = f.read().splitlines()
