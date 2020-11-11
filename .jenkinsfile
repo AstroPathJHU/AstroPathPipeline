@@ -42,6 +42,15 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
               }
             }
+          }
+        }
+        stage('alignment zoom annowarp pipeline') {
+          stages {
+            stage('align') {
+              steps {
+                sh 'alignmentcohort test/data test/data/flatw'
+              }
+            }
             stage('alignment documentation') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.alignment.makeplots --testing'
