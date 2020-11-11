@@ -53,6 +53,7 @@ class TestBaseSaveOutput(abc.ABC, unittest.TestCase):
     cls.__output = contextlib.ExitStack()
     cls.__output.__enter__()
     cls.__saved = set()
+    super().setUpClass()
 
   @abc.abstractproperty
   def outputfilenames(self): pass
@@ -80,3 +81,22 @@ class TestBaseSaveOutput(abc.ABC, unittest.TestCase):
   @classmethod
   def tearDownClass(cls):
     cls.__output.__exit__(None, None, None)
+    super().tearDownClass()
+
+class TestBaseCopyInput(abc.ABC, unittest.TestCase):
+  @classmethod
+  @abc.abstractmethod
+  def filestocopy(cls): pass
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    for copyfrom, copytofolder in cls.filestocopy():
+      copytofolder.mkdir(exist_ok=True, parents=True)
+      shutil.copy(copyfrom, copytofolder)
+
+  @classmethod
+  def tearDownClass(cls):
+    super().tearDownClass()
+    for copyfrom, copytofolder in cls.filestocopy():
+      (copytofolder/copyfrom.name).unlink()
