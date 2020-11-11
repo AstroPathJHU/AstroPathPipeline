@@ -244,7 +244,7 @@ class DbloadSampleBase(SampleBase):
     super().__init__(*args, **kwargs)
     if dbloadroot is not None and dbloadfolder is not None:
       raise TypeError("Can't provide both dbloadroot and dbloadfolder")
-    if dbloadroot is None: dbloadroot = self.mainfolder
+    if dbloadroot is None: dbloadroot = self.mainfolder.parent
     if dbloadfolder is None: dbloadfolder = dbloadroot/self.SlideID/"dbload"
     self.__dbloadfolder = dbloadfolder
   @property
