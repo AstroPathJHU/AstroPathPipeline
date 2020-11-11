@@ -20,7 +20,7 @@ class QPTiffAlignmentSample(ZoomSample):
     self.mintilebrightfraction = 0.2
     self.mintilerange = 45
 
-  def align(self):
+  def align(self, *, write_result=False):
     with self.PILmaximagepixels(), PIL.Image.open(self.wsifilename(layer=self.wsilayer)) as wsi, QPTiff(self.qptifffilename) as fqptiff:
       zoomlevel = fqptiff.zoomlevels[0]
       qptiff = PIL.Image.fromarray(zoomlevel[self.qptifflayer-1].asarray())
@@ -119,6 +119,9 @@ class QPTiffAlignmentSample(ZoomSample):
           pscale=imscale,
         )
       )
+    self.__alignmentresults = results
+    if write_result:
+      self.writecsv(f"warp-{self.tilesize}", results)
     return results
 
   @property
