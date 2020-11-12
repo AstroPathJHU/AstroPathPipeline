@@ -29,7 +29,7 @@ class QPTiffAlignmentSample(ZoomSample):
       ipscale = pscale / apscale
       ppscale = self.__ppscale = floattoint(np.round(float(ipscale)))
       iqscale = ipscale / ppscale
-      xposition = fqptiff.xposition
+      #xposition = fqptiff.xposition
       yposition = fqptiff.yposition
 
       wsisize = np.array(wsi.size, dtype=np.uint)
@@ -65,8 +65,8 @@ class QPTiffAlignmentSample(ZoomSample):
     ny1 = max(1, floattoint(my1 // deltay), 1)
     ny2 = floattoint(my2 // deltay) + 1
 
-    ex = np.arange(nx1, nx2+1) * self.deltax
-    ey = np.arange(ny1, ny2+1) * self.deltay
+    #ex = np.arange(nx1, nx2+1) * self.deltax
+    #ey = np.arange(ny1, ny2+1) * self.deltay
 
     #tweak the y position by -900 for the microsocope glitches
     #(from Alex's code.  I don't know what this means.)
