@@ -1,16 +1,15 @@
 import argparse, numpy as np, pathlib, re
 
-from ..baseclasses.cohort import FlatwCohort
+from ..baseclasses.cohort import DbloadCohort, FlatwCohort
 from ..utilities import units
 from .alignmentset import AlignmentSet
 
-class StatsCohort(FlatwCohort):
+class StatsCohort(DbloadCohort, FlatwCohort):
   def __init__(self, *args, outfile, **kwargs):
     super().__init__(*args, uselogfiles=False, **kwargs)
     self.__outfile = outfile
 
-  def initiatesample(self, samp):
-    return AlignmentSet(self.root1, self.root2, samp, uselogfiles=self.uselogfiles)
+  sampleclass = AlignmentSet
 
   def runsample(self, sample):
     sample.readalignments()

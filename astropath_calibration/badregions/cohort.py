@@ -1,10 +1,10 @@
-import abc, argparse, pathlib, re
+import argparse, pathlib, re
 
-from ..baseclasses.cohort import FlatwCohort
+from ..baseclasses.cohort import DbloadCohort, FlatwCohort
 from ..utilities import units
 from .sample import DustSpeckFinderSample
 
-class BadRegionFinderCohort(FlatwCohort):
+class BadRegionFinderCohort(DbloadCohort, FlatwCohort):
   def __init__(self, *args, uselogfiles=True, **kwargs):
     return super().__init__(*args, uselogfiles=uselogfiles, **kwargs)
 
@@ -15,15 +15,9 @@ class BadRegionFinderCohort(FlatwCohort):
       kwargs["plotsdir"] = plotsdir/sample.SlideID
     sample.run(**kwargs)
 
-  def initiatesample(self, samp, **kwargs):
-    return self.badregionfindersampleclass(self.root1, self.root2, samp, uselogfiles=self.uselogfiles, **kwargs)
-
-  @abc.abstractproperty
-  def badregionfindersampleclass(self): pass
-
 class DustSpeckFinderCohort(BadRegionFinderCohort):
-  badregionfindersampleclass = DustSpeckFinderSample
-  logmodule = badregionfindersampleclass.logmodule
+  sampleclass = DustSpeckFinderSample
+  logmodule = sampleclass.logmodule
 
 def main(args=None):
   p = argparse.ArgumentParser()

@@ -15,14 +15,13 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, root1, root2, samp, *, interactive=False, useGPU=False, forceGPU=False, filetype="flatWarp", use_mean_image=True, **kwargs):
+  def __init__(self, *args, interactive=False, useGPU=False, forceGPU=False, filetype="flatWarp", use_mean_image=True, **kwargs):
     """
     Directory structure should be
-    root1/
+    root/
       samp/
         dbload/
           samp_*.csv
-          samp_qptiff.jpg
     root2/
       samp/
         samp_*.(fw01/camWarp_layer01) (if using DAPI, could also be 02 etc. to align with other markers)
@@ -32,7 +31,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     """
     self.__use_mean_image = use_mean_image
     self.interactive = interactive
-    super().__init__(root1, root2, samp, filetype=filetype, **kwargs)
+    super().__init__(*args, filetype=filetype, **kwargs)
     for r in self.rectangles:
       r.setrectanglelist(self.rectangles)
 

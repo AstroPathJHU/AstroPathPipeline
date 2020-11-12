@@ -1,10 +1,10 @@
 import argparse, pathlib, re
 
-from ..baseclasses.cohort import FlatwCohort
+from ..baseclasses.cohort import DbloadCohort, FlatwCohort
 from ..utilities import units
 from .alignmentset import AlignmentSet
 
-class AlignmentCohort(FlatwCohort):
+class AlignmentCohort(DbloadCohort, FlatwCohort):
   def __init__(self, *args, doalignment=True, dostitching=True, **kwargs):
     super().__init__(*args, **kwargs)
     self.__doalignment = doalignment
@@ -12,8 +12,7 @@ class AlignmentCohort(FlatwCohort):
     if not doalignment and not dostitching:
       raise ValueError("If you do neither alignment nor stitching, there's nothing to do")
 
-  def initiatesample(self, samp, **kwargs):
-    return AlignmentSet(self.root1, self.root2, samp, uselogfiles=self.uselogfiles, **kwargs)
+  sampleclass = AlignmentSet
 
   def runsample(self, sample):
     if self.__doalignment:

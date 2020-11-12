@@ -1,16 +1,18 @@
 import argparse, pathlib, re
 
-from ..baseclasses.cohort import FlatwCohort
+from ..baseclasses.cohort import DbloadCohort, FlatwCohort
 from ..utilities import units
 from .zoom import Zoom
 
-class ZoomCohort(FlatwCohort):
+class ZoomCohort(DbloadCohort, FlatwCohort):
   def __init__(self, *args, zoomroot, **kwargs):
     self.__zoomroot = zoomroot
     super().__init__(*args, **kwargs)
 
-  def initiatesample(self, samp):
-    return Zoom(self.root1, self.root2, samp, uselogfiles=self.uselogfiles, zoomroot=self.__zoomroot)
+  sampleclass = Zoom
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "zoomroot": self.__zoomroot}
 
   def runsample(self, sample):
     #sample.logger.info(f"{sample.ntiles} {len(sample.rectangles)}")
@@ -37,8 +39,6 @@ def main(args=None):
 
   if args.sampleregex is not None:
     kwargs["filter"] = lambda sample: args.sampleregex.match(sample.SlideID)
-  elif args.skip_aligned:
-    kwargs["filter"] = lambda sample: not (args.root1/sample.SlideID/"dbload"/(sample.SlideID+"_fields.csv")).exists()
 
   cohort = ZoomCohort(**kwargs)
   if args.dry_run:
