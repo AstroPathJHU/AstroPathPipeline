@@ -24,7 +24,7 @@ class ZoomSample(ReadRectanglesComponentTiff, ZoomSampleBase):
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
     return floattoint(-((-maxxy) // (self.__tilesize*onepixel)))
   def PILmaximagepixels(self):
-    return PILmaximagepixels(np.product(self.ntiles) * self.__tilesize**2)
+    return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
 
 class Zoom(ZoomSample):
   @property
@@ -87,7 +87,9 @@ class Zoom(ZoomSample):
       ymin = tiley * self.zoomtilesize
       ymax = (tiley+1) * self.zoomtilesize
       slc = bigimage[:, ymin:ymax, xmin:xmax]
-      if not np.any(slc): continue
+      if not np.any(slc):
+        self.logger.info(f"       tile {tilen} / {ntiles} is empty")
+        continue
       for layer in self.layers:
         filename = self.zoomfilename(layer, tilex, tiley)
         self.logger.info(f"saving tile {tilen} / {ntiles} {filename.name}")
