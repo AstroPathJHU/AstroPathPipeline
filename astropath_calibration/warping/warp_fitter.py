@@ -55,10 +55,14 @@ class WarpFitter :
         self.rawfile_top_dir=rawfile_top_dir
         self.root_dir=root_dir
         self.working_dir=working_dir
+        #get the size of the images in the slide
+        m, n, nlayers = getImageHWLFromXMLFile(self.root_dir,slideID)
+        if layer<1 or layer>nlayers :
+            raise WarpingError(f'ERROR: Choice of layer ({layer}) is not valid for images with {nlayers} layers!')
         #make the alignmentset object to use
         self.bkp_units_mode = units.currentmode
         units.setup("fast") #be sure to use fast units
-        self.alignset = self.__initializeAlignmentSet(overlaps=overlaps)
+        self.alignset = self.__initializeAlignmentSet(overlaps=overlaps,layer=layer)
         #save the metadata summary and field logs for this alignment set
         ms = MetadataSummary(self.slideID,self.alignset.Project,self.alignset.Cohort,self.alignset.microscopename,
                              str(min([r.t for r in self.alignset.rectangles])),str(max([r.t for r in self.alignset.rectangles])))
@@ -71,10 +75,7 @@ class WarpFitter :
         #get the list of raw file paths
         self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.slideID,fn.replace(CONST.IM3_EXT,CONST.RAW_EXT)) 
                               for fn in [r.file for r in self.alignset.rectangles]]
-        #get the size of the images in the slide
-        m, n, nlayers = getImageHWLFromXMLFile(self.root_dir,slideID)
-        if layer<1 or layer>nlayers :
-            raise WarpingError(f'ERROR: Choice of layer ({layer}) is not valid for images with {nlayers} layers!')
+        
         #make the warpset object to use
         self.warpset = WarpSet(n=n,m=m,rawfiles=self.rawfile_paths,nlayers=nlayers,layer=layer)
         #for now leave the fitparameter set as None (until the actual fit is called)
@@ -558,11 +559,12 @@ class WarpFitter :
     #################### OTHER PRIVATE HELPER FUNCTIONS ####################
 
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
-    def __initializeAlignmentSet(self, *, overlaps) :
+    def __initializeAlignmentSet(self, *, overlaps, layer) :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
         a = AlignmentSetFromXML(self.root_dir,self.working_dir,self.slideID,nclip=CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
-                                selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True,filetype="camWarp")
+                                selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True,
+                                filetype="camWarp",layer=layer)
         return a
 
     #helper function to return the parameter bounds, constraints, and initial population for the global minimization
