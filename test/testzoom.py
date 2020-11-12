@@ -65,8 +65,9 @@ class TestZoom(TestBaseSaveOutput):
       self.saveoutput()
       raise
     else:
-      if keepoutput and not (thisfolder/"data"/SlideID/"zoom").exists():
-        (thisfolder/"zoom_test_for_jenkins"/SlideID).rename(thisfolder/"data"/SlideID/"zoom")
+      if keepoutput and not (thisfolder/"annowarp_test_for_jenkins"/SlideID).exists():
+        (thisfolder/"annowarp_test_for_jenkins").mkdir(exist_ok=True)
+        (thisfolder/"zoom_test_for_jenkins"/SlideID).rename(thisfolder/"annowarp_test_for_jenkins"/SlideID)
       self.removeoutput()
 
   def testZoomWsiFast(self, SlideID="L1_1", **kwargs):

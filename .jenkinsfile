@@ -63,6 +63,11 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
               }
             }
+            stage('test annowarp') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testannowarp'
+              }
+            }
           }
         }
         stage('align layers') {

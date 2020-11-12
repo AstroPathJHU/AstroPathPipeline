@@ -5,6 +5,7 @@ from ..baseclasses.qptiff import QPTiff
 from ..zoom.zoom import ZoomSample
 from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
+from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 class QPTiffAlignmentSample(ZoomSample):
@@ -56,14 +57,15 @@ class QPTiffAlignmentSample(ZoomSample):
     my1 = units.convertpscale(min(field.my1 for field in self.rectangles), pscale, imscale, 1)
     my2 = units.convertpscale(max(field.my2 for field in self.rectangles), pscale, imscale, 1)
 
-    deltax = units.Distance(pixels=self.deltax, pscale=imscale)
-    deltay = units.Distance(pixels=self.deltay, pscale=imscale)
     tilesize = units.Distance(pixels=self.tilesize, pscale=imscale)
 
-    nx1 = max(floattoint(mx1 // deltax), 1)
-    nx2 = floattoint(mx2 // deltax) + 1
-    ny1 = max(1, floattoint(my1 // deltay), 1)
-    ny2 = floattoint(my2 // deltay) + 1
+    #deltax = units.Distance(pixels=self.deltax, pscale=imscale)
+    #deltay = units.Distance(pixels=self.deltay, pscale=imscale)
+
+    #nx1 = max(floattoint(mx1 // deltax), 1)
+    #nx2 = floattoint(mx2 // deltax) + 1
+    #ny1 = max(1, floattoint(my1 // deltay), 1)
+    #ny2 = floattoint(my2 // deltay) + 1
 
     #ex = np.arange(nx1, nx2+1) * self.deltax
     #ey = np.arange(ny1, ny2+1) * self.deltay
@@ -121,8 +123,15 @@ class QPTiffAlignmentSample(ZoomSample):
       )
     self.__alignmentresults = results
     if write_result:
-      self.writecsv(f"warp-{self.tilesize}", results)
+      self.writealignments()
     return results
+
+  @property
+  def alignmentcsv(self): return self.csv(f"warp-{self.tilesize}")
+
+  def writealignments(self, *, filename=None):
+    if filename is None: filename = self.alignmentcsv
+    writetable(filename, self.__alignmentresults)
 
   @property
   def logmodule(self):
@@ -142,6 +151,7 @@ class QPTiffAlignmentResult(DataClassWithDistances):
   mi: float
   exit: int
   pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[bool] = False
 
   def __init__(self, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)
