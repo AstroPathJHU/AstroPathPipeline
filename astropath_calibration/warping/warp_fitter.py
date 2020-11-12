@@ -564,7 +564,7 @@ class WarpFitter :
         customGPUdevice = True if platform.system()=='Darwin' else False
         a = AlignmentSetFromXML(self.root_dir,self.working_dir,self.slideID,nclip=CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
                                 selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True,
-                                filetype="camWarp",layer=layer)
+                                filetype="camWarp",readlayerfile=False,layer=layer)
         return a
 
     #helper function to return the parameter bounds, constraints, and initial population for the global minimization
