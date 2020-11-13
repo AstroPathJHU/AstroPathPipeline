@@ -1,42 +1,93 @@
-import dataclasses, itertools, numpy as np, PIL, skimage.filters
+import contextlib, dataclasses, itertools, methodtools, numpy as np, PIL, skimage.filters
 
 from ..alignment.computeshift import computeshift
 from ..baseclasses.qptiff import QPTiff
 from ..zoom.zoom import ZoomSample
 from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
-from ..utilities.tableio import writetable
+from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 class QPTiffAlignmentSample(ZoomSample):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    self.__ppscale = None
     self.wsilayer = 1
     self.qptifflayer = 1
-    self.deltax = 1400
-    self.deltay = 2100
-    self.tilesize = 100
+    self.__deltax = 1400
+    self.__deltay = 2100
+    self.__tilesize = 100
     self.tilebrightnessthreshold = 45
     self.mintilebrightfraction = 0.2
     self.mintilerange = 45
 
+    self.__nentered = 0
+    self.__using_images_context = self.enter_context(contextlib.ExitStack())
+
+  @contextlib.contextmanager
+  def using_images(self):
+    if self.__nentered == 0:
+      self.__using_images_context.enter_context(self.PILmaximagepixels())
+      self.__wsi = self.__using_images_context.enter_context(PIL.Image.open(self.wsifilename(layer=self.wsilayer)))
+      self.__qptiff = self.__using_images_context.enter_context(QPTiff(self.qptifffilename))
+    self.__nentered += 1
+    try:
+      yield self.__wsi, self.__qptiff
+    finally:
+      self.__nentered -= 1
+      if self.__nentered == 0:
+        self.__wsi = self.__qptiff = None
+        self.__using_images_context.close()
+
+  @property
+  def tilesize(self): return units.Distance(pixels=self.__tilesize, pscale=self.imscale)
+  @property
+  def deltax(self): return units.Distance(pixels=self.__deltax, pscale=self.imscale)
+  @property
+  def deltay(self): return units.Distance(pixels=self.__deltay, pscale=self.imscale)
+
+  @methodtools.lru_cache()
+  @property
+  def __scales(self):
+    with self.using_images() as (wsi, fqptiff):
+      zoomlevel = fqptiff.zoomlevels[0]
+      apscale = zoomlevel.qpscale
+      ipscale = self.pscale / apscale
+      ppscale = floattoint(np.round(float(ipscale)))
+      iqscale = ipscale / ppscale
+      imscales = {apscale * iqscale, self.pscale / ppscale}
+      imscale, = imscales
+      return {
+        "pscale": self.pscale,
+        "apscale": apscale,
+        "ipscale": ipscale,
+        "ppscale": ppscale,
+        "iqscale": iqscale,
+        "imscale": imscale,
+      }
+
+  @property
+  def ppscale(self): return self.__scales["ppscale"]
+  @property
+  def iqscale(self): return self.__scales["iqscale"]
+  @property
+  def imscale(self): return self.__scales["imscale"]
+
   def align(self, *, write_result=False):
-    with self.PILmaximagepixels(), PIL.Image.open(self.wsifilename(layer=self.wsilayer)) as wsi, QPTiff(self.qptifffilename) as fqptiff:
+    with self.using_images() as (wsi, fqptiff):
+      imscale = self.imscale
+      tilesize = self.tilesize
+      deltax = self.deltax
+      deltay = self.deltay
+
       zoomlevel = fqptiff.zoomlevels[0]
       qptiff = PIL.Image.fromarray(zoomlevel[self.qptifflayer-1].asarray())
-      apscale = zoomlevel.qpscale
-      pscale = self.pscale
-      ipscale = pscale / apscale
-      ppscale = self.__ppscale = floattoint(np.round(float(ipscale)))
-      iqscale = ipscale / ppscale
       #xposition = fqptiff.xposition
       yposition = fqptiff.yposition
 
       wsisize = np.array(wsi.size, dtype=np.uint)
       qptiffsize = np.array(qptiff.size, dtype=np.uint)
-      wsisize //= ppscale
-      qptiffsize = (qptiffsize * iqscale).astype(np.uint)
+      wsisize //= self.ppscale
+      qptiffsize = (qptiffsize * self.iqscale).astype(np.uint)
       wsi = wsi.resize(wsisize)
       qptiff = qptiff.resize(qptiffsize)
 
@@ -44,23 +95,15 @@ class QPTiffAlignmentSample(ZoomSample):
       wsi = wsi.crop(newsize)
       qptiff = qptiff.crop(newsize)
 
-      imscales = {apscale * iqscale, pscale / ppscale}
-      imscale, = imscales
-
       wsi = np.asarray(wsi)
       qptiff = np.asarray(qptiff)
 
     onepixel = units.Distance(pixels=1, pscale=imscale)
 
-    mx1 = units.convertpscale(min(field.mx1 for field in self.rectangles), pscale, imscale, 1)
-    mx2 = units.convertpscale(max(field.mx2 for field in self.rectangles), pscale, imscale, 1)
-    my1 = units.convertpscale(min(field.my1 for field in self.rectangles), pscale, imscale, 1)
-    my2 = units.convertpscale(max(field.my2 for field in self.rectangles), pscale, imscale, 1)
-
-    tilesize = units.Distance(pixels=self.tilesize, pscale=imscale)
-
-    #deltax = units.Distance(pixels=self.deltax, pscale=imscale)
-    #deltay = units.Distance(pixels=self.deltay, pscale=imscale)
+    mx1 = units.convertpscale(min(field.mx1 for field in self.rectangles), self.pscale, imscale, 1)
+    mx2 = units.convertpscale(max(field.mx2 for field in self.rectangles), self.pscale, imscale, 1)
+    my1 = units.convertpscale(min(field.my1 for field in self.rectangles), self.pscale, imscale, 1)
+    my2 = units.convertpscale(max(field.my2 for field in self.rectangles), self.pscale, imscale, 1)
 
     #nx1 = max(floattoint(mx1 // deltax), 1)
     #nx2 = floattoint(mx2 // deltax) + 1
@@ -119,6 +162,7 @@ class QPTiffAlignmentSample(ZoomSample):
           exit=shiftresult.exit,
           mi=brightfraction,
           pscale=imscale,
+          tilesize=tilesize,
         )
       )
     self.__alignmentresults = results
@@ -127,11 +171,16 @@ class QPTiffAlignmentSample(ZoomSample):
     return results
 
   @property
-  def alignmentcsv(self): return self.csv(f"warp-{self.tilesize}")
+  def alignmentcsv(self): return self.csv(f"warp-{self.__tilesize}")
 
   def writealignments(self, *, filename=None):
     if filename is None: filename = self.alignmentcsv
     writetable(filename, self.__alignmentresults)
+
+  def readalignments(self, *, filename=None):
+    if filename is None: filename = self.alignmentcsv
+    results = self.__alignmentresults = readtable(filename, QPTiffAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize})
+    return results
 
   @property
   def logmodule(self):
@@ -150,6 +199,7 @@ class QPTiffAlignmentResult(DataClassWithDistances):
   covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   mi: float
   exit: int
+  tilesize: dataclasses.InitVar[units.Distance]
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
 
@@ -166,3 +216,14 @@ class QPTiffAlignmentResult(DataClassWithDistances):
       (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
 
     return self.__dc_init__(*args, **kwargs)
+
+  def __post_init__(self, tilesize, *args, **kwargs):
+    super().__post_init__(*args, **kwargs)
+    object.__setattr__(self, "tilesize", tilesize)
+
+  @property
+  def xvec(self):
+    return np.array([self.x, self.y])
+  @property
+  def cxvec(self):
+    return self.xvec + self.sz/2
