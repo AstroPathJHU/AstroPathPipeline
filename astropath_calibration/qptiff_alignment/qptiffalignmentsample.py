@@ -47,7 +47,7 @@ class QPTiffAlignmentSample(ZoomSample):
 
   @methodtools.lru_cache()
   @property
-  def __scales(self):
+  def __imageinfo(self):
     with self.using_images() as (wsi, fqptiff):
       zoomlevel = fqptiff.zoomlevels[0]
       apscale = zoomlevel.qpscale
@@ -57,32 +57,30 @@ class QPTiffAlignmentSample(ZoomSample):
       imscales = {apscale * iqscale, self.pscale / ppscale}
       imscale, = imscales
       return {
-        "pscale": self.pscale,
         "apscale": apscale,
         "ipscale": ipscale,
         "ppscale": ppscale,
         "iqscale": iqscale,
         "imscale": imscale,
+        "xposition": fqptiff.xposition,
+        "yposition": fqptiff.yposition,
       }
 
   @property
-  def ppscale(self): return self.__scales["ppscale"]
+  def ppscale(self): return self.__imageinfo["ppscale"]
   @property
-  def iqscale(self): return self.__scales["iqscale"]
+  def iqscale(self): return self.__imageinfo["iqscale"]
   @property
-  def imscale(self): return self.__scales["imscale"]
+  def imscale(self): return self.__imageinfo["imscale"]
+  @property
+  def xposition(self): return self.__imageinfo["xposition"]
+  @property
+  def yposition(self): return self.__imageinfo["yposition"]
 
-  def align(self, *, write_result=False):
+  def getimages(self):
     with self.using_images() as (wsi, fqptiff):
-      imscale = self.imscale
-      tilesize = self.tilesize
-      deltax = self.deltax
-      deltay = self.deltay
-
       zoomlevel = fqptiff.zoomlevels[0]
       qptiff = PIL.Image.fromarray(zoomlevel[self.qptifflayer-1].asarray())
-      #xposition = fqptiff.xposition
-      yposition = fqptiff.yposition
 
       wsisize = np.array(wsi.size, dtype=np.uint)
       qptiffsize = np.array(qptiff.size, dtype=np.uint)
@@ -97,6 +95,16 @@ class QPTiffAlignmentSample(ZoomSample):
 
       wsi = np.asarray(wsi)
       qptiff = np.asarray(qptiff)
+
+      return wsi, qptiff
+
+  def align(self, *, write_result=False):
+    with self.using_images():
+      wsi, qptiff = self.getimages()
+      imscale = self.imscale
+      tilesize = self.tilesize
+      #deltax = self.deltax
+      #deltay = self.deltay
 
     onepixel = units.Distance(pixels=1, pscale=imscale)
 
@@ -116,7 +124,7 @@ class QPTiffAlignmentSample(ZoomSample):
     #tweak the y position by -900 for the microsocope glitches
     #(from Alex's code.  I don't know what this means.)
     qshifty = 0
-    if yposition == 0: qshifty = 900
+    if self.yposition == 0: qshifty = units.Distance(pixels=900, pscale=imscale)
 
     mx2 = min(mx2, units.Distance(pixels=wsi.shape[1], pscale=imscale) - tilesize)
     my2 = min(my2, units.Distance(pixels=wsi.shape[0], pscale=imscale) - tilesize)
