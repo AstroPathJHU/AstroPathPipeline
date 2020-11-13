@@ -1,6 +1,7 @@
 import contextlib, dataclasses, itertools, methodtools, numpy as np, PIL, skimage.filters
 
 from ..alignment.computeshift import computeshift
+from ..alignment.overlap import AlignmentComparison
 from ..baseclasses.qptiff import QPTiff
 from ..zoom.zoom import ZoomSample
 from ..utilities import units
@@ -23,6 +24,8 @@ class QPTiffAlignmentSample(ZoomSample):
     self.__nentered = 0
     self.__using_images_context = self.enter_context(contextlib.ExitStack())
 
+    self.__images = None
+
   @contextlib.contextmanager
   def using_images(self):
     if self.__nentered == 0:
@@ -31,6 +34,8 @@ class QPTiffAlignmentSample(ZoomSample):
       self.__qptiff = self.__using_images_context.enter_context(QPTiff(self.qptifffilename))
     self.__nentered += 1
     try:
+      if self.__nentered == 1:
+        self.__imageinfo #access it now to make sure it's cached
       yield self.__wsi, self.__qptiff
     finally:
       self.__nentered -= 1
@@ -77,7 +82,8 @@ class QPTiffAlignmentSample(ZoomSample):
   @property
   def yposition(self): return self.__imageinfo["yposition"]
 
-  def getimages(self):
+  def getimages(self, keep=False):
+    if self.__images is not None: return self.__images
     with self.using_images() as (wsi, fqptiff):
       zoomlevel = fqptiff.zoomlevels[0]
       qptiff = PIL.Image.fromarray(zoomlevel[self.qptifflayer-1].asarray())
@@ -96,15 +102,15 @@ class QPTiffAlignmentSample(ZoomSample):
       wsi = np.asarray(wsi)
       qptiff = np.asarray(qptiff)
 
+      if keep: self.__images = wsi, qptiff
       return wsi, qptiff
 
   def align(self, *, write_result=False):
-    with self.using_images():
-      wsi, qptiff = self.getimages()
-      imscale = self.imscale
-      tilesize = self.tilesize
-      #deltax = self.deltax
-      #deltay = self.deltay
+    wsi, qptiff = self.getimages()
+    imscale = self.imscale
+    tilesize = self.tilesize
+    #deltax = self.deltax
+    #deltay = self.deltay
 
     onepixel = units.Distance(pixels=1, pscale=imscale)
 
@@ -194,6 +200,10 @@ class QPTiffAlignmentSample(ZoomSample):
   def logmodule(self):
     return "annowarp"
 
+  def plotresult(self, result, **kwargs):
+    wsi, qptiff = self.getimages()
+    QPTiffTile(result, wsi, qptiff).showimages(**kwargs)
+
 @dataclass_dc_init(frozen=True)
 class QPTiffAlignmentResult(DataClassWithDistances):
   pixelsormicrons = "pixels"
@@ -233,5 +243,35 @@ class QPTiffAlignmentResult(DataClassWithDistances):
   def xvec(self):
     return np.array([self.x, self.y])
   @property
+  def covariance(self):
+    return np.array([[self.covxx, self.covxy], [self.covxy, self.covyy]])
+  @property
+  def dxvec(self):
+    return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
+  @property
   def cxvec(self):
     return self.xvec + self.sz/2
+
+class QPTiffTile(AlignmentComparison):
+  def __init__(self, result, wsi, qptiff, *args, **kwargs):
+    self.__result = result
+    self.__wsi = wsi
+    self.__qptiff = qptiff
+    self.__imscale = result.pscale
+    self.__tilesize = result.tilesize
+    super().__init__(*args, **kwargs)
+  @property
+  def pscale(self): return self.__imscale
+  @property
+  def unshifted(self):
+    wsitile = self.__wsi[
+      units.pixels(self.__result.y, pscale=self.__imscale):units.pixels(self.__result.y+self.__tilesize, pscale=self.__imscale),
+      units.pixels(self.__result.x, pscale=self.__imscale):units.pixels(self.__result.x+self.__tilesize, pscale=self.__imscale),
+    ]
+    qptifftile = self.__qptiff[
+      units.pixels(self.__result.y, pscale=self.__imscale):units.pixels(self.__result.y+self.__tilesize, pscale=self.__imscale),
+      units.pixels(self.__result.x, pscale=self.__imscale):units.pixels(self.__result.x+self.__tilesize, pscale=self.__imscale),
+    ]
+    return wsitile, qptifftile
+  @property
+  def dxvec(self): return self.__result.dxvec
