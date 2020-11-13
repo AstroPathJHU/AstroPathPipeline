@@ -1,6 +1,6 @@
 import cv2, matplotlib.pyplot as plt, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.feature, skimage.filters, textwrap, uncertainties as unc
 
-def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4, staterrorimages=None):
+def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4, staterrorimages=None, usemaxmovementcut=True):
   """
   https://www.scirp.org/html/8-2660057_43054.htm
   """
@@ -116,7 +116,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     dy = unc.ufloat(0, 9999.)
     exit = 2
 
-  if np.sqrt(np.sum(r.x**2) >= np.sqrt(np.sum(np.array(x.shape)**2))) / 10:
+  if usemaxmovementcut and np.sqrt(np.sum(r.x**2) >= np.sqrt(np.sum(np.array(x.shape)**2))) / 10:
     dx = unc.ufloat(0, 9999.)
     dy = unc.ufloat(0, 9999.)
     exit = 3

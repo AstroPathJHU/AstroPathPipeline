@@ -104,7 +104,7 @@ class QPTiffAlignmentSample(ZoomSample):
       wsitile = skimage.filters.gaussian(wsitile, sigma=3)
       qptifftile = qptifftile - skimage.filters.gaussian(qptifftile, sigma=20)
       qptifftile = skimage.filters.gaussian(qptifftile, sigma=3)
-      shiftresult = computeshift((wsitile, qptifftile))
+      shiftresult = computeshift((wsitile, qptifftile), usemaxmovementcut=False)
 
       results.append(
         QPTiffAlignmentResult(
