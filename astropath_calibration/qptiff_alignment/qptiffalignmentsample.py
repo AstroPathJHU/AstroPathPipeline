@@ -215,13 +215,15 @@ class QPTiffAlignmentSample(ZoomSample):
     tominimize = 0
     onepixel = units.Distance(pixels=1, pscale=self.imscale)
     for result in self.__alignmentresults:
-      tominimize += cp.norm(
+      if result.exit: continue
+      residual = (
         units.nominal_values(result.dxvec)/onepixel - (
           coeffrelativetobigtile @ (result.centerrelativetobigtile/onepixel)
           + bigtileindexcoeff @ result.bigtileindex
           + constant
         )
-      )**2
+      )
+      tominimize += cp.quad_form(residual, units.np.linalg.inv(result.covariance) * onepixel**2)
 
     minimize = cp.Minimize(tominimize)
     prob = cp.Problem(minimize)
