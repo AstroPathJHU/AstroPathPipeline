@@ -1,4 +1,4 @@
-import contextlib, dataclasses, itertools, methodtools, numpy as np, PIL, skimage.filters
+import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, numpy as np, PIL, skimage.filters
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
@@ -14,7 +14,7 @@ class QPTiffAlignmentSample(ZoomSample):
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
-    self.__bigtilesize = 1400, 2100
+    self.__bigtilesize = np.array([1400, 2100])
     self.__tilesize = 100
     self.tilebrightnessthreshold = 45
     self.mintilebrightfraction = 0.2
@@ -44,6 +44,8 @@ class QPTiffAlignmentSample(ZoomSample):
 
   @property
   def tilesize(self): return units.Distance(pixels=self.__tilesize, pscale=self.imscale)
+  @property
+  def bigtilesize(self): return units.distances(pixels=self.__bigtilesize, pscale=self.imscale)
   @property
   def deltax(self): return units.Distance(pixels=self.__deltax, pscale=self.imscale)
   @property
@@ -108,6 +110,7 @@ class QPTiffAlignmentSample(ZoomSample):
     wsi, qptiff = self.getimages()
     imscale = self.imscale
     tilesize = self.tilesize
+    bigtilesize = self.bigtilesize
     #deltax = self.deltax
     #deltay = self.deltay
 
@@ -176,6 +179,7 @@ class QPTiffAlignmentSample(ZoomSample):
           mi=brightfraction,
           pscale=imscale,
           tilesize=tilesize,
+          bigtilesize=bigtilesize,
         )
       )
     self.__alignmentresults = results
@@ -202,6 +206,28 @@ class QPTiffAlignmentSample(ZoomSample):
   def plotresult(self, result, **kwargs):
     wsi, qptiff = self.getimages()
     AlignedTile(result, wsi, qptiff).showimages(**kwargs)
+
+  def stitch_cvxpy(self):
+    coeffrelativetobigtile = cp.Variable(shape=(2, 2))
+    bigtileindexcoeff = cp.Variable(shape=(2, 2))
+    constant = cp.Variable(shape=2)
+
+    tominimize = 0
+    onepixel = units.Distance(pixels=1, pscale=self.imscale)
+    for result in self.__alignmentresults:
+      tominimize += cp.norm(
+        units.nominal_values(result.dxvec)/onepixel - (
+          coeffrelativetobigtile @ (result.centerrelativetobigtile/onepixel)
+          + bigtileindexcoeff @ result.bigtileindex
+          + constant
+        )
+      )**2
+
+    minimize = cp.Minimize(tominimize)
+    prob = cp.Problem(minimize)
+    prob.solve()
+
+    return prob, tominimize, coeffrelativetobigtile, bigtileindexcoeff, constant
 
 @dataclass_dc_init(frozen=True)
 class QPTiffAlignmentResult(DataClassWithDistances):
@@ -235,7 +261,7 @@ class QPTiffAlignmentResult(DataClassWithDistances):
 
     return self.__dc_init__(*args, **kwargs)
 
-  def __post_init__(self, tilesize, *args, **kwargs):
+  def __post_init__(self, tilesize, bigtilesize, *args, **kwargs):
     super().__post_init__(*args, **kwargs)
     object.__setattr__(self, "tilesize", tilesize)
     object.__setattr__(self, "bigtilesize", bigtilesize)
@@ -251,7 +277,7 @@ class QPTiffAlignmentResult(DataClassWithDistances):
     return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
   @property
   def center(self):
-    return self.xvec + self.sz/2
+    return self.xvec + self.tilesize/2
   @property
   def bigtileindex(self):
     return self.center // self.bigtilesize
