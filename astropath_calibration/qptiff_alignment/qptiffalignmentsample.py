@@ -14,8 +14,7 @@ class QPTiffAlignmentSample(ZoomSample):
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
-    self.__deltax = 1400
-    self.__deltay = 2100
+    self.__bigtilesize = 1400, 2100
     self.__tilesize = 100
     self.tilebrightnessthreshold = 45
     self.mintilebrightfraction = 0.2
@@ -193,7 +192,7 @@ class QPTiffAlignmentSample(ZoomSample):
 
   def readalignments(self, *, filename=None):
     if filename is None: filename = self.alignmentcsv
-    results = self.__alignmentresults = readtable(filename, QPTiffAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize})
+    results = self.__alignmentresults = readtable(filename, QPTiffAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize, "bigtilesize": self.bigtilesize})
     return results
 
   @property
@@ -202,7 +201,7 @@ class QPTiffAlignmentSample(ZoomSample):
 
   def plotresult(self, result, **kwargs):
     wsi, qptiff = self.getimages()
-    QPTiffTile(result, wsi, qptiff).showimages(**kwargs)
+    AlignedTile(result, wsi, qptiff).showimages(**kwargs)
 
 @dataclass_dc_init(frozen=True)
 class QPTiffAlignmentResult(DataClassWithDistances):
@@ -218,6 +217,7 @@ class QPTiffAlignmentResult(DataClassWithDistances):
   mi: float
   exit: int
   tilesize: dataclasses.InitVar[units.Distance]
+  bigtilesize: dataclasses.InitVar[units.Distance]
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
 
@@ -238,6 +238,7 @@ class QPTiffAlignmentResult(DataClassWithDistances):
   def __post_init__(self, tilesize, *args, **kwargs):
     super().__post_init__(*args, **kwargs)
     object.__setattr__(self, "tilesize", tilesize)
+    object.__setattr__(self, "bigtilesize", bigtilesize)
 
   @property
   def xvec(self):
@@ -249,10 +250,19 @@ class QPTiffAlignmentResult(DataClassWithDistances):
   def dxvec(self):
     return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
   @property
-  def cxvec(self):
+  def center(self):
     return self.xvec + self.sz/2
+  @property
+  def bigtileindex(self):
+    return self.center // self.bigtilesize
+  @property
+  def bigtilecorner(self):
+    return self.bigtileindex * self.bigtilesize
+  @property
+  def centerrelativetobigtile(self):
+    return self.center - self.bigtilecorner
 
-class QPTiffTile(AlignmentComparison):
+class AlignedTile(AlignmentComparison):
   def __init__(self, result, wsi, qptiff, *args, **kwargs):
     self.__result = result
     self.__wsi = wsi
