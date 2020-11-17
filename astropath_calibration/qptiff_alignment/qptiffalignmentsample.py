@@ -1,4 +1,4 @@
-import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, numpy as np, PIL, skimage.filters, uncertainties as unc
+import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, numpy as np, PIL, skimage.filters, typing, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
@@ -170,6 +170,7 @@ class QPTiffAlignmentSample(ZoomSample):
         pscale=imscale,
         tilesize=tilesize,
         bigtilesize=bigtilesize,
+        imageshandle=self.getimages,
       )
 
       wsitile = wsitile - skimage.filters.gaussian(wsitile, sigma=20)
@@ -203,7 +204,7 @@ class QPTiffAlignmentSample(ZoomSample):
             exit=shiftresult.exit,
           )
         )
-    self.__alignmentresults = results
+    self.__alignmentresults = QPTiffAlignmentResults(results)
     if write_result:
       self.writealignments()
     return results
@@ -217,16 +218,12 @@ class QPTiffAlignmentSample(ZoomSample):
 
   def readalignments(self, *, filename=None):
     if filename is None: filename = self.alignmentcsv
-    results = self.__alignmentresults = readtable(filename, QPTiffAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize, "bigtilesize": self.bigtilesize})
+    results = self.__alignmentresults = QPTiffAlignmentResults(readtable(filename, QPTiffAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize, "bigtilesize": self.bigtilesize, "imageshandle": self.getimages}))
     return results
 
   @property
   def logmodule(self):
     return "annowarp"
-
-  def plotresult(self, result, **kwargs):
-    wsi, qptiff = self.getimages()
-    AlignedTile(result, wsi, qptiff).showimages(**kwargs)
 
   def stitch_cvxpy(self):
     coeffrelativetobigtile = cp.Variable(shape=(2, 2))
@@ -281,7 +278,6 @@ class QPTiffStitchResultBase:
   def residual(self, alignmentresult):
     return alignmentresult.dxvec - self.dxvec(alignmentresult)
 
-
 class QPTiffStitchResultCvxpy(QPTiffStitchResultBase):
   def __init__(self, *, problem, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale, **kwargs):
     onepixel = units.Distance(pixels=1, pscale=imscale)
@@ -300,8 +296,8 @@ class QPTiffStitchResultCvxpy(QPTiffStitchResultBase):
     return units.nominal_values(super().residual(alignmentresult))
 
 
-@dataclass_dc_init(frozen=True)
-class QPTiffAlignmentResult(DataClassWithDistances):
+@dataclass_dc_init
+class QPTiffAlignmentResult(AlignmentComparison, DataClassWithDistances):
   pixelsormicrons = "pixels"
   n: int
   x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
@@ -316,6 +312,7 @@ class QPTiffAlignmentResult(DataClassWithDistances):
   tilesize: dataclasses.InitVar[units.Distance]
   bigtilesize: dataclasses.InitVar[units.Distance]
   exceptions: dataclasses.InitVar[Exception] = None
+  imageshandle: dataclasses.InitVar[typing.Callable[[], typing.Tuple[np.ndarray, np.ndarray]]] = None
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
 
@@ -331,13 +328,15 @@ class QPTiffAlignmentResult(DataClassWithDistances):
       units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
       (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
 
+    self.use_gpu = False
     return self.__dc_init__(*args, **kwargs)
 
-  def __post_init__(self, tilesize, bigtilesize, exception=None, *args, **kwargs):
+  def __post_init__(self, tilesize, bigtilesize, exception=None, imageshandle=None, *args, **kwargs):
     super().__post_init__(*args, **kwargs)
-    object.__setattr__(self, "tilesize", tilesize)
-    object.__setattr__(self, "bigtilesize", bigtilesize)
-    object.__setattr__(self, "exception", exception)
+    self.tilesize = tilesize
+    self.bigtilesize = bigtilesize
+    self.exception = exception
+    self.imageshandle = imageshandle
 
   @property
   def xvec(self):
@@ -361,26 +360,17 @@ class QPTiffAlignmentResult(DataClassWithDistances):
   def centerrelativetobigtile(self):
     return self.center - self.bigtilecorner
 
-class AlignedTile(AlignmentComparison):
-  def __init__(self, result, wsi, qptiff, *args, **kwargs):
-    self.__result = result
-    self.__wsi = wsi
-    self.__qptiff = qptiff
-    self.__imscale = result.pscale
-    self.__tilesize = result.tilesize
-    super().__init__(*args, **kwargs)
-  @property
-  def pscale(self): return self.__imscale
   @property
   def unshifted(self):
-    wsitile = self.__wsi[
-      units.pixels(self.__result.y, pscale=self.__imscale):units.pixels(self.__result.y+self.__tilesize, pscale=self.__imscale),
-      units.pixels(self.__result.x, pscale=self.__imscale):units.pixels(self.__result.x+self.__tilesize, pscale=self.__imscale),
+    wsi, qptiff = self.imageshandle()
+    wsitile = wsi[
+      units.pixels(self.y, pscale=self.pscale):units.pixels(self.y+self.tilesize, pscale=self.pscale),
+      units.pixels(self.x, pscale=self.pscale):units.pixels(self.x+self.tilesize, pscale=self.pscale),
     ]
-    qptifftile = self.__qptiff[
-      units.pixels(self.__result.y, pscale=self.__imscale):units.pixels(self.__result.y+self.__tilesize, pscale=self.__imscale),
-      units.pixels(self.__result.x, pscale=self.__imscale):units.pixels(self.__result.x+self.__tilesize, pscale=self.__imscale),
+    qptifftile = qptiff[
+      units.pixels(self.y, pscale=self.pscale):units.pixels(self.y+self.tilesize, pscale=self.pscale),
+      units.pixels(self.x, pscale=self.pscale):units.pixels(self.x+self.tilesize, pscale=self.pscale),
     ]
     return wsitile, qptifftile
-  @property
-  def dxvec(self): return self.__result.dxvec
+
+QPTiffAlignmentResults = list

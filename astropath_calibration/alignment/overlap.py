@@ -9,13 +9,13 @@ from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 import abc
 
 class AlignmentComparison(abc.ABC):
-  def __init__(self, *args, **kwargs):
-    self.__use_gpu = False
-    super().__init__(*args, **kwargs)
-
   @property
   def use_gpu(self) :
-    return self.__use_gpu
+    try:
+      return self.__use_gpu
+    except AttributeError:
+      self.use_gpu = False
+      return self.use_gpu
   @use_gpu.setter
   def use_gpu(self,use_gpu) :
     self.__use_gpu = use_gpu
