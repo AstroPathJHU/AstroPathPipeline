@@ -144,8 +144,9 @@ class QPTiffAlignmentSample(ZoomSample):
 
     results = []
     ntiles = (m2+1-m1) * (n2+1-n1)
+    self.logger.info("aligning %d tiles", ntiles)
     for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1)), start=1):
-      self.logger.info("aligning tile %d/%d", n, ntiles)
+      self.logger.debug("aligning tile %d/%d", n, ntiles)
       x = tilesize * (ix-1)
       y = tilesize * (iy-1)
       if y+onepixel-qshifty <= 0: continue
@@ -211,7 +212,7 @@ class QPTiffAlignmentSample(ZoomSample):
 
   def writealignments(self, *, filename=None):
     if filename is None: filename = self.alignmentcsv
-    writetable(filename, self.__alignmentresults)
+    writetable(filename, self.__alignmentresults, logger=self.logger)
 
   def readalignments(self, *, filename=None):
     if filename is None: filename = self.alignmentcsv

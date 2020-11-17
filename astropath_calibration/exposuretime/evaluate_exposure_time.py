@@ -164,7 +164,7 @@ def writeResultsForSlide(slide,offsets,ff_file,workingdir,smoothsigma,allow_edge
             logger.info(f'Getting results for overlap {olap.n} ({io} of {len(a.overlaps)}) in {slide.name} layer {li+1}')
             these_results.append(getOverlapResult(slide.name,li+1,olap,exp_time_dicts[li],med_exp_times_by_layer[li],this_layer_offset,filestems_by_rect_n))
         with cd(workingdir) :
-            writetable(output_fn,these_results)
+            writetable(output_fn,these_results,logger=logger)
     logger.info(done_msg)
 
 #################### MAIN SCRIPT ####################

@@ -260,7 +260,7 @@ class DbloadSampleBase(SampleBase):
   def readcsv(self, csv, *args, **kwargs):
     return readtable(self.csv(csv), *args, **kwargs)
   def writecsv(self, csv, *args, **kwargs):
-    return writetable(self.csv(csv), *args, **kwargs)
+    return writetable(self.csv(csv), *args, logger=self.logger, **kwargs)
 
   def getimageinfofromconstants(self):
     tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1})

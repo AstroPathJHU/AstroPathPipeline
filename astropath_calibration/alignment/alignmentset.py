@@ -237,7 +237,7 @@ class AlignmentSet(AlignmentSetBase, ReadRectanglesOverlapsIm3):
 
   def writealignments(self, *, filename=None):
     if filename is None: filename = self.alignmentsfilename
-    writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive)
+    writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive, logger=self.logger)
 
   def readalignments(self, *, filename=None, interactive=True):
     interactive = interactive and self.interactive and filename is None
@@ -305,6 +305,7 @@ class AlignmentSet(AlignmentSetBase, ReadRectanglesOverlapsIm3):
       retry=self.interactive,
       printevery=10000,
       check=check,
+      logger=self.logger,
     )
 
   def readstitchresult(self, *, filenames=None, saveresult=True, interactive=True):

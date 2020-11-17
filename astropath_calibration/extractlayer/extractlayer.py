@@ -29,7 +29,7 @@ class LayerExtractorBase(FlatwSampleBase, collections.abc.Sized):
     (self.root2/self.SlideID).mkdir(parents=True, exist_ok=True)
     nfiles = len(self)
     for i, filename in enumerate(self.fwfiles, start=1):
-      self.logger.info(f"{i:5d}/{nfiles} {filename.name}")
+      self.logger.debug(f"{i:5d}/{nfiles} {filename.name}")
       with memmapcontext(filename, dtype=np.uint16, order="F", shape=self.shape, mode="r") as memmap:
         for layer in layers:
           outfilename = self.root2/self.SlideID/f"{filename.stem}.fw{layer:02d}"

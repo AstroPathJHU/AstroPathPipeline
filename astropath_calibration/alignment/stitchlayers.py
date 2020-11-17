@@ -322,8 +322,8 @@ class LayerStitchResultBase(OverlapCollection):
 
   def writetable(self, *filenames, check=False, **kwargs):
     positionfilename, covariancefilename = filenames
-    writetable(positionfilename, self.layerpositions, **kwargs)
-    writetable(covariancefilename, self.layerpositioncovariances, **kwargs)
+    writetable(positionfilename, self.layerpositions, logger=self.__logger, **kwargs)
+    writetable(covariancefilename, self.layerpositioncovariances, logger=self.__logger, **kwargs)
 
   def applytooverlaps(self):
     for o in self.overlaps:

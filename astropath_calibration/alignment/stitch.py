@@ -494,7 +494,7 @@ class StitchResultBase(RectangleOverlapCollection):
     affinefilename, fieldsfilename, fieldoverlapfilename = filenames
 
     fields = self.fields
-    writetable(fieldsfilename, fields, rowclass=Field, **kwargs)
+    writetable(fieldsfilename, fields, rowclass=Field, logger=self.__logger, **kwargs)
 
     affine = []
     n = 0
@@ -512,9 +512,9 @@ class StitchResultBase(RectangleOverlapCollection):
     for entry1, entry2 in itertools.combinations_with_replacement(affine[:], 2):
       n += 1
       affine.append(AffineCovarianceEntry(n=n, entry1=entry1, entry2=entry2))
-    writetable(affinefilename, affine, rowclass=AffineEntry, **kwargs)
+    writetable(affinefilename, affine, rowclass=AffineEntry, logger=self.__logger, **kwargs)
 
-    writetable(fieldoverlapfilename, self.fieldoverlaps, **kwargs)
+    writetable(fieldoverlapfilename, self.fieldoverlaps, logger=self.__logger, **kwargs)
 
     if check:
       self.__logger.debug("reading back from the file")
