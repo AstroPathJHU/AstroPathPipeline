@@ -250,7 +250,55 @@ class QPTiffAlignmentSample(ZoomSample):
     prob = cp.Problem(minimize)
     prob.solve()
 
-    return prob, tominimize, coeffrelativetobigtile, bigtileindexcoeff, constant
+    return QPTiffStitchResultCvxpy(
+      problem=prob,
+      coeffrelativetobigtile=coeffrelativetobigtile,
+      bigtileindexcoeff=bigtileindexcoeff,
+      constant=constant,
+      imscale=self.imscale,
+    )
+
+class QPTiffStitchResultBase:
+  def __init__(self, coeffrelativetobigtile, bigtileindexcoeff, constant):
+    self.__coeffrelativetobigtile = coeffrelativetobigtile
+    self.__bigtileindexcoeff = bigtileindexcoeff
+    self.__constant = constant
+
+  @property
+  def coeffrelativetobigtile(self): return self.__coeffrelativetobigtile
+  @property
+  def bigtileindexcoeff(self): return self.__bigtileindexcoeff
+  @property
+  def constant(self): return self.__constant
+
+  def dxvec(self, alignmentresult):
+    return (
+      self.coeffrelativetobigtile @ alignmentresult.centerrelativetobigtile
+      + self.bigtileindexcoeff @ alignmentresult.bigtileindex
+      + self.constant
+    )
+
+  def residual(self, alignmentresult):
+    return alignmentresult.dxvec - self.dxvec(alignmentresult)
+
+
+class QPTiffStitchResultCvxpy(QPTiffStitchResultBase):
+  def __init__(self, *, problem, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale, **kwargs):
+    onepixel = units.Distance(pixels=1, pscale=imscale)
+    super().__init__(
+      coeffrelativetobigtile=coeffrelativetobigtile.value,
+      bigtileindexcoeff=bigtileindexcoeff.value * onepixel,
+      constant=constant.value * onepixel,
+      **kwargs,
+    )
+    self.coeffrelativetobigtilevar = coeffrelativetobigtile
+    self.bigtileindexcoeffvar = bigtileindexcoeff
+    self.constantvar = constant
+    self.problem = problem
+
+  def residual(self, alignmentresult):
+    return units.nominal_values(super().residual(alignmentresult))
+
 
 @dataclass_dc_init(frozen=True)
 class QPTiffAlignmentResult(DataClassWithDistances):
