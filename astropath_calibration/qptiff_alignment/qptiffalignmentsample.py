@@ -1,4 +1,4 @@
-import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, typing, uncertainties as unc
+import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
@@ -232,8 +232,7 @@ class QPTiffAlignmentSample(ZoomSample):
 
     tominimize = 0
     onepixel = units.Distance(pixels=1, pscale=self.imscale)
-    for result in self.__alignmentresults:
-      if result.exit: continue
+    for result in self.__alignmentresults.goodconnectedresults:
       residual = (
         units.nominal_values(result.dxvec)/onepixel - (
           coeffrelativetobigtile @ (result.centerrelativetobigtile/onepixel)
@@ -386,7 +385,12 @@ class QPTiffAlignmentResults(list):
     result, = {_.tilesize for _ in self}
     return result
   @methodtools.lru_cache()
-  def adjacencygraph(self, useexitstatus=True):
+  @property
+  def pscale(self):
+    result, = {_.pscale for _ in self}
+    return result
+  @property
+  def adjacencygraph(self):
     g = nx.Graph()
     dct = {tuple(_.tileindex): _ for _ in self}
 
@@ -397,3 +401,36 @@ class QPTiffAlignmentResults(list):
           g.add_edge(tile.n, dct[otheridx].n)
 
     return g
+
+  @property
+  def goodconnectedresults(self):
+    onepixel = units.Distance(pixels=1, pscale=self.pscale)
+    good = self.goodresults
+    g = good.adjacencygraph
+    tiledict = {tile.n: tile for tile in self}
+    keep = {}
+    for island in nx.connected_components(g):
+      if len(island) <= 7:
+        for n in island: keep[n] = False
+        continue
+      tiles = [tiledict[n] for n in island]
+      x = np.array([t.x for t in tiles])
+      y = np.array([t.y for t in tiles])
+      if len(set(x)) == 1 or len(set(y)) == 1:
+        for n in island: keep[n] = False
+        continue
+      X = np.array([x, y]).T / onepixel
+      dx = np.array([t.dx for t in tiles]) / onepixel
+      wx = 1/np.array([t.covxx for t in tiles]) * onepixel**2
+      dy = np.array([t.dy for t in tiles]) / onepixel
+      wy = 1/np.array([t.covyy for t in tiles]) * onepixel**2
+      dxfit = sklearn.linear_model.LinearRegression()
+      dxfit.fit(X, dx, sample_weight=wx)
+      dyfit = sklearn.linear_model.LinearRegression()
+      dyfit.fit(X, dy, sample_weight=wy)
+      for t in tiles:
+        if abs(dxfit.predict(np.array([[t.x, t.y]])/onepixel)*onepixel - t.dx) > 10*onepixel or abs(dyfit.predict(np.array([[t.x, t.y]])/onepixel)*onepixel - t.dy) > 10*onepixel:
+          keep[t.n] = False
+        else:
+          keep[t.n] = True
+    return type(self)(_ for _ in good if keep[_.n])
