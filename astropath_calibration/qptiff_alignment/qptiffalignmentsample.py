@@ -188,6 +188,7 @@ class QPTiffAlignmentSample(ZoomSample):
               units.Distance(pixels=unc.ufloat(0, 9999.), pscale=self.imscale),
             ),
             exit=255,
+            exception=e,
           )
         )
       else:
