@@ -28,8 +28,8 @@ class TestAnnoWarp(TestBaseSaveOutput):
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     s.writealignments(filename=filename)
 
-    rows = readtable(filename, QPTiffAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize})
-    targetrows = readtable(referencefilename, QPTiffAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize})
+    rows = readtable(filename, QPTiffAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize})
+    targetrows = readtable(referencefilename, QPTiffAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
@@ -40,8 +40,8 @@ class TestAnnoWarp(TestBaseSaveOutput):
     testfilename.parent.mkdir(parents=True, exist_ok=True)
     s.readalignments(filename=referencefilename)
     s.writealignments(filename=testfilename)
-    rows = readtable(testfilename, QPTiffAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize})
-    targetrows = readtable(referencefilename, QPTiffAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize})
+    rows = readtable(testfilename, QPTiffAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize})
+    targetrows = readtable(referencefilename, QPTiffAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
     testfilename.unlink()

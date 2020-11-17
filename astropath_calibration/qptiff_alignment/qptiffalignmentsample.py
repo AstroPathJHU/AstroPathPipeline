@@ -1,4 +1,4 @@
-import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, numpy as np, PIL, skimage.filters
+import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, numpy as np, PIL, skimage.filters, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
@@ -106,7 +106,7 @@ class QPTiffAlignmentSample(ZoomSample):
       if keep: self.__images = wsi, qptiff
       return wsi, qptiff
 
-  def align(self, *, write_result=False):
+  def align(self, *, debug=False, write_result=False):
     wsi, qptiff = self.getimages()
     imscale = self.imscale
     tilesize = self.tilesize
@@ -143,7 +143,9 @@ class QPTiffAlignmentSample(ZoomSample):
     m2 = floattoint(mx2//tilesize)+1
 
     results = []
-    for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1))):
+    ntiles = (m2+1-m1) * (n2+1-n1)
+    for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1)), start=1):
+      self.logger.info("aligning tile %d/%d", n, ntiles)
       x = tilesize * (ix-1)
       y = tilesize * (iy-1)
       if y+onepixel-qshifty <= 0: continue
@@ -159,29 +161,46 @@ class QPTiffAlignmentSample(ZoomSample):
         units.pixels(x, pscale=imscale):units.pixels(x+tilesize, pscale=imscale),
       ]
 
+      alignmentresultkwargs = dict(
+        n=n,
+        x=x,
+        y=y,
+        mi=brightfraction,
+        pscale=imscale,
+        tilesize=tilesize,
+        bigtilesize=bigtilesize,
+      )
+
       wsitile = wsitile - skimage.filters.gaussian(wsitile, sigma=20)
       wsitile = skimage.filters.gaussian(wsitile, sigma=3)
       qptifftile = qptifftile - skimage.filters.gaussian(qptifftile, sigma=20)
       qptifftile = skimage.filters.gaussian(qptifftile, sigma=3)
-      shiftresult = computeshift((wsitile, qptifftile), usemaxmovementcut=False)
-
-      results.append(
-        QPTiffAlignmentResult(
-          n=n,
-          x=x,
-          y=y,
-          dxvec=units.correlated_distances(
-            pixels=(shiftresult.dx, shiftresult.dy),
-            pscale=imscale,
-            power=1,
-          ),
-          exit=shiftresult.exit,
-          mi=brightfraction,
-          pscale=imscale,
-          tilesize=tilesize,
-          bigtilesize=bigtilesize,
+      try:
+        shiftresult = computeshift((wsitile, qptifftile), usemaxmovementcut=False)
+      except Exception as e:
+        if debug: raise
+        results.append(
+          QPTiffAlignmentResult(
+            **alignmentresultkwargs,
+            dxvec=(
+              units.Distance(pixels=unc.ufloat(0, 9999.), pscale=self.imscale),
+              units.Distance(pixels=unc.ufloat(0, 9999.), pscale=self.imscale),
+            ),
+            exit=255,
+          )
         )
-      )
+      else:
+        results.append(
+          QPTiffAlignmentResult(
+            **alignmentresultkwargs,
+            dxvec=units.correlated_distances(
+              pixels=(shiftresult.dx, shiftresult.dy),
+              pscale=imscale,
+              power=1,
+            ),
+            exit=shiftresult.exit,
+          )
+        )
     self.__alignmentresults = results
     if write_result:
       self.writealignments()
@@ -246,6 +265,7 @@ class QPTiffAlignmentResult(DataClassWithDistances):
   exit: int
   tilesize: dataclasses.InitVar[units.Distance]
   bigtilesize: dataclasses.InitVar[units.Distance]
+  exceptions: dataclasses.InitVar[Exception] = None
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
 
@@ -263,10 +283,11 @@ class QPTiffAlignmentResult(DataClassWithDistances):
 
     return self.__dc_init__(*args, **kwargs)
 
-  def __post_init__(self, tilesize, bigtilesize, *args, **kwargs):
+  def __post_init__(self, tilesize, bigtilesize, exception=None, *args, **kwargs):
     super().__post_init__(*args, **kwargs)
     object.__setattr__(self, "tilesize", tilesize)
     object.__setattr__(self, "bigtilesize", bigtilesize)
+    object.__setattr__(self, "exception", exception)
 
   @property
   def xvec(self):
