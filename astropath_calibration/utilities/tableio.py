@@ -1,4 +1,4 @@
-import contextlib, csv, dataclasses, logging
+import contextlib, csv, dataclasses
 
 from .misc import dummylogger
 
