@@ -1,4 +1,4 @@
-import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, numpy as np, PIL, skimage.filters, typing, uncertainties as unc
+import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, typing, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
@@ -142,7 +142,7 @@ class QPTiffAlignmentSample(ZoomSample):
     m1 = floattoint(mx1//tilesize)-1
     m2 = floattoint(mx2//tilesize)+1
 
-    results = []
+    results = QPTiffAlignmentResults()
     ntiles = (m2+1-m1) * (n2+1-n1)
     self.logger.info("aligning %d tiles", ntiles)
     for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1)), start=1):
@@ -204,7 +204,7 @@ class QPTiffAlignmentSample(ZoomSample):
             exit=shiftresult.exit,
           )
         )
-    self.__alignmentresults = QPTiffAlignmentResults(results)
+    self.__alignmentresults = results
     if write_result:
       self.writealignments()
     return results
@@ -351,6 +351,9 @@ class QPTiffAlignmentResult(AlignmentComparison, DataClassWithDistances):
   def center(self):
     return self.xvec + self.tilesize/2
   @property
+  def tileindex(self):
+    return self.xvec // self.tilesize
+  @property
   def bigtileindex(self):
     return self.center // self.bigtilesize
   @property
@@ -373,4 +376,24 @@ class QPTiffAlignmentResult(AlignmentComparison, DataClassWithDistances):
     ]
     return wsitile, qptifftile
 
-QPTiffAlignmentResults = list
+class QPTiffAlignmentResults(list):
+  @property
+  def goodresults(self):
+    return type(self)(r for r in self if not r.exit)
+  @methodtools.lru_cache()
+  @property
+  def tilesize(self):
+    result, = {_.tilesize for _ in self}
+    return result
+  @methodtools.lru_cache()
+  def adjacencygraph(self, useexitstatus=True):
+    g = nx.Graph()
+    dct = {tuple(_.tileindex): _ for _ in self}
+
+    for (ix, iy), tile in dct.items():
+      g.add_node(tile.n, alignmentresult=tile, idx=(ix, iy))
+      for otheridx in (ix+1, iy), (ix-1, iy), (ix, iy+1), (ix, iy-1):
+        if otheridx in dct:
+          g.add_edge(tile.n, dct[otheridx].n)
+
+    return g
