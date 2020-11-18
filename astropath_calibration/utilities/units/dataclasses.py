@@ -15,15 +15,20 @@ def __setup(mode):
     raise ValueError(f"Invalid mode {mode}")
   currentmode = mode
 
-def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwargs):
-  if issubclass(dtype, numbers.Integral):
-    secondfunction = functools.partial(floattoint, atol=1e-9)
-  else:
-    secondfunction = lambda x: x
+def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, secondfunction=None, **kwargs):
+  if secondfunction is None:
+    if issubclass(dtype, numbers.Integral):
+      secondfunction = functools.partial(floattoint, atol=1e-9)
+    else:
+      secondfunction = lambda x: x
 
   if not callable(pixelsormicrons):
     _pixelsormicrons = pixelsormicrons
     pixelsormicrons = lambda *args, **kwargs: _pixelsormicrons
+
+  if not callable(power):
+    _power = power
+    power = lambda *args, **kwargs: _power
 
   kwargs["metadata"] = {
     "writefunction": lambda *args, pixelsormicrons, **kwargs: secondfunction({
@@ -34,7 +39,7 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwarg
     "isdistancefield": True,
     "pixelsormicrons": pixelsormicrons,
     "power": power,
-    "writefunctionkwargs": lambda object: {"pscale": object.pscale, "power": power, "pixelsormicrons": pixelsormicrons(object)},
+    "writefunctionkwargs": lambda object: {"pscale": object.pscale, "power": power(object), "pixelsormicrons": pixelsormicrons(object)},
     **metadata,
   }
   return dataclasses.field(**kwargs)
@@ -51,8 +56,17 @@ class DataClassWithDistances(abc.ABC):
   def __post_init__(self, pscale, readingfromfile=False):
     distancefields = self.distancefields()
 
+    powers = {}
+    for field in distancefields:
+      power = field.metadata["power"]
+      if callable(power):
+        power = power(self)
+      if not isinstance(power, numbers.Number):
+        raise TypeError(f"power should be a number or a function, not {type(power)}")
+      powers[field.name] = power
+
     usedistances = False
-    if currentmode == "safe":
+    if currentmode == "safe" and any(powers.values()):
       distances = self._distances_passed_to_init()
       usedistances = {isinstance(_, safe.Distance) for _ in distances if _}
       if len(usedistances) > 1:
@@ -69,20 +83,16 @@ class DataClassWithDistances(abc.ABC):
     if usedistances:
       pscale |= set(_pscale([_ for _ in distances if _]))
     pscale.discard(None)
-    if not pscale:
+    if len(pscale) == 1:
+      pscale, = pscale
+    elif not any(powers.values()):
+      pscale = None
+    elif not pscale:
       raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
-    if len(pscale) > 1:
+    elif len(pscale) > 1:
       raise UnitsError(f"Provided inconsistent pscales {pscale}")
-    pscale, = pscale
-
-    powers = {}
-    for field in distancefields:
-      power = field.metadata["power"]
-      if callable(power):
-        power = power(self)
-      if not isinstance(power, numbers.Number):
-        raise TypeError(f"power should be a number or a function, not {type(power)}")
-      powers[field.name] = power
+    else:
+      assert False, "This can't happen"
 
     object.__setattr__(self, "pscale", pscale)
 
