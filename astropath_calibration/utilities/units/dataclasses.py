@@ -22,10 +22,10 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwarg
     secondfunction = lambda x: x
 
   kwargs["metadata"] = {
-    "writefunction": {
-      "pixels": lambda *args, **kwargs: secondfunction(pixels(*args, **kwargs)),
-      "microns": lambda *args, **kwargs: secondfunction(microns(*args, **kwargs)),
-    }[pixelsormicrons],
+    "writefunction": lambda *args, **kwargs: secondfunction({
+      "pixels": pixels,
+      "microns": microns,
+    }[pixelsormicrons](*args, **kwargs)),
     "readfunction": dtype,
     "isdistancefield": True,
     "pixelsormicrons": pixelsormicrons,
