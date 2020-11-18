@@ -168,9 +168,9 @@ class Polygon:
   @property
   def vertices(self): return self.__vertices
   def __repr__(self):
-    return self.tostring(pscale=self.pscale)
-  def tostring(self, **kwargs):
-    f = {"pixels": units.pixels, "microns": units.microns}[self.pixelsormicrons]
+    return self.tostring(pscale=self.pscale, pixelsormicrons=self.pixelsormicrons)
+  def tostring(self, *, pixelsormicrons, **kwargs):
+    f = {"pixels": units.pixels, "microns": units.microns}[pixelsormicrons]
     vertices = list(self.vertices) + [self.vertices[0]]
     return "POLYGON ((" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in vertices) + "))"
 

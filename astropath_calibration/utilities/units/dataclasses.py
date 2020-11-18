@@ -21,8 +21,12 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwarg
   else:
     secondfunction = lambda x: x
 
+  if not callable(pixelsormicrons):
+    _pixelsormicrons = pixelsormicrons
+    pixelsormicrons = lambda *args, **kwargs: _pixelsormicrons
+
   kwargs["metadata"] = {
-    "writefunction": lambda *args, **kwargs: secondfunction({
+    "writefunction": lambda *args, pixelsormicrons, **kwargs: secondfunction({
       "pixels": pixels,
       "microns": microns,
     }[pixelsormicrons](*args, **kwargs)),
@@ -30,7 +34,7 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, **kwarg
     "isdistancefield": True,
     "pixelsormicrons": pixelsormicrons,
     "power": power,
-    "writefunctionkwargs": lambda object: {"pscale": object.pscale, "power": power},
+    "writefunctionkwargs": lambda object: {"pscale": object.pscale, "power": power, "pixelsormicrons": pixelsormicrons(object)},
     **metadata,
   }
   return dataclasses.field(**kwargs)
@@ -84,4 +88,4 @@ class DataClassWithDistances(abc.ABC):
 
     if readingfromfile:
       for field in distancefields:
-        object.__setattr__(self, field.name, field.type(power=powers[field.name], pscale=pscale, **{field.metadata["pixelsormicrons"]: getattr(self, field.name)}))
+        object.__setattr__(self, field.name, field.type(power=powers[field.name], pscale=pscale, **{field.metadata["pixelsormicrons"](self): getattr(self, field.name)}))
