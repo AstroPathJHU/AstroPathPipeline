@@ -1,6 +1,6 @@
 import more_itertools, pathlib
 
-from astropath_calibration.qptiff_alignment.qptiffalignmentsample import QPTiffAlignmentResult, QPTiffAlignmentSample
+from astropath_calibration.qptiff_alignment.qptiffalignmentsample import QPTiffAlignmentResult, QPTiffAlignmentSample, QPTiffStitchResultEntry
 from astropath_calibration.utilities.tableio import readtable
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
@@ -30,6 +30,16 @@ class TestAnnoWarp(TestBaseSaveOutput):
 
     rows = readtable(filename, QPTiffAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize})
     targetrows = readtable(referencefilename, QPTiffAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize})
+    for row, target in more_itertools.zip_equal(rows, targetrows):
+      assertAlmostEqual(row, target, rtol=1e-5)
+
+    result = s.stitch_cvxpy()
+    filename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.stitchcsv.name
+    referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.stitchcsv.name
+    s.writestitchresult(filename=filename)
+
+    rows = readtable(filename, QPTiffStitchResultEntry, extrakwargs={"pscale": s.pscale})
+    targetrows = readtable(referencefilename, QPTiffStitchResultEntry, extrakwargs={"pscale": s.pscale})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 

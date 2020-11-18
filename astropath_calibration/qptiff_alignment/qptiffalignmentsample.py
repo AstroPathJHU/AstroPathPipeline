@@ -246,7 +246,7 @@ class QPTiffAlignmentSample(ZoomSample):
     prob = cp.Problem(minimize)
     prob.solve()
 
-    return QPTiffStitchResultCvxpy(
+    self.__stitchresult = QPTiffStitchResultCvxpy(
       problem=prob,
       coeffrelativetobigtile=coeffrelativetobigtile,
       bigtileindexcoeff=bigtileindexcoeff,
@@ -254,11 +254,21 @@ class QPTiffAlignmentSample(ZoomSample):
       imscale=self.imscale,
     )
 
+    return self.__stitchresult
+
+  @property
+  def stitchcsv(self): return self.csv(f"warp-{self.__tilepixels}-stitch")
+
+  def writestitchresult(self, *, filename=None):
+    if filename is None: filename = self.stitchcsv
+    self.__stitchresult.writestitchresult(filename=filename, logger=self.logger)
+
 class QPTiffStitchResultBase:
-  def __init__(self, coeffrelativetobigtile, bigtileindexcoeff, constant):
+  def __init__(self, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale):
     self.__coeffrelativetobigtile = coeffrelativetobigtile
     self.__bigtileindexcoeff = bigtileindexcoeff
     self.__constant = constant
+    self.imscale = imscale
 
   @property
   def coeffrelativetobigtile(self): return self.__coeffrelativetobigtile
@@ -277,6 +287,74 @@ class QPTiffStitchResultBase:
   def residual(self, alignmentresult):
     return alignmentresult.dxvec - self.dxvec(alignmentresult)
 
+  def writestitchresult(self, *, filename, **kwargs):
+    entries = (
+      QPTiffStitchResultEntry(
+        n=1,
+        value=self.coeffrelativetobigtile[0,0],
+        description="coefficient of delta x as a function of x within the tile",
+        pscale=self.imscale,
+      ),
+      QPTiffStitchResultEntry(
+        n=2,
+        value=self.coeffrelativetobigtile[0,1],
+        description="coefficient of delta x as a function of y within the tile",
+        pscale=self.imscale,
+      ),
+      QPTiffStitchResultEntry(
+        n=3,
+        value=self.coeffrelativetobigtile[1,0],
+        description="coefficient of delta y as a function of x within the tile",
+        pscale=self.imscale,
+      ),
+      QPTiffStitchResultEntry(
+        n=4,
+        value=self.coeffrelativetobigtile[1,1],
+        description="coefficient of delta y as a function of x within the tile",
+        pscale=self.imscale,
+      ),
+
+      QPTiffStitchResultEntry(
+        n=5,
+        value=self.bigtileindexcoeff[0,0],
+        description="coefficient of delta x as a function of tile index in x",
+        pscale=self.imscale,
+      ),
+      QPTiffStitchResultEntry(
+        n=6,
+        value=self.bigtileindexcoeff[0,1],
+        description="coefficient of delta x as a function of tile index in y",
+        pscale=self.imscale,
+      ),
+      QPTiffStitchResultEntry(
+        n=7,
+        value=self.bigtileindexcoeff[1,0],
+        description="coefficient of delta y as a function of tile index in x",
+        pscale=self.imscale,
+      ),
+      QPTiffStitchResultEntry(
+        n=8,
+        value=self.bigtileindexcoeff[1,1],
+        description="coefficient of delta y as a function of tile index in x",
+        pscale=self.imscale,
+      ),
+
+      QPTiffStitchResultEntry(
+        n=9,
+        value=self.constant[0],
+        description="constant piece in delta x",
+        pscale=self.imscale,
+      ),
+      QPTiffStitchResultEntry(
+        n=10,
+        value=self.constant[1],
+        description="constant piece in delta y",
+        pscale=self.imscale,
+      ),
+    )
+
+    writetable(filename, entries, **kwargs)
+
 class QPTiffStitchResultCvxpy(QPTiffStitchResultBase):
   def __init__(self, *, problem, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale, **kwargs):
     onepixel = units.Distance(pixels=1, pscale=imscale)
@@ -284,6 +362,7 @@ class QPTiffStitchResultCvxpy(QPTiffStitchResultBase):
       coeffrelativetobigtile=coeffrelativetobigtile.value,
       bigtileindexcoeff=bigtileindexcoeff.value * onepixel,
       constant=constant.value * onepixel,
+      imscale=imscale,
       **kwargs,
     )
     self.coeffrelativetobigtilevar = coeffrelativetobigtile
@@ -294,6 +373,27 @@ class QPTiffStitchResultCvxpy(QPTiffStitchResultBase):
   def residual(self, alignmentresult):
     return units.nominal_values(super().residual(alignmentresult))
 
+@dataclasses.dataclass
+class QPTiffStitchResultEntry(DataClassWithDistances):
+  pixelsormicrons = "pixels"
+  def __powerfordescription(self):
+    return {
+      "coefficient of delta x as a function of x within the tile": 0,
+      "coefficient of delta x as a function of y within the tile": 0,
+      "coefficient of delta y as a function of x within the tile": 0,
+      "coefficient of delta y as a function of y within the tile": 0,
+      "coefficient of delta x as a function of tile index in x": 1,
+      "coefficient of delta x as a function of tile index in y": 1,
+      "coefficient of delta y as a function of tile index in x": 1,
+      "coefficient of delta y as a function of tile index in y": 1,
+      "constant piece in delta x": 1,
+      "constant piece in delta y": 1,
+    }[self.description]
+  n: int
+  value: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=__powerfordescription)
+  description: str
+  pscale: dataclasses.InitVar[float] = None
+  readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclass_dc_init
 class QPTiffAlignmentResult(AlignmentComparison, DataClassWithDistances):

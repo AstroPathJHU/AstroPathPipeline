@@ -202,6 +202,7 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
 @np.vectorize
 def pixels(distance, *, pscale=None, power=1):
   if not distance: return 0.
+  if isinstance(pscale, Distance): pscale = asdimensionless(pscale)
   if None is not pscale != _pscale(distance)[()] is not None:
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
   if None is not power != _power(distance)[()] is not None:
