@@ -52,8 +52,8 @@ class QPTiffCsv(DataClassWithDistances):
 
 @dataclasses.dataclass
 class Constant(DataClassWithDistances):
-  @np.vectorize
   def __intorfloat(string):
+    if isinstance(string, np.ndarray): string = string[()]
     if isinstance(string, str):
       try: return int(string)
       except ValueError: return float(string)
@@ -64,7 +64,7 @@ class Constant(DataClassWithDistances):
       assert False, (type(string), string)
 
   name: str
-  value: units.Distance = distancefield(secondfunction=__intorfloat, power=lambda self: 1 if self.unit in ("pixels", "microns") else 0, pixelsormicrons=lambda self: self.unit if self.unit in ("pixels", "microns") else "pixels")
+  value: units.Distance = distancefield(secondfunction=__intorfloat, dtype=__intorfloat, power=lambda self: 1 if self.unit in ("pixels", "microns") else 0, pixelsormicrons=lambda self: self.unit if self.unit in ("pixels", "microns") else "pixels")
   unit: str
   description: str
   pscale: dataclasses.InitVar[float] = None

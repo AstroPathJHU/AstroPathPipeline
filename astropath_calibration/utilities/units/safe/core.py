@@ -18,8 +18,8 @@ class Distance:
     if isinstance(pixels, Distance):
       power += pixels._power
       pixels = pixels._pixels
-    if isinstance(pscale, Distance): pscale = float(pscale)
-    if isinstance(power, Distance): power = float(power)
+    if isinstance(pscale, Distance): pscale = asdimensionless(pscale)
+    if isinstance(power, Distance): power = asdimensionless(power)
 
     if power is None and (pixels or microns or centimeters):
       raise ValueError("Can't set power=None")
