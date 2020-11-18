@@ -1,5 +1,6 @@
 import dataclasses, datetime, numbers, numpy as np, re
 from ..utilities import units
+from ..utilities.misc import floattoint
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
