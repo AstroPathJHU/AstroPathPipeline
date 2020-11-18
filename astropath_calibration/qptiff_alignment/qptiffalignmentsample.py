@@ -10,15 +10,15 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 class QPTiffAlignmentSample(ZoomSample):
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, bigtilepixels=(1400, 2100), tilepixels=100, tilebrightnessthreshold=45, mintilebrightfraction=0.2, mintilerange=45, **kwargs):
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
-    self.__bigtilesize = np.array([1400, 2100])
-    self.__tilesize = 100
-    self.tilebrightnessthreshold = 45
-    self.mintilebrightfraction = 0.2
-    self.mintilerange = 45
+    self.__bigtilepixels = np.array(bigtilepixels)
+    self.__tilepixels = tilepixels
+    self.tilebrightnessthreshold = tilebrightnessthreshold
+    self.mintilebrightfraction = mintilebrightfraction
+    self.mintilerange = mintilerange
 
     self.__nentered = 0
     self.__using_images_context = self.enter_context(contextlib.ExitStack())
@@ -43,9 +43,9 @@ class QPTiffAlignmentSample(ZoomSample):
         self.__using_images_context.close()
 
   @property
-  def tilesize(self): return units.Distance(pixels=self.__tilesize, pscale=self.imscale)
+  def tilesize(self): return units.Distance(pixels=self.__tilepixels, pscale=self.imscale)
   @property
-  def bigtilesize(self): return units.distances(pixels=self.__bigtilesize, pscale=self.imscale)
+  def bigtilesize(self): return units.distances(pixels=self.__bigtilepixels, pscale=self.imscale)
   @property
   def deltax(self): return units.Distance(pixels=self.__deltax, pscale=self.imscale)
   @property
@@ -210,7 +210,7 @@ class QPTiffAlignmentSample(ZoomSample):
     return results
 
   @property
-  def alignmentcsv(self): return self.csv(f"warp-{self.__tilesize}")
+  def alignmentcsv(self): return self.csv(f"warp-{self.__tilepixels}")
 
   def writealignments(self, *, filename=None):
     if filename is None: filename = self.alignmentcsv
