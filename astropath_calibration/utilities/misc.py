@@ -1,5 +1,4 @@
-import matplotlib.pyplot as plt, numpy as np, uncertainties as unc
-import contextlib, dataclasses, fractions, logging, os, re, scipy.stats, tifffile, cv2
+import collections, contextlib, cv2, dataclasses, fractions, logging, matplotlib.pyplot as plt, numpy as np, os, PIL.Image, re, scipy.stats, tifffile, uncertainties as unc
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -219,15 +218,24 @@ def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,fl
     warping_group.add_argument('--skip_warping', action='store_true',
                                help='Add this flag to entirely skip warping corrections')
 
-@contextlib.contextmanager
-def PILmaximagepixels(pixels):
-  import PIL.Image
-  bkp = PIL.Image.MAX_IMAGE_PIXELS
-  try:
-    PIL.Image.MAX_IMAGE_PIXELS = pixels
-    yield
-  finally:
-    PIL.Image.MAX_IMAGE_PIXELS = bkp
+class PILmaximagepixels(contextlib.AbstractContextManager):
+  __maximagepixelscounter = collections.Counter()
+  __defaultmaximagepixels = PIL.Image.MAX_IMAGE_PIXELS
+  def __init__(self, maximagepixels):
+    self.__maximagepixels = maximagepixels
+  def __enter__(self):
+    self.__maximagepixelscounter[self.__maximagepixels] += 1
+    self.__updatemaximagepixels()
+  def __exit__(self, *exc):
+    self.__maximagepixelscounter[self.__maximagepixels] -= 1
+    self.__updatemaximagepixels()
+  @classmethod
+  def __updatemaximagepixels(cls):
+    elements = set(cls.__maximagepixelscounter.elements()) | {cls.__defaultmaximagepixels}
+    if None in elements:
+      PIL.Image.MAX_IMAGE_PIXELS = None
+    else:
+      PIL.Image.MAX_IMAGE_PIXELS = max(elements)
 
 @contextlib.contextmanager
 def memmapcontext(filename, *args, **kwargs):
