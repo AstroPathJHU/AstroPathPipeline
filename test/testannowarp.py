@@ -41,7 +41,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     rows = readtable(filename, QPTiffStitchResultEntry, extrakwargs={"pscale": s.pscale})
     targetrows = readtable(referencefilename, QPTiffStitchResultEntry, extrakwargs={"pscale": s.pscale})
     for row, target in more_itertools.zip_equal(rows, targetrows):
-      assertAlmostEqual(row, target, rtol=1e-5)
+      assertAlmostEqual(row, target, rtol=1e-4)
 
   def testReadingWritingAlignments(self, SlideID="M206"):
     s = QPTiffAlignmentSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"annowarp_test_for_jenkins")
