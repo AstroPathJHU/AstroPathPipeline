@@ -69,10 +69,19 @@ class DataClassWithDistances(abc.ABC):
       raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
     if len(pscale) > 1:
       raise UnitsError(f"Provided inconsistent pscales {pscale}")
-    pscale = pscale.pop()
+    pscale, = pscale
+
+    powers = {}
+    for field in distancefields:
+      power = field.metadata["power"]
+      if callable(power):
+        power = power(self)
+      if not isinstance(power, numbers.Number):
+        raise TypeError(f"power should be a number or a function, not {type(power)}")
+      powers[field.name] = power
 
     object.__setattr__(self, "pscale", pscale)
 
     if readingfromfile:
       for field in distancefields:
-        object.__setattr__(self, field.name, field.type(power=field.metadata["power"], pscale=pscale, **{field.metadata["pixelsormicrons"]: getattr(self, field.name)}))
+        object.__setattr__(self, field.name, field.type(power=powers[field.name], pscale=pscale, **{field.metadata["pixelsormicrons"]: getattr(self, field.name)}))
