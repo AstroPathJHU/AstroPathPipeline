@@ -33,7 +33,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
-    result = s.stitch_cvxpy()
+    s.stitch_cvxpy()
     filename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.stitchcsv.name
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.stitchcsv.name
     s.writestitchresult(filename=filename)
