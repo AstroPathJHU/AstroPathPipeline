@@ -234,8 +234,8 @@ def __stitchlayerscvxpy(*, overlaps, logger=dummylogger):
     x1 = layerx[o.layer1]
     x2 = layerx[o.layer2]
     twonll += cp.quad_form(
-      x1 - x2 + units.pixels(-units.nominal_values(o.result.dxvec), pscale=pscale, power=1),
-      units.pixels(units.np.linalg.inv(o.result.covariance), pscale=pscale, power=-2),
+      x1 - x2 + (-units.nominal_values(o.result.dxvec) / onepixel),
+      units.np.linalg.inv(o.result.covariance) * onepixel**2,
     )
 
   minimize = cp.Minimize(twonll)
@@ -338,8 +338,9 @@ class LayerStitchResult(LayerStitchResultBase):
 
 class LayerStitchResultCvxpy(LayerStitchResultBase):
   def __init__(self, *, x, problem, pscale, **kwargs):
+    onepixel = units.onepixel(pscale=pscale)
     super().__init__(
-      x=units.distances(pixels=x.value, pscale=pscale),
+      x=x.value * onepixel,
       **kwargs
     )
     self.problem = problem
