@@ -322,16 +322,16 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
 
   if not drawfourier:
     plt.errorbar(
-      x=xwitherror / onepixel,
-      y=ywitherror / onepixel,
-      yerr=yerrwitherror / onepixel,
+      x=(xwitherror / onepixel).astype(float),
+      y=(ywitherror / onepixel).astype(float),
+      yerr=(yerrwitherror / onepixel).astype(float),
       fmt='o',
       color='b',
     )
     if xnoerror.size:
       plt.scatter(
-        x=xnoerror / onepixel,
-        y=ynoerror / onepixel,
+        x=(xnoerror / onepixel).astype(float),
+        y=(ynoerror / onepixel).astype(float),
         facecolors='none',
         edgecolors='b',
       )
