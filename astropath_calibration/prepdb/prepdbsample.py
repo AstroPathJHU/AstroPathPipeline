@@ -69,8 +69,8 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
           if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
           regionvertices = []
           for k, vertex in enumerate(vertices, start=1):
-            x = units.Distance(microns=int(vertex.get_xml_attr("X")), pscale=self.pscale)
-            y = units.Distance(microns=int(vertex.get_xml_attr("Y")), pscale=self.pscale)
+            x = int(vertex.get_xml_attr("X")) * self.onemicron,
+            y = int(vertex.get_xml_attr("Y")) * self.onemicron,
             regionvertices.append(
               Vertex(
                 regionid=regionid,
@@ -254,7 +254,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
       ),
       Constant(
         name='nclip',
-        value=units.Distance(pixels=self.nclip, pscale=self.pscale),
+        value=self.nclip * self.onepixel,
         unit='pixels',
         description='pixels to clip off the edge after warping',
         pscale=self.pscale,
