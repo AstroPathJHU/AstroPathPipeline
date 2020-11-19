@@ -71,25 +71,27 @@ class AlignmentOverlap(Overlap):
     overlapy1 = max(image1y1, image2y1)
     overlapy2 = min(image1y2, image2y2)
 
-    offsetimage1x1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx1 - image1x1, pscale=self.pscale)))
-    offsetimage1x2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx2 - image1x1, pscale=self.pscale)))
-    offsetimage1y1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy1 - image1y1, pscale=self.pscale)))
-    offsetimage1y2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy2 - image1y1, pscale=self.pscale)))
+    onepixel = self.onepixel
 
-    offsetimage2x1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx1 - image2x1, pscale=self.pscale)))
-    offsetimage2x2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx2 - image2x1, pscale=self.pscale)))
-    offsetimage2y1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy1 - image2y1, pscale=self.pscale)))
-    offsetimage2y2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy2 - image2y1, pscale=self.pscale)))
+    offsetimage1x1 = (overlapx1 - image1x1) // onepixel * onepixel
+    offsetimage1x2 = (overlapx2 - image1x1) // onepixel * onepixel
+    offsetimage1y1 = (overlapy1 - image1y1) // onepixel * onepixel
+    offsetimage1y2 = (overlapy2 - image1y1) // onepixel * onepixel
 
-    cutimage1x1 = floattoint(units.pixels(offsetimage1x1 + self.nclip, pscale=self.pscale))
-    cutimage1x2 = floattoint(units.pixels(offsetimage1x2 - self.nclip, pscale=self.pscale))
-    cutimage1y1 = floattoint(units.pixels(offsetimage1y1 + self.nclip, pscale=self.pscale))
-    cutimage1y2 = floattoint(units.pixels(offsetimage1y2 - self.nclip, pscale=self.pscale))
+    offsetimage2x1 = (overlapx1 - image2x1) // onepixel * onepixel
+    offsetimage2x2 = (overlapx2 - image2x1) // onepixel * onepixel
+    offsetimage2y1 = (overlapy1 - image2y1) // onepixel * onepixel
+    offsetimage2y2 = (overlapy2 - image2y1) // onepixel * onepixel
 
-    cutimage2x1 = floattoint(units.pixels(offsetimage2x1 + self.nclip, pscale=self.pscale))
-    cutimage2x2 = floattoint(units.pixels(offsetimage2x2 - self.nclip, pscale=self.pscale))
-    cutimage2y1 = floattoint(units.pixels(offsetimage2y1 + self.nclip, pscale=self.pscale))
-    cutimage2y2 = floattoint(units.pixels(offsetimage2y2 - self.nclip, pscale=self.pscale))
+    cutimage1x1 = floattoint((offsetimage1x1 + self.nclip) / onepixel)
+    cutimage1x2 = floattoint((offsetimage1x2 - self.nclip) / onepixel)
+    cutimage1y1 = floattoint((offsetimage1y1 + self.nclip) / onepixel)
+    cutimage1y2 = floattoint((offsetimage1y2 - self.nclip) / onepixel)
+
+    cutimage2x1 = floattoint((offsetimage2x1 + self.nclip) / onepixel)
+    cutimage2x2 = floattoint((offsetimage2x2 - self.nclip) / onepixel)
+    cutimage2y1 = floattoint((offsetimage2y1 + self.nclip) / onepixel)
+    cutimage2y2 = floattoint((offsetimage2y2 - self.nclip) / onepixel)
 
     #make sure that even with floattoint() they're the same size
     deltax = min(cutimage1x2 - cutimage1x1, cutimage2x2 - cutimage2x1)
