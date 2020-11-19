@@ -219,7 +219,7 @@ class AlignmentOverlap(Overlap):
 
   @property
   def shifted(self):
-    return shiftimg(self.cutimages, *units.nominal_values(units.pixels(self.result.dxvec)),use_gpu=self.use_gpu)
+    return shiftimg(self.cutimages, *units.nominal_values(self.result.dxvec/self.onepixel),use_gpu=self.use_gpu)
 
   def __shiftclip(self, dxvec):
     """
@@ -227,7 +227,7 @@ class AlignmentOverlap(Overlap):
     and save the result. Compute the mse and the
     illumination correction
     """
-    b1, b2 = shiftimg(self.cutimages, *units.nominal_values(units.pixels(dxvec)),use_gpu=self.use_gpu)
+    b1, b2 = shiftimg(self.cutimages, *units.nominal_values(dxvec),use_gpu=self.use_gpu)
 
     mse1 = mse(b1)
     mse2 = mse(b2)
