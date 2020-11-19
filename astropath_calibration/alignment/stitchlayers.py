@@ -7,7 +7,7 @@ from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 from .overlap import LayerAlignmentResult
 
-class ComplementaryOverlapPair:
+class ComplementaryOverlapPair(units.ThingWithPscale):
   def __init__(self, o1, o2):
     self.os = (o1, o2)
   @property
