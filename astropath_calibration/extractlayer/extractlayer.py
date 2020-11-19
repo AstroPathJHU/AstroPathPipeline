@@ -1,6 +1,5 @@
 import abc, argparse, collections, methodtools, numpy as np, pathlib, subprocess, tempfile
 from ..baseclasses.sample import FlatwSampleBase
-from ..utilities import units
 from ..utilities.misc import floattoint, memmapcontext
 
 here = pathlib.Path(__file__).parent
@@ -21,7 +20,7 @@ class LayerExtractorBase(FlatwSampleBase, collections.abc.Sized):
 
   @property
   def shape(self):
-    return (self.__getnlayers(), floattoint(self.fwidth/onepixel), floattoint(self.fheight/onepixel))
+    return (self.__getnlayers(), floattoint(self.fwidth/self.onepixel), floattoint(self.fheight/self.onepixel))
 
   def extractlayers(self, *, layers={1}, alreadyexistsstrategy="error"):
     (self.root2/self.SlideID).mkdir(parents=True, exist_ok=True)

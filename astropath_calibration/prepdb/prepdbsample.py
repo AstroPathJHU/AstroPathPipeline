@@ -69,8 +69,8 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
           if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
           regionvertices = []
           for k, vertex in enumerate(vertices, start=1):
-            x = int(vertex.get_xml_attr("X")) * self.onemicron,
-            y = int(vertex.get_xml_attr("Y")) * self.onemicron,
+            x = int(vertex.get_xml_attr("X")) * self.onemicron
+            y = int(vertex.get_xml_attr("Y")) * self.onemicron
             regionvertices.append(
               Vertex(
                 regionid=regionid,

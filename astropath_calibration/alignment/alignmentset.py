@@ -4,7 +4,6 @@ import contextlib, cv2, methodtools, numpy as np, traceback
 
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.sample import FlatwSampleBase, ReadRectanglesOverlapsIm3, ReadRectanglesOverlapsIm3FromXML
-from ..utilities import units
 from ..utilities.tableio import readtable, writetable
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
