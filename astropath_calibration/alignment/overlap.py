@@ -202,11 +202,11 @@ class AlignmentOverlap(Overlap):
   def __computeshift(self, **computeshiftkwargs):
     minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
     return {
-      "dxvec": units.correlated_distances(
+      "dxvec": np.array(units.correlated_distances(
         pixels=(minimizeresult.dx, minimizeresult.dy),
         pscale=self.pscale,
         power=1,
-      ),
+      )),
       "exit": minimizeresult.exit,
     }
 
@@ -227,7 +227,7 @@ class AlignmentOverlap(Overlap):
     and save the result. Compute the mse and the
     illumination correction
     """
-    b1, b2 = shiftimg(self.cutimages, *units.nominal_values(dxvec),use_gpu=self.use_gpu)
+    b1, b2 = shiftimg(self.cutimages, *units.nominal_values(dxvec / self.onepixel),use_gpu=self.use_gpu)
 
     mse1 = mse(b1)
     mse2 = mse(b2)

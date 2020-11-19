@@ -61,7 +61,7 @@ class SampleDef:
   def __bool__(self):
     return bool(self.isGood)
 
-class SampleBase(contextlib.ExitStack):
+class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
   def __init__(self, root, samp, *, uselogfiles=False, logthreshold=logging.DEBUG, xmlfolders=None, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)

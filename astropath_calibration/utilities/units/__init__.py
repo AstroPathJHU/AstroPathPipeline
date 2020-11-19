@@ -45,7 +45,7 @@ def setup_context(mode):
     setup(bkp)
 
 __all__ = [
-  "correlated_distances", "Distance", "distances", "OnePixel", "UnitsError",
+  "correlated_distances", "Distance", "distances", "ThingWithPscale", "UnitsError",
   "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs",
   "dataclasses", "drawing", "fft", "linalg", "testing",
   "setup", "setup_context",
