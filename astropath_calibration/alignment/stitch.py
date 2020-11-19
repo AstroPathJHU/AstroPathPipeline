@@ -474,7 +474,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       result.append(
         Field(
           rectangle=rectangle,
-          ixvec=floattoint(np.round(rectangle.xvec / onepixel)) * onepixel,
+          ixvec=floattoint(np.round((rectangle.xvec / onepixel).astype(float))) * onepixel,
           gc=0 if len(island) == 1 else gc,
           pxvec=self.x(rectangle) - self.origin,
           gxvec=(gx, gy),
