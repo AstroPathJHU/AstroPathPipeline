@@ -77,7 +77,7 @@ def stitchingisotropy(alignmentset, cornerfractions=np.linspace(0, 1, 26), showp
         if tag == "all":
           y = sum(np.array(RMS[tag])**2 for tag in (1, 2, 3, 4))**.5
         else:
-          y = RMS[tag]
+          y = np.array(RMS[tag])
         plt.scatter(cornerfractions, y/alignmentset.onepixel)
 
       plotstyling(fig, ax, thing)

@@ -110,14 +110,14 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
       raise ValueError("Have to provide pixelsormicrons for a scatterplot")
     divideby = {"pixels": alignmentset.onepixel, "microns": alignmentset.onemicron}[pixelsormicrons]
     kwargs = dict(
-      x=float(units.nominal_values(vectors[:,0]) / divideby),
-      y=float(units.nominal_values(vectors[:,1]) / divideby),
+      x=(units.nominal_values(vectors[:,0]) / divideby).astype(float),
+      y=(units.nominal_values(vectors[:,1]) / divideby).astype(float),
     )
     if errorbars:
       plt.errorbar(
         **kwargs,
-        xerr=float(units.std_devs(vectors[:,0]) / divideby),
-        yerr=float(units.std_devs(vectors[:,1]) / divideby),
+        xerr=(units.std_devs(vectors[:,0]) / divideby).astype(float),
+        yerr=(units.std_devs(vectors[:,1]) / divideby).astype(float),
         fmt='o',
       )
     else:
@@ -231,13 +231,13 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
   shape = tuple(reversed(floattoint(np.max([(f.xvec - x0vec) / deltaxvec for f in fields], axis=0), atol=1e-9) + 1))
   xyarray = np.full(shape=(2,)+shape, fill_value=-999.*onepixel)
 
-  extent = x0vec[0], shape[1] * deltaxvec[0] + x0vec[0], shape[0] * deltaxvec[1] + x0vec[1], x0vec[1]
+  extent = np.array([x0vec[0], shape[1] * deltaxvec[0] + x0vec[0], shape[0] * deltaxvec[1] + x0vec[1], x0vec[1]])
 
   for f in fields:
     idx = (slice(None),) + tuple(reversed(floattoint((f.xvec - x0vec) / deltaxvec, atol=1e-9)))
     xyarray[idx] = units.nominal_values(f.pxvec - alignmentset.T@(f.xvec-alignmentset.position))
 
-  xyarraypixels = xyarray / onepixel
+  xyarraypixels = (xyarray / onepixel).astype(float)
 
   vmin = min(np.min(xyarraypixels[xyarraypixels != -999]), -np.max(xyarraypixels[xyarraypixels != -999]))
   vmax = -vmin
@@ -251,7 +251,7 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
   for colorplot, xory, saveas in zip(xycolor, "xy", (saveasx, saveasy)):
     fig = plt.figure(**figurekwargs)
     ax = plt.gca()
-    ax.imshow(colorplot, extent=extent / onepixel)
+    ax.imshow(colorplot, extent=(extent / onepixel).astype(float))
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = plt.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
