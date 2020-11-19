@@ -9,7 +9,7 @@ from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
-class QPTiffAlignmentSample(ZoomSample):
+class AnnoWarpSample(ZoomSample):
   def __init__(self, *args, bigtilepixels=(1400, 2100), tilepixels=100, tilebrightnessthreshold=45, mintilebrightfraction=0.2, mintilerange=45, **kwargs):
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
@@ -142,7 +142,7 @@ class QPTiffAlignmentSample(ZoomSample):
     m1 = floattoint(mx1//tilesize)-1
     m2 = floattoint(mx2//tilesize)+1
 
-    results = QPTiffAlignmentResults()
+    results = AnnoWarpAlignmentResults()
     ntiles = (m2+1-m1) * (n2+1-n1)
     self.logger.info("aligning %d tiles", ntiles)
     for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1)), start=1):
@@ -182,7 +182,7 @@ class QPTiffAlignmentSample(ZoomSample):
       except Exception as e:
         if debug: raise
         results.append(
-          QPTiffAlignmentResult(
+          AnnoWarpAlignmentResult(
             **alignmentresultkwargs,
             dxvec=(
               units.Distance(pixels=unc.ufloat(0, 9999.), pscale=self.imscale),
@@ -194,7 +194,7 @@ class QPTiffAlignmentSample(ZoomSample):
         )
       else:
         results.append(
-          QPTiffAlignmentResult(
+          AnnoWarpAlignmentResult(
             **alignmentresultkwargs,
             dxvec=units.correlated_distances(
               pixels=(shiftresult.dx, shiftresult.dy),
@@ -218,7 +218,7 @@ class QPTiffAlignmentSample(ZoomSample):
 
   def readalignments(self, *, filename=None):
     if filename is None: filename = self.alignmentcsv
-    results = self.__alignmentresults = QPTiffAlignmentResults(readtable(filename, QPTiffAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize, "bigtilesize": self.bigtilesize, "imageshandle": self.getimages}))
+    results = self.__alignmentresults = AnnoWarpAlignmentResults(readtable(filename, AnnoWarpAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize, "bigtilesize": self.bigtilesize, "imageshandle": self.getimages}))
     return results
 
   @property
@@ -246,7 +246,7 @@ class QPTiffAlignmentSample(ZoomSample):
     prob = cp.Problem(minimize)
     prob.solve()
 
-    self.__stitchresult = QPTiffStitchResultCvxpy(
+    self.__stitchresult = AnnoWarpStitchResultCvxpy(
       problem=prob,
       coeffrelativetobigtile=coeffrelativetobigtile,
       bigtileindexcoeff=bigtileindexcoeff,
@@ -263,7 +263,7 @@ class QPTiffAlignmentSample(ZoomSample):
     if filename is None: filename = self.stitchcsv
     self.__stitchresult.writestitchresult(filename=filename, logger=self.logger)
 
-class QPTiffStitchResultBase:
+class AnnoWarpStitchResultBase:
   def __init__(self, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale):
     self.__coeffrelativetobigtile = coeffrelativetobigtile
     self.__bigtileindexcoeff = bigtileindexcoeff
@@ -289,63 +289,63 @@ class QPTiffStitchResultBase:
 
   def writestitchresult(self, *, filename, **kwargs):
     entries = (
-      QPTiffStitchResultEntry(
+      AnnoWarpStitchResultEntry(
         n=1,
         value=self.coeffrelativetobigtile[0,0],
         description="coefficient of delta x as a function of x within the tile",
         pscale=self.imscale,
       ),
-      QPTiffStitchResultEntry(
+      AnnoWarpStitchResultEntry(
         n=2,
         value=self.coeffrelativetobigtile[0,1],
         description="coefficient of delta x as a function of y within the tile",
         pscale=self.imscale,
       ),
-      QPTiffStitchResultEntry(
+      AnnoWarpStitchResultEntry(
         n=3,
         value=self.coeffrelativetobigtile[1,0],
         description="coefficient of delta y as a function of x within the tile",
         pscale=self.imscale,
       ),
-      QPTiffStitchResultEntry(
+      AnnoWarpStitchResultEntry(
         n=4,
         value=self.coeffrelativetobigtile[1,1],
         description="coefficient of delta y as a function of x within the tile",
         pscale=self.imscale,
       ),
 
-      QPTiffStitchResultEntry(
+      AnnoWarpStitchResultEntry(
         n=5,
         value=self.bigtileindexcoeff[0,0],
         description="coefficient of delta x as a function of tile index in x",
         pscale=self.imscale,
       ),
-      QPTiffStitchResultEntry(
+      AnnoWarpStitchResultEntry(
         n=6,
         value=self.bigtileindexcoeff[0,1],
         description="coefficient of delta x as a function of tile index in y",
         pscale=self.imscale,
       ),
-      QPTiffStitchResultEntry(
+      AnnoWarpStitchResultEntry(
         n=7,
         value=self.bigtileindexcoeff[1,0],
         description="coefficient of delta y as a function of tile index in x",
         pscale=self.imscale,
       ),
-      QPTiffStitchResultEntry(
+      AnnoWarpStitchResultEntry(
         n=8,
         value=self.bigtileindexcoeff[1,1],
         description="coefficient of delta y as a function of tile index in x",
         pscale=self.imscale,
       ),
 
-      QPTiffStitchResultEntry(
+      AnnoWarpStitchResultEntry(
         n=9,
         value=self.constant[0],
         description="constant piece in delta x",
         pscale=self.imscale,
       ),
-      QPTiffStitchResultEntry(
+      AnnoWarpStitchResultEntry(
         n=10,
         value=self.constant[1],
         description="constant piece in delta y",
@@ -355,7 +355,7 @@ class QPTiffStitchResultBase:
 
     writetable(filename, entries, **kwargs)
 
-class QPTiffStitchResultCvxpy(QPTiffStitchResultBase):
+class AnnoWarpStitchResultCvxpy(AnnoWarpStitchResultBase):
   def __init__(self, *, problem, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale, **kwargs):
     onepixel = units.Distance(pixels=1, pscale=imscale)
     super().__init__(
@@ -374,7 +374,7 @@ class QPTiffStitchResultCvxpy(QPTiffStitchResultBase):
     return units.nominal_values(super().residual(alignmentresult))
 
 @dataclasses.dataclass
-class QPTiffStitchResultEntry(DataClassWithDistances):
+class AnnoWarpStitchResultEntry(DataClassWithDistances):
   pixelsormicrons = "pixels"
   def __powerfordescription(self):
     return {
@@ -396,7 +396,7 @@ class QPTiffStitchResultEntry(DataClassWithDistances):
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclass_dc_init
-class QPTiffAlignmentResult(AlignmentComparison, DataClassWithDistances):
+class AnnoWarpAlignmentResult(AlignmentComparison, DataClassWithDistances):
   pixelsormicrons = "pixels"
   n: int
   x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
@@ -475,7 +475,7 @@ class QPTiffAlignmentResult(AlignmentComparison, DataClassWithDistances):
     ]
     return wsitile, qptifftile
 
-class QPTiffAlignmentResults(list):
+class AnnoWarpAlignmentResults(list):
   @property
   def goodresults(self):
     return type(self)(r for r in self if not r.exit)
