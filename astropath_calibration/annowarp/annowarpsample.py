@@ -1,4 +1,4 @@
-import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
+import abc, contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
@@ -246,7 +246,7 @@ class AnnoWarpSample(ZoomSample):
     prob = cp.Problem(minimize)
     prob.solve()
 
-    self.__stitchresult = AnnoWarpStitchResultCvxpy(
+    self.__stitchresult = AnnoWarpStitchResultDefaultModelCvxpy(
       problem=prob,
       coeffrelativetobigtile=coeffrelativetobigtile,
       bigtileindexcoeff=bigtileindexcoeff,
@@ -263,19 +263,38 @@ class AnnoWarpSample(ZoomSample):
     if filename is None: filename = self.stitchcsv
     self.__stitchresult.writestitchresult(filename=filename, logger=self.logger)
 
-class AnnoWarpStitchResultBase:
-  def __init__(self, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale):
-    self.__coeffrelativetobigtile = coeffrelativetobigtile
-    self.__bigtileindexcoeff = bigtileindexcoeff
-    self.__constant = constant
+class AnnoWarpStitchResultBase(abc.ABC):
+  def __init__(self, *, imscale, **kwargs):
     self.imscale = imscale
+    super().__init__(**kwargs)
 
-  @property
-  def coeffrelativetobigtile(self): return self.__coeffrelativetobigtile
-  @property
-  def bigtileindexcoeff(self): return self.__bigtileindexcoeff
-  @property
-  def constant(self): return self.__constant
+  @abc.abstractmethod
+  def dxvec(self, alignmentresult):
+    pass
+
+  def residual(self, alignmentresult):
+    return alignmentresult.dxvec - self.dxvec(alignmentresult)
+
+  def writestitchresult(self, *, filename, **kwargs):
+    writetable(filename, self.stitchresultentries, **kwargs)
+
+  @abc.abstractproperty
+  def stitchresultentries(self): pass
+
+class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
+  def __init__(self, *, problem, **kwargs):
+    self.problem = problem
+    super().__init__(**kwargs)
+
+  def residual(self, alignmentresult):
+    return units.nominal_values(super().residual(alignmentresult))
+
+class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
+  def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, **kwargs):
+    self.coeffrelativetobigtile = coeffrelativetobigtile
+    self.bigtileindexcoeff = bigtileindexcoeff
+    self.constant = constant
+    super().__init__(**kwargs)
 
   def dxvec(self, alignmentresult):
     return (
@@ -284,11 +303,9 @@ class AnnoWarpStitchResultBase:
       + self.constant
     )
 
-  def residual(self, alignmentresult):
-    return alignmentresult.dxvec - self.dxvec(alignmentresult)
-
-  def writestitchresult(self, *, filename, **kwargs):
-    entries = (
+  @property
+  def stitchresultentries(self):
+    return (
       AnnoWarpStitchResultEntry(
         n=1,
         value=self.coeffrelativetobigtile[0,0],
@@ -353,10 +370,8 @@ class AnnoWarpStitchResultBase:
       ),
     )
 
-    writetable(filename, entries, **kwargs)
-
-class AnnoWarpStitchResultCvxpy(AnnoWarpStitchResultBase):
-  def __init__(self, *, problem, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale, **kwargs):
+class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultCvxpyBase):
+  def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale, **kwargs):
     onepixel = units.Distance(pixels=1, pscale=imscale)
     super().__init__(
       coeffrelativetobigtile=coeffrelativetobigtile.value,
@@ -368,10 +383,6 @@ class AnnoWarpStitchResultCvxpy(AnnoWarpStitchResultBase):
     self.coeffrelativetobigtilevar = coeffrelativetobigtile
     self.bigtileindexcoeffvar = bigtileindexcoeff
     self.constantvar = constant
-    self.problem = problem
-
-  def residual(self, alignmentresult):
-    return units.nominal_values(super().residual(alignmentresult))
 
 @dataclasses.dataclass
 class AnnoWarpStitchResultEntry(DataClassWithDistances):
