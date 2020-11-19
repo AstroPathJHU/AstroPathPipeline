@@ -2,8 +2,9 @@ import abc, dateutil, jxmlease, methodtools, numpy as np, pathlib
 from ..baseclasses.csvclasses import Globals, Perimeter
 from ..baseclasses.rectangle import Rectangle
 from ..utilities import units
+from ..utilities.misc import floattoint
 
-class AnnotationXMLReader:
+class AnnotationXMLReader(units.ThingWithPscale):
   def __init__(self, filename, *, pscale):
     self.__filename = filename
     self.__pscale = pscale
@@ -74,7 +75,7 @@ class AnnotationXMLReader:
   @property
   def microscopename(self): return self.getdata()[3]
 
-class AnnotationBase(abc.ABC):
+class AnnotationBase(units.ThingWithPscale):
   def __init__(self, xmlnode, *, pscale, nestdepth=1):
     self.__xmlnode = xmlnode
     self.__nestdepth = nestdepth
@@ -113,19 +114,19 @@ class RectangleAnnotation(AnnotationBase):
     if not self.isacquired: return None
     return self.history[-1]["UserName"]
   @property
-  def x(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Origin"]["X"]), pscale=self.pscale)
+  def x(self): return float(self.xmlnode["Bounds"]["Origin"]["X"]) * self.onemicron
   @property
-  def y(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Origin"]["Y"]), pscale=self.pscale)
+  def y(self): return float(self.xmlnode["Bounds"]["Origin"]["Y"]) * self.onemicron
   @property
-  def w(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Size"]["Width"]), pscale=self.pscale)
+  def w(self): return float(self.xmlnode["Bounds"]["Size"]["Width"]) * self.onemicron
   @property
-  def h(self): return units.Distance(microns=float(self.xmlnode["Bounds"]["Size"]["Height"]), pscale=self.pscale)
+  def h(self): return float(self.xmlnode["Bounds"]["Size"]["Height"]) * self.onemicron
   @property
   def cx(self):
-    return units.Distance(microns=int(np.round(units.microns(self.x+0.5*self.w, pscale=self.pscale))), pscale=self.pscale)
+    return floattoint(np.round(float((self.x+0.5*self.w) / self.onemicron))) * self.onemicron
   @property
   def cy(self):
-    return units.Distance(microns=int(np.round(units.microns(self.y+0.5*self.h, pscale=self.pscale))), pscale=self.pscale)
+    return floattoint(np.round(float((self.y+0.5*self.h) / self.onemicron))) * self.onemicron
   @property
   def time(self): return dateutil.parser.parse(self.history[-1]["TimeStamp"])
 
@@ -144,10 +145,10 @@ class ROIAnnotation(AnnotationBase):
   @property
   def globals(self):
     return {
-      "x": units.Distance(microns=float(self.xmlnode["Bounds"]["Origin"]["X"]), pscale=self.pscale),
-      "y": units.Distance(microns=float(self.xmlnode["Bounds"]["Origin"]["Y"]), pscale=self.pscale),
-      "Width": units.Distance(microns=float(self.xmlnode["Bounds"]["Size"]["Width"]), pscale=self.pscale),
-      "Height": units.Distance(microns=float(self.xmlnode["Bounds"]["Size"]["Height"]), pscale=self.pscale),
+      "x": float(self.xmlnode["Bounds"]["Origin"]["X"]) * self.onemicron,
+      "y": float(self.xmlnode["Bounds"]["Origin"]["Y"]) * self.onemicron,
+      "Width": float(self.xmlnode["Bounds"]["Size"]["Width"]) * self.onemicron,
+      "Height": float(self.xmlnode["Bounds"]["Size"]["Height"]) * self.onemicron,
       "Unit": "microns",
       "Tc": dateutil.parser.parse(self.xmlnode["History"]["History-i"]["TimeStamp"]),
     }
@@ -159,8 +160,8 @@ class ROIAnnotation(AnnotationBase):
     for i, perimeter in enumerate(perimeters, start=1):
       result.append({
         "n": i,
-        "x": units.Distance(microns=float(perimeter["X"]), pscale=self.pscale),
-        "y": units.Distance(microns=float(perimeter["Y"]), pscale=self.pscale),
+        "x": float(perimeter["X"]) * self.onemicron,
+        "y": float(perimeter["Y"]) * self.onemicron,
       })
     return result
 

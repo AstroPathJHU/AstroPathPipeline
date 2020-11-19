@@ -360,6 +360,6 @@ class AlignmentSetFromXML(AlignmentSetBase, ReadRectanglesOverlapsIm3FromXML):
     if position is None: position = np.array([0, 0])
     self.__position = position
   @property
-  def nclip(self): return units.Distance(pixels=self.__nclip, pscale=self.pscale)
+  def nclip(self): return self.__nclip*self.onepixel
   @property
   def position(self): return self.__position

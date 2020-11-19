@@ -110,14 +110,14 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
       raise ValueError("Have to provide pixelsormicrons for a scatterplot")
     divideby = {"pixels": alignmentset.onepixel, "microns": alignmentset.onemicron}[pixelsormicrons]
     kwargs = dict(
-      x=units.nominal_values(vectors[:,0]) / divideby,
-      y=units.nominal_values(vectors[:,1]) / divideby,
+      x=float(units.nominal_values(vectors[:,0]) / divideby),
+      y=float(units.nominal_values(vectors[:,1]) / divideby),
     )
     if errorbars:
       plt.errorbar(
         **kwargs,
-        xerr=units.std_devs(vectors[:,0]) / divideby,
-        yerr=units.std_devs(vectors[:,1]) / divideby,
+        xerr=float(units.std_devs(vectors[:,0]) / divideby),
+        yerr=float(units.std_devs(vectors[:,1]) / divideby),
         fmt='o',
       )
     else:
@@ -229,7 +229,7 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
   x0vec = np.min([[f.x, f.y] for f in fields], axis=0)
   f = fields[0]
   shape = tuple(reversed(floattoint(np.max([(f.xvec - x0vec) / deltaxvec for f in fields], axis=0), atol=1e-9) + 1))
-  xyarray = np.full(shape=(2,)+shape, fill_value=units.Distance(pixels=-999., pscale=alignmentset.pscale))
+  xyarray = np.full(shape=(2,)+shape, fill_value=-999.*onepixel)
 
   extent = x0vec[0], shape[1] * deltaxvec[0] + x0vec[0], shape[0] * deltaxvec[1] + x0vec[1], x0vec[1]
 
@@ -301,7 +301,7 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
   yerr = []
   binedges = units.np.linspace(*edges, num=len(array2D)+1)
   for rowcolumn, (binlow, binhigh) in itertools.zip_longest(array2D, more_itertools.pairwise(binedges)):
-    ys = [_ for _ in rowcolumn if _ != units.Distance(pixels=-999, pscale=alignmentset.pscale)]
+    ys = [_ for _ in rowcolumn if _ != -999*onepixel]
     if not ys: continue
     x.append((binlow+binhigh)/2)
     y.append(np.mean(ys))

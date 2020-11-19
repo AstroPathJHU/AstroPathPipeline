@@ -136,8 +136,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
           pscale = 1e-3/float(node)
 
     try:
-      width = units.Distance(pixels=width, pscale=pscale)
-      height = units.Distance(pixels=height, pscale=pscale)
+      width *= units.onepixel(pscale=pscale)
+      height *= units.onepixel(pscale=pscale)
     except NameError:
       raise IOError(f'Couldn\'t find Shape and/or MillimetersPerPixel in {self.xmlfolder/(self.SlideID+".Parameters.xml")}')
 
@@ -579,8 +579,8 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
       match = re.match(regex, im3.name)
       if not match:
         raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
-      x = units.Distance(microns=int(match.group(1)), pscale=self.pscale)
-      y = units.Distance(microns=int(match.group(2)), pscale=self.pscale)
+      x = int(match.group(1)) * self.onemicron
+      y = int(match.group(2)) * self.onemicron
       t = datetime.datetime.fromtimestamp(os.path.getmtime(im3)).astimezone()
       result.append(
         RectangleFile(

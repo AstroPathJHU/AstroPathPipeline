@@ -55,7 +55,8 @@ class AlignmentOverlap(Overlap):
 
     hh, ww = image1.shape
     assert (hh, ww) == image2.shape
-    hh, ww = units.distances(pixels=[hh, ww], pscale=self.pscale)
+    hh *= self.onepixel
+    ww *= self.onepixel
 
     image1x1 = self.x1
     image1y1 = self.y1
@@ -148,7 +149,7 @@ class AlignmentOverlap(Overlap):
       if debug: raise
       self.result = self.alignmentresulttype(
         exit=255,
-        dxvec=(units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale), units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale)),
+        dxvec=(unc.ufloat(0, 9999)*self.onepixel, unc.ufloat(0, 9999)*self.onepixel),
         sc=1.,
         mse=(0., 0., 0.),
         exception=e,
