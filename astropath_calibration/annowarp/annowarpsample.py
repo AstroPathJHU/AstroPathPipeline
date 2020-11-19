@@ -146,7 +146,7 @@ class AnnoWarpSample(ZoomSample):
     ntiles = (m2+1-m1) * (n2+1-n1)
     self.logger.info("aligning %d tiles", ntiles)
     for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1)), start=1):
-      self.logger.debug("aligning tile %d/%d", n, ntiles)
+      if n%100==0 or n==ntiles: self.logger.debug("aligning tile %d/%d", n, ntiles)
       x = tilesize * (ix-1)
       y = tilesize * (iy-1)
       if y+onepixel-qshifty <= 0: continue
@@ -225,33 +225,30 @@ class AnnoWarpSample(ZoomSample):
   def logmodule(self):
     return "annowarp"
 
-  def stitch_cvxpy(self):
-    coeffrelativetobigtile = cp.Variable(shape=(2, 2))
-    bigtileindexcoeff = cp.Variable(shape=(2, 2))
-    constant = cp.Variable(shape=2)
+  @staticmethod
+  def stitchresultcls(*, model, cvxpy):
+    return {
+      "default": (AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy)
+    }[model][cvxpy]
+
+  def stitch_cvxpy(self, *, model="default"):
+    stitchresultcls = self.stitchresultcls(model=model, cvxpy=True)
+    variables = stitchresultcls.makecvxpyvariables()
 
     tominimize = 0
     onepixel = units.Distance(pixels=1, pscale=self.imscale)
     for result in self.__alignmentresults.goodconnectedresults:
-      residual = (
-        units.nominal_values(result.dxvec)/onepixel - (
-          coeffrelativetobigtile @ (result.centerrelativetobigtile/onepixel)
-          + bigtileindexcoeff @ result.bigtileindex
-          + constant
-        )
-      )
+      residual = stitchresultcls.cvxpyresidual(result, **variables)
       tominimize += cp.quad_form(residual, units.np.linalg.inv(result.covariance) * onepixel**2)
 
     minimize = cp.Minimize(tominimize)
     prob = cp.Problem(minimize)
     prob.solve()
 
-    self.__stitchresult = AnnoWarpStitchResultDefaultModelCvxpy(
+    self.__stitchresult = stitchresultcls(
       problem=prob,
-      coeffrelativetobigtile=coeffrelativetobigtile,
-      bigtileindexcoeff=bigtileindexcoeff,
-      constant=constant,
       imscale=self.imscale,
+      **variables,
     )
 
     return self.__stitchresult
@@ -281,6 +278,9 @@ class AnnoWarpStitchResultBase(abc.ABC):
   @abc.abstractproperty
   def stitchresultentries(self): pass
 
+class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
+  pass
+
 class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
   def __init__(self, *, problem, **kwargs):
     self.problem = problem
@@ -288,6 +288,18 @@ class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
 
   def residual(self, alignmentresult):
     return units.nominal_values(super().residual(alignmentresult))
+
+  @classmethod
+  @abc.abstractmethod
+  def makecvxpyvariables(cls): return {}
+
+  @classmethod
+  @abc.abstractmethod
+  def cvxpydxvec(cls, alignmentresult, **cvxpyvariables): pass
+
+  @classmethod
+  def cvxpyresidual(cls, alignmentresult, **cvxpyvariables):
+    return units.nominal_values(alignmentresult.dxvec)/alignmentresult.onepixel - cls.cvxpydxvec(alignmentresult, **cvxpyvariables)
 
 class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
   def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, **kwargs):
@@ -370,9 +382,12 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
       ),
     )
 
+class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultNoCvxpyBase):
+  pass
+
 class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultCvxpyBase):
   def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale, **kwargs):
-    onepixel = units.Distance(pixels=1, pscale=imscale)
+    onepixel = self.onepixel = units.Distance(pixels=1, pscale=imscale)
     super().__init__(
       coeffrelativetobigtile=coeffrelativetobigtile.value,
       bigtileindexcoeff=bigtileindexcoeff.value * onepixel,
@@ -383,6 +398,21 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
     self.coeffrelativetobigtilevar = coeffrelativetobigtile
     self.bigtileindexcoeffvar = bigtileindexcoeff
     self.constantvar = constant
+
+  @classmethod
+  def makecvxpyvariables(cls): return {
+    "coeffrelativetobigtile": cp.Variable(shape=(2, 2)),
+    "bigtileindexcoeff": cp.Variable(shape=(2, 2)),
+    "constant": cp.Variable(shape=2),
+  }
+
+  @classmethod
+  def cvxpydxvec(cls, alignmentresult, *, coeffrelativetobigtile, bigtileindexcoeff, constant):
+    return (
+      coeffrelativetobigtile @ (alignmentresult.centerrelativetobigtile / alignmentresult.onepixel)
+      + bigtileindexcoeff @ alignmentresult.bigtileindex
+      + constant
+    )
 
 @dataclasses.dataclass
 class AnnoWarpStitchResultEntry(DataClassWithDistances):
