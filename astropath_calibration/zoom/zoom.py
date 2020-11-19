@@ -191,7 +191,7 @@ class Zoom(ReadRectanglesComponentTiff):
             localy1 = field.my1 - field.py
             localy2 = localy1 + tiley2 - tiley1
 
-            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.tilesize + 2*buffer/onepixel)[::-1]), dtype=np.uint8)
+            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.tilesize + 2*floattoint(buffer/onepixel))[::-1]), dtype=np.uint8)
 
             with field.using_image() as image:
               image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
