@@ -1,6 +1,7 @@
 import more_itertools, pathlib
 
-from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample, AnnoWarpStitchResultEntry
+from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample
+from astropath_calibration.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath_calibration.utilities.tableio import readtable
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
