@@ -61,7 +61,7 @@ class SampleDef:
   def __bool__(self):
     return bool(self.isGood)
 
-class SampleBase(contextlib.ExitStack):
+class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
   def __init__(self, root, samp, *, uselogfiles=False, logthreshold=logging.DEBUG, xmlfolders=None, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
@@ -140,8 +140,8 @@ class SampleBase(contextlib.ExitStack):
           pscale = 1e-3/float(node)
 
     try:
-      width = units.Distance(pixels=width, pscale=pscale)
-      height = units.Distance(pixels=height, pscale=pscale)
+      width *= units.onepixel(pscale=pscale)
+      height *= units.onepixel(pscale=pscale)
     except NameError:
       raise IOError(f'Couldn\'t find Shape and/or MillimetersPerPixel in {self.xmlfolder/(self.SlideID+".Parameters.xml")}')
 
@@ -555,8 +555,8 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        cx, cy = units.microns(r.cxvec, pscale=self.pscale)
-        errormessage = f"File {self.SlideID}_[{int(cx)},{int(cy)}].im3 (expected from annotations) does not exist"
+        cx, cy = floattoint(r.cxvec / self.onemicron, atol=1e-10)
+        errormessage = f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist"
         if self.__checkim3s:
           raise FileNotFoundError(errormessage)
         else:
@@ -587,7 +587,7 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
 
   def fixrectanglefilenames(self, rectangles):
     for r in rectangles:
-      expected = self.SlideID+f"_[{floattoint(units.microns(r.cx, pscale=r.pscale), atol=1e-10):d},{floattoint(units.microns(r.cy, pscale=r.pscale), atol=1e-10):d}].im3"
+      expected = self.SlideID+f"_[{floattoint(r.cx/r.onemicron, atol=1e-10):d},{floattoint(r.cy/r.onemicron, atol=1e-10):d}].im3"
       actual = r.file
       if expected != actual:
         self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
@@ -603,8 +603,8 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
       match = re.match(regex, im3.name)
       if not match:
         raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
-      x = units.Distance(microns=int(match.group(1)), pscale=self.pscale)
-      y = units.Distance(microns=int(match.group(2)), pscale=self.pscale)
+      x = int(match.group(1)) * self.onemicron
+      y = int(match.group(2)) * self.onemicron
       t = datetime.datetime.fromtimestamp(os.path.getmtime(im3)).astimezone()
       result.append(
         RectangleFile(

@@ -1,6 +1,6 @@
-import abc, dataclasses, functools, numbers
+import dataclasses, functools, numbers
 from ..misc import floattoint
-from .core import UnitsError
+from .core import ThingWithPscale, UnitsError
 
 def __setup(mode):
   global currentmode, Distance, microns, pixels, _pscale, safe, UnitsError
@@ -45,7 +45,7 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, secondf
   return dataclasses.field(**kwargs)
 
 @dataclasses.dataclass
-class DataClassWithDistances(abc.ABC):
+class DataClassWithDistances(ThingWithPscale):
   @classmethod
   def distancefields(cls):
     return [field for field in dataclasses.fields(cls) if field.metadata.get("isdistancefield", False)]

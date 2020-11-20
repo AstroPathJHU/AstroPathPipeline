@@ -1,7 +1,6 @@
 import abc, argparse, collections, methodtools, numpy as np, pathlib, subprocess, tempfile
 from ..baseclasses.sample import FlatwSampleBase
-from ..utilities import units
-from ..utilities.misc import memmapcontext
+from ..utilities.misc import floattoint, memmapcontext
 
 here = pathlib.Path(__file__).parent
 
@@ -16,14 +15,12 @@ class LayerExtractorBase(FlatwSampleBase, collections.abc.Sized):
   def __getnlayers(self):
     filename = next(self.fwfiles)
     with memmapcontext(filename, dtype=np.uint16, mode="r") as memmap:
-      nlayers = len(memmap) / units.pixels(self.fwidth * self.fheight, pscale=self.pscale, power=2)
-    if not nlayers.is_integer():
-      raise ValueError(f"file seems to have {nlayers} layers??")
-    return int(nlayers)
+      nlayers = len(memmap) * self.onepixel**2 / (self.fwidth * self.fheight)
+    return floattoint(nlayers)
 
   @property
   def shape(self):
-    return (self.__getnlayers(), units.pixels(self.fwidth, pscale=self.pscale), units.pixels(self.fheight, pscale=self.pscale))
+    return (self.__getnlayers(), floattoint(self.fwidth/self.onepixel), floattoint(self.fheight/self.onepixel))
 
   def extractlayers(self, *, layers={1}, alreadyexistsstrategy="error"):
     (self.root2/self.SlideID).mkdir(parents=True, exist_ok=True)

@@ -20,9 +20,8 @@ class ZoomSample(ReadRectanglesComponentTiff, ZoomSampleBase):
   @methodtools.lru_cache()
   @property
   def ntiles(self):
-    onepixel = units.Distance(pixels=1, pscale=self.pscale)
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
-    return floattoint(-((-maxxy) // (self.__tilesize*onepixel)))
+    return floattoint(-((-maxxy) // (self.zoomtilesize*self.onepixel)))
   def PILmaximagepixels(self):
     return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
 
@@ -30,7 +29,7 @@ class Zoom(ZoomSample):
   @property
   def logmodule(self): return "zoom"
   def zoom_wsi_fast(self, fmax=50):
-    onepixel = units.Distance(pixels=1, pscale=self.pscale)
+    onepixel = self.onepixel
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
     bigimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.uint8)
     nrectangles = len(self.rectangles)
@@ -106,7 +105,7 @@ class Zoom(ZoomSample):
     return bigimage
 
   def zoom_memory(self, fmax=50):
-    onepixel = units.Distance(pixels=1, pscale=self.pscale)
+    onepixel = self.onepixel
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
     buffer = -(-self.rectangles[0].shape // onepixel).astype(int) * onepixel
     nrectangles = len(self.rectangles)
@@ -188,7 +187,7 @@ class Zoom(ZoomSample):
             localy1 = field.my1 - field.py
             localy2 = localy1 + tiley2 - tiley1
 
-            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.zoomtilesize + 2*units.pixels(buffer, pscale=self.pscale))[::-1]), dtype=np.uint8)
+            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.zoomtilesize + 2*floattoint(buffer/onepixel))[::-1]), dtype=np.uint8)
 
             with field.using_image() as image:
               image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
@@ -227,8 +226,8 @@ class Zoom(ZoomSample):
 
         slc = tileimage[
           :,
-          units.pixels(buffer[1], pscale=self.pscale):units.pixels(-buffer[1], pscale=self.pscale),
-          units.pixels(buffer[0], pscale=self.pscale):units.pixels(-buffer[0], pscale=self.pscale),
+          floattoint(buffer[1]/self.onepixel):floattoint(-buffer[1]/self.onepixel),
+          floattoint(buffer[0]/self.onepixel):floattoint(-buffer[0]/self.onepixel),
         ]
         if not np.any(slc): continue
         for layer in self.layers:
