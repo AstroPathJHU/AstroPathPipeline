@@ -12,7 +12,7 @@ interactive = False
 
 rc = {
   "text.usetex": True,
-  "text.latex.preamble": [r"\usepackage{amsmath}\usepackage{siunitx}"],
+  "text.latex.preamble": r"\usepackage{amsmath}\usepackage{siunitx}",
   "font.size": 20,
   "figure.subplot.bottom": 0.12,
 }

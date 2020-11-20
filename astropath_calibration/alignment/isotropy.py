@@ -14,7 +14,7 @@ def isotropy(alignmentset, maxfreq=5, bins=24, showplot=None, saveas=None, figur
     rs.append(sum(v**2)**.5)
     phis.append(units.np.arctan2(*reversed(v)))
   plt.hist(phis, bins=bins)
-  #plt.hist(phis, weights=units.pixels(rs, power=1, pscale=alignmentset.pscale), bins=bins)
+  #plt.hist(phis, weights=rs/alignmentset.onepixel, bins=bins)
   for r, phi in zip(rs, phis):
     for i in range(maxfreq):
       cosintegrals[i] += np.cos(i*phi) / np.pi
@@ -77,8 +77,8 @@ def stitchingisotropy(alignmentset, cornerfractions=np.linspace(0, 1, 26), showp
         if tag == "all":
           y = sum(np.array(RMS[tag])**2 for tag in (1, 2, 3, 4))**.5
         else:
-          y = RMS[tag]
-        plt.scatter(cornerfractions, units.pixels(y, power=1, pscale=alignmentset.pscale))
+          y = np.array(RMS[tag])
+        plt.scatter(cornerfractions, y/alignmentset.onepixel)
 
       plotstyling(fig, ax, thing)
 

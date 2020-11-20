@@ -2,7 +2,7 @@ import abc, collections, dataclasses, itertools, methodtools, more_itertools, nu
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.rectangle import Rectangle, rectangledict, RectangleList
 from ..utilities import units
-from ..utilities.misc import dummylogger, weightedstd
+from ..utilities.misc import dummylogger, floattoint, weightedstd
 from ..utilities.tableio import readtable, writetable
 from .field import Field, FieldOverlap
 
@@ -203,8 +203,8 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([
     x1 = rectanglex[o.p1]
     x2 = rectanglex[o.p2]
     twonll += cp.quad_form(
-      x1 - x2 + units.pixels(-units.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec, pscale=pscale, power=1),
-      units.pixels(units.np.linalg.inv(o.result.covariance), pscale=pscale, power=-2)
+      x1 - x2 + (-units.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec) / o.onepixel,
+      (units.np.linalg.inv(o.result.covariance)) * o.onepixel**2
     )
 
   dxs, dys = zip(*(o.result.dxvec for o in overlaps))
@@ -233,12 +233,9 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([
   for r in rectangles:
     twonll += cp.norm(
       (
-        (rectanglex[r.n] - units.pixels(x0vec, pscale=pscale, power=1))
-        - T @ units.pixels(
-          (r.xvec - x0vec),
-          pscale=pscale, power=1
-        )
-      ) / units.pixels(sigma, pscale=pscale, power=1)
+        (rectanglex[r.n] - x0vec / r.onepixel)
+        - T @ ((r.xvec - x0vec) / r.onepixel)
+      ) / (sigma / r.onepixel)
     )
 
   minimize = cp.Minimize(twonll)
@@ -247,13 +244,14 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([
 
   return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale, origin=origin, logger=logger)
 
-class StitchResultBase(RectangleOverlapCollection):
+class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
   def __init__(self, *, rectangles, overlaps, origin, logger=dummylogger):
     self.__rectangles = rectangles
     self.__overlaps = overlaps
     self.__origin = origin
     self.__logger = logger
 
+  @methodtools.lru_cache()
   @property
   def pscale(self):
     pscale = {_.pscale for _ in itertools.chain(self.rectangles, self.overlaps)}
@@ -284,6 +282,7 @@ class StitchResultBase(RectangleOverlapCollection):
   def __fields(self):
     result = RectangleList()
     islands = list(self.islands(useexitstatus=True))
+    onepixel = self.onepixel
     gxdict = collections.defaultdict(dict)
     gydict = collections.defaultdict(dict)
     primaryregionsx = {}
@@ -387,7 +386,7 @@ class StitchResultBase(RectangleOverlapCollection):
           ):
             self.__logger.warningglobal(f"Primary regions for fields {rid1} and {rid2} overlap, adjusting them")
 
-            threshold = units.Distance(pixels=100, pscale=self.pscale)
+            threshold = 100*onepixel
             xs = ys = None
             ridax = ridbx = riday = ridby = None
             if abs(xx21 - xx12) <= threshold:
@@ -475,7 +474,7 @@ class StitchResultBase(RectangleOverlapCollection):
       result.append(
         Field(
           rectangle=rectangle,
-          ixvec=units.distances(pixels=units.pixels(rectangle.xvec, pscale=self.pscale).round().astype(int), pscale=self.pscale),
+          ixvec=floattoint(np.round((rectangle.xvec / onepixel).astype(float))) * onepixel,
           gc=0 if len(island) == 1 else gc,
           pxvec=self.x(rectangle) - self.origin,
           gxvec=(gx, gy),
@@ -694,8 +693,9 @@ class StitchResult(CalculatedStitchResult):
 
 class StitchResultCvxpy(CalculatedStitchResult):
   def __init__(self, *, x, T, problem, pscale, **kwargs):
+    onepixel = units.onepixel(pscale=pscale)
     super().__init__(
-      x=units.distances(pixels=x.value, pscale=pscale),
+      x=x.value*onepixel,
       T=T.value,
       covariancematrix=np.zeros(x.size+T.size, x.size+T.size),
       **kwargs
