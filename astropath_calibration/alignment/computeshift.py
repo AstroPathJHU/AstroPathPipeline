@@ -103,7 +103,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     covariance
   )
 
-  otherbigindices = skimage.feature.corner_peaks(z, min_distance=windowsize, threshold_abs=z[maxidx] - 3*error_crosscorrelation)
+  otherbigindices = skimage.feature.corner_peaks(z, min_distance=windowsize, threshold_abs=z[maxidx] - 3*error_crosscorrelation, threshold_rel=0)
   for idx in otherbigindices:
     if np.all(idx == maxidx): continue
     dx = unc.ufloat(0, 9999.)
