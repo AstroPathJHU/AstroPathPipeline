@@ -531,8 +531,8 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        cx, cy = units.microns(r.cxvec, pscale=self.pscale)
-        errormessage = f"File {self.SlideID}_[{int(cx)},{int(cy)}].im3 (expected from annotations) does not exist"
+        cx, cy = floattoint(r.cxvec / self.onemicron, atol=1e-10)
+        errormessage = f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist"
         if self.__checkim3s:
           raise FileNotFoundError(errormessage)
         else:
@@ -563,7 +563,7 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
 
   def fixrectanglefilenames(self, rectangles):
     for r in rectangles:
-      expected = self.SlideID+f"_[{floattoint(units.microns(r.cx, pscale=r.pscale), atol=1e-10):d},{floattoint(units.microns(r.cy, pscale=r.pscale), atol=1e-10):d}].im3"
+      expected = self.SlideID+f"_[{floattoint(r.cx/r.onemicron, atol=1e-10):d},{floattoint(r.cy/r.onemicron, atol=1e-10):d}].im3"
       actual = r.file
       if expected != actual:
         self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
