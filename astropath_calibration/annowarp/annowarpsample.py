@@ -237,6 +237,28 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       "default": (AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy),
     }[model][cvxpy]
 
+  def stitch(self, *, model="default"):
+    stitchresultcls = self.stitchresultcls(model=model, cvxpy=False)
+    nparams = stitchresultcls.nparams()
+    A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
+    b = np.zeros(shape=nparams, dtype=units.unitdtype)
+    c = 0
+
+    for result in self.__alignmentresults.goodconnectedresults:
+      addA, addb, addc = stitchresultcls.Abccontributions(result)
+      A += addA
+      b += addb
+      c += addc
+
+    result = units.np.linalg.solve(2*A, -b)
+
+    delta2nllfor1sigma = 1
+    covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
+    result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
+
+    self.__stitchresult = stitchresultcls(result, A=A, b=b, c=c, imscale=self.imscale)
+    return self.__stitchresult
+
   def stitch_cvxpy(self, *, model="default"):
     stitchresultcls = self.stitchresultcls(model=model, cvxpy=True)
     variables = stitchresultcls.makecvxpyvariables()

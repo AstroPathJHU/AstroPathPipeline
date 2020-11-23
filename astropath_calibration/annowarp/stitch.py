@@ -1,4 +1,4 @@
-import abc, cvxpy as cp, dataclasses
+import abc, cvxpy as cp, dataclasses, numpy as np
 
 from ..utilities import units
 from ..utilities.tableio import writetable
@@ -34,7 +34,20 @@ class AnnoWarpStitchResultBase(ThingWithImscale):
   def stitchresultentries(self): pass
 
 class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
-  pass
+  def __init__(self, *, A, b, c, flatresult, **kwargs):
+    self.A = A
+    self.b = b
+    self.c = c
+    self.flatresult = flatresult
+    super().__init__(**kwargs)
+
+  @classmethod
+  @abc.abstractmethod
+  def nparams(cls): pass
+
+  @classmethod
+  @abc.abstractmethod
+  def Abccontributions(cls, alignmentresult): pass
 
 class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
   def __init__(self, *, problem, **kwargs):
@@ -138,7 +151,103 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
     )
 
 class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultNoCvxpyBase):
-  pass
+  def __init__(self, flatresult, **kwargs):
+    coeffrelativetobigtile, bigtileindexcoeff, constant = np.split(flatresult, [4, 8])
+    coeffrelativetobigtile = coeffrelativetobigtile.reshape(2, 2)
+    bigtileindexcoeff = bigtileindexcoeff.reshape(2, 2)
+    super().__init__(flatresult=flatresult, coeffrelativetobigtile=coeffrelativetobigtile, bigtileindexcoeff=bigtileindexcoeff, constant=constant, **kwargs)
+
+  @classmethod
+  def nparams(cls): return 10
+
+  @classmethod
+  def Abccontributions(cls, alignmentresult):
+    nparams = cls.nparams()
+    (
+      crtbt_xx,
+      crtbt_xy,
+      crtbt_yx,
+      crtbt_yy,
+      bti_xx,
+      bti_xy,
+      bti_yx,
+      bti_yy,
+      const_x,
+      const_y,
+    ) = range(nparams)
+    A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
+    b = np.zeros(shape=nparams, dtype=units.unitdtype)
+    c = 0
+
+    crtbt = alignmentresult.centerrelativetobigtile
+    bti = alignmentresult.bigtileindex
+
+    dxvec = units.nominal_values(alignmentresult.dxvec)
+    invcov = units.np.linalg.inv(alignmentresult.covariance)
+
+    A[crtbt_xx:crtbt_xy+1, crtbt_xx:crtbt_xy+1] += np.outer(crtbt, crtbt) * invcov[0,0]
+    A[crtbt_yx:crtbt_yy+1, crtbt_xx:crtbt_xy+1] += np.outer(crtbt, crtbt) * invcov[0,1]
+    A[crtbt_xx:crtbt_xy+1, crtbt_yx:crtbt_yy+1] += np.outer(crtbt, crtbt) * invcov[1,0]
+    A[crtbt_yx:crtbt_yy+1, crtbt_yx:crtbt_yy+1] += np.outer(crtbt, crtbt) * invcov[1,1]
+
+    A[crtbt_xx:crtbt_xy+1, bti_xx:bti_xy+1] += np.outer(crtbt, bti) * invcov[0,0]
+    A[crtbt_yx:crtbt_yy+1, bti_xx:bti_xy+1] += np.outer(crtbt, bti) * invcov[0,1]
+    A[crtbt_xx:crtbt_xy+1, bti_yx:bti_yy+1] += np.outer(crtbt, bti) * invcov[1,0]
+    A[crtbt_yx:crtbt_yy+1, bti_yx:bti_yy+1] += np.outer(crtbt, bti) * invcov[1,1]
+
+    A[crtbt_xx:crtbt_xy+1, const_x] += crtbt * invcov[0,0]
+    A[crtbt_xx:crtbt_xy+1, const_y] += crtbt * invcov[0,1]
+    A[crtbt_yx:crtbt_yy+1, const_x] += crtbt * invcov[1,0]
+    A[crtbt_yx:crtbt_yy+1, const_y] += crtbt * invcov[1,1]
+
+    A[bti_xx:bti_xy+1, crtbt_xx:crtbt_xy+1] += np.outer(bti, crtbt) * invcov[0,0]
+    A[bti_yx:bti_yy+1, crtbt_xx:crtbt_xy+1] += np.outer(bti, crtbt) * invcov[0,1]
+    A[bti_xx:bti_xy+1, crtbt_yx:crtbt_yy+1] += np.outer(bti, crtbt) * invcov[1,0]
+    A[bti_yx:bti_yy+1, crtbt_yx:crtbt_yy+1] += np.outer(bti, crtbt) * invcov[1,1]
+
+    A[bti_xx:bti_xy+1, bti_xx:bti_xy+1] += np.outer(bti, bti) * invcov[0,0]
+    A[bti_yx:bti_yy+1, bti_xx:bti_xy+1] += np.outer(bti, bti) * invcov[0,1]
+    A[bti_xx:bti_xy+1, bti_yx:bti_yy+1] += np.outer(bti, bti) * invcov[1,0]
+    A[bti_yx:bti_yy+1, bti_yx:bti_yy+1] += np.outer(bti, bti) * invcov[1,1]
+
+    A[bti_xx:bti_xy+1, const_x] += bti * invcov[0,0]
+    A[bti_xx:bti_xy+1, const_y] += bti * invcov[0,1]
+    A[bti_yx:bti_yy+1, const_x] += bti * invcov[1,0]
+    A[bti_yx:bti_yy+1, const_y] += bti * invcov[1,1]
+
+    A[const_x, crtbt_xx:crtbt_xy+1] += crtbt * invcov[0,0]
+    A[const_y, crtbt_xx:crtbt_xy+1] += crtbt * invcov[0,1]
+    A[const_x, crtbt_yx:crtbt_yy+1] += crtbt * invcov[1,0]
+    A[const_y, crtbt_yx:crtbt_yy+1] += crtbt * invcov[1,1]
+
+    A[const_x, bti_xx:bti_xy+1] += bti * invcov[0,0]
+    A[const_y, bti_xx:bti_xy+1] += bti * invcov[0,1]
+    A[const_x, bti_yx:bti_yy+1] += bti * invcov[1,0]
+    A[const_y, bti_yx:bti_yy+1] += bti * invcov[1,1]
+
+    A[const_x, const_x] += invcov[0,0]
+    A[const_x, const_y] += invcov[0,1]
+    A[const_y, const_x] += invcov[1,0]
+    A[const_y, const_y] += invcov[1,1]
+
+    b[crtbt_xx:crtbt_xy+1] -= 2 * crtbt * invcov[0,0] * dxvec[0]
+    b[crtbt_xx:crtbt_xy+1] -= 2 * crtbt * invcov[0,1] * dxvec[1]
+    b[crtbt_yx:crtbt_yy+1] -= 2 * crtbt * invcov[1,0] * dxvec[0]
+    b[crtbt_yx:crtbt_yy+1] -= 2 * crtbt * invcov[1,1] * dxvec[1]
+
+    b[bti_xx:bti_xy+1] -= 2 * bti * invcov[0,0] * dxvec[0]
+    b[bti_xx:bti_xy+1] -= 2 * bti * invcov[0,1] * dxvec[1]
+    b[bti_yx:bti_yy+1] -= 2 * bti * invcov[1,0] * dxvec[0]
+    b[bti_yx:bti_yy+1] -= 2 * bti * invcov[1,1] * dxvec[1]
+
+    b[const_x] -= 2 * invcov[0,0] * dxvec[0]
+    b[const_x] -= 2 * invcov[0,1] * dxvec[1]
+    b[const_y] -= 2 * invcov[1,0] * dxvec[0]
+    b[const_y] -= 2 * invcov[1,1] * dxvec[1]
+
+    c += dxvec @ invcov @ dxvec
+
+    return A, b, c
 
 class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultCvxpyBase):
   def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale, **kwargs):

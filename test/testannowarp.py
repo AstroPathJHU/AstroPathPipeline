@@ -2,6 +2,7 @@ import more_itertools, pathlib
 
 from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample
 from astropath_calibration.annowarp.stitch import AnnoWarpStitchResultEntry
+from astropath_calibration.utilities import units
 from astropath_calibration.utilities.tableio import readtable
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
@@ -34,7 +35,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
-    s.stitch_cvxpy()
+    s.stitch()
     filename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.stitchcsv.name
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.stitchcsv.name
     s.writestitchresult(filename=filename)
@@ -56,3 +57,22 @@ class TestAnnoWarp(TestBaseSaveOutput):
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
     testfilename.unlink()
+
+  def testStitchCvxpy(self, SlideID="M206"):
+    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"annowarp_test_for_jenkins")
+    referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
+    s.readalignments(filename=referencefilename)
+    result1 = s.stitch()
+    result2 = s.stitch_cvxpy()
+
+    units.np.testing.assert_allclose(result2.coeffrelativetobigtile, units.nominal_values(result1.coeffrelativetobigtile))
+    units.np.testing.assert_allclose(result2.bigtileindexcoeff, units.nominal_values(result1.bigtileindexcoeff))
+    units.np.testing.assert_allclose(result2.constant, units.nominal_values(result1.constant))
+
+    x = units.nominal_values(result1.flatresult)
+    units.np.testing.assert_allclose(
+      result2.problem.value,
+      x @ result1.A @ x + result1.b @ x + result1.c,
+      rtol=0.01,
+    )
+
