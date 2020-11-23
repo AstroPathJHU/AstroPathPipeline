@@ -8,7 +8,7 @@ from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
-from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
+from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, AnnoWarpStitchResultTwoTiles, AnnoWarpStitchResultTwoTilesCvxpy
 
 class AnnoWarpSample(ZoomSample):
   def __init__(self, *args, bigtilepixels=(1400, 2100), tilepixels=100, tilebrightnessthreshold=45, mintilebrightfraction=0.2, mintilerange=45, **kwargs):
@@ -229,7 +229,8 @@ class AnnoWarpSample(ZoomSample):
   @staticmethod
   def stitchresultcls(*, model, cvxpy):
     return {
-      "default": (AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy)
+      "default": (AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy),
+      "twotiles": (AnnoWarpStitchResultTwoTiles, AnnoWarpStitchResultTwoTilesCvxpy),
     }[model][cvxpy]
 
   def stitch_cvxpy(self, *, model="default"):
@@ -327,6 +328,18 @@ class AnnoWarpAlignmentResult(AlignmentComparison, DataClassWithDistances):
   @property
   def centerrelativetobigtile(self):
     return self.center - self.bigtilecorner
+  @property
+  def centerrelativetoevenbigtile(self):
+    return self.center - self.evenbigtileindex * self.bigtilesize
+  @property
+  def centerrelativetooddbigtile(self):
+    return self.center - self.oddbigtileindex * self.bigtilesize
+  @property
+  def evenbigtileindex(self):
+    return self.bigtileindex // 2 * 2
+  @property
+  def oddbigtileindex(self):
+    return (self.bigtileindex-1) // 2 * 2 + 1
 
   @property
   def unshifted(self):
