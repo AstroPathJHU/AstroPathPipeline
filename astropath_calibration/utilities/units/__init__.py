@@ -1,6 +1,6 @@
 import contextlib
-from . import dataclasses, drawing
-from .core import UnitsError
+from . import core, dataclasses, drawing
+from .core import Distance, onemicron, onepixel, ThingWithPscale, UnitsError
 
 def setup(mode):
   global currentmodule
@@ -27,15 +27,12 @@ def setup(mode):
       unitdtype = float
     else:
       raise ValueError(f"Invalid mode {mode}")
+    core.currentmodule = currentmodule
   except:
     currentmode = None
     raise
   else:
     currentmode = mode
-
-class Distance:
-  def __new__(self, *args, **kwargs):
-    return currentmodule.Distance(*args, **kwargs)
 
 setup("safe")
 
@@ -48,7 +45,7 @@ def setup_context(mode):
     setup(bkp)
 
 __all__ = [
-  "correlated_distances", "Distance", "distances", "UnitsError",
+  "correlated_distances", "Distance", "distances", "onemicron", "onepixel", "ThingWithPscale", "UnitsError",
   "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs",
   "dataclasses", "drawing", "fft", "linalg", "testing",
   "setup", "setup_context",

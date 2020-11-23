@@ -25,7 +25,7 @@ setuptools.setup(
     "cvxpy",
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
-    "matplotlib",
+    "matplotlib>=3.3.2",
     "methodtools",
     "more_itertools>=8.3.0",
     "networkx",

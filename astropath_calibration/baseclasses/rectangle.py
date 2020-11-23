@@ -1,6 +1,6 @@
 import abc, collections, contextlib, dataclasses, datetime, jxmlease, methodtools, numpy as np, pathlib, tifffile, warnings
 from ..utilities import units
-from ..utilities.misc import dataclass_dc_init, memmapcontext
+from ..utilities.misc import dataclass_dc_init, floattoint, memmapcontext
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclass_dc_init
@@ -221,8 +221,8 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
   def imageshape(self):
     return [
       len(self.__layers),
-      units.pixels(self.__height, pscale=self.pscale),
-      units.pixels(self.__width, pscale=self.pscale),
+      floattoint(self.__height / self.onepixel),
+      floattoint(self.__width / self.onepixel),
     ]
 
   @property
@@ -240,7 +240,7 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
 
   @property
   def imageshapeininput(self):
-    return units.pixels((self.__nlayers, self.__width, self.__height), pscale=self.pscale, power=[0, 1, 1])
+    return self.__nlayers, floattoint(self.__width / self.onepixel), floattoint(self.__height / self.onepixel)
   @property
   def imagetransposefrominput(self):
     return (0, 2, 1)

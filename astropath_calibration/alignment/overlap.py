@@ -55,7 +55,8 @@ class AlignmentOverlap(Overlap):
 
     hh, ww = image1.shape
     assert (hh, ww) == image2.shape
-    hh, ww = units.distances(pixels=[hh, ww], pscale=self.pscale)
+    hh *= self.onepixel
+    ww *= self.onepixel
 
     image1x1 = self.x1
     image1y1 = self.y1
@@ -71,25 +72,27 @@ class AlignmentOverlap(Overlap):
     overlapy1 = max(image1y1, image2y1)
     overlapy2 = min(image1y2, image2y2)
 
-    offsetimage1x1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx1 - image1x1, pscale=self.pscale)))
-    offsetimage1x2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx2 - image1x1, pscale=self.pscale)))
-    offsetimage1y1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy1 - image1y1, pscale=self.pscale)))
-    offsetimage1y2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy2 - image1y1, pscale=self.pscale)))
+    onepixel = self.onepixel
 
-    offsetimage2x1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx1 - image2x1, pscale=self.pscale)))
-    offsetimage2x2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapx2 - image2x1, pscale=self.pscale)))
-    offsetimage2y1 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy1 - image2y1, pscale=self.pscale)))
-    offsetimage2y2 = units.Distance(pscale=self.pscale, pixels=int(units.pixels(overlapy2 - image2y1, pscale=self.pscale)))
+    offsetimage1x1 = (overlapx1 - image1x1) // onepixel * onepixel
+    offsetimage1x2 = (overlapx2 - image1x1) // onepixel * onepixel
+    offsetimage1y1 = (overlapy1 - image1y1) // onepixel * onepixel
+    offsetimage1y2 = (overlapy2 - image1y1) // onepixel * onepixel
 
-    cutimage1x1 = floattoint(units.pixels(offsetimage1x1 + self.nclip, pscale=self.pscale))
-    cutimage1x2 = floattoint(units.pixels(offsetimage1x2 - self.nclip, pscale=self.pscale))
-    cutimage1y1 = floattoint(units.pixels(offsetimage1y1 + self.nclip, pscale=self.pscale))
-    cutimage1y2 = floattoint(units.pixels(offsetimage1y2 - self.nclip, pscale=self.pscale))
+    offsetimage2x1 = (overlapx1 - image2x1) // onepixel * onepixel
+    offsetimage2x2 = (overlapx2 - image2x1) // onepixel * onepixel
+    offsetimage2y1 = (overlapy1 - image2y1) // onepixel * onepixel
+    offsetimage2y2 = (overlapy2 - image2y1) // onepixel * onepixel
 
-    cutimage2x1 = floattoint(units.pixels(offsetimage2x1 + self.nclip, pscale=self.pscale))
-    cutimage2x2 = floattoint(units.pixels(offsetimage2x2 - self.nclip, pscale=self.pscale))
-    cutimage2y1 = floattoint(units.pixels(offsetimage2y1 + self.nclip, pscale=self.pscale))
-    cutimage2y2 = floattoint(units.pixels(offsetimage2y2 - self.nclip, pscale=self.pscale))
+    cutimage1x1 = floattoint((offsetimage1x1 + self.nclip) / onepixel)
+    cutimage1x2 = floattoint((offsetimage1x2 - self.nclip) / onepixel)
+    cutimage1y1 = floattoint((offsetimage1y1 + self.nclip) / onepixel)
+    cutimage1y2 = floattoint((offsetimage1y2 - self.nclip) / onepixel)
+
+    cutimage2x1 = floattoint((offsetimage2x1 + self.nclip) / onepixel)
+    cutimage2x2 = floattoint((offsetimage2x2 - self.nclip) / onepixel)
+    cutimage2y1 = floattoint((offsetimage2y1 + self.nclip) / onepixel)
+    cutimage2y2 = floattoint((offsetimage2y2 - self.nclip) / onepixel)
 
     #make sure that even with floattoint() they're the same size
     deltax = min(cutimage1x2 - cutimage1x1, cutimage2x2 - cutimage2x1)
@@ -146,7 +149,7 @@ class AlignmentOverlap(Overlap):
       if debug: raise
       self.result = self.alignmentresulttype(
         exit=255,
-        dxvec=(units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale), units.Distance(pixels=unc.ufloat(0, 9999), pscale=self.pscale)),
+        dxvec=(unc.ufloat(0, 9999)*self.onepixel, unc.ufloat(0, 9999)*self.onepixel),
         sc=1.,
         mse=(0., 0., 0.),
         exception=e,
@@ -200,11 +203,11 @@ class AlignmentOverlap(Overlap):
   def __computeshift(self, **computeshiftkwargs):
     minimizeresult = computeshift(self.cutimages, **computeshiftkwargs)
     return {
-      "dxvec": units.correlated_distances(
+      "dxvec": np.array(units.correlated_distances(
         pixels=(minimizeresult.dx, minimizeresult.dy),
         pscale=self.pscale,
         power=1,
-      ),
+      )),
       "exit": minimizeresult.exit,
     }
 
@@ -217,7 +220,7 @@ class AlignmentOverlap(Overlap):
 
   @property
   def shifted(self):
-    return shiftimg(self.cutimages, *units.nominal_values(units.pixels(self.result.dxvec)),use_gpu=self.use_gpu)
+    return shiftimg(self.cutimages, *units.nominal_values(self.result.dxvec/self.onepixel),use_gpu=self.use_gpu)
 
   def __shiftclip(self, dxvec):
     """
@@ -225,7 +228,7 @@ class AlignmentOverlap(Overlap):
     and save the result. Compute the mse and the
     illumination correction
     """
-    b1, b2 = shiftimg(self.cutimages, *units.nominal_values(units.pixels(dxvec)),use_gpu=self.use_gpu)
+    b1, b2 = shiftimg(self.cutimages, *units.nominal_values(dxvec / self.onepixel),use_gpu=self.use_gpu)
 
     mse1 = mse(b1)
     mse2 = mse(b2)
