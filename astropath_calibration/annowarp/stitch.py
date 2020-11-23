@@ -4,10 +4,21 @@ from ..utilities import units
 from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
-class AnnoWarpStitchResultBase(abc.ABC):
+class ThingWithImscale(abc.ABC):
+  @abc.abstractproperty
+  def imscale(self): pass
+  @property
+  def oneimpixel(self): return units.onepixel(pscale=self.imscale)
+  @property
+  def oneimmicron(self): return units.onemicron(pscale=self.imscale)
+
+class AnnoWarpStitchResultBase(ThingWithImscale):
   def __init__(self, *, imscale, **kwargs):
-    self.imscale = imscale
+    self.__imscale = imscale
     super().__init__(**kwargs)
+
+  @property
+  def imscale(self): return self.__imscale
 
   @abc.abstractmethod
   def dxvec(self, alignmentresult):
@@ -131,7 +142,7 @@ class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, Ann
 
 class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultCvxpyBase):
   def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale, **kwargs):
-    onepixel = self.onepixel = units.Distance(pixels=1, pscale=imscale)
+    onepixel = units.onepixel(pscale=imscale)
     super().__init__(
       coeffrelativetobigtile=coeffrelativetobigtile.value,
       bigtileindexcoeff=bigtileindexcoeff.value * onepixel,

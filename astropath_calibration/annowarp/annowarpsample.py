@@ -1,4 +1,4 @@
-import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
+import abc, contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
@@ -8,9 +8,9 @@ from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
-from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
+from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, ThingWithImscale
 
-class AnnoWarpSample(ZoomSample):
+class AnnoWarpSample(ZoomSample, ThingWithImscale):
   def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=100, tilebrightnessthreshold=45, mintilebrightfraction=0.2, mintilerange=45, **kwargs):
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
@@ -119,7 +119,7 @@ class AnnoWarpSample(ZoomSample):
     #deltax = self.deltax
     #deltay = self.deltay
 
-    onepixel = units.Distance(pixels=1, pscale=imscale)
+    onepixel = self.oneimpixel
 
     mx1 = units.convertpscale(min(field.mx1 for field in self.rectangles), self.pscale, imscale, 1)
     mx2 = units.convertpscale(max(field.mx2 for field in self.rectangles), self.pscale, imscale, 1)
@@ -242,7 +242,7 @@ class AnnoWarpSample(ZoomSample):
     variables = stitchresultcls.makecvxpyvariables()
 
     tominimize = 0
-    onepixel = units.Distance(pixels=1, pscale=self.imscale)
+    onepixel = self.oneimpixel
     for result in self.__alignmentresults.goodconnectedresults:
       residual = stitchresultcls.cvxpyresidual(result, **variables)
       tominimize += cp.quad_form(residual, units.np.linalg.inv(result.covariance) * onepixel**2)
@@ -348,7 +348,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, DataClassWithDistances):
     ]
     return wsitile, qptifftile
 
-class AnnoWarpAlignmentResults(list):
+class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
   @property
   def goodresults(self):
     return type(self)(r for r in self if not r.exit)
@@ -377,7 +377,7 @@ class AnnoWarpAlignmentResults(list):
 
   @property
   def goodconnectedresults(self):
-    onepixel = units.Distance(pixels=1, pscale=self.pscale)
+    onepixel = self.onepixel
     good = self.goodresults
     g = good.adjacencygraph
     tiledict = {tile.n: tile for tile in self}
