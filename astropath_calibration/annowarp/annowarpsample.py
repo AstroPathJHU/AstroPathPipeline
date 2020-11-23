@@ -11,7 +11,7 @@ from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, AnnoWarpStitchResultTwoTiles, AnnoWarpStitchResultTwoTilesCvxpy
 
 class AnnoWarpSample(ZoomSample):
-  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 0), tilepixels=100, tilebrightnessthreshold=45, mintilebrightfraction=0.2, mintilerange=45, **kwargs):
+  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=100, tilebrightnessthreshold=45, mintilebrightfraction=0.2, mintilerange=45, **kwargs):
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1

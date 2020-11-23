@@ -1,11 +1,11 @@
 n,value,description
-1,0.007035223937690527,coefficient of delta x as a function of x within the tile
-2,-0.0028181339046743138,coefficient of delta x as a function of y within the tile
-3,0.009034098332170403,coefficient of delta y as a function of x within the tile
-4,-0.0076715373113653,coefficient of delta y as a function of x within the tile
-5,1.3532301565075437,coefficient of delta x as a function of tile index in x
-6,-4.375124739094854,coefficient of delta x as a function of tile index in y
-7,-1.6499080762100753,coefficient of delta y as a function of tile index in x
-8,1.6657803389526702,coefficient of delta y as a function of tile index in x
-9,-0.9687753447623794,constant piece in delta x
-10,-3.8918626223609474,constant piece in delta y
+1,0.004774911111998992,coefficient of delta x as a function of x within the tile
+2,-0.00045390925070598257,coefficient of delta x as a function of y within the tile
+3,-0.0006462155721073684,coefficient of delta y as a function of x within the tile
+4,0.0037033191945515524,coefficient of delta y as a function of x within the tile
+5,2.665092054069301,coefficient of delta x as a function of tile index in x
+6,-2.4369674471466727,coefficient of delta x as a function of tile index in y
+7,-0.41695013553758836,coefficient of delta y as a function of tile index in x
+8,0.014194051501732698,coefficient of delta y as a function of tile index in x
+9,-19.09933441379413,constant piece in delta x
+10,-16.360969309902295,constant piece in delta y
