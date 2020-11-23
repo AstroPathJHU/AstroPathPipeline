@@ -1,4 +1,4 @@
-import abc, contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
+import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
