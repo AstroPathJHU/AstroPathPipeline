@@ -29,8 +29,8 @@ class TestAnnoWarp(TestBaseSaveOutput):
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     s.writealignments(filename=filename)
 
-    rows = readtable(filename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize})
-    targetrows = readtable(referencefilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize})
+    rows = readtable(filename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
+    targetrows = readtable(referencefilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
@@ -51,8 +51,8 @@ class TestAnnoWarp(TestBaseSaveOutput):
     testfilename.parent.mkdir(parents=True, exist_ok=True)
     s.readalignments(filename=referencefilename)
     s.writealignments(filename=testfilename)
-    rows = readtable(testfilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize})
-    targetrows = readtable(referencefilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize})
+    rows = readtable(testfilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
+    targetrows = readtable(referencefilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
     testfilename.unlink()

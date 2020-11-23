@@ -11,11 +11,12 @@ from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, AnnoWarpStitchResultTwoTiles, AnnoWarpStitchResultTwoTilesCvxpy
 
 class AnnoWarpSample(ZoomSample):
-  def __init__(self, *args, bigtilepixels=(1400, 2100), tilepixels=100, tilebrightnessthreshold=45, mintilebrightfraction=0.2, mintilerange=45, **kwargs):
+  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 0), tilepixels=100, tilebrightnessthreshold=45, mintilebrightfraction=0.2, mintilerange=45, **kwargs):
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
     self.__bigtilepixels = np.array(bigtilepixels)
+    self.__bigtileoffsetpixels = np.array(bigtileoffsetpixels)
     self.__tilepixels = tilepixels
     self.tilebrightnessthreshold = tilebrightnessthreshold
     self.mintilebrightfraction = mintilebrightfraction
@@ -47,6 +48,8 @@ class AnnoWarpSample(ZoomSample):
   def tilesize(self): return units.Distance(pixels=self.__tilepixels, pscale=self.imscale)
   @property
   def bigtilesize(self): return units.distances(pixels=self.__bigtilepixels, pscale=self.imscale)
+  @property
+  def bigtileoffset(self): return units.distances(pixels=self.__bigtileoffsetpixels, pscale=self.imscale)
   @property
   def deltax(self): return units.Distance(pixels=self.__deltax, pscale=self.imscale)
   @property
@@ -112,6 +115,7 @@ class AnnoWarpSample(ZoomSample):
     imscale = self.imscale
     tilesize = self.tilesize
     bigtilesize = self.bigtilesize
+    bigtileoffset = self.bigtileoffset
     #deltax = self.deltax
     #deltay = self.deltay
 
@@ -171,6 +175,7 @@ class AnnoWarpSample(ZoomSample):
         pscale=imscale,
         tilesize=tilesize,
         bigtilesize=bigtilesize,
+        bigtileoffset=bigtileoffset,
         imageshandle=self.getimages,
       )
 
@@ -219,7 +224,7 @@ class AnnoWarpSample(ZoomSample):
 
   def readalignments(self, *, filename=None):
     if filename is None: filename = self.alignmentcsv
-    results = self.__alignmentresults = AnnoWarpAlignmentResults(readtable(filename, AnnoWarpAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize, "bigtilesize": self.bigtilesize, "imageshandle": self.getimages}))
+    results = self.__alignmentresults = AnnoWarpAlignmentResults(readtable(filename, AnnoWarpAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize, "bigtilesize": self.bigtilesize, "bigtileoffset": self.bigtileoffset, "imageshandle": self.getimages}))
     return results
 
   @property
@@ -277,6 +282,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, DataClassWithDistances):
   exit: int
   tilesize: dataclasses.InitVar[units.Distance]
   bigtilesize: dataclasses.InitVar[units.Distance]
+  bigtileoffset: dataclasses.InitVar[units.Distance]
   exceptions: dataclasses.InitVar[Exception] = None
   imageshandle: dataclasses.InitVar[typing.Callable[[], typing.Tuple[np.ndarray, np.ndarray]]] = None
   pscale: dataclasses.InitVar[float] = None
@@ -297,10 +303,11 @@ class AnnoWarpAlignmentResult(AlignmentComparison, DataClassWithDistances):
     self.use_gpu = False
     return self.__dc_init__(*args, **kwargs)
 
-  def __post_init__(self, tilesize, bigtilesize, exception=None, imageshandle=None, *args, **kwargs):
+  def __post_init__(self, tilesize, bigtilesize, bigtileoffset, exception=None, imageshandle=None, *args, **kwargs):
     super().__post_init__(*args, **kwargs)
     self.tilesize = tilesize
     self.bigtilesize = bigtilesize
+    self.bigtileoffset = bigtileoffset
     self.exception = exception
     self.imageshandle = imageshandle
 
@@ -321,19 +328,19 @@ class AnnoWarpAlignmentResult(AlignmentComparison, DataClassWithDistances):
     return self.xvec // self.tilesize
   @property
   def bigtileindex(self):
-    return self.center // self.bigtilesize
+    return (self.center - self.bigtileoffset) // self.bigtilesize
   @property
   def bigtilecorner(self):
-    return self.bigtileindex * self.bigtilesize
+    return self.bigtileindex * self.bigtilesize + self.bigtileoffset
   @property
   def centerrelativetobigtile(self):
     return self.center - self.bigtilecorner
   @property
   def centerrelativetoevenbigtile(self):
-    return self.center - self.evenbigtileindex * self.bigtilesize
+    return self.center - (self.evenbigtileindex * self.bigtilesize + self.bigtileoffset)
   @property
   def centerrelativetooddbigtile(self):
-    return self.center - self.oddbigtileindex * self.bigtilesize
+    return self.center - (self.oddbigtileindex * self.bigtilesize + self.bigtileoffset)
   @property
   def evenbigtileindex(self):
     return self.bigtileindex // 2 * 2
