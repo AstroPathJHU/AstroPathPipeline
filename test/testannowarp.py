@@ -2,6 +2,7 @@ import more_itertools, pathlib
 
 from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample
 from astropath_calibration.annowarp.stitch import AnnoWarpStitchResultEntry
+from astropath_calibration.baseclasses.csvclasses import Vertex
 from astropath_calibration.utilities import units
 from astropath_calibration.utilities.tableio import readtable
 
@@ -23,7 +24,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
       for SlideID in ("M206",)
     ]
 
-  def testAnnoWarp(self, SlideID="M206"):
+  def testAlignment(self, SlideID="M206"):
     s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"annowarp_test_for_jenkins")
     s.align()
     filename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.alignmentcsv.name
@@ -35,12 +36,26 @@ class TestAnnoWarp(TestBaseSaveOutput):
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
+  def testAnnoWarp(self, SlideID="M206"):
+    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"annowarp_test_for_jenkins")
+    referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
+    s.readalignments(filename=referencefilename)
+
     s.stitch()
     filename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.stitchcsv.name
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.stitchcsv.name
     s.writestitchresult(filename=filename)
 
     rows = readtable(filename, AnnoWarpStitchResultEntry, extrakwargs={"pscale": s.pscale})
+    targetrows = readtable(referencefilename, AnnoWarpStitchResultEntry, extrakwargs={"pscale": s.pscale})
+    for row, target in more_itertools.zip_equal(rows, targetrows):
+      assertAlmostEqual(row, target, rtol=1e-4)
+
+    filename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.newverticescsv.name
+    referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.newverticescsv.name
+    s.writevertices(filename=filename)
+
+    rows = readtable(filename, Vertex, extrakwargs={"pscale": s.pscale})
     targetrows = readtable(referencefilename, AnnoWarpStitchResultEntry, extrakwargs={"pscale": s.pscale})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)

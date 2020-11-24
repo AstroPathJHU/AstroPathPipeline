@@ -1,0 +1,3 @@
+sampleid,layer,name,color,visible,poly
+0,1,Good tissue,FFFF00,1,poly
+0,2,Tumor,00FF00,1,poly

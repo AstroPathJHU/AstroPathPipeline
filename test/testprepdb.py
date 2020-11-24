@@ -77,6 +77,9 @@ class TestPrepDb(unittest.TestCase):
   def testPrepDbPolarisFastUnits(self):
     self.testPrepDbFastUnits(SlideID="YZ71")
 
+  def testPrepDbM206(self):
+    self.testPrepDbFastUnits(SlideID="M206")
+
   def testRectangleOverlapList(self):
     l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload")
     islands = l.islands()

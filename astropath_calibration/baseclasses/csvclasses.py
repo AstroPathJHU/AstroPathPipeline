@@ -1,6 +1,6 @@
 import dataclasses, datetime, numbers, numpy as np, re
 from ..utilities import units
-from ..utilities.misc import floattoint
+from ..utilities.misc import dataclass_dc_init, floattoint
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
@@ -93,7 +93,7 @@ class Annotation:
   visible: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
   poly: str
 
-@dataclasses.dataclass
+@dataclass_dc_init
 class Vertex(DataClassWithDistances):
   pixelsormicrons = "microns"
 
@@ -107,6 +107,16 @@ class Vertex(DataClassWithDistances):
   @property
   def xvec(self):
     return np.array([self.x, self.y])
+
+  def __init__(self, *args, xvec=None, **kwargs):
+    xveckwargs = {}
+    if xvec is not None:
+      xveckwargs["x"], xveckwargs["y"] = xvec
+    self.__dc_init__(
+      *args,
+      **kwargs,
+      **xveckwargs,
+    )
 
 class Polygon:
   pixelsormicrons = "pixels"

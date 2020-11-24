@@ -1,7 +1,8 @@
-import contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
+import abc, contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
+from ..baseclasses.csvclasses import Vertex
 from ..baseclasses.qptiff import QPTiff
 from ..zoom.zoom import ZoomSample
 from ..utilities import units
@@ -76,6 +77,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
         "yposition": fqptiff.yposition,
       }
 
+  @property
+  def apscale(self): return self.__imageinfo["apscale"]
   @property
   def ppscale(self): return self.__imageinfo["ppscale"]
   @property
@@ -288,8 +291,69 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     if filename is None: filename = self.stitchcsv
     self.__stitchresult.writestitchresult(filename=filename, logger=self.logger)
 
+  @property
+  def oldverticescsv(self): return self.csv("vertices")
+  @property
+  def newverticescsv(self): return self.csv("vertices-warped")
+
+  @methodtools.lru_cache()
+  @property
+  def vertices(self, *, filename=None):
+    if filename is None: filename = self.oldverticescsv
+    return readtable(filename, QPTiffVertex, extrakwargs={"pscale": self.imscale, "bigtilesize": self.bigtilesize, "bigtileoffset": self.bigtileoffset})
+
+  @methodtools.lru_cache()
+  @property
+  def warpedvertices(self):
+    return [
+      QPTiffVertex(
+        xvec=v.xvec + units.nominal_values(self.__stitchresult.dxvec(v)),
+        regionid=v.regionid,
+        vid=v.vid,
+        pscale=v.pscale,
+        bigtilesize=v.bigtilesize,
+        bigtileoffset=v.bigtileoffset,
+      ) for v in self.vertices
+    ]
+
+  def writevertices(self, *, filename=None):
+    if filename is None: filename = self.newverticescsv
+    writetable(filename, self.warpedvertices)
+
+class QPTiffCoordinateBase(abc.ABC):
+  @abc.abstractproperty
+  def bigtilesize(self): pass
+  @abc.abstractproperty
+  def bigtileoffset(self): pass
+  @abc.abstractproperty
+  def qptiffcoordinate(self): pass
+  @property
+  def bigtileindex(self):
+    return (self.xvec - self.bigtileoffset) // self.bigtilesize
+  @property
+  def bigtilecorner(self):
+    return self.bigtileindex * self.bigtilesize + self.bigtileoffset
+  @property
+  def centerrelativetobigtile(self):
+    return self.qptiffcoordinate - self.bigtilecorner
+
+class QPTiffCoordinate(QPTiffCoordinateBase):
+  def __init__(self, *args, bigtilesize, bigtileoffset, **kwargs):
+    self.__bigtilesize = bigtilesize
+    self.__bigtileoffset = bigtileoffset
+    super().__init__(*args, **kwargs)
+  @property
+  def bigtilesize(self): return self.__bigtilesize
+  @property
+  def bigtileoffset(self): return self.__bigtileoffset
+
+class QPTiffVertex(QPTiffCoordinate, Vertex):
+  @property
+  def qptiffcoordinate(self):
+    return self.xvec
+
 @dataclass_dc_init
-class AnnoWarpAlignmentResult(AlignmentComparison, DataClassWithDistances):
+class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataClassWithDistances):
   pixelsormicrons = "pixels"
   n: int
   x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
@@ -322,15 +386,20 @@ class AnnoWarpAlignmentResult(AlignmentComparison, DataClassWithDistances):
       (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
 
     self.use_gpu = False
-    return self.__dc_init__(*args, **kwargs)
+    self.__dc_init__(*args, **kwargs)
 
   def __post_init__(self, tilesize, bigtilesize, bigtileoffset, exception=None, imageshandle=None, *args, **kwargs):
     super().__post_init__(*args, **kwargs)
     self.tilesize = tilesize
-    self.bigtilesize = bigtilesize
-    self.bigtileoffset = bigtileoffset
+    self.__bigtilesize = bigtilesize
+    self.__bigtileoffset = bigtileoffset
     self.exception = exception
     self.imageshandle = imageshandle
+
+  @property
+  def bigtilesize(self): return self.__bigtilesize
+  @property
+  def bigtileoffset(self): return self.__bigtileoffset
 
   @property
   def xvec(self):
@@ -344,18 +413,10 @@ class AnnoWarpAlignmentResult(AlignmentComparison, DataClassWithDistances):
   @property
   def center(self):
     return self.xvec + self.tilesize/2
+  qptiffcoordinate = center
   @property
   def tileindex(self):
     return self.xvec // self.tilesize
-  @property
-  def bigtileindex(self):
-    return (self.center - self.bigtileoffset) // self.bigtilesize
-  @property
-  def bigtilecorner(self):
-    return self.bigtileindex * self.bigtilesize + self.bigtileoffset
-  @property
-  def centerrelativetobigtile(self):
-    return self.center - self.bigtilecorner
 
   @property
   def unshifted(self):

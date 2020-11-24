@@ -21,7 +21,7 @@ class AnnoWarpStitchResultBase(ThingWithImscale):
   def imscale(self): return self.__imscale
 
   @abc.abstractmethod
-  def dxvec(self, alignmentresult):
+  def dxvec(self, qptiffcoordinate):
     pass
 
   def residual(self, alignmentresult):
