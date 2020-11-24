@@ -1,4 +1,4 @@
-import itertools, numpy as np, os, pathlib, PIL.Image, re, unittest
+import more_itertools, numpy as np, os, pathlib, PIL.Image, re, unittest
 from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, Globals, QPTiffCsv, Region, Vertex
 from astropath_calibration.baseclasses.sample import SampleDef
 from astropath_calibration.baseclasses.overlap import Overlap, rectangleoverlaplist_fromcsvs
@@ -47,7 +47,7 @@ class TestPrepDb(unittest.TestCase):
       try:
         rows = readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
         targetrows = readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        for i, (row, target) in enumerate(itertools.zip_longest(rows, targetrows)):
+        for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
       except:
         raise ValueError("Error in "+filename)

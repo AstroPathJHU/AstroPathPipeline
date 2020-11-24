@@ -1,4 +1,4 @@
-import dataclasses, itertools, methodtools, numpy as np, uncertainties as unc
+import dataclasses, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 
 from ..baseclasses.overlap import OverlapCollection
 from ..utilities import units
@@ -228,7 +228,7 @@ def __stitchlayerscvxpy(*, overlaps, logger=dummylogger):
         overlaps.remove(complement)
         overlaps.append(ComplementaryOverlapPair(o, complement))
 
-  layerx = {layer: xx for layer, xx in itertools.zip_longest(layers, x)}
+  layerx = {layer: xx for layer, xx in more_itertools.zip_equal(layers, x)}
 
   for o in overlaps:
     x1 = layerx[o.layer1]
@@ -278,7 +278,7 @@ class LayerStitchResultBase(OverlapCollection):
   @property
   def layerpositions(self):
     result = []
-    for layer, row in itertools.zip_longest(self.layers, self.x()):
+    for layer, row in more_itertools.zip_equal(self.layers, self.x()):
       x, y = units.nominal_values(row)
       if np.any(units.std_devs(row)):
         (cov_x_x, cov_x_y), (cov_x_y, cov_y_y) = units.covariance_matrix(row)
@@ -301,7 +301,7 @@ class LayerStitchResultBase(OverlapCollection):
   def layerpositioncovariances(self):
     result = []
     pscale = self.pscale
-    for (layer1, row1), (layer2, row2) in itertools.product(itertools.zip_longest(self.layers, self.x()), repeat=2):
+    for (layer1, row1), (layer2, row2) in itertools.product(more_itertools.zip_equal(self.layers, self.x()), repeat=2):
       if layer1 == layer2: continue
       if np.any(units.std_devs((*row1, *row2))):
         cov = np.array(units.covariance_matrix((*row1, *row2)))
