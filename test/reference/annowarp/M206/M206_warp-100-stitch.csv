@@ -1,11 +1,66 @@
 n,value,description
-1,0.004774911111998992,coefficient of delta x as a function of x within the tile
-2,-0.00045390925070598257,coefficient of delta x as a function of y within the tile
-3,-0.0006462155721073684,coefficient of delta y as a function of x within the tile
-4,0.0037033191945515524,coefficient of delta y as a function of x within the tile
-5,2.665092054069301,coefficient of delta x as a function of tile index in x
-6,-2.4369674471466727,coefficient of delta x as a function of tile index in y
-7,-0.41695013553758836,coefficient of delta y as a function of tile index in x
-8,0.014194051501732698,coefficient of delta y as a function of tile index in x
-9,-19.09933441379413,constant piece in delta x
-10,-16.360969309902295,constant piece in delta y
+1,0.004774911111944985,coefficient of delta x as a function of x within the tile
+2,-0.00045390925078803455,coefficient of delta x as a function of y within the tile
+3,-0.0006462155718856427,coefficient of delta y as a function of x within the tile
+4,0.003703319194482195,coefficient of delta y as a function of y within the tile
+5,2.6650920539587077,coefficient of delta x as a function of tile index in x
+6,-2.4369674473295615,coefficient of delta x as a function of tile index in y
+7,-0.41695013561202443,coefficient of delta y as a function of tile index in x
+8,0.01419405138704838,coefficient of delta y as a function of tile index in y
+9,-19.099334412449796,constant piece in delta x
+10,-16.36096930907458,constant piece in delta y
+11,4.100188959046876e-06,"covariance(coefficient of delta x as a function of x within the tile, coefficient of delta x as a function of x within the tile)"
+12,-2.0671476611575025e-06,"covariance(coefficient of delta x as a function of x within the tile, coefficient of delta x as a function of y within the tile)"
+13,3.0482056959956433e-07,"covariance(coefficient of delta x as a function of x within the tile, coefficient of delta y as a function of x within the tile)"
+14,-1.8518983971650644e-07,"covariance(coefficient of delta x as a function of x within the tile, coefficient of delta y as a function of y within the tile)"
+15,-0.0021977523787051925,"covariance(coefficient of delta x as a function of x within the tile, coefficient of delta x as a function of tile index in x)"
+16,-0.0034249748452701892,"covariance(coefficient of delta x as a function of x within the tile, coefficient of delta x as a function of tile index in y)"
+17,-0.00017606924235957474,"covariance(coefficient of delta x as a function of x within the tile, coefficient of delta y as a function of tile index in x)"
+18,-0.00025751602459228465,"covariance(coefficient of delta x as a function of x within the tile, coefficient of delta y as a function of tile index in y)"
+19,0.025072377218589403,"covariance(coefficient of delta x as a function of x within the tile, constant piece in delta x)"
+20,0.001978599626312234,"covariance(coefficient of delta x as a function of x within the tile, constant piece in delta y)"
+21,4.995637277120257e-06,"covariance(coefficient of delta x as a function of y within the tile, coefficient of delta x as a function of y within the tile)"
+22,-1.6347452247476076e-07,"covariance(coefficient of delta x as a function of y within the tile, coefficient of delta y as a function of x within the tile)"
+23,3.1577572378512043e-07,"covariance(coefficient of delta x as a function of y within the tile, coefficient of delta y as a function of y within the tile)"
+24,0.005974969879545073,"covariance(coefficient of delta x as a function of y within the tile, coefficient of delta x as a function of tile index in x)"
+25,0.00936775736292575,"covariance(coefficient of delta x as a function of y within the tile, coefficient of delta x as a function of tile index in y)"
+26,0.0003451470229453292,"covariance(coefficient of delta x as a function of y within the tile, coefficient of delta y as a function of tile index in x)"
+27,0.0005542305809858723,"covariance(coefficient of delta x as a function of y within the tile, coefficient of delta y as a function of tile index in y)"
+28,-0.07009572439682639,"covariance(coefficient of delta x as a function of y within the tile, constant piece in delta x)"
+29,-0.004093439033858582,"covariance(coefficient of delta x as a function of y within the tile, constant piece in delta y)"
+30,5.1085236137725375e-06,"covariance(coefficient of delta y as a function of x within the tile, coefficient of delta y as a function of x within the tile)"
+31,-2.5711488392101303e-06,"covariance(coefficient of delta y as a function of x within the tile, coefficient of delta y as a function of y within the tile)"
+32,-0.00015208878787533847,"covariance(coefficient of delta y as a function of x within the tile, coefficient of delta x as a function of tile index in x)"
+33,-0.00022395774032558656,"covariance(coefficient of delta y as a function of x within the tile, coefficient of delta x as a function of tile index in y)"
+34,-0.0027318311369187794,"covariance(coefficient of delta y as a function of x within the tile, coefficient of delta y as a function of tile index in x)"
+35,-0.00417889429886099,"covariance(coefficient of delta y as a function of x within the tile, coefficient of delta y as a function of tile index in y)"
+36,0.0017076222395709332,"covariance(coefficient of delta y as a function of x within the tile, constant piece in delta x)"
+37,0.03092570949569102,"covariance(coefficient of delta y as a function of x within the tile, constant piece in delta y)"
+38,6.166260589495802e-06,"covariance(coefficient of delta y as a function of y within the tile, coefficient of delta y as a function of y within the tile)"
+39,0.0003436548628754005,"covariance(coefficient of delta y as a function of y within the tile, coefficient of delta x as a function of tile index in x)"
+40,0.0005547265868163353,"covariance(coefficient of delta y as a function of y within the tile, coefficient of delta x as a function of tile index in y)"
+41,0.007358848610864653,"covariance(coefficient of delta y as a function of y within the tile, coefficient of delta y as a function of tile index in x)"
+42,0.011509472584412834,"covariance(coefficient of delta y as a function of y within the tile, coefficient of delta y as a function of tile index in y)"
+43,-0.004081067973486753,"covariance(coefficient of delta y as a function of y within the tile, constant piece in delta x)"
+44,-0.08625249990677165,"covariance(coefficient of delta y as a function of y within the tile, constant piece in delta y)"
+45,7.435235363423257,"covariance(coefficient of delta x as a function of tile index in x, coefficient of delta x as a function of tile index in x)"
+46,11.561266118342182,"covariance(coefficient of delta x as a function of tile index in x, coefficient of delta x as a function of tile index in y)"
+47,0.39931290668337055,"covariance(coefficient of delta x as a function of tile index in x, coefficient of delta y as a function of tile index in x)"
+48,0.6251125093946173,"covariance(coefficient of delta x as a function of tile index in x, coefficient of delta y as a function of tile index in y)"
+49,-86.80820127433944,"covariance(coefficient of delta x as a function of tile index in x, constant piece in delta x)"
+50,-4.663608689928233,"covariance(coefficient of delta x as a function of tile index in x, constant piece in delta y)"
+51,18.088594874116836,"covariance(coefficient of delta x as a function of tile index in y, coefficient of delta x as a function of tile index in y)"
+52,0.6278986969463868,"covariance(coefficient of delta x as a function of tile index in y, coefficient of delta y as a function of tile index in x)"
+53,0.9924862792737256,"covariance(coefficient of delta x as a function of tile index in y, coefficient of delta y as a function of tile index in y)"
+54,-135.4219436495434,"covariance(coefficient of delta x as a function of tile index in y, constant piece in delta x)"
+55,-7.382897137497155,"covariance(coefficient of delta x as a function of tile index in y, constant piece in delta y)"
+56,9.132054222118452,"covariance(coefficient of delta y as a function of tile index in x, coefficient of delta y as a function of tile index in x)"
+57,14.172687384144854,"covariance(coefficient of delta y as a function of tile index in x, coefficient of delta y as a function of tile index in y)"
+58,-4.6684980104036775,"covariance(coefficient of delta y as a function of tile index in x, constant piece in delta x)"
+59,-106.54722816704586,"covariance(coefficient of delta y as a function of tile index in x, constant piece in delta y)"
+60,22.13214896590268,"covariance(coefficient of delta y as a function of tile index in y, coefficient of delta y as a function of tile index in y)"
+61,-7.358190570953447,"covariance(coefficient of delta y as a function of tile index in y, constant piece in delta x)"
+62,-165.91053860164163,"covariance(coefficient of delta y as a function of tile index in y, constant piece in delta y)"
+63,1015.4660184778793,"covariance(constant piece in delta x, constant piece in delta x)"
+64,54.77029223629933,"covariance(constant piece in delta x, constant piece in delta y)"
+65,1245.6032528022117,"covariance(constant piece in delta y, constant piece in delta y)"

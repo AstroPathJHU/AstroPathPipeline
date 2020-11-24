@@ -1,4 +1,4 @@
-import abc, cvxpy as cp, dataclasses, numpy as np
+import abc, collections, cvxpy as cp, dataclasses, itertools, numpy as np, re
 
 from ..utilities import units
 from ..utilities.tableio import writetable
@@ -28,10 +28,29 @@ class AnnoWarpStitchResultBase(ThingWithImscale):
     return alignmentresult.dxvec - self.dxvec(alignmentresult)
 
   def writestitchresult(self, *, filename, **kwargs):
-    writetable(filename, self.stitchresultentries, **kwargs)
+    writetable(filename, self.allstitchresultentries, **kwargs)
+
+  EntryLite = collections.namedtuple("EntryLite", "value description")
 
   @abc.abstractproperty
   def stitchresultentries(self): pass
+
+  @property
+  def stitchresultnominalentries(self):
+    for n, (value, description) in enumerate(self.stitchresultentries, start=1):
+      yield AnnoWarpStitchResultEntry(
+        n=n,
+        value=units.nominal_value(value),
+        description=description,
+        pscale=self.imscale,
+      )
+
+  @abc.abstractproperty
+  def stitchresultcovarianceentries(self): pass
+
+  @property
+  def allstitchresultentries(self):
+    return list(itertools.chain(self.stitchresultnominalentries, self.stitchresultcovarianceentries))
 
 class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
   def __init__(self, *, A, b, c, flatresult, **kwargs):
@@ -48,6 +67,17 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
   @classmethod
   @abc.abstractmethod
   def Abccontributions(cls, alignmentresult): pass
+
+  @property
+  def stitchresultcovarianceentries(self):
+    entries = self.stitchresultentries
+    for n, ((value1, description1), (value2, description2)) in enumerate(itertools.combinations_with_replacement(entries, 2), start=len(entries)+1):
+      yield AnnoWarpStitchResultEntry(
+        n=n,
+        value=units.covariance_matrix([value1, value2])[0, 1],
+        description="covariance("+description1+", "+description2+")",
+        pscale=self.imscale,
+      )
 
 class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
   def __init__(self, *, problem, **kwargs):
@@ -69,6 +99,9 @@ class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
   def cvxpyresidual(cls, alignmentresult, **cvxpyvariables):
     return units.nominal_values(alignmentresult.dxvec)/alignmentresult.onepixel - cls.cvxpydxvec(alignmentresult, **cvxpyvariables)
 
+  @property
+  def stitchresultcovarianceentries(self): return []
+
 class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
   def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, **kwargs):
     self.coeffrelativetobigtile = coeffrelativetobigtile
@@ -86,67 +119,47 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
   @property
   def stitchresultentries(self):
     return (
-      AnnoWarpStitchResultEntry(
-        n=1,
+      self.EntryLite(
         value=self.coeffrelativetobigtile[0,0],
         description="coefficient of delta x as a function of x within the tile",
-        pscale=self.imscale,
       ),
-      AnnoWarpStitchResultEntry(
-        n=2,
+      self.EntryLite(
         value=self.coeffrelativetobigtile[0,1],
         description="coefficient of delta x as a function of y within the tile",
-        pscale=self.imscale,
       ),
-      AnnoWarpStitchResultEntry(
-        n=3,
+      self.EntryLite(
         value=self.coeffrelativetobigtile[1,0],
         description="coefficient of delta y as a function of x within the tile",
-        pscale=self.imscale,
       ),
-      AnnoWarpStitchResultEntry(
-        n=4,
+      self.EntryLite(
         value=self.coeffrelativetobigtile[1,1],
-        description="coefficient of delta y as a function of x within the tile",
-        pscale=self.imscale,
+        description="coefficient of delta y as a function of y within the tile",
       ),
 
-      AnnoWarpStitchResultEntry(
-        n=5,
+      self.EntryLite(
         value=self.bigtileindexcoeff[0,0],
         description="coefficient of delta x as a function of tile index in x",
-        pscale=self.imscale,
       ),
-      AnnoWarpStitchResultEntry(
-        n=6,
+      self.EntryLite(
         value=self.bigtileindexcoeff[0,1],
         description="coefficient of delta x as a function of tile index in y",
-        pscale=self.imscale,
       ),
-      AnnoWarpStitchResultEntry(
-        n=7,
+      self.EntryLite(
         value=self.bigtileindexcoeff[1,0],
         description="coefficient of delta y as a function of tile index in x",
-        pscale=self.imscale,
       ),
-      AnnoWarpStitchResultEntry(
-        n=8,
+      self.EntryLite(
         value=self.bigtileindexcoeff[1,1],
-        description="coefficient of delta y as a function of tile index in x",
-        pscale=self.imscale,
+        description="coefficient of delta y as a function of tile index in y",
       ),
 
-      AnnoWarpStitchResultEntry(
-        n=9,
+      self.EntryLite(
         value=self.constant[0],
         description="constant piece in delta x",
-        pscale=self.imscale,
       ),
-      AnnoWarpStitchResultEntry(
-        n=10,
+      self.EntryLite(
         value=self.constant[1],
         description="constant piece in delta y",
-        pscale=self.imscale,
       ),
     )
 
@@ -282,7 +295,7 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
 class AnnoWarpStitchResultEntry(DataClassWithDistances):
   pixelsormicrons = "pixels"
   def __powerfordescription(self):
-    return {
+    dct = {
       "coefficient of delta x as a function of x within the tile": 0,
       "coefficient of delta x as a function of y within the tile": 0,
       "coefficient of delta y as a function of x within the tile": 0,
@@ -293,7 +306,12 @@ class AnnoWarpStitchResultEntry(DataClassWithDistances):
       "coefficient of delta y as a function of tile index in y": 1,
       "constant piece in delta x": 1,
       "constant piece in delta y": 1,
-    }[self.description]
+    }
+    covmatch = re.match(r"covariance\((.*), (.*)\)", self.description)
+    if covmatch:
+      return dct[covmatch.group(1)] + dct[covmatch.group(2)]
+    else:
+      return dct[self.description]
   n: int
   value: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=__powerfordescription)
   description: str
