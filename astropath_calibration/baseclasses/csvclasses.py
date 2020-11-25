@@ -44,6 +44,7 @@ class QPTiffCsv(DataClassWithDistances):
   XResolution: float
   YResolution: float
   qpscale: float
+  apscale: float
   fname: str
   img: str
   pscale: dataclasses.InitVar[float] = None
