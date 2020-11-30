@@ -1,5 +1,6 @@
 import dataclasses, datetime, numpy as np, re
 from ..utilities import units
+from ..utilities.misc import floattoint
 from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
 
 @dataclasses.dataclass
@@ -120,8 +121,8 @@ class Vertex(DataClassWithDistances):
 
   regionid: int
   vid: int
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   pscale: dataclasses.InitVar[float] = None
   readingfromfile: dataclasses.InitVar[bool] = False
 
@@ -154,8 +155,8 @@ class Polygon:
       if intvertices[-1] == intvertices[0]: del intvertices[-1]
       for i, vertex in enumerate(intvertices, start=1):
         x, y = vertex.split()
-        x = units.Distance(pscale=pscale, **{kw: int(x)})
-        y = units.Distance(pscale=pscale, **{kw: int(y)})
+        x = units.Distance(pscale=pscale, **{kw: floattoint(x)})
+        y = units.Distance(pscale=pscale, **{kw: floattoint(y)})
         vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, pscale=pscale))
 
     self.__vertices = vertices

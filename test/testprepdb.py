@@ -40,8 +40,8 @@ class TestPrepDb(unittest.TestCase):
       (f"{SlideID}_overlap.csv", Overlap, {"pscale": sample.pscale, "nclip": sample.nclip, "rectangles": sample.rectangles}),
       (f"{SlideID}_qptiff.csv", QPTiffCsv, {"pscale": sample.pscale}),
       (f"{SlideID}_rect.csv", Rectangle, {"pscale": sample.pscale}),
-      (f"{SlideID}_regions.csv", Region, {"pscale": sample.pscale}),
       (f"{SlideID}_vertices.csv", Vertex, {"pscale": sample.pscale}),
+      (f"{SlideID}_regions.csv", Region, {"pscale": sample.pscale}),
     ):
       if filename == "M21_1_globals.csv": continue
       try:
