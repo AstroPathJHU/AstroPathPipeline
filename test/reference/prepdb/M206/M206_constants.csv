@@ -1,7 +1,7 @@
 name,value,unit,description
 fwidth,1344,pixels,field width
 fheight,1004,pixels,field height
-flayers,35,pixels,field depth
+flayers,35,,field depth
 locx,47823.9062257565,microns,xlocation
 locy,14818.0004176792,microns,ylocation
 locz,9.84937452023818,microns,zlocation

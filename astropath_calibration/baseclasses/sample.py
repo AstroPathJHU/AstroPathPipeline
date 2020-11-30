@@ -160,11 +160,55 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     return pscale, width, height, nlayers
 
   @methodtools.lru_cache()
-  def getsamplelocation(self):
+  @property
+  def samplelocation(self):
     with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "SampleLocation":
-          return np.array([float(_) for _ in str(node).split()]) * units.onepixel(pscale=self.pscale)
+          return np.array([float(_) for _ in str(node).split()]) * units.onemicron(pscale=self.apscale)
+
+  @methodtools.lru_cache()
+  def getcamerastateparameter(self, parametername):
+    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/G"):
+        if node.xml_attrs["name"] == "CameraState":
+          for G in node["G"]["G"]:
+            if G.xml_attrs["name"] == "Parameters":
+              for subG in G["G"]["G"]["G"]:
+                name = value = None
+                for D in subG["D"]:
+                  if D.xml_attrs["name"] == "Name":
+                    name = str(D)
+                  if D.xml_attrs["name"] == "Value":
+                    value = int(str(D))
+                assert name is not None is not value
+                if name == parametername: return value
+
+  @property
+  def resolutionbits(self):
+    return self.getcamerastateparameter("ResolutionBits")
+
+  @property
+  def gainfactor(self):
+    return self.getcamerastateparameter("GainFactor")
+
+  @methodtools.lru_cache()
+  def getcamerabinning(self, xory):
+    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/G"):
+        if node.xml_attrs["name"] == "CameraState":
+          for G in node["G"]["G"]:
+            if G.xml_attrs["name"] == "Binning":
+              for D in G["G"]["D"]:
+                name = value = None
+                if D.xml_attrs["name"] == xory:
+                  return int(str(D)) * self.onepixel
+    assert False
+
+  @property
+  def camerabinningx(self): return self.getcamerabinning("X")
+  @property
+  def camerabinningy(self): return self.getcamerabinning("Y")
 
   @methodtools.lru_cache()
   @property
