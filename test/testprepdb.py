@@ -83,10 +83,10 @@ class TestPrepDb(unittest.TestCase):
     self.testPrepDbFastUnits(SlideID="M206")
 
   def testRectangleOverlapList(self):
-    l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload")
+    l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
     islands = l.islands()
     self.assertEqual(len(islands), 2)
-    l2 = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", selectrectangles=lambda x: x.n in islands[0])
+    l2 = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", selectrectangles=lambda x: x.n in islands[0], layer=1)
     self.assertEqual(l2.islands(), [l.islands()[0]])
 
   def testRectangleOverlapListFastUnits(self):
