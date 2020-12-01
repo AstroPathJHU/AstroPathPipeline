@@ -28,7 +28,7 @@ class TestPrepDb(unittest.TestCase):
         pass
 
     samp = SampleDef(SlideID=SlideID, SampleID=0, Project=0, Cohort=0, root=thisfolder/"data")
-    sample = PrepdbSample(thisfolder/"data", samp, uselogfiles=True)
+    sample = PrepdbSample(thisfolder/"data", samp, uselogfiles=True, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
     with sample:
       sample.writemetadata()
 
