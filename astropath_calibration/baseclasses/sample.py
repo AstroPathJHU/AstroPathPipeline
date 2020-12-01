@@ -169,8 +169,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
 
   @methodtools.lru_cache()
   def getcamerastateparameter(self, parametername):
-    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
-      for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/G"):
+    with open(self.xmlfolder/(self.SlideID+".Full.xml"), "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="/IM3/G/G/G/G/G/G/G/G"):
         if node.xml_attrs["name"] == "CameraState":
           for G in node["G"]["G"]:
             if G.xml_attrs["name"] == "Parameters":
@@ -183,6 +183,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
                     value = int(str(D))
                 assert name is not None is not value
                 if name == parametername: return value
+      assert False
 
   @property
   def resolutionbits(self):
@@ -194,8 +195,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
 
   @methodtools.lru_cache()
   def getcamerabinning(self, xory):
-    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
-      for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/G"):
+    with open(self.xmlfolder/(self.SlideID+".Full.xml"), "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="/IM3/G/G/G/G/G/G/G/G"):
         if node.xml_attrs["name"] == "CameraState":
           for G in node["G"]["G"]:
             if G.xml_attrs["name"] == "Binning":

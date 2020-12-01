@@ -59,7 +59,7 @@ class TestPrepDb(unittest.TestCase):
       for log in logs:
         ref = thisfolder/"reference"/"prepdb"/SlideID/log.name
         with open(ref) as fref, open(log) as fnew:
-          subs = (";[^;]*$", ""),
+          subs = (";[^;]*$", ""), (r"(WARNING: (component tiff|xml files|constants\.csv)).*$", r"\1")
           refsubs = *subs, (r"(prepdb )v[\w+.]+", rf"\1{astropathversion}")
           newsubs = *subs,
           refcontents = os.linesep.join([re_subs(line, *refsubs, flags=re.MULTILINE) for line in fref.read().splitlines() if "Biggest time difference" not in line])+os.linesep
