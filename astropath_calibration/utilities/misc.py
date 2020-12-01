@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt, numpy as np, uncertainties as unc
-import contextlib, dataclasses, fractions, logging, os, re, scipy.stats, tifffile, cv2
+import contextlib, cv2, dataclasses, logging, os, re, scipy.stats
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))

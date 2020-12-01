@@ -201,7 +201,6 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
           for G in node["G"]["G"]:
             if G.xml_attrs["name"] == "Binning":
               for D in G["G"]["D"]:
-                name = value = None
                 if D.xml_attrs["name"] == xory:
                   return int(str(D)) * self.onepixel
     assert False
