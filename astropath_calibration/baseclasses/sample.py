@@ -245,7 +245,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     results = self.getimageinfos()
     result = None
     warnfunction = None
-    for k, v in sorted(results.items(), key=lambda kv: None in kv[1]):
+    for k, v in sorted(results.items(), key=lambda kv: kv[1] is None or any(_ is None for _ in kv[1])):
       if v is None: continue
       pscale, width, height, layers = v
       if result is None:
