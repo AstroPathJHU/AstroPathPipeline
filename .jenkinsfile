@@ -167,7 +167,7 @@ pipeline {
     stage('check that the repo is clean') {
       steps {
         //make sure normal execution doesn't make files that aren't ignored by .gitignore
-        sh 'if ! [ -z "$(git status --porcelain)" ]; then echo "tests created uncommitted changes"; git status; git submodule foreach git status; exit 1; fi'
+        sh 'if ! [ -z "$(git status --porcelain)" ]; then echo "tests created uncommitted changes"; git status; git diff; git submodule foreach bash -c "git status; git diff"; exit 1; fi'
       }
     }
   }
