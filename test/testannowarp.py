@@ -1,6 +1,6 @@
 import more_itertools, pathlib
 
-from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample
+from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample, WarpedVertex
 from astropath_calibration.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath_calibration.baseclasses.csvclasses import Vertex
 from astropath_calibration.utilities import units
@@ -55,8 +55,8 @@ class TestAnnoWarp(TestBaseSaveOutput):
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.newverticescsv.name
     s.writevertices(filename=filename)
 
-    rows = readtable(filename, Vertex, extrakwargs={"pscale": s.pscale})
-    targetrows = readtable(referencefilename, AnnoWarpStitchResultEntry, extrakwargs={"pscale": s.pscale})
+    rows = readtable(filename, WarpedVertex, extrakwargs={"pscale": s.imscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    targetrows = readtable(referencefilename, WarpedVertex, extrakwargs={"pscale": s.imscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 

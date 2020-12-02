@@ -305,14 +305,11 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   @methodtools.lru_cache()
   @property
   def warpedvertices(self):
+    onepixel = self.oneimpixel
     return [
-      QPTiffVertex(
-        xvec=v.xvec + units.nominal_values(self.__stitchresult.dxvec(v)),
-        regionid=v.regionid,
-        vid=v.vid,
-        pscale=v.pscale,
-        bigtilesize=v.bigtilesize,
-        bigtileoffset=v.bigtileoffset,
+      WarpedVertex(
+        vertex=v,
+        wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v))) // onepixel * onepixel,
       ) for v in self.vertices
     ]
 
@@ -348,9 +345,42 @@ class QPTiffCoordinate(QPTiffCoordinateBase):
   def bigtileoffset(self): return self.__bigtileoffset
 
 class QPTiffVertex(QPTiffCoordinate, Vertex):
+  def __init__(self, *args, vertex=None, **kwargs):
+    vertexkwargs = {"vertex": vertex}
+    if isinstance(vertex, QPTiffVertex):
+      vertexkwargs.update({
+        "bigtilesize": vertex.bigtilesize,
+        "bigtileoffset": vertex.bigtileoffset,
+      })
+    super().__init__(
+      *args,
+      **kwargs,
+      **vertexkwargs,
+    )
   @property
   def qptiffcoordinate(self):
     return self.xvec
+
+@dataclass_dc_init
+class WarpedVertex(QPTiffVertex):
+  pixelsormicrons = "pixels"
+  wx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, default=None)
+  wy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, default=None)
+
+  def __init__(self, *args, wxvec=None, **kwargs):
+    wxveckwargs = {}
+    if wxvec is not None:
+      wxveckwargs["wx"], wxveckwargs["wy"] = wxvec
+
+    super().__init__(
+      *args,
+      **kwargs,
+      **wxveckwargs,
+    )
+    if self.wx is None:
+      raise TypeError("Missing required argument wx")
+    if self.wy is None:
+      raise TypeError("Missing required argument wy")
 
 @dataclass_dc_init
 class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataClassWithDistances):

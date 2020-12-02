@@ -109,14 +109,24 @@ class Vertex(DataClassWithDistances):
   def xvec(self):
     return np.array([self.x, self.y])
 
-  def __init__(self, *args, xvec=None, **kwargs):
+  def __init__(self, *args, xvec=None, vertex=None, **kwargs):
     xveckwargs = {}
+    vertexkwargs = {}
     if xvec is not None:
       xveckwargs["x"], xveckwargs["y"] = xvec
+    if vertex is not None:
+      vertexkwargs = {
+        "pscale": vertex.pscale,
+        **{
+          field.name: getattr(vertex, field.name)
+          for field in dataclasses.fields(type(vertex))
+        }
+      }
     self.__dc_init__(
       *args,
       **kwargs,
       **xveckwargs,
+      **vertexkwargs,
     )
 
 class Polygon:
