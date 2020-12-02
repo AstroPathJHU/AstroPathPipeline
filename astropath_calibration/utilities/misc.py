@@ -1,4 +1,4 @@
-import collections, contextlib, cv2, dataclasses, fractions, logging, matplotlib.pyplot as plt, numpy as np, os, PIL.Image, re, scipy.stats, tifffile, uncertainties as unc
+import collections, contextlib, cv2, dataclasses, logging, matplotlib.pyplot as plt, numpy as np, os, PIL.Image, re, scipy.stats, uncertainties as unc
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -249,28 +249,6 @@ def memmapcontext(filename, *args, **kwargs):
     yield memmap
   finally:
     memmap._mmap.close()
-
-def tiffinfo(*, filename=None, page=None):
-  if filename is page is None:
-    raise TypeError("Have to provide either filename or page")
-  with tifffile.TiffFile(filename) if filename is not None else contextlib.nullcontext() as f:
-    if filename is not None:
-      if page is None: page = 0
-      page = f.pages[page]
-    resolutionunit = page.tags["ResolutionUnit"].value
-    xresolution = page.tags["XResolution"].value
-    xresolution = fractions.Fraction(*xresolution)
-    yresolution = page.tags["YResolution"].value
-    yresolution = fractions.Fraction(*yresolution)
-    if xresolution != yresolution: raise ValueError(f"x and y have different resolutions {xresolution} {yresolution}")
-    resolution = float(xresolution)
-    kw = {
-      tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
-    }[resolutionunit]
-    pscale = float(units.Distance(pixels=resolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1))
-    height, width = units.distances(pixels=page.shape, pscale=pscale, power=1)
-
-    return pscale, width, height
 
 def re_subs(string, *patternsandrepls, **kwargs):
   for p, r in patternsandrepls:

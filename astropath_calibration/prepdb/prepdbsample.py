@@ -16,10 +16,6 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
   def nclip(self):
     return 8
 
-  @property
-  def layer(self):
-    return 1
-
   @methodtools.lru_cache()
   def getbatch(self):
     return [
@@ -119,7 +115,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
   def getqptiffcsvandimage(self):
     with QPTiff(self.qptifffilename) as f:
       for zoomlevel in f.zoomlevels:
-        if zoomlevel[0].imagewidth < 4000:
+        if zoomlevel[0].imagewidth < 2000:
           break
       xresolution = zoomlevel.xresolution
       yresolution = zoomlevel.yresolution
@@ -136,6 +132,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
           XResolution=xresolution * 10000,
           YResolution=yresolution * 10000,
           qpscale=qpscale,
+          apscale=f.apscale,
           fname=self.jpgfilename.name,
           img="00001234",
           pscale=qpscale,
@@ -179,6 +176,9 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
   @property
   def qpscale(self):
     return self.getqptiffcsv()[0].qpscale
+  @property
+  def apscale(self):
+    return self.getqptiffcsv()[0].apscale
 
   @property
   def overlaps(self):
@@ -201,6 +201,34 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
         pscale=self.pscale,
       ),
       Constant(
+        name='flayers',
+        value=self.flayers,
+        unit='',
+        description='field depth',
+        pscale=self.pscale,
+      ),
+      Constant(
+        name='locx',
+        value=self.samplelocation[0],
+        unit='microns',
+        description='xlocation',
+        pscale=self.apscale,
+      ),
+      Constant(
+        name='locy',
+        value=self.samplelocation[1],
+        unit='microns',
+        description='ylocation',
+        pscale=self.apscale,
+      ),
+      Constant(
+        name='locz',
+        value=self.samplelocation[2],
+        unit='microns',
+        description='zlocation',
+        pscale=self.apscale,
+      ),
+      Constant(
         name='xposition',
         value=self.xposition,
         unit='microns',
@@ -221,6 +249,12 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
         description='scale of the QPTIFF image',
       ),
       Constant(
+        name='apscale',
+        value=self.apscale,
+        unit='pixels/micron',
+        description='scale of the QPTIFF image used for annotation',
+      ),
+      Constant(
         name='pscale',
         value=self.pscale,
         unit='pixels/micron',
@@ -234,10 +268,30 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
         pscale=self.pscale,
       ),
       Constant(
-        name='layer',
-        value=self.layer,
-        unit='layer number',
-        description='which layer to use from the im3 to align',
+        name="resolutionbits",
+        value=self.resolutionbits,
+        unit="",
+        description="number of significant bits in the im3 files",
+      ),
+      Constant(
+        name="gainfactor",
+        value=self.gainfactor,
+        unit="",
+        description="the gain of the A/D amplifier for the im3 files",
+      ),
+      Constant(
+        name="binningx",
+        value=self.camerabinningx,
+        unit="pixels",
+        description="the number of adjacent pixels coadded",
+        pscale=self.pscale,
+      ),
+      Constant(
+        name="binningy",
+        value=self.camerabinningy,
+        unit="pixels",
+        description="the number of adjacent pixels coadded",
+        pscale=self.pscale,
       ),
     ]
     return constants

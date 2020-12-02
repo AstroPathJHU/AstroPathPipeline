@@ -28,7 +28,7 @@ class TestPrepDb(unittest.TestCase):
         pass
 
     samp = SampleDef(SlideID=SlideID, SampleID=0, Project=0, Cohort=0, root=thisfolder/"data")
-    sample = PrepdbSample(thisfolder/"data", samp, uselogfiles=True)
+    sample = PrepdbSample(thisfolder/"data", samp, uselogfiles=True, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
     with sample:
       sample.writemetadata()
 
@@ -40,8 +40,8 @@ class TestPrepDb(unittest.TestCase):
       (f"{SlideID}_overlap.csv", Overlap, {"pscale": sample.pscale, "nclip": sample.nclip, "rectangles": sample.rectangles}),
       (f"{SlideID}_qptiff.csv", QPTiffCsv, {"pscale": sample.pscale}),
       (f"{SlideID}_rect.csv", Rectangle, {"pscale": sample.pscale}),
-      (f"{SlideID}_regions.csv", Region, {"pscale": sample.pscale}),
       (f"{SlideID}_vertices.csv", Vertex, {"pscale": sample.pscale}),
+      (f"{SlideID}_regions.csv", Region, {"pscale": sample.pscale}),
     ):
       if filename == "M21_1_globals.csv": continue
       try:
@@ -59,7 +59,7 @@ class TestPrepDb(unittest.TestCase):
       for log in logs:
         ref = thisfolder/"reference"/"prepdb"/SlideID/log.name
         with open(ref) as fref, open(log) as fnew:
-          subs = (";[^;]*$", ""),
+          subs = (";[^;]*$", ""), (r"(WARNING: (component tiff|xml files|constants\.csv)).*$", r"\1")
           refsubs = *subs, (r"(prepdb )v[\w+.]+", rf"\1{astropathversion}")
           newsubs = *subs,
           refcontents = os.linesep.join([re_subs(line, *refsubs, flags=re.MULTILINE) for line in fref.read().splitlines() if "Biggest time difference" not in line])+os.linesep
@@ -77,14 +77,16 @@ class TestPrepDb(unittest.TestCase):
   def testPrepDbPolarisFastUnits(self):
     self.testPrepDbFastUnits(SlideID="YZ71")
 
-  def testPrepDbM206(self):
+  def testPrepDbM206FastUnits(self):
+    from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
+    assembleqptiff()
     self.testPrepDbFastUnits(SlideID="M206")
 
   def testRectangleOverlapList(self):
-    l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload")
+    l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
     islands = l.islands()
     self.assertEqual(len(islands), 2)
-    l2 = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", selectrectangles=lambda x: x.n in islands[0])
+    l2 = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", selectrectangles=lambda x: x.n in islands[0], layer=1)
     self.assertEqual(l2.islands(), [l.islands()[0]])
 
   def testRectangleOverlapListFastUnits(self):
