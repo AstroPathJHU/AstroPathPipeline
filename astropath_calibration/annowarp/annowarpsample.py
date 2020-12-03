@@ -305,11 +305,13 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   @methodtools.lru_cache()
   @property
   def warpedvertices(self):
-    onepixel = self.oneimpixel
+    oneimmicron = self.oneimmicron
+    onemicron = self.onemicron
+    onepixel = self.onepixel
     return [
       WarpedVertex(
         vertex=v,
-        wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v))) // onepixel * onepixel,
+        wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v))) / oneimmicron * onemicron // onepixel * onepixel,
       ) for v in self.vertices
     ]
 
@@ -363,9 +365,8 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
 
 @dataclass_dc_init
 class WarpedVertex(QPTiffVertex):
-  pixelsormicrons = "pixels"
-  wx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, default=None)
-  wy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, default=None)
+  wx: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, default=None)
+  wy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, default=None)
 
   def __init__(self, *args, wxvec=None, **kwargs):
     wxveckwargs = {}
