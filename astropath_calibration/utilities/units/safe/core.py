@@ -231,7 +231,7 @@ def asdimensionless(distance):
 def _power(distance):
   if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return 0.
   return distance._power
-@functools.partial(np.vectorize, otypes=[float])
+@np.vectorize
 def _pscale(distance):
   if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)) or not distance: return None
   return distance._pscale

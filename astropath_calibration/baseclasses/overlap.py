@@ -124,9 +124,11 @@ class RectangleOverlapList(RectangleOverlapCollection):
 def rectangleoverlaplist_fromcsvs(dbloadfolder, *, layer, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, rectangletype=Rectangle, overlaptype=Overlap):
   dbload = pathlib.Path(dbloadfolder)
   samp = dbload.parent.name
-  tmp = readtable(dbload/(samp+"_constants.csv"), Constant, extrakwargs={"pscale": 1})
+  tmp = readtable(dbload/(samp+"_constants.csv"), Constant, extrakwargs={"pscale": 1, "apscale": 1, "qpscale": 1})
   pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
-  constants     = readtable(dbload/(samp+"_constants.csv"), Constant, extrakwargs={"pscale": pscale})
+  apscale = {_.value for _ in tmp if _.name == "apscale"}.pop()
+  qpscale = {_.value for _ in tmp if _.name == "qpscale"}.pop()
+  constants     = readtable(dbload/(samp+"_constants.csv"), Constant, extrakwargs={"pscale": pscale, "apscale": apscale, "qpscale": qpscale})
   constantsdict = {constant.name: constant.value for constant in constants}
   nclip = constantsdict["nclip"]
 

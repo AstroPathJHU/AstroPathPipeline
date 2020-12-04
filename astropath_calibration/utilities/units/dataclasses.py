@@ -93,7 +93,7 @@ class DataClassWithDistances(ThingWithPscale):
       distances = self._distances_passed_to_init()
       if distances:
         try:
-          usedistances = {isinstance(_, safe.Distance) for _ in distances if _}
+          usedistances, = {isinstance(_, safe.Distance) for _ in distances if _}
         except ValueError:
           raise ValueError(f"Provided some distances and some pixels/microns to {type(self).__name__} - this is dangerous!")
         if usedistances and readingfromfile: assert False #shouldn't be able to happen
@@ -106,7 +106,7 @@ class DataClassWithDistances(ThingWithPscale):
     for pscalefield in self.pscalefields():
       pscale = {getattr(self, pscalefield.name)}
       distancefields = [distancefield for distancefield in self.distancefields() if pscalenames[distancefield.name] == pscalefield.name and getattr(self, distancefield.name)]
-      if usedistances:
+      if usedistances and distancefields:
         pscale |= set(_pscale([getattr(self, distancefield.name) for distancefield in distancefields]))
       pscale.discard(None)
       if len(pscale) == 1:
