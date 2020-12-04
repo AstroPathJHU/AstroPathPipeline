@@ -124,5 +124,5 @@ class DataClassWithDistances(ThingWithPscale):
         pscales[distancefield.name] = pscale
 
     if readingfromfile:
-      for field in distancefields:
-        object.__setattr__(self, field.name, field.type(power=powers[field.name], pscale=pscale, **{field.metadata["pixelsormicrons"](self): getattr(self, field.name)}))
+      for field in self.distancefields():
+        object.__setattr__(self, field.name, field.type(power=powers[field.name], pscale=pscales[field.name], **{field.metadata["pixelsormicrons"](self): getattr(self, field.name)}))

@@ -339,10 +339,12 @@ class DbloadSampleBase(SampleBase):
 
 class DbloadSample(DbloadSampleBase):
   def getimageinfofromconstants(self):
-    tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1})
-    pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
+    tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1, "qpscale": 1, "apscale": 1})
+    pscale, = {_.value for _ in tmp if _.name == "pscale"}
+    apscale, = {_.value for _ in tmp if _.name == "apscale"}
+    qpscale, = {_.value for _ in tmp if _.name == "qpscale"}
 
-    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": pscale})
+    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": pscale, "qpscale": qpscale, "apscale": apscale})
     constantsdict = {constant.name: constant.value for constant in constants}
 
     fwidth    = constantsdict["fwidth"]
@@ -365,7 +367,11 @@ class DbloadSample(DbloadSampleBase):
   @methodtools.lru_cache()
   @property
   def constantsdict(self):
-    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": self.pscale})
+    tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1, "qpscale": 1, "apscale": 1})
+    apscale, = {_.value for _ in tmp if _.name == "apscale"}
+    qpscale, = {_.value for _ in tmp if _.name == "qpscale"}
+
+    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": self.pscale, "qpscale": qpscale, "apscale": apscale})
     return {constant.name: constant.value for constant in constants}
 
   @property
