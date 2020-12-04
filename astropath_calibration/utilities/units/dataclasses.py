@@ -105,13 +105,14 @@ class DataClassWithDistances(ThingWithPscale):
     pscales = {}
     for pscalefield in self.pscalefields():
       pscale = {getattr(self, pscalefield.name)}
-      distancefields = [distancefield for distancefield in self.distancefields() if pscalenames[distancefield.name] == pscalefield.name and getattr(self, distancefield.name)]
-      if usedistances and distancefields:
-        pscale |= set(_pscale([getattr(self, distancefield.name) for distancefield in distancefields]))
+      distancefields = [distancefield for distancefield in self.distancefields() if pscalenames[distancefield.name] == pscalefield.name]
+      nonzerodistancefields = [distancefield for distancefield in distancefields if getattr(self, distancefield.name)]
+      if usedistances and nonzerodistancefields:
+        pscale |= set(_pscale([getattr(self, distancefield.name) for distancefield in nonzerodistancefields]))
       pscale.discard(None)
       if len(pscale) == 1:
         pscale, = pscale
-      elif not any(powers[distancefield.name] for distancefield in distancefields):
+      elif not any(powers[distancefield.name] for distancefield in nonzerodistancefields):
         pscale = None
       elif not pscale:
         raise TypeError(f"Have to either provide {pscalefield.name} explicitly or give coordinates in units.Distance form")
