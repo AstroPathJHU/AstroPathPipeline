@@ -1,6 +1,6 @@
 from ..core import UnitsError
 
-import collections, itertools, numbers, numpy as np, uncertainties as unc
+import collections, functools, itertools, numbers, numpy as np, uncertainties as unc
 
 class Distance:
   def __new__(cls, *args, pixels=None, microns=None, centimeters=None, defaulttozero=False, **kwargs):
@@ -231,7 +231,7 @@ def asdimensionless(distance):
 def _power(distance):
   if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)): return 0.
   return distance._power
-@np.vectorize
+@functools.partial(np.vectorize, otypes=[float])
 def _pscale(distance):
   if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)) or not distance: return None
   return distance._pscale

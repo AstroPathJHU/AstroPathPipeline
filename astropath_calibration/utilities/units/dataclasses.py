@@ -30,6 +30,10 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, secondf
     _power = power
     power = lambda *args, **kwargs: _power
 
+  if not callable(pscalename):
+    _pscalename = pscalename
+    pscalename = lambda *args, **kwargs: _pscalename
+
   kwargs["metadata"] = {
     "writefunction": lambda *args, pixelsormicrons, **kwargs: secondfunction({
       "pixels": pixels,
@@ -40,7 +44,7 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, secondf
     "pixelsormicrons": pixelsormicrons,
     "power": power,
     "pscalename": pscalename,
-    "writefunctionkwargs": lambda object: {"pscale": getattr(object, pscalename), "power": power(object), "pixelsormicrons": pixelsormicrons(object)},
+    "writefunctionkwargs": lambda object: {"pscale": getattr(object, pscalename(object)), "power": power(object), "pixelsormicrons": pixelsormicrons(object)},
     **metadata,
   }
   return dataclasses.field(**kwargs)
@@ -107,10 +111,10 @@ class DataClassWithDistances(ThingWithPscale):
       pscale.discard(None)
       if len(pscale) == 1:
         pscale, = pscale
-      elif not any(powers.values()):
+      elif not any(powers[distancefield.name] for distancefield in distancefields):
         pscale = None
       elif not pscale:
-        raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
+        raise TypeError(f"Have to either provide {pscalefield.name} explicitly or give coordinates in units.Distance form")
       elif len(pscale) > 1:
         raise UnitsError(f"Provided inconsistent pscales {pscale} for {pscalefield.name}")
       else:

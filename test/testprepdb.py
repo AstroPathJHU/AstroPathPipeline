@@ -35,7 +35,7 @@ class TestPrepDb(unittest.TestCase):
     for filename, cls, extrakwargs in (
       (f"{SlideID}_annotations.csv", Annotation, {}),
       (f"{SlideID}_batch.csv", Batch, {}),
-      (f"{SlideID}_constants.csv", Constant, {"pscale": sample.pscale, "readingfromfile": True}),
+      (f"{SlideID}_constants.csv", Constant, {"pscale": sample.pscale, "apscale": sample.apscale, "qpscale": sample.qpscale, "readingfromfile": True}),
       (f"{SlideID}_globals.csv", Globals, {"pscale": sample.pscale}),
       (f"{SlideID}_overlap.csv", Overlap, {"pscale": sample.pscale, "nclip": sample.nclip, "rectangles": sample.rectangles}),
       (f"{SlideID}_qptiff.csv", QPTiffCsv, {"pscale": sample.pscale}),

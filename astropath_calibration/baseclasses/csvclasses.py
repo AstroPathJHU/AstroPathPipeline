@@ -65,10 +65,24 @@ class Constant(DataClassWithDistances):
       assert False, (type(string), string)
 
   name: str
-  value: units.Distance = distancefield(secondfunction=__intorfloat, dtype=__intorfloat, power=lambda self: 1 if self.unit in ("pixels", "microns") else 0, pixelsormicrons=lambda self: self.unit if self.unit in ("pixels", "microns") else "pixels")
+  value: units.Distance = distancefield(
+    secondfunction=__intorfloat,
+    dtype=__intorfloat,
+    power=lambda self: 1 if self.unit in ("pixels", "microns") else 0,
+    pixelsormicrons=lambda self: self.unit if self.unit in ("pixels", "microns") else "pixels",
+    pscalename=lambda self: {
+      "locx": "apscale",
+      "locy": "apscale",
+      "locz": "apscale",
+      "xposition": "qpscale",
+      "yposition": "qpscale",
+    }.get(self.name, "pscale")
+  )
   unit: str
   description: str
   pscale: float = pscalefield(default=None)
+  apscale: float = pscalefield(default=None)
+  qpscale: float = pscalefield(default=None)
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass(frozen=True)
@@ -165,6 +179,8 @@ class Polygon:
 
   @property
   def pscale(self): return self.__pscale
+  @property
+  def _pscale(self): return self.__pscale
 
   @property
   def vertices(self): return self.__vertices
