@@ -4,7 +4,7 @@ from .computeshift import computeshift, mse, shiftimg
 from ..baseclasses.overlap import Overlap
 from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield, pscalefield
 
 import abc
 
@@ -363,7 +363,7 @@ class AlignmentResult(AlignmentResultBase):
   covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield()
   exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
   readingfromfile: dataclasses.InitVar[bool] = False
 
@@ -390,7 +390,7 @@ class LayerAlignmentResult(AlignmentResultBase):
   covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield()
   exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
   readingfromfile: dataclasses.InitVar[bool] = False
 

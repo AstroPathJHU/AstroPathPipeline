@@ -8,7 +8,7 @@ from ..zoom.zoom import ZoomSample
 from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable, writetable
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield, pscalefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, ThingWithImscale
 
 class AnnoWarpSample(ZoomSample, ThingWithImscale):
@@ -401,7 +401,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   bigtileoffset: dataclasses.InitVar[units.Distance]
   exceptions: dataclasses.InitVar[Exception] = None
   imageshandle: dataclasses.InitVar[typing.Callable[[], typing.Tuple[np.ndarray, np.ndarray]]] = None
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
 
   def __init__(self, *args, **kwargs):

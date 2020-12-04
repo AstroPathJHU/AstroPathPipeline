@@ -1,7 +1,7 @@
 import dataclasses, datetime, numbers, numpy as np, re
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield, pscalefield
 
 @dataclasses.dataclass
 class Globals(DataClassWithDistances):
@@ -13,7 +13,7 @@ class Globals(DataClassWithDistances):
   Height: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   Unit: str
   Tc: datetime.datetime = dataclasses.field(metadata={"readfunction": lambda x: datetime.datetime.fromtimestamp(int(x)), "writefunction": lambda x: int(datetime.datetime.timestamp(x))})
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass
@@ -23,7 +23,7 @@ class Perimeter(DataClassWithDistances):
   n: int
   x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass
@@ -48,7 +48,7 @@ class QPTiffCsv(DataClassWithDistances):
   apscale: float
   fname: str
   img: str
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass
@@ -68,7 +68,7 @@ class Constant(DataClassWithDistances):
   value: units.Distance = distancefield(secondfunction=__intorfloat, dtype=__intorfloat, power=lambda self: 1 if self.unit in ("pixels", "microns") else 0, pixelsormicrons=lambda self: self.unit if self.unit in ("pixels", "microns") else "pixels")
   unit: str
   description: str
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield(default=None)
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass(frozen=True)
@@ -78,7 +78,7 @@ class RectangleFile(DataClassWithDistances):
   cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   t: datetime.datetime
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
 
   @property
@@ -102,7 +102,7 @@ class Vertex(DataClassWithDistances):
   vid: int
   x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
 
   @property
@@ -190,7 +190,7 @@ class Region(DataClassWithDistances):
   type: str
   nvert: int
   poly: Polygon = distancefield(pixelsormicrons=pixelsormicrons, dtype=str, metadata={"writefunction": Polygon.tostring})
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
 
   def _distances_passed_to_init(self):

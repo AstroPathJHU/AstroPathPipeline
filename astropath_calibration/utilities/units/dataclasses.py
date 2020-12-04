@@ -15,7 +15,7 @@ def __setup(mode):
     raise ValueError(f"Invalid mode {mode}")
   currentmode = mode
 
-def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, secondfunction=None, **kwargs):
+def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, secondfunction=None, pscalename="pscale", **kwargs):
   if secondfunction is None:
     if issubclass(dtype, numbers.Integral):
       secondfunction = functools.partial(floattoint, atol=1e-9)
@@ -39,7 +39,16 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, secondf
     "isdistancefield": True,
     "pixelsormicrons": pixelsormicrons,
     "power": power,
-    "writefunctionkwargs": lambda object: {"pscale": object.pscale, "power": power(object), "pixelsormicrons": pixelsormicrons(object)},
+    "pscalename": pscalename,
+    "writefunctionkwargs": lambda object: {"pscale": getattr(object, pscalename), "power": power(object), "pixelsormicrons": pixelsormicrons(object)},
+    **metadata,
+  }
+  return dataclasses.field(**kwargs)
+
+def pscalefield(*, metadata={}, **kwargs):
+  kwargs["metadata"] = {
+    "includeintable": False,
+    "ispscalefield": True,
     **metadata,
   }
   return dataclasses.field(**kwargs)
@@ -50,14 +59,17 @@ class DataClassWithDistances(ThingWithPscale):
   def distancefields(cls):
     return [field for field in dataclasses.fields(cls) if field.metadata.get("isdistancefield", False)]
 
+  @classmethod
+  def pscalefields(cls):
+    return [field for field in dataclasses.fields(cls) if field.metadata.get("ispscalefield", False)]
+
   def _distances_passed_to_init(self):
     return [getattr(self, _.name) for _ in self.distancefields()]
 
-  def __post_init__(self, pscale, readingfromfile=False):
-    distancefields = self.distancefields()
-
+  def __post_init__(self, readingfromfile=False):
     powers = {}
-    for field in distancefields:
+    pscalenames = {}
+    for field in self.distancefields():
       power = field.metadata["power"]
       if callable(power):
         power = power(self)
@@ -65,36 +77,47 @@ class DataClassWithDistances(ThingWithPscale):
         raise TypeError(f"power should be a number or a function, not {type(power)}")
       powers[field.name] = power
 
+      pscalename = field.metadata["pscalename"]
+      if callable(pscalename):
+        pscalename = pscalename(self)
+      if not isinstance(pscalename, str):
+        raise TypeError(f"pscalename should be a number or a function, not {type(pscalename)}")
+      pscalenames[field.name] = pscalename
+
     usedistances = False
     if currentmode == "safe" and any(powers.values()):
       distances = self._distances_passed_to_init()
-      usedistances = {isinstance(_, safe.Distance) for _ in distances if _}
-      if len(usedistances) > 1:
-        raise ValueError(f"Provided some distances and some pixels/microns to {type(self).__name__} - this is dangerous!")
-      if usedistances:
-        usedistances = usedistances.pop()
+      if distances:
+        try:
+          usedistances = {isinstance(_, safe.Distance) for _ in distances if _}
+        except ValueError:
+          raise ValueError(f"Provided some distances and some pixels/microns to {type(self).__name__} - this is dangerous!")
         if usedistances and readingfromfile: assert False #shouldn't be able to happen
         if not usedistances and not readingfromfile:
           raise ValueError("Have to init with readingfromfile=True if you're not providing distances")
       else:
         usedistances = False
 
-    pscale = {pscale}
-    if usedistances:
-      pscale |= set(_pscale([_ for _ in distances if _]))
-    pscale.discard(None)
-    if len(pscale) == 1:
-      pscale, = pscale
-    elif not any(powers.values()):
-      pscale = None
-    elif not pscale:
-      raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
-    elif len(pscale) > 1:
-      raise UnitsError(f"Provided inconsistent pscales {pscale}")
-    else:
-      assert False, "This can't happen"
+    pscales = {}
+    for pscalefield in self.pscalefields():
+      pscale = {getattr(self, pscalefield.name)}
+      distancefields = [distancefield for distancefield in self.distancefields() if pscalenames[distancefield.name] == pscalefield.name and getattr(self, distancefield.name)]
+      if usedistances:
+        pscale |= set(_pscale([getattr(self, distancefield.name) for distancefield in distancefields]))
+      pscale.discard(None)
+      if len(pscale) == 1:
+        pscale, = pscale
+      elif not any(powers.values()):
+        pscale = None
+      elif not pscale:
+        raise TypeError("Have to either provide pscale explicitly or give coordinates in units.Distance form")
+      elif len(pscale) > 1:
+        raise UnitsError(f"Provided inconsistent pscales {pscale} for {pscalefield.name}")
+      else:
+        assert False, "This can't happen"
 
-    object.__setattr__(self, "pscale", pscale)
+      for distancefield in distancefields:
+        pscales[distancefield.name] = pscale
 
     if readingfromfile:
       for field in distancefields:

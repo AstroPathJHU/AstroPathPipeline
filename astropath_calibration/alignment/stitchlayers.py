@@ -4,7 +4,7 @@ from ..baseclasses.overlap import OverlapCollection
 from ..utilities import units
 from ..utilities.misc import dummylogger
 from ..utilities.tableio import writetable
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from ..utilities.units.dataclasses import DataClassWithDistances, distancefield, pscalefield
 from .overlap import LayerAlignmentResult
 
 class ComplementaryOverlapPair(units.ThingWithPscale):
@@ -357,7 +357,7 @@ class LayerPosition(DataClassWithDistances):
   cov_x_x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_x_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass(frozen=True)
@@ -370,6 +370,6 @@ class LayerPositionCovariance(DataClassWithDistances):
   cov_x1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: dataclasses.InitVar[float] = None
+  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
 
