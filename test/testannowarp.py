@@ -2,7 +2,6 @@ import more_itertools, pathlib
 
 from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample, WarpedVertex
 from astropath_calibration.annowarp.stitch import AnnoWarpStitchResultEntry
-from astropath_calibration.baseclasses.csvclasses import Vertex
 from astropath_calibration.utilities import units
 from astropath_calibration.utilities.tableio import readtable
 

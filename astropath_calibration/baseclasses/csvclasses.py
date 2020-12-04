@@ -68,7 +68,7 @@ class Constant(DataClassWithDistances):
   value: units.Distance = distancefield(
     secondfunction=__intorfloat,
     dtype=__intorfloat,
-    power=lambda self: 1 if print(self.name, self.unit) or self.unit in ("pixels", "microns") else 0,
+    power=lambda self: 1 if self.unit in ("pixels", "microns") else 0,
     pixelsormicrons=lambda self: self.unit if self.unit in ("pixels", "microns") else "pixels",
     pscalename=lambda self: {
       "locx": "apscale",

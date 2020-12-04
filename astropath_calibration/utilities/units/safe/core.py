@@ -1,6 +1,6 @@
 from ..core import UnitsError
 
-import collections, functools, itertools, numbers, numpy as np, uncertainties as unc
+import collections, itertools, numbers, numpy as np, uncertainties as unc
 
 class Distance:
   def __new__(cls, *args, pixels=None, microns=None, centimeters=None, defaulttozero=False, **kwargs):
