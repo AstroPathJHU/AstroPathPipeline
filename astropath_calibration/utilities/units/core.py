@@ -5,7 +5,7 @@ currentmodule = None
 class UnitsError(Exception): pass
 
 @np.vectorize
-def convertpscale(distance, oldpscale, newpscale, power):
+def convertpscale(distance, oldpscale, newpscale, power=1):
   from . import Distance, microns
   return Distance(microns=microns(distance, pscale=oldpscale, power=power), pscale=newpscale, power=power)
 

@@ -74,8 +74,6 @@ class Constant(DataClassWithDistances):
       "locx": "apscale",
       "locy": "apscale",
       "locz": "apscale",
-      "xposition": "qpscale",
-      "yposition": "qpscale",
     }.get(self.name, "pscale")
   )
   unit: str

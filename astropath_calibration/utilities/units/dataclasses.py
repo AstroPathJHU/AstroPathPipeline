@@ -1,4 +1,4 @@
-import dataclasses, functools, numbers
+import dataclasses, functools, numbers, numpy as np
 from ..misc import floattoint
 from .core import ThingWithPscale, UnitsError
 
@@ -73,6 +73,11 @@ class DataClassWithDistances(ThingWithPscale):
   def __post_init__(self, readingfromfile=False):
     powers = {}
     pscalenames = {}
+    for field in self.distancefields():
+      value = getattr(self, field.name)
+      if isinstance(value, np.ndarray) and not value.shape:
+        setattr(self, field.name, value[()])
+
     for field in self.distancefields():
       power = field.metadata["power"]
       if callable(power):
