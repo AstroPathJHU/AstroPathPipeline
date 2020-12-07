@@ -323,8 +323,14 @@ class DbloadSampleBase(SampleBase):
     super().__init__(*args, **kwargs)
     if dbloadroot is not None and dbloadfolder is not None:
       raise TypeError("Can't provide both dbloadroot and dbloadfolder")
-    if dbloadroot is None: dbloadroot = self.mainfolder.parent
-    if dbloadfolder is None: dbloadfolder = dbloadroot/self.SlideID/"dbload"
+    if dbloadroot is None:
+      dbloadroot = self.mainfolder.parent
+    else:
+      dbloadroot = pathlib.Path(dbloadroot)
+    if dbloadfolder is None:
+      dbloadfolder = dbloadroot/self.SlideID/"dbload"
+    else:
+      dbloadfolder = pathlib.Path(dbloadfolder)
     self.__dbloadfolder = dbloadfolder
   @property
   def dbload(self):

@@ -363,8 +363,9 @@ def main(args=None):
   p.add_argument("root")
   p.add_argument("samp")
   p.add_argument("--units", type=units.setup)
+  p.add_argument("--dbload-root")
   args = p.parse_args(args=args)
-  kwargs = {"root": args.root, "samp": args.samp}
+  kwargs = {"root": args.root, "samp": args.samp, "dbloadroot": args.dbload_root}
   s = PrepdbSample(**kwargs)
   s.writemetadata()
 
