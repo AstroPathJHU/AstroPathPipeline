@@ -202,17 +202,14 @@ def addCommonWarpingArgumentsToParser(parser,fit=True,fitpars=True,job_organizat
 
 #helper function to check directory command-line arguments
 def checkDirArgs(args) :
-     #rawfile_top_dir/[slideID] must exist
+    #rawfile_top_dir/[slideID] must exist
     rawfile_dir = os.path.join(args.rawfile_top_dir,args.slideID)
     if not os.path.isdir(rawfile_dir) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
     #root dir must exist
     if not os.path.isdir(args.root_dir) :
         raise ValueError(f'ERROR: root_dir argument ({args.root_dir}) does not point to a valid directory!')
-    #root dir must be usable to find a metafile directory
-    if not os.path.isdir(args.root_dir) :   
-        raise ValueError(f'ERROR: root_dir ({args.root_dir}) does not exist!')
-    #if images are to be corrected for exposure time, exposure time correction file must exist and must contain the necessary file
+    #if images are to be corrected for exposure time, exposure time correction file must exist
     if (not args.skip_exposure_time_correction) :   
         if not os.path.isfile(args.exposure_time_offset_file) :
             raise ValueError(f'ERROR: exposure_time_offset_file {args.exposure_time_offset_file} does not exist!')
