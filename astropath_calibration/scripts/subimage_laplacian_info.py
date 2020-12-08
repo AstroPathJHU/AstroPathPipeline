@@ -1,8 +1,8 @@
 #imports
-from ..flatfield.utilities import chunkListOfFilepaths, readImagesMT
-from ..utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset
-from ..utilities.tableio import readtable, writetable
-from ..utilities.misc import cd, addCommonArgumentsToParser
+from astropath_calibration.flatfield.utilities import chunkListOfFilepaths, readImagesMT
+from astropath_calibration.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset
+from astropath_calibration.utilities.tableio import readtable, writetable
+from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser
 from argparse import ArgumentParser
 from scipy.ndimage.filters import convolve
 import numpy as np, multiprocessing as mp
@@ -63,12 +63,13 @@ def checkArgs(args) :
         os.mkdir(args.workingdir)
 
 #helper function to calculate and add the subimage infos for a single image to a shared dictionary (run in parallel)
-def getSubImageInfosWorker(img_layers,dims,key,thresholds,return_dict) :
-    sub_image_height = int(dims[0]/SUBIMAGE_GRID_SIZE)
-    sub_image_width  = int(dims[1]/SUBIMAGE_GRID_SIZE)
+def getSubImageInfosWorker(img_layers,dims,key,thresholds,return_lists) :
+    sub_image_height = dims[0]/SUBIMAGE_GRID_SIZE
+    sub_image_width  = dims[1]/SUBIMAGE_GRID_SIZE
     #for each layer in question
     for i,ln in enumerate(LAYERS) :
         img_layer = img_layers[i]
+        return_list = return_lists[i]
         #build the signal mask and the (normalized) laplacian images
         img_mask = cv2.morphologyEx((np.where(img_layer>thresholds[i],1,0)).astype(np.uint8),cv2.MORPH_OPEN,OPEN_EL,borderType=cv2.BORDER_REPLICATE)
         img_laplacian = cv2.Laplacian(img_layer,cv2.CV_32F,borderType=cv2.BORDER_REPLICATE)
@@ -76,17 +77,17 @@ def getSubImageInfosWorker(img_layers,dims,key,thresholds,return_dict) :
         img_norm_lap = img_laplacian/img_lap_norm
         #for each subimage in the grid
         for i_subimage_x in range(SUBIMAGE_GRID_SIZE) :
-            sixpmin = 0 if i_subimage_x==0 else i_subimage_x*sub_image_width
-            sixpmax = dims[1] if i_subimage_x==SUBIMAGE_GRID_SIZE-1 else (i_subimage_x+1)*sub_image_width
+            sixpmin = 0 if i_subimage_x==0 else round(i_subimage_x*sub_image_width)
+            sixpmax = dims[1] if i_subimage_x==SUBIMAGE_GRID_SIZE-1 else round((i_subimage_x+1)*sub_image_width)
             for i_subimage_y in range(SUBIMAGE_GRID_SIZE) :
-                siypmin = 0 if i_subimage_y==0 else i_subimage_y*sub_image_height
-                siypmax = dims[0] if i_subimage_y==SUBIMAGE_GRID_SIZE-1 else (i_subimage_y+1)*sub_image_height
+                siypmin = 0 if i_subimage_y==0 else round(i_subimage_y*sub_image_height)
+                siypmax = dims[0] if i_subimage_y==SUBIMAGE_GRID_SIZE-1 else round((i_subimage_y+1)*sub_image_height)
                 simask = img_mask[siypmin:siypmax,sixpmin:sixpmax]
                 sinp = np.sum(simask)
                 if sinp>0 :
                     silv = ((img_laplacian[siypmin:siypmax,sixpmin:sixpmax])[simask==1]).var()
                     sinlv = ((img_norm_lap[siypmin:siypmax,sixpmin:sixpmax])[simask==1]).var()
-                    return_dict[ln].append(SubImageInfo(key,sixpmin,sixpmax-sixpmin,siypmin,siypmax-siypmin,silv,sinlv,sinp))
+                    return_list.append(SubImageInfo(key,sixpmin,sixpmax-sixpmin,siypmin,siypmax-siypmin,silv,sinlv,sinp))
 
 #helper function to get a dictionary keyed by layer number of the subimage infos for a chunk of files
 def getSubImageInfosForChunk(fris,dims,metsbl,etcobl,thresholds) :
@@ -94,24 +95,24 @@ def getSubImageInfosForChunk(fris,dims,metsbl,etcobl,thresholds) :
     img_arrays = readImagesMT(fris,smoothed=False,med_exposure_times_by_layer=metsbl,et_corr_offsets_by_layer=etcobl)
     #get all of the subimage info objects
     manager = mp.Manager()
-    return_dict = manager.dict()
+    return_lists = []
     for ln in LAYERS :
-        return_dict[ln]=[]
+        return_lists.append(manager.list())
     procs = []
     for i,im_array in enumerate(img_arrays) :
         msg = f'Getting subimage information for {fris[i].rawfile_path}'
         logger.info(msg)
         key = (os.path.basename(fris[i].rawfile_path)).rstrip(RAWFILE_EXT)
         img_layers = [im_array[:,:,ln-1] for ln in LAYERS]
-        p = mp.Process(target=getSubImageInfosWorker,args=(img_layers,dims,key,thresholds,return_dict))
+        p = mp.Process(target=getSubImageInfosWorker,args=(img_layers,dims,key,thresholds,return_lists))
         procs.append(p)
         p.start()
     for proc in procs:
         proc.join()
     #return just a regular dictionary of all the subimage laplacian info objects keyed by layer number
     ret = {}
-    for k,v in return_dict.items() :
-        ret[k]=v
+    for i,ln in enumerate(LAYERS) :
+        ret[ln]=list(return_lists[i])
     return ret
 
 #################### MAIN SCRIPT ####################
@@ -135,6 +136,8 @@ def main(args=None) :
     #get all the rawfile paths
     with cd(os.path.join(args.rawfile_top_dir,args.slideID)) :
         all_rfps = [os.path.join(args.rawfile_top_dir,args.slideID,fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
+    if args.max_files>0 :
+        all_rfps=all_rfps[:args.max_files]
     #get the correction information stuff
     dims   = getImageHWLFromXMLFile(args.root_dir,args.slideID)
     for ln in LAYERS :
