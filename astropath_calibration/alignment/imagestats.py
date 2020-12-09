@@ -1,9 +1,9 @@
 import dataclasses
 from ..utilities import units
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield, pscalefield
 
 @dataclasses.dataclass(frozen=True)
-class ImageStats(DataClassWithDistances):
+class ImageStats(DataClassWithPscale):
   pixelsormicrons = "microns"
 
   n: int
@@ -13,5 +13,4 @@ class ImageStats(DataClassWithDistances):
   std: float
   cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False

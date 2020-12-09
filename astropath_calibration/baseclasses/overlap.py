@@ -3,11 +3,11 @@ import abc, dataclasses, networkx as nx, numpy as np, pathlib
 from ..baseclasses.csvclasses import Constant
 from ..utilities import units
 from ..utilities.tableio import readtable
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield, pscalefield
 from .rectangle import Rectangle, RectangleCollection, RectangleList, rectangleoroverlapfilter, rectangleoroverlapfilter as overlapfilter
 
 @dataclasses.dataclass(unsafe_hash=True)
-class Overlap(DataClassWithDistances):
+class Overlap(DataClassWithPscale):
   pixelsormicrons = "microns"
 
   n: int
@@ -18,7 +18,6 @@ class Overlap(DataClassWithDistances):
   x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   tag: int
-  pscale: float = pscalefield()
   nclip: dataclasses.InitVar[float]
   rectangles: dataclasses.InitVar[float]
   readingfromfile: dataclasses.InitVar[bool]

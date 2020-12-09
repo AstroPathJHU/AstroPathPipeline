@@ -1,10 +1,10 @@
 import abc, collections, contextlib, dataclasses, datetime, jxmlease, methodtools, numpy as np, pathlib, tifffile, warnings
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint, memmapcontext
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield, pscalefield
 
 @dataclass_dc_init
-class Rectangle(DataClassWithDistances):
+class Rectangle(DataClassWithPscale):
   pixelsormicrons = "microns"
 
   n: int = dataclasses.field()
@@ -16,7 +16,6 @@ class Rectangle(DataClassWithDistances):
   cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   t: datetime.datetime = dataclasses.field(metadata={"readfunction": lambda x: datetime.datetime.fromtimestamp(int(x)), "writefunction": lambda x: int(datetime.datetime.timestamp(x))})
   file: str
-  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool]
 
   def __init__(self, *args, rectangle=None, **kwargs):

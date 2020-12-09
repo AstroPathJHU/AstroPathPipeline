@@ -1,6 +1,6 @@
 import dataclasses, functools, numbers, numpy as np
 from ..misc import floattoint
-from .core import ThingWithPscale, UnitsError
+from .core import ThingWithPscale, ThingWithQpscale, UnitsError
 
 def __setup(mode):
   global currentmode, Distance, microns, pixels, _pscale, safe, UnitsError
@@ -58,7 +58,7 @@ def pscalefield(*, metadata={}, **kwargs):
   return dataclasses.field(**kwargs)
 
 @dataclasses.dataclass
-class DataClassWithDistances(ThingWithPscale):
+class DataClassWithDistances:
   @classmethod
   def distancefields(cls):
     return [field for field in dataclasses.fields(cls) if field.metadata.get("isdistancefield", False)]
@@ -132,3 +132,19 @@ class DataClassWithDistances(ThingWithPscale):
     if readingfromfile:
       for field in self.distancefields():
         object.__setattr__(self, field.name, field.type(power=powers[field.name], pscale=pscales[field.name], **{field.metadata["pixelsormicrons"](self): getattr(self, field.name)}))
+
+@dataclasses.dataclass
+class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
+  pscale: float = pscalefield()
+
+@dataclasses.dataclass
+class DataClassWithQpscale(DataClassWithDistances, ThingWithQpscale):
+  qpscale: float = pscalefield()
+
+@dataclasses.dataclass(frozen=True)
+class DataClassWithPscaleFrozen(DataClassWithDistances, ThingWithPscale):
+  pscale: float = pscalefield()
+
+@dataclasses.dataclass(frozen=True)
+class DataClassWithQpscaleFrozen(DataClassWithDistances, ThingWithQpscale):
+  qpscale: float = pscalefield()

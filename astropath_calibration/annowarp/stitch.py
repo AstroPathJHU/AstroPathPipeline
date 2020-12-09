@@ -2,7 +2,7 @@ import abc, collections, cvxpy as cp, dataclasses, itertools, numpy as np, re
 
 from ..utilities import units
 from ..utilities.tableio import writetable
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield, pscalefield
 
 class ThingWithImscale(abc.ABC):
   @abc.abstractproperty
@@ -292,7 +292,7 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
     )
 
 @dataclasses.dataclass
-class AnnoWarpStitchResultEntry(DataClassWithDistances):
+class AnnoWarpStitchResultEntry(DataClassWithPscale):
   pixelsormicrons = "pixels"
   def __powerfordescription(self):
     dct = {
@@ -315,5 +315,4 @@ class AnnoWarpStitchResultEntry(DataClassWithDistances):
   n: int
   value: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=__powerfordescription)
   description: str
-  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False

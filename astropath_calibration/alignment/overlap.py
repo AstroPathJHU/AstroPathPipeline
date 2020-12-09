@@ -4,7 +4,7 @@ from .computeshift import computeshift, mse, shiftimg
 from ..baseclasses.overlap import Overlap
 from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield, pscalefield
 
 import abc
 
@@ -301,7 +301,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
   def dxvec(self): return self.result.dxvec
 
 @dataclass_dc_init(frozen=True)
-class AlignmentResultBase(DataClassWithDistances):
+class AlignmentResultBase(DataClassWithPscale):
   def __init__(self, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)
     if dxvec is not None:
@@ -363,7 +363,6 @@ class AlignmentResult(AlignmentResultBase):
   covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: float = pscalefield()
   exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
   readingfromfile: dataclasses.InitVar[bool] = False
 
@@ -390,7 +389,6 @@ class LayerAlignmentResult(AlignmentResultBase):
   covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: float = pscalefield()
   exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
   readingfromfile: dataclasses.InitVar[bool] = False
 

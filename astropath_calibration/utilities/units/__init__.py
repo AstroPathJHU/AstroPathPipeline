@@ -1,6 +1,6 @@
 import contextlib
 from . import core, dataclasses, drawing
-from .core import convertpscale, Distance, onemicron, onepixel, ThingWithPscale, UnitsError
+from .core import convertpscale, Distance, onemicron, onepixel, ThingWithPscale, ThingWithQpscale, UnitsError
 
 def setup(mode):
   global currentmodule
@@ -45,7 +45,7 @@ def setup_context(mode):
     setup(bkp)
 
 __all__ = [
-  "convertpscale", "correlated_distances", "Distance", "distances", "onemicron", "onepixel", "ThingWithPscale", "UnitsError",
+  "convertpscale", "correlated_distances", "Distance", "distances", "onemicron", "onepixel", "ThingWithPscale", "ThingWithQpscale", "UnitsError",
   "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs",
   "dataclasses", "drawing", "fft", "linalg", "testing",
   "setup", "setup_context",

@@ -1,4 +1,4 @@
-import methodtools, numpy as np
+import abc, methodtools, numpy as np
 
 currentmodule = None
 
@@ -18,7 +18,11 @@ def onepixel(pscale):
 def onemicron(pscale):
   return Distance(microns=1, pscale=pscale)
 
-class ThingWithPscale:
+class ThingWithPscale(abc.ABC):
+  @abc.abstractproperty
+  def pscale(self): return self.__pscale
+  @pscale.setter
+  def pscale(self, pscale): object.__setattr__(self, "_ThingWithPscale__pscale", pscale)
   @methodtools.lru_cache()
   @property
   def onepixel(self):
@@ -27,3 +31,17 @@ class ThingWithPscale:
   @property
   def onemicron(self):
     return onemicron(pscale=self.pscale)
+
+class ThingWithQpscale(abc.ABC):
+  @abc.abstractproperty
+  def qpscale(self): return self.__qpscale
+  @qpscale.setter
+  def qpscale(self, qpscale): object.__setattr__(self, "_ThingWithQpscale__qpscale", qpscale)
+  @methodtools.lru_cache()
+  @property
+  def oneqppixel(self):
+    return onepixel(pscale=self.qpscale)
+  @methodtools.lru_cache()
+  @property
+  def oneqpmicron(self):
+    return onemicron(pscale=self.qpscale)

@@ -1,10 +1,10 @@
 import dataclasses, datetime, numbers, numpy as np, re
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, DataClassWithQpscale, distancefield, pscalefield
 
 @dataclasses.dataclass
-class Globals(DataClassWithDistances):
+class Globals(DataClassWithPscale):
   pixelsormicrons = "microns"
 
   x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
@@ -13,17 +13,15 @@ class Globals(DataClassWithDistances):
   Height: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   Unit: str
   Tc: datetime.datetime = dataclasses.field(metadata={"readfunction": lambda x: datetime.datetime.fromtimestamp(int(x)), "writefunction": lambda x: int(datetime.datetime.timestamp(x))})
-  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass
-class Perimeter(DataClassWithDistances):
+class Perimeter(DataClassWithPscale):
   pixelsormicrons = "microns"
 
   n: int
   x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  pscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass
@@ -34,7 +32,7 @@ class Batch:
   Batch: int
 
 @dataclasses.dataclass
-class QPTiffCsv(DataClassWithDistances):
+class QPTiffCsv(DataClassWithPscale):
   pixelsormicrons = "microns"
 
   SampleID: int
@@ -84,7 +82,7 @@ class Constant(DataClassWithDistances):
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass(frozen=True)
-class RectangleFile(DataClassWithDistances):
+class RectangleFile(DataClassWithPscaleFrozen):
   pixelsormicrons = "microns"
 
   cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
@@ -107,14 +105,13 @@ class Annotation:
   poly: str
 
 @dataclass_dc_init
-class Vertex(DataClassWithDistances):
+class Vertex(DataClassWithQpscale):
   pixelsormicrons = "microns"
 
   regionid: int
   vid: int
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  pscale: float = pscalefield()
+  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="qpscale")
+  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="qpscale")
   readingfromfile: dataclasses.InitVar[bool] = False
 
   @property
@@ -128,11 +125,8 @@ class Vertex(DataClassWithDistances):
       xveckwargs["x"], xveckwargs["y"] = xvec
     if vertex is not None:
       vertexkwargs = {
-        "pscale": vertex.pscale,
-        **{
-          field.name: getattr(vertex, field.name)
-          for field in dataclasses.fields(type(vertex))
-        }
+        field.name: getattr(vertex, field.name)
+        for field in dataclasses.fields(type(vertex))
       }
     self.__dc_init__(
       *args,
@@ -168,12 +162,13 @@ class Polygon:
         x, y = vertex.split()
         x = units.Distance(pscale=pscale, **{kw: floattoint(x)})
         y = units.Distance(pscale=pscale, **{kw: floattoint(y)})
-        vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, pscale=pscale))
+        vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, qpscale=pscale))
 
     self.__vertices = vertices
-    pscale = {v.pscale for v in vertices}
+    pscale = {v.qpscale for v in vertices}
     if len(pscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
     self.__pscale = pscale.pop()
+    print(self)
 
   @property
   def pscale(self): return self.__pscale
@@ -193,7 +188,7 @@ class Polygon:
     return self.vertices == other.vertices
 
 @dataclasses.dataclass
-class Region(DataClassWithDistances):
+class Region(DataClassWithQpscale):
   pixelsormicrons = Polygon.pixelsormicrons
 
   regionid: int
@@ -203,8 +198,7 @@ class Region(DataClassWithDistances):
   isNeg: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
   type: str
   nvert: int
-  poly: Polygon = distancefield(pixelsormicrons=pixelsormicrons, dtype=str, metadata={"writefunction": Polygon.tostring})
-  pscale: float = pscalefield()
+  poly: Polygon = distancefield(pixelsormicrons=pixelsormicrons, dtype=str, pscalename="qpscale", metadata={"writefunction": Polygon.tostring})
   readingfromfile: dataclasses.InitVar[bool] = False
 
   def _distances_passed_to_init(self):
