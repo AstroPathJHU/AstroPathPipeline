@@ -4,7 +4,7 @@ from .computeshift import computeshift, mse, shiftimg
 from ..baseclasses.overlap import Overlap
 from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
-from ..utilities.units.dataclasses import DataClassWithPscale, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithPscaleFrozen, distancefield
 
 import abc
 
@@ -301,7 +301,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
   def dxvec(self): return self.result.dxvec
 
 @dataclass_dc_init(frozen=True)
-class AlignmentResultBase(DataClassWithPscale):
+class AlignmentResultBase(DataClassWithPscaleFrozen):
   def __init__(self, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)
     if dxvec is not None:

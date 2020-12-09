@@ -177,8 +177,6 @@ class Polygon:
     if self.__pscale is None:
       raise AttributeError("Didn't set pscale for this polygon")
     return self.__pscale
-  @pscale.setter
-  def pscale(self, qpscale): self.__pscale = pscale
   @property
   def _pscale(self): return self.__qpscale
   @property

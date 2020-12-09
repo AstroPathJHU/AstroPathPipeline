@@ -1,9 +1,9 @@
 import dataclasses
 from ..utilities import units
-from ..utilities.units.dataclasses import DataClassWithPscale, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithPscaleFrozen, distancefield
 
 @dataclasses.dataclass(frozen=True)
-class ImageStats(DataClassWithPscale):
+class ImageStats(DataClassWithPscaleFrozen):
   pixelsormicrons = "microns"
 
   n: int

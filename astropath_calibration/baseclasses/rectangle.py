@@ -1,7 +1,7 @@
 import abc, collections, contextlib, dataclasses, datetime, jxmlease, methodtools, numpy as np, pathlib, tifffile, warnings
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint, memmapcontext
-from ..utilities.units.dataclasses import DataClassWithPscale, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
 @dataclass_dc_init
 class Rectangle(DataClassWithPscale):

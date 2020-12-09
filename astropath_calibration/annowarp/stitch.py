@@ -2,7 +2,7 @@ import abc, collections, cvxpy as cp, dataclasses, itertools, numpy as np, re
 
 from ..utilities import units
 from ..utilities.tableio import writetable
-from ..utilities.units.dataclasses import DataClassWithPscale, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
 class ThingWithImscale(abc.ABC):
   @abc.abstractproperty

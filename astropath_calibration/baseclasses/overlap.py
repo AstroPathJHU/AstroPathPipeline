@@ -3,7 +3,7 @@ import abc, dataclasses, networkx as nx, numpy as np, pathlib
 from ..baseclasses.csvclasses import Constant
 from ..utilities import units
 from ..utilities.tableio import readtable
-from ..utilities.units.dataclasses import DataClassWithPscale, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .rectangle import Rectangle, RectangleCollection, RectangleList, rectangleoroverlapfilter, rectangleoroverlapfilter as overlapfilter
 
 @dataclasses.dataclass(unsafe_hash=True)
