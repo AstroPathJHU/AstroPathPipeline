@@ -41,7 +41,7 @@ class TestPrepDb(unittest.TestCase):
       (f"{SlideID}_qptiff.csv", QPTiffCsv, {"pscale": sample.pscale}),
       (f"{SlideID}_rect.csv", Rectangle, {"pscale": sample.pscale}),
       (f"{SlideID}_vertices.csv", Vertex, {"qpscale": sample.qpscale}),
-      (f"{SlideID}_regions.csv", Region, {"qpscale": sample.qpscale}),
+      (f"{SlideID}_regions.csv", Region, {"qpscale": sample.qpscale, "pscale": sample.pscale}),
     ):
       if filename == "M21_1_globals.csv": continue
       try:

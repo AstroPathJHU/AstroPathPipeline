@@ -94,8 +94,9 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
               isNeg=isNeg,
               type=region.get_xml_attr("Type"),
               nvert=len(vertices),
-              poly=Polygon(*polygonvertices),
+              poly=Polygon(*polygonvertices, pscale=self.pscale),
               qpscale=self.qpscale,
+              pscale=self.pscale,
             )
           )
 

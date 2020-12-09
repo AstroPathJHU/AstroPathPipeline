@@ -138,7 +138,7 @@ class Vertex(DataClassWithQpscale):
 class Polygon:
   pixelsormicrons = "pixels"
 
-  def __init__(self, *vertices, pixels=None, microns=None, pscale=None, power=1):
+  def __init__(self, *vertices, pixels=None, microns=None, pscale=None, qpscale=None, power=1):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
     if bool(vertices) + (pixels is not None) + (microns is not None) != 1:
@@ -160,27 +160,40 @@ class Polygon:
       if intvertices[-1] == intvertices[0]: del intvertices[-1]
       for i, vertex in enumerate(intvertices, start=1):
         x, y = vertex.split()
-        x = units.Distance(pscale=pscale, **{kw: floattoint(x)})
-        y = units.Distance(pscale=pscale, **{kw: floattoint(y)})
+        x = units.Distance(pscale=qpscale, **{kw: floattoint(x)})
+        y = units.Distance(pscale=qpscale, **{kw: floattoint(y)})
         vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, qpscale=pscale))
 
     self.__vertices = vertices
-    pscale = {v.qpscale for v in vertices}
-    if len(pscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
-    self.__pscale = pscale.pop()
-    print(self)
+    self.__pscale = pscale
+
+    qpscale = {qpscale, *(v.qpscale for v in vertices)}
+    qpscale.discard(None)
+    if len(qpscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
+    self.__qpscale, = qpscale
 
   @property
-  def pscale(self): return self.__pscale
+  def pscale(self):
+    if self.__pscale is None:
+      raise AttributeError("Didn't set pscale for this polygon")
+    return self.__pscale
+  @pscale.setter
+  def pscale(self, qpscale): self.__pscale = pscale
   @property
-  def _pscale(self): return self.__pscale
+  def _pscale(self): return self.__qpscale
+  @property
+  def qpscale(self): return self.__qpscale
 
   @property
   def vertices(self): return self.__vertices
   def __repr__(self):
     return self.tostring(pscale=self.pscale, pixelsormicrons=self.pixelsormicrons)
   def tostring(self, *, pixelsormicrons, **kwargs):
-    f = {"pixels": units.pixels, "microns": units.microns}[pixelsormicrons]
+    f = lambda distance, **kwargs: (
+      {"pixels": units.pixels, "microns": units.microns}[pixelsormicrons](
+        units.convertpscale(distance, self.qpscale, self.pscale)
+      )
+    )
     vertices = list(self.vertices) + [self.vertices[0]]
     return "POLYGON ((" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in vertices) + "))"
 
@@ -188,7 +201,7 @@ class Polygon:
     return self.vertices == other.vertices
 
 @dataclasses.dataclass
-class Region(DataClassWithQpscale):
+class __RegionBase(DataClassWithPscale, DataClassWithQpscale):
   pixelsormicrons = Polygon.pixelsormicrons
 
   regionid: int
@@ -198,8 +211,27 @@ class Region(DataClassWithQpscale):
   isNeg: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
   type: str
   nvert: int
-  poly: Polygon = distancefield(pixelsormicrons=pixelsormicrons, dtype=str, pscalename="qpscale", metadata={"writefunction": Polygon.tostring})
+  poly: Polygon = dataclasses.field(metadata={"writefunction": str, "readfunction": str})
+  __polymetadata = poly.metadata
   readingfromfile: dataclasses.InitVar[bool] = False
+
+@dataclasses.dataclass
+class Region(__RegionBase):
+  @property
+  def poly(self):
+    return self.__poly
+  @poly.setter
+  def poly(self, poly):
+    if isinstance(poly, Polygon):
+      self.__poly = poly
+    elif isinstance(poly, str):
+      self.__poly = Polygon(
+        **{Polygon.pixelsormicrons: poly},
+        pscale=self.pscale,
+        qpscale=self.qpscale,
+      )
+    else:
+      raise TypeError(f"Unknown type {type(poly).__name__} for poly")
 
   def _distances_passed_to_init(self):
     if not isinstance(self.poly, Polygon): return self.poly
