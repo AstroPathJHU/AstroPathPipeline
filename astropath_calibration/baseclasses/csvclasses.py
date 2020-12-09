@@ -162,7 +162,7 @@ class Polygon:
         x, y = vertex.split()
         x = units.Distance(pscale=qpscale, **{kw: floattoint(x)})
         y = units.Distance(pscale=qpscale, **{kw: floattoint(y)})
-        vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, qpscale=pscale))
+        vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, qpscale=qpscale))
 
     self.__vertices = vertices
     self.__pscale = pscale
