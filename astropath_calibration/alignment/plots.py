@@ -12,22 +12,22 @@ logger = logging.getLogger("alignmentplots")
 def rectanglelayout(alignmentset, *, xrange=None, yrange=None, primaryarea=True, figurekwargs={}, showplot=None, saveas=None):
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
-  pscale = alignmentset.fields[0].pscale
-  shape = units.pixels(alignmentset.fields[0].shape, pscale=pscale)
+  onepixel = alignmentset.onepixel
+  shape = alignmentset.fields[0].shape/onepixel
   if primaryarea:
     if xrange is None:
       xrange = (
-        units.pixels(np.min([r.mx1 for r in alignmentset.fields]), pscale=pscale),
-        units.pixels(np.max([r.mx2 for r in alignmentset.fields]), pscale=pscale),
+        np.min([r.mx1 for r in alignmentset.fields]) / onepixel,
+        np.max([r.mx2 for r in alignmentset.fields]) / onepixel,
       )
     if yrange is None:
       yrange = (
-        units.pixels(np.max([r.my2 for r in alignmentset.fields]), pscale=pscale),
-        units.pixels(np.min([r.my1 for r in alignmentset.fields]), pscale=pscale),
+        np.max([r.my2 for r in alignmentset.fields]) / onepixel,
+        np.min([r.my1 for r in alignmentset.fields]) / onepixel,
       )
   else:
-    xmin, ymin = units.pixels(np.min([r.xvec for r in alignmentset.fields], axis=0), pscale=pscale)
-    xmax, ymax = units.pixels(np.max([r.xvec+r.shape for r in alignmentset.fields], axis=0), pscale=pscale)
+    xmin, ymin = np.min([r.xvec for r in alignmentset.fields], axis=0) / onepixel
+    xmax, ymax = np.max([r.xvec+r.shape for r in alignmentset.fields], axis=0) / onepixel
     if xrange is None: xrange = xmin, xmax
     if yrange is None: yrange = ymax, ymin
   ax.set_xlim(*xrange)
@@ -45,8 +45,8 @@ def rectanglelayout(alignmentset, *, xrange=None, yrange=None, primaryarea=True,
       xvec = r.xvec
       shape = r.shape
     box = matplotlib.patches.Rectangle(
-      units.pixels(xvec, pscale=pscale),
-      *units.pixels(shape, pscale=pscale),
+      xvec / onepixel,
+      *shape / onepixel,
       facecolor=color,
       edgecolor="black",
       alpha=0.5
@@ -58,8 +58,8 @@ def rectanglelayout(alignmentset, *, xrange=None, yrange=None, primaryarea=True,
     center = (r1.xvec+r1.shape/2 + r2.xvec+r2.shape/2) / 2
     boxsize = r1.shape/10
     box = matplotlib.patches.Rectangle(
-      units.pixels(center-boxsize/2, pscale=pscale),
-      *units.pixels(boxsize, pscale=pscale),
+      (center-boxsize/2) / onepixel,
+      *boxsize / onepixel,
       facecolor="tab:red" if o.result.exit else "tab:green",
       edgecolor=None,
       alpha=0.5
@@ -108,16 +108,16 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
       raise ValueError("Can't provide pull kwargs for a scatter plot")
     if pixelsormicrons is None:
       raise ValueError("Have to provide pixelsormicrons for a scatterplot")
-    f = {"pixels": units.pixels, "microns": units.microns}[pixelsormicrons]
+    divideby = {"pixels": alignmentset.onepixel, "microns": alignmentset.onemicron}[pixelsormicrons]
     kwargs = dict(
-      x=f(units.nominal_values(vectors[:,0])),
-      y=f(units.nominal_values(vectors[:,1])),
+      x=(units.nominal_values(vectors[:,0]) / divideby).astype(float),
+      y=(units.nominal_values(vectors[:,1]) / divideby).astype(float),
     )
     if errorbars:
       plt.errorbar(
         **kwargs,
-        xerr=f(units.std_devs(vectors[:,0])),
-        yerr=f(units.std_devs(vectors[:,1])),
+        xerr=(units.std_devs(vectors[:,0]) / divideby).astype(float),
+        yerr=(units.std_devs(vectors[:,1]) / divideby).astype(float),
         fmt='o',
       )
     else:
@@ -220,6 +220,7 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
 def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax, cbar, xory: None, island=None, showplot=None):
   logger.debug(alignmentset.samp)
   fields = alignmentset.fields
+  onepixel = alignmentset.onepixel
   if island is not None:
     fields = [field for field in fields if field.n in alignmentset.islands()[island]]
   deltax = min(abs(a.x-b.x) for a, b in more_itertools.pairwise(fields) if a.x != b.x)
@@ -228,15 +229,15 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
   x0vec = np.min([[f.x, f.y] for f in fields], axis=0)
   f = fields[0]
   shape = tuple(reversed(floattoint(np.max([(f.xvec - x0vec) / deltaxvec for f in fields], axis=0), atol=1e-9) + 1))
-  xyarray = np.full(shape=(2,)+shape, fill_value=units.Distance(pixels=-999., pscale=alignmentset.pscale))
+  xyarray = np.full(shape=(2,)+shape, fill_value=-999.*onepixel)
 
-  extent = x0vec[0], shape[1] * deltaxvec[0] + x0vec[0], shape[0] * deltaxvec[1] + x0vec[1], x0vec[1]
+  extent = np.array([x0vec[0], shape[1] * deltaxvec[0] + x0vec[0], shape[0] * deltaxvec[1] + x0vec[1], x0vec[1]])
 
   for f in fields:
     idx = (slice(None),) + tuple(reversed(floattoint((f.xvec - x0vec) / deltaxvec, atol=1e-9)))
     xyarray[idx] = units.nominal_values(f.pxvec - alignmentset.T@(f.xvec-alignmentset.position))
 
-  xyarraypixels = units.pixels(xyarray, pscale=alignmentset.pscale)
+  xyarraypixels = (xyarray / onepixel).astype(float)
 
   vmin = min(np.min(xyarraypixels[xyarraypixels != -999]), -np.max(xyarraypixels[xyarraypixels != -999]))
   vmax = -vmin
@@ -250,7 +251,7 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
   for colorplot, xory, saveas in zip(xycolor, "xy", (saveasx, saveasy)):
     fig = plt.figure(**figurekwargs)
     ax = plt.gca()
-    ax.imshow(colorplot, extent=units.pixels(extent, pscale=alignmentset.pscale))
+    ax.imshow(colorplot, extent=(extent / onepixel).astype(float))
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = plt.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
@@ -267,6 +268,7 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
 
 
 def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax, deltaxory, vsxory: None, drawfourier=False, guessparameters=None, plotsine=True, sinetext=True, **kwargs):
+  onepixel = alignmentset.onepixel
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -291,15 +293,15 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
   else:
     assert False, vsxory
 
-  mean = np.mean(array2D[units.pixels(array2D, pscale=alignmentset.pscale) != -999])
-  RMS = np.std(array2D[units.pixels(array2D, pscale=alignmentset.pscale) != -999])
+  mean = np.mean(array2D[array2D / onepixel != -999])
+  RMS = np.std(array2D[array2D / onepixel != -999])
 
   x = []
   y = []
   yerr = []
   binedges = units.np.linspace(*edges, num=len(array2D)+1)
   for rowcolumn, (binlow, binhigh) in itertools.zip_longest(array2D, more_itertools.pairwise(binedges)):
-    ys = [_ for _ in rowcolumn if _ != units.Distance(pixels=-999, pscale=alignmentset.pscale)]
+    ys = [_ for _ in rowcolumn if _ != -999*onepixel]
     if not ys: continue
     x.append((binlow+binhigh)/2)
     y.append(np.mean(ys))
@@ -320,16 +322,16 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
 
   if not drawfourier:
     plt.errorbar(
-      x=units.pixels(xwitherror),
-      y=units.pixels(ywitherror),
-      yerr=units.pixels(yerrwitherror),
+      x=(xwitherror / onepixel).astype(float),
+      y=(ywitherror / onepixel).astype(float),
+      yerr=(yerrwitherror / onepixel).astype(float),
       fmt='o',
       color='b',
     )
     if xnoerror.size:
       plt.scatter(
-        x=units.pixels(xnoerror),
-        y=units.pixels(ynoerror),
+        x=(xnoerror / onepixel).astype(float),
+        y=(ynoerror / onepixel).astype(float),
         facecolors='none',
         edgecolors='b',
       )
@@ -361,7 +363,7 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
   f = units.np.fft.fft(biggestchunkys)
 
   if drawfourier:
-    plt.scatter(units.pixels(k, power=-1), units.pixels(abs(f), power=1))
+    plt.scatter(k * onepixel, abs(f) / onepixel)
     plotstyling(fig=fig, ax=ax)
 
     if saveas is None:
@@ -441,7 +443,7 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
   xplot = units.np.linspace(min(x), max(x), 1000)
   if plotsine:
     #plt.plot(xplot, cosfunction(xplot, *initialguess), color='g')
-    plt.plot(units.pixels(xplot), units.pixels(cosfunction(xplot, *units.nominal_values(p))), color='b')
+    plt.plot(xplot / onepixel, cosfunction(xplot, *units.nominal_values(p)) / onepixel, color='b')
     if sinetext:
       xcenter = np.average(ax.get_xlim())
       bottom, top = ax.get_ylim()

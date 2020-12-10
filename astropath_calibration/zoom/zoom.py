@@ -1,4 +1,4 @@
-import contextlib, cv2, itertools, methodtools, numpy as np, os, PIL, skimage
+import argparse, contextlib, cv2, itertools, methodtools, numpy as np, os, pathlib, PIL, skimage
 
 from ..alignment.field import Field
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
@@ -31,12 +31,11 @@ class Zoom(ReadRectanglesComponentTiff):
   @methodtools.lru_cache()
   @property
   def ntiles(self):
-    onepixel = units.Distance(pixels=1, pscale=self.pscale)
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
-    return floattoint(-((-maxxy) // (self.tilesize*onepixel)))
+    return floattoint(-((-maxxy) // (self.tilesize*self.onepixel)))
 
   def zoom_wsi_fast(self, fmax=50):
-    onepixel = units.Distance(pixels=1, pscale=self.pscale)
+    onepixel = self.onepixel
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
     bigimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.tilesize)[::-1]), dtype=np.uint8)
     nrectangles = len(self.rectangles)
@@ -110,7 +109,7 @@ class Zoom(ReadRectanglesComponentTiff):
     return bigimage
 
   def zoom_memory(self, fmax=50):
-    onepixel = units.Distance(pixels=1, pscale=self.pscale)
+    onepixel = self.onepixel
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
     buffer = -(-self.rectangles[0].shape // onepixel).astype(int) * onepixel
     nrectangles = len(self.rectangles)
@@ -192,7 +191,7 @@ class Zoom(ReadRectanglesComponentTiff):
             localy1 = field.my1 - field.py
             localy2 = localy1 + tiley2 - tiley1
 
-            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.tilesize + 2*units.pixels(buffer, pscale=self.pscale))[::-1]), dtype=np.uint8)
+            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.tilesize + 2*floattoint(buffer/onepixel))[::-1]), dtype=np.uint8)
 
             with field.using_image() as image:
               image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
@@ -231,8 +230,8 @@ class Zoom(ReadRectanglesComponentTiff):
 
         slc = tileimage[
           :,
-          units.pixels(buffer[1], pscale=self.pscale):units.pixels(-buffer[1], pscale=self.pscale),
-          units.pixels(buffer[0], pscale=self.pscale):units.pixels(-buffer[0], pscale=self.pscale),
+          floattoint(buffer[1]/self.onepixel):floattoint(-buffer[1]/self.onepixel),
+          floattoint(buffer[0]/self.onepixel):floattoint(-buffer[0]/self.onepixel),
         ]
         if not np.any(slc): continue
         for layer in self.layers:
@@ -268,3 +267,20 @@ class Zoom(ReadRectanglesComponentTiff):
 
   def zoom_wsi(self, *args, fast=False, **kwargs):
     return (self.zoom_wsi_fast if fast else self.zoom_wsi_memory)(*args, **kwargs)
+
+def main(args=None):
+  p = argparse.ArgumentParser()
+  p.add_argument("root1", type=pathlib.Path)
+  p.add_argument("root2", type=pathlib.Path)
+  p.add_argument("zoomroot", type=pathlib.Path)
+  p.add_argument("samp")
+  p.add_argument("--units", choices=("fast", "safe"), default="fast")
+  p.add_argument("--fast", action="store_true")
+  args = p.parse_args(args=args)
+
+  units.setup(args.units)
+
+  return Zoom(root=args.root1, root2=args.root2, samp=args.samp, zoomroot=args.zoomroot).zoom_wsi(fast=args.fast)
+
+if __name__ == "__main__":
+  main()

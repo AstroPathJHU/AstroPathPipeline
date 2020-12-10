@@ -15,10 +15,6 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
   def nclip(self):
     return 8
 
-  @property
-  def layer(self):
-    return 1
-
   @methodtools.lru_cache()
   def getbatch(self):
     return [
@@ -69,8 +65,8 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
           if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
           regionvertices = []
           for k, vertex in enumerate(vertices, start=1):
-            x = units.Distance(microns=int(vertex.get_xml_attr("X")), pscale=self.pscale)
-            y = units.Distance(microns=int(vertex.get_xml_attr("Y")), pscale=self.pscale)
+            x = int(vertex.get_xml_attr("X")) * self.onemicron
+            y = int(vertex.get_xml_attr("Y")) * self.onemicron
             regionvertices.append(
               Vertex(
                 regionid=regionid,
@@ -127,7 +123,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
       else:
         raise ValueError("Unexpected qptiff layout: expected to find an RGB layer (with a 3D array shape).  Array shapes:\n" + "\n".join(f"  {page.shape}" for page in f.pages))
       for qplayeridx, page in layeriterator:
-        if page.imagewidth < 4000:
+        if page.imagewidth < 2000:
           break
       else:
         raise ValueError("Unexpected qptiff layout: expected layer with width < 4000 sometime after the first RGB layer (with a 3D array shape).  Shapes and widths:\n" + "\n".join(f"  {page.shape:20} {page.imagewidth:10}" for page in f.pages))
@@ -142,6 +138,8 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
       xresolution = float(fractions.Fraction(*xresolution))
       yresolution = page.tags["YResolution"].value
       yresolution = float(fractions.Fraction(*yresolution))
+      apscale = firstpage.tags["XResolution"].value
+      apscale = float(fractions.Fraction(*apscale))
 
       kw = {
         tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
@@ -149,6 +147,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
       xresolution = units.Distance(pixels=xresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
       yresolution = units.Distance(pixels=yresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
       qpscale = xresolution
+      apscale = units.Distance(pixels=apscale, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
 
       xposition = units.Distance(**{kw: xposition}, pscale=qpscale)
       yposition = units.Distance(**{kw: yposition}, pscale=qpscale)
@@ -162,6 +161,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
           XResolution=xresolution * 10000,
           YResolution=yresolution * 10000,
           qpscale=qpscale,
+          apscale=apscale,
           fname=self.jpgfilename.name,
           img="00001234",
           pscale=qpscale,
@@ -205,6 +205,9 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
   @property
   def qpscale(self):
     return self.getqptiffcsv()[0].qpscale
+  @property
+  def apscale(self):
+    return self.getqptiffcsv()[0].apscale
 
   @property
   def overlaps(self):
@@ -227,6 +230,34 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
         pscale=self.pscale,
       ),
       Constant(
+        name='flayers',
+        value=self.flayers,
+        unit='',
+        description='field depth',
+        pscale=self.pscale,
+      ),
+      Constant(
+        name='locx',
+        value=self.samplelocation[0],
+        unit='microns',
+        description='xlocation',
+        pscale=self.apscale,
+      ),
+      Constant(
+        name='locy',
+        value=self.samplelocation[1],
+        unit='microns',
+        description='ylocation',
+        pscale=self.apscale,
+      ),
+      Constant(
+        name='locz',
+        value=self.samplelocation[2],
+        unit='microns',
+        description='zlocation',
+        pscale=self.apscale,
+      ),
+      Constant(
         name='xposition',
         value=self.xposition,
         unit='microns',
@@ -247,6 +278,12 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
         description='scale of the QPTIFF image',
       ),
       Constant(
+        name='apscale',
+        value=self.apscale,
+        unit='pixels/micron',
+        description='scale of the QPTIFF image used for annotation',
+      ),
+      Constant(
         name='pscale',
         value=self.pscale,
         unit='pixels/micron',
@@ -254,16 +291,36 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
       ),
       Constant(
         name='nclip',
-        value=units.Distance(pixels=self.nclip, pscale=self.pscale),
+        value=self.nclip * self.onepixel,
         unit='pixels',
         description='pixels to clip off the edge after warping',
         pscale=self.pscale,
       ),
       Constant(
-        name='layer',
-        value=self.layer,
-        unit='layer number',
-        description='which layer to use from the im3 to align',
+        name="resolutionbits",
+        value=self.resolutionbits,
+        unit="",
+        description="number of significant bits in the im3 files",
+      ),
+      Constant(
+        name="gainfactor",
+        value=self.gainfactor,
+        unit="",
+        description="the gain of the A/D amplifier for the im3 files",
+      ),
+      Constant(
+        name="binningx",
+        value=self.camerabinningx,
+        unit="pixels",
+        description="the number of adjacent pixels coadded",
+        pscale=self.pscale,
+      ),
+      Constant(
+        name="binningy",
+        value=self.camerabinningy,
+        unit="pixels",
+        description="the number of adjacent pixels coadded",
+        pscale=self.pscale,
       ),
     ]
     return constants

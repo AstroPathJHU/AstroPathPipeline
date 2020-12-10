@@ -1,7 +1,7 @@
-import abc, contextlib, dataclasses, datetime, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re
+import abc, contextlib, dataclasses, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tifffile
 
 from ..utilities import units
-from ..utilities.misc import dataclass_dc_init, floattoint, tiffinfo
+from ..utilities.misc import dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import Constant, RectangleFile
@@ -61,7 +61,7 @@ class SampleDef:
   def __bool__(self):
     return bool(self.isGood)
 
-class SampleBase(contextlib.ExitStack):
+class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
   def __init__(self, root, samp, *, uselogfiles=False, logthreshold=logging.DEBUG, xmlfolders=None, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
@@ -115,7 +115,23 @@ class SampleBase(contextlib.ExitStack):
       componenttifffilename = next(self.componenttiffsfolder.glob(self.SlideID+"*_component_data.tif"))
     except StopIteration:
       raise FileNotFoundError(f"No component tiffs for {self}")
-    return tiffinfo(filename=componenttifffilename)
+    with tifffile.TiffFile(componenttifffilename) as f:
+      nlayers = None
+      page = f.pages[0]
+      resolutionunit = page.tags["ResolutionUnit"].value
+      xresolution = page.tags["XResolution"].value
+      xresolution = fractions.Fraction(*xresolution)
+      yresolution = page.tags["YResolution"].value
+      yresolution = fractions.Fraction(*yresolution)
+      if xresolution != yresolution: raise ValueError(f"x and y have different resolutions {xresolution} {yresolution}")
+      resolution = float(xresolution)
+      kw = {
+        tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
+      }[resolutionunit]
+      pscale = float(units.Distance(pixels=resolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1))
+      height, width = units.distances(pixels=page.shape, pscale=pscale, power=1)
+
+      return pscale, width, height, nlayers
 
   @property
   def possiblexmlfolders(self):
@@ -136,12 +152,63 @@ class SampleBase(contextlib.ExitStack):
           pscale = 1e-3/float(node)
 
     try:
-      width = units.Distance(pixels=width, pscale=pscale)
-      height = units.Distance(pixels=height, pscale=pscale)
+      width *= units.onepixel(pscale=pscale)
+      height *= units.onepixel(pscale=pscale)
     except NameError:
       raise IOError(f'Couldn\'t find Shape and/or MillimetersPerPixel in {self.xmlfolder/(self.SlideID+".Parameters.xml")}')
 
-    return pscale, width, height
+    return pscale, width, height, nlayers
+
+  @methodtools.lru_cache()
+  @property
+  def samplelocation(self):
+    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
+        if node.xml_attrs["name"] == "SampleLocation":
+          return np.array([float(_) for _ in str(node).split()]) * units.onemicron(pscale=self.apscale)
+
+  @methodtools.lru_cache()
+  def getcamerastateparameter(self, parametername):
+    with open(self.xmlfolder/(self.SlideID+".Full.xml"), "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="/IM3/G/G/G/G/G/G/G/G"):
+        if node.xml_attrs["name"] == "CameraState":
+          for G in node["G"]["G"]:
+            if G.xml_attrs["name"] == "Parameters":
+              for subG in G["G"]["G"]["G"]:
+                name = value = None
+                for D in subG["D"]:
+                  if D.xml_attrs["name"] == "Name":
+                    name = str(D)
+                  if D.xml_attrs["name"] == "Value":
+                    value = int(str(D))
+                assert name is not None is not value
+                if name == parametername: return value
+      assert False
+
+  @property
+  def resolutionbits(self):
+    return self.getcamerastateparameter("ResolutionBits")
+
+  @property
+  def gainfactor(self):
+    return self.getcamerastateparameter("GainFactor")
+
+  @methodtools.lru_cache()
+  def getcamerabinning(self, xory):
+    with open(self.xmlfolder/(self.SlideID+".Full.xml"), "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="/IM3/G/G/G/G/G/G/G/G"):
+        if node.xml_attrs["name"] == "CameraState":
+          for G in node["G"]["G"]:
+            if G.xml_attrs["name"] == "Binning":
+              for D in G["G"]["D"]:
+                if D.xml_attrs["name"] == xory:
+                  return int(str(D)) * self.onepixel
+    assert False
+
+  @property
+  def camerabinningx(self): return self.getcamerabinning("X")
+  @property
+  def camerabinningy(self): return self.getcamerabinning("Y")
 
   @methodtools.lru_cache()
   @property
@@ -178,14 +245,17 @@ class SampleBase(contextlib.ExitStack):
     results = self.getimageinfos()
     result = None
     warnfunction = None
-    for k, v in results.items():
+    for k, v in sorted(results.items(), key=lambda kv: kv[1] is None or any(_ is None for _ in kv[1])):
       if v is None: continue
-      pscale, width, height = v
+      pscale, width, height, layers = v
       if result is None:
-        result = resultpscale, resultwidth, resultheight = v
-      elif np.allclose(units.microns(result, power=[0, 1, 1], pscale=result[0]), units.microns(v, power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
+        result = resultpscale, resultwidth, resultheight, resultlayers = v
+        resultk = k
+      elif None is not layers != resultlayers is not None:
+        raise ValueError(f"Found different numbers of layers from different sources: {resultk}: {resultlayers}, {k}: {layers}")
+      elif np.allclose(units.microns(result[:3], power=[0, 1, 1], pscale=result[0]), units.microns(v[:3], power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
         continue
-      elif np.allclose(units.microns(result, power=[0, 1, 1], pscale=result[0]), units.microns(v, power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
+      elif np.allclose(units.microns(result[:3], power=[0, 1, 1], pscale=result[0]), units.microns(v[:3], power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
         if warnfunction != self.logger.warningglobal: warnfunction = self.logger.warning
       else:
         warnfunction = self.logger.warningglobal
@@ -218,6 +288,11 @@ class SampleBase(contextlib.ExitStack):
   def fwidth(self): return self.getimageinfo()[1]
   @property
   def fheight(self): return self.getimageinfo()[2]
+  @property
+  def flayers(self):
+    layers = self.getimageinfo()[3]
+    if layers is None: raise FileNotFoundError("Couldn't get image info from any source that has flayers")
+    return layers
 
   @methodtools.lru_cache()
   def getXMLplan(self):
@@ -258,6 +333,7 @@ class DbloadSampleBase(SampleBase):
   def writecsv(self, csv, *args, **kwargs):
     return writetable(self.csv(csv), *args, **kwargs)
 
+class DbloadSample(DbloadSampleBase):
   def getimageinfofromconstants(self):
     tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1})
     pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
@@ -267,9 +343,10 @@ class DbloadSampleBase(SampleBase):
 
     fwidth    = constantsdict["fwidth"]
     fheight   = constantsdict["fheight"]
+    flayers   = constantsdict["flayers"]
     pscale    = float(constantsdict["pscale"])
 
-    return pscale, fwidth, fheight
+    return pscale, fwidth, fheight, flayers
 
   def getimageinfos(self):
     result = super().getimageinfos()
@@ -493,7 +570,7 @@ class ReadRectanglesOverlapsBase(ReadRectanglesBase, SampleThatReadsOverlaps, Re
 class ReadRectanglesOverlapsIm3Base(ReadRectanglesOverlapsBase, ReadRectanglesIm3Base):
   pass
 
-class ReadRectangles(ReadRectanglesBase, DbloadSampleBase):
+class ReadRectangles(ReadRectanglesBase, DbloadSample):
   @property
   def rectanglecsv(self): return "rect"
   def readallrectangles(self, **extrakwargs):
@@ -531,8 +608,8 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        cx, cy = units.microns(r.cxvec, pscale=self.pscale)
-        errormessage = f"File {self.SlideID}_[{int(cx)},{int(cy)}].im3 (expected from annotations) does not exist"
+        cx, cy = floattoint(r.cxvec / self.onemicron, atol=1e-10)
+        errormessage = f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist"
         if self.__checkim3s:
           raise FileNotFoundError(errormessage)
         else:
@@ -563,7 +640,7 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
 
   def fixrectanglefilenames(self, rectangles):
     for r in rectangles:
-      expected = self.SlideID+f"_[{floattoint(units.microns(r.cx, pscale=r.pscale), atol=1e-10):d},{floattoint(units.microns(r.cy, pscale=r.pscale), atol=1e-10):d}].im3"
+      expected = self.SlideID+f"_[{floattoint(r.cx/r.onemicron, atol=1e-10):d},{floattoint(r.cy/r.onemicron, atol=1e-10):d}].im3"
       actual = r.file
       if expected != actual:
         self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
@@ -579,8 +656,8 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
       match = re.match(regex, im3.name)
       if not match:
         raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
-      x = units.Distance(microns=int(match.group(1)), pscale=self.pscale)
-      y = units.Distance(microns=int(match.group(2)), pscale=self.pscale)
+      x = int(match.group(1)) * self.onemicron
+      y = int(match.group(2)) * self.onemicron
       t = datetime.datetime.fromtimestamp(os.path.getmtime(im3)).astimezone()
       result.append(
         RectangleFile(

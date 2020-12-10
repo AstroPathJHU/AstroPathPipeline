@@ -161,6 +161,9 @@ def shiftimg(images, dx, dy, *, clip=True, use_gpu=False):
   Apply the shift to the two images, using
   a symmetric shift with fractional pixels
   """
+  dx = float(dx)
+  dy = float(dy)
+
   a, b = images
   a = a.astype(np.float32)
   b = b.astype(np.float32)
