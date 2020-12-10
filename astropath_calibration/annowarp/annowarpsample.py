@@ -8,7 +8,7 @@ from ..zoom.zoom import ZoomSample
 from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable, writetable
-from ..utilities.units.dataclasses import DataClassWithPscale, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, ThingWithImscale
 
 class AnnoWarpSample(ZoomSample, ThingWithImscale):
