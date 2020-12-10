@@ -40,14 +40,17 @@ result = fitter.doFit(fixed=fixed_arg,normalize=normalize_arg,init_pars=init_par
                       polish=True,print_every=print_every,maxiter=max_iter,save_fields=False)
 new = readtable(working_dir/"fit_result.csv", WarpFitResult)
 ref = readtable(folder/"reference"/"warping"/"fit_result.csv", WarpFitResult)
-for resultnew, resultref in zip(new, ref):
-  resultnew.dirname = resultref.dirname = ""
-  resultnew.global_fit_its = resultref.global_fit_its = \
-  resultnew.global_fit_time = resultref.global_fit_time = \
-  resultnew.polish_fit_its = resultref.polish_fit_its = \
-  resultnew.polish_fit_time = resultref.polish_fit_time = \
-  0
-  assertAlmostEqual(resultnew, resultref, rtol=5e-3)
+ref2 = readtable(folder/"reference"/"warping"/"fit_result_2.csv", WarpFitResult)
+for resultnew, resultref, resultref2 in zip(new, ref, ref2):
+  for result in resultnew, resultref, resultref2:
+    result.dirname = ""
+    result.global_fit_its = result.global_fit_time = \
+    result.polish_fit_its = result.polish_fit_time = \
+    0
+  try:
+    assertAlmostEqual(resultnew, resultref, rtol=5e-3)
+  except AssertionError:
+    assertAlmostEqual(resultnew, resultref2, rtol=5e-3)
 
 print('Removing working directory...')
 shutil.rmtree(working_dir,ignore_errors=True)
