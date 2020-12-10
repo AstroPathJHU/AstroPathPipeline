@@ -54,8 +54,8 @@ class TestAnnoWarp(TestBaseSaveOutput):
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.newverticescsv.name
     s.writevertices(filename=filename)
 
-    rows = readtable(filename, WarpedVertex, extrakwargs={"pscale": s.imscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
-    targetrows = readtable(referencefilename, WarpedVertex, extrakwargs={"pscale": s.imscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    rows = readtable(filename, WarpedVertex, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    targetrows = readtable(referencefilename, WarpedVertex, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 

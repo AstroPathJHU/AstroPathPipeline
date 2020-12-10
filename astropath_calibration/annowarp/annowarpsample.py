@@ -300,7 +300,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   @property
   def vertices(self, *, filename=None):
     if filename is None: filename = self.oldverticescsv
-    return readtable(filename, QPTiffVertex, extrakwargs={"pscale": self.imscale, "bigtilesize": self.bigtilesize, "bigtileoffset": self.bigtileoffset})
+    return readtable(filename, QPTiffVertex, extrakwargs={"qpscale": self.imscale, "bigtilesize": self.bigtilesize, "bigtileoffset": self.bigtileoffset})
 
   @methodtools.lru_cache()
   @property
@@ -312,7 +312,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       WarpedVertex(
         vertex=v,
         wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v))) / oneimmicron * onemicron // onepixel * onepixel,
-        imscale=self.imscale,
+        pscale=self.pscale,
       ) for v in self.vertices
     ]
 
@@ -365,10 +365,9 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
     return self.xvec
 
 @dataclass_dc_init
-class WarpedVertex(QPTiffVertex):
+class WarpedVertex(QPTiffVertex, DataClassWithPscale):
   wx: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, default=None)
   wy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, default=None)
-  imscale: float = pscalefield(default=None)
 
   def __init__(self, *args, wxvec=None, **kwargs):
     wxveckwargs = {}
@@ -384,6 +383,9 @@ class WarpedVertex(QPTiffVertex):
       raise TypeError("Missing required argument wx")
     if self.wy is None:
       raise TypeError("Missing required argument wy")
+
+  @property
+  def wxvec(self): return np.array([self.wx, self.wy])
 
 @dataclass_dc_init
 class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataClassWithPscale):
