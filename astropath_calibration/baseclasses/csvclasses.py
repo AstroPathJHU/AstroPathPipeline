@@ -210,7 +210,6 @@ class __RegionBase(DataClassWithPscale, DataClassWithQpscale):
   type: str
   nvert: int
   poly: Polygon = dataclasses.field(metadata={"writefunction": str, "readfunction": str})
-  __polymetadata = poly.metadata
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass

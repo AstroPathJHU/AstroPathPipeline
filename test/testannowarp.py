@@ -2,6 +2,7 @@ import more_itertools, pathlib
 
 from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample, WarpedVertex
 from astropath_calibration.annowarp.stitch import AnnoWarpStitchResultEntry
+from astropath_calibration.baseclasses.csvclasses import Region
 from astropath_calibration.utilities import units
 from astropath_calibration.utilities.tableio import readtable
 
@@ -56,6 +57,15 @@ class TestAnnoWarp(TestBaseSaveOutput):
 
     rows = readtable(filename, WarpedVertex, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
     targetrows = readtable(referencefilename, WarpedVertex, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    for row, target in more_itertools.zip_equal(rows, targetrows):
+      assertAlmostEqual(row, target, rtol=1e-4)
+
+    filename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.newregionscsv.name
+    referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.newregionscsv.name
+    s.writeregions(filename=filename)
+
+    rows = readtable(filename, Region, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale})
+    targetrows = readtable(referencefilename, Region, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 

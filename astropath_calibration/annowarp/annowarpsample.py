@@ -1,8 +1,8 @@
-import abc, contextlib, cvxpy as cp, dataclasses, itertools, methodtools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
+import abc, contextlib, cvxpy as cp, dataclasses, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
-from ..baseclasses.csvclasses import Vertex
+from ..baseclasses.csvclasses import Polygon, Region, Vertex
 from ..baseclasses.qptiff import QPTiff
 from ..zoom.zoom import ZoomSample
 from ..utilities import units
@@ -295,6 +295,10 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   def oldverticescsv(self): return self.csv("vertices")
   @property
   def newverticescsv(self): return self.csv("vertices-warped")
+  @property
+  def oldregionscsv(self): return self.csv("regions")
+  @property
+  def newregionscsv(self): return self.csv("regions-warped")
 
   @methodtools.lru_cache()
   @property
@@ -316,9 +320,49 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       ) for v in self.vertices
     ]
 
+  @property
+  def regions(self, *, filename=None):
+    if filename is None: filename = self.oldregionscsv
+    return readtable(filename, Region, extrakwargs={"qpscale": self.imscale, "pscale": self.pscale})
+
+  @methodtools.lru_cache()
+  @property
+  def warpedregions(self):
+    regions = self.regions
+    warpedverticesiterator = iter(self.warpedvertices)
+    result = []
+    for i, region in enumerate(self.regions, start=1):
+      zipfunction = more_itertools.zip_equal if i == len(self.regions) else zip
+      newvertices = []
+      for oldvertex, newvertex in zipfunction(region.poly.vertices, warpedverticesiterator):
+        np.testing.assert_array_equal(
+          oldvertex.xvec // oldvertex.oneqppixel,
+          newvertex.xvec // oldvertex.oneqppixel
+        )
+        newvertices.append(newvertex.finalvertex)
+      result.append(
+        Region(
+          regionid=region.regionid,
+          sampleid=region.sampleid,
+          layer=region.layer,
+          rid=region.rid,
+          isNeg=region.isNeg,
+          type=region.type,
+          nvert=region.nvert,
+          pscale=region.pscale,
+          qpscale=region.qpscale,
+          poly=Polygon(*newvertices, pscale=region.pscale, qpscale=region.qpscale)
+        ),
+      )
+    return result
+
   def writevertices(self, *, filename=None):
     if filename is None: filename = self.newverticescsv
     writetable(filename, self.warpedvertices)
+
+  def writeregions(self, *, filename=None):
+    if filename is None: filename = self.newregionscsv
+    writetable(filename, self.warpedregions)
 
 class QPTiffCoordinateBase(abc.ABC):
   @abc.abstractproperty
@@ -386,6 +430,15 @@ class WarpedVertex(QPTiffVertex, DataClassWithPscale):
 
   @property
   def wxvec(self): return np.array([self.wx, self.wy])
+
+  @property
+  def finalvertex(self):
+    return Vertex(
+      regionid=self.regionid,
+      vid=self.vid,
+      xvec=units.convertpscale(self.wxvec, self.pscale, self.qpscale),
+      qpscale=self.qpscale,
+    )
 
 @dataclass_dc_init
 class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataClassWithPscale):
