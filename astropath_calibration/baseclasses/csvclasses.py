@@ -160,8 +160,8 @@ class Polygon:
       if intvertices[-1] == intvertices[0]: del intvertices[-1]
       for i, vertex in enumerate(intvertices, start=1):
         x, y = vertex.split()
-        x = units.Distance(pscale=qpscale, **{kw: floattoint(x)})
-        y = units.Distance(pscale=qpscale, **{kw: floattoint(y)})
+        x = units.convertpscale(units.Distance(pscale=pscale, **{kw: floattoint(x)}), pscale, qpscale)
+        y = units.convertpscale(units.Distance(pscale=pscale, **{kw: floattoint(y)}), pscale, qpscale)
         vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, qpscale=qpscale))
 
     self.__vertices = vertices
