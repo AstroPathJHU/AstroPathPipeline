@@ -65,7 +65,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     s.writeregions(filename=filename)
 
     rows = readtable(filename, Region, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale})
-    targetrows = readtable(referencefilename, Region, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    targetrows = readtable(referencefilename, Region, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 

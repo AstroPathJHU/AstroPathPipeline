@@ -331,8 +331,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     regions = self.regions
     warpedverticesiterator = iter(self.warpedvertices)
     result = []
-    for i, region in enumerate(self.regions, start=1):
-      zipfunction = more_itertools.zip_equal if i == len(self.regions) else zip
+    for i, region in enumerate(regions, start=1):
+      zipfunction = more_itertools.zip_equal if i == len(regions) else zip
       newvertices = []
       for oldvertex, newvertex in zipfunction(region.poly.vertices, warpedverticesiterator):
         np.testing.assert_array_equal(
