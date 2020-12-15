@@ -340,6 +340,10 @@ class DbloadSample(DbloadSampleBase):
 
     constants = self.readcsv("constants", Constant, extrakwargs={"pscale": pscale})
     constantsdict = {constant.name: constant.value for constant in constants}
+    #compatibility
+    for constant in constants:
+      if constant.name == "flayers" and constant.unit == "pixels":
+        constantsdict["flayers"] = units.pixels(constantsdict["flayers"], pscale=constantsdict["pscale"])
 
     fwidth    = constantsdict["fwidth"]
     fheight   = constantsdict["fheight"]
