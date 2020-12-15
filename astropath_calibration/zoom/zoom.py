@@ -1,4 +1,4 @@
-import contextlib, cv2, itertools, methodtools, numpy as np, os, PIL, skimage
+import argparse, contextlib, cv2, itertools, methodtools, numpy as np, os, pathlib, PIL, skimage
 
 from ..alignment.field import Field
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
@@ -243,7 +243,7 @@ class Zoom(ZoomSample):
     for layer in self.layers:
       images = []
       blank = None
-      for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1])):
+      for tiley, tilex in itertools.product(range(self.ntiles[1]), range(self.ntiles[0])):
         filename = self.zoomfilename(layer, tilex, tiley)
         if filename.exists():
           images.append(pyvips.Image.new_from_file(os.fspath(filename)))
@@ -263,3 +263,20 @@ class Zoom(ZoomSample):
 
   def zoom_wsi(self, *args, fast=False, **kwargs):
     return (self.zoom_wsi_fast if fast else self.zoom_wsi_memory)(*args, **kwargs)
+
+def main(args=None):
+  p = argparse.ArgumentParser()
+  p.add_argument("root1", type=pathlib.Path)
+  p.add_argument("root2", type=pathlib.Path)
+  p.add_argument("zoomroot", type=pathlib.Path)
+  p.add_argument("samp")
+  p.add_argument("--units", choices=("fast", "safe"), default="fast")
+  p.add_argument("--fast", action="store_true")
+  args = p.parse_args(args=args)
+
+  units.setup(args.units)
+
+  return Zoom(root=args.root1, root2=args.root2, samp=args.samp, zoomroot=args.zoomroot).zoom_wsi(fast=args.fast)
+
+if __name__ == "__main__":
+  main()
