@@ -58,6 +58,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
           )
         )
 
+        if not node["Regions"]: continue
         regions = node["Regions"]["Region"]
         if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
         for m, region in enumerate(regions, start=1):
