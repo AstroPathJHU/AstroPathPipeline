@@ -159,8 +159,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       y = tilesize * (iy-1)
       if y+onepixel-qshifty <= 0: continue
       wsitile = wsi[
-        units.pixels(y, pscale=imscale):units.pixels(y+tilesize, pscale=imscale),
-        units.pixels(x, pscale=imscale):units.pixels(x+tilesize, pscale=imscale),
+        floattoint(units.pixels(y, pscale=imscale)):floattoint(units.pixels(y+tilesize, pscale=imscale)),
+        floattoint(units.pixels(x, pscale=imscale)):floattoint(units.pixels(x+tilesize, pscale=imscale)),
       ]
       brightfraction = np.mean(wsitile>self.tilebrightnessthreshold)
       if brightfraction < self.mintilebrightfraction: continue
@@ -187,7 +187,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       qptifftile = qptifftile - skimage.filters.gaussian(qptifftile, sigma=20)
       qptifftile = skimage.filters.gaussian(qptifftile, sigma=3)
       try:
-        shiftresult = computeshift((wsitile, qptifftile), usemaxmovementcut=False)
+        shiftresult = computeshift((qptifftile, wsitile), usemaxmovementcut=False)
       except Exception as e:
         if debug: raise
         results.append(
@@ -456,7 +456,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   tilesize: dataclasses.InitVar[units.Distance]
   bigtilesize: dataclasses.InitVar[units.Distance]
   bigtileoffset: dataclasses.InitVar[units.Distance]
-  exceptions: dataclasses.InitVar[Exception] = None
+  exception: dataclasses.InitVar[Exception] = None
   imageshandle: dataclasses.InitVar[typing.Callable[[], typing.Tuple[np.ndarray, np.ndarray]]] = None
   readingfromfile: dataclasses.InitVar[bool] = False
 

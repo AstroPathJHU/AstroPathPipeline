@@ -27,45 +27,40 @@ class TestAnnoWarp(TestBaseSaveOutput):
   def testAlignment(self, SlideID="M206"):
     s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"annowarp_test_for_jenkins")
     s.align()
-    filename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.alignmentcsv.name
-    referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
-    s.writealignments(filename=filename)
+    alignmentfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.alignmentcsv.name
+    referencealignmentfilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
+    s.writealignments(filename=alignmentfilename)
 
-    rows = readtable(filename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
-    targetrows = readtable(referencefilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
+    s.stitch()
+    stitchfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.stitchcsv.name
+    referencestitchfilename = thisfolder/"reference"/"annowarp"/SlideID/s.stitchcsv.name
+    s.writestitchresult(filename=stitchfilename)
+
+    verticesfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.newverticescsv.name
+    referenceverticesfilename = thisfolder/"reference"/"annowarp"/SlideID/s.newverticescsv.name
+    s.writevertices(filename=verticesfilename)
+
+    regionsfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.newregionscsv.name
+    referenceregionsfilename = thisfolder/"reference"/"annowarp"/SlideID/s.newregionscsv.name
+    s.writeregions(filename=regionsfilename)
+
+    rows = readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
+    targetrows = readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
-  def testAnnoWarp(self, SlideID="M206"):
-    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"annowarp_test_for_jenkins")
-    referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
-    s.readalignments(filename=referencefilename)
-
-    s.stitch()
-    filename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.stitchcsv.name
-    referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.stitchcsv.name
-    s.writestitchresult(filename=filename)
-
-    rows = readtable(filename, AnnoWarpStitchResultEntry, extrakwargs={"pscale": s.pscale})
-    targetrows = readtable(referencefilename, AnnoWarpStitchResultEntry, extrakwargs={"pscale": s.pscale})
+    rows = readtable(stitchfilename, AnnoWarpStitchResultEntry, extrakwargs={"pscale": s.pscale})
+    targetrows = readtable(referencestitchfilename, AnnoWarpStitchResultEntry, extrakwargs={"pscale": s.pscale})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    filename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.newverticescsv.name
-    referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.newverticescsv.name
-    s.writevertices(filename=filename)
-
-    rows = readtable(filename, WarpedVertex, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
-    targetrows = readtable(referencefilename, WarpedVertex, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    rows = readtable(verticesfilename, WarpedVertex, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    targetrows = readtable(referenceverticesfilename, WarpedVertex, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    filename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.newregionscsv.name
-    referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.newregionscsv.name
-    s.writeregions(filename=filename)
-
-    rows = readtable(filename, Region, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale})
-    targetrows = readtable(referencefilename, Region, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale})
+    rows = readtable(regionsfilename, Region, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale})
+    targetrows = readtable(referenceregionsfilename, Region, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
