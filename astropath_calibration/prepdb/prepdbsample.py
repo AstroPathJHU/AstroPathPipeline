@@ -5,7 +5,7 @@ from ..baseclasses.qptiff import QPTiff
 from ..baseclasses.sample import DbloadSampleBase, XMLLayoutReader
 from ..utilities import units
 
-class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingWithQpscale):
+class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingWithQpscale, units.ThingWithApscale):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, checkim3s=True, **kwargs)
 
@@ -67,15 +67,15 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
           if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
           regionvertices = []
           for k, vertex in enumerate(vertices, start=1):
-            x = int(vertex.get_xml_attr("X")) * self.oneqpmicron
-            y = int(vertex.get_xml_attr("Y")) * self.oneqpmicron
+            x = int(vertex.get_xml_attr("X")) * self.oneappixel
+            y = int(vertex.get_xml_attr("Y")) * self.oneappixel
             regionvertices.append(
               Vertex(
                 regionid=regionid,
                 vid=k,
                 x=x,
                 y=y,
-                qpscale=self.qpscale,
+                qpscale=self.apscale,
               )
             )
           allvertices += regionvertices

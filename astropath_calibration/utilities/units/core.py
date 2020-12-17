@@ -45,3 +45,17 @@ class ThingWithQpscale(abc.ABC):
   @property
   def oneqpmicron(self):
     return onemicron(pscale=self.qpscale)
+
+class ThingWithApscale(abc.ABC):
+  @abc.abstractproperty
+  def apscale(self): return self.__apscale
+  @apscale.setter
+  def apscale(self, apscale): object.__setattr__(self, "_ThingWithApscale__apscale", apscale)
+  @methodtools.lru_cache()
+  @property
+  def oneappixel(self):
+    return onepixel(pscale=self.apscale)
+  @methodtools.lru_cache()
+  @property
+  def oneapmicron(self):
+    return onemicron(pscale=self.apscale)

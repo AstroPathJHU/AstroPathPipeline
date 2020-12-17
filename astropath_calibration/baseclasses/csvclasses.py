@@ -106,7 +106,7 @@ class Annotation:
 
 @dataclass_dc_init
 class Vertex(DataClassWithQpscale):
-  pixelsormicrons = "microns"
+  pixelsormicrons = "pixels"
 
   regionid: int
   vid: int
