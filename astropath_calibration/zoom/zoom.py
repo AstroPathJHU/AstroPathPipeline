@@ -39,8 +39,9 @@ class Zoom(ReadRectanglesComponentTiff):
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
     bigimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.tilesize)[::-1]), dtype=np.uint8)
     nrectangles = len(self.rectangles)
+    self.logger.info("assembling the global array")
     for i, field in enumerate(self.rectangles, start=1):
-      self.logger.info("%d / %d", i, nrectangles)
+      self.logger.debug("%d / %d", i, nrectangles)
       with field.using_image() as image:
         image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
         globalx1 = field.mx1 // onepixel * onepixel
@@ -159,14 +160,14 @@ class Zoom(ReadRectanglesComponentTiff):
         with tile:
           tileimage = None
 
-          self.logger.info("tile %d / %d", tilen, ntiles)
+          self.logger.info("assembling tile %d / %d", tilen, ntiles)
           xmin = tile.tilex * self.tilesize * onepixel - buffer[0]
           #xmax = (tilex+1) * self.tilesize * onepixel + buffer[0]
           ymin = tile.tiley * self.tilesize * onepixel - buffer[1]
           #ymax = (tiley+1) * self.tilesize * onepixel + buffer[1]
 
           for i, field in enumerate(self.rectangles, start=1):
-            self.logger.info("  rectangle %d / %d", i, nrectangles)
+            self.logger.debug("  rectangle %d / %d", i, nrectangles)
 
             globalx1 = field.mx1 // onepixel * onepixel
             globalx2 = field.mx2 // onepixel * onepixel
