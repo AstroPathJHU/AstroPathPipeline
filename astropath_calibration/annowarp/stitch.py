@@ -24,8 +24,8 @@ class AnnoWarpStitchResultBase(ThingWithImscale):
   def dxvec(self, qptiffcoordinate, *, qpscale):
     pass
 
-  def residual(self, qptiffcoordinate, *, qpscale):
-    return alignmentresult.dxvec - self.dxvec(qptiffcoordinate, qpscale=qpscale)
+  def residual(self, alignmentresult, *, qpscale):
+    return alignmentresult.dxvec - self.dxvec(alignmentresult, qpscale=qpscale)
 
   def writestitchresult(self, *, filename, **kwargs):
     writetable(filename, self.allstitchresultentries, **kwargs)
