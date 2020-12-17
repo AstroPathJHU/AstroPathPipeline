@@ -31,8 +31,8 @@ def makeplots():
   else:
     ylimpscale = ylim
 
-  showannotation(qptiff, A.regions, qpscale=A.apscale, imagescale=apscale, figurekwargs={"figsize": (20, 20)}, ylim=ylim, xlim=xlim, saveas=here/"qptiff.pdf")
-  showannotation(wsi, A.warpedregions, qpscale=apscale, imagescale=A.pscale, figurekwargs={"figsize": (20, 20)}, ylim=ylimpscale, xlim=xlimpscale, saveas=here/"wsi.pdf")
+  showannotation(qptiff, A.regions, qpscale=A.apscale, imagescale=apscale, figurekwargs={}, ylim=ylim, xlim=xlim, saveas=here/"qptiff.pdf")
+  showannotation(wsi, A.warpedregions, qpscale=apscale, imagescale=A.pscale, figurekwargs={}, ylim=ylimpscale, xlim=xlimpscale, saveas=here/"wsi.pdf")
 
 if __name__ == "__main__":
   p = argparse.ArgumentParser()
