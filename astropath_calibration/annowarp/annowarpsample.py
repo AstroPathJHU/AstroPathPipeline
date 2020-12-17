@@ -301,29 +301,47 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   def newregionscsv(self): return self.csv("regions-warped")
 
   @methodtools.lru_cache()
-  @property
-  def vertices(self, *, filename=None):
+  def __getvertices(self, *, qpscale, filename=None):
     if filename is None: filename = self.oldverticescsv
-    return readtable(filename, QPTiffVertex, extrakwargs={"qpscale": self.imscale, "bigtilesize": self.bigtilesize, "bigtileoffset": self.bigtileoffset})
+    return readtable(filename, QPTiffVertex, extrakwargs={"qpscale": qpscale, "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, qpscale), "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, qpscale)})
+  @property
+  def vertices(self):
+    return self.__getvertices(qpscale=self.imscale)
+  @property
+  def apvertices(self):
+    return self.__getvertices(qpscale=self.apscale)
 
   @methodtools.lru_cache()
-  @property
-  def warpedvertices(self):
-    oneimmicron = self.oneimmicron
+  def __getwarpedvertices(self, *, qpscale):
+    oneqpmicron = units.onemicron(pscale=qpscale)
     onemicron = self.onemicron
     onepixel = self.onepixel
     return [
       WarpedVertex(
         vertex=v,
-        wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v))) / oneimmicron * onemicron // onepixel * onepixel,
+        wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, qpscale=qpscale))) / oneqpmicron * onemicron // onepixel * onepixel,
         pscale=self.pscale,
-      ) for v in self.vertices
+      ) for v in self.__getvertices(qpscale=qpscale)
     ]
 
   @property
-  def regions(self, *, filename=None):
+  def warpedvertices(self):
+    return self.__getwarpedvertices(qpscale=self.imscale)
+  @property
+  def apwarpedvertices(self):
+    return self.__getwarpedvertices(qpscale=self.apscale)
+
+  @methodtools.lru_cache()
+  def __getregions(self, *, qpscale, filename=None):
     if filename is None: filename = self.oldregionscsv
-    return readtable(filename, Region, extrakwargs={"qpscale": self.imscale, "pscale": self.pscale})
+    return readtable(filename, Region, extrakwargs={"qpscale": qpscale, "pscale": self.pscale})
+
+  @property
+  def regions(self):
+    return self.__getregions(qpscale=self.imscale)
+  @property
+  def apregions(self):
+    return self.__getregions(qpscale=self.apscale)
 
   @methodtools.lru_cache()
   @property

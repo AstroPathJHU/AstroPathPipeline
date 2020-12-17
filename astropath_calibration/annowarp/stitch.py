@@ -21,11 +21,11 @@ class AnnoWarpStitchResultBase(ThingWithImscale):
   def imscale(self): return self.__imscale
 
   @abc.abstractmethod
-  def dxvec(self, qptiffcoordinate):
+  def dxvec(self, qptiffcoordinate, *, qpscale):
     pass
 
-  def residual(self, alignmentresult):
-    return alignmentresult.dxvec - self.dxvec(alignmentresult)
+  def residual(self, qptiffcoordinate, *, qpscale):
+    return alignmentresult.dxvec - self.dxvec(qptiffcoordinate, qpscale=qpscale)
 
   def writestitchresult(self, *, filename, **kwargs):
     writetable(filename, self.allstitchresultentries, **kwargs)
@@ -84,8 +84,8 @@ class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
     self.problem = problem
     super().__init__(**kwargs)
 
-  def residual(self, alignmentresult):
-    return units.nominal_values(super().residual(alignmentresult))
+  def residual(self, *args, **kwargs):
+    return units.nominal_values(super().residual(*args, **kwargs))
 
   @classmethod
   @abc.abstractmethod
@@ -109,11 +109,14 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
     self.constant = constant
     super().__init__(**kwargs)
 
-  def dxvec(self, alignmentresult):
+  def dxvec(self, qptiffcoordinate, *, qpscale):
+    coeffrelativetobigtile = self.coeffrelativetobigtile
+    bigtileindexcoeff = units.convertpscale(self.bigtileindexcoeff, self.imscale, qpscale)
+    constant = units.convertpscale(self.constant, self.imscale, qpscale)
     return (
-      self.coeffrelativetobigtile @ alignmentresult.centerrelativetobigtile
-      + self.bigtileindexcoeff @ alignmentresult.bigtileindex
-      + self.constant
+      coeffrelativetobigtile @ qptiffcoordinate.centerrelativetobigtile
+      + bigtileindexcoeff @ qptiffcoordinate.bigtileindex
+      + constant
     )
 
   @property
