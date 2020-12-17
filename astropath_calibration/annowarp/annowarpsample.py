@@ -306,9 +306,6 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     return readtable(filename, QPTiffVertex, extrakwargs={"qpscale": qpscale, "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, qpscale), "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, qpscale)})
   @property
   def vertices(self):
-    return self.__getvertices(qpscale=self.imscale)
-  @property
-  def apvertices(self):
     return self.__getvertices(qpscale=self.apscale)
 
   @methodtools.lru_cache()
@@ -326,9 +323,6 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
   @property
   def warpedvertices(self):
-    return self.__getwarpedvertices(qpscale=self.imscale)
-  @property
-  def apwarpedvertices(self):
     return self.__getwarpedvertices(qpscale=self.apscale)
 
   @methodtools.lru_cache()
@@ -338,9 +332,6 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
   @property
   def regions(self):
-    return self.__getregions(qpscale=self.imscale)
-  @property
-  def apregions(self):
     return self.__getregions(qpscale=self.apscale)
 
   @methodtools.lru_cache()
@@ -354,8 +345,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       newvertices = []
       for oldvertex, newvertex in zipfunction(region.poly.vertices, warpedverticesiterator):
         np.testing.assert_array_equal(
-          oldvertex.xvec // oldvertex.oneqppixel,
-          newvertex.xvec // oldvertex.oneqppixel
+          np.round((oldvertex.xvec / oldvertex.oneqppixel).astype(float)),
+          np.round((newvertex.xvec / oldvertex.oneqppixel).astype(float)),
         )
         newvertices.append(newvertex.finalvertex)
       result.append(
