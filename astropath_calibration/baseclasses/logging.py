@@ -104,7 +104,7 @@ class MyLogger:
         handler.close()
         self.removeHandler(handler)
       del self.logger
-    return not self.reraiseexceptions
+    return self.nentered == 0 and not self.reraiseexceptions
 
   def __getattr__(self, attr):
     if attr == "logger":

@@ -33,6 +33,7 @@ class Zoom(ZoomSample):
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
     bigimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.uint8)
     nrectangles = len(self.rectangles)
+    self.logger.info("assembling the global array")
     for i, field in enumerate(self.rectangles, start=1):
       self.logger.debug("%d / %d", i, nrectangles)
       with field.using_image() as image:
@@ -155,7 +156,7 @@ class Zoom(ZoomSample):
         with tile:
           tileimage = None
 
-          self.logger.info("tile %d / %d", tilen, ntiles)
+          self.logger.info("assembling tile %d / %d", tilen, ntiles)
           xmin = tile.tilex * self.zoomtilesize * onepixel - buffer[0]
           #xmax = (tilex+1) * self.zoomtilesize * onepixel + buffer[0]
           ymin = tile.tiley * self.zoomtilesize * onepixel - buffer[1]
@@ -214,16 +215,18 @@ class Zoom(ZoomSample):
               newlocalx2 = localx2 + shiftby[0]
               newlocaly2 = localy2 + shiftby[1]
 
+              kw = {"atol": 1e-7}
               tileimage[
                 :,
-                floattoint(tiley1/onepixel):floattoint(tiley2/onepixel),
-                floattoint(tilex1/onepixel):floattoint(tilex2/onepixel),
+                floattoint(tiley1/onepixel, **kw):floattoint(tiley2/onepixel, **kw),
+                floattoint(tilex1/onepixel, **kw):floattoint(tilex2/onepixel, **kw),
               ] = shifted[
                 :,
-                floattoint(newlocaly1/onepixel):floattoint(newlocaly2/onepixel),
-                floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
+                floattoint(newlocaly1/onepixel, **kw):floattoint(newlocaly2/onepixel, **kw),
+                floattoint(newlocalx1/onepixel, **kw):floattoint(newlocalx2/onepixel, **kw),
               ]
 
+        if tileimage is None: continue
         slc = tileimage[
           :,
           floattoint(buffer[1]/self.onepixel):floattoint(-buffer[1]/self.onepixel),
