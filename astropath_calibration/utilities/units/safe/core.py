@@ -18,6 +18,8 @@ class Distance:
     if isinstance(pixels, Distance):
       power += pixels._power
       pixels = pixels._pixels
+    if isinstance(pscale, Distance): pscale = pscale.asdimensionless
+    if isinstance(power, Distance): power = power.asdimensionless
 
     if power is None and (pixels or microns or centimeters):
       raise ValueError("Can't set power=None")
@@ -200,6 +202,7 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
 @np.vectorize
 def pixels(distance, *, pscale=None, power=1):
   if not distance: return 0.
+  if isinstance(pscale, Distance): pscale = pscale.asdimensionless
   if None is not pscale != _pscale(distance)[()] is not None:
     raise ValueError(f"Inconsistent pscales {pscale} {_pscale(distance)}")
   if None is not power != _power(distance)[()] is not None:

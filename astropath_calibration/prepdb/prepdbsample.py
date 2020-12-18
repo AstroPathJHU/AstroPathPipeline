@@ -1,10 +1,11 @@
-import argparse, fractions, jxmlease, methodtools, numpy as np, PIL, skimage, tifffile
+import argparse, jxmlease, methodtools, numpy as np, PIL, skimage
 from ..baseclasses.csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, Region, Vertex
 from ..baseclasses.overlap import RectangleOverlapCollection
+from ..baseclasses.qptiff import QPTiff
 from ..baseclasses.sample import DbloadSampleBase, XMLLayoutReader
 from ..utilities import units
 
-class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
+class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingWithQpscale, units.ThingWithApscale):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, checkim3s=True, **kwargs)
 
@@ -57,6 +58,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
           )
         )
 
+        if not node["Regions"]: continue
         regions = node["Regions"]["Region"]
         if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
         for m, region in enumerate(regions, start=1):
@@ -65,15 +67,15 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
           if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
           regionvertices = []
           for k, vertex in enumerate(vertices, start=1):
-            x = int(vertex.get_xml_attr("X")) * self.onemicron
-            y = int(vertex.get_xml_attr("Y")) * self.onemicron
+            x = int(vertex.get_xml_attr("X")) * self.oneappixel
+            y = int(vertex.get_xml_attr("Y")) * self.oneappixel
             regionvertices.append(
               Vertex(
                 regionid=regionid,
                 vid=k,
                 x=x,
                 y=y,
-                pscale=self.pscale,
+                qpscale=self.apscale,
               )
             )
           allvertices += regionvertices
@@ -93,7 +95,8 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
               isNeg=isNeg,
               type=region.get_xml_attr("Type"),
               nvert=len(vertices),
-              poly=Polygon(*polygonvertices),
+              poly=Polygon(*polygonvertices, pscale=self.pscale),
+              qpscale=self.qpscale,
               pscale=self.pscale,
             )
           )
@@ -108,49 +111,19 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
   def vertices(self): return self.getXMLpolygonannotations()[2]
 
   @property
-  def qptifffilename(self): return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".qptiff")
-  @property
   def jpgfilename(self): return self.dbload/(self.SlideID+"_qptiff.jpg")
 
   @methodtools.lru_cache()
   def getqptiffcsvandimage(self):
-    with tifffile.TiffFile(self.qptifffilename) as f:
-      layeriterator = iter(enumerate(f.pages))
-      for qplayeridx, page in layeriterator:
-        #get to after the small RGB one
-        if len(page.shape) == 3:
+    with QPTiff(self.qptifffilename) as f:
+      for zoomlevel in f.zoomlevels:
+        if zoomlevel[0].imagewidth < 2000:
           break
-      else:
-        raise ValueError("Unexpected qptiff layout: expected to find an RGB layer (with a 3D array shape).  Array shapes:\n" + "\n".join(f"  {page.shape}" for page in f.pages))
-      for qplayeridx, page in layeriterator:
-        if page.imagewidth < 2000:
-          break
-      else:
-        raise ValueError("Unexpected qptiff layout: expected layer with width < 4000 sometime after the first RGB layer (with a 3D array shape).  Shapes and widths:\n" + "\n".join(f"  {page.shape:20} {page.imagewidth:10}" for page in f.pages))
-
-      firstpage = f.pages[0]
-      resolutionunit = firstpage.tags["ResolutionUnit"].value
-      xposition = firstpage.tags["XPosition"].value
-      xposition = float(fractions.Fraction(*xposition))
-      yposition = firstpage.tags["YPosition"].value
-      yposition = float(fractions.Fraction(*yposition))
-      xresolution = page.tags["XResolution"].value
-      xresolution = float(fractions.Fraction(*xresolution))
-      yresolution = page.tags["YResolution"].value
-      yresolution = float(fractions.Fraction(*yresolution))
-      apscale = firstpage.tags["XResolution"].value
-      apscale = float(fractions.Fraction(*apscale))
-
-      kw = {
-        tifffile.TIFF.RESUNIT.CENTIMETER: "centimeters",
-      }[resolutionunit]
-      xresolution = units.Distance(pixels=xresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
-      yresolution = units.Distance(pixels=yresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
-      qpscale = xresolution
-      apscale = units.Distance(pixels=apscale, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
-
-      xposition = units.Distance(**{kw: xposition}, pscale=qpscale)
-      yposition = units.Distance(**{kw: yposition}, pscale=qpscale)
+      xresolution = zoomlevel.xresolution
+      yresolution = zoomlevel.yresolution
+      qpscale = zoomlevel.qpscale
+      xposition = zoomlevel.xposition
+      yposition = zoomlevel.yposition
       qptiffcsv = [
         QPTiffCsv(
           SampleID=0,
@@ -161,7 +134,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
           XResolution=xresolution * 10000,
           YResolution=yresolution * 10000,
           qpscale=qpscale,
-          apscale=apscale,
+          apscale=f.apscale,
           fname=self.jpgfilename.name,
           img="00001234",
           pscale=qpscale,
@@ -174,12 +147,12 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
         [1.0, 0.0, 0.0, 0.0, 0.0],
       ])/120
 
-      shape = *f.pages[qplayeridx].shape, 3
+      shape = *zoomlevel.shape, 3
       finalimg = np.zeros(shape)
 
-      for i in range(qplayeridx, qplayeridx+5):
-        img = f.pages[i].asarray()
-        finalimg += np.tensordot(img, mix[:,i-qplayeridx], axes=0)
+      for i, page in enumerate(zoomlevel[:5]):
+        img = page.asarray()
+        finalimg += np.tensordot(img, mix[:,i], axes=0)
 #    finalimg /= np.max(finalimg)
     finalimg[finalimg > 1] = 1
     qptiffimg = skimage.img_as_ubyte(finalimg)
@@ -214,113 +187,119 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection):
     return self.getoverlaps()
 
   def getconstants(self):
+    pscales = {name: getattr(self, name) for name in ("pscale", "qpscale", "apscale")}
     constants = [
       Constant(
         name='fwidth',
         value=self.fwidth,
         unit='pixels',
         description='field width',
-        pscale=self.pscale,
+        **pscales,
       ),
       Constant(
         name='fheight',
         value=self.fheight,
         unit='pixels',
         description='field height',
-        pscale=self.pscale,
+        **pscales,
       ),
       Constant(
         name='flayers',
         value=self.flayers,
         unit='',
         description='field depth',
-        pscale=self.pscale,
+        **pscales,
       ),
       Constant(
         name='locx',
         value=self.samplelocation[0],
         unit='microns',
         description='xlocation',
-        pscale=self.apscale,
+        **pscales,
       ),
       Constant(
         name='locy',
         value=self.samplelocation[1],
         unit='microns',
         description='ylocation',
-        pscale=self.apscale,
+        **pscales,
       ),
       Constant(
         name='locz',
         value=self.samplelocation[2],
         unit='microns',
         description='zlocation',
-        pscale=self.apscale,
+        **pscales,
       ),
       Constant(
         name='xposition',
-        value=self.xposition,
+        value=units.convertpscale(self.xposition, self.qpscale, self.pscale),
         unit='microns',
         description='slide x offset',
-        pscale=self.qpscale,
+        **pscales,
       ),
       Constant(
         name='yposition',
-        value=self.yposition,
+        value=units.convertpscale(self.yposition, self.qpscale, self.pscale),
         unit='microns',
         description='slide y offset',
-        pscale=self.qpscale,
+        **pscales,
       ),
       Constant(
         name='qpscale',
         value=self.qpscale,
         unit='pixels/micron',
         description='scale of the QPTIFF image',
+        **pscales,
       ),
       Constant(
         name='apscale',
         value=self.apscale,
         unit='pixels/micron',
         description='scale of the QPTIFF image used for annotation',
+        **pscales,
       ),
       Constant(
         name='pscale',
         value=self.pscale,
         unit='pixels/micron',
         description='scale of the HPF images',
+        **pscales,
       ),
       Constant(
         name='nclip',
         value=self.nclip * self.onepixel,
         unit='pixels',
         description='pixels to clip off the edge after warping',
-        pscale=self.pscale,
+        **pscales,
       ),
       Constant(
         name="resolutionbits",
         value=self.resolutionbits,
         unit="",
         description="number of significant bits in the im3 files",
+        **pscales,
       ),
       Constant(
         name="gainfactor",
         value=self.gainfactor,
         unit="",
         description="the gain of the A/D amplifier for the im3 files",
+        **pscales,
       ),
       Constant(
         name="binningx",
         value=self.camerabinningx,
         unit="pixels",
         description="the number of adjacent pixels coadded",
-        pscale=self.pscale,
+        **pscales,
       ),
       Constant(
         name="binningy",
         value=self.camerabinningy,
         unit="pixels",
         description="the number of adjacent pixels coadded",
-        pscale=self.pscale,
+        **pscales,
       ),
     ]
     return constants
@@ -386,8 +365,9 @@ def main(args=None):
   p.add_argument("root")
   p.add_argument("samp")
   p.add_argument("--units", type=units.setup)
+  p.add_argument("--dbload-root")
   args = p.parse_args(args=args)
-  kwargs = {"root": args.root, "samp": args.samp}
+  kwargs = {"root": args.root, "samp": args.samp, "dbloadroot": args.dbload_root}
   s = PrepdbSample(**kwargs)
   s.writemetadata()
 

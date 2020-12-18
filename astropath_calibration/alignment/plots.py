@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
-import itertools, logging, matplotlib.cm, matplotlib.collections, matplotlib.colors, matplotlib.patches, more_itertools, networkx as nx, numpy as np, uncertainties.unumpy as unp
-from matplotlib import pyplot as plt
-from more_itertools import pairwise
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+import logging, matplotlib.cm, matplotlib.collections, matplotlib.colors, matplotlib.patches, matplotlib.pyplot as plt, more_itertools, mpl_toolkits.axes_grid1, networkx as nx, numpy as np, uncertainties.unumpy as unp
 from ..utilities import units
 from ..utilities.misc import floattoint, pullhist
 
@@ -171,7 +168,7 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
       path = path[:]
       path.append(path[0]) #make a full circle
 
-      overlaps = [overlapdict[nodepair] for nodepair in pairwise(path)]
+      overlaps = [overlapdict[nodepair] for nodepair in more_itertools.pairwise(path)]
       assert overlaps[-1] is o
       tags = [o.tag for o in overlaps]
       if tags != tagsequence: continue
@@ -186,7 +183,7 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
 
       if verbose is True or verbose is not False and verbose(path, dxs, dys):
         print(" --> ".join(f"{node:4d}" for node in path))
-        for nodepair, dx, dy in zip(pairwise(path), dxs, dys):
+        for nodepair, dx, dy in zip(more_itertools.pairwise(path), dxs, dys):
           print(f"  {nodepair[0]:4d} --> {nodepair[1]:4d}: {dx:10} {dy:10}")
         print(f"          total: {sum(dxs):10} {sum(dys):10}")
 
@@ -252,7 +249,7 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
     fig = plt.figure(**figurekwargs)
     ax = plt.gca()
     ax.imshow(colorplot, extent=(extent / onepixel).astype(float))
-    divider = make_axes_locatable(ax)
+    divider = mpl_toolkits.axes_grid1.make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = plt.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
     plotstyling(fig=fig, ax=ax, cbar=cbar, xory=xory)
@@ -300,7 +297,7 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
   y = []
   yerr = []
   binedges = units.np.linspace(*edges, num=len(array2D)+1)
-  for rowcolumn, (binlow, binhigh) in itertools.zip_longest(array2D, more_itertools.pairwise(binedges)):
+  for rowcolumn, (binlow, binhigh) in more_itertools.zip_equal(array2D, more_itertools.pairwise(binedges)):
     ys = [_ for _ in rowcolumn if _ != -999*onepixel]
     if not ys: continue
     x.append((binlow+binhigh)/2)
@@ -353,7 +350,7 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
     xx for xx in x if not np.any(units.np.isclose(xx+abs(deltax), x, rtol=rtol))
   ]
   biggestchunkstart, biggestchunkend = max(
-    itertools.zip_longest(chunkstarts, chunkends),
+    more_itertools.zip_equal(chunkstarts, chunkends),
     key=lambda startend: startend[1]-startend[0],
   )
   biggestchunkxs = np.array([xx for xx in x if biggestchunkstart <= xx <= biggestchunkend])

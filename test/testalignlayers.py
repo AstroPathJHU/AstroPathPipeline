@@ -1,4 +1,4 @@
-import itertools, numpy as np, pathlib
+import more_itertools, numpy as np, pathlib
 from astropath_calibration.alignment.alignlayers import AlignLayers
 from astropath_calibration.alignment.overlap import LayerAlignmentResult
 from astropath_calibration.alignment.stitchlayers import LayerPosition, LayerPositionCovariance
@@ -48,7 +48,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
       ):
         rows = readtable(thisfolder/"alignlayers_test_for_jenkins"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
         targetrows = readtable(thisfolder/"reference"/"alignlayers"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        for row, target in itertools.zip_longest(rows, targetrows):
+        for row, target in more_itertools.zip_equal(rows, targetrows):
           if cls == LayerAlignmentResult and row.exit != 0 and target.exit != 0: continue
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
     finally:
@@ -91,7 +91,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
     a.writealignments(filename=writefilename)
     rows = readtable(writefilename, LayerAlignmentResult, extrakwargs={"pscale": a.pscale})
     targetrows = readtable(readfilename, LayerAlignmentResult, extrakwargs={"pscale": a.pscale})
-    for row, target in itertools.zip_longest(rows, targetrows):
+    for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
   def testBroadbandFilters(self, SlideID="M21_1"):

@@ -4,12 +4,68 @@ from .computeshift import computeshift, mse, shiftimg
 from ..baseclasses.overlap import Overlap
 from ..utilities import units
 from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
-from ..utilities.units.dataclasses import DataClassWithDistances, distancefield
+from ..utilities.units.dataclasses import DataClassWithPscaleFrozen, distancefield
+
+import abc
+
+class AlignmentComparison(abc.ABC):
+  @property
+  def use_gpu(self) :
+    try:
+      return self.__use_gpu
+    except AttributeError:
+      self.use_gpu = False
+      return self.use_gpu
+  @use_gpu.setter
+  def use_gpu(self,use_gpu) :
+    self.__use_gpu = use_gpu
+
+  @abc.abstractproperty
+  def dxvec(self): pass
+
+  @abc.abstractproperty
+  def unshifted(self): pass
+  @property
+  def shifted(self):
+    return shiftimg(self.unshifted, *units.nominal_values(self.result.dxvec/self.onepixel),use_gpu=self.use_gpu)
+  @property
+  def scaleratio(self):
+    b1, b2 = self.shifted
+    mse1 = mse(b1)
+    mse2 = mse(b2)
+    return (mse1 / mse2) ** 0.5
+
+  def getimage(self,normalize=100.,shifted=True,scale=False) :
+    if shifted:
+      red, green = self.shifted
+      if scale:
+        scaleratio = self.scaleratio
+        red *= scaleratio ** -.5
+        green *= scaleratio ** .5
+    else:
+      red, green = self.unshifted
+    blue = (red+green)/2
+    img = np.array([red, green, blue]).transpose(1, 2, 0) / normalize
+    return img
+
+  def showimages(self, normalize=100., shifted=True, scale=False, saveas=None, ticks=False, **savekwargs):
+    img=self.getimage(normalize=normalize, shifted=shifted, scale=scale)
+    plt.imshow(img)
+    if ticks:
+      plt.xlabel("$x$")
+      plt.ylabel("$y$")
+    else:
+      plt.xticks([])
+      plt.yticks([])  # to hide tick values on X and Y axis
+    if saveas is None:
+      plt.show()
+    else:
+      plt.savefig(saveas, **savekwargs)
+      plt.close()
 
 @dataclasses.dataclass
-class AlignmentOverlap(Overlap):
+class AlignmentOverlap(AlignmentComparison, Overlap):
   def __init__(self, *args, layer1=None, layer2=None, **kwargs):
-    self.__use_gpu = False
     super().__init__(*args, **kwargs)
     if layer1 is None:
       try:
@@ -119,6 +175,8 @@ class AlignmentOverlap(Overlap):
       image2[slice2],
     )
 
+  unshifted = cutimages
+
   def align(self, *, debug=False, alreadyalignedstrategy="error", **computeshiftkwargs):
     if self.result is None:
       alreadyalignedstrategy = None
@@ -211,17 +269,6 @@ class AlignmentOverlap(Overlap):
       "exit": minimizeresult.exit,
     }
 
-  @property
-  def use_gpu(self) :
-    return self.__use_gpu
-  @use_gpu.setter
-  def use_gpu(self,use_gpu) :
-    self.__use_gpu = use_gpu
-
-  @property
-  def shifted(self):
-    return shiftimg(self.cutimages, *units.nominal_values(self.result.dxvec/self.onepixel),use_gpu=self.use_gpu)
-
   def __shiftclip(self, dxvec):
     """
     Shift images symetrically by fractional amount
@@ -242,33 +289,6 @@ class AlignmentOverlap(Overlap):
       "mse": (mse1, mse2, mse(diff))
     }
 
-  def getimage(self,normalize=100.,shifted=True,scale=False) :
-    if shifted:
-      red, green = self.shifted
-      if scale:
-        red *= self.result.sc ** -.5
-        green *= self.result.sc ** .5
-    else:
-      red, green = self.cutimages
-    blue = (red+green)/2
-    img = np.array([red, green, blue]).transpose(1, 2, 0) / normalize
-    return img
-
-  def showimages(self, normalize=100., shifted=True, scale=False, saveas=None, ticks=False, **savekwargs):
-    img=self.getimage(normalize=normalize, shifted=shifted, scale=scale)
-    plt.imshow(img)
-    if ticks:
-      plt.xlabel("$x$")
-      plt.ylabel("$y$")
-    else:
-      plt.xticks([])
-      plt.yticks([])  # to hide tick values on X and Y axis
-    if saveas is None:
-      plt.show()
-    else:
-      plt.savefig(saveas, **savekwargs)
-      plt.close()
-
   def getShiftComparisonDetailTuple(self) :
     return (self.result.code,self.p1,self.p2,f'overlap_{self.n}_[{self.p1}x{self.p2},type{self.result.code},layer{self.result.layer:02d}]_shift_comparison.png')
 
@@ -277,8 +297,11 @@ class AlignmentOverlap(Overlap):
     img_shifted = self.getimage(normalize=1000.,shifted=True)
     return (img_orig,img_shifted)
 
+  @property
+  def dxvec(self): return self.result.dxvec
+
 @dataclass_dc_init(frozen=True)
-class AlignmentResultBase(DataClassWithDistances):
+class AlignmentResultBase(DataClassWithPscaleFrozen):
   def __init__(self, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)
     if dxvec is not None:
@@ -340,7 +363,6 @@ class AlignmentResult(AlignmentResultBase):
   covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: dataclasses.InitVar[float] = None
   exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
   readingfromfile: dataclasses.InitVar[bool] = False
 
@@ -367,7 +389,6 @@ class LayerAlignmentResult(AlignmentResultBase):
   covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  pscale: dataclasses.InitVar[float] = None
   exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
   readingfromfile: dataclasses.InitVar[bool] = False
 

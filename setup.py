@@ -38,7 +38,7 @@ setuptools.setup(
     "reikna",
     "seaborn",
     "scikit-image",
-    "scikit-learn",
+    "scikit-learn>=0.17",
     "scipy",
     "setuptools-scm",
     "uncertainties",
