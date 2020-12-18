@@ -29,6 +29,7 @@ def main(args=None):
   p.add_argument("--debug", action="store_true")
   g = p.add_mutually_exclusive_group()
   g.add_argument("--sampleregex", type=re.compile)
+  g.add_argument("--skip-if-wsi-exists", action="store_true")
   p.add_argument("--units", choices=("safe", "fast"), default="fast")
   p.add_argument("--dry-run", action="store_true")
   p.add_argument("--zoom-root", type=pathlib.Path, required=True)
@@ -41,6 +42,8 @@ def main(args=None):
 
   if args.sampleregex is not None:
     kwargs["filter"] = lambda sample: args.sampleregex.match(sample.SlideID)
+  elif args.skip_if_wsi_exists:
+    kwargs["filter"] = lambda sample: not all((args.zoom_root/sample.SlideID/"wsi"/(sample.SlideID+f"-Z9-L{layer}-wsi.png")).exists() for layer in range(1, 9))
 
   cohort = ZoomCohort(**kwargs)
   if args.dry_run:
