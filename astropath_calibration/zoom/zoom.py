@@ -229,6 +229,7 @@ class Zoom(ReadRectanglesComponentTiff):
                 floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
               ]
 
+        if tileimage is None: continue
         slc = tileimage[
           :,
           floattoint(buffer[1]/self.onepixel):floattoint(-buffer[1]/self.onepixel),
