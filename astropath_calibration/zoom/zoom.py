@@ -219,14 +219,15 @@ class Zoom(ReadRectanglesComponentTiff):
               newlocalx2 = localx2 + shiftby[0]
               newlocaly2 = localy2 + shiftby[1]
 
+              kw = {"atol": 1e-7}
               tileimage[
                 :,
-                floattoint(tiley1/onepixel):floattoint(tiley2/onepixel),
-                floattoint(tilex1/onepixel):floattoint(tilex2/onepixel),
+                floattoint(tiley1/onepixel, **kw):floattoint(tiley2/onepixel, **kw),
+                floattoint(tilex1/onepixel, **kw):floattoint(tilex2/onepixel, **kw),
               ] = shifted[
                 :,
-                floattoint(newlocaly1/onepixel):floattoint(newlocaly2/onepixel),
-                floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
+                floattoint(newlocaly1/onepixel, **kw):floattoint(newlocaly2/onepixel, **kw),
+                floattoint(newlocalx1/onepixel, **kw):floattoint(newlocalx2/onepixel, **kw),
               ]
 
         if tileimage is None: continue
