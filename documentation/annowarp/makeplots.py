@@ -10,7 +10,7 @@ samp = "M206"
 
 def makeplots():
   A = AnnoWarpSample(data, samp, zoomroot=zoomfolder)
-  A.readalignments()
+  A.readalignments(filename=zoomfolder/samp/A.alignmentcsv.name)
   A.stitch()
 
   with A.using_images() as (wsi, fqptiff):
