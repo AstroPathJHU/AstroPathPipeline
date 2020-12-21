@@ -44,7 +44,7 @@ pipeline {
             }
           }
         }
-        stage('alignment zoom annowarp pipeline') {
+        stage('alignment documentation') {
           stages {
             stage('align') {
               steps {
@@ -58,6 +58,10 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/alignment/alignment_stitching.log'
               }
             }
+          }
+        }
+        stage('zoom annowarp deepzoom pipeline') {
+          stages {
             stage('test zoom') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
@@ -73,6 +77,11 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.annowarp.makeplots'
                 sh 'cd documentation/annowarp; pdflatex annowarp.tex; pdflatex annowarp.tex; pdflatex annowarp.tex'
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/layerPCA/layerPCA.log'
+              }
+            }
+            stage('deepzoom') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdeepzoom'
               }
             }
           }
