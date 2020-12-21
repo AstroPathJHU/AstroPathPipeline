@@ -1,4 +1,4 @@
-import os, methodtools, numpy as np, os, pathlib, PIL, tempfile
+import numpy as np, os, pathlib, PIL
 
 from ..baseclasses.sample import ZoomSampleBase
 
@@ -25,7 +25,6 @@ class DeepZoomSample(ZoomSampleBase):
     filename = self.wsifilename(layer)
     self.deepzoomfolder.mkdir(parents=True, exist_ok=True)
     dest = self.deepzoomfolder/f"L{layer:d}"
-    destfolder = self.deepzoomfolder/f"L{layer:d}_files"
     wsi = pyvips.Image.new_from_file(os.fspath(filename))
     wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
 
@@ -44,7 +43,7 @@ class DeepZoomSample(ZoomSampleBase):
 
     with PIL.Image.open(fileswithminsize[0]) as im:
       if np.any(im):
-        nbad == 0
+        nbad = 0
         del fileswithminsize[:]
 
     for nbad, filename in enumerate(fileswithminsize, start=1):

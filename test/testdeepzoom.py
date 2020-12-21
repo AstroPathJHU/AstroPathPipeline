@@ -1,4 +1,4 @@
-import gzip, more_itertools, numpy as np, pathlib, PIL.Image
+import more_itertools, numpy as np, pathlib, PIL.Image
 from astropath_calibration.deepzoom.deepzoom import DeepZoomSample
 from .testbase import TestBaseSaveOutput
 
