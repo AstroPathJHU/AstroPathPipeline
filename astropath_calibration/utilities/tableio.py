@@ -1,6 +1,6 @@
-import contextlib, csv, dataclasses, logging
+import contextlib, csv, dataclasses
 
-logger = logging.getLogger("align")
+from .misc import dummylogger
 
 def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, **columntypes):
   """
@@ -68,7 +68,7 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
         else:
           columntypes[field.name] = typ
 
-    if any("readingfromfile" in _.__annotations__ for _ in Row.__mro__ if _ is not object) and "readingfromfile" not in extrakwargs:
+    if any("readingfromfile" in _.__annotations__ for _ in Row.__mro__ if hasattr(_, "__annotations__")) and "readingfromfile" not in extrakwargs:
       extrakwargs["readingfromfile"] = True
 
     for row in reader:
@@ -81,7 +81,7 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
 
   return result
 
-def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("inf")):
+def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("inf"), logger=dummylogger):
   """
   Write a csv table into filename based on the rows.
   The rows should all be the same dataclass type.
@@ -115,7 +115,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
       writer.writeheader()
       for i, row in enumerate(rows, start=1):
         if printevery is not None and not i % printevery:
-          logger.info(f"{i} / {size}")
+          logger.debug(f"{i} / {size}")
         writer.writerow(asrow(row))
   except PermissionError:
     if retry:

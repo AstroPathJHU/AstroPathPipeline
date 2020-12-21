@@ -1,4 +1,4 @@
-import contextlib, itertools, logging, numpy as np, os, pathlib, re
+import contextlib, logging, more_itertools, numpy as np, os, pathlib, re
 from astropath_calibration.alignment.alignmentcohort import AlignmentCohort
 from astropath_calibration.alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
 from astropath_calibration.alignment.overlap import AlignmentResult
@@ -73,7 +73,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     ):
       rows = readtable(thisfolder/"alignment_test_for_jenkins"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
       targetrows = readtable(thisfolder/"reference"/"alignment"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-      for row, target in itertools.zip_longest(rows, targetrows):
+      for row, target in more_itertools.zip_equal(rows, targetrows):
         if cls == AlignmentResult and row.exit != 0 and target.exit != 0: continue
         assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
 
@@ -117,7 +117,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     a.writealignments(filename=writefilename)
     rows = readtable(writefilename, AlignmentResult, extrakwargs={"pscale": a.pscale})
     targetrows = readtable(readfilename, AlignmentResult, extrakwargs={"pscale": a.pscale})
-    for row, target in itertools.zip_longest(rows, targetrows):
+    for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
   def testReadAlignmentFastUnits(self, SlideID="M21_1"):
@@ -135,14 +135,14 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
     a.writestitchresult(result, filenames=[newfilename(f) for f in a.stitchfilenames])
 
-    for filename, cls, extrakwargs in itertools.zip_longest(
+    for filename, cls, extrakwargs in more_itertools.zip_equal(
       a.stitchfilenames,
       (AffineEntry, Field, FieldOverlap),
       ({}, {"pscale": a.pscale}, {"pscale": a.pscale, "nclip": a.nclip, "rectangles": a.rectangles}),
     ):
       rows = readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
       targetrows = readtable(referencefilename(filename), cls, extrakwargs=extrakwargs)
-      for row, target in itertools.zip_longest(rows, targetrows):
+      for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
 
   def testStitchReadingWritingFastUnits(self, SlideID="M21_1"):

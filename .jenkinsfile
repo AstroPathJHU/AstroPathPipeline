@@ -63,6 +63,18 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
               }
             }
+            stage('test annowarp') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testannowarp'
+              }
+            }
+            stage('annowarp plots') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.annowarp.makeplots'
+                sh 'cd documentation/annowarp; pdflatex annowarp.tex; pdflatex annowarp.tex; pdflatex annowarp.tex'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/layerPCA/layerPCA.log'
+              }
+            }
           }
         }
         stage('align layers') {
@@ -174,10 +186,12 @@ pipeline {
   post {
     always {
       archiveArtifacts artifacts: 'documentation/alignment/alignment_stitching.pdf', fingerprint: true
+      archiveArtifacts artifacts: 'documentation/annowarp/annowarp.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/badregions/badregions.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/flatfield/flatfield_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/exposuretime/exposuretime_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/layerPCA/layerPCA.pdf', fingerprint: true
+      archiveArtifacts artifacts: 'test/annowarp_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
       archiveArtifacts artifacts: 'test/badregions_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
       archiveArtifacts artifacts: 'test/exposuretimefit_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
       archiveArtifacts artifacts: 'test/warpfitter_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true

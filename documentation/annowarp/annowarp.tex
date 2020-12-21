@@ -1,0 +1,26 @@
+\pdfsuppresswarningpagegroup=1
+
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage[subrefformat=simple,labelformat=simple]{subcaption}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\renewcommand\thesubfigure{(\arabic{subfigure})}
+
+\begin{document}
+\begin{figure}
+\centering
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{qptiff}
+\caption{qptiff with the annotations}
+\end{subfigure}
+\begin{subfigure}{0.49\linewidth}
+\includegraphics[width=\linewidth]{wsi}
+\caption{wsi with the annotations adjusted by alignment}
+\end{subfigure}
+\caption{Annotations for a region of \texttt{M206}}
+\end{figure}
+
+\end{document}

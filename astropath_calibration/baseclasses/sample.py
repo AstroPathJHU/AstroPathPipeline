@@ -107,6 +107,10 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     return self.im3folder/f"Scan{self.Scan}"
 
   @property
+  def qptifffilename(self):
+    return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".qptiff")
+
+  @property
   def componenttiffsfolder(self):
     return self.mainfolder/"inform_data"/"Component_Tiffs"
 
@@ -319,8 +323,14 @@ class DbloadSampleBase(SampleBase):
     super().__init__(*args, **kwargs)
     if dbloadroot is not None and dbloadfolder is not None:
       raise TypeError("Can't provide both dbloadroot and dbloadfolder")
-    if dbloadroot is None: dbloadroot = self.mainfolder.parent
-    if dbloadfolder is None: dbloadfolder = dbloadroot/self.SlideID/"dbload"
+    if dbloadroot is None:
+      dbloadroot = self.mainfolder.parent
+    else:
+      dbloadroot = pathlib.Path(dbloadroot)
+    if dbloadfolder is None:
+      dbloadfolder = dbloadroot/self.SlideID/"dbload"
+    else:
+      dbloadfolder = pathlib.Path(dbloadfolder)
     self.__dbloadfolder = dbloadfolder
   @property
   def dbload(self):
@@ -331,15 +341,21 @@ class DbloadSampleBase(SampleBase):
   def readcsv(self, csv, *args, **kwargs):
     return readtable(self.csv(csv), *args, **kwargs)
   def writecsv(self, csv, *args, **kwargs):
-    return writetable(self.csv(csv), *args, **kwargs)
+    return writetable(self.csv(csv), *args, logger=self.logger, **kwargs)
 
 class DbloadSample(DbloadSampleBase):
   def getimageinfofromconstants(self):
-    tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1})
-    pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
+    tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1, "qpscale": 1, "apscale": 1})
+    pscale, = {_.value for _ in tmp if _.name == "pscale"}
+    apscale, = {_.value for _ in tmp if _.name == "apscale"}
+    qpscale, = {_.value for _ in tmp if _.name == "qpscale"}
 
-    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": pscale})
+    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": pscale, "qpscale": qpscale, "apscale": apscale})
     constantsdict = {constant.name: constant.value for constant in constants}
+    #compatibility
+    for constant in constants:
+      if constant.name == "flayers" and constant.unit == "pixels":
+        constantsdict["flayers"] = units.pixels(constantsdict["flayers"], pscale=constantsdict["pscale"])
 
     fwidth    = constantsdict["fwidth"]
     fheight   = constantsdict["fheight"]
@@ -361,7 +377,11 @@ class DbloadSample(DbloadSampleBase):
   @methodtools.lru_cache()
   @property
   def constantsdict(self):
-    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": self.pscale})
+    tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1, "qpscale": 1, "apscale": 1})
+    apscale, = {_.value for _ in tmp if _.name == "apscale"}
+    qpscale, = {_.value for _ in tmp if _.name == "qpscale"}
+
+    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": self.pscale, "qpscale": qpscale, "apscale": apscale})
     return {constant.name: constant.value for constant in constants}
 
   @property
@@ -388,17 +408,37 @@ class FlatwSampleBase(SampleBase):
       result.append(self.__root3/self.SlideID)
     return result
 
+class ZoomSampleBase(SampleBase):
+  def __init__(self, *args, zoomroot, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__zoomroot = zoomroot
+  @property
+  def zoomroot(self): return self.__zoomroot
+  @property
+  def zoomfolder(self): return self.zoomroot/self.SlideID/"big"
+  @property
+  def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
+
+  @property
+  def zmax(self): return 9
+  def zoomfilename(self, layer, tilex, tiley):
+    return self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+  def wsifilename(self, layer):
+    return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
+
 class SampleThatReadsRectangles(SampleBase):
   rectangletype = Rectangle #can be overridden in subclasses
 
 class SampleThatReadsOverlaps(SampleThatReadsRectangles):
   overlaptype = Overlap #can be overridden in subclasses
 
-class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsRectangles, RectangleCollection):
+class ReadRectanglesBase(SampleThatReadsRectangles, RectangleCollection):
   @abc.abstractmethod
   def readallrectangles(self): pass
   @abc.abstractproperty
   def rectangletype(self): pass
+  @abc.abstractproperty
+  def nlayers(self): pass
   @property
   def rectangleextrakwargs(self):
     kwargs = {
@@ -428,7 +468,7 @@ class ReadRectanglesBase(FlatwSampleBase, SampleThatReadsRectangles, RectangleCo
   @property
   def layers(self): return self.__layers
 
-class ReadRectanglesIm3Base(ReadRectanglesBase):
+class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
   @property
   def nlayers(self):
     return self.nlayersim3

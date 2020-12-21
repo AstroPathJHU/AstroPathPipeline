@@ -1,46 +1,41 @@
-import contextlib, cv2, itertools, methodtools, numpy as np, os, PIL, skimage
+import argparse, contextlib, cv2, itertools, methodtools, numpy as np, os, pathlib, PIL, skimage
 
 from ..alignment.field import Field
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
-from ..baseclasses.sample import ReadRectanglesComponentTiff
+from ..baseclasses.sample import ReadRectanglesComponentTiff, ZoomSampleBase
 from ..utilities import units
-from ..utilities.misc import floattoint
+from ..utilities.misc import floattoint, PILmaximagepixels
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
   pass
 
-class Zoom(ReadRectanglesComponentTiff):
+class ZoomSample(ReadRectanglesComponentTiff, ZoomSampleBase):
   rectanglecsv = "fields"
   rectangletype = FieldReadComponentTiffMultiLayer
-  def __init__(self, *args, zoomroot, tilesize=16384, **kwargs):
-    self.__tilesize = tilesize
-    self.__zoomroot = zoomroot
+  def __init__(self, *args, zoomtilesize=16384, **kwargs):
+    self.__tilesize = zoomtilesize
     super().__init__(*args, **kwargs)
   @property
-  def zoomroot(self): return self.__zoomroot
-  @property
-  def zoomfolder(self): return self.zoomroot/self.SlideID/"big"
-  @property
-  def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
-  @property
-  def tilesize(self): return self.__tilesize
-  @property
-  def zmax(self): return 9
-  @property
-  def logmodule(self): return "zoom"
+  def zoomtilesize(self): return self.__tilesize
   @methodtools.lru_cache()
   @property
   def ntiles(self):
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
-    return floattoint(-((-maxxy) // (self.tilesize*self.onepixel)))
+    return floattoint(-((-maxxy) // (self.zoomtilesize*self.onepixel)))
+  def PILmaximagepixels(self):
+    return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
 
+class Zoom(ZoomSample):
+  @property
+  def logmodule(self): return "zoom"
   def zoom_wsi_fast(self, fmax=50):
     onepixel = self.onepixel
     #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
-    bigimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.tilesize)[::-1]), dtype=np.uint8)
+    bigimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.uint8)
     nrectangles = len(self.rectangles)
+    self.logger.info("assembling the global array")
     for i, field in enumerate(self.rectangles, start=1):
-      self.logger.info("%d / %d", i, nrectangles)
+      self.logger.debug("%d / %d", i, nrectangles)
       with field.using_image() as image:
         image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
         globalx1 = field.mx1 // onepixel * onepixel
@@ -87,21 +82,23 @@ class Zoom(ReadRectanglesComponentTiff):
     self.zoomfolder.mkdir(parents=True, exist_ok=True)
     ntiles = np.product(self.ntiles)
     for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1])), start=1):
-      xmin = tilex * self.tilesize
-      xmax = (tilex+1) * self.tilesize
-      ymin = tiley * self.tilesize
-      ymax = (tiley+1) * self.tilesize
+      xmin = tilex * self.zoomtilesize
+      xmax = (tilex+1) * self.zoomtilesize
+      ymin = tiley * self.zoomtilesize
+      ymax = (tiley+1) * self.zoomtilesize
       slc = bigimage[:, ymin:ymax, xmin:xmax]
-      if not np.any(slc): continue
+      if not np.any(slc):
+        self.logger.info(f"       tile {tilen} / {ntiles} is empty")
+        continue
       for layer in self.layers:
-        filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+        filename = self.zoomfilename(layer, tilex, tiley)
         self.logger.info(f"saving tile {tilen} / {ntiles} {filename.name}")
         image = PIL.Image.fromarray(slc[layer-1])
         image.save(filename, "PNG")
 
     self.wsifolder.mkdir(parents=True, exist_ok=True)
     for layer in self.layers:
-      filename = self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
+      filename = self.wsifilename(layer)
       self.logger.info(f"saving {filename.name}")
       image = PIL.Image.fromarray(bigimage[layer-1])
       image.save(filename, "PNG")
@@ -149,7 +146,7 @@ class Zoom(ReadRectanglesComponentTiff):
       tiles = [
         stack.enter_context(
           Tile(
-            tilex=tilex, tiley=tiley, tilesize=self.tilesize, bufferx=buffer[0], buffery=buffer[1]
+            tilex=tilex, tiley=tiley, tilesize=self.zoomtilesize, bufferx=buffer[0], buffery=buffer[1]
           )
         )
         for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))
@@ -159,14 +156,14 @@ class Zoom(ReadRectanglesComponentTiff):
         with tile:
           tileimage = None
 
-          self.logger.info("tile %d / %d", tilen, ntiles)
-          xmin = tile.tilex * self.tilesize * onepixel - buffer[0]
-          #xmax = (tilex+1) * self.tilesize * onepixel + buffer[0]
-          ymin = tile.tiley * self.tilesize * onepixel - buffer[1]
-          #ymax = (tiley+1) * self.tilesize * onepixel + buffer[1]
+          self.logger.info("assembling tile %d / %d", tilen, ntiles)
+          xmin = tile.tilex * self.zoomtilesize * onepixel - buffer[0]
+          #xmax = (tilex+1) * self.zoomtilesize * onepixel + buffer[0]
+          ymin = tile.tiley * self.zoomtilesize * onepixel - buffer[1]
+          #ymax = (tiley+1) * self.zoomtilesize * onepixel + buffer[1]
 
           for i, field in enumerate(self.rectangles, start=1):
-            self.logger.info("  rectangle %d / %d", i, nrectangles)
+            self.logger.debug("  rectangle %d / %d", i, nrectangles)
 
             globalx1 = field.mx1 // onepixel * onepixel
             globalx2 = field.mx2 // onepixel * onepixel
@@ -191,7 +188,7 @@ class Zoom(ReadRectanglesComponentTiff):
             localy1 = field.my1 - field.py
             localy2 = localy1 + tiley2 - tiley1
 
-            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.tilesize + 2*floattoint(buffer/onepixel))[::-1]), dtype=np.uint8)
+            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.zoomtilesize + 2*floattoint(buffer/onepixel))[::-1]), dtype=np.uint8)
 
             with field.using_image() as image:
               image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
@@ -218,16 +215,18 @@ class Zoom(ReadRectanglesComponentTiff):
               newlocalx2 = localx2 + shiftby[0]
               newlocaly2 = localy2 + shiftby[1]
 
+              kw = {"atol": 1e-7}
               tileimage[
                 :,
-                floattoint(tiley1/onepixel):floattoint(tiley2/onepixel),
-                floattoint(tilex1/onepixel):floattoint(tilex2/onepixel),
+                floattoint(tiley1/onepixel, **kw):floattoint(tiley2/onepixel, **kw),
+                floattoint(tilex1/onepixel, **kw):floattoint(tilex2/onepixel, **kw),
               ] = shifted[
                 :,
-                floattoint(newlocaly1/onepixel):floattoint(newlocaly2/onepixel),
-                floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
+                floattoint(newlocaly1/onepixel, **kw):floattoint(newlocaly2/onepixel, **kw),
+                floattoint(newlocalx1/onepixel, **kw):floattoint(newlocalx2/onepixel, **kw),
               ]
 
+        if tileimage is None: continue
         slc = tileimage[
           :,
           floattoint(buffer[1]/self.onepixel):floattoint(-buffer[1]/self.onepixel),
@@ -235,7 +234,7 @@ class Zoom(ReadRectanglesComponentTiff):
         ]
         if not np.any(slc): continue
         for layer in self.layers:
-          filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tile.tilex}-Y{tile.tiley}-big.png"
+          filename = self.zoomfilename(layer, tile.tilex, tile.tiley)
           self.logger.info(f"  saving {filename.name}")
           image = PIL.Image.fromarray(slc[layer-1])
           image.save(filename, "PNG")
@@ -247,16 +246,16 @@ class Zoom(ReadRectanglesComponentTiff):
     for layer in self.layers:
       images = []
       blank = None
-      for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1])):
-        filename = self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+      for tiley, tilex in itertools.product(range(self.ntiles[1]), range(self.ntiles[0])):
+        filename = self.zoomfilename(layer, tilex, tiley)
         if filename.exists():
           images.append(pyvips.Image.new_from_file(os.fspath(filename)))
         else:
           if blank is None:
-            blank = pyvips.Image.new_from_memory(np.zeros(shape=(self.tilesize*self.tilesize,), dtype=np.uint8), width=self.tilesize, height=self.tilesize, bands=1, format="uchar")
+            blank = pyvips.Image.new_from_memory(np.zeros(shape=(self.zoomtilesize*self.zoomtilesize,), dtype=np.uint8), width=self.zoomtilesize, height=self.zoomtilesize, bands=1, format="uchar")
           images.append(blank)
 
-      filename = self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
+      filename = self.wsifilename(layer)
       self.logger.info(f"saving {filename.name}")
       output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
       output.pngsave(os.fspath(filename))
@@ -267,3 +266,20 @@ class Zoom(ReadRectanglesComponentTiff):
 
   def zoom_wsi(self, *args, fast=False, **kwargs):
     return (self.zoom_wsi_fast if fast else self.zoom_wsi_memory)(*args, **kwargs)
+
+def main(args=None):
+  p = argparse.ArgumentParser()
+  p.add_argument("root1", type=pathlib.Path)
+  p.add_argument("root2", type=pathlib.Path)
+  p.add_argument("zoomroot", type=pathlib.Path)
+  p.add_argument("samp")
+  p.add_argument("--units", choices=("fast", "safe"), default="fast")
+  p.add_argument("--fast", action="store_true")
+  args = p.parse_args(args=args)
+
+  units.setup(args.units)
+
+  return Zoom(root=args.root1, root2=args.root2, samp=args.samp, zoomroot=args.zoomroot).zoom_wsi(fast=args.fast)
+
+if __name__ == "__main__":
+  main()
