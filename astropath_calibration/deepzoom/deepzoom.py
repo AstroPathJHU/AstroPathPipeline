@@ -52,3 +52,7 @@ class DeepZoomSample(ZoomSampleBase):
 
     ngood = nfiles - nbad
     self.logger.info("found %d non-empty files out of %d, removing the %d empty ones", ngood, nfiles, nbad)
+
+  def deepzoom(self, layer):
+    self.deepzoom_vips(layer)
+    self.prunezoom(layer)
