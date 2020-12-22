@@ -1,8 +1,8 @@
-import numpy as np, os, pathlib, PIL
+import dataclasses, numpy as np, os, pathlib, PIL, re
 
-from ..baseclasses.sample import ZoomSampleBase
+from ..baseclasses.sample import DbloadSampleBase, ReadRectanglesComponentTiff, ZoomSampleBase
 
-class DeepZoomSample(ZoomSampleBase):
+class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBase):
   def __init__(self, *args, deepzoomroot, tilesize=256, **kwargs):
     super().__init__(*args, **kwargs)
     self.__deepzoomroot = pathlib.Path(deepzoomroot)
@@ -98,7 +98,33 @@ class DeepZoomSample(ZoomSampleBase):
       im = PIL.Image.fromarray(im)
       im.save(newfilename)
 
-  def deepzoom(self, layer):
-    self.deepzoom_vips(layer)
-    self.prunezoom(layer)
-    self.patchzoom(layer)
+  def writezoomlist(self):
+    lst = []
+    for layer in self.layers:
+      folder = self.layerfolder(layer)
+      for zoomfolder in folder.iterdir():
+        zoom = int(re.match("Z([0-9]*)", zoomfolder.name).group(1))
+        for filename in zoomfolder.iterdir():
+          match = re.match("([0-9]*)_([0-9]*)[.]png", filename.name)
+          x = int(match.group(1))
+          y = int(match.group(2))
+
+          lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, fname=filename))
+
+    self.writecsv("zoomlist", lst)
+
+  def deepzoom(self):
+    for layer in self.layers:
+      self.deepzoom_vips(layer)
+      self.prunezoom(layer)
+      self.patchzoom(layer)
+    self.writezoomlist()
+
+@dataclasses.dataclass
+class DeepZoomFile:
+  sample: str
+  zoom: int
+  marker: int
+  x: int
+  y: int
+  fname: pathlib.Path
