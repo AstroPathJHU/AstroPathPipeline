@@ -19,9 +19,11 @@ class DeepZoomSample(ZoomSampleBase):
   @property
   def tilesize(self): return self.__tilesize
 
+  def layerfolder(self, layer): return self.deepzoomfolder/f"L{layer:d}_files"
+
   def deepzoom_vips(self, layer):
     import pyvips
-    self.logger.info("running vips")
+    self.logger.info("running vips for layer %d", layer)
     filename = self.wsifilename(layer)
     self.deepzoomfolder.mkdir(parents=True, exist_ok=True)
     dest = self.deepzoomfolder/f"L{layer:d}"
@@ -29,8 +31,8 @@ class DeepZoomSample(ZoomSampleBase):
     wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
 
   def prunezoom(self, layer):
-    self.logger.info("checking which files are non-empty")
-    destfolder = self.deepzoomfolder/f"L{layer:d}_files"
+    self.logger.info("checking which files are non-empty for layer %d", layer)
+    destfolder = self.layerfolder(layer)
     minsize = float("inf")
     for nfiles, filename in enumerate(destfolder.glob("*/*.png"), start=1):
       nfiles += 1
@@ -52,6 +54,16 @@ class DeepZoomSample(ZoomSampleBase):
     ngood = nfiles - nbad
     self.logger.info("found %d non-empty files out of %d, removing the %d empty ones", ngood, nfiles, nbad)
 
+  def patchzoom(self, layer):
+    self.logger.info("relabeling zooms for layer %d", layer)
+    destfolder = self.layerfolder(layer)
+    folders = sorted(destfolder.iterdir(), key=lambda x: int(x.name))
+    maxfolder = int(folders[-1].name)
+    for folder in folders:
+      newname = folder.parent/f"Z{int(folder.name)+9-maxfolder}"
+      folder.rename(newname)
+
   def deepzoom(self, layer):
     self.deepzoom_vips(layer)
     self.prunezoom(layer)
+    self.patchzoom(layer)
