@@ -59,9 +59,44 @@ class DeepZoomSample(ZoomSampleBase):
     destfolder = self.layerfolder(layer)
     folders = sorted(destfolder.iterdir(), key=lambda x: int(x.name))
     maxfolder = int(folders[-1].name)
-    for folder in folders:
-      newname = folder.parent/f"Z{int(folder.name)+9-maxfolder}"
-      folder.rename(newname)
+    if maxfolder > 9:
+      raise ValueError(f"Need more zoom levels than 0-9 (max from vips is {maxfolder})")
+    for folder in reversed(folders):
+      newnumber = int(folder.name) + 9 - maxfolder
+      newfolder = destfolder/f"Z{newnumber}"
+      folder.rename(newfolder)
+
+    minzoomnumber = newnumber
+    minzoomfolder = newfolder
+
+    smallestimagefilename = minzoomfolder/"0_0.png"
+    with PIL.Image.open(smallestimagefilename) as im:
+      im.load()
+    n, m = im.size
+    if m != 256 or n != 256:
+      raise ValueError(f"{smallestimage} is the wrong size {m}x{n}, expected 256x256")
+    if m < 256 or n < 256:
+      #Heshy note:
+      #this existed in Alex's code and I'm keeping it here
+      #in case we remove the ValueError above (added by me).
+      #As far as I can tell, the ValueError will not happen
+      #anyway, so this is not relevant.
+      im = PIL.Image.fromarray(np.pad(np.asarray(im), ((0, 256-m), (0, 256-n))))
+      im.save(smallestimagefilename)
+
+    smallestimage = im
+
+    for i in range(minzoomnumber):
+      newfolder = destfolder/f"Z{i}"
+      newfolder.mkdir(exist_ok=True)
+      newfilename = newfolder/"0_0.png"
+      im = smallestimage.resize(np.asarray(smallestimage.size) // 2**(minzoomnumber-i))
+      im = np.asarray(im)
+      im = (im * 1.25**(minzoomnumber-i)).astype(np.uint8)
+      m, n = im.shape
+      im = np.pad(im, ((0, 256-m), (0, 256-n)))
+      im = PIL.Image.fromarray(im)
+      im.save(newfilename)
 
   def deepzoom(self, layer):
     self.deepzoom_vips(layer)
