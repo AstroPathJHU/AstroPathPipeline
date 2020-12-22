@@ -74,7 +74,7 @@ class DeepZoomSample(ZoomSampleBase):
       im.load()
     n, m = im.size
     if m != 256 or n != 256:
-      raise ValueError(f"{smallestimage} is the wrong size {m}x{n}, expected 256x256")
+      raise ValueError(f"{smallestimagefilename} is the wrong size {m}x{n}, expected 256x256")
     if m < 256 or n < 256:
       #Heshy note:
       #this existed in Alex's code and I'm keeping it here
