@@ -1,6 +1,7 @@
 import dataclasses, datetime, numbers, numpy as np, re
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint
+from ..utilities.tableio import readtable
 from ..utilities.units.dataclasses import DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, DataClassWithQpscale, distancefield, pscalefield
 
 @dataclasses.dataclass
@@ -80,6 +81,26 @@ class Constant(DataClassWithDistances):
   apscale: float = pscalefield(default=None)
   qpscale: float = pscalefield(default=None)
   readingfromfile: dataclasses.InitVar[bool] = False
+
+def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
+  scalekwargs = {"pscale": pscale, "qpscale": qpscale, "apscale": apscale}
+
+  if any(scale is None for scale in scalekwargs.values()):
+    tmp = readtable(filename, Constant, extrakwargs={"pscale": 1, "qpscale": 1, "apscale": 1})
+    tmpdict = {_.name: _.value for _ in tmp}
+    for scalekwarg, scale in scalekwargs.items():
+      if scale is None and scalekwarg in tmpdict:
+        scalekwargs[scalekwarg] = tmpdict[scalekwarg]
+
+  constants = readtable(filename, Constant, extrakwargs=scalekwargs)
+  dct = {constant.name: constant.value for constant in constants}
+
+  #compatibility
+  for constant in constants:
+    if constant.name == "flayers" and constant.unit == "pixels":
+      dct["flayers"] = units.pixels(dct["flayers"], pscale=pscale)
+
+  return dct
 
 @dataclasses.dataclass(frozen=True)
 class RectangleFile(DataClassWithPscaleFrozen):

@@ -1,6 +1,6 @@
 import abc, dataclasses, networkx as nx, numpy as np, pathlib
 
-from ..baseclasses.csvclasses import Constant
+from ..baseclasses.csvclasses import constantsdict
 from ..utilities import units
 from ..utilities.tableio import readtable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
@@ -123,13 +123,9 @@ class RectangleOverlapList(RectangleOverlapCollection):
 def rectangleoverlaplist_fromcsvs(dbloadfolder, *, layer, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, rectangletype=Rectangle, overlaptype=Overlap):
   dbload = pathlib.Path(dbloadfolder)
   samp = dbload.parent.name
-  tmp = readtable(dbload/(samp+"_constants.csv"), Constant, extrakwargs={"pscale": 1, "apscale": 1, "qpscale": 1})
-  pscale = {_.value for _ in tmp if _.name == "pscale"}.pop()
-  apscale = {_.value for _ in tmp if _.name == "apscale"}.pop()
-  qpscale = {_.value for _ in tmp if _.name == "qpscale"}.pop()
-  constants     = readtable(dbload/(samp+"_constants.csv"), Constant, extrakwargs={"pscale": pscale, "apscale": apscale, "qpscale": qpscale})
-  constantsdict = {constant.name: constant.value for constant in constants}
-  nclip = constantsdict["nclip"]
+  dct = constantsdict(dbload/f"{samp}_constants.csv")
+  nclip = dct["nclip"]
+  pscale = dct["pscale"]
 
   rectanglefilter = rectangleoroverlapfilter(selectrectangles)
   _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
