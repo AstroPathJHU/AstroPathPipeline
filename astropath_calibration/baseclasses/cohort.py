@@ -68,3 +68,11 @@ class DbloadCohort(Cohort):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
 
+class ZoomCohort(Cohort):
+  def __init__(self, *args, zoomroot, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.zoomroot = pathlib.Path(zoomroot)
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "zoomroot": self.zoomroot}
