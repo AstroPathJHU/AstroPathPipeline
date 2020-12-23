@@ -181,7 +181,7 @@ pipeline {
         stage('code checks') {
           steps {
             sh 'python -m pyflakes .'
-            sh 'chmod u-x $(git ls-files); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)'
+            sh 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)'
           }
         }
       }
