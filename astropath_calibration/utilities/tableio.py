@@ -179,3 +179,5 @@ def pathfield(*, metadata={}, **kwargs):
     "readfunction": guesspathtype,
     **metadata,
   }
+
+  return dataclasses.field(**kwargs)
