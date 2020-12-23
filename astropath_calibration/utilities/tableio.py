@@ -176,6 +176,6 @@ def pathfield(*, metadata={}, **kwargs):
         return pathlib.PureWindowsPath(path)
 
   kwargs["metadata"] = {
-    "readfunction": guesspathtype
+    "readfunction": guesspathtype,
     **metadata,
   }

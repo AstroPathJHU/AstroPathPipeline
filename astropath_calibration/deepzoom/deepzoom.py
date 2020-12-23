@@ -1,7 +1,7 @@
 import dataclasses, numpy as np, os, pathlib, PIL, re
 
 from ..baseclasses.sample import DbloadSampleBase, ReadRectanglesComponentTiff, ZoomSampleBase
-from ..utilities.readtable import pathfield
+from ..utilities.tableio import pathfield
 
 class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBase):
   def __init__(self, *args, deepzoomroot, tilesize=256, **kwargs):
