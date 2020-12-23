@@ -5,7 +5,6 @@ from astropath_calibration.alignment.overlap import AlignmentResult
 from astropath_calibration.alignment.field import Field, FieldOverlap
 from astropath_calibration.alignment.stitch import AffineEntry
 from astropath_calibration.baseclasses.sample import SampleDef
-from astropath_calibration.baseclasses.csvclasses import constantsdict
 from astropath_calibration.utilities import units
 from astropath_calibration.utilities.misc import re_subs
 from astropath_calibration.utilities.tableio import readtable
@@ -244,32 +243,27 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       constantscontents = f.read()
     newconstantscontents = constantscontents.replace(str(a1.pscale), str(a1.pscale * (1+1e-6)))
     assert newconstantscontents != constantscontents
-    constantsdict.cache_clear()
 
-    try:
-      with temporarilyremove(thisfolder/"data"/SlideID/"inform_data"/"Component_Tiffs"), temporarilyreplace(constantsfile, newconstantscontents), temporarilyremove(thisfolder/"data"/SlideID/"im3"/"xml"):
-        a2 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
-        assert a1.pscale != a2.pscale
-        a2.getDAPI(writeimstat=False)
-        a2.align(debug=True)
-        a2.stitch()
+    with temporarilyremove(thisfolder/"data"/SlideID/"inform_data"/"Component_Tiffs"), temporarilyreplace(constantsfile, newconstantscontents), temporarilyremove(thisfolder/"data"/SlideID/"im3"/"xml"):
+      a2 = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
+      assert a1.pscale != a2.pscale
+      a2.getDAPI(writeimstat=False)
+      a2.align(debug=True)
+      a2.stitch()
 
-      pscale1 = a1.pscale
-      pscale2 = a2.pscale
-      rtol = 1e-5
-      atol = 1e-7
+    pscale1 = a1.pscale
+    pscale2 = a2.pscale
+    rtol = 1e-5
+    atol = 1e-7
 
-      for o1, o2 in zip(a1.overlaps, a2.overlaps):
-        x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale1))
-        x2, y2 = units.nominal_values(units.pixels(o2.stitchresult, pscale=pscale2))
-        assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
-        assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
+    for o1, o2 in zip(a1.overlaps, a2.overlaps):
+      x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale1))
+      x2, y2 = units.nominal_values(units.pixels(o2.stitchresult, pscale=pscale2))
+      assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
+      assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
 
-      for T1, T2 in zip(np.ravel(units.nominal_values(a1.T)), np.ravel(units.nominal_values(a2.T))):
-        assertAlmostEqual(T1, T2, rtol=rtol, atol=atol)
-
-    finally:
-      constantsdict.cache_clear()
+    for T1, T2 in zip(np.ravel(units.nominal_values(a1.T)), np.ravel(units.nominal_values(a2.T))):
+      assertAlmostEqual(T1, T2, rtol=rtol, atol=atol)
 
   def testPscaleFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast"):

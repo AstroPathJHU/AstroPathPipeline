@@ -364,6 +364,7 @@ class DbloadSample(DbloadSampleBase):
 
     return result
 
+  @methodtools.lru_cache()
   @property
   def constantsdict(self):
     return constantsdict(self.csv("constants"), pscale=self.pscale)

@@ -1,4 +1,4 @@
-import dataclasses, datetime, functools, numbers, numpy as np, re
+import dataclasses, datetime, numbers, numpy as np, re
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable
@@ -82,7 +82,6 @@ class Constant(DataClassWithDistances):
   qpscale: float = pscalefield(default=None)
   readingfromfile: dataclasses.InitVar[bool] = False
 
-@functools.lru_cache()
 def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
   scalekwargs = {"pscale": pscale, "qpscale": qpscale, "apscale": apscale}
 
