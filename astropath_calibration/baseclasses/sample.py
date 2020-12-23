@@ -4,7 +4,7 @@ from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
-from .csvclasses import Constant, RectangleFile
+from .csvclasses import constantsdict, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleWithImage, RectangleWithImageMultiLayer
 from .overlap import Overlap, RectangleOverlapCollection
@@ -345,22 +345,12 @@ class DbloadSampleBase(SampleBase):
 
 class DbloadSample(DbloadSampleBase):
   def getimageinfofromconstants(self):
-    tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1, "qpscale": 1, "apscale": 1})
-    pscale, = {_.value for _ in tmp if _.name == "pscale"}
-    apscale, = {_.value for _ in tmp if _.name == "apscale"}
-    qpscale, = {_.value for _ in tmp if _.name == "qpscale"}
+    dct = constantsdict(self.csv("constants"))
 
-    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": pscale, "qpscale": qpscale, "apscale": apscale})
-    constantsdict = {constant.name: constant.value for constant in constants}
-    #compatibility
-    for constant in constants:
-      if constant.name == "flayers" and constant.unit == "pixels":
-        constantsdict["flayers"] = units.pixels(constantsdict["flayers"], pscale=constantsdict["pscale"])
-
-    fwidth    = constantsdict["fwidth"]
-    fheight   = constantsdict["fheight"]
-    flayers   = constantsdict["flayers"]
-    pscale    = float(constantsdict["pscale"])
+    fwidth    = dct["fwidth"]
+    fheight   = dct["fheight"]
+    flayers   = dct["flayers"]
+    pscale    = float(dct["pscale"])
 
     return pscale, fwidth, fheight, flayers
 
@@ -374,15 +364,9 @@ class DbloadSample(DbloadSampleBase):
 
     return result
 
-  @methodtools.lru_cache()
   @property
   def constantsdict(self):
-    tmp = self.readcsv("constants", Constant, extrakwargs={"pscale": 1, "qpscale": 1, "apscale": 1})
-    apscale, = {_.value for _ in tmp if _.name == "apscale"}
-    qpscale, = {_.value for _ in tmp if _.name == "qpscale"}
-
-    constants = self.readcsv("constants", Constant, extrakwargs={"pscale": self.pscale, "qpscale": qpscale, "apscale": apscale})
-    return {constant.name: constant.value for constant in constants}
+    return constantsdict(self.csv("constants"), pscale=self.pscale)
 
   @property
   def position(self):
