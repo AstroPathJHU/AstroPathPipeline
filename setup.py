@@ -31,7 +31,7 @@ setuptools.setup(
     "more_itertools>=8.3.0",
     "networkx",
     "numba",
-    "numpy",
+    "numpy>=1.17.0",
     "opencv-python",
     "pyopencl",
     "pyvips",

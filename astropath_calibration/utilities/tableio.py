@@ -1,4 +1,4 @@
-import contextlib, csv, dataclasses
+import contextlib, csv, dataclasses, pathlib
 
 from .misc import dummylogger
 
@@ -158,3 +158,26 @@ def field_size_limit_context(limit):
     yield
   finally:
     csv.field_size_limit(oldlimit)
+
+def pathfield(*, metadata={}, **kwargs):
+  def guesspathtype(path):
+    if isinstance(path, pathlib.PurePath):
+      return path
+    if pathlib.Path(path).exists(): return pathlib.Path(path)
+    if "/" in path and "\\" not in path:
+      try:
+        return pathlib.PosixPath(path)
+      except NotImplementedError:
+        return pathlib.PurePosixPath(path)
+    elif "\\" in path and "/" not in path:
+      try:
+        return pathlib.WindowsPath(path)
+      except NotImplementedError:
+        return pathlib.PureWindowsPath(path)
+
+  kwargs["metadata"] = {
+    "readfunction": guesspathtype,
+    **metadata,
+  }
+
+  return dataclasses.field(**kwargs)
