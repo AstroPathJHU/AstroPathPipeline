@@ -33,8 +33,8 @@ class TestDeepZoom(TestBaseSaveOutput):
         new = readtable(movedzoomlist, DeepZoomFile)
         ref = readtable(thisfolder/"reference"/"deepzoom"/SlideID/movedzoomlist.name, DeepZoomFile)
         for resultnew, resultref in more_itertools.zip_equal(new, ref):
-          resultnew.fname = resultnew.fname.relative_to(thisfolder)
-          resultref.fname = resultref.fname.relative_to(resultref.fname.parent.parent.parent.parent.parent)
+          resultnew.fname = pathlib.PurePosixPath(resultnew.fname.relative_to(thisfolder))
+          resultref.fname = pathlib.PurePosixPath(resultref.fname.relative_to(resultref.fname.parent.parent.parent.parent.parent))
           assertAlmostEqual(resultnew, resultref, rtol=0, atol=0)
 
     except:

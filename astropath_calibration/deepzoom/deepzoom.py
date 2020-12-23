@@ -1,6 +1,7 @@
 import dataclasses, numpy as np, os, pathlib, PIL, re
 
 from ..baseclasses.sample import DbloadSampleBase, ReadRectanglesComponentTiff, ZoomSampleBase
+from ..utilities.readtable import pathfield
 
 class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBase):
   def __init__(self, *args, deepzoomroot, tilesize=256, **kwargs):
@@ -102,9 +103,9 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
     lst = []
     for layer in self.layers:
       folder = self.layerfolder(layer)
-      for zoomfolder in folder.iterdir():
+      for zoomfolder in sorted(folder.iterdir()):
         zoom = int(re.match("Z([0-9]*)", zoomfolder.name).group(1))
-        for filename in zoomfolder.iterdir():
+        for filename in sorted(zoomfolder.iterdir()):
           match = re.match("([0-9]*)_([0-9]*)[.]png", filename.name)
           x = int(match.group(1))
           y = int(match.group(2))
@@ -127,4 +128,4 @@ class DeepZoomFile:
   marker: int
   x: int
   y: int
-  fname: pathlib.Path
+  fname: pathlib.Path = pathfield()
