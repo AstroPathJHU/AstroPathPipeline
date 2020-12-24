@@ -1,19 +1,21 @@
 import more_itertools, numpy as np, pathlib, PIL.Image
 from astropath_calibration.deepzoom.deepzoom import DeepZoomFile, DeepZoomSample
+from astropath_calibration.deepzoom.deepzoomcohort import DeepZoomCohort
 from astropath_calibration.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
 class TestDeepZoom(TestBaseSaveOutput):
-  def testDeepZoom(self, SlideID="M206", **kwargs):
-    sample = DeepZoomSample(thisfolder/"data", SlideID, zoomroot=thisfolder/"annowarp_test_for_jenkins", deepzoomroot=thisfolder/"deepzoom_test_for_jenkins", layers=[1])
-    with sample:
-      sample.deepzoom(**kwargs)
+  def testDeepZoom(self, SlideID="M206", units="safe", **kwargs):
+    root = thisfolder/"data"
+    zoomroot = thisfolder/"annowarp_test_for_jenkins"
+    deepzoomroot = thisfolder/"deepzoom_test_for_jenkins"
+    args = [str(root), "--zoomroot", str(zoomroot), "--deepzoomroot", str(deepzoomroot), "--logroot", str(deepzoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--layers", "1"]
+    DeepZoomCohort.runfromargumentparser(args)
 
-    zoomlist = sample.csv("zoomlist")
-    movedzoomlist = sample.deepzoomfolder/zoomlist.name
-    zoomlist.rename(movedzoomlist)
+    sample = DeepZoomSample(root, SlideID, zoomroot=zoomroot, deepzoomroot=deepzoomroot, logroot=deepzoomroot)
+    zoomlist = sample.deepzoomfolder/"zoomlist.csv"
 
     try:
       folder = sample.deepzoomfolder/"L1_files"
@@ -30,8 +32,8 @@ class TestDeepZoom(TestBaseSaveOutput):
         with PIL.Image.open(filename) as im, PIL.Image.open(reffilename) as ref:
           np.testing.assert_array_equal(np.asarray(im), np.asarray(ref))
 
-        new = readtable(movedzoomlist, DeepZoomFile)
-        ref = readtable(thisfolder/"reference"/"deepzoom"/SlideID/movedzoomlist.name, DeepZoomFile)
+        new = readtable(zoomlist, DeepZoomFile)
+        ref = readtable(thisfolder/"reference"/"deepzoom"/SlideID/zoomlist.name, DeepZoomFile)
         for resultnew, resultref in more_itertools.zip_equal(new, ref):
           resultnew.fname = pathlib.PurePosixPath(resultnew.fname.relative_to(thisfolder))
           resultref.fname = pathlib.PurePosixPath(resultref.fname.relative_to(resultref.fname.parent.parent.parent.parent.parent))

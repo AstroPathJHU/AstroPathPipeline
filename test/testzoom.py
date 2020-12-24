@@ -1,5 +1,6 @@
 import gzip, numpy as np, pathlib, PIL.Image
 from astropath_calibration.zoom.zoom import Zoom
+from astropath_calibration.zoom.zoomcohort import ZoomCohort
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -39,10 +40,16 @@ class TestZoom(TestBaseSaveOutput):
       for i in self.layers(SlideID)
     ]
 
-  def testZoomWsi(self, SlideID="L1_1", keepoutput=False, **kwargs):
-    sample = Zoom(thisfolder/"data", SlideID, zoomroot=thisfolder/"zoom_test_for_jenkins", selectrectangles=self.selectrectangles(SlideID), layers=self.layers(SlideID))
-    with sample:
-      sample.zoom_wsi(**kwargs)
+  def testZoomWsi(self, SlideID="L1_1", keepoutput=False, units="safe", **kwargs):
+    root = thisfolder/"data"
+    zoomroot = thisfolder/"zoom_test_for_jenkins"
+    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units]
+    if self.selectrectangles(SlideID) is not None:
+      args += ["--selectrectangles", *(str(_) for _ in self.selectrectangles(SlideID))]
+    if self.layers(SlideID) is not None:
+      args += ["--layers", *(str(_) for _ in self.layers(SlideID))]
+    ZoomCohort.runfromargumentparser(args)
+    sample = Zoom(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=self.selectrectangles(SlideID), layers=self.layers(SlideID))
 
     try:
       for i in self.layers(SlideID):

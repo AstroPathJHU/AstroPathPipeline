@@ -269,17 +269,17 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     with units.setup_context("fast"):
       self.testPscale(SlideID=SlideID)
 
-  def testCohort(self):
+  def testCohort(self, units="safe"):
     SlideID = "M21_1"
-    cohort = AlignmentCohort(thisfolder/"data", thisfolder/"data"/"flatw", debug=True, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
-    cohort.run()
+    args = [str(thisfolder/"data"), str(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", str(thisfolder/"alignment_test_for_jenkins"), "--logroot", str(thisfolder/"alignment_test_for_jenkins"), "--sampleregex", SlideID, "--units", units]
+    AlignmentCohort.runfromargumentparser(args)
 
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
     self.compareoutput(a)
 
   def testCohortFastUnits(self):
     with units.setup_context("fast"):
-      self.testCohort()
+      self.testCohort(units="fast")
 
   def testMissingFolders(self, SlideID="M21_1"):
     with temporarilyremove(thisfolder/"data"/SlideID/"im3"), temporarilyremove(thisfolder/"data"/SlideID/"inform_data"), units.setup_context("fast"):

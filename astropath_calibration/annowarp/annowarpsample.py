@@ -373,6 +373,14 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     if filename is None: filename = self.newregionscsv
     writetable(filename, self.warpedregions)
 
+  def runannowarp(self):
+    self.align()
+    self.writealignments()
+    self.stitch()
+    self.writestitchresult()
+    self.writevertices()
+    self.writeregions()
+
 class QPTiffCoordinateBase(abc.ABC):
   @abc.abstractproperty
   def bigtilesize(self): pass

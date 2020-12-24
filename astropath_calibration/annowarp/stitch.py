@@ -74,7 +74,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     for n, ((value1, description1), (value2, description2)) in enumerate(itertools.combinations_with_replacement(entries, 2), start=len(entries)+1):
       yield AnnoWarpStitchResultEntry(
         n=n,
-        value=units.covariance_matrix([value1, value2])[0, 1],
+        value=np.array(units.covariance_matrix([value1, value2]))[0, 1],
         description="covariance("+description1+", "+description2+")",
         pscale=self.imscale,
       )
