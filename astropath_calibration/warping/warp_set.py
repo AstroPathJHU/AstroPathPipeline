@@ -5,7 +5,7 @@ from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL
 from ..utilities.misc import cd
 import numpy as np, multiprocessing as mp
-import cv2, contextlib, contextlib2
+import cv2, contextlib2
 
 class WarpSet :
     """
