@@ -1,21 +1,15 @@
 import dataclasses, functools, numpy as np, os, pathlib, PIL, re
 
-from ..baseclasses.sample import DbloadSampleBase, ReadRectanglesComponentTiff, ZoomSampleBase
+from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, ReadRectanglesComponentTiff, ZoomSampleBase
 from ..utilities.tableio import pathfield, writetable
 
-class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBase):
-  def __init__(self, *args, deepzoomroot, tilesize=256, **kwargs):
+class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBase, DeepZoomSampleBase):
+  def __init__(self, *args, tilesize=256, **kwargs):
     super().__init__(*args, **kwargs)
-    self.__deepzoomroot = pathlib.Path(deepzoomroot)
     self.__tilesize = tilesize
 
   @property
   def logmodule(self): return "deepzoom"
-
-  @property
-  def deepzoomroot(self): return self.__deepzoomroot
-  @property
-  def deepzoomfolder(self): return self.deepzoomroot/self.SlideID
 
   @property
   def tilesize(self): return self.__tilesize

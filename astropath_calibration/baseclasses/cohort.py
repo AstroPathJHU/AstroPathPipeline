@@ -180,6 +180,28 @@ class ZoomCohort(Cohort):
       "zoomroot": parsed_args_dict.pop("zoomroot"),
     }
 
+class DeepZoomCohort(Cohort):
+  def __init__(self, *args, deepzoomroot, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.deepzoomroot = pathlib.Path(deepzoomroot)
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "deepzoomroot": self.deepzoomroot}
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--deepzoomroot", type=pathlib.Path, required=True)
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "deepzoomroot": parsed_args_dict.pop("deepzoomroot"),
+    }
+
 class SelectRectanglesCohort(Cohort):
   def __init__(self, *args, selectrectangles=None, layers=None, **kwargs):
     super().__init__(*args, **kwargs)
