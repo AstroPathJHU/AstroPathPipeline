@@ -6,8 +6,6 @@ setuptools.setup(
   entry_points = {
     "console_scripts": [
       "alignmentcohort=astropath_calibration.alignment.alignmentcohort:main",
-      "badregionscohort=astropath_calibration.badregions.cohort:main",
-      "badregionssample=astropath_calibration.badregions.sample:main",
       "evaluate_exposure_time=astropath_calibration.exposuretime.evaluate_exposure_time:main",
       "run_exposure_time_fits=astropath_calibration.exposuretime.run_exposure_time_fits:main",
       "extractlayer=astropath_calibration.extractlayer.extractlayer:main",

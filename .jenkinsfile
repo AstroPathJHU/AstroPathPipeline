@@ -117,23 +117,6 @@ pipeline {
           }
         }
 
-        stage('bad region detection') {
-          stages {
-            stage('test bad regions') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testbadregions'
-              }
-            }
-            stage('bad regions documentation') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.badregions.makeplots --testing'
-                sh 'cd documentation/badregions; pdflatex badregions.tex; pdflatex badregions.tex; pdflatex badregions.tex'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/badregions/badregions.log'
-              }
-            }
-          }
-        }
-
         stage('interactive flatfielding') {
           stages {
             stage('test flatfield') {
@@ -198,12 +181,10 @@ pipeline {
     always {
       archiveArtifacts artifacts: 'documentation/alignment/alignment_stitching.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/annowarp/annowarp.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'documentation/badregions/badregions.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/flatfield/flatfield_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/exposuretime/exposuretime_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documentation/layerPCA/layerPCA.pdf', fingerprint: true
       archiveArtifacts artifacts: 'test/annowarp_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/badregions_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
       archiveArtifacts artifacts: 'test/deepzoom_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
       archiveArtifacts artifacts: 'test/exposuretimefit_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
       archiveArtifacts artifacts: 'test/warpfitter_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
