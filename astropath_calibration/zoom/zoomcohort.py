@@ -1,4 +1,4 @@
-from ..baseclasses.cohort import DbloadCohort, FlatwCohort, SelectRectanglesCohort, ZoomCohort
+from ..baseclasses.cohort import DbloadCohort, SelectRectanglesCohort, ZoomCohort
 from .zoom import Zoom
 
 class ZoomCohort(DbloadCohort, SelectRectanglesCohort, ZoomCohort):
