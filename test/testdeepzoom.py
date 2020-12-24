@@ -11,9 +11,7 @@ class TestDeepZoom(TestBaseSaveOutput):
     with sample:
       sample.deepzoom(**kwargs)
 
-    zoomlist = sample.csv("zoomlist")
-    movedzoomlist = sample.deepzoomfolder/zoomlist.name
-    zoomlist.rename(movedzoomlist)
+    zoomlist = sample.deepzoomfolder/"zoomlist.csv"
 
     try:
       folder = sample.deepzoomfolder/"L1_files"
@@ -30,8 +28,8 @@ class TestDeepZoom(TestBaseSaveOutput):
         with PIL.Image.open(filename) as im, PIL.Image.open(reffilename) as ref:
           np.testing.assert_array_equal(np.asarray(im), np.asarray(ref))
 
-        new = readtable(movedzoomlist, DeepZoomFile)
-        ref = readtable(thisfolder/"reference"/"deepzoom"/SlideID/movedzoomlist.name, DeepZoomFile)
+        new = readtable(zoomlist, DeepZoomFile)
+        ref = readtable(thisfolder/"reference"/"deepzoom"/SlideID/zoomlist.name, DeepZoomFile)
         for resultnew, resultref in more_itertools.zip_equal(new, ref):
           resultnew.fname = pathlib.PurePosixPath(resultnew.fname.relative_to(thisfolder))
           resultref.fname = pathlib.PurePosixPath(resultref.fname.relative_to(resultref.fname.parent.parent.parent.parent.parent))

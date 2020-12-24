@@ -1,7 +1,7 @@
 import dataclasses, functools, numpy as np, os, pathlib, PIL, re
 
 from ..baseclasses.sample import DbloadSampleBase, ReadRectanglesComponentTiff, ZoomSampleBase
-from ..utilities.tableio import pathfield
+from ..utilities.tableio import pathfield, writetable
 
 class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBase):
   def __init__(self, *args, deepzoomroot, tilesize=256, **kwargs):
@@ -27,7 +27,12 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
     self.logger.info("running vips for layer %d", layer)
     filename = self.wsifilename(layer)
     self.deepzoomfolder.mkdir(parents=True, exist_ok=True)
-    dest = self.deepzoomfolder/f"L{layer:d}"
+    destfolder = self.layerfolder(layer)
+    if destfolder.exists():
+      for subfolder in destfolder.iterdir():
+        if subfolder.is_dir(): subfolder.rmdir()
+      destfolder.rmdir()
+    dest = destfolder.with_name(destfolder.name.replace("_files", ""))
     wsi = pyvips.Image.new_from_file(os.fspath(filename))
     wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
 
@@ -113,7 +118,7 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
           lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, fname=filename))
 
     lst.sort()
-    self.writecsv("zoomlist", lst)
+    writetable(self.deepzoomroot/"zoomlist.csv", lst)
 
   def deepzoom(self):
     for layer in self.layers:
