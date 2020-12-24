@@ -59,9 +59,12 @@ class Cohort(abc.ABC):
     p = argparse.ArgumentParser()
     p.add_argument("root", type=pathlib.Path)
     p.add_argument("--debug", action="store_true")
-    cls.makesampleselectiongroup(p)
+    cls.makesampleselectionargumentgroup(p)
     p.add_argument("--units", choices=("safe", "fast"), default="fast")
     p.add_argument("--dry-run", action="store_true")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--logroot", type=pathlib.Path)
+    g.add_argument("--no-log", action="store_true")
     return p
 
   @classmethod
@@ -76,6 +79,8 @@ class Cohort(abc.ABC):
     kwargs = {
       "root": dct.pop("root"),
       "debug": dct.pop("debug"),
+      "logroot": dct.pop("logroot"),
+      "uselogfiles": not dct.pop("no_log"),
     }
     regex = dct.pop("sampleregex")
     if regex is not None:
@@ -92,17 +97,17 @@ class Cohort(abc.ABC):
     p = cls.makeargumentparser()
     args = p.parse_args(args=args)
     argsdict = args.__dict__.copy()
-    units.setup(argsdict.pop("units"))
-    dryrun = argsdict.pop("dry_run")
-    initkwargs = cls.initkwargsfromargumentparser(argsdict)
-    runkwargs = cls.runkwargsfromargumentparser(argsdict)
-    if argsdict:
-      raise TypeError(f"Some command line arguments were not processed:\n{argsdict}")
-    cohort = cls(**initkwargs)
-    if dryrun:
-      cohort.dryrun(**runkwargs)
-    else:
-      cohort.run(**runkwargs)
+    with units.setup_context(argsdict.pop("units")):
+      dryrun = argsdict.pop("dry_run")
+      initkwargs = cls.initkwargsfromargumentparser(argsdict)
+      runkwargs = cls.runkwargsfromargumentparser(argsdict)
+      if argsdict:
+        raise TypeError(f"Some command line arguments were not processed:\n{argsdict}")
+      cohort = cls(**initkwargs)
+      if dryrun:
+        cohort.dryrun(**runkwargs)
+      else:
+        cohort.run(**runkwargs)
 
 class FlatwCohort(Cohort):
   def __init__(self, root, root2, *args, **kwargs):

@@ -41,22 +41,15 @@ class AlignmentCohort(DbloadCohort, FlatwCohort):
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     root = parsed_args_dict["root"]
-    dontstitch = parsed_args_dict["dostitching"]
+    dontstitch = parsed_args_dict["dont_stitch"]
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
+      "doalignment": not parsed_args_dict.pop("dont_align"),
+      "dostitching": not parsed_args_dict.pop("dont_stitch"),
     }
     skipaligned = parsed_args_dict.pop("skip_aligned")
     if skipaligned:
       kwargs["filter"] = lambda sample: not (root/sample.SlideID/"dbload"/f"{sample.SlideID}_{'fields' if not dontstitch else 'align'}.csv").exists()
-    return kwargs
-
-  @classmethod
-  def runkwargsfromargumentparser(cls, parsed_args_dict):
-    kwargs = {
-      **super().runkwargsfromargumentparser(parsed_args_dict),
-      "doalignment": not parsed_args_dict.pop("dont_align"),
-      "dostitching": not parsed_args_dict.pop("dont_stitch"),
-    }
     return kwargs
 
 def main(args=None):
