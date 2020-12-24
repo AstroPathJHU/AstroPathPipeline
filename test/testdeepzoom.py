@@ -1,16 +1,20 @@
 import more_itertools, numpy as np, pathlib, PIL.Image
 from astropath_calibration.deepzoom.deepzoom import DeepZoomFile, DeepZoomSample
+from astropath_calibration.deepzoom.deepzoomcohort import DeepZoomCohort
 from astropath_calibration.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
 class TestDeepZoom(TestBaseSaveOutput):
-  def testDeepZoom(self, SlideID="M206", **kwargs):
-    sample = DeepZoomSample(thisfolder/"data", SlideID, zoomroot=thisfolder/"annowarp_test_for_jenkins", deepzoomroot=thisfolder/"deepzoom_test_for_jenkins", layers=[1])
-    with sample:
-      sample.deepzoom(**kwargs)
+  def testDeepZoom(self, SlideID="M206", units="safe", **kwargs):
+    root = thisfolder/"data"
+    zoomroot = thisfolder/"annowarp_test_for_jenkins"
+    deepzoomroot = thisfolder/"deepzoom_test_for_jenkins"
+    args = [str(root), "--zoomroot", str(zoomroot), "--deepzoomroot", str(deepzoomroot), "--logroot", str(deepzoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--layers", "1"]
+    DeepZoomCohort.runfromargumentparser(args)
 
+    sample = DeepZoomSample(root, SlideID, zoomroot=zoomroot, deepzoomroot=deepzoomroot, logroot=deepzoomroot)
     zoomlist = sample.deepzoomfolder/"zoomlist.csv"
 
     try:
