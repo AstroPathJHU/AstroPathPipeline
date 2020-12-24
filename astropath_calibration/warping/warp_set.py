@@ -5,7 +5,7 @@ from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL
 from ..utilities.misc import cd
 import numpy as np, multiprocessing as mp
-import cv2, contextlib
+import cv2, contextlib, contextlib2
 
 class WarpSet :
     """
@@ -118,7 +118,7 @@ class WarpSet :
         """
         #change to the directory passed in
         try:
-            with cd(path) if path is not None else contextlib.nullcontext():
+            with cd(path) if path is not None else contextlib2.nullcontext():
                 #write out all the image files
                 for warpimg in self.images :
                     self.warp.writeImageLayer(warpimg.warped_image,warpimg.rawfile_key,self.layer)
