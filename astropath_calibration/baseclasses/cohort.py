@@ -1,4 +1,5 @@
-import abc, pathlib
+import abc, argparse, pathlib, re
+from ..utilities import units
 from ..utilities.tableio import readtable
 from .logging import getlogger
 from .sample import SampleDef
@@ -46,6 +47,63 @@ class Cohort(abc.ABC):
         with sample:
           self.runsample(sample, **kwargs)
 
+  @property
+  def dryrunheader(self):
+    return "would run the following samples:"
+  def dryrun(self, **kwargs):
+    print(self.dryrunheader)
+    for samp in self: print(samp)
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = argparse.ArgumentParser()
+    p.add_argument("root", type=pathlib.Path)
+    p.add_argument("--debug", action="store_true")
+    cls.makesampleselectiongroup(p)
+    p.add_argument("--units", choices=("safe", "fast"), default="fast")
+    p.add_argument("--dry-run", action="store_true")
+    return p
+
+  @classmethod
+  def makesampleselectionargumentgroup(cls, parser):
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--sampleregex", type=re.compile)
+    return g
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    dct = parsed_args_dict
+    kwargs = {
+      "root": dct.pop("root"),
+      "debug": dct.pop("debug"),
+    }
+    regex = dct.pop("sampleregex")
+    if regex is not None:
+      kwargs["filter"] = lambda sample: regex.match(sample.SlideID)
+    return kwargs
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {}
+    return kwargs
+
+  @classmethod
+  def runfromargumentparser(cls, args=None):
+    p = cls.makeargumentparser()
+    args = p.parse_args(args=args)
+    argsdict = args.__dict__.copy()
+    units.setup(argsdict.pop("units"))
+    dryrun = argsdict.pop("dry_run")
+    initkwargs = cls.initkwargsfromargumentparser(argsdict)
+    runkwargs = cls.runkwargsfromargumentparser(argsdict)
+    if argsdict:
+      raise TypeError(f"Some command line arguments were not processed:\n{argsdict}")
+    cohort = cls(**initkwargs)
+    if dryrun:
+      cohort.dryrun(**runkwargs)
+    else:
+      cohort.run(**runkwargs)
+
 class FlatwCohort(Cohort):
   def __init__(self, root, root2, *args, **kwargs):
     super().__init__(root=root, *args, **kwargs)
@@ -58,6 +116,19 @@ class FlatwCohort(Cohort):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "root2": self.root2}
 
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("root2", type=pathlib.Path)
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "root2": parsed_args_dict.pop("root2"),
+    }
+
 class DbloadCohort(Cohort):
   def __init__(self, *args, dbloadroot=None, **kwargs):
     super().__init__(*args, **kwargs)
@@ -68,6 +139,19 @@ class DbloadCohort(Cohort):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
 
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--dbloadroot", type=pathlib.Path)
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "dbloadroot": parsed_args_dict.pop("dbloadroot"),
+    }
+
 class ZoomCohort(Cohort):
   def __init__(self, *args, zoomroot, **kwargs):
     super().__init__(*args, **kwargs)
@@ -76,3 +160,16 @@ class ZoomCohort(Cohort):
   @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "zoomroot": self.zoomroot}
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--zoomroot", type=pathlib.Path, required=True)
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "zoomroot": parsed_args_dict.pop("zoomroot"),
+    }

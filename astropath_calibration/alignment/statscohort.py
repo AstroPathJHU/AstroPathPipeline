@@ -1,4 +1,4 @@
-import argparse, numpy as np, pathlib, re
+import numpy as np, pathlib
 
 from ..baseclasses.cohort import DbloadCohort, FlatwCohort
 from ..utilities import units
@@ -31,28 +31,18 @@ class StatsCohort(DbloadCohort, FlatwCohort):
   @property
   def logmodule(self): return "align"
 
-if __name__ == "__main__":
-  p = argparse.ArgumentParser()
-  p.add_argument("root1", type=pathlib.Path)
-  p.add_argument("root2", type=pathlib.Path)
-  p.add_argument("--debug", action="store_true")
-  g = p.add_mutually_exclusive_group()
-  g.add_argument("--sampleregex", type=re.compile)
-  p.add_argument("--units", choices=("safe", "fast"), default="fast")
-  p.add_argument("--dry-run", action="store_true")
-  p.add_argument("--outfile")
-  args = p.parse_args()
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--outfile", type=pathlib.Path, required=True)
+    return p
 
-  units.setup(args.units)
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "outfile": parsed_args_dict.pop("outfile")
+    }
 
-  kwargs = {"root": args.root1, "root2": args.root2, "debug": args.debug, "outfile": args.outfile}
-
-  if args.sampleregex is not None:
-    kwargs["filter"] = lambda sample: args.sampleregex.match(sample.SlideID)
-
-  cohort = StatsCohort(**kwargs)
-  if args.dry_run:
-    print("would align the following samples:")
-    for samp in cohort: print(samp)
-  else:
-    cohort.run()
+def main(args=None):
+  StatsCohort.runfromargumentparser(args)

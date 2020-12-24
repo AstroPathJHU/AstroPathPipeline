@@ -1,7 +1,4 @@
-import argparse, pathlib, re
-
 from ..baseclasses.cohort import DbloadCohort, FlatwCohort, ZoomCohort
-from ..utilities import units
 from .zoom import Zoom
 
 class ZoomCohort(DbloadCohort, FlatwCohort, ZoomCohort):
@@ -18,35 +15,39 @@ class ZoomCohort(DbloadCohort, FlatwCohort, ZoomCohort):
   @property
   def logmodule(self): return "zoom"
 
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--fast", action="store_true")
+    return p
+
+  @classmethod
+  def makesampleselectionargumentgroup(cls, parser):
+    g = super().makesampleselectionargumentgroup(parser)
+    g.add_argument("--skip-if-wsi-exists", action="store_true")
+    return g
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    zoom_root = parsed_args_dict["zoom_root"]
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+    }
+    skip_if_wsi_exists = parsed_args_dict.pop("skip_if_wsi_exists")
+    if skip_if_wsi_exists:
+      kwargs["filter"] = lambda sample: not all((zoom_root/sample.SlideID/"wsi"/(sample.SlideID+f"-Z9-L{layer}-wsi.png")).exists() for layer in range(1, 9))
+    return kwargs
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().runkwargsfromargumentparser(parsed_args_dict),
+      "fast": parsed_args_dict.pop("fast"),
+    }
+    return kwargs
+
 def main(args=None):
-  p = argparse.ArgumentParser()
-  p.add_argument("root1", type=pathlib.Path)
-  p.add_argument("root2", type=pathlib.Path)
-  p.add_argument("--debug", action="store_true")
-  g = p.add_mutually_exclusive_group()
-  g.add_argument("--sampleregex", type=re.compile)
-  g.add_argument("--skip-if-wsi-exists", action="store_true")
-  p.add_argument("--units", choices=("safe", "fast"), default="fast")
-  p.add_argument("--dry-run", action="store_true")
-  p.add_argument("--zoom-root", type=pathlib.Path, required=True)
-  p.add_argument("--fast", action="store_true")
-  args = p.parse_args(args=args)
-
-  units.setup(args.units)
-
-  kwargs = {"root": args.root1, "root2": args.root2, "zoomroot": args.zoom_root, "fast": args.fast}
-
-  if args.sampleregex is not None:
-    kwargs["filter"] = lambda sample: args.sampleregex.match(sample.SlideID)
-  elif args.skip_if_wsi_exists:
-    kwargs["filter"] = lambda sample: not all((args.zoom_root/sample.SlideID/"wsi"/(sample.SlideID+f"-Z9-L{layer}-wsi.png")).exists() for layer in range(1, 9))
-
-  cohort = ZoomCohort(**kwargs)
-  if args.dry_run:
-    print("would zoom the following samples:")
-    for samp in cohort: print(samp)
-  else:
-    cohort.run()
+  ZoomCohort.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()
