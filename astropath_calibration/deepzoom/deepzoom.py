@@ -118,7 +118,7 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
           lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, fname=filename))
 
     lst.sort()
-    writetable(self.deepzoomroot/"zoomlist.csv", lst)
+    writetable(self.deepzoomfolder/"zoomlist.csv", lst)
 
   def deepzoom(self):
     for layer in self.layers:
