@@ -108,6 +108,7 @@ class Cohort(abc.ABC):
         cohort.dryrun(**runkwargs)
       else:
         cohort.run(**runkwargs)
+      return cohort
 
 class FlatwCohort(Cohort):
   def __init__(self, root, root2, *args, **kwargs):
@@ -177,4 +178,29 @@ class ZoomCohort(Cohort):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "zoomroot": parsed_args_dict.pop("zoomroot"),
+    }
+
+class SelectRectanglesCohort(Cohort):
+  def __init__(self, *args, selectrectangles=None, layers=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.selectrectangles = selectrectangles
+    self.layers = layers
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "selectrectangles": self.selectrectangles, "layers": self.layers}
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--selectrectangles", type=int, nargs="*")
+    p.add_argument("--layers", type=int, nargs="*")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "selectrectangles": parsed_args_dict.pop("selectrectangles"),
+      "layers": parsed_args_dict.pop("layers"),
     }

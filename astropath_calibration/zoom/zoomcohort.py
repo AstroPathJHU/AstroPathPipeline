@@ -1,7 +1,7 @@
-from ..baseclasses.cohort import DbloadCohort, FlatwCohort, ZoomCohort
+from ..baseclasses.cohort import DbloadCohort, FlatwCohort, SelectRectanglesCohort, ZoomCohort
 from .zoom import Zoom
 
-class ZoomCohort(DbloadCohort, FlatwCohort, ZoomCohort):
+class ZoomCohort(DbloadCohort, SelectRectanglesCohort, ZoomCohort):
   def __init__(self, *args, fast=False, **kwargs):
     self.__fast = fast
     super().__init__(*args, **kwargs)
@@ -29,21 +29,14 @@ class ZoomCohort(DbloadCohort, FlatwCohort, ZoomCohort):
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    zoom_root = parsed_args_dict["zoom_root"]
+    zoomroot = parsed_args_dict["zoomroot"]
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
+      "fast": parsed_args_dict.pop("fast"),
     }
     skip_if_wsi_exists = parsed_args_dict.pop("skip_if_wsi_exists")
     if skip_if_wsi_exists:
-      kwargs["filter"] = lambda sample: not all((zoom_root/sample.SlideID/"wsi"/(sample.SlideID+f"-Z9-L{layer}-wsi.png")).exists() for layer in range(1, 9))
-    return kwargs
-
-  @classmethod
-  def runkwargsfromargumentparser(cls, parsed_args_dict):
-    kwargs = {
-      **super().runkwargsfromargumentparser(parsed_args_dict),
-      "fast": parsed_args_dict.pop("fast"),
-    }
+      kwargs["filter"] = lambda sample: not all((zoomroot/sample.SlideID/"wsi"/(sample.SlideID+f"-Z9-L{layer}-wsi.png")).exists() for layer in range(1, 9))
     return kwargs
 
 def main(args=None):
