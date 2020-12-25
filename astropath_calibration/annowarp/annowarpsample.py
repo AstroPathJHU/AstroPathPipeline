@@ -343,7 +343,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     for i, region in enumerate(regions, start=1):
       zipfunction = more_itertools.zip_equal if i == len(regions) else zip
       newvertices = []
-      for oldvertex, newvertex in zipfunction(region.poly.vertices, warpedverticesiterator):
+      polyvertices = region.poly.vertices if region.poly is not None else (v for v in self.vertices if v.regionid == region.regionid)
+      for oldvertex, newvertex in zipfunction(polyvertices, warpedverticesiterator):
         np.testing.assert_array_equal(
           np.round((oldvertex.xvec / oldvertex.oneqppixel).astype(float)),
           np.round((newvertex.xvec / oldvertex.oneqppixel).astype(float)),
@@ -366,10 +367,12 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     return result
 
   def writevertices(self, *, filename=None):
+    self.logger.info("writing vertices")
     if filename is None: filename = self.newverticescsv
     writetable(filename, self.warpedvertices)
 
   def writeregions(self, *, filename=None):
+    self.logger.info("writing regions")
     if filename is None: filename = self.newregionscsv
     writetable(filename, self.warpedregions)
 
