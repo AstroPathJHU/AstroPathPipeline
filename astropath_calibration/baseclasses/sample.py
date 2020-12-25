@@ -414,7 +414,7 @@ class ZoomSampleBase(SampleBase):
 class DeepZoomSampleBase(SampleBase):
   def __init__(self, *args, deepzoomroot, **kwargs):
     super().__init__(*args, **kwargs)
-    self.__deepzoomroot = deepzoomroot
+    self.__deepzoomroot = pathlib.Path(deepzoomroot)
   @property
   def deepzoomroot(self): return self.__deepzoomroot
   @property

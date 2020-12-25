@@ -1,4 +1,4 @@
-import dataclasses, functools, numpy as np, os, pathlib, PIL, re
+import collections, dataclasses, functools, numpy as np, os, pathlib, PIL, re
 
 from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, ReadRectanglesComponentTiff, ZoomSampleBase
 from ..utilities.tableio import pathfield, writetable
@@ -33,26 +33,29 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
   def prunezoom(self, layer):
     self.logger.info("checking which files are non-empty for layer %d", layer)
     destfolder = self.layerfolder(layer)
-    minsize = float("inf")
+    filesizedict = collections.defaultdict(list)
     for nfiles, filename in enumerate(destfolder.glob("*/*.png"), start=1):
       nfiles += 1
       size = filename.stat().st_size
-      if size < minsize:
-        minsize = size
-        fileswithminsize = []
-      if size == minsize:
-        fileswithminsize.append(filename)
+      filesizedict[size].append(filename)
 
-    with PIL.Image.open(fileswithminsize[0]) as im:
-      if np.any(im):
-        nbad = 0
-        del fileswithminsize[:]
+    nbad = 0
 
-    for nbad, filename in enumerate(fileswithminsize, start=1):
-      filename.unlink()
+    for size, files in sorted(filesizedict.items()):
+      with PIL.Image.open(files[0]) as im:
+        if np.any(im):
+          if im.size == (self.tilesize, self.tilesize):
+            break
+          else:
+            continue
+
+      nbad += len(files)
+      self.logger.info("removing %d empty files with file size %d", len(files), size)
+      for nbad, filename in enumerate(files, start=nbad+1):
+        filename.unlink()
 
     ngood = nfiles - nbad
-    self.logger.info("found %d non-empty files out of %d, removing the %d empty ones", ngood, nfiles, nbad)
+    self.logger.info("there are %d remaining non-empty files", ngood)
 
   def patchzoom(self, layer):
     self.logger.info("relabeling zooms for layer %d", layer)
@@ -73,15 +76,10 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
     with PIL.Image.open(smallestimagefilename) as im:
       im.load()
     n, m = im.size
-    if m != 256 or n != 256:
-      raise ValueError(f"{smallestimagefilename} is the wrong size {m}x{n}, expected 256x256")
-    if m < 256 or n < 256:
-      #Heshy note:
-      #this existed in Alex's code and I'm keeping it here
-      #in case we remove the ValueError above (added by me).
-      #As far as I can tell, the ValueError will not happen
-      #anyway, so this is not relevant.
-      im = PIL.Image.fromarray(np.pad(np.asarray(im), ((0, 256-m), (0, 256-n))))
+    if m > self.tilesize or n > self.tilesize:
+      raise ValueError(f"{smallestimagefilename} is too big {m}x{n}, expected <= {self.tilesize}x{self.tilesize}")
+    if m < self.tilesize or n < self.tilesize:
+      im = PIL.Image.fromarray(np.pad(np.asarray(im), ((0, self.tilesize-m), (0, self.tilesize-n))))
       im.save(smallestimagefilename)
 
     smallestimage = im
@@ -94,7 +92,7 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
       im = np.asarray(im)
       im = (im * 1.25**(minzoomnumber-i)).astype(np.uint8)
       m, n = im.shape
-      im = np.pad(im, ((0, 256-m), (0, 256-n)))
+      im = np.pad(im, ((0, self.tilesize-m), (0, self.tilesize-n)))
       im = PIL.Image.fromarray(im)
       im.save(newfilename)
 
