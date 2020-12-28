@@ -4,6 +4,8 @@ from astropath_calibration.flatfield.config import CONST
 from astropath_calibration.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset, writeImageToFile
 from astropath_calibration.utilities.tableio import readtable, writetable
 from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser
+from astropath_calibration.utilities import units
+from astropath_calibration.baseclasses.csvclasses import constantsdict
 from argparse import ArgumentParser
 from scipy.ndimage.filters import convolve
 import numpy as np, multiprocessing as mp
@@ -35,8 +37,8 @@ logger.addHandler(handler)
 @dataclasses.dataclass(eq=False)
 class LabelledMaskRegion :
     image_key          : str
-    #cellview_x         : float
-    #cellview_y         : float
+    cellview_x         : float
+    cellview_y         : float
     region_index       : int
     layers             : str
     n_pixels           : int
@@ -217,7 +219,7 @@ def getEnumeratedLayerMask(layer_mask,start_i) :
     return return_mask
 
 #helper function to calculate and add the subimage infos for a single image to a shared dictionary (run in parallel)
-def getLabelledMaskRegionsWorker(img_array,key,thresholds,workingdir,return_list) :
+def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,workingdir,return_list) :
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next make a mask for the dust in the image
@@ -238,7 +240,11 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,workingdir,return_list
         #add a line for each region to the return_list (will be written to the .csv file)
         dust_region_indices = list(range(np.min(enumerated_dust_mask[enumerated_dust_mask!=0]),np.max(enumerated_dust_mask)+1))
         for dri in dust_region_indices :
-            return_list.append(LabelledMaskRegion(key,dri,dust_layers_string,np.sum(enumerated_dust_mask==dri),DUST_FLAG_STRING))
+            key_x = key.split(',')[0].split('[')[1]
+            key_y = key.split(',')[1].split(']')[0]
+            cvx = pscale*(key_x-xpos)
+            cvy = pscale*(key_y-ypos)
+            return_list.append(LabelledMaskRegion(key,cvx,cvy,dri,dust_layers_string,np.sum(enumerated_dust_mask==dri),DUST_FLAG_STRING))
         #next add in the tissue mask (all the background is zero in every layer, unless already flagged otherwise)
         for li in range(img_array.shape[-1]) :
             output_mask[:,:,li] = np.where(output_mask[:,:,li]==1,tissue_mask,output_mask[:,:,li])
@@ -247,7 +253,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,workingdir,return_list
             writeImageToFile(output_mask,f'{key}_mask.png',dtype=np.uint8)
 
 #helper function to get a list of all the labelled mask regions for a chunk of files
-def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,workingdir) :
+def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,xpos,ypos,pscale,workingdir) :
     #get the image arrays
     img_arrays = readImagesMT(fris,smoothed=False,med_exposure_times_by_layer=metsbl,et_corr_offsets_by_layer=etcobl)
     #get all of the labelled mask region objects as the images are masked
@@ -258,7 +264,7 @@ def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,workingdir) :
         msg = f'Reading and masking {fris[i].rawfile_path}'
         logger.info(msg)
         key = (os.path.basename(fris[i].rawfile_path)).rstrip(RAWFILE_EXT)
-        p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,key,thresholds,workingdir,return_list))
+        p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,key,thresholds,xpos,ypos,pscale,workingdir,return_list))
         procs.append(p)
         p.start()
     for proc in procs:
@@ -315,7 +321,7 @@ def main(args=None) :
         all_rfps = [os.path.join(args.rawfile_top_dir,args.slideID,fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
     if args.max_files>0 :
         all_rfps=all_rfps[:args.max_files]
-    #get the correction information stuff
+    #get the correction details and other slide information stuff
     dims   = getImageHWLFromXMLFile(args.root_dir,args.slideID)
     for ln in LAYERS :
         if ln not in range(1,dims[-1]+1) :
@@ -327,13 +333,21 @@ def main(args=None) :
     if len(bgtbl)!=dims[-1] :
         raise RuntimeError(f'ERROR: found {len(bgtbl)} background thresholds but images have {dims[-1]} layers!')
     thresholds = [bgtbl[ln-1] for ln in LAYERS]
+    slide_constants_dict = constantsdict(os.path.join(args.root_dir,args.slideID,'dbload',f'{args.slideID}_constants.csv'))
+    xpos = float(units.pixels(slide_constants_dict['xposition']))
+    ypos = float(units.pixels(slide_constants_dict['yposition']))
+    pscale = slide_constants_dict['pscale']
     #chunk up the rawfile read information 
+    if args.max_files!=-1 :
+        all_rfps = all_rfps[:args.max_files]
     fri_chunks = chunkListOfFilepaths(all_rfps,dims,args.root_dir,args.n_threads)
     #get the masked regions for each chunk
     all_lmrs = []
     for fri_chunk in fri_chunks :
-        new_lmrs = getLabelledMaskRegionsForChunk(fri_chunk,metsbl,etcobl,thresholds,args.workingdir)
+        new_lmrs = getLabelledMaskRegionsForChunk(fri_chunk,metsbl,etcobl,thresholds,xpos,ypos,pscale,args.workingdir)
         all_lmrs+=new_lmrs
+        if len(all_lmrs)>=args.max_masks :
+            break
     #write out the table with all of the labelled region information
     fn = f'{args.slideID}_labelled_mask_regions.csv'
     with cd(args.workingdir) :
