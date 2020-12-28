@@ -3,7 +3,7 @@ from astropath_calibration.flatfield.utilities import chunkListOfFilepaths, read
 from astropath_calibration.flatfield.config import CONST
 from astropath_calibration.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset, writeImageToFile, smoothImageWorker
 from astropath_calibration.utilities.tableio import readtable, writetable
-from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser
+from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser, cropAndOverwriteImage
 from astropath_calibration.utilities import units
 from astropath_calibration.baseclasses.csvclasses import constantsdict
 from argparse import ArgumentParser
@@ -119,7 +119,7 @@ def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer,tissue_mask=None) 
     else :
         norm_lap_loc_mean = cv2.filter2D(img_norm_lap,cv2.CV_32F,WINDOW_EL,borderType=cv2.BORDER_REFLECT)
         norm_lap_2_loc_mean = cv2.filter2D(np.power(img_norm_lap,2),cv2.CV_32F,WINDOW_EL,borderType=cv2.BORDER_REFLECT)
-        local_mask_norm = cv2.filter2D(np.ones_like(tissue_mask),cv2.CV_8U,WINDOW_EL,borderType=cv2.BORDER_REFLECT)
+        local_mask_norm = cv2.filter2D(np.ones(img_layer.shape,dtype=np.float32),cv2.CV_8U,WINDOW_EL,borderType=cv2.BORDER_REFLECT)
     norm_lap_loc_mean[local_mask_norm!=0] /= local_mask_norm[local_mask_norm!=0]
     norm_lap_loc_mean[local_mask_norm==0] = 0
     norm_lap_2_loc_mean[local_mask_norm!=0] /= local_mask_norm[local_mask_norm!=0]
@@ -169,7 +169,7 @@ def getImageLayerBlurMaskAndPlots(img_layer,nlv_cut,min_size,tissue_mask=None) :
 def writeOutMaskingPlotsForImage(image_key,workingdir,tissue_mask,dust_mask_plot_dicts) :
     #figure out how manby columns will be in the sheet and set up the plots
     n_cols = len(dust_mask_plot_dicts)
-    f,ax = plt.subplots(2,n_cols,figsize=(n_cols*9.6,2*tissue_mask.shape[0]/tissue_mask.shape[1]*9.6))
+    f,ax = plt.subplots(2,n_cols,figsize=(n_cols*6.4,2*tissue_mask.shape[0]/tissue_mask.shape[1]*6.4))
     #add the dust mask plots
     dust_mask = None
     for pdi,plot_dict in enumerate(dust_mask_plot_dicts) :
@@ -194,7 +194,8 @@ def writeOutMaskingPlotsForImage(image_key,workingdir,tissue_mask,dust_mask_plot
     #add the plot of the overlaid tissue and dust masks
     if dust_mask is not None :
         superimposed_masks = 0.25*tissue_mask+0.75*dust_mask
-        ax[1][0].imshow(superimposed_masks,vmin=0.,vmax=1.)
+        pos = ax[1][0].imshow(superimposed_masks,vmin=0.,vmax=1.)
+        f.colorbar(pos,ax=ax[1][0])
         ax[1][0].set_title('superimposed masks')
     else :
         ax[1][0].axis('off')
@@ -203,13 +204,13 @@ def writeOutMaskingPlotsForImage(image_key,workingdir,tissue_mask,dust_mask_plot
         ax[1][ai].axis('off')
     #save the plot
     with cd(workingdir) :
-        plt.savefig(f'{image_key}_masking_plots.png')
-        plt.close()
+        fn = f'{image_key}_masking_plots.png'
+        plt.savefig(fn); plt.close(); cropAndOverwriteImage(fn)
 
 #helper function to change a mask from zeroes and ones to region indices and zeroes
 def getEnumeratedLayerMask(layer_mask,start_i) :
     #first invert the mask to get the "bad" regions as "signal"
-    inverted_mask = layer_mask; inverted_mask[layer_mask==0] = 1; inverted_mask[layer_mask==1] = 0
+    inverted_mask = np.zeros_like(layer_mask); inverted_mask[layer_mask==0] = 1; inverted_mask[layer_mask==1] = 0
     #label each connected region uniquely starting at the supplied index
     n_labels, labels_im = cv2.connectedComponents(inverted_mask)
     return_mask = np.zeros_like(layer_mask)
@@ -227,6 +228,11 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     #if there are any nonzero regions in the flagging mask(s), make some plots and then 
     #write out a labelled mask file and add corresponding lines to the csv file 
     if np.min(dust_mask)<1 :
+        #figure out where the image is in cellview
+        key_x = float(key.split(',')[0].split('[')[1])
+        key_y = float(key.split(',')[1].split(']')[0])
+        cvx = pscale*key_x-xpos
+        cvy = pscale*key_y-ypos
         #make and write out the plots for this image
         writeOutMaskingPlotsForImage(key,workingdir,tissue_mask,dust_mask_plots)
         #the mask starts as all ones (0=background, 1=good tissue, >=2 is a flagged region)
@@ -235,16 +241,12 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
         dust_layers_string = ''
         enumerated_dust_mask = getEnumeratedLayerMask(dust_mask,2)
         for ln in MASK_DUST_IN_LAYERS :
-            output_mask[:,:,ln-1] = np.where(enumerated_dust_mask!=0 and output_mask[:,:,ln-1]==1,enumerated_dust_mask,output_mask[:,:,ln-1])
+            (output_mask[:,:,ln-1])[output_mask[:,:,ln-1]==1] = (np.where(enumerated_dust_mask!=0,enumerated_dust_mask,output_mask[:,:,ln-1]))[output_mask[:,:,ln-1]==1]
             dust_layers_string+=f'{ln}-'
         #add a line for each region to the return_list (will be written to the .csv file)
         dust_region_indices = list(range(np.min(enumerated_dust_mask[enumerated_dust_mask!=0]),np.max(enumerated_dust_mask)+1))
         for dri in dust_region_indices :
-            key_x = key.split(',')[0].split('[')[1]
-            key_y = key.split(',')[1].split(']')[0]
-            cvx = pscale*(key_x-xpos)
-            cvy = pscale*(key_y-ypos)
-            return_list.append(LabelledMaskRegion(key,cvx,cvy,dri,dust_layers_string,np.sum(enumerated_dust_mask==dri),DUST_FLAG_STRING))
+            return_list.append(LabelledMaskRegion(key,cvx,cvy,dri,dust_layers_string[:-1],np.sum(enumerated_dust_mask==dri),DUST_FLAG_STRING))
         #next add in the tissue mask (all the background is zero in every layer, unless already flagged otherwise)
         for li in range(img_array.shape[-1]) :
             output_mask[:,:,li] = np.where(output_mask[:,:,li]==1,tissue_mask,output_mask[:,:,li])
