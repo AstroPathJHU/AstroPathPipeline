@@ -1,4 +1,4 @@
-import collections, contextlib, cv2, more_itertools, numpy as np, sklearn.decomposition
+import collections, contextlib, contextlib2, cv2, more_itertools, numpy as np, sklearn.decomposition
 
 from ..baseclasses.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleTransformationBase, RectangleWithImage, RectangleWithImageBase, RectangleWithImageMultiLayer
 from ..utilities import units
@@ -70,7 +70,7 @@ class AlignmentRectangleBase(RectangleWithImageBase):
     return self.__meanimagetransformation.meanimage
 
   def using_image_before_flatfield(self):
-    if self.__meanimagetransformation is None: return contextlib.nullcontext()
+    if self.__meanimagetransformation is None: return contextlib2.nullcontext()
     return self.using_image(self.__meanimagetransformationindex)
   @property
   def image_before_flatfield(self):
@@ -141,7 +141,7 @@ class RectanglePCAByBroadbandFilter(RectangleFromOtherRectangle):
     self.__pcabroadbandtransformation.setbroadbandfilters(broadbandfilters=self.originalrectangle.broadbandfilters)
 
   def setrectanglelist(self, rectanglelist): pass
-  def using_image_before_flatfield(self): return contextlib.nullcontext()
+  def using_image_before_flatfield(self): return contextlib2.nullcontext()
   @property
   def layers(self):
     return self.originalrectangle.layers
