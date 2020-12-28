@@ -1,4 +1,4 @@
-import contextlib, logging, more_itertools, numpy as np, os, pathlib, re
+import contextlib2, logging, more_itertools, numpy as np, os, pathlib, re
 from astropath_calibration.alignment.alignmentcohort import AlignmentCohort
 from astropath_calibration.alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
 from astropath_calibration.alignment.overlap import AlignmentResult
@@ -269,17 +269,17 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     with units.setup_context("fast"):
       self.testPscale(SlideID=SlideID)
 
-  def testCohort(self):
+  def testCohort(self, units="safe"):
     SlideID = "M21_1"
-    cohort = AlignmentCohort(thisfolder/"data", thisfolder/"data"/"flatw", debug=True, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
-    cohort.run()
+    args = [str(thisfolder/"data"), str(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", str(thisfolder/"alignment_test_for_jenkins"), "--logroot", str(thisfolder/"alignment_test_for_jenkins"), "--sampleregex", SlideID, "--units", units]
+    AlignmentCohort.runfromargumentparser(args)
 
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
     self.compareoutput(a)
 
   def testCohortFastUnits(self):
     with units.setup_context("fast"):
-      self.testCohort()
+      self.testCohort(units="fast")
 
   def testMissingFolders(self, SlideID="M21_1"):
     with temporarilyremove(thisfolder/"data"/SlideID/"im3"), temporarilyremove(thisfolder/"data"/SlideID/"inform_data"), units.setup_context("fast"):
@@ -314,7 +314,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     nclip = a1.nclip
     position = a1.position
 
-    with contextlib.nullcontext(): #temporarilyremove(thisfolder/"data"/SlideID/"dbload"):
+    with contextlib2.nullcontext(): #temporarilyremove(thisfolder/"data"/SlideID/"dbload"):
       a2 = AlignmentSetFromXML(*args, nclip=units.pixels(nclip, pscale=a1.pscale), position=position, **kwargs)
       a2.getDAPI()
       a2.align()

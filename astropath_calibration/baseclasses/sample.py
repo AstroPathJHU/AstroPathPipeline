@@ -411,6 +411,15 @@ class ZoomSampleBase(SampleBase):
   def wsifilename(self, layer):
     return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
 
+class DeepZoomSampleBase(SampleBase):
+  def __init__(self, *args, deepzoomroot, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__deepzoomroot = deepzoomroot
+  @property
+  def deepzoomroot(self): return self.__deepzoomroot
+  @property
+  def deepzoomfolder(self): return self.deepzoomroot/self.SlideID
+
 class SampleThatReadsRectangles(SampleBase):
   rectangletype = Rectangle #can be overridden in subclasses
 
