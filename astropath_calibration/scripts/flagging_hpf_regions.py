@@ -1,14 +1,13 @@
 #imports
 from astropath_calibration.flatfield.utilities import chunkListOfFilepaths, readImagesMT
 from astropath_calibration.flatfield.config import CONST
-from astropath_calibration.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset, writeImageToFile
+from astropath_calibration.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset, writeImageToFile, smoothImageWorker
 from astropath_calibration.utilities.tableio import readtable, writetable
 from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser
 from astropath_calibration.utilities import units
 from astropath_calibration.baseclasses.csvclasses import constantsdict
 from argparse import ArgumentParser
-from scipy.ndimage.filters import convolve
-import numpy as np, multiprocessing as mp
+import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import logging, os, glob, cv2, dataclasses
 
 #constants
@@ -74,7 +73,7 @@ def getImageLayerTissueMask(img_layer,bkg_threshold) :
 def getImageTissueMask(image_arr,bkg_thresholds) :
     #mask each layer individually first
     layer_masks = []
-    for li in range(DIMS[-1]) :
+    for li in range(image_arr.shape[-1]) :
         layer_masks.append(getImageLayerTissueMask(image_arr[:,:,li],bkg_thresholds[li]))
     #find the well-defined tissue and background in each layer group
     overall_tissue_mask = np.zeros_like(layer_masks[0])
@@ -98,7 +97,7 @@ def getImageTissueMask(image_arr,bkg_thresholds) :
     final_mask[overall_tissue_mask==1] = 1
     final_mask[overall_background_mask==1] = 0
     #anything left over is signal if it's stacked in at least half the total number of layers
-    thresholded_stacked_masks = np.where(total_stacked_masks>(DIMS[-1]/2.),1,0)
+    thresholded_stacked_masks = np.where(total_stacked_masks>(image_arr.shape[-1]/2.),1,0)
     final_mask[final_mask==2] = thresholded_stacked_masks[final_mask==2]
     #filter the tissue and background portions to get rid of the small islands
     final_mask = getFilteredMask(final_mask,min_size=TISSUE_MIN_SIZE)
@@ -154,12 +153,12 @@ def getImageLayerBlurMaskAndPlots(img_layer,nlv_cut,min_size,tissue_mask=None) :
     overlay_gs = np.array([im_gs,im_gs,0.15*plot_mask]).transpose(1,2,0)
     norm = 128./np.mean(img_layer[plot_mask==1]); im_c = (np.clip(norm*img_layer,0,255)).astype('uint8')
     overlay_c = np.array([im_c,im_c*plot_mask,im_c*plot_mask]).transpose(1,2,0)
-    plots = [{'image':img_layer,'title':f'raw IMAGE LAYER'},
-             {'image':overlay_c,'title':f'BLUR mask overlay (clipped)'},
-             {'image':overlay_gs,'title':f'BLUR mask overlay (grayscale)'},
-             {'image':img_nlv,'title':f'local variance of normalized laplacian'},
-             {'hist':img_nlv.flatten(),'xlabel':f'variance of normalized laplacian','line_at'=nlv_cut},
-             {'image':blur_mask,'title':f'BLUR mask'},
+    plots = [{'image':img_layer,'title':'raw IMAGE LAYER'},
+             {'image':overlay_c,'title':'BLUR mask overlay (clipped)'},
+             {'image':overlay_gs,'title':'BLUR mask overlay (grayscale)'},
+             {'image':img_nlv,'title':'local variance of normalized laplacian'},
+             {'hist':img_nlv.flatten(),'xlabel':'variance of normalized laplacian','line_at':nlv_cut},
+             {'image':blur_mask,'title':'BLUR mask'},
             ]
     #return the blur mask for the layer and the dictionary of plots
     return blur_mask, plots
@@ -186,10 +185,11 @@ def writeOutMaskingPlotsForImage(image_key,workingdir,tissue_mask,dust_mask_plot
             ax[0][pdi].hist(plot_dict['hist'],100)
             if 'xlabel' in plot_dict.keys() :
                 xlabel_text = plot_dict['xlabel'].replace('IMAGE',image_key).replace('LAYER',f'layer {DUST_LAYER}').replace('BLUR','dust')
+                ax[0][pdi].set_xlabel(xlabel_text)
             if 'line_at' in plot_dict.keys() :
                 ax[0][pdi].plot([plot_dict['line_at'],plot_dict['line_at']],
                                 [0.8*y for y in ax[0][pdi].get_ylim()],
-                                linewidth=2,color='tab:red','label'=plot_dict['line_at'])
+                                linewidth=2,color='tab:red',label=plot_dict['line_at'])
                 ax[0][pdi].legend(loc='best')
     #add the plot of the overlaid tissue and dust masks
     if dust_mask is not None :
@@ -323,16 +323,13 @@ def main(args=None) :
         all_rfps=all_rfps[:args.max_files]
     #get the correction details and other slide information stuff
     dims   = getImageHWLFromXMLFile(args.root_dir,args.slideID)
-    for ln in LAYERS :
-        if ln not in range(1,dims[-1]+1) :
-            raise RuntimeError(f'ERROR: images have dimensions {dims} but layers {LAYERS} are needed.')
     metsbl = getSlideMedianExposureTimesByLayer(args.root_dir,args.slideID)
     etcobl = [lo.offset for lo in readtable(args.exposure_time_offset_file,LayerOffset)]
     with open(os.path.join(args.threshold_file_dir,f'{args.slideID}_background_thresholds.txt')) as fp :
         bgtbl = [int(v) for v in fp.readlines() if v!='']
     if len(bgtbl)!=dims[-1] :
         raise RuntimeError(f'ERROR: found {len(bgtbl)} background thresholds but images have {dims[-1]} layers!')
-    thresholds = [bgtbl[ln-1] for ln in LAYERS]
+    thresholds = [bgtbl[li] for li in range(dims[-1])]
     slide_constants_dict = constantsdict(os.path.join(args.root_dir,args.slideID,'dbload',f'{args.slideID}_constants.csv'))
     xpos = float(units.pixels(slide_constants_dict['xposition']))
     ypos = float(units.pixels(slide_constants_dict['yposition']))
