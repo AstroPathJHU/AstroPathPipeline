@@ -9,7 +9,7 @@ node {
       ]) {
         try {
           stage('checkout') {
-            sh 'checkout scm'
+            checkout scm
           }
           stage('pip install') {
             sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags "$url"'
