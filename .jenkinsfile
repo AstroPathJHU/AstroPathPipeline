@@ -1,194 +1,193 @@
-pipeline {
-  agent {
-    docker { image 'astropathjhu/alignmenttest:v18' }
-  }
+node {
+  docker.image('astropathjhu/alignmenttest:v18').inside {
+    withEnv([
+      'JENKINS_NO_GPU=1',
+      'HOME=/home/circleci',
+    ]) {
+      withCredentials([
+        string(credentialsId: 'astropath-github', variable: 'GITHUB_TOKEN'),
+      ]) {
 
-  environment {
-    JENKINS_NO_GPU = "1"
-    HOME = "/home/circleci"
-    GITHUB_TOKEN = credentials('astropath-github')
-  }
-
-  stages {
-    stage('pip install') {
-      steps {
-        sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags "$url"'
-        sh 'pip install .'
-        sh '''echo "from astropath_calibration.utilities.version import astropathversion; print(astropathversion); assert astropathversion != 'unknown version'" | python'''
-        sh '''cd ..; echo "from astropath_calibration.utilities.version import astropathversion; print(astropathversion); assert astropathversion != 'unknown version'" | python'''
-      }
-    }
-
-    stage('setup') {
-      parallel {
-        stage('setup dbload folder') {
-          steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
-          }
-        }
-        stage('extract flatw layer') {
-          steps {
-            sh 'folder=$(basename $(pwd)); cd ..; extractlayer ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
-          }
-        }
-      }
-    }
-    stage('run tests') {
-      parallel {
-        stage('alignment') {
-          stages {
-            stage('test alignment') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
-              }
-            }
-          }
-        }
-        stage('alignment documentation') {
-          stages {
-            stage('align') {
-              steps {
-                sh 'alignmentcohort test/data test/data/flatw --sampleregex M21_1'
-              }
-            }
-            stage('alignment documentation') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.alignment.makeplots --testing'
-                sh 'cd documentation/alignment; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/alignment/alignment_stitching.log'
-              }
-            }
-          }
-        }
-        stage('zoom annowarp deepzoom pipeline') {
-          stages {
-            stage('test zoom') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
-              }
-            }
-            stage('test annowarp') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testannowarp'
-              }
-            }
-            stage('annowarp plots') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.annowarp.makeplots'
-                sh 'cd documentation/annowarp; pdflatex annowarp.tex; pdflatex annowarp.tex; pdflatex annowarp.tex'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/annowarp/annowarp.log'
-              }
-            }
-            stage('deepzoom') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdeepzoom'
-              }
-            }
-          }
-        }
-        stage('align layers') {
-          stages {
-            stage('test align layers') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignlayers'
-              }
-            }
-            stage('layer PCA plots') {
-              steps {
-                sh 'cd documentation/layerPCA; pdflatex layerPCA.tex; pdflatex layerPCA.tex; pdflatex layerPCA.tex'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/layerPCA/layerPCA.log'
-              }
-            }
-          }
+        stage('pip install') {
+          sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags "$url"'
+          sh 'pip install .'
+          sh '''echo "from astropath_calibration.utilities.version import astropathversion; print(astropathversion); assert astropathversion != 'unknown version'" | python'''
+          sh '''cd ..; echo "from astropath_calibration.utilities.version import astropathversion; print(astropathversion); assert astropathversion != 'unknown version'" | python'''
         }
 
-        stage('warping') {
-          stages {
-            stage('test warping') {
+        //https://stackoverflow.com/questions/46834998/scripted-jenkinsfile-parallel-stage
+        stage('setup') {
+          parallel([
+            stage('setup dbload folder') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
               }
             }
-            stage('test warpfitter') {
+            stage('extract flatw layer') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
+                sh 'folder=$(basename $(pwd)); cd ..; extractlayer ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
               }
             }
-          }
-        }
-
-        stage('interactive flatfielding') {
-          stages {
-            stage('test flatfield') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfield'
-              }
-            }
-            stage('flatfield documentation') {
-              steps {
-                sh 'cd documentation/flatfield; pdflatex flatfield_documentation.tex; bibtex flatfield_documentation; pdflatex flatfield_documentation.tex; pdflatex flatfield_documentation.tex'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/flatfield/flatfield_documentation.log'
-              }
-            }
-          }
-        }
-
-        stage('test batch mode flatfield') {
-          steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfieldbatchmodes'
-          }
-        }
-
-        stage('exposure time correction') {
-          stages {
-            stage('test exposuretime') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testexposuretimefit'
-              }
-            }
-            stage('exposuretime documentation') {
-              steps {
-                sh 'cd documentation/exposuretime; pdflatex exposuretime_documentation.tex; bibtex exposuretime_documentation; pdflatex exposuretime_documentation.tex; pdflatex exposuretime_documentation.tex'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/exposuretime/exposuretime_documentation.log'
-              }
-            }
-          }
-        }
-
-        stage('test image correction') {
-          steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testimagecorrection'
-          }
-        }
-
-        stage('code checks') {
-          steps {
-            sh 'python -m pyflakes .'
-          }
+          ])
         }
       }
-    }
-    stage('check that the repo is clean') {
-      steps {
-        //make sure normal execution doesn't make files that aren't ignored by .gitignore
-        sh 'if ! [ -z "$(git status --porcelain)" ]; then echo "tests created uncommitted changes"; git status; git diff; git submodule foreach bash -c "git status; git diff"; exit 1; fi'
-        sh 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)'
-        sh '''git submodule foreach bash -c 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)\''''
+      stage('run tests') {
+        parallel {
+          stage('alignment') {
+            stages {
+              stage('test alignment') {
+                steps {
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
+                }
+              }
+            }
+          }
+          stage('alignment documentation') {
+            stages {
+              stage('align') {
+                steps {
+                  sh 'alignmentcohort test/data test/data/flatw --sampleregex M21_1'
+                }
+              }
+              stage('alignment documentation') {
+                steps {
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.alignment.makeplots --testing'
+                  sh 'cd documentation/alignment; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex; pdflatex alignment_stitching.tex'
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/alignment/alignment_stitching.log'
+                }
+              }
+            }
+          }
+          stage('zoom annowarp deepzoom pipeline') {
+            stages {
+              stage('test zoom') {
+                steps {
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
+                }
+              }
+              stage('test annowarp') {
+                steps {
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testannowarp'
+                }
+              }
+              stage('annowarp plots') {
+                steps {
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.annowarp.makeplots'
+                  sh 'cd documentation/annowarp; pdflatex annowarp.tex; pdflatex annowarp.tex; pdflatex annowarp.tex'
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/annowarp/annowarp.log'
+                }
+              }
+              stage('deepzoom') {
+                steps {
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdeepzoom'
+                }
+              }
+            }
+          }
+          stage('align layers') {
+            stages {
+              stage('test align layers') {
+                steps {
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignlayers'
+                }
+              }
+              stage('layer PCA plots') {
+                steps {
+                  sh 'cd documentation/layerPCA; pdflatex layerPCA.tex; pdflatex layerPCA.tex; pdflatex layerPCA.tex'
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/layerPCA/layerPCA.log'
+                }
+              }
+            }
+          }
+
+          stage('warping') {
+            stages {
+              stage('test warping') {
+                steps {
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
+                }
+              }
+              stage('test warpfitter') {
+                steps {
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
+                }
+              }
+            }
+          }
+
+          stage('interactive flatfielding') {
+            stages {
+              stage('test flatfield') {
+                steps {
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfield'
+                }
+              }
+              stage('flatfield documentation') {
+                steps {
+                  sh 'cd documentation/flatfield; pdflatex flatfield_documentation.tex; bibtex flatfield_documentation; pdflatex flatfield_documentation.tex; pdflatex flatfield_documentation.tex'
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/flatfield/flatfield_documentation.log'
+                }
+              }
+            }
+          }
+
+          stage('test batch mode flatfield') {
+            steps {
+              sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfieldbatchmodes'
+            }
+          }
+
+          stage('exposure time correction') {
+            stages {
+              stage('test exposuretime') {
+                steps {
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testexposuretimefit'
+                }
+              }
+              stage('exposuretime documentation') {
+                steps {
+                  sh 'cd documentation/exposuretime; pdflatex exposuretime_documentation.tex; bibtex exposuretime_documentation; pdflatex exposuretime_documentation.tex; pdflatex exposuretime_documentation.tex'
+                  sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/exposuretime/exposuretime_documentation.log'
+                }
+              }
+            }
+          }
+
+          stage('test image correction') {
+            steps {
+              sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testimagecorrection'
+            }
+          }
+
+          stage('code checks') {
+            steps {
+              sh 'python -m pyflakes .'
+            }
+          }
+        }
+      }
+      stage('check that the repo is clean') {
+        steps {
+          //make sure normal execution doesn't make files that aren't ignored by .gitignore
+          sh 'if ! [ -z "$(git status --porcelain)" ]; then echo "tests created uncommitted changes"; git status; git diff; git submodule foreach bash -c "git status; git diff"; exit 1; fi'
+          sh 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)'
+          sh '''git submodule foreach bash -c 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)\''''
+        }
       }
     }
-  }
-  post {
-    always {
-      archiveArtifacts artifacts: 'documentation/alignment/alignment_stitching.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'documentation/annowarp/annowarp.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'documentation/flatfield/flatfield_documentation.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'documentation/exposuretime/exposuretime_documentation.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'documentation/layerPCA/layerPCA.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'test/annowarp_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/deepzoom_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/exposuretimefit_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/warpfitter_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/zoom_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+    post {
+      always {
+        archiveArtifacts artifacts: 'documentation/alignment/alignment_stitching.pdf', fingerprint: true
+        archiveArtifacts artifacts: 'documentation/annowarp/annowarp.pdf', fingerprint: true
+        archiveArtifacts artifacts: 'documentation/flatfield/flatfield_documentation.pdf', fingerprint: true
+        archiveArtifacts artifacts: 'documentation/exposuretime/exposuretime_documentation.pdf', fingerprint: true
+        archiveArtifacts artifacts: 'documentation/layerPCA/layerPCA.pdf', fingerprint: true
+        archiveArtifacts artifacts: 'test/annowarp_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+        archiveArtifacts artifacts: 'test/deepzoom_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+        archiveArtifacts artifacts: 'test/exposuretimefit_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+        archiveArtifacts artifacts: 'test/warpfitter_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+        archiveArtifacts artifacts: 'test/zoom_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+      }
     }
   }
 }
