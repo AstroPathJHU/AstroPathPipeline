@@ -165,12 +165,56 @@ def getImageLayerBlurMaskAndPlots(img_layer,nlv_cut,min_size,tissue_mask=None) :
 #################### HELPER FUNCTIONS ####################
 
 #helper function to write out a sheet of masking information plots for an image
-def writeOutPlotsForImage(image_key,workingdir,tissue_mask,dust_mask_plot_dict) :
-    pass
+def writeOutMaskingPlotsForImage(image_key,workingdir,tissue_mask,dust_mask_plot_dicts) :
+    #figure out how manby columns will be in the sheet and set up the plots
+    n_cols = len(dust_mask_plot_dicts)
+    f,ax = plt.subplots(2,n_cols,figsize=(n_cols*9.6,2*tissue_mask.shape[0]/tissue_mask.shape[1]*9.6))
+    #add the dust mask plots
+    dust_mask = None
+    for pdi,plot_dict in enumerate(dust_mask_plot_dicts) :
+        if 'image' in plot_dict.keys() :
+            pos = ax[0][pdi].imshow(plot_dict['image'])
+            f.colorbar(pos,ax=ax[0][pdi])
+            if 'title' in plot_dict.keys() :
+                title_text = plot_dict['title'].replace('IMAGE',image_key).replace('LAYER',f'layer {DUST_LAYER}').replace('BLUR','dust')
+                ax[0][pdi].set_title(title_text)
+                if title_text=='dust mask' :
+                    dust_mask = plot_dict['image']
+        elif 'hist' in plot_dict.keys() :
+            ax[0][pdi].hist(plot_dict['hist'],100)
+            if 'xlabel' in plot_dict.keys() :
+                xlabel_text = plot_dict['xlabel'].replace('IMAGE',image_key).replace('LAYER',f'layer {DUST_LAYER}').replace('BLUR','dust')
+            if 'line_at' in plot_dict.keys() :
+                ax[0][pdi].plot([plot_dict['line_at'],plot_dict['line_at']],
+                                [0.8*y for y in ax[0][pdi].get_ylim()],
+                                linewidth=2,color='tab:red','label'=plot_dict['line_at'])
+                ax[0][pdi].legend(loc='best')
+    #add the plot of the overlaid tissue and dust masks
+    if dust_mask is not None :
+        superimposed_masks = 0.25*tissue_mask+0.75*dust_mask
+        ax[1][0].imshow(superimposed_masks,vmin=0.,vmax=1.)
+        ax[1][0].set_title('superimposed masks')
+    else :
+        ax[1][0].axis('off')
+    #empty the other unused axes
+    for ai in range(1,n_cols) :
+        ax[1][ai].axis('off')
+    #save the plot
+    with cd(workingdir) :
+        plt.savefig(f'{image_key}_masking_plots.png')
+        plt.close()
 
 #helper function to change a mask from zeroes and ones to region indices and zeroes
 def getEnumeratedLayerMask(layer_mask,start_i) :
-    pass
+    #first invert the mask to get the "bad" regions as "signal"
+    inverted_mask = layer_mask; inverted_mask[layer_mask==0] = 1; inverted_mask[layer_mask==1] = 0
+    #label each connected region uniquely starting at the supplied index
+    n_labels, labels_im = cv2.connectedComponents(inverted_mask)
+    return_mask = np.zeros_like(layer_mask)
+    for label_i in range(1,n_labels) :
+        return_mask[labels_im==label_i] = start_i+label_i-1
+    #return the mask
+    return return_mask
 
 #helper function to calculate and add the subimage infos for a single image to a shared dictionary (run in parallel)
 def getLabelledMaskRegionsWorker(img_array,key,thresholds,workingdir,return_list) :
@@ -182,7 +226,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,workingdir,return_list
     #write out a labelled mask file and add corresponding lines to the csv file 
     if np.min(dust_mask)<1 :
         #make and write out the plots for this image
-        writeOutPlotsForImage(key,workingdir,tissue_mask,dust_mask_plots)
+        writeOutMaskingPlotsForImage(key,workingdir,tissue_mask,dust_mask_plots)
         #the mask starts as all ones (0=background, 1=good tissue, >=2 is a flagged region)
         output_mask = np.ones(img_array.shape,dtype=np.uint8)
         #add in the dust, starting with index 2
