@@ -1,6 +1,7 @@
 import more_itertools, pathlib
 
 from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample, WarpedVertex
+from astropath_calibration.annowarp.annowarpcohort import AnnoWarpCohort
 from astropath_calibration.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath_calibration.baseclasses.csvclasses import Region
 from astropath_calibration.utilities import units
@@ -95,3 +96,8 @@ class TestAnnoWarp(TestBaseSaveOutput):
       rtol=0.01,
     )
 
+  def testCohort(self, SlideID="M206", units="fast"):
+    root = thisfolder/"data"
+    zoomroot = thisfolder/"annowarp_test_for_jenkins"
+    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units]
+    AnnoWarpCohort.runfromargumentparser(args)
