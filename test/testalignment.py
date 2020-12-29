@@ -1,4 +1,4 @@
-import contextlib, logging, more_itertools, numpy as np, os, pathlib, re
+import contextlib2, logging, more_itertools, numpy as np, os, pathlib, re
 from astropath_calibration.alignment.alignmentcohort import AlignmentCohort
 from astropath_calibration.alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
 from astropath_calibration.alignment.overlap import AlignmentResult
@@ -314,7 +314,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     nclip = a1.nclip
     position = a1.position
 
-    with contextlib.nullcontext(): #temporarilyremove(thisfolder/"data"/SlideID/"dbload"):
+    with contextlib2.nullcontext(): #temporarilyremove(thisfolder/"data"/SlideID/"dbload"):
       a2 = AlignmentSetFromXML(*args, nclip=units.pixels(nclip, pscale=a1.pscale), position=position, **kwargs)
       a2.getDAPI()
       a2.align()

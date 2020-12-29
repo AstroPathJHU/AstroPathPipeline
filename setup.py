@@ -23,6 +23,7 @@ setuptools.setup(
     ],
   },
   install_requires = [
+    "contextlib2>=0.6.0",
     "cvxpy",
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
