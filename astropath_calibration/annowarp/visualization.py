@@ -29,6 +29,6 @@ def showannotation(image, regions, *, qpscale, imagescale, xlim=(), ylim=(), ver
   if showplot:
     plt.show()
   if saveas is not None:
-    plt.savefig(saveas)
+    fig.savefig(saveas)
   if not showplot:
-    plt.close()
+    fig.close()
