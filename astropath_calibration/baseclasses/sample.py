@@ -396,7 +396,7 @@ class FlatwSampleBase(SampleBase):
 class ZoomSampleBase(SampleBase):
   def __init__(self, *args, zoomroot, **kwargs):
     super().__init__(*args, **kwargs)
-    self.__zoomroot = zoomroot
+    self.__zoomroot = pathlib.Path(zoomroot)
   @property
   def zoomroot(self): return self.__zoomroot
   @property
