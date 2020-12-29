@@ -35,7 +35,6 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
     destfolder = self.layerfolder(layer)
     filesizedict = collections.defaultdict(list)
     for nfiles, filename in enumerate(destfolder.glob("*/*.png"), start=1):
-      nfiles += 1
       size = filename.stat().st_size
       filesizedict[size].append(filename)
 
@@ -49,7 +48,6 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
           else:
             continue
 
-      nbad += len(files)
       self.logger.info("removing %d empty files with file size %d", len(files), size)
       for nbad, filename in enumerate(files, start=nbad+1):
         filename.unlink()
