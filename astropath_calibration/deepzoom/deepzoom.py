@@ -105,7 +105,7 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
           x = int(match.group(1))
           y = int(match.group(2))
 
-          lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, fname=filename))
+          lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, name=filename))
 
     lst.sort()
     writetable(self.deepzoomfolder/"zoomlist.csv", lst)
@@ -125,7 +125,7 @@ class DeepZoomFile:
   marker: int
   x: int
   y: int
-  fname: pathlib.Path = pathfield()
+  name: pathlib.Path = pathfield()
 
   def __lt__(self, other):
     return (self.sample, self.zoom, self.marker, self.x, self.y) < (other.sample, other.zoom, other.marker, other.x, other.y)
