@@ -128,4 +128,4 @@ class DeepZoomFile:
   fname: pathlib.Path = pathfield()
 
   def __lt__(self, other):
-    return (self.sample, self.marker, self.zoom, self.x, self.y) < (other.sample, other.marker, other.zoom, other.x, other.y)
+    return (self.sample, self.zoom, self.marker, self.x, self.y) < (other.sample, other.zoom, other.marker, other.x, other.y)
