@@ -7,9 +7,15 @@ from .testbase import assertAlmostEqual, TestBaseSaveOutput
 thisfolder = pathlib.Path(__file__).parent
 
 class TestDeepZoom(TestBaseSaveOutput):
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    from .testzoom import gunzipreference
+    gunzipreference("M206")
+
   def testDeepZoom(self, SlideID="M206", units="safe", **kwargs):
     root = thisfolder/"data"
-    zoomroot = thisfolder/"annowarp_test_for_jenkins"
+    zoomroot = thisfolder/"reference"/"zoom"
     deepzoomroot = thisfolder/"deepzoom_test_for_jenkins"
     args = [str(root), "--zoomroot", str(zoomroot), "--deepzoomroot", str(deepzoomroot), "--logroot", str(deepzoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--layers", "1"]
     DeepZoomCohort.runfromargumentparser(args)
