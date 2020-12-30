@@ -62,25 +62,47 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
     maxfolder = int(folders[-1].name)
     if maxfolder > 9:
       raise ValueError(f"Need more zoom levels than 0-9 (max from vips is {maxfolder})")
+    newfolders = []
     for folder in reversed(folders):
       newnumber = int(folder.name) + 9 - maxfolder
       newfolder = destfolder/f"Z{newnumber}"
       folder.rename(newfolder)
+      newfolders.append(newfolder)
 
     minzoomnumber = newnumber
     minzoomfolder = newfolder
 
-    smallestimagefilename = minzoomfolder/"0_0.png"
-    with PIL.Image.open(smallestimagefilename) as im:
-      im.load()
-    n, m = im.size
-    if m > self.tilesize or n > self.tilesize:
-      raise ValueError(f"{smallestimagefilename} is too big {m}x{n}, expected <= {self.tilesize}x{self.tilesize}")
-    if m < self.tilesize or n < self.tilesize:
-      im = PIL.Image.fromarray(np.pad(np.asarray(im), ((0, self.tilesize-m), (0, self.tilesize-n))))
-      im.save(smallestimagefilename)
+    def tilexy(filename):
+      match = re.match("([0-9]+)_([0-9]+)[.]png$", filename.name)
+      return int(match.group(1)), int(match.group(2))
+    def tilex(filename): return tilexy(filename)[0]
+    def tiley(filename): return tilexy(filename)[1]
+    for folder in newfolders:
+      filenames = list(folder.glob("*.png"))
+      maxx = tilex(max(filenames, key=tilex))
+      maxxfilenames = [_ for _ in filenames if tilex(_) == maxx]
+      maxy = tiley(max(filenames, key=tiley))
+      maxyfilenames = [_ for _ in filenames if tiley(_) == maxy]
+      for edgefilenames in maxxfilenames, maxyfilenames:
+        edgefilename = edgefilenames[0]
+        with PIL.Image.open(edgefilename) as im:
+          n, m = im.size
+          if m == self.tilesize and n == self.tilesize: continue
+          if m > self.tilesize or n > self.tilesize:
+            raise ValueError(f"{edgefilename} is too big {m}x{n}, expected <= {self.tilesize}x{self.tilesize}")
+        for edgefilename in edgefilenames:
+          with PIL.Image.open(edgefilename) as im:
+            n, m = im.size
+            if m == self.tilesize and n == self.tilesize: continue
+            if m > self.tilesize or n > self.tilesize:
+              raise ValueError(f"{edgefilename} is too big {m}x{n}, expected <= {self.tilesize}x{self.tilesize}")
+            im.load()
+          im = PIL.Image.fromarray(np.pad(np.asarray(im), ((0, self.tilesize-m), (0, self.tilesize-n))))
+          im.save(edgefilename)
 
-    smallestimage = im
+    smallestimagefilename = minzoomfolder/"0_0.png"
+    with PIL.Image.open(smallestimagefilename) as smallestimage:
+      smallestimage.load()
 
     for i in range(minzoomnumber):
       newfolder = destfolder/f"Z{i}"
