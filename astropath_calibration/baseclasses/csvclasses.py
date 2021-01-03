@@ -1,4 +1,4 @@
-import dataclasses, datetime, numbers, numpy as np, re
+import dataclasses, datetime, functools, numbers, numpy as np, re
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable
@@ -159,7 +159,7 @@ class Vertex(DataClassWithQpscale):
 class Polygon:
   pixelsormicrons = "pixels"
 
-  def __init__(self, *vertices, pixels=None, microns=None, pscale=None, qpscale=None, power=1):
+  def __init__(self, *vertices, subtractpolygons=None, pixels=None, microns=None, pscale=None, qpscale=None, power=1):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
     if bool(vertices) + (pixels is not None) + (microns is not None) != 1:
@@ -183,7 +183,7 @@ class Polygon:
         x, y = vertex.split()
         x = units.convertpscale(units.Distance(pscale=pscale, **{kw: floattoint(x)}), pscale, qpscale)
         y = units.convertpscale(units.Distance(pscale=pscale, **{kw: floattoint(y)}), pscale, qpscale)
-        vertices.append(Vertex(x=x, y=y, vid=i, regionid=0, qpscale=qpscale))
+        vertices.append(Vertex(x=x, y=y, vid=i, regionid=None, qpscale=qpscale))
 
     self.__vertices = vertices
     self.__pscale = pscale
@@ -192,6 +192,13 @@ class Polygon:
     qpscale.discard(None)
     if len(qpscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
     self.__qpscale, = qpscale
+
+    if subtractpolygons is None:
+      subtractpolygons = []
+    self.__subtractpolygons = subtractpolygons
+    for subtractpolygon in subtractpolygons:
+      if subtractpolygon.__subtractpolygons:
+        raise ValueError("Can't have multiply nested polygons")
 
   @property
   def pscale(self):
@@ -214,13 +221,73 @@ class Polygon:
       )
     )
     vertices = list(self.vertices) + [self.vertices[0]]
-    return "POLYGON ((" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in vertices) + "))"
+    return (
+      "POLYGON ("
+      + ",".join(
+        ["(" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in vertices) + ")"]
+        + [re.match("POLYGON\((\([^()]*\))\)$", str(subtractpolygon)).group(1) for subtractpolygon in self.__subtractpolygons]
+      ) + ")"
+    )
 
   def __eq__(self, other):
     return self.vertices == other.vertices
 
-@dataclasses.dataclass
-class __RegionBase(DataClassWithPscale, DataClassWithQpscale):
+  @staticmethod
+  def field(*args, metadata={}, **kwargs):
+    def polywritefunction(poly):
+      if poly is None: return "poly"
+      return str(poly)
+    metadata = {
+      "writefunction": polywritefunction,
+      "readfunction": str,
+      **metadata,
+    }
+    return dataclasses.field(*args, metadata=metadata, **kwargs)
+
+  class dataclasswithpolygon:
+    def __new__(thiscls, decoratedcls=None, **kwargs):
+      if decoratedcls is None: return super().__new__(thiscls)
+      if kwargs: raise TypeError("Can't call this with both decoratedcls and kwargs")
+      return thiscls()(decoratedcls)
+
+    def __init__(self, **kwargs):
+      self.kwargs = kwargs
+
+    def __call__(self, cls):
+      @dataclasses.dataclass(**self.kwargs)
+      class newcls(dataclasses.dataclass(cls, **self.kwargs), DataClassWithPscale, DataClassWithQpscale):
+        @property
+        def poly(self):
+          return self.__poly
+        @poly.setter
+        def poly(self, poly):
+          if isinstance(poly, Polygon):
+            self.__poly = poly
+          elif poly is None or poly == "poly":
+            self.__poly = None
+          elif isinstance(poly, str):
+            self.__poly = Polygon(
+              **{Polygon.pixelsormicrons: poly},
+              pscale=self.pscale,
+              qpscale=self.qpscale,
+            )
+          else:
+            raise TypeError(f"Unknown type {type(poly).__name__} for poly")
+
+        def _distances_passed_to_init(self):
+          if not isinstance(self.poly, Polygon): return self.poly
+          result = sum(([v.x, v.y] for v in self.poly.vertices), [])
+          result = [_ for _ in result if _]
+          return result
+
+      for thing in functools.WRAPPER_ASSIGNMENTS:
+        setattr(newcls, thing, getattr(cls, thing))
+
+      return newcls
+
+
+@Polygon.dataclasswithpolygon
+class Region:
   pixelsormicrons = Polygon.pixelsormicrons
 
   regionid: int
@@ -230,35 +297,5 @@ class __RegionBase(DataClassWithPscale, DataClassWithQpscale):
   isNeg: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
   type: str
   nvert: int
-  def __polywritefunction(poly):
-    if poly is None: return "poly"
-    return str(poly)
-  poly: Polygon = dataclasses.field(metadata={"writefunction": __polywritefunction, "readfunction": str})
-  del __polywritefunction
+  poly: Polygon = Polygon.field()
   readingfromfile: dataclasses.InitVar[bool] = False
-
-@dataclasses.dataclass
-class Region(__RegionBase):
-  @property
-  def poly(self):
-    return self.__poly
-  @poly.setter
-  def poly(self, poly):
-    if isinstance(poly, Polygon):
-      self.__poly = poly
-    elif poly is None or poly == "poly":
-      self.__poly = None
-    elif isinstance(poly, str):
-      self.__poly = Polygon(
-        **{Polygon.pixelsormicrons: poly},
-        pscale=self.pscale,
-        qpscale=self.qpscale,
-      )
-    else:
-      raise TypeError(f"Unknown type {type(poly).__name__} for poly")
-
-  def _distances_passed_to_init(self):
-    if not isinstance(self.poly, Polygon): return self.poly
-    result = sum(([v.x, v.y] for v in self.poly.vertices), [])
-    result = [_ for _ in result if _]
-    return result

@@ -1,8 +1,9 @@
-import more_itertools
+import cv2, methodtools, more_itertools, numpy as np
 from ..alignment.field import Field
 from ..baseclasses.csvclasses import Polygon, Vertex
 from ..baseclasses.rectangle import RectangleReadComponentTiff
 from ..baseclasses.sample import ReadRectanglesComponentTiff
+from ..utilities import units
 
 class FieldReadComponentTiff(Field, RectangleReadComponentTiff):
   pass
@@ -25,8 +26,11 @@ class GeomSample(ReadRectanglesComponentTiff):
       "with_seg": True,
     }
 
-  def getboundaries(self):
-    for field in self.fields:
+  #@methodtools.lru_cache()
+  def getfieldboundaries(self):
+    boundaries = []
+    for n, field in enumerate(self.rectangles, start=1):
+      assert n == field.n
       mx1 = (field.mx1//self.onepixel)*self.onepixel
       mx2 = (field.mx2//self.onepixel)*self.onepixel
       my1 = (field.my1//self.onepixel)*self.onepixel
@@ -35,11 +39,45 @@ class GeomSample(ReadRectanglesComponentTiff):
       Py = my1, my1, my2, my2
       fieldvertices = [Vertex(regionid=None, vid=i, x=x, y=y, qpscale=self.pscale) for i, (x, y) in enumerate(more_itertools.zip_equal(Px, Py))]
       fieldpolygon = Polygon(*fieldvertices, pscale=self.pscale)
+      boundaries.append(Boundary(n=n, k=1, poly=fieldpolygon, pscale=self.pscale, qpscale=self.pscale))
+    return boundaries
 
+  #@methodtools.lru_cache()
+  def gettumorboundaries(self):
+    boundaries = []
+    for n, field in enumerate(self.rectangles, start=1):
       with field.using_image() as im:
-        contours, hierarchy = cv2.findContours((im==0).astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours, (hierarchy,) = cv2.findContours((im==0).astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         hierarchylevels = {-1: -1}
-        for i, (contour, (next, previous, child, parent)) in enumerate(more_itertools.zip_equal(contours, hierarchy)):
+        subtractpolygons = [[] for c in contours]
+        polygons = [None for c in contours]
+        toplevelpolygons = []
+        for i, (contour, (next, previous, child, parent)) in reversed(list(enumerate(more_itertools.zip_equal(contours, hierarchy)))):
           assert contour.shape[1:] == (1, 2), contour.shape
-          hierarchylevels[i] = hierarchylevel = hierarchylevels[parent]+1
-          
+          vertices = [
+            Vertex(x=x, y=y, vid=i, regionid=None, qpscale=self.pscale)
+            for i, ((x, y),) in enumerate(contour*self.onepixel+units.nominal_values(field.pxvec), start=1)
+          ]
+          polygon = polygons[i] = Polygon(*vertices, pscale=self.pscale, subtractpolygons=subtractpolygons[i])
+          if parent == -1:
+            #prepend because we are iterating in reversed order
+            toplevelpolygons.insert(0, polygon)
+          else:
+            #inner rings must have >4 points
+            if len(vertices) > 4:
+              subtractpolygons[parent].insert(0, polygon)
+        for k, polygon in enumerate(toplevelpolygons, start=1):
+          boundaries.append(Boundary(n=n, k=k, poly=polygon, pscale=self.pscale, qpscale=self.pscale))
+    return boundaries
+
+  def writeboundaries(self, *, fieldfilename=None, tumorfilename=None):
+    if fieldfilename is None: fieldfilename = self.csv("fieldGeometry")
+    if tumorfilename is None: tumorfilename = self.csv("tumorGeometry")
+    writetable(fieldfilename, self.getfieldboundaries())
+    writetable(tumorfilename, self.gettumorboundaries())
+
+@Polygon.dataclasswithpolygon
+class Boundary:
+  n: int
+  k: int
+  poly: Polygon = Polygon.field()
