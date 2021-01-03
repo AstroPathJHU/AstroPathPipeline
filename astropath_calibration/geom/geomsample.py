@@ -4,6 +4,7 @@ from ..baseclasses.csvclasses import Polygon, Vertex
 from ..baseclasses.rectangle import RectangleReadComponentTiff
 from ..baseclasses.sample import ReadRectanglesComponentTiff
 from ..utilities import units
+from ..utilities.tableio import writetable
 
 class FieldReadComponentTiff(Field, RectangleReadComponentTiff):
   pass
@@ -26,7 +27,7 @@ class GeomSample(ReadRectanglesComponentTiff):
       "with_seg": True,
     }
 
-  #@methodtools.lru_cache()
+  @methodtools.lru_cache()
   def getfieldboundaries(self):
     boundaries = []
     for n, field in enumerate(self.rectangles, start=1):
@@ -42,13 +43,12 @@ class GeomSample(ReadRectanglesComponentTiff):
       boundaries.append(Boundary(n=n, k=1, poly=fieldpolygon, pscale=self.pscale, qpscale=self.pscale))
     return boundaries
 
-  #@methodtools.lru_cache()
+  @methodtools.lru_cache()
   def gettumorboundaries(self):
     boundaries = []
     for n, field in enumerate(self.rectangles, start=1):
       with field.using_image() as im:
         contours, (hierarchy,) = cv2.findContours((im==0).astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        hierarchylevels = {-1: -1}
         subtractpolygons = [[] for c in contours]
         polygons = [None for c in contours]
         toplevelpolygons = []
@@ -70,9 +70,14 @@ class GeomSample(ReadRectanglesComponentTiff):
           boundaries.append(Boundary(n=n, k=k, poly=polygon, pscale=self.pscale, qpscale=self.pscale))
     return boundaries
 
+  @property
+  def fieldfilename(self): return self.csv("fieldGeometry")
+  @property
+  def tumorfilename(self): return self.csv("tumorGeometry")
+
   def writeboundaries(self, *, fieldfilename=None, tumorfilename=None):
-    if fieldfilename is None: fieldfilename = self.csv("fieldGeometry")
-    if tumorfilename is None: tumorfilename = self.csv("tumorGeometry")
+    if fieldfilename is None: fieldfilename = self.fieldfilename
+    if tumorfilename is None: tumorfilename = self.tumorfilename
     writetable(fieldfilename, self.getfieldboundaries())
     writetable(tumorfilename, self.gettumorboundaries())
 
