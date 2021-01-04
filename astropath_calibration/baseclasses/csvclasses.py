@@ -186,12 +186,6 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
         vertices.append(Vertex(x=x, y=y, vid=i, regionid=None, qpscale=qpscale))
 
     self.__vertices = vertices
-    self.__pscale = pscale
-
-    qpscale = {qpscale, *(v.qpscale for v in vertices)}
-    qpscale.discard(None)
-    if len(qpscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
-    self.__qpscale, = qpscale
 
     if subtractpolygons is None:
       subtractpolygons = []
@@ -199,6 +193,16 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
     for subtractpolygon in subtractpolygons:
       if subtractpolygon.__subtractpolygons:
         raise ValueError("Can't have multiply nested polygons")
+
+    qpscale = {qpscale, *(v.qpscale for v in vertices), *(p.qpscale for p in subtractpolygons)}
+    qpscale.discard(None)
+    if len(qpscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
+    self.__qpscale, = qpscale
+
+    pscale = {pscale, *(p.pscale for p in subtractpolygons)}
+    pscale.discard(None)
+    if len(pscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
+    self.__pscale, = pscale
 
   @property
   def pscale(self):
@@ -230,7 +234,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
     )
 
   def __eq__(self, other):
-    return self.vertices == other.vertices
+    return self.vertices == other.vertices and self.pscale == other.pscale and self.__subtractpolygons == other.__subtractpolygons
 
   @staticmethod
   def field(*args, metadata={}, **kwargs):
