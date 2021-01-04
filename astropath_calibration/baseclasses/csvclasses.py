@@ -230,7 +230,11 @@ class __RegionBase(DataClassWithPscale, DataClassWithQpscale):
   isNeg: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
   type: str
   nvert: int
-  poly: Polygon = dataclasses.field(metadata={"writefunction": str, "readfunction": str})
+  def __polywritefunction(poly):
+    if poly is None: return "poly"
+    return str(poly)
+  poly: Polygon = dataclasses.field(metadata={"writefunction": __polywritefunction, "readfunction": str})
+  del __polywritefunction
   readingfromfile: dataclasses.InitVar[bool] = False
 
 @dataclasses.dataclass
@@ -242,6 +246,8 @@ class Region(__RegionBase):
   def poly(self, poly):
     if isinstance(poly, Polygon):
       self.__poly = poly
+    elif poly is None or poly == "poly":
+      self.__poly = None
     elif isinstance(poly, str):
       self.__poly = Polygon(
         **{Polygon.pixelsormicrons: poly},

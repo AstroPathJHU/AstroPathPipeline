@@ -1,4 +1,4 @@
-sample,zoom,marker,x,y,fname
+sample,zoom,marker,x,y,name
 M206,0,1,0,0,C:\Users\jroskes1\jupyter\microscopealignment\microscopealignment\test\deepzoom_test_for_jenkins\M206\L1_files\Z0\0_0.png
 M206,1,1,0,0,C:\Users\jroskes1\jupyter\microscopealignment\microscopealignment\test\deepzoom_test_for_jenkins\M206\L1_files\Z1\0_0.png
 M206,2,1,0,0,C:\Users\jroskes1\jupyter\microscopealignment\microscopealignment\test\deepzoom_test_for_jenkins\M206\L1_files\Z2\0_0.png

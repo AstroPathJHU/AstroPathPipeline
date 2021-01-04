@@ -7,6 +7,12 @@ thisfolder = pathlib.Path(__file__).parent
 
 class TestZoom(TestBaseSaveOutput):
   @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    gunzipreference("M206")
+    gunzipreference("L1_1")
+
+  @classmethod
   def layers(cls, SlideID):
     return {
       "L1_1": (1, 2),
@@ -40,7 +46,7 @@ class TestZoom(TestBaseSaveOutput):
       for i in self.layers(SlideID)
     ]
 
-  def testZoomWsi(self, SlideID="L1_1", keepoutput=False, units="safe", **kwargs):
+  def testZoomWsi(self, SlideID="L1_1", units="safe", **kwargs):
     root = thisfolder/"data"
     zoomroot = thisfolder/"zoom_test_for_jenkins"
     args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units]
@@ -58,27 +64,30 @@ class TestZoom(TestBaseSaveOutput):
           sample.logger.info("comparing "+filename)
           with sample.PILmaximagepixels(), \
                PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"big"/filename) as img, \
-               gzip.open(thisfolder/"reference"/"zoom"/SlideID/(filename+".gz")) as refgz, \
-               PIL.Image.open(refgz) as targetimg:
+               PIL.Image.open(thisfolder/"reference"/"zoom"/SlideID/"big"/filename) as targetimg:
             np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
         filename = f"{SlideID}-Z9-L{i}-wsi.png"
         sample.logger.info("comparing "+filename)
         with sample.PILmaximagepixels(), \
              PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"wsi"/filename) as img, \
-             gzip.open(thisfolder/"reference"/"zoom"/SlideID/(filename+".gz")) as refgz, \
-             PIL.Image.open(refgz) as targetimg:
+             PIL.Image.open(thisfolder/"reference"/"zoom"/SlideID/"wsi"/filename) as targetimg:
           np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
     except:
       self.saveoutput()
       raise
     else:
-      if keepoutput and not (thisfolder/"annowarp_test_for_jenkins"/SlideID).exists():
-        (thisfolder/"annowarp_test_for_jenkins").mkdir(exist_ok=True)
-        (thisfolder/"zoom_test_for_jenkins"/SlideID).rename(thisfolder/"annowarp_test_for_jenkins"/SlideID)
       self.removeoutput()
 
   def testZoomWsiFast(self, SlideID="L1_1", **kwargs):
     self.testZoomWsi(SlideID, fast=True, **kwargs)
 
   def testzoomM206(self, **kwargs):
-    self.testZoomWsiFast("M206", keepoutput=True, **kwargs)
+    self.testZoomWsiFast("M206", **kwargs)
+
+def gunzipreference(SlideID):
+  folder = thisfolder/"reference"/"zoom"/SlideID
+  for filename in folder.glob("*/*.gz"):
+    newfilename = filename.with_suffix("")
+    if newfilename.exists(): continue
+    with gzip.open(filename) as f, open(newfilename, "wb") as newf:
+      newf.write(f.read())

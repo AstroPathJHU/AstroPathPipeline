@@ -5,12 +5,15 @@ from astropath_calibration.utilities import units
 
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"
-zoomfolder = here/".."/".."/"test"/"annowarp_test_for_jenkins"
+zoomroot = here/".."/".."/"test"/"reference"/"zoom"
+annowarproot = here/".."/".."/"test"/"annowarp_test_for_jenkins"
 samp = "M206"
 
 def makeplots():
-  A = AnnoWarpSample(data, samp, zoomroot=zoomfolder)
-  A.readalignments(filename=zoomfolder/samp/A.alignmentcsv.name)
+  from ...test.testzoom import gunzipreference
+  gunzipreference(samp)
+  A = AnnoWarpSample(data, samp, zoomroot=zoomroot)
+  A.readalignments(filename=annowarproot/samp/A.alignmentcsv.name)
   A.stitch()
 
   with A.using_images() as (wsi, fqptiff):
@@ -31,7 +34,7 @@ def makeplots():
   else:
     ylimpscale = ylim
 
-  showannotation(qptiff, A.regions, qpscale=A.apscale, imagescale=apscale, figurekwargs={}, ylim=ylim, xlim=xlim, saveas=here/"qptiff.pdf")
+  showannotation(qptiff, A.regions, vertices=A.vertices, qpscale=A.apscale, imagescale=apscale, figurekwargs={}, ylim=ylim, xlim=xlim, saveas=here/"qptiff.pdf")
   showannotation(wsi, A.warpedregions, qpscale=apscale, imagescale=A.pscale, figurekwargs={}, ylim=ylimpscale, xlim=xlimpscale, saveas=here/"wsi.pdf")
 
 if __name__ == "__main__":
