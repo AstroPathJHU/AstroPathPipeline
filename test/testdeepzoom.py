@@ -7,9 +7,15 @@ from .testbase import assertAlmostEqual, TestBaseSaveOutput
 thisfolder = pathlib.Path(__file__).parent
 
 class TestDeepZoom(TestBaseSaveOutput):
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    from .testzoom import gunzipreference
+    gunzipreference("M206")
+
   def testDeepZoom(self, SlideID="M206", units="safe", **kwargs):
     root = thisfolder/"data"
-    zoomroot = thisfolder/"annowarp_test_for_jenkins"
+    zoomroot = thisfolder/"reference"/"zoom"
     deepzoomroot = thisfolder/"deepzoom_test_for_jenkins"
     args = [str(root), "--zoomroot", str(zoomroot), "--deepzoomroot", str(deepzoomroot), "--logroot", str(deepzoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--layers", "1"]
     DeepZoomCohort.runfromargumentparser(args)
@@ -35,8 +41,8 @@ class TestDeepZoom(TestBaseSaveOutput):
         new = readtable(zoomlist, DeepZoomFile)
         ref = readtable(thisfolder/"reference"/"deepzoom"/SlideID/zoomlist.name, DeepZoomFile)
         for resultnew, resultref in more_itertools.zip_equal(new, ref):
-          resultnew.fname = pathlib.PurePosixPath(resultnew.fname.relative_to(thisfolder))
-          resultref.fname = pathlib.PurePosixPath(resultref.fname.relative_to(resultref.fname.parent.parent.parent.parent.parent))
+          resultnew.name = pathlib.PurePosixPath(resultnew.name.relative_to(thisfolder))
+          resultref.name = pathlib.PurePosixPath(resultref.name.relative_to(resultref.name.parent.parent.parent.parent.parent))
           assertAlmostEqual(resultnew, resultref, rtol=0, atol=0)
 
     except:

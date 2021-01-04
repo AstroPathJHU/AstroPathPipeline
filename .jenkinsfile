@@ -60,13 +60,13 @@ pipeline {
             }
           }
         }
-        stage('zoom annowarp deepzoom pipeline') {
+        stage('test zoom') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
+          }
+        }
+        stage('annowarp') {
           stages {
-            stage('test zoom') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
-              }
-            }
             stage('test annowarp') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testannowarp'
@@ -79,11 +79,11 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/annowarp/annowarp.log'
               }
             }
-            stage('deepzoom') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdeepzoom'
-              }
-            }
+          }
+        }
+        stage('deepzoom') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdeepzoom'
           }
         }
         stage('align layers') {

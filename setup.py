@@ -5,7 +5,9 @@ setuptools.setup(
   packages = setuptools.find_packages(include=["astropath_calibration*"]),
   entry_points = {
     "console_scripts": [
+      "annowarpcohort=astropath_calibration.annowarp.annowarpcohort:main",
       "alignmentcohort=astropath_calibration.alignment.alignmentcohort:main",
+      "deepzoomcohort=astropath_calibration.deepzoom.deepzoomcohort:main",
       "evaluate_exposure_time=astropath_calibration.exposuretime.evaluate_exposure_time:main",
       "run_exposure_time_fits=astropath_calibration.exposuretime.run_exposure_time_fits:main",
       "extractlayer=astropath_calibration.extractlayer.extractlayer:main",

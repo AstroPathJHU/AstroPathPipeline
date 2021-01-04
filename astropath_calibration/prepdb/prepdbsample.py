@@ -1,5 +1,5 @@
 import argparse, jxmlease, methodtools, numpy as np, PIL, skimage
-from ..baseclasses.csvclasses import Annotation, Constant, Batch, Polygon, QPTiffCsv, Region, Vertex
+from ..baseclasses.csvclasses import Annotation, Constant, Batch, QPTiffCsv, Region, Vertex
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.qptiff import QPTiff
 from ..baseclasses.sample import DbloadSampleBase, XMLLayoutReader
@@ -95,7 +95,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
               isNeg=isNeg,
               type=region.get_xml_attr("Type"),
               nvert=len(vertices),
-              poly=Polygon(*polygonvertices, pscale=self.pscale),
+              poly=None,
               qpscale=self.qpscale,
               pscale=self.pscale,
             )

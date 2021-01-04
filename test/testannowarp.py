@@ -17,6 +17,8 @@ class TestAnnoWarp(TestBaseSaveOutput):
     super().setUpClass()
     from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
     assembleqptiff()
+    from .testzoom import gunzipreference
+    gunzipreference("M206")
 
   @property
   def outputfilenames(self):
@@ -26,9 +28,10 @@ class TestAnnoWarp(TestBaseSaveOutput):
     ]
 
   def testAlignment(self, SlideID="M206"):
-    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"annowarp_test_for_jenkins")
+    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
     s.align()
     alignmentfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.alignmentcsv.name
+    alignmentfilename.parent.mkdir(parents=True, exist_ok=True)
     referencealignmentfilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     s.writealignments(filename=alignmentfilename)
 
@@ -66,7 +69,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
       assertAlmostEqual(row, target, rtol=1e-4)
 
   def testReadingWritingAlignments(self, SlideID="M206"):
-    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"annowarp_test_for_jenkins")
+    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     testfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/"testreadannowarpalignments.csv"
     testfilename.parent.mkdir(parents=True, exist_ok=True)
@@ -79,7 +82,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     testfilename.unlink()
 
   def testStitchCvxpy(self, SlideID="M206"):
-    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"annowarp_test_for_jenkins")
+    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)
     result1 = s.stitch()
@@ -98,6 +101,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
 
   def testCohort(self, SlideID="M206", units="fast"):
     root = thisfolder/"data"
-    zoomroot = thisfolder/"annowarp_test_for_jenkins"
-    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units]
+    zoomroot = thisfolder/"reference"/"zoom"
+    logroot = thisfolder/"annowarp_test_for_jenkins"
+    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(logroot), "--sampleregex", SlideID, "--debug", "--units", units]
     AnnoWarpCohort.runfromargumentparser(args)
