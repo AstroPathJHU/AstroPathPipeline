@@ -48,7 +48,9 @@ class GeomSample(ReadRectanglesComponentTiff):
     boundaries = []
     for n, field in enumerate(self.rectangles, start=1):
       with field.using_image() as im:
-        contours, (hierarchy,) = cv2.findContours((im==0).astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        zeros = im == 0
+        if not np.any(zeros): continue
+        contours, (hierarchy,) = cv2.findContours(zeros.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         subtractpolygons = [[] for c in contours]
         polygons = [None for c in contours]
         toplevelpolygons = []
