@@ -151,13 +151,13 @@ def getImageLayerBlurMaskAndPlots(img_layer,nlv_cut,min_size,min_skew=None,tissu
     img_nlv = getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer)
     #make a dust spot mask by thresholding on the local variance
     blur_mask = (np.where(img_nlv>nlv_cut,1,0)).astype(np.uint8)
-    #small open/close to refine it
-    if tissue_mask is not None :
-        blur_mask[tissue_mask!=0] = (cv2.morphologyEx(blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))[tissue_mask!=0]
-        blur_mask[tissue_mask!=0] = (cv2.morphologyEx(blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))[tissue_mask!=0]
-    else :
-        blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-        blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    ##small open/close to refine it
+    #if tissue_mask is not None :
+    #    blur_mask[tissue_mask!=0] = (cv2.morphologyEx(blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))[tissue_mask!=0]
+    #    blur_mask[tissue_mask!=0] = (cv2.morphologyEx(blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))[tissue_mask!=0]
+    #else :
+    #    blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    #    blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
     #remove any islands smaller than the minimum size or with skew smaller than the minimum skew
     blur_mask = getSizeFilteredMask(blur_mask,min_size=min_size)
     if min_skew is not None :
