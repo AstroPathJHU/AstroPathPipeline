@@ -240,7 +240,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
       "POLYGON ("
       + ",".join(
         ["(" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in vertices) + ")"]
-        + [re.match("POLYGON\((\([^()]*\))\)$", str(subtractpolygon)).group(1) for subtractpolygon in self.__subtractpolygons]
+        + [re.match("POLYGON \((\([^()]*\))\)$", str(subtractpolygon)).group(1) for subtractpolygon in self.__subtractpolygons]
       ) + ")"
     )
 

@@ -30,8 +30,8 @@ class GeomSample(ReadRectanglesComponentTiff):
   @methodtools.lru_cache()
   def getfieldboundaries(self):
     boundaries = []
-    for n, field in enumerate(self.rectangles, start=1):
-      assert n == field.n
+    for field in self.rectangles:
+      n = field.n
       mx1 = (field.mx1//self.onepixel)*self.onepixel
       mx2 = (field.mx2//self.onepixel)*self.onepixel
       my1 = (field.my1//self.onepixel)*self.onepixel
