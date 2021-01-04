@@ -270,9 +270,9 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
         #next add in the tissue mask (all the background is zero in every layer, unless already flagged otherwise)
         for li in range(img_array.shape[-1]) :
             output_mask[:,:,li] = np.where(output_mask[:,:,li]==1,tissue_mask,output_mask[:,:,li])
-        #write out the mask in the working directory
-        with cd(workingdir) :
-            writeImageToFile(output_mask,f'{key}_mask.png',dtype=np.uint8)
+        ##write out the mask in the working directory
+        #with cd(workingdir) :
+        #    writeImageToFile(output_mask,f'{key}_mask.png',dtype=np.uint8)
 
 #helper function to get a list of all the labelled mask regions for a chunk of files
 def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,xpos,ypos,pscale,workingdir) :
