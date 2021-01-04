@@ -166,7 +166,7 @@ def getImageLayerBlurMaskAndPlots(img_layer,nlv_cut,min_size,tissue_mask=None) :
 #################### HELPER FUNCTIONS ####################
 
 #helper function to write out a sheet of masking information plots for an image
-def writeOutMaskingPlotsForImage(image_key,workingdir,tissue_mask,dust_mask_plot_dicts) :
+def doMaskingPlotsForImage(image_key,tissue_mask,dust_mask_plot_dicts,workingdir=None) :
     #figure out how manby columns will be in the sheet and set up the plots
     n_cols = len(dust_mask_plot_dicts)
     f,ax = plt.subplots(2,n_cols,figsize=(n_cols*6.4,2*tissue_mask.shape[0]/tissue_mask.shape[1]*6.4))
@@ -202,10 +202,13 @@ def writeOutMaskingPlotsForImage(image_key,workingdir,tissue_mask,dust_mask_plot
     #empty the other unused axes
     for ai in range(1,n_cols) :
         ax[1][ai].axis('off')
-    #save the plot
-    with cd(workingdir) :
-        fn = f'{image_key}_masking_plots.png'
-        plt.savefig(fn); plt.close(); cropAndOverwriteImage(fn)
+    #show/save the plot
+    if workingdir is None :
+        plt.show()
+    else :
+        with cd(workingdir) :
+            fn = f'{image_key}_masking_plots.png'
+            plt.savefig(fn); plt.close(); cropAndOverwriteImage(fn)
 
 #helper function to change a mask from zeroes and ones to region indices and zeroes
 def getEnumeratedLayerMask(layer_mask,start_i) :
@@ -234,7 +237,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
         cvx = pscale*key_x-xpos
         cvy = pscale*key_y-ypos
         #make and write out the plots for this image
-        writeOutMaskingPlotsForImage(key,workingdir,tissue_mask,dust_mask_plots)
+        doMaskingPlotsForImage(key,tissue_mask,dust_mask_plots,workingdir)
         #the mask starts as all ones (0=background, 1=good tissue, >=2 is a flagged region)
         output_mask = np.ones(img_array.shape,dtype=np.uint8)
         #add in the dust, starting with index 2
