@@ -15,7 +15,7 @@ LOCAL_MEAN_KERNEL      = np.array([[0.0,0.2,0.0],
                                    [0.2,0.2,0.2],
                                    [0.0,0.2,0.0]])
 WINDOW_EL              = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(23,23))
-LAYER_GROUPS           = [(1,9),(10,19),(20,25),(26,32),(33,35)]
+LAYER_GROUPS           = [(1,9),(10,18),(19,25),(26,32),(33,35)]
 DAPI_LAYER_GROUP_INDEX = 0
 RAWFILE_EXT            = '.Data.dat'
 TISSUE_MIN_SIZE        = 2500
