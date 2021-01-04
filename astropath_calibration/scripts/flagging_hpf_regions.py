@@ -66,12 +66,12 @@ def getSizeFilteredMask(mask,min_size,both=True,invert=False) :
 def getSkewFilteredMask(mask,ref,min_skew,invert=True) :
     if invert :
         mask = (np.where(mask==1,0,1)).astype(mask.dtype)
-    n_regions, regions_im = cv2.connectedComponents(inverted_mask)
-    return_mask = np.zeros_like(layer_mask)
+    n_regions, regions_im = cv2.connectedComponents(mask)
+    new_mask = np.zeros_like(mask)
     for region_i in range(1,n_regions) :
         if scipy.stats.skew(ref[regions_im==region_i])<min_skew :
             continue
-        return_mask[regions_im==region_i] = mask[regions_im==region_i]
+        new_mask[regions_im==region_i] = mask[regions_im==region_i]
     if invert :
         new_mask = (np.where(new_mask==1,0,1)).astype(mask.dtype)
     return new_mask
@@ -283,7 +283,7 @@ def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,xpos,ypos,pscal
     return_list = manager.list()
     procs = []
     for i,im_array in enumerate(img_arrays) :
-        msg = f'Reading and masking {fris[i].rawfile_path}'
+        msg = f'Masking {fris[i].rawfile_path} {fris[i].sequence_print}'
         logger.info(msg)
         key = (os.path.basename(fris[i].rawfile_path)).rstrip(RAWFILE_EXT)
         p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,key,thresholds,xpos,ypos,pscale,workingdir,return_list))
