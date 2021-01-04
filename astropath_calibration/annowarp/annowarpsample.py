@@ -429,7 +429,7 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
     return self.xvec
 
 @dataclass_dc_init
-class WarpedVertex(QPTiffVertex, DataClassWithPscale):
+class WarpedVertex(QPTiffVertex):
   wx: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, default=None)
   wy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, default=None)
 
@@ -456,8 +456,9 @@ class WarpedVertex(QPTiffVertex, DataClassWithPscale):
     return Vertex(
       regionid=self.regionid,
       vid=self.vid,
-      xvec=units.convertpscale(self.wxvec, self.pscale, self.qpscale),
+      im3xvec=self.wxvec,
       qpscale=self.qpscale,
+      pscale=self.pscale,
     )
 
 @dataclass_dc_init

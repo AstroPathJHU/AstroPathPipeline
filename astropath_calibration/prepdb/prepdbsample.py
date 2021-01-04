@@ -76,6 +76,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
                 x=x,
                 y=y,
                 qpscale=self.apscale,
+                pscale=self.pscale,
               )
             )
           allvertices += regionvertices
