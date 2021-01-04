@@ -171,7 +171,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
       if kw != self.pixelsormicrons:
         raise ValueError(f"Have to provide {self.pixelsormicrons}, not {kw}")
 
-      regex = r"POLYGON \(\(((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\)\)"
+      regex = r"POLYGON \(\(((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\)((?:,\(((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\))*)\)"
       match = re.match(regex, string)
       if match is None:
         raise ValueError(f"Unexpected format in polygon:\n{string}\nexpected it to match regex:\n{regex}")
@@ -184,6 +184,17 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
         x = units.convertpscale(units.Distance(pscale=pscale, **{kw: floattoint(x)}), pscale, qpscale)
         y = units.convertpscale(units.Distance(pscale=pscale, **{kw: floattoint(y)}), pscale, qpscale)
         vertices.append(Vertex(x=x, y=y, vid=i, regionid=None, qpscale=qpscale))
+
+      subtractpolygonstrings = match.group(2).replace(")", "").split(",(")
+      assert subtractpolygonstrings[0] == ""
+      subtractpolygonstrings = subtractpolygonstrings[1:]
+      subtractpolygons = [
+        Polygon(
+          **{kw: f"POLYGON (({subtractpolygonstring}))"},
+          pscale=pscale,
+          qpscale=qpscale,
+        ) for subtractpolygonstring in subtractpolygonstrings
+      ]
 
     self.__vertices = vertices
 
@@ -291,9 +302,13 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
 
   def matplotlibpolygon(self, *, imagescale=None, **kwargs):
     if imagescale is None: imagescale = self.pscale
+    vertices = [[v.x, v.y] for v in self.vertices]
+    if vertices[-1] != vertices[0]: vertices.append(vertices[0])
+    for p in self.__subtractpolygons:
+      vertices += [[v.x, v.y] for v in p.vertices] + [vertices[0]]
     return matplotlib.patches.Polygon(
       units.convertpscale(
-        [[v.x, v.y] for v in self.vertices],
+        vertices,
         self.qpscale,
         imagescale,
       ) / units.onepixel(imagescale),
