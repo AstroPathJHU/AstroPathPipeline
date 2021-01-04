@@ -8,7 +8,7 @@ from astropath_calibration.utilities import units
 from astropath_calibration.baseclasses.csvclasses import constantsdict
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import logging, os, glob, cv2, dataclasses
+import logging, os, glob, cv2, dataclasses, scipy.stats
 
 #constants
 LOCAL_MEAN_KERNEL      = np.array([[0.0,0.2,0.0],
@@ -20,8 +20,9 @@ DAPI_LAYER_GROUP_INDEX = 0
 RAWFILE_EXT            = '.Data.dat'
 TISSUE_MIN_SIZE        = 2500
 DUST_LAYER             = 1
-DUST_NLV_CUT           = 0.3
+DUST_NLV_CUT           = 0.4
 DUST_MIN_SIZE          = 10000
+DUST_MIN_SKEW          = 0.0
 MASK_DUST_IN_LAYERS    = list(range(1,36))
 DUST_FLAG_STRING       = 'possible dust'
 
@@ -46,7 +47,7 @@ class LabelledMaskRegion :
 #################### IMAGE HANDLING UTILITIY FUNCTIONS ####################
 
 #return a binary mask with all of the areas smaller than min_size removed
-def getFilteredMask(mask,min_size,both=True,invert=False) :
+def getSizeFilteredMask(mask,min_size,both=True,invert=False) :
     if invert :
         mask = (np.where(mask==1,0,1)).astype(mask.dtype)
     nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
@@ -58,7 +59,21 @@ def getFilteredMask(mask,min_size,both=True,invert=False) :
     if invert :
         new_mask = (np.where(new_mask==1,0,1)).astype(mask.dtype)
     if both :
-        return getFilteredMask(new_mask,min_size,both=False,invert=(not invert))
+        return getSizeFilteredMask(new_mask,min_size,both=False,invert=(not invert))
+    return new_mask
+
+#return a binary mask with all of the areas whose distributions of reference values have skew less than min_skew removed
+def getSkewFilteredMask(mask,ref,min_skew,invert=True) :
+    if invert :
+        mask = (np.where(mask==1,0,1)).astype(mask.dtype)
+    n_regions, regions_im = cv2.connectedComponents(inverted_mask)
+    return_mask = np.zeros_like(layer_mask)
+    for region_i in range(1,n_regions) :
+        if scipy.stats.skew(ref[regions_im==region_i])<min_skew :
+            continue
+        return_mask[regions_im==region_i] = mask[regions_im==region_i]
+    if invert :
+        new_mask = (np.where(new_mask==1,0,1)).astype(mask.dtype)
     return new_mask
 
 #return the minimally-transformed tissue mask for a single image layer
@@ -100,7 +115,7 @@ def getImageTissueMask(image_arr,bkg_thresholds) :
     thresholded_stacked_masks = np.where(total_stacked_masks>(image_arr.shape[-1]/2.),1,0)
     final_mask[final_mask==2] = thresholded_stacked_masks[final_mask==2]
     #filter the tissue and background portions to get rid of the small islands
-    final_mask = getFilteredMask(final_mask,min_size=TISSUE_MIN_SIZE)
+    final_mask = getSizeFilteredMask(final_mask,min_size=TISSUE_MIN_SIZE)
     return final_mask
 
 #function to compute and return the variance of the normalized laplacian for a given image layer
@@ -131,7 +146,7 @@ def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer,tissue_mask=None) 
     return local_norm_lap_var
 
 #function to return a blur mask for a given image layer, along with a dictionary of to plots to add to the group for this image
-def getImageLayerBlurMaskAndPlots(img_layer,nlv_cut,min_size,tissue_mask=None) :
+def getImageLayerBlurMaskAndPlots(img_layer,nlv_cut,min_size,min_skew=None,tissue_mask=None) :
     #first get the local variance of the normalized laplacian image, without a tissue mask
     img_nlv = getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer)
     #make a dust spot mask by thresholding on the local variance
@@ -143,8 +158,10 @@ def getImageLayerBlurMaskAndPlots(img_layer,nlv_cut,min_size,tissue_mask=None) :
     else :
         blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
         blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-    #remove any islands smaller than the minimum size 
-    blur_mask = getFilteredMask(blur_mask,min_size=min_size)
+    #remove any islands smaller than the minimum size or with skew smaller than the minimum skew
+    blur_mask = getSizeFilteredMask(blur_mask,min_size=min_size)
+    if min_skew is not None :
+        blur_mask = getSkewFilteredMask(blur_mask,img_nlv,min_skew)
     #set up the plots to return
     plot_mask = blur_mask
     if tissue_mask is not None :
@@ -227,7 +244,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next make a mask for the dust in the image
-    dust_mask, dust_mask_plots = getImageLayerBlurMaskAndPlots(img_array[:,:,DUST_LAYER-1],DUST_NLV_CUT,DUST_MIN_SIZE)
+    dust_mask, dust_mask_plots = getImageLayerBlurMaskAndPlots(img_array[:,:,DUST_LAYER-1],DUST_NLV_CUT,DUST_MIN_SIZE,DUST_MIN_SKEW)
     #if there are any nonzero regions in the flagging mask(s), make some plots and then 
     #write out a labelled mask file and add corresponding lines to the csv file 
     if np.min(dust_mask)<1 :
