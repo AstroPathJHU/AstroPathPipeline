@@ -1,4 +1,5 @@
-import matplotlib.patches, matplotlib.pyplot as plt, numpy as np
+import matplotlib.pyplot as plt, numpy as np
+from ..baseclasses.csvclasses import Polygon
 from ..utilities import units
 
 def showannotation(image, regions, *, qpscale, imagescale, xlim=(), ylim=(), vertices=None, figurekwargs={}, showplot=None, saveas=None):
@@ -9,18 +10,14 @@ def showannotation(image, regions, *, qpscale, imagescale, xlim=(), ylim=(), ver
   plt.imshow(image)
   for region in regions:
     if vertices is None:
-      polyvertices = region.poly.vertices
+      poly = region.poly
     else:
-      polyvertices = [v for v in vertices if v.regionid == region.regionid]
+      poly = Polygon(*(v for v in vertices if v.regionid == region.regionid), pscale=imagescale)
 
-    polygon = matplotlib.patches.Polygon(
-      units.convertpscale(
-        [[v.x, v.y] for v in polyvertices],
-        qpscale,
-        imagescale
-      ) / units.onepixel(imagescale),
+    polygon = poly.matplotlibpolygon(
+      imagescale=imagescale,
       alpha=0.5,
-      color="r"
+      color="r",
     )
     ax.add_patch(polygon)
   plt.xlim(*xlim)

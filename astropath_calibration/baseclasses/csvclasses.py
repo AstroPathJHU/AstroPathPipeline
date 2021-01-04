@@ -1,4 +1,4 @@
-import dataclasses, datetime, functools, numbers, numpy as np, re
+import dataclasses, datetime, functools, matplotlib.patches, numbers, numpy as np, re
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable
@@ -156,7 +156,7 @@ class Vertex(DataClassWithQpscale):
       **vertexkwargs,
     )
 
-class Polygon:
+class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
   pixelsormicrons = "pixels"
 
   def __init__(self, *vertices, subtractpolygons=None, pixels=None, microns=None, pscale=None, qpscale=None, power=1):
@@ -284,6 +284,17 @@ class Polygon:
         setattr(newcls, thing, getattr(cls, thing))
 
       return newcls
+
+  def matplotlibpolygon(self, *, imagescale=None, **kwargs):
+    if imagescale is None: imagescale = self.pscale
+    return matplotlib.patches.Polygon(
+      units.convertpscale(
+        [[v.x, v.y] for v in self.vertices],
+        self.qpscale,
+        imagescale,
+      ) / units.onepixel(imagescale),
+      **kwargs,
+    )
 
 
 @Polygon.dataclasswithpolygon
