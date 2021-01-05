@@ -371,9 +371,10 @@ def main(args=None) :
         if len(all_lmrs)>=args.max_masks :
             break
     #write out the table with all of the labelled region information
-    fn = f'{args.slideID}_labelled_mask_regions.csv'
-    with cd(args.workingdir) :
-        writetable(fn,sorted(all_lmrs,key=lambda x: f'{x.image_key}_{x.region_index}'))
+    if len(all_lmrs)>0 :
+        fn = f'{args.slideID}_labelled_mask_regions.csv'
+        with cd(args.workingdir) :
+            writetable(fn,sorted(all_lmrs,key=lambda x: f'{x.image_key}_{x.region_index}'))
 
 if __name__=='__main__' :
     main()
