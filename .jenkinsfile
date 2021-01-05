@@ -81,11 +81,19 @@ pipeline {
             }
           }
         }
+
         stage('deepzoom') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdeepzoom'
           }
         }
+
+        stage('geom') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testgeom'
+          }
+        }
+
         stage('align layers') {
           stages {
             stage('test align layers') {

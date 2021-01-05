@@ -1,6 +1,6 @@
 import dataclasses, functools, numbers, numpy as np
 from ..misc import floattoint
-from .core import ThingWithPscale, ThingWithQpscale, UnitsError
+from .core import ThingWithApscale, ThingWithPscale, ThingWithQpscale, UnitsError
 
 def __setup(mode):
   global currentmode, Distance, microns, pixels, _pscale, safe, UnitsError
@@ -141,6 +141,10 @@ class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
 class DataClassWithQpscale(DataClassWithDistances, ThingWithQpscale):
   qpscale: float = pscalefield()
 
+@dataclasses.dataclass
+class DataClassWithApscale(DataClassWithDistances, ThingWithApscale):
+  apscale: float = pscalefield()
+
 @dataclasses.dataclass(frozen=True)
 class DataClassWithPscaleFrozen(DataClassWithDistances, ThingWithPscale):
   pscale: float = pscalefield()
@@ -148,3 +152,7 @@ class DataClassWithPscaleFrozen(DataClassWithDistances, ThingWithPscale):
 @dataclasses.dataclass(frozen=True)
 class DataClassWithQpscaleFrozen(DataClassWithDistances, ThingWithQpscale):
   qpscale: float = pscalefield()
+
+@dataclasses.dataclass(frozen=True)
+class DataClassWithApscaleFrozen(DataClassWithDistances, ThingWithApscale):
+  apscale: float = pscalefield()
