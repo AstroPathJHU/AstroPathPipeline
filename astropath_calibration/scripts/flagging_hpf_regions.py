@@ -20,9 +20,9 @@ DAPI_LAYER_GROUP_INDEX = 0
 RAWFILE_EXT            = '.Data.dat'
 TISSUE_MIN_SIZE        = 2500
 DUST_LAYER             = 1
-DUST_NLV_CUT           = 0.25
+DUST_NLV_CUT           = 0.5
 DUST_MIN_SIZE          = 30000
-DUST_MEAN_NLV_MAX      = 0.15
+DUST_MEAN_NLV_MAX      = 0.4
 MASK_DUST_IN_LAYERS    = list(range(1,36))
 DUST_FLAG_STRING       = 'possible dust'
 
