@@ -29,6 +29,7 @@ class GeomSample(ReadRectanglesComponentTiff):
 
   @methodtools.lru_cache()
   def getfieldboundaries(self):
+    self.logger.info("getting field boundaries")
     boundaries = []
     for field in self.rectangles:
       n = field.n
@@ -45,6 +46,7 @@ class GeomSample(ReadRectanglesComponentTiff):
 
   @methodtools.lru_cache()
   def gettumorboundaries(self):
+    self.logger.info("getting tumor boundaries")
     boundaries = []
     for n, field in enumerate(self.rectangles, start=1):
       with field.using_image() as im:
