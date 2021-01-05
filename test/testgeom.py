@@ -30,13 +30,13 @@ class TestGeom(TestBaseSaveOutput):
     fieldreference = reffolder/fieldfilename.name
 
     try:
-      rows = readtable(fieldfilename, Boundary, extrakwargs={"pscale": s.pscale, "qpscale": s.pscale})
-      targetrows = readtable(fieldreference, Boundary, extrakwargs={"pscale": s.pscale, "qpscale": s.pscale})
+      rows = readtable(fieldfilename, Boundary, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
+      targetrows = readtable(fieldreference, Boundary, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5)
 
-      rows = readtable(tumorfilename, Boundary, extrakwargs={"pscale": s.pscale, "qpscale": s.pscale})
-      targetrows = readtable(tumorreference, Boundary, extrakwargs={"pscale": s.pscale, "qpscale": s.pscale})
+      rows = readtable(tumorfilename, Boundary, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
+      targetrows = readtable(tumorreference, Boundary, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5)
     except:

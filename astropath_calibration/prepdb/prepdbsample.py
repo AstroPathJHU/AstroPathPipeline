@@ -75,7 +75,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
                 vid=k,
                 x=x,
                 y=y,
-                qpscale=self.apscale,
+                apscale=self.apscale,
                 pscale=self.pscale,
               )
             )
@@ -97,7 +97,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
               type=region.get_xml_attr("Type"),
               nvert=len(vertices),
               poly=None,
-              qpscale=self.qpscale,
+              apscale=self.apscale,
               pscale=self.pscale,
             )
           )

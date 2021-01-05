@@ -2,7 +2,7 @@ import dataclasses, datetime, functools, matplotlib.patches, numbers, numpy as n
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable
-from ..utilities.units.dataclasses import DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, DataClassWithQpscale, distancefield, pscalefield, ThingWithPscale, ThingWithQpscale
+from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
 
 @dataclasses.dataclass
 class Globals(DataClassWithPscale):
@@ -124,14 +124,14 @@ class Annotation:
   poly: str
 
 @dataclass_dc_init
-class Vertex(DataClassWithDistances, ThingWithPscale, ThingWithQpscale):
+class Vertex(DataClassWithDistances, units.ThingWithPscale, units.ThingWithApscale):
   pixelsormicrons = "pixels"
 
   regionid: int
   vid: int
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="qpscale")
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="qpscale")
-  qpscale: float = pscalefield()
+  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="apscale")
+  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="apscale")
+  apscale: float = pscalefield()
   readingfromfile: dataclasses.InitVar[bool] = False
   pscale: float = pscalefield(default=None)
 
@@ -139,7 +139,7 @@ class Vertex(DataClassWithDistances, ThingWithPscale, ThingWithQpscale):
   def xvec(self):
     return np.array([self.x, self.y])
 
-  def __init__(self, *args, pscale=None, qpscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
+  def __init__(self, *args, pscale=None, apscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
     xveckwargs = {}
     vertexkwargs = {}
     im3xykwargs = {}
@@ -151,21 +151,21 @@ class Vertex(DataClassWithDistances, ThingWithPscale, ThingWithQpscale):
         field.name: getattr(vertex, field.name)
         for field in dataclasses.fields(type(vertex))
       }
-      if qpscale is None: qpscale = vertex.qpscale
-      if qpscale != vertex.qpscale: raise ValueError(f"Inconsistent qpscales {qpscale} {vertex.qpscale}")
+      if apscale is None: apscale = vertex.apscale
+      if apscale != vertex.apscale: raise ValueError(f"Inconsistent apscales {apscale} {vertex.apscale}")
       if pscale is None: pscale = vertex.pscale
       if pscale != vertex.pscale is not None: raise ValueError(f"Inconsistent pscales {pscale} {vertex.pscale}")
-      del vertexkwargs["pscale"], vertexkwargs["qpscale"]
+      del vertexkwargs["pscale"], vertexkwargs["apscale"]
     if im3x is not None:
-      im3xykwargs["x"] = units.convertpscale(im3x, pscale, qpscale)
+      im3xykwargs["x"] = units.convertpscale(im3x, pscale, apscale)
     if im3y is not None:
-      im3xykwargs["y"] = units.convertpscale(im3y, pscale, qpscale)
+      im3xykwargs["y"] = units.convertpscale(im3y, pscale, apscale)
     if im3xvec is not None:
-      im3xveckwargs["x"], im3xveckwargs["y"] = units.convertpscale(im3xvec, pscale, qpscale)
+      im3xveckwargs["x"], im3xveckwargs["y"] = units.convertpscale(im3xvec, pscale, apscale)
     self.__dc_init__(
       *args,
       pscale=pscale,
-      qpscale=qpscale,
+      apscale=apscale,
       **kwargs,
       **xveckwargs,
       **vertexkwargs,
@@ -177,7 +177,7 @@ class Vertex(DataClassWithDistances, ThingWithPscale, ThingWithQpscale):
   def im3xvec(self):
     if self.pscale is None:
       raise ValueError("Can't get im3 dimensions if you don't provide a pscale")
-    return units.convertpscale(self.xvec, self.qpscale, self.pscale)
+    return units.convertpscale(self.xvec, self.apscale, self.pscale)
   @property
   def im3x(self):
     return self.xvec[0]
@@ -185,10 +185,10 @@ class Vertex(DataClassWithDistances, ThingWithPscale, ThingWithQpscale):
   def im3y(self):
     return self.xvec[1]
 
-class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
+class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   pixelsormicrons = "pixels"
 
-  def __init__(self, *vertices, subtractpolygons=None, pixels=None, microns=None, pscale=None, qpscale=None, power=1):
+  def __init__(self, *vertices, subtractpolygons=None, pixels=None, microns=None, pscale=None, apscale=None, power=1):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
     if bool(vertices) + (pixels is not None) + (microns is not None) != 1:
@@ -210,7 +210,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
       if intvertices[-1] == intvertices[0]: del intvertices[-1]
       for i, vertex in enumerate(intvertices, start=1):
         x, y = (int(_)*units.onepixel(pscale) for _ in vertex.split())
-        vertices.append(Vertex(im3x=x, im3y=y, vid=i, regionid=None, qpscale=qpscale, pscale=pscale))
+        vertices.append(Vertex(im3x=x, im3y=y, vid=i, regionid=None, apscale=apscale, pscale=pscale))
 
       subtractpolygonstrings = match.group(2).replace(")", "").split(",(")
       assert subtractpolygonstrings[0] == ""
@@ -219,7 +219,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
         Polygon(
           **{kw: f"POLYGON (({subtractpolygonstring}))"},
           pscale=pscale,
-          qpscale=qpscale,
+          apscale=apscale,
         ) for subtractpolygonstring in subtractpolygonstrings
       ]
 
@@ -232,10 +232,10 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
       if subtractpolygon.__subtractpolygons:
         raise ValueError("Can't have multiply nested polygons")
 
-    qpscale = {qpscale, *(v.qpscale for v in vertices), *(p.qpscale for p in subtractpolygons)}
-    qpscale.discard(None)
-    if len(qpscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
-    self.__qpscale, = qpscale
+    apscale = {apscale, *(v.apscale for v in vertices), *(p.apscale for p in subtractpolygons)}
+    apscale.discard(None)
+    if len(apscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
+    self.__apscale, = apscale
 
     pscale = {pscale, *(v.pscale for v in vertices), *(p.pscale for p in subtractpolygons)}
     pscale.discard(None)
@@ -248,9 +248,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
       raise AttributeError("Didn't set pscale for this polygon")
     return self.__pscale
   @property
-  def _pscale(self): return self.__qpscale
+  def _pscale(self): return self.__apscale
   @property
-  def qpscale(self): return self.__qpscale
+  def apscale(self): return self.__apscale
 
   @property
   def vertices(self): return self.__vertices
@@ -259,7 +259,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
   def tostring(self, *, pixelsormicrons, **kwargs):
     f = lambda distance, **kwargs: (
       {"pixels": units.pixels, "microns": units.microns}[pixelsormicrons](
-        units.convertpscale(distance, self.qpscale, self.pscale)
+        units.convertpscale(distance, self.apscale, self.pscale)
       )
     )
     vertices = list(self.vertices) + [self.vertices[0]]
@@ -297,7 +297,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
 
     def __call__(self, cls):
       @dataclasses.dataclass(**self.kwargs)
-      class newcls(dataclasses.dataclass(cls, **self.kwargs), DataClassWithPscale, DataClassWithQpscale):
+      class newcls(dataclasses.dataclass(cls, **self.kwargs), DataClassWithPscale, DataClassWithApscale):
         @property
         def poly(self):
           return self.__poly
@@ -311,7 +311,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
             self.__poly = Polygon(
               **{Polygon.pixelsormicrons: poly},
               pscale=self.pscale,
-              qpscale=self.qpscale,
+              apscale=self.apscale,
             )
           else:
             raise TypeError(f"Unknown type {type(poly).__name__} for poly")
@@ -336,7 +336,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithQpscale):
     return matplotlib.patches.Polygon(
       units.convertpscale(
         vertices,
-        self.qpscale,
+        self.apscale,
         imagescale,
       ) / units.onepixel(imagescale),
       **kwargs,

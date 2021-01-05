@@ -343,7 +343,7 @@ class DbloadSampleBase(SampleBase):
   def writecsv(self, csv, *args, **kwargs):
     return writetable(self.csv(csv), *args, logger=self.logger, **kwargs)
 
-class DbloadSample(DbloadSampleBase):
+class DbloadSample(DbloadSampleBase, units.ThingWithQpscale):
   def getimageinfofromconstants(self):
     dct = constantsdict(self.csv("constants"))
 
@@ -375,6 +375,12 @@ class DbloadSample(DbloadSampleBase):
   @property
   def nclip(self):
     return self.constantsdict["nclip"]
+  @property
+  def qpscale(self):
+    return self.constantsdict["qpscale"]
+  @property
+  def apscale(self):
+    return self.constantsdict["apscale"]
 
 class FlatwSampleBase(SampleBase):
   def __init__(self, root, root2, samp, *args, root3=None, xmlfolders=None, **kwargs):

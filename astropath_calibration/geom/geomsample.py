@@ -38,9 +38,9 @@ class GeomSample(ReadRectanglesComponentTiff):
       my2 = (field.my2//self.onepixel)*self.onepixel
       Px = mx1, mx2, mx2, mx1
       Py = my1, my1, my2, my2
-      fieldvertices = [Vertex(regionid=None, vid=i, x=x, y=y, qpscale=self.qpscale, pscale=self.pscale) for i, (x, y) in enumerate(more_itertools.zip_equal(Px, Py))]
+      fieldvertices = [Vertex(regionid=None, vid=i, im3x=x, im3y=y, apscale=self.apscale, pscale=self.pscale) for i, (x, y) in enumerate(more_itertools.zip_equal(Px, Py))]
       fieldpolygon = Polygon(*fieldvertices, pscale=self.pscale)
-      boundaries.append(Boundary(n=n, k=1, poly=fieldpolygon, pscale=self.pscale, qpscale=self.qpscale))
+      boundaries.append(Boundary(n=n, k=1, poly=fieldpolygon, pscale=self.pscale, apscale=self.apscale))
     return boundaries
 
   @methodtools.lru_cache()
@@ -57,7 +57,7 @@ class GeomSample(ReadRectanglesComponentTiff):
         for i, (contour, (next, previous, child, parent)) in reversed(list(enumerate(more_itertools.zip_equal(contours, hierarchy)))):
           assert contour.shape[1:] == (1, 2), contour.shape
           vertices = [
-            Vertex(x=x, y=y, vid=i, regionid=None, qpscale=self.qpscale, pscale=self.pscale)
+            Vertex(im3x=x, im3y=y, vid=i, regionid=None, apscale=self.apscale, pscale=self.pscale)
             for i, ((x, y),) in enumerate(contour*self.onepixel+units.nominal_values(field.pxvec), start=1)
           ]
           polygon = polygons[i] = Polygon(*vertices, pscale=self.pscale, subtractpolygons=subtractpolygons[i])
@@ -69,7 +69,7 @@ class GeomSample(ReadRectanglesComponentTiff):
             if len(vertices) > 4:
               subtractpolygons[parent].insert(0, polygon)
         for k, polygon in enumerate(toplevelpolygons, start=1):
-          boundaries.append(Boundary(n=n, k=k, poly=polygon, pscale=self.pscale, qpscale=self.pscale))
+          boundaries.append(Boundary(n=n, k=k, poly=polygon, pscale=self.pscale, apscale=self.pscale))
     return boundaries
 
   @property
