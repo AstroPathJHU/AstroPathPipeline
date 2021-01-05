@@ -42,6 +42,8 @@ class LabelledMaskRegion :
     layers             : str
     n_pixels           : int
     reason_flagged     : str
+    layer_1_nlv_mean   : float
+    layer_1_nlv_skew   : float
 
 #################### IMAGE HANDLING UTILITIY FUNCTIONS ####################
 
@@ -262,8 +264,12 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
             dust_layers_string+=f'{ln}-'
         #add a line for each region to the return_list (will be written to the .csv file)
         dust_region_indices = list(range(np.min(enumerated_dust_mask[enumerated_dust_mask!=0]),np.max(enumerated_dust_mask)+1))
+        img_layer_1_nlv = getImageLayerLocalVarianceOfNormalizedLaplacian(img_array[:,:,0])
         for dri in dust_region_indices :
-            return_list.append(LabelledMaskRegion(key,cvx,cvy,dri,dust_layers_string[:-1],np.sum(enumerated_dust_mask==dri),DUST_FLAG_STRING))
+            r_size = np.sum(enumerated_dust_mask==dri)
+            r_layer_1_nlv_mean = np.mean(img_layer_1_nlv[enumerated_dust_mask==dri])
+            r_layer_1_nlv_skew = scipy.stats.skew(img_layer_1_nlv[enumerated_dust_mask==dri])
+            return_list.append(LabelledMaskRegion(key,cvx,cvy,dri,dust_layers_string[:-1],r_size,DUST_FLAG_STRING,r_layer_1_nlv_mean,r_layer_1_nlv_skew))
         #next add in the tissue mask (all the background is zero in every layer, unless already flagged otherwise)
         for li in range(img_array.shape[-1]) :
             output_mask[:,:,li] = np.where(output_mask[:,:,li]==1,tissue_mask,output_mask[:,:,li])
