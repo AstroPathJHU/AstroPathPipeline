@@ -14,14 +14,15 @@ import logging, os, glob, cv2, dataclasses, scipy.stats
 LOCAL_MEAN_KERNEL      = np.array([[0.0,0.2,0.0],
                                    [0.2,0.2,0.2],
                                    [0.0,0.2,0.0]])
-WINDOW_EL              = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(23,23))
+WINDOW_EL              = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
 LAYER_GROUPS           = [(1,9),(10,18),(19,25),(26,32),(33,35)]
 DAPI_LAYER_GROUP_INDEX = 0
 RAWFILE_EXT            = '.Data.dat'
 TISSUE_MIN_SIZE        = 2500
 DUST_LAYER             = 1
-DUST_NLV_CUT           = 0.2
-DUST_MIN_SIZE          = 10000
+DUST_NLV_CUT           = 0.25
+DUST_MIN_SIZE          = 30000
+DUST_MEAN_NLV_MAX      = 0.15
 MASK_DUST_IN_LAYERS    = list(range(1,36))
 DUST_FLAG_STRING       = 'possible dust'
 
@@ -71,6 +72,20 @@ def getSkewFilteredMask(mask,ref,min_skew,invert=True) :
     new_mask = np.zeros_like(mask)
     for region_i in range(1,n_regions) :
         if scipy.stats.skew(ref[regions_im==region_i])<min_skew :
+            continue
+        new_mask[regions_im==region_i] = mask[regions_im==region_i]
+    if invert :
+        new_mask = (np.where(new_mask==1,0,1)).astype(mask.dtype)
+    return new_mask
+
+#return a binary mask with all of the areas whose distributions of reference values have mean greater than max_mean removed
+def getMeanFilteredMask(mask,ref,max_mean,invert=True) :
+    if invert :
+        mask = (np.where(mask==1,0,1)).astype(mask.dtype)
+    n_regions, regions_im = cv2.connectedComponents(mask)
+    new_mask = np.zeros_like(mask)
+    for region_i in range(1,n_regions) :
+        if np.mean(ref[regions_im==region_i])>max_mean :
             continue
         new_mask[regions_im==region_i] = mask[regions_im==region_i]
     if invert :
@@ -147,20 +162,22 @@ def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer,tissue_mask=None) 
     return local_norm_lap_var
 
 #function to return a blur mask for a given image layer, along with a dictionary of to plots to add to the group for this image
-def getImageLayerBlurMaskAndPlots(img_layer,nlv_cut,min_size,tissue_mask=None) :
+def getImageLayerBlurMaskAndPlots(img_layer,nlv_cut,min_size,max_mean,tissue_mask=None) :
     #first get the local variance of the normalized laplacian image, without a tissue mask
     img_nlv = getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer)
     #make a dust spot mask by thresholding on the local variance
     blur_mask = (np.where(img_nlv>nlv_cut,1,0)).astype(np.uint8)
     ##small open/close to refine it
-    if tissue_mask is not None :
-        blur_mask[tissue_mask!=0] = (cv2.morphologyEx(blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))[tissue_mask!=0]
-        blur_mask[tissue_mask!=0] = (cv2.morphologyEx(blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))[tissue_mask!=0]
-    else :
-        blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-        blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    #if tissue_mask is not None :
+    #    blur_mask[tissue_mask!=0] = (cv2.morphologyEx(blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))[tissue_mask!=0]
+    #    blur_mask[tissue_mask!=0] = (cv2.morphologyEx(blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))[tissue_mask!=0]
+    #else :
+    #    blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    #    blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
     #remove any islands smaller than the minimum size 
     blur_mask = getSizeFilteredMask(blur_mask,min_size=min_size)
+    #filter to make sure the mean of the regions' pixel nlv values is small enough
+    blur_mask = getMeanFilteredMask(blur_mask,img_nlv,max_mean)
     #set up the plots to return
     plot_mask = blur_mask
     if tissue_mask is not None :
@@ -243,7 +260,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next make a mask for the dust in the image
-    dust_mask, dust_mask_plots = getImageLayerBlurMaskAndPlots(img_array[:,:,DUST_LAYER-1],DUST_NLV_CUT,DUST_MIN_SIZE)
+    dust_mask, dust_mask_plots = getImageLayerBlurMaskAndPlots(img_array[:,:,DUST_LAYER-1],DUST_NLV_CUT,DUST_MIN_SIZE,DUST_MEAN_NLV_MAX)
     #if there are any nonzero regions in the flagging mask(s), make some plots and then 
     #write out a labelled mask file and add corresponding lines to the csv file 
     if np.min(dust_mask)<1 :
