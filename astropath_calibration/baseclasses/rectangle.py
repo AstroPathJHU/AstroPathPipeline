@@ -166,15 +166,16 @@ class RectangleReadImageBase(RectangleWithImageBase):
     return image
 
 class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
-  def __init__(self, *args, imagefolder, layers, nlayers, **kwargs):
+  def __init__(self, *args, imagefolder, layers, nlayers, with_seg=False, **kwargs):
     super().__init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__layers = layers
     self.__nlayers = nlayers
+    self.__with_seg = with_seg
 
   @property
   def imagefile(self):
-    return self.__imagefolder/self.file.replace(".im3", "_component_data.tif")
+    return self.__imagefolder/self.file.replace(".im3", f"_component_data{'_w_seg' if self.__with_seg else ''}.tif")
 
   @property
   def layers(self):
@@ -196,8 +197,10 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
             dtype = page.dtype
           elif dtype != page.dtype:
             raise ValueError(f"Found pages with different dtypes in the component tiff {dtype} {page.dtype}")
-      if len(pages) != self.__nlayers:
-        raise IOError(f"Wrong number of layers {len(pages)} in the component tiff, expected {self.__nlayers}")
+      expectpages = self.__nlayers
+      if self.__with_seg: expectpages += 5
+      if len(pages) != expectpages:
+        raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
       image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)
 
       for i, layer in enumerate(self.__layers):
@@ -358,6 +361,10 @@ class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
 
   @property
   def layer(self): return self.__layer
+
+  def getimage(self):
+    image, = super().getimage()
+    return image
 
 class RectangleCollection(abc.ABC):
   @abc.abstractproperty

@@ -301,38 +301,38 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   def newregionscsv(self): return self.csv("regions-warped")
 
   @methodtools.lru_cache()
-  def __getvertices(self, *, qpscale, filename=None):
+  def __getvertices(self, *, apscale, filename=None):
     if filename is None: filename = self.oldverticescsv
-    return readtable(filename, QPTiffVertex, extrakwargs={"qpscale": qpscale, "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, qpscale), "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, qpscale)})
+    return readtable(filename, QPTiffVertex, extrakwargs={"apscale": apscale, "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, apscale), "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, apscale)})
   @property
   def vertices(self):
-    return self.__getvertices(qpscale=self.apscale)
+    return self.__getvertices(apscale=self.apscale)
 
   @methodtools.lru_cache()
-  def __getwarpedvertices(self, *, qpscale):
-    oneqpmicron = units.onemicron(pscale=qpscale)
+  def __getwarpedvertices(self, *, apscale):
+    oneapmicron = units.onemicron(pscale=apscale)
     onemicron = self.onemicron
     onepixel = self.onepixel
     return [
       WarpedVertex(
         vertex=v,
-        wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, qpscale=qpscale))) / oneqpmicron * onemicron // onepixel * onepixel,
+        wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, apscale=apscale))) / oneapmicron * onemicron // onepixel * onepixel,
         pscale=self.pscale,
-      ) for v in self.__getvertices(qpscale=qpscale)
+      ) for v in self.__getvertices(apscale=apscale)
     ]
 
   @property
   def warpedvertices(self):
-    return self.__getwarpedvertices(qpscale=self.apscale)
+    return self.__getwarpedvertices(apscale=self.apscale)
 
   @methodtools.lru_cache()
-  def __getregions(self, *, qpscale, filename=None):
+  def __getregions(self, *, apscale, filename=None):
     if filename is None: filename = self.oldregionscsv
-    return readtable(filename, Region, extrakwargs={"qpscale": qpscale, "pscale": self.pscale})
+    return readtable(filename, Region, extrakwargs={"apscale": apscale, "pscale": self.pscale})
 
   @property
   def regions(self):
-    return self.__getregions(qpscale=self.apscale)
+    return self.__getregions(apscale=self.apscale)
 
   @methodtools.lru_cache()
   @property
@@ -346,8 +346,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       polyvertices = region.poly.vertices if region.poly is not None else (v for v in self.vertices if v.regionid == region.regionid)
       for oldvertex, newvertex in zipfunction(polyvertices, warpedverticesiterator):
         np.testing.assert_array_equal(
-          np.round((oldvertex.xvec / oldvertex.oneqppixel).astype(float)),
-          np.round((newvertex.xvec / oldvertex.oneqppixel).astype(float)),
+          np.round((oldvertex.xvec / oldvertex.oneappixel).astype(float)),
+          np.round((newvertex.xvec / oldvertex.oneappixel).astype(float)),
         )
         newvertices.append(newvertex.finalvertex)
       result.append(
@@ -360,8 +360,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
           type=region.type,
           nvert=region.nvert,
           pscale=region.pscale,
-          qpscale=region.qpscale,
-          poly=Polygon(*newvertices, pscale=region.pscale, qpscale=region.qpscale)
+          apscale=region.apscale,
+          poly=Polygon(*newvertices, pscale=region.pscale, apscale=region.apscale)
         ),
       )
     return result
@@ -429,7 +429,7 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
     return self.xvec
 
 @dataclass_dc_init
-class WarpedVertex(QPTiffVertex, DataClassWithPscale):
+class WarpedVertex(QPTiffVertex):
   wx: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, default=None)
   wy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, default=None)
 
@@ -456,8 +456,9 @@ class WarpedVertex(QPTiffVertex, DataClassWithPscale):
     return Vertex(
       regionid=self.regionid,
       vid=self.vid,
-      xvec=units.convertpscale(self.wxvec, self.pscale, self.qpscale),
-      qpscale=self.qpscale,
+      im3xvec=self.wxvec,
+      apscale=self.apscale,
+      pscale=self.pscale,
     )
 
 @dataclass_dc_init

@@ -34,7 +34,7 @@ class MyLogger:
   @property
   def formatter(self):
     return logging.Formatter(
-      ";".join(str(_) for _ in (self.Project, self.Cohort, self.SampleID, self.SlideID, "%(message)s", "%(asctime)s") if _ is not None),
+      ";".join(str(_) for _ in (self.Project, self.Cohort, self.SlideID, "%(message)s", "%(asctime)s") if _ is not None),
       "%Y-%m-%d %H:%M:%S",
     )
   def __enter__(self):

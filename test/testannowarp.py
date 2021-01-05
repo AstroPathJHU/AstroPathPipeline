@@ -58,13 +58,13 @@ class TestAnnoWarp(TestBaseSaveOutput):
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    rows = readtable(verticesfilename, WarpedVertex, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
-    targetrows = readtable(referenceverticesfilename, WarpedVertex, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    rows = readtable(verticesfilename, WarpedVertex, extrakwargs={"apscale": s.apscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    targetrows = readtable(referenceverticesfilename, WarpedVertex, extrakwargs={"apscale": s.apscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    rows = readtable(regionsfilename, Region, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale})
-    targetrows = readtable(referenceregionsfilename, Region, extrakwargs={"qpscale": s.imscale, "pscale": s.pscale})
+    rows = readtable(regionsfilename, Region, extrakwargs={"apscale": s.apscale, "pscale": s.pscale})
+    targetrows = readtable(referenceregionsfilename, Region, extrakwargs={"apscale": s.apscale, "pscale": s.pscale})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
