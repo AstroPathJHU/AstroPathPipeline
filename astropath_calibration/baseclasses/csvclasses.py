@@ -248,8 +248,6 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       raise AttributeError("Didn't set pscale for this polygon")
     return self.__pscale
   @property
-  def _pscale(self): return self.__apscale
-  @property
   def apscale(self): return self.__apscale
 
   @property

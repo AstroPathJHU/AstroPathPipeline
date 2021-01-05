@@ -1,0 +1,99 @@
+import cv2, numpy as np, skimage.measure
+from ..alignment.field import Field
+from ..baseclasses.csvclasses import Polygon
+from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
+from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesComponentTiff
+from ..geom.contours import findcontoursaspolygons
+from ..utilities import units
+from ..utilities.misc import dataclass_dc_init
+from ..utilities.tableio import writetable
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
+
+class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
+  pass
+
+class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
+  def __init__(self, *args, **kwargs):
+    super().__init__(
+      *args,
+      layers=[
+        13,  #membrane tumor
+        12,  #membrane immune
+        11,  #nucleus tumor
+        10,  #nucleus immune
+      ],
+      **kwargs
+    )
+
+  @property
+  def rectanglecsv(self): return "fields"
+  rectangletype = FieldReadComponentTiffMultiLayer
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      **super().rectangleextrakwargs,
+      "with_seg": True,
+    }
+
+  @property
+  def logmodule(self):
+    return "geomcell"
+
+  def rungeomcell(self):
+    self.geomfolder.mkdir(exist_ok=True, parents=True)
+    nfields = len(self.rectangles)
+    for i, field in enumerate(self.rectangles, start=1):
+      self.logger.info(f"writing cells for field {i} / {nfields}")
+      geomload = []
+      with field.using_image() as im:
+        im = im.astype(np.uint32)
+        for celltype, imlayer in enumerate(im):
+          properties = skimage.measure.regionprops(imlayer)
+          for cellproperties in properties:
+            if not np.any(cellproperties.image):
+              assert False
+              continue
+            celllabel = cellproperties.label
+            polygons = findcontoursaspolygons((imlayer==celllabel).astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec))
+            if len(polygons) > 1:
+              raise ValueError(f"Multiple polygons: {field.n} {celltype} {celllabel}")
+            polygon, = polygons
+
+            box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel
+            box += units.nominal_values(field.pxvec)
+            box = box // self.onepixel * self.onepixel
+
+            geomload.append(
+              CellGeomLoad(
+                field=field.n,
+                ctype=celltype,
+                n=celllabel,
+                box=box,
+                poly=polygon,
+                pscale=self.pscale,
+              )
+            )
+
+      writetable(field.geomloadcsv, geomload)
+
+@dataclass_dc_init
+class CellGeomLoad(DataClassWithPscale):
+  field: int
+  ctype: int
+  n: int
+  x: units.Distance = distancefield(pixelsormicrons="pixels")
+  y: units.Distance = distancefield(pixelsormicrons="pixels")
+  w: units.Distance = distancefield(pixelsormicrons="pixels")
+  h: units.Distance = distancefield(pixelsormicrons="pixels")
+  poly: Polygon = Polygon.field()
+
+  def __init__(self, *args, box=None, **kwargs):
+    boxkwargs = {}
+    if box is not None:
+      boxkwargs["x"], boxkwargs["y"] = box[0]
+      boxkwargs["w"], boxkwargs["h"] = box[1] - box[0]
+    self.__dc_init__(
+      *args,
+      **kwargs,
+      **boxkwargs,
+    )

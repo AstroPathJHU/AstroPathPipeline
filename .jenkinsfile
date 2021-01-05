@@ -94,6 +94,12 @@ pipeline {
           }
         }
 
+        stage('geomcell') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testgeomcell'
+          }
+        }
+
         stage('align layers') {
           stages {
             stage('test align layers') {
