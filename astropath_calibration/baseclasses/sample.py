@@ -343,7 +343,7 @@ class DbloadSampleBase(SampleBase):
   def writecsv(self, csv, *args, **kwargs):
     return writetable(self.csv(csv), *args, logger=self.logger, **kwargs)
 
-class DbloadSample(DbloadSampleBase):
+class DbloadSample(DbloadSampleBase, units.ThingWithQpscale):
   def getimageinfofromconstants(self):
     dct = constantsdict(self.csv("constants"))
 
@@ -375,6 +375,12 @@ class DbloadSample(DbloadSampleBase):
   @property
   def nclip(self):
     return self.constantsdict["nclip"]
+  @property
+  def qpscale(self):
+    return self.constantsdict["qpscale"]
+  @property
+  def apscale(self):
+    return self.constantsdict["apscale"]
 
 class FlatwSampleBase(SampleBase):
   def __init__(self, root, root2, samp, *args, root3=None, xmlfolders=None, **kwargs):
@@ -544,11 +550,12 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
     kwargs = {
       **super().rectangleextrakwargs,
       "imagefolder": self.componenttiffsfolder,
+      "with_seg": self.__with_seg,
+      "nlayers": self.nlayers,
     }
     if self.multilayer:
       kwargs.update({
         "layers": self.layers,
-        "nlayers": self.nlayers,
       })
     else:
       kwargs.update({
@@ -558,7 +565,8 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
 
   multilayer = True #can override in subclasses
 
-  def __init__(self, *args, layer=None, layers=None, **kwargs):
+  def __init__(self, *args, layer=None, layers=None, with_seg=False, **kwargs):
+    self.__with_seg = with_seg
     if self.multilayer:
       if layer is not None:
         raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
