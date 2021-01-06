@@ -1,4 +1,4 @@
-import cv2, numpy as np, skimage.measure
+import cv2, matplotlib.pyplot as plt, numpy as np, skimage.measure
 from ..alignment.field import Field
 from ..baseclasses.csvclasses import Polygon
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
@@ -39,7 +39,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
   def logmodule(self):
     return "geomcell"
 
-  def rungeomcell(self):
+  def rungeomcell(self, *, _debugdraw={}):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
     nfields = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
@@ -54,7 +54,16 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               assert False
               continue
             celllabel = cellproperties.label
-            polygons = findcontoursaspolygons((imlayer==celllabel).astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec))
+            thiscell = imlayer==celllabel
+            polygons = findcontoursaspolygons(thiscell.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec))
+            if (i, celltype, celllabel) in _debugdraw:
+              kwargs = _debugdraw[i, celltype, celllabel]
+              plt.imshow(thiscell)
+              plt.xlim(**kwargs.pop("xlim", {}))
+              plt.ylim(**kwargs.pop("ylim", {}))
+              plt.show()
+              print(polygons)
+              assert not kwargs, kwargs
             if len(polygons) > 1:
               raise ValueError(f"Multiple polygons: {field.n} {celltype} {celllabel}")
             polygon, = polygons
