@@ -1,7 +1,7 @@
 import cv2, matplotlib.pyplot as plt, numpy as np, skimage.measure
 from ..alignment.field import Field
 from ..baseclasses.csvclasses import Polygon
-from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
+from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLoadRectangle
 from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesComponentTiff
 from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
@@ -9,7 +9,7 @@ from ..utilities.misc import dataclass_dc_init
 from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
-class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
+class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
 class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
@@ -33,6 +33,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
     return {
       **super().rectangleextrakwargs,
       "with_seg": True,
+      "geomfolder": self.geomfolder,
     }
 
   @property
@@ -65,8 +66,11 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               print(polygons)
               assert not kwargs, kwargs
             if len(polygons) > 1:
-              raise ValueError(f"Multiple polygons: {field.n} {celltype} {celllabel}")
-            polygon, = polygons
+              self.logger.warn(f"Multiple polygons: {field.n} {celltype} {celllabel}")
+              polygons.sort(key=lambda x: len(x.vertices), reverse=True)
+              polygon = Polygon(*polygons[0].vertices, subtractpolygons=polygons[1:])
+            else:
+              polygon, = polygons
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel
             box += units.nominal_values(field.pxvec)

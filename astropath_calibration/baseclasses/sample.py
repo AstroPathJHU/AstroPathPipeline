@@ -428,21 +428,25 @@ class DeepZoomSampleBase(SampleBase):
 
 class GeomSampleBase(SampleBase):
   def __init__(self, *args, geomroot=None, geomfolder=None, **kwargs):
-    super().__init__(*args, **kwargs)
     if geomroot is not None and geomfolder is not None:
       raise TypeError("Can't provide both geomroot and geomfolder")
-    if geomroot is None:
-      geomroot = self.mainfolder.parent
-    else:
-      geomroot = pathlib.Path(geomroot)
-    if geomfolder is None:
-      geomfolder = geomroot/self.SlideID/"geom"
-    else:
-      geomfolder = pathlib.Path(geomfolder)
+    self.__geomroot = geomroot
     self.__geomfolder = geomfolder
+    super().__init__(*args, **kwargs)
+
+  @methodtools.lru_cache()
   @property
   def geomfolder(self):
-    return self.__geomfolder
+    geomroot = self.__geomroot
+    geomfolder = self.__geomfolder
+    if geomfolder is None:
+      if geomroot is None:
+        geomroot = self.mainfolder.parent
+      else:
+        geomroot = pathlib.Path(geomroot)
+      return geomroot/self.SlideID/"geom"
+    else:
+      return pathlib.Path(geomfolder)
 
 class SampleThatReadsRectangles(SampleBase):
   rectangletype = Rectangle #can be overridden in subclasses

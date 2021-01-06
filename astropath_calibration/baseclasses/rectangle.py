@@ -421,4 +421,12 @@ class RectangleFromOtherRectangle(RectangleWithImageBase):
     with self.__originalrectangle.using_image() as image:
       return image
 
+class GeomLoadRectangle(Rectangle):
+  def __init__(self, *args, geomfolder, **kwargs):
+    self.__geomfolder = pathlib.Path(geomfolder)
+    super().__init__(*args, **kwargs)
+  @property
+  def geomloadcsv(self):
+    return self.__geomfolder/self.file.replace(".im3", "_cellGeomLoad.csv")
+
 rectanglefilter = rectangleoroverlapfilter
