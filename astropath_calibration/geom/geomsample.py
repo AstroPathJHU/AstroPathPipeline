@@ -41,7 +41,7 @@ class GeomSample(ReadRectanglesComponentTiff):
       Px = mx1, mx2, mx2, mx1
       Py = my1, my1, my2, my2
       fieldvertices = [Vertex(regionid=None, vid=i, im3x=x, im3y=y, apscale=self.apscale, pscale=self.pscale) for i, (x, y) in enumerate(more_itertools.zip_equal(Px, Py))]
-      fieldpolygon = Polygon(*fieldvertices, pscale=self.pscale)
+      fieldpolygon = Polygon(vertices=[fieldvertices], pscale=self.pscale)
       boundaries.append(Boundary(n=n, k=1, poly=fieldpolygon, pscale=self.pscale, apscale=self.apscale))
     return boundaries
 
