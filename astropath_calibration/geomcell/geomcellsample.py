@@ -1,4 +1,4 @@
-import cv2, matplotlib.pyplot as plt, numpy as np, skimage.measure
+import cv2, dataclasses, matplotlib.pyplot as plt, numpy as np, skimage.measure
 from ..alignment.field import Field
 from ..baseclasses.csvclasses import Polygon
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLoadRectangle
@@ -97,6 +97,7 @@ class CellGeomLoad(DataClassWithPscale):
   w: units.Distance = distancefield(pixelsormicrons="pixels")
   h: units.Distance = distancefield(pixelsormicrons="pixels")
   poly: Polygon = Polygon.field()
+  readingfromfile: dataclasses.InitVar[bool] = False
 
   def __init__(self, *args, box=None, **kwargs):
     boxkwargs = {}
