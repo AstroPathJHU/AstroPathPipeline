@@ -70,7 +70,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               polygons.sort(key=lambda x: len(x.vertices), reverse=True)
             polygon = sum(polygons)
 
-            box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel
+            box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += units.nominal_values(field.pxvec)
             box = box // self.onepixel * self.onepixel
 
