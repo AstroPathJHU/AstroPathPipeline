@@ -218,14 +218,14 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
 
     self.__vertices = [[v for v in vv] for vv in vertices]
     for vv in self.__vertices:
-      if vv[0] == vv[-1]: del vv[-1]
+      if len(vv) > 1 and vv[0] == vv[-1]: del vv[-1]
 
-    apscale = {apscale, *(v.apscale for vv in vertices for v in vv)}
+    apscale = {apscale, *(v.apscale for vv in self.__vertices for v in vv)}
     apscale.discard(None)
     if len(apscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
     self.__apscale, = apscale
 
-    pscale = {pscale, *(v.pscale for vv in vertices for v in vv)}
+    pscale = {pscale, *(v.pscale for vv in self.__vertices for v in vv)}
     pscale.discard(None)
     if len(pscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
     self.__pscale, = pscale

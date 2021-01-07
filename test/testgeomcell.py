@@ -12,7 +12,7 @@ class TestGeomCell(TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"geomcell_test_for_jenkins"/SlideID/"geom"/filename
+      thisfolder/"geomcell_test_for_jenkins"/SlideID/"geom"/filename.name
       for SlideID in ("M206",)
       for filename in (thisfolder/"reference"/"geomcell"/SlideID).iterdir()
     ]
