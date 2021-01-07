@@ -22,8 +22,10 @@ DAPI_LAYER_GROUP_INDEX     = 0
 TISSUE_MIN_SIZE            = 2500
 BLUR_MASK_LAYER_GROUPS     = [(1,9),(10,18),(19,35)]
 BLUR_MASK_BRIGHTEST_LAYERS = [5,11,21]
-BLUR_MASK_MAX_FLAG_CUTS    = [3,7,11]
+BLUR_MASK_MAX_FLAG_CUTS    = [3,7,13]
 BLUR_NLV_CUT               = 0.5
+BLUR_MAX_MEAN              = 0.4
+BLUR_MIN_SKEW              = -0.2
 BLUR_MIN_SIZE              = 15000
 FLAG_STRING                = 'blur'
 
@@ -175,6 +177,9 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
         layer_mask = (np.where(img_nlv>BLUR_NLV_CUT,1,0)).astype(np.uint8)
         #filter out the small areas
         layer_mask = getSizeFilteredMask(layer_mask,min_size=BLUR_MIN_SIZE)
+        #filter out anything with skew of nlv values < MIN_SKEW or mean of nlv values > MAX_MEAN (false positives)
+        layer_mask = getSkewFilteredMask(layer_mask,img_nlv,BLUR_MIN_SKEW)
+        layer_mask = getMeanFilteredMask(layer_mask,img_nlv,BLUR_MAX_MEAN)
         layer_masks.append(layer_mask)
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
@@ -183,6 +188,8 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
     ##small open/close to refine it
     #group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
     #group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    #filter out small areas again
+    group_blur_mask = getSizeFilteredMask(group_blur_mask,min_size=BLUR_MIN_SIZE)
     #set up the plots to return
     plot_img_layer = img_array[:,:,brightest_layer_n-1]
     im_gs = (plot_img_layer*group_blur_mask).astype(np.float32); im_gs /= np.max(im_gs)
@@ -195,7 +202,7 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
              {'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'},
              {'hist':brightest_layer_nlv.flatten(),'xlabel':'variance of normalized laplacian','line_at':BLUR_NLV_CUT},
              {'image':stacked_masks,'title':f'stacked layer masks (cut at {flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
-             {'image':group_blur_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask'},
+             {'image':group_blur_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask','vmin':0,'vmax':1},
             ]
     #return the blur mask for the layer and the dictionary of plots
     return group_blur_mask, plots
@@ -239,7 +246,7 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
                                     linewidth=2,color='tab:red',label=pd['line_at'])
                     ax[row][col].legend(loc='best')
             #remove axes from any extra slots
-            if pd==plot_dicts[-1] and col<n_cols-1 :
+            if col==len(plot_dicts)-1 and col<n_cols-1 :
                 for ci in range(col+1,n_cols) :
                     ax[row][ci].axis('off')
     #add the plot of the overlaid tissue and layer group masks
@@ -250,17 +257,17 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
             if 'image' in pd.keys() and 'title' in pd.keys() and pd['title'].endswith('blur mask') :
                 superimposed_masks+=(2**(mci+1))*pd['image']
                 max_sim_val+=(2**(mci+1))
-    pos = ax[1][0].imshow(superimposed_masks,vmin=0.,vmax=max_sim_val,cmap='gist_ncar')
+    pos = ax[n_rows-1][0].imshow(superimposed_masks,vmin=0.,vmax=max_sim_val,cmap='gist_ncar')
     f.colorbar(pos,ax=ax[n_rows-1][0])
     ax[n_rows-1][0].set_title('superimposed masks')
     #add the plots of the enumerated mask layer groups
     enumerated_mask_max = np.max(full_mask)
-    for lgi,lgb in BLUR_MASK_LAYER_GROUPS :
+    for lgi,lgb in enumerate(BLUR_MASK_LAYER_GROUPS) :
         pos = ax[n_rows-1][lgi+1].imshow(full_mask[:,:,lgb[0]-1],vmin=0.,vmax=enumerated_mask_max,cmap='gist_ncar')
         f.colorbar(pos,ax=ax[n_rows-1][lgi+1])
         ax[n_rows-1][lgi+1].set_title(f'full mask, layers {lgb[0]}-{lgb[1]}')
     #empty the other unused axes in the last row
-    for ci in range(n_rows+1,n_cols) :
+    for ci in range(n_rows,n_cols) :
         ax[n_rows-1][ci].axis('off')
     #show/save the plot
     if workingdir is None :
@@ -305,6 +312,8 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
         #add in the masks for each layer group, starting with index 2
         start_i = 2
         for lgi,lgb in enumerate(BLUR_MASK_LAYER_GROUPS) :
+            if np.min(blur_masks_by_layer_group[lgi])==1 :
+                continue
             layers_string = (''.join(f'{ln}-' for ln in range(lgb[0],lgb[1]+1)))[:-1]
             enumerated_mask = getEnumeratedMask(blur_masks_by_layer_group[lgi],start_i)
             for ln in range(lgb[0],lgb[1]+1) :
