@@ -68,9 +68,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
             if len(polygons) > 1:
               self.logger.warn(f"Multiple polygons: {field.n} {celltype} {celllabel}")
               polygons.sort(key=lambda x: len(x.vertices), reverse=True)
-              polygon = Polygon(*polygons[0].vertices, subtractpolygons=polygons[1:])
-            else:
-              polygon, = polygons
+            polygon = sum(polygons)
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel
             box += units.nominal_values(field.pxvec)
