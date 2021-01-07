@@ -1,7 +1,8 @@
 #imports
 from astropath_calibration.flatfield.utilities import chunkListOfFilepaths, readImagesMT
 from astropath_calibration.flatfield.config import CONST
-from astropath_calibration.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset, writeImageToFile, smoothImageWorker
+from astropath_calibration.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset, smoothImageWorker
+#from astropath_calibration.utilities.img_file_io import writeImageToFile
 from astropath_calibration.utilities.tableio import readtable, writetable
 from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser, cropAndOverwriteImage
 from astropath_calibration.utilities import units
@@ -310,9 +311,9 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
                 (output_mask[:,:,ln-1])[output_mask[:,:,ln-1]==1] = (np.where(enumerated_mask!=0,enumerated_mask,output_mask[:,:,ln-1]))[output_mask[:,:,ln-1]==1]
             start_i = np.max(enumerated_mask)+1
             #add a line for each region to the return_list (will be written to the .csv file)
-            region_indices = list(range(np.min(enumerated_dust_mask[enumerated_mask!=0]),np.max(enumerated_mask)+1))
+            region_indices = list(range(np.min(enumerated_mask[enumerated_mask!=0]),np.max(enumerated_mask)+1))
             for ri in region_indices :
-                r_size = np.sum(enumerated_dust_mask==ri)
+                r_size = np.sum(enumerated_mask==ri)
                 return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,FLAG_STRING))
         #next add in the tissue mask (all the background is zero in every layer, unless already flagged otherwise)
         for li in range(img_array.shape[-1]) :
