@@ -193,7 +193,7 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
              {'image':overlay_gs,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (grayscale)'},
              {'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'},
              {'hist':brightest_layer_nlv.flatten(),'xlabel':'variance of normalized laplacian','line_at':BLUR_NLV_CUT},
-             {'image':stacked_masks,'title':f'stacked layer masks (cut at {flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1}
+             {'image':stacked_masks,'title':f'stacked layer masks (cut at {flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
              {'image':group_blur_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask'},
             ]
     #return the blur mask for the layer and the dictionary of plots
@@ -202,10 +202,10 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
 #################### HELPER FUNCTIONS ####################
 
 #helper function to write out a sheet of masking information plots for an image
-def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,workingdir=None) :
+def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,workingdir=None) :
     #figure out how many rows/columns will be in the sheet and set up the plots
     n_rows = len(plot_dict_lists)+1
-    n_cols = len(plot_dict_lists[0])
+    n_cols = max(n_rows,len(plot_dict_lists[0]))
     for pdi in range(1,len(plot_dict_lists)) :
         if len(plot_dict_lists[pdi]) > n_cols :
             n_cols = len(plot_dict_lists[pdi])
@@ -242,13 +242,25 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,workingdir=None
                 for ci in range(col+1,n_cols) :
                     ax[row][ci].axis('off')
     #add the plot of the overlaid tissue and layer group masks
-    superimposed_masks = 0.25*tissue_mask+0.75*dust_mask
-    pos = ax[1][0].imshow(superimposed_masks,vmin=0.,vmax=1.)
-    f.colorbar(pos,ax=ax[1][0])
-    ax[1][0].set_title('superimposed masks')
-    #empty the other unused axes
-    for ai in range(1,n_cols) :
-        ax[1][ai].axis('off')
+    superimposed_masks = tissue_mask
+    max_sim_val = 1
+    for mci,plot_dicts in enumerate(plot_dict_lists) :
+        for pd in plot_dicts :
+            if 'image' in pd.keys() and 'title' in pd.keys() and pd['title'].endswith('blur mask') :
+                superimposed_masks+=(2**(mci+1))*pd['image']
+                max_sim_val+=(2**(mci+1))
+    pos = ax[1][0].imshow(superimposed_masks,vmin=0.,vmax=max_sim_val,cmap='gist_ncar')
+    f.colorbar(pos,ax=ax[n_rows-1][0])
+    ax[n_rows-1][0].set_title('superimposed masks')
+    #add the plots of the enumerated mask layer groups
+    enumerated_mask_max = np.max(full_mask)
+    for lgi,lgb in BLUR_MASK_LAYER_GROUPS :
+        pos = ax[n_rows-1][lgi+1].imshow(full_mask[:,:,lgb[0]-1],vmin=0.,vmax=enumerated_mask_max,cmap='gist_ncar')
+        f.colorbar(pos,ax=ax[n_rows-1][lgi+1])
+        ax[n_rows-1][lgi+1].set_title(f'full mask, layers {lgb[0]}-{lgb[1]}')
+    #empty the other unused axes in the last row
+    for ci in range(n_rows+1,n_cols) :
+        ax[n_rows-1][ci].axis('off')
     #show/save the plot
     if workingdir is None :
         plt.show()
@@ -287,8 +299,6 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
         key_y = float(key.split(',')[1].split(']')[0])
         cvx = pscale*key_x-xpos
         cvy = pscale*key_y-ypos
-        #make and write out the plots for this image
-        doMaskingPlotsForImage(key,tissue_mask,blur_mask_plots_by_layer_group,workingdir)
         #the mask starts as all ones (0=background, 1=good tissue, >=2 is a flagged region)
         output_mask = np.ones(img_array.shape,dtype=np.uint8)
         #add in the masks for each layer group, starting with index 2
@@ -307,6 +317,8 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
         #next add in the tissue mask (all the background is zero in every layer, unless already flagged otherwise)
         for li in range(img_array.shape[-1]) :
             output_mask[:,:,li] = np.where(output_mask[:,:,li]==1,tissue_mask,output_mask[:,:,li])
+        #make and write out the plots for this image
+        doMaskingPlotsForImage(key,tissue_mask,blur_mask_plots_by_layer_group,output_mask,workingdir)
         ##write out the mask in the working directory
         #with cd(workingdir) :
         #    writeImageToFile(output_mask,f'{key}_mask.png',dtype=np.uint8)
