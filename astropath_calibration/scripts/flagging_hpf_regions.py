@@ -11,20 +11,20 @@ import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import logging, os, glob, cv2, dataclasses, scipy.stats
 
 #constants
-LOCAL_MEAN_KERNEL      = np.array([[0.0,0.2,0.0],
-                                   [0.2,0.2,0.2],
-                                   [0.0,0.2,0.0]])
-WINDOW_EL              = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
-LAYER_GROUPS           = [(1,9),(10,18),(19,25),(26,32),(33,35)]
-DAPI_LAYER_GROUP_INDEX = 0
-RAWFILE_EXT            = '.Data.dat'
-TISSUE_MIN_SIZE        = 2500
-DUST_LAYER             = 1
-DUST_NLV_CUT           = 0.5
-DUST_MIN_SIZE          = 30000
-DUST_MEAN_NLV_MAX      = 0.4
-MASK_DUST_IN_LAYERS    = list(range(1,36))
-DUST_FLAG_STRING       = 'possible dust'
+RAWFILE_EXT                = '.Data.dat'
+LOCAL_MEAN_KERNEL          = np.array([[0.0,0.2,0.0],
+                                       [0.2,0.2,0.2],
+                                       [0.0,0.2,0.0]])
+WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
+TISSUE_MASK_LAYER_GROUPS   = [(1,9),(10,18),(19,25),(26,32),(33,35)]
+DAPI_LAYER_GROUP_INDEX     = 0
+TISSUE_MIN_SIZE            = 2500
+BLUR_MASK_LAYER_GROUPS     = [(1,9),(10,18),(19,35)]
+BLUR_MASK_BRIGHTEST_LAYERS = [5,11,21]
+BLUR_MASK_MAX_FLAG_CUTS    = [3,7,11]
+BLUR_NLV_CUT               = 0.5
+BLUR_MIN_SIZE              = 15000
+FLAG_STRING                = 'blur'
 
 #logger
 logger = logging.getLogger("flagging_hpf_regions")
@@ -43,8 +43,6 @@ class LabelledMaskRegion :
     layers             : str
     n_pixels           : int
     reason_flagged     : str
-    layer_1_nlv_mean   : float
-    layer_1_nlv_skew   : float
 
 #################### IMAGE HANDLING UTILITIY FUNCTIONS ####################
 
@@ -111,7 +109,7 @@ def getImageTissueMask(image_arr,bkg_thresholds) :
     overall_background_mask = np.zeros_like(layer_masks[0])
     total_stacked_masks = np.zeros_like(layer_masks[0])
     #for each layer group
-    for lgi,lgb in enumerate(LAYER_GROUPS) :
+    for lgi,lgb in enumerate(TISSUE_MASK_LAYER_GROUPS) :
         stacked_masks = np.zeros_like(layer_masks[0])
         for ln in range(lgb[0],lgb[1]+1) :
             stacked_masks+=layer_masks[ln-1]
@@ -162,76 +160,92 @@ def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer,tissue_mask=None) 
     return local_norm_lap_var
 
 #function to return a blur mask for a given image layer, along with a dictionary of to plots to add to the group for this image
-def getImageLayerBlurMaskAndPlots(img_layer,nlv_cut,min_size,max_mean,tissue_mask=None) :
-    #first get the local variance of the normalized laplacian image, without a tissue mask
-    img_nlv = getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer)
-    #make a dust spot mask by thresholding on the local variance
-    blur_mask = (np.where(img_nlv>nlv_cut,1,0)).astype(np.uint8)
+def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_layer_n,max_flag_cut) :
+    #start by making a mask for every layer in the group
+    layer_masks = []
+    stacked_masks = np.zeros(img_array.shape[:-1],dtype=np.uint8)
+    brightest_layer_nlv = None
+    for ln in range(layer_group_bounds[0],layer_group_bounds[1]+1) :
+        #get the local variance of the normalized laplacian image
+        img_nlv = getImageLayerLocalVarianceOfNormalizedLaplacian(img_array[:,:,ln-1])
+        if ln==brightest_layer_n :
+            brightest_layer_nlv = img_nlv
+        #threshold it to make a binary mask
+        layer_mask = (np.where(img_nlv>BLUR_NLV_CUT,1,0)).astype(np.uint8)
+        #filter out the small areas
+        layer_mask = getSizeFilteredMask(layer_mask,min_size=BLUR_MIN_SIZE)
+        layer_masks.append(layer_mask)
+        stacked_masks+=layer_mask
+    #determine the final mask for this group by thresholding on how many individual layers contribute
+    flag_cut = np.min(stacked_masks)+1 if np.min(stacked_masks)+1<=max_flag_cut else 0
+    group_blur_mask = (np.where(stacked_masks>flag_cut,1,0)).astype(np.uint8)    
     ##small open/close to refine it
-    #if tissue_mask is not None :
-    #    blur_mask[tissue_mask!=0] = (cv2.morphologyEx(blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))[tissue_mask!=0]
-    #    blur_mask[tissue_mask!=0] = (cv2.morphologyEx(blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))[tissue_mask!=0]
-    #else :
-    #    blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-    #    blur_mask = (cv2.morphologyEx(blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-    #remove any islands smaller than the minimum size 
-    blur_mask = getSizeFilteredMask(blur_mask,min_size=min_size)
-    #filter to make sure the mean of the regions' pixel nlv values is small enough
-    blur_mask = getMeanFilteredMask(blur_mask,img_nlv,max_mean)
+    #group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    #group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
     #set up the plots to return
-    plot_mask = blur_mask
-    if tissue_mask is not None :
-        plot_mask*=tissue_mask
-    im_gs = (img_layer*plot_mask).astype(np.float32); im_gs /= np.max(im_gs)
-    overlay_gs = np.array([im_gs,im_gs,0.15*plot_mask]).transpose(1,2,0)
-    norm = 128./np.mean(img_layer[plot_mask==1]); im_c = (np.clip(norm*img_layer,0,255)).astype('uint8')
-    overlay_c = np.array([im_c,im_c*plot_mask,im_c*plot_mask]).transpose(1,2,0)
-    plots = [{'image':img_layer,'title':'raw IMAGE LAYER'},
-             {'image':overlay_c,'title':'BLUR mask overlay (clipped)'},
-             {'image':overlay_gs,'title':'BLUR mask overlay (grayscale)'},
-             {'image':img_nlv,'title':'local variance of normalized laplacian'},
-             {'hist':img_nlv.flatten(),'xlabel':'variance of normalized laplacian','line_at':nlv_cut},
-             {'image':blur_mask,'title':'BLUR mask'},
+    plot_img_layer = img_array[:,:,brightest_layer_n-1]
+    im_gs = (plot_img_layer*group_blur_mask).astype(np.float32); im_gs /= np.max(im_gs)
+    overlay_gs = np.array([im_gs,im_gs,0.15*group_blur_mask]).transpose(1,2,0)
+    norm = 128./np.mean(plot_img_layer[group_blur_mask==1]); im_c = (np.clip(norm*plot_img_layer,0,255)).astype(np.uint8)
+    overlay_c = np.array([im_c,im_c*group_blur_mask,im_c*group_blur_mask]).transpose(1,2,0)
+    plots = [{'image':plot_img_layer,'title':f'raw IMAGE layer {brightest_layer_n}'},
+             {'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (clipped)'},
+             {'image':overlay_gs,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (grayscale)'},
+             {'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'},
+             {'hist':brightest_layer_nlv.flatten(),'xlabel':'variance of normalized laplacian','line_at':BLUR_NLV_CUT},
+             {'image':stacked_masks,'title':f'stacked layer masks (cut at {flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1}
+             {'image':group_blur_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask'},
             ]
     #return the blur mask for the layer and the dictionary of plots
-    return blur_mask, plots
+    return group_blur_mask, plots
 
 #################### HELPER FUNCTIONS ####################
 
 #helper function to write out a sheet of masking information plots for an image
-def doMaskingPlotsForImage(image_key,tissue_mask,dust_mask_plot_dicts,workingdir=None) :
-    #figure out how manby columns will be in the sheet and set up the plots
-    n_cols = len(dust_mask_plot_dicts)
-    f,ax = plt.subplots(2,n_cols,figsize=(n_cols*6.4,2*tissue_mask.shape[0]/tissue_mask.shape[1]*6.4))
-    #add the dust mask plots
-    dust_mask = None
-    for pdi,plot_dict in enumerate(dust_mask_plot_dicts) :
-        if 'image' in plot_dict.keys() :
-            pos = ax[0][pdi].imshow(plot_dict['image'])
-            f.colorbar(pos,ax=ax[0][pdi])
-            if 'title' in plot_dict.keys() :
-                title_text = plot_dict['title'].replace('IMAGE',image_key).replace('LAYER',f'layer {DUST_LAYER}').replace('BLUR','dust')
-                ax[0][pdi].set_title(title_text)
-                if title_text=='dust mask' :
-                    dust_mask = plot_dict['image']
-        elif 'hist' in plot_dict.keys() :
-            ax[0][pdi].hist(plot_dict['hist'],100)
-            if 'xlabel' in plot_dict.keys() :
-                xlabel_text = plot_dict['xlabel'].replace('IMAGE',image_key).replace('LAYER',f'layer {DUST_LAYER}').replace('BLUR','dust')
-                ax[0][pdi].set_xlabel(xlabel_text)
-            if 'line_at' in plot_dict.keys() :
-                ax[0][pdi].plot([plot_dict['line_at'],plot_dict['line_at']],
-                                [0.8*y for y in ax[0][pdi].get_ylim()],
-                                linewidth=2,color='tab:red',label=plot_dict['line_at'])
-                ax[0][pdi].legend(loc='best')
-    #add the plot of the overlaid tissue and dust masks
-    if dust_mask is not None :
-        superimposed_masks = 0.25*tissue_mask+0.75*dust_mask
-        pos = ax[1][0].imshow(superimposed_masks,vmin=0.,vmax=1.)
-        f.colorbar(pos,ax=ax[1][0])
-        ax[1][0].set_title('superimposed masks')
-    else :
-        ax[1][0].axis('off')
+def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,workingdir=None) :
+    #figure out how many rows/columns will be in the sheet and set up the plots
+    n_rows = len(plot_dict_lists)+1
+    n_cols = len(plot_dict_lists[0])
+    for pdi in range(1,len(plot_dict_lists)) :
+        if len(plot_dict_lists[pdi]) > n_cols :
+            n_cols = len(plot_dict_lists[pdi])
+    f,ax = plt.subplots(n_rows,n_cols,figsize=(n_cols*6.4,n_rows*tissue_mask.shape[0]/tissue_mask.shape[1]*6.4))
+    #add the masking plots for each layer group
+    for row,plot_dicts in enumerate(plot_dict_lists) :
+        for col,pd in enumerate(plot_dicts) :
+            dkeys = pd.keys()
+            #imshow plots
+            if 'image' in dkeys :
+                imshowkwargs = {}
+                possible_keys = ['cmap','vmin','vmax']
+                for pk in possible_keys :
+                    if pk in dkeys :
+                        imshowkwargs[pk]=pd[pk]
+                pos = ax[row][col].imshow(pd['image'],**imshowkwargs)
+                f.colorbar(pos,ax=ax[row][col])
+                if 'title' in dkeys :
+                    title_text = pd['title'].replace('IMAGE',image_key)
+                    ax[row][col].set_title(title_text)
+            #histogram plots
+            elif 'hist' in dkeys :
+                ax[row][col].hist(pd['hist'],100)
+                if 'xlabel' in dkeys :
+                    xlabel_text = pd['xlabel'].replace('IMAGE',image_key)
+                    ax[row][col].set_xlabel(xlabel_text)
+                if 'line_at' in dkeys :
+                    ax[row][col].plot([pd['line_at'],pd['line_at']],
+                                    [0.8*y for y in ax[row][col].get_ylim()],
+                                    linewidth=2,color='tab:red',label=pd['line_at'])
+                    ax[row][col].legend(loc='best')
+            #remove axes from any extra slots
+            if pd==plot_dicts[-1] and col<n_cols-1 :
+                for ci in range(col+1,n_cols) :
+                    ax[row][ci].axis('off')
+    #add the plot of the overlaid tissue and layer group masks
+    superimposed_masks = 0.25*tissue_mask+0.75*dust_mask
+    pos = ax[1][0].imshow(superimposed_masks,vmin=0.,vmax=1.)
+    f.colorbar(pos,ax=ax[1][0])
+    ax[1][0].set_title('superimposed masks')
     #empty the other unused axes
     for ai in range(1,n_cols) :
         ax[1][ai].axis('off')
@@ -244,7 +258,7 @@ def doMaskingPlotsForImage(image_key,tissue_mask,dust_mask_plot_dicts,workingdir
             plt.savefig(fn); plt.close(); cropAndOverwriteImage(fn)
 
 #helper function to change a mask from zeroes and ones to region indices and zeroes
-def getEnumeratedLayerMask(layer_mask,start_i) :
+def getEnumeratedMask(layer_mask,start_i) :
     #first invert the mask to get the "bad" regions as "signal"
     inverted_mask = np.zeros_like(layer_mask); inverted_mask[layer_mask==0] = 1; inverted_mask[layer_mask==1] = 0
     #label each connected region uniquely starting at the supplied index
@@ -259,34 +273,37 @@ def getEnumeratedLayerMask(layer_mask,start_i) :
 def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,workingdir,return_list) :
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
-    #next make a mask for the dust in the image
-    dust_mask, dust_mask_plots = getImageLayerBlurMaskAndPlots(img_array[:,:,DUST_LAYER-1],DUST_NLV_CUT,DUST_MIN_SIZE,DUST_MEAN_NLV_MAX)
-    #if there are any nonzero regions in the flagging mask(s), make some plots and then 
+    #next make blur masks for each of the layer groups
+    blur_masks_by_layer_group = []; blur_mask_plots_by_layer_group = []
+    for lgi,lgb in enumerate(BLUR_MASK_LAYER_GROUPS) :
+        lgbm, lgbmps = getImageLayerGroupBlurMaskAndPlots(img_array,lgb,BLUR_MASK_BRIGHTEST_LAYERS[lgi],BLUR_MASK_MAX_FLAG_CUTS[lgi])
+        blur_masks_by_layer_group.append(lgbm)
+        blur_mask_plots_by_layer_group.append(lgbmps)
+    #if there are any nonzero regions in the blur masks, make some plots and then 
     #write out a labelled mask file and add corresponding lines to the csv file 
-    if np.min(dust_mask)<1 :
+    if np.min(np.array(blur_masks_by_layer_group))<1 :
         #figure out where the image is in cellview
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
         cvx = pscale*key_x-xpos
         cvy = pscale*key_y-ypos
         #make and write out the plots for this image
-        doMaskingPlotsForImage(key,tissue_mask,dust_mask_plots,workingdir)
+        doMaskingPlotsForImage(key,tissue_mask,blur_mask_plots_by_layer_group,workingdir)
         #the mask starts as all ones (0=background, 1=good tissue, >=2 is a flagged region)
         output_mask = np.ones(img_array.shape,dtype=np.uint8)
-        #add in the dust, starting with index 2
-        dust_layers_string = ''
-        enumerated_dust_mask = getEnumeratedLayerMask(dust_mask,2)
-        for ln in MASK_DUST_IN_LAYERS :
-            (output_mask[:,:,ln-1])[output_mask[:,:,ln-1]==1] = (np.where(enumerated_dust_mask!=0,enumerated_dust_mask,output_mask[:,:,ln-1]))[output_mask[:,:,ln-1]==1]
-            dust_layers_string+=f'{ln}-'
-        #add a line for each region to the return_list (will be written to the .csv file)
-        dust_region_indices = list(range(np.min(enumerated_dust_mask[enumerated_dust_mask!=0]),np.max(enumerated_dust_mask)+1))
-        img_layer_1_nlv = getImageLayerLocalVarianceOfNormalizedLaplacian(img_array[:,:,0])
-        for dri in dust_region_indices :
-            r_size = np.sum(enumerated_dust_mask==dri)
-            r_layer_1_nlv_mean = np.mean(img_layer_1_nlv[enumerated_dust_mask==dri])
-            r_layer_1_nlv_skew = scipy.stats.skew(img_layer_1_nlv[enumerated_dust_mask==dri])
-            return_list.append(LabelledMaskRegion(key,cvx,cvy,dri,dust_layers_string[:-1],r_size,DUST_FLAG_STRING,r_layer_1_nlv_mean,r_layer_1_nlv_skew))
+        #add in the masks for each layer group, starting with index 2
+        start_i = 2
+        for lgi,lgb in enumerate(BLUR_MASK_LAYER_GROUPS) :
+            layers_string = (''.join(f'{ln}-' for ln in range(lgb[0],lgb[1]+1)))[:-1]
+            enumerated_mask = getEnumeratedMask(blur_masks_by_layer_group[lgi],start_i)
+            for ln in range(lgb[0],lgb[1]+1) :
+                (output_mask[:,:,ln-1])[output_mask[:,:,ln-1]==1] = (np.where(enumerated_mask!=0,enumerated_mask,output_mask[:,:,ln-1]))[output_mask[:,:,ln-1]==1]
+            start_i = np.max(enumerated_mask)+1
+            #add a line for each region to the return_list (will be written to the .csv file)
+            region_indices = list(range(np.min(enumerated_dust_mask[enumerated_mask!=0]),np.max(enumerated_mask)+1))
+            for ri in region_indices :
+                r_size = np.sum(enumerated_dust_mask==ri)
+                return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,FLAG_STRING))
         #next add in the tissue mask (all the background is zero in every layer, unless already flagged otherwise)
         for li in range(img_array.shape[-1]) :
             output_mask[:,:,li] = np.where(output_mask[:,:,li]==1,tissue_mask,output_mask[:,:,li])
