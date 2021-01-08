@@ -44,7 +44,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
     nfields = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
-      self.logger.info(f"writing cells for field {i} / {nfields}")
+      self.logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
       geomload = []
       with field.using_image() as im:
         im = im.astype(np.uint32)
@@ -57,8 +57,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
             celllabel = cellproperties.label
             thiscell = imlayer==celllabel
             polygons = findcontoursaspolygons(thiscell.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec))
-            if (i, celltype, celllabel) in _debugdraw:
-              kwargs = _debugdraw[i, celltype, celllabel]
+            if (field.n, celltype, celllabel) in _debugdraw:
+              kwargs = _debugdraw[field.n, celltype, celllabel]
               plt.imshow(thiscell)
               plt.xlim(**kwargs.pop("xlim", {}))
               plt.ylim(**kwargs.pop("ylim", {}))
