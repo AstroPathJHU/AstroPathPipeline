@@ -16,17 +16,26 @@ RAWFILE_EXT                = '.Data.dat'
 LOCAL_MEAN_KERNEL          = np.array([[0.0,0.2,0.0],
                                        [0.2,0.2,0.2],
                                        [0.0,0.2,0.0]])
-WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
+#WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
+WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45))
 TISSUE_MASK_LAYER_GROUPS   = [(1,9),(10,18),(19,25),(26,32),(33,35)]
 DAPI_LAYER_GROUP_INDEX     = 0
 TISSUE_MIN_SIZE            = 2500
-BLUR_MASK_LAYER_GROUPS     = [(1,9),(10,18),(19,35)]
-BLUR_MASK_BRIGHTEST_LAYERS = [5,11,21]
-BLUR_MASK_MAX_FLAG_CUTS    = [3,7,13]
+#BLUR_MASK_LAYER_GROUPS     = [(1,9),(10,18),(19,35)]
+#BLUR_MASK_BRIGHTEST_LAYERS = [5,11,21]
+#BLUR_MASK_FLAG_CUTS        = [7,7,13]
+BLUR_MASK_LAYER_GROUPS       = [(1,9),(10,18),(19,25),(26,32),(33,35)]
+BLUR_MASK_BRIGHTEST_LAYERS   = [5,11,21,29,34]
+BLUR_MASK_FLAG_CUTS          = [7,7,5,5,1]
+BLUR_MASK_DUST_GROUP_INDEX   = 0
+BLUR_MASK_RBC_GROUP_INDEX    = 1
+BLUR_MASK_FOLD_GROUP_INDICES = [2,3,4]
+#BLUR_NLV_CUT               = 0.5
+#BLUR_MAX_MEAN              = 0.4
 BLUR_NLV_CUT               = 0.5
-BLUR_MAX_MEAN              = 0.4
+BLUR_MAX_MEAN              = 0.8
 BLUR_MIN_SKEW              = -0.2
-BLUR_MIN_SIZE              = 15000
+BLUR_MIN_SIZE              = 10000
 FLAG_STRING                = 'blur'
 
 #logger
@@ -163,9 +172,8 @@ def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer,tissue_mask=None) 
     return local_norm_lap_var
 
 #function to return a blur mask for a given image layer, along with a dictionary of to plots to add to the group for this image
-def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_layer_n,max_flag_cut) :
+def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_layer_n,flag_cut) :
     #start by making a mask for every layer in the group
-    layer_masks = []
     stacked_masks = np.zeros(img_array.shape[:-1],dtype=np.uint8)
     brightest_layer_nlv = None
     for ln in range(layer_group_bounds[0],layer_group_bounds[1]+1) :
@@ -175,20 +183,18 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
             brightest_layer_nlv = img_nlv
         #threshold it to make a binary mask
         layer_mask = (np.where(img_nlv>BLUR_NLV_CUT,1,0)).astype(np.uint8)
-        #filter out the small areas
-        layer_mask = getSizeFilteredMask(layer_mask,min_size=BLUR_MIN_SIZE)
-        #filter out anything with skew of nlv values < MIN_SKEW or mean of nlv values > MAX_MEAN (false positives)
-        layer_mask = getSkewFilteredMask(layer_mask,img_nlv,BLUR_MIN_SKEW)
-        layer_mask = getMeanFilteredMask(layer_mask,img_nlv,BLUR_MAX_MEAN)
-        layer_masks.append(layer_mask)
+        ##filter out the small areas
+        #layer_mask = getSizeFilteredMask(layer_mask,min_size=BLUR_MIN_SIZE)
+        ##filter out anything with skew of nlv values < MIN_SKEW or mean of nlv values > MAX_MEAN (false positives)
+        #layer_mask = getSkewFilteredMask(layer_mask,img_nlv,BLUR_MIN_SKEW)
+        #layer_mask = getMeanFilteredMask(layer_mask,img_nlv,BLUR_MAX_MEAN)
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
-    flag_cut = np.min(stacked_masks)+1 if np.min(stacked_masks)+1<=max_flag_cut else 0
     group_blur_mask = (np.where(stacked_masks>flag_cut,1,0)).astype(np.uint8)    
-    ##small open/close to refine it
-    #group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-    #group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-    #filter out small areas again
+    #small open/close to refine it
+    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    #filter out small areas 
     group_blur_mask = getSizeFilteredMask(group_blur_mask,min_size=BLUR_MIN_SIZE)
     #set up the plots to return
     plot_img_layer = img_array[:,:,brightest_layer_n-1]
@@ -296,12 +302,15 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     #next make blur masks for each of the layer groups
     blur_masks_by_layer_group = []; blur_mask_plots_by_layer_group = []
     for lgi,lgb in enumerate(BLUR_MASK_LAYER_GROUPS) :
-        lgbm, lgbmps = getImageLayerGroupBlurMaskAndPlots(img_array,lgb,BLUR_MASK_BRIGHTEST_LAYERS[lgi],BLUR_MASK_MAX_FLAG_CUTS[lgi])
+        lgbm, lgbmps = getImageLayerGroupBlurMaskAndPlots(img_array,lgb,BLUR_MASK_BRIGHTEST_LAYERS[lgi],BLUR_MASK_FLAG_CUTS[lgi])
         blur_masks_by_layer_group.append(lgbm)
         blur_mask_plots_by_layer_group.append(lgbmps)
-    #if there are any nonzero regions in the blur masks, make some plots and then 
-    #write out a labelled mask file and add corresponding lines to the csv file 
-    if np.min(np.array(blur_masks_by_layer_group))<1 :
+    #if there are any nonzero regions in the dust or RBC layer group masks, or in all of the folded tissue layer group masks,
+    #make some plots and then write out a labelled mask file and add corresponding lines to the csv file 
+    write_out_masks = np.min(blur_masks_by_layer_group[BLUR_MASK_DUST_GROUP_INDEX])<1 
+    write_out_masks = write_out_masks or np.min(blur_masks_by_layer_group[BLUR_MASK_RBC_GROUP_INDEX])<1 
+    write_out_masks = write_out_masks or sum([np.min(blur_masks_by_layer_group[fgi])<1 for fgi in BLUR_MASK_FOLD_GROUP_INDICES])==len(BLUR_MASK_FOLD_GROUP_INDICES)
+    if write_out_masks :
         #figure out where the image is in cellview
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
@@ -424,7 +433,7 @@ def main(args=None) :
     for fri_chunk in fri_chunks :
         new_lmrs = getLabelledMaskRegionsForChunk(fri_chunk,metsbl,etcobl,thresholds,xpos,ypos,pscale,args.workingdir)
         all_lmrs+=new_lmrs
-        if len(all_lmrs)>=args.max_masks :
+        if len(set(lmr.image_key for lmr in all_lmrs))>=args.max_masks :
             break
     #write out the table with all of the labelled region information
     if len(all_lmrs)>0 :
