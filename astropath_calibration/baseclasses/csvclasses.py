@@ -1,4 +1,4 @@
-import dataclasses, datetime, functools, matplotlib.patches, numbers, numpy as np, re
+import dataclasses, datetime, functools, itertools, matplotlib.patches, more_itertools, numbers, numpy as np, re
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable
@@ -199,6 +199,8 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       kw = "pixels" if pixels is not None else "microns"
       if kw != self.pixelsormicrons:
         raise ValueError(f"Have to provide {self.pixelsormicrons}, not {kw}")
+      if apscale is None: raise ValueError("Have to provide apscale if you give a string to Polygon")
+      if pscale is None: raise ValueError("Have to provide pscale if you give a string to Polygon")
 
       regex = r"POLYGON \((\((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*\)(?:(?:,\((?:(?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\))*))\)"
       match = re.match(regex, string)
@@ -272,6 +274,16 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   def __sub__(self, other):
     return self + -other
 
+  @property
+  def areas(self):
+    return [
+      1/2 * sum(v1.x*v2.y - v2.x*v1.y for v1, v2 in more_itertools.pairwise(itertools.chain(vv, [vv[0]])))
+      for vv in self.vertices
+    ]
+  @property
+  def totalarea(self):
+    return np.sum(self.areas)
+
   @staticmethod
   def field(*args, metadata={}, **kwargs):
     def polywritefunction(poly):
@@ -287,15 +299,18 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   class dataclasswithpolygon:
     def __new__(thiscls, decoratedcls=None, **kwargs):
       if decoratedcls is None: return super().__new__(thiscls)
-      if kwargs: raise TypeError("Can't call this with both decoratedcls and kwargs")
-      return thiscls()(decoratedcls)
+      return thiscls(**kwargs)(decoratedcls)
 
-    def __init__(self, **kwargs):
+    def __init__(self, *, dc_init=False, **kwargs):
+      self.dc_init = dc_init
       self.kwargs = kwargs
 
     def __call__(self, cls):
-      @dataclasses.dataclass(**self.kwargs)
-      class newcls(dataclasses.dataclass(cls, **self.kwargs), DataClassWithPscale, DataClassWithApscale):
+      firstdataclassfunction = dataclasses.dataclass
+      seconddataclassfunction = dataclasses.dataclass
+      if self.dc_init: firstdataclassfunction = dataclass_dc_init
+      @seconddataclassfunction(**self.kwargs)
+      class newcls(firstdataclassfunction(cls, **self.kwargs), DataClassWithPscale, DataClassWithApscale):
         @property
         def poly(self):
           return self.__poly
@@ -314,11 +329,12 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
           else:
             raise TypeError(f"Unknown type {type(poly).__name__} for poly")
 
-        def _distances_passed_to_init(self):
-          if not isinstance(self.poly, Polygon): return self.poly
-          result = sum(([v.x, v.y] for vv in self.poly.vertices for v in vv), [])
-          result = [_ for _ in result if _]
-          return result
+        #def _distances_passed_to_init(self):
+        #  result = super()._distances_passed_to_init()
+        #  if not isinstance(self.poly, Polygon): return [*result, self.poly]
+        #  vertices = sum(([v.x, v.y] for vv in self.poly.vertices for v in vv), [])
+        #  vertices = [_ for _ in vertices if _]
+        #  return [*result, *vertices]
 
       for thing in functools.WRAPPER_ASSIGNMENTS:
         setattr(newcls, thing, getattr(cls, thing))

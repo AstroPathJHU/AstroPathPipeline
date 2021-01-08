@@ -1,5 +1,5 @@
 import more_itertools, numpy as np, os, pathlib, PIL.Image, re, unittest
-from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, Globals, QPTiffCsv, Region, Vertex
+from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, Globals, Polygon, QPTiffCsv, Region, Vertex
 from astropath_calibration.baseclasses.sample import SampleDef
 from astropath_calibration.baseclasses.overlap import Overlap, rectangleoverlaplist_fromcsvs
 from astropath_calibration.baseclasses.rectangle import Rectangle
@@ -92,3 +92,23 @@ class TestPrepDb(unittest.TestCase):
   def testRectangleOverlapListFastUnits(self):
     with units.setup_context("fast"):
       self.testRectangleOverlapList()
+
+  def testPolygonAreas(self):
+    p = Polygon(pixels="POLYGON ((1 1,2 1,2 2,1 2,1 1))", pscale=5, apscale=3)
+    assertAlmostEqual(units.convertpscale(p.totalarea, p.apscale, p.pscale, power=2), p.onepixel**2, rtol=1e-15)
+    p = Polygon(pixels="POLYGON ((1 1,4 1,4 4,1 4,1 1),(2 2,2 3,3 3,3 2,2 2))", pscale=5, apscale=3)
+    assertAlmostEqual(units.convertpscale(p.totalarea, p.apscale, p.pscale, power=2), 8*p.onepixel**2, rtol=1e-15)
+
+    try:
+      xysx2 = units.distances(pixels=np.random.randint(-10, 11, (2, 100, 2)), pscale=3)
+      vertices = [[Vertex(regionid=None, vid=i, x=x, y=y, pscale=5, apscale=3) for i, (x, y) in enumerate(xys) if x or y] for xys in xysx2]
+      p1, p2 = [Polygon(vertices=[vv]) for vv in vertices]
+      assertAlmostEqual(p1.totalarea+p2.totalarea, (p1+p2).totalarea)
+      assertAlmostEqual(p1.totalarea-p2.totalarea, (p1-p2).totalarea)
+    except:
+      print(xysx2)
+      raise
+
+  def testPolygonAreasFastUnits(self):
+    with units.setup_context("fast"):
+      self.testPolygonAreas()
