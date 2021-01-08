@@ -87,7 +87,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
 
       writetable(field.geomloadcsv, geomload)
 
-@dataclass_dc_init
+@Polygon.dataclasswithpolygon(dc_init=True)
 class CellGeomLoad(DataClassWithPscale):
   field: int
   ctype: int
