@@ -349,11 +349,11 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
 
   def matplotlibpolygon(self, *, imagescale=None, **kwargs):
     if imagescale is None: imagescale = self.pscale
+    vertices = []
     for vv in self.vertices:
-      vertices = [[v.x, v.y] for v in vv]
-      if vertices[-1] != vertices[0]: vertices.append(vertices[0])
-    for p in self.__subtractpolygons:
-      vertices += [[v.x, v.y] for v in p.vertices] + [vertices[0]]
+      newvertices = [[v.x, v.y] for v in vv]
+      if newvertices[-1] != newvertices[0]: newvertices.append(newvertices[0])
+      vertices += newvertices
     return matplotlib.patches.Polygon(
       units.convertpscale(
         vertices,
