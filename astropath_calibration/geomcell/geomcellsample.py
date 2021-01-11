@@ -6,7 +6,7 @@ from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesCom
 from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
 from ..utilities.tableio import writetable
-from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
+from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithPscale, distancefield
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
@@ -81,13 +81,14 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
                 box=box,
                 poly=polygon,
                 pscale=self.pscale,
+                apscale=self.apscale,
               )
             )
 
       writetable(field.geomloadcsv, geomload)
 
 @Polygon.dataclasswithpolygon(dc_init=True)
-class CellGeomLoad(DataClassWithPscale):
+class CellGeomLoad(DataClassWithPscale, DataClassWithApscale):
   field: int
   ctype: int
   n: int
