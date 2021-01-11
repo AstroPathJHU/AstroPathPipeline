@@ -12,7 +12,7 @@ def showannotation(image, regions, *, qpscale, imagescale, xlim=(), ylim=(), ver
     if vertices is None:
       poly = region.poly
     else:
-      poly = Polygon(vertices=[v for v in vertices if v.regionid == region.regionid], pscale=imagescale)
+      poly = Polygon(vertices=[[v for v in vertices if v.regionid == region.regionid]], pscale=imagescale)
 
     polygon = poly.matplotlibpolygon(
       imagescale=imagescale,

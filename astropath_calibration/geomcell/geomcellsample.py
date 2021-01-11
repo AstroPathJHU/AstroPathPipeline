@@ -5,7 +5,6 @@ from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLo
 from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesComponentTiff
 from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
-from ..utilities.misc import dataclass_dc_init
 from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
