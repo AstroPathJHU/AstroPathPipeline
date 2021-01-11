@@ -18,7 +18,7 @@ class TestGeomCell(TestBaseSaveOutput):
     ]
 
   def testGeom(self, SlideID="M206", **kwargs):
-    s = GeomCellSample(root=thisfolder/"data", samp=SlideID, geomroot=thisfolder/"geomcell_test_for_jenkins", **kwargs)
+    s = GeomCellSample(root=thisfolder/"data", samp=SlideID, geomroot=thisfolder/"geomcell_test_for_jenkins", selectrectangles=[1], **kwargs)
     s.rungeomcell()
 
     try:
@@ -28,8 +28,8 @@ class TestGeomCell(TestBaseSaveOutput):
       ):
         self.assertEqual(filename.name, reffilename.name)
   
-        rows = readtable(filename, CellGeomLoad, extrakwargs={"pscale": s.pscale})
-        targetrows = readtable(reffilename, CellGeomLoad, extrakwargs={"pscale": s.pscale})
+        rows = readtable(filename, CellGeomLoad, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
+        targetrows = readtable(reffilename, CellGeomLoad, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
         for row, target in more_itertools.zip_equal(rows, targetrows):
           assertAlmostEqual(row, target)
     except:
