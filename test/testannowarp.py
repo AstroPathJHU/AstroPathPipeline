@@ -67,6 +67,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     targetrows = readtable(referenceregionsfilename, Region, extrakwargs={"apscale": s.apscale, "pscale": s.pscale})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
+      self.assertGreater(row.poly.totalarea, 0)
 
   def testReadingWritingAlignments(self, SlideID="M206"):
     s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")

@@ -32,6 +32,12 @@ class TestGeomCell(TestBaseSaveOutput):
         targetrows = readtable(reffilename, CellGeomLoad, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
         for row, target in more_itertools.zip_equal(rows, targetrows):
           assertAlmostEqual(row, target)
+          try:
+            self.assertGreater(row.poly.totalarea, 0)
+          except:
+            print(row)
+            print(row.poly.areas)
+            raise
     except:
       self.saveoutput()
       raise

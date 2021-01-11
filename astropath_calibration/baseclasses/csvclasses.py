@@ -265,7 +265,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   def __pos__(self):
     return self
   def __neg__(self):
-    return Polygon(vertices=[vv[::-1] for vv in self.vertices])
+    return Polygon(vertices=[[vv[0]]+vv[-2::-1] for vv in self.vertices])
   def __add__(self, other):
     if isinstance(other, numbers.Number) and other == 0: return self
     return Polygon(vertices=self.vertices+other.vertices)
