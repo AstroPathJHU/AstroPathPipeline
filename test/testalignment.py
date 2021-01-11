@@ -8,7 +8,6 @@ from astropath_calibration.baseclasses.sample import SampleDef
 from astropath_calibration.utilities import units
 from astropath_calibration.utilities.misc import re_subs
 from astropath_calibration.utilities.tableio import readtable
-from astropath_calibration.utilities.version import astropathversion
 from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -84,6 +83,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       ref = thisfolder/"reference"/"alignment"/SlideID/log.name
       with open(ref) as fref, open(log) as fnew:
         subs = (";[^;]*$", ""), (r"(WARNING: (component tiff|xml files|constants\.csv)).*$", r"\1")
+        from astropath_calibration.utilities.version import astropathversion
         refsubs = *subs, (r"(align )v[\w+.]+", rf"\1{astropathversion}")
         newsubs = *subs,
         refcontents = os.linesep.join([re_subs(line, *refsubs, flags=re.MULTILINE) for line in fref.read().splitlines()])+os.linesep
