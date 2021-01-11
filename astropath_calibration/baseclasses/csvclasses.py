@@ -307,10 +307,16 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
 
     def __call__(self, cls):
       firstdataclassfunction = dataclasses.dataclass
+      firstdataclasskwargs = self.kwargs.copy()
       seconddataclassfunction = dataclasses.dataclass
-      if self.dc_init: firstdataclassfunction = dataclass_dc_init
-      @seconddataclassfunction(**self.kwargs)
-      class newcls(firstdataclassfunction(cls, **self.kwargs), DataClassWithPscale, DataClassWithApscale):
+      seconddataclasskwargs = self.kwargs.copy()
+      if self.dc_init:
+        firstdataclassfunction = dataclass_dc_init
+        seconddataclasskwargs.update({
+          "init": False,
+        })
+      @seconddataclassfunction(**seconddataclasskwargs)
+      class newcls(firstdataclassfunction(cls, **firstdataclasskwargs), DataClassWithPscale, DataClassWithApscale):
         @property
         def poly(self):
           return self.__poly
