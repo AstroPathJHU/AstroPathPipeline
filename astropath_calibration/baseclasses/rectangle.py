@@ -1,4 +1,4 @@
-import abc, collections, contextlib, dataclasses, datetime, jxmlease, methodtools, numpy as np, pathlib, tifffile, warnings
+import abc, collections, contextlib, dataclasses, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, warnings
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint, memmapcontext
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
@@ -132,6 +132,15 @@ class RectangleWithImageBase(Rectangle):
       for i in range(len(self.__images_cache)):
         stack.enter_context(self.using_image(i))
       yield stack
+
+  @property
+  def _imshowextent(self):
+    return self.x, self.x+self.w, self.y+self.h, self.y
+  def imshow(self, slice, *, imagescale=None):
+    if imagescale is None: imagescale = self.pscale
+    extent = units.convertpscale(self._imshowextent, self.pscale, imagescale)
+    with self.using_image() as im:
+      plt.imshow(im[slice], extent=(extent / units.onepixel(imagescale)).astype(float))
 
 class RectangleTransformationBase(abc.ABC):
   @abc.abstractmethod

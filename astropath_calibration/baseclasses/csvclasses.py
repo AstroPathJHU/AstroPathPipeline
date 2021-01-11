@@ -275,6 +275,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     return self + -other
 
   @property
+  def separate(self):
+    return [Polygon(vertices=[vv]) for vv in self.vertices]
+  @property
   def areas(self):
     return [
       1/2 * sum(v1.x*v2.y - v2.x*v1.y for v1, v2 in more_itertools.pairwise(itertools.chain(vv, [vv[0]])))
