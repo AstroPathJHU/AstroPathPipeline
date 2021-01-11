@@ -2,7 +2,7 @@ import cv2, more_itertools
 from ..baseclasses.csvclasses import Polygon, Vertex
 from ..utilities import units
 
-def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, **kwargs):
+def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, fill=False, **kwargs):
   contours, (hierarchy,) = cv2.findContours(*args, **kwargs)
   innerpolygons = [[] for c in contours]
   polygons = [None for c in contours]
@@ -19,6 +19,8 @@ def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, **kwargs):
       #prepend because we are iterating in reversed order
       toplevelpolygons.insert(0, polygon)
     else:
+      if fill:
+        continue
       #inner rings must have >4 points
       if len(vertices) > 4:
         innerpolygons[parent].insert(0, polygon)

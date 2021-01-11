@@ -33,7 +33,7 @@ class TestGeomCell(TestBaseSaveOutput):
         for row, target in more_itertools.zip_equal(rows, targetrows):
           assertAlmostEqual(row, target)
           try:
-            self.assertGreater(row.poly.totalarea, 0)
+            self.assertGreater(row.poly.totalarea, -s.oneappixel**2)
           except:
             print(row)
             print(row.poly.areas)

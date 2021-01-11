@@ -343,7 +343,7 @@ class DbloadSampleBase(SampleBase):
   def writecsv(self, csv, *args, **kwargs):
     return writetable(self.csv(csv), *args, logger=self.logger, **kwargs)
 
-class DbloadSample(DbloadSampleBase, units.ThingWithQpscale):
+class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale):
   def getimageinfofromconstants(self):
     dct = constantsdict(self.csv("constants"))
 

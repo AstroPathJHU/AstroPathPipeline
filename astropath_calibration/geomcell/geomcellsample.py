@@ -55,7 +55,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               continue
             celllabel = cellproperties.label
             thiscell = imlayer==celllabel
-            polygons = findcontoursaspolygons(thiscell.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec))
+            polygons = findcontoursaspolygons(thiscell.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec), fill=True)
             if (field.n, celltype, celllabel) in _debugdraw:
               kwargs = _debugdraw[field.n, celltype, celllabel]
               plt.imshow(thiscell)
