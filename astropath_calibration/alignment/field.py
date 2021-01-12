@@ -48,6 +48,10 @@ class Field(Rectangle):
     covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
     self.pxvec = np.array(units.correlated_distances(distances=nominal, covariance=covariance))
 
+  @property
+  def _imshowextent(self):
+    return [self.px, self.px+self.w, self.py+self.h, self.py]
+
 @dataclass_dc_init
 class FieldOverlap(Overlap):
   cov_x1_x2: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
