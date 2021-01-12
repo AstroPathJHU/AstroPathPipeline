@@ -161,6 +161,8 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
       **im3xveckwargs,
     )
 
+  __noninitargs__ = {"im3x", "im3y"}
+
   @property
   def im3xvec(self):
     if self.pscale is None:

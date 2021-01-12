@@ -1,5 +1,5 @@
 import abc, dataclassy
-from dataclassy.dataclass import DataClassMeta
+from dataclassy.dataclass import DataClassInit, DataClassMeta
 
 class DataClassSuperNewMeta(DataClassMeta):
   """
@@ -15,6 +15,44 @@ class DataClassSuperNewMeta(DataClassMeta):
     dict_["__new__"] = new
     subcls = mcs(name, (cls,), dict_, _calledfromnew=True, **kwargs)
     return subcls
+
+  __dataclassinits = {}
+  @classmethod
+  def dataclassinit(mcs):
+    #if it's already DataClassSuperNewInit
+    if issubclass(mcs, DataClassSuperNewInit): return mcs
+    #if the class is DataClassMeta
+    if issubclass(DataClassSuperNewInit, mcs): return DataClassSuperNewInit
+
+    #make a DataClassSuperNewInit for the subclass of DataClassMeta
+    if mcs not in mcs.__dataclassinits:
+      class NewDataClassSuperNewInit(mcs, DataClassSuperNewInit):
+        pass
+      NewDataClassSuperNewInit.__name__ = mcs.__name__ + "Init"
+      mcs.__dataclassinits[mcs] = NewDataClassSuperNewInit
+
+    return mcs.__dataclassinits[mcs]
+
+class DataClassSuperNewInit(DataClassSuperNewMeta, DataClassInit):
+  def __new__(mcs, name, bases, dict_, **kwargs):
+    dataclass_bases = [vars(b) for b in bases if hasattr(b, '__annotationmetadata__')]
+    __noninitargs__ = set()
+    for b in dataclass_bases + [dict_]:
+      __noninitargs__ |= b.get("__noninitargs__", set())
+    dict_["__noninitargs__"] = __noninitargs__
+    return super().__new__(mcs, name, bases, dict_, **kwargs)
+
+  """In the case that a custom __init__ is defined, remove arguments used by __new__ before calling it."""
+  def __call__(cls, *args, **kwargs):
+    args = iter(args)
+    new_kwargs = dict(zip(cls.__annotations__, args))  # convert positional args to keyword for __new__
+    instance = cls.__new__(cls, **new_kwargs, **kwargs)
+
+    for parameter in kwargs.keys() & (cls.__annotations__.keys() | cls.__noninitargs__):
+      del kwargs[parameter]
+
+    instance.__init__(*args, **kwargs)
+    return instance
 
 class MetaDataAnnotation:
   def __init__(self, typ, **kwargs):
@@ -43,7 +81,7 @@ class DataClassWithMetaDataMeta(DataClassMeta):
 class DataClassWithMetaData:
   @classmethod
   def metadata(cls, fieldname):
-    return self.__annotationmetadata__.get(fieldname, {})
+    return cls.__annotationmetadata__.get(fieldname, {})
 
 class MyDataClassMeta(DataClassSuperNewMeta, DataClassWithMetaDataMeta, abc.ABCMeta):
   pass

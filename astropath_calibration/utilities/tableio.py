@@ -48,25 +48,25 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
       Row = rownameorclass
       if checkorder:
         columnnames = list(reader.fieldnames)
-        fieldnames = [field.name for field in dataclassy.fields(Row) if field.name in columnnames]
+        fieldnames = [field for field in dataclassy.fields(Row) if field in columnnames]
         if fieldnames != columnnames:
           raise ValueError(f"Column names and dataclass field names are not in the same order\n{columnnames}\n{fieldnames}")
-      for field in dataclassy.fields(Row):
-        if field.name not in reader.fieldnames:
+      for field, fieldtype in dataclassy.fields(Row).items():
+        if field not in reader.fieldnames:
           continue
           #hopefully it has a default value!
           #otherwise we will get an error when
           #reading the first row
-        typ = field.metadata.get("readfunction", field.type)
-        if field.name in columntypes:
-          if columntypes[field.name] != typ:
+        typ = Row.metadata(field).get("readfunction", fieldtype)
+        if field in columntypes:
+          if columntypes[field] != typ:
             raise TypeError(
-              f"The type for {field.name} in your dataclass {Row.__name__} "
+              f"The type for {field} in your dataclass {Row.__name__} "
               f"and the type provided in readtable are inconsistent "
-              f"({typ} != {columntypes[field.name]})"
+              f"({typ} != {columntypes[field]})"
             )
         else:
-          columntypes[field.name] = typ
+          columntypes[field] = typ
 
     if any("readingfromfile" in _.__annotations__ for _ in Row.__mro__ if hasattr(_, "__annotations__")) and "readingfromfile" not in extrakwargs:
       extrakwargs["readingfromfile"] = True
@@ -107,7 +107,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
         + "\n  ".join(_.__name__ for _ in badclasses)
       )
 
-  fieldnames = [f.name for f in dataclassy.fields(rowclass) if f.metadata.get("includeintable", True)]
+  fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
 
   try:
     with open(filename, "w") as f:
@@ -140,12 +140,13 @@ def asrow(obj, *, dict_factory=dict):
 
   result = []
   for f in dataclassy.fields(obj):
-    if not f.metadata.get("includeintable", True): continue
-    value = dataclassy._asdict_inner(getattr(obj, f.name), dict_factory)
-    writefunction = f.metadata.get("writefunction", lambda x: x)
-    writefunctionkwargs = f.metadata.get("writefunctionkwargs", lambda object: {})(obj)
+    metadata = type(obj).metadata(f)
+    if not metadata.get("includeintable", True): continue
+    value = dataclassy._asdict_inner(getattr(obj, f), dict_factory)
+    writefunction = metadata.get("writefunction", lambda x: x)
+    writefunctionkwargs = metadata.get("writefunctionkwargs", lambda object: {})(obj)
     value = writefunction(value, **writefunctionkwargs)
-    result.append((f.name, value))
+    result.append((f, value))
 
   return dict_factory(result)
 

@@ -78,7 +78,7 @@ class DataClassWithDistances(MyDataClass):
     for field in self.distancefields():
       value = getattr(self, field)
       if isinstance(value, np.ndarray) and not value.shape:
-        setattr(self, field.name, value[()])
+        setattr(self, field, value[()])
 
     for fieldname in self.distancefields():
       power = self.metadata(fieldname)["power"]
