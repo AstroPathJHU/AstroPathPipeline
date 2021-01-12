@@ -1,36 +1,36 @@
-import abc, collections, contextlib, dataclasses, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, warnings
+import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, warnings
 from ..utilities import units
-from ..utilities.misc import dataclass_dc_init, floattoint, memmapcontext
+from ..utilities.dataclasses import MetaDataAnnotation
+from ..utilities.misc import floattoint, memmapcontext
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
-@dataclass_dc_init
 class Rectangle(DataClassWithPscale):
   pixelsormicrons = "microns"
 
-  n: int = dataclasses.field()
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  w: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  h: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  t: datetime.datetime = dataclasses.field(metadata={"readfunction": lambda x: datetime.datetime.fromtimestamp(int(x)), "writefunction": lambda x: int(datetime.datetime.timestamp(x))})
+  n: int
+  x: distancefield(pixelsormicrons=pixelsormicrons)
+  y: distancefield(pixelsormicrons=pixelsormicrons)
+  w: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  h: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cx: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cy: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  t: MetaDataAnnotation(datetime.datetime, readfunction=lambda x: datetime.datetime.fromtimestamp(int(x)), writefunction=lambda x: int(datetime.datetime.timestamp(x)))
   file: str
-  readingfromfile: dataclasses.InitVar[bool]
 
-  def __init__(self, *args, rectangle=None, **kwargs):
+  def __new__(cls, *args, rectangle=None, **kwargs):
     rectanglekwargs = {}
     if rectangle is not None:
       rectanglekwargs = {
         "pscale": rectangle.pscale,
         **{
           field.name: getattr(rectangle, field.name)
-          for field in dataclasses.fields(type(rectangle))
+          for field in dataclassy.fields(type(rectangle))
         }
       }
       if "pscale" in kwargs:
         del rectanglekwargs["pscale"]
-    return self.__dc_init__(
+    return super().__new__(
+      cls,
       *args,
       **rectanglekwargs,
       **kwargs,

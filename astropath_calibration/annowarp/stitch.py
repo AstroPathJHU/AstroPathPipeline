@@ -1,4 +1,4 @@
-import abc, collections, cvxpy as cp, dataclasses, itertools, numpy as np, re
+import abc, collections, cvxpy as cp, dataclassy, itertools, numpy as np, re
 
 from ..utilities import units
 from ..utilities.tableio import writetable
@@ -294,7 +294,7 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
       + constant
     )
 
-@dataclasses.dataclass
+@dataclassy.dataclass
 class AnnoWarpStitchResultEntry(DataClassWithPscale):
   pixelsormicrons = "pixels"
   def __powerfordescription(self):
@@ -318,4 +318,4 @@ class AnnoWarpStitchResultEntry(DataClassWithPscale):
   n: int
   value: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=__powerfordescription)
   description: str
-  readingfromfile: dataclasses.InitVar[bool] = False
+  readingfromfile: dataclassy.InitVar[bool] = False

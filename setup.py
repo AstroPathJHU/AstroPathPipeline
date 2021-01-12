@@ -25,6 +25,7 @@ setuptools.setup(
   install_requires = [
     "contextlib2>=0.6.0",
     "cvxpy",
+    "dataclassy @ git+ssh://git@github.com/biqqles/dataclassy@a43fd78fa54ae7d2b02332db62dbc45e25288ee5#egg=dataclassy"
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
     "matplotlib>=3.3.2",

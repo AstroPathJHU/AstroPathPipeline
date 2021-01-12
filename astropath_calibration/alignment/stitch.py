@@ -1,4 +1,4 @@
-import abc, collections, dataclasses, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
+import abc, collections, dataclassy, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.rectangle import Rectangle, rectangledict, RectangleList
 from ..utilities import units
@@ -704,10 +704,10 @@ class StitchResultCvxpy(CalculatedStitchResult):
     self.xvar = x
     self.Tvar = T
 
-@dataclasses.dataclass
+@dataclassy.dataclass
 class AffineEntry:
   n: int
-  value: float = dataclasses.field(metadata={"writefunction": float})
+  value: float = dataclassy.field(metadata={"writefunction": float})
   description: str
 
 class AffineNominalEntry(AffineEntry):

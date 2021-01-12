@@ -4,7 +4,7 @@ from ..utilities.img_correction import correctImageForExposureTime
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
 import numpy as np
-import os, logging, math, dataclasses, more_itertools
+import os, logging, math, dataclassy, more_itertools
 
 #################### GENERAL USEFUL OBJECTS ####################
 
@@ -20,7 +20,7 @@ handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s
 flatfield_logger.addHandler(handler)
 
 #helper class for logging included/excluded fields
-@dataclasses.dataclass
+@dataclassy.dataclass
 class FieldLog :
     slide   : str
     file     : str
@@ -29,7 +29,7 @@ class FieldLog :
     stacked_in_layers : str = ''
 
 #helper class for inputting slides with their names and raw/root directories
-@dataclasses.dataclass
+@dataclassy.dataclass
 class FlatfieldSlideInfo :
     name : str
     rawfile_top_dir : str
@@ -197,7 +197,7 @@ def findLayerThresholds(layer_hists,i=None,rdict=None) :
 #################### IMAGE I/O HELPER FUNCTIONS ####################
 
 #helper dataclass to use in multithreading some image handling
-@dataclasses.dataclass(eq=False, repr=False)
+@dataclassy.dataclass(eq=False, repr=False)
 class FileReadInfo :
     rawfile_path     : str                # the path to the raw file
     sequence_print   : str                # a string of "({i} of {N})" to print

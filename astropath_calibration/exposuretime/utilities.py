@@ -3,7 +3,7 @@ from .alignmentset import AlignmentSetForExposureTime
 from .config import CONST
 from ..utilities.misc import getAlignmentSetTissueEdgeRectNs
 from typing import List
-import os, logging, dataclasses
+import os, logging, dataclassy
 
 #set up the logger
 et_fit_logger = logging.getLogger("exposure_time_fitter")
@@ -116,7 +116,7 @@ def getFirstLayerInGroup(layer_n,nlayers) :
         raise ValueError(f'ERROR: number of image layers ({nlayers}) passed to getFirstLayerInGroup is not a recognized option!')
 
 #helper class to hold the pre- and post-fit details of overlaps
-@dataclasses.dataclass
+@dataclassy.dataclass
 class ExposureTimeOverlapFitResult :
     n            : int
     p1           : int
@@ -131,7 +131,7 @@ class ExposureTimeOverlapFitResult :
     postfit_cost : float
 
 #helper class to log fields used in making the measurement
-@dataclasses.dataclass
+@dataclassy.dataclass
 class FieldLog :
     file : str
     rect_n : int

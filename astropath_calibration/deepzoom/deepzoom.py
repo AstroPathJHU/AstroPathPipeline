@@ -1,4 +1,4 @@
-import collections, dataclasses, functools, numpy as np, os, pathlib, PIL, re
+import collections, dataclassy, functools, numpy as np, os, pathlib, PIL, re
 
 from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, ReadRectanglesComponentTiff, ZoomSampleBase
 from ..utilities.tableio import pathfield, writetable
@@ -140,7 +140,7 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
     self.writezoomlist()
 
 @functools.total_ordering
-@dataclasses.dataclass
+@dataclassy.dataclass
 class DeepZoomFile:
   sample: str
   zoom: int

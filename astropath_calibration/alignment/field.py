@@ -1,4 +1,4 @@
-import dataclasses, numpy as np
+import dataclassy, numpy as np
 from ..baseclasses.rectangle import Rectangle
 from ..baseclasses.overlap import Overlap
 from ..utilities import units
@@ -68,7 +68,7 @@ class FieldOverlap(Overlap):
         "rectangles": overlap.rectangles,
         **{
           field.name: getattr(overlap, field.name)
-          for field in dataclasses.fields(type(overlap))
+          for field in dataclassy.fields(type(overlap))
         }
       }
     return self.__dc_init__(

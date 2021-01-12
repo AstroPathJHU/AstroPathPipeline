@@ -6,7 +6,7 @@ from ..utilities.img_correction import correctImageLayerForExposureTime, correct
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 import numpy as np
-import cv2, os, logging, dataclasses, copy, platform
+import cv2, os, logging, dataclassy, copy, platform
 
 #set up the logger
 warp_logger = logging.getLogger("warpfitter")
@@ -20,7 +20,7 @@ class WarpingError(Exception) :
     pass
 
 #helper class to hold a rectangle's rawfile key, raw image, warped image, and tag for whether it's only relevant for overlaps that are corners
-@dataclasses.dataclass(eq=False, repr=False)
+@dataclassy.dataclass(eq=False, repr=False)
 class WarpImage :
     rawfile_key          : str
     raw_image_umat       : cv2.UMat
@@ -35,7 +35,7 @@ class WarpImage :
         return self.warped_image_umat.get()
 
 #helper classes to represent octets of overlaps
-@dataclasses.dataclass(eq=False, repr=False)
+@dataclassy.dataclass(eq=False, repr=False)
 class OverlapOctet :
     root_dir             : str
     rawfile_top_dir      : str
@@ -86,7 +86,7 @@ class OverlapOctet :
     
 
 #little utility class to represent a warp fit result
-@dataclasses.dataclass
+@dataclassy.dataclass
 class WarpFitResult :
     dirname         : str = None
     n               : int = 0
@@ -114,21 +114,21 @@ class WarpFitResult :
     cost_reduction  : float = 0.0
 
 #little utility class to log the fields used
-@dataclasses.dataclass
+@dataclassy.dataclass
 class FieldLog :
     slide_ID : str
     file   : str
     rect_n : int
 
 #little utilitiy class for logging x and y principal point shifts
-@dataclasses.dataclass
+@dataclassy.dataclass
 class WarpShift :
     layer_n  : int
     cx_shift : float
     cy_shift : float
 
 #utility class for logging warping parameters and the slide they come from
-@dataclasses.dataclass
+@dataclassy.dataclass
 class WarpingSummary :
     slide_ID     : str
     project         : int

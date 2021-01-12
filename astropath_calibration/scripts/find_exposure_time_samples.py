@@ -5,7 +5,7 @@ from microscopealignment.utilities.tableio import writetable
 from microscopealignment.utilities.misc import cd
 from typing import List
 import multiprocessing as mp
-import os, glob, dataclasses
+import os, glob, dataclassy
 
 #constants
 RAWFILE_EXT = '.Data.dat'
@@ -64,7 +64,7 @@ samples_polaris = {
           },
     }
 
-@dataclasses.dataclass
+@dataclassy.dataclass
 class SampleOverlapsWithDifferentExposureTimes :
     name : str
     n_overlaps_per_layer_group : List[int]

@@ -9,7 +9,7 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
 from argparse import ArgumentParser
 import numpy as np, multiprocessing as mp
-import os, time, logging, glob, dataclasses, platform
+import os, time, logging, glob, dataclassy, platform
 
 #################### CONSTANTS ####################
 
@@ -19,7 +19,7 @@ RESULT_FILE_STEM = 'overlap_correction_results.csv'
 #################### UTILITIES ####################
 
 #helper dataclass for results of the exposure time corrections
-@dataclasses.dataclass
+@dataclassy.dataclass
 class OverlapCorrectionResult :
     slideID        : str
     layer_n        : int

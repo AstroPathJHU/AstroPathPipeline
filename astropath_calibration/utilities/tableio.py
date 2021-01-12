@@ -1,4 +1,4 @@
-import contextlib, csv, dataclasses, pathlib
+import contextlib, csv, dataclassy, pathlib
 
 from .misc import dummylogger
 
@@ -37,7 +37,7 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
   with field_size_limit_context(fieldsizelimit), open(filename) as f:
     reader = csv.DictReader(f)
     if isinstance(rownameorclass, str):
-      Row = dataclasses.make_dataclass(
+      Row = dataclassy.make_dataclass(
         rownameorclass,
         [
           (fieldname, columntypes.get(fieldname, str))
@@ -48,10 +48,10 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
       Row = rownameorclass
       if checkorder:
         columnnames = list(reader.fieldnames)
-        fieldnames = [field.name for field in dataclasses.fields(Row) if field.name in columnnames]
+        fieldnames = [field.name for field in dataclassy.fields(Row) if field.name in columnnames]
         if fieldnames != columnnames:
           raise ValueError(f"Column names and dataclass field names are not in the same order\n{columnnames}\n{fieldnames}")
-      for field in dataclasses.fields(Row):
+      for field in dataclassy.fields(Row):
         if field.name not in reader.fieldnames:
           continue
           #hopefully it has a default value!
@@ -107,7 +107,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
         + "\n  ".join(_.__name__ for _ in badclasses)
       )
 
-  fieldnames = [f.name for f in dataclasses.fields(rowclass) if f.metadata.get("includeintable", True)]
+  fieldnames = [f.name for f in dataclassy.fields(rowclass) if f.metadata.get("includeintable", True)]
 
   try:
     with open(filename, "w") as f:
@@ -133,15 +133,15 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
 
 def asrow(obj, *, dict_factory=dict):
   """
-  loosely inspired by https://github.com/python/cpython/blob/77c623ba3d084e99d68c30f368bd7fbd7f175b60/Lib/dataclasses.py#L1052
+  loosely inspired by https://github.com/python/cpython/blob/77c623ba3d084e99d68c30f368bd7fbd7f175b60/Lib/dataclassy.py#L1052
   """
-  if not dataclasses._is_dataclass_instance(obj):
+  if not dataclassy._is_dataclass_instance(obj):
     raise TypeError("asrow() should be called on dataclass instances")
 
   result = []
-  for f in dataclasses.fields(obj):
+  for f in dataclassy.fields(obj):
     if not f.metadata.get("includeintable", True): continue
-    value = dataclasses._asdict_inner(getattr(obj, f.name), dict_factory)
+    value = dataclassy._asdict_inner(getattr(obj, f.name), dict_factory)
     writefunction = f.metadata.get("writefunction", lambda x: x)
     writefunctionkwargs = f.metadata.get("writefunctionkwargs", lambda object: {})(obj)
     value = writefunction(value, **writefunctionkwargs)
@@ -180,4 +180,4 @@ def pathfield(*, metadata={}, **kwargs):
     **metadata,
   }
 
-  return dataclasses.field(**kwargs)
+  return dataclassy.field(**kwargs)

@@ -1,4 +1,4 @@
-import dataclasses, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, typing, uncertainties as unc
+import dataclassy, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, typing, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 from ..baseclasses.overlap import Overlap
@@ -63,7 +63,7 @@ class AlignmentComparison(abc.ABC):
       plt.savefig(saveas, **savekwargs)
       plt.close()
 
-@dataclasses.dataclass
+@dataclassy.dataclass
 class AlignmentOverlap(AlignmentComparison, Overlap):
   def __init__(self, *args, layer1=None, layer2=None, **kwargs):
     super().__init__(*args, **kwargs)
@@ -363,8 +363,8 @@ class AlignmentResult(AlignmentResultBase):
   covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
-  readingfromfile: dataclasses.InitVar[bool] = False
+  exception: typing.Optional[Exception] = dataclassy.field(default=None, metadata={"includeintable": False})
+  readingfromfile: dataclassy.InitVar[bool] = False
 
   def __init__(self, *args, **kwargs):
     return super().__init__(*args, **kwargs)
@@ -389,8 +389,8 @@ class LayerAlignmentResult(AlignmentResultBase):
   covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
-  readingfromfile: dataclasses.InitVar[bool] = False
+  exception: typing.Optional[Exception] = dataclassy.field(default=None, metadata={"includeintable": False})
+  readingfromfile: dataclassy.InitVar[bool] = False
 
   def __init__(self, *args, **kwargs):
     return super().__init__(*args, **kwargs)

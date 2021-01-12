@@ -1,4 +1,4 @@
-import abc, contextlib, cvxpy as cp, dataclasses, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
+import abc, contextlib, cvxpy as cp, dataclassy, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
@@ -474,12 +474,12 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   mi: float
   exit: int
-  tilesize: dataclasses.InitVar[units.Distance]
-  bigtilesize: dataclasses.InitVar[units.Distance]
-  bigtileoffset: dataclasses.InitVar[units.Distance]
-  exception: dataclasses.InitVar[Exception] = None
-  imageshandle: dataclasses.InitVar[typing.Callable[[], typing.Tuple[np.ndarray, np.ndarray]]] = None
-  readingfromfile: dataclasses.InitVar[bool] = False
+  tilesize: dataclassy.InitVar[units.Distance]
+  bigtilesize: dataclassy.InitVar[units.Distance]
+  bigtileoffset: dataclassy.InitVar[units.Distance]
+  exception: dataclassy.InitVar[Exception] = None
+  imageshandle: dataclassy.InitVar[typing.Callable[[], typing.Tuple[np.ndarray, np.ndarray]]] = None
+  readingfromfile: dataclassy.InitVar[bool] = False
 
   def __init__(self, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)

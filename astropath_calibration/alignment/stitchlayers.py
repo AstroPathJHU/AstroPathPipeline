@@ -1,4 +1,4 @@
-import dataclasses, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
+import dataclassy, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 
 from ..baseclasses.overlap import OverlapCollection
 from ..utilities import units
@@ -347,7 +347,7 @@ class LayerStitchResultCvxpy(LayerStitchResultBase):
     self.xvar = x
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclassy.dataclass(frozen=True)
 class LayerPosition(DataClassWithPscaleFrozen):
   pixelsormicrons = "pixels"
 
@@ -357,9 +357,9 @@ class LayerPosition(DataClassWithPscaleFrozen):
   cov_x_x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_x_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  readingfromfile: dataclasses.InitVar[bool] = False
+  readingfromfile: dataclassy.InitVar[bool] = False
 
-@dataclasses.dataclass(frozen=True)
+@dataclassy.dataclass(frozen=True)
 class LayerPositionCovariance(DataClassWithPscaleFrozen):
   pixelsormicrons = "pixels"
 
@@ -369,5 +369,5 @@ class LayerPositionCovariance(DataClassWithPscaleFrozen):
   cov_x1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  readingfromfile: dataclasses.InitVar[bool] = False
+  readingfromfile: dataclassy.InitVar[bool] = False
 
