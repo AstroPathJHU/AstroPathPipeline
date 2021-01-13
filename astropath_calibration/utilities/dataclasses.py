@@ -28,10 +28,10 @@ class DataClassWithMetaDataMeta(DataClassMeta):
     dict_["__annotationmetadata__"] = __annotationmetadata__
 
     __annotations__ = dict_.setdefault("__annotations__", {})
-    for name, typ in __annotations__.items():
+    for annoname, typ in __annotations__.items():
       if isinstance(typ, MetaDataAnnotation):
-        __annotations__[name] = typ.type
-        __annotationmetadata__[name] = typ.metadata
+        __annotations__[annoname] = typ.type
+        __annotationmetadata__[annoname] = typ.metadata
 
     return super().__new__(mcs, name, bases, dict_, **kwargs)
 
@@ -43,7 +43,6 @@ class DataClassWithMetaData:
 
 class DataClassSuperInitMeta(DataClassMeta):
   def __new__(mcs, name, bases, dict_, **kwargs):
-    print(name)
     if "__init__" not in dict_:
       def __init__(self, *args, **kwargs):
         return super().__init__(*args, **kwargs)
