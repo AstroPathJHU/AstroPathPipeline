@@ -1,5 +1,5 @@
-import more_itertools, numpy as np, os, pathlib, PIL.Image, re, unittest
-from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, Globals, QPTiffCsv, Region, Vertex
+import hashlib, more_itertools, numpy as np, os, pathlib, PIL.Image, re, unittest
+from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, Globals, Polygon, QPTiffCsv, Region, Vertex
 from astropath_calibration.baseclasses.sample import SampleDef
 from astropath_calibration.baseclasses.overlap import Overlap, rectangleoverlaplist_fromcsvs
 from astropath_calibration.baseclasses.rectangle import Rectangle
@@ -7,7 +7,6 @@ from astropath_calibration.prepdb.prepdbsample import PrepdbSample
 from astropath_calibration.utilities import units
 from astropath_calibration.utilities.misc import re_subs
 from astropath_calibration.utilities.tableio import readtable
-from astropath_calibration.utilities.version import astropathversion
 from .testbase import assertAlmostEqual
 
 thisfolder = pathlib.Path(__file__).parent
@@ -60,6 +59,7 @@ class TestPrepDb(unittest.TestCase):
         ref = thisfolder/"reference"/"prepdb"/SlideID/log.name
         with open(ref) as fref, open(log) as fnew:
           subs = (";[^;]*$", ""), (r"(WARNING: (component tiff|xml files|constants\.csv)).*$", r"\1")
+          from astropath_calibration.utilities.version import astropathversion
           refsubs = *subs, (r"(prepdb )v[\w+.]+", rf"\1{astropathversion}")
           newsubs = *subs,
           refcontents = os.linesep.join([re_subs(line, *refsubs, flags=re.MULTILINE) for line in fref.read().splitlines() if "Biggest time difference" not in line])+os.linesep
@@ -92,3 +92,30 @@ class TestPrepDb(unittest.TestCase):
   def testRectangleOverlapListFastUnits(self):
     with units.setup_context("fast"):
       self.testRectangleOverlapList()
+
+  def testPolygonAreas(self, seed=None):
+    p = Polygon(pixels="POLYGON ((1 1,2 1,2 2,1 2,1 1))", pscale=5, apscale=3)
+    assertAlmostEqual(units.convertpscale(p.totalarea, p.apscale, p.pscale, power=2), p.onepixel**2, rtol=1e-15)
+    p = Polygon(pixels="POLYGON ((1 1,4 1,4 4,1 4,1 1),(2 2,2 3,3 3,3 2,2 2))", pscale=5, apscale=3)
+    assertAlmostEqual(units.convertpscale(p.totalarea, p.apscale, p.pscale, power=2), 8*p.onepixel**2, rtol=1e-15)
+
+    if seed is None:
+      try:
+        seed = int(hashlib.sha1(os.environ["BUILD_TAG"].encode("utf-8")).hexdigest(), 16)
+      except KeyError:
+        pass
+    rng = np.random.default_rng(seed)
+    xysx2 = units.distances(pixels=rng.integers(-10, 11, (2, 100, 2)), pscale=3)
+    try:
+      vertices = [[Vertex(regionid=None, vid=i, x=x, y=y, pscale=5, apscale=3) for i, (x, y) in enumerate(xys) if x or y] for xys in xysx2]
+      p1, p2 = [Polygon(vertices=[vv]) for vv in vertices]
+      assertAlmostEqual(-p1.totalarea, (-p1).totalarea)
+      assertAlmostEqual(p1.totalarea+p2.totalarea, (p1+p2).totalarea)
+      assertAlmostEqual(p1.totalarea-p2.totalarea, (p1-p2).totalarea)
+    except:
+      print(xysx2)
+      raise
+
+  def testPolygonAreasFastUnits(self):
+    with units.setup_context("fast"):
+      self.testPolygonAreas()

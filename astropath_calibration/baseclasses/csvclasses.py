@@ -1,4 +1,4 @@
-import dataclasses, datetime, functools, matplotlib.patches, numbers, numpy as np, re
+import dataclasses, datetime, functools, itertools, matplotlib.patches, more_itertools, numbers, numpy as np, re
 from ..utilities import units
 from ..utilities.misc import dataclass_dc_init, floattoint
 from ..utilities.tableio import readtable
@@ -188,7 +188,7 @@ class Vertex(DataClassWithDistances, units.ThingWithPscale, units.ThingWithApsca
 class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   pixelsormicrons = "pixels"
 
-  def __init__(self, *vertices, subtractpolygons=None, pixels=None, microns=None, pscale=None, apscale=None, power=1):
+  def __init__(self, *, vertices=None, pixels=None, microns=None, pscale=None, apscale=None, power=1):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
     if bool(vertices) + (pixels is not None) + (microns is not None) != 1:
@@ -199,45 +199,35 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       kw = "pixels" if pixels is not None else "microns"
       if kw != self.pixelsormicrons:
         raise ValueError(f"Have to provide {self.pixelsormicrons}, not {kw}")
+      if apscale is None: raise ValueError("Have to provide apscale if you give a string to Polygon")
+      if pscale is None: raise ValueError("Have to provide pscale if you give a string to Polygon")
 
-      regex = r"POLYGON \(\(((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\)((?:,\(((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\))*)\)"
+      regex = r"POLYGON \((\((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*\)(?:(?:,\((?:(?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\))*))\)"
       match = re.match(regex, string)
       if match is None:
         raise ValueError(f"Unexpected format in polygon:\n{string}\nexpected it to match regex:\n{regex}")
       content = match.group(1)
-      intvertices = re.findall(r"[0-9]* [0-9]*", content)
+      polygons = re.findall(r"\([^\(\)]*\)", content)
       vertices = []
-      if intvertices[-1] == intvertices[0]: del intvertices[-1]
-      for i, vertex in enumerate(intvertices, start=1):
-        x, y = (int(_)*units.onepixel(pscale) for _ in vertex.split())
-        vertices.append(Vertex(im3x=x, im3y=y, vid=i, regionid=None, apscale=apscale, pscale=pscale))
+      for polygon in polygons:
+        polyvertices = []
+        vertices.append(polyvertices)
+        intvertices = re.findall(r"[0-9]* [0-9]*", polygon)
+        if intvertices[-1] == intvertices[0]: del intvertices[-1]
+        for i, vertex in enumerate(intvertices, start=1):
+          x, y = (int(_)*units.onepixel(pscale) for _ in vertex.split())
+          polyvertices.append(Vertex(im3x=x, im3y=y, vid=i, regionid=None, apscale=apscale, pscale=pscale))
 
-      subtractpolygonstrings = match.group(2).replace(")", "").split(",(")
-      assert subtractpolygonstrings[0] == ""
-      subtractpolygonstrings = subtractpolygonstrings[1:]
-      subtractpolygons = [
-        Polygon(
-          **{kw: f"POLYGON (({subtractpolygonstring}))"},
-          pscale=pscale,
-          apscale=apscale,
-        ) for subtractpolygonstring in subtractpolygonstrings
-      ]
+    self.__vertices = [[v for v in vv] for vv in vertices]
+    for vv in self.__vertices:
+      if len(vv) > 1 and vv[0] == vv[-1]: del vv[-1]
 
-    self.__vertices = vertices
-
-    if subtractpolygons is None:
-      subtractpolygons = []
-    self.__subtractpolygons = subtractpolygons
-    for subtractpolygon in subtractpolygons:
-      if subtractpolygon.__subtractpolygons:
-        raise ValueError("Can't have multiply nested polygons")
-
-    apscale = {apscale, *(v.apscale for v in vertices), *(p.apscale for p in subtractpolygons)}
+    apscale = {apscale, *(v.apscale for vv in self.__vertices for v in vv)}
     apscale.discard(None)
     if len(apscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
     self.__apscale, = apscale
 
-    pscale = {pscale, *(v.pscale for v in vertices), *(p.pscale for p in subtractpolygons)}
+    pscale = {pscale, *(v.pscale for vv in self.__vertices for v in vv)}
     pscale.discard(None)
     if len(pscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
     self.__pscale, = pscale
@@ -247,8 +237,6 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     if self.__pscale is None:
       raise AttributeError("Didn't set pscale for this polygon")
     return self.__pscale
-  @property
-  def _pscale(self): return self.__apscale
   @property
   def apscale(self): return self.__apscale
 
@@ -262,17 +250,42 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
         units.convertpscale(distance, self.apscale, self.pscale)
       )
     )
-    vertices = list(self.vertices) + [self.vertices[0]]
     return (
       "POLYGON ("
       + ",".join(
-        ["(" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in vertices) + ")"]
-        + [re.match("POLYGON \((\([^()]*\))\)$", str(subtractpolygon)).group(1) for subtractpolygon in self.__subtractpolygons]
+        "(" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in vv+[vv[0]]) + ")"
+        for vv in self.vertices
       ) + ")"
     )
 
   def __eq__(self, other):
-    return self.vertices == other.vertices and self.pscale == other.pscale and self.__subtractpolygons == other.__subtractpolygons
+    assert self.pscale == other.pscale
+    return self.vertices == other.vertices
+
+  def __pos__(self):
+    return self
+  def __neg__(self):
+    return Polygon(vertices=[[vv[0]]+vv[:0:-1] for vv in self.vertices])
+  def __add__(self, other):
+    if isinstance(other, numbers.Number) and other == 0: return self
+    return Polygon(vertices=self.vertices+other.vertices)
+  def __radd__(self, other):
+    return self + other
+  def __sub__(self, other):
+    return self + -other
+
+  @property
+  def separate(self):
+    return [Polygon(vertices=[vv]) for vv in self.vertices]
+  @property
+  def areas(self):
+    return [
+      1/2 * sum(v1.x*v2.y - v2.x*v1.y for v1, v2 in more_itertools.pairwise(itertools.chain(vv, [vv[0]])))
+      for vv in self.vertices
+    ]
+  @property
+  def totalarea(self):
+    return np.sum(self.areas)
 
   @staticmethod
   def field(*args, metadata={}, **kwargs):
@@ -289,15 +302,24 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   class dataclasswithpolygon:
     def __new__(thiscls, decoratedcls=None, **kwargs):
       if decoratedcls is None: return super().__new__(thiscls)
-      if kwargs: raise TypeError("Can't call this with both decoratedcls and kwargs")
-      return thiscls()(decoratedcls)
+      return thiscls(**kwargs)(decoratedcls)
 
-    def __init__(self, **kwargs):
+    def __init__(self, *, dc_init=False, **kwargs):
+      self.dc_init = dc_init
       self.kwargs = kwargs
 
     def __call__(self, cls):
-      @dataclasses.dataclass(**self.kwargs)
-      class newcls(dataclasses.dataclass(cls, **self.kwargs), DataClassWithPscale, DataClassWithApscale):
+      firstdataclassfunction = dataclasses.dataclass
+      firstdataclasskwargs = self.kwargs.copy()
+      seconddataclassfunction = dataclasses.dataclass
+      seconddataclasskwargs = self.kwargs.copy()
+      if self.dc_init:
+        firstdataclassfunction = dataclass_dc_init
+        seconddataclasskwargs.update({
+          "init": False,
+        })
+      @seconddataclassfunction(**seconddataclasskwargs)
+      class newcls(firstdataclassfunction(cls, **firstdataclasskwargs), DataClassWithPscale, DataClassWithApscale):
         @property
         def poly(self):
           return self.__poly
@@ -316,11 +338,12 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
           else:
             raise TypeError(f"Unknown type {type(poly).__name__} for poly")
 
-        def _distances_passed_to_init(self):
-          if not isinstance(self.poly, Polygon): return self.poly
-          result = sum(([v.x, v.y] for v in self.poly.vertices), [])
-          result = [_ for _ in result if _]
-          return result
+        #def _distances_passed_to_init(self):
+        #  result = super()._distances_passed_to_init()
+        #  if not isinstance(self.poly, Polygon): return [*result, self.poly]
+        #  vertices = sum(([v.x, v.y] for vv in self.poly.vertices for v in vv), [])
+        #  vertices = [_ for _ in vertices if _]
+        #  return [*result, *vertices]
 
       for thing in functools.WRAPPER_ASSIGNMENTS:
         setattr(newcls, thing, getattr(cls, thing))
@@ -329,10 +352,11 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
 
   def matplotlibpolygon(self, *, imagescale=None, **kwargs):
     if imagescale is None: imagescale = self.pscale
-    vertices = [[v.x, v.y] for v in self.vertices]
-    if vertices[-1] != vertices[0]: vertices.append(vertices[0])
-    for p in self.__subtractpolygons:
-      vertices += [[v.x, v.y] for v in p.vertices] + [vertices[0]]
+    vertices = []
+    for vv in self.vertices:
+      newvertices = [[v.x, v.y] for v in vv]
+      if newvertices[-1] != newvertices[0]: newvertices.append(newvertices[0])
+      vertices += newvertices
     return matplotlib.patches.Polygon(
       units.convertpscale(
         vertices,

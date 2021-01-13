@@ -361,7 +361,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
           nvert=region.nvert,
           pscale=region.pscale,
           apscale=region.apscale,
-          poly=Polygon(*newvertices, pscale=region.pscale, apscale=region.apscale)
+          poly=Polygon(vertices=[newvertices], pscale=region.pscale, apscale=region.apscale)
         ),
       )
     return result

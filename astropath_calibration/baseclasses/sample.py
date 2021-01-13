@@ -343,7 +343,7 @@ class DbloadSampleBase(SampleBase):
   def writecsv(self, csv, *args, **kwargs):
     return writetable(self.csv(csv), *args, logger=self.logger, **kwargs)
 
-class DbloadSample(DbloadSampleBase, units.ThingWithQpscale):
+class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale):
   def getimageinfofromconstants(self):
     dct = constantsdict(self.csv("constants"))
 
@@ -425,6 +425,28 @@ class DeepZoomSampleBase(SampleBase):
   def deepzoomroot(self): return self.__deepzoomroot
   @property
   def deepzoomfolder(self): return self.deepzoomroot/self.SlideID
+
+class GeomSampleBase(SampleBase):
+  def __init__(self, *args, geomroot=None, geomfolder=None, **kwargs):
+    if geomroot is not None and geomfolder is not None:
+      raise TypeError("Can't provide both geomroot and geomfolder")
+    self.__geomroot = geomroot
+    self.__geomfolder = geomfolder
+    super().__init__(*args, **kwargs)
+
+  @methodtools.lru_cache()
+  @property
+  def geomfolder(self):
+    geomroot = self.__geomroot
+    geomfolder = self.__geomfolder
+    if geomfolder is None:
+      if geomroot is None:
+        geomroot = self.mainfolder.parent
+      else:
+        geomroot = pathlib.Path(geomroot)
+      return geomroot/self.SlideID/"geom"
+    else:
+      return pathlib.Path(geomfolder)
 
 class SampleThatReadsRectangles(SampleBase):
   rectangletype = Rectangle #can be overridden in subclasses

@@ -46,8 +46,7 @@ class dataclass_dc_init:
 
   def __new__(thiscls, decoratedcls=None, **kwargs):
     if decoratedcls is None: return super().__new__(thiscls)
-    if kwargs: raise TypeError("Can't call this with both decoratedcls and kwargs")
-    return thiscls()(decoratedcls)
+    return thiscls(**kwargs)(decoratedcls)
 
   def __init__(self, **kwargs):
     self.kwargs = kwargs
