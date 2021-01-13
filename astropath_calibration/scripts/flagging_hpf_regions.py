@@ -17,7 +17,7 @@ LOCAL_MEAN_KERNEL          = np.array([[0.0,0.2,0.0],
                                        [0.2,0.2,0.2],
                                        [0.0,0.2,0.0]])
 #WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
-WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(41,41))
+WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45))
 MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
 BRIGHTEST_LAYERS           = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX     = 0
@@ -259,8 +259,8 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
     #add the plots of the enumerated mask layer groups
     enumerated_mask_max = np.max(full_mask)
     for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
-        pos = ax[n_rows-1][lgi+1].imshow(full_mask[:,:,lgb[0]-1],vmin=0.,vmax=enumerated_mask_max,cmap='gist_ncar')
-        f.colorbar(pos,ax=ax[n_rows-1][lgi+1])
+        pos = ax[n_rows-1][lgi].imshow(full_mask[:,:,lgb[0]-1],vmin=0.,vmax=enumerated_mask_max,cmap='gist_ncar')
+        f.colorbar(pos,ax=ax[n_rows-1][lgi])
         ax[n_rows-1][lgi].set_title(f'full mask, layers {lgb[0]}-{lgb[1]}')
     #empty the other unused axes in the last row
     for ci in range(n_rows-1,n_cols) :
@@ -299,7 +299,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     stacked_blur_masks = np.zeros_like(blur_masks_by_layer_group[0])
     for layer_group_blur_mask in blur_masks_by_layer_group :
         stacked_blur_masks+=layer_group_blur_mask
-    final_blur_mask = np.where(stacked_blur_masks<BLUR_MIN_LAYER_GROUPS,1,0)
+    final_blur_mask = (np.where(stacked_blur_masks>len(MASK_LAYER_GROUPS)-BLUR_MIN_LAYER_GROUPS,1,0)).astype(np.uint8)
     #small open/close to refine it
     final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
     final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
