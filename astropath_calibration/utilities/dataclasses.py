@@ -41,16 +41,9 @@ class DataClassWithMetaData:
   def metadata(cls, fieldname):
     return cls.__annotationmetadata__.get(fieldname, {})
 
-class DataClassSuperInitMeta(DataClassMeta):
-  def __new__(mcs, name, bases, dict_, **kwargs):
-    if "__init__" not in dict_:
-      def __init__(self, *args, **kwargs):
-        return super().__init__(*args, **kwargs)
-      dict_["__init__"] = __init__
-    return super().__new__(mcs, name, bases, dict_, **kwargs)
-
-class MyDataClassMeta(abc.ABCMeta, DataClassTransformArgsMeta, DataClassWithMetaDataMeta, DataClassSuperInitMeta):
+class MyDataClassMeta(abc.ABCMeta, DataClassTransformArgsMeta, DataClassWithMetaDataMeta):
   pass
 
 class MyDataClass(DataClassTransformArgs, DataClassWithMetaData, metaclass=MyDataClassMeta):
-  pass
+  def __user_init__(self):
+    pass

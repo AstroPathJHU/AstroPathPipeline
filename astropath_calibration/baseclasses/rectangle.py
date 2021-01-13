@@ -51,9 +51,9 @@ class Rectangle(DataClassWithPscale):
 class RectangleWithImageBase(Rectangle):
   __DEBUG = True
 
-  def __init__(self, *args, transformations=[], **kwargs):
-    self.__debug_load_images_counter = []  #in case something fails in super().__init__(), __del__ will still work
-    super().__init__(*args, **kwargs)
+  def __user_init__(self, *args, transformations=[], **kwargs):
+    self.__debug_load_images_counter = []  #in case something fails in super().__user_init__(), __del__ will still work
+    super().__user_init__(*args, **kwargs)
     self.__transformations = transformations
     self.__images_cache = [None for _ in range(self.nimages)]
     self.__accessed_image = np.zeros(dtype=bool, shape=self.nimages)
@@ -175,8 +175,8 @@ class RectangleReadImageBase(RectangleWithImageBase):
     return image
 
 class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
-  def __init__(self, *args, imagefolder, layers, nlayers, with_seg=False, **kwargs):
-    super().__init__(*args, **kwargs)
+  def __user_init__(self, *args, imagefolder, layers, nlayers, with_seg=False, **kwargs):
+    super().__user_init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__layers = layers
     self.__nlayers = nlayers
@@ -218,8 +218,8 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
       return image
 
 class RectangleWithImageMultiLayer(RectangleReadImageBase):
-  def __init__(self, *args, imagefolder, filetype, width, height, layers, nlayers, xmlfolder=None, **kwargs):
-    super().__init__(*args, **kwargs)
+  def __user_init__(self, *args, imagefolder, filetype, width, height, layers, nlayers, xmlfolder=None, **kwargs):
+    super().__user_init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__filetype = filetype
     self.__width = width
@@ -296,7 +296,7 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
     return [all[layer-1][1] for layer in self.__layers]
 
 class RectangleWithImage(RectangleWithImageMultiLayer):
-  def __init__(self, *args, layer, readlayerfile=True, **kwargs):
+  def __user_init__(self, *args, layer, readlayerfile=True, **kwargs):
     morekwargs = {
       "layers": (layer,),
     }
@@ -304,7 +304,7 @@ class RectangleWithImage(RectangleWithImageMultiLayer):
       morekwargs.update({
         "nlayers": 1,
       })
-    super().__init__(*args, **kwargs, **morekwargs)
+    super().__user_init__(*args, **kwargs, **morekwargs)
     self.__readlayerfile = readlayerfile
     self.__layer = layer
 
@@ -361,11 +361,11 @@ class RectangleWithImage(RectangleWithImageMultiLayer):
     return _
 
 class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
-  def __init__(self, *args, layer, **kwargs):
+  def __user_init__(self, *args, layer, **kwargs):
     morekwargs = {
       "layers": (layer,),
     }
-    super().__init__(*args, **kwargs, **morekwargs)
+    super().__user_init__(*args, **kwargs, **morekwargs)
     self.__layer = layer
 
   @property
@@ -413,16 +413,16 @@ def rectangleoroverlapfilter(selection, *, compatibility=False):
     raise ValueError(f"Unknown rectangle or overlap selection: {selection}")
 
 class RectangleProvideImage(RectangleWithImageBase):
-  def __init__(self, *args, image, **kwargs):
+  def __user_init__(self, *args, image, **kwargs):
     self.__image = image
-    super().__init__(*args, **kwargs)
+    super().__user_init__(*args, **kwargs)
   def getimage(self):
     return self.__image
 
 class RectangleFromOtherRectangle(RectangleWithImageBase):
-  def __init__(self, *args, originalrectangle, **kwargs):
+  def __user_init__(self, *args, originalrectangle, **kwargs):
     self.__originalrectangle = originalrectangle
-    super().__init__(*args, rectangle=originalrectangle, readingfromfile=False, **kwargs)
+    super().__user_init__(*args, rectangle=originalrectangle, readingfromfile=False, **kwargs)
   @property
   def originalrectangle(self):
     return self.__originalrectangle
@@ -431,9 +431,9 @@ class RectangleFromOtherRectangle(RectangleWithImageBase):
       return image
 
 class GeomLoadRectangle(Rectangle):
-  def __init__(self, *args, geomfolder, **kwargs):
+  def __user_init__(self, *args, geomfolder, **kwargs):
     self.__geomfolder = pathlib.Path(geomfolder)
-    super().__init__(*args, **kwargs)
+    super().__user_init__(*args, **kwargs)
   @property
   def geomloadcsv(self):
     return self.__geomfolder/self.file.replace(".im3", "_cellGeomLoad.csv")

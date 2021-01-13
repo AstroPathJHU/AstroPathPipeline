@@ -19,8 +19,8 @@ class Overlap(DataClassWithPscale):
   y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
   tag: int
 
-  def __init__(self, *, nclip, rectangles, **kwargs):
-    super().__post_init__(**kwargs)
+  def __user_init__(self, *, nclip, rectangles, **kwargs):
+    super().__user_init__(**kwargs)
 
     self.nclip = nclip
     self.result = None

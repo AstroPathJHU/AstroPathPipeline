@@ -69,9 +69,9 @@ class Constant(DataClassWithDistances):
   )
   unit: str
   description: str
-  pscale: pscalefield = None
-  apscale: pscalefield = None
-  qpscale: pscalefield = None
+  pscale: pscalefield() = None
+  apscale: pscalefield() = None
+  qpscale: pscalefield() = None
 
 def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
   scalekwargs = {"pscale": pscale, "qpscale": qpscale, "apscale": apscale}
@@ -93,7 +93,7 @@ def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
 
   return dct
 
-@dataclassy.dataclass(frozen=True)
+@dataclassy.dataclass(unsafe_hash=True)
 class RectangleFile(DataClassWithPscale):
   pixelsormicrons = "microns"
 
@@ -293,9 +293,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     def polygonfields(cls):
       return [field for field in dataclassy.fields(cls) if cls.metadata(field).get("ispolygonfield", False)]
 
-    def __init__(self, *args, **kwargs):
-      super().__init__(*args, **kwargs)
-      for field in self.polygonfields:
+    def __user_init__(self, *args, **kwargs):
+      super(Polygon.DataClassWithPolygon, self).__user_init__(*args, **kwargs)
+      for field in self.polygonfields():
         poly = getattr(self, field)
         if isinstance(poly, Polygon):
           pass

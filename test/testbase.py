@@ -10,10 +10,10 @@ def assertAlmostEqual(a, b, **kwargs):
   elif isinstance(a, numbers.Number):
     if isinstance(b, units.safe.Distance): b = float(b)
     return np.testing.assert_allclose(a, b, **kwargs)
-  elif dataclassy.is_dataclass(type(a)) and type(a) == type(b):
+  elif dataclassy.functions.is_dataclass(type(a)) and type(a) == type(b):
     try:
       for field in dataclassy.fields(type(a)):
-        assertAlmostEqual(getattr(a, field.name), getattr(b, field.name), **kwargs)
+        assertAlmostEqual(getattr(a, field), getattr(b, field), **kwargs)
     except AssertionError:
       np.testing.assert_equal(a, b)
   else:
