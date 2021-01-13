@@ -126,7 +126,7 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
   def xvec(self):
     return np.array([self.x, self.y])
 
-  def __new__(cls, *args, pscale=None, apscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
+  def __init__(self, *args, pscale=None, apscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
     xveckwargs = {}
     vertexkwargs = {}
     im3xykwargs = {}
@@ -149,8 +149,7 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
       im3xykwargs["y"] = units.convertpscale(im3y, pscale, apscale)
     if im3xvec is not None:
       im3xveckwargs["x"], im3xveckwargs["y"] = units.convertpscale(im3xvec, pscale, apscale)
-    return super().__new__(
-      cls,
+    return super().__init__(
       *args,
       pscale=pscale,
       apscale=apscale,
@@ -160,8 +159,6 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
       **im3xykwargs,
       **im3xveckwargs,
     )
-
-  __noninitargs__ = {"im3x", "im3y"}
 
   @property
   def im3xvec(self):

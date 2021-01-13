@@ -1,58 +1,20 @@
 import abc, dataclassy
-from dataclassy.dataclass import DataClassInit, DataClassMeta
+from dataclassy.dataclass import DataClassMeta
 
-class DataClassSuperNewMeta(DataClassMeta):
+class DataClassSuperInitMeta(DataClassMeta):
   """
-  allows you to define a __new__ function in the dataclass.
-  the dataclass __new__ will still be generated, and you
-  can access it via super().__new__.
+  allows you to define a __init__ function in the dataclass.
+  the dataclass __init__ will still be generated, and you
+  can access it via super().__init__.
   """
   def __new__(mcs, name, bases, dict_, *, _calledfromnew=False, **kwargs):
-    if _calledfromnew or "__new__" not in dict_:
+    if _calledfromnew or "__init__" not in dict_:
       return super().__new__(mcs, name, bases, dict_, **kwargs)
-    new = dict_.pop("__new__")
+    init = dict_.pop("__init__")
     cls = super().__new__(mcs, name, bases, dict_, **kwargs)
-    dict_["__new__"] = new
+    dict_["__init__"] = init
     subcls = mcs(name, (cls,), dict_, _calledfromnew=True, **kwargs)
     return subcls
-
-  __dataclassinits = {}
-  @classmethod
-  def dataclassinit(mcs):
-    #if it's already DataClassSuperNewInit
-    if issubclass(mcs, DataClassSuperNewInit): return mcs
-    #if the class is DataClassMeta
-    if issubclass(DataClassSuperNewInit, mcs): return DataClassSuperNewInit
-
-    #make a DataClassSuperNewInit for the subclass of DataClassMeta
-    if mcs not in mcs.__dataclassinits:
-      class NewDataClassSuperNewInit(mcs, DataClassSuperNewInit):
-        pass
-      NewDataClassSuperNewInit.__name__ = mcs.__name__ + "Init"
-      mcs.__dataclassinits[mcs] = NewDataClassSuperNewInit
-
-    return mcs.__dataclassinits[mcs]
-
-class DataClassSuperNewInit(DataClassSuperNewMeta, DataClassInit):
-  def __new__(mcs, name, bases, dict_, **kwargs):
-    dataclass_bases = [vars(b) for b in bases if hasattr(b, '__annotationmetadata__')]
-    __noninitargs__ = set()
-    for b in dataclass_bases + [dict_]:
-      __noninitargs__ |= b.get("__noninitargs__", set())
-    dict_["__noninitargs__"] = __noninitargs__
-    return super().__new__(mcs, name, bases, dict_, **kwargs)
-
-  """In the case that a custom __init__ is defined, remove arguments used by __new__ before calling it."""
-  def __call__(cls, *args, **kwargs):
-    args = iter(args)
-    new_kwargs = dict(zip(cls.__annotations__, args))  # convert positional args to keyword for __new__
-    instance = cls.__new__(cls, **new_kwargs, **kwargs)
-
-    for parameter in kwargs.keys() & (cls.__annotations__.keys() | cls.__noninitargs__):
-      del kwargs[parameter]
-
-    instance.__init__(*args, **kwargs)
-    return instance
 
 class MetaDataAnnotation:
   def __init__(self, typ, **kwargs):
@@ -83,7 +45,7 @@ class DataClassWithMetaData:
   def metadata(cls, fieldname):
     return cls.__annotationmetadata__.get(fieldname, {})
 
-class MyDataClassMeta(DataClassSuperNewMeta, DataClassWithMetaDataMeta, abc.ABCMeta):
+class MyDataClassMeta(DataClassSuperInitMeta, DataClassWithMetaDataMeta, abc.ABCMeta):
   pass
 
 @dataclassy.dataclass(meta=MyDataClassMeta)
