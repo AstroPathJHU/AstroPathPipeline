@@ -18,7 +18,7 @@ LOCAL_MEAN_KERNEL          = np.array([[0.0,0.2,0.0],
                                        [0.0,0.2,0.0]])
 #WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
 WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(41,41))
-TISSUE_MASK_LAYER_GROUPS   = [(1,9),(10,18),(19,25),(26,32),(33,35)]
+MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
 BRIGHTEST_LAYERS           = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX     = 0
 TISSUE_MIN_SIZE            = 2500
@@ -111,7 +111,7 @@ def getImageTissueMask(image_arr,bkg_thresholds) :
     overall_background_mask = np.zeros_like(layer_masks[0])
     total_stacked_masks = np.zeros_like(layer_masks[0])
     #for each layer group
-    for lgi,lgb in enumerate(TISSUE_MASK_LAYER_GROUPS) :
+    for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
         stacked_masks = np.zeros_like(layer_masks[0])
         for ln in range(lgb[0],lgb[1]+1) :
             stacked_masks+=layer_masks[ln-1]
@@ -258,7 +258,7 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
     ax[n_rows-1][0].set_title('superimposed masks')
     #add the plots of the enumerated mask layer groups
     enumerated_mask_max = np.max(full_mask)
-    for lgi,lgb in enumerate(BLUR_MASK_LAYER_GROUPS) :
+    for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
         pos = ax[n_rows-1][lgi+1].imshow(full_mask[:,:,lgb[0]-1],vmin=0.,vmax=enumerated_mask_max,cmap='gist_ncar')
         f.colorbar(pos,ax=ax[n_rows-1][lgi+1])
         ax[n_rows-1][lgi+1].set_title(f'full mask, layers {lgb[0]}-{lgb[1]}')
@@ -291,7 +291,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next make blur masks for each of the layer groups
     blur_masks_by_layer_group = []; blur_mask_plots_by_layer_group = []
-    for lgi,lgb in enumerate(BLUR_MASK_LAYER_GROUPS) :
+    for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
         lgbm, lgbmps = getImageLayerGroupBlurMaskAndPlots(img_array,lgb,BRIGHTEST_LAYERS[lgi],BLUR_MASK_FLAG_CUTS[lgi])
         blur_masks_by_layer_group.append(lgbm)
         blur_mask_plots_by_layer_group.append(lgbmps)
@@ -325,7 +325,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
             return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,BLUR_FLAG_STRING))
         ##add in the masks for each layer group, starting with index 2
         #start_i = 2
-        #for lgi,lgb in enumerate(BLUR_MASK_LAYER_GROUPS) :
+        #for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
         #    if np.min(blur_masks_by_layer_group[lgi])==1 :
         #        continue
         #    layers_string = (''.join(f'{ln}-' for ln in range(lgb[0],lgb[1]+1)))[:-1]
