@@ -1,6 +1,7 @@
 import contextlib, csv, dataclasses, dataclassy, pathlib
 
 from .misc import dummylogger
+from .units.dataclasses import DataClassWithDistances
 
 def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, **columntypes):
   """
@@ -68,7 +69,7 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
         else:
           columntypes[field] = typ
 
-    if any("readingfromfile" in _.__annotations__ for _ in Row.__mro__ if hasattr(_, "__annotations__")) and "readingfromfile" not in extrakwargs:
+    if issubclass(Row, DataClassWithDistances) and "readingfromfile" not in extrakwargs:
       extrakwargs["readingfromfile"] = True
 
     for row in reader:

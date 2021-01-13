@@ -13,10 +13,10 @@ class Overlap(DataClassWithPscale):
   n: int
   p1: int
   p2: int
-  x1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  x1: distancefield(pixelsormicrons=pixelsormicrons)
+  y1: distancefield(pixelsormicrons=pixelsormicrons)
+  x2: distancefield(pixelsormicrons=pixelsormicrons)
+  y2: distancefield(pixelsormicrons=pixelsormicrons)
   tag: int
 
   def __user_init__(self, *, nclip, rectangles, **kwargs):
