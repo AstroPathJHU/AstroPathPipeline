@@ -188,17 +188,17 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
     #group_blur_mask = getSizeFilteredMask(group_blur_mask,min_size=BLUR_MIN_SIZE)
     #set up the plots to return
     plot_img_layer = img_array[:,:,brightest_layer_n-1]
-    im_gs = (plot_img_layer*group_blur_mask).astype(np.float32); im_gs /= np.max(im_gs)
-    overlay_gs = np.array([im_gs,im_gs,0.15*group_blur_mask]).transpose(1,2,0)
+    #im_gs = (plot_img_layer*group_blur_mask).astype(np.float32); im_gs /= np.max(im_gs)
+    #overlay_gs = np.array([im_gs,im_gs,0.15*group_blur_mask]).transpose(1,2,0)
     norm = 128./np.mean(plot_img_layer[group_blur_mask==1]); im_c = (np.clip(norm*plot_img_layer,0,255)).astype(np.uint8)
     overlay_c = np.array([im_c,im_c*group_blur_mask,im_c*group_blur_mask]).transpose(1,2,0)
     plots = [{'image':plot_img_layer,'title':f'raw IMAGE layer {brightest_layer_n}'},
              {'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (clipped)'},
-             {'image':overlay_gs,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (grayscale)'},
+             #{'image':overlay_gs,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (grayscale)'},
              {'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'},
              {'hist':brightest_layer_nlv.flatten(),'xlabel':'variance of normalized laplacian','line_at':BLUR_NLV_CUT},
              {'image':stacked_masks,'title':f'stacked layer masks (cut at {flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
-             {'image':group_blur_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask','vmin':0,'vmax':1},
+             #{'image':group_blur_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask','vmin':0,'vmax':1},
             ]
     #return the blur mask for the layer and the dictionary of plots
     return group_blur_mask, plots
@@ -246,24 +246,24 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
                 for ci in range(col+1,n_cols) :
                     ax[row][ci].axis('off')
     #add the plot of the overlaid tissue and layer group masks
-    superimposed_masks = tissue_mask
-    max_sim_val = 1
-    for mci,plot_dicts in enumerate(plot_dict_lists) :
-        for pd in plot_dicts :
-            if 'image' in pd.keys() and 'title' in pd.keys() and pd['title'].endswith('blur mask') :
-                superimposed_masks+=(2**(mci+1))*pd['image']
-                max_sim_val+=(2**(mci+1))
-    pos = ax[n_rows-1][0].imshow(superimposed_masks,vmin=0.,vmax=max_sim_val,cmap='gist_ncar')
-    f.colorbar(pos,ax=ax[n_rows-1][0])
-    ax[n_rows-1][0].set_title('superimposed masks')
+    #superimposed_masks = tissue_mask
+    #max_sim_val = 1
+    #for mci,plot_dicts in enumerate(plot_dict_lists) :
+    #    for pd in plot_dicts :
+    #        if 'image' in pd.keys() and 'title' in pd.keys() and pd['title'].endswith('blur mask') :
+    #            superimposed_masks+=(2**(mci+1))*pd['image']
+    #            max_sim_val+=(2**(mci+1))
+    #pos = ax[n_rows-1][0].imshow(superimposed_masks,vmin=0.,vmax=max_sim_val,cmap='gist_ncar')
+    #f.colorbar(pos,ax=ax[n_rows-1][0])
+    #ax[n_rows-1][0].set_title('superimposed masks')
     #add the plots of the enumerated mask layer groups
     enumerated_mask_max = np.max(full_mask)
     for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
         pos = ax[n_rows-1][lgi+1].imshow(full_mask[:,:,lgb[0]-1],vmin=0.,vmax=enumerated_mask_max,cmap='gist_ncar')
         f.colorbar(pos,ax=ax[n_rows-1][lgi+1])
-        ax[n_rows-1][lgi+1].set_title(f'full mask, layers {lgb[0]}-{lgb[1]}')
+        ax[n_rows-1][lgi].set_title(f'full mask, layers {lgb[0]}-{lgb[1]}')
     #empty the other unused axes in the last row
-    for ci in range(n_rows,n_cols) :
+    for ci in range(n_rows-1,n_cols) :
         ax[n_rows-1][ci].axis('off')
     #show/save the plot
     if workingdir is None :
