@@ -17,26 +17,16 @@ LOCAL_MEAN_KERNEL          = np.array([[0.0,0.2,0.0],
                                        [0.2,0.2,0.2],
                                        [0.0,0.2,0.0]])
 #WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
-WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45))
+WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(41,41))
 TISSUE_MASK_LAYER_GROUPS   = [(1,9),(10,18),(19,25),(26,32),(33,35)]
+BRIGHTEST_LAYERS           = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX     = 0
 TISSUE_MIN_SIZE            = 2500
-#BLUR_MASK_LAYER_GROUPS     = [(1,9),(10,18),(19,35)]
-#BLUR_MASK_BRIGHTEST_LAYERS = [5,11,21]
-#BLUR_MASK_FLAG_CUTS        = [7,7,13]
-BLUR_MASK_LAYER_GROUPS       = [(1,9),(10,18),(19,25),(26,32),(33,35)]
-BLUR_MASK_BRIGHTEST_LAYERS   = [5,11,21,29,34]
-BLUR_MASK_FLAG_CUTS          = [7,7,5,5,1]
-BLUR_MASK_DUST_GROUP_INDEX   = 0
-BLUR_MASK_RBC_GROUP_INDEX    = 1
-BLUR_MASK_FOLD_GROUP_INDICES = [2,3,4]
-#BLUR_NLV_CUT               = 0.5
-#BLUR_MAX_MEAN              = 0.4
 BLUR_NLV_CUT               = 0.5
-BLUR_MAX_MEAN              = 0.8
-BLUR_MIN_SKEW              = -0.2
-BLUR_MIN_SIZE              = 10000
-FLAG_STRING                = 'blur'
+BLUR_MIN_SIZE              = 15000
+BLUR_MASK_FLAG_CUTS        = [7,7,5,5,1]
+BLUR_MIN_LAYER_GROUPS      = 3
+BLUR_FLAG_STRING           = 'blur'
 
 #logger
 logger = logging.getLogger("flagging_hpf_regions")
@@ -194,8 +184,8 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
     #small open/close to refine it
     group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
     group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-    #filter out small areas 
-    group_blur_mask = getSizeFilteredMask(group_blur_mask,min_size=BLUR_MIN_SIZE)
+    ##filter out small areas 
+    #group_blur_mask = getSizeFilteredMask(group_blur_mask,min_size=BLUR_MIN_SIZE)
     #set up the plots to return
     plot_img_layer = img_array[:,:,brightest_layer_n-1]
     im_gs = (plot_img_layer*group_blur_mask).astype(np.float32); im_gs /= np.max(im_gs)
@@ -302,15 +292,18 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     #next make blur masks for each of the layer groups
     blur_masks_by_layer_group = []; blur_mask_plots_by_layer_group = []
     for lgi,lgb in enumerate(BLUR_MASK_LAYER_GROUPS) :
-        lgbm, lgbmps = getImageLayerGroupBlurMaskAndPlots(img_array,lgb,BLUR_MASK_BRIGHTEST_LAYERS[lgi],BLUR_MASK_FLAG_CUTS[lgi])
+        lgbm, lgbmps = getImageLayerGroupBlurMaskAndPlots(img_array,lgb,BRIGHTEST_LAYERS[lgi],BLUR_MASK_FLAG_CUTS[lgi])
         blur_masks_by_layer_group.append(lgbm)
         blur_mask_plots_by_layer_group.append(lgbmps)
-    #if there are any nonzero regions in the dust or RBC layer group masks, or in all of the folded tissue layer group masks,
-    #make some plots and then write out a labelled mask file and add corresponding lines to the csv file 
-    write_out_masks = np.min(blur_masks_by_layer_group[BLUR_MASK_DUST_GROUP_INDEX])<1 
-    write_out_masks = write_out_masks or np.min(blur_masks_by_layer_group[BLUR_MASK_RBC_GROUP_INDEX])<1 
-    write_out_masks = write_out_masks or sum([np.min(blur_masks_by_layer_group[fgi])<1 for fgi in BLUR_MASK_FOLD_GROUP_INDICES])==len(BLUR_MASK_FOLD_GROUP_INDICES)
-    if write_out_masks :
+    #combine the layer group blur masks to get the final mask for all layers
+    stacked_blur_masks = np.zeros_like(blur_masks_by_layer_group[0])
+    for layer_group_blur_mask in blur_masks_by_layer_group :
+        stacked_blur_masks+=layer_group_blur_mask
+    final_blur_mask = np.where(stacked_blur_masks<BLUR_MIN_LAYER_GROUPS,1,0)
+    #remove any remaining small spots
+    final_blur_mask = getSizeFilteredMask(final_blur_mask,min_size=BLUR_MIN_SIZE)
+    #if there is anything flagged in the final blur mask, write out some plots and the mask file/csv file lines
+    if np.min(final_blur_mask)<1 :
         #figure out where the image is in cellview
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
@@ -318,21 +311,33 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
         cvy = pscale*key_y-ypos
         #the mask starts as all ones (0=background, 1=good tissue, >=2 is a flagged region)
         output_mask = np.ones(img_array.shape,dtype=np.uint8)
-        #add in the masks for each layer group, starting with index 2
+        #add in the blur mask, starting with index 2
         start_i = 2
-        for lgi,lgb in enumerate(BLUR_MASK_LAYER_GROUPS) :
-            if np.min(blur_masks_by_layer_group[lgi])==1 :
-                continue
-            layers_string = (''.join(f'{ln}-' for ln in range(lgb[0],lgb[1]+1)))[:-1]
-            enumerated_mask = getEnumeratedMask(blur_masks_by_layer_group[lgi],start_i)
-            for ln in range(lgb[0],lgb[1]+1) :
-                (output_mask[:,:,ln-1])[output_mask[:,:,ln-1]==1] = (np.where(enumerated_mask!=0,enumerated_mask,output_mask[:,:,ln-1]))[output_mask[:,:,ln-1]==1]
-            start_i = np.max(enumerated_mask)+1
-            #add a line for each region to the return_list (will be written to the .csv file)
-            region_indices = list(range(np.min(enumerated_mask[enumerated_mask!=0]),np.max(enumerated_mask)+1))
-            for ri in region_indices :
-                r_size = np.sum(enumerated_mask==ri)
-                return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,FLAG_STRING))
+        layers_string = '-1'
+        enumerated_mask = getEnumeratedMask(final_blur_mask,start_i)
+        for li in range(img_array.shape[-1]) :
+            output_mask[:,:,li] = np.where(enumerated_mask!=0,enumerated_mask,output_mask[:,:,li])
+        start_i = np.max(enumerated_mask)+1
+        #add a line for each region to the return_list (will be written to the .csv file)
+        region_indices = list(range(np.min(enumerated_mask[enumerated_mask!=0]),np.max(enumerated_mask)+1))
+        for ri in region_indices :
+            r_size = np.sum(enumerated_mask==ri)
+            return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,BLUR_FLAG_STRING))
+        ##add in the masks for each layer group, starting with index 2
+        #start_i = 2
+        #for lgi,lgb in enumerate(BLUR_MASK_LAYER_GROUPS) :
+        #    if np.min(blur_masks_by_layer_group[lgi])==1 :
+        #        continue
+        #    layers_string = (''.join(f'{ln}-' for ln in range(lgb[0],lgb[1]+1)))[:-1]
+        #    enumerated_mask = getEnumeratedMask(blur_masks_by_layer_group[lgi],start_i)
+        #    for ln in range(lgb[0],lgb[1]+1) :
+        #        (output_mask[:,:,ln-1])[output_mask[:,:,ln-1]==1] = (np.where(enumerated_mask!=0,enumerated_mask,output_mask[:,:,ln-1]))[output_mask[:,:,ln-1]==1]
+        #    start_i = np.max(enumerated_mask)+1
+        #    #add a line for each region to the return_list (will be written to the .csv file)
+        #    region_indices = list(range(np.min(enumerated_mask[enumerated_mask!=0]),np.max(enumerated_mask)+1))
+        #    for ri in region_indices :
+        #        r_size = np.sum(enumerated_mask==ri)
+        #        return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,BLUR_FLAG_STRING))
         #next add in the tissue mask (all the background is zero in every layer, unless already flagged otherwise)
         for li in range(img_array.shape[-1]) :
             output_mask[:,:,li] = np.where(output_mask[:,:,li]==1,tissue_mask,output_mask[:,:,li])
