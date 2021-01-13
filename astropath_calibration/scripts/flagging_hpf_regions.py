@@ -181,9 +181,9 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
     group_blur_mask = (np.where(stacked_masks>flag_cut,1,0)).astype(np.uint8)    
-    #small open/close to refine it
-    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    ##small open/close to refine it
+    #group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    #group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
     ##filter out small areas 
     #group_blur_mask = getSizeFilteredMask(group_blur_mask,min_size=BLUR_MIN_SIZE)
     #set up the plots to return
@@ -300,6 +300,9 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     for layer_group_blur_mask in blur_masks_by_layer_group :
         stacked_blur_masks+=layer_group_blur_mask
     final_blur_mask = np.where(stacked_blur_masks<BLUR_MIN_LAYER_GROUPS,1,0)
+    #small open/close to refine it
+    final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
     #remove any remaining small spots
     final_blur_mask = getSizeFilteredMask(final_blur_mask,min_size=BLUR_MIN_SIZE)
     #if there is anything flagged in the final blur mask, write out some plots and the mask file/csv file lines
