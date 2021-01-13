@@ -222,7 +222,7 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
             if 'image' in dkeys :
                 #make the overlay magenta instead of red where the full mask flags blur
                 if 'title' in dkeys and 'overlay (clipped)' in pd['title'] :
-                    pd['image'][:,:,-1][full_mask>1]=pd['image'][:,:,0][full_mask>1]
+                    pd['image'][:,:,1][full_mask[:,:,0]>1]=pd['image'][:,:,0][full_mask[:,:,0]>1]
                 imshowkwargs = {}
                 possible_keys = ['cmap','vmin','vmax']
                 for pk in possible_keys :
