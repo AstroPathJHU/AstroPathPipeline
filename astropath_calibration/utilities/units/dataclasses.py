@@ -100,7 +100,7 @@ class DataClassWithDistances:
         try:
           usedistances, = {isinstance(_, safe.Distance) for _ in distances if _}
         except ValueError:
-          raise ValueError(f"Provided some distances and some pixels/microns to {type(self).__name__} - this is dangerous!")
+          raise ValueError(f"Provided some distances and some pixels/microns to {type(self).__name__} - this is dangerous!\n{distances}")
         if usedistances and readingfromfile: assert False #shouldn't be able to happen
         if not usedistances and not readingfromfile:
           raise ValueError("Have to init with readingfromfile=True if you're not providing distances")

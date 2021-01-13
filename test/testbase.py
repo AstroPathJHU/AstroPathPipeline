@@ -3,6 +3,8 @@ import abc, contextlib, dataclasses, numbers, numpy as np, pathlib, shutil, temp
 from astropath_calibration.utilities import units
 
 def assertAlmostEqual(a, b, **kwargs):
+  if isinstance(a, np.ndarray) and not a.shape: a = a[()]
+  if isinstance(b, np.ndarray) and not b.shape: b = b[()]
   if isinstance(a, units.safe.Distance):
     return units.np.testing.assert_allclose(a, b, **kwargs)
   elif isinstance(a, numbers.Number):

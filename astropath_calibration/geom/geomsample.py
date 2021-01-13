@@ -5,6 +5,7 @@ from ..baseclasses.rectangle import RectangleReadComponentTiff
 from ..baseclasses.sample import ReadRectanglesComponentTiff
 from ..utilities import units
 from ..utilities.tableio import writetable
+from .contours import findcontoursaspolygons
 
 class FieldReadComponentTiff(Field, RectangleReadComponentTiff):
   pass
@@ -29,6 +30,7 @@ class GeomSample(ReadRectanglesComponentTiff):
 
   @methodtools.lru_cache()
   def getfieldboundaries(self):
+    self.logger.info("getting field boundaries")
     boundaries = []
     for field in self.rectangles:
       n = field.n
@@ -39,36 +41,20 @@ class GeomSample(ReadRectanglesComponentTiff):
       Px = mx1, mx2, mx2, mx1
       Py = my1, my1, my2, my2
       fieldvertices = [Vertex(regionid=None, vid=i, im3x=x, im3y=y, apscale=self.apscale, pscale=self.pscale) for i, (x, y) in enumerate(more_itertools.zip_equal(Px, Py))]
-      fieldpolygon = Polygon(*fieldvertices, pscale=self.pscale)
+      fieldpolygon = Polygon(vertices=[fieldvertices], pscale=self.pscale)
       boundaries.append(Boundary(n=n, k=1, poly=fieldpolygon, pscale=self.pscale, apscale=self.apscale))
     return boundaries
 
   @methodtools.lru_cache()
   def gettumorboundaries(self):
+    self.logger.info("getting tumor boundaries")
     boundaries = []
     for n, field in enumerate(self.rectangles, start=1):
       with field.using_image() as im:
         zeros = im == 0
         if not np.any(zeros): continue
-        contours, (hierarchy,) = cv2.findContours(zeros.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        subtractpolygons = [[] for c in contours]
-        polygons = [None for c in contours]
-        toplevelpolygons = []
-        for i, (contour, (next, previous, child, parent)) in reversed(list(enumerate(more_itertools.zip_equal(contours, hierarchy)))):
-          assert contour.shape[1:] == (1, 2), contour.shape
-          vertices = [
-            Vertex(im3x=x, im3y=y, vid=i, regionid=None, apscale=self.apscale, pscale=self.pscale)
-            for i, ((x, y),) in enumerate(contour*self.onepixel+units.nominal_values(field.pxvec), start=1)
-          ]
-          polygon = polygons[i] = Polygon(*vertices, pscale=self.pscale, subtractpolygons=subtractpolygons[i])
-          if parent == -1:
-            #prepend because we are iterating in reversed order
-            toplevelpolygons.insert(0, polygon)
-          else:
-            #inner rings must have >4 points
-            if len(vertices) > 4:
-              subtractpolygons[parent].insert(0, polygon)
-        for k, polygon in enumerate(toplevelpolygons, start=1):
+        polygons = findcontoursaspolygons(zeros.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec))
+        for k, polygon in enumerate(polygons, start=1):
           boundaries.append(Boundary(n=n, k=k, poly=polygon, pscale=self.pscale, apscale=self.pscale))
     return boundaries
 
