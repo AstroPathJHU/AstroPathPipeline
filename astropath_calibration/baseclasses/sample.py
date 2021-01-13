@@ -20,7 +20,8 @@ class SampleDef(MyDataClass):
   BatchID: int = None
   isGood: int = True
 
-  def __new__(cls, *args, root=None, samp=None, **kwargs):
+  @classmethod
+  def transforminitargs(cls, *args, root=None, samp=None, **kwargs):
     if samp is not None:
       if isinstance(samp, str):
         if "SlideID" in kwargs:
@@ -30,7 +31,7 @@ class SampleDef(MyDataClass):
       else:
         if args or kwargs:
           raise TypeError("Have to give either a sample or other arguments, not both.")
-        return super().__new__(cls, *args, **kwargs, **{field: getattr(samp, field) for field in dataclassy.fields(SampleDef)})
+        return super().transforminitargs(*args, **kwargs, **{field: getattr(samp, field) for field in dataclassy.fields(SampleDef)})
 
     if "SlideID" in kwargs and root is not None:
       root = pathlib.Path(root)
@@ -41,7 +42,7 @@ class SampleDef(MyDataClass):
       else:
         for row in cohorttable:
           if row.SlideID == kwargs["SlideID"]:
-            return cls.__new__(cls, root=root, samp=row)
+            return cls.transforminitargs(root=root, samp=row)
 
       if "Scan" not in kwargs:
         try:
@@ -57,7 +58,7 @@ class SampleDef(MyDataClass):
 
     if "SampleID" not in kwargs: kwargs["SampleID"] = 0
 
-    return super().__new__(cls, *args, **kwargs)
+    return super().transforminitargs(*args, **kwargs)
 
   def __bool__(self):
     return bool(self.isGood)

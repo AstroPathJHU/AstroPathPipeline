@@ -126,7 +126,8 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
   def xvec(self):
     return np.array([self.x, self.y])
 
-  def __init__(self, *args, pscale=None, apscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
+  @classmethod
+  def transforminitargs(cls, *args, pscale=None, apscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
     xveckwargs = {}
     vertexkwargs = {}
     im3xykwargs = {}
@@ -149,7 +150,7 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
       im3xykwargs["y"] = units.convertpscale(im3y, pscale, apscale)
     if im3xvec is not None:
       im3xveckwargs["x"], im3xveckwargs["y"] = units.convertpscale(im3xvec, pscale, apscale)
-    return super().__init__(
+    return super().transforminitargs(
       *args,
       pscale=pscale,
       apscale=apscale,
@@ -287,7 +288,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     }
     return MetaDataAnnotation(Polygon, **metadata)
 
-  class DataClassWithPolygon(MyDataClass):
+  class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
     @classmethod
     def polygonfields(cls):
       return [field for field in dataclassy.fields(cls) if cls.metadata(field).get("ispolygonfield", False)]

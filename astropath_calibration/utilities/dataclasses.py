@@ -1,20 +1,21 @@
 import abc, dataclassy
 from dataclassy.dataclass import DataClassMeta
 
-class DataClassSuperInitMeta(DataClassMeta):
+class DataClassTransformArgsMeta(DataClassMeta):
   """
   allows you to define a __init__ function in the dataclass.
   the dataclass __init__ will still be generated, and you
   can access it via super().__init__.
   """
-  def __new__(mcs, name, bases, dict_, *, _calledfromnew=False, **kwargs):
-    if _calledfromnew or "__init__" not in dict_:
-      return super().__new__(mcs, name, bases, dict_, **kwargs)
-    init = dict_.pop("__init__")
-    cls = super().__new__(mcs, name, bases, dict_, **kwargs)
-    dict_["__init__"] = init
-    subcls = mcs(name, (cls,), dict_, _calledfromnew=True, **kwargs)
-    return subcls
+  def __call__(cls, *args, **kwargs):
+    newargs, newkwargs = cls.transforminitargs(*args, **kwargs)
+    return super().__call__(*newargs, **newkwargs)
+
+@dataclassy.dataclass(meta=DataClassTransformArgsMeta)
+class DataClassTransformArgs:
+  @classmethod
+  def transforminitargs(cls, *args, **kwargs):
+    return args, kwargs
 
 class MetaDataAnnotation:
   def __init__(self, typ, **kwargs):
@@ -45,9 +46,8 @@ class DataClassWithMetaData:
   def metadata(cls, fieldname):
     return cls.__annotationmetadata__.get(fieldname, {})
 
-class MyDataClassMeta(DataClassSuperInitMeta, DataClassWithMetaDataMeta, abc.ABCMeta):
+class MyDataClassMeta(abc.ABCMeta, DataClassTransformArgsMeta, DataClassWithMetaDataMeta):
   pass
 
-@dataclassy.dataclass(meta=MyDataClassMeta)
-class MyDataClass(DataClassWithMetaData):
+class MyDataClass(DataClassTransformArgs, DataClassWithMetaData, metaclass=MyDataClassMeta):
   pass
