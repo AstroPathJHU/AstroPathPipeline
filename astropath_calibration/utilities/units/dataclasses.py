@@ -137,9 +137,21 @@ class DataClassWithDistances(MyDataClass):
 
 class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
   pscale: pscalefield(float)
+  @property
+  def pscale(self): return self.__pscale
+  @pscale.setter
+  def pscale(self, pscale): self.__pscale = pscale
 
 class DataClassWithQpscale(DataClassWithDistances, ThingWithQpscale):
   qpscale: pscalefield(float)
+  @property
+  def qpscale(self): return self.__qpscale
+  @qpscale.setter
+  def qpscale(self, qpscale): self.__qpscale = qpscale
 
 class DataClassWithApscale(DataClassWithDistances, ThingWithApscale):
   apscale: pscalefield(float)
+  @property
+  def apscale(self): return self.__apscale
+  @apscale.setter
+  def apscale(self, apscale): self.__apscale = apscale

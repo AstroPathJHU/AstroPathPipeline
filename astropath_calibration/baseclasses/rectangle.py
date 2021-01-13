@@ -17,7 +17,8 @@ class Rectangle(DataClassWithPscale):
   t: MetaDataAnnotation(datetime.datetime, readfunction=lambda x: datetime.datetime.fromtimestamp(int(x)), writefunction=lambda x: int(datetime.datetime.timestamp(x)))
   file: str
 
-  def __new__(cls, *args, rectangle=None, **kwargs):
+  @classmethod
+  def transforminitargs(cls, *args, rectangle=None, **kwargs):
     rectanglekwargs = {}
     if rectangle is not None:
       rectanglekwargs = {
@@ -29,8 +30,7 @@ class Rectangle(DataClassWithPscale):
       }
       if "pscale" in kwargs:
         del rectanglekwargs["pscale"]
-    return super().__new__(
-      cls,
+    return super().transforminitargs(
       *args,
       **rectanglekwargs,
       **kwargs,

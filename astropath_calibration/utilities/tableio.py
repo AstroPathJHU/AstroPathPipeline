@@ -1,4 +1,4 @@
-import contextlib, csv, dataclassy, pathlib
+import contextlib, csv, dataclasses, dataclassy, pathlib
 
 from .misc import dummylogger
 
@@ -133,16 +133,16 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
 
 def asrow(obj, *, dict_factory=dict):
   """
-  loosely inspired by https://github.com/python/cpython/blob/77c623ba3d084e99d68c30f368bd7fbd7f175b60/Lib/dataclassy.py#L1052
+  loosely inspired by https://github.com/python/cpython/blob/77c623ba3d084e99d68c30f368bd7fbd7f175b60/Lib/dataclasses.py#L1052
   """
-  if not dataclassy._is_dataclass_instance(obj):
+  if not dataclassy.functions.is_dataclass_instance(obj):
     raise TypeError("asrow() should be called on dataclass instances")
 
   result = []
   for f in dataclassy.fields(obj):
     metadata = type(obj).metadata(f)
     if not metadata.get("includeintable", True): continue
-    value = dataclassy._asdict_inner(getattr(obj, f), dict_factory)
+    value = dataclasses._asdict_inner(getattr(obj, f), dict_factory)
     writefunction = metadata.get("writefunction", lambda x: x)
     writefunctionkwargs = metadata.get("writefunctionkwargs", lambda object: {})(obj)
     value = writefunction(value, **writefunctionkwargs)
