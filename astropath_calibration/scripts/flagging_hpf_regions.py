@@ -480,7 +480,7 @@ def main(args=None) :
     title_text = f'{args.slideID} HPF center locations, ({len(hpf_x_locs_flagged)} flagged out of {len(all_rfps)} read)'
     if truncated :
         title_text+=' (stopped early)'
-    ax.set_title(,fontsize=16)
+    ax.set_title(title_text,fontsize=16)
     ax.legend(loc='best',fontsize=16)
     ax.set_xlabel('HPF CellView x position',fontsize=16)
     ax.set_ylabel('HPF CellView y position',fontsize=16)
