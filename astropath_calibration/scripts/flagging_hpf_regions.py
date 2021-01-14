@@ -223,8 +223,8 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
                 #edit the overlay based on the full mask
                 if 'title' in dkeys and 'overlay (clipped)' in pd['title'] :
                     pd['image'][:,:,1][full_mask[:,:,0]>1]=pd['image'][:,:,0][full_mask[:,:,0]>1]
-                    pd['image'][:,:,0][(full_mask[:,:,0]>1) and (pd['image'][:,:,2]!=0)]=0
-                    pd['image'][:,:,2][(full_mask[:,:,0]>1) and (pd['image'][:,:,2]!=0)]=0
+                    pd['image'][:,:,0][(full_mask[:,:,0]>1) & (pd['image'][:,:,2]!=0)]=0
+                    pd['image'][:,:,2][(full_mask[:,:,0]>1) & (pd['image'][:,:,2]!=0)]=0
                 imshowkwargs = {}
                 possible_keys = ['cmap','vmin','vmax']
                 for pk in possible_keys :
@@ -304,7 +304,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     stacked_blur_masks = np.zeros_like(blur_masks_by_layer_group[0])
     for lgi,layer_group_blur_mask in enumerate(blur_masks_by_layer_group) :
         stacked_blur_masks[layer_group_blur_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
-    final_blur_mask = (np.where(stacked_blur_masks>10,0,1)).astype(np.uint8)
+    final_blur_mask = (np.where(stacked_blur_masks>11,0,1)).astype(np.uint8)
     #medium-sized open/close to refine it
     final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
     final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
@@ -458,7 +458,7 @@ def main(args=None) :
     hpf_x_locs_flagged = []; hpf_x_locs_not_flagged = []
     hpf_y_locs_flagged = []; hpf_y_locs_not_flagged = []
     for rfp in all_rfps :
-        key = (os.path.basename(fris[i].rawfile_path)).rstrip(RAWFILE_EXT)
+        key = (os.path.basename(rfp)).rstrip(RAWFILE_EXT)
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
         cvx = pscale*key_x-xpos
@@ -471,11 +471,11 @@ def main(args=None) :
             hpf_y_locs_not_flagged.append(cvy)
     w = max(hpf_x_locs_flagged+hpf_x_locs_not_flagged)-min(hpf_x_locs_flagged+hpf_x_locs_not_flagged)
     h = max(hpf_y_locs_flagged+hpf_y_locs_not_flagged)-min(hpf_y_locs_flagged+hpf_y_locs_not_flagged)
-    f,ax = plt.subplots(figsize=(12.8,12.8*(h/w)))
+    f,ax = plt.subplots(figsize=(6.4,6.4*(h/w)))
     ax.scatter(hpf_x_locs_flagged,hpf_y_locs_flagged,marker='o',color='r',label='flagged')
     ax.scatter(hpf_x_locs_not_flagged,hpf_y_locs_not_flagged,marker='o',color='b',label='not flagged')
     ax.invert_yaxis()
-    ax.set_title(f'{args.slideID} HPF center locations, ({len(hpf_x_locs_flagged)} flagged out of {all_rfps} read)',fontsize=18)
+    ax.set_title(f'{args.slideID} HPF center locations, ({len(hpf_x_locs_flagged)} flagged out of {len(all_rfps)} read)',fontsize=18)
     ax.legend(loc='best',fontsize=18)
     ax.set_xlabel('HPF CellView x position',fontsize=18)
     ax.set_ylabel('HPF CellView y position',fontsize=18)
