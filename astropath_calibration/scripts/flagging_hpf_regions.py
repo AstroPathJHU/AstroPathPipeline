@@ -173,17 +173,17 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
             brightest_layer_nlv = img_nlv
         #threshold it to make a binary mask
         layer_mask = (np.where(img_nlv>BLUR_NLV_CUT,1,0)).astype(np.uint8)
-        #filter out any areas smaller that the neighborhood window size
-        layer_mask = getSizeFilteredMask(layer_mask,min_size=np.sum(WINDOW_EL))
+        ##filter out any areas smaller that the neighborhood window size
+        #layer_mask = getSizeFilteredMask(layer_mask,min_size=np.sum(WINDOW_EL))
         ##filter out anything with skew of nlv values < MIN_SKEW or mean of nlv values > MAX_MEAN (false positives)
         #layer_mask = getSkewFilteredMask(layer_mask,img_nlv,BLUR_MIN_SKEW)
         #layer_mask = getMeanFilteredMask(layer_mask,img_nlv,BLUR_MAX_MEAN)
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
     group_blur_mask = (np.where(stacked_masks>flag_cut,1,0)).astype(np.uint8)    
-    ##small open/close to refine it
-    #group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-    #group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    #small open/close to refine it
+    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
     ##filter out small areas 
     #group_blur_mask = getSizeFilteredMask(group_blur_mask,min_size=BLUR_MIN_SIZE)
     #set up the plots to return
