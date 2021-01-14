@@ -6,8 +6,7 @@ class DataClassTransformArgsMeta(DataClassMeta):
     newargs, newkwargs = cls.transforminitargs(*args, **kwargs)
     return super().__call__(*newargs, **newkwargs)
 
-@dataclassy.dataclass(meta=DataClassTransformArgsMeta)
-class DataClassTransformArgs:
+class DataClassTransformArgs(metaclass=DataClassTransformArgsMeta):
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
     return args, kwargs
@@ -35,8 +34,7 @@ class DataClassWithMetaDataMeta(DataClassMeta):
 
     return super().__new__(mcs, name, bases, dict_, **kwargs)
 
-@dataclassy.dataclass(meta=DataClassWithMetaDataMeta)
-class DataClassWithMetaData:
+class DataClassWithMetaData(metaclass=DataClassWithMetaDataMeta):
   @classmethod
   def metadata(cls, fieldname):
     return cls.__annotationmetadata__.get(fieldname, {})

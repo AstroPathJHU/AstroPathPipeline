@@ -10,7 +10,6 @@ from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleWithImage, RectangleWithImageMultiLayer
 from .overlap import Overlap, RectangleOverlapCollection
 
-@dataclassy.dataclass(frozen=True)
 class SampleDef(MyDataClass):
   SampleID: int
   SlideID: str

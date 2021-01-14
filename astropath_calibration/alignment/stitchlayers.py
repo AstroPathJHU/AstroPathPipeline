@@ -347,7 +347,6 @@ class LayerStitchResultCvxpy(LayerStitchResultBase):
     self.xvar = x
 
 
-@dataclassy.dataclass(frozen=True)
 class LayerPosition(DataClassWithPscaleFrozen):
   pixelsormicrons = "pixels"
 
@@ -359,7 +358,6 @@ class LayerPosition(DataClassWithPscaleFrozen):
   cov_y_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   readingfromfile: dataclassy.InitVar[bool] = False
 
-@dataclassy.dataclass(frozen=True)
 class LayerPositionCovariance(DataClassWithPscaleFrozen):
   pixelsormicrons = "pixels"
 
