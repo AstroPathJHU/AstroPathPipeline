@@ -25,7 +25,7 @@ RBC_LAYER_GROUP_INDEX      = 1
 TISSUE_MIN_SIZE            = 2500
 BLUR_NLV_CUT               = 0.5
 BLUR_MIN_SIZE              = 15000
-BLUR_MASK_FLAG_CUTS        = [4,4,3,3,1]
+BLUR_MASK_FLAG_CUTS        = [5,5,4,4,1]
 BLUR_FLAG_STRING           = 'blur'
 
 #logger
