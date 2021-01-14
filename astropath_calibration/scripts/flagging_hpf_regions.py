@@ -442,11 +442,13 @@ def main(args=None) :
         all_rfps = all_rfps[:args.max_files]
     fri_chunks = chunkListOfFilepaths(all_rfps,dims,args.root_dir,args.n_threads)
     #get the masked regions for each chunk
+    truncated=False
     all_lmrs = []
     for fri_chunk in fri_chunks :
         new_lmrs = getLabelledMaskRegionsForChunk(fri_chunk,metsbl,etcobl,thresholds,xpos,ypos,pscale,args.workingdir)
         all_lmrs+=new_lmrs
-        if len(set(lmr.image_key for lmr in all_lmrs))>=args.max_masks :
+        if args.max_masks!=-1 and len(set(lmr.image_key for lmr in all_lmrs))>=args.max_masks :
+            truncated=True
             break
     #write out the table with all of the labelled region information
     if len(all_lmrs)>0 :
@@ -471,14 +473,17 @@ def main(args=None) :
             hpf_y_locs_not_flagged.append(cvy)
     w = max(hpf_x_locs_flagged+hpf_x_locs_not_flagged)-min(hpf_x_locs_flagged+hpf_x_locs_not_flagged)
     h = max(hpf_y_locs_flagged+hpf_y_locs_not_flagged)-min(hpf_y_locs_flagged+hpf_y_locs_not_flagged)
-    f,ax = plt.subplots(figsize=(6.4,6.4*(h/w)))
+    f,ax = plt.subplots(figsize=(9.6,9.6*(h/w)))
     ax.scatter(hpf_x_locs_flagged,hpf_y_locs_flagged,marker='o',color='r',label='flagged')
     ax.scatter(hpf_x_locs_not_flagged,hpf_y_locs_not_flagged,marker='o',color='b',label='not flagged')
     ax.invert_yaxis()
-    ax.set_title(f'{args.slideID} HPF center locations, ({len(hpf_x_locs_flagged)} flagged out of {len(all_rfps)} read)',fontsize=18)
-    ax.legend(loc='best',fontsize=18)
-    ax.set_xlabel('HPF CellView x position',fontsize=18)
-    ax.set_ylabel('HPF CellView y position',fontsize=18)
+    title_text = f'{args.slideID} HPF center locations, ({len(hpf_x_locs_flagged)} flagged out of {len(all_rfps)} read)'
+    if truncated :
+        title_text+=' (stopped early)'
+    ax.set_title(,fontsize=16)
+    ax.legend(loc='best',fontsize=16)
+    ax.set_xlabel('HPF CellView x position',fontsize=16)
+    ax.set_ylabel('HPF CellView y position',fontsize=16)
     fn = f'{args.slideID}_flagged_hpf_locations.png'
     with cd(args.workingdir) :
         plt.savefig(fn)
