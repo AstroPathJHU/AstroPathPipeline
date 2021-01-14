@@ -2,6 +2,7 @@ import abc, collections, dataclassy, itertools, methodtools, more_itertools, num
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.rectangle import Rectangle, rectangledict, RectangleList
 from ..utilities import units
+from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import dummylogger, floattoint, weightedstd
 from ..utilities.tableio import readtable, writetable
 from .field import Field, FieldOverlap
@@ -704,27 +705,26 @@ class StitchResultCvxpy(CalculatedStitchResult):
     self.xvar = x
     self.Tvar = T
 
-@dataclassy.dataclass
-class AffineEntry:
+class AffineEntry(MyDataClass):
   n: int
-  value: float = dataclassy.field(metadata={"writefunction": float})
+  value: MetaDataAnnotation(float, writefunction=float)
   description: str
 
 class AffineNominalEntry(AffineEntry):
-  def __init__(self, n, matrixentry, description):
-    self.matrixentry = matrixentry
-    super().__init__(n=n, value=matrixentry.n, description=description)
+  matrixentry: MetaDataAnnotation(unc.ufloat, includeintable=False)
 
-  def __post_init__(self): pass
+  @classmethod
+  def transforminitargs(cls, *, matrixentry, **kwargs):
+    return super().transforminitargs(value=matrixentry.n, matrixentry=matrixentry, **kwargs)
 
 class AffineCovarianceEntry(AffineEntry):
-  def __init__(self, n, entry1, entry2):
-    self.entry1 = entry1
-    self.entry2 = entry2
+  entry1: MetaDataAnnotation(unc.ufloat, includeintable=False)
+  entry2: MetaDataAnnotation(unc.ufloat, includeintable=False)
+
+  @classmethod
+  def transforminitargs(cls, *, entry1, entry2, **kwargs):
     if entry1 is entry2:
       value = entry1.matrixentry.s**2
     else:
       value = unc.covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0][1]
-    super().__init__(n=n, value=value, description = "cov_"+entry1.description+"_"+entry2.description)
-
-  def __post_init__(self): pass
+    super().__init__(value=value, description = "cov_"+entry1.description+"_"+entry2.description, entry1=entry1, entry2=entry2, **kwargs)
