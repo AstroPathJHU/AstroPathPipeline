@@ -21,11 +21,11 @@ WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45)
 MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
 BRIGHTEST_LAYERS           = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX     = 0
+RBC_LAYER_GROUP_INDEX      = 1
 TISSUE_MIN_SIZE            = 2500
 BLUR_NLV_CUT               = 0.5
 BLUR_MIN_SIZE              = 15000
-BLUR_MASK_FLAG_CUTS        = [7,7,5,5,1]
-BLUR_MIN_LAYER_GROUPS      = 3
+BLUR_MASK_FLAG_CUTS        = [4,4,3,3,1]
 BLUR_FLAG_STRING           = 'blur'
 
 #logger
@@ -173,8 +173,8 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
             brightest_layer_nlv = img_nlv
         #threshold it to make a binary mask
         layer_mask = (np.where(img_nlv>BLUR_NLV_CUT,1,0)).astype(np.uint8)
-        ##filter out the small areas
-        #layer_mask = getSizeFilteredMask(layer_mask,min_size=BLUR_MIN_SIZE)
+        #filter out any areas smaller that the neighborhood window size
+        layer_mask = getSizeFilteredMask(layer_mask,min_size=np.sum(WINDOW_EL))
         ##filter out anything with skew of nlv values < MIN_SKEW or mean of nlv values > MAX_MEAN (false positives)
         #layer_mask = getSkewFilteredMask(layer_mask,img_nlv,BLUR_MIN_SKEW)
         #layer_mask = getMeanFilteredMask(layer_mask,img_nlv,BLUR_MAX_MEAN)
@@ -220,9 +220,11 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
             dkeys = pd.keys()
             #imshow plots
             if 'image' in dkeys :
-                #make the overlay magenta instead of red where the full mask flags blur
+                #edit the overlay based on the full mask
                 if 'title' in dkeys and 'overlay (clipped)' in pd['title'] :
                     pd['image'][:,:,1][full_mask[:,:,0]>1]=pd['image'][:,:,0][full_mask[:,:,0]>1]
+                    pd['image'][:,:,0][(full_mask[:,:,0]>1) and (pd['image'][:,:,2]!=0)]=0
+                    pd['image'][:,:,2][(full_mask[:,:,0]>1) and (pd['image'][:,:,2]!=0)]=0
                 imshowkwargs = {}
                 possible_keys = ['cmap','vmin','vmax']
                 for pk in possible_keys :
@@ -262,7 +264,7 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
     #add the plots of the enumerated mask layer groups
     enumerated_mask_max = np.max(full_mask)
     for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
-        pos = ax[n_rows-1][lgi].imshow(full_mask[:,:,lgb[0]-1],vmin=0.,vmax=enumerated_mask_max,cmap='gist_ncar')
+        pos = ax[n_rows-1][lgi].imshow(full_mask[:,:,lgb[0]-1],vmin=0.,vmax=enumerated_mask_max,cmap='rainbow')
         f.colorbar(pos,ax=ax[n_rows-1][lgi])
         ax[n_rows-1][lgi].set_title(f'full mask, layers {lgb[0]}-{lgb[1]}')
     #empty the other unused axes in the last row
@@ -300,12 +302,12 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
         blur_mask_plots_by_layer_group.append(lgbmps)
     #combine the layer group blur masks to get the final mask for all layers
     stacked_blur_masks = np.zeros_like(blur_masks_by_layer_group[0])
-    for layer_group_blur_mask in blur_masks_by_layer_group :
-        stacked_blur_masks+=layer_group_blur_mask
-    final_blur_mask = (np.where(stacked_blur_masks>len(MASK_LAYER_GROUPS)-BLUR_MIN_LAYER_GROUPS,1,0)).astype(np.uint8)
-    #small open/close to refine it
-    final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-    final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+    for lgi,layer_group_blur_mask in enumerate(blur_masks_by_layer_group) :
+        stacked_blur_masks[layer_group_blur_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
+    final_blur_mask = (np.where(stacked_blur_masks>10,0,1)).astype(np.uint8)
+    #medium-sized open/close to refine it
+    final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+    final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
     #remove any remaining small spots
     final_blur_mask = getSizeFilteredMask(final_blur_mask,min_size=BLUR_MIN_SIZE)
     #if there is anything flagged in the final blur mask, write out some plots and the mask file/csv file lines
@@ -451,6 +453,36 @@ def main(args=None) :
         fn = f'{args.slideID}_labelled_mask_regions.csv'
         with cd(args.workingdir) :
             writetable(fn,sorted(all_lmrs,key=lambda x: f'{x.image_key}_{x.region_index}'))
+    #make the plot of all the HPF locations and whether they have something masked/flagged
+    all_flagged_hpf_keys = [lmr.image_key for lmr in all_lmrs]
+    hpf_x_locs_flagged = []; hpf_x_locs_not_flagged = []
+    hpf_y_locs_flagged = []; hpf_y_locs_not_flagged = []
+    for rfp in all_rfps :
+        key = (os.path.basename(fris[i].rawfile_path)).rstrip(RAWFILE_EXT)
+        key_x = float(key.split(',')[0].split('[')[1])
+        key_y = float(key.split(',')[1].split(']')[0])
+        cvx = pscale*key_x-xpos
+        cvy = pscale*key_y-ypos
+        if key in all_flagged_hpf_keys :
+            hpf_x_locs_flagged.append(cvx)
+            hpf_y_locs_flagged.append(cvy)
+        else :
+            hpf_x_locs_not_flagged.append(cvx)
+            hpf_y_locs_not_flagged.append(cvy)
+    w = max(hpf_x_locs_flagged+hpf_x_locs_not_flagged)-min(hpf_x_locs_flagged+hpf_x_locs_not_flagged)
+    h = max(hpf_y_locs_flagged+hpf_y_locs_not_flagged)-min(hpf_y_locs_flagged+hpf_y_locs_not_flagged)
+    f,ax = plt.subplots(figsize=(12.8,12.8*(h/w)))
+    ax.scatter(hpf_x_locs_flagged,hpf_y_locs_flagged,marker='o',color='r',label='flagged')
+    ax.scatter(hpf_x_locs_not_flagged,hpf_y_locs_not_flagged,marker='o',color='b',label='not flagged')
+    ax.invert_yaxis()
+    ax.set_title(f'{args.slideID} HPF center locations, ({len(hpf_x_locs_flagged)} flagged out of {all_rfps} read)',fontsize=18)
+    ax.legend(loc='best',fontsize=18)
+    ax.set_xlabel('HPF CellView x position',fontsize=18)
+    ax.set_ylabel('HPF CellView y position',fontsize=18)
+    fn = f'{args.slideID}_flagged_hpf_locations.png'
+    with cd(args.workingdir) :
+        plt.savefig(fn)
+        cropAndOverwriteImage(fn)
 
 if __name__=='__main__' :
     main()
