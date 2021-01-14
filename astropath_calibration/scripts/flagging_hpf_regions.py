@@ -24,7 +24,7 @@ DAPI_LAYER_GROUP_INDEX     = 0
 RBC_LAYER_GROUP_INDEX      = 1
 TISSUE_MIN_SIZE            = 2500
 BLUR_NLV_CUT               = 0.5
-BLUR_MIN_SIZE              = 10000
+BLUR_MIN_SIZE              = 30000
 BLUR_MASK_FLAG_CUTS        = [5,5,4,4,1]
 BLUR_FLAG_STRING           = 'blur'
 
@@ -305,9 +305,9 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     for lgi,layer_group_blur_mask in enumerate(blur_masks_by_layer_group) :
         stacked_blur_masks[layer_group_blur_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
     final_blur_mask = (np.where(stacked_blur_masks>11,0,1)).astype(np.uint8)
-    #medium-sized open/close to refine it
-    final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
-    final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+    #large open/close to refine it
+    final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
+    final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
     #remove any remaining small spots
     final_blur_mask = getSizeFilteredMask(final_blur_mask,min_size=BLUR_MIN_SIZE)
     #if there is anything flagged in the final blur mask, write out some plots and the mask file/csv file lines
