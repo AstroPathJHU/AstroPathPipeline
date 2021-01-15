@@ -104,9 +104,10 @@ def split_csv_to_dict_of_bounds(value) :
   except Exception as e :
     raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=low_bound:high_bound pairs! Exception: {e}')
 
+from .dataclasses import MyDataClass
+
 #helper dataclass for some common metadata information
-@dataclassy.dataclass
-class MetadataSummary :
+class MetadataSummary(MyDataClass):
   slideID         : str
   project         : int
   cohort          : int

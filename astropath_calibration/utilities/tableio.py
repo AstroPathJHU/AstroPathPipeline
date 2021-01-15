@@ -1,6 +1,6 @@
 import contextlib, csv, dataclasses, dataclassy, pathlib
 
-from .dataclasses import MetaDataAnnotation
+from .dataclasses import MetaDataAnnotation, MyDataClass
 from .misc import dummylogger
 from .units.dataclasses import DataClassWithDistances
 
@@ -48,6 +48,8 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
       )
     else:
       Row = rownameorclass
+      if not issubclass(Row, MyDataClass):
+        raise TypeError(f"{Row} should inherit from {MyDataClass}")
       if checkorder:
         columnnames = list(reader.fieldnames)
         fieldnames = [field for field in dataclassy.fields(Row) if field in columnnames]
@@ -109,6 +111,9 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
         + "\n  ".join(_.__name__ for _ in badclasses)
       )
 
+  if not issubclass(rowclass, MyDataClass):
+    raise TypeError(f"{rowclass} should inherit from {MyDataClass}")
+
   fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
 
   try:
@@ -137,8 +142,8 @@ def asrow(obj, *, dict_factory=dict):
   """
   loosely inspired by https://github.com/python/cpython/blob/77c623ba3d084e99d68c30f368bd7fbd7f175b60/Lib/dataclasses.py#L1052
   """
-  if not dataclassy.functions.is_dataclass_instance(obj):
-    raise TypeError("asrow() should be called on dataclass instances")
+  if not isinstance(obj, MyDataClass):
+    raise TypeError("asrow() should be called on MyDataClass instances")
 
   result = []
   for f in dataclassy.fields(obj):

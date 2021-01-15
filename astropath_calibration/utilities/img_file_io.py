@@ -1,9 +1,10 @@
 #imports
 from .tableio import readtable
+from .dataclasses import MyDataClass
 from .misc import cd
 import numpy as np
 import xml.etree.ElementTree as et
-import os, glob, cv2, logging, dataclassy, time
+import os, glob, cv2, logging, time
 
 #global variables
 PARAMETER_XMLFILE_EXT = '.Parameters.xml'
@@ -26,8 +27,7 @@ handler.setFormatter(logging.Formatter("%(message)s    [%(funcName)s, %(asctime)
 utility_logger.addHandler(handler)
 
 #helper class to store exposure time offset factor for a single layer (with some extra info)
-@dataclassy.dataclass
-class LayerOffset :
+class LayerOffset(MyDataClass):
   layer_n    : int
   n_overlaps : int
   offset     : float
