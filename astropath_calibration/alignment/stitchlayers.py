@@ -351,18 +351,18 @@ class LayerPosition(DataClassWithPscale):
   pixelsormicrons = "pixels"
 
   n: int
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  cov_x_x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_x_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_y_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  x: distancefield(pixelsormicrons=pixelsormicrons)
+  y: distancefield(pixelsormicrons=pixelsormicrons)
+  cov_x_x: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_x_y: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_y_y: distancefield(pixelsormicrons=pixelsormicrons, power=2)
 
 class LayerPositionCovariance(DataClassWithPscale):
   pixelsormicrons = "pixels"
 
   n1: int
   n2: int
-  cov_x1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_x1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_y1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_y1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_x1_x2: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_x1_y2: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_y1_x2: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_y1_y2: distancefield(pixelsormicrons=pixelsormicrons, power=2)

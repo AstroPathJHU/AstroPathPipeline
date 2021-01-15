@@ -26,8 +26,8 @@ class OverlapForLayerAlignment(AlignmentOverlap):
     super().__user_init__(layer1=layer1, layer2=layer2, **kwargs)
     import pprint; pprint.pprint(kwargs)
     self.__layeroverlaps = (
-      AlignmentOverlap(n=self.n, p1=self.p1, p2=self.p1, x1=self.x1, y1=self.y1, x2=self.x1, y2=self.y1, layer1=layer1, layer2=layer2, tag=5, **kwargs),
-      AlignmentOverlap(n=self.n, p1=self.p2, p2=self.p2, x1=_x2,     y1=_y2,     x2=_x2,     y2=_y2,     layer1=layer1, layer2=layer2, tag=5, **kwargs),
+      AlignmentOverlap(n=self.n, p1=self.p1, p2=self.p1, x1=self.x1, y1=self.y1, x2=self.x1, y2=self.y1, layer1=layer1, layer2=layer2, tag=5, pscale=self.pscale, **kwargs),
+      AlignmentOverlap(n=self.n, p1=self.p2, p2=self.p2, x1=_x2,     y1=_y2,     x2=_x2,     y2=_y2,     layer1=layer1, layer2=layer2, tag=5, pscale=self.pscale, **kwargs),
     )
     positionaloverlap1, = {_ for _ in positionaloverlaps if _.p1 == self.p1 and _.p2 == self.p2 and _.layer1 == _.layer2 == layer1}
     positionaloverlap2, = {_ for _ in positionaloverlaps if _.p1 == self.p1 and _.p2 == self.p2 and _.layer1 == _.layer2 == layer2}

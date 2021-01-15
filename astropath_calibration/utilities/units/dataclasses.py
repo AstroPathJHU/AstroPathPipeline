@@ -143,6 +143,7 @@ class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
   def pscale(self): return self.__pscale
   @pscale.setter
   def pscale(self, pscale): self.__pscale = pscale
+DataClassWithPscale.__defaults__.pop("pscale")
 
 class DataClassWithQpscale(DataClassWithDistances, ThingWithQpscale):
   qpscale: pscalefield(float)
@@ -150,6 +151,7 @@ class DataClassWithQpscale(DataClassWithDistances, ThingWithQpscale):
   def qpscale(self): return self.__qpscale
   @qpscale.setter
   def qpscale(self, qpscale): self.__qpscale = qpscale
+DataClassWithQpscale.__defaults__.pop("qpscale")
 
 class DataClassWithApscale(DataClassWithDistances, ThingWithApscale):
   apscale: pscalefield(float)
@@ -157,3 +159,4 @@ class DataClassWithApscale(DataClassWithDistances, ThingWithApscale):
   def apscale(self): return self.__apscale
   @apscale.setter
   def apscale(self, apscale): self.__apscale = apscale
+DataClassWithApscale.__defaults__.pop("apscale")
