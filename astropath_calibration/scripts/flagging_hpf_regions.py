@@ -228,7 +228,7 @@ def getImageTissueFoldMask(img_array,return_plots=False) :
     stacked_fold_masks = np.zeros_like(fold_masks_by_layer_group[0])
     for lgi,layer_group_fold_mask in enumerate(fold_masks_by_layer_group) :
         stacked_fold_masks[layer_group_fold_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
-    final_fold_mask = (np.where((stacked_fold_masks>11) and (stacked_fold_masks!=20),0,1)).astype(np.uint8)
+    final_fold_mask = (np.where((stacked_fold_masks>11) & (stacked_fold_masks!=20),0,1)).astype(np.uint8)
     #large open/close to refine and connect it
     final_fold_mask = (cv2.morphologyEx(final_fold_mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
     final_fold_mask = (cv2.morphologyEx(final_fold_mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
@@ -236,7 +236,10 @@ def getImageTissueFoldMask(img_array,return_plots=False) :
     final_fold_mask = getSizeFilteredMask(final_fold_mask,min_size=FOLD_MIN_SIZE)
     #finally erode by the window size to eat up the edges
     final_fold_mask = (cv2.morphologyEx(final_fold_mask,cv2.MORPH_ERODE,WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
-    return final_fold_mask,fold_mask_plots_by_layer_group
+    if return_plots :
+        return final_fold_mask,fold_mask_plots_by_layer_group
+    else :
+        return final_fold_mask,None
 
 #################### HELPER FUNCTIONS ####################
 
@@ -356,35 +359,38 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
         output_mask = np.ones(img_array.shape,dtype=np.uint8)
         #add in the tissue fold mask, starting with index 2
         start_i = 2
-        layers_string = '-1'
-        enumerated_fold_mask = getEnumeratedMask(tissue_fold_mask,start_i)
-        for li in range(img_array.shape[-1]) :
-            output_mask[:,:,li] = np.where(enumerated_fold_mask!=0,enumerated_fold_mask,output_mask[:,:,li])
-        start_i = np.max(enumerated_fold_mask)+1
-        region_indices = list(range(np.min(enumerated_fold_mask[enumerated_fold_mask!=0]),np.max(enumerated_fold_mask)+1))
-        for ri in region_indices :
-            r_size = np.sum(enumerated_fold_mask==ri)
-            return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,FOLD_FLAG_STRING))
+        if np.min(tissue_fold_mask)<1 :
+            layers_string = '-1'
+            enumerated_fold_mask = getEnumeratedMask(tissue_fold_mask,start_i)
+            for li in range(img_array.shape[-1]) :
+                output_mask[:,:,li] = np.where(enumerated_fold_mask!=0,enumerated_fold_mask,output_mask[:,:,li])
+            start_i = np.max(enumerated_fold_mask)+1
+            region_indices = list(range(np.min(enumerated_fold_mask[enumerated_fold_mask!=0]),np.max(enumerated_fold_mask)+1))
+            for ri in region_indices :
+                r_size = np.sum(enumerated_fold_mask==ri)
+                return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,FOLD_FLAG_STRING))
         #add in the mask for the dapi layer group
-        layers_string = f'{MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]}'
-        enumerated_dapi_mask = getEnumeratedMask(dapi_blur_mask,start_i)
-        for ln in range(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0],MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]+1) :
-            output_mask[:,:,ln-1] = np.where(enumerated_dapi_mask!=0,enumerated_dapi_mask,output_mask[:,:,ln-1])
-        start_i = np.max(enumerated_dapi_mask)+1
-        region_indices = list(range(np.min(enumerated_dapi_mask[enumerated_dapi_mask!=0]),np.max(enumerated_dapi_mask)+1))
-        for ri in region_indices :
-            r_size = np.sum(enumerated_dapi_mask==ri)
-            return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,DAPI_BLUR_STRING))
+        if np.min(dapi_blur_mask)<1 :
+            layers_string = f'{MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]}'
+            enumerated_dapi_mask = getEnumeratedMask(dapi_blur_mask,start_i)
+            for ln in range(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0],MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]+1) :
+                output_mask[:,:,ln-1] = np.where(enumerated_dapi_mask!=0,enumerated_dapi_mask,output_mask[:,:,ln-1])
+            start_i = np.max(enumerated_dapi_mask)+1
+            region_indices = list(range(np.min(enumerated_dapi_mask[enumerated_dapi_mask!=0]),np.max(enumerated_dapi_mask)+1))
+            for ri in region_indices :
+                r_size = np.sum(enumerated_dapi_mask==ri)
+                return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,DAPI_BLUR_STRING))
         #add in the mask for the RBC layer group
-        layers_string = f'{MASK_LAYER_GROUPS[RBC_LAYER_GROUP_INDEX][0]-MASK_LAYER_GROUPS[RBC_LAYER_GROUP_INDEX][1]}'
-        enumerated_rbc_mask = getEnumeratedMask(rbc_blur_mask,start_i)
-        for ln in range(MASK_LAYER_GROUPS[RBC_LAYER_GROUP_INDEX][0],MASK_LAYER_GROUPS[RBC_LAYER_GROUP_INDEX][1]+1) :
-            output_mask[:,:,ln-1] = np.where(enumerated_rbc_mask!=0,enumerated_rbc_mask,output_mask[:,:,ln-1])
-        start_i = np.max(enumerated_rbc_mask)+1
-        region_indices = list(range(np.min(enumerated_rbc_mask[enumerated_rbc_mask!=0]),np.max(enumerated_rbc_mask)+1))
-        for ri in region_indices :
-            r_size = np.sum(enumerated_rbc_mask==ri)
-            return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,DAPI_BLUR_STRING))
+        if np.min(rbc_blur_mask)<1 :
+            layers_string = f'{MASK_LAYER_GROUPS[RBC_LAYER_GROUP_INDEX][0]-MASK_LAYER_GROUPS[RBC_LAYER_GROUP_INDEX][1]}'
+            enumerated_rbc_mask = getEnumeratedMask(rbc_blur_mask,start_i)
+            for ln in range(MASK_LAYER_GROUPS[RBC_LAYER_GROUP_INDEX][0],MASK_LAYER_GROUPS[RBC_LAYER_GROUP_INDEX][1]+1) :
+                output_mask[:,:,ln-1] = np.where(enumerated_rbc_mask!=0,enumerated_rbc_mask,output_mask[:,:,ln-1])
+            start_i = np.max(enumerated_rbc_mask)+1
+            region_indices = list(range(np.min(enumerated_rbc_mask[enumerated_rbc_mask!=0]),np.max(enumerated_rbc_mask)+1))
+            for ri in region_indices :
+                r_size = np.sum(enumerated_rbc_mask==ri)
+                return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,DAPI_BLUR_STRING))
         #finally add in the tissue mask (all the background is zero in every layer, unless already flagged otherwise)
         for li in range(img_array.shape[-1]) :
             output_mask[:,:,li] = np.where(output_mask[:,:,li]==1,tissue_mask,output_mask[:,:,li])
