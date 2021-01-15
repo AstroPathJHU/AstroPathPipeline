@@ -30,6 +30,7 @@ FOLD_MASK_FLAG_CUTS        = [2,2,0,1,0]
 FOLD_FLAG_STRING           = 'tissue fold or bright dust'
 BLUR_MIN_SIZE              = 10000
 BLUR_NLV_CUT               = 0.005
+BLUR_MAX_MEAN              = 0.004
 DAPI_BLUR_STRING           = 'likely dust'
 RBC_BLUR_STRING            = 'likely red blood cell chunk'
 
@@ -170,7 +171,7 @@ def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer,tissue_mask=None) 
     return local_norm_lap_var
 
 #function to return a blur mask for a given image layer, along with a dictionary of to plots to add to the group for this image
-def getImageLayerGroupBlurMask(img_array,layer_group_bounds,brightest_layer_n,flag_cut,return_plots=True) :
+def getImageLayerGroupBlurMask(img_array,layer_group_bounds,nlv_cut,n_layers_flag_cut,max_mean,brightest_layer_n,return_plots=True) :
     #start by making a mask for every layer in the group
     stacked_masks = np.zeros(img_array.shape[:-1],dtype=np.uint8)
     brightest_layer_nlv = None
@@ -180,15 +181,15 @@ def getImageLayerGroupBlurMask(img_array,layer_group_bounds,brightest_layer_n,fl
         if ln==brightest_layer_n :
             brightest_layer_nlv = img_nlv
         #threshold it to make a binary mask
-        layer_mask = (np.where(img_nlv>FOLD_NLV_CUT,1,0)).astype(np.uint8)
+        layer_mask = (np.where(img_nlv>nlv_cut,1,0)).astype(np.uint8)
         #small open/close to refine it
         layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
         layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
         #filter out anything with mean of nlv values > MAX_MEAN (false positives)
-        layer_mask = getMeanFilteredMask(layer_mask,img_nlv,FOLD_MAX_MEAN)
+        layer_mask = getMeanFilteredMask(layer_mask,img_nlv,max_mean)
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
-    group_blur_mask = (np.where(stacked_masks>flag_cut,1,0)).astype(np.uint8)    
+    group_blur_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)    
     #small open/close to refine it
     group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
     group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
@@ -206,7 +207,7 @@ def getImageLayerGroupBlurMask(img_array,layer_group_bounds,brightest_layer_n,fl
                  #{'image':overlay_gs,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (grayscale)'},
                  {'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'},
                  {'hist':brightest_layer_nlv.flatten(),'xlabel':'variance of normalized laplacian','line_at':FOLD_NLV_CUT},
-                 {'image':stacked_masks,'title':f'stacked layer masks (cut at {flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
+                 {'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
                  #{'image':group_blur_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask','vmin':0,'vmax':1},
                 ]
     else :
@@ -221,7 +222,7 @@ def getImageTissueFoldMask(img_array,return_plots=False) :
     #get the fold masks for each layer group
     fold_masks_by_layer_group = []; fold_mask_plots_by_layer_group = []
     for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
-        lgtfm, lgtfmps = getImageLayerGroupBlurMask(img_array,lgb,BRIGHTEST_LAYERS[lgi],FOLD_MASK_FLAG_CUTS[lgi],return_plots)
+        lgtfm, lgtfmps = getImageLayerGroupBlurMask(img_array,lgb,FOLD_NLV_CUT,FOLD_MASK_FLAG_CUTS[lgi],FOLD_MAX_MEAN,BRIGHTEST_LAYERS[lgi],return_plots)
         fold_masks_by_layer_group.append(lgtfm)
         fold_mask_plots_by_layer_group.append(lgtfmps)
     #combine the layer group blur masks to get the final mask for all layers
@@ -338,13 +339,17 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     img_array = smoothImageWorker(img_array,1)
     dapi_blur_mask,dapi_blur_plots = getImageLayerGroupBlurMask(img_array,
                                                                 MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX],
-                                                                BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
+                                                                BLUR_NLV_CUT,
                                                                 0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]),
+                                                                BLUR_MAX_MEAN,
+                                                                BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
                                                                 True)
     rbc_blur_mask,rbc_blur_plots = getImageLayerGroupBlurMask(img_array,
                                                               MASK_LAYER_GROUPS[RBC_LAYER_GROUP_INDEX],
-                                                              BRIGHTEST_LAYERS[RBC_LAYER_GROUP_INDEX],
+                                                              BLUR_NLV_CUT,
                                                               0.5*(MASK_LAYER_GROUPS[RBC_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[RBC_LAYER_GROUP_INDEX][0]),
+                                                              BLUR_MAX_MEAN,
+                                                              BRIGHTEST_LAYERS[RBC_LAYER_GROUP_INDEX],
                                                               True)
     dapi_blur_mask = getSizeFilteredMask(dapi_blur_mask,BLUR_MIN_SIZE)
     rbc_blur_mask = getSizeFilteredMask(rbc_blur_mask,BLUR_MIN_SIZE)
