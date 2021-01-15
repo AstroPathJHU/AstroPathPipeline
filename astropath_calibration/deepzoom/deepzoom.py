@@ -1,4 +1,4 @@
-import collections, dataclassy, functools, numpy as np, os, pathlib, PIL, re
+import collections, functools, numpy as np, os, PIL, re
 
 from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, ReadRectanglesComponentTiff, ZoomSampleBase
 from ..utilities.dataclasses import MyDataClass

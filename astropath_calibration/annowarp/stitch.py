@@ -1,4 +1,4 @@
-import abc, collections, cvxpy as cp, dataclassy, itertools, numpy as np, re
+import abc, collections, cvxpy as cp, itertools, numpy as np, re
 
 from ..utilities import units
 from ..utilities.tableio import writetable

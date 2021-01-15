@@ -1,4 +1,4 @@
-import abc, dataclassy
+import abc
 from dataclassy.dataclass import DataClassMeta
 
 class DataClassTransformArgsMeta(DataClassMeta):

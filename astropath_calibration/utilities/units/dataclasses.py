@@ -1,4 +1,4 @@
-import abc, dataclassy, functools, numbers, numpy as np
+import dataclassy, functools, numbers, numpy as np
 from ..dataclasses import MetaDataAnnotation, MyDataClass
 from ..misc import floattoint
 from .core import Distance, ThingWithApscale, ThingWithPscale, ThingWithQpscale, UnitsError

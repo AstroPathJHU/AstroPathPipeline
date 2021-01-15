@@ -1,12 +1,13 @@
 #imports
 from .config import CONST
 from .alignmentset import AlignmentSetForWarping
-from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
+from ..utilities.dataclasses import MyDataClass
 from ..utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield
-from ..utilities.tableio import readtable, writetable
+from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
+from ..utilities.tableio import readtable, writetable
 import numpy as np
-import cv2, os, logging, dataclassy, copy, platform
+import cv2, os, logging, copy, platform
 
 #set up the logger
 warp_logger = logging.getLogger("warpfitter")
@@ -20,8 +21,7 @@ class WarpingError(Exception) :
     pass
 
 #helper class to hold a rectangle's rawfile key, raw image, warped image, and tag for whether it's only relevant for overlaps that are corners
-@dataclassy.dataclass(eq=False, repr=False)
-class WarpImage :
+class WarpImage(MyDataClass) :
     rawfile_key          : str
     raw_image_umat       : cv2.UMat
     warped_image_umat    : cv2.UMat
@@ -35,8 +35,7 @@ class WarpImage :
         return self.warped_image_umat.get()
 
 #helper classes to represent octets of overlaps
-@dataclassy.dataclass(eq=False, repr=False)
-class OverlapOctet :
+class OverlapOctet(MyDataClass) :
     root_dir             : str
     rawfile_top_dir      : str
     slide_ID             : str
@@ -86,8 +85,7 @@ class OverlapOctet :
     
 
 #little utility class to represent a warp fit result
-@dataclassy.dataclass
-class WarpFitResult :
+class WarpFitResult(MyDataClass) :
     dirname         : str = None
     n               : int = 0
     m               : int = 0
@@ -114,22 +112,19 @@ class WarpFitResult :
     cost_reduction  : float = 0.0
 
 #little utility class to log the fields used
-@dataclassy.dataclass
-class FieldLog :
+class FieldLog(MyDataClass) :
     slide_ID : str
     file   : str
     rect_n : int
 
 #little utilitiy class for logging x and y principal point shifts
-@dataclassy.dataclass
-class WarpShift :
+class WarpShift(MyDataClass) :
     layer_n  : int
     cx_shift : float
     cy_shift : float
 
 #utility class for logging warping parameters and the slide they come from
-@dataclassy.dataclass
-class WarpingSummary :
+class WarpingSummary(MyDataClass) :
     slide_ID     : str
     project         : int
     cohort          : int

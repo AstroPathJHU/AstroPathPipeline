@@ -1,5 +1,3 @@
-import dataclassy
-from ..utilities import units
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
 class ImageStats(DataClassWithPscale):

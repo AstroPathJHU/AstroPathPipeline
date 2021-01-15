@@ -1,4 +1,4 @@
-import abc, collections, contextlib, cv2, dataclassy, logging, matplotlib.pyplot as plt, numpy as np, os, PIL.Image, re, scipy.stats, uncertainties as unc
+import collections, contextlib, cv2, logging, matplotlib.pyplot as plt, numpy as np, os, PIL.Image, re, scipy.stats, uncertainties as unc
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))

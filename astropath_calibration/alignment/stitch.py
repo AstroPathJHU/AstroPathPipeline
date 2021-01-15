@@ -1,4 +1,4 @@
-import abc, collections, dataclassy, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
+import abc, collections, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.rectangle import Rectangle, rectangledict, RectangleList
 from ..utilities import units

@@ -1,4 +1,4 @@
-import dataclassy, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, typing, uncertainties as unc
+import matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, typing, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 from ..baseclasses.overlap import Overlap

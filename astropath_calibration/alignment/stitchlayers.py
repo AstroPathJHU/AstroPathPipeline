@@ -1,4 +1,4 @@
-import dataclassy, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
+import itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 
 from ..baseclasses.overlap import OverlapCollection
 from ..utilities import units

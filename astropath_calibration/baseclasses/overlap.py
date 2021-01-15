@@ -1,7 +1,6 @@
-import abc, dataclassy, networkx as nx, numpy as np, pathlib
+import abc, networkx as nx, numpy as np, pathlib
 
 from ..baseclasses.csvclasses import constantsdict
-from ..utilities import units
 from ..utilities.tableio import readtable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .rectangle import Rectangle, RectangleCollection, RectangleList, rectangleoroverlapfilter, rectangleoroverlapfilter as overlapfilter

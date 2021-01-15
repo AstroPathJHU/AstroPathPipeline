@@ -1,4 +1,4 @@
-import cv2, dataclassy, matplotlib.pyplot as plt, numpy as np, skimage.measure
+import cv2, matplotlib.pyplot as plt, numpy as np, skimage.measure
 from ..alignment.field import Field
 from ..baseclasses.csvclasses import Polygon
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLoadRectangle
@@ -6,7 +6,7 @@ from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesCom
 from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
 from ..utilities.tableio import writetable
-from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithPscale, distancefield
+from ..utilities.units.dataclasses import distancefield
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass

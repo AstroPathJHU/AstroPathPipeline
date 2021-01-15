@@ -1,4 +1,4 @@
-import dataclassy, datetime, functools, itertools, matplotlib.patches, more_itertools, numbers, numpy as np, re
+import dataclassy, datetime, itertools, matplotlib.patches, more_itertools, numbers, numpy as np, re
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import floattoint
