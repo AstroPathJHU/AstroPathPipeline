@@ -4,7 +4,7 @@ from ..baseclasses.overlap import OverlapCollection
 from ..utilities import units
 from ..utilities.misc import dummylogger
 from ..utilities.tableio import writetable
-from ..utilities.units.dataclasses import DataClassWithPscaleFrozen, distancefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .overlap import LayerAlignmentResult
 
 class ComplementaryOverlapPair(units.ThingWithPscale):
@@ -347,7 +347,7 @@ class LayerStitchResultCvxpy(LayerStitchResultBase):
     self.xvar = x
 
 
-class LayerPosition(DataClassWithPscaleFrozen):
+class LayerPosition(DataClassWithPscale):
   pixelsormicrons = "pixels"
 
   n: int
@@ -356,9 +356,8 @@ class LayerPosition(DataClassWithPscaleFrozen):
   cov_x_x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_x_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  readingfromfile: dataclassy.InitVar[bool] = False
 
-class LayerPositionCovariance(DataClassWithPscaleFrozen):
+class LayerPositionCovariance(DataClassWithPscale):
   pixelsormicrons = "pixels"
 
   n1: int
@@ -367,5 +366,3 @@ class LayerPositionCovariance(DataClassWithPscaleFrozen):
   cov_x1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
   cov_y1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  readingfromfile: dataclassy.InitVar[bool] = False
-
