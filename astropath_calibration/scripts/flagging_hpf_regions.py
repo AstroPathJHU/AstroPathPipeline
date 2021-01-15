@@ -25,6 +25,7 @@ RBC_LAYER_GROUP_INDEX      = 1
 TISSUE_MIN_SIZE            = 2500
 BLUR_NLV_CUT               = 0.5
 BLUR_MIN_SIZE              = 30000
+BLUR_MAX_MEAN              = 0.4
 BLUR_MASK_FLAG_CUTS        = [5,5,4,4,1]
 BLUR_FLAG_STRING           = 'blur'
 
@@ -177,7 +178,7 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
         #layer_mask = getSizeFilteredMask(layer_mask,min_size=np.sum(WINDOW_EL))
         ##filter out anything with skew of nlv values < MIN_SKEW or mean of nlv values > MAX_MEAN (false positives)
         #layer_mask = getSkewFilteredMask(layer_mask,img_nlv,BLUR_MIN_SKEW)
-        #layer_mask = getMeanFilteredMask(layer_mask,img_nlv,BLUR_MAX_MEAN)
+        layer_mask = getMeanFilteredMask(layer_mask,img_nlv,BLUR_MAX_MEAN)
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
     group_blur_mask = (np.where(stacked_masks>flag_cut,1,0)).astype(np.uint8)    
