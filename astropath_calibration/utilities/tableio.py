@@ -1,5 +1,6 @@
 import contextlib, csv, dataclasses, dataclassy, pathlib
 
+from .dataclasses import MetaDataAnnotation
 from .misc import dummylogger
 from .units.dataclasses import DataClassWithDistances
 
@@ -161,7 +162,7 @@ def field_size_limit_context(limit):
   finally:
     csv.field_size_limit(oldlimit)
 
-def pathfield(*, metadata={}, **kwargs):
+def pathfield(**metadata):
   def guesspathtype(path):
     if isinstance(path, pathlib.PurePath):
       return path
@@ -177,9 +178,9 @@ def pathfield(*, metadata={}, **kwargs):
       except NotImplementedError:
         return pathlib.PureWindowsPath(path)
 
-  kwargs["metadata"] = {
+  metadata = {
     "readfunction": guesspathtype,
     **metadata,
   }
 
-  return dataclassy.field(**kwargs)
+  return MetaDataAnnotation(pathlib.Path, **metadata)

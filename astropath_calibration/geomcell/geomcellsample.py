@@ -87,24 +87,23 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
 
       writetable(field.geomloadcsv, geomload)
 
-@Polygon.dataclasswithpolygon(dc_init=True)
-class CellGeomLoad(DataClassWithPscale, DataClassWithApscale):
+class CellGeomLoad(Polygon.DataClassWithPolygon):
   field: int
   ctype: int
   n: int
-  x: units.Distance = distancefield(pixelsormicrons="pixels")
-  y: units.Distance = distancefield(pixelsormicrons="pixels")
-  w: units.Distance = distancefield(pixelsormicrons="pixels")
-  h: units.Distance = distancefield(pixelsormicrons="pixels")
-  poly: Polygon = Polygon.field()
-  readingfromfile: dataclassy.InitVar[bool] = False
+  x: distancefield(pixelsormicrons="pixels")
+  y: distancefield(pixelsormicrons="pixels")
+  w: distancefield(pixelsormicrons="pixels")
+  h: distancefield(pixelsormicrons="pixels")
+  poly: Polygon.field()
 
-  def __init__(self, *args, box=None, **kwargs):
+  @classmethod
+  def transforminitargs(cls, *args, box=None, **kwargs):
     boxkwargs = {}
     if box is not None:
       boxkwargs["x"], boxkwargs["y"] = box[0]
       boxkwargs["w"], boxkwargs["h"] = box[1] - box[0]
-    self.__dc_init__(
+    return super().transforminitargs(
       *args,
       **kwargs,
       **boxkwargs,
