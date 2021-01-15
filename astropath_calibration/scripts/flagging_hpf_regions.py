@@ -23,9 +23,11 @@ BRIGHTEST_LAYERS           = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX     = 0
 RBC_LAYER_GROUP_INDEX      = 1
 TISSUE_MIN_SIZE            = 2500
-BLUR_NLV_CUT               = 0.5
 BLUR_MIN_SIZE              = 30000
-BLUR_MAX_MEAN              = 0.3
+#BLUR_NLV_CUT               = 0.5
+#BLUR_MAX_MEAN              = 0.4
+BLUR_NLV_CUT               = 0.025
+BLUR_MAX_MEAN              = 0.02
 BLUR_MASK_FLAG_CUTS        = [5,5,4,4,1]
 BLUR_FLAG_STRING           = 'blur'
 
@@ -296,6 +298,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next make blur masks for each of the layer groups
+    img_array = smoothImageWorker(img_array,1)
     blur_masks_by_layer_group = []; blur_mask_plots_by_layer_group = []
     for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
         lgbm, lgbmps = getImageLayerGroupBlurMaskAndPlots(img_array,lgb,BRIGHTEST_LAYERS[lgi],BLUR_MASK_FLAG_CUTS[lgi])
