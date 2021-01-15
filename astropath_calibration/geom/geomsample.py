@@ -69,8 +69,7 @@ class GeomSample(ReadRectanglesComponentTiff):
     writetable(fieldfilename, self.getfieldboundaries())
     writetable(tumorfilename, self.gettumorboundaries())
 
-@Polygon.dataclasswithpolygon
-class Boundary:
+class Boundary(Polygon.DataClassWithPolygon):
   n: int
   k: int
-  poly: Polygon = Polygon.field()
+  poly: Polygon.field()
