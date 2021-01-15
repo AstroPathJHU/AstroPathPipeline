@@ -23,12 +23,12 @@ BRIGHTEST_LAYERS           = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX     = 0
 RBC_LAYER_GROUP_INDEX      = 1
 TISSUE_MIN_SIZE            = 2500
-BLUR_MIN_SIZE              = 30000
+BLUR_MIN_SIZE              = 10000
 #BLUR_NLV_CUT               = 0.5
 #BLUR_MAX_MEAN              = 0.4
 BLUR_NLV_CUT               = 0.025
 BLUR_MAX_MEAN              = 0.02
-BLUR_MASK_FLAG_CUTS        = [5,5,4,4,1]
+BLUR_MASK_FLAG_CUTS        = [1,1,1,1,1]
 BLUR_FLAG_STRING           = 'blur'
 
 #logger
@@ -176,10 +176,10 @@ def getImageLayerGroupBlurMaskAndPlots(img_array,layer_group_bounds,brightest_la
             brightest_layer_nlv = img_nlv
         #threshold it to make a binary mask
         layer_mask = (np.where(img_nlv>BLUR_NLV_CUT,1,0)).astype(np.uint8)
-        ##filter out any areas smaller that the neighborhood window size
-        #layer_mask = getSizeFilteredMask(layer_mask,min_size=np.sum(WINDOW_EL))
-        ##filter out anything with skew of nlv values < MIN_SKEW or mean of nlv values > MAX_MEAN (false positives)
-        #layer_mask = getSkewFilteredMask(layer_mask,img_nlv,BLUR_MIN_SKEW)
+        #small open/close to refine it
+        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+        #filter out anything with mean of nlv values > MAX_MEAN (false positives)
         layer_mask = getMeanFilteredMask(layer_mask,img_nlv,BLUR_MAX_MEAN)
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
@@ -314,6 +314,8 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
     #remove any remaining small spots
     final_blur_mask = getSizeFilteredMask(final_blur_mask,min_size=BLUR_MIN_SIZE)
+    #finally erode by the window size
+    final_blur_mask = (cv2.morphologyEx(final_blur_mask,cv2.MORPH_ERODE,WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
     #if there is anything flagged in the final blur mask, write out some plots and the mask file/csv file lines
     if np.min(final_blur_mask)<1 :
         #figure out where the image is in cellview
