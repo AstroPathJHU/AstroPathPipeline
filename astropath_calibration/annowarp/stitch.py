@@ -294,7 +294,6 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
       + constant
     )
 
-@dataclassy.dataclass
 class AnnoWarpStitchResultEntry(DataClassWithPscale):
   pixelsormicrons = "pixels"
   def __powerfordescription(self):
@@ -316,6 +315,5 @@ class AnnoWarpStitchResultEntry(DataClassWithPscale):
     else:
       return dct[self.description]
   n: int
-  value: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=__powerfordescription)
+  value: distancefield(pixelsormicrons=pixelsormicrons, power=__powerfordescription)
   description: str
-  readingfromfile: dataclassy.InitVar[bool] = False

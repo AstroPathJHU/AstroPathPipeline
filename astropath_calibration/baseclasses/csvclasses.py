@@ -136,7 +136,7 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
       xveckwargs["x"], xveckwargs["y"] = xvec
     if vertex is not None:
       vertexkwargs = {
-        field.name: getattr(vertex, field.name)
+        field: getattr(vertex, field)
         for field in dataclassy.fields(type(vertex))
       }
       if apscale is None: apscale = vertex.apscale
