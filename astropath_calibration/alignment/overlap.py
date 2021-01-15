@@ -306,11 +306,13 @@ class AlignmentResultBase(DataClassWithPscale):
     if dxvec is not None:
       kwargs["dx"] = dxvec[0].n
       kwargs["dy"] = dxvec[1].n
-      kwargs["covariance"] = covariance_matrix(dxvec)
+      if covariance is not None:
+        raise TypeError("Can't provide both dxvec and covariance")
+      covariance = covariance_matrix(dxvec)
 
-    if covariancematrix is not None:
-      units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
-      (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
+    if covariance is not None:
+      units.np.testing.assert_allclose(covariance[0, 1], covariance[1, 0])
+      (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariance
 
     if mse is not None:
       kwargs["mse1"], kwargs["mse2"], kwargs["mse3"] = mse

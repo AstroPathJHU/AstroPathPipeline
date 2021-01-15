@@ -66,7 +66,7 @@ class FieldOverlap(Overlap):
         "nclip": overlap.nclip,
         "rectangles": overlap.rectangles,
         **{
-          field.name: getattr(overlap, field.name)
+          field: getattr(overlap, field)
           for field in dataclassy.fields(type(overlap))
         }
       }

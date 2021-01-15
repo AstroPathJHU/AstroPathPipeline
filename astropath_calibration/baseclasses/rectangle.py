@@ -24,7 +24,7 @@ class Rectangle(DataClassWithPscale):
       rectanglekwargs = {
         "pscale": rectangle.pscale,
         **{
-          field.name: getattr(rectangle, field.name)
+          field: getattr(rectangle, field)
           for field in dataclassy.fields(type(rectangle))
         }
       }
