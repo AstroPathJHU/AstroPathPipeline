@@ -2,15 +2,15 @@ from ..baseclasses.cohort import DbloadCohort, SelectRectanglesCohort, ZoomCohor
 from .zoom import Zoom
 
 class ZoomCohort(DbloadCohort, SelectRectanglesCohort, ZoomCohort):
-  def __init__(self, *args, fast=False, **kwargs):
-    self.__fast = fast
+  def __init__(self, *args, mode="vips", **kwargs):
+    self.__mode = mode
     super().__init__(*args, **kwargs)
 
   sampleclass = Zoom
 
   def runsample(self, sample):
     #sample.logger.info(f"{sample.ntiles} {len(sample.rectangles)}")
-    return sample.zoom_wsi(fast=self.__fast)
+    return sample.zoom_wsi(mode=self.__mode)
 
   @property
   def logmodule(self): return "zoom"
@@ -18,7 +18,7 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, ZoomCohort):
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument("--fast", action="store_true")
+    p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips")
     return p
 
   @classmethod
@@ -32,7 +32,7 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, ZoomCohort):
     zoomroot = parsed_args_dict["zoomroot"]
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
-      "fast": parsed_args_dict.pop("fast"),
+      "mode": parsed_args_dict.pop("mode"),
     }
     skip_if_wsi_exists = parsed_args_dict.pop("skip_if_wsi_exists")
     if skip_if_wsi_exists:

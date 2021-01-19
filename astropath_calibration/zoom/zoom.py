@@ -2,14 +2,14 @@ import argparse, contextlib, cv2, itertools, methodtools, numpy as np, os, pathl
 
 from ..alignment.field import Field
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
-from ..baseclasses.sample import ReadRectanglesComponentTiff, ZoomSampleBase
+from ..baseclasses.sample import ReadRectanglesComponentTiff, TempDirSample, ZoomSampleBase
 from ..utilities import units
-from ..utilities.misc import floattoint, PILmaximagepixels
+from ..utilities.misc import floattoint, memmapcontext, PILmaximagepixels
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
   pass
 
-class ZoomSample(ReadRectanglesComponentTiff, ZoomSampleBase):
+class ZoomSample(ReadRectanglesComponentTiff, ZoomSampleBase, TempDirSample):
   rectanglecsv = "fields"
   rectangletype = FieldReadComponentTiffMultiLayer
   def __init__(self, *args, zoomtilesize=16384, **kwargs):
@@ -28,82 +28,94 @@ class ZoomSample(ReadRectanglesComponentTiff, ZoomSampleBase):
 class Zoom(ZoomSample):
   @property
   def logmodule(self): return "zoom"
-  def zoom_wsi_fast(self, fmax=50):
+
+  def zoom_wsi_fast(self, fmax=50, usememmap=False):
     onepixel = self.onepixel
-    #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
-    bigimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.uint8)
-    nrectangles = len(self.rectangles)
-    self.logger.info("assembling the global array")
-    for i, field in enumerate(self.rectangles, start=1):
-      self.logger.debug("%d / %d", i, nrectangles)
-      with field.using_image() as image:
-        image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
-        globalx1 = field.mx1 // onepixel * onepixel
-        globalx2 = field.mx2 // onepixel * onepixel
-        globaly1 = field.my1 // onepixel * onepixel
-        globaly2 = field.my2 // onepixel * onepixel
-        localx1 = field.mx1 - field.px
-        localx2 = localx1 + globalx2 - globalx1
-        localy1 = field.my1 - field.py
-        localy2 = localy1 + globaly2 - globaly1
+    with contextlib.ExitStack() as stack:
+      if usememmap:
+        bigimage = np.ndarray(shape=len(self.layers), dtype=object)
+        for i, layer in enumerate(self.layers):
+          tempfile = self.enter_context(self.tempfile())
+          bigimage[i] = stack.enter_context(
+            memmapcontext(
+              tempfile,
+              shape=tuple((self.ntiles * self.zoomtilesize)[::-1]),
+              dtype=np.uint8,
+              mode="w+",
+            )
+          )
+          bigimage[i][:] = 0
+      else:
+        bigimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.uint8)
 
-        shiftby = np.array([globalx1 - localx1, globaly1 - localy1]) % onepixel
+      nrectangles = len(self.rectangles)
+      self.logger.info("assembling the global array")
+      for i, field in enumerate(self.rectangles, start=1):
+        self.logger.debug("%d / %d", i, nrectangles)
+        with field.using_image() as image:
+          image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
+          globalx1 = field.mx1 // onepixel * onepixel
+          globalx2 = field.mx2 // onepixel * onepixel
+          globaly1 = field.my1 // onepixel * onepixel
+          globaly2 = field.my2 // onepixel * onepixel
+          localx1 = field.mx1 - field.px
+          localx2 = localx1 + globalx2 - globalx1
+          localy1 = field.my1 - field.py
+          localy2 = localy1 + globaly2 - globaly1
 
-        shifted = np.array([
-          cv2.warpAffine(
-            layer,
-            np.array(
-              [
-                [1, 0, shiftby[0]/onepixel],
-                [0, 1, shiftby[1]/onepixel],
-              ],
-              dtype=float,
-            ),
-            flags=cv2.INTER_CUBIC,
-            borderMode=cv2.BORDER_REPLICATE,
-            dsize=layer.T.shape,
-          ) for layer in image
-        ])
-        newlocalx1 = localx1 + shiftby[0]
-        newlocaly1 = localy1 + shiftby[1]
-        newlocalx2 = localx2 + shiftby[0]
-        newlocaly2 = localy2 + shiftby[1]
+          shiftby = np.array([globalx1 - localx1, globaly1 - localy1]) % onepixel
 
-        bigimage[
-          :,
-          floattoint(globaly1/onepixel):floattoint(globaly2/onepixel),
-          floattoint(globalx1/onepixel):floattoint(globalx2/onepixel),
-        ] = shifted[
-          :,
-          floattoint(newlocaly1/onepixel):floattoint(newlocaly2/onepixel),
-          floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
-        ]
+          newlocalx1 = localx1 + shiftby[0]
+          newlocaly1 = localy1 + shiftby[1]
+          newlocalx2 = localx2 + shiftby[0]
+          newlocaly2 = localy2 + shiftby[1]
 
-    self.zoomfolder.mkdir(parents=True, exist_ok=True)
-    ntiles = np.product(self.ntiles)
-    for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1])), start=1):
-      xmin = tilex * self.zoomtilesize
-      xmax = (tilex+1) * self.zoomtilesize
-      ymin = tiley * self.zoomtilesize
-      ymax = (tiley+1) * self.zoomtilesize
-      slc = bigimage[:, ymin:ymax, xmin:xmax]
-      if not np.any(slc):
-        self.logger.info(f"       tile {tilen} / {ntiles} is empty")
-        continue
-      for layer in self.layers:
-        filename = self.zoomfilename(layer, tilex, tiley)
-        self.logger.info(f"saving tile {tilen} / {ntiles} {filename.name}")
-        image = PIL.Image.fromarray(slc[layer-1])
+          for i, layer in enumerate(image):
+            shifted = cv2.warpAffine(
+              layer,
+              np.array(
+                [
+                  [1, 0, shiftby[0]/onepixel],
+                  [0, 1, shiftby[1]/onepixel],
+                ],
+                dtype=float,
+              ),
+              flags=cv2.INTER_CUBIC,
+              borderMode=cv2.BORDER_REPLICATE,
+              dsize=layer.T.shape,
+            )
+
+            bigimage[i][
+              floattoint(globaly1/onepixel):floattoint(globaly2/onepixel),
+              floattoint(globalx1/onepixel):floattoint(globalx2/onepixel),
+            ] = shifted[
+              floattoint(newlocaly1/onepixel):floattoint(newlocaly2/onepixel),
+              floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
+            ]
+
+      self.zoomfolder.mkdir(parents=True, exist_ok=True)
+      ntiles = np.product(self.ntiles)
+      for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1])), start=1):
+        xmin = tilex * self.zoomtilesize
+        xmax = (tilex+1) * self.zoomtilesize
+        ymin = tiley * self.zoomtilesize
+        ymax = (tiley+1) * self.zoomtilesize
+        slc = [layer[ymin:ymax, xmin:xmax] for layer in bigimage]
+        if not np.any(slc):
+          self.logger.info(f"       tile {tilen} / {ntiles} is empty")
+          continue
+        for i, layer in enumerate(self.layers):
+          filename = self.zoomfilename(layer, tilex, tiley)
+          self.logger.info(f"saving tile {tilen} / {ntiles} {filename.name}")
+          image = PIL.Image.fromarray(slc[i])
+          image.save(filename, "PNG")
+
+      self.wsifolder.mkdir(parents=True, exist_ok=True)
+      for i, layer in enumerate(self.layers):
+        filename = self.wsifilename(layer)
+        self.logger.info(f"saving {filename.name}")
+        image = PIL.Image.fromarray(bigimage[i])
         image.save(filename, "PNG")
-
-    self.wsifolder.mkdir(parents=True, exist_ok=True)
-    for layer in self.layers:
-      filename = self.wsifilename(layer)
-      self.logger.info(f"saving {filename.name}")
-      image = PIL.Image.fromarray(bigimage[layer-1])
-      image.save(filename, "PNG")
-
-    return bigimage
 
   def zoom_memory(self, fmax=50):
     onepixel = self.onepixel
@@ -264,8 +276,15 @@ class Zoom(ZoomSample):
     self.zoom_memory(fmax=fmax)
     self.wsi_vips()
 
-  def zoom_wsi(self, *args, fast=False, **kwargs):
-    return (self.zoom_wsi_fast if fast else self.zoom_wsi_memory)(*args, **kwargs)
+  def zoom_wsi(self, *args, mode="vips", **kwargs):
+    if mode == "vips":
+      return self.zoom_wsi_memory(*args, **kwargs)
+    elif mode == "fast":
+      return self.zoom_wsi_fast(*args, **kwargs)
+    elif mode == "memmap":
+      return self.zoom_wsi_fast(*args, usememmap=True, **kwargs)
+    else:
+      raise ValueError(f"Bad mode {mode}")
 
 def main(args=None):
   p = argparse.ArgumentParser()
@@ -274,12 +293,12 @@ def main(args=None):
   p.add_argument("zoomroot", type=pathlib.Path)
   p.add_argument("samp")
   p.add_argument("--units", choices=("fast", "safe"), default="fast")
-  p.add_argument("--fast", action="store_true")
+  p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips")
   args = p.parse_args(args=args)
 
   units.setup(args.units)
 
-  return Zoom(root=args.root1, root2=args.root2, samp=args.samp, zoomroot=args.zoomroot).zoom_wsi(fast=args.fast)
+  return Zoom(root=args.root1, root2=args.root2, samp=args.samp, zoomroot=args.zoomroot).zoom_wsi(mode=args.mode)
 
 if __name__ == "__main__":
   main()
