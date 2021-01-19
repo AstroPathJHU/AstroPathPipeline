@@ -1,6 +1,7 @@
-import dataclasses, functools, numbers, numpy as np
+import dataclassy, functools, numbers, numpy as np
+from ..dataclasses import MetaDataAnnotation, MyDataClass
 from ..misc import floattoint
-from .core import ThingWithApscale, ThingWithPscale, ThingWithQpscale, UnitsError
+from .core import Distance, ThingWithApscale, ThingWithPscale, ThingWithQpscale, UnitsError
 
 def __setup(mode):
   global currentmode, Distance, microns, pixels, _pscale, safe, UnitsError
@@ -15,7 +16,7 @@ def __setup(mode):
     raise ValueError(f"Invalid mode {mode}")
   currentmode = mode
 
-def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, secondfunction=None, pscalename="pscale", **kwargs):
+def distancefield(*, pixelsormicrons, typ=Distance, power=1, dtype=float, secondfunction=None, pscalename="pscale", **metadata):
   if secondfunction is None:
     if issubclass(dtype, numbers.Integral):
       secondfunction = functools.partial(floattoint, atol=1e-9)
@@ -34,7 +35,7 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, secondf
     _pscalename = pscalename
     pscalename = lambda *args, **kwargs: _pscalename
 
-  kwargs["metadata"] = {
+  metadata = {
     "writefunction": lambda *args, pixelsormicrons, **kwargs: secondfunction({
       "pixels": pixels,
       "microns": microns,
@@ -47,51 +48,52 @@ def distancefield(pixelsormicrons, *, metadata={}, power=1, dtype=float, secondf
     "writefunctionkwargs": lambda object: {"pscale": getattr(object, pscalename(object)), "power": power(object), "pixelsormicrons": pixelsormicrons(object)},
     **metadata,
   }
-  return dataclasses.field(**kwargs)
+  return MetaDataAnnotation(typ, **metadata)
 
-def pscalefield(*, metadata={}, **kwargs):
-  kwargs["metadata"] = {
+def pscalefield(typ=float, **metadata):
+  metadata = {
     "includeintable": False,
     "ispscalefield": True,
     **metadata,
   }
-  return dataclasses.field(**kwargs)
+  return MetaDataAnnotation(typ, **metadata)
 
-@dataclasses.dataclass
-class DataClassWithDistances:
+class DataClassWithDistances(MyDataClass):
   @classmethod
   def distancefields(cls):
-    return [field for field in dataclasses.fields(cls) if field.metadata.get("isdistancefield", False)]
+    return [field for field in dataclassy.fields(cls) if cls.metadata(field).get("isdistancefield", False)]
 
   @classmethod
   def pscalefields(cls):
-    return [field for field in dataclasses.fields(cls) if field.metadata.get("ispscalefield", False)]
+    return [field for field in dataclassy.fields(cls) if cls.metadata(field).get("ispscalefield", False)]
 
   def _distances_passed_to_init(self):
-    return [getattr(self, _.name) for _ in self.distancefields()]
+    return [getattr(self, fieldname) for fieldname in self.distancefields()]
 
-  def __post_init__(self, readingfromfile=False):
+  def __user_init__(self, *args, readingfromfile=False, **kwargs):
     powers = {}
     pscalenames = {}
-    for field in self.distancefields():
-      value = getattr(self, field.name)
-      if isinstance(value, np.ndarray) and not value.shape:
-        setattr(self, field.name, value[()])
+    types = dataclassy.fields(self)
 
     for field in self.distancefields():
-      power = field.metadata["power"]
+      value = getattr(self, field)
+      if isinstance(value, np.ndarray) and not value.shape:
+        setattr(self, field, value[()])
+
+    for fieldname in self.distancefields():
+      power = self.metadata(fieldname)["power"]
       if callable(power):
         power = power(self)
       if not isinstance(power, numbers.Number):
         raise TypeError(f"power should be a number or a function, not {type(power)}")
-      powers[field.name] = power
+      powers[fieldname] = power
 
-      pscalename = field.metadata["pscalename"]
+      pscalename = self.metadata(fieldname)["pscalename"]
       if callable(pscalename):
         pscalename = pscalename(self)
       if not isinstance(pscalename, str):
         raise TypeError(f"pscalename should be a number or a function, not {type(pscalename)}")
-      pscalenames[field.name] = pscalename
+      pscalenames[fieldname] = pscalename
 
     usedistances = False
     if currentmode == "safe" and any(powers.values()):
@@ -108,51 +110,53 @@ class DataClassWithDistances:
         usedistances = False
 
     pscales = {}
-    for pscalefield in self.pscalefields():
-      pscale = {getattr(self, pscalefield.name)}
-      distancefields = [distancefield for distancefield in self.distancefields() if pscalenames[distancefield.name] == pscalefield.name]
-      nonzerodistancefields = [distancefield for distancefield in distancefields if getattr(self, distancefield.name)]
-      if usedistances and nonzerodistancefields:
-        pscale |= set(_pscale([getattr(self, distancefield.name) for distancefield in nonzerodistancefields]))
+    for pscalefieldname in self.pscalefields():
+      pscale = {getattr(self, pscalefieldname)}
+      distancefieldnames = [distancefieldname for distancefieldname in self.distancefields() if pscalenames[distancefieldname] == pscalefieldname]
+      nonzerodistancefieldnames = [distancefieldname for distancefieldname in distancefieldnames if getattr(self, distancefieldname)]
+      if usedistances and nonzerodistancefieldnames:
+        pscale |= set(_pscale([getattr(self, distancefieldname) for distancefieldname in nonzerodistancefieldnames]))
       pscale.discard(None)
       if len(pscale) == 1:
         pscale, = pscale
-      elif not any(powers[distancefield.name] for distancefield in nonzerodistancefields):
+      elif not any(powers[distancefieldname] for distancefieldname in nonzerodistancefieldnames):
         pscale = None
       elif not pscale:
-        raise TypeError(f"Have to either provide {pscalefield.name} explicitly or give coordinates in units.Distance form")
+        raise TypeError(f"Have to either provide {pscalefieldname} explicitly or give coordinates in units.Distance form")
       elif len(pscale) > 1:
-        raise UnitsError(f"Provided inconsistent pscales {pscale} for {pscalefield.name}")
+        raise UnitsError(f"Provided inconsistent pscales {pscale} for {pscalefieldname}")
       else:
         assert False, "This can't happen"
 
-      for distancefield in distancefields:
-        pscales[distancefield.name] = pscale
+      for distancefieldname in distancefieldnames:
+        pscales[distancefieldname] = pscale
 
     if readingfromfile:
-      for field in self.distancefields():
-        object.__setattr__(self, field.name, field.type(power=powers[field.name], pscale=pscales[field.name], **{field.metadata["pixelsormicrons"](self): getattr(self, field.name)}))
+      for fieldname in self.distancefields():
+        setattr(self, fieldname, types[fieldname](power=powers[fieldname], pscale=pscales[fieldname], **{self.metadata(fieldname)["pixelsormicrons"](self): getattr(self, fieldname)}))
 
-@dataclasses.dataclass
+    super().__user_init__(*args, **kwargs)
+
 class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
-  pscale: float = pscalefield()
+  pscale: pscalefield(float)
+  @property
+  def pscale(self): return self.__pscale
+  @pscale.setter
+  def pscale(self, pscale): self.__pscale = pscale
+DataClassWithPscale.__defaults__.pop("pscale")
 
-@dataclasses.dataclass
 class DataClassWithQpscale(DataClassWithDistances, ThingWithQpscale):
-  qpscale: float = pscalefield()
+  qpscale: pscalefield(float)
+  @property
+  def qpscale(self): return self.__qpscale
+  @qpscale.setter
+  def qpscale(self, qpscale): self.__qpscale = qpscale
+DataClassWithQpscale.__defaults__.pop("qpscale")
 
-@dataclasses.dataclass
 class DataClassWithApscale(DataClassWithDistances, ThingWithApscale):
-  apscale: float = pscalefield()
-
-@dataclasses.dataclass(frozen=True)
-class DataClassWithPscaleFrozen(DataClassWithDistances, ThingWithPscale):
-  pscale: float = pscalefield()
-
-@dataclasses.dataclass(frozen=True)
-class DataClassWithQpscaleFrozen(DataClassWithDistances, ThingWithQpscale):
-  qpscale: float = pscalefield()
-
-@dataclasses.dataclass(frozen=True)
-class DataClassWithApscaleFrozen(DataClassWithDistances, ThingWithApscale):
-  apscale: float = pscalefield()
+  apscale: pscalefield(float)
+  @property
+  def apscale(self): return self.__apscale
+  @apscale.setter
+  def apscale(self, apscale): self.__apscale = apscale
+DataClassWithApscale.__defaults__.pop("apscale")

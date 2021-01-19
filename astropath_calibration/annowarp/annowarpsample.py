@@ -1,4 +1,4 @@
-import abc, contextlib, cvxpy as cp, dataclasses, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, typing, uncertainties as unc
+import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
@@ -6,7 +6,8 @@ from ..baseclasses.csvclasses import Polygon, Region, Vertex
 from ..baseclasses.qptiff import QPTiff
 from ..zoom.zoom import ZoomSample
 from ..utilities import units
-from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
+from ..utilities.dataclasses import MyDataClass
+from ..utilities.misc import covariance_matrix, floattoint
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, ThingWithImscale
@@ -401,25 +402,26 @@ class QPTiffCoordinateBase(abc.ABC):
   def centerrelativetobigtile(self):
     return self.qptiffcoordinate - self.bigtilecorner
 
-class QPTiffCoordinate(QPTiffCoordinateBase):
-  def __init__(self, *args, bigtilesize, bigtileoffset, **kwargs):
+class QPTiffCoordinate(MyDataClass, QPTiffCoordinateBase):
+  def __user_init__(self, *args, bigtilesize, bigtileoffset, **kwargs):
     self.__bigtilesize = bigtilesize
     self.__bigtileoffset = bigtileoffset
-    super().__init__(*args, **kwargs)
+    super().__user_init__(*args, **kwargs)
   @property
   def bigtilesize(self): return self.__bigtilesize
   @property
   def bigtileoffset(self): return self.__bigtileoffset
 
 class QPTiffVertex(QPTiffCoordinate, Vertex):
-  def __init__(self, *args, vertex=None, **kwargs):
+  @classmethod
+  def transforminitargs(cls, *args, vertex=None, **kwargs):
     vertexkwargs = {"vertex": vertex}
     if isinstance(vertex, QPTiffVertex):
       vertexkwargs.update({
         "bigtilesize": vertex.bigtilesize,
         "bigtileoffset": vertex.bigtileoffset,
       })
-    super().__init__(
+    return super().transforminitargs(
       *args,
       **kwargs,
       **vertexkwargs,
@@ -428,25 +430,22 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
   def qptiffcoordinate(self):
     return self.xvec
 
-@dataclass_dc_init
 class WarpedVertex(QPTiffVertex):
-  wx: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, default=None)
-  wy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, default=None)
+  __pixelsormicrons = "pixels"
+  wx: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
+  wy: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
 
-  def __init__(self, *args, wxvec=None, **kwargs):
+  @classmethod
+  def transforminitargs(cls, *args, wxvec=None, **kwargs):
     wxveckwargs = {}
     if wxvec is not None:
       wxveckwargs["wx"], wxveckwargs["wy"] = wxvec
 
-    super().__init__(
+    return super().transforminitargs(
       *args,
       **kwargs,
       **wxveckwargs,
     )
-    if self.wx is None:
-      raise TypeError("Missing required argument wx")
-    if self.wy is None:
-      raise TypeError("Missing required argument wy")
 
   @property
   def wxvec(self): return np.array([self.wx, self.wy])
@@ -461,27 +460,21 @@ class WarpedVertex(QPTiffVertex):
       pscale=self.pscale,
     )
 
-@dataclass_dc_init
 class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataClassWithPscale):
   pixelsormicrons = "pixels"
   n: int
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  dx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  dy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  dx: distancefield(pixelsormicrons=pixelsormicrons)
+  dy: distancefield(pixelsormicrons=pixelsormicrons)
+  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
   mi: float
   exit: int
-  tilesize: dataclasses.InitVar[units.Distance]
-  bigtilesize: dataclasses.InitVar[units.Distance]
-  bigtileoffset: dataclasses.InitVar[units.Distance]
-  exception: dataclasses.InitVar[Exception] = None
-  imageshandle: dataclasses.InitVar[typing.Callable[[], typing.Tuple[np.ndarray, np.ndarray]]] = None
-  readingfromfile: dataclasses.InitVar[bool] = False
 
-  def __init__(self, *args, **kwargs):
+  @classmethod
+  def transforminitargs(cls, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)
     if dxvec is not None:
       kwargs["dx"] = dxvec[0].n
@@ -493,11 +486,11 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
       units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
       (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
 
-    self.use_gpu = False
-    self.__dc_init__(*args, **kwargs)
+    return super().transforminitargs(*args, **kwargs)
 
-  def __post_init__(self, tilesize, bigtilesize, bigtileoffset, exception=None, imageshandle=None, *args, **kwargs):
-    super().__post_init__(*args, **kwargs)
+  def __user_init__(self, tilesize, bigtilesize, bigtileoffset, exception=None, imageshandle=None, *args, **kwargs):
+    self.use_gpu = False
+    super().__user_init__(*args, **kwargs)
     self.tilesize = tilesize
     self.__bigtilesize = bigtilesize
     self.__bigtileoffset = bigtileoffset

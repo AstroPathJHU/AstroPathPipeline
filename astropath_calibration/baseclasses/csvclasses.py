@@ -1,55 +1,48 @@
-import dataclasses, datetime, functools, itertools, matplotlib.patches, more_itertools, numbers, numpy as np, re
+import dataclassy, datetime, itertools, matplotlib.patches, more_itertools, numbers, numpy as np, re
 from ..utilities import units
-from ..utilities.misc import dataclass_dc_init, floattoint
+from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
+from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable
-from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, distancefield, pscalefield
 
-@dataclasses.dataclass
 class Globals(DataClassWithPscale):
   pixelsormicrons = "microns"
 
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  Width: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  Height: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  x: distancefield(pixelsormicrons=pixelsormicrons)
+  y: distancefield(pixelsormicrons=pixelsormicrons)
+  Width: distancefield(pixelsormicrons=pixelsormicrons)
+  Height: distancefield(pixelsormicrons=pixelsormicrons)
   Unit: str
-  Tc: datetime.datetime = dataclasses.field(metadata={"readfunction": lambda x: datetime.datetime.fromtimestamp(int(x)), "writefunction": lambda x: int(datetime.datetime.timestamp(x))})
-  readingfromfile: dataclasses.InitVar[bool] = False
+  Tc: MetaDataAnnotation(datetime.datetime, readfunction=lambda x: datetime.datetime.fromtimestamp(int(x)), writefunction=lambda x: int(datetime.datetime.timestamp(x)))
 
-@dataclasses.dataclass
 class Perimeter(DataClassWithPscale):
   pixelsormicrons = "microns"
 
   n: int
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  readingfromfile: dataclasses.InitVar[bool] = False
+  x: distancefield(pixelsormicrons=pixelsormicrons)
+  y: distancefield(pixelsormicrons=pixelsormicrons)
 
-@dataclasses.dataclass
-class Batch:
+class Batch(MyDataClass):
   SampleID: int
   Sample: str
   Scan: int
   Batch: int
 
-@dataclasses.dataclass
 class QPTiffCsv(DataClassWithPscale):
   pixelsormicrons = "microns"
 
   SampleID: int
   SlideID: str
   ResolutionUnit: str
-  XPosition: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  YPosition: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  XPosition: distancefield(pixelsormicrons=pixelsormicrons)
+  YPosition: distancefield(pixelsormicrons=pixelsormicrons)
   XResolution: float
   YResolution: float
   qpscale: float
   apscale: float
   fname: str
   img: str
-  readingfromfile: dataclasses.InitVar[bool] = False
 
-@dataclasses.dataclass
 class Constant(DataClassWithDistances):
   def __intorfloat(string):
     if isinstance(string, np.ndarray): string = string[()]
@@ -63,7 +56,7 @@ class Constant(DataClassWithDistances):
       assert False, (type(string), string)
 
   name: str
-  value: units.Distance = distancefield(
+  value: distancefield(
     secondfunction=__intorfloat,
     dtype=__intorfloat,
     power=lambda self: 1 if self.unit in ("pixels", "microns") else 0,
@@ -76,10 +69,9 @@ class Constant(DataClassWithDistances):
   )
   unit: str
   description: str
-  pscale: float = pscalefield(default=None)
-  apscale: float = pscalefield(default=None)
-  qpscale: float = pscalefield(default=None)
-  readingfromfile: dataclasses.InitVar[bool] = False
+  pscale: pscalefield() = None
+  apscale: pscalefield() = None
+  qpscale: pscalefield() = None
 
 def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
   scalekwargs = {"pscale": pscale, "qpscale": qpscale, "apscale": apscale}
@@ -101,45 +93,43 @@ def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
 
   return dct
 
-@dataclasses.dataclass(frozen=True)
-class RectangleFile(DataClassWithPscaleFrozen):
+@dataclassy.dataclass(unsafe_hash=True)
+class RectangleFile(DataClassWithPscale):
   pixelsormicrons = "microns"
 
-  cx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  cy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cx: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cy: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   t: datetime.datetime
-  readingfromfile: dataclasses.InitVar[bool] = False
 
   @property
   def cxvec(self):
     return np.array([self.cx, self.cy])
 
-@dataclasses.dataclass
-class Annotation:
+class Annotation(MyDataClass):
   sampleid: int
   layer: int
   name: str
   color: str
-  visible: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
+  visible: MetaDataAnnotation(bool, readfunction=lambda x: bool(int(x)), writefunction=lambda x: int(x))
   poly: str
 
-@dataclass_dc_init
-class Vertex(DataClassWithDistances, units.ThingWithPscale, units.ThingWithApscale):
+class Vertex(DataClassWithPscale, DataClassWithApscale):
   pixelsormicrons = "pixels"
 
   regionid: int
   vid: int
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="apscale")
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="apscale")
-  apscale: float = pscalefield()
-  readingfromfile: dataclasses.InitVar[bool] = False
-  pscale: float = pscalefield(default=None)
+  pscalename = "apscale"
+  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
+  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
+  del pscalename
+  pscale = None
 
   @property
   def xvec(self):
     return np.array([self.x, self.y])
 
-  def __init__(self, *args, pscale=None, apscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
+  @classmethod
+  def transforminitargs(cls, *args, pscale=None, apscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
     xveckwargs = {}
     vertexkwargs = {}
     im3xykwargs = {}
@@ -148,8 +138,8 @@ class Vertex(DataClassWithDistances, units.ThingWithPscale, units.ThingWithApsca
       xveckwargs["x"], xveckwargs["y"] = xvec
     if vertex is not None:
       vertexkwargs = {
-        field.name: getattr(vertex, field.name)
-        for field in dataclasses.fields(type(vertex))
+        field: getattr(vertex, field)
+        for field in dataclassy.fields(type(vertex))
       }
       if apscale is None: apscale = vertex.apscale
       if apscale != vertex.apscale: raise ValueError(f"Inconsistent apscales {apscale} {vertex.apscale}")
@@ -162,7 +152,7 @@ class Vertex(DataClassWithDistances, units.ThingWithPscale, units.ThingWithApsca
       im3xykwargs["y"] = units.convertpscale(im3y, pscale, apscale)
     if im3xvec is not None:
       im3xveckwargs["x"], im3xveckwargs["y"] = units.convertpscale(im3xvec, pscale, apscale)
-    self.__dc_init__(
+    return super().transforminitargs(
       *args,
       pscale=pscale,
       apscale=apscale,
@@ -288,67 +278,46 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     return np.sum(self.areas)
 
   @staticmethod
-  def field(*args, metadata={}, **kwargs):
+  def field(**metadata):
     def polywritefunction(poly):
       if poly is None: return "poly"
       return str(poly)
     metadata = {
       "writefunction": polywritefunction,
       "readfunction": str,
+      "ispolygonfield": True,
       **metadata,
     }
-    return dataclasses.field(*args, metadata=metadata, **kwargs)
+    return MetaDataAnnotation(Polygon, **metadata)
 
-  class dataclasswithpolygon:
-    def __new__(thiscls, decoratedcls=None, **kwargs):
-      if decoratedcls is None: return super().__new__(thiscls)
-      return thiscls(**kwargs)(decoratedcls)
+  class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
+    @classmethod
+    def polygonfields(cls):
+      return [field for field in dataclassy.fields(cls) if cls.metadata(field).get("ispolygonfield", False)]
 
-    def __init__(self, *, dc_init=False, **kwargs):
-      self.dc_init = dc_init
-      self.kwargs = kwargs
+    def __user_init__(self, *args, **kwargs):
+      super(Polygon.DataClassWithPolygon, self).__user_init__(*args, **kwargs)
+      for field in self.polygonfields():
+        poly = getattr(self, field)
+        if isinstance(poly, Polygon):
+          pass
+        elif poly is None or poly == "poly":
+          setattr(self, field, None)
+        elif isinstance(poly, str):
+          setattr(self, field, Polygon(
+            **{Polygon.pixelsormicrons: poly},
+            pscale=self.pscale,
+            apscale=self.apscale,
+          ))
+        else:
+          raise TypeError(f"Unknown type {type(poly).__name__} for {field}")
 
-    def __call__(self, cls):
-      firstdataclassfunction = dataclasses.dataclass
-      firstdataclasskwargs = self.kwargs.copy()
-      seconddataclassfunction = dataclasses.dataclass
-      seconddataclasskwargs = self.kwargs.copy()
-      if self.dc_init:
-        firstdataclassfunction = dataclass_dc_init
-        seconddataclasskwargs.update({
-          "init": False,
-        })
-      @seconddataclassfunction(**seconddataclasskwargs)
-      class newcls(firstdataclassfunction(cls, **firstdataclasskwargs), DataClassWithPscale, DataClassWithApscale):
-        @property
-        def poly(self):
-          return self.__poly
-        @poly.setter
-        def poly(self, poly):
-          if isinstance(poly, Polygon):
-            self.__poly = poly
-          elif poly is None or poly == "poly":
-            self.__poly = None
-          elif isinstance(poly, str):
-            self.__poly = Polygon(
-              **{Polygon.pixelsormicrons: poly},
-              pscale=self.pscale,
-              apscale=self.apscale,
-            )
-          else:
-            raise TypeError(f"Unknown type {type(poly).__name__} for poly")
-
-        #def _distances_passed_to_init(self):
-        #  result = super()._distances_passed_to_init()
-        #  if not isinstance(self.poly, Polygon): return [*result, self.poly]
-        #  vertices = sum(([v.x, v.y] for vv in self.poly.vertices for v in vv), [])
-        #  vertices = [_ for _ in vertices if _]
-        #  return [*result, *vertices]
-
-      for thing in functools.WRAPPER_ASSIGNMENTS:
-        setattr(newcls, thing, getattr(cls, thing))
-
-      return newcls
+    #def _distances_passed_to_init(self):
+    #  result = super()._distances_passed_to_init()
+    #  if not isinstance(self.poly, Polygon): return [*result, self.poly]
+    #  vertices = sum(([v.x, v.y] for vv in self.poly.vertices for v in vv), [])
+    #  vertices = [_ for _ in vertices if _]
+    #  return [*result, *vertices]
 
   def matplotlibpolygon(self, *, imagescale=None, **kwargs):
     if imagescale is None: imagescale = self.pscale
@@ -367,16 +336,14 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     )
 
 
-@Polygon.dataclasswithpolygon
-class Region:
+class Region(Polygon.DataClassWithPolygon):
   pixelsormicrons = Polygon.pixelsormicrons
 
   regionid: int
   sampleid: int
   layer: int
   rid: int
-  isNeg: bool = dataclasses.field(metadata={"readfunction": lambda x: bool(int(x)), "writefunction": lambda x: int(x)})
+  isNeg: MetaDataAnnotation(bool, readfunction=lambda x: bool(int(x)), writefunction=lambda x: int(x))
   type: str
   nvert: int
-  poly: Polygon = Polygon.field()
-  readingfromfile: dataclasses.InitVar[bool] = False
+  poly: Polygon.field()

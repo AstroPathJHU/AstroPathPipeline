@@ -70,11 +70,14 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       (f"{SlideID}_affine.csv", AffineEntry, {}),
       (f"{SlideID}_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "nclip": a.nclip}),
     ):
-      rows = readtable(thisfolder/"alignment_test_for_jenkins"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-      targetrows = readtable(thisfolder/"reference"/"alignment"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-      for row, target in more_itertools.zip_equal(rows, targetrows):
-        if cls == AlignmentResult and row.exit != 0 and target.exit != 0: continue
-        assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+      try:
+        rows = readtable(thisfolder/"alignment_test_for_jenkins"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        targetrows = readtable(thisfolder/"reference"/"alignment"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        for row, target in more_itertools.zip_equal(rows, targetrows):
+          if cls == AlignmentResult and row.exit != 0 and target.exit != 0: continue
+          assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+      except:
+        raise ValueError(f"Error in {filename}")
 
     for log in (
       thisfolder/"alignment_test_for_jenkins"/"logfiles"/"align.log",

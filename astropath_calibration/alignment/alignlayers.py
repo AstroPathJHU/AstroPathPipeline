@@ -6,14 +6,30 @@ from .overlap import AlignmentOverlap, LayerAlignmentResult
 from .stitchlayers import stitchlayers
 
 class OverlapForLayerAlignment(AlignmentOverlap):
-  def __init__(self, *, p1, p2, x1, y1, x2, y2, layer1, layer2, tag, positionaloverlaps, **kwargs):
-    super().__init__(p1=p1, p2=p2, x1=x1, y1=y1, x2=x1, y2=y1, layer1=layer1, layer2=layer2, tag=tag, **kwargs)
+  @classmethod
+  def transforminitargs(cls, *, p1, p2, x1, y1, x2, y2, layer1, layer2, tag, **kwargs):
+    return (), {
+      "p1": p1,
+      "p2": p2,
+      "x1": x1,
+      "y1": y1,
+      "x2": x1,
+      "y2": y1,
+      "_x2": x2,
+      "_y2": y2,
+      "layer1": layer1,
+      "layer2": layer2,
+      "tag": tag,
+      **kwargs,
+    }
+  def __user_init__(self, *, _x2, _y2, layer1, layer2, positionaloverlaps, **kwargs):
+    super().__user_init__(layer1=layer1, layer2=layer2, **kwargs)
     self.__layeroverlaps = (
-      AlignmentOverlap(p1=p1, p2=p1, x1=x1, y1=y1, x2=x1, y2=y1, layer1=layer1, layer2=layer2, tag=5, **kwargs),
-      AlignmentOverlap(p1=p2, p2=p2, x1=x2, y1=y2, x2=x2, y2=y2, layer1=layer1, layer2=layer2, tag=5, **kwargs),
+      AlignmentOverlap(n=self.n, p1=self.p1, p2=self.p1, x1=self.x1, y1=self.y1, x2=self.x1, y2=self.y1, layer1=layer1, layer2=layer2, tag=5, pscale=self.pscale, **kwargs),
+      AlignmentOverlap(n=self.n, p1=self.p2, p2=self.p2, x1=_x2,     y1=_y2,     x2=_x2,     y2=_y2,     layer1=layer1, layer2=layer2, tag=5, pscale=self.pscale, **kwargs),
     )
-    positionaloverlap1, = {_ for _ in positionaloverlaps if _.p1 == p1 and _.p2 == p2 and _.layer1 == _.layer2 == layer1}
-    positionaloverlap2, = {_ for _ in positionaloverlaps if _.p1 == p1 and _.p2 == p2 and _.layer1 == _.layer2 == layer2}
+    positionaloverlap1, = {_ for _ in positionaloverlaps if _.p1 == self.p1 and _.p2 == self.p2 and _.layer1 == _.layer2 == layer1}
+    positionaloverlap2, = {_ for _ in positionaloverlaps if _.p1 == self.p1 and _.p2 == self.p2 and _.layer1 == _.layer2 == layer2}
     self.__positionaloverlaps = positionaloverlap1, positionaloverlap2
 
   def isinverseof(self, inverse):
