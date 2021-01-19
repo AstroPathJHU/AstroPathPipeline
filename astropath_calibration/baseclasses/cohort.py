@@ -5,13 +5,16 @@ from .logging import getlogger
 from .sample import SampleDef
 
 class Cohort(abc.ABC):
-  def __init__(self, root, *, filter=lambda samp: True, debug=False, uselogfiles=True, logroot=None):
+  def __init__(self, root, *, filters=[], debug=False, uselogfiles=True, logroot=None):
     super().__init__()
     self.root = pathlib.Path(root)
-    self.filter = filter
+    self.filters = filters
     self.debug = debug
     self.uselogfiles = uselogfiles
     self.logroot = logroot
+
+  def filter(self, samp):
+    return all(filter(samp) for filter in self.filters)
 
   def __iter__(self):
     for samp in readtable(self.root/"sampledef.csv", SampleDef):
@@ -59,19 +62,13 @@ class Cohort(abc.ABC):
     p = argparse.ArgumentParser()
     p.add_argument("root", type=pathlib.Path)
     p.add_argument("--debug", action="store_true")
-    cls.makesampleselectionargumentgroup(p)
+    p.add_argument("--sampleregex", type=re.compile)
     p.add_argument("--units", choices=("safe", "fast"), default="fast")
     p.add_argument("--dry-run", action="store_true")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--logroot", type=pathlib.Path)
     g.add_argument("--no-log", action="store_true")
     return p
-
-  @classmethod
-  def makesampleselectionargumentgroup(cls, parser):
-    g = parser.add_mutually_exclusive_group()
-    g.add_argument("--sampleregex", type=re.compile)
-    return g
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
@@ -81,10 +78,11 @@ class Cohort(abc.ABC):
       "debug": dct.pop("debug"),
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
+      "filters": [],
     }
     regex = dct.pop("sampleregex")
     if regex is not None:
-      kwargs["filter"] = lambda sample: regex.match(sample.SlideID)
+      kwargs["filters"].append(lambda sample: regex.match(sample.SlideID))
     return kwargs
 
   @classmethod
