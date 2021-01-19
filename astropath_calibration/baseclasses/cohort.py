@@ -224,3 +224,25 @@ class SelectRectanglesCohort(Cohort):
       "selectrectangles": parsed_args_dict.pop("selectrectangles"),
       "layers": parsed_args_dict.pop("layers"),
     }
+
+class TempDirCohort(Cohort):
+  def __init__(self, *args, deepzoomroot, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.temproot = pathlib.Path(temproot)
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "temproot": self.temproot}
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--temproot", type=pathlib.Path, required=True)
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "temproot": parsed_args_dict.pop("temproot"),
+    }
