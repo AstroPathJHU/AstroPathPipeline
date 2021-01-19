@@ -31,6 +31,7 @@ class Zoom(ZoomSample):
 
   def zoom_wsi_fast(self, fmax=50, usememmap=False):
     onepixel = self.onepixel
+    self.logger.info("allocating memory for the global array")
     with contextlib.ExitStack() as stack:
       if usememmap:
         bigimage = np.ndarray(shape=len(self.layers), dtype=object)
@@ -277,6 +278,7 @@ class Zoom(ZoomSample):
     self.wsi_vips()
 
   def zoom_wsi(self, *args, mode="vips", **kwargs):
+    self.logger.info(f"zoom running in {mode} mode")
     if mode == "vips":
       return self.zoom_wsi_memory(*args, **kwargs)
     elif mode == "fast":
