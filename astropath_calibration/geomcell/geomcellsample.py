@@ -88,13 +88,14 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
       writetable(field.geomloadcsv, geomload)
 
 class CellGeomLoad(Polygon.DataClassWithPolygon):
+  pixelsormicrons = "pixels"
   field: int
   ctype: int
   n: int
-  x: distancefield(pixelsormicrons="pixels")
-  y: distancefield(pixelsormicrons="pixels")
-  w: distancefield(pixelsormicrons="pixels")
-  h: distancefield(pixelsormicrons="pixels")
+  x: distancefield(pixelsormicrons=pixelsormicrons)
+  y: distancefield(pixelsormicrons=pixelsormicrons)
+  w: distancefield(pixelsormicrons=pixelsormicrons)
+  h: distancefield(pixelsormicrons=pixelsormicrons)
   poly: Polygon.field()
 
   @classmethod

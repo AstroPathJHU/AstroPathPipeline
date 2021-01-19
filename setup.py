@@ -46,6 +46,6 @@ setuptools.setup(
     "uncertainties",
   ],
   extras_require = {
-    "test": ["flake8", "pyflakes>=2.1.1,!=2.2.0", "texoutparse"],
+    "test": ["flake8", "pyflakes", "texoutparse"],
   }
 )

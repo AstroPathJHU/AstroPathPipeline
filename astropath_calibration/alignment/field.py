@@ -5,18 +5,19 @@ from ..utilities import units
 from ..utilities.units.dataclasses import distancefield
 
 class Field(Rectangle):
-  ix: distancefield(pixelsormicrons="pixels", dtype=int)
-  iy: distancefield(pixelsormicrons="pixels", dtype=int)
+  __pixelsormicrons = "pixels"
+  ix: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
+  iy: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
   gc: int
-  px: distancefield(pixelsormicrons="pixels")
-  py: distancefield(pixelsormicrons="pixels")
-  cov_x_x: distancefield(pixelsormicrons="pixels", power=2)
-  cov_x_y: distancefield(pixelsormicrons="pixels", power=2)
-  cov_y_y: distancefield(pixelsormicrons="pixels", power=2)
-  mx1: distancefield(pixelsormicrons="pixels")
-  mx2: distancefield(pixelsormicrons="pixels")
-  my1: distancefield(pixelsormicrons="pixels")
-  my2: distancefield(pixelsormicrons="pixels")
+  px: distancefield(pixelsormicrons=__pixelsormicrons)
+  py: distancefield(pixelsormicrons=__pixelsormicrons)
+  cov_x_x: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
+  cov_x_y: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
+  cov_y_y: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
+  mx1: distancefield(pixelsormicrons=__pixelsormicrons)
+  mx2: distancefield(pixelsormicrons=__pixelsormicrons)
+  my1: distancefield(pixelsormicrons=__pixelsormicrons)
+  my2: distancefield(pixelsormicrons=__pixelsormicrons)
   gx: int
   gy: int
 
@@ -52,10 +53,11 @@ class Field(Rectangle):
     return [self.px, self.px+self.w, self.py+self.h, self.py]
 
 class FieldOverlap(Overlap):
-  cov_x1_x2: distancefield(pixelsormicrons="pixels", power=2)
-  cov_x1_y2: distancefield(pixelsormicrons="pixels", power=2)
-  cov_y1_x2: distancefield(pixelsormicrons="pixels", power=2)
-  cov_y1_y2: distancefield(pixelsormicrons="pixels", power=2)
+  __pixelsormicrons = "pixels"
+  cov_x1_x2: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
+  cov_x1_y2: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
+  cov_y1_x2: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
+  cov_y1_y2: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
 
   @classmethod
   def transforminitargs(cls, *args, overlap=None, **kwargs):

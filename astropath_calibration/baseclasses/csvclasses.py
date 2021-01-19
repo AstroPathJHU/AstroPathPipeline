@@ -118,8 +118,10 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
 
   regionid: int
   vid: int
-  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="apscale")
-  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="apscale")
+  pscalename = "apscale"
+  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
+  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
+  del pscalename
   pscale = None
 
   @property

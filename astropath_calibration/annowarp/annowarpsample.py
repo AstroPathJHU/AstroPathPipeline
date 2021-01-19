@@ -431,8 +431,9 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
     return self.xvec
 
 class WarpedVertex(QPTiffVertex):
-  wx: distancefield(pixelsormicrons="pixels", dtype=int)
-  wy: distancefield(pixelsormicrons="pixels", dtype=int)
+  __pixelsormicrons = "pixels"
+  wx: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
+  wy: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
 
   @classmethod
   def transforminitargs(cls, *args, wxvec=None, **kwargs):
