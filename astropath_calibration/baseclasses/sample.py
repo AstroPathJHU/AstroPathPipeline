@@ -317,10 +317,10 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
       warnfunction(warning)
     return super().__enter__()
 
-  def enter_context(self, *args, **kwargs):
-    if not self.__entered:
-      raise ValueError(f"Have to use {self} in a with statement if you want to enter_context")
-    return super().enter_context(*args, **kwargs)
+  #def enter_context(self, *args, **kwargs):
+  #  if not self.__entered:
+  #    raise ValueError(f"Have to use {self} in a with statement if you want to enter_context")
+  #  return super().enter_context(*args, **kwargs)
 
   @abc.abstractproperty
   def logmodule(self):
