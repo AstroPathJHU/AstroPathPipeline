@@ -8,10 +8,11 @@ class Cohort(abc.ABC):
   def __init__(self, root, *, filters=[], debug=False, uselogfiles=True, logroot=None):
     super().__init__()
     self.root = pathlib.Path(root)
+    if logroot is None: logroot = root
+    self.logroot = pathlib.Path(logroot)
     self.filters = filters
     self.debug = debug
     self.uselogfiles = uselogfiles
-    self.logroot = logroot
 
   def filter(self, samp):
     return all(filter(samp) for filter in self.filters)
@@ -226,9 +227,10 @@ class SelectRectanglesCohort(Cohort):
     }
 
 class TempDirCohort(Cohort):
-  def __init__(self, *args, deepzoomroot, **kwargs):
+  def __init__(self, *args, temproot, **kwargs):
     super().__init__(*args, **kwargs)
-    self.temproot = pathlib.Path(temproot)
+    if temproot is not None: temproot = pathlib.Path(temproot)
+    self.temproot = temproot
 
   @property
   def initiatesamplekwargs(self):
@@ -237,7 +239,7 @@ class TempDirCohort(Cohort):
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument("--temproot", type=pathlib.Path, required=True)
+    p.add_argument("--temproot", type=pathlib.Path)
     return p
 
   @classmethod
