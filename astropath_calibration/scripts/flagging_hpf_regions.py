@@ -21,13 +21,14 @@ WINDOW_EL              = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45))
 MASK_LAYER_GROUPS      = [(1,9),(10,18),(19,25),(26,32),(33,35)]
 BRIGHTEST_LAYERS       = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX = 0
+RBC_LAYER_GROUP_INDEX  = 1
 TISSUE_MIN_SIZE        = 2500
-FOLD_MIN_SIZE          = 20000
+FOLD_MIN_SIZE          = 30000
 FOLD_NLV_CUT           = 0.025
 FOLD_MAX_MEAN          = 0.02
 FOLD_MASK_FLAG_CUTS    = [2,2,0,1,0]
 FOLD_FLAG_STRING       = 'tissue fold or bright dust'
-DUST_MIN_SIZE          = 10000
+DUST_MIN_SIZE          = 30000
 DUST_NLV_CUT           = 0.005
 DUST_MAX_MEAN          = 0.004
 DUST_STRING            = 'likely dust'
@@ -115,7 +116,7 @@ def getExclusiveMask(mask_to_check,prior_mask,min_independent_pixel_frac,invert=
     return new_mask
 
 #return a binary mask after some common morphology operations and size filtering
-def getMorphedAndFilteredMask(mask,min_size) :
+def getMorphedAndFilteredMask(mask,tissue_mask,min_size) :
     #large open/close to refine and connect it
     mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
     mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
@@ -123,9 +124,14 @@ def getMorphedAndFilteredMask(mask,min_size) :
     mask = getSizeFilteredMask(mask,min_size)
     #erode by the window size to eat up the edges
     mask = (cv2.morphologyEx(mask,cv2.MORPH_ERODE,WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
-    #one last medium-sized open/close to smooth the larger curves
+    #a medium-sized open/close to smooth the larger curves
     mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
     mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+    #one last medium-sized open/close incorporating the tissue mask to get rid of any remaining thin borders
+    mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
+    mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+    mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+    mask[(mask==1) & (tissue_mask==1)] = mask_to_transform[(mask==1) & (tissue_mask==1)]
     return mask
 
 #return the minimally-transformed tissue mask for a single image layer
@@ -246,7 +252,7 @@ def getImageLayerGroupBlurMask(img_array,layer_group_bounds,nlv_cut,n_layers_fla
     return group_blur_mask, plots
 
 #return the tissue fold mask for an image combining information from all layer groups
-def getImageTissueFoldMask(img_array,return_plots=False) :
+def getImageTissueFoldMask(img_array,tissue_mask,return_plots=False) :
     #smooth the image EXTREMELY gently
     img_array = smoothImageWorker(img_array,1)
     #get the fold masks for each layer group
@@ -259,13 +265,13 @@ def getImageTissueFoldMask(img_array,return_plots=False) :
     stacked_fold_masks = np.zeros_like(fold_masks_by_layer_group[0])
     for lgi,layer_group_fold_mask in enumerate(fold_masks_by_layer_group) :
         stacked_fold_masks[layer_group_fold_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
-    final_fold_mask = (np.where((stacked_fold_masks>11) & (stacked_fold_masks!=20),0,1)).astype(np.uint8)
+    overall_fold_mask = (np.where((stacked_fold_masks>11) & (stacked_fold_masks!=20),0,1)).astype(np.uint8)
     #morph and filter the mask using the common operations
-    final_fold_mask = getMorphedAndFilteredMask(final_fold_mask,FOLD_MIN_SIZE)
+    overall_fold_mask = getMorphedAndFilteredMask(overall_fold_mask,tissue_mask,FOLD_MIN_SIZE)
     if return_plots :
-        return final_fold_mask,fold_mask_plots_by_layer_group
+        return overall_fold_mask,fold_mask_plots_by_layer_group
     else :
-        return final_fold_mask,None
+        return overall_fold_mask,None
 
 #################### HELPER FUNCTIONS ####################
 
@@ -359,7 +365,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next get the tissue fold mask and its associated plots
-    tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,return_plots=True)
+    tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,tissue_mask,return_plots=True)
     #lastly get masks for the blurriest areas of the DAPI layer group
     sm_img_array = smoothImageWorker(img_array,1)
     dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
@@ -370,7 +376,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
                                                                 BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
                                                                 False)
     #same morphology transformations as before
-    dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,DUST_MIN_SIZE)
+    dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,DUST_MIN_SIZE)
     #make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged
     dapi_dust_mask = getExclusiveMask(dapi_dust_mask,tissue_fold_mask,0.25)
     #if there is anything flagged in the final masks, write out some plots and the mask file/csv file lines
@@ -405,7 +411,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
                 return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,FOLD_FLAG_STRING,r_layer_mean_nlv_string))
         #add in the mask for the dapi layer group
         if np.min(dapi_dust_mask)<1 :
-            layers_string = f'{MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]}'
+            layers_string = f'{MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]}-{MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]}'
             enumerated_dapi_mask = getEnumeratedMask(dapi_dust_mask,start_i)
             for ln in range(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0],MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]+1) :
                 output_mask[:,:,ln-1] = np.where(enumerated_dapi_mask!=0,enumerated_dapi_mask,output_mask[:,:,ln-1])
