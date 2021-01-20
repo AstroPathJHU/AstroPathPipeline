@@ -1,29 +1,24 @@
-import abc, dataclasses, networkx as nx, numpy as np, pathlib
+import abc, networkx as nx, numpy as np, pathlib
 
 from ..baseclasses.csvclasses import constantsdict
-from ..utilities import units
 from ..utilities.tableio import readtable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .rectangle import Rectangle, RectangleCollection, RectangleList, rectangleoroverlapfilter, rectangleoroverlapfilter as overlapfilter
 
-@dataclasses.dataclass(unsafe_hash=True)
 class Overlap(DataClassWithPscale):
   pixelsormicrons = "microns"
 
   n: int
   p1: int
   p2: int
-  x1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y1: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  x1: distancefield(pixelsormicrons=pixelsormicrons)
+  y1: distancefield(pixelsormicrons=pixelsormicrons)
+  x2: distancefield(pixelsormicrons=pixelsormicrons)
+  y2: distancefield(pixelsormicrons=pixelsormicrons)
   tag: int
-  nclip: dataclasses.InitVar[float]
-  rectangles: dataclasses.InitVar[float]
-  readingfromfile: dataclasses.InitVar[bool]
 
-  def __post_init__(self, nclip, rectangles, readingfromfile=False):
-    super().__post_init__(readingfromfile=readingfromfile)
+  def __user_init__(self, *, nclip, rectangles, **kwargs):
+    super().__user_init__(**kwargs)
 
     self.nclip = nclip
     self.result = None

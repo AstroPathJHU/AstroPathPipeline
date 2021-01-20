@@ -25,6 +25,7 @@ setuptools.setup(
   install_requires = [
     "contextlib2>=0.6.0",
     "cvxpy",
+    "dataclassy @ git+git://github.com/hroskes/dataclassy@067731d0eaafab7135247f20c10d723f8358442a#egg=dataclassy"
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
     "matplotlib>=3.3.2",
@@ -45,6 +46,6 @@ setuptools.setup(
     "uncertainties",
   ],
   extras_require = {
-    "test": ["flake8", "texoutparse"],
+    "test": ["flake8", "pyflakes", "texoutparse"],
   }
 )

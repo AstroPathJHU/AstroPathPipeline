@@ -1,7 +1,8 @@
-import abc, contextlib, dataclasses, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tifffile
+import abc, contextlib, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tifffile
 
 from ..utilities import units
-from ..utilities.misc import dataclass_dc_init, floattoint
+from ..utilities.dataclasses import MyDataClass
+from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import constantsdict, RectangleFile
@@ -9,8 +10,7 @@ from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleWithImage, RectangleWithImageMultiLayer
 from .overlap import Overlap, RectangleOverlapCollection
 
-@dataclass_dc_init(frozen=True)
-class SampleDef:
+class SampleDef(MyDataClass):
   SampleID: int
   SlideID: str
   Project: int = None
@@ -19,7 +19,8 @@ class SampleDef:
   BatchID: int = None
   isGood: int = True
 
-  def __init__(self, *args, root=None, samp=None, **kwargs):
+  @classmethod
+  def transforminitargs(cls, *args, root=None, samp=None, **kwargs):
     if samp is not None:
       if isinstance(samp, str):
         if "SlideID" in kwargs:
@@ -29,7 +30,7 @@ class SampleDef:
       else:
         if args or kwargs:
           raise TypeError("Have to give either a sample or other arguments, not both.")
-        return self.__dc_init__(*args, **kwargs, **{field.name: getattr(samp, field.name) for field in dataclasses.fields(SampleDef)})
+        return super().transforminitargs(*args, **kwargs, **{field: getattr(samp, field) for field in dataclassy.fields(SampleDef)})
 
     if "SlideID" in kwargs and root is not None:
       root = pathlib.Path(root)
@@ -40,7 +41,7 @@ class SampleDef:
       else:
         for row in cohorttable:
           if row.SlideID == kwargs["SlideID"]:
-            return self.__init__(root=root, samp=row)
+            return cls.transforminitargs(root=root, samp=row)
 
       if "Scan" not in kwargs:
         try:
@@ -56,7 +57,7 @@ class SampleDef:
 
     if "SampleID" not in kwargs: kwargs["SampleID"] = 0
 
-    return self.__dc_init__(*args, **kwargs)
+    return super().transforminitargs(*args, **kwargs)
 
   def __bool__(self):
     return bool(self.isGood)

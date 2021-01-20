@@ -1,6 +1,7 @@
-import collections, dataclasses, functools, numpy as np, os, pathlib, PIL, re
+import collections, functools, numpy as np, os, PIL, re
 
 from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, ReadRectanglesComponentTiff, ZoomSampleBase
+from ..utilities.dataclasses import MyDataClass
 from ..utilities.tableio import pathfield, writetable
 
 class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBase, DeepZoomSampleBase):
@@ -140,14 +141,13 @@ class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBa
     self.writezoomlist()
 
 @functools.total_ordering
-@dataclasses.dataclass
-class DeepZoomFile:
+class DeepZoomFile(MyDataClass):
   sample: str
   zoom: int
   marker: int
   x: int
   y: int
-  name: pathlib.Path = pathfield()
+  name: pathfield()
 
   def __lt__(self, other):
     return (self.sample, self.zoom, self.marker, self.x, self.y) < (other.sample, other.zoom, other.marker, other.x, other.y)
