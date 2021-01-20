@@ -1,5 +1,6 @@
 import cv2, more_itertools
-from ..baseclasses.csvclasses import Polygon, Vertex
+from ..baseclasses.csvclasses import Vertex
+from ..baseclasses.polygon import Polygon
 from ..utilities import units
 
 def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, fill=False, **kwargs):

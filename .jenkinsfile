@@ -42,6 +42,11 @@ pipeline {
             sh 'folder=$(basename $(pwd)); cd ..; extractlayer ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
           }
         }
+        stage('miscellaneous framework tests') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
+          }
+        }
       }
     }
     stage('run tests') {

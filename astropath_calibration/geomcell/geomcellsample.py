@@ -1,6 +1,6 @@
 import cv2, matplotlib.pyplot as plt, numpy as np, skimage.measure
 from ..alignment.field import Field
-from ..baseclasses.csvclasses import Polygon
+from ..baseclasses.polygon import DataClassWithPolygon, polygonfield
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLoadRectangle
 from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesComponentTiff
 from ..geom.contours import findcontoursaspolygons
@@ -87,7 +87,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
 
       writetable(field.geomloadcsv, geomload)
 
-class CellGeomLoad(Polygon.DataClassWithPolygon):
+class CellGeomLoad(DataClassWithPolygon):
   pixelsormicrons = "pixels"
   field: int
   ctype: int
@@ -96,7 +96,7 @@ class CellGeomLoad(Polygon.DataClassWithPolygon):
   y: distancefield(pixelsormicrons=pixelsormicrons)
   w: distancefield(pixelsormicrons=pixelsormicrons)
   h: distancefield(pixelsormicrons=pixelsormicrons)
-  poly: Polygon.field()
+  poly: polygonfield()
 
   @classmethod
   def transforminitargs(cls, *args, box=None, **kwargs):
