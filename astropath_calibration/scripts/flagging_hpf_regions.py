@@ -7,6 +7,7 @@ from astropath_calibration.utilities.tableio import readtable, writetable
 from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser, cropAndOverwriteImage
 from astropath_calibration.utilities import units
 from astropath_calibration.baseclasses.csvclasses import constantsdict
+from astropath_calibration.utilities.dataclasses import MyDataClass
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import logging, os, glob, cv2, dataclasses, scipy.stats
@@ -23,9 +24,9 @@ BRIGHTEST_LAYERS       = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX = 0
 RBC_LAYER_GROUP_INDEX  = 1
 TISSUE_MIN_SIZE        = 2500
-FOLD_MIN_SIZE          = 30000
+FOLD_MIN_SIZE          = 20000
 FOLD_NLV_CUT           = 0.025
-FOLD_MAX_MEAN          = 0.02
+FOLD_MAX_MEAN          = 0.01875
 FOLD_MASK_FLAG_CUTS    = [2,2,0,1,0]
 FOLD_FLAG_STRING       = 'tissue fold or bright dust'
 DUST_MIN_SIZE          = 30000
@@ -41,8 +42,7 @@ handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s
 logger.addHandler(handler)
 
 #mask region information helper class
-@dataclasses.dataclass(eq=False)
-class LabelledMaskRegion :
+class LabelledMaskRegion(MyDataClass) :
     image_key          : str
     cellview_x         : float
     cellview_y         : float
@@ -122,16 +122,22 @@ def getMorphedAndFilteredMask(mask,tissue_mask,min_size) :
     mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
     #remove any remaining small spots
     mask = getSizeFilteredMask(mask,min_size)
-    #erode by the window size to eat up the edges
-    mask = (cv2.morphologyEx(mask,cv2.MORPH_ERODE,WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
-    #a medium-sized open/close to smooth the larger curves
+    ##erode by the window size to eat up the edges
+    #mask = (cv2.morphologyEx(mask,cv2.MORPH_ERODE,WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
+    #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
+    mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
+    mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
+    mask[(mask==1) & (tissue_mask==1)] = mask_to_transform[(mask==1) & (tissue_mask==1)]
+    #large open/close again to tie the edges together
+    mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
+    mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
+    #another size filter to adjust after the tissue mask incorporation
+    mask = getSizeFilteredMask(mask,min_size)
+    #open what remains by the window size to capture surrounding areas
+    mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
+    #a medium-sized open/close to smooth the larger curves and capture some outside area
     mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
     mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
-    #one last medium-sized open/close incorporating the tissue mask to get rid of any remaining thin borders
-    mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
-    mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
-    mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
-    mask[(mask==1) & (tissue_mask==1)] = mask_to_transform[(mask==1) & (tissue_mask==1)]
     return mask
 
 #return the minimally-transformed tissue mask for a single image layer
@@ -234,7 +240,8 @@ def getImageLayerGroupBlurMask(img_array,layer_group_bounds,nlv_cut,n_layers_fla
         plot_img_layer = img_array[:,:,brightest_layer_n-1]
         #im_gs = (plot_img_layer*group_blur_mask).astype(np.float32); im_gs /= np.max(im_gs)
         #overlay_gs = np.array([im_gs,im_gs,0.15*group_blur_mask]).transpose(1,2,0)
-        pil_max = np.max(plot_img_layer[group_blur_mask==1]); pil_min = np.min(plot_img_layer[group_blur_mask==1])
+        sorted_pil = np.sort(plot_img_layer[group_blur_mask==1].flatten())
+        pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]#int(0.05*len(sorted_pil))]
         norm = 255./(pil_max-pil_min)
         im_c = (np.clip(norm*(plot_img_layer-pil_min),0,255)).astype(np.uint8)
         overlay_c = np.array([im_c,im_c*group_blur_mask,im_c*group_blur_mask]).transpose(1,2,0)
@@ -421,7 +428,7 @@ def getLabelledMaskRegionsWorker(img_array,key,thresholds,xpos,ypos,pscale,worki
                 r_size = np.sum(enumerated_dapi_mask==ri)
                 r_layer_mean_nlv_string = ''
                 for ln in range(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0],MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]+1) :
-                    r_layer_mean_nlv = np.mean((sm_img_nlv[:,:,ln-1])[enumerated_fold_mask==ri])
+                    r_layer_mean_nlv = np.mean((sm_img_nlv[:,:,ln-1])[enumerated_dapi_mask==ri])
                     r_layer_mean_nlv_string+=f'{r_layer_mean_nlv},'
                 r_layer_mean_nlv_string=r_layer_mean_nlv_string[:-1]
                 return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,DUST_STRING,r_layer_mean_nlv_string))
