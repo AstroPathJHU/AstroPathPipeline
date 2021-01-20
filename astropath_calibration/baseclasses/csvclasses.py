@@ -1,4 +1,5 @@
 import dataclassy, datetime, itertools, matplotlib.patches, more_itertools, numbers, numpy as np, re
+from osgeo import ogr
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import floattoint
@@ -192,25 +193,21 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       if apscale is None: raise ValueError("Have to provide apscale if you give a string to Polygon")
       if pscale is None: raise ValueError("Have to provide pscale if you give a string to Polygon")
 
-      regex = r"POLYGON \((\((?:[0-9]* [0-9]*,)*[0-9]* [0-9]*\)(?:(?:,\((?:(?:[0-9]* [0-9]*,)*[0-9]* [0-9]*)\))*))\)"
-      match = re.match(regex, string)
-      if match is None:
-        raise ValueError(f"Unexpected format in polygon:\n{string}\nexpected it to match regex:\n{regex}")
-      content = match.group(1)
-      polygons = re.findall(r"\([^\(\)]*\)", content)
+      gdalpolygon = ogr.CreateGeometryFromWkt(string)
       vertices = []
-      for polygon in polygons:
+      for i, polygon in enumerate(gdalpolygon):
+        isouter = i == 0
         polyvertices = []
         vertices.append(polyvertices)
-        intvertices = re.findall(r"[0-9]* [0-9]*", polygon)
-        if intvertices[-1] == intvertices[0]: del intvertices[-1]
-        for i, vertex in enumerate(intvertices, start=1):
-          x, y = (int(_)*units.onepixel(pscale) for _ in vertex.split())
-          polyvertices.append(Vertex(im3x=x, im3y=y, vid=i, regionid=None, apscale=apscale, pscale=pscale))
+        intvertices = polygon.GetPoints()
+        for j, (x, y) in enumerate(intvertices, start=1):
+          x *= units.onepixel(pscale)
+          y *= units.onepixel(pscale)
+          polyvertices.append(Vertex(im3x=x, im3y=y, vid=j, regionid=None, apscale=apscale, pscale=pscale))
 
     self.__vertices = [[v for v in vv] for vv in vertices]
     for vv in self.__vertices:
-      if len(vv) > 1 and vv[0] == vv[-1]: del vv[-1]
+      if len(vv) > 1 and np.all(vv[0].xvec == vv[-1].xvec): del vv[-1]
 
     apscale = {apscale, *(v.apscale for vv in self.__vertices for v in vv)}
     apscale.discard(None)
