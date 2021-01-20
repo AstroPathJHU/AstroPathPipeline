@@ -230,20 +230,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   @property
   def vertices(self): return self.__vertices
   def __repr__(self):
-    return self.tostring(pscale=self.pscale, pixelsormicrons=self.pixelsormicrons)
-  def tostring(self, *, pixelsormicrons, **kwargs):
-    f = lambda distance, **kwargs: (
-      {"pixels": units.pixels, "microns": units.microns}[pixelsormicrons](
-        units.convertpscale(distance, self.apscale, self.pscale)
-      )
-    )
-    return (
-      "POLYGON ("
-      + ",".join(
-        "(" + ",".join(f"{int(f(v.x, **kwargs))} {int(f(v.y, **kwargs))}" for v in vv+[vv[0]]) + ")"
-        for vv in self.vertices
-      ) + ")"
-    )
+    return str(self.gdalpolygon())
 
   def __eq__(self, other):
     assert self.pscale == other.pscale
@@ -309,12 +296,15 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
         else:
           raise TypeError(f"Unknown type {type(poly).__name__} for {field}")
 
-    #def _distances_passed_to_init(self):
-    #  result = super()._distances_passed_to_init()
-    #  if not isinstance(self.poly, Polygon): return [*result, self.poly]
-    #  vertices = sum(([v.x, v.y] for vv in self.poly.vertices for v in vv), [])
-    #  vertices = [_ for _ in vertices if _]
-    #  return [*result, *vertices]
+  def gdalpolygon(self, *, imagescale=None):
+    if imagescale is None: imagescale = self.pscale
+    poly = ogr.Geometry(ogr.wkbPolygon)
+    for vv in self.vertices:
+      ring = ogr.Geometry(ogr.wkbLinearRing)
+      for v in vv:
+        ring.AddPoint_2D(*(units.convertpscale(v.xvec, self.apscale, imagescale) // units.onepixel(imagescale)))
+      poly.AddGeometry(ring)
+    return poly
 
   def matplotlibpolygon(self, *, imagescale=None, **kwargs):
     if imagescale is None: imagescale = self.pscale
