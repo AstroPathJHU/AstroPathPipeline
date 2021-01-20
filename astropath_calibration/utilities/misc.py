@@ -1,4 +1,4 @@
-import collections, contextlib, cv2, dataclasses, logging, matplotlib.pyplot as plt, numpy as np, os, PIL.Image, re, scipy.stats, uncertainties as unc
+import collections, contextlib, cv2, logging, matplotlib.pyplot as plt, numpy as np, os, PIL.Image, re, scipy.stats, uncertainties as unc
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -27,38 +27,6 @@ def cd(dir):
     yield os.chdir(dir)
   finally:
     os.chdir(cdminus)
-
-class dataclass_dc_init:
-  """
-  Let's say that you need a dataclass that modifies its arguments to init
-  for example
-  class MyDataClass:
-    x: float
-    y: float
-    #...others
-    def __init__(self, xy, **kwargs):
-      #want to do
-      self.__dc_init__(x=xy[0], y=xy[1], **kwargs)
-
-  this decorator lets you do that.  the normal __init__ from the dataclass
-  will be saved as __dc_init__
-  """
-
-  def __new__(thiscls, decoratedcls=None, **kwargs):
-    if decoratedcls is None: return super().__new__(thiscls)
-    return thiscls(**kwargs)(decoratedcls)
-
-  def __init__(self, **kwargs):
-    self.kwargs = kwargs
-
-  def __call__(self, cls):
-    __my_init__ = cls.__init__
-    del cls.__init__
-    cls = dataclasses.dataclass(cls, **self.kwargs)
-    cls.__dc_init__ = cls.__init__
-    cls.__dc_init__.__name__ = "__dc_init__"
-    cls.__init__ = __my_init__
-    return cls
 
 @np.vectorize
 def floattoint(flt, *, atol=0, rtol=0):
@@ -136,9 +104,10 @@ def split_csv_to_dict_of_bounds(value) :
   except Exception as e :
     raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=low_bound:high_bound pairs! Exception: {e}')
 
+from .dataclasses import MyDataClass
+
 #helper dataclass for some common metadata information
-@dataclasses.dataclass
-class MetadataSummary :
+class MetadataSummary(MyDataClass):
   slideID         : str
   project         : int
   cohort          : int

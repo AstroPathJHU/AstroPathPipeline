@@ -1,10 +1,10 @@
-import dataclasses, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
+import itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 
 from ..baseclasses.overlap import OverlapCollection
 from ..utilities import units
 from ..utilities.misc import dummylogger
 from ..utilities.tableio import writetable
-from ..utilities.units.dataclasses import DataClassWithPscaleFrozen, distancefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .overlap import LayerAlignmentResult
 
 class ComplementaryOverlapPair(units.ThingWithPscale):
@@ -347,27 +347,22 @@ class LayerStitchResultCvxpy(LayerStitchResultBase):
     self.xvar = x
 
 
-@dataclasses.dataclass(frozen=True)
-class LayerPosition(DataClassWithPscaleFrozen):
+class LayerPosition(DataClassWithPscale):
   pixelsormicrons = "pixels"
 
   n: int
-  x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  cov_x_x: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_x_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_y_y: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  readingfromfile: dataclasses.InitVar[bool] = False
+  x: distancefield(pixelsormicrons=pixelsormicrons)
+  y: distancefield(pixelsormicrons=pixelsormicrons)
+  cov_x_x: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_x_y: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_y_y: distancefield(pixelsormicrons=pixelsormicrons, power=2)
 
-@dataclasses.dataclass(frozen=True)
-class LayerPositionCovariance(DataClassWithPscaleFrozen):
+class LayerPositionCovariance(DataClassWithPscale):
   pixelsormicrons = "pixels"
 
   n1: int
   n2: int
-  cov_x1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_x1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_y1_x2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  cov_y1_y2: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  readingfromfile: dataclasses.InitVar[bool] = False
-
+  cov_x1_x2: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_x1_y2: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_y1_x2: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  cov_y1_y2: distancefield(pixelsormicrons=pixelsormicrons, power=2)

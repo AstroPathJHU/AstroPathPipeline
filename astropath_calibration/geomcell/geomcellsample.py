@@ -1,4 +1,4 @@
-import cv2, dataclasses, matplotlib.pyplot as plt, numpy as np, skimage.measure
+import cv2, matplotlib.pyplot as plt, numpy as np, skimage.measure
 from ..alignment.field import Field
 from ..baseclasses.csvclasses import Polygon
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLoadRectangle
@@ -6,7 +6,7 @@ from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesCom
 from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
 from ..utilities.tableio import writetable
-from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithPscale, distancefield
+from ..utilities.units.dataclasses import distancefield
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
@@ -87,24 +87,24 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
 
       writetable(field.geomloadcsv, geomload)
 
-@Polygon.dataclasswithpolygon(dc_init=True)
-class CellGeomLoad(DataClassWithPscale, DataClassWithApscale):
+class CellGeomLoad(Polygon.DataClassWithPolygon):
+  pixelsormicrons = "pixels"
   field: int
   ctype: int
   n: int
-  x: units.Distance = distancefield(pixelsormicrons="pixels")
-  y: units.Distance = distancefield(pixelsormicrons="pixels")
-  w: units.Distance = distancefield(pixelsormicrons="pixels")
-  h: units.Distance = distancefield(pixelsormicrons="pixels")
-  poly: Polygon = Polygon.field()
-  readingfromfile: dataclasses.InitVar[bool] = False
+  x: distancefield(pixelsormicrons=pixelsormicrons)
+  y: distancefield(pixelsormicrons=pixelsormicrons)
+  w: distancefield(pixelsormicrons=pixelsormicrons)
+  h: distancefield(pixelsormicrons=pixelsormicrons)
+  poly: Polygon.field()
 
-  def __init__(self, *args, box=None, **kwargs):
+  @classmethod
+  def transforminitargs(cls, *args, box=None, **kwargs):
     boxkwargs = {}
     if box is not None:
       boxkwargs["x"], boxkwargs["y"] = box[0]
       boxkwargs["w"], boxkwargs["h"] = box[1] - box[0]
-    self.__dc_init__(
+    return super().transforminitargs(
       *args,
       **kwargs,
       **boxkwargs,

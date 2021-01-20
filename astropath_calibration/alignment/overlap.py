@@ -1,10 +1,11 @@
-import dataclasses, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, typing, uncertainties as unc
+import matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, typing, uncertainties as unc
 
 from .computeshift import computeshift, mse, shiftimg
 from ..baseclasses.overlap import Overlap
 from ..utilities import units
-from ..utilities.misc import covariance_matrix, dataclass_dc_init, floattoint
-from ..utilities.units.dataclasses import DataClassWithPscaleFrozen, distancefield
+from ..utilities.dataclasses import MetaDataAnnotation
+from ..utilities.misc import covariance_matrix, floattoint
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
 import abc
 
@@ -63,10 +64,9 @@ class AlignmentComparison(abc.ABC):
       plt.savefig(saveas, **savekwargs)
       plt.close()
 
-@dataclasses.dataclass
 class AlignmentOverlap(AlignmentComparison, Overlap):
-  def __init__(self, *args, layer1=None, layer2=None, **kwargs):
-    super().__init__(*args, **kwargs)
+  def __user_init__(self, *args, layer1=None, layer2=None, **kwargs):
+    super().__user_init__(*args, **kwargs)
     if layer1 is None:
       try:
         self.rectangles[0].layer
@@ -300,25 +300,24 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
   @property
   def dxvec(self): return self.result.dxvec
 
-@dataclass_dc_init(frozen=True)
-class AlignmentResultBase(DataClassWithPscaleFrozen):
-  def __init__(self, *args, **kwargs):
-    dxvec = kwargs.pop("dxvec", None)
+class AlignmentResultBase(DataClassWithPscale):
+  @classmethod
+  def transforminitargs(cls, *args, dxvec=None, covariance=None, mse=None, **kwargs):
     if dxvec is not None:
       kwargs["dx"] = dxvec[0].n
       kwargs["dy"] = dxvec[1].n
-      kwargs["covariance"] = covariance_matrix(dxvec)
+      if covariance is not None:
+        raise TypeError("Can't provide both dxvec and covariance")
+      covariance = covariance_matrix(dxvec)
 
-    covariancematrix = kwargs.pop("covariance", None)
-    if covariancematrix is not None:
-      units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
-      (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
+    if covariance is not None:
+      units.np.testing.assert_allclose(covariance[0, 1], covariance[1, 0])
+      (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariance
 
-    mse = kwargs.pop("mse", None)
     if mse is not None:
       kwargs["mse1"], kwargs["mse2"], kwargs["mse3"] = mse
 
-    return self.__dc_init__(*args, **kwargs)
+    return super().transforminitargs(*args, **kwargs)
 
   @property
   def mse(self):
@@ -344,7 +343,6 @@ class AlignmentResultBase(DataClassWithPscaleFrozen):
   def issamerectangle(self):
     return self.tag == 5
 
-@dataclass_dc_init(frozen=True)
 class AlignmentResult(AlignmentResultBase):
   pixelsormicrons = "pixels"
 
@@ -354,22 +352,17 @@ class AlignmentResult(AlignmentResultBase):
   code: int
   layer: int
   exit: int
-  dx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  dy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  dx: distancefield(pixelsormicrons=pixelsormicrons)
+  dy: distancefield(pixelsormicrons=pixelsormicrons)
   sc: float
   mse1: float
   mse2: float
   mse3: float
-  covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
-  readingfromfile: dataclasses.InitVar[bool] = False
+  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  exception: MetaDataAnnotation(typing.Optional[Exception], includeintable=False) = None
 
-  def __init__(self, *args, **kwargs):
-    return super().__init__(*args, **kwargs)
-
-@dataclass_dc_init(frozen=True)
 class LayerAlignmentResult(AlignmentResultBase):
   pixelsormicrons = "pixels"
 
@@ -380,17 +373,13 @@ class LayerAlignmentResult(AlignmentResultBase):
   layer1: int
   layer2: int
   exit: int
-  dx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
-  dy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons)
+  dx: distancefield(pixelsormicrons=pixelsormicrons)
+  dy: distancefield(pixelsormicrons=pixelsormicrons)
   sc: float
   mse1: float
   mse2: float
   mse3: float
-  covxx: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covyy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covxy: units.Distance = distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  exception: typing.Optional[Exception] = dataclasses.field(default=None, metadata={"includeintable": False})
-  readingfromfile: dataclasses.InitVar[bool] = False
-
-  def __init__(self, *args, **kwargs):
-    return super().__init__(*args, **kwargs)
+  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  exception: MetaDataAnnotation(typing.Optional[Exception], includeintable=False) = None
