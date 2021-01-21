@@ -24,10 +24,10 @@ BRIGHTEST_LAYERS       = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX = 0
 RBC_LAYER_GROUP_INDEX  = 1
 TISSUE_MIN_SIZE        = 2500
-FOLD_MIN_SIZE          = 20000
+FOLD_MIN_SIZE          = 30000
 FOLD_NLV_CUT           = 0.025
 FOLD_MAX_MEAN          = 0.01875
-FOLD_MASK_FLAG_CUTS    = [3,3,1,1,1]
+FOLD_MASK_FLAG_CUTS    = [3,3,1,1,0]
 FOLD_FLAG_STRING       = 'tissue fold or bright dust'
 DUST_MIN_SIZE          = 30000
 DUST_NLV_CUT           = 0.005
@@ -272,7 +272,8 @@ def getImageTissueFoldMask(img_array,tissue_mask,return_plots=False) :
     stacked_fold_masks = np.zeros_like(fold_masks_by_layer_group[0])
     for lgi,layer_group_fold_mask in enumerate(fold_masks_by_layer_group) :
         stacked_fold_masks[layer_group_fold_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
-    overall_fold_mask = (np.where((stacked_fold_masks>11) & (stacked_fold_masks!=20),0,1)).astype(np.uint8)
+    #overall_fold_mask = (np.where((stacked_fold_masks>11) & (stacked_fold_masks!=20),0,1)).astype(np.uint8)
+    overall_fold_mask = (np.where(stacked_fold_masks>10,0,1)).astype(np.uint8)
     #morph and filter the mask using the common operations
     overall_fold_mask = getMorphedAndFilteredMask(overall_fold_mask,tissue_mask,FOLD_MIN_SIZE)
     if return_plots :
