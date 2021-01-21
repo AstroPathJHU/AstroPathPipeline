@@ -1,6 +1,17 @@
+def GITHUB_TOKEN
+
+node {
+  withCredentials([string(credentialsId: 'astropath-github', variable: 'SECRET')]) {
+    GITHUB_TOKEN = "${SECRET}"
+  }
+}
+
 pipeline {
   agent {
-    docker { image 'astropathjhu/alignmenttest:v19' }
+    dockerfile {
+      dir '.docker'
+      additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'"'
+    }
   }
 
   environment {
