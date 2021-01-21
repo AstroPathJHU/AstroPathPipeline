@@ -10,6 +10,14 @@ RUN sudo chmod -R a+w /home/circleci
 #apt-get stuff
 RUN sudo apt-get install equivs
 
+RUN sudo apt-get update && \
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+  cdbs debhelper dh-autoreconf flex bison \
+  libjpeg-dev libtiff-dev libpng-dev libgif-dev librsvg2-dev libpoppler-glib-dev zlib1g-dev fftw3-dev liblcms2-dev \
+  liblcms2-dev libmagickwand-dev libfreetype6-dev libpango1.0-dev libfontconfig1-dev libglib2.0-dev libice-dev \
+  gettext pkg-config libxml-parser-perl libexif-gtk-dev liborc-0.4-dev libopenexr-dev libmatio-dev libxml2-dev \
+  libcfitsio-dev libopenslide-dev libwebp-dev libgsf-1-dev libgirepository1.0-dev gtk-doc-tools
+
 FROM base as texlive
 
 #install texlive
@@ -34,14 +42,8 @@ RUN cd /tmp && \
 
 from base as libvips
 
-RUN sudo apt-get update && \
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  automake build-essential curl \
-  cdbs debhelper dh-autoreconf flex bison \
-  libjpeg-dev libtiff-dev libpng-dev libgif-dev librsvg2-dev libpoppler-glib-dev zlib1g-dev fftw3-dev liblcms2-dev \
-  liblcms2-dev libmagickwand-dev libfreetype6-dev libpango1.0-dev libfontconfig1-dev libglib2.0-dev libice-dev \
-  gettext pkg-config libxml-parser-perl libexif-gtk-dev liborc-0.4-dev libopenexr-dev libmatio-dev libxml2-dev \
-  libcfitsio-dev libopenslide-dev libwebp-dev libgsf-1-dev libgirepository1.0-dev gtk-doc-tools
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    automake build-essential curl
 
 ENV LIBVIPS_VERSION_MAJOR 8
 ENV LIBVIPS_VERSION_MINOR 6
@@ -65,14 +67,6 @@ RUN \
 RUN \
   cd /tmp/vips-$LIBVIPS_VERSION && \
   sudo ldconfig
-
-RUN \
-  # Clean up
-  sudo apt-get remove -y automake curl build-essential && \
-  sudo apt-get autoremove -y && \
-  sudo apt-get autoclean && \
-  sudo apt-get clean && \
-  sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 #if you add more latex packages, it will build faster
 #if you add them all the way at the bottom, because it can use
