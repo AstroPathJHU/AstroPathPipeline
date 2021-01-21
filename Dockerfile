@@ -1,5 +1,5 @@
 #comes with python + git and some other utilities
-FROM circleci/python:3.6.12
+FROM circleci/python:3.6.12 AS base
 
 #libvips stuff is from https://github.com/TailorBrands/docker-libvips/blob/f64952af6871fb963934b7454f7edf5b6738f4b8/8.6.1/Dockerfile
 
@@ -17,6 +17,8 @@ RUN sudo apt-get update && \
   liblcms2-dev libmagickwand-dev libfreetype6-dev libpango1.0-dev libfontconfig1-dev libglib2.0-dev libice-dev \
   gettext pkg-config libxml-parser-perl libexif-gtk-dev liborc-0.4-dev libopenexr-dev libmatio-dev libxml2-dev \
   libcfitsio-dev libopenslide-dev libwebp-dev libgsf-1-dev libgirepository1.0-dev gtk-doc-tools
+
+FROM base as texlive
 
 #install texlive
 ENV PATH=/usr/local/texlive/bin/x86_64-linux:${PATH}
@@ -37,6 +39,8 @@ RUN cd /tmp && \
     sudo apt-get autoclean && \
     sudo apt-get autoremove && \
     sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+from base as libvips
 
 ENV LIBVIPS_VERSION_MAJOR 8
 ENV LIBVIPS_VERSION_MINOR 6
@@ -73,6 +77,8 @@ RUN \
 #if you add them all the way at the bottom, because it can use
 #the cache from previous builds
 
+from texlive as latex_packages
+
 #add latex packages
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr update --self
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install caption
@@ -89,6 +95,8 @@ RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install todonotes
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install enumitem
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install lineno
 
+FROM base as python_packages
+
 ENV ASTROPATH_DEPENDENCY_COMMIT a23eaed9a927dfdba11a8c708d63959f587b1edd
 ARG GITHUB_TOKEN
 
@@ -99,5 +107,14 @@ RUN \
   sudo pip install "astropath-calibration[test] @ git+https://github.com/AstropathJHU/microscopealignment@${ASTROPATH_DEPENDENCY_COMMIT}" && \
   sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
 RUN sudo pip uninstall -y astropath-calibration
+
+from base as final
+
+copy --from=python_packages /usr/local/lib/python3.6/site-packages/ /usr/local/lib/python3.6/site-packages/
+copy --from=latex_packages /usr/local/texlive/ /usr/local/texlive/
+copy --from=libvips /usr/local/bin/*vips* /usr/local/bin/
+copy --from=libvips /usr/local/lib/*vips* /usr/local/lib/
+ENV PATH=/usr/local/texlive/bin/x86_64-linux:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/lib/:${LD_LIBRARY_PATH}
 
 CMD ["/bin/bash"]
