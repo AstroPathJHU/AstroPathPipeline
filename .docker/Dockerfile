@@ -22,8 +22,8 @@ FROM base as texlive
 
 #install texlive
 ENV PATH=/usr/local/texlive/bin/x86_64-linux:${PATH}
-ADD .dockerstuff/texlive-profile.txt /tmp/texlive-profile.txt
-ADD .dockerstuff/debian-equivs.txt /tmp/debian-equivs.txt
+ADD texlive-profile.txt /tmp/texlive-profile.txt
+ADD debian-equivs.txt /tmp/debian-equivs.txt
 
 RUN cd /tmp && \
     wget http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz && \

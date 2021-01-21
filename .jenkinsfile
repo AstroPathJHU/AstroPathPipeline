@@ -9,7 +9,7 @@ node {
 pipeline {
   agent {
     dockerfile {
-      filename '.dockerstuff/Dockerfile'
+      dir '.docker'
       additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'"'
     }
   }
