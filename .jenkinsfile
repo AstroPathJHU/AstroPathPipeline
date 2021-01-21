@@ -23,6 +23,7 @@ pipeline {
     stage('pip install') {
       steps {
         sh 'echo $LD_LIBRARY_PATH'
+        sh 'ls ${LD_LIBRARY_PATH/:/}'
         sh 'python -c "import pyvips"'
         sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags "$url"'
         sh 'pip install .[test]'
