@@ -1,6 +1,16 @@
+def GITHUB_TOKEN
+
+node {
+  withCredentials([string(credentialsId: 'astropath-github', variable: 'SECRET')]) {
+    GITHUB_TOKEN = "${SECRET}"
+  }
+}
+
 pipeline {
   agent {
-    dockerfile true
+    dockerfile {
+      additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'"'
+    }
   }
 
   environment {
