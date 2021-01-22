@@ -338,14 +338,14 @@ ARG WITH_DEBUG_SYMBOLS=no
 ARG PROJ_VERSION=5.2.0
 ARG PROJ_INSTALL_PREFIX=/usr/local
 COPY ./bh-proj.sh /buildscripts/bh-proj.sh
-RUN sudo -E /buildscripts/bh-proj.sh
+RUN sudo -E bash /buildscripts/bh-proj.sh
 
 # Build GDAL
 ARG GDAL_VERSION=v2.3.3
 ARG GDAL_RELEASE_DATE
 ARG GDAL_BUILD_IS_RELEASE
 COPY ./bh-gdal.sh /buildscripts/bh-gdal.sh
-RUN sudo -E /buildscripts/bh-gdal.sh
+RUN sudo -E bash /buildscripts/bh-gdal.sh
 
 from base as final
 
