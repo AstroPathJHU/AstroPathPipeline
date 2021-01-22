@@ -335,7 +335,14 @@ ARG GDAL_BUILD_IS_RELEASE
 COPY ./bh-gdal.sh /buildscripts/bh-gdal.sh
 RUN sudo -E bash /buildscripts/bh-gdal.sh
 
-FROM gdal as python_packages
+FROM base as python_packages
+
+COPY --from=gdal  /build_thirdparty/usr/ /usr/
+ARG PROJ_INSTALL_PREFIX=/usr/local
+COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/share/proj/ ${PROJ_INSTALL_PREFIX}/share/proj/
+COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/include/ ${PROJ_INSTALL_PREFIX}/include/
+COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/bin/ ${PROJ_INSTALL_PREFIX}/bin/
+COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/lib/ ${PROJ_INSTALL_PREFIX}/lib/
 
 ENV ASTROPATH_DEPENDENCY_COMMIT 515aa2649c8d05d29375fd7066650adb2e151463
 ARG GITHUB_TOKEN
@@ -350,17 +357,16 @@ RUN sudo pip uninstall -y astropath-calibration
 
 from base as final
 
-copy --from=python_packages /usr/local/lib/python3.6/site-packages/ /usr/local/lib/python3.6/site-packages/
-copy --from=latex_packages /usr/local/texlive/ /usr/local/texlive/
 copy --from=libvips /usr/local/bin/*vips* /usr/local/bin/
 copy --from=libvips /usr/local/lib/*vips* /usr/local/lib/
 COPY --from=gdal  /build_thirdparty/usr/ /usr/
-ARG PROJ_DATUMGRID_LATEST_LAST_MODIFIED
 ARG PROJ_INSTALL_PREFIX=/usr/local
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/share/proj/ ${PROJ_INSTALL_PREFIX}/share/proj/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/include/ ${PROJ_INSTALL_PREFIX}/include/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/bin/ ${PROJ_INSTALL_PREFIX}/bin/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/lib/ ${PROJ_INSTALL_PREFIX}/lib/
+copy --from=python_packages /usr/local/lib/python3.6/site-packages/ /usr/local/lib/python3.6/site-packages/
+copy --from=latex_packages /usr/local/texlive/ /usr/local/texlive/
 RUN sudo ldconfig
 #RUN sudo projsync --system-directory --all
 
