@@ -92,7 +92,7 @@ rm -rf gdal
 mkdir -p /build_gdal_python/usr/lib
 mkdir -p /build_gdal_python/usr/bin
 mkdir -p /build_gdal_version_changing/usr/include
-mv /build/usr/lib/python3            /build_gdal_python/usr/lib
+mv /build/usr/lib/python3.6          /build_gdal_python/usr/lib
 mv /build/usr/lib                    /build_gdal_version_changing/usr
 mv /build/usr/include/gdal_version.h /build_gdal_version_changing/usr/include
 mv /build/usr/bin/*.py               /build_gdal_python/usr/bin
