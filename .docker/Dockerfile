@@ -360,8 +360,8 @@ COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/share/proj/ ${PROJ_INSTALL_PREFIX
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/include/ ${PROJ_INSTALL_PREFIX}/include/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/bin/ ${PROJ_INSTALL_PREFIX}/bin/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/lib/ ${PROJ_INSTALL_PREFIX}/lib/
-RUN ldconfig \
-    && projsync --system-directory --all
+RUN sudo ldconfig
+#RUN sudo projsync --system-directory --all
 
 COPY --from=gdal  /build/usr/share/java /usr/share/java
 COPY --from=gdal  /build/usr/share/gdal/ /usr/share/gdal/
@@ -371,7 +371,6 @@ COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 
 RUN sudo ldconfig
 
-#Set CLASSPATH so jars are found
 ENV CLASSPATH="/usr/share/java/jackcess-1.1.14.jar:/usr/share/java/commons-logging-1.1.1.jar:/usr/share/java/commons-lang-2.4.jar"
 ENV PATH=/usr/local/texlive/bin/x86_64-linux:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/lib/:${LD_LIBRARY_PATH}
