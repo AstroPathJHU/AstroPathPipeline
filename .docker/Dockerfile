@@ -195,19 +195,6 @@ RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install todonotes
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install enumitem
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install lineno
 
-FROM base as python_packages
-
-ENV ASTROPATH_DEPENDENCY_COMMIT a23eaed9a927dfdba11a8c708d63959f587b1edd
-ARG GITHUB_TOKEN
-
-#add python packages
-RUN sudo pip install --upgrade pip
-RUN \
-  sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
-  sudo pip install "astropath-calibration[test] @ git+https://github.com/AstropathJHU/microscopealignment@${ASTROPATH_DEPENDENCY_COMMIT}" && \
-  sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
-RUN sudo pip uninstall -y astropath-calibration
-
 from base as gdal
 
 RUN sudo apt-get update && \
@@ -347,6 +334,19 @@ ARG GDAL_RELEASE_DATE
 ARG GDAL_BUILD_IS_RELEASE
 COPY ./bh-gdal.sh /buildscripts/bh-gdal.sh
 RUN sudo -E bash /buildscripts/bh-gdal.sh
+
+FROM gdal as python_packages
+
+ENV ASTROPATH_DEPENDENCY_COMMIT 515aa2649c8d05d29375fd7066650adb2e151463
+ARG GITHUB_TOKEN
+
+#add python packages
+RUN sudo pip install --upgrade pip
+RUN \
+  sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
+  sudo pip install "astropath-calibration[test] @ git+https://github.com/AstropathJHU/microscopealignment@${ASTROPATH_DEPENDENCY_COMMIT}" && \
+  sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
+RUN sudo pip uninstall -y astropath-calibration
 
 from base as final
 
