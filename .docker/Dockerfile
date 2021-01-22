@@ -343,6 +343,12 @@ COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/share/proj/ ${PROJ_INSTALL_PREFIX
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/include/ ${PROJ_INSTALL_PREFIX}/include/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/bin/ ${PROJ_INSTALL_PREFIX}/bin/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/lib/ ${PROJ_INSTALL_PREFIX}/lib/
+COPY --from=gdal  /build/usr/share/java /usr/share/java
+COPY --from=gdal  /build/usr/share/gdal/ /usr/share/gdal/
+COPY --from=gdal  /build/usr/include/ /usr/include/
+COPY --from=gdal  /build_gdal_python/usr/ /usr/
+COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
+RUN sudo ldconfig
 
 ENV ASTROPATH_DEPENDENCY_COMMIT 515aa2649c8d05d29375fd7066650adb2e151463
 ARG GITHUB_TOKEN
