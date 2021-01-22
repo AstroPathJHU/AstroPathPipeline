@@ -56,6 +56,7 @@ ln -s "libinternalproj.so.${PROJ_SO}" "/build${PROJ_INSTALL_PREFIX}/lib/libinter
 
 rm "/build${PROJ_INSTALL_PREFIX}/lib"/libproj.*
 ln -s "libinternalproj.so.${PROJ_SO}" "/build${PROJ_INSTALL_PREFIX}/lib/libproj.so.${PROJ_SO_FIRST}"
+ln -s "libinternalproj.so.${PROJ_SO}" "/build${PROJ_INSTALL_PREFIX}/lib/libproj.so"
 
 if [ "${WITH_DEBUG_SYMBOLS}" = "yes" ]; then
     # separate debug symbols
