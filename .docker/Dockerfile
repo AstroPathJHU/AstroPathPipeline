@@ -21,6 +21,9 @@ RUN sudo apt-get update && \
   bison \
   cdbs \
   debhelper \
+  #for gdal
+  default-libmysqlclient-dev \
+  #for vips
   dh-autoreconf \
   fftw3-dev \
   flex \
@@ -74,9 +77,7 @@ RUN sudo apt-get update && \
   libmagickwand-dev \
   libmatio-dev \
   #for gdal
-  libmysqlclient-dev \
   libnetcdf-dev \
-  libogdi-dev \
   #for vips and gdal
   libopenexr-dev \
   #for gdal
@@ -99,7 +100,7 @@ RUN sudo apt-get update && \
   #for vips
   librsvg2-dev \
   #for gdal
-  libspacialite-dev \
+  libspatialite-dev \
   libssl-dev \
   #for vips
   libtiff-dev \
