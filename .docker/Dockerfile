@@ -341,6 +341,7 @@ COPY ./bh-proj.sh /buildscripts/bh-proj.sh
 RUN sudo -E bash /buildscripts/bh-proj.sh
 
 # Build GDAL
+ARG JAVA_VERSION=11
 ARG GDAL_VERSION=v2.3.3
 ARG GDAL_RELEASE_DATE
 ARG GDAL_BUILD_IS_RELEASE
