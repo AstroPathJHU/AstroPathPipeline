@@ -2,6 +2,7 @@
 FROM circleci/python:3.6.12 AS base
 
 #libvips stuff is from https://github.com/TailorBrands/docker-libvips/blob/f64952af6871fb963934b7454f7edf5b6738f4b8/8.6.1/Dockerfile
+#gdal stuff is from https://github.com/OSGeo/gdal/blob/f6689b653338502de4150f491864553894c37410/gdal/docker/ubuntu-full/Dockerfile
 
 #make the home directory editable
 RUN sudo mkdir -p /home/circleci/.cache/pip /home/circleci/.cache/matplotlib
@@ -10,13 +11,116 @@ RUN sudo chmod -R a+w /home/circleci
 #apt-get stuff
 RUN sudo apt-get install equivs
 
+ARG JAVA_VERSION=11
+
 RUN sudo apt-get update && \
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  cdbs debhelper dh-autoreconf flex bison \
-  libjpeg-dev libtiff-dev libpng-dev libgif-dev librsvg2-dev libpoppler-glib-dev zlib1g-dev fftw3-dev liblcms2-dev \
-  liblcms2-dev libmagickwand-dev libfreetype6-dev libpango1.0-dev libfontconfig1-dev libglib2.0-dev libice-dev \
-  gettext pkg-config libxml-parser-perl libexif-gtk-dev liborc-0.4-dev libopenexr-dev libmatio-dev libxml2-dev \
-  libcfitsio-dev libopenslide-dev libwebp-dev libgsf-1-dev libgirepository1.0-dev gtk-doc-tools
+  #for gdal
+  ant \
+  #for vips
+  bison \
+  cdbs \
+  debhelper \
+  dh-autoreconf \
+  fftw3-dev \
+  flex \
+  gettext \
+  gtk-doc-tools \
+  #for gdal
+  libarmadillo-dev \
+  libboost-dev \
+  libcairo2-dev \
+  #for vips and gdal
+  libcfitsio-dev \
+  #for gdal
+  libcharls-dev \
+  libcrypto++-dev \
+  libdap-dev \
+  libdeflate-dev \
+  libepsilon-dev \
+  libfyba-dev \
+  #for vips
+  libexif-gtk-dev \
+  #for gdal
+  libexpat-dev \
+  #for vips
+  libfontconfig1-dev \
+  libfreetype6-dev \
+  #for gdal
+  libfreexl-dev \
+  libgeos-dev \
+  #for vips and gdal
+  libgif-dev \
+  #for vips
+  libgirepository1.0-dev \
+  libglib2.0-dev \
+  libgsf-1-dev \
+  #for gdal
+  libhdf4-alt-dev \
+  libhdf5-serial-dev \
+  libheif-dev \
+  #for vips
+  libice-dev \
+  #for vips and gdal
+  libjpeg-dev \
+  #for gdal
+  libkml-dev \
+  liblcms2-2 \
+  #for vips
+  liblcms2-dev \
+  #for gdal
+  liblzma-dev \
+  #for vips
+  libmagickwand-dev \
+  libmatio-dev \
+  #for gdal
+  libmysqlclient-dev \
+  libnetcdf-dev \
+  libogdi-dev \
+  #for vips and gdal
+  libopenexr-dev \
+  #for gdal
+  libopenjp2-7-dev \
+  #for vips
+  libopenslide-dev \
+  liborc-0.4-dev \
+  libpango1.0-dev \
+  #for gdal
+  libpcre3-dev \
+  #for vips and gdal
+  libpng-dev \
+  #for gdal
+  libpoppler-dev \
+  #for vips
+  libpoppler-glib-dev \
+  #for gdal
+  libpoppler-private-dev \
+  libpq-dev \
+  #for vips
+  librsvg2-dev \
+  #for gdal
+  libspacialite-dev \
+  libssl-dev \
+  #for vips
+  libtiff-dev \
+  #for vips and gdal
+  libwebp-dev \
+  #for gdal
+  libxerces-c-dev \
+  #for vips
+  libxml-parser-perl \
+  #for vips and gdal
+  libxml2-dev \
+  #for gdal
+  libzstd-dev \
+  openjdk-"$JAVA_VERSION"-jdk \
+  #for vips
+  pkg-config \
+  #for gdal
+  swig \
+  unixodbc-dev \
+  #for vips
+  zlib1g-dev
 
 FROM base as texlive
 
