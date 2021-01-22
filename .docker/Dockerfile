@@ -208,12 +208,171 @@ RUN \
   sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
 RUN sudo pip uninstall -y astropath-calibration
 
+from base as gdal
+
+RUN sudo apt-get update && \
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    cmake
+
+# Build likbkea
+ARG KEA_VERSION=1.4.13
+RUN sudo wget https://github.com/ubarsc/kealib/archive/kealib-${KEA_VERSION}.zip \
+    && sudo unzip kealib-${KEA_VERSION}.zip \
+    && sudo rm -f kealib-${KEA_VERSION}.zip \
+    && cd kealib-kealib-${KEA_VERSION} \
+    && sudo cmake . -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_INCLUDE_DIR=/usr/include/hdf5/serial \
+        -DHDF5_LIB_PATH=/usr/lib/x86_64-linux-gnu/hdf5/serial -DLIBKEA_WITH_GDAL=OFF \
+    && sudo make -j$(nproc) \
+    && sudo make install DESTDIR="/build_thirdparty" \
+    && sudo make install \
+    && cd .. \
+    && sudo rm -rf kealib-kealib-${KEA_VERSION} \
+    && for i in /build_thirdparty/usr/lib/*; do sudo strip -s $i 2>/dev/null || /bin/true; done \
+    && for i in /build_thirdparty/usr/bin/*; do sudo strip -s $i 2>/dev/null || /bin/true; done
+
+# Build mongo-c-driver
+ARG MONGO_C_DRIVER_VERSION=1.16.2
+RUN sudo mkdir mongo-c-driver \
+    && wget -q https://github.com/mongodb/mongo-c-driver/releases/download/${MONGO_C_DRIVER_VERSION}/mongo-c-driver-${MONGO_C_DRIVER_VERSION}.tar.gz -O - \
+        | sudo tar xz -C mongo-c-driver --strip-components=1 \
+    && cd mongo-c-driver \
+    && sudo mkdir build_cmake \
+    && cd build_cmake \
+    && sudo cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DENABLE_TESTS=NO -DCMAKE_BUILD_TYPE=Release \
+    && sudo make -j$(nproc) \
+    && sudo make install DESTDIR="/build_thirdparty" \
+    && sudo make install \
+    && cd ../.. \
+    && sudo rm -rf mongo-c-driver \
+    && sudo rm /build_thirdparty/usr/lib/x86_64-linux-gnu/*.a \
+    && for i in /build_thirdparty/usr/lib/x86_64-linux-gnu/*; do sudo strip -s $i 2>/dev/null || /bin/true; done \
+    && for i in /build_thirdparty/usr/bin/*; do sudo strip -s $i 2>/dev/null || /bin/true; done
+
+# Build mongocxx
+ARG MONGOCXX_VERSION=3.5.0
+RUN sudo mkdir mongocxx \
+    && wget -q https://github.com/mongodb/mongo-cxx-driver/archive/r${MONGOCXX_VERSION}.tar.gz -O - \
+        | sudo tar xz -C mongocxx --strip-components=1 \
+    && cd mongocxx \
+    && sudo mkdir build_cmake \
+    && cd build_cmake \
+    && sudo cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DBSONCXX_POLY_USE_BOOST=ON -DMONGOCXX_ENABLE_SLOW_TESTS=NO -DCMAKE_BUILD_TYPE=Release -DBUILD_VERSION=${MONGOCXX_VERSION} \
+    && sudo make -j$(nproc) \
+    && sudo make install DESTDIR="/build_thirdparty" \
+    && sudo make install \
+    && cd ../.. \
+    && sudo rm -rf mongocxx \
+    && for i in /build_thirdparty/usr/lib/x86_64-linux-gnu/*; do sudo strip -s $i 2>/dev/null || /bin/true; done \
+    && for i in /build_thirdparty/usr/bin/*; do sudo strip -s $i 2>/dev/null || /bin/true; done
+
+# Build tiledb
+ARG TILEDB_VERSION=2.0.8
+RUN sudo mkdir tiledb \
+    && wget -q https://github.com/TileDB-Inc/TileDB/archive/${TILEDB_VERSION}.tar.gz -O - \
+        | sudo tar xz -C tiledb --strip-components=1 \
+    && cd tiledb \
+    && sudo mkdir build_cmake \
+    && cd build_cmake \
+    && sudo ../bootstrap --prefix=/usr \
+    && sudo make -j$(nproc) \
+    && sudo make install-tiledb DESTDIR="/build_thirdparty" \
+    && sudo make install-tiledb \
+    && cd ../.. \
+    && sudo rm -rf tiledb \
+    && for i in /build_thirdparty/usr/lib/x86_64-linux-gnu/*; do sudo strip -s $i 2>/dev/null || /bin/true; done \
+    && for i in /build_thirdparty/usr/bin/*; do sudo strip -s $i 2>/dev/null || /bin/true; done
+
+# Build openjpeg
+ARG OPENJPEG_VERSION=
+RUN if test "${OPENJPEG_VERSION}" != ""; then ( \
+    sudo wget -q https://github.com/uclouvain/openjpeg/archive/v${OPENJPEG_VERSION}.tar.gz \
+    && sudo tar xzf v${OPENJPEG_VERSION}.tar.gz \
+    && sudo rm -f v${OPENJPEG_VERSION}.tar.gz \
+    && cd openjpeg-${OPENJPEG_VERSION} \
+    && sudo cmake . -DBUILD_SHARED_LIBS=ON  -DBUILD_STATIC_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+    && sudo make -j$(nproc) \
+    && sudo make install \
+    && sudo mkdir -p /build_thirdparty/usr/lib/x86_64-linux-gnu \
+    && sudo rm -f /usr/lib/x86_64-linux-gnu/libopenjp2.so* \
+    && sudo mv /usr/lib/libopenjp2.so* /usr/lib/x86_64-linux-gnu \
+    && sudo cp -P /usr/lib/x86_64-linux-gnu/libopenjp2.so* /build_thirdparty/usr/lib/x86_64-linux-gnu \
+    && for i in /build_thirdparty/usr/lib/x86_64-linux-gnu/*; do sudo strip -s $i 2>/dev/null || /bin/true; done \
+    && cd .. \
+    && sudo rm -rf openjpeg-${OPENJPEG_VERSION} \
+    ); fi
+
+# Install MDB Driver Jars
+RUN sudo wget -q https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/mdb-sqlite/mdb-sqlite-1.0.2.tar.bz2 \
+  && sudo tar -xjf mdb-sqlite-1.0.2.tar.bz2 \
+  && sudo mkdir -p /build/usr/share/java \
+  && sudo cp mdb-sqlite-1.0.2/lib/*.jar /build/usr/share/java \
+  && sudo rm -rf mdb-sqlite-1.0.2.tar.bz2 && sudo rm -rf mdb-sqlite-1.0.2
+
+#Set CLASSPATH so jars are found
+ENV CLASSPATH="/build/usr/share/java/jackcess-1.1.14.jar:/build/usr/share/java/commons-logging-1.1.1.jar:/build/usr/share/java/commons-lang-2.4.jar"
+
+#Build File Geodatabase
+
+ARG WITH_FILEGDB=
+RUN if echo "$WITH_FILEGDB" | grep -Eiq "^(y(es)?|1|true)$"  ; then ( \
+  sudo wget -q https://github.com/Esri/file-geodatabase-api/raw/master/FileGDB_API_1.5.1/FileGDB_API_1_5_1-64gcc51.tar.gz \
+  && sudo tar -xzf FileGDB_API_1_5_1-64gcc51.tar.gz \
+  && sudo chown -R root:root FileGDB_API-64gcc51 \
+  && sudo mv FileGDB_API-64gcc51 /usr/local/FileGDB_API \
+  && sudo rm -rf /usr/local/FileGDB_API/lib/libstdc++* \
+  && sudo cp /usr/local/FileGDB_API/lib/* /build_thirdparty/usr/lib \
+  && sudo cp /usr/local/FileGDB_API/include/* /usr/include \
+  && sudo rm -rf FileGDB_API_1_5_1-64gcc51.tar.gz \
+  ) ; fi
+
+RUN sudo apt-get update -y \
+    && sudo apt-get install -y --fix-missing --no-install-recommends rsync ccache \
+    && sudo rm -rf /var/lib/apt/lists/*
+ARG RSYNC_REMOTE
+
+ARG WITH_DEBUG_SYMBOLS=no
+
+# Build PROJ
+ENV PROJ_VERSION=5.2.0
+ENV PROJ_INSTALL_PREFIX=/usr/local
+COPY ./bh-proj.sh /buildscripts/bh-proj.sh
+RUN sudo /buildscripts/bh-proj.sh
+
+# Build GDAL
+ARG GDAL_VERSION=v2.3.3
+ARG GDAL_RELEASE_DATE
+ARG GDAL_BUILD_IS_RELEASE
+COPY ./bh-gdal.sh /buildscripts/bh-gdal.sh
+RUN sudo /buildscripts/bh-gdal.sh
+
 from base as final
 
 copy --from=python_packages /usr/local/lib/python3.6/site-packages/ /usr/local/lib/python3.6/site-packages/
 copy --from=latex_packages /usr/local/texlive/ /usr/local/texlive/
 copy --from=libvips /usr/local/bin/*vips* /usr/local/bin/
 copy --from=libvips /usr/local/lib/*vips* /usr/local/lib/
+COPY --from=gdal  /build_thirdparty/usr/ /usr/
+ARG PROJ_DATUMGRID_LATEST_LAST_MODIFIED
+ARG PROJ_INSTALL_PREFIX=/usr/local
+COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/share/proj/ ${PROJ_INSTALL_PREFIX}/share/proj/
+COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/include/ ${PROJ_INSTALL_PREFIX}/include/
+COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/bin/ ${PROJ_INSTALL_PREFIX}/bin/
+COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/lib/ ${PROJ_INSTALL_PREFIX}/lib/
+RUN ldconfig \
+    && projsync --system-directory --all
+
+COPY --from=gdal  /build/usr/share/java /usr/share/java
+COPY --from=gdal  /build/usr/share/gdal/ /usr/share/gdal/
+COPY --from=gdal  /build/usr/include/ /usr/include/
+COPY --from=gdal  /build_gdal_python/usr/ /usr/
+COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
+
+RUN sudo ldconfig
+
+#Set CLASSPATH so jars are found
+ENV CLASSPATH="/usr/share/java/jackcess-1.1.14.jar:/usr/share/java/commons-logging-1.1.1.jar:/usr/share/java/commons-lang-2.4.jar"
 ENV PATH=/usr/local/texlive/bin/x86_64-linux:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/lib/:${LD_LIBRARY_PATH}
 
