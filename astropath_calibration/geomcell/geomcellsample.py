@@ -64,10 +64,9 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               plt.show()
               print(polygons)
               assert not kwargs, kwargs
+
             if len(polygons) > 1:
-              self.logger.warn(f"Multiple polygons: {field.n} {celltype} {celllabel}")
               polygons.sort(key=lambda x: len(x.vertices), reverse=True)
-            polygon = sum(polygons)
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += units.nominal_values(field.pxvec)
@@ -79,11 +78,19 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
                 ctype=celltype,
                 n=celllabel,
                 box=box,
-                poly=polygon,
+                poly=polygons[0],
                 pscale=self.pscale,
                 apscale=self.apscale,
               )
             )
+
+            for polygon in polygons[1:]:
+              nvertices = len(polygon.vertices)
+              message = f"Extra disjoint polygon with {nvertices} vertices: {field.n} {celltype} {celllabel}"
+              if nvertices <= 4:
+                self.logger.warning(message)
+              else:
+                raise ValueError(message)
 
       writetable(field.geomloadcsv, geomload)
 

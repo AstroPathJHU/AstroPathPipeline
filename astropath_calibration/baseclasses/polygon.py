@@ -36,6 +36,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     self.__vertices = [[v for v in vv] for vv in vertices]
     for vv in self.__vertices:
       if len(vv) > 1 and np.all(vv[0].xvec == vv[-1].xvec): del vv[-1]
+    for i, (vv, area) in enumerate(more_itertools.zip_equal(self.__vertices, self.areas)):
+      if i == 0 and area < 0 or i != 0 and area > 0:
+        vv[:] = [vv[0]] + vv[:0:-1]
 
     apscale = {apscale, *(v.apscale for vv in self.__vertices for v in vv)}
     apscale.discard(None)
@@ -49,8 +52,6 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
 
   @property
   def pscale(self):
-    if self.__pscale is None:
-      raise AttributeError("Didn't set pscale for this polygon")
     return self.__pscale
   @property
   def apscale(self): return self.__apscale
@@ -61,20 +62,14 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     return str(self.gdalpolygon())
 
   def __eq__(self, other):
-    assert self.pscale == other.pscale
-    return self.vertices == other.vertices
+    assert self.pscale == other.pscale and self.apscale == other.apscale
+    return self.gdalpolygon().Equals(other.gdalpolygon())
 
-  def __pos__(self):
-    return self
-  def __neg__(self):
-    return Polygon(vertices=[[vv[0]]+vv[:0:-1] for vv in self.vertices])
-  def __add__(self, other):
-    if isinstance(other, numbers.Number) and other == 0: return self
-    return Polygon(vertices=self.vertices+other.vertices)
-  def __radd__(self, other):
-    return self + other
   def __sub__(self, other):
-    return self + -other
+    if isinstance(other, numbers.Number) and other == 0: return self
+    if len(other.vertices) > 1:
+      raise ValueError("Can only subtract a polygon with no holes in it")
+    return Polygon(vertices=self.vertices+other.vertices)
 
   @property
   def separate(self):

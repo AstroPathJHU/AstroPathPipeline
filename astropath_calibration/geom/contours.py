@@ -15,7 +15,10 @@ def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, fill=False, **kwar
       Vertex(im3x=x, im3y=y, vid=i, regionid=None, apscale=apscale, pscale=pscale)
       for i, ((x, y),) in enumerate(contour*onepixel+shiftby, start=1)
     ]
-    polygon = polygons[i] = -(Polygon(vertices=[vertices]) - sum(innerpolygons[i]))
+    polygon = Polygon(vertices=[vertices])
+    for p in innerpolygons[i]:
+      polygon -= p
+    polygons[i] = polygon
     if parent == -1:
       #prepend because we are iterating in reversed order
       toplevelpolygons.insert(0, polygon)
