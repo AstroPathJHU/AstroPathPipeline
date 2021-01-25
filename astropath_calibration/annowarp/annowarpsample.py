@@ -1,4 +1,4 @@
-import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
+import abc, contextlib, csv, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
@@ -163,6 +163,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
         floattoint(units.pixels(y, pscale=imscale)):floattoint(units.pixels(y+tilesize, pscale=imscale)),
         floattoint(units.pixels(x, pscale=imscale)):floattoint(units.pixels(x+tilesize, pscale=imscale)),
       ]
+      if not wsitile.size: continue
       brightfraction = np.mean(wsitile>self.tilebrightnessthreshold)
       if brightfraction < self.mintilebrightfraction: continue
       if np.max(wsitile) - np.min(wsitile) < self.mintilerange: continue
@@ -304,7 +305,23 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   @methodtools.lru_cache()
   def __getvertices(self, *, apscale, filename=None):
     if filename is None: filename = self.oldverticescsv
-    return readtable(filename, QPTiffVertex, extrakwargs={"apscale": apscale, "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, apscale), "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, apscale)})
+    extrakwargs={
+     "apscale": apscale,
+     "pscale": self.pscale,
+     "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, apscale),
+     "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, apscale)
+    }
+    with open(filename) as f:
+      reader = csv.DictReader(f)
+      if "wx" in reader.fieldnames and "wy" in reader.fieldnames:
+        typ = WarpedVertex
+      else:
+        typ = QPTiffVertex
+    vertices = readtable(filename, typ, extrakwargs=extrakwargs)
+    if typ == WarpedVertex:
+      vertices = [v.originalvertex for v in vertices]
+    return vertices
+
   @property
   def vertices(self):
     return self.__getvertices(apscale=self.apscale)
@@ -344,7 +361,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     for i, region in enumerate(regions, start=1):
       zipfunction = more_itertools.zip_equal if i == len(regions) else zip
       newvertices = []
-      polyvertices = region.poly.vertices if region.poly is not None else (v for v in self.vertices if v.regionid == region.regionid)
+      polyvertices = [v for v in self.vertices if v.regionid == region.regionid]
       for oldvertex, newvertex in zipfunction(polyvertices, warpedverticesiterator):
         np.testing.assert_array_equal(
           np.round((oldvertex.xvec / oldvertex.oneappixel).astype(float)),
@@ -449,6 +466,18 @@ class WarpedVertex(QPTiffVertex):
 
   @property
   def wxvec(self): return np.array([self.wx, self.wy])
+
+  @property
+  def originalvertex(self):
+    return QPTiffVertex(
+      regionid=self.regionid,
+      vid=self.vid,
+      xvec=self.xvec,
+      apscale=self.apscale,
+      pscale=self.pscale,
+      bigtilesize=self.bigtilesize,
+      bigtileoffset=self.bigtileoffset,
+    )
 
   @property
   def finalvertex(self):
