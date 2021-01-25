@@ -59,7 +59,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   @property
   def vertices(self): return self.__vertices
   def __repr__(self):
-    return str(self.gdalpolygon())
+    return str(self.gdalpolygon(round=True))
 
   def __eq__(self, other):
     assert self.pscale == other.pscale and self.apscale == other.apscale
@@ -84,13 +84,18 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   def totalarea(self):
     return np.sum(self.areas)
 
-  def gdalpolygon(self, *, imagescale=None):
+  def gdalpolygon(self, *, imagescale=None, round=False):
     if imagescale is None: imagescale = self.pscale
     poly = ogr.Geometry(ogr.wkbPolygon)
     for vv in self.vertices:
       ring = ogr.Geometry(ogr.wkbLinearRing)
-      for v in vv:
-        ring.AddPoint_2D(*(units.convertpscale(v.xvec, self.apscale, imagescale) // units.onepixel(imagescale)))
+      for v in itertools.chain(vv, [vv[0]]):
+        point = units.convertpscale(v.xvec, self.apscale, imagescale)
+        if round:
+          point = point // units.onepixel(imagescale)
+        else:
+          point = point / units.onepixel(imagescale)
+        ring.AddPoint_2D(*point.astype(float))
       poly.AddGeometry(ring)
     return poly
 

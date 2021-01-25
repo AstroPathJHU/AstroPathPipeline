@@ -35,9 +35,13 @@ class TestMisc(unittest.TestCase):
     try:
       vertices = [[Vertex(regionid=None, vid=i, x=x, y=y, pscale=5, apscale=3) for i, (x, y) in enumerate(xys) if x or y] for xys in xysx2]
       p1, p2 = [Polygon(vertices=[vv]) for vv in vertices]
-      assertAlmostEqual(-p1.totalarea, (-p1).totalarea)
-      assertAlmostEqual(p1.totalarea+p2.totalarea, (p1+p2).totalarea)
       assertAlmostEqual(p1.totalarea-p2.totalarea, (p1-p2).totalarea)
+      assertAlmostEqual((p1-p1).totalarea, 0)
+      for p in p1, p2, p1-p2:
+        assertAlmostEqual(
+          units.convertpscale(p.totalarea, p.apscale, p.pscale, power=2),
+          p.gdalpolygon().Area() * p.onepixel**2
+        )
     except:
       print(xysx2)
       raise
