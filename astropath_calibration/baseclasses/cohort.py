@@ -40,7 +40,7 @@ class Cohort(abc.ABC):
 
   def run(self, **kwargs):
     for samp in self:
-      with getlogger(module=self.logmodule, root=self.root, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):  #log exceptions in __init__ of the sample
+      with getlogger(module=self.logmodule, root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):  #log exceptions in __init__ of the sample
         sample = self.initiatesample(samp)
         if sample.logmodule != self.logmodule:
           raise ValueError(f"Wrong logmodule: {self.logmodule} != {sample.logmodule}")
