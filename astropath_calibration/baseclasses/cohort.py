@@ -11,7 +11,9 @@ class Cohort(abc.ABC):
     self.filter = filter
     self.debug = debug
     self.uselogfiles = uselogfiles
-    self.logroot = logroot
+    if logroot is None:
+      logroot = self.root
+    self.logroot = pathlib.Path(logroot)
 
   def __iter__(self):
     for samp in readtable(self.root/"sampledef.csv", SampleDef):
