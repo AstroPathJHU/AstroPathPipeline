@@ -317,7 +317,7 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
         plots = [{'image':plot_img_layer,'title':f'smoothed normalized IMAGE layer {brightest_layer_n}'},
                  {'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask overlay (clipped)'},
                  {'image':overlay_gs,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask overlay (grayscale)'},
-                 {'hist':sm_n_img_array[:,:,brightest_layer_n-1].flatten(),'xlabel':'pixel intensity (counts/ms)','line_at':intensity_cut,'log_scale'=True},
+                 {'hist':sm_n_img_array[:,:,brightest_layer_n-1].flatten(),'xlabel':'pixel intensity (counts/ms)','line_at':intensity_cut,'log_scale':True},
                  {'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
                  #{'image':group_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask','vmin':0,'vmax':1},
                 ]
