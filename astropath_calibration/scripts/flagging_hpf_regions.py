@@ -36,7 +36,6 @@ DUST_MAX_MEAN             = 0.004
 DUST_STRING               = 'likely dust'
 SATURATION_MIN_SIZE       = 5000
 SATURATION_INTENSITY_CUT  = 100
-SATURATION_MASK_FLAG_CUTS = [8,8,6,6,2]
 SATURATION_FLAG_STRING    = 'saturated'
 
 #logger
@@ -293,7 +292,7 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
     #smooth the exposure time-normalized image
     sm_n_img_array = smoothImageWorker(normalized_img_array,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
     #then make a mask for every layer in the group
-    stacked_masks = np.zeros(norm_img_array.shape[:-1],dtype=np.uint8)
+    stacked_masks = np.zeros(normalized_img_array.shape[:-1],dtype=np.uint8)
     for ln in range(layer_group_bounds[0],layer_group_bounds[1]+1) :
         #threshold the image layer to make a binary mask
         layer_mask = (np.where(sm_n_img_array[:,:,ln-1]>intensity_cut,0,1)).astype(np.uint8)
@@ -318,7 +317,7 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
         plots = [{'image':plot_img_layer,'title':f'smoothed normalized IMAGE layer {brightest_layer_n}'},
                  {'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask overlay (clipped)'},
                  {'image':overlay_gs,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask overlay (grayscale)'},
-                 {'hist':sm_n_img_array[:,:,brightest_layer_n-1].flatten(),'xlabel':'pixel intensity (counts/ms)','line_at':intensity_cut},
+                 {'hist':sm_n_img_array[:,:,brightest_layer_n-1].flatten(),'xlabel':'pixel intensity (counts/ms)','line_at':intensity_cut,'log_scale'=True},
                  {'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
                  #{'image':group_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask','vmin':0,'vmax':1},
                 ]
@@ -361,7 +360,10 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
                     ax[row][col].set_title(title_text)
             #histogram plots
             elif 'hist' in dkeys :
-                ax[row][col].hist(pd['hist'],100)
+                if 'log_scale' in dkeys :
+                    ax[row][col].hist(pd['hist'],100,log=pd['log_scale'])
+                else :
+                    ax[row][col].hist(pd['hist'],100)
                 if 'xlabel' in dkeys :
                     xlabel_text = pd['xlabel'].replace('IMAGE',image_key)
                     ax[row][col].set_xlabel(xlabel_text)
@@ -426,7 +428,7 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
     #dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
     #                                                            MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX],
     #                                                            DUST_NLV_CUT,
-    #                                                            0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]),
+    #                                                            0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]+1),
     #                                                            DUST_MAX_MEAN,
     #                                                            BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
     #                                                            False)
@@ -437,17 +439,17 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
     dapi_dust_mask,dapi_dust_plots = np.ones(img_array.shape,dtype=np.uint8),None
     #get masks for the saturated regions in each layer group
     layer_group_saturation_masks = []; layer_group_saturation_mask_plots = []
-    for lgi,lgb in MASK_LAYER_GROUPS :
-        layer_group_saturation_mask,saturation_mask_plots = getImageLayerGroupSaturationMask(img_array,
-                                                                                             exposure_times,
-                                                                                             lgb,
-                                                                                             SATURATION_INTENSITY_CUT,
-                                                                                             SATURATION_MASK_FLAG_CUTS[lgi],
-                                                                                             BRIGHTEST_LAYERS[lgi],
-                                                                                             return_plots=True)
+    for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
+        lgsm,saturation_mask_plots = getImageLayerGroupSaturationMask(img_array,
+                                                                      exposure_times,
+                                                                      lgb,
+                                                                      SATURATION_INTENSITY_CUT,
+                                                                      0.5*(MASK_LAYER_GROUPS[lgi][1]-MASK_LAYER_GROUPS[lgi][0]+1),
+                                                                      BRIGHTEST_LAYERS[lgi],
+                                                                      return_plots=True)
         #same morphology transformations as before
-        layer_group_saturation_mask = getMorphedAndFilteredMask(layer_group_saturation_mask,tissue_mask,SATURATION_MIN_SIZE)
-        layer_group_saturation_masks.append(layer_group_saturation_mask)
+        lgsm = getMorphedAndFilteredMask(lgsm,tissue_mask,SATURATION_MIN_SIZE)
+        layer_group_saturation_masks.append(lgsm)
         layer_group_saturation_mask_plots.append(saturation_mask_plots)
     #if there is anything flagged in the final masks, write out some plots and the mask file/csv file lines
     is_masked = np.min(tissue_fold_mask)<1 or np.min(dapi_dust_mask)<1
@@ -509,10 +511,10 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
         if dapi_dust_plots is not None :
             all_plot_dict_lists += [dapi_dust_plots]
         sat_plots = []
-        for saturation_mask_plot_dict in saturation_mask_plots :
-            if saturation_mask_plot_dict is not None :
-                sat_plots.append(saturation_mask_plot_dict)
-        all_plot_dict_lists+=sat_plots
+        for saturation_mask_plot_dicts in layer_group_saturation_mask_plots :
+            if saturation_mask_plot_dicts is not None :
+                sat_plots.append(saturation_mask_plot_dicts)
+        all_plot_dict_lists += sat_plots
         doMaskingPlotsForImage(key,tissue_mask,all_plot_dict_lists,output_mask,workingdir)
         ##write out the mask in the working directory
         #with cd(workingdir) :
