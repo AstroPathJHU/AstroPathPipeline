@@ -34,7 +34,7 @@ DUST_MIN_SIZE             = 30000
 DUST_NLV_CUT              = 0.005
 DUST_MAX_MEAN             = 0.004
 DUST_STRING               = 'likely dust'
-SATURATION_MIN_SIZE       = 5000
+SATURATION_MIN_SIZE       = 2500
 SATURATION_INTENSITY_CUT  = 100
 SATURATION_FLAG_STRING    = 'saturated'
 
@@ -119,28 +119,27 @@ def getExclusiveMask(mask_to_check,prior_mask,min_independent_pixel_frac,invert=
     return new_mask
 
 #return a binary mask after some common morphology operations and size filtering
-def getMorphedAndFilteredMask(mask,tissue_mask,min_size) :
+def getMorphedAndFilteredMask(mask,tissue_mask,window_element,min_size) :
     #large open/close to refine and connect it
     mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
     mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
     #remove any remaining small spots
     mask = getSizeFilteredMask(mask,min_size)
-    ##erode by the window size to eat up the edges
-    #mask = (cv2.morphologyEx(mask,cv2.MORPH_ERODE,WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
-    #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
-    mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
-    mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
-    mask[(mask==1) & (tissue_mask==1)] = mask_to_transform[(mask==1) & (tissue_mask==1)]
-    #large open/close again to tie the edges together
-    mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
-    mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
-    #another size filter to adjust after the tissue mask incorporation
-    mask = getSizeFilteredMask(mask,min_size)
-    #open what remains by the window size to capture surrounding areas
-    mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
-    #a medium-sized open/close to smooth the larger curves and capture some outside area
-    mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
-    mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+    if np.min(mask)<1 :
+        #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
+        mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
+        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
+        mask[(mask==1) & (tissue_mask==1)] = mask_to_transform[(mask==1) & (tissue_mask==1)]
+        #large open/close again to tie the edges together
+        mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
+        mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
+        #another size filter to adjust after the tissue mask incorporation
+        mask = getSizeFilteredMask(mask,min_size)
+        #open what remains by the window size to capture surrounding areas
+        mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
+        #a medium-sized open/close to smooth the larger curves and capture some outside area
+        mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+        mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
     return mask
 
 #return the minimally-transformed tissue mask for a single image layer
@@ -277,7 +276,7 @@ def getImageTissueFoldMask(img_array,tissue_mask,return_plots=False) :
         stacked_fold_masks[layer_group_fold_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
     overall_fold_mask = (np.where(stacked_fold_masks>11,0,1)).astype(np.uint8)
     #morph and filter the mask using the common operations
-    overall_fold_mask = getMorphedAndFilteredMask(overall_fold_mask,tissue_mask,FOLD_MIN_SIZE)
+    overall_fold_mask = getMorphedAndFilteredMask(overall_fold_mask,tissue_mask,WINDOW_EL,FOLD_MIN_SIZE)
     if return_plots :
         return overall_fold_mask,fold_mask_plots_by_layer_group
     else :
@@ -433,7 +432,7 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
     #                                                            BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
     #                                                            False)
     ##same morphology transformations as before
-    #dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,DUST_MIN_SIZE)
+    #dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,WINDOW_EL,DUST_MIN_SIZE)
     ##make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged
     #dapi_dust_mask = getExclusiveMask(dapi_dust_mask,tissue_fold_mask,0.25)
     dapi_dust_mask,dapi_dust_plots = np.ones(img_array.shape,dtype=np.uint8),None
@@ -444,11 +443,11 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
                                                                       exposure_times,
                                                                       lgb,
                                                                       SATURATION_INTENSITY_CUT,
-                                                                      0.5*(MASK_LAYER_GROUPS[lgi][1]-MASK_LAYER_GROUPS[lgi][0]+1),
+                                                                      (MASK_LAYER_GROUPS[lgi][1]-MASK_LAYER_GROUPS[lgi][0]-2),
                                                                       BRIGHTEST_LAYERS[lgi],
                                                                       return_plots=True)
         #same morphology transformations as before
-        lgsm = getMorphedAndFilteredMask(lgsm,tissue_mask,SATURATION_MIN_SIZE)
+        lgsm = getMorphedAndFilteredMask(lgsm,tissue_mask,CONST.C3_EL,SATURATION_MIN_SIZE)
         layer_group_saturation_masks.append(lgsm)
         layer_group_saturation_mask_plots.append(saturation_mask_plots)
     #if there is anything flagged in the final masks, write out some plots and the mask file/csv file lines
