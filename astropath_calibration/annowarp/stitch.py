@@ -296,7 +296,12 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
 
 class AnnoWarpStitchResultEntry(DataClassWithPscale):
   pixelsormicrons = "pixels"
-  def __powerfordescription(self):
+  @classmethod
+  def powerfordescription(cls, selfordescription):
+    if isinstance(selfordescription, cls):
+      description = selfordescription.description
+    else:
+      description = selfordescription
     dct = {
       "coefficient of delta x as a function of x within the tile": 0,
       "coefficient of delta x as a function of y within the tile": 0,
@@ -309,11 +314,11 @@ class AnnoWarpStitchResultEntry(DataClassWithPscale):
       "constant piece in delta x": 1,
       "constant piece in delta y": 1,
     }
-    covmatch = re.match(r"covariance\((.*), (.*)\)", self.description)
+    covmatch = re.match(r"covariance\((.*), (.*)\)", description)
     if covmatch:
       return dct[covmatch.group(1)] + dct[covmatch.group(2)]
     else:
-      return dct[self.description]
+      return dct[description]
   n: int
-  value: distancefield(pixelsormicrons=pixelsormicrons, power=__powerfordescription)
+  value: distancefield(pixelsormicrons=pixelsormicrons, power=lambda self: self.powerfordescription(self))
   description: str
