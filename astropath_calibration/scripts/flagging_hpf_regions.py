@@ -34,7 +34,7 @@ DUST_MIN_SIZE              = 30000
 DUST_NLV_CUT               = 0.005
 DUST_MAX_MEAN              = 0.004
 DUST_STRING                = 'likely dust'
-SATURATION_MIN_SIZE        = 5000
+SATURATION_MIN_SIZE        = 1500
 SATURATION_INTENSITY_CUTS  = [100,100,100,200,100]
 SATURATION_FLAG_STRING     = 'saturated'
 
