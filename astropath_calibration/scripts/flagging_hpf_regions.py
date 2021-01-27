@@ -471,7 +471,7 @@ def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,wor
     if truncated :
         title_text+=' (stopped early)'
     ax.set_title(title_text,fontsize=16)
-    ax.legend(loc='best',fontsize=16)
+    ax.legend(loc='best',fontsize=12)
     ax.set_xlabel('HPF CellView x position',fontsize=16)
     ax.set_ylabel('HPF CellView y position',fontsize=16)
     fn = f'{sid}_flagged_hpf_locations.png'
@@ -484,35 +484,36 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next get the tissue fold mask and its associated plots
-    #tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,tissue_mask,return_plots=False)
-    tissue_fold_mask,tissue_fold_plots_by_layer_group = np.ones(img_array.shape,dtype=np.uint8),None
-    ##get masks for the blurriest areas of the DAPI layer group
-    #sm_img_array = smoothImageWorker(img_array,1)
-    #dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
-    #                                                            MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX],
-    #                                                            DUST_NLV_CUT,
-    #                                                            0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]+1),
-    #                                                            DUST_MAX_MEAN,
-    #                                                            BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
-    #                                                            False)
-    ##same morphology transformations as before
-    #dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,WINDOW_EL,DUST_MIN_SIZE)
-    ##make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged
-    #dapi_dust_mask = getExclusiveMask(dapi_dust_mask,tissue_fold_mask,0.25)
-    dapi_dust_mask,dapi_dust_plots = np.ones(img_array.shape,dtype=np.uint8),None
+    tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,tissue_mask,return_plots=False)
+    #tissue_fold_mask,tissue_fold_plots_by_layer_group = np.ones(img_array.shape,dtype=np.uint8),None
+    #get masks for the blurriest areas of the DAPI layer group
+    sm_img_array = smoothImageWorker(img_array,1)
+    dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
+                                                                MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX],
+                                                                DUST_NLV_CUT,
+                                                                0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]+1),
+                                                                DUST_MAX_MEAN,
+                                                                BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
+                                                                False)
+    #same morphology transformations as before
+    dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,WINDOW_EL,DUST_MIN_SIZE)
+    #make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged
+    dapi_dust_mask = getExclusiveMask(dapi_dust_mask,tissue_fold_mask,0.25)
+    #dapi_dust_mask,dapi_dust_plots = np.ones(img_array.shape,dtype=np.uint8),None
     #get masks for the saturated regions in each layer group
     layer_group_saturation_masks = []; layer_group_saturation_mask_plots = []
     for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
-        lgsm,saturation_mask_plots = getImageLayerGroupSaturationMask(img_array,
-                                                                      exposure_times,
-                                                                      lgb,
-                                                                      SATURATION_INTENSITY_CUTS[lgi],
-                                                                      (MASK_LAYER_GROUPS[lgi][1]-MASK_LAYER_GROUPS[lgi][0]),
-                                                                      BRIGHTEST_LAYERS[lgi],
-                                                                      exp_time_hists[lgi],
-                                                                      return_plots=True)
-        #same morphology transformations as before
-        lgsm = getMorphedAndFilteredMask(lgsm,tissue_mask,CONST.C3_EL,SATURATION_MIN_SIZE)
+        #lgsm,saturation_mask_plots = getImageLayerGroupSaturationMask(img_array,
+        #                                                              exposure_times,
+        #                                                              lgb,
+        #                                                              SATURATION_INTENSITY_CUTS[lgi],
+        #                                                              (MASK_LAYER_GROUPS[lgi][1]-MASK_LAYER_GROUPS[lgi][0]),
+        #                                                              BRIGHTEST_LAYERS[lgi],
+        #                                                              exp_time_hists[lgi],
+        #                                                              return_plots=True)
+        ##same morphology transformations as before
+        #lgsm = getMorphedAndFilteredMask(lgsm,tissue_mask,CONST.C3_EL,SATURATION_MIN_SIZE)
+        lgsm,saturation_mask_plots = np.ones(img_array.shape,dtype=np.uint8), None
         layer_group_saturation_masks.append(lgsm)
         layer_group_saturation_mask_plots.append(saturation_mask_plots)
     #if there is anything flagged in the final masks, write out some plots and the mask file/csv file lines
