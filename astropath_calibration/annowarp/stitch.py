@@ -147,7 +147,7 @@ class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
       next(iterator)
 
     for k, (variable, mu, sigma) in dict_zip_equal(cvxpyvariables, musdict, sigmasdict).items():
-      result += cp.sum(((variable-mu)/(sigma))**2)
+      result += cp.sum(((variable-mu)/sigma)**2)
 
     return result
 

@@ -131,7 +131,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     units.np.testing.assert_allclose(result4.bigtileindexcoeff, units.nominal_values(result3.bigtileindexcoeff))
     units.np.testing.assert_allclose(result4.constant, units.nominal_values(result3.constant))
 
-    x = units.nominal_values(result1.flatresult)
+    x = units.nominal_values(result3.flatresult)
     units.np.testing.assert_allclose(
       result4.problem.value,
       x @ result3.A @ x + result3.b @ x + result3.c,
