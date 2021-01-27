@@ -135,7 +135,7 @@ class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
       sigmasdict[name] = np.zeros(shape=variable.shape)
       raveledmu = musdict[name].ravel()
       raveledsigma = sigmasdict[name].ravel()
-      for i, (mu, sigma, power, _) in enumerate(itertools.islice(iterator, variable.size)):
+      for i, (mu, sigma, power, _) in enumerate(itertools.islice(iterator, int(variable.size))):
         if mu is sigma is None:
           raveledmu[i] = 0
           raveledsigma[i] = float("inf")
