@@ -124,7 +124,7 @@ class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
 
   @classmethod
   def constraintquadforms(cls, cvxpyvariables, mus, sigmas, *, imscale):
-    if mus is sigmas is None: return 0, 0, 0
+    if mus is sigmas is None: return 0
     onepixel = units.onepixel(imscale)
     result = 0
     musdict = {}
