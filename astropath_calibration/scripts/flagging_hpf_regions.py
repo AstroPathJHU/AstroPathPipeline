@@ -494,7 +494,7 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
                                                                 0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]+1),
                                                                 DUST_MAX_MEAN,
                                                                 BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
-                                                                False)
+                                                                True)
     #same morphology transformations as before
     dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,WINDOW_EL,DUST_MIN_SIZE)
     #make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged
