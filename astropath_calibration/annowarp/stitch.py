@@ -1,6 +1,7 @@
-import abc, collections, cvxpy as cp, itertools, numpy as np, re
+import abc, collections, cvxpy as cp, itertools, more_itertools, numpy as np, re
 
 from ..utilities import units
+from ..utilities.misc import dict_zip_equal
 from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
@@ -50,7 +51,15 @@ class AnnoWarpStitchResultBase(ThingWithImscale):
 
   @property
   def allstitchresultentries(self):
-    return list(itertools.chain(self.stitchresultnominalentries, self.stitchresultcovarianceentries))
+    nominal = self.stitchresultnominalentries
+    for entry, power in more_itertools.zip_equal(nominal, self.variablepowers()):
+      if entry.powerfordescription(entry) != power:
+        raise ValueError(f"Wrong power for {entry.description!r}: expected {power}, got {entry.powerfordescription(entry)}")
+    return list(itertools.chain(nominal, self.stitchresultcovarianceentries))
+
+  @classmethod
+  @abc.abstractmethod
+  def variablepowers(self): pass
 
 class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
   def __init__(self, *, A, b, c, flatresult, **kwargs):
@@ -67,6 +76,20 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
   @classmethod
   @abc.abstractmethod
   def Abccontributions(cls, alignmentresult): pass
+
+  @classmethod
+  def constraintAbccontributions(cls, mus, sigmas):
+    if mus is sigmas is None: return 0, 0, 0
+    nparams = cls.nparams()
+    A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
+    b = np.zeros(shape=nparams, dtype=units.unitdtype)
+    c = 0
+    for i, mu, sigma in more_itertools.zip_equal(range(nparams), mus, sigmas):
+      if mu is sigma is None: continue
+      A[i,i] += 1/sigma**2
+      b[i] -= 2*mu/sigma**2
+      c += (mu/sigma)**2
+    return A, b, c
 
   @property
   def stitchresultcovarianceentries(self):
@@ -98,6 +121,35 @@ class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
   @classmethod
   def cvxpyresidual(cls, alignmentresult, **cvxpyvariables):
     return units.nominal_values(alignmentresult.dxvec)/alignmentresult.onepixel - cls.cvxpydxvec(alignmentresult, **cvxpyvariables)
+
+  @classmethod
+  def constraintquadforms(cls, cvxpyvariables, mus, sigmas, *, imscale):
+    if mus is sigmas is None: return 0, 0, 0
+    onepixel = units.onepixel(imscale)
+    result = 0
+    musdict = {}
+    sigmasdict = {}
+    iterator = iter(more_itertools.zip_equal(mus, sigmas, cls.variablepowers(), range(sum(v.size for k, v in cvxpyvariables.items()))))
+    for name, variable in cvxpyvariables.items():
+      musdict[name] = np.zeros(shape=variable.shape)
+      sigmasdict[name] = np.zeros(shape=variable.shape)
+      raveledmu = musdict[name].ravel()
+      raveledsigma = sigmasdict[name].ravel()
+      for i, (mu, sigma, power, _) in enumerate(itertools.islice(iterator, variable.size)):
+        if mu is sigma is None:
+          raveledmu[i] = 0
+          raveledsigma[i] = float("inf")
+        else:
+          raveledmu[i] = mu / onepixel**power
+          raveledsigma[i] = sigma / onepixel**power
+
+    with np.testing.assert_raises(StopIteration):
+      next(iterator)
+
+    for k, (variable, mu, sigma) in dict_zip_equal(cvxpyvariables, musdict, sigmasdict).items():
+      result += cp.sum(((variable-mu)/(sigma))**2)
+
+    return result
 
   @property
   def stitchresultcovarianceentries(self): return []
@@ -165,6 +217,10 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
         description="constant piece in delta y",
       ),
     )
+
+  @classmethod
+  def variablepowers(cls):
+    return 0, 0, 0, 0, 1, 1, 1, 1, 1, 1
 
 class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultNoCvxpyBase):
   def __init__(self, flatresult, **kwargs):

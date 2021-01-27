@@ -242,7 +242,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       "default": (AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy),
     }[model][cvxpy]
 
-  def stitch(self, *, model="default"):
+  def stitch(self, *, model="default", constraintmus=None, constraintsigmas=None):
     stitchresultcls = self.stitchresultcls(model=model, cvxpy=False)
     nparams = stitchresultcls.nparams()
     A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
@@ -255,6 +255,11 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       b += addb
       c += addc
 
+    addA, addb, addc = stitchresultcls.constraintAbccontributions(constraintmus, constraintsigmas)
+    A += addA
+    b += addb
+    c += addc
+
     result = units.np.linalg.solve(2*A, -b)
 
     delta2nllfor1sigma = 1
@@ -264,7 +269,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     self.__stitchresult = stitchresultcls(result, A=A, b=b, c=c, imscale=self.imscale)
     return self.__stitchresult
 
-  def stitch_cvxpy(self, *, model="default"):
+  def stitch_cvxpy(self, *, model="default", constraintmus=None, constraintsigmas=None):
     stitchresultcls = self.stitchresultcls(model=model, cvxpy=True)
     variables = stitchresultcls.makecvxpyvariables()
 
@@ -273,6 +278,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     for result in self.__alignmentresults.goodconnectedresults:
       residual = stitchresultcls.cvxpyresidual(result, **variables)
       tominimize += cp.quad_form(residual, units.np.linalg.inv(result.covariance) * onepixel**2)
+
+    tominimize += stitchresultcls.constraintquadforms(variables, constraintmus, constraintsigmas, imscale=self.imscale)
 
     minimize = cp.Minimize(tominimize)
     prob = cp.Problem(minimize)

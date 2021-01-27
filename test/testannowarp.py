@@ -1,4 +1,4 @@
-import more_itertools, pathlib
+import more_itertools, numpy as np, pathlib
 
 from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample, WarpedVertex
 from astropath_calibration.annowarp.annowarpcohort import AnnoWarpCohort
@@ -106,3 +106,34 @@ class TestAnnoWarp(TestBaseSaveOutput):
     logroot = thisfolder/"annowarp_test_for_jenkins"
     args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(logroot), "--sampleregex", SlideID, "--debug", "--units", units]
     AnnoWarpCohort.runfromargumentparser(args)
+
+  def testConstraint(self, SlideID="M206"):
+    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
+    referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
+    s.readalignments(filename=referencefilename)
+    result1 = s.stitch()
+    constraintmus = np.array([e.value for e in result1.stitchresultnominalentries])
+    constraintsigmas = constraintmus / 100
+    result2 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas)
+
+    units.np.testing.assert_allclose(units.nominal_values(result2.coeffrelativetobigtile), units.nominal_values(result1.coeffrelativetobigtile))
+    units.np.testing.assert_allclose(units.nominal_values(result2.bigtileindexcoeff), units.nominal_values(result1.bigtileindexcoeff))
+    units.np.testing.assert_allclose(units.nominal_values(result2.constant), units.nominal_values(result1.constant))
+
+    constraintmus *= 2
+    result3 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas)
+    result4 = s.stitch_cvxpy(constraintmus=constraintmus, constraintsigmas=constraintsigmas)
+
+    with np.testing.assert_raises(AssertionError):
+      units.np.testing.assert_allclose(units.nominal_values(result2.coeffrelativetobigtile), units.nominal_values(result3.coeffrelativetobigtile))
+
+    units.np.testing.assert_allclose(result4.coeffrelativetobigtile, units.nominal_values(result3.coeffrelativetobigtile))
+    units.np.testing.assert_allclose(result4.bigtileindexcoeff, units.nominal_values(result3.bigtileindexcoeff))
+    units.np.testing.assert_allclose(result4.constant, units.nominal_values(result3.constant))
+
+    x = units.nominal_values(result1.flatresult)
+    units.np.testing.assert_allclose(
+      result4.problem.value,
+      x @ result3.A @ x + result3.b @ x + result3.c,
+      rtol=0.01,
+    )
