@@ -51,7 +51,7 @@ class AnnoWarpStitchResultBase(ThingWithImscale):
 
   @property
   def allstitchresultentries(self):
-    nominal = self.stitchresultnominalentries
+    nominal = list(self.stitchresultnominalentries)
     for entry, power in more_itertools.zip_equal(nominal, self.variablepowers()):
       if entry.powerfordescription(entry) != power:
         raise ValueError(f"Wrong power for {entry.description!r}: expected {power}, got {entry.powerfordescription(entry)}")
