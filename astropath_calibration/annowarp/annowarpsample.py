@@ -314,7 +314,6 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     if filename is None: filename = self.oldverticescsv
     extrakwargs={
      "apscale": apscale,
-     "pscale": self.pscale,
      "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, apscale),
      "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, apscale)
     }
