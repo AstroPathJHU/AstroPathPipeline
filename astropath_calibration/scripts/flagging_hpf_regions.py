@@ -14,29 +14,29 @@ import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import logging, os, glob, cv2, dataclasses, scipy.stats
 
 #constants
-RAWFILE_EXT               = '.Data.dat'
-LOCAL_MEAN_KERNEL         = np.array([[0.0,0.2,0.0],
-                                      [0.2,0.2,0.2],
-                                      [0.0,0.2,0.0]])
-#WINDOW_EL                 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
-WINDOW_EL                 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45))
-MASK_LAYER_GROUPS         = [(1,9),(10,18),(19,25),(26,32),(33,35)]
-BRIGHTEST_LAYERS          = [5,11,21,29,34]
-DAPI_LAYER_GROUP_INDEX    = 0
-RBC_LAYER_GROUP_INDEX     = 1
-TISSUE_MIN_SIZE           = 2500
-FOLD_MIN_SIZE             = 30000
-FOLD_NLV_CUT              = 0.025
-FOLD_MAX_MEAN             = 0.01875
-FOLD_MASK_FLAG_CUTS       = [3,3,1,1,0]
-FOLD_FLAG_STRING          = 'tissue fold or bright dust'
-DUST_MIN_SIZE             = 30000
-DUST_NLV_CUT              = 0.005
-DUST_MAX_MEAN             = 0.004
-DUST_STRING               = 'likely dust'
-SATURATION_MIN_SIZE       = 5000
-SATURATION_INTENSITY_CUT  = 100
-SATURATION_FLAG_STRING    = 'saturated'
+RAWFILE_EXT                = '.Data.dat'
+LOCAL_MEAN_KERNEL          = np.array([[0.0,0.2,0.0],
+                                       [0.2,0.2,0.2],
+                                       [0.0,0.2,0.0]])
+#WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(37,37))
+WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45))
+MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
+BRIGHTEST_LAYERS           = [5,11,21,29,34]
+DAPI_LAYER_GROUP_INDEX     = 0
+RBC_LAYER_GROUP_INDEX      = 1
+TISSUE_MIN_SIZE            = 2500
+FOLD_MIN_SIZE              = 30000
+FOLD_NLV_CUT               = 0.025
+FOLD_MAX_MEAN              = 0.01875
+FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
+FOLD_FLAG_STRING           = 'tissue fold or bright dust'
+DUST_MIN_SIZE              = 30000
+DUST_NLV_CUT               = 0.005
+DUST_MAX_MEAN              = 0.004
+DUST_STRING                = 'likely dust'
+SATURATION_MIN_SIZE        = 5000
+SATURATION_INTENSITY_CUTS  = [100,100,100,200,100]
+SATURATION_FLAG_STRING     = 'saturated'
 
 #logger
 logger = logging.getLogger("flagging_hpf_regions")
@@ -484,29 +484,29 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next get the tissue fold mask and its associated plots
-    tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,tissue_mask,return_plots=False)
-    #tissue_fold_mask,tissue_fold_plots_by_layer_group = np.ones(img_array.shape,dtype=np.uint8),None
-    #get masks for the blurriest areas of the DAPI layer group
-    sm_img_array = smoothImageWorker(img_array,1)
-    dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
-                                                                MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX],
-                                                                DUST_NLV_CUT,
-                                                                0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]+1),
-                                                                DUST_MAX_MEAN,
-                                                                BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
-                                                                False)
-    #same morphology transformations as before
-    dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,WINDOW_EL,DUST_MIN_SIZE)
-    #make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged
-    dapi_dust_mask = getExclusiveMask(dapi_dust_mask,tissue_fold_mask,0.25)
-    #dapi_dust_mask,dapi_dust_plots = np.ones(img_array.shape,dtype=np.uint8),None
+    #tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,tissue_mask,return_plots=False)
+    tissue_fold_mask,tissue_fold_plots_by_layer_group = np.ones(img_array.shape,dtype=np.uint8),None
+    ##get masks for the blurriest areas of the DAPI layer group
+    #sm_img_array = smoothImageWorker(img_array,1)
+    #dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
+    #                                                            MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX],
+    #                                                            DUST_NLV_CUT,
+    #                                                            0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]+1),
+    #                                                            DUST_MAX_MEAN,
+    #                                                            BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
+    #                                                            False)
+    ##same morphology transformations as before
+    #dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,WINDOW_EL,DUST_MIN_SIZE)
+    ##make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged
+    #dapi_dust_mask = getExclusiveMask(dapi_dust_mask,tissue_fold_mask,0.25)
+    dapi_dust_mask,dapi_dust_plots = np.ones(img_array.shape,dtype=np.uint8),None
     #get masks for the saturated regions in each layer group
     layer_group_saturation_masks = []; layer_group_saturation_mask_plots = []
     for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
         lgsm,saturation_mask_plots = getImageLayerGroupSaturationMask(img_array,
                                                                       exposure_times,
                                                                       lgb,
-                                                                      SATURATION_INTENSITY_CUT,
+                                                                      SATURATION_INTENSITY_CUTS[lgi],
                                                                       (MASK_LAYER_GROUPS[lgi][1]-MASK_LAYER_GROUPS[lgi][0]),
                                                                       BRIGHTEST_LAYERS[lgi],
                                                                       exp_time_hists[lgi],
