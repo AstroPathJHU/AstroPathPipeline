@@ -34,7 +34,7 @@ DUST_MIN_SIZE             = 30000
 DUST_NLV_CUT              = 0.005
 DUST_MAX_MEAN             = 0.004
 DUST_STRING               = 'likely dust'
-SATURATION_MIN_SIZE       = 1000
+SATURATION_MIN_SIZE       = 5000
 SATURATION_INTENSITY_CUT  = 100
 SATURATION_FLAG_STRING    = 'saturated'
 
@@ -316,7 +316,7 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
         plots = [{'image':plot_img_layer,'title':f'smoothed normalized IMAGE layer {brightest_layer_n}'},
                  {'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask overlay (clipped)'},
                  {'hist':sm_n_img_array[:,:,brightest_layer_n-1].flatten(),'xlabel':'pixel intensity (counts/ms)','line_at':intensity_cut,'log_scale':True},
-                 {'hist':ethistandbins[0],'bins':ethistandbins[1],'xlabel':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} exposure times (ms)','line_at':exp_times[layer_group_bounds[0]-1]},
+                 {'bar':ethistandbins[0],'bins':ethistandbins[1],'xlabel':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} exposure times (ms)','line_at':exp_times[layer_group_bounds[0]-1]},
                  {'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
                  #{'image':group_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask','vmin':0,'vmax':1},
                 ]
@@ -374,6 +374,17 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
                                     [0.8*y for y in ax[row][col].get_ylim()],
                                     linewidth=2,color='tab:red',label=pd['line_at'])
                     ax[row][col].legend(loc='best')
+            #bar plots
+            elif 'bar' in dkeys :
+                ax[row][col].bar(pd['bins'][:-1],pd['bar'],width=1.0)
+                if 'xlabel' in dkeys :
+                    xlabel_text = pd['xlabel'].replace('IMAGE',image_key)
+                    ax[row][col].set_xlabel(xlabel_text)
+                if 'line_at' in dkeys :
+                    ax[row][col].plot([pd['line_at'],pd['line_at']],
+                                    [0.8*y for y in ax[row][col].get_ylim()],
+                                    linewidth=2,color='tab:red',label=pd['line_at'])
+                    ax[row][col].legend(loc='best')
             #remove axes from any extra slots
             if col==len(plot_dicts)-1 and col<n_cols-1 :
                 for ci in range(col+1,n_cols) :
@@ -418,27 +429,77 @@ def getEnumeratedMask(layer_mask,start_i) :
     #return the mask
     return return_mask
 
+#helper function to plot all of the hpf locations for a slide with their reasons for being flagged
+def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,workingdir) :
+    all_flagged_hpf_keys = [lmr.image_key for lmr in all_lmrs]
+    hpf_identifiers = []
+    for rfp in all_rfps :
+        key = (os.path.basename(rfp)).rstrip(RAWFILE_EXT)
+        key_x = float(key.split(',')[0].split('[')[1])
+        key_y = float(key.split(',')[1].split(']')[0])
+        cvx = pscale*key_x-xpos
+        cvy = pscale*key_y-ypos
+        if key in all_flagged_hpf_keys :
+            key_strings = set([lmr.reason_flagged for lmr in all_lmrs if lmr.image_key==key])
+            fold_flagged = 1 if FOLD_FLAG_STRING in key_strings else 0
+            dust_flagged = 1 if DUST_STRING in key_strings else 0
+            saturation_flagged = 1 if SATURATION_FLAG_STRING in key_strings else 0
+            flagged_int = 1*fold_flagged+2*dust_flagged+4*saturation_flagged
+        else :
+            flagged_int = 0
+        hpf_identifiers.append({'x':cvx,'y':cvy,'flagged':flagged_int})
+    colors_by_flag_int = ['black','mediumblue','gold','darkgreen','firebrick','darkviolet','darkorange','magenta']
+    labels_by_flag_int = ['not flagged','tissue fold flagged','single-layer dust flagged','dust and tissue folds',
+                            'saturation flagged','saturation and tissue folds','saturation and dust','saturation and dust and tissue folds']
+    w = max([identifier['x'] for identifier in hpf_identifiers])-min([identifier['x'] for identifier in hpf_identifiers])
+    h = max([identifier['y'] for identifier in hpf_identifiers])-min([identifier['y'] for identifier in hpf_identifiers])
+    if h>w :
+        f,ax = plt.subplots(figsize=((w/h)*9.6,9.6))
+    else :
+        f,ax = plt.subplots(figsize=(9.6,9.6*(h/w)))
+    for i in range(len(colors_by_flag_int)) :
+        hpf_ids_to_plot = [identifier for identifier in hpf_identifiers if identifier['flagged']==i]
+        if len(hpf_ids_to_plot)<1 :
+            continue
+        ax.scatter([hpfid['x'] for hpfid in hpf_ids_to_plot],
+                   [hpfid['y'] for hpfid in hpf_ids_to_plot],
+                   marker='o',
+                   color=colors_by_flag_int[i],
+                   label=labels_by_flag_int[i])
+    ax.invert_yaxis()
+    title_text = f'{sid} HPF center locations, ({len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"]!=0])} flagged out of {len(all_rfps)} read)'
+    if truncated :
+        title_text+=' (stopped early)'
+    ax.set_title(title_text,fontsize=16)
+    ax.legend(loc='best',fontsize=16)
+    ax.set_xlabel('HPF CellView x position',fontsize=16)
+    ax.set_ylabel('HPF CellView y position',fontsize=16)
+    fn = f'{sid}_flagged_hpf_locations.png'
+    with cd(workingdir) :
+        plt.savefig(fn)
+        cropAndOverwriteImage(fn)
+
 #helper function to calculate and add the subimage infos for a single image to a shared dictionary (run in parallel)
 def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list) :
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next get the tissue fold mask and its associated plots
-    #tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,tissue_mask,return_plots=False)
-    tissue_fold_mask,tissue_fold_plots_by_layer_group = np.ones(img_array.shape,dtype=np.uint8),None
+    tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,tissue_mask,return_plots=False)
+    #tissue_fold_mask,tissue_fold_plots_by_layer_group = np.ones(img_array.shape,dtype=np.uint8),None
     #get masks for the blurriest areas of the DAPI layer group
-    #sm_img_array = smoothImageWorker(img_array,1)
-    #dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
-    #                                                            MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX],
-    #                                                            DUST_NLV_CUT,
-    #                                                            0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]+1),
-    #                                                            DUST_MAX_MEAN,
-    #                                                            BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
-    #                                                            False)
-    ##same morphology transformations as before
-    #dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,WINDOW_EL,DUST_MIN_SIZE)
-    ##make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged
-    #dapi_dust_mask = getExclusiveMask(dapi_dust_mask,tissue_fold_mask,0.25)
-    dapi_dust_mask,dapi_dust_plots = np.ones(img_array.shape,dtype=np.uint8),None
+    sm_img_array = smoothImageWorker(img_array,1)
+    dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
+                                                                MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX],
+                                                                DUST_NLV_CUT,
+                                                                0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]+1),
+                                                                DUST_MAX_MEAN,
+                                                                BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
+                                                                False)
+    #same morphology transformations as before
+    dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,WINDOW_EL,DUST_MIN_SIZE)
+    #make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged
+    dapi_dust_mask = getExclusiveMask(dapi_dust_mask,tissue_fold_mask,0.25)
+    #dapi_dust_mask,dapi_dust_plots = np.ones(img_array.shape,dtype=np.uint8),None
     #get masks for the saturated regions in each layer group
     layer_group_saturation_masks = []; layer_group_saturation_mask_plots = []
     for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
@@ -446,7 +507,7 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
                                                                       exposure_times,
                                                                       lgb,
                                                                       SATURATION_INTENSITY_CUT,
-                                                                      (MASK_LAYER_GROUPS[lgi][1]-MASK_LAYER_GROUPS[lgi][0]-1),
+                                                                      (MASK_LAYER_GROUPS[lgi][1]-MASK_LAYER_GROUPS[lgi][0]),
                                                                       BRIGHTEST_LAYERS[lgi],
                                                                       exp_time_hists[lgi],
                                                                       return_plots=True)
@@ -596,15 +657,15 @@ def main(args=None) :
     #get the correction details and other slide information stuff
     dims   = getImageHWLFromXMLFile(args.root_dir,args.slideID)
     all_exp_times = []
-    for lgi in len(MASK_LAYER_GROUPS) :
+    for lgi in range(len(MASK_LAYER_GROUPS)) :
         all_exp_times.append([])
     for rfp in all_rfps :
         etsbl = getExposureTimesByLayer(rfp,dims[-1],args.root_dir)
         for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
             all_exp_times[lgi].append(etsbl[lgb[0]-1])
     exp_time_hists = []
-    for lgi in len(MASK_LAYER_GROUPS) :
-        newhist,newbins = np.histogram(all_exp_times[lgi],100)
+    for lgi in range(len(MASK_LAYER_GROUPS)) :
+        newhist,newbins = np.histogram(all_exp_times[lgi],bins=100)
         exp_time_hists.append((newhist,newbins))
     metsbl = getSlideMedianExposureTimesByLayer(args.root_dir,args.slideID)
     etcobl = [lo.offset for lo in readtable(args.exposure_time_offset_file,LayerOffset)]
@@ -636,38 +697,7 @@ def main(args=None) :
         with cd(args.workingdir) :
             writetable(fn,sorted(all_lmrs,key=lambda x: f'{x.image_key}_{x.region_index}'))
     #make the plot of all the HPF locations and whether they have something masked/flagged
-    all_flagged_hpf_keys = [lmr.image_key for lmr in all_lmrs]
-    hpf_x_locs_flagged = []; hpf_x_locs_not_flagged = []
-    hpf_y_locs_flagged = []; hpf_y_locs_not_flagged = []
-    for rfp in all_rfps :
-        key = (os.path.basename(rfp)).rstrip(RAWFILE_EXT)
-        key_x = float(key.split(',')[0].split('[')[1])
-        key_y = float(key.split(',')[1].split(']')[0])
-        cvx = pscale*key_x-xpos
-        cvy = pscale*key_y-ypos
-        if key in all_flagged_hpf_keys :
-            hpf_x_locs_flagged.append(cvx)
-            hpf_y_locs_flagged.append(cvy)
-        else :
-            hpf_x_locs_not_flagged.append(cvx)
-            hpf_y_locs_not_flagged.append(cvy)
-    w = max(hpf_x_locs_flagged+hpf_x_locs_not_flagged)-min(hpf_x_locs_flagged+hpf_x_locs_not_flagged)
-    h = max(hpf_y_locs_flagged+hpf_y_locs_not_flagged)-min(hpf_y_locs_flagged+hpf_y_locs_not_flagged)
-    f,ax = plt.subplots(figsize=(9.6,9.6*(h/w)))
-    ax.scatter(hpf_x_locs_flagged,hpf_y_locs_flagged,marker='o',color='r',label='flagged')
-    ax.scatter(hpf_x_locs_not_flagged,hpf_y_locs_not_flagged,marker='o',color='b',label='not flagged')
-    ax.invert_yaxis()
-    title_text = f'{args.slideID} HPF center locations, ({len(hpf_x_locs_flagged)} flagged out of {len(all_rfps)} read)'
-    if truncated :
-        title_text+=' (stopped early)'
-    ax.set_title(title_text,fontsize=16)
-    ax.legend(loc='best',fontsize=16)
-    ax.set_xlabel('HPF CellView x position',fontsize=16)
-    ax.set_ylabel('HPF CellView y position',fontsize=16)
-    fn = f'{args.slideID}_flagged_hpf_locations.png'
-    with cd(args.workingdir) :
-        plt.savefig(fn)
-        cropAndOverwriteImage(fn)
+    plotFlaggedHPFLocations(args.slideID,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,args.workingdir)
 
 if __name__=='__main__' :
     main()
