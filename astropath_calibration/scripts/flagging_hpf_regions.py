@@ -24,7 +24,7 @@ BRIGHTEST_LAYERS           = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX     = 0
 RBC_LAYER_GROUP_INDEX      = 1
 TISSUE_MIN_SIZE            = 2500
-FOLD_MIN_SIZE              = 30000
+FOLD_MIN_SIZE              = 5000
 FOLD_NLV_CUT               = 0.02 #0.025
 FOLD_MAX_MEAN              = 0.018 #0.01875
 FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
@@ -33,7 +33,7 @@ DUST_MIN_SIZE              = 30000
 DUST_NLV_CUT               = 0.005
 DUST_MAX_MEAN              = 0.004
 DUST_STRING                = 'likely dust'
-SATURATION_MIN_SIZE        = 250
+SATURATION_MIN_SIZE        = 5000
 SATURATION_INTENSITY_CUTS  = [100,100,250,250,100]
 SATURATION_FLAG_STRING     = 'saturated likely skin red blood cells or stain'
 
@@ -484,7 +484,7 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next get the tissue fold mask and its associated plots
-    tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,exposure_times,tissue_mask,exposure_time_hists,return_plots=True)
+    tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,exposure_times,tissue_mask,exp_time_hists,return_plots=True)
     #tissue_fold_mask,tissue_fold_plots_by_layer_group = np.ones(img_array.shape,dtype=np.uint8),None
     #get masks for the blurriest areas of the DAPI layer group
     sm_img_array = smoothImageWorker(img_array,1)
@@ -495,6 +495,7 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
                                                                 0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]+1),
                                                                 DUST_MAX_MEAN,
                                                                 BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
+                                                                exp_time_hists[DAPI_LAYER_GROUP_INDEX],
                                                                 False)
     #same morphology transformations as before
     dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,WINDOW_EL,DUST_MIN_SIZE)
@@ -512,9 +513,9 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
                                                                       BRIGHTEST_LAYERS[lgi],
                                                                       exp_time_hists[lgi],
                                                                       return_plots=False)
-        #filter for only regions larger than a minimally small size
+        #filter for only regions larger than a minimal size
         lgsm = getSizeFilteredMask(lgsm,SATURATION_MIN_SIZE)
-        lgsm,saturation_mask_plots = np.ones(img_array.shape,dtype=np.uint8), None
+        #lgsm,saturation_mask_plots = np.ones(img_array.shape,dtype=np.uint8), None
         layer_group_saturation_masks.append(lgsm)
         layer_group_saturation_mask_plots.append(saturation_mask_plots)
     #if there is anything flagged in the final masks, write out some plots and the mask file/csv file lines
