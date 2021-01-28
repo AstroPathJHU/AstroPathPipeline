@@ -6,6 +6,7 @@ setuptools.setup(
   entry_points = {
     "console_scripts": [
       "annowarpcohort=astropath_calibration.annowarp.annowarpcohort:main",
+      "annowarpfailedfitswithconstraint=astropath_calibration.annowarp.annowarpfailedfitswithconstraint:main",
       "alignmentcohort=astropath_calibration.alignment.alignmentcohort:main",
       "deepzoomcohort=astropath_calibration.deepzoom.deepzoomcohort:main",
       "evaluate_exposure_time=astropath_calibration.exposuretime.evaluate_exposure_time:main",
