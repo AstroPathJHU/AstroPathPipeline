@@ -19,25 +19,26 @@ LOCAL_MEAN_KERNEL          = np.array([[0.0,0.2,0.0],
                                        [0.2,0.2,0.2],
                                        [0.0,0.2,0.0]])
 WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45))
+WINDOW_N_PIXELS            = np.sum(WINDOW_EL)
 MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
 BRIGHTEST_LAYERS           = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX     = 0
 RBC_LAYER_GROUP_INDEX      = 1
 TISSUE_MIN_SIZE            = 2500
-FOLD_MIN_PIXELS            = 30000
-FOLD_MIN_SIZE              = 5000
+FOLD_MIN_PIXELS            = 40000
+FOLD_MIN_SIZE              = 10000
 FOLD_NLV_CUT               = 0.02 #0.025
-#FOLD_MAX_MEAN              = 0.018 #0.01875
+FOLD_MAX_MEAN              = 0.018 #0.01875
 FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
 FOLD_FLAG_STRING           = 'tissue fold or bright dust'
 DUST_MIN_PIXELS            = 30000
 DUST_MIN_SIZE              = 20000
 DUST_NLV_CUT               = 0.005
-#DUST_MAX_MEAN              = 0.004
+DUST_MAX_MEAN              = 0.004
 DUST_STRING                = 'likely dust'
-SATURATION_MIN_PIXELS      = 10000
-SATURATION_MIN_SIZE        = 2500
-SATURATION_INTENSITY_CUTS  = [100,100,250,250,100]
+SATURATION_MIN_PIXELS      = 4500
+SATURATION_MIN_SIZE        = 2000
+SATURATION_INTENSITY_CUTS  = [100,100,250,400,150]
 SATURATION_FLAG_STRING     = 'saturated likely skin red blood cells or stain'
 
 #logger
@@ -122,9 +123,9 @@ def getExclusiveMask(mask_to_check,prior_mask,min_independent_pixel_frac,invert=
 
 #return a binary mask after some common morphology operations and size filtering
 def getMorphedAndFilteredMask(mask,tissue_mask,window_element,min_pixels,min_size) :
-    #large open/close to refine and connect it
-    mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
-    mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
+    ##large open/close to refine and connect it
+    #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
+    #mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
     #remove any remaining small spots
     #mask = getSizeFilteredMask(mask,min_size)
     if np.min(mask)<1 :
@@ -136,12 +137,12 @@ def getMorphedAndFilteredMask(mask,tissue_mask,window_element,min_pixels,min_siz
         #large open/close again to tie the edges together
         #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
         #mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
+        #remove any remaining small spots after the tissue mask incorporation
+        mask = getSizeFilteredMask(mask,min_size)
         #make sure there are at least the minimum number of pixels selected
         if np.sum(mask==0)<min_pixels :
             return np.ones_like(mask)
-        #remove any remaining small spots after the tissue mask incorporation
-        mask = getSizeFilteredMask(mask,min_size)
-        #open what remains by the window size to capture surrounding areas
+        ##open what remains by the window size to capture surrounding areas
         #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
         #a medium-sized open/close to smooth the larger curves and capture some outside area
         mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
@@ -221,7 +222,7 @@ def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer,tissue_mask=None) 
     return local_norm_lap_var
 
 #function to return a blur mask for a given image layer group, along with a dictionary of plots to add to the group for this image
-def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_layers_flag_cut,brightest_layer_n,ethistandbins,return_plots=True) :
+def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_layers_flag_cut,max_mean,brightest_layer_n,ethistandbins,return_plots=True) :
     #start by making a mask for every layer in the group
     stacked_masks = np.zeros(img_array.shape[:-1],dtype=np.uint8)
     brightest_layer_nlv = None
@@ -230,13 +231,14 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
         img_nlv = getImageLayerLocalVarianceOfNormalizedLaplacian(img_array[:,:,ln-1])
         if ln==brightest_layer_n :
             brightest_layer_nlv = img_nlv
-        #threshold it to make a binary mask
-        layer_mask = (np.where(img_nlv>nlv_cut,1,0)).astype(np.uint8)
+        #get the mean of those local normalized laplacian variance values in the window size
+        img_nlv_loc_mean = (cv2.filter2D(img_nlv,cv2.CV_32F,WINDOW_EL,borderType=cv2.BORDER_REFLECT))/WINDOW_N_PIXELS
+        #threshold on the local variance of the normalized laplacian and the local mean of those values to make a binary mask
+        layer_mask = (np.where((img_nlv>nlv_cut) | (img_nlv_loc_mean>max_mean),1,0)).astype(np.uint8)
         #small open/close to refine it
         layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
         layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-        #filter out anything with mean of nlv values > MAX_MEAN (false positives)
-        #layer_mask = getMeanFilteredMask(layer_mask,img_nlv,max_mean)
+        #add it to the stack 
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
     group_blur_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)    
@@ -257,7 +259,7 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
                  {'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (clipped)'},
                  #{'image':overlay_gs,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (grayscale)'},
                  {'bar':ethistandbins[0],'bins':ethistandbins[1],'xlabel':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} exposure times (ms)','line_at':exp_times[layer_group_bounds[0]-1]},
-                 {'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'},
+                 #{'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'},
                  {'hist':brightest_layer_nlv.flatten(),'xlabel':'variance of normalized laplacian','line_at':nlv_cut},
                  {'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
                  #{'image':group_blur_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask','vmin':0,'vmax':1},
@@ -279,7 +281,7 @@ def getImageTissueFoldMask(img_array,exp_times,tissue_mask,exp_t_hists,return_pl
                                                     lgb,
                                                     FOLD_NLV_CUT,
                                                     FOLD_MASK_FLAG_CUTS[lgi],
-                                                    #FOLD_MAX_MEAN,
+                                                    FOLD_MAX_MEAN,
                                                     BRIGHTEST_LAYERS[lgi],
                                                     exp_t_hists[lgi],
                                                     return_plots)
@@ -474,9 +476,9 @@ def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,wor
     w = max([identifier['x'] for identifier in hpf_identifiers])-min([identifier['x'] for identifier in hpf_identifiers])
     h = max([identifier['y'] for identifier in hpf_identifiers])-min([identifier['y'] for identifier in hpf_identifiers])
     if h>w :
-        f,ax = plt.subplots(figsize=((w/h)*9.6,9.6))
+        f,ax = plt.subplots(figsize=(((1.1*w)/(1.1*h))*9.6,9.6))
     else :
-        f,ax = plt.subplots(figsize=(9.6,9.6*(h/w)))
+        f,ax = plt.subplots(figsize=(9.6,9.6*((1.1*h)/(1.1*w))))
     for i in range(len(colors_by_flag_int)) :
         hpf_ids_to_plot = [identifier for identifier in hpf_identifiers if identifier['flagged']==i]
         if len(hpf_ids_to_plot)<1 :
@@ -486,12 +488,14 @@ def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,wor
                    marker='o',
                    color=colors_by_flag_int[i],
                    label=labels_by_flag_int[i])
+    ax.set_xlim(ax.get_xlim()[0]-0.05*w,ax.get_xlim()[1]+0.05*w)
+    ax.set_ylim(ax.get_ylim()[0]-0.05*h,ax.get_ylim()[1]+0.05*h)
     ax.invert_yaxis()
     title_text = f'{sid} HPF center locations, ({len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"]!=0])} flagged out of {len(all_rfps)} read)'
     if truncated :
         title_text+=' (stopped early)'
     ax.set_title(title_text,fontsize=16)
-    ax.legend(loc='best',fontsize=12)
+    ax.legend(loc='best',fontsize=10)
     ax.set_xlabel('HPF CellView x position',fontsize=16)
     ax.set_ylabel('HPF CellView y position',fontsize=16)
     fn = f'{sid}_flagged_hpf_locations.png'
@@ -513,7 +517,7 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
                                                                 MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX],
                                                                 DUST_NLV_CUT,
                                                                 0.5*(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]-MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]+1),
-                                                                #DUST_MAX_MEAN,
+                                                                DUST_MAX_MEAN,
                                                                 BRIGHTEST_LAYERS[DAPI_LAYER_GROUP_INDEX],
                                                                 exp_time_hists[DAPI_LAYER_GROUP_INDEX],
                                                                 False)
