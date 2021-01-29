@@ -25,7 +25,7 @@ DAPI_LAYER_GROUP_INDEX     = 0
 RBC_LAYER_GROUP_INDEX      = 1
 TISSUE_MIN_SIZE            = 2500
 FOLD_MIN_PIXELS            = 30000
-FOLD_MIN_SIZE              = 2500
+FOLD_MIN_SIZE              = 5000
 FOLD_NLV_CUT               = 0.02 #0.025
 #FOLD_MAX_MEAN              = 0.018 #0.01875
 FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
@@ -142,7 +142,7 @@ def getMorphedAndFilteredMask(mask,tissue_mask,window_element,min_pixels,min_siz
         #remove any remaining small spots after the tissue mask incorporation
         mask = getSizeFilteredMask(mask,min_size)
         #open what remains by the window size to capture surrounding areas
-        mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
+        #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
         #a medium-sized open/close to smooth the larger curves and capture some outside area
         mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
         mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
@@ -468,7 +468,7 @@ def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,wor
         else :
             flagged_int = 0
         hpf_identifiers.append({'x':cvx,'y':cvy,'flagged':flagged_int})
-    colors_by_flag_int = ['gray','royalblue','gold','limegreen','tomato','mediumorchid','darkorange','magenta']
+    colors_by_flag_int = ['gray','royalblue','gold','limegreen','firebrick','mediumorchid','darkorange','aqua']
     labels_by_flag_int = ['not flagged','tissue fold flagged','single-layer dust flagged','dust and tissue folds',
                             'saturation flagged','saturation and tissue folds','saturation and dust','saturation and dust and tissue folds']
     w = max([identifier['x'] for identifier in hpf_identifiers])-min([identifier['x'] for identifier in hpf_identifiers])
