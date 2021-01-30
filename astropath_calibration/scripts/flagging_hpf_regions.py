@@ -19,7 +19,8 @@ LOCAL_MEAN_KERNEL          = np.array([[0.0,0.2,0.0],
                                        [0.2,0.2,0.2],
                                        [0.0,0.2,0.0]])
 WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45))
-WINDOW_N_PIXELS            = np.sum(WINDOW_EL)
+SMALLER_WINDOW_EL          = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(15,15))
+SMALLER_WINDOW_N_PIXELS    = np.sum(SMALLER_WINDOW_EL)
 MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
 BRIGHTEST_LAYERS           = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX     = 0
@@ -232,7 +233,7 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
         if ln==brightest_layer_n :
             brightest_layer_nlv = img_nlv
         #get the mean of those local normalized laplacian variance values in the window size
-        img_nlv_loc_mean = (cv2.filter2D(img_nlv,cv2.CV_32F,WINDOW_EL,borderType=cv2.BORDER_REFLECT))/WINDOW_N_PIXELS
+        img_nlv_loc_mean = (cv2.filter2D(img_nlv,cv2.CV_32F,SMALLER_WINDOW_EL,borderType=cv2.BORDER_REFLECT))/SMALLER_WINDOW_N_PIXELS
         #threshold on the local variance of the normalized laplacian and the local mean of those values to make a binary mask
         layer_mask = (np.where((img_nlv>nlv_cut) | (img_nlv_loc_mean>max_mean),1,0)).astype(np.uint8)
         #small open/close to refine it
