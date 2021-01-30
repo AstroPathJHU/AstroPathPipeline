@@ -26,8 +26,8 @@ BRIGHTEST_LAYERS           = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX     = 0
 RBC_LAYER_GROUP_INDEX      = 1
 TISSUE_MIN_SIZE            = 2500
-FOLD_MIN_PIXELS            = 40000
-FOLD_MIN_SIZE              = 10000
+FOLD_MIN_PIXELS            = 30000
+FOLD_MIN_SIZE              = 5000
 FOLD_NLV_CUT               = 0.02 #0.025
 FOLD_MAX_MEAN              = 0.018 #0.01875
 FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
@@ -38,7 +38,7 @@ DUST_NLV_CUT               = 0.005
 DUST_MAX_MEAN              = 0.004
 DUST_STRING                = 'likely dust'
 SATURATION_MIN_PIXELS      = 4500
-SATURATION_MIN_SIZE        = 2000
+SATURATION_MIN_SIZE        = 1000
 SATURATION_INTENSITY_CUTS  = [100,100,250,400,150]
 SATURATION_FLAG_STRING     = 'saturated likely skin red blood cells or stain'
 
@@ -132,9 +132,11 @@ def getMorphedAndFilteredMask(mask,tissue_mask,window_element,min_pixels,min_siz
     if np.min(mask)<1 :
         #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
         mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
+        transformed_tissue_mask = (cv2.morphologyEx(tissue_mask,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
+        transformed_tissue_mask = (cv2.morphologyEx(transformed_tissue_mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
         mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
         mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
-        mask[(mask==1) & (tissue_mask==1)] = mask_to_transform[(mask==1) & (tissue_mask==1)]
+        mask[(mask==1) & (tissue_mask==1) & (transformed_tissue_mask==1)] = mask_to_transform[(mask==1) & (tissue_mask==1) & (transformed_tissue_mask==1)]
         #large open/close again to tie the edges together
         #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
         #mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
@@ -292,7 +294,7 @@ def getImageTissueFoldMask(img_array,exp_times,tissue_mask,exp_t_hists,return_pl
     stacked_fold_masks = np.zeros_like(fold_masks_by_layer_group[0])
     for lgi,layer_group_fold_mask in enumerate(fold_masks_by_layer_group) :
         stacked_fold_masks[layer_group_fold_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
-    overall_fold_mask = (np.where(stacked_fold_masks>11,0,1)).astype(np.uint8)
+    overall_fold_mask = (np.where((stacked_fold_masks>11) | (stacked_fold_masks==3),0,1)).astype(np.uint8)
     #morph and filter the mask using the common operations
     overall_fold_mask = getMorphedAndFilteredMask(overall_fold_mask,tissue_mask,WINDOW_EL,FOLD_MIN_PIXELS,FOLD_MIN_SIZE)
     if return_plots :
@@ -314,7 +316,7 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
         #threshold the image layer to make a binary mask
         layer_mask = (np.where(sm_n_img_array[:,:,ln-1]>intensity_cut,0,1)).astype(np.uint8)
         #large close to keep only the biggest areas
-        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
+        #layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
     group_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)    
@@ -322,10 +324,9 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
     group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
     group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
     #filter the mask for the total number of pixels and regions by the minimum size
+    group_mask = getSizeFilteredMask(group_mask,SATURATION_MIN_SIZE)
     if np.sum(group_mask==0)<SATURATION_MIN_PIXELS :
         group_mask = np.ones_like(group_mask)
-    else :
-        group_mask = getSizeFilteredMask(group_mask,SATURATION_MIN_SIZE)
     #set up the plots to return
     if return_plots :
         plot_img_layer = sm_n_img_array[:,:,brightest_layer_n-1]
