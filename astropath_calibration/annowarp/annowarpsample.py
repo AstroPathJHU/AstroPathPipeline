@@ -253,7 +253,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     b = np.zeros(shape=nparams, dtype=units.unitdtype)
     c = 0
 
-    for result in self.__alignmentresults.goodconnectedresults:
+    for result in self.__alignmentresults.resultsforstitching:
       addA, addb, addc = stitchresultcls.Abccontributions(result)
       A += addA
       b += addb
@@ -279,7 +279,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
     tominimize = 0
     onepixel = self.oneimpixel
-    for result in self.__alignmentresults.goodconnectedresults:
+    for result in self.__alignmentresults.resultsforstitching:
       residual = stitchresultcls.cvxpyresidual(result, **variables)
       tominimize += cp.quad_form(residual, units.np.linalg.inv(result.covariance) * onepixel**2)
 
@@ -601,15 +601,14 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
 
     return g
 
-  @property
-  def goodconnectedresults(self):
+  def goodconnectedresults(self, *, minislandsize=8):
     onepixel = self.onepixel
     good = self.goodresults
     g = good.adjacencygraph
     tiledict = {tile.n: tile for tile in self}
     keep = {}
     for island in nx.connected_components(g):
-      if len(island) <= 7:
+      if len(island) < minislandsize:
         for n in island: keep[n] = False
         continue
       tiles = [tiledict[n] for n in island]
@@ -633,3 +632,12 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
         else:
           keep[t.n] = True
     return type(self)(_ for _ in good if keep[_.n])
+
+  @property
+  def resultsforstitching(self):
+    results = self.goodconnectedresults(minislandsize=8)
+    if results: return results
+    results = self.goodconnectedresults(minislandsize=4)
+    if results: return results
+    results = self.goodresults
+    return results
