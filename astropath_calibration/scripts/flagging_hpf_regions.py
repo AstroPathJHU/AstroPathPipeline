@@ -148,8 +148,8 @@ def getMorphedAndFilteredMask(mask,tissue_mask,window_element,min_pixels,min_siz
         ##open what remains by the window size to capture surrounding areas
         #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
         #a medium-sized open/close to smooth the larger curves and capture some outside area
-        mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
-        mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+        #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+        #mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
     return mask
 
 #return the minimally-transformed tissue mask for a single image layer
@@ -241,6 +241,8 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
         #small open/close to refine it
         layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
         layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+        #erode by the smaller window element
+        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_ERODE,SMALLER_WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
         #add it to the stack 
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
@@ -294,7 +296,7 @@ def getImageTissueFoldMask(img_array,exp_times,tissue_mask,exp_t_hists,return_pl
     stacked_fold_masks = np.zeros_like(fold_masks_by_layer_group[0])
     for lgi,layer_group_fold_mask in enumerate(fold_masks_by_layer_group) :
         stacked_fold_masks[layer_group_fold_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
-    overall_fold_mask = (np.where((stacked_fold_masks>11) | (stacked_fold_masks==3),0,1)).astype(np.uint8)
+    overall_fold_mask = (np.where(stacked_fold_masks>11,0,1)).astype(np.uint8)
     #morph and filter the mask using the common operations
     overall_fold_mask = getMorphedAndFilteredMask(overall_fold_mask,tissue_mask,WINDOW_EL,FOLD_MIN_PIXELS,FOLD_MIN_SIZE)
     if return_plots :
