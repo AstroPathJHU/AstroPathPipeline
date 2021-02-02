@@ -21,6 +21,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     self.__bigtilepixels = np.array(bigtilepixels)
     self.__bigtileoffsetpixels = np.array(bigtileoffsetpixels)
     self.__tilepixels = tilepixels
+    if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
+      raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
     self.tilebrightnessthreshold = tilebrightnessthreshold
     self.mintilebrightfraction = mintilebrightfraction
     self.mintilerange = mintilerange
@@ -53,10 +55,6 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   def bigtilesize(self): return units.distances(pixels=self.__bigtilepixels, pscale=self.imscale)
   @property
   def bigtileoffset(self): return units.distances(pixels=self.__bigtileoffsetpixels, pscale=self.imscale)
-  @property
-  def deltax(self): return units.Distance(pixels=self.__deltax, pscale=self.imscale)
-  @property
-  def deltay(self): return units.Distance(pixels=self.__deltay, pscale=self.imscale)
 
   @methodtools.lru_cache()
   @property
@@ -117,12 +115,46 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
   def align(self, *, debug=False, write_result=False):
     wsi, qptiff = self.getimages()
+
+    self.logger.info("doing the initial rough alignment")
+    #first align the two with respect to each other
+    #in case there are big shifts, this makes sure the tiles line up
+    #and can be aligned
+    zoomfactor = 5
+    wsizoom = PIL.Image.fromarray(wsi)
+    wsizoom = np.asarray(wsizoom.resize(np.array(wsizoom.size)//zoomfactor))
+    qptiffzoom = PIL.Image.fromarray(qptiff)
+    qptiffzoom = np.asarray(qptiffzoom.resize(np.array(qptiffzoom.size)//zoomfactor))
+    firstresult = computeshift((qptiffzoom, wsizoom), usemaxmovementcut=False)
+
+    initialdx = floattoint(np.rint(firstresult.dx.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
+    initialdy = floattoint(np.rint(firstresult.dy.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
+
+    print(initialdx, initialdy)
+
+    wsix1 = wsiy1 = qptiffx1 = qptiffy1 = 0
+    qptiffy2, qptiffx2 = qptiff.shape
+    wsiy2, wsix2 = wsi.shape
+    if initialdx > 0:
+      wsix1 += initialdx
+      qptiffx2 -= initialdx
+    else:
+      qptiffx1 += initialdx
+      wsix2 -= initialdx
+    if initialdy > 0:
+      wsiy1 += initialdy
+      qptiffy2 -= initialdy
+    else:
+      qptiffy1 += initialdy
+      wsiy2 -= initialdy
+
+    wsi = wsi[wsiy1:wsiy2, wsix1:wsix2]
+    qptiff = qptiff[qptiffy1:qptiffy2, qptiffx1:qptiffx2]
+
     imscale = self.imscale
     tilesize = self.tilesize
     bigtilesize = self.bigtilesize
     bigtileoffset = self.bigtileoffset
-    #deltax = self.deltax
-    #deltay = self.deltay
 
     onepixel = self.oneimpixel
 
@@ -130,14 +162,6 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     mx2 = units.convertpscale(max(field.mx2 for field in self.rectangles), self.pscale, imscale, 1)
     my1 = units.convertpscale(min(field.my1 for field in self.rectangles), self.pscale, imscale, 1)
     my2 = units.convertpscale(max(field.my2 for field in self.rectangles), self.pscale, imscale, 1)
-
-    #nx1 = max(floattoint(mx1 // deltax), 1)
-    #nx2 = floattoint(mx2 // deltax) + 1
-    #ny1 = max(1, floattoint(my1 // deltay), 1)
-    #ny2 = floattoint(my2 // deltay) + 1
-
-    #ex = np.arange(nx1, nx2+1) * self.deltax
-    #ey = np.arange(ny1, ny2+1) * self.deltay
 
     #tweak the y position by -900 for the microsocope glitches
     #(from Alex's code.  I don't know what this means.)
@@ -209,7 +233,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
           AnnoWarpAlignmentResult(
             **alignmentresultkwargs,
             dxvec=units.correlated_distances(
-              pixels=(shiftresult.dx, shiftresult.dy),
+              pixels=(shiftresult.dx+initialdx, shiftresult.dy+initialdy),
               pscale=imscale,
               power=1,
             ),
