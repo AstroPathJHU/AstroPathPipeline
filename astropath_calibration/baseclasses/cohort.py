@@ -5,15 +5,17 @@ from .logging import getlogger
 from .sample import SampleDef
 
 class Cohort(abc.ABC):
-  def __init__(self, root, *, filter=lambda samp: True, debug=False, uselogfiles=True, logroot=None):
+  def __init__(self, root, *, filters=[], debug=False, uselogfiles=True, logroot=None):
     super().__init__()
     self.root = pathlib.Path(root)
-    self.filter = filter
+    if logroot is None: logroot = root
+    self.logroot = pathlib.Path(logroot)
+    self.filters = filters
     self.debug = debug
     self.uselogfiles = uselogfiles
-    if logroot is None:
-      logroot = self.root
-    self.logroot = pathlib.Path(logroot)
+
+  def filter(self, samp):
+    return all(filter(samp) for filter in self.filters)
 
   def __iter__(self):
     for samp in readtable(self.root/"sampledef.csv", SampleDef):
@@ -61,19 +63,13 @@ class Cohort(abc.ABC):
     p = argparse.ArgumentParser()
     p.add_argument("root", type=pathlib.Path)
     p.add_argument("--debug", action="store_true")
-    cls.makesampleselectionargumentgroup(p)
+    p.add_argument("--sampleregex", type=re.compile)
     p.add_argument("--units", choices=("safe", "fast"), default="fast")
     p.add_argument("--dry-run", action="store_true")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--logroot", type=pathlib.Path)
     g.add_argument("--no-log", action="store_true")
     return p
-
-  @classmethod
-  def makesampleselectionargumentgroup(cls, parser):
-    g = parser.add_mutually_exclusive_group()
-    g.add_argument("--sampleregex", type=re.compile)
-    return g
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
@@ -83,10 +79,11 @@ class Cohort(abc.ABC):
       "debug": dct.pop("debug"),
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
+      "filters": [],
     }
     regex = dct.pop("sampleregex")
     if regex is not None:
-      kwargs["filter"] = lambda sample: regex.match(sample.SlideID)
+      kwargs["filters"].append(lambda sample: regex.match(sample.SlideID))
     return kwargs
 
   @classmethod
@@ -227,4 +224,27 @@ class SelectRectanglesCohort(Cohort):
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "selectrectangles": parsed_args_dict.pop("selectrectangles"),
       "layers": parsed_args_dict.pop("layers"),
+    }
+
+class TempDirCohort(Cohort):
+  def __init__(self, *args, temproot, **kwargs):
+    super().__init__(*args, **kwargs)
+    if temproot is not None: temproot = pathlib.Path(temproot)
+    self.temproot = temproot
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "temproot": self.temproot}
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--temproot", type=pathlib.Path)
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "temproot": parsed_args_dict.pop("temproot"),
     }
