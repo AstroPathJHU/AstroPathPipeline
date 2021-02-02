@@ -53,7 +53,7 @@ class GatherStatsCohort(DbloadCohort, ZoomCohort):
     return stats
 
 class StitchFailedCohort(DbloadCohort, ZoomCohort):
-  def __init__(self, *args, filter=lambda samp: True, multiplystd=10, **kwargs):
+  def __init__(self, *args, filter=lambda samp: True, multiplystd=np.array([0.0001]*8+[1]*2), **kwargs):
     super().__init__(
       *args,
       **kwargs,
@@ -73,7 +73,7 @@ class StitchFailedCohort(DbloadCohort, ZoomCohort):
     return [stats.average for stats in self.stats]
   @property
   def sigmas(self):
-    return [stats.std * self.__multiplystd for stats in self.stats]
+    return np.array([stats.std for stats in self.stats]) * self.__multiplystd
 
   @property
   def stats(self):
