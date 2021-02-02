@@ -1,6 +1,5 @@
 import collections, methodtools, numpy as np
 from ..utilities.dataclasses import MyDataClass
-from ..utilities.misc import dict_zip_equal
 from ..utilities.tableio import readtable
 from .annowarpcohort import AnnoWarpCohortBase
 from .stitch import AnnoWarpStitchResultEntry
