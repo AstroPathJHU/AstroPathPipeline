@@ -1,6 +1,6 @@
 import cv2, matplotlib.pyplot as plt, numpy as np, skimage.measure
 from ..alignment.field import Field
-from ..baseclasses.csvclasses import Polygon
+from ..baseclasses.polygon import DataClassWithPolygon, polygonfield
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLoadRectangle
 from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesComponentTiff
 from ..geom.contours import findcontoursaspolygons
@@ -64,10 +64,9 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               plt.show()
               print(polygons)
               assert not kwargs, kwargs
+
             if len(polygons) > 1:
-              self.logger.warn(f"Multiple polygons: {field.n} {celltype} {celllabel}")
               polygons.sort(key=lambda x: len(x.vertices), reverse=True)
-            polygon = sum(polygons)
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += units.nominal_values(field.pxvec)
@@ -79,15 +78,23 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
                 ctype=celltype,
                 n=celllabel,
                 box=box,
-                poly=polygon,
+                poly=polygons[0],
                 pscale=self.pscale,
                 apscale=self.apscale,
               )
             )
 
+            for polygon in polygons[1:]:
+              nvertices = len(polygon.vertices)
+              message = f"Extra disjoint polygon with {nvertices} vertices: {field.n} {celltype} {celllabel}"
+              if nvertices <= 4:
+                self.logger.warning(message)
+              else:
+                raise ValueError(message)
+
       writetable(field.geomloadcsv, geomload)
 
-class CellGeomLoad(Polygon.DataClassWithPolygon):
+class CellGeomLoad(DataClassWithPolygon):
   pixelsormicrons = "pixels"
   field: int
   ctype: int
@@ -96,7 +103,7 @@ class CellGeomLoad(Polygon.DataClassWithPolygon):
   y: distancefield(pixelsormicrons=pixelsormicrons)
   w: distancefield(pixelsormicrons=pixelsormicrons)
   h: distancefield(pixelsormicrons=pixelsormicrons)
-  poly: Polygon.field()
+  poly: polygonfield()
 
   @classmethod
   def transforminitargs(cls, *args, box=None, **kwargs):
