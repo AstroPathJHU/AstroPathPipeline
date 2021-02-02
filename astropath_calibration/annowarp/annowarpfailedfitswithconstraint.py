@@ -1,9 +1,8 @@
 import collections, methodtools, numpy as np
-from ..baseclasses.cohort import DbloadCohort, ZoomCohort
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import dict_zip_equal
 from ..utilities.tableio import readtable
-from .annowarpsample import AnnoWarpSample
+from .annowarpcohort import AnnoWarpCohortBase
 from .stitch import AnnoWarpStitchResultEntry
 
 class Stats(MyDataClass):
@@ -11,11 +10,7 @@ class Stats(MyDataClass):
   average: object
   std: object
 
-class GatherStatsSample(AnnoWarpSample):
-  @property
-  def logmodule(self): return "gatherannowarpstats"
-
-class GatherStatsCohort(DbloadCohort, ZoomCohort):
+class GatherStatsCohort(AnnoWarpCohortBase):
   def __init__(self, *args, uselogfiles=False, filter=lambda samp: True, **kwargs):
     super().__init__(
       *args,
@@ -25,8 +20,6 @@ class GatherStatsCohort(DbloadCohort, ZoomCohort):
     )
     self.__parametervalues = collections.defaultdict(list)
 
-  sampleclass = GatherStatsSample
-
   def runsample(self, sample):
     stitchresults = readtable(sample.stitchcsv, AnnoWarpStitchResultEntry, extrakwargs={"pscale": sample.pscale})
     for sr in stitchresults:
@@ -34,9 +27,6 @@ class GatherStatsCohort(DbloadCohort, ZoomCohort):
 
   @methodtools.lru_cache()
   def run(self): return super().run()
-
-  @property
-  def logmodule(self): return "gatherannowarpstats"
 
   @methodtools.lru_cache()
   @property
@@ -52,7 +42,7 @@ class GatherStatsCohort(DbloadCohort, ZoomCohort):
       stats.append(Stats(description=name, average=average, std=std))
     return stats
 
-class StitchFailedCohort(DbloadCohort, ZoomCohort):
+class StitchFailedCohort(AnnoWarpCohortBase):
   def __init__(self, *args, filter=lambda samp: True, multiplystd=np.array([0.0001]*8+[1]*2), **kwargs):
     super().__init__(
       *args,
@@ -78,10 +68,6 @@ class StitchFailedCohort(DbloadCohort, ZoomCohort):
   @property
   def stats(self):
     return self.__gatherstatscohort.stats
-
-  sampleclass = AnnoWarpSample
-  @property
-  def logmodule(self): return "annowarp"
 
 def main(args=None):
   StitchFailedCohort.runfromargumentparser(args)
