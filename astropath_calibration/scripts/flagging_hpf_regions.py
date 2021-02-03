@@ -132,11 +132,12 @@ def getMorphedAndFilteredMask(mask,tissue_mask,window_element,min_pixels,min_siz
     if np.min(mask)<1 :
         #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
         mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
-        transformed_tissue_mask = (cv2.morphologyEx(tissue_mask,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
-        transformed_tissue_mask = (cv2.morphologyEx(transformed_tissue_mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+        twice_eroded_fold_mask = (cv2.morphologyEx(mask,cv2.MORPH_ERODE,window_element,iterations=2,borderType=cv2.BORDER_REPLICATE))
+        twice_eroded_fold_mask = (cv2.morphologyEx(twice_eroded_fold_mask,cv2.MORPH_ERODE,CONST.CO2_EL,iterations=2,borderType=cv2.BORDER_REPLICATE))
+        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
         mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
-        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
-        mask[(mask==1) & (tissue_mask==1) & (transformed_tissue_mask==1)] = mask_to_transform[(mask==1) & (tissue_mask==1) & (transformed_tissue_mask==1)]
+        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+        mask[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)] = mask_to_transform[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)]
         #large open/close again to tie the edges together
         #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
         #mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
