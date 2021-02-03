@@ -279,7 +279,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     b = np.zeros(shape=nparams, dtype=units.unitdtype)
     c = 0
 
-    for result in self.__alignmentresults.resultsforstitching:
+    for result in self.__alignmentresults.resultsforstitching(logger=self.logger):
       addA, addb, addc = stitchresultcls.Abccontributions(result)
       A += addA
       b += addb
@@ -305,7 +305,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
     tominimize = 0
     onepixel = self.oneimpixel
-    for result in self.__alignmentresults.resultsforstitching:
+    for result in self.__alignmentresults.resultsforstitching(logger=self.logger):
       residual = stitchresultcls.cvxpyresidual(result, **variables)
       tominimize += cp.quad_form(residual, units.np.linalg.inv(result.covariance) * onepixel**2)
 
@@ -659,11 +659,12 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
           keep[t.n] = True
     return type(self)(_ for _ in good if keep[_.n])
 
-  @property
-  def resultsforstitching(self):
+  def resultsforstitching(self, *, logger):
     results = self.goodconnectedresults(minislandsize=8)
-    if results: return results
+    if len(results) >= 15: return results
+    logger.warning("didn't find good alignment results in big islands, trying to stitch with smaller islands")
     results = self.goodconnectedresults(minislandsize=4)
-    if results: return results
+    if len(results) >= 15: return results
+    logger.warning("didn't find good alignment results in big islands, using all good alignment results for stitching")
     results = self.goodresults
     return results
