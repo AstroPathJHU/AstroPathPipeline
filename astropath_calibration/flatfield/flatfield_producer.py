@@ -6,7 +6,7 @@ from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, r
 from .utilities import getSlideMeanImageFilepath, getSlideMaskStackFilepath
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..utilities.img_file_io import getSlideMedianExposureTimesByLayer, LayerOffset
+from ..utilities.img_file_io import LayerOffset
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, MetadataSummary
 import os, random, methodtools
@@ -184,14 +184,6 @@ class FlatfieldProducer :
             this_slide_indices_for_masking_plots = list(range(len(this_slide_fps_to_run)))
             random.shuffle(this_slide_indices_for_masking_plots)
             this_slide_indices_for_masking_plots=this_slide_indices_for_masking_plots[:n_masking_images_per_slide]
-            #get the median exposure times by layer if the images should be normalized
-            if (not self.mean_image.skip_et_correction) :
-                try :
-                    med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(slide.rawfile_top_dir,sn)
-                except FileNotFoundError :
-                    med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(slide.root_dir,sn)
-            else :
-                med_exp_times_by_layer = None
             #break the list of this slide's filepaths into chunks to run in parallel
             fileread_chunks = chunkListOfFilepaths(this_slide_fps_to_run,slide.img_dims,slide.root_dir,n_threads)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
@@ -200,11 +192,13 @@ class FlatfieldProducer :
                     continue
                 new_field_logs = [FieldLog(sn,fr.rawfile_path,'edge' if fr.rawfile_path in this_slide_edge_HPF_filepaths else 'bulk','stacking') for fr in fr_chunk]
                 new_img_arrays = readImagesMT(fr_chunk,
-                                              med_exposure_times_by_layer=med_exp_times_by_layer,
+                                              med_exposure_times_by_layer=slide.med_exp_times_by_layer if (not self.mean_image.skip_et_correction) else None,
                                               et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
                 this_chunk_masking_plot_indices=[fr_chunk.index(fr) for fr in fr_chunk 
                                                  if this_slide_fps_to_run.index(fr.rawfile_path) in this_slide_indices_for_masking_plots]
-                fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,slide,selected_pixel_cut,med_exp_times_by_layer,
+                this_chunk_exposure_times = [getExposureTimesByLayer(fri.rawfile_path,self.mean_image.dims[-1],slide.rawfile_top_dir) for fri in fr_chunk]
+                fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,this_chunk_exposure_times,slide,selected_pixel_cut,
+                                                                            slide.exp_time_hists,med_exp_times_by_layer,
                                                                             this_chunk_masking_plot_indices,self._logger)
                 for fi in range(len(new_field_logs)) :
                     new_field_logs[fi].stacked_in_layers = ','.join([str(ln) for ln in fields_stacked_in_layers[fi]])

@@ -1,5 +1,6 @@
 #imports
 from .utilities import flatfield_logger, FlatFieldError, getImageArrayLayerHistograms, findLayerThresholds
+from .utilities import getImageTissueMask
 from .config import CONST 
 from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots
 from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker
@@ -50,17 +51,18 @@ class MeanImage :
         """
         self._dims=dims
         self.nlayers = self._dims[-1]
-        self.LAST_FILTER_LAYERS = None
+        self.layer_groups = None
+        #set the mask layer group variables
         if self.nlayers==35 :
-            self.LAST_FILTER_LAYERS=CONST.LAST_FILTER_LAYERS_35
+            self.layer_groups=CONST.LAYER_GROUPS_35
         elif self.nlayers==43 :
-            self.LAST_FILTER_LAYERS=CONST.LAST_FILTER_LAYERS_43
+            self.layer_groups=CONST.LAYER_GROUPS_43
         else :
             raise FlatFieldError(f'ERROR: no defined list of broadband filter breaks for images with {self.nlayers} layers!')
         self._workingdir_path = workingdir_name
         self.skip_et_correction = skip_et_correction
         self.skip_masking = skip_masking
-        self.smoothsigma = smoothsigma
+        self.final_smooth_sigma = smoothsigma
         self.image_stack = np.zeros(self._dims,dtype=CONST.IMG_DTYPE_OUT)
         self.image_squared_stack = np.zeros(self._dims,dtype=CONST.IMG_DTYPE_OUT)
         self.mask_stack  = np.zeros(self._dims,dtype=CONST.MASK_STACK_DTYPE_OUT)
@@ -100,13 +102,15 @@ class MeanImage :
             raise FlatFieldError(f'ERROR: getting number of images read from {nirfp} yielded {len(nir)} values, not exactly 1')
         self.n_images_read+=nir[0]
 
-    def addGroupOfImages(self,im_array_list,slide,min_selected_pixels,ets_for_normalization=None,masking_plot_indices=[],logger=None) :
+    def addGroupOfImages(self,im_array_list,exp_times_list,slide,min_selected_pixels,exp_time_hists,ets_for_normalization=None,masking_plot_indices=[],logger=None) :
         """
         A function to add a list of raw image arrays to the image stack
         If masking is requested this function's subroutines are parallelized and also run on the GPU
         im_array_list         = list of image arrays to add
+        exp_times_list        = list of exposure times by layer for the images in this chunk
         slide                 = slide object corresponding to this group of images
         min_selected_pixels   = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
+        exp_time_hists        = list of exposure time histograms by layer group for the slide from which these images originated
         ets_for_normalization = list of exposure times to use for normalizating images to counts/ms before stacking (but after masking)
         masking_plot_indices  = list of image array list indices whose masking plots will be saved
         logger                = a RunLogger object whose context is entered, if None the default log will be used
@@ -142,7 +146,7 @@ class MeanImage :
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
-        for i,im_array in enumerate(im_array_list,) :
+        for i,(im_array,im_exp_ts) in enumerate(zip(im_array_list,exp_times_list)) :
             stack_i = i+self.n_images_read+1
             msg = f'Masking and adding image {stack_i} to the stack'
             if logger is not None :
@@ -150,10 +154,9 @@ class MeanImage :
             else :
                 flatfield_logger.info(msg)
             make_plots=i in masking_plot_indices
-            p = mp.Process(target=getImageMaskWorker, 
-                           args=(im_array,slide.background_thresholds_for_masking,slide.name,min_selected_pixels,
-                                 make_plots,masking_plot_dirpath,
-                                 stack_i,return_dict))
+            p = mp.Process(target=getImageMasksWorker, 
+                           args=(im_array,slide.background_thresholds_for_masking,slide.name,min_selected_pixels,im_exp_ts,exp_time_hists,ets_for_normalization,
+                                 make_plots,masking_plot_dirpath,stack_i,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
@@ -207,7 +210,7 @@ class MeanImage :
                     flatfield_logger.warn(msg)
         if self.mean_image is None :
             self.mean_image, self.std_err_of_mean_image = self.__getMeanImage(logger)
-        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
+        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.final_smooth_sigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
             layermean = np.mean(self.smoothed_mean_image[:,:,layer_i])
@@ -222,10 +225,10 @@ class MeanImage :
         """
         if self.mean_image is None :
             self.mean_image, self.std_err_of_mean_image = self.__getMeanImage()
-        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
+        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.final_smooth_sigma)
         flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=CONST.IMG_DTYPE_OUT)
         self.corrected_mean_image=self.mean_image/flatfield_image
-        self.smoothed_corrected_mean_image=smoothImageWorker(self.corrected_mean_image,self.smoothsigma)
+        self.smoothed_corrected_mean_image=smoothImageWorker(self.corrected_mean_image,self.final_smooth_sigma)
         with cd(self._workingdir_path) :
             with open(self.APPLIED_FLATFIELD_TEXT_FILE_NAME,'w') as fp :
                 fp.write(f'{flatfield_file_path}\n')
@@ -423,12 +426,93 @@ class MeanImage :
 
 #helper function to create a layered binary image mask for a given image array
 #this can be run in parallel with a given index and return dict
-def getImageMaskWorker(im_array,thresholds_per_layer,slide_ID,min_selected_pixels,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
+def getImageMasksWorker(im_array,bg_thresholds,slide_ID,min_selected_pixels,exp_times,exp_time_hists,norm_ets,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
+    #start by creating the tissue mask
+    tissue_mask = getImageTissueMask(im_array,bg_thresholds)
+    #next create the blur mask
+    blur_mask,blur_mask_plots = getImageBlurMask(im_array,exp_times,tissue_mask,exp_time_hists,make_plots)
+    #finally create masks for the saturated regions in each layer group
+    layer_group_saturation_masks = getImageSaturationMasks(im_arr,norm_ets if norm_ets is not None else exp_times)
+    #if there is anything flagged in the final masks, write out some plots and the mask file/csv file lines
+    is_masked = np.min(tissue_fold_mask)<1 or np.min(dapi_dust_mask)<1
+    if not is_masked :
+        for lgsm in layer_group_saturation_masks :
+            if np.min(lgsm)<1 :
+                is_masked=True
+                break
+    if is_masked :
+
+
+
+    
+        #figure out where the image is in cellview
+        key_x = float(key.split(',')[0].split('[')[1])
+        key_y = float(key.split(',')[1].split(']')[0])
+        cvx = pscale*key_x-xpos
+        cvy = pscale*key_y-ypos
+        #the mask starts as all ones (0=background, 1=good tissue, >=2 is a flagged region)
+        output_mask = np.ones(img_array.shape,dtype=np.uint8)
+        #add in the tissue fold mask, starting with index 2
+        start_i = 2
+        if np.min(tissue_fold_mask)<1 :
+            layers_string = '-1'
+            enumerated_fold_mask = getEnumeratedMask(tissue_fold_mask,start_i)
+            for li in range(img_array.shape[-1]) :
+                output_mask[:,:,li] = np.where(enumerated_fold_mask!=0,enumerated_fold_mask,output_mask[:,:,li])
+            start_i = np.max(enumerated_fold_mask)+1
+            region_indices = list(range(np.min(enumerated_fold_mask[enumerated_fold_mask!=0]),np.max(enumerated_fold_mask)+1))
+            for ri in region_indices :
+                r_size = np.sum(enumerated_fold_mask==ri)
+                return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,FOLD_FLAG_STRING))
+        #add in the mask for the dapi layer group
+        if np.min(dapi_dust_mask)<1 :
+            layers_string = f'{MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]}-{MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]}'
+            enumerated_dapi_mask = getEnumeratedMask(dapi_dust_mask,start_i)
+            for ln in range(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0],MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]+1) :
+                output_mask[:,:,ln-1] = np.where(enumerated_dapi_mask!=0,enumerated_dapi_mask,output_mask[:,:,ln-1])
+            start_i = np.max(enumerated_dapi_mask)+1
+            region_indices = list(range(np.min(enumerated_dapi_mask[enumerated_dapi_mask!=0]),np.max(enumerated_dapi_mask)+1))
+            for ri in region_indices :
+                r_size = np.sum(enumerated_dapi_mask==ri)
+                return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,DUST_STRING))
+        #add in the saturation masks 
+        for lgi,lgsm in enumerate(layer_group_saturation_masks) :
+            if np.min(lgsm)<1 :
+                layers_string = f'{MASK_LAYER_GROUPS[lgi][0]}-{MASK_LAYER_GROUPS[lgi][1]}'
+                enumerated_sat_mask = getEnumeratedMask(lgsm,start_i)
+                for ln in range(MASK_LAYER_GROUPS[lgi][0],MASK_LAYER_GROUPS[lgi][1]+1) :
+                    output_mask[:,:,ln-1] = np.where(enumerated_sat_mask!=0,enumerated_sat_mask,output_mask[:,:,ln-1])
+                start_i = np.max(enumerated_sat_mask)+1
+                region_indices = list(range(np.min(enumerated_sat_mask[enumerated_sat_mask!=0]),np.max(enumerated_sat_mask)+1))
+                for ri in region_indices :
+                    r_size = np.sum(enumerated_sat_mask==ri)
+                    return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,SATURATION_FLAG_STRING))
+        #finally add in the tissue mask (all the background is zero in every layer, unless already flagged otherwise)
+        for li in range(img_array.shape[-1]) :
+            output_mask[:,:,li] = np.where(output_mask[:,:,li]==1,tissue_mask,output_mask[:,:,li])
+        #make and write out the plots for this image
+        all_plot_dict_lists = []
+        if tissue_fold_plots_by_layer_group is not None :
+            all_plot_dict_lists += tissue_fold_plots_by_layer_group
+        if dapi_dust_plots is not None :
+            all_plot_dict_lists += [dapi_dust_plots]
+        sat_plots = []
+        for saturation_mask_plot_dicts in layer_group_saturation_mask_plots :
+            if saturation_mask_plot_dicts is not None :
+                sat_plots.append(saturation_mask_plot_dicts)
+        all_plot_dict_lists += sat_plots
+        doMaskingPlotsForImage(key,tissue_mask,all_plot_dict_lists,output_mask,workingdir)
+        ##write out the mask in the working directory
+        #with cd(workingdir) :
+        #    writeImageToFile(output_mask,f'{key}_mask.png',dtype=np.uint8)
+
+
+
     nlayers = im_array.shape[-1]
     #create a new mask
     init_image_mask = np.empty(im_array.shape,np.uint8)
     #create a list to hold the threshold values
-    thresholds = thresholds_per_layer
+    thresholds = bg_thresholds
     #gently smooth the layer (on the GPU) to remove some noise
     smoothed_image = smoothImageWorker(im_array,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
     #if the thresholds haven't already been determined from the background, find them for all the layers by repeated Otsu thresholding
@@ -515,7 +599,7 @@ def getImageMaskWorker(im_array,thresholds_per_layer,slide_ID,min_selected_pixel
                 plt.close()
                 cropAndOverwriteImage(figname)
     if i is not None and return_dict is not None :
-        #add the total mask to the dict, along with its initial thresholds and number of optimal Otsu iterations per layer
+        #add the total mask to the dict
         return_dict[i] = morphed_mask
     else :
         return morphed_mask

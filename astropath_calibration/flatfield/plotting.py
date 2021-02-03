@@ -9,9 +9,9 @@ def flatfieldImagePixelIntensityPlot(flatfield_image,savename=None) :
     #figure out the number of layers and the filter breaks
     nlayers=flatfield_image.shape[-1]
     if nlayers==35 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_35 
+        LAST_FILTER_LAYERS = [lg[1] for lg in CONST.LAYER_GROUPS_35[:-1]] 
     elif nlayers==43 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_43
+        LAST_FILTER_LAYERS = [lg[1] for lg in CONST.LAYER_GROUPS_43[:-1]]
     else :
         raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
     yclip = int(flatfield_image.shape[0]*0.1)
@@ -94,9 +94,9 @@ def correctedMeanImagePIandIVplots(smoothed_mean_image,smoothed_corrected_mean_i
     #figure out the number of layers and filter breaks
     nlayers=smoothed_mean_image.shape[-1]
     if nlayers==35 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_35 
+        LAST_FILTER_LAYERS = [lg[1] for lg in CONST.LAYER_GROUPS_35[:-1]] 
     elif nlayers==43 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_43
+        LAST_FILTER_LAYERS = [lg[1] for lg in CONST.LAYER_GROUPS_43[:-1]]
     else :
         raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
     #keep track of the uncorrected and corrected images' minimum and maximum (and 5/95%ile) pixel intensities while the other plots are made
@@ -219,10 +219,10 @@ def slideBackgroundThresholdsPlot(flatfield_top_dir,nlayers,savename=None) :
             ax.fill([li+0.5,li+0.5,li+1.5,li+1.5],[boxlow,boxhi,boxhi,boxlow],'skyblue',alpha=0.5)
     #plot the other statistics for each filter region
     if nlayers==35 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_35 
+        LAST_FILTER_LAYERS = [lg[1] for lg in CONST.LAYER_GROUPS_35[:-1]]  
         microscope_name_stem = 'Vectra 3.0'
     elif nlayers==43 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_43
+        LAST_FILTER_LAYERS = [lg[1] for lg in CONST.LAYER_GROUPS_43[:-1]]
         microscope_name_stem = 'Vectra Polaris'
     else :
         raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
@@ -263,9 +263,9 @@ def slideBackgroundThresholdsPlot(flatfield_top_dir,nlayers,savename=None) :
 def maskStackEdgeVsCentralRegion(mask_stack,savename=None) :
     nlayers=mask_stack.shape[-1]
     if nlayers==35 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_35 
+        LAST_FILTER_LAYERS = [lg[1] for lg in CONST.LAYER_GROUPS_35[:-1]] 
     elif nlayers==43 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_43
+        LAST_FILTER_LAYERS = [lg[1] for lg in CONST.LAYER_GROUPS_43[:-1]]
     else :
         raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
     yclip = int(mask_stack.shape[0]*0.1)

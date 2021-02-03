@@ -3,11 +3,11 @@ from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, g
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities import units
-from ..utilities.img_file_io import getSlideMedianExposureTimesByLayer, getImageHWLFromXMLFile
+from ..utilities.img_file_io import getImageHWLFromXMLFile
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
-import os
+import os, glob
 
 units.setup('fast')
 
@@ -32,6 +32,12 @@ class FlatfieldSlide() :
     def img_dims(self):
         return self._img_dims # dimensions of the images in the slide
     @property
+    def exp_time_hists(self):
+        return self._exp_time_hists # histograms of the exposure times by layer group
+    @property
+    def med_exp_times_by_layer(self):
+        return self._med_exp_times_by_layer # list of median exposure times by layer
+    @property
     def background_thresholds_for_masking(self):
         return self._background_thresholds_for_masking # the list of background thresholds by layer
 
@@ -54,6 +60,8 @@ class FlatfieldSlide() :
             self._img_dims = getImageHWLFromXMLFile(slide.rawfile_top_dir,slide.name)
         except FileNotFoundError :
             self._img_dims = getImageHWLFromXMLFile(slide.root_dir,slide.name)
+        self._exp_time_hists = getExposureTimeHistogramsByLayerGroupForSlide(self._rawfile_top_dir,self._name)
+        self._med_exposure_times_by_layer = getSlideMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
         self._background_thresholds_for_masking = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :
@@ -84,11 +92,6 @@ class FlatfieldSlide() :
         threshold_file_name   = name of file to save background thresholds in, one line per layer
         logger                = a RunLogger object whose context is entered, if None the default log will be used
         """
-        #if the images are to be normalized, we need to get the median exposure times by layer across the whole slide
-        if et_correction_offsets[0]!=-1. :
-            med_exposure_times_by_layer = getSlideMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
-        else :
-            med_exposure_times_by_layer = None
         #make sure the plot directory exists
         if not os.path.isdir(top_plotdir_path) :
             with cd(os.path.dirname(top_plotdir_path)) :
@@ -114,13 +117,13 @@ class FlatfieldSlide() :
             if len(fr_chunk)<1 :
                 continue
             #get the smoothed image layer histograms for this chunk 
-            new_smoothed_img_layer_hists = getImageLayerHistsMT(fr_chunk,
-                                                                smoothed=True,
-                                                                med_exposure_times_by_layer=med_exposure_times_by_layer,
-                                                                et_corr_offsets_by_layer=et_correction_offsets)
+            new_img_layer_hists = getImageLayerHistsMT(fr_chunk,
+                                                       smooth_sigma=CONST.TISSUE_MASK_SMOOTHING_SIGMA,
+                                                       med_exposure_times_by_layer=self._med_exposure_times_by_layer if et_correction_offsets[0]!=-1. else None,
+                                                       et_corr_offsets_by_layer=et_correction_offsets)
             #add the new histograms to the total layer histograms
-            for new_smoothed_img_layer_hist in new_smoothed_img_layer_hists :
-                all_tissue_edge_layer_hists+=new_smoothed_img_layer_hist
+            for new_img_layer_hist in new_img_layer_hists :
+                all_tissue_edge_layer_hists+=new_img_layer_hist
             #find each image's optimal layer thresholds (in parallel)
             return_dict = manager.dict()
             procs=[]
@@ -129,7 +132,7 @@ class FlatfieldSlide() :
                 field_logs.append(FieldLog(self._name,fr.rawfile_path,'edge','thresholding'))
                 ii=int((fr.sequence_print.split())[0][1:])
                 p = mp.Process(target=findLayerThresholds,
-                               args=(new_smoothed_img_layer_hists[ci],
+                               args=(new_img_layer_hists[ci],
                                      ii,
                                      return_dict
                                      )

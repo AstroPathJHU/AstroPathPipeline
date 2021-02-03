@@ -72,36 +72,78 @@ class Const :
     @property
     def ILLUMINATION_VARIATION_PLOT_WIDTH(self) :
         return 9.6 #width of the illumination variation plot
-    #image smoothing
+    #thresholding and masking
     @property
-    def GENTLE_GAUSSIAN_SMOOTHING_SIGMA(self) :
-        return 5 #the sigma, in pixels, of the gentle gaussian smoothing applied to images before thresholding/masking
-    #masking
+    def TISSUE_MASK_SMOOTHING_SIGMA(self) :
+        return 5 #the sigma, in pixels, of the gaussian smoothing applied to images before thresholding/masking
+    @property
+    def BLUR_MASK_SMOOTHING_SIGMA(self) :
+        return 1 #the sigma, in pixels, of the gaussian smoothing applied to images before calculating the laplacian variance for flagging blur
+    @property
+    def LOCAL_MEAN_KERNEL(self):
+        return np.array([[0.0,0.2,0.0],
+                         [0.2,0.2,0.2],
+                         [0.0,0.2,0.0]]) #kernel to use for the local mean filter in getting the normalized laplacian variance for an image
+    @property
+    def WINDOW_EL(self) :
+        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45)) #window for computing the variance of the normalized laplacian
+    @property
+    def SMALLER_WINDOW_EL(self) :
+        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(15,15)) #window for taking the mean of the variance values in masking blur
+    @property
+    def TISSUE_MIN_SIZE(self) :
+        return 2500 #minimum size in pixels of individual structure elements allowed in tissue masks
+    @property
+    def FOLD_MIN_PIXELS(self) :
+        return 30000 #minimum number of pixels required to flag multilayer blur in images
+    @property
+    def FOLD_MIN_SIZE(self) :
+        return 5000 #minimum size in pixels of individual structure elements allowed in multilayer blur masks
+    @property
+    def FOLD_NLV_CUT(self) :
+        return 0.02 #0.025 #local normalized laplacian variance below which a pixel is flagged as blurry for multiple layer masks 
+    @property
+    def FOLD_MAX_MEAN(self) :
+        return 0.018 #0.01875 #maximum mean within the smaller window of the local normalized laplacian variance allowed to flag multilayer blur
+    @property
+    def DUST_MIN_PIXELS(self) :
+        return 30000 #minimum number of pixels required to flag DAPI layer blur in images
+    @property
+    def DUST_MIN_SIZE(self) :
+        return 20000 #minimum size in pixels of individual structure elements allowed in DAPI layer blur masks
+    @property
+    def DUST_NLV_CUT(self) :
+        return 0.005 #local normalized laplacian variance below which a pixel is flagged as blurry for multiple layer masks 
+    @property
+    def DUST_MAX_MEAN(self) :
+        return 0.004 #maximum mean within the smaller window of the local normalized laplacian variance allowed to flag multilayer blur
+    @property
+    def BLUR_FLAG_STRING(self) :
+        return 'blurred likely folded tissue or dust' #descriptive string to use for blurred areas in the labelled mask regions file
+    @property
+    def SATURATION_MIN_PIXELS(self) :
+        return 4500 #minimum number of pixels required to flag saturation in images
+    @property
+    def SATURATION_MIN_SIZE(self) :
+        return 1000 #minimum size in pixels of individual structure elements allowed in saturation masks
+    @property
+    def SATURATION_INTENSITY_CUTS_35(self) :
+        return [100,100,250,400,150] #intensity in counts/ms required to flag saturation in each layer group for 35-layer images
+    @property
+    def SATURATION_INTENSITY_CUTS_43(self) :
+        return [100,-1,100,150,100,250,400] #intensity in counts/ms required to flag saturation in each layer group for 43-layer images
+    @property
+    def SATURATION_FLAG_STRING(self) :
+        return 'saturated likely skin or red blood cells or stain'
     @property 
     def MASKING_PLOT_FIG_SIZE(self) :
         return (12.8,18.4) #size of the outputted masking plot
     #masking morphology transformations
     @property
-    def CO1_EL(self) :
-        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9)) #element for first close/open (and final, repeated, open)
+    def SMALL_CO_EL(self) :
+        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9)) #element for first small close/open in tissue masks
     @property
-    def CO2_EL(self) :
-        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(16,16)) #element for second close/open
-    @property
-    def C3_EL(self) :
-        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(25,25)) #element for large-scale close
-    @property
-    def OPEN_3_ITERATIONS(self) :
-        return 3 #number of iterations for final small-scale open
-    #image information
-    @property
-    def N_CLIP(self) :
-        return 8 #number of pixels to clip from raw image edges
-    @property
-    def LAST_FILTER_LAYERS_35(self) :
-        return [9,18,25,32] #last image layers of each broadband filter for 35-layer images
-    @property
-    def LAST_FILTER_LAYERS_43(self) :
-        return [9,11,17,20,29,36] #last image layers of each broadband filter for 43-layer images
+    def MEDIUM_CO_EL(self) :
+        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(18,18)) #element for medium-sized close/open morphology transformations
 
 CONST=Const()
