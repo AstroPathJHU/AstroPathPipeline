@@ -130,6 +130,9 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     initialdx = floattoint(np.rint(firstresult.dx.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
     initialdy = floattoint(np.rint(firstresult.dy.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
 
+    if initialdx or initialdy:
+      self.logger.warning(f"found a relative shift of around {initialdx, initialdy} pixels between the qptiff and wsi")
+
     wsix1 = wsiy1 = qptiffx1 = qptiffy1 = 0
     qptiffy2, qptiffx2 = qptiff.shape
     wsiy2, wsix2 = wsi.shape
