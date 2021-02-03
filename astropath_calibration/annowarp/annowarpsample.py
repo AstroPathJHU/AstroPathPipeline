@@ -130,8 +130,6 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     initialdx = floattoint(np.rint(firstresult.dx.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
     initialdy = floattoint(np.rint(firstresult.dy.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
 
-    print(initialdx, initialdy)
-
     wsix1 = wsiy1 = qptiffx1 = qptiffy1 = 0
     qptiffy2, qptiffx2 = qptiff.shape
     wsiy2, wsix2 = wsi.shape
@@ -139,24 +137,24 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       wsix1 += initialdx
       qptiffx2 -= initialdx
     else:
-      qptiffx1 += initialdx
-      wsix2 -= initialdx
+      qptiffx1 -= initialdx
+      wsix2 += initialdx
     if initialdy > 0:
       wsiy1 += initialdy
       qptiffy2 -= initialdy
     else:
-      qptiffy1 += initialdy
-      wsiy2 -= initialdy
+      qptiffy1 -= initialdy
+      wsiy2 += initialdy
 
     wsi = wsi[wsiy1:wsiy2, wsix1:wsix2]
     qptiff = qptiff[qptiffy1:qptiffy2, qptiffx1:qptiffx2]
+
+    onepixel = self.oneimpixel
 
     imscale = self.imscale
     tilesize = self.tilesize
     bigtilesize = self.bigtilesize
     bigtileoffset = self.bigtileoffset
-
-    onepixel = self.oneimpixel
 
     mx1 = units.convertpscale(min(field.mx1 for field in self.rectangles), self.pscale, imscale, 1)
     mx2 = units.convertpscale(max(field.mx2 for field in self.rectangles), self.pscale, imscale, 1)
@@ -199,8 +197,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
       alignmentresultkwargs = dict(
         n=n,
-        x=x,
-        y=y,
+        x=x+qptiffx1,
+        y=y+qptiffy1,
         mi=brightfraction,
         pscale=imscale,
         tilesize=tilesize,
