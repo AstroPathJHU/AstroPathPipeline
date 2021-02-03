@@ -30,13 +30,8 @@ class AlignmentCohort(DbloadCohort, FlatwCohort, SelectRectanglesCohort):
     g = p.add_mutually_exclusive_group()
     g.add_argument("--dont-align", action="store_true")
     g.add_argument("--dont-stitch", action="store_true")
+    p.add_argument("--skip-aligned", action="store_true")
     return p
-
-  @classmethod
-  def makesampleselectionargumentgroup(cls, parser):
-    g = super().makesampleselectionargumentgroup(parser)
-    g.add_argument("--skip-aligned", action="store_true")
-    return g
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
@@ -49,7 +44,7 @@ class AlignmentCohort(DbloadCohort, FlatwCohort, SelectRectanglesCohort):
     }
     skipaligned = parsed_args_dict.pop("skip_aligned")
     if skipaligned:
-      kwargs["filter"] = lambda sample: not (root/sample.SlideID/"dbload"/f"{sample.SlideID}_{'fields' if not dontstitch else 'align'}.csv").exists()
+      kwargs["filters"].append(lambda sample: not (root/sample.SlideID/"dbload"/f"{sample.SlideID}_{'fields' if not dontstitch else 'align'}.csv").exists())
     return kwargs
 
 def main(args=None):

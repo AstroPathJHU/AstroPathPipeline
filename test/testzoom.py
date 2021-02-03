@@ -46,10 +46,10 @@ class TestZoom(TestBaseSaveOutput):
       for i in self.layers(SlideID)
     ]
 
-  def testZoomWsi(self, SlideID="L1_1", units="safe", **kwargs):
+  def testZoomWsi(self, SlideID="L1_1", units="safe", mode="vips"):
     root = thisfolder/"data"
     zoomroot = thisfolder/"zoom_test_for_jenkins"
-    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units]
+    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--mode", mode]
     if self.selectrectangles(SlideID) is not None:
       args += ["--selectrectangles", *(str(_) for _ in self.selectrectangles(SlideID))]
     if self.layers(SlideID) is not None:
@@ -79,10 +79,10 @@ class TestZoom(TestBaseSaveOutput):
       self.removeoutput()
 
   def testZoomWsiFast(self, SlideID="L1_1", **kwargs):
-    self.testZoomWsi(SlideID, fast=True, **kwargs)
+    self.testZoomWsi(SlideID, mode="fast", **kwargs)
 
   def testzoomM206(self, **kwargs):
-    self.testZoomWsiFast("M206", **kwargs)
+    self.testZoomWsi("M206", mode="memmap", **kwargs)
 
 def gunzipreference(SlideID):
   folder = thisfolder/"reference"/"zoom"/SlideID

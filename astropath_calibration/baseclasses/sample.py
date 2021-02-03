@@ -1,4 +1,4 @@
-import abc, contextlib, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tifffile
+import abc, contextlib, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
@@ -74,6 +74,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__logonenter = []
+    self.__entered = False
     super().__init__()
 
   @property
@@ -310,10 +311,16 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     return self.getXMLplan()[3]
 
   def __enter__(self):
+    self.__entered = True
     self.enter_context(self.logger)
     for warnfunction, warning in self.__logonenter:
       warnfunction(warning)
     return super().__enter__()
+
+  #def enter_context(self, *args, **kwargs):
+  #  if not self.__entered:
+  #    raise ValueError(f"Have to use {self} in a with statement if you want to enter_context")
+  #  return super().enter_context(*args, **kwargs)
 
   @abc.abstractproperty
   def logmodule(self):
@@ -775,3 +782,16 @@ class ReadRectanglesOverlapsFromXML(ReadRectanglesFromXML, ReadRectanglesOverlap
 class ReadRectanglesOverlapsIm3FromXML(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsFromXML):
   pass
 
+class TempDirSample(SampleBase):
+  def __init__(self, *args, temproot=None, **kwargs):
+    if temproot is not None: temproot = pathlib.Path(temproot)
+    self.__temproot = temproot
+    super().__init__(*args, **kwargs)
+
+  @methodtools.lru_cache()
+  @property
+  def tempfolder(self):
+    return self.enter_context(tempfile.TemporaryDirectory(dir=self.__temproot))
+
+  def tempfile(self, *args, **kwargs):
+    return self.enter_context(tempfile.NamedTemporaryFile(*args, dir=self.tempfolder, **kwargs))
