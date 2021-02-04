@@ -156,7 +156,7 @@ class FlatfieldSlide() :
             mean = int(round(np.mean(this_layer_thresholds))) if len(this_layer_thresholds)>0 else 0.
             low_percentile_by_layer.append(this_layer_thresholds[int(0.1*len(this_layer_thresholds))] if len(this_layer_thresholds)>0 else 0.)
             high_percentile_by_layer.append(this_layer_thresholds[int(0.9*len(this_layer_thresholds))] if len(this_layer_thresholds)>0 else 0.)
-            self._background_thresholds_for_masking.append(mean)
+            self._background_thresholds_for_masking.append(med)
             self.__writeLogInfo(logger,f'threshold for layer {li+1} found at {self._background_thresholds_for_masking[li]}')
             if len(this_layer_thresholds)>0 :
                 with cd(plotdir_path) :

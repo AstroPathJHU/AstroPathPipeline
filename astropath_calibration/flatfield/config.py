@@ -4,13 +4,6 @@ import cv2
 
 #class for shared constant variables
 class Const :
-    #file extensions
-    @property
-    def RAW_EXT(self) :
-        return '.Data.dat' # extension of completely raw image files
-    @property
-    def IM3_EXT(self) :
-        return '.im3' # extension of .im3 image files
     #final overall outputs
     @property
     def IMG_DTYPE_OUT(self) :
@@ -86,10 +79,14 @@ class Const :
                          [0.0,0.2,0.0]]) #kernel to use for the local mean filter in getting the normalized laplacian variance for an image
     @property
     def WINDOW_EL(self) :
-        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45)) #window for computing the variance of the normalized laplacian
+        if self._window_el is None :
+            self._window_el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45)) #window for computing the variance of the normalized laplacian
+        return self._window_el
     @property
     def SMALLER_WINDOW_EL(self) :
-        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(15,15)) #window for taking the mean of the variance values in masking blur
+        if self._smaller_window_el is None :
+            self._smaller_window_el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(15,15)) #window for taking the mean of the variance values in masking blur
+        return self._smaller_window_el
     @property
     def TISSUE_MIN_SIZE(self) :
         return 2500 #minimum size in pixels of individual structure elements allowed in tissue masks
@@ -132,9 +129,19 @@ class Const :
     #masking morphology transformations
     @property
     def SMALL_CO_EL(self) :
-        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9)) #element for first small close/open in tissue masks
+        if self._small_co_el is None :
+            self._small_co_el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9)) #element for first small close/open in tissue masks
+        return self._small_co_el
     @property
     def MEDIUM_CO_EL(self) :
-        return cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(18,18)) #element for medium-sized close/open morphology transformations
+        if self._medium_co_el is None :
+            self._medium_co_el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(18,18)) #element for medium-sized close/open morphology transformations
+        return self._medium_co_el
+
+    #some placeholders to only run functions once
+    self._window_el = None
+    self._smaller_window_el = None
+    self._small_co_el = None
+    self._medium_co_el = None
 
 CONST=Const()
