@@ -268,7 +268,10 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       "default": (AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy),
     }[model][cvxpy]
 
-  def stitch(self, *, model="default", constraintmus=None, constraintsigmas=None):
+  def stitch(self, *args, cvxpy=False, **kwargs):
+    return (self.stitch_cvxpy if cvxpy else self.stitch_nocvxpy)(*args, **kwargs)
+
+  def stitch_nocvxpy(self, *, model="default", constraintmus=None, constraintsigmas=None, residualpullcutoff=5, _removetiles=[]):
     if constraintmus is constraintsigmas is None:
       self.logger.info("doing the global fit")
     else:
@@ -279,7 +282,9 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     b = np.zeros(shape=nparams, dtype=units.unitdtype)
     c = 0
 
-    for result in self.__alignmentresults.resultsforstitching(logger=self.logger):
+    alignmentresults = AnnoWarpAlignmentResults(_ for _ in self.__alignmentresults if _.n not in _removetiles)
+
+    for result in alignmentresults.resultsforstitching(logger=self.logger):
       addA, addb, addc = stitchresultcls.Abccontributions(result)
       A += addA
       b += addb
@@ -296,7 +301,22 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
     result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
-    self.__stitchresult = stitchresultcls(result, A=A, b=b, c=c, imscale=self.imscale)
+    stitchresult = stitchresultcls(result, A=A, b=b, c=c, imscale=self.imscale)
+
+    if residualpullcutoff is not None:
+      removemoretiles = []
+      debuglines = []
+      for result in alignmentresults:
+        residualsq = np.sum(stitchresult.residual(result, apscale=self.imscale)**2)
+        if abs(residualsq.n / residualsq.s) > residualpullcutoff:
+          removemoretiles.append(result.n)
+          debuglines.append(f"{result.n} {residualsq}")
+      if removemoretiles:
+        self.logger.warning(f"Alignment results {removemoretiles} are outliers (> {residualpullcutoff} sigma residuals), removing them and trying again")
+        for l in debuglines: self.logger.debug(l)
+        return self.stitch(model=model, constraintmus=constraintmus, constraintsigmas=constraintsigmas, residualpullcutoff=residualpullcutoff, _removetiles=_removetiles+removemoretiles)
+
+    self.__stitchresult = stitchresult
     return self.__stitchresult
 
   def stitch_cvxpy(self, *, model="default", constraintmus=None, constraintsigmas=None):
