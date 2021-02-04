@@ -10,12 +10,12 @@ class Stats(MyDataClass):
   std: object
 
 class GatherStatsCohort(AnnoWarpCohortBase):
-  def __init__(self, *args, uselogfiles=False, filter=lambda samp: True, **kwargs):
+  def __init__(self, *args, uselogfiles=False, filters=[], **kwargs):
     super().__init__(
       *args,
       **kwargs,
       uselogfiles=False,
-      filter=lambda samp: filter(samp) and (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_warp-100-stitch.csv").exists(),
+      filters=filters+[lambda samp: (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_warp-100-stitch.csv").exists()],
     )
     self.__parametervalues = collections.defaultdict(list)
 
@@ -42,14 +42,15 @@ class GatherStatsCohort(AnnoWarpCohortBase):
     return stats
 
 class StitchFailedCohort(AnnoWarpCohortBase):
-  def __init__(self, *args, filter=lambda samp: True, multiplystd=np.array([0.0001]*8+[1]*2), **kwargs):
+  def __init__(self, *args, multiplystd=np.array([0.0001]*8+[1]*2), filters=[], **kwargs):
     super().__init__(
       *args,
       **kwargs,
-      filter=lambda samp:
-        filter(samp)
-        and (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_warp-100.csv").exists()
-        and not (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_warp-100-stitch.csv").exists(),
+      filters=filters+[
+        lambda samp:
+          (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_warp-100.csv").exists()
+          and not (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_warp-100-stitch.csv").exists()
+      ],
     )
     self.__gatherstatscohort = GatherStatsCohort(*args, **kwargs)
     self.__multiplystd = multiplystd
