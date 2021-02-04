@@ -9,6 +9,7 @@ from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities.img_file_io import LayerOffset
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, MetadataSummary
+from ..utilities.config import CONST as UNIV_CONST
 import os, random, methodtools
 
 #main class
@@ -196,9 +197,9 @@ class FlatfieldProducer :
                                               et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
                 this_chunk_masking_plot_indices=[fr_chunk.index(fr) for fr in fr_chunk 
                                                  if this_slide_fps_to_run.index(fr.rawfile_path) in this_slide_indices_for_masking_plots]
-                this_chunk_exposure_times = [getExposureTimesByLayer(fri.rawfile_path,self.mean_image.dims[-1],slide.rawfile_top_dir) for fri in fr_chunk]
-                fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,this_chunk_exposure_times,slide,selected_pixel_cut,
-                                                                            slide.exp_time_hists,med_exp_times_by_layer,
+                this_chunk_rfps = [fri.rawfile_path for fri in fr_chunk]
+                fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,this_chunk_rfps,slide,selected_pixel_cut,
+                                                                            slide.med_exp_times_by_layer if (not self.mean_image.skip_et_correction) else None,
                                                                             this_chunk_masking_plot_indices,self._logger)
                 for fi in range(len(new_field_logs)) :
                     new_field_logs[fi].stacked_in_layers = ','.join([str(ln) for ln in fields_stacked_in_layers[fi]])

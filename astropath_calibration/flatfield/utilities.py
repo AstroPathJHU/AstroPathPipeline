@@ -35,6 +35,14 @@ class FlatfieldSlideInfo(MyDataClass) :
     rawfile_top_dir : str
     root_dir : str
 
+#mask region information helper class
+class LabelledMaskRegion(MyDataClass) :
+    image_key          : str
+    region_index       : int
+    layers             : str
+    n_pixels           : int
+    reason_flagged     : str
+
 #################### GENERAL HELPER FUNCTIONS ####################
 
 #helper function to return the slide name from a whole filepath

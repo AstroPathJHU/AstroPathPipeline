@@ -118,9 +118,6 @@ class Const :
     def DUST_MAX_MEAN(self) :
         return 0.004 #maximum mean within the smaller window of the local normalized laplacian variance allowed to flag multilayer blur
     @property
-    def BLUR_FLAG_STRING(self) :
-        return 'blurred likely folded tissue or dust' #descriptive string to use for blurred areas in the labelled mask regions file
-    @property
     def SATURATION_MIN_PIXELS(self) :
         return 4500 #minimum number of pixels required to flag saturation in images
     @property
@@ -132,12 +129,6 @@ class Const :
     @property
     def SATURATION_INTENSITY_CUTS_43(self) :
         return [100,-1,100,150,100,250,400] #intensity in counts/ms required to flag saturation in each layer group for 43-layer images
-    @property
-    def SATURATION_FLAG_STRING(self) :
-        return 'saturated likely skin or red blood cells or stain'
-    @property 
-    def MASKING_PLOT_FIG_SIZE(self) :
-        return (12.8,18.4) #size of the outputted masking plot
     #masking morphology transformations
     @property
     def SMALL_CO_EL(self) :

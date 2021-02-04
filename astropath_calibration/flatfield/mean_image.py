@@ -2,8 +2,9 @@
 from .utilities import flatfield_logger, FlatFieldError, getImageArrayLayerHistograms, findLayerThresholds
 from .utilities import getImageTissueMask
 from .config import CONST 
-from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots
+from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots, doMaskingPlotsForImage
 from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker
+from ..utilities.tableio import writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import cv2, os, copy, platform
@@ -66,6 +67,7 @@ class MeanImage :
         self.image_stack = np.zeros(self._dims,dtype=CONST.IMG_DTYPE_OUT)
         self.image_squared_stack = np.zeros(self._dims,dtype=CONST.IMG_DTYPE_OUT)
         self.mask_stack  = np.zeros(self._dims,dtype=CONST.MASK_STACK_DTYPE_OUT)
+        self.labelled_mask_regions = []
         self.n_images_read = 0
         self.n_images_stacked_by_layer = np.zeros((self.nlayers),dtype=CONST.MASK_STACK_DTYPE_OUT)
         self.mean_image=None
@@ -102,16 +104,15 @@ class MeanImage :
             raise FlatFieldError(f'ERROR: getting number of images read from {nirfp} yielded {len(nir)} values, not exactly 1')
         self.n_images_read+=nir[0]
 
-    def addGroupOfImages(self,im_array_list,exp_times_list,slide,min_selected_pixels,exp_time_hists,ets_for_normalization=None,masking_plot_indices=[],logger=None) :
+    def addGroupOfImages(self,im_array_list,rfps,slide,min_pixel_frac,ets_for_normalization=None,masking_plot_indices=[],logger=None) :
         """
         A function to add a list of raw image arrays to the image stack
         If masking is requested this function's subroutines are parallelized and also run on the GPU
         im_array_list         = list of image arrays to add
-        exp_times_list        = list of exposure times by layer for the images in this chunk
-        slide                 = slide object corresponding to this group of images
-        min_selected_pixels   = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
-        exp_time_hists        = list of exposure time histograms by layer group for the slide from which these images originated
-        ets_for_normalization = list of exposure times to use for normalizating images to counts/ms before stacking (but after masking)
+        rfps                  = list of image rawfile paths corresponding to image arrays
+        slide                 = flatfield_slide object corresponding to this group of images
+        min_pixel_frac        = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
+        ets_for_normalization = list of exposure times to use for normalizating images to counts/ms before stacking
         masking_plot_indices  = list of image array list indices whose masking plots will be saved
         logger                = a RunLogger object whose context is entered, if None the default log will be used
         """
@@ -146,7 +147,7 @@ class MeanImage :
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
-        for i,(im_array,im_exp_ts) in enumerate(zip(im_array_list,exp_times_list)) :
+        for i,(im_array,rfp) in enumerate(zip(im_array_list,rfps)) :
             stack_i = i+self.n_images_read+1
             msg = f'Masking and adding image {stack_i} to the stack'
             if logger is not None :
@@ -154,20 +155,23 @@ class MeanImage :
             else :
                 flatfield_logger.info(msg)
             make_plots=i in masking_plot_indices
-            p = mp.Process(target=getImageMasksWorker, 
-                           args=(im_array,slide.background_thresholds_for_masking,slide.name,min_selected_pixels,im_exp_ts,exp_time_hists,ets_for_normalization,
-                                 make_plots,masking_plot_dirpath,stack_i,return_dict))
+            p = mp.Process(target=getImageMaskWorker, 
+                           args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,min_pixel_frac,slide.exp_time_hists,
+                                 ets_for_normalization,make_plots,masking_plot_dirpath,stack_i,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
             proc.join()
+        chunk_labelled_mask_regions = []
         for stack_i,im_array in enumerate(im_array_list,start=self.n_images_read+1) :
             stacked_in_layers.append([])
-            thismask = return_dict[stack_i]
+            this_image_mask_obj = return_dict[stack_i]
+            uncompressed_full_mask = this_image_mask_obj.uncompressed_full_mask
+            chunk_labelled_mask_regions+=this_image_mask_obj.labelled_mask_regions
             #check, layer-by-layer, that this mask would select at least the minimum amount of pixels to be added to the stack
             for li in range(self.nlayers) :
-                thismasklayer = thismask[:,:,li]
-                if 1.*np.sum(thismasklayer)/(self._dims[0]*self._dims[1])>=min_selected_pixels :
+                thismasklayer = uncompressed_full_mask[:,:,li]
+                if 1.*np.sum(thismasklayer)/(self._dims[0]*self._dims[1])>=min_pixel_frac :
                     #Optionally normalize for exposure time, and add to the stack
                     im_to_add = 1.*im_array[:,:,li]*thismasklayer
                     if ets_for_normalization is not None :
@@ -178,6 +182,7 @@ class MeanImage :
                     self.n_images_stacked_by_layer[li]+=1
                     stacked_in_layers[-1].append(li+1)
             self.n_images_read+=1
+        self.labelled_mask_regions+=chunk_labelled_mask_regions
         return stacked_in_layers
 
     def makeMeanImage(self,logger=None) :
@@ -292,6 +297,10 @@ class MeanImage :
                                                    iv_csv_name=self.ILLUMINATION_VARIATION_CSV_FILE_NAME)
                 #plot and write a text file of how many images were stacked per layer
                 self.__plotAndWriteNImagesStackedPerLayer()
+        #save the table of labelled mask regions (if applicable)
+        if len(self.labelled_mask_regions)>0 :
+            with cd(os.path.join(self._workingdir_path,self.MASKING_PLOT_DIR_NAME)) :
+                writetable('labelled_mask_regions.csv',self.labelled_mask_regions)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -426,180 +435,35 @@ class MeanImage :
 
 #helper function to create a layered binary image mask for a given image array
 #this can be run in parallel with a given index and return dict
-def getImageMasksWorker(im_array,bg_thresholds,slide_ID,min_selected_pixels,exp_times,exp_time_hists,norm_ets,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
+def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,min_pixel_frac,exp_time_hists,norm_ets,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
+    #need the exposure times for this image
+    exp_times = getExposureTimesByLayer(rfp,im_array.shape[-1],rawfile_top_dir)
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(im_array,bg_thresholds)
     #next create the blur mask
     blur_mask,blur_mask_plots = getImageBlurMask(im_array,exp_times,tissue_mask,exp_time_hists,make_plots)
     #finally create masks for the saturated regions in each layer group
     layer_group_saturation_masks = getImageSaturationMasks(im_arr,norm_ets if norm_ets is not None else exp_times)
-    #if there is anything flagged in the final masks, write out some plots and the mask file/csv file lines
-    is_masked = np.min(tissue_fold_mask)<1 or np.min(dapi_dust_mask)<1
+    #make the image_mask object 
+    key = (os.path.basename(rfp)).rstrip(UNIV_CONST.RAW_EXT)
+    image_mask = ImageMask(key)
+    image_mask.addCreatedMasks(tissue_mask,blur_mask,layer_group_saturation_masks)
+    #if there is anything flagged in the final blur and saturation masks, make the plots and write out the compressed mask
+    labeled_mask_regions = []
+    is_masked = np.min(blur_mask)<1
     if not is_masked :
         for lgsm in layer_group_saturation_masks :
             if np.min(lgsm)<1 :
                 is_masked=True
                 break
     if is_masked :
-
-
-
-    
-        #figure out where the image is in cellview
-        key_x = float(key.split(',')[0].split('[')[1])
-        key_y = float(key.split(',')[1].split(']')[0])
-        cvx = pscale*key_x-xpos
-        cvy = pscale*key_y-ypos
-        #the mask starts as all ones (0=background, 1=good tissue, >=2 is a flagged region)
-        output_mask = np.ones(img_array.shape,dtype=np.uint8)
-        #add in the tissue fold mask, starting with index 2
-        start_i = 2
-        if np.min(tissue_fold_mask)<1 :
-            layers_string = '-1'
-            enumerated_fold_mask = getEnumeratedMask(tissue_fold_mask,start_i)
-            for li in range(img_array.shape[-1]) :
-                output_mask[:,:,li] = np.where(enumerated_fold_mask!=0,enumerated_fold_mask,output_mask[:,:,li])
-            start_i = np.max(enumerated_fold_mask)+1
-            region_indices = list(range(np.min(enumerated_fold_mask[enumerated_fold_mask!=0]),np.max(enumerated_fold_mask)+1))
-            for ri in region_indices :
-                r_size = np.sum(enumerated_fold_mask==ri)
-                return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,FOLD_FLAG_STRING))
-        #add in the mask for the dapi layer group
-        if np.min(dapi_dust_mask)<1 :
-            layers_string = f'{MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0]}-{MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]}'
-            enumerated_dapi_mask = getEnumeratedMask(dapi_dust_mask,start_i)
-            for ln in range(MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][0],MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX][1]+1) :
-                output_mask[:,:,ln-1] = np.where(enumerated_dapi_mask!=0,enumerated_dapi_mask,output_mask[:,:,ln-1])
-            start_i = np.max(enumerated_dapi_mask)+1
-            region_indices = list(range(np.min(enumerated_dapi_mask[enumerated_dapi_mask!=0]),np.max(enumerated_dapi_mask)+1))
-            for ri in region_indices :
-                r_size = np.sum(enumerated_dapi_mask==ri)
-                return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,DUST_STRING))
-        #add in the saturation masks 
-        for lgi,lgsm in enumerate(layer_group_saturation_masks) :
-            if np.min(lgsm)<1 :
-                layers_string = f'{MASK_LAYER_GROUPS[lgi][0]}-{MASK_LAYER_GROUPS[lgi][1]}'
-                enumerated_sat_mask = getEnumeratedMask(lgsm,start_i)
-                for ln in range(MASK_LAYER_GROUPS[lgi][0],MASK_LAYER_GROUPS[lgi][1]+1) :
-                    output_mask[:,:,ln-1] = np.where(enumerated_sat_mask!=0,enumerated_sat_mask,output_mask[:,:,ln-1])
-                start_i = np.max(enumerated_sat_mask)+1
-                region_indices = list(range(np.min(enumerated_sat_mask[enumerated_sat_mask!=0]),np.max(enumerated_sat_mask)+1))
-                for ri in region_indices :
-                    r_size = np.sum(enumerated_sat_mask==ri)
-                    return_list.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,SATURATION_FLAG_STRING))
-        #finally add in the tissue mask (all the background is zero in every layer, unless already flagged otherwise)
-        for li in range(img_array.shape[-1]) :
-            output_mask[:,:,li] = np.where(output_mask[:,:,li]==1,tissue_mask,output_mask[:,:,li])
-        #make and write out the plots for this image
-        all_plot_dict_lists = []
-        if tissue_fold_plots_by_layer_group is not None :
-            all_plot_dict_lists += tissue_fold_plots_by_layer_group
-        if dapi_dust_plots is not None :
-            all_plot_dict_lists += [dapi_dust_plots]
-        sat_plots = []
-        for saturation_mask_plot_dicts in layer_group_saturation_mask_plots :
-            if saturation_mask_plot_dicts is not None :
-                sat_plots.append(saturation_mask_plot_dicts)
-        all_plot_dict_lists += sat_plots
-        doMaskingPlotsForImage(key,tissue_mask,all_plot_dict_lists,output_mask,workingdir)
-        ##write out the mask in the working directory
-        #with cd(workingdir) :
-        #    writeImageToFile(output_mask,f'{key}_mask.png',dtype=np.uint8)
-
-
-
-    nlayers = im_array.shape[-1]
-    #create a new mask
-    init_image_mask = np.empty(im_array.shape,np.uint8)
-    #create a list to hold the threshold values
-    thresholds = bg_thresholds
-    #gently smooth the layer (on the GPU) to remove some noise
-    smoothed_image = smoothImageWorker(im_array,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
-    #if the thresholds haven't already been determined from the background, find them for all the layers by repeated Otsu thresholding
-    if thresholds is None :
-        layer_hists=getImageArrayLayerHistograms(smoothed_image)
-        thresholds=findLayerThresholds(layer_hists)
-    #for each layer, save the mask and its threshold
-    for li in range(nlayers) :
-        init_image_mask[:,:,li] = np.where(smoothed_image[:,:,li]>thresholds[li],1,0)
-    useGPU = platform.system()!='Darwin'
-    #morph each layer of the mask through a series of operations
-    if useGPU :
-        init_mask_umat  = cv2.UMat(init_image_mask)
-        intermediate_mask=cv2.UMat(np.empty_like(init_image_mask))
-        co1_mask=cv2.UMat(np.empty_like(init_image_mask))
-        co2_mask=cv2.UMat(np.empty_like(init_image_mask))
-        close3_mask=cv2.UMat(np.empty_like(init_image_mask))
-        open3_mask=cv2.UMat(np.empty_like(init_image_mask))
-    else :
-        intermediate_mask=np.empty_like(init_image_mask)
-        co1_mask=np.empty_like(init_image_mask)
-        co2_mask=np.empty_like(init_image_mask)
-        close3_mask=np.empty_like(init_image_mask)
-        open3_mask=np.empty_like(init_image_mask)
-    #do the morphology transformations
-    #small-scale close/open to remove noise and fill in small holes
-    if useGPU :
-        cv2.morphologyEx(init_mask_umat,cv2.MORPH_CLOSE,CONST.CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    else :
-        cv2.morphologyEx(init_image_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,CONST.CO1_EL,co1_mask,borderType=cv2.BORDER_REPLICATE)
-    #medium-scale close/open for the same reason with larger regions
-    cv2.morphologyEx(co1_mask,cv2.MORPH_CLOSE,CONST.CO2_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,CONST.CO2_EL,co2_mask,borderType=cv2.BORDER_REPLICATE)
-    #large close to define the bulk of the mask
-    cv2.morphologyEx(co2_mask,cv2.MORPH_CLOSE,CONST.C3_EL,close3_mask,borderType=cv2.BORDER_REPLICATE)
-    #repeated small open to eat its edges and remove small regions outside of the bulk of the mask
-    cv2.morphologyEx(close3_mask,cv2.MORPH_OPEN,CONST.CO1_EL,open3_mask,iterations=CONST.OPEN_3_ITERATIONS,borderType=cv2.BORDER_REPLICATE)
-    #the final mask is this last mask
-    if useGPU :
-        morphed_mask = open3_mask.get()
-    else :
-        morphed_mask=open3_mask
-    #make the plots if requested
-    if make_plots :
-        flatfield_logger.info(f'Saving masking plots for image {i}')
-        this_image_masking_plot_dirname = f'image_{i}_from_{slide_ID}_mask_layers'
+        if make_plots :
+            flatfield_logger.info(f'Saving masking plots for image {i}')
+            doMaskingPlotsForImage(key,tissue_mask,blur_mask_plots,image_mask.compressed_full_mask,plotdir_path)
         with cd(plotdir_path) :
-            if not os.path.isdir(this_image_masking_plot_dirname) :
-                os.mkdir(this_image_masking_plot_dirname)
-        plotdir_path = os.path.join(plotdir_path,this_image_masking_plot_dirname)
-        with cd(plotdir_path) :
-            co1_mask = co1_mask.get()
-            co2_mask = co2_mask.get()
-            close3_mask = close3_mask.get()
-            for li in range(nlayers) :
-                f,ax = plt.subplots(4,2,figsize=CONST.MASKING_PLOT_FIG_SIZE)
-                im = im_array[:,:,li]
-                im_grayscale = im/np.max(im)
-                im = (np.clip(im,0,255)).astype('uint8')
-                ax[0][0].imshow(im_grayscale,cmap='gray')
-                ax[0][0].set_title('raw image in grayscale',fontsize=14)
-                ax[0][1].imshow(init_image_mask[:,:,li])
-                ax[0][1].set_title(f'init mask (thresh. = {thresholds[li]:.1f})',fontsize=14)
-                ax[1][0].imshow(co1_mask[:,:,li])
-                ax[1][0].set_title('mask after small-scale open+close',fontsize=14)
-                ax[1][1].imshow(co2_mask[:,:,li])
-                ax[1][1].set_title('mask after medium-scale open+close',fontsize=14)
-                ax[2][0].imshow(close3_mask[:,:,li])
-                ax[2][0].set_title('mask after large-scale close',fontsize=14)
-                m = morphed_mask[:,:,li]
-                pixelfrac = 1.*np.sum(m)/(im_array.shape[0]*im_array.shape[1])
-                will_be_stacked_text = 'WILL' if pixelfrac>=min_selected_pixels else 'WILL NOT'
-                ax[2][1].imshow(m)
-                ax[2][1].set_title('final mask after repeated small-scale opening',fontsize=14)
-                overlay_clipped = np.array([im,im*m,im*m]).transpose(1,2,0)
-                overlay_grayscale = np.array([im_grayscale*m,im_grayscale*m,0.15*m]).transpose(1,2,0)
-                ax[3][0].imshow(overlay_clipped)
-                ax[3][0].set_title(f'mask + clipped image; ({100.*pixelfrac:.1f}% selected)')
-                ax[3][1].imshow(overlay_grayscale)
-                ax[3][1].set_title(f'mask + grayscale image; {will_be_stacked_text} be stacked')
-                figname = f'image_{i}_layer_{li+1}_masks.png'
-                plt.savefig(figname)
-                plt.close()
-                cropAndOverwriteImage(figname)
+            writeImageToFile(image_mask.compressed_full_mask,f'{key}_mask.png',dtype=np.uint8)
+    #return the mask (either in the shared dict or just on its own)
     if i is not None and return_dict is not None :
-        #add the total mask to the dict
-        return_dict[i] = morphed_mask
+        return_dict[i] = image_mask
     else :
-        return morphed_mask
+        return image_mask
