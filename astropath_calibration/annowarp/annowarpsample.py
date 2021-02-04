@@ -271,7 +271,16 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   def stitch(self, *args, cvxpy=False, **kwargs):
     return (self.stitch_cvxpy if cvxpy else self.stitch_nocvxpy)(*args, **kwargs)
 
-  def stitch_nocvxpy(self, *, model="default", constraintmus=None, constraintsigmas=None, residualpullcutoff=5, _removetiles=[]):
+  def stitch_nocvxpy(self, **kwargs):
+    allkwargs = kwargs.copy()
+    model = kwargs.pop("model", "default")
+    constraintmus = kwargs.pop("constraintmus", None)
+    constraintsigmas = kwargs.pop("constraintsigmas", None)
+    residualpullcutoff = kwargs.pop("residualpullcutoff", 5)
+    _removetiles = kwargs.pop("_removetiles", [])
+    _choosetiles = kwargs.pop("_choosetiles", "bigislands")
+    if kwargs: raise TypeError(f"Unknown kwargs {kwargs}")
+
     if constraintmus is constraintsigmas is None:
       self.logger.info("doing the global fit")
     else:
@@ -283,8 +292,24 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     c = 0
 
     alignmentresults = AnnoWarpAlignmentResults(_ for _ in self.__alignmentresults if _.n not in _removetiles)
+    if _choosetiles == "bigislands":
+      alignmentresults = alignmentresults.goodconnectedresults(minislandsize=8)
+      if len(alignmentresults) < 15:
+        self.logger.warning("didn't find good alignment results in big islands, trying to stitch with smaller islands")
+        allkwargs["_choosetiles"] = "smallislands"
+        return self.stitch_nocvxpy(**allkwargs)
+    elif _choosetiles == "smallislands":
+      alignmentresults = alignmentresults.goodconnectedresults(minislandsize=4)
+      if len(alignmentresults) < 15:
+        self.logger.warning("didn't find good alignment results in small islands, using all good alignment results for stitching")
+        allkwargs["_choosetiles"] = "all"
+        return self.stitch_nocvxpy(**allkwargs)
+    elif _choosetiles == "all":
+      alignmentresults = alignmentresults.goodresults
+    else:
+      raise ValueError(f"Invalid _choosetiles {_choosetiles}")
 
-    for result in alignmentresults.resultsforstitching(logger=self.logger):
+    for result in alignmentresults:
       addA, addb, addc = stitchresultcls.Abccontributions(result)
       A += addA
       b += addb
@@ -295,7 +320,18 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     b += addb
     c += addc
 
-    result = units.np.linalg.solve(2*A, -b)
+    try:
+      result = units.np.linalg.solve(2*A, -b)
+    except np.linalg.LinAlgError:
+      if _choosetiles == "bigislands":
+        logger.warning("fit failed using big islands, trying to stitch with smaller islands")
+        allkwargs["_choosetiles"] = "smallislands"
+        return self.stitch_nocvxpy(**allkwargs)
+      if _choosetiles == "smallislands":
+        logger.warning("fit failed using small islands, using all good alignment results for stitching")
+        allkwargs["_choosetiles"] = "all"
+        return self.stitch_nocvxpy(**allkwargs)
+      raise
 
     delta2nllfor1sigma = 1
     covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
@@ -314,18 +350,45 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       if removemoretiles:
         self.logger.warning(f"Alignment results {removemoretiles} are outliers (> {residualpullcutoff} sigma residuals), removing them and trying again")
         for l in debuglines: self.logger.debug(l)
-        return self.stitch(model=model, constraintmus=constraintmus, constraintsigmas=constraintsigmas, residualpullcutoff=residualpullcutoff, _removetiles=_removetiles+removemoretiles)
+        allkwargs["_removetiles"]=_removetiles+removemoretiles
+        return self.stitch(**allkwargs)
 
     self.__stitchresult = stitchresult
     return self.__stitchresult
 
-  def stitch_cvxpy(self, *, model="default", constraintmus=None, constraintsigmas=None):
+  def stitch_cvxpy(self, **kwargs):
+    allkwargs = kwargs.copy()
+    model = kwargs.pop("model", "default")
+    constraintmus = kwargs.pop("constraintmus", None)
+    constraintsigmas = kwargs.pop("constraintsigmas", None)
+    _removetiles = kwargs.pop("_removetiles", [])
+    _choosetiles = kwargs.pop("_choosetiles", "bigislands")
+    if kwargs: raise TypeError(f"Unknown kwargs {kwargs}")
+
     stitchresultcls = self.stitchresultcls(model=model, cvxpy=True)
     variables = stitchresultcls.makecvxpyvariables()
 
+    alignmentresults = AnnoWarpAlignmentResults(_ for _ in self.__alignmentresults if _.n not in _removetiles)
+    if _choosetiles == "bigislands":
+      alignmentresults = alignmentresults.goodconnectedresults(minislandsize=8)
+      if len(alignmentresults) < 15:
+        self.logger.warning("didn't find good alignment results in big islands, trying to stitch with smaller islands")
+        allkwargs["_choosetiles"] = "smallislands"
+        return self.stitch_nocvxpy(**allkwargs)
+    elif _choosetiles == "smallislands":
+      alignmentresults = alignmentresults.goodconnectedresults(minislandsize=4)
+      if len(alignmentresults) < 15:
+        self.logger.warning("didn't find good alignment results in small islands, using all good alignment results for stitching")
+        allkwargs["_choosetiles"] = "all"
+        return self.stitch_nocvxpy(**allkwargs)
+    elif _choosetiles == "all":
+      alignmentresults = alignmentresults.goodresults
+    else:
+      raise ValueError(f"Invalid _choosetiles {_choosetiles}")
+
     tominimize = 0
     onepixel = self.oneimpixel
-    for result in self.__alignmentresults.resultsforstitching(logger=self.logger):
+    for result in alignmentresults:
       residual = stitchresultcls.cvxpyresidual(result, **variables)
       tominimize += cp.quad_form(residual, units.np.linalg.inv(result.covariance) * onepixel**2)
 
@@ -678,13 +741,3 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
         else:
           keep[t.n] = True
     return type(self)(_ for _ in good if keep[_.n])
-
-  def resultsforstitching(self, *, logger):
-    results = self.goodconnectedresults(minislandsize=8)
-    if len(results) >= 15: return results
-    logger.warning("didn't find good alignment results in big islands, trying to stitch with smaller islands")
-    results = self.goodconnectedresults(minislandsize=4)
-    if len(results) >= 15: return results
-    logger.warning("didn't find good alignment results in big islands, using all good alignment results for stitching")
-    results = self.goodresults
-    return results

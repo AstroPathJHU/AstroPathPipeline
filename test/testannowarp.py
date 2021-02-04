@@ -121,7 +121,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     units.np.testing.assert_allclose(units.nominal_values(result2.constant), units.nominal_values(result1.constant))
 
     constraintmus *= 2
-    result3 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas)
+    result3 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, residualpullcutoff=None)
     result4 = s.stitch_cvxpy(constraintmus=constraintmus, constraintsigmas=constraintsigmas)
 
     with np.testing.assert_raises(AssertionError):
