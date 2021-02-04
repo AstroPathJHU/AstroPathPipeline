@@ -138,10 +138,11 @@ class Const :
             self._medium_co_el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(18,18)) #element for medium-sized close/open morphology transformations
         return self._medium_co_el
 
-    #some placeholders to only run functions once
-    self._window_el = None
-    self._smaller_window_el = None
-    self._small_co_el = None
-    self._medium_co_el = None
+    def __init__(self) :
+        #some placeholders to only run functions once
+        self._window_el = None
+        self._smaller_window_el = None
+        self._small_co_el = None
+        self._medium_co_el = None
 
 CONST=Const()

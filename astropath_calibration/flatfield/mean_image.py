@@ -1,13 +1,15 @@
 #imports
-from .utilities import flatfield_logger, FlatFieldError, getImageArrayLayerHistograms, findLayerThresholds
-from .utilities import getImageTissueMask
+from .image_mask import ImageMask
+from .utilities import flatfield_logger, FlatFieldError
+from .utilities import getImageTissueMask, getImageBlurMask, getImageSaturationMasks
 from .config import CONST 
 from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots, doMaskingPlotsForImage
-from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker
+from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker, getExposureTimesByLayer
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
+from ..utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import cv2, os, copy, platform
+import os, copy
 
 class MeanImage :
     """
@@ -443,13 +445,12 @@ def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,min_pixel_frac
     #next create the blur mask
     blur_mask,blur_mask_plots = getImageBlurMask(im_array,exp_times,tissue_mask,exp_time_hists,make_plots)
     #finally create masks for the saturated regions in each layer group
-    layer_group_saturation_masks = getImageSaturationMasks(im_arr,norm_ets if norm_ets is not None else exp_times)
+    layer_group_saturation_masks = getImageSaturationMasks(im_array,norm_ets if norm_ets is not None else exp_times)
     #make the image_mask object 
     key = (os.path.basename(rfp)).rstrip(UNIV_CONST.RAW_EXT)
     image_mask = ImageMask(key)
     image_mask.addCreatedMasks(tissue_mask,blur_mask,layer_group_saturation_masks)
     #if there is anything flagged in the final blur and saturation masks, make the plots and write out the compressed mask
-    labeled_mask_regions = []
     is_masked = np.min(blur_mask)<1
     if not is_masked :
         for lgsm in layer_group_saturation_masks :

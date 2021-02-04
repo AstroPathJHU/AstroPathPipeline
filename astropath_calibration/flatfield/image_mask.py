@@ -70,7 +70,7 @@ class ImageMask() :
                 r_size = np.sum(enumerated_blur_mask==ri)
                 self._labelled_mask_regions.append(LabelledMaskRegion(self._image_key,ri,layers_string,r_size,self.BLUR_FOLD_FLAG_STRING))
         #add in the saturation masks 
-        for lgi,lgsm in enumerate(layer_group_saturation_masks) :
+        for lgi,lgsm in enumerate(saturation_masks) :
             if np.min(lgsm)<1 :
                 layers_string = f'{self._layer_groups[lgi][0]}-{self._layer_groups[lgi][1]}'
                 enumerated_sat_mask = getEnumeratedMask(lgsm,start_i)
@@ -79,7 +79,7 @@ class ImageMask() :
                 region_indices = list(range(np.min(enumerated_sat_mask[enumerated_sat_mask!=0]),np.max(enumerated_sat_mask)+1))
                 for ri in region_indices :
                     r_size = np.sum(enumerated_sat_mask==ri)
-                    self._labelled_mask_regions.append(LabelledMaskRegion(key,cvx,cvy,ri,layers_string,r_size,SATURATION_FLAG_STRING))
+                    self._labelled_mask_regions.append(LabelledMaskRegion(self._image_key,ri,layers_string,r_size,self.SATURATION_FLAG_STRING))
         #finally add in the tissue mask
         for li in range(self._compressed_mask.shape[-1]) :
             self._compressed_mask[:,:,li][self._compressed_mask[:,:,li]==1] = tissue_mask

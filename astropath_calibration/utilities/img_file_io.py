@@ -366,7 +366,7 @@ def getExposureTimeHistogramsByLayerGroupForSlide(root_dir,slideID,nbins=50,logg
   for fp in all_fps :
     this_image_layer_exposure_times = getExposureTimesByLayer(fp,nlayers)
     for lgi,lgb in enumerate(mask_layer_groups) :
-      all_exp_times[lgi].append(etsbl[lgb[0]-1])
+      all_exp_times[lgi].append(this_image_layer_exposure_times[lgb[0]-1])
   exp_time_hists = []
   for lgi in range(len(mask_layer_groups)) :
     newhist,newbins = np.histogram(all_exp_times[lgi],bins=nbins)

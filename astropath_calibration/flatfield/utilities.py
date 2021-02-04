@@ -226,8 +226,8 @@ def getImageArray(fri) :
         except (ValueError, RuntimeError) :
             rtd = os.path.dirname(os.path.dirname(os.path.normpath(fri.rawfile_path)))+os.sep
             img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,rtd,fri.med_exp_times,fri.corr_offsets)
-    if fri.smooth_sigma is not None :
-        img_arr = smoothImageWorker(img_arr,smooth_sigma)
+    if fri.smooth_sigma !=-1 :
+        img_arr = smoothImageWorker(img_arr,fri.smooth_sigma)
     return img_arr
 
 #helper function to get the result of getImageArray as a histogram of pixel fluxes instead of an array
@@ -304,7 +304,7 @@ def getImageTissueMask(image_arr,bkg_thresholds) :
     else :
         raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {image_arr.shape[-1]} layers!')
     #smooth the entire image
-    sm_image_array = smoothImageWorker(img_arr,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
+    sm_image_array = smoothImageWorker(image_arr,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
     #mask each layer individually first
     layer_masks = []
     for li in range(image_arr.shape[-1]) :
@@ -384,7 +384,7 @@ def getMorphedAndFilteredMask(mask,tissue_mask,min_pixels,min_size) :
 def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer) :
     #build the laplacian image and normalize it to get the curvature
     img_laplacian = cv2.Laplacian(img_layer,cv2.CV_32F,borderType=cv2.BORDER_REFLECT)
-    img_lap_norm = cv2.filter2D(img_layer,cv2.CV_32F,LOCAL_MEAN_KERNEL,borderType=cv2.BORDER_REFLECT)
+    img_lap_norm = cv2.filter2D(img_layer,cv2.CV_32F,CONST.LOCAL_MEAN_KERNEL,borderType=cv2.BORDER_REFLECT)
     img_norm_lap = img_laplacian
     img_norm_lap[img_lap_norm!=0] /= img_lap_norm[img_lap_norm!=0]
     img_norm_lap[img_lap_norm==0] = 0
@@ -409,14 +409,14 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
         if ln==brightest_layer_n :
             brightest_layer_nlv = img_nlv
         #get the mean of those local normalized laplacian variance values in the window size
-        img_nlv_loc_mean = (cv2.filter2D(img_nlv,cv2.CV_32F,SMALLER_WINDOW_EL,borderType=cv2.BORDER_REFLECT))/SMALLER_WINDOW_N_PIXELS
+        img_nlv_loc_mean = (cv2.filter2D(img_nlv,cv2.CV_32F,CONST.SMALLER_WINDOW_EL,borderType=cv2.BORDER_REFLECT))/np.sum(CONST.SMALLER_WINDOW_EL)
         #threshold on the local variance of the normalized laplacian and the local mean of those values to make a binary mask
         layer_mask = (np.where((img_nlv>nlv_cut) | (img_nlv_loc_mean>max_mean),1,0)).astype(np.uint8)
         #small open/close to refine it
         layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
         layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
         #erode by the smaller window element
-        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_ERODE,SMALLER_WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
+        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_ERODE,CONST.SMALLER_WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
         #add it to the stack 
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
@@ -481,20 +481,20 @@ def getImageTissueFoldMask(sm_img_array,exp_times,tissue_mask,exp_t_hists,mask_l
         return overall_fold_mask,None
 
 #return the single blur mask for an image
-def getImageBlurMaskAndPlots(img_array,exp_times,tissue_mask,exp_time_hists,return_plots=False) :
+def getImageBlurMask(img_array,exp_times,tissue_mask,exp_time_hists,return_plots=False) :
     #figure out where the layer groups are, etc.
-    if image_arr.shape[-1]==35 :
+    if img_array.shape[-1]==35 :
         mask_layer_groups=UNIV_CONST.LAYER_GROUPS_35
         brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_35
         dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35
         rbc_layer_group_index=UNIV_CONST.RBC_LAYER_GROUP_INDEX_35
-    elif image_arr.shape[-1]==43 :
+    elif img_array.shape[-1]==43 :
         mask_layer_groups=UNIV_CONST.LAYER_GROUPS_43
         brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_43
         dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_43
         rbc_layer_group_index=UNIV_CONST.RBC_LAYER_GROUP_INDEX_43
     else :
-        raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {image_arr.shape[-1]} layers!')
+        raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {img_array.shape[-1]} layers!')
     #smooth the image array for both the tissue fold and DAPI layer blur detection
     sm_img_array = smoothImageWorker(img_array,CONST.BLUR_MASK_SMOOTHING_SIGMA)
     #get the tissue fold mask and its associated plots
@@ -502,7 +502,7 @@ def getImageBlurMaskAndPlots(img_array,exp_times,tissue_mask,exp_time_hists,retu
                                                                                brightest_layers,dapi_layer_group_index,rbc_layer_group_index,return_plots)
     #get masks for the blurriest areas of the DAPI layer group
     dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
-                                                                exposure_times,
+                                                                exp_times,
                                                                 mask_layer_groups[dapi_layer_group_index],
                                                                 CONST.DUST_NLV_CUT,
                                                                 0.5*(mask_layer_groups[dapi_layer_group_index][1]-mask_layer_groups[dapi_layer_group_index][0]+1),
@@ -524,11 +524,9 @@ def getImageSaturationMasks(image_arr,norm_ets) :
     #figure out where the layer groups are, etc.
     if image_arr.shape[-1]==35 :
         mask_layer_groups=UNIV_CONST.LAYER_GROUPS_35
-        brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_35
         saturation_intensity_cuts=CONST.SATURATION_INTENSITY_CUTS_35
     elif image_arr.shape[-1]==43 :
         mask_layer_groups=UNIV_CONST.LAYER_GROUPS_43
-        brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_43
         saturation_intensity_cuts=CONST.SATURATION_INTENSITY_CUTS_43
     else :
         raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {image_arr.shape[-1]} layers!')
@@ -544,18 +542,18 @@ def getImageSaturationMasks(image_arr,norm_ets) :
         stacked_masks = np.zeros(sm_n_image_arr.shape[:-1],dtype=np.uint8)
         for ln in range(lgb[0],lgb[1]+1) :
             #threshold the image layer to make a binary mask
-            layer_mask = (np.where(sm_n_image_array[:,:,ln-1]>saturation_intensity_cuts[lgi],0,1)).astype(np.uint8)
+            layer_mask = (np.where(sm_n_image_arr[:,:,ln-1]>saturation_intensity_cuts[lgi],0,1)).astype(np.uint8)
             stacked_masks+=layer_mask
         #the final mask is anything flagged in ANY layer
-        group_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)    
+        group_mask = (np.where(stacked_masks>lgb[1]-lgb[0],1,0)).astype(np.uint8)    
         #medium sized open/close to refine it
         group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
         group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
         #filter the mask for the total number of pixels and regions by the minimum size
-        group_mask = getSizeFilteredMask(group_mask,SATURATION_MIN_SIZE)
-        if np.sum(group_mask==0)<SATURATION_MIN_PIXELS :
+        group_mask = getSizeFilteredMask(group_mask,CONST.SATURATION_MIN_SIZE)
+        if np.sum(group_mask==0)<CONST.SATURATION_MIN_PIXELS :
             group_mask = np.ones_like(group_mask)
-        layer_group_saturation_masks.append(lgsm)
+        layer_group_saturation_masks.append(group_mask)
     return layer_group_saturation_masks
 
 #################### USEFUL PLOTTING FUNCTION ####################
