@@ -59,7 +59,11 @@ class AnnoWarpStitchResultBase(ThingWithImscale):
 
   @classmethod
   @abc.abstractmethod
-  def variablepowers(self): pass
+  def variablepowers(cls): pass
+
+  @classmethod
+  @abc.abstractmethod
+  def nparams(cls): pass
 
 class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
   def __init__(self, *, A, b, c, flatresult, **kwargs):
@@ -71,11 +75,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
 
   @classmethod
   @abc.abstractmethod
-  def nparams(cls): pass
-
-  @classmethod
-  @abc.abstractmethod
-  def Abccontributions(cls, alignmentresult): pass
+  def unconstrainedAbccontributions(cls, alignmentresult): pass
 
   @classmethod
   def constraintAbccontributions(cls, mus, sigmas):
@@ -84,11 +84,69 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
     b = np.zeros(shape=nparams, dtype=units.unitdtype)
     c = 0
-    for i, mu, sigma in more_itertools.zip_equal(range(nparams), mus, sigmas):
+    for i, (mu, sigma) in enumerate(more_itertools.zip_equal(mus, sigmas)):
       if mu is sigma is None: continue
       A[i,i] += 1/sigma**2
       b[i] -= 2*mu/sigma**2
       c += (mu/sigma)**2
+    return A, b, c
+
+  @classmethod
+  def Abc(cls, alignmentresults, mus, sigmas, floatedparams=None):
+    if floatedparams is None:
+      floatedparams = np.array([True] * cls.nparams())
+
+    A = b = c = 0
+    for alignmentresult in alignmentresults:
+      addA, addb, addc = cls.unconstrainedAbccontributions(alignmentresult)
+      A += addA
+      b += addb
+      c += addc
+
+    floatedindices = np.arange(cls.nparams())[floatedparams]
+    fixedindices = np.arange(cls.nparams())[~floatedparams]
+
+    if mus is None:
+      mus = [None] * cls.nparams()
+    if sigmas is None:
+      sigmas = [None] * cls.nparams()
+
+    mus = np.array(mus)
+    sigmas = np.array(sigmas)
+
+    fixedmus = mus[fixedindices]
+    fixedsigmas = sigmas[fixedindices]
+
+    badindices = []
+    for i, mu, sigma in more_itertools.zip_equal(fixedindices, fixedmus, fixedsigmas):
+      if mu is None or sigma is None:
+        badindices.append(i)
+    if badindices:
+      raise ValueError(f"Have to provide non-None constraint mu and sigma for variables #{badindices} if you want to fix them")
+
+    fixedmus = fixedmus.astype(float)
+    fixedsigmas = fixedsigmas.astype(float)
+
+    floatfloat = np.ix_(floatedindices, floatedindices)
+    floatfix = np.ix_(floatedindices, fixedindices)
+    fixfloat = np.ix_(fixedindices, floatedindices)
+    fixfix = np.ix_(fixedindices, fixedindices)
+
+    c += fixedmus @ A[fixfix] @ fixedmus
+    A[fixfix] = 0
+
+    b[floatedindices] += A[floatfix] @ fixedmus + fixedmus @ A[fixfloat]
+    A[floatfix] = A[fixfloat] = 0
+
+    c += b[fixedindices] @ fixedmus
+    b[fixedindices] = 0
+
+    addA, addb, addc = cls.constraintAbccontributions(mus, sigmas)
+
+    A += addA
+    b += addb
+    c += addc
+
     return A, b, c
 
   @property
@@ -222,6 +280,9 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
   def variablepowers(cls):
     return 0, 0, 0, 0, 1, 1, 1, 1, 1, 1
 
+  @classmethod
+  def nparams(cls): return 10
+
 class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultNoCvxpyBase):
   def __init__(self, flatresult, **kwargs):
     coeffrelativetobigtile, bigtileindexcoeff, constant = np.split(flatresult, [4, 8])
@@ -230,10 +291,7 @@ class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, Ann
     super().__init__(flatresult=flatresult, coeffrelativetobigtile=coeffrelativetobigtile, bigtileindexcoeff=bigtileindexcoeff, constant=constant, **kwargs)
 
   @classmethod
-  def nparams(cls): return 10
-
-  @classmethod
-  def Abccontributions(cls, alignmentresult):
+  def unconstrainedAbccontributions(cls, alignmentresult):
     nparams = cls.nparams()
     (
       crtbt_xx,

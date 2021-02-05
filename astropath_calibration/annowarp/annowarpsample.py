@@ -309,16 +309,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     else:
       raise ValueError(f"Invalid _choosetiles {_choosetiles}")
 
-    for result in alignmentresults:
-      addA, addb, addc = stitchresultcls.Abccontributions(result)
-      A += addA
-      b += addb
-      c += addc
-
-    addA, addb, addc = stitchresultcls.constraintAbccontributions(constraintmus, constraintsigmas)
-    A += addA
-    b += addb
-    c += addc
+    A, b, c = stitchresultcls.Abc(alignmentresults, constraintmus, constraintsigmas)
 
     try:
       result = units.np.linalg.solve(2*A, -b)
