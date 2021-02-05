@@ -296,13 +296,13 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     if _choosetiles == "bigislands":
       alignmentresults = alignmentresults.goodconnectedresults(minislandsize=8)
       if len(alignmentresults) < 15:
-        self.logger.warning("didn't find good alignment results in big islands, trying to stitch with smaller islands")
+        self.logger.warningglobal("didn't find good alignment results in big islands, trying to stitch with smaller islands")
         allkwargs["_choosetiles"] = "smallislands"
         return self.stitch_nocvxpy(**allkwargs)
     elif _choosetiles == "smallislands":
       alignmentresults = alignmentresults.goodconnectedresults(minislandsize=4)
       if len(alignmentresults) < 15:
-        self.logger.warning("didn't find good alignment results in small islands, using all good alignment results for stitching")
+        self.logger.warningglobal("didn't find good alignment results in small islands, using all good alignment results for stitching")
         allkwargs["_choosetiles"] = "all"
         return self.stitch_nocvxpy(**allkwargs)
     elif _choosetiles == "all":
@@ -316,11 +316,11 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       result = units.np.linalg.solve(2*A, -b)
     except np.linalg.LinAlgError:
       if _choosetiles == "bigislands":
-        self.logger.warning("fit failed using big islands, trying to stitch with smaller islands")
+        self.logger.warningglobal("fit failed using big islands, trying to stitch with smaller islands")
         allkwargs["_choosetiles"] = "smallislands"
         return self.stitch_nocvxpy(**allkwargs)
       if _choosetiles == "smallislands":
-        self.logger.warning("fit failed using small islands, using all good alignment results for stitching")
+        self.logger.warningglobal("fit failed using small islands, using all good alignment results for stitching")
         allkwargs["_choosetiles"] = "all"
         return self.stitch_nocvxpy(**allkwargs)
       raise
@@ -338,10 +338,10 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
         residualsq = np.sum(stitchresult.residual(result, apscale=self.imscale)**2)
         if abs(residualsq.n / residualsq.s) > residualpullcutoff:
           removemoretiles.append(result.n)
-          debuglines.append(f"{result.n} {residualsq}")
+          infolines.append(f"{result.n} {residualsq}")
       if removemoretiles:
-        self.logger.warning(f"Alignment results {removemoretiles} are outliers (> {residualpullcutoff} sigma residuals), removing them and trying again")
-        for l in debuglines: self.logger.debug(l)
+        self.logger.warningglobal(f"Alignment results {removemoretiles} are outliers (> {residualpullcutoff} sigma residuals), removing them and trying again")
+        for l in infolines: self.logger.info(l)
         allkwargs["_removetiles"]=_removetiles+removemoretiles
         return self.stitch(**allkwargs)
 
@@ -364,13 +364,13 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     if _choosetiles == "bigislands":
       alignmentresults = alignmentresults.goodconnectedresults(minislandsize=8)
       if len(alignmentresults) < 15:
-        self.logger.warning("didn't find good alignment results in big islands, trying to stitch with smaller islands")
+        self.logger.warningglobal("didn't find good alignment results in big islands, trying to stitch with smaller islands")
         allkwargs["_choosetiles"] = "smallislands"
         return self.stitch_nocvxpy(**allkwargs)
     elif _choosetiles == "smallislands":
       alignmentresults = alignmentresults.goodconnectedresults(minislandsize=4)
       if len(alignmentresults) < 15:
-        self.logger.warning("didn't find good alignment results in small islands, using all good alignment results for stitching")
+        self.logger.warningglobal("didn't find good alignment results in small islands, using all good alignment results for stitching")
         allkwargs["_choosetiles"] = "all"
         return self.stitch_nocvxpy(**allkwargs)
     elif _choosetiles == "all":
