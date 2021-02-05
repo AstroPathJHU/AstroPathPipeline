@@ -11,7 +11,7 @@ from astropath_calibration.baseclasses.csvclasses import constantsdict
 from astropath_calibration.utilities.dataclasses import MyDataClass
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import logging, os, glob, cv2, dataclasses, scipy.stats
+import logging, os, glob, cv2, scipy.stats
 
 #constants
 RAWFILE_EXT                = '.Data.dat'
@@ -333,8 +333,6 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
     #set up the plots to return
     if return_plots :
         plot_img_layer = sm_n_img_array[:,:,brightest_layer_n-1]
-        im_gs = (plot_img_layer*group_mask).astype(np.float32); im_gs /= np.max(im_gs)
-        overlay_gs = np.array([im_gs,im_gs,0.15*group_mask]).transpose(1,2,0)
         sorted_pil = np.sort(plot_img_layer[group_mask==1].flatten())
         pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
         norm = 255./(pil_max-pil_min)
