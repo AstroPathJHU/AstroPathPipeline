@@ -133,10 +133,10 @@ def getMorphedAndFilteredMask(mask,tissue_mask,window_element,min_pixels,min_siz
         #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
         mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
         twice_eroded_fold_mask = (cv2.morphologyEx(mask,cv2.MORPH_ERODE,window_element,iterations=2,borderType=cv2.BORDER_REPLICATE))
-        twice_eroded_fold_mask = (cv2.morphologyEx(twice_eroded_fold_mask,cv2.MORPH_ERODE,CONST.CO2_EL,iterations=2,borderType=cv2.BORDER_REPLICATE))
-        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+        twice_eroded_fold_mask = (cv2.morphologyEx(twice_eroded_fold_mask,cv2.MORPH_ERODE,CONST.MEDIUM_CO_EL,iterations=2,borderType=cv2.BORDER_REPLICATE))
+        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
         mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
-        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
         mask[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)] = mask_to_transform[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)]
         #large open/close again to tie the edges together
         #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
@@ -149,16 +149,16 @@ def getMorphedAndFilteredMask(mask,tissue_mask,window_element,min_pixels,min_siz
         ##open what remains by the window size to capture surrounding areas
         #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
         #a medium-sized open/close to smooth the larger curves and capture some outside area
-        #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
-        #mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+        #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
+        #mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
     return mask
 
 #return the minimally-transformed tissue mask for a single image layer
 def getImageLayerTissueMask(img_layer,bkg_threshold) :
-    sm_layer = smoothImageWorker(img_layer,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
+    sm_layer = smoothImageWorker(img_layer,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
     img_mask = (np.where(sm_layer>bkg_threshold,1,0)).astype(np.uint8)
-    img_mask = cv2.morphologyEx(img_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE)
-    img_mask = cv2.morphologyEx(img_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE)
+    img_mask = cv2.morphologyEx(img_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE)
+    img_mask = cv2.morphologyEx(img_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE)
     return img_mask
 
 #return the fully-determined single tissue mask for a multilayer image
@@ -194,8 +194,8 @@ def getImageTissueMask(image_arr,bkg_thresholds) :
     #filter the tissue and background portions to get rid of the small islands
     final_mask = getSizeFilteredMask(final_mask,min_size=TISSUE_MIN_SIZE)
     #medium size open/close to smooth out edges
-    final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE)
-    final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE)
+    final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE)
+    final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE)
     return final_mask
 
 #function to compute and return the variance of the normalized laplacian for a given image layer
@@ -240,8 +240,8 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
         #threshold on the local variance of the normalized laplacian and the local mean of those values to make a binary mask
         layer_mask = (np.where((img_nlv>nlv_cut) | (img_nlv_loc_mean>max_mean),1,0)).astype(np.uint8)
         #small open/close to refine it
-        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
+        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE))
+        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE))
         #erode by the smaller window element
         layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_ERODE,SMALLER_WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
         #add it to the stack 
@@ -249,8 +249,8 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
     #determine the final mask for this group by thresholding on how many individual layers contribute
     group_blur_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)    
     #medium sized open/close to refine it
-    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
-    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
+    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
     #set up the plots to return
     if return_plots :
         plot_img_layer = img_array[:,:,brightest_layer_n-1]
@@ -312,7 +312,7 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
     for li in range(img_array.shape[-1]) :
         normalized_img_array[:,:,li] = img_array[:,:,li]/exp_times[li]
     #smooth the exposure time-normalized image
-    sm_n_img_array = smoothImageWorker(normalized_img_array,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
+    sm_n_img_array = smoothImageWorker(normalized_img_array,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
     #then make a mask for every layer in the group
     stacked_masks = np.zeros(normalized_img_array.shape[:-1],dtype=np.uint8)
     for ln in range(layer_group_bounds[0],layer_group_bounds[1]+1) :
@@ -324,8 +324,8 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
     #determine the final mask for this group by thresholding on how many individual layers contribute
     group_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)    
     #medium sized open/close to refine it
-    group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_OPEN,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
-    group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_CLOSE,CONST.CO2_EL,borderType=cv2.BORDER_REPLICATE))
+    group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
+    group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
     #filter the mask for the total number of pixels and regions by the minimum size
     group_mask = getSizeFilteredMask(group_mask,SATURATION_MIN_SIZE)
     if np.sum(group_mask==0)<SATURATION_MIN_PIXELS :
@@ -615,7 +615,7 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
 #helper function to get a list of all the labelled mask regions for a chunk of files
 def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,xpos,ypos,pscale,workingdir,root_dir,exp_time_hists) :
     #get the image arrays
-    img_arrays = readImagesMT(fris,smoothed=False,med_exposure_times_by_layer=metsbl,et_corr_offsets_by_layer=etcobl)
+    img_arrays = readImagesMT(fris,med_exposure_times_by_layer=metsbl,et_corr_offsets_by_layer=etcobl)
     #get all of the labelled mask region objects as the images are masked
     manager = mp.Manager()
     return_list = manager.list()
