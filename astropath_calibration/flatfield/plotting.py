@@ -190,7 +190,7 @@ def slideBackgroundThresholdsPlot(flatfield_top_dir,nlayers,savename=None) :
     all_bgts_by_layer = [[] for _ in range(nlayers)]
     slide_names = []
     with cd(os.path.join(flatfield_top_dir,CONST.THRESHOLDING_PLOT_DIR_NAME)) :
-        all_threshold_fns = glob.glob(f'*_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}')
+        all_threshold_fns = glob.glob(f'*_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         for tfn in all_threshold_fns :
             sn = tfn.split('_')[0]
             slide_names.append(sn)

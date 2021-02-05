@@ -120,12 +120,12 @@ class FlatfieldProducer :
     def readInBackgroundThresholds(self,threshold_file_dir) :
         """
         Function to read in previously-determined background thresholds for each slide
-        threshold_file_dir = directory holding [slidename]_[CONST.THRESHOLD_TEXT_FILE_NAME_STEM] files to read thresholds 
+        threshold_file_dir = directory holding [slidename]_[UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM] files to read thresholds 
                              from instead of finding them from the images themselves
         """
         #read each slide's list of background thresholds by layer
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
-            threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
+            threshold_file_name = f'{sn}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
             threshold_file_path = os.path.join(threshold_file_dir,threshold_file_name)
             self.__writeLog(f'Copying background thresholds from file {threshold_file_path} for slide {sn}...','info',sn,slide.root_dir)
             slide.readInBackgroundThresholds(threshold_file_path)
@@ -139,7 +139,7 @@ class FlatfieldProducer :
         """
         #make each slide's list of background thresholds by layer
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
-            threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
+            threshold_file_name = f'{sn}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
             self.__writeLog(f'Finding background thresholds from tissue edges for slide {sn}','info',sn,slide.root_dir)
             new_field_logs = slide.findBackgroundThresholds([rfp for rfp in all_slide_rawfile_paths if slideNameFromFilepath(rfp)==sn],
                                                            n_threads,

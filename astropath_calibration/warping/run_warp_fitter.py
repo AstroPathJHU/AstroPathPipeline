@@ -3,6 +3,7 @@ from .warp_fitter import WarpFitter
 from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments
 from .config import CONST
 from ..utilities.misc import split_csv_to_list, split_csv_to_list_of_ints, split_csv_to_dict_of_floats, split_csv_to_dict_of_bounds
+from ..utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
 import multiprocessing as mp
 import os, gc
@@ -38,7 +39,7 @@ def checkArgs(args) :
     if args.threshold_file_dir is not None :
         if not os.path.isdir(args.threshold_file_dir) :
             raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
-        tfp = os.path.join(args.threshold_file_dir,f'{args.slideID}{CONST.THRESHOLD_FILE_EXT}')
+        tfp = os.path.join(args.threshold_file_dir,f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         if not os.path.isfile(tfp) :
             raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this slide ({tfp})!')
     #The user must specify either an octet run dir or a threshold file dir
@@ -54,7 +55,7 @@ def getOverlaps(args) :
     if args.threshold_file_dir is not None :
         if not os.path.isdir(args.threshold_file_dir) :
             raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
-        tfp = os.path.join(args.threshold_file_dir,f'{args.slideID}{CONST.THRESHOLD_FILE_EXT}')
+        tfp = os.path.join(args.threshold_file_dir,f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         if not os.path.isfile(tfp) :
             raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this slide ({tfp})!')
     #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate

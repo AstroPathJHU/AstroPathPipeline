@@ -209,7 +209,7 @@ class FlatfieldSlide() :
             cropAndOverwriteImage(fn)
         #save the threshold values to a text file
         with cd(top_plotdir_path) :
-            with open(f'{self._name}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}','w') as tfp :
+            with open(f'{self._name}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}','w') as tfp :
                 for bgv in self._background_thresholds_for_masking :
                     tfp.write(f'{bgv}\n')
         #return the field logs

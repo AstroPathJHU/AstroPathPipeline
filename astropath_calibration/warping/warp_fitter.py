@@ -10,6 +10,7 @@ from ..utilities.img_file_io import getImageHWLFromXMLFile, getMedianExposureTim
 from ..utilities.tableio import writetable
 from ..utilities import units
 from ..utilities.misc import cd, MetadataSummary, cropAndOverwriteImage
+from ..utilities.config import CONST as UNIV_CONST
 import numpy as np, scipy, matplotlib.pyplot as plt
 import os, copy, math, shutil, platform, time, logging
 
@@ -73,7 +74,7 @@ class WarpFitter :
             writetable(f'metadata_summary_{os.path.basename(os.path.normpath(self.working_dir))}.csv',[ms])
             writetable(f'field_log_{os.path.basename(os.path.normpath(self.working_dir))}.csv',field_logs)
         #get the list of raw file paths
-        self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.slideID,fn.replace(CONST.IM3_EXT,CONST.RAW_EXT)) 
+        self.rawfile_paths = [os.path.join(self.rawfile_top_dir,self.slideID,fn.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)) 
                               for fn in [r.file for r in self.alignset.rectangles]]
         
         #make the warpset object to use
@@ -562,7 +563,7 @@ class WarpFitter :
     def __initializeAlignmentSet(self, *, overlaps, layer) :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
-        a = AlignmentSetFromXML(self.root_dir,self.working_dir,self.slideID,nclip=CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
+        a = AlignmentSetFromXML(self.root_dir,self.working_dir,self.slideID,nclip=UNIV_CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
                                 selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True,
                                 filetype="camWarp",readlayerfile=True,layer=layer)
         return a

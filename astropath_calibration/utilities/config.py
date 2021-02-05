@@ -1,3 +1,6 @@
+#imports 
+import numpy as np
+
 #class for shared constant variables
 class Const :
     #file extensions
@@ -35,6 +38,22 @@ class Const :
     @property
     def RBC_LAYER_GROUP_INDEX_43(self) :
         return 4 #index of the layer group that tends to brightly show skin and red blood cells for 43-layer images 
+    #information for corrections
+    @property
+    def LAYER_ET_OFFSET_FILE_NAME_STEM(self) :
+        return 'best_fit_offsets' #stem for the name of the .csv file holding a slide's LayerOffset result objects
+    @property
+    def BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM(self) :
+        return 'background_thresholds.txt' #name of the text file holding each layer's background threshold flux
+    @property
+    def FLATFIELD_IMAGE_DTYPE(self) :
+        return np.float64 #datatype for the main output flatfield images
+    @property
+    def X_WARP_BIN_FILENAME(self) :
+        return 'dx_warp_field' #name of the dx warping field binary file
+    @property
+    def Y_WARP_BIN_FILENAME(self) :
+        return 'dy_warp_field' #name of the dy warping field binary file
     
 
 CONST=Const()

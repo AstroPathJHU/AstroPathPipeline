@@ -129,7 +129,7 @@ def checkArgs(a) :
         if not os.path.isdir(a.threshold_file_dir) :
             raise ValueError(f'ERROR: Threshold file directory {a.threshold_file_dir} does not exist!')
         for sn in [s.name for s in slides] :
-            tfn = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
+            tfn = f'{sn}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
             tfp = os.path.join(a.threshold_file_dir,tfn)
             if not os.path.isfile(tfp) :
                 raise FileNotFoundError(f'ERROR: background threshold file {tfp} does not exist!')

@@ -6,9 +6,6 @@ import cv2
 class Const :
     #final overall outputs
     @property
-    def IMG_DTYPE_OUT(self) :
-        return np.float64 #datatype for the main output images
-    @property
     def MASK_STACK_DTYPE_OUT(self) :
         return np.uint64 #datatype for the mask stack output image
     @property
@@ -29,12 +26,6 @@ class Const :
     @property
     def SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM(self) :
         return 'smoothed_corrected_mean_image' #name of the outputted smoothed corrected mean image file
-    @property
-    def THRESHOLD_TEXT_FILE_NAME_STEM(self) :
-        return 'background_thresholds.txt' #name of the text file holding each layer's background threshold flux
-    @property
-    def LAYER_OFFSET_FILE_NAME_STEM(self) :
-        return 'best_fit_offsets' #name of the .csv file holding each slide's LayerOffset result objects
     @property
     def THRESHOLDING_PLOT_DIR_NAME(self) :
         return 'thresholding_info' #name of the directory where the thresholding information will be stored

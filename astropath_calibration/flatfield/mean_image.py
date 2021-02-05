@@ -69,8 +69,8 @@ class MeanImage :
         self.skip_et_correction = skip_et_correction
         self.skip_masking = skip_masking
         self.final_smooth_sigma = smoothsigma
-        self.image_stack = np.zeros(self._dims,dtype=CONST.IMG_DTYPE_OUT)
-        self.image_squared_stack = np.zeros(self._dims,dtype=CONST.IMG_DTYPE_OUT)
+        self.image_stack = np.zeros(self._dims,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+        self.image_squared_stack = np.zeros(self._dims,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         self.mask_stack  = np.zeros(self._dims,dtype=CONST.MASK_STACK_DTYPE_OUT)
         self.labelled_mask_regions = []
         self.n_images_read = 0
@@ -89,7 +89,7 @@ class MeanImage :
         mask_stack_fp = path to this slide's already existing mask_stack file
         """
         #add the mean image times the mask stack to the image stack, and the mask stack to the running total
-        thismeanimage = getRawAsHWL(mean_image_fp,*(self._dims),CONST.IMG_DTYPE_OUT)
+        thismeanimage = getRawAsHWL(mean_image_fp,*(self._dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         thismaskstack = getRawAsHWL(mask_stack_fp,*(self._dims),CONST.MASK_STACK_DTYPE_OUT)
         self.mask_stack+=thismaskstack
         self.image_stack+=thismaskstack*thismeanimage
@@ -232,7 +232,7 @@ class MeanImage :
         if self.mean_image is None :
             self.mean_image, self.std_err_of_mean_image = self.__getMeanImage()
         self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.final_smooth_sigma)
-        flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=CONST.IMG_DTYPE_OUT)
+        flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         self.corrected_mean_image=self.mean_image/flatfield_image
         self.smoothed_corrected_mean_image=smoothImageWorker(self.corrected_mean_image,self.final_smooth_sigma)
         with cd(self._workingdir_path) :
@@ -255,25 +255,25 @@ class MeanImage :
         with cd(self._workingdir_path) :
             if self.flatfield_image is not None :
                 flatfieldimage_filename = f'{prepend}{CONST.FLATFIELD_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                writeImageToFile(self.flatfield_image,flatfieldimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                writeImageToFile(self.flatfield_image,flatfieldimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
             if append=='' :
                 if self.mean_image is not None :
                     meanimage_filename = f'{prepend}{CONST.MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                    writeImageToFile(self.mean_image,meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                    writeImageToFile(self.mean_image,meanimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
                 if self.std_err_of_mean_image is not None :
                     std_err_of_meanimage_filename = f'{prepend}{CONST.STD_ERR_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                    writeImageToFile(self.std_err_of_mean_image,std_err_of_meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                    writeImageToFile(self.std_err_of_mean_image,std_err_of_meanimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
                 if (not self.skip_masking) and (self.mask_stack is not None) :
                     writeImageToFile(self.mask_stack,f'{prepend}{CONST.MASK_STACK_FILE_NAME_STEM}{append}{CONST.FILE_EXT}',dtype=CONST.MASK_STACK_DTYPE_OUT)
                 if self.smoothed_mean_image is not None :
                     smoothed_meanimage_filename = f'{prepend}{self.SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                    writeImageToFile(self.smoothed_mean_image,smoothed_meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                    writeImageToFile(self.smoothed_mean_image,smoothed_meanimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
                 if self.corrected_mean_image is not None :
                     corrected_mean_image_filename = f'{prepend}{self.CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                    writeImageToFile(self.corrected_mean_image,corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
+                    writeImageToFile(self.corrected_mean_image,corrected_mean_image_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
                 if self.smoothed_corrected_mean_image is not None :
                     smoothed_corrected_mean_image_filename = f'{prepend}{CONST.SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                    writeImageToFile(self.smoothed_corrected_mean_image,smoothed_corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
+                    writeImageToFile(self.smoothed_corrected_mean_image,smoothed_corrected_mean_image_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
 
     def savePlots(self) :
         """
