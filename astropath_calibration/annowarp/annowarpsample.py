@@ -408,11 +408,11 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   @property
   def oldverticescsv(self): return self.csv("vertices")
   @property
-  def newverticescsv(self): return self.csv("vertices-warped")
+  def newverticescsv(self): return self.csv("vertices")
   @property
   def oldregionscsv(self): return self.csv("regions")
   @property
-  def newregionscsv(self): return self.csv("regions-warped")
+  def newregionscsv(self): return self.csv("regions")
 
   @methodtools.lru_cache()
   def __getvertices(self, *, apscale, filename=None):
