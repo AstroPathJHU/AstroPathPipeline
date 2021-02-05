@@ -128,7 +128,7 @@ class FlatfieldProducer :
             threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
             threshold_file_path = os.path.join(threshold_file_dir,threshold_file_name)
             self.__writeLog(f'Copying background thresholds from file {threshold_file_path} for slide {sn}...','info',sn,slide.root_dir)
-            slide.readInBackgroundThresholds(threshold_file_path,self._logger)
+            slide.readInBackgroundThresholds(threshold_file_path)
 
     def findBackgroundThresholds(self,all_slide_rawfile_paths,n_threads) :
         """

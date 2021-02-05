@@ -28,15 +28,15 @@ args = Namespace(
         slides=f'{slide_ID}',
         rawfile_top_dir=str(folder/'data'/'raw'),
         root_dir=str(folder/'data'),
-        threshold_file_dir=None,
-        skip_masking=True,
+        threshold_file_dir=str(folder/'data'/'corrections'),
+        skip_masking=False,
         prior_run_dir=None,
         max_images=-1,
         selection_mode='random',
         allow_edge_HPFs=True,
         n_threads=10,
         n_masking_images_per_slide=0,
-        selected_pixel_cut=0.8,
+        selected_pixel_cut=0.0,
         other_runs_to_exclude=['']
     )
 checkArgs(args)
@@ -61,15 +61,15 @@ args = Namespace(
         slides=f'{slide_ID}',
         rawfile_top_dir=str(folder/'data'/'raw'),
         root_dir=str(folder/'data'),
-        threshold_file_dir=None,
-        skip_masking=True,
+        threshold_file_dir=str(folder/'data'/'corrections'),
+        skip_masking=False,
         prior_run_dir=str(make_flatfield_working_dir),
         max_images=-1,
         selection_mode='random',
         allow_edge_HPFs=True,
         n_threads=10,
         n_masking_images_per_slide=0,
-        selected_pixel_cut=0.8,
+        selected_pixel_cut=0.0,
         other_runs_to_exclude=['']
     )
 checkArgs(args)

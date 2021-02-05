@@ -40,7 +40,7 @@ class MeanImage :
     #images stacked per layer
     N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME = 'n_images_stacked_per_layer.txt' #name of the images stacked per layer text file
     #masking plots
-    MASKING_PLOT_DIR_NAME = 'masking_plots' #name of the masking plot directory
+    MASKING_SUBDIR_NAME = 'image_masking' #name of the masking plot directory
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -63,6 +63,9 @@ class MeanImage :
         else :
             raise FlatFieldError(f'ERROR: no defined list of broadband filter breaks for images with {self.nlayers} layers!')
         self._workingdir_path = workingdir_name
+        with cd(self._workingdir_path) :
+            if not os.path.isdir(self.MASKING_SUBDIR_NAME) :
+                os.mkdir(self.MASKING_SUBDIR_NAME)
         self.skip_et_correction = skip_et_correction
         self.skip_masking = skip_masking
         self.final_smooth_sigma = smoothsigma
@@ -141,11 +144,7 @@ class MeanImage :
                 stacked_in_layers.append(list(range(1,self.nlayers+1)))
             return stacked_in_layers
         #otherwise produce the image masks, apply them to the raw images, and be sure to add them to the list in the same order as the images
-        if len(masking_plot_indices)>0 :
-            with cd(self._workingdir_path) :
-                if not os.path.isdir(self.MASKING_PLOT_DIR_NAME) :
-                    os.mkdir(self.MASKING_PLOT_DIR_NAME)
-        masking_plot_dirpath = os.path.join(self._workingdir_path,self.MASKING_PLOT_DIR_NAME)
+        masking_plot_dirpath = os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
@@ -168,11 +167,11 @@ class MeanImage :
         for stack_i,im_array in enumerate(im_array_list,start=self.n_images_read+1) :
             stacked_in_layers.append([])
             this_image_mask_obj = return_dict[stack_i]
-            uncompressed_full_mask = this_image_mask_obj.uncompressed_full_mask
+            onehot_mask = this_image_mask_obj.onehot_mask
             chunk_labelled_mask_regions+=this_image_mask_obj.labelled_mask_regions
             #check, layer-by-layer, that this mask would select at least the minimum amount of pixels to be added to the stack
             for li in range(self.nlayers) :
-                thismasklayer = uncompressed_full_mask[:,:,li]
+                thismasklayer = onehot_mask[:,:,li]
                 if 1.*np.sum(thismasklayer)/(self._dims[0]*self._dims[1])>=min_pixel_frac :
                     #Optionally normalize for exposure time, and add to the stack
                     im_to_add = 1.*im_array[:,:,li]*thismasklayer
@@ -301,7 +300,7 @@ class MeanImage :
                 self.__plotAndWriteNImagesStackedPerLayer()
         #save the table of labelled mask regions (if applicable)
         if len(self.labelled_mask_regions)>0 :
-            with cd(os.path.join(self._workingdir_path,self.MASKING_PLOT_DIR_NAME)) :
+            with cd(os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)) :
                 writetable('labelled_mask_regions.csv',self.labelled_mask_regions)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
@@ -460,9 +459,9 @@ def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,min_pixel_frac
     if is_masked :
         if make_plots :
             flatfield_logger.info(f'Saving masking plots for image {i}')
-            doMaskingPlotsForImage(key,tissue_mask,blur_mask_plots,image_mask.compressed_full_mask,plotdir_path)
+            doMaskingPlotsForImage(key,tissue_mask,blur_mask_plots,image_mask.compressed_mask,plotdir_path)
         with cd(plotdir_path) :
-            writeImageToFile(image_mask.compressed_full_mask,f'{key}_mask.png',dtype=np.uint8)
+            writeImageToFile(image_mask.compressed_mask,f'{key}_mask.png',dtype=np.uint8)
     #return the mask (either in the shared dict or just on its own)
     if i is not None and return_dict is not None :
         return_dict[i] = image_mask

@@ -338,11 +338,12 @@ def getImageTissueMask(image_arr,bkg_thresholds) :
     #anything left over is signal if it's stacked in at least 60% of the total number of layers
     thresholded_stacked_masks = np.where(total_stacked_masks>(0.6*image_arr.shape[-1]),1,0)
     final_mask[final_mask==2] = thresholded_stacked_masks[final_mask==2]
-    #filter the tissue and background portions to get rid of the small islands
-    final_mask = getSizeFilteredMask(final_mask,min_size=CONST.TISSUE_MIN_SIZE)
-    #medium size close/open to smooth out edges
-    final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE)
-    final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE)
+    if np.min(final_mask) != np.max(final_mask) :
+        #filter the tissue and background portions to get rid of the small islands
+        final_mask = getSizeFilteredMask(final_mask,min_size=CONST.TISSUE_MIN_SIZE)
+        #medium size close/open to smooth out edges
+        final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE)
+        final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE)
     return final_mask
 
 #return a binary mask with any areas that are already flagged in a prior mask removed
@@ -365,7 +366,7 @@ def getExclusiveMask(mask_to_check,prior_mask,min_independent_pixel_frac,invert=
 
 #erode a binary mask near a corresponding tissue mask and filter for size
 def getMorphedAndFilteredMask(mask,tissue_mask,min_pixels,min_size) :
-    if np.min(mask)<1 :
+    if np.min(mask)<1 and np.max(mask)!=np.min(mask) :
         #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
         mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
         twice_eroded_fold_mask = (cv2.morphologyEx(mask,cv2.MORPH_ERODE,CONST.WINDOW_EL,iterations=2,borderType=cv2.BORDER_REPLICATE))
@@ -412,18 +413,20 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
         img_nlv_loc_mean = (cv2.filter2D(img_nlv,cv2.CV_32F,CONST.SMALLER_WINDOW_EL,borderType=cv2.BORDER_REFLECT))/np.sum(CONST.SMALLER_WINDOW_EL)
         #threshold on the local variance of the normalized laplacian and the local mean of those values to make a binary mask
         layer_mask = (np.where((img_nlv>nlv_cut) | (img_nlv_loc_mean>max_mean),1,0)).astype(np.uint8)
-        #small open/close to refine it
-        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,borderType=cv2.BORDER_REPLICATE))
-        #erode by the smaller window element
-        layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_ERODE,CONST.SMALLER_WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
+        if np.min(layer_mask) != np.max(layer_mask) :
+            #small open/close to refine it
+            layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE))
+            layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE))
+            #erode by the smaller window element
+            layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_ERODE,CONST.SMALLER_WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
         #add it to the stack 
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
     group_blur_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)    
-    #medium sized open/close to refine it
-    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
-    group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
+    if np.min(group_blur_mask) != np.max(group_blur_mask) :
+        #medium sized open/close to refine it
+        group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
+        group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
     #set up the plots to return
     if return_plots :
         plot_img_layer = img_array[:,:,brightest_layer_n-1]
@@ -546,11 +549,12 @@ def getImageSaturationMasks(image_arr,norm_ets) :
             stacked_masks+=layer_mask
         #the final mask is anything flagged in ANY layer
         group_mask = (np.where(stacked_masks>lgb[1]-lgb[0],1,0)).astype(np.uint8)    
-        #medium sized open/close to refine it
-        group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
-        group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
-        #filter the mask for the total number of pixels and regions by the minimum size
-        group_mask = getSizeFilteredMask(group_mask,CONST.SATURATION_MIN_SIZE)
+        if np.min(group_mask)!=np.max(group_mask) :
+            #medium sized open/close to refine it
+            group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
+            group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
+            #filter the mask for the total number of pixels and regions by the minimum size
+            group_mask = getSizeFilteredMask(group_mask,CONST.SATURATION_MIN_SIZE)
         if np.sum(group_mask==0)<CONST.SATURATION_MIN_PIXELS :
             group_mask = np.ones_like(group_mask)
         layer_group_saturation_masks.append(group_mask)
