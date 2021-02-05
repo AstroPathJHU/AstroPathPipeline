@@ -6,6 +6,7 @@ from ..utilities import units
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, getExposureTimeHistogramsByLayerGroupForSlide
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs, cropAndOverwriteImage
+from ..utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
 import os
 
@@ -61,7 +62,7 @@ class FlatfieldSlide() :
         except FileNotFoundError :
             self._img_dims = getImageHWLFromXMLFile(slide.root_dir,slide.name)
         self._exp_time_hists = getExposureTimeHistogramsByLayerGroupForSlide(self._rawfile_top_dir,self._name)
-        self._med_exposure_times_by_layer = getSlideMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
+        self._med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
         self._background_thresholds_for_masking = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :
@@ -119,7 +120,7 @@ class FlatfieldSlide() :
             #get the smoothed image layer histograms for this chunk 
             new_img_layer_hists = getImageLayerHistsMT(fr_chunk,
                                                        smooth_sigma=CONST.TISSUE_MASK_SMOOTHING_SIGMA,
-                                                       med_exposure_times_by_layer=self._med_exposure_times_by_layer if et_correction_offsets[0]!=-1. else None,
+                                                       med_exposure_times_by_layer=self._med_exp_times_by_layer if et_correction_offsets[0]!=-1. else None,
                                                        et_corr_offsets_by_layer=et_correction_offsets)
             #add the new histograms to the total layer histograms
             for new_img_layer_hist in new_img_layer_hists :
@@ -222,7 +223,7 @@ class FlatfieldSlide() :
         """
         #make an AlignmentSet to use in getting the islands
         rawfile_top_dir = os.path.dirname(os.path.dirname(rawfile_paths[0]))
-        a = AlignmentSetFromXML(self._root_dir,rawfile_top_dir,self._name,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
+        a = AlignmentSetFromXML(self._root_dir,rawfile_top_dir,self._name,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=1)
         edge_rect_ns = getAlignmentSetTissueEdgeRectNs(a)
         #use this to return the list of tissue edge filepaths
         edge_rect_filenames = [r.file.split('.')[0] for r in a.rectangles if r.n in edge_rect_ns] 

@@ -57,9 +57,9 @@ class MeanImage :
         self.layer_groups = None
         #set the mask layer group variables
         if self.nlayers==35 :
-            self.layer_groups=CONST.LAYER_GROUPS_35
+            self.layer_groups=UNIV_CONST.LAYER_GROUPS_35
         elif self.nlayers==43 :
-            self.layer_groups=CONST.LAYER_GROUPS_43
+            self.layer_groups=UNIV_CONST.LAYER_GROUPS_43
         else :
             raise FlatFieldError(f'ERROR: no defined list of broadband filter breaks for images with {self.nlayers} layers!')
         self._workingdir_path = workingdir_name

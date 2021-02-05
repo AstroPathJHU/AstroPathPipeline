@@ -173,7 +173,7 @@ class FlatfieldProducer :
                 self.__writeLog(f'WARNING: slide {sn} does not have any images to be stacked!','warningglobal',sn,slide.root_dir)
                 continue
             #otherwise add the metadata summary for this slide to the producer's list
-            a = AlignmentSetFromXML(slide.root_dir,os.path.dirname(os.path.dirname(this_slide_fps_to_run[0])),sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
+            a = AlignmentSetFromXML(slide.root_dir,os.path.dirname(os.path.dirname(this_slide_fps_to_run[0])),sn,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=1)
             this_slide_rect_fn_stems = [os.path.basename(os.path.normpath(fp)).split('.')[0] for fp in this_slide_fps_to_run]
             rect_ts = [r.t for r in a.rectangles if r.file.replace(UNIV_CONST.IM3_EXT,'') in this_slide_rect_fn_stems]
             self._metadata_summaries.append(MetadataSummary(sn,a.Project,a.Cohort,a.microscopename,str(min(rect_ts)),str(max(rect_ts))))
