@@ -38,8 +38,26 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
     return kwargs
 
 class AnnoWarpCohort(AnnoWarpCohortBase):
+  def __init__(self, *args, readalignments=False, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.readalignments = readalignments
+
   def runsample(self, sample):
-    return sample.runannowarp()
+    return sample.runannowarp(readalignments=self.readalignments)
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--dont-align", action="store_true")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "readalignments": parsed_args_dict.pop("dont_align"),
+    }
+    return kwargs
 
 def main(args=None):
   AnnoWarpCohort.runfromargumentparser(args)

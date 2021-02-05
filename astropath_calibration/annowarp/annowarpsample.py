@@ -324,11 +324,11 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       result = units.np.linalg.solve(2*A, -b)
     except np.linalg.LinAlgError:
       if _choosetiles == "bigislands":
-        logger.warning("fit failed using big islands, trying to stitch with smaller islands")
+        self.logger.warning("fit failed using big islands, trying to stitch with smaller islands")
         allkwargs["_choosetiles"] = "smallislands"
         return self.stitch_nocvxpy(**allkwargs)
       if _choosetiles == "smallislands":
-        logger.warning("fit failed using small islands, using all good alignment results for stitching")
+        self.logger.warning("fit failed using small islands, using all good alignment results for stitching")
         allkwargs["_choosetiles"] = "all"
         return self.stitch_nocvxpy(**allkwargs)
       raise
