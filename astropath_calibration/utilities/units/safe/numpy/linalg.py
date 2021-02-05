@@ -1,4 +1,4 @@
-import functools, itertools, numpy as np
+import functools, itertools, more_itertools, numpy as np
 from ..core import _power, _pscale, distances, pixels, UnitsError
 
 def inv(matrix):
@@ -19,7 +19,7 @@ def inv(matrix):
     if len({p2-p1 for p1, p2 in zip(row, row2) if p1 is not None is not p2}) > 1:
       raise ValueError(f"Rows {i} and {j} of the matrix aren't compatible in powers:\n{matrix[i]}\n{matrix[j]}")
 
-  while any(_ is None for _ in np.ravel(power)):
+  while any(p is None and d != 0 for p, d in more_itertools.zip_equal(np.ravel(power), np.ravel(invpixels))):
     progressed = False
     for (i, j), element in np.ndenumerate(power):
       if element is not None: continue

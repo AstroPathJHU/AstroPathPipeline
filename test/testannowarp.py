@@ -1,4 +1,4 @@
-import more_itertools, numpy as np, pathlib
+import more_itertools, numpy as np, pathlib, re
 
 from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample, WarpedVertex
 from astropath_calibration.annowarp.annowarpcohort import AnnoWarpCohort
@@ -113,27 +113,40 @@ class TestAnnoWarp(TestBaseSaveOutput):
     s.readalignments(filename=referencefilename)
     result1 = s.stitch()
     constraintmus = np.array([e.value for e in result1.stitchresultnominalentries])
-    constraintsigmas = constraintmus / 100
+    constraintsigmas = np.array([e.value for e in result1.stitchresultcovarianceentries if re.match(r"covariance\((.*), \1\)", e.description)]) ** 0.5
     result2 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas)
+    result3 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, floatedparams=[False]*8+[True]*2)
 
     units.np.testing.assert_allclose(units.nominal_values(result2.coeffrelativetobigtile), units.nominal_values(result1.coeffrelativetobigtile))
     units.np.testing.assert_allclose(units.nominal_values(result2.bigtileindexcoeff), units.nominal_values(result1.bigtileindexcoeff))
     units.np.testing.assert_allclose(units.nominal_values(result2.constant), units.nominal_values(result1.constant))
+    units.np.testing.assert_allclose(units.nominal_values(result3.coeffrelativetobigtile), units.nominal_values(result1.coeffrelativetobigtile))
+    units.np.testing.assert_allclose(units.nominal_values(result3.bigtileindexcoeff), units.nominal_values(result1.bigtileindexcoeff))
+    units.np.testing.assert_allclose(units.nominal_values(result3.constant), units.nominal_values(result1.constant))
+    x = units.nominal_values(result2.flatresult)
+    units.np.testing.assert_allclose(
+      x @ result3.A @ x + result3.b @ x + result3.c,
+      x @ result2.A @ x + result2.b @ x + result2.c,
+    )
 
     constraintmus *= 2
-    result3 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, residualpullcutoff=None)
-    result4 = s.stitch_cvxpy(constraintmus=constraintmus, constraintsigmas=constraintsigmas)
+    result4 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, residualpullcutoff=None)
+    result5 = s.stitch_cvxpy(constraintmus=constraintmus, constraintsigmas=constraintsigmas)
 
     with np.testing.assert_raises(AssertionError):
-      units.np.testing.assert_allclose(units.nominal_values(result2.coeffrelativetobigtile), units.nominal_values(result3.coeffrelativetobigtile))
+      units.np.testing.assert_allclose(units.nominal_values(result2.coeffrelativetobigtile), units.nominal_values(result4.coeffrelativetobigtile))
 
-    units.np.testing.assert_allclose(result4.coeffrelativetobigtile, units.nominal_values(result3.coeffrelativetobigtile))
-    units.np.testing.assert_allclose(result4.bigtileindexcoeff, units.nominal_values(result3.bigtileindexcoeff))
-    units.np.testing.assert_allclose(result4.constant, units.nominal_values(result3.constant))
+    units.np.testing.assert_allclose(result5.coeffrelativetobigtile, units.nominal_values(result4.coeffrelativetobigtile))
+    units.np.testing.assert_allclose(result5.bigtileindexcoeff, units.nominal_values(result4.bigtileindexcoeff))
+    units.np.testing.assert_allclose(result5.constant, units.nominal_values(result4.constant))
 
-    x = units.nominal_values(result3.flatresult)
+    x = units.nominal_values(result4.flatresult)
     units.np.testing.assert_allclose(
-      result4.problem.value,
-      x @ result3.A @ x + result3.b @ x + result3.c,
+      result5.problem.value,
+      x @ result4.A @ x + result4.b @ x + result4.c,
       rtol=0.01,
     )
+
+    result6 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, floatedparams=[False]*8+[True]*2)
+    units.np.testing.assert_allclose(units.nominal_values(result6.coeffrelativetobigtile)[:8], constraintmus[:4].reshape(2, 2))
+    units.np.testing.assert_allclose(units.nominal_values(result6.bigtileindexcoeff), constraintmus[4:8].reshape(2, 2))

@@ -277,6 +277,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     constraintmus = kwargs.pop("constraintmus", None)
     constraintsigmas = kwargs.pop("constraintsigmas", None)
     residualpullcutoff = kwargs.pop("residualpullcutoff", 5)
+    floatedparams = kwargs.pop("floatedparams", None)
     _removetiles = kwargs.pop("_removetiles", [])
     _choosetiles = kwargs.pop("_choosetiles", "bigislands")
     if kwargs: raise TypeError(f"Unknown kwargs {kwargs}")
@@ -309,7 +310,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     else:
       raise ValueError(f"Invalid _choosetiles {_choosetiles}")
 
-    A, b, c = stitchresultcls.Abc(alignmentresults, constraintmus, constraintsigmas)
+    A, b, c = stitchresultcls.Abc(alignmentresults, constraintmus, constraintsigmas, floatedparams=floatedparams)
 
     try:
       result = units.np.linalg.solve(2*A, -b)

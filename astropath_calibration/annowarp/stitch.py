@@ -94,7 +94,8 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
   @classmethod
   def Abc(cls, alignmentresults, mus, sigmas, floatedparams=None):
     if floatedparams is None:
-      floatedparams = np.array([True] * cls.nparams())
+      floatedparams = [True] * cls.nparams()
+    floatedparams = np.array(floatedparams)
 
     A = b = c = 0
     for alignmentresult in alignmentresults:
@@ -123,9 +124,6 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
         badindices.append(i)
     if badindices:
       raise ValueError(f"Have to provide non-None constraint mu and sigma for variables #{badindices} if you want to fix them")
-
-    fixedmus = fixedmus.astype(float)
-    fixedsigmas = fixedsigmas.astype(float)
 
     floatfloat = np.ix_(floatedindices, floatedindices)
     floatfix = np.ix_(floatedindices, fixedindices)
