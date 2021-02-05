@@ -505,13 +505,13 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     if filename is None: filename = self.newregionscsv
     writetable(filename, self.warpedregions)
 
-  def runannowarp(self, *, readalignments=False, model="default", constraintmus=None, constraintsigmas=None):
+  def runannowarp(self, *, readalignments=False, **kwargs):
     if not readalignments:
       self.align()
       self.writealignments()
     else:
       self.readalignments()
-    self.stitch(model=model, constraintmus=constraintmus, constraintsigmas=constraintsigmas)
+    self.stitch(**kwargs)
     self.writestitchresult()
     self.writevertices()
     self.writeregions()

@@ -56,7 +56,12 @@ class StitchFailedCohort(AnnoWarpCohortBase):
     self.__multiplystd = multiplystd
 
   def runsample(self, sample):
-    sample.runannowarp(readalignments=True, constraintmus=self.mus, constraintsigmas=self.sigmas)
+    sample.runannowarp(
+      readalignments=True,
+      constraintmus=self.mus,
+      constraintsigmas=self.sigmas,
+      floatedparams="constants",
+    )
 
   @property
   def mus(self):
