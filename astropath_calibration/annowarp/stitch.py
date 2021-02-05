@@ -124,8 +124,8 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     mus = np.array(mus)
     sigmas = np.array(sigmas)
 
-    fixedmus = mus[fixedindices]
-    fixedsigmas = sigmas[fixedindices]
+    fixedmus = mus[fixedindices].astype(units.unitdtype)
+    fixedsigmas = sigmas[fixedindices].astype(units.unitdtype)
 
     badindices = []
     for i, mu, sigma in more_itertools.zip_equal(fixedindices, fixedmus, fixedsigmas):

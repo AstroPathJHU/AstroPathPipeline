@@ -333,7 +333,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
     if residualpullcutoff is not None:
       removemoretiles = []
-      debuglines = []
+      infolines = []
       for result in alignmentresults:
         residualsq = np.sum(stitchresult.residual(result, apscale=self.imscale)**2)
         if abs(residualsq.n / residualsq.s) > residualpullcutoff:
