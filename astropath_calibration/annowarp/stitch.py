@@ -134,7 +134,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     if badindices:
       raise ValueError(f"Have to provide non-None constraint mu and sigma for variables #{badindices} if you want to fix them")
 
-    floatfloat = np.ix_(floatedindices, floatedindices)
+    #floatfloat = np.ix_(floatedindices, floatedindices)
     floatfix = np.ix_(floatedindices, fixedindices)
     fixfloat = np.ix_(fixedindices, floatedindices)
     fixfix = np.ix_(fixedindices, fixedindices)
