@@ -277,7 +277,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     constraintmus = kwargs.pop("constraintmus", None)
     constraintsigmas = kwargs.pop("constraintsigmas", None)
     residualpullcutoff = kwargs.pop("residualpullcutoff", 5)
-    floatedparams = kwargs.pop("floatedparams", None)
+    floatedparams = kwargs.pop("floatedparams", "all")
     _removetiles = kwargs.pop("_removetiles", [])
     _choosetiles = kwargs.pop("_choosetiles", "bigislands")
     if kwargs: raise TypeError(f"Unknown kwargs {kwargs}")

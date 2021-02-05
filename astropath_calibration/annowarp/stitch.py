@@ -65,6 +65,17 @@ class AnnoWarpStitchResultBase(ThingWithImscale):
   @abc.abstractmethod
   def nparams(cls): pass
 
+  @classmethod
+  def floatedparams(cls, floatedparams):
+    if isinstance(floatedparams, np.ndarray):
+      return floatedparams
+    if isinstance(floatedparams, str):
+      if floatedparams == "all":
+        floatedparams = [True] * cls.nparams()
+      else:
+        raise ValueError(f"Unknown floatedparams {floatedparams!r}")
+    return np.asarray(floatedparams)
+
 class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
   def __init__(self, *, A, b, c, flatresult, **kwargs):
     self.A = A
@@ -92,10 +103,8 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     return A, b, c
 
   @classmethod
-  def Abc(cls, alignmentresults, mus, sigmas, floatedparams=None):
-    if floatedparams is None:
-      floatedparams = [True] * cls.nparams()
-    floatedparams = np.array(floatedparams)
+  def Abc(cls, alignmentresults, mus, sigmas, floatedparams="all"):
+    floatedparams = cls.floatedparams(floatedparams)
 
     A = b = c = 0
     for alignmentresult in alignmentresults:
@@ -280,6 +289,13 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
 
   @classmethod
   def nparams(cls): return 10
+
+  @classmethod
+  def floatedparams(cls, floatedparams):
+    if isinstance(floatedparams, str):
+      if floatedparams == "constants":
+        floatedparams = [False]*8+[True]*2
+    return super().floatedparams(floatedparams)
 
 class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultNoCvxpyBase):
   def __init__(self, flatresult, **kwargs):

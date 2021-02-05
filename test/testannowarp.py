@@ -115,7 +115,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     constraintmus = np.array([e.value for e in result1.stitchresultnominalentries])
     constraintsigmas = np.array([e.value for e in result1.stitchresultcovarianceentries if re.match(r"covariance\((.*), \1\)", e.description)]) ** 0.5
     result2 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas)
-    result3 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, floatedparams=[False]*8+[True]*2)
+    result3 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, floatedparams="constants")
 
     units.np.testing.assert_allclose(units.nominal_values(result2.coeffrelativetobigtile), units.nominal_values(result1.coeffrelativetobigtile))
     units.np.testing.assert_allclose(units.nominal_values(result2.bigtileindexcoeff), units.nominal_values(result1.bigtileindexcoeff))
@@ -147,6 +147,6 @@ class TestAnnoWarp(TestBaseSaveOutput):
       rtol=0.01,
     )
 
-    result6 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, floatedparams=[False]*8+[True]*2)
+    result6 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, floatedparams="constants")
     units.np.testing.assert_allclose(units.nominal_values(result6.coeffrelativetobigtile)[:8], constraintmus[:4].reshape(2, 2))
     units.np.testing.assert_allclose(units.nominal_values(result6.bigtileindexcoeff), constraintmus[4:8].reshape(2, 2))
