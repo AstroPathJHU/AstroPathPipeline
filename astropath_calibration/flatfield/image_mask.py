@@ -70,7 +70,8 @@ class ImageMask() :
         if np.min(blur_mask)<1 :
             layers_string = 'all'
             enumerated_blur_mask = getEnumeratedMask(blur_mask,start_i)
-            self._compressed_mask[:,:,0][enumerated_blur_mask!=0] = enumerated_blur_mask[enumerated_blur_mask!=0]
+            for li in range(self._compressed_mask.shape[-1]) :
+                self._compressed_mask[:,:,li][enumerated_blur_mask!=0] = enumerated_blur_mask[enumerated_blur_mask!=0]
             start_i = np.max(enumerated_blur_mask)+1
             region_indices = list(range(np.min(enumerated_blur_mask[enumerated_blur_mask!=0]),np.max(enumerated_blur_mask)+1))
             for ri in region_indices :
@@ -81,7 +82,7 @@ class ImageMask() :
             if np.min(lgsm)<1 :
                 layers_string = f'{self._layer_groups[lgi][0]}-{self._layer_groups[lgi][1]}'
                 enumerated_sat_mask = getEnumeratedMask(lgsm,start_i)
-                self._compressed_mask[:,:,0][enumerated_sat_mask!=0] = enumerated_sat_mask[enumerated_sat_mask!=0]
+                self._compressed_mask[:,:,lgi+1][enumerated_sat_mask!=0] = enumerated_sat_mask[enumerated_sat_mask!=0]
                 start_i = np.max(enumerated_sat_mask)+1
                 region_indices = list(range(np.min(enumerated_sat_mask[enumerated_sat_mask!=0]),np.max(enumerated_sat_mask)+1))
                 for ri in region_indices :
