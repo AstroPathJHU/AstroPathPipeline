@@ -1,5 +1,6 @@
 #imports
-from astropath_calibration.flatfield.utilities import chunkListOfFilepaths, readImagesMT
+from astropath_calibration.flatfield.utilities import chunkListOfFilepaths, readImagesMT, getSizeFilteredMask, getImageTissueMask 
+from astropath_calibration.flatfield.utilities import getExclusiveMask, getMorphedAndFilteredMask, getImageLayerLocalVarianceOfNormalizedLaplacian
 from astropath_calibration.flatfield.config import CONST
 from astropath_calibration.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset
 from astropath_calibration.utilities.img_file_io import smoothImageWorker, getExposureTimesByLayer
@@ -11,7 +12,7 @@ from astropath_calibration.baseclasses.csvclasses import constantsdict
 from astropath_calibration.utilities.dataclasses import MyDataClass
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import logging, os, glob, cv2, scipy.stats
+import logging, os, glob, cv2
 
 #constants
 RAWFILE_EXT                = '.Data.dat'
@@ -25,17 +26,16 @@ MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
 BRIGHTEST_LAYERS           = [5,11,21,29,34]
 DAPI_LAYER_GROUP_INDEX     = 0
 RBC_LAYER_GROUP_INDEX      = 1
-TISSUE_MIN_SIZE            = 2500
 FOLD_MIN_PIXELS            = 30000
 FOLD_MIN_SIZE              = 5000
-FOLD_NLV_CUT               = 0.02 #0.025
-FOLD_MAX_MEAN              = 0.018 #0.01875
+FOLD_NLV_CUT               = 0.0035
+FOLD_MAX_MEAN              = 0.0030
 FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
 FOLD_FLAG_STRING           = 'tissue fold or bright dust'
 DUST_MIN_PIXELS            = 30000
 DUST_MIN_SIZE              = 20000
-DUST_NLV_CUT               = 0.005
-DUST_MAX_MEAN              = 0.004
+DUST_NLV_CUT               = 0.00085
+DUST_MAX_MEAN              = 0.00065
 DUST_STRING                = 'likely dust'
 SATURATION_MIN_PIXELS      = 4500
 SATURATION_MIN_SIZE        = 1000
@@ -60,170 +60,6 @@ class LabelledMaskRegion(MyDataClass) :
     reason_flagged     : str
 
 #################### IMAGE HANDLING UTILITIY FUNCTIONS ####################
-
-#return a binary mask with all of the areas smaller than min_size removed
-def getSizeFilteredMask(mask,min_size,both=True,invert=False) :
-    if invert :
-        mask = (np.where(mask==1,0,1)).astype(mask.dtype)
-    nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
-    sizes = stats[1:, -1]; nb_components = nb_components - 1
-    new_mask = np.zeros_like(mask)
-    for i in range(0, nb_components):
-        if sizes[i] >= min_size :
-            new_mask[output == i + 1] = 1
-    if invert :
-        new_mask = (np.where(new_mask==1,0,1)).astype(mask.dtype)
-    if both :
-        return getSizeFilteredMask(new_mask,min_size,both=False,invert=(not invert))
-    return new_mask
-
-#return a binary mask with all of the areas whose distributions of reference values have skew less than min_skew removed
-def getSkewFilteredMask(mask,ref,min_skew,invert=True) :
-    if invert :
-        mask = (np.where(mask==1,0,1)).astype(mask.dtype)
-    n_regions, regions_im = cv2.connectedComponents(mask)
-    new_mask = np.zeros_like(mask)
-    for region_i in range(1,n_regions) :
-        if scipy.stats.skew(ref[regions_im==region_i])<min_skew :
-            continue
-        new_mask[regions_im==region_i] = mask[regions_im==region_i]
-    if invert :
-        new_mask = (np.where(new_mask==1,0,1)).astype(mask.dtype)
-    return new_mask
-
-#return a binary mask with all of the areas whose distributions of reference values have mean greater than max_mean removed
-def getMeanFilteredMask(mask,ref,max_mean,invert=True) :
-    if invert :
-        mask = (np.where(mask==1,0,1)).astype(mask.dtype)
-    n_regions, regions_im = cv2.connectedComponents(mask)
-    new_mask = np.zeros_like(mask)
-    for region_i in range(1,n_regions) :
-        if np.mean(ref[regions_im==region_i])>max_mean :
-            continue
-        new_mask[regions_im==region_i] = mask[regions_im==region_i]
-    if invert :
-        new_mask = (np.where(new_mask==1,0,1)).astype(mask.dtype)
-    return new_mask
-
-#return a binary mask with any areas that are already flagged in a prior mask removed
-def getExclusiveMask(mask_to_check,prior_mask,min_independent_pixel_frac,invert=True) :
-    prior_mask_hot = 0 if invert else 1
-    if invert :
-        mask_to_check = (np.where(mask_to_check==1,0,1)).astype(mask_to_check.dtype)
-    n_regions, regions_im = cv2.connectedComponents(mask_to_check)
-    new_mask = np.zeros_like(mask_to_check)
-    for region_i in range(1,n_regions) :
-        total_region_size = np.sum(regions_im==region_i)
-        n_already_selected_pixels = np.sum(prior_mask[regions_im==region_i]==prior_mask_hot)
-        if (total_region_size-n_already_selected_pixels)/total_region_size < min_independent_pixel_frac :
-            continue
-        new_mask[regions_im==region_i] = mask_to_check[regions_im==region_i]
-    if invert :
-        new_mask = (np.where(new_mask==1,0,1)).astype(mask_to_check.dtype)
-    return new_mask
-
-#return a binary mask after some common morphology operations and size filtering
-def getMorphedAndFilteredMask(mask,tissue_mask,window_element,min_pixels,min_size) :
-    ##large open/close to refine and connect it
-    #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
-    #mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
-    #remove any remaining small spots
-    #mask = getSizeFilteredMask(mask,min_size)
-    if np.min(mask)<1 :
-        #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
-        mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
-        twice_eroded_fold_mask = (cv2.morphologyEx(mask,cv2.MORPH_ERODE,window_element,iterations=2,borderType=cv2.BORDER_REPLICATE))
-        twice_eroded_fold_mask = (cv2.morphologyEx(twice_eroded_fold_mask,cv2.MORPH_ERODE,CONST.MEDIUM_CO_EL,iterations=2,borderType=cv2.BORDER_REPLICATE))
-        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
-        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
-        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
-        mask[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)] = mask_to_transform[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)]
-        #large open/close again to tie the edges together
-        #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
-        #mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.C3_EL,borderType=cv2.BORDER_REPLICATE))
-        #remove any remaining small spots after the tissue mask incorporation
-        mask = getSizeFilteredMask(mask,min_size)
-        #make sure there are at least the minimum number of pixels selected
-        if np.sum(mask==0)<min_pixels :
-            return np.ones_like(mask)
-        ##open what remains by the window size to capture surrounding areas
-        #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,window_element,borderType=cv2.BORDER_REPLICATE))
-        #a medium-sized open/close to smooth the larger curves and capture some outside area
-        #mask = (cv2.morphologyEx(mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
-        #mask = (cv2.morphologyEx(mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
-    return mask
-
-#return the minimally-transformed tissue mask for a single image layer
-def getImageLayerTissueMask(img_layer,bkg_threshold) :
-    sm_layer = smoothImageWorker(img_layer,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
-    img_mask = (np.where(sm_layer>bkg_threshold,1,0)).astype(np.uint8)
-    img_mask = cv2.morphologyEx(img_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE)
-    img_mask = cv2.morphologyEx(img_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE)
-    return img_mask
-
-#return the fully-determined single tissue mask for a multilayer image
-def getImageTissueMask(image_arr,bkg_thresholds) :
-    #mask each layer individually first
-    layer_masks = []
-    for li in range(image_arr.shape[-1]) :
-        layer_masks.append(getImageLayerTissueMask(image_arr[:,:,li],bkg_thresholds[li]))
-    #find the well-defined tissue and background in each layer group
-    overall_tissue_mask = np.zeros_like(layer_masks[0])
-    overall_background_mask = np.zeros_like(layer_masks[0])
-    total_stacked_masks = np.zeros_like(layer_masks[0])
-    #for each layer group
-    for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
-        stacked_masks = np.zeros_like(layer_masks[0])
-        for ln in range(lgb[0],lgb[1]+1) :
-            stacked_masks+=layer_masks[ln-1]
-        total_stacked_masks+=stacked_masks
-        #well-defined tissue is anything called tissue in at least all but two layers
-        overall_tissue_mask[stacked_masks>(lgb[1]-lgb[0]-1)]+= 10 if lgi==DAPI_LAYER_GROUP_INDEX else 1
-        #well-defined background is anything called background in at least half the layers
-        overall_background_mask[stacked_masks<(lgb[1]-lgb[0]+1)/2.]+= 10 if lgi==DAPI_LAYER_GROUP_INDEX else 1
-    #threshold tissue/background masks to include only those from the DAPI and at least one other layer group
-    overall_tissue_mask = (np.where(overall_tissue_mask>10,1,0)).astype(np.uint8)
-    overall_background_mask = (np.where(overall_background_mask>10,1,0)).astype(np.uint8)
-    #final mask has tissue=1, background=0
-    final_mask = np.zeros_like(layer_masks[0])+2
-    final_mask[overall_tissue_mask==1] = 1
-    final_mask[overall_background_mask==1] = 0
-    #anything left over is signal if it's stacked in at least half the total number of layers
-    thresholded_stacked_masks = np.where(total_stacked_masks>(image_arr.shape[-1]/2.),1,0)
-    final_mask[final_mask==2] = thresholded_stacked_masks[final_mask==2]
-    #filter the tissue and background portions to get rid of the small islands
-    final_mask = getSizeFilteredMask(final_mask,min_size=TISSUE_MIN_SIZE)
-    #medium size open/close to smooth out edges
-    final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE)
-    final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE)
-    return final_mask
-
-#function to compute and return the variance of the normalized laplacian for a given image layer
-def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer,tissue_mask=None) :
-    #build the laplacian image and normalize it to get the curvature
-    img_laplacian = cv2.Laplacian(img_layer,cv2.CV_32F,borderType=cv2.BORDER_REFLECT)
-    img_lap_norm = cv2.filter2D(img_layer,cv2.CV_32F,LOCAL_MEAN_KERNEL,borderType=cv2.BORDER_REFLECT)
-    img_norm_lap = img_laplacian
-    img_norm_lap[img_lap_norm!=0] /= img_lap_norm[img_lap_norm!=0]
-    img_norm_lap[img_lap_norm==0] = 0
-    #find the variance of the normalized laplacian in the neighborhood window, disregarding the background if a tissue mask is given
-    if tissue_mask is not None :
-        norm_lap_loc_mean = tissue_mask*cv2.filter2D(tissue_mask*img_norm_lap,cv2.CV_32F,WINDOW_EL,borderType=cv2.BORDER_REFLECT)
-        norm_lap_2_loc_mean = tissue_mask*cv2.filter2D(tissue_mask*np.power(img_norm_lap,2),cv2.CV_32F,WINDOW_EL,borderType=cv2.BORDER_REFLECT)
-        local_mask_norm = tissue_mask*cv2.filter2D(tissue_mask,cv2.CV_8U,WINDOW_EL,borderType=cv2.BORDER_REFLECT)
-    else :
-        norm_lap_loc_mean = cv2.filter2D(img_norm_lap,cv2.CV_32F,WINDOW_EL,borderType=cv2.BORDER_REFLECT)
-        norm_lap_2_loc_mean = cv2.filter2D(np.power(img_norm_lap,2),cv2.CV_32F,WINDOW_EL,borderType=cv2.BORDER_REFLECT)
-        local_mask_norm = cv2.filter2D(np.ones(img_layer.shape,dtype=np.float32),cv2.CV_8U,WINDOW_EL,borderType=cv2.BORDER_REFLECT)
-    norm_lap_loc_mean[local_mask_norm!=0] /= local_mask_norm[local_mask_norm!=0]
-    norm_lap_loc_mean[local_mask_norm==0] = 0
-    norm_lap_2_loc_mean[local_mask_norm!=0] /= local_mask_norm[local_mask_norm!=0]
-    norm_lap_2_loc_mean[local_mask_norm==0] = 0
-    local_norm_lap_var = np.abs(norm_lap_2_loc_mean-np.power(norm_lap_loc_mean,2))
-    if tissue_mask is not None :
-        local_norm_lap_var[tissue_mask==0] = np.max(local_norm_lap_var)
-    #return the local variance of the normalized laplacian
-    return local_norm_lap_var
 
 #function to return a blur mask for a given image layer group, along with a dictionary of plots to add to the group for this image
 def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_layers_flag_cut,max_mean,brightest_layer_n,ethistandbins,return_plots=True) :
