@@ -135,7 +135,7 @@ def getImageTissueFoldMask(img_array,exp_times,tissue_mask,exp_t_hists,return_pl
         stacked_fold_masks[layer_group_fold_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
     overall_fold_mask = (np.where(stacked_fold_masks>11,0,1)).astype(np.uint8)
     #morph and filter the mask using the common operations
-    overall_fold_mask = getMorphedAndFilteredMask(overall_fold_mask,tissue_mask,WINDOW_EL,FOLD_MIN_PIXELS,FOLD_MIN_SIZE)
+    overall_fold_mask = getMorphedAndFilteredMask(overall_fold_mask,tissue_mask,FOLD_MIN_PIXELS,FOLD_MIN_SIZE)
     if return_plots :
         return overall_fold_mask,fold_mask_plots_by_layer_group
     else :
@@ -361,7 +361,7 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
                                                                 exp_time_hists[DAPI_LAYER_GROUP_INDEX],
                                                                 False)
     #same morphology transformations as before
-    dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,WINDOW_EL,DUST_MIN_PIXELS,DUST_MIN_SIZE)
+    dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,DUST_MIN_PIXELS,DUST_MIN_SIZE)
     #make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged
     dapi_dust_mask = getExclusiveMask(dapi_dust_mask,tissue_fold_mask,0.25)
     #dapi_dust_mask,dapi_dust_plots = np.ones(img_array.shape,dtype=np.uint8),None
