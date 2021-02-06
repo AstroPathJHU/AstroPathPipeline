@@ -89,10 +89,10 @@ class Const :
         return 5000 #minimum size in pixels of individual structure elements allowed in multilayer blur masks
     @property
     def FOLD_NLV_CUT(self) :
-        return 0.02 #0.025 #local normalized laplacian variance below which a pixel is flagged as blurry for multiple layer masks 
+        return 0.0035 #local normalized laplacian variance below which a pixel is flagged as blurry for multiple layer masks 
     @property
     def FOLD_MAX_MEAN(self) :
-        return 0.018 #0.01875 #maximum mean within the smaller window of the local normalized laplacian variance allowed to flag multilayer blur
+        return 0.0030 #maximum mean within the smaller window of the local normalized laplacian variance allowed to flag multilayer blur
     @property
     def DUST_MIN_PIXELS(self) :
         return 30000 #minimum number of pixels required to flag DAPI layer blur in images
@@ -101,10 +101,10 @@ class Const :
         return 20000 #minimum size in pixels of individual structure elements allowed in DAPI layer blur masks
     @property
     def DUST_NLV_CUT(self) :
-        return 0.005 #local normalized laplacian variance below which a pixel is flagged as blurry for multiple layer masks 
+        return 0.00085 #local normalized laplacian variance below which a pixel is flagged as blurry for multiple layer masks 
     @property
     def DUST_MAX_MEAN(self) :
-        return 0.004 #maximum mean within the smaller window of the local normalized laplacian variance allowed to flag multilayer blur
+        return 0.00065 #maximum mean within the smaller window of the local normalized laplacian variance allowed to flag multilayer blur
     @property
     def SATURATION_MIN_PIXELS(self) :
         return 4500 #minimum number of pixels required to flag saturation in images
