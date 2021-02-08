@@ -35,7 +35,7 @@ def makeplots():
   else:
     ylimpscale = ylim
 
-  showannotation(qptiff, A.regions, vertices=A.vertices, qpscale=A.apscale, imagescale=apscale, figurekwargs={}, ylim=ylim, xlim=xlim, saveas=here/"qptiff.pdf")
+  showannotation(qptiff, A.regions, vertices=A.apvertices, qpscale=A.apscale, imagescale=apscale, figurekwargs={}, ylim=ylim, xlim=xlim, saveas=here/"qptiff.pdf")
   showannotation(wsi, warpedregions, qpscale=apscale, imagescale=A.pscale, figurekwargs={}, ylim=ylimpscale, xlim=xlimpscale, saveas=here/"wsi.pdf")
 
 if __name__ == "__main__":

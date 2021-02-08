@@ -415,10 +415,11 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   def newregionscsv(self): return self.csv("regions")
 
   @methodtools.lru_cache()
-  def __getvertices(self, *, apscale, filename=None):
+  def __getvertices(self, *, apscale, pscale, filename=None):
     if filename is None: filename = self.oldverticescsv
     extrakwargs={
      "apscale": apscale,
+     "pscale": pscale,
      "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, apscale),
      "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, apscale)
     }
@@ -435,10 +436,13 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
   @property
   def vertices(self):
-    return self.__getvertices(apscale=self.apscale)
+    return self.__getvertices(apscale=self.apscale, pscale=self.pscale)
+  @property
+  def apvertices(self):
+    return self.__getvertices(apscale=self.apscale, pscale=self.apscale)
 
   @methodtools.lru_cache()
-  def __getwarpedvertices(self, *, apscale):
+  def __getwarpedvertices(self, *, apscale, pscale):
     oneapmicron = units.onemicron(pscale=apscale)
     onemicron = self.onemicron
     onepixel = self.onepixel
@@ -447,12 +451,12 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
         vertex=v,
         wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, apscale=apscale))) / oneapmicron * onemicron // onepixel * onepixel,
         pscale=self.pscale,
-      ) for v in self.__getvertices(apscale=apscale)
+      ) for v in self.__getvertices(apscale=apscale, pscale=pscale)
     ]
 
   @property
   def warpedvertices(self):
-    return self.__getwarpedvertices(apscale=self.apscale)
+    return self.__getwarpedvertices(apscale=self.apscale, pscale=self.pscale)
 
   @methodtools.lru_cache()
   def __getregions(self, *, apscale, filename=None):
