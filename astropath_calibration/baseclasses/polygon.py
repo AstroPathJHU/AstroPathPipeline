@@ -22,7 +22,11 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       if apscale is None: raise ValueError("Have to provide apscale if you give a string to Polygon")
       if pscale is None: raise ValueError("Have to provide pscale if you give a string to Polygon")
 
-      gdalpolygon = ogr.CreateGeometryFromWkt(string)
+      if isinstance(string, ogr.Geometry):
+        gdalpolygon = string
+      else:
+        gdalpolygon = ogr.CreateGeometryFromWkt(string)
+
       vertices = []
       for polygon in gdalpolygon:
         polyvertices = []
