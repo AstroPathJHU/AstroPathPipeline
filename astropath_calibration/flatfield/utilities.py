@@ -393,14 +393,20 @@ def getMorphedAndFilteredMask(mask,tissue_mask,min_pixels,min_size) :
 def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer) :
     #build the laplacian image and normalize it to get the curvature
     img_laplacian = cv2.Laplacian(img_layer,cv2.CV_32F,borderType=cv2.BORDER_REFLECT)
-    img_lap_norm = cv2.filter2D(img_layer,cv2.CV_32F,CONST.LOCAL_MEAN_KERNEL,borderType=cv2.BORDER_REFLECT)
+    img_lap_norm = cv2.UMat(np.empty(img_layer.shape,dtype=np.float32))
+    cv2.filter2D(img_layer,cv2.CV_32F,CONST.LOCAL_MEAN_KERNEL,img_lap_norm,borderType=cv2.BORDER_REFLECT)
+    img_lap_norm = img_lap_norm.get()
     img_norm_lap = img_laplacian
     img_norm_lap[img_lap_norm!=0] /= img_lap_norm[img_lap_norm!=0]
     img_norm_lap[img_lap_norm==0] = 0
     #find the variance of the normalized laplacian in the neighborhood window
-    norm_lap_loc_mean = cv2.filter2D(img_norm_lap,cv2.CV_32F,CONST.WINDOW_EL,borderType=cv2.BORDER_REFLECT)
-    norm_lap_2_loc_mean = cv2.filter2D(np.power(img_norm_lap,2),cv2.CV_32F,CONST.WINDOW_EL,borderType=cv2.BORDER_REFLECT)
+    norm_lap_loc_mean = cv2.UMat(np.empty_like(img_norm_lap))
+    cv2.filter2D(img_norm_lap,cv2.CV_32F,CONST.WINDOW_EL,norm_lap_loc_mean,borderType=cv2.BORDER_REFLECT)
+    norm_lap_2_loc_mean = cv2.UMat(np.empty_like(img_norm_lap))
+    cv2.filter2D(np.power(img_norm_lap,2),cv2.CV_32F,CONST.WINDOW_EL,norm_lap_2_loc_mean,borderType=cv2.BORDER_REFLECT)
     npix = np.sum(CONST.WINDOW_EL)
+    norm_lap_loc_mean = norm_lap_loc_mean.get()
+    norm_lap_2_loc_mean = norm_lap_2_loc_mean.get()
     norm_lap_loc_mean /= npix
     norm_lap_2_loc_mean /= npix
     local_norm_lap_var = np.abs(norm_lap_2_loc_mean-np.power(norm_lap_loc_mean,2))
