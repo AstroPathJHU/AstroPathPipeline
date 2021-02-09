@@ -322,7 +322,7 @@ ARG RSYNC_REMOTE
 ARG WITH_DEBUG_SYMBOLS=no
 
 # Build PROJ
-ARG PROJ_VERSION=5.2.0
+ARG PROJ_VERSION=7.2.1
 ARG PROJ_INSTALL_PREFIX=/usr/local
 COPY ./bh-proj.sh /buildscripts/bh-proj.sh
 RUN sudo -E bash /buildscripts/bh-proj.sh
