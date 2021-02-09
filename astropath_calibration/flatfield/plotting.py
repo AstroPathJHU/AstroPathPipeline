@@ -414,6 +414,9 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,compressed_full
 
 #helper function to plot all of the hpf locations for a slide with their reasons for being flagged
 def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
+    print(f'all_rfps = {all_rfps}')
+    print(f'rfps_added = {rfps_added}')
+    print(f'lmrs = {lmrs}')
     all_flagged_hpf_keys = [lmr.image_key for lmr in lmrs]
     hpf_identifiers = []
     for rfp in all_rfps :
@@ -428,7 +431,7 @@ def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
         elif rfp in rfps_added :
             flagged_int = 0
         else :
-        	flagged_int = 4
+            flagged_int = 4
         hpf_identifiers.append({'x':key_x,'y':key_y,'flagged':flagged_int})
     colors_by_flag_int = ['gray','royalblue','gold','limegreen','black']
     labels_by_flag_int = ['not flagged','blur flagged','saturation flagged','blur and saturation','not read/stacked']
@@ -457,9 +460,9 @@ def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
     ax.set_ylabel('HPF local y position',fontsize=16)
     fn = f'{sid}_flagged_hpf_locations.png'
     if plotdir_path is not None :
-	    with cd(plotdir_path) :
-	        plt.savefig(fn)
-	        cropAndOverwriteImage(fn)
-	else :
-		plt.show()
+        with cd(plotdir_path) :
+            plt.savefig(fn)
+            cropAndOverwriteImage(fn)
+    else :
+        plt.show()
 

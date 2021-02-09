@@ -374,8 +374,8 @@ def getMorphedAndFilteredMask(mask,tissue_mask,min_pixels,min_size) :
     if np.min(mask)<1 and np.max(mask)!=np.min(mask) :
         #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
         mask_to_transform = cv2.UMat(np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype))
-        twice_eroded_fold_mask = cv2.UMat(np.empty_like(mask)
-        cv2.morphologyEx(mask,cv2.MORPH_ERODE,CONST.WINDOW_EL,twice_eroded_fold_mask,iterations=2,borderType=cv2.BORDER_REPLICATE))
+        twice_eroded_fold_mask = cv2.UMat(np.empty_like(mask))
+        cv2.morphologyEx(mask,cv2.MORPH_ERODE,CONST.WINDOW_EL,twice_eroded_fold_mask,iterations=2,borderType=cv2.BORDER_REPLICATE)
         cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.MEDIUM_CO_EL,mask_to_transform,borderType=cv2.BORDER_REPLICATE)
         cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,CONST.WINDOW_EL,mask_to_transform,borderType=cv2.BORDER_REPLICATE)
         cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.MEDIUM_CO_EL,mask_to_transform,borderType=cv2.BORDER_REPLICATE)
