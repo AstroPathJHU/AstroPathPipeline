@@ -1,10 +1,10 @@
 #imports
-from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..alignment.rectangle import AlignmentRectangle
 from ..baseclasses.rectangle import RectangleTransformationBase
 from ..utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield
 from ..utilities.img_file_io import getExposureTimesByLayer
+from ..utilities.config import CONST as UNIV_CONST
 import os
 
 class CorrectForExposureTime(RectangleTransformationBase):
@@ -27,7 +27,7 @@ class RectangleForWarping(AlignmentRectangle):
         exp_time = None
         if transformations is None: transformations = []
         if (med_et is not None) and (offset is not None) :
-            rfp = os.path.join(rtd,slide_ID,self.file.replace(CONST.IM3_EXT,CONST.RAW_EXT))
+            rfp = os.path.join(rtd,slide_ID,self.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT))
             try :
                 exp_time = (getExposureTimesByLayer(rfp,number_of_layers,root_dir))[self.layer-1]
             except Exception :

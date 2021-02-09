@@ -69,12 +69,14 @@ where:
 Running the above command will produce:
 1. **a "`meanimage`" directory** in `[root_directory]\[slide_ID]\im3` that contains the following:
     - **a `[slideID]-mean_image.bin` file** that is the mean of the counts/ms in all of the selected HPFs' tissue regions, stored as 64-bit floats
+    - **a `[slideID]-std_error_of_mean_image.bin` file** that is the standard error on the mean counts/ms in all of the selected HPFs' tissue regions, stored as 64-bit floats
     - **a `[slideID]-mask_stack.bin` file** that is the stack of the binary image masks from every selected HPF, stored as 64-bit unsigned integers
     - **a very detailed "global" log file** called "`global-slide_mean_image.log`"
     - **a list of every field used** in finding the background thresholds and in making the mean image, called "`fields_used_meanimage.csv`", stored as a ["FieldLog" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath_calibration/flatfield/utilities.py#L22-L29)
     - **a list of every slide used** in stacking images, including date ranges, called "`metadata_summary_stacked_images_meanimage.csv`" and stored as a ["MetadataSummary" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath_calibration/utilities/misc.py#L141-L149)
     - **a "`thresholding_info`" subdirectory** containing plots/details about how the background thresholding proceeded
     - **a "`postrun_info`" subdirectory** containing information about how many HPFs were stacked in each layer of the meanimage, how many raw HPFs were read, and .png images of the individual mean image and mask stack layers
+    - **a "`image_masking`" subdirectory** containing some example plots of the image masks that were produced, multilayer "`[image_key]_mask.bin`" mask files for any stacked images that had blur or saturation flagged in them, a "`labelled_mask_regions.csv`" file listing every region masked due to blur or saturation as ["LabelledMaskRegion" objects](https://github.com/AstropathJHU/microscopealignment/blob/flagging_HPF_regions/astropath_calibration/flatfield/utilities.py#L38-L44), and a plot of where the HPFs that were read and flagged are located within the slide.
 2. **a main log file** called "`slide_mean_image.log`" in `[root_directory]\logfiles` with just a single line showing that slide_mean_image was run
 3. **a more detailed sample log file** called "`[slideID]-slide_mean_image.log`" in `[root_directory]\[slide_ID]\logfiles`
 

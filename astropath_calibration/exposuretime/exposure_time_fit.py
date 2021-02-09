@@ -1,10 +1,10 @@
 #imports
 from .overlap_with_exposure_times import OverlapWithExposureTimes
 from .utilities import et_fit_logger, FieldLog
-from .config import CONST
 from .alignmentset import AlignmentSetForExposureTime
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary, cropAndOverwriteImage
+from ..utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt
 from matplotlib import colors
 import os, random, scipy, platform
@@ -57,7 +57,7 @@ class SingleLayerExposureTimeFit :
         et_fit_logger.info(f'Making an AlignmentSet for just the overlaps with different exposure times in layer {self.layer}....')
         use_GPU = platform.system()!='Darwin'
         a = AlignmentSetForExposureTime(self.root_dir,self.rawfile_top_dir,self.slideID,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
-                                nclip=CONST.N_CLIP,useGPU=use_GPU,readlayerfile=False,layer=self.layer,filetype='raw',
+                                nclip=UNIV_CONST.N_CLIP,useGPU=use_GPU,readlayerfile=False,layer=self.layer,filetype='raw',
                                 smoothsigma=smoothsigma,flatfield=self.flatfield)
         #get all the raw file layers and align the overlaps
         a.getDAPI()
@@ -162,8 +162,8 @@ class SingleLayerExposureTimeFit :
                 continue
             p1rect = rects_by_n[olap.p1]
             p2rect = rects_by_n[olap.p2]
-            p1et = exposure_times[(p1rect.file).rstrip(CONST.IM3_EXT)]
-            p2et = exposure_times[(p2rect.file).rstrip(CONST.IM3_EXT)]
+            p1et = exposure_times[(p1rect.file).rstrip(UNIV_CONST.IM3_EXT)]
+            p2et = exposure_times[(p2rect.file).rstrip(UNIV_CONST.IM3_EXT)]
             et_fit_logger.info(f'Finding costs for overlap {olap.n} ({io+1} of {len(alignset.overlaps)} in {self.slideID} layer {self.layer})....')
             etolaps.append(OverlapWithExposureTimes(olap,p1et,p2et,med_exp_time,cutimages,self.offset_bounds))
             if p1rect.n not in relevant_rectangles.keys() :
@@ -276,7 +276,7 @@ class SingleLayerExposureTimeFit :
         #make an alignmentset for just those overlaps and correct the raw images
         et_fit_logger.info(f'Making an AlignmentSet for {len(raw_olap_ns_for_plots)} pre/postfit overlay images for layer {self.layer}')
         a = AlignmentSetForExposureTime(self.root_dir,self.rawfile_top_dir,self.slideID,selectoverlaps=raw_olap_ns_for_plots,
-                                onlyrectanglesinoverlaps=True,nclip=CONST.N_CLIP,readlayerfile=False,layer=self.layer,filetype="raw",smoothsigma=None,flatfield=self.flatfield)
+                                onlyrectanglesinoverlaps=True,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=self.layer,filetype="raw",smoothsigma=None,flatfield=self.flatfield)
         a.getDAPI()
         raw_olap_images = {}
         et_fit_logger.info(f'Aligning overlaps for plots in layer {self.layer}')

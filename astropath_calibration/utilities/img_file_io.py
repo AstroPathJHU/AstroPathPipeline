@@ -2,6 +2,7 @@
 from .tableio import readtable
 from .dataclasses import MyDataClass
 from .misc import cd
+from .config import CONST
 import numpy as np
 import xml.etree.ElementTree as et
 import os, glob, cv2, logging, time
@@ -333,3 +334,41 @@ def getMedianExposureTimeAndCorrectionOffsetForSlideLayer(root_dir,slideID,et_co
   med_ets, et_offsets = getMedianExposureTimesAndCorrectionOffsetsForSlide(root_dir,slideID,et_correction_offset_file) 
   med_et = med_ets[layer-1]; et_offset = et_offsets[layer-1]
   return med_et, et_offset
+
+#helper function to return a list of exposure time histograms by layer group for a given slide
+def getExposureTimeHistogramsByLayerGroupForSlide(root_dir,slideID,nbins=50,logger=None) :
+  _,_,nlayers = getImageHWLFromXMLFile(root_dir,slideID)
+  if nlayers==35 :
+    mask_layer_groups=CONST.LAYER_GROUPS_35
+  elif nlayers==43 :
+    mask_layer_groups=CONST.LAYER_GROUPS_43
+  else :
+    raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {nlayers} layers!')
+  checkdir = os.path.join(root_dir,slideID,'im3','xml')
+  if not os.path.isdir(checkdir) :
+    checkdir = os.path.join(root_dir,slideID)
+  with cd(checkdir) :
+    all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
+  if len(all_fps)<1 :
+    raise ValueError(f'ERROR: no exposure time xml files found in directory {checkdir}!')
+  msg = f'Getting exposure time histograms for {slideID} ({len(all_fps)} images with {nlayers} layers each)....'
+  if logger is not None :
+    try :
+      logger.imageinfo(msg,slideID,root_dir)
+    except Exception :
+      try :
+        logger.imageinfo(msg)
+      except Exception :
+        utility_logger.info(msg)
+  all_exp_times = []
+  for lgi in range(len(mask_layer_groups)) :
+    all_exp_times.append([])
+  for fp in all_fps :
+    this_image_layer_exposure_times = getExposureTimesByLayer(fp,nlayers)
+    for lgi,lgb in enumerate(mask_layer_groups) :
+      all_exp_times[lgi].append(this_image_layer_exposure_times[lgb[0]-1])
+  exp_time_hists = []
+  for lgi in range(len(mask_layer_groups)) :
+    newhist,newbins = np.histogram(all_exp_times[lgi],bins=nbins)
+    exp_time_hists.append((newhist,newbins))
+  return exp_time_hists

@@ -6,6 +6,7 @@ from .utilities import getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorking
 from .config import CONST 
 from ..utilities.tableio import readtable
 from ..utilities.misc import cd, split_csv_to_list
+from ..utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
 import os, glob, random, shutil
 
@@ -128,7 +129,7 @@ def checkArgs(a) :
         if not os.path.isdir(a.threshold_file_dir) :
             raise ValueError(f'ERROR: Threshold file directory {a.threshold_file_dir} does not exist!')
         for sn in [s.name for s in slides] :
-            tfn = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
+            tfn = f'{sn}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
             tfp = os.path.join(a.threshold_file_dir,tfn)
             if not os.path.isfile(tfp) :
                 raise FileNotFoundError(f'ERROR: background threshold file {tfp} does not exist!')
@@ -190,7 +191,7 @@ def getFilepathsAndSlidesToRun(a,logger=None) :
     all_slide_filepaths=[]
     for s in slides_to_run :
         with cd(os.path.join(s.rawfile_top_dir,s.name)) :
-            all_slide_filepaths+=[os.path.join(s.rawfile_top_dir,s.name,fn) for fn in glob.glob(f'{s.name}_[[]*,*[]]{CONST.RAW_EXT}')]
+            all_slide_filepaths+=[os.path.join(s.rawfile_top_dir,s.name,fn) for fn in glob.glob(f'{s.name}_[[]*,*[]]{UNIV_CONST.RAW_EXT}')]
     all_slide_filepaths.sort()
     #if the rawfiles haven't already been selected, figure that out
     if filepaths_to_run is None :
@@ -345,7 +346,7 @@ def main(args=None) :
                                          help="""Path to .csv file listing FlatfieldSlideInfo objects (to use slides from multiple raw/root file paths),
                                                  or a comma-separated list of slide names to use with the common raw/root file paths""")
     slide_definition_group.add_argument('--rawfile_top_dir',
-                                         help=f'Path to directory containing [slidename] subdirectories with raw "{CONST.RAW_EXT}" files for all slides')
+                                         help=f'Path to directory containing [slidename] subdirectories with raw "{UNIV_CONST.RAW_EXT}" files for all slides')
     slide_definition_group.add_argument('--root_dir',
                                          help='Path to Clinical_Specimen directory for all slides')
     #mutually exclusive group for how to handle the thresholding
@@ -387,7 +388,7 @@ def main(args=None) :
     else :
         workingdir_path = os.path.abspath(os.path.normpath(args.workingdir))
     if not os.path.isdir(workingdir_path) :
-        os.path.mkdir(workingdir_path)
+        os.mkdir(workingdir_path)
     with RunLogger(args.mode,workingdir_path) as logger :
         #make sure the command line arguments make sense
         checkArgs(args)
