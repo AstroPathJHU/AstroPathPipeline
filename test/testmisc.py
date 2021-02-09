@@ -49,3 +49,14 @@ class TestMisc(unittest.TestCase):
   def testPolygonAreasFastUnits(self):
     with units.setup_context("fast"):
       self.testPolygonAreas()
+
+  def testPolygonHull(self):
+    poly = Polygon(pixels="POLYGON((1 1, 1 3, 2 3, 2 2, 3 2, 3 3, 4 3, 4 1, 1 1), (.25 .25, .25 .75, .75 .75, .75 .25))", pscale=5, apscale=3)
+    assertAlmostEqual(units.convertpscale(poly.totalarea, poly.apscale, poly.pscale, power=2), 4.75 * poly.onepixel**2)
+    hull = poly.convexhull
+    self.assertEqual(hull, Polygon(pixels="POLYGON((1 1, 1 3, 4 3, 4 1, 1 1))", pscale=5, apscale=3))
+    assertAlmostEqual(units.convertpscale(hull.totalarea, poly.apscale, poly.pscale, power=2), 6 * poly.onepixel**2)
+
+  def testPolygonHullFastUnits(self):
+    with units.setup_context("fast"):
+      self.testPolygonAreas()

@@ -119,6 +119,12 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       **kwargs,
     )
 
+  @property
+  def convexhull(self):
+    gdalpolygon = self.gdalpolygon(imagescale=self.pscale)
+    gdalhull = gdalpolygon.ConvexHull()
+    return Polygon(pixels=gdalhull, pscale=self.pscale, apscale=self.apscale)
+
 class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
   @classmethod
   def polygonfields(cls):
