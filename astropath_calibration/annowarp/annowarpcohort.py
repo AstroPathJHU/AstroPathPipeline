@@ -47,6 +47,7 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
     }
     if parsed_args_dict.pop("skip_stitched"):
       dbloadroot = kwargs["dbloadroot"]
+      if dbloadroot is None: dbloadroot = kwargs["root"]
       def isnotstitched(sample):
         if not (dbloadroot/sample.SlideID/"dbload"/f"{sample.SlideID}_warp-{kwargs['tilepixels']}.csv").exists(): return True
         if not (dbloadroot/sample.SlideID/"dbload"/f"{sample.SlideID}_warp-{kwargs['tilepixels']}-stitch.csv").exists(): return True
