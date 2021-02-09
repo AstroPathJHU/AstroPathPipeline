@@ -242,6 +242,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
           )
         )
     self.__alignmentresults = results
+    if not results:
+      raise ValueError("Couldn't align any tiles")
     if write_result:
       self.writealignments()
     return results

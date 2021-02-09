@@ -2,13 +2,24 @@ from ..baseclasses.cohort import DbloadCohort, ZoomCohort
 from .annowarpsample import AnnoWarpSample
 
 class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
-  def __init__(self, *args, tilepixels=100, **kwargs):
-    self.tilepixels = tilepixels
+  def __init__(self, *args, tilepixels=None, tilebrightnessthreshold=None, mintilebrightfraction=None, mintilerange=None, **kwargs):
+    self.__initiatesamplekwargs = {
+      "tilepixels": tilepixels,
+      "tilebrightnessthreshold": tilebrightnessthreshold,
+      "mintilebrightfraction": mintilebrightfraction,
+      "mintilerange": mintilerange,
+    }
+    for k, v in list(self.__initiatesamplekwargs.items()):
+      if v is None:
+        del self.__initiatesamplekwargs[k]
     super().__init__(*args, **kwargs)
 
   @property
   def initiatesamplekwargs(self):
-    return {**super().initiatesamplekwargs, "tilepixels": self.tilepixels}
+    return {
+      **super().initiatesamplekwargs,
+      **self.__initiatesamplekwargs,
+    }
 
   sampleclass = AnnoWarpSample
 
@@ -18,8 +29,11 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument("--tilepixels", type=int, default=100)
     p.add_argument("--skip-stitched", action="store_true")
+    p.add_argument("--tilepixels", type=int)
+    p.add_argument("--tile-brightness-threshold", type=int)
+    p.add_argument("--min-tile-bright-fraction", type=float)
+    p.add_argument("--min-tile-range", type=int)
     return p
 
   @classmethod
@@ -27,6 +41,9 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "tilepixels": parsed_args_dict.pop("tilepixels"),
+      "tilebrightnessthreshold": parsed_args_dict.pop("tile_brightness_threshold"),
+      "mintilebrightfraction": parsed_args_dict.pop("min_tile_bright_fraction"),
+      "mintilerange": parsed_args_dict.pop("min_tile_range"),
     }
     if parsed_args_dict.pop("skip_stitched"):
       dbloadroot = kwargs["dbloadroot"]
