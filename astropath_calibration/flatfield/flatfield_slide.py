@@ -274,7 +274,7 @@ class FlatfieldSlide() :
     	"""
     	#first get the list of all the rawfile paths for this slide
     	with cd(os.path.join(self._rawfile_top_dir,self._name)) :
-    		all_rfps = [os.path.join(self._rawfile_top_dir,self._name,fn) for fn in glob.glob(UNIV_CONST.RAW_EXT)]
+    		all_rfps = [os.path.join(self._rawfile_top_dir,self._name,fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
     	#run the plotting function for this slide
     	plotFlaggedHPFLocations(self._name,all_rfps,rfps_added,labelled_mask_regions,masking_plot_dirpath)
 

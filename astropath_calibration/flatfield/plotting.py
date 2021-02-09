@@ -414,9 +414,6 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,compressed_full
 
 #helper function to plot all of the hpf locations for a slide with their reasons for being flagged
 def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
-    print(f'all_rfps = {all_rfps}')
-    print(f'rfps_added = {rfps_added}')
-    print(f'lmrs = {lmrs}')
     all_flagged_hpf_keys = [lmr.image_key for lmr in lmrs]
     hpf_identifiers = []
     for rfp in all_rfps :
@@ -424,7 +421,7 @@ def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
         if key in all_flagged_hpf_keys :
-            key_strings = set([lmr.reason_flagged for lmr in all_lmrs if lmr.image_key==key])
+            key_strings = set([lmr.reason_flagged for lmr in lmrs if lmr.image_key==key])
             blur_flagged = 1 if CONST.BLUR_FLAG_STRING in key_strings else 0
             saturation_flagged = 1 if CONST.SATURATION_FLAG_STRING in key_strings else 0
             flagged_int = 1*blur_flagged+2*saturation_flagged

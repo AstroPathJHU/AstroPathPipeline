@@ -124,7 +124,7 @@ def getAlignmentSetTissueEdgeRectNs(aset) :
   for island in slide_islands :
     island_rects = [r for r in aset.rectangles if r.n in island]
     #get the width and height of the rectangles
-    rw, rh = island_rects[0].w, island_rects[0].h
+    #rw, rh = island_rects[0].w, island_rects[0].h
     #get the x/y positions of the rectangles in the island
     x_poss = sorted(list(set([r.x for r in island_rects])))
     y_poss = sorted(list(set([r.y for r in island_rects])))
