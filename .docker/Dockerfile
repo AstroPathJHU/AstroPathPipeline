@@ -101,6 +101,7 @@ RUN sudo apt-get update && \
   librsvg2-dev \
   #for gdal
   libspatialite-dev \
+  libsqlite3-dev \
   libssl-dev \
   #for vips
   libtiff-dev \
@@ -118,6 +119,7 @@ RUN sudo apt-get update && \
   #for vips
   pkg-config \
   #for gdal
+  sqlite3 \
   swig \
   unixodbc-dev \
   #for vips
