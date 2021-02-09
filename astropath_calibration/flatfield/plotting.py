@@ -411,3 +411,55 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,compressed_full
         with cd(workingdir) :
             fn = f'{image_key}_masking_plots.png'
             plt.savefig(fn); plt.close(); cropAndOverwriteImage(fn)
+
+#helper function to plot all of the hpf locations for a slide with their reasons for being flagged
+def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
+    all_flagged_hpf_keys = [lmr.image_key for lmr in lmrs]
+    hpf_identifiers = []
+    for rfp in all_rfps :
+        key = (os.path.basename(rfp)).rstrip(UNIV_CONST.RAW_EXT)
+        key_x = float(key.split(',')[0].split('[')[1])
+        key_y = float(key.split(',')[1].split(']')[0])
+        if key in all_flagged_hpf_keys :
+            key_strings = set([lmr.reason_flagged for lmr in all_lmrs if lmr.image_key==key])
+            blur_flagged = 1 if CONST.BLUR_FLAG_STRING in key_strings else 0
+            saturation_flagged = 1 if CONST.SATURATION_FLAG_STRING in key_strings else 0
+            flagged_int = 1*blur_flagged+2*saturation_flagged
+        elif rfp in rfps_added :
+            flagged_int = 0
+        else :
+        	flagged_int = 4
+        hpf_identifiers.append({'x':key_x,'y':key_y,'flagged':flagged_int})
+    colors_by_flag_int = ['gray','royalblue','gold','limegreen','black']
+    labels_by_flag_int = ['not flagged','blur flagged','saturation flagged','blur and saturation','not read/stacked']
+    w = max([identifier['x'] for identifier in hpf_identifiers])-min([identifier['x'] for identifier in hpf_identifiers])
+    h = max([identifier['y'] for identifier in hpf_identifiers])-min([identifier['y'] for identifier in hpf_identifiers])
+    if h>w :
+        f,ax = plt.subplots(figsize=(((1.1*w)/(1.1*h))*9.6,9.6))
+    else :
+        f,ax = plt.subplots(figsize=(9.6,9.6*((1.1*h)/(1.1*w))))
+    for i in range(len(colors_by_flag_int)) :
+        hpf_ids_to_plot = [identifier for identifier in hpf_identifiers if identifier['flagged']==i]
+        if len(hpf_ids_to_plot)<1 :
+            continue
+        ax.scatter([hpfid['x'] for hpfid in hpf_ids_to_plot],
+                   [hpfid['y'] for hpfid in hpf_ids_to_plot],
+                   marker='o',
+                   color=colors_by_flag_int[i],
+                   label=labels_by_flag_int[i])
+    ax.set_xlim(ax.get_xlim()[0]-0.05*w,ax.get_xlim()[1]+0.05*w)
+    ax.set_ylim(ax.get_ylim()[0]-0.05*h,ax.get_ylim()[1]+0.05*h)
+    ax.invert_yaxis()
+    title_text = f'{sid} HPF center locations, ({len(all_rfps)} in slide, {len(rfps_added)} read, {len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"]!=0])} flagged'
+    ax.set_title(title_text,fontsize=16)
+    ax.legend(loc='best',fontsize=10)
+    ax.set_xlabel('HPF local x position',fontsize=16)
+    ax.set_ylabel('HPF local y position',fontsize=16)
+    fn = f'{sid}_flagged_hpf_locations.png'
+    if plotdir_path is not None :
+	    with cd(plotdir_path) :
+	        plt.savefig(fn)
+	        cropAndOverwriteImage(fn)
+	else :
+		plt.show()
+

@@ -290,58 +290,6 @@ def getEnumeratedMask(layer_mask,start_i) :
     #return the mask
     return return_mask
 
-#helper function to plot all of the hpf locations for a slide with their reasons for being flagged
-def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,workingdir) :
-    all_flagged_hpf_keys = [lmr.image_key for lmr in all_lmrs]
-    hpf_identifiers = []
-    for rfp in all_rfps :
-        key = (os.path.basename(rfp)).rstrip(RAWFILE_EXT)
-        key_x = float(key.split(',')[0].split('[')[1])
-        key_y = float(key.split(',')[1].split(']')[0])
-        cvx = pscale*key_x-xpos
-        cvy = pscale*key_y-ypos
-        if key in all_flagged_hpf_keys :
-            key_strings = set([lmr.reason_flagged for lmr in all_lmrs if lmr.image_key==key])
-            fold_flagged = 1 if FOLD_FLAG_STRING in key_strings else 0
-            dust_flagged = 1 if DUST_STRING in key_strings else 0
-            saturation_flagged = 1 if SATURATION_FLAG_STRING in key_strings else 0
-            flagged_int = 1*fold_flagged+2*dust_flagged+4*saturation_flagged
-        else :
-            flagged_int = 0
-        hpf_identifiers.append({'x':cvx,'y':cvy,'flagged':flagged_int})
-    colors_by_flag_int = ['gray','royalblue','gold','limegreen','firebrick','mediumorchid','darkorange','aqua']
-    labels_by_flag_int = ['not flagged','tissue fold flagged','single-layer dust flagged','dust and tissue folds',
-                            'saturation flagged','saturation and tissue folds','saturation and dust','saturation and dust and tissue folds']
-    w = max([identifier['x'] for identifier in hpf_identifiers])-min([identifier['x'] for identifier in hpf_identifiers])
-    h = max([identifier['y'] for identifier in hpf_identifiers])-min([identifier['y'] for identifier in hpf_identifiers])
-    if h>w :
-        f,ax = plt.subplots(figsize=(((1.1*w)/(1.1*h))*9.6,9.6))
-    else :
-        f,ax = plt.subplots(figsize=(9.6,9.6*((1.1*h)/(1.1*w))))
-    for i in range(len(colors_by_flag_int)) :
-        hpf_ids_to_plot = [identifier for identifier in hpf_identifiers if identifier['flagged']==i]
-        if len(hpf_ids_to_plot)<1 :
-            continue
-        ax.scatter([hpfid['x'] for hpfid in hpf_ids_to_plot],
-                   [hpfid['y'] for hpfid in hpf_ids_to_plot],
-                   marker='o',
-                   color=colors_by_flag_int[i],
-                   label=labels_by_flag_int[i])
-    ax.set_xlim(ax.get_xlim()[0]-0.05*w,ax.get_xlim()[1]+0.05*w)
-    ax.set_ylim(ax.get_ylim()[0]-0.05*h,ax.get_ylim()[1]+0.05*h)
-    ax.invert_yaxis()
-    title_text = f'{sid} HPF center locations, ({len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"]!=0])} flagged out of {len(all_rfps)} read)'
-    if truncated :
-        title_text+=' (stopped early)'
-    ax.set_title(title_text,fontsize=16)
-    ax.legend(loc='best',fontsize=10)
-    ax.set_xlabel('HPF CellView x position',fontsize=16)
-    ax.set_ylabel('HPF CellView y position',fontsize=16)
-    fn = f'{sid}_flagged_hpf_locations.png'
-    with cd(workingdir) :
-        plt.savefig(fn)
-        cropAndOverwriteImage(fn)
-
 #helper function to calculate and add the subimage infos for a single image to a shared dictionary (run in parallel)
 def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list) :
     #start by creating the tissue mask

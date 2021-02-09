@@ -310,10 +310,12 @@ def getImageTissueMask(image_arr,bkg_thresholds) :
     for li in range(image_arr.shape[-1]) :
         #threshold
         layer_mask = (np.where(sm_image_array[:,:,li]>bkg_thresholds[li],1,0)).astype(np.uint8)
+        #convert to UMat to use on the GPU
+        layer_mask = cv2.UMat(layer_mask)
         #small close/open
-        layer_mask = cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE)
-        layer_mask = cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE)
-        layer_masks.append(layer_mask)
+        cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
+        cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
+        layer_masks.append(layer_mask.get())
     #find the well-defined tissue and background in each layer group
     overall_tissue_mask = np.zeros_like(layer_masks[0])
     overall_background_mask = np.zeros_like(layer_masks[0])
@@ -341,9 +343,12 @@ def getImageTissueMask(image_arr,bkg_thresholds) :
     if np.min(final_mask) != np.max(final_mask) :
         #filter the tissue and background portions to get rid of the small islands
         final_mask = getSizeFilteredMask(final_mask,min_size=CONST.TISSUE_MIN_SIZE)
+        #convert to UMat
+        final_mask = cv2.UMat(final_mask)
         #medium size close/open to smooth out edges
-        final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE)
-        final_mask = cv2.morphologyEx(final_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE)
+        cv2.morphologyEx(final_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,final_mask,borderType=cv2.BORDER_REPLICATE)
+        cv2.morphologyEx(final_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,final_mask,borderType=cv2.BORDER_REPLICATE)
+        final_mask = final_mask.get()
     return final_mask
 
 #return a binary mask with any areas that are already flagged in a prior mask removed
@@ -368,11 +373,14 @@ def getExclusiveMask(mask_to_check,prior_mask,min_independent_pixel_frac,invert=
 def getMorphedAndFilteredMask(mask,tissue_mask,min_pixels,min_size) :
     if np.min(mask)<1 and np.max(mask)!=np.min(mask) :
         #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
-        mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
-        twice_eroded_fold_mask = (cv2.morphologyEx(mask,cv2.MORPH_ERODE,CONST.WINDOW_EL,iterations=2,borderType=cv2.BORDER_REPLICATE))
-        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
-        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,CONST.WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
-        mask_to_transform = (cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
+        mask_to_transform = cv2.UMat(np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype))
+        twice_eroded_fold_mask = cv2.UMat(np.empty_like(mask)
+        cv2.morphologyEx(mask,cv2.MORPH_ERODE,CONST.WINDOW_EL,twice_eroded_fold_mask,iterations=2,borderType=cv2.BORDER_REPLICATE))
+        cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.MEDIUM_CO_EL,mask_to_transform,borderType=cv2.BORDER_REPLICATE)
+        cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,CONST.WINDOW_EL,mask_to_transform,borderType=cv2.BORDER_REPLICATE)
+        cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.MEDIUM_CO_EL,mask_to_transform,borderType=cv2.BORDER_REPLICATE)
+        mask_to_transform = mask_to_transform.get()
+        twice_eroded_fold_mask = twice_eroded_fold_mask.get()
         mask[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)] = mask_to_transform[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)]
         #remove any remaining small spots after the tissue mask incorporation
         mask = getSizeFilteredMask(mask,min_size)
@@ -410,23 +418,31 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
         if ln==brightest_layer_n :
             brightest_layer_nlv = img_nlv
         #get the mean of those local normalized laplacian variance values in the window size
-        img_nlv_loc_mean = (cv2.filter2D(img_nlv,cv2.CV_32F,CONST.SMALLER_WINDOW_EL,borderType=cv2.BORDER_REFLECT))/np.sum(CONST.SMALLER_WINDOW_EL)
+        img_nlv_loc_mean = cv2.UMat(np.empty_like(img_nlv))
+        cv2.filter2D(img_nlv,cv2.CV_32F,CONST.SMALLER_WINDOW_EL,img_nlv_loc_mean,borderType=cv2.BORDER_REFLECT)
+        img_nlv_loc_mean=img_nlv_loc_mean.get()
+        img_nlv_loc_mean/=np.sum(CONST.SMALLER_WINDOW_EL)
         #threshold on the local variance of the normalized laplacian and the local mean of those values to make a binary mask
         layer_mask = (np.where((img_nlv>nlv_cut) | (img_nlv_loc_mean>max_mean),1,0)).astype(np.uint8)
         if np.min(layer_mask) != np.max(layer_mask) :
+            #convert to UMat
+            layer_mask = cv2.UMat(layer_mask)
             #small open/close to refine it
-            layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE))
-            layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,borderType=cv2.BORDER_REPLICATE))
+            cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
+            cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
             #erode by the smaller window element
-            layer_mask = (cv2.morphologyEx(layer_mask,cv2.MORPH_ERODE,CONST.SMALLER_WINDOW_EL,borderType=cv2.BORDER_REPLICATE))
+            cv2.morphologyEx(layer_mask,cv2.MORPH_ERODE,CONST.SMALLER_WINDOW_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
+            layer_mask = layer_mask.get()
         #add it to the stack 
         stacked_masks+=layer_mask
     #determine the final mask for this group by thresholding on how many individual layers contribute
     group_blur_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)    
     if np.min(group_blur_mask) != np.max(group_blur_mask) :
         #medium sized open/close to refine it
-        group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
-        group_blur_mask = (cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
+        group_blur_mask = cv2.UMat(group_blur_mask)
+        cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,group_blur_mask,borderType=cv2.BORDER_REPLICATE)
+        cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,group_blur_mask,borderType=cv2.BORDER_REPLICATE)
+        group_blur_mask = group_blur_mask.get()
     #set up the plots to return
     if return_plots :
         plot_img_layer = img_array[:,:,brightest_layer_n-1]
@@ -550,9 +566,12 @@ def getImageSaturationMasks(image_arr,norm_ets) :
         #the final mask is anything flagged in ANY layer
         group_mask = (np.where(stacked_masks>lgb[1]-lgb[0],1,0)).astype(np.uint8)    
         if np.min(group_mask)!=np.max(group_mask) :
+            #convert to UMat
+            group_mask = cv2.UMat(group_mask)
             #medium sized open/close to refine it
-            group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
-            group_mask = (cv2.morphologyEx(group_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,borderType=cv2.BORDER_REPLICATE))
+            cv2.morphologyEx(group_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,group_mask,borderType=cv2.BORDER_REPLICATE)
+            cv2.morphologyEx(group_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,group_mask,borderType=cv2.BORDER_REPLICATE)
+            group_mask = group_mask.get()
             #filter the mask for the total number of pixels and regions by the minimum size
             group_mask = getSizeFilteredMask(group_mask,CONST.SATURATION_MIN_SIZE)
         if np.sum(group_mask==0)<CONST.SATURATION_MIN_PIXELS :

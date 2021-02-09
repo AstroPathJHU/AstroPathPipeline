@@ -22,7 +22,15 @@ class MeanImage :
         return self._workingdir_path #name of the working directory where everything gets saved
     @property
     def dims(self):
-        return self._dims
+        return self._dims #dimensions of the stacked images/meanimage
+    @property
+    def labelled_mask_regions(self):
+    	return self._labelled_mask_regions #the list of labelled mask regions
+    @property
+    def masking_plot_dirpath(self):
+    	return os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)
+    
+    
     
     #################### CLASS CONSTANTS ####################
 
@@ -39,6 +47,8 @@ class MeanImage :
     ILLUMINATION_VARIATION_CSV_FILE_NAME = 'illumination_variation_by_layer.csv' #name of the illumination variation .csv file
     #images stacked per layer
     N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME = 'n_images_stacked_per_layer.txt' #name of the images stacked per layer text file
+    #labelled mask regions file
+    LABELLED_MASK_REGIONS_CSV_FILE_NAME = 'labelled_mask_regions.csv' #name of the labelled mask regions file
     #masking plots
     MASKING_SUBDIR_NAME = 'image_masking' #name of the masking plot directory
 
@@ -72,7 +82,7 @@ class MeanImage :
         self.image_stack = np.zeros(self._dims,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         self.image_squared_stack = np.zeros(self._dims,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         self.mask_stack  = np.zeros(self._dims,dtype=CONST.MASK_STACK_DTYPE_OUT)
-        self.labelled_mask_regions = []
+        self._labelled_mask_regions = []
         self.n_images_read = 0
         self.n_images_stacked_by_layer = np.zeros((self.nlayers),dtype=CONST.MASK_STACK_DTYPE_OUT)
         self.mean_image=None
@@ -183,7 +193,7 @@ class MeanImage :
                     self.n_images_stacked_by_layer[li]+=1
                     stacked_in_layers[-1].append(li+1)
             self.n_images_read+=1
-        self.labelled_mask_regions+=chunk_labelled_mask_regions
+        self._labelled_mask_regions+=chunk_labelled_mask_regions
         return stacked_in_layers
 
     def makeMeanImage(self,logger=None) :
@@ -299,9 +309,9 @@ class MeanImage :
                 #plot and write a text file of how many images were stacked per layer
                 self.__plotAndWriteNImagesStackedPerLayer()
         #save the table of labelled mask regions (if applicable)
-        if len(self.labelled_mask_regions)>0 :
+        if len(self._labelled_mask_regions)>0 :
             with cd(os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)) :
-                writetable('labelled_mask_regions.csv',self.labelled_mask_regions)
+                writetable(self.LABELLED_MASK_REGIONS_CSV_FILE_NAME,self._labelled_mask_regions)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -449,7 +459,11 @@ def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,min_pixel_frac
     key = (os.path.basename(rfp)).rstrip(UNIV_CONST.RAW_EXT)
     image_mask = ImageMask(key)
     image_mask.addCreatedMasks(tissue_mask,blur_mask,layer_group_saturation_masks)
-    #if there is anything flagged in the final blur and saturation masks, make the plots and write out the compressed mask
+    #make the plots for this image if requested
+    if make_plots :
+        flatfield_logger.info(f'Saving masking plots for image {i}')
+        doMaskingPlotsForImage(key,tissue_mask,blur_mask_plots,image_mask.compressed_mask,plotdir_path)
+    #if there is anything flagged in the final blur and saturation masks, write out the compressed mask
     is_masked = np.min(blur_mask)<1
     if not is_masked :
         for lgsm in layer_group_saturation_masks :
@@ -457,9 +471,6 @@ def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,min_pixel_frac
                 is_masked=True
                 break
     if is_masked :
-        if make_plots :
-            flatfield_logger.info(f'Saving masking plots for image {i}')
-            doMaskingPlotsForImage(key,tissue_mask,blur_mask_plots,image_mask.compressed_mask,plotdir_path)
         with cd(plotdir_path) :
             writeImageToFile(image_mask.compressed_mask,f'{key}_mask.png',dtype=np.uint8)
     #return the mask (either in the shared dict or just on its own)

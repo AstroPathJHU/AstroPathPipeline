@@ -1,6 +1,7 @@
 #imports
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds, FieldLog
 from .config import CONST
+from .plotting import plotFlaggedHPFLocations
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities import units
 from ..utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, getExposureTimeHistogramsByLayerGroupForSlide
@@ -8,7 +9,7 @@ from ..utilities.tableio import writetable
 from ..utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs, cropAndOverwriteImage
 from ..utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
-import os
+import os, glob
 
 units.setup('fast')
 
@@ -263,6 +264,19 @@ class FlatfieldSlide() :
                 cropAndOverwriteImage(fn)
         #return the list of the filepaths whose rectangles are on the edge of the tissue
         return [rfp for rfp in rawfile_paths if rfp.split(os.sep)[-1].split('.')[0] in edge_rect_filenames]
+
+    def plotLabelledMaskRegions(self,labelled_mask_regions,rfps_added,masking_plot_dirpath) :
+    	"""
+		Plot the labelled mask region locations for this slide
+		labelled_mask_regions = list of labelled mask regions that were flagged for some reason for this slide
+		rfps_added            = list of rawfile paths that were read and stacked from this slide
+		masking_plot_dirpath  = path to where the labelled mask region plot should be saved
+    	"""
+    	#first get the list of all the rawfile paths for this slide
+    	with cd(os.path.join(self._rawfile_top_dir,self._name)) :
+    		all_rfps = [os.path.join(self._rawfile_top_dir,self._name,fn) for fn in glob.glob(UNIV_CONST.RAW_EXT)]
+    	#run the plotting function for this slide
+    	plotFlaggedHPFLocations(self._name,all_rfps,rfps_added,labelled_mask_regions,masking_plot_dirpath)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

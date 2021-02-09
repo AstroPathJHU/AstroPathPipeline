@@ -41,6 +41,7 @@ class FlatfieldProducer :
         logger                         = a RunLogger object whose context is entered, if None the default log will be used
         """
         self.all_slide_rawfile_paths_to_run = all_slide_rawfile_paths_to_run
+        self.filepaths_added = []
         #make a dictionary to hold all of the separate slides we'll be considering (keyed by name)
         self.flatfield_slide_dict = {}
         for s in slides :
@@ -185,6 +186,8 @@ class FlatfieldProducer :
             this_slide_indices_for_masking_plots = list(range(len(this_slide_fps_to_run)))
             random.shuffle(this_slide_indices_for_masking_plots)
             this_slide_indices_for_masking_plots=this_slide_indices_for_masking_plots[:n_masking_images_per_slide]
+            #add to the list of filepaths that were added
+            self.filepaths_added+=this_slide_fps_to_run
             #break the list of this slide's filepaths into chunks to run in parallel
             fileread_chunks = chunkListOfFilepaths(this_slide_fps_to_run,slide.img_dims,slide.root_dir,n_threads)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
@@ -263,6 +266,13 @@ class FlatfieldProducer :
         #make some visualizations of the images
         self.__writeLog('Saving plots','imageinfo')
         self.mean_image.savePlots()
+        #write out plots of the labelled mask regions for each slide
+        if len(self.mean_image.labelled_mask_regions)>0 :
+            for sn,slide in sorted(self.flatfield_slide_dict.items()) :
+                self.__writeLog(f'Plotting labelled mask regions for slide {sn}','info',sn,slide.root_dir)
+                this_slide_rfps_added = [rfp for rfp in self.filepaths_added if sn in rfp]
+                this_slide_regions = [lmr for lmr in self.mean_image.labelled_mask_regions if sn in lmr.image_key]
+                slide.plotLabelledMaskRegions(this_slide_regions,this_slide_rfps_added,self.mean_image.masking_plot_dirpath)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

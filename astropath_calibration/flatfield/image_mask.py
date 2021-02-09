@@ -1,5 +1,6 @@
 #imports
 from .utilities import LabelledMaskRegion
+from .config import CONST
 from ..utilities.config import CONST as UNIV_CONST
 import numpy as np
 import cv2
@@ -30,11 +31,6 @@ class ImageMask() :
     @property
     def labelled_mask_regions(self):
         return self._labelled_mask_regions #the list of labelled mask region objects for this mask
-
-    #################### CLASS CONSTANTS ####################
-
-    BLUR_FLAG_STRING = 'blurred likely folded tissue or dust' #descriptive string to use for blurred areas in the labelled mask regions file
-    SATURATION_FLAG_STRING = 'saturated likely skin or red blood cells or stain' #descriptive string to use for saturated areas in the labelled mask regions file
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -76,7 +72,7 @@ class ImageMask() :
             region_indices = list(range(np.min(enumerated_blur_mask[enumerated_blur_mask!=0]),np.max(enumerated_blur_mask)+1))
             for ri in region_indices :
                 r_size = np.sum(enumerated_blur_mask==ri)
-                self._labelled_mask_regions.append(LabelledMaskRegion(self._image_key,ri,layers_string,r_size,self.BLUR_FLAG_STRING))
+                self._labelled_mask_regions.append(LabelledMaskRegion(self._image_key,ri,layers_string,r_size,CONST.BLUR_FLAG_STRING))
         #add in the saturation masks 
         for lgi,lgsm in enumerate(saturation_masks) :
             if np.min(lgsm)<1 :
@@ -87,7 +83,7 @@ class ImageMask() :
                 region_indices = list(range(np.min(enumerated_sat_mask[enumerated_sat_mask!=0]),np.max(enumerated_sat_mask)+1))
                 for ri in region_indices :
                     r_size = np.sum(enumerated_sat_mask==ri)
-                    self._labelled_mask_regions.append(LabelledMaskRegion(self._image_key,ri,layers_string,r_size,self.SATURATION_FLAG_STRING))
+                    self._labelled_mask_regions.append(LabelledMaskRegion(self._image_key,ri,layers_string,r_size,CONST.SATURATION_FLAG_STRING))
         #finally add in the tissue mask
         for li in range(self._compressed_mask.shape[-1]) :
             self._compressed_mask[:,:,li][self._compressed_mask[:,:,li]==1] = tissue_mask[self._compressed_mask[:,:,li]==1]
