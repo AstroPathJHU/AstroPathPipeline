@@ -472,7 +472,7 @@ def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,min_pixel_frac
                 break
     if is_masked :
         with cd(plotdir_path) :
-            writeImageToFile(image_mask.compressed_mask,f'{key}_mask.png',dtype=np.uint8)
+            writeImageToFile(image_mask.compressed_mask,f'{key}_mask.bin',dtype=np.uint8)
     #return the mask (either in the shared dict or just on its own)
     if i is not None and return_dict is not None :
         return_dict[i] = image_mask

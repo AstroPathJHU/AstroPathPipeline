@@ -450,7 +450,7 @@ def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
     ax.set_xlim(ax.get_xlim()[0]-0.05*w,ax.get_xlim()[1]+0.05*w)
     ax.set_ylim(ax.get_ylim()[0]-0.05*h,ax.get_ylim()[1]+0.05*h)
     ax.invert_yaxis()
-    title_text = f'{sid} HPF center locations, ({len(all_rfps)} in slide, {len(rfps_added)} read, {len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"]!=0])} flagged'
+    title_text = f'{sid} HPF center locations, ({len(all_rfps)} in slide, {len(rfps_added)} read, {len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"] not in (0,4)])} flagged)'
     ax.set_title(title_text,fontsize=16)
     ax.legend(loc='best',fontsize=10)
     ax.set_xlabel('HPF local x position',fontsize=16)
