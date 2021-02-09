@@ -1,10 +1,10 @@
 #imports
 from .exposure_time_fit import SingleLayerExposureTimeFit
 from .utilities import et_fit_logger, getFirstLayerInGroup, getOverlapsWithExposureTimeDifferences
-from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer, LayerOffset
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
+from ..utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import os, glob
 
@@ -111,7 +111,7 @@ class ExposureTimeOffsetFitGroup :
         #write out all the results
         with cd(self.workingdir_name) :
             all_results_fn = f'{self.slideID}_layers_{self.layers[0]}-{self.layers[-1]}_'
-            all_results_fn+= f'{CONST.LAYER_OFFSET_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(self.workingdir_name))}.csv'
+            all_results_fn+= f'{UNIV_CONST.LAYER_ET_OFFSET_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(self.workingdir_name))}.csv'
             writetable(all_results_fn,offsets)
         #save the plot of the offsets by layer
         plt.plot([o.layer_n for o in offsets],[o.offset for o in offsets],marker='*')
@@ -167,9 +167,9 @@ class ExposureTimeOffsetFitGroup :
     def __getFlatfield(self,flatfield_filepath) :
         if flatfield_filepath is None :
             et_fit_logger.warn('WARNING: No flatfield file path specified; corrections will not be applied!')
-            return np.ones(self.img_dims,dtype=CONST.FLATFIELD_DTYPE)
+            return np.ones(self.img_dims,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         else :
-            return getRawAsHWL(flatfield_filepath,*(self.img_dims),CONST.FLATFIELD_DTYPE)
+            return getRawAsHWL(flatfield_filepath,*(self.img_dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
 
     #helper function to return the list of layer numbers to run from the given arguments
     def __getLayers(self,layers) :
@@ -185,11 +185,11 @@ class ExposureTimeOffsetFitGroup :
     def __getExposureTimes(self) :
         et_fit_logger.info('Getting all image exposure times....')
         with cd(os.path.join(self.rawfile_top_dir,self.slideID)) :
-            all_rfps = [os.path.join(self.rawfile_top_dir,self.slideID,fn) for fn in glob.glob(f'*{CONST.RAW_EXT}')]
+            all_rfps = [os.path.join(self.rawfile_top_dir,self.slideID,fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
         #get the dictionary of exposure times keyed by raw file stem
         exp_times = {}
         for rfp in all_rfps :
-            rfs = os.path.basename(rfp).rstrip(CONST.RAW_EXT)
+            rfs = os.path.basename(rfp).rstrip(UNIV_CONST.RAW_EXT)
             exp_times[rfs] = []
             all_layer_exposure_times = getExposureTimesByLayer(rfp,self.img_dims[-1],self.rawfile_top_dir)
             for li,ln in enumerate(self.layers) :

@@ -3,6 +3,7 @@ from .utilities import warp_logger, WarpingError, WarpFitResult, WarpingSummary,
 from .config import CONST
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
+from ..utilities.config import CONST as UNIV_CONST
 import numpy as np
 from argparse import ArgumentParser
 import os, subprocess, random, shutil
@@ -231,12 +232,12 @@ def main(args=None) :
         new_w_avg_fit_result_fp = os.path.abspath(os.path.join(args.workingdir,
                                                 f'{os.path.basename(os.path.normpath(args.workingdir))}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}'))
         shutil.move(old_w_avg_fit_result_fp,new_w_avg_fit_result_fp)
-        old_w_avg_dx_wf_fp = os.path.abspath(os.path.join(args.workingdir,dirname_3,f'{CONST.X_WARP_BIN_FILENAME}_{dirname_3}.bin'))
-        old_w_avg_dy_wf_fp = os.path.abspath(os.path.join(args.workingdir,dirname_3,f'{CONST.Y_WARP_BIN_FILENAME}_{dirname_3}.bin'))
+        old_w_avg_dx_wf_fp = os.path.abspath(os.path.join(args.workingdir,dirname_3,f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{dirname_3}.bin'))
+        old_w_avg_dy_wf_fp = os.path.abspath(os.path.join(args.workingdir,dirname_3,f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{dirname_3}.bin'))
         new_w_avg_dx_wf_fp = os.path.abspath(os.path.join(args.workingdir,
-                                                f'{CONST.X_WARP_BIN_FILENAME}_{os.path.basename(os.path.normpath(args.workingdir))}.bin'))
+                                                f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{os.path.basename(os.path.normpath(args.workingdir))}.bin'))
         new_w_avg_dy_wf_fp = os.path.abspath(os.path.join(args.workingdir,
-                                                f'{CONST.Y_WARP_BIN_FILENAME}_{os.path.basename(os.path.normpath(args.workingdir))}.bin'))
+                                                f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{os.path.basename(os.path.normpath(args.workingdir))}.bin'))
         shutil.move(old_w_avg_dx_wf_fp,new_w_avg_dx_wf_fp)
         shutil.move(old_w_avg_dy_wf_fp,new_w_avg_dy_wf_fp)
     warp_logger.info('Done')
