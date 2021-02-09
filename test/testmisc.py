@@ -21,9 +21,9 @@ class TestMisc(unittest.TestCase):
 
   def testPolygonAreas(self, seed=None):
     p = Polygon(pixels="POLYGON ((1 1,2 1,2 2,1 2,1 1))", pscale=5, apscale=3)
-    assertAlmostEqual(units.convertpscale(p.totalarea, p.apscale, p.pscale, power=2), p.onepixel**2, rtol=1e-15)
+    assertAlmostEqual(p.totalarea, p.onepixel**2, rtol=1e-15)
     p = Polygon(pixels="POLYGON ((1 1,4 1,4 4,1 4,1 1),(2 2,2 3,3 3,3 2,2 2))", pscale=5, apscale=3)
-    assertAlmostEqual(units.convertpscale(p.totalarea, p.apscale, p.pscale, power=2), 8*p.onepixel**2, rtol=1e-15)
+    assertAlmostEqual(p.totalarea, 8*p.onepixel**2, rtol=1e-15)
 
     if seed is None:
       try:
@@ -39,7 +39,7 @@ class TestMisc(unittest.TestCase):
       assertAlmostEqual((p1-p1).totalarea, 0)
       for p in p1, p2, p1-p2:
         assertAlmostEqual(
-          units.convertpscale(p.totalarea, p.apscale, p.pscale, power=2),
+          p.totalarea,
           p.gdalpolygon().Area() * p.onepixel**2
         )
     except:
@@ -52,10 +52,10 @@ class TestMisc(unittest.TestCase):
 
   def testPolygonHull(self):
     poly = Polygon(pixels="POLYGON((1 1, 1 3, 2 3, 2 2, 3 2, 3 3, 4 3, 4 1, 1 1), (.25 .25, .25 .75, .75 .75, .75 .25))", pscale=5, apscale=3)
-    assertAlmostEqual(units.convertpscale(poly.totalarea, poly.apscale, poly.pscale, power=2), 4.75 * poly.onepixel**2)
+    assertAlmostEqual(poly.totalarea, 4.75 * poly.onepixel**2)
     hull = poly.convexhull
     self.assertEqual(hull, Polygon(pixels="POLYGON((1 1, 1 3, 4 3, 4 1, 1 1))", pscale=5, apscale=3))
-    assertAlmostEqual(units.convertpscale(hull.totalarea, poly.apscale, poly.pscale, power=2), 6 * poly.onepixel**2)
+    assertAlmostEqual(hull.totalarea, 6 * poly.onepixel**2)
 
   def testPolygonHullFastUnits(self):
     with units.setup_context("fast"):

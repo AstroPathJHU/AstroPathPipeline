@@ -38,11 +38,6 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
           polyvertices.append(Vertex(im3x=x, im3y=y, vid=j, regionid=None, apscale=apscale, pscale=pscale))
 
     self.__vertices = [[v for v in vv] for vv in vertices]
-    for vv in self.__vertices:
-      if len(vv) > 1 and np.all(vv[0].xvec == vv[-1].xvec): del vv[-1]
-    for i, (vv, area) in enumerate(more_itertools.zip_equal(self.__vertices, self.areas)):
-      if i == 0 and area < 0 or i != 0 and area > 0:
-        vv[:] = [vv[0]] + vv[:0:-1]
 
     apscale = {apscale, *(v.apscale for vv in self.__vertices for v in vv)}
     apscale.discard(None)
@@ -53,6 +48,12 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     pscale.discard(None)
     if len(pscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
     self.__pscale, = pscale
+
+    for vv in self.__vertices:
+      if len(vv) > 1 and np.all(vv[0].xvec == vv[-1].xvec): del vv[-1]
+    for i, (vv, area) in enumerate(more_itertools.zip_equal(self.__vertices, self.areas)):
+      if i == 0 and area < 0 or i != 0 and area > 0:
+        vv[:] = [vv[0]] + vv[:0:-1]
 
   @property
   def pscale(self):
@@ -80,10 +81,10 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     return [Polygon(vertices=[vv]) for vv in self.vertices]
   @property
   def areas(self):
-    return [
+    return units.convertpscale([
       1/2 * sum(v1.x*v2.y - v2.x*v1.y for v1, v2 in more_itertools.pairwise(itertools.chain(vv, [vv[0]])))
       for vv in self.vertices
-    ]
+    ], self.apscale, self.pscale, power=2)
   @property
   def totalarea(self):
     return np.sum(self.areas)

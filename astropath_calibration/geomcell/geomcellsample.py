@@ -85,7 +85,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
             )
 
             for polygon in polygons[1:]:
-              area = units.convertpscale(polygon.totalarea, self.apscale, self.pscale, power=2)
+              area = polygon.totalarea
               message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2: {field.n} {celltype} {celllabel}"
               if area <= 10*self.onepixel**2:
                 self.logger.warning(message)
