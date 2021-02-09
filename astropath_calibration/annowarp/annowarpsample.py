@@ -478,6 +478,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       newvertices = []
       polyvertices = [v for v in self.vertices if v.regionid == region.regionid]
       for oldvertex, newvertex in zipfunction(polyvertices, warpedverticesiterator):
+        if newvertex.regionid != oldvertex.regionid:
+          raise ValueError(f"found inconsistent regionids between regions.csv and vertices.csv: {newvertex.regionid} {oldvertex.regionid}")
         np.testing.assert_array_equal(
           np.round((oldvertex.xvec / oldvertex.oneappixel).astype(float)),
           np.round((newvertex.xvec / oldvertex.oneappixel).astype(float)),
