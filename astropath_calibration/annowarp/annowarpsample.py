@@ -14,7 +14,12 @@ from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, ThingWithImscale
 
 class AnnoWarpSample(ZoomSample, ThingWithImscale):
-  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=100, tilebrightnessthreshold=45, mintilebrightfraction=0.2, mintilerange=45, **kwargs):
+  defaulttilepixels = 100
+  defaulttilebrightnessthreshold = 45
+  defaultmintilebrightfraction = 0.2
+  defaultmintilerange = 45
+
+  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=defaulttilepixels, tilebrightnessthreshold=defaulttilebrightnessthreshold, mintilebrightfraction=defaultmintilebrightfraction, mintilerange=defaultmintilerange, **kwargs):
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
@@ -179,7 +184,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
     results = AnnoWarpAlignmentResults()
     ntiles = (m2+1-m1) * (n2+1-n1)
-    self.logger.info("aligning %d tiles", ntiles)
+    self.logger.info("aligning %d tiles of %d x %d pixels", ntiles, self.__tilepixels, self.__tilepixels)
+    self.logger.info(f"Cuts: {self.mintilebrightfraction:.0%} of pixels have flux >= {self.tilebrightnessthreshold}, and flux range in the tile >= {self.mintilerange}.")
     for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1)), start=1):
       if n%100==0 or n==ntiles: self.logger.debug("aligning tile %d/%d", n, ntiles)
       x = tilesize * (ix-1)

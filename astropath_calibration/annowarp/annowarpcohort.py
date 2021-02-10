@@ -30,10 +30,10 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     p.add_argument("--skip-stitched", action="store_true")
-    p.add_argument("--tilepixels", type=int)
-    p.add_argument("--tile-brightness-threshold", type=int)
-    p.add_argument("--min-tile-bright-fraction", type=float)
-    p.add_argument("--min-tile-range", type=int)
+    p.add_argument("--tilepixels", type=int, default=AnnoWarpSample.defaulttilepixels)
+    p.add_argument("--tile-brightness-threshold", type=int, default=AnnoWarpSample.defaulttilebrightnessthreshold)
+    p.add_argument("--min-tile-bright-fraction", type=float, default=AnnoWarpSample.defaultmintilebrightfraction)
+    p.add_argument("--min-tile-range", type=int, default=AnnoWarpSample.defaultmintilerange)
     return p
 
   @classmethod
