@@ -6,9 +6,10 @@ from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, r
 from .utilities import getSlideMeanImageFilepath, getSlideMaskStackFilepath
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
-from ..utilities.img_file_io import getSlideMedianExposureTimesByLayer, LayerOffset
+from ..utilities.img_file_io import LayerOffset
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd, MetadataSummary
+from ..utilities.config import CONST as UNIV_CONST
 import os, random, methodtools
 
 #main class
@@ -40,6 +41,7 @@ class FlatfieldProducer :
         logger                         = a RunLogger object whose context is entered, if None the default log will be used
         """
         self.all_slide_rawfile_paths_to_run = all_slide_rawfile_paths_to_run
+        self.filepaths_added = []
         #make a dictionary to hold all of the separate slides we'll be considering (keyed by name)
         self.flatfield_slide_dict = {}
         for s in slides :
@@ -119,15 +121,15 @@ class FlatfieldProducer :
     def readInBackgroundThresholds(self,threshold_file_dir) :
         """
         Function to read in previously-determined background thresholds for each slide
-        threshold_file_dir = directory holding [slidename]_[CONST.THRESHOLD_TEXT_FILE_NAME_STEM] files to read thresholds 
+        threshold_file_dir = directory holding [slidename]_[UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM] files to read thresholds 
                              from instead of finding them from the images themselves
         """
         #read each slide's list of background thresholds by layer
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
-            threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
+            threshold_file_name = f'{sn}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
             threshold_file_path = os.path.join(threshold_file_dir,threshold_file_name)
             self.__writeLog(f'Copying background thresholds from file {threshold_file_path} for slide {sn}...','info',sn,slide.root_dir)
-            slide.readInBackgroundThresholds(threshold_file_path,self._logger)
+            slide.readInBackgroundThresholds(threshold_file_path)
 
     def findBackgroundThresholds(self,all_slide_rawfile_paths,n_threads) :
         """
@@ -138,7 +140,7 @@ class FlatfieldProducer :
         """
         #make each slide's list of background thresholds by layer
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
-            threshold_file_name = f'{sn}_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}'
+            threshold_file_name = f'{sn}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
             self.__writeLog(f'Finding background thresholds from tissue edges for slide {sn}','info',sn,slide.root_dir)
             new_field_logs = slide.findBackgroundThresholds([rfp for rfp in all_slide_rawfile_paths if slideNameFromFilepath(rfp)==sn],
                                                            n_threads,
@@ -172,9 +174,9 @@ class FlatfieldProducer :
                 self.__writeLog(f'WARNING: slide {sn} does not have any images to be stacked!','warningglobal',sn,slide.root_dir)
                 continue
             #otherwise add the metadata summary for this slide to the producer's list
-            a = AlignmentSetFromXML(slide.root_dir,os.path.dirname(os.path.dirname(this_slide_fps_to_run[0])),sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=1)
+            a = AlignmentSetFromXML(slide.root_dir,os.path.dirname(os.path.dirname(this_slide_fps_to_run[0])),sn,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=1)
             this_slide_rect_fn_stems = [os.path.basename(os.path.normpath(fp)).split('.')[0] for fp in this_slide_fps_to_run]
-            rect_ts = [r.t for r in a.rectangles if r.file.replace(CONST.IM3_EXT,'') in this_slide_rect_fn_stems]
+            rect_ts = [r.t for r in a.rectangles if r.file.replace(UNIV_CONST.IM3_EXT,'') in this_slide_rect_fn_stems]
             self._metadata_summaries.append(MetadataSummary(sn,a.Project,a.Cohort,a.microscopename,str(min(rect_ts)),str(max(rect_ts))))
             #choose which of them will have their masking images saved
             if len(this_slide_fps_to_run)<n_masking_images_per_slide :
@@ -184,14 +186,8 @@ class FlatfieldProducer :
             this_slide_indices_for_masking_plots = list(range(len(this_slide_fps_to_run)))
             random.shuffle(this_slide_indices_for_masking_plots)
             this_slide_indices_for_masking_plots=this_slide_indices_for_masking_plots[:n_masking_images_per_slide]
-            #get the median exposure times by layer if the images should be normalized
-            if (not self.mean_image.skip_et_correction) :
-                try :
-                    med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(slide.rawfile_top_dir,sn)
-                except FileNotFoundError :
-                    med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(slide.root_dir,sn)
-            else :
-                med_exp_times_by_layer = None
+            #add to the list of filepaths that were added
+            self.filepaths_added+=this_slide_fps_to_run
             #break the list of this slide's filepaths into chunks to run in parallel
             fileread_chunks = chunkListOfFilepaths(this_slide_fps_to_run,slide.img_dims,slide.root_dir,n_threads)
             #for each chunk, get the image arrays from the multithreaded function and then add them to to stack
@@ -200,11 +196,13 @@ class FlatfieldProducer :
                     continue
                 new_field_logs = [FieldLog(sn,fr.rawfile_path,'edge' if fr.rawfile_path in this_slide_edge_HPF_filepaths else 'bulk','stacking') for fr in fr_chunk]
                 new_img_arrays = readImagesMT(fr_chunk,
-                                              med_exposure_times_by_layer=med_exp_times_by_layer,
+                                              med_exposure_times_by_layer=slide.med_exp_times_by_layer if (not self.mean_image.skip_et_correction) else None,
                                               et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
                 this_chunk_masking_plot_indices=[fr_chunk.index(fr) for fr in fr_chunk 
                                                  if this_slide_fps_to_run.index(fr.rawfile_path) in this_slide_indices_for_masking_plots]
-                fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,slide,selected_pixel_cut,med_exp_times_by_layer,
+                this_chunk_rfps = [fri.rawfile_path for fri in fr_chunk]
+                fields_stacked_in_layers = self.mean_image.addGroupOfImages(new_img_arrays,this_chunk_rfps,slide,selected_pixel_cut,
+                                                                            slide.med_exp_times_by_layer if (not self.mean_image.skip_et_correction) else None,
                                                                             this_chunk_masking_plot_indices,self._logger)
                 for fi in range(len(new_field_logs)) :
                     new_field_logs[fi].stacked_in_layers = ','.join([str(ln) for ln in fields_stacked_in_layers[fi]])
@@ -268,6 +266,13 @@ class FlatfieldProducer :
         #make some visualizations of the images
         self.__writeLog('Saving plots','imageinfo')
         self.mean_image.savePlots()
+        #write out plots of the labelled mask regions for each slide
+        if len(self.mean_image.labelled_mask_regions)>0 :
+            for sn,slide in sorted(self.flatfield_slide_dict.items()) :
+                self.__writeLog(f'Plotting labelled mask regions for slide {sn}','info',sn,slide.root_dir)
+                this_slide_rfps_added = [rfp for rfp in self.filepaths_added if sn in rfp]
+                this_slide_regions = [lmr for lmr in self.mean_image.labelled_mask_regions if sn in lmr.image_key]
+                slide.plotLabelledMaskRegions(this_slide_regions,this_slide_rfps_added,self.mean_image.masking_plot_dirpath)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

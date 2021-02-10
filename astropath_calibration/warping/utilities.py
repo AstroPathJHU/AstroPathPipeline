@@ -6,6 +6,7 @@ from ..utilities.img_correction import correctImageLayerForExposureTime, correct
 from ..utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
 from ..utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 from ..utilities.tableio import readtable, writetable
+from ..utilities.config import CONST as UNIV_CONST
 import numpy as np
 import cv2, os, logging, copy, platform
 
@@ -197,17 +198,14 @@ def addCommonWarpingArgumentsToParser(parser,fit=True,fitpars=True,job_organizat
 
 #helper function to check directory command-line arguments
 def checkDirArgs(args) :
-     #rawfile_top_dir/[slideID] must exist
+    #rawfile_top_dir/[slideID] must exist
     rawfile_dir = os.path.join(args.rawfile_top_dir,args.slideID)
     if not os.path.isdir(rawfile_dir) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
     #root dir must exist
     if not os.path.isdir(args.root_dir) :
         raise ValueError(f'ERROR: root_dir argument ({args.root_dir}) does not point to a valid directory!')
-    #root dir must be usable to find a metafile directory
-    if not os.path.isdir(args.root_dir) :   
-        raise ValueError(f'ERROR: root_dir ({args.root_dir}) does not exist!')
-    #if images are to be corrected for exposure time, exposure time correction file must exist and must contain the necessary file
+    #if images are to be corrected for exposure time, exposure time correction file must exist
     if (not args.skip_exposure_time_correction) :   
         if not os.path.isfile(args.exposure_time_offset_file) :
             raise ValueError(f'ERROR: exposure_time_offset_file {args.exposure_time_offset_file} does not exist!')
@@ -318,7 +316,7 @@ def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,worki
     #create the alignment set, correct its files, and run its alignment
     warp_logger.info("Performing an initial alignment to find this slide's valid octets...")
     img_dims = getImageHWLFromXMLFile(rootdir,slideID)
-    flatfield = (getRawAsHWL(flatfield_file,*(img_dims),CONST.FLATFIELD_DTYPE))[:,:,layer-1] if flatfield_file is not None else None
+    flatfield = (getRawAsHWL(flatfield_file,*(img_dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE))[:,:,layer-1] if flatfield_file is not None else None
     med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSlideLayer(rootdir,slideID,et_offset_file,layer) if et_offset_file is not None else None
     use_GPU = platform.system()!='Darwin'
     a = AlignmentSetForWarping(rootdir,rtd,slideID,med_et=med_et,offset=offset,flatfield=flatfield,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw',useGPU=use_GPU)
@@ -380,7 +378,7 @@ def getOctetsFromArguments(args) :
             raise WarpingError(msg)
         all_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.root_dir,args.slideID,args.layer)
     elif args.threshold_file_dir is not None :
-        threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.slideID}{CONST.THRESHOLD_FILE_EXT}')
+        threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         all_octets = findSlideOctets(args.rawfile_top_dir,args.root_dir,threshold_file_path,args.req_pixel_frac,args.slideID,
                                       args.workingdir,args.layer,args.flatfield_file,args.exposure_time_offset_file)
     else :

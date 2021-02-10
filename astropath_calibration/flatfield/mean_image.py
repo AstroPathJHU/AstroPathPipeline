@@ -1,11 +1,15 @@
 #imports
-from .utilities import flatfield_logger, FlatFieldError, getImageArrayLayerHistograms, findLayerThresholds
+from .image_mask import ImageMask
+from .utilities import flatfield_logger, FlatFieldError
+from .utilities import getImageTissueMask, getImageBlurMask, getImageSaturationMasks
 from .config import CONST 
-from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots
-from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker
+from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots, doMaskingPlotsForImage
+from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker, getExposureTimesByLayer
+from ..utilities.tableio import writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
+from ..utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import cv2, os, copy, platform
+import os, copy
 
 class MeanImage :
     """
@@ -18,7 +22,15 @@ class MeanImage :
         return self._workingdir_path #name of the working directory where everything gets saved
     @property
     def dims(self):
-        return self._dims
+        return self._dims #dimensions of the stacked images/meanimage
+    @property
+    def labelled_mask_regions(self):
+    	return self._labelled_mask_regions #the list of labelled mask regions
+    @property
+    def masking_plot_dirpath(self):
+    	return os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)
+    
+    
     
     #################### CLASS CONSTANTS ####################
 
@@ -35,8 +47,10 @@ class MeanImage :
     ILLUMINATION_VARIATION_CSV_FILE_NAME = 'illumination_variation_by_layer.csv' #name of the illumination variation .csv file
     #images stacked per layer
     N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME = 'n_images_stacked_per_layer.txt' #name of the images stacked per layer text file
+    #labelled mask regions file
+    LABELLED_MASK_REGIONS_CSV_FILE_NAME = 'labelled_mask_regions.csv' #name of the labelled mask regions file
     #masking plots
-    MASKING_PLOT_DIR_NAME = 'masking_plots' #name of the masking plot directory
+    MASKING_SUBDIR_NAME = 'image_masking' #name of the masking plot directory
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -50,22 +64,29 @@ class MeanImage :
         """
         self._dims=dims
         self.nlayers = self._dims[-1]
-        self.LAST_FILTER_LAYERS = None
+        self.layer_groups = None
+        #set the mask layer group variables
         if self.nlayers==35 :
-            self.LAST_FILTER_LAYERS=CONST.LAST_FILTER_LAYERS_35
+            self.layer_groups=UNIV_CONST.LAYER_GROUPS_35
         elif self.nlayers==43 :
-            self.LAST_FILTER_LAYERS=CONST.LAST_FILTER_LAYERS_43
+            self.layer_groups=UNIV_CONST.LAYER_GROUPS_43
         else :
             raise FlatFieldError(f'ERROR: no defined list of broadband filter breaks for images with {self.nlayers} layers!')
         self._workingdir_path = workingdir_name
+        with cd(self._workingdir_path) :
+            if not os.path.isdir(self.MASKING_SUBDIR_NAME) :
+                os.mkdir(self.MASKING_SUBDIR_NAME)
         self.skip_et_correction = skip_et_correction
         self.skip_masking = skip_masking
-        self.smoothsigma = smoothsigma
-        self.image_stack = np.zeros(self._dims,dtype=CONST.IMG_DTYPE_OUT)
+        self.final_smooth_sigma = smoothsigma
+        self.image_stack = np.zeros(self._dims,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+        self.image_squared_stack = np.zeros(self._dims,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         self.mask_stack  = np.zeros(self._dims,dtype=CONST.MASK_STACK_DTYPE_OUT)
+        self._labelled_mask_regions = []
         self.n_images_read = 0
         self.n_images_stacked_by_layer = np.zeros((self.nlayers),dtype=CONST.MASK_STACK_DTYPE_OUT)
         self.mean_image=None
+        self.std_err_of_mean_image=None
         self.smoothed_mean_image=None
         self.flatfield_image=None
         self.corrected_mean_image=None
@@ -78,7 +99,7 @@ class MeanImage :
         mask_stack_fp = path to this slide's already existing mask_stack file
         """
         #add the mean image times the mask stack to the image stack, and the mask stack to the running total
-        thismeanimage = getRawAsHWL(mean_image_fp,*(self._dims),CONST.IMG_DTYPE_OUT)
+        thismeanimage = getRawAsHWL(mean_image_fp,*(self._dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         thismaskstack = getRawAsHWL(mask_stack_fp,*(self._dims),CONST.MASK_STACK_DTYPE_OUT)
         self.mask_stack+=thismaskstack
         self.image_stack+=thismaskstack*thismeanimage
@@ -98,14 +119,15 @@ class MeanImage :
             raise FlatFieldError(f'ERROR: getting number of images read from {nirfp} yielded {len(nir)} values, not exactly 1')
         self.n_images_read+=nir[0]
 
-    def addGroupOfImages(self,im_array_list,slide,min_selected_pixels,ets_for_normalization=None,masking_plot_indices=[],logger=None) :
+    def addGroupOfImages(self,im_array_list,rfps,slide,min_pixel_frac,ets_for_normalization=None,masking_plot_indices=[],logger=None) :
         """
         A function to add a list of raw image arrays to the image stack
         If masking is requested this function's subroutines are parallelized and also run on the GPU
         im_array_list         = list of image arrays to add
-        slide                 = slide object corresponding to this group of images
-        min_selected_pixels   = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
-        ets_for_normalization = list of exposure times to use for normalizating images to counts/ms before stacking (but after masking)
+        rfps                  = list of image rawfile paths corresponding to image arrays
+        slide                 = flatfield_slide object corresponding to this group of images
+        min_pixel_frac        = fraction (0->1) of how many pixels must be selected as signal for an image to be stacked
+        ets_for_normalization = list of exposure times to use for normalizating images to counts/ms before stacking
         masking_plot_indices  = list of image array list indices whose masking plots will be saved
         logger                = a RunLogger object whose context is entered, if None the default log will be used
         """
@@ -126,20 +148,17 @@ class MeanImage :
                     for li in range(self.nlayers) :
                         im_array[:,:,li]/=ets_for_normalization[li]
                 self.image_stack+=im_array
+                self.image_squared_stack+=(im_array*im_array)
                 self.n_images_read+=1
                 self.n_images_stacked_by_layer+=1
                 stacked_in_layers.append(list(range(1,self.nlayers+1)))
             return stacked_in_layers
         #otherwise produce the image masks, apply them to the raw images, and be sure to add them to the list in the same order as the images
-        if len(masking_plot_indices)>0 :
-            with cd(self._workingdir_path) :
-                if not os.path.isdir(self.MASKING_PLOT_DIR_NAME) :
-                    os.mkdir(self.MASKING_PLOT_DIR_NAME)
-        masking_plot_dirpath = os.path.join(self._workingdir_path,self.MASKING_PLOT_DIR_NAME)
+        masking_plot_dirpath = os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
-        for i,im_array in enumerate(im_array_list,) :
+        for i,(im_array,rfp) in enumerate(zip(im_array_list,rfps)) :
             stack_i = i+self.n_images_read+1
             msg = f'Masking and adding image {stack_i} to the stack'
             if logger is not None :
@@ -148,29 +167,33 @@ class MeanImage :
                 flatfield_logger.info(msg)
             make_plots=i in masking_plot_indices
             p = mp.Process(target=getImageMaskWorker, 
-                           args=(im_array,slide.background_thresholds_for_masking,slide.name,min_selected_pixels,
-                                 make_plots,masking_plot_dirpath,
-                                 stack_i,return_dict))
+                           args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,min_pixel_frac,slide.exp_time_hists,
+                                 ets_for_normalization,make_plots,masking_plot_dirpath,stack_i,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
             proc.join()
+        chunk_labelled_mask_regions = []
         for stack_i,im_array in enumerate(im_array_list,start=self.n_images_read+1) :
             stacked_in_layers.append([])
-            thismask = return_dict[stack_i]
+            this_image_mask_obj = return_dict[stack_i]
+            onehot_mask = this_image_mask_obj.onehot_mask
+            chunk_labelled_mask_regions+=this_image_mask_obj.labelled_mask_regions
             #check, layer-by-layer, that this mask would select at least the minimum amount of pixels to be added to the stack
             for li in range(self.nlayers) :
-                thismasklayer = thismask[:,:,li]
-                if 1.*np.sum(thismasklayer)/(self._dims[0]*self._dims[1])>=min_selected_pixels :
+                thismasklayer = onehot_mask[:,:,li]
+                if 1.*np.sum(thismasklayer)/(self._dims[0]*self._dims[1])>=min_pixel_frac :
                     #Optionally normalize for exposure time, and add to the stack
                     im_to_add = 1.*im_array[:,:,li]*thismasklayer
                     if ets_for_normalization is not None :
                         im_to_add/=ets_for_normalization[li]
                     self.image_stack[:,:,li]+=im_to_add
+                    self.image_squared_stack[:,:,li]+=(im_to_add*im_to_add)
                     self.mask_stack[:,:,li]+=thismasklayer
                     self.n_images_stacked_by_layer[li]+=1
                     stacked_in_layers[-1].append(li+1)
             self.n_images_read+=1
+        self._labelled_mask_regions+=chunk_labelled_mask_regions
         return stacked_in_layers
 
     def makeMeanImage(self,logger=None) :
@@ -185,7 +208,7 @@ class MeanImage :
                     logger.warningglobal(msg)
                 else :
                     flatfield_logger.warn(msg)
-        self.mean_image = self.__getMeanImage(logger)
+        self.mean_image, self.std_err_of_mean_image = self.__getMeanImage(logger)
 
     def makeFlatFieldImage(self,logger=None) :
         """
@@ -202,8 +225,8 @@ class MeanImage :
                 else :
                     flatfield_logger.warn(msg)
         if self.mean_image is None :
-            self.mean_image = self.__getMeanImage(logger)
-        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
+            self.mean_image, self.std_err_of_mean_image = self.__getMeanImage(logger)
+        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.final_smooth_sigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
             layermean = np.mean(self.smoothed_mean_image[:,:,layer_i])
@@ -217,11 +240,11 @@ class MeanImage :
         A function to get the mean of the image stack, smooth it, and divide it by the given flatfield to correct it
         """
         if self.mean_image is None :
-            self.mean_image = self.__getMeanImage()
-        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.smoothsigma)
-        flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=CONST.IMG_DTYPE_OUT)
+            self.mean_image, self.std_err_of_mean_image = self.__getMeanImage()
+        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.final_smooth_sigma)
+        flatfield_image=getRawAsHWL(flatfield_file_path,*(self._dims),dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         self.corrected_mean_image=self.mean_image/flatfield_image
-        self.smoothed_corrected_mean_image=smoothImageWorker(self.corrected_mean_image,self.smoothsigma)
+        self.smoothed_corrected_mean_image=smoothImageWorker(self.corrected_mean_image,self.final_smooth_sigma)
         with cd(self._workingdir_path) :
             with open(self.APPLIED_FLATFIELD_TEXT_FILE_NAME,'w') as fp :
                 fp.write(f'{flatfield_file_path}\n')
@@ -242,22 +265,25 @@ class MeanImage :
         with cd(self._workingdir_path) :
             if self.flatfield_image is not None :
                 flatfieldimage_filename = f'{prepend}{CONST.FLATFIELD_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                writeImageToFile(self.flatfield_image,flatfieldimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                writeImageToFile(self.flatfield_image,flatfieldimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
             if append=='' :
                 if self.mean_image is not None :
                     meanimage_filename = f'{prepend}{CONST.MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                    writeImageToFile(self.mean_image,meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                    writeImageToFile(self.mean_image,meanimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+                if self.std_err_of_mean_image is not None :
+                    std_err_of_meanimage_filename = f'{prepend}{CONST.STD_ERR_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
+                    writeImageToFile(self.std_err_of_mean_image,std_err_of_meanimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
                 if (not self.skip_masking) and (self.mask_stack is not None) :
                     writeImageToFile(self.mask_stack,f'{prepend}{CONST.MASK_STACK_FILE_NAME_STEM}{append}{CONST.FILE_EXT}',dtype=CONST.MASK_STACK_DTYPE_OUT)
                 if self.smoothed_mean_image is not None :
                     smoothed_meanimage_filename = f'{prepend}{self.SMOOTHED_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                    writeImageToFile(self.smoothed_mean_image,smoothed_meanimage_filename,dtype=CONST.IMG_DTYPE_OUT)
+                    writeImageToFile(self.smoothed_mean_image,smoothed_meanimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
                 if self.corrected_mean_image is not None :
                     corrected_mean_image_filename = f'{prepend}{self.CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                    writeImageToFile(self.corrected_mean_image,corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
+                    writeImageToFile(self.corrected_mean_image,corrected_mean_image_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
                 if self.smoothed_corrected_mean_image is not None :
                     smoothed_corrected_mean_image_filename = f'{prepend}{CONST.SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                    writeImageToFile(self.smoothed_corrected_mean_image,smoothed_corrected_mean_image_filename,dtype=CONST.IMG_DTYPE_OUT)
+                    writeImageToFile(self.smoothed_corrected_mean_image,smoothed_corrected_mean_image_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
 
     def savePlots(self) :
         """
@@ -282,6 +308,10 @@ class MeanImage :
                                                    iv_csv_name=self.ILLUMINATION_VARIATION_CSV_FILE_NAME)
                 #plot and write a text file of how many images were stacked per layer
                 self.__plotAndWriteNImagesStackedPerLayer()
+        #save the table of labelled mask regions (if applicable)
+        if len(self._labelled_mask_regions)>0 :
+            with cd(os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)) :
+                writetable(self.LABELLED_MASK_REGIONS_CSV_FILE_NAME,self._labelled_mask_regions)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -294,22 +324,26 @@ class MeanImage :
                 logger.warningglobal(msg)
             else :
                 flatfield_logger.warn(msg)
-            return self.image_stack
+            return self.image_stack, self.image_squared_stack
         if np.max(self.n_images_stacked_by_layer)<1 :
             msg = 'WARNING: There are no layers with images stacked in them and so the mean image will be zero everywhere!'
             if logger is not None :
                 logger.warningglobal(msg)
             else :
                 flatfield_logger.warn(msg)
-            return self.image_stack
+            return self.image_stack, self.image_squared_stack
         #if the images haven't been masked then this is trivial
         if self.skip_masking :
-            return self.image_stack/self.n_images_read
+            meanimage = self.image_stack/self.n_images_read
+            std_err_of_meanimage = np.sqrt(np.abs(self.image_squared_stack/self.n_images_read-(meanimage*meanimage))/self.n_images_read)
+            return meanimage, std_err_of_meanimage
         #otherwise though we have to be a bit careful and take the mean value pixel-wise, 
         #being careful to fix any pixels that never got added to so there's no division by zero
         zero_fixed_mask_stack = copy.deepcopy(self.mask_stack)
         zero_fixed_mask_stack[zero_fixed_mask_stack==0] = np.min(zero_fixed_mask_stack[zero_fixed_mask_stack!=0])
-        return self.image_stack/zero_fixed_mask_stack
+        meanimage = self.image_stack/zero_fixed_mask_stack
+        std_err_of_meanimage = np.sqrt(np.abs(self.image_squared_stack/zero_fixed_mask_stack-(meanimage*meanimage))/zero_fixed_mask_stack)
+        return meanimage, std_err_of_meanimage
 
     #################### VISUALIZATION HELPER FUNCTIONS ####################
 
@@ -334,6 +368,14 @@ class MeanImage :
                 f.colorbar(pos,ax=ax)
                 fig_name = f'mean_image_{layer_fnstem}.png'
                 plt.savefig(fig_name); plt.close(); cropAndOverwriteImage(fig_name)
+                if self.std_err_of_mean_image is not None :
+                    #for the uncertainty on the mean image
+                    f,ax = plt.subplots(figsize=fig_size)
+                    pos = ax.imshow(self.std_err_of_mean_image[:,:,layer_i])
+                    ax.set_title(f'std. error of mean image, {layer_titlestem}')
+                    f.colorbar(pos,ax=ax)
+                    fig_name = f'std_err_of_mean_image_{layer_fnstem}.png'
+                    plt.savefig(fig_name); plt.close(); cropAndOverwriteImage(fig_name)
                 if self.smoothed_mean_image is not None :
                     #for the smoothed mean image
                     f,ax = plt.subplots(figsize=fig_size)
@@ -404,99 +446,35 @@ class MeanImage :
 
 #helper function to create a layered binary image mask for a given image array
 #this can be run in parallel with a given index and return dict
-def getImageMaskWorker(im_array,thresholds_per_layer,slide_ID,min_selected_pixels,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
-    nlayers = im_array.shape[-1]
-    #create a new mask
-    init_image_mask = np.empty(im_array.shape,np.uint8)
-    #create a list to hold the threshold values
-    thresholds = thresholds_per_layer
-    #gently smooth the layer (on the GPU) to remove some noise
-    smoothed_image = smoothImageWorker(im_array,CONST.GENTLE_GAUSSIAN_SMOOTHING_SIGMA)
-    #if the thresholds haven't already been determined from the background, find them for all the layers by repeated Otsu thresholding
-    if thresholds is None :
-        layer_hists=getImageArrayLayerHistograms(smoothed_image)
-        thresholds=findLayerThresholds(layer_hists)
-    #for each layer, save the mask and its threshold
-    for li in range(nlayers) :
-        init_image_mask[:,:,li] = np.where(smoothed_image[:,:,li]>thresholds[li],1,0)
-    useGPU = platform.system()!='Darwin'
-    #morph each layer of the mask through a series of operations
-    if useGPU :
-        init_mask_umat  = cv2.UMat(init_image_mask)
-        intermediate_mask=cv2.UMat(np.empty_like(init_image_mask))
-        co1_mask=cv2.UMat(np.empty_like(init_image_mask))
-        co2_mask=cv2.UMat(np.empty_like(init_image_mask))
-        close3_mask=cv2.UMat(np.empty_like(init_image_mask))
-        open3_mask=cv2.UMat(np.empty_like(init_image_mask))
-    else :
-        intermediate_mask=np.empty_like(init_image_mask)
-        co1_mask=np.empty_like(init_image_mask)
-        co2_mask=np.empty_like(init_image_mask)
-        close3_mask=np.empty_like(init_image_mask)
-        open3_mask=np.empty_like(init_image_mask)
-    #do the morphology transformations
-    #small-scale close/open to remove noise and fill in small holes
-    if useGPU :
-        cv2.morphologyEx(init_mask_umat,cv2.MORPH_CLOSE,CONST.CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    else :
-        cv2.morphologyEx(init_image_mask,cv2.MORPH_CLOSE,CONST.CO1_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,CONST.CO1_EL,co1_mask,borderType=cv2.BORDER_REPLICATE)
-    #medium-scale close/open for the same reason with larger regions
-    cv2.morphologyEx(co1_mask,cv2.MORPH_CLOSE,CONST.CO2_EL,intermediate_mask,borderType=cv2.BORDER_REPLICATE)
-    cv2.morphologyEx(intermediate_mask,cv2.MORPH_OPEN,CONST.CO2_EL,co2_mask,borderType=cv2.BORDER_REPLICATE)
-    #large close to define the bulk of the mask
-    cv2.morphologyEx(co2_mask,cv2.MORPH_CLOSE,CONST.C3_EL,close3_mask,borderType=cv2.BORDER_REPLICATE)
-    #repeated small open to eat its edges and remove small regions outside of the bulk of the mask
-    cv2.morphologyEx(close3_mask,cv2.MORPH_OPEN,CONST.CO1_EL,open3_mask,iterations=CONST.OPEN_3_ITERATIONS,borderType=cv2.BORDER_REPLICATE)
-    #the final mask is this last mask
-    if useGPU :
-        morphed_mask = open3_mask.get()
-    else :
-        morphed_mask=open3_mask
-    #make the plots if requested
+def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,min_pixel_frac,exp_time_hists,norm_ets,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
+    #need the exposure times for this image
+    exp_times = getExposureTimesByLayer(rfp,im_array.shape[-1],rawfile_top_dir)
+    #start by creating the tissue mask
+    tissue_mask = getImageTissueMask(im_array,bg_thresholds)
+    #next create the blur mask
+    blur_mask,blur_mask_plots = getImageBlurMask(im_array,exp_times,tissue_mask,exp_time_hists,make_plots)
+    #finally create masks for the saturated regions in each layer group
+    layer_group_saturation_masks = getImageSaturationMasks(im_array,norm_ets if norm_ets is not None else exp_times)
+    #make the image_mask object 
+    key = (os.path.basename(rfp)).rstrip(UNIV_CONST.RAW_EXT)
+    image_mask = ImageMask(key)
+    image_mask.addCreatedMasks(tissue_mask,blur_mask,layer_group_saturation_masks)
+    #make the plots for this image if requested
     if make_plots :
         flatfield_logger.info(f'Saving masking plots for image {i}')
-        this_image_masking_plot_dirname = f'image_{i}_from_{slide_ID}_mask_layers'
+        doMaskingPlotsForImage(key,tissue_mask,blur_mask_plots,image_mask.compressed_mask,plotdir_path)
+    #if there is anything flagged in the final blur and saturation masks, write out the compressed mask
+    is_masked = np.min(blur_mask)<1
+    if not is_masked :
+        for lgsm in layer_group_saturation_masks :
+            if np.min(lgsm)<1 :
+                is_masked=True
+                break
+    if is_masked :
         with cd(plotdir_path) :
-            if not os.path.isdir(this_image_masking_plot_dirname) :
-                os.mkdir(this_image_masking_plot_dirname)
-        plotdir_path = os.path.join(plotdir_path,this_image_masking_plot_dirname)
-        with cd(plotdir_path) :
-            co1_mask = co1_mask.get()
-            co2_mask = co2_mask.get()
-            close3_mask = close3_mask.get()
-            for li in range(nlayers) :
-                f,ax = plt.subplots(4,2,figsize=CONST.MASKING_PLOT_FIG_SIZE)
-                im = im_array[:,:,li]
-                im_grayscale = im/np.max(im)
-                im = (np.clip(im,0,255)).astype('uint8')
-                ax[0][0].imshow(im_grayscale,cmap='gray')
-                ax[0][0].set_title('raw image in grayscale',fontsize=14)
-                ax[0][1].imshow(init_image_mask[:,:,li])
-                ax[0][1].set_title(f'init mask (thresh. = {thresholds[li]:.1f})',fontsize=14)
-                ax[1][0].imshow(co1_mask[:,:,li])
-                ax[1][0].set_title('mask after small-scale open+close',fontsize=14)
-                ax[1][1].imshow(co2_mask[:,:,li])
-                ax[1][1].set_title('mask after medium-scale open+close',fontsize=14)
-                ax[2][0].imshow(close3_mask[:,:,li])
-                ax[2][0].set_title('mask after large-scale close',fontsize=14)
-                m = morphed_mask[:,:,li]
-                pixelfrac = 1.*np.sum(m)/(im_array.shape[0]*im_array.shape[1])
-                will_be_stacked_text = 'WILL' if pixelfrac>=min_selected_pixels else 'WILL NOT'
-                ax[2][1].imshow(m)
-                ax[2][1].set_title('final mask after repeated small-scale opening',fontsize=14)
-                overlay_clipped = np.array([im,im*m,im*m]).transpose(1,2,0)
-                overlay_grayscale = np.array([im_grayscale*m,im_grayscale*m,0.15*m]).transpose(1,2,0)
-                ax[3][0].imshow(overlay_clipped)
-                ax[3][0].set_title(f'mask + clipped image; ({100.*pixelfrac:.1f}% selected)')
-                ax[3][1].imshow(overlay_grayscale)
-                ax[3][1].set_title(f'mask + grayscale image; {will_be_stacked_text} be stacked')
-                figname = f'image_{i}_layer_{li+1}_masks.png'
-                plt.savefig(figname)
-                plt.close()
-                cropAndOverwriteImage(figname)
+            writeImageToFile(image_mask.compressed_mask,f'{key}_mask.bin',dtype=np.uint8)
+    #return the mask (either in the shared dict or just on its own)
     if i is not None and return_dict is not None :
-        #add the total mask to the dict, along with its initial thresholds and number of optimal Otsu iterations per layer
-        return_dict[i] = morphed_mask
+        return_dict[i] = image_mask
     else :
-        return morphed_mask
+        return image_mask

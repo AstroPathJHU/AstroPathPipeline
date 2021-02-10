@@ -101,6 +101,7 @@ RUN sudo apt-get update && \
   librsvg2-dev \
   #for gdal
   libspatialite-dev \
+  libsqlite3-dev \
   libssl-dev \
   #for vips
   libtiff-dev \
@@ -118,6 +119,7 @@ RUN sudo apt-get update && \
   #for vips
   pkg-config \
   #for gdal
+  sqlite3 \
   swig \
   unixodbc-dev \
   #for vips
@@ -322,14 +324,14 @@ ARG RSYNC_REMOTE
 ARG WITH_DEBUG_SYMBOLS=no
 
 # Build PROJ
-ARG PROJ_VERSION=5.2.0
+ARG PROJ_VERSION=7.2.1
 ARG PROJ_INSTALL_PREFIX=/usr/local
 COPY ./bh-proj.sh /buildscripts/bh-proj.sh
 RUN sudo -E bash /buildscripts/bh-proj.sh
 
 # Build GDAL
 ARG JAVA_VERSION=11
-ARG GDAL_VERSION=v2.3.3
+ARG GDAL_VERSION=v3.2.1
 ARG GDAL_RELEASE_DATE
 ARG GDAL_BUILD_IS_RELEASE
 COPY ./bh-gdal.sh /buildscripts/bh-gdal.sh
@@ -350,7 +352,7 @@ COPY --from=gdal  /build_gdal_python/usr/ /usr/
 COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
-ENV ASTROPATH_DEPENDENCY_COMMIT 515aa2649c8d05d29375fd7066650adb2e151463
+ENV ASTROPATH_DEPENDENCY_COMMIT 5fbeea2e78cda3072ce5a8ec26a25d4f8b68c11d
 ARG GITHUB_TOKEN
 
 #add python packages
