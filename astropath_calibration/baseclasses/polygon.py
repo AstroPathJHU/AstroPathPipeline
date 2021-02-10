@@ -137,7 +137,7 @@ class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
       poly = getattr(self, field)
       if isinstance(poly, Polygon):
         pass
-      elif poly is None or poly == "poly":
+      elif poly is None or isinstance(poly, str) and poly == "poly":
         setattr(self, field, None)
       elif isinstance(poly, str):
         setattr(self, field, Polygon(
