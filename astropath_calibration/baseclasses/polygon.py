@@ -86,8 +86,17 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       for vv in self.vertices
     ], self.apscale, self.pscale, power=2)
   @property
-  def totalarea(self):
+  def area(self):
     return np.sum(self.areas)
+  @property
+  def perimeters(self):
+    return units.convertpscale([
+      sum(np.sum((v1.xvec - v2.xvec)**2)**.5 for v1, v2 in more_itertools.pairwise(itertools.chain(vv, [vv[0]])))
+      for vv in self.vertices
+    ], self.apscale, self.pscale)
+  @property
+  def perimeter(self):
+    return np.sum(self.perimeters)
 
   def gdalpolygon(self, *, imagescale=None, round=False):
     if imagescale is None: imagescale = self.pscale

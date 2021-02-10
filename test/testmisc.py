@@ -21,9 +21,11 @@ class TestMisc(unittest.TestCase):
 
   def testPolygonAreas(self, seed=None):
     p = Polygon(pixels="POLYGON ((1 1,2 1,2 2,1 2,1 1))", pscale=5, apscale=3)
-    assertAlmostEqual(p.totalarea, p.onepixel**2, rtol=1e-15)
+    assertAlmostEqual(p.area, p.onepixel**2, rtol=1e-15)
+    assertAlmostEqual(p.perimeter, 4*p.onepixel, rtol=1e-15)
     p = Polygon(pixels="POLYGON ((1 1,4 1,4 4,1 4,1 1),(2 2,2 3,3 3,3 2,2 2))", pscale=5, apscale=3)
-    assertAlmostEqual(p.totalarea, 8*p.onepixel**2, rtol=1e-15)
+    assertAlmostEqual(p.area, 8*p.onepixel**2, rtol=1e-15)
+    assertAlmostEqual(p.perimeter, 16*p.onepixel, rtol=1e-15)
 
     if seed is None:
       try:
@@ -35,12 +37,16 @@ class TestMisc(unittest.TestCase):
     try:
       vertices = [[Vertex(regionid=None, vid=i, x=x, y=y, pscale=5, apscale=3) for i, (x, y) in enumerate(xys) if x or y] for xys in xysx2]
       p1, p2 = [Polygon(vertices=[vv]) for vv in vertices]
-      assertAlmostEqual(p1.totalarea-p2.totalarea, (p1-p2).totalarea)
-      assertAlmostEqual((p1-p1).totalarea, 0)
+      assertAlmostEqual(p1.area-p2.area, (p1-p2).area)
+      assertAlmostEqual((p1-p1).area, 0)
       for p in p1, p2, p1-p2:
         assertAlmostEqual(
-          p.totalarea,
-          p.gdalpolygon().Area() * p.onepixel**2
+          p.area,
+          p.gdalpolygon().Area() * p.onepixel**2,
+        )
+        assertAlmostEqual(
+          p.perimeter,
+          p.gdalpolygon().Boundary().Length() * p.onepixel,
         )
     except:
       print(xysx2)
@@ -52,10 +58,10 @@ class TestMisc(unittest.TestCase):
 
   def testPolygonHull(self):
     poly = Polygon(pixels="POLYGON((1 1, 1 3, 2 3, 2 2, 3 2, 3 3, 4 3, 4 1, 1 1), (.25 .25, .25 .75, .75 .75, .75 .25))", pscale=5, apscale=3)
-    assertAlmostEqual(poly.totalarea, 4.75 * poly.onepixel**2)
+    assertAlmostEqual(poly.area, 4.75 * poly.onepixel**2)
     hull = poly.convexhull
     self.assertEqual(hull, Polygon(pixels="POLYGON((1 1, 1 3, 4 3, 4 1, 1 1))", pscale=5, apscale=3))
-    assertAlmostEqual(hull.totalarea, 6 * poly.onepixel**2)
+    assertAlmostEqual(hull.area, 6 * poly.onepixel**2)
 
   def testPolygonHullFastUnits(self):
     with units.setup_context("fast"):

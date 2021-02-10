@@ -66,7 +66,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               assert not kwargs, kwargs
 
             if len(polygons) > 1:
-              polygons.sort(key=lambda x: x.totalarea, reverse=True)
+              polygons.sort(key=lambda x: x.area, reverse=True)
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += units.nominal_values(field.pxvec)
@@ -85,7 +85,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
             )
 
             for polygon in polygons[1:]:
-              area = polygon.totalarea
+              area = polygon.area
               message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2: {field.n} {celltype} {celllabel}"
               if area <= 10*self.onepixel**2:
                 self.logger.warning(message)
