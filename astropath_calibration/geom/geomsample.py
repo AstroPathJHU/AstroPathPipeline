@@ -1,6 +1,7 @@
 import cv2, methodtools, more_itertools, numpy as np
 from ..alignment.field import Field
-from ..baseclasses.csvclasses import Polygon, Vertex
+from ..baseclasses.csvclasses import Vertex
+from ..baseclasses.polygon import DataClassWithPolygon, Polygon, polygonfield
 from ..baseclasses.rectangle import RectangleReadComponentTiff
 from ..baseclasses.sample import ReadRectanglesComponentTiff
 from ..utilities import units
@@ -69,7 +70,7 @@ class GeomSample(ReadRectanglesComponentTiff):
     writetable(fieldfilename, self.getfieldboundaries())
     writetable(tumorfilename, self.gettumorboundaries())
 
-class Boundary(Polygon.DataClassWithPolygon):
+class Boundary(DataClassWithPolygon):
   n: int
   k: int
-  poly: Polygon.field()
+  poly: polygonfield()

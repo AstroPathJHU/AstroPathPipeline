@@ -2,7 +2,8 @@ import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, net
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
-from ..baseclasses.csvclasses import Polygon, Region, Vertex
+from ..baseclasses.csvclasses import Region, Vertex
+from ..baseclasses.polygon import Polygon
 from ..baseclasses.qptiff import QPTiff
 from ..zoom.zoom import ZoomSample
 from ..utilities import units
