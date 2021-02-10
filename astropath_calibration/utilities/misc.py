@@ -223,6 +223,25 @@ def re_subs(string, *patternsandrepls, **kwargs):
     string = re.sub(p, r, string, **kwargs)
   return string
 
+class UnequalDictsError(ValueError):
+    def __init__(self, details=None):
+        msg = 'Dicts have different keys'
+        if details is not None:
+            msg += (': index 0 has keys {}; index {} has keys {}').format(
+                *details
+            )
+
+        super().__init__(msg)
+
+def dict_zip_equal(*dicts):
+  for i, d in enumerate(dicts[1:]):
+    if i == 0:
+      keys = dicts[i].keys()
+      continue
+    if d.keys() != keys:
+      raise UnequalDictsError(details=(keys, i, d.keys()))
+  return {k: tuple(d[k] for d in dicts) for k in keys}
+
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
 dummylogger.warningglobal = dummylogger.warning

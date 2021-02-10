@@ -1,6 +1,7 @@
-import abc, collections, cvxpy as cp, itertools, numpy as np, re
+import abc, collections, cvxpy as cp, itertools, more_itertools, numpy as np, re
 
 from ..utilities import units
+from ..utilities.misc import dict_zip_equal
 from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
@@ -50,7 +51,30 @@ class AnnoWarpStitchResultBase(ThingWithImscale):
 
   @property
   def allstitchresultentries(self):
-    return list(itertools.chain(self.stitchresultnominalentries, self.stitchresultcovarianceentries))
+    nominal = list(self.stitchresultnominalentries)
+    for entry, power in more_itertools.zip_equal(nominal, self.variablepowers()):
+      if entry.powerfordescription(entry) != power:
+        raise ValueError(f"Wrong power for {entry.description!r}: expected {power}, got {entry.powerfordescription(entry)}")
+    return list(itertools.chain(nominal, self.stitchresultcovarianceentries))
+
+  @classmethod
+  @abc.abstractmethod
+  def variablepowers(cls): pass
+
+  @classmethod
+  @abc.abstractmethod
+  def nparams(cls): pass
+
+  @classmethod
+  def floatedparams(cls, floatedparams):
+    if isinstance(floatedparams, np.ndarray):
+      return floatedparams
+    if isinstance(floatedparams, str):
+      if floatedparams == "all":
+        floatedparams = [True] * cls.nparams()
+      else:
+        raise ValueError(f"Unknown floatedparams {floatedparams!r}")
+    return np.asarray(floatedparams)
 
 class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
   def __init__(self, *, A, b, c, flatresult, **kwargs):
@@ -62,11 +86,75 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
 
   @classmethod
   @abc.abstractmethod
-  def nparams(cls): pass
+  def unconstrainedAbccontributions(cls, alignmentresult): pass
 
   @classmethod
-  @abc.abstractmethod
-  def Abccontributions(cls, alignmentresult): pass
+  def constraintAbccontributions(cls, mus, sigmas):
+    if mus is sigmas is None: return 0, 0, 0
+    nparams = cls.nparams()
+    A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
+    b = np.zeros(shape=nparams, dtype=units.unitdtype)
+    c = 0
+    for i, (mu, sigma) in enumerate(more_itertools.zip_equal(mus, sigmas)):
+      if mu is sigma is None: continue
+      A[i,i] += 1/sigma**2
+      b[i] -= 2*mu/sigma**2
+      c += (mu/sigma)**2
+    return A, b, c
+
+  @classmethod
+  def Abc(cls, alignmentresults, mus, sigmas, floatedparams="all"):
+    floatedparams = cls.floatedparams(floatedparams)
+
+    A = b = c = 0
+    for alignmentresult in alignmentresults:
+      addA, addb, addc = cls.unconstrainedAbccontributions(alignmentresult)
+      A += addA
+      b += addb
+      c += addc
+
+    floatedindices = np.arange(cls.nparams())[floatedparams]
+    fixedindices = np.arange(cls.nparams())[~floatedparams]
+
+    if mus is None:
+      mus = [None] * cls.nparams()
+    if sigmas is None:
+      sigmas = [None] * cls.nparams()
+
+    mus = np.array(mus)
+    sigmas = np.array(sigmas)
+
+    fixedmus = mus[fixedindices].astype(units.unitdtype)
+    fixedsigmas = sigmas[fixedindices].astype(units.unitdtype)
+
+    badindices = []
+    for i, mu, sigma in more_itertools.zip_equal(fixedindices, fixedmus, fixedsigmas):
+      if mu is None or sigma is None:
+        badindices.append(i)
+    if badindices:
+      raise ValueError(f"Have to provide non-None constraint mu and sigma for variables #{badindices} if you want to fix them")
+
+    #floatfloat = np.ix_(floatedindices, floatedindices)
+    floatfix = np.ix_(floatedindices, fixedindices)
+    fixfloat = np.ix_(fixedindices, floatedindices)
+    fixfix = np.ix_(fixedindices, fixedindices)
+
+    c += fixedmus @ A[fixfix] @ fixedmus
+    A[fixfix] = 0
+
+    b[floatedindices] += A[floatfix] @ fixedmus + fixedmus @ A[fixfloat]
+    A[floatfix] = A[fixfloat] = 0
+
+    c += b[fixedindices] @ fixedmus
+    b[fixedindices] = 0
+
+    addA, addb, addc = cls.constraintAbccontributions(mus, sigmas)
+
+    A += addA
+    b += addb
+    c += addc
+
+    return A, b, c
 
   @property
   def stitchresultcovarianceentries(self):
@@ -98,6 +186,35 @@ class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
   @classmethod
   def cvxpyresidual(cls, alignmentresult, **cvxpyvariables):
     return units.nominal_values(alignmentresult.dxvec)/alignmentresult.onepixel - cls.cvxpydxvec(alignmentresult, **cvxpyvariables)
+
+  @classmethod
+  def constraintquadforms(cls, cvxpyvariables, mus, sigmas, *, imscale):
+    if mus is sigmas is None: return 0
+    onepixel = units.onepixel(imscale)
+    result = 0
+    musdict = {}
+    sigmasdict = {}
+    iterator = iter(more_itertools.zip_equal(mus, sigmas, cls.variablepowers(), range(sum(v.size for k, v in cvxpyvariables.items()))))
+    for name, variable in cvxpyvariables.items():
+      musdict[name] = np.zeros(shape=variable.shape)
+      sigmasdict[name] = np.zeros(shape=variable.shape)
+      raveledmu = musdict[name].ravel()
+      raveledsigma = sigmasdict[name].ravel()
+      for i, (mu, sigma, power, _) in enumerate(itertools.islice(iterator, int(variable.size))):
+        if mu is sigma is None:
+          raveledmu[i] = 0
+          raveledsigma[i] = float("inf")
+        else:
+          raveledmu[i] = mu / onepixel**power
+          raveledsigma[i] = sigma / onepixel**power
+
+    with np.testing.assert_raises(StopIteration):
+      next(iterator)
+
+    for k, (variable, mu, sigma) in dict_zip_equal(cvxpyvariables, musdict, sigmasdict).items():
+      result += cp.sum(((variable-mu)/sigma)**2)
+
+    return result
 
   @property
   def stitchresultcovarianceentries(self): return []
@@ -166,6 +283,20 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
       ),
     )
 
+  @classmethod
+  def variablepowers(cls):
+    return 0, 0, 0, 0, 1, 1, 1, 1, 1, 1
+
+  @classmethod
+  def nparams(cls): return 10
+
+  @classmethod
+  def floatedparams(cls, floatedparams):
+    if isinstance(floatedparams, str):
+      if floatedparams == "constants":
+        floatedparams = [False]*8+[True]*2
+    return super().floatedparams(floatedparams)
+
 class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultNoCvxpyBase):
   def __init__(self, flatresult, **kwargs):
     coeffrelativetobigtile, bigtileindexcoeff, constant = np.split(flatresult, [4, 8])
@@ -174,10 +305,7 @@ class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, Ann
     super().__init__(flatresult=flatresult, coeffrelativetobigtile=coeffrelativetobigtile, bigtileindexcoeff=bigtileindexcoeff, constant=constant, **kwargs)
 
   @classmethod
-  def nparams(cls): return 10
-
-  @classmethod
-  def Abccontributions(cls, alignmentresult):
+  def unconstrainedAbccontributions(cls, alignmentresult):
     nparams = cls.nparams()
     (
       crtbt_xx,
@@ -296,7 +424,12 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
 
 class AnnoWarpStitchResultEntry(DataClassWithPscale):
   pixelsormicrons = "pixels"
-  def __powerfordescription(self):
+  @classmethod
+  def powerfordescription(cls, selfordescription):
+    if isinstance(selfordescription, cls):
+      description = selfordescription.description
+    else:
+      description = selfordescription
     dct = {
       "coefficient of delta x as a function of x within the tile": 0,
       "coefficient of delta x as a function of y within the tile": 0,
@@ -309,11 +442,11 @@ class AnnoWarpStitchResultEntry(DataClassWithPscale):
       "constant piece in delta x": 1,
       "constant piece in delta y": 1,
     }
-    covmatch = re.match(r"covariance\((.*), (.*)\)", self.description)
+    covmatch = re.match(r"covariance\((.*), (.*)\)", description)
     if covmatch:
       return dct[covmatch.group(1)] + dct[covmatch.group(2)]
     else:
-      return dct[self.description]
+      return dct[description]
   n: int
-  value: distancefield(pixelsormicrons=pixelsormicrons, power=__powerfordescription)
+  value: distancefield(pixelsormicrons=pixelsormicrons, power=lambda self: self.powerfordescription(self))
   description: str

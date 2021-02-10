@@ -1,4 +1,4 @@
-import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
+import abc, contextlib, csv, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
 from ..alignment.overlap import AlignmentComparison
@@ -14,13 +14,20 @@ from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, ThingWithImscale
 
 class AnnoWarpSample(ZoomSample, ThingWithImscale):
-  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=100, tilebrightnessthreshold=45, mintilebrightfraction=0.2, mintilerange=45, **kwargs):
+  defaulttilepixels = 100
+  defaulttilebrightnessthreshold = 45
+  defaultmintilebrightfraction = 0.2
+  defaultmintilerange = 45
+
+  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=defaulttilepixels, tilebrightnessthreshold=defaulttilebrightnessthreshold, mintilebrightfraction=defaultmintilebrightfraction, mintilerange=defaultmintilerange, **kwargs):
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
     self.__bigtilepixels = np.array(bigtilepixels)
     self.__bigtileoffsetpixels = np.array(bigtileoffsetpixels)
     self.__tilepixels = tilepixels
+    if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
+      raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
     self.tilebrightnessthreshold = tilebrightnessthreshold
     self.mintilebrightfraction = mintilebrightfraction
     self.mintilerange = mintilerange
@@ -53,10 +60,6 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   def bigtilesize(self): return units.distances(pixels=self.__bigtilepixels, pscale=self.imscale)
   @property
   def bigtileoffset(self): return units.distances(pixels=self.__bigtileoffsetpixels, pscale=self.imscale)
-  @property
-  def deltax(self): return units.Distance(pixels=self.__deltax, pscale=self.imscale)
-  @property
-  def deltay(self): return units.Distance(pixels=self.__deltay, pscale=self.imscale)
 
   @methodtools.lru_cache()
   @property
@@ -117,27 +120,54 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
   def align(self, *, debug=False, write_result=False):
     wsi, qptiff = self.getimages()
+
+    self.logger.info("doing the initial rough alignment")
+    #first align the two with respect to each other
+    #in case there are big shifts, this makes sure the tiles line up
+    #and can be aligned
+    zoomfactor = 5
+    wsizoom = PIL.Image.fromarray(wsi)
+    wsizoom = np.asarray(wsizoom.resize(np.array(wsizoom.size)//zoomfactor))
+    qptiffzoom = PIL.Image.fromarray(qptiff)
+    qptiffzoom = np.asarray(qptiffzoom.resize(np.array(qptiffzoom.size)//zoomfactor))
+    firstresult = computeshift((qptiffzoom, wsizoom), usemaxmovementcut=False)
+
+    initialdx = floattoint(np.rint(firstresult.dx.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
+    initialdy = floattoint(np.rint(firstresult.dy.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
+
+    if initialdx or initialdy:
+      self.logger.warning(f"found a relative shift of around {initialdx, initialdy} pixels between the qptiff and wsi")
+
+    wsix1 = wsiy1 = qptiffx1 = qptiffy1 = 0
+    qptiffy2, qptiffx2 = qptiff.shape
+    wsiy2, wsix2 = wsi.shape
+    if initialdx > 0:
+      wsix1 += initialdx
+      qptiffx2 -= initialdx
+    else:
+      qptiffx1 -= initialdx
+      wsix2 += initialdx
+    if initialdy > 0:
+      wsiy1 += initialdy
+      qptiffy2 -= initialdy
+    else:
+      qptiffy1 -= initialdy
+      wsiy2 += initialdy
+
+    wsi = wsi[wsiy1:wsiy2, wsix1:wsix2]
+    qptiff = qptiff[qptiffy1:qptiffy2, qptiffx1:qptiffx2]
+
+    onepixel = self.oneimpixel
+
     imscale = self.imscale
     tilesize = self.tilesize
     bigtilesize = self.bigtilesize
     bigtileoffset = self.bigtileoffset
-    #deltax = self.deltax
-    #deltay = self.deltay
-
-    onepixel = self.oneimpixel
 
     mx1 = units.convertpscale(min(field.mx1 for field in self.rectangles), self.pscale, imscale, 1)
     mx2 = units.convertpscale(max(field.mx2 for field in self.rectangles), self.pscale, imscale, 1)
     my1 = units.convertpscale(min(field.my1 for field in self.rectangles), self.pscale, imscale, 1)
     my2 = units.convertpscale(max(field.my2 for field in self.rectangles), self.pscale, imscale, 1)
-
-    #nx1 = max(floattoint(mx1 // deltax), 1)
-    #nx2 = floattoint(mx2 // deltax) + 1
-    #ny1 = max(1, floattoint(my1 // deltay), 1)
-    #ny2 = floattoint(my2 // deltay) + 1
-
-    #ex = np.arange(nx1, nx2+1) * self.deltax
-    #ey = np.arange(ny1, ny2+1) * self.deltay
 
     #tweak the y position by -900 for the microsocope glitches
     #(from Alex's code.  I don't know what this means.)
@@ -154,7 +184,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
     results = AnnoWarpAlignmentResults()
     ntiles = (m2+1-m1) * (n2+1-n1)
-    self.logger.info("aligning %d tiles", ntiles)
+    self.logger.info("aligning %d tiles of %d x %d pixels", ntiles, self.__tilepixels, self.__tilepixels)
+    self.logger.info(f"Cuts: {self.mintilebrightfraction:.0%} of pixels have flux >= {self.tilebrightnessthreshold}, and flux range in the tile >= {self.mintilerange}.")
     for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1)), start=1):
       if n%100==0 or n==ntiles: self.logger.debug("aligning tile %d/%d", n, ntiles)
       x = tilesize * (ix-1)
@@ -164,6 +195,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
         floattoint(units.pixels(y, pscale=imscale)):floattoint(units.pixels(y+tilesize, pscale=imscale)),
         floattoint(units.pixels(x, pscale=imscale)):floattoint(units.pixels(x+tilesize, pscale=imscale)),
       ]
+      if not wsitile.size: continue
       brightfraction = np.mean(wsitile>self.tilebrightnessthreshold)
       if brightfraction < self.mintilebrightfraction: continue
       if np.max(wsitile) - np.min(wsitile) < self.mintilerange: continue
@@ -174,8 +206,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
 
       alignmentresultkwargs = dict(
         n=n,
-        x=x,
-        y=y,
+        x=x+qptiffx1,
+        y=y+qptiffy1,
         mi=brightfraction,
         pscale=imscale,
         tilesize=tilesize,
@@ -208,7 +240,7 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
           AnnoWarpAlignmentResult(
             **alignmentresultkwargs,
             dxvec=units.correlated_distances(
-              pixels=(shiftresult.dx, shiftresult.dy),
+              pixels=(shiftresult.dx+initialdx, shiftresult.dy+initialdy),
               pscale=imscale,
               power=1,
             ),
@@ -216,6 +248,8 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
           )
         )
     self.__alignmentresults = results
+    if not results:
+      raise ValueError("Couldn't align any tiles")
     if write_result:
       self.writealignments()
     return results
@@ -242,37 +276,123 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       "default": (AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy),
     }[model][cvxpy]
 
-  def stitch(self, *, model="default"):
+  def stitch(self, *args, cvxpy=False, **kwargs):
+    return (self.stitch_cvxpy if cvxpy else self.stitch_nocvxpy)(*args, **kwargs)
+
+  def stitch_nocvxpy(self, **kwargs):
+    allkwargs = kwargs.copy()
+    model = kwargs.pop("model", "default")
+    constraintmus = kwargs.pop("constraintmus", None)
+    constraintsigmas = kwargs.pop("constraintsigmas", None)
+    residualpullcutoff = kwargs.pop("residualpullcutoff", 5)
+    floatedparams = kwargs.pop("floatedparams", "all")
+    _removetiles = kwargs.pop("_removetiles", [])
+    _choosetiles = kwargs.pop("_choosetiles", "bigislands")
+    if kwargs: raise TypeError(f"Unknown kwargs {kwargs}")
+
+    if constraintmus is constraintsigmas is None:
+      self.logger.info("doing the global fit")
+    else:
+      self.logger.warningglobal("doing the global fit with constraints")
     stitchresultcls = self.stitchresultcls(model=model, cvxpy=False)
     nparams = stitchresultcls.nparams()
     A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
     b = np.zeros(shape=nparams, dtype=units.unitdtype)
     c = 0
 
-    for result in self.__alignmentresults.goodconnectedresults:
-      addA, addb, addc = stitchresultcls.Abccontributions(result)
-      A += addA
-      b += addb
-      c += addc
+    alignmentresults = AnnoWarpAlignmentResults(_ for _ in self.__alignmentresults if _.n not in _removetiles)
+    if _choosetiles == "bigislands":
+      alignmentresults = alignmentresults.goodconnectedresults(minislandsize=8)
+      if len(alignmentresults) < 15:
+        self.logger.warningglobal("didn't find good alignment results in big islands, trying to stitch with smaller islands")
+        allkwargs["_choosetiles"] = "smallislands"
+        return self.stitch_nocvxpy(**allkwargs)
+    elif _choosetiles == "smallislands":
+      alignmentresults = alignmentresults.goodconnectedresults(minislandsize=4)
+      if len(alignmentresults) < 15:
+        self.logger.warningglobal("didn't find good alignment results in small islands, using all good alignment results for stitching")
+        allkwargs["_choosetiles"] = "all"
+        return self.stitch_nocvxpy(**allkwargs)
+    elif _choosetiles == "all":
+      alignmentresults = alignmentresults.goodresults
+    else:
+      raise ValueError(f"Invalid _choosetiles {_choosetiles}")
 
-    result = units.np.linalg.solve(2*A, -b)
+    A, b, c = stitchresultcls.Abc(alignmentresults, constraintmus, constraintsigmas, floatedparams=floatedparams)
+
+    try:
+      result = units.np.linalg.solve(2*A, -b)
+    except np.linalg.LinAlgError:
+      if _choosetiles == "bigislands":
+        self.logger.warningglobal("fit failed using big islands, trying to stitch with smaller islands")
+        allkwargs["_choosetiles"] = "smallislands"
+        return self.stitch_nocvxpy(**allkwargs)
+      if _choosetiles == "smallislands":
+        self.logger.warningglobal("fit failed using small islands, using all good alignment results for stitching")
+        allkwargs["_choosetiles"] = "all"
+        return self.stitch_nocvxpy(**allkwargs)
+      raise
 
     delta2nllfor1sigma = 1
     covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
     result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
-    self.__stitchresult = stitchresultcls(result, A=A, b=b, c=c, imscale=self.imscale)
+    stitchresult = stitchresultcls(result, A=A, b=b, c=c, imscale=self.imscale)
+
+    if residualpullcutoff is not None:
+      removemoretiles = []
+      infolines = []
+      for result in alignmentresults:
+        residualsq = np.sum(stitchresult.residual(result, apscale=self.imscale)**2)
+        if abs(residualsq.n / residualsq.s) > residualpullcutoff:
+          removemoretiles.append(result.n)
+          infolines.append(f"{result.n} {residualsq}")
+      if removemoretiles:
+        self.logger.warningglobal(f"Alignment results {removemoretiles} are outliers (> {residualpullcutoff} sigma residuals), removing them and trying again")
+        for l in infolines: self.logger.info(l)
+        allkwargs["_removetiles"]=_removetiles+removemoretiles
+        return self.stitch(**allkwargs)
+
+    self.__stitchresult = stitchresult
     return self.__stitchresult
 
-  def stitch_cvxpy(self, *, model="default"):
+  def stitch_cvxpy(self, **kwargs):
+    allkwargs = kwargs.copy()
+    model = kwargs.pop("model", "default")
+    constraintmus = kwargs.pop("constraintmus", None)
+    constraintsigmas = kwargs.pop("constraintsigmas", None)
+    _removetiles = kwargs.pop("_removetiles", [])
+    _choosetiles = kwargs.pop("_choosetiles", "bigislands")
+    if kwargs: raise TypeError(f"Unknown kwargs {kwargs}")
+
     stitchresultcls = self.stitchresultcls(model=model, cvxpy=True)
     variables = stitchresultcls.makecvxpyvariables()
 
+    alignmentresults = AnnoWarpAlignmentResults(_ for _ in self.__alignmentresults if _.n not in _removetiles)
+    if _choosetiles == "bigislands":
+      alignmentresults = alignmentresults.goodconnectedresults(minislandsize=8)
+      if len(alignmentresults) < 15:
+        self.logger.warningglobal("didn't find good alignment results in big islands, trying to stitch with smaller islands")
+        allkwargs["_choosetiles"] = "smallislands"
+        return self.stitch_nocvxpy(**allkwargs)
+    elif _choosetiles == "smallislands":
+      alignmentresults = alignmentresults.goodconnectedresults(minislandsize=4)
+      if len(alignmentresults) < 15:
+        self.logger.warningglobal("didn't find good alignment results in small islands, using all good alignment results for stitching")
+        allkwargs["_choosetiles"] = "all"
+        return self.stitch_nocvxpy(**allkwargs)
+    elif _choosetiles == "all":
+      alignmentresults = alignmentresults.goodresults
+    else:
+      raise ValueError(f"Invalid _choosetiles {_choosetiles}")
+
     tominimize = 0
     onepixel = self.oneimpixel
-    for result in self.__alignmentresults.goodconnectedresults:
+    for result in alignmentresults:
       residual = stitchresultcls.cvxpyresidual(result, **variables)
       tominimize += cp.quad_form(residual, units.np.linalg.inv(result.covariance) * onepixel**2)
+
+    tominimize += stitchresultcls.constraintquadforms(variables, constraintmus, constraintsigmas, imscale=self.imscale)
 
     minimize = cp.Minimize(tominimize)
     prob = cp.Problem(minimize)
@@ -296,22 +416,41 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
   @property
   def oldverticescsv(self): return self.csv("vertices")
   @property
-  def newverticescsv(self): return self.csv("vertices-warped")
+  def newverticescsv(self): return self.csv("vertices")
   @property
   def oldregionscsv(self): return self.csv("regions")
   @property
-  def newregionscsv(self): return self.csv("regions-warped")
+  def newregionscsv(self): return self.csv("regions")
 
   @methodtools.lru_cache()
-  def __getvertices(self, *, apscale, filename=None):
+  def __getvertices(self, *, apscale, pscale, filename=None):
     if filename is None: filename = self.oldverticescsv
-    return readtable(filename, QPTiffVertex, extrakwargs={"apscale": apscale, "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, apscale), "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, apscale)})
+    extrakwargs={
+     "apscale": apscale,
+     "pscale": pscale,
+     "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, apscale),
+     "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, apscale)
+    }
+    with open(filename) as f:
+      reader = csv.DictReader(f)
+      if "wx" in reader.fieldnames and "wy" in reader.fieldnames:
+        typ = WarpedVertex
+      else:
+        typ = QPTiffVertex
+    vertices = readtable(filename, typ, extrakwargs=extrakwargs)
+    if typ == WarpedVertex:
+      vertices = [v.originalvertex for v in vertices]
+    return vertices
+
   @property
   def vertices(self):
-    return self.__getvertices(apscale=self.apscale)
+    return self.__getvertices(apscale=self.apscale, pscale=self.pscale)
+  @property
+  def apvertices(self):
+    return self.__getvertices(apscale=self.apscale, pscale=self.apscale)
 
   @methodtools.lru_cache()
-  def __getwarpedvertices(self, *, apscale):
+  def __getwarpedvertices(self, *, apscale, pscale):
     oneapmicron = units.onemicron(pscale=apscale)
     onemicron = self.onemicron
     onepixel = self.onepixel
@@ -320,12 +459,12 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
         vertex=v,
         wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, apscale=apscale))) / oneapmicron * onemicron // onepixel * onepixel,
         pscale=self.pscale,
-      ) for v in self.__getvertices(apscale=apscale)
+      ) for v in self.__getvertices(apscale=apscale, pscale=pscale)
     ]
 
   @property
   def warpedvertices(self):
-    return self.__getwarpedvertices(apscale=self.apscale)
+    return self.__getwarpedvertices(apscale=self.apscale, pscale=self.pscale)
 
   @methodtools.lru_cache()
   def __getregions(self, *, apscale, filename=None):
@@ -345,8 +484,10 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     for i, region in enumerate(regions, start=1):
       zipfunction = more_itertools.zip_equal if i == len(regions) else zip
       newvertices = []
-      polyvertices = region.poly.vertices if region.poly is not None else (v for v in self.vertices if v.regionid == region.regionid)
+      polyvertices = [v for v in self.vertices if v.regionid == region.regionid]
       for oldvertex, newvertex in zipfunction(polyvertices, warpedverticesiterator):
+        if newvertex.regionid != oldvertex.regionid:
+          raise ValueError(f"found inconsistent regionids between regions.csv and vertices.csv: {newvertex.regionid} {oldvertex.regionid}")
         np.testing.assert_array_equal(
           np.round((oldvertex.xvec / oldvertex.oneappixel).astype(float)),
           np.round((newvertex.xvec / oldvertex.oneappixel).astype(float)),
@@ -378,10 +519,13 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     if filename is None: filename = self.newregionscsv
     writetable(filename, self.warpedregions)
 
-  def runannowarp(self):
-    self.align()
-    self.writealignments()
-    self.stitch()
+  def runannowarp(self, *, readalignments=False, **kwargs):
+    if not readalignments:
+      self.align()
+      self.writealignments()
+    else:
+      self.readalignments()
+    self.stitch(**kwargs)
     self.writestitchresult()
     self.writevertices()
     self.writeregions()
@@ -450,6 +594,18 @@ class WarpedVertex(QPTiffVertex):
 
   @property
   def wxvec(self): return np.array([self.wx, self.wy])
+
+  @property
+  def originalvertex(self):
+    return QPTiffVertex(
+      regionid=self.regionid,
+      vid=self.vid,
+      xvec=self.xvec,
+      apscale=self.apscale,
+      pscale=self.pscale,
+      bigtilesize=self.bigtilesize,
+      bigtileoffset=self.bigtileoffset,
+    )
 
   @property
   def finalvertex(self):
@@ -560,15 +716,14 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
 
     return g
 
-  @property
-  def goodconnectedresults(self):
+  def goodconnectedresults(self, *, minislandsize=8):
     onepixel = self.onepixel
     good = self.goodresults
     g = good.adjacencygraph
     tiledict = {tile.n: tile for tile in self}
     keep = {}
     for island in nx.connected_components(g):
-      if len(island) <= 7:
+      if len(island) < minislandsize:
         for n in island: keep[n] = False
         continue
       tiles = [tiledict[n] for n in island]

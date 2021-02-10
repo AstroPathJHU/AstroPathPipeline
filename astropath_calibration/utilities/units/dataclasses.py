@@ -98,7 +98,7 @@ class DataClassWithDistances(MyDataClass):
     usedistances = False
     if currentmode == "safe" and any(powers.values()):
       distances = self._distances_passed_to_init()
-      if distances:
+      if distances and any(distances):
         try:
           usedistances, = {isinstance(_, safe.Distance) for _ in distances if _}
         except ValueError:
