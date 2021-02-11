@@ -1,4 +1,4 @@
-import cv2, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.measure
+import cv2, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.measure
 from ..alignment.field import Field
 from ..baseclasses.polygon import DataClassWithPolygon, polygonfield
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLoadRectangle
@@ -81,7 +81,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
 
             finally:
               if (field.n, celltype, celllabel) in _debugdraw:
-                debugdraw(img=thiscell, polygons=polygons, field=field, **_debugdraw[field.n, celltype, celllabel])
+                debugdraw(img=thiscell, polygons=polygons, field=field, logger=self.logger, **_debugdraw[field.n, celltype, celllabel])
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += units.nominal_values(field.pxvec)
@@ -152,11 +152,9 @@ def joinbrokenmembrane(mask, *, logger=dummylogger, loginfo=""):
 
   for label in labels:
     if labelsinglepixels[label]:
-      labelendpoints[label] += labelsinglepixels[label]
-    elif len(labelendpoints[label]) != 2:
-      raise ValueError(f"Got an unexpected number of endpoints: {loginfo}")
+      labelendpoints[label] += labelsinglepixels[label]*2
 
-  possibleendpointorder = {label: ((0, 1), (1, 0)) if not labelsinglepixels[label] else ((0, 1),) for label in labels}
+  possibleendpointorder = {label: itertools.permutations(labelendpoints[label], 2) for label in labels}
 
   possiblepointstoconnect = []
   for labelordering in itertools.permutations(labels):
@@ -165,9 +163,9 @@ def joinbrokenmembrane(mask, *, logger=dummylogger, loginfo=""):
       pointstoconnect = []
       possiblepointstoconnect.append(pointstoconnect)
       for label1, label2 in more_itertools.pairwise(labelordering+(labelordering[0],)):
-        endpoint1 = labelendpoints[label1][endpointorder[label1][1]]
-        endpoint2 = labelendpoints[label2][endpointorder[label2][0]]
-      pointstoconnect.append((endpoint1, endpoint2))
+        endpoint1 = endpointorder[label1][1]
+        endpoint2 = endpointorder[label2][0]
+        pointstoconnect.append((endpoint1, endpoint2))
 
   def totaldistance(pointstoconnect):
     return sum(
@@ -175,22 +173,34 @@ def joinbrokenmembrane(mask, *, logger=dummylogger, loginfo=""):
       for point1, point2 in pointstoconnect
     )
 
-  bestpointstoconnect = min(
-    possiblepointstoconnect,
-    key=totaldistance,
-  )
-
-  logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {loginfo}")
-
-  for point1, point2 in bestpointstoconnect:
-    mask = cv2.line(mask, point1, point2, 1)
+  while possiblepointstoconnect:
+    bestpointstoconnect = min(
+      possiblepointstoconnect,
+      key=totaldistance,
+    )
+    lines = np.zeros_like(mask)
+    for point1, point2 in bestpointstoconnect:
+      lines = cv2.line(lines, tuple(point1)[::-1], tuple(point2)[::-1], 1)
+    intersectionsize = np.count_nonzero(lines & mask)
+    linepixels = np.count_nonzero(lines)
+    nlines = len(bestpointstoconnect)
+    if intersectionsize > nlines*3:
+      logger.debug(f"{nlines} lines with {linepixels} pixels total, {intersectionsize} intersection with mask")
+      possiblepointstoconnect.remove(bestpointstoconnect)
+      continue
+    else:
+      logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {loginfo}")
+      mask |= lines
+      break
+  else:
+    logger.warning(f"Possibly broken membrane, but couldn't connect it: {loginfo}")
 
   if mask.dtype != dtype:
     mask = mask.astype(dtype)
 
   return mask
 
-def debugdraw(img, polygons, field, xlim={}, ylim={}):
+def debugdraw(img, polygons, field, xlim={}, ylim={}, logger=dummylogger):
   plt.imshow(img)
   ax = plt.gca()
   for i, polygon in enumerate(polygons):
@@ -198,4 +208,4 @@ def debugdraw(img, polygons, field, xlim={}, ylim={}):
   plt.xlim(**xlim)
   plt.ylim(**ylim)
   plt.show()
-  print(polygons)
+  logger.debug(f"{polygons}")
