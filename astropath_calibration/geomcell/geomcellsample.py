@@ -69,12 +69,12 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               assert False
               continue
             celllabel = cellproperties.label
-            thiscell = imlayer==celllabel
+            thiscell = (imlayer==celllabel).astype(np.uint8)
             polygons = []
             try:
               if self.ismembrane(imlayernumber):
                 thiscell = joinbrokenmembrane(thiscell, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}")
-              polygons = findcontoursaspolygons(thiscell.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec), fill=True)
+              polygons = findcontoursaspolygons(thiscell, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec), fill=True)
 
               if len(polygons) > 1:
                 polygons.sort(key=lambda x: x.area, reverse=True)
@@ -146,9 +146,6 @@ def joinbrokenmembrane(mask, *, logger=dummylogger, loginfo=""):
   labeled, nlabels = scipy.ndimage.label(mask, structure=np.ones(shape=(3, 3)))
 
   #find the endpoints: pixels of membrane that have exactly one membrane neighbor
-  dtype = mask.dtype
-  if mask.dtype == bool:
-    mask = mask.astype(np.uint8)
   nneighbors = scipy.ndimage.convolve(mask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
   if not np.any(mask & (nneighbors <= 1)):
     return mask
@@ -200,9 +197,6 @@ def joinbrokenmembrane(mask, *, logger=dummylogger, loginfo=""):
       logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {loginfo}")
       mask |= lines
       break
-
-  if mask.dtype != dtype:
-    mask = mask.astype(dtype)
 
   return mask
 
