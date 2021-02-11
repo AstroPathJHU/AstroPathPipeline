@@ -1,10 +1,11 @@
-import cv2, matplotlib.pyplot as plt, numpy as np, skimage.measure
+import cv2, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.measure
 from ..alignment.field import Field
 from ..baseclasses.polygon import DataClassWithPolygon, polygonfield
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLoadRectangle
 from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesComponentTiff
 from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
+from ..utilities.misc import dict_product, dummylogger
 from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import distancefield
 
@@ -12,14 +13,28 @@ class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLay
   pass
 
 class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
+  MEMBRANE_TUMOR = 13
+  MEMBRANE_IMMUNE = 12
+  NUCLEUS_TUMOR = 11
+  NUCLEUS_IMMUNE = 10
+
+  @classmethod
+  def ismembrane(cls, layer):
+    return {
+      cls.MEMBRANE_TUMOR: True,
+      cls.MEMBRANE_IMMUNE: True,
+      cls.NUCLEUS_TUMOR: False,
+      cls.NUCLEUS_IMMUNE: False,
+    }[layer]
+
   def __init__(self, *args, **kwargs):
     super().__init__(
       *args,
       layers=[
-        13,  #membrane tumor
-        12,  #membrane immune
-        11,  #nucleus tumor
-        10,  #nucleus immune
+        self.MEMBRANE_TUMOR,
+        self.MEMBRANE_IMMUNE,
+        self.NUCLEUS_TUMOR,
+        self.NUCLEUS_IMMUNE,
       ],
       **kwargs
     )
@@ -47,7 +62,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
       geomload = []
       with field.using_image() as im:
         im = im.astype(np.uint32)
-        for celltype, imlayer in enumerate(im):
+        for celltype, (imlayernumber, imlayer) in enumerate(more_itertools.zip_equal(self.layers, im)):
           properties = skimage.measure.regionprops(imlayer)
           for cellproperties in properties:
             if not np.any(cellproperties.image):
@@ -55,32 +70,18 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               continue
             celllabel = cellproperties.label
             thiscell = imlayer==celllabel
-            polygons = findcontoursaspolygons(thiscell.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec), fill=True)
+            polygons = []
+            try:
+              if self.ismembrane(imlayernumber):
+                thiscell = joinbrokenmembrane(thiscell, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}")
+              polygons = findcontoursaspolygons(thiscell.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec), fill=True)
 
-            for i, poly in reversed(list(enumerate(polygons[:]))):
-              if poly.area == 0 or poly.perimeter / poly.area > 2 / self.onepixel:
-                try:
-                  hull = poly.convexhull
-                except RuntimeError as e:
-                  self.logger.warning(f"can't get convex hull for small polygon {poly}: {e}")
-                  continue
-                if hull.area != 0 and hull.perimeter / hull.area <= 1 / self.onepixel:
-                  polygons[i] = hull
+              if len(polygons) > 1:
+                polygons.sort(key=lambda x: x.area, reverse=True)
 
-            if len(polygons) > 1:
-              polygons.sort(key=lambda x: x.area, reverse=True)
-
-            if (field.n, celltype, celllabel) in _debugdraw:
-              kwargs = _debugdraw[field.n, celltype, celllabel]
-              plt.imshow(thiscell)
-              ax = plt.gca()
-              for i, polygon in enumerate(polygons):
-                ax.add_patch(polygon.matplotlibpolygon(color=f"C{i}", alpha=0.7, shiftby=-units.nominal_values(field.pxvec)))
-              plt.xlim(**kwargs.pop("xlim", {}))
-              plt.ylim(**kwargs.pop("ylim", {}))
-              plt.show()
-              print(polygons)
-              assert not kwargs, kwargs
+            finally:
+              if (field.n, celltype, celllabel) in _debugdraw:
+                debugdraw(img=thiscell, polygons=polygons, field=field, **_debugdraw[field.n, celltype, celllabel])
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += units.nominal_values(field.pxvec)
@@ -131,3 +132,70 @@ class CellGeomLoad(DataClassWithPolygon):
       **kwargs,
       **boxkwargs,
     )
+
+def joinbrokenmembrane(mask, *, logger=dummylogger, loginfo=""):
+  #first find the pieces of membrane
+  labeled, nlabels = scipy.ndimage.label(mask, structure=np.ones(shape=(3, 3)))
+
+  #find the endpoints: pixels of membrane that have exactly one membrane neighbor
+  dtype = mask.dtype
+  if mask.dtype == bool:
+    mask = mask.astype(np.uint8)
+  nneighbors = scipy.ndimage.convolve(mask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
+  if not np.any(mask & (nneighbors <= 1)):
+    return mask
+
+  labels = range(1, nlabels+1)
+
+  labelendpoints = {label: list(np.argwhere((labeled==label) & (nneighbors == 1))) for label in labels}
+  labelsinglepixels = {label: list(np.argwhere((labeled==label) & (nneighbors == 0))) for label in labels}
+
+  for label in labels:
+    if labelsinglepixels[label]:
+      labelendpoints[label] += labelsinglepixels[label]
+    elif len(labelendpoints[label]) != 2:
+      raise ValueError(f"Got an unexpected number of endpoints: {loginfo}")
+
+  possibleendpointorder = {label: ((0, 1), (1, 0)) if not labelsinglepixels[label] else ((0, 1),) for label in labels}
+
+  possiblepointstoconnect = []
+  for labelordering in itertools.permutations(labels):
+    if labelordering[-1] > labelordering[0]: continue #[1, 2, 3] is the same as [3, 2, 1]
+    for endpointorder in dict_product(possibleendpointorder):
+      pointstoconnect = []
+      possiblepointstoconnect.append(pointstoconnect)
+      for label1, label2 in more_itertools.pairwise(labelordering+(labelordering[0],)):
+        endpoint1 = labelendpoints[label1][endpointorder[label1][1]]
+        endpoint2 = labelendpoints[label2][endpointorder[label2][0]]
+      pointstoconnect.append((endpoint1, endpoint2))
+
+  def totaldistance(pointstoconnect):
+    return sum(
+      np.sum((point1-point2)**2)**.5
+      for point1, point2 in pointstoconnect
+    )
+
+  bestpointstoconnect = min(
+    possiblepointstoconnect,
+    key=totaldistance,
+  )
+
+  logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {loginfo}")
+
+  for point1, point2 in bestpointstoconnect:
+    mask = cv2.line(mask, point1, point2, 1)
+
+  if mask.dtype != dtype:
+    mask = mask.astype(dtype)
+
+  return mask
+
+def debugdraw(img, polygons, field, xlim={}, ylim={}):
+  plt.imshow(img)
+  ax = plt.gca()
+  for i, polygon in enumerate(polygons):
+    ax.add_patch(polygon.matplotlibpolygon(color=f"C{i}", alpha=0.7, shiftby=-units.nominal_values(field.pxvec)))
+  plt.xlim(**xlim)
+  plt.ylim(**ylim)
+  plt.show()
+  print(polygons)

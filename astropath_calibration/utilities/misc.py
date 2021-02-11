@@ -242,6 +242,12 @@ def dict_zip_equal(*dicts):
       raise UnequalDictsError(details=(keys, i, d.keys()))
   return {k: tuple(d[k] for d in dicts) for k in keys}
 
+def dict_product(dct):
+  keys = dct.keys()
+  valuelists = dct.values()
+  for values in itertools.product(*valuelists):
+    yield {k: v for k, v in more_itertools.zip_equal(keys, values)}
+
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
 dummylogger.warningglobal = dummylogger.warning
