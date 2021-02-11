@@ -113,7 +113,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       poly.AddGeometry(ring)
     return poly
 
-  def matplotlibpolygon(self, *, imagescale=None, **kwargs):
+  def matplotlibpolygon(self, *, imagescale=None, shiftby=0, **kwargs):
     if imagescale is None: imagescale = self.pscale
     vertices = []
     for vv in self.vertices:
@@ -121,11 +121,11 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       if newvertices[-1] != newvertices[0]: newvertices.append(newvertices[0])
       vertices += newvertices
     return matplotlib.patches.Polygon(
-      units.convertpscale(
+      (units.convertpscale(
         vertices,
         self.apscale,
         imagescale,
-      ) / units.onepixel(imagescale),
+      ) + shiftby) / units.onepixel(imagescale),
       **kwargs,
     )
 

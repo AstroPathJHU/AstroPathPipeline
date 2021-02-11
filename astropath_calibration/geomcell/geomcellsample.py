@@ -59,6 +59,9 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
             if (field.n, celltype, celllabel) in _debugdraw:
               kwargs = _debugdraw[field.n, celltype, celllabel]
               plt.imshow(thiscell)
+              ax = plt.gca()
+              for i, polygon in enumerate(polygons):
+                ax.add_patch(polygon.matplotlibpolygon(color=f"C{i}", alpha=0.7, shiftby=-units.nominal_values(field.pxvec)))
               plt.xlim(**kwargs.pop("xlim", {}))
               plt.ylim(**kwargs.pop("ylim", {}))
               plt.show()
@@ -86,7 +89,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
 
             for polygon in polygons[1:]:
               area = polygon.area
-              message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2: {field.n} {celltype} {celllabel}"
+              perimeter = polygon.perimeter
+              message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {field.n} {celltype} {celllabel}"
               if area <= 10*self.onepixel**2:
                 self.logger.warning(message)
               else:
