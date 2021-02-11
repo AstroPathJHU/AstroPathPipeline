@@ -97,7 +97,9 @@ class MyLogger:
     self.nentered -= 1
     if self.nentered == 0:
       if exc_value is not None:
-        self.error(str(exc_value).replace(";", ","))
+        errormessage = str(exc_value).replace(";", ",")
+        if "\n" in errormessage: errormessage = repr(errormessage)
+        self.error(errormessage)
         self.info(repr(traceback.format_exception(exc_type, exc_value, exc_traceback)).replace(";", ""))
       self.logger.info(f"end {self.module}")
       for handler in self.handlers[:]:

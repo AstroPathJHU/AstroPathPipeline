@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt, numpy as np
 from ..baseclasses.polygon import Polygon
 from ..utilities import units
 
-def showannotation(image, regions, *, qpscale, imagescale, xlim=(), ylim=(), vertices=None, figurekwargs={}, showplot=None, saveas=None):
+def showannotation(image, regions, *, qpscale, imagescale, xlim=(), ylim=(), vertices=None, figurekwargs={}, showplot=None, saveas=None, alpha=0.5):
   fig = plt.figure(**figurekwargs)
   xlim = (np.array(xlim) / units.onepixel(imagescale)).astype(float)
   ylim = (np.array(ylim) / units.onepixel(imagescale)).astype(float)
@@ -16,7 +16,7 @@ def showannotation(image, regions, *, qpscale, imagescale, xlim=(), ylim=(), ver
 
     polygon = poly.matplotlibpolygon(
       imagescale=imagescale,
-      alpha=0.5,
+      alpha=alpha,
       color="r",
     )
     ax.add_patch(polygon)

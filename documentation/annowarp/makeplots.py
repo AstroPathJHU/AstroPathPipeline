@@ -1,7 +1,9 @@
 import argparse, numpy as np, pathlib, PIL
 from astropath_calibration.annowarp.annowarpsample import AnnoWarpSample
 from astropath_calibration.annowarp.visualization import showannotation
+from astropath_calibration.baseclasses.csvclasses import Region
 from astropath_calibration.utilities import units
+from astropath_calibration.utilities.tableio import readtable
 
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"
@@ -13,8 +15,7 @@ def makeplots():
   from ...test.testzoom import gunzipreference
   gunzipreference(samp)
   A = AnnoWarpSample(data, samp, zoomroot=zoomroot)
-  A.readalignments(filename=annowarproot/samp/A.alignmentcsv.name)
-  A.stitch()
+  warpedregions = readtable(annowarproot/samp/A.newregionscsv.name, Region, extrakwargs={"apscale": A.apscale, "pscale": A.pscale})
 
   with A.using_images() as (wsi, fqptiff):
     zoomlevel = fqptiff.zoomlevels[0]
@@ -34,8 +35,8 @@ def makeplots():
   else:
     ylimpscale = ylim
 
-  showannotation(qptiff, A.regions, vertices=A.vertices, qpscale=A.apscale, imagescale=apscale, figurekwargs={}, ylim=ylim, xlim=xlim, saveas=here/"qptiff.pdf")
-  showannotation(wsi, A.warpedregions, qpscale=apscale, imagescale=A.pscale, figurekwargs={}, ylim=ylimpscale, xlim=xlimpscale, saveas=here/"wsi.pdf")
+  showannotation(qptiff, A.regions, vertices=A.apvertices, qpscale=A.apscale, imagescale=apscale, figurekwargs={}, ylim=ylim, xlim=xlim, saveas=here/"qptiff.pdf")
+  showannotation(wsi, warpedregions, qpscale=apscale, imagescale=A.pscale, figurekwargs={}, ylim=ylimpscale, xlim=xlimpscale, saveas=here/"wsi.pdf")
 
 if __name__ == "__main__":
   p = argparse.ArgumentParser()

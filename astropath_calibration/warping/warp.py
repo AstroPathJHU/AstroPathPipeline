@@ -4,6 +4,7 @@ from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
 from ..utilities.img_correction import correctImageLayerWithWarpFields
 from ..utilities.misc import cropAndOverwriteImage
+from ..utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, seaborn as sns
 import os, math, cv2, functools, methodtools
 
@@ -185,8 +186,8 @@ class PolyFieldWarp(Warp) :
         Write out .bin files of the dx and dy warping fields and also make an image showing them 
         file_stem = the unique identifier to add to the .bin filenames
         """
-        writeImageToFile(self.x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
-        writeImageToFile(self.y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        writeImageToFile(self.x_warps,f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        writeImageToFile(self.y_warps,f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
         f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(self.r_warps)
         ax[0].scatter(self.xc,self.yc,marker='*',color='yellow')
@@ -537,8 +538,8 @@ class CameraWarp(Warp) :
         """
         r_warps, x_warps, y_warps = self.getWarpFields()
         if save_fields :
-            writeImageToFile(x_warps,f'{CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
-            writeImageToFile(y_warps,f'{CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+            writeImageToFile(x_warps,f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+            writeImageToFile(y_warps,f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
         f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(r_warps)
         ax[0].scatter(self.cx,self.cy,marker='*',color='yellow')

@@ -1,8 +1,8 @@
 #imports
 from .alignmentset import AlignmentSetForExposureTime
-from .config import CONST
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import getAlignmentSetTissueEdgeRectNs
+from ..utilities.config import CONST as UNIV_CONST
 from typing import List
 import os, logging
 
@@ -46,9 +46,9 @@ def checkArgs(args) :
 def getOverlapsWithExposureTimeDifferences(rtd,rootdir,sn,exp_times,layer,overlaps=None,include_tissue_edges=False,return_dict=None) :
     et_fit_logger.info(f'Finding overlaps with exposure time differences in {sn} layer {layer}....')
     if (overlaps is None or overlaps==[-1]) or (not include_tissue_edges) :
-        a = AlignmentSetForExposureTime(rootdir,rtd,sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,smoothsigma=None,flatfield=None)
+        a = AlignmentSetForExposureTime(rootdir,rtd,sn,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=layer,smoothsigma=None,flatfield=None)
     else :
-        a = AlignmentSetForExposureTime(rootdir,rtd,sn,nclip=CONST.N_CLIP,readlayerfile=False,layer=layer,
+        a = AlignmentSetForExposureTime(rootdir,rtd,sn,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=layer,
                                         selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,smoothsigma=None,flatfield=None)
     tissue_edge_rect_ns = [] if include_tissue_edges else getAlignmentSetTissueEdgeRectNs(a) 
     rect_rfkey_by_n = {}

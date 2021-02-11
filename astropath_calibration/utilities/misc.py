@@ -124,7 +124,7 @@ def getAlignmentSetTissueEdgeRectNs(aset) :
   for island in slide_islands :
     island_rects = [r for r in aset.rectangles if r.n in island]
     #get the width and height of the rectangles
-    rw, rh = island_rects[0].w, island_rects[0].h
+    #rw, rh = island_rects[0].w, island_rects[0].h
     #get the x/y positions of the rectangles in the island
     x_poss = sorted(list(set([r.x for r in island_rects])))
     y_poss = sorted(list(set([r.y for r in island_rects])))
@@ -132,24 +132,24 @@ def getAlignmentSetTissueEdgeRectNs(aset) :
     island_edge_rect_ns = []
     #iterate over them first from top to bottom to add the vertical edges
     for row_y in y_poss :
-        row_rects = [r for r in island_rects if r.y==row_y]
-        row_x_poss = sorted([r.x for r in row_rects])
-        #add the rectangles of the ends
-        island_edge_rect_ns+=[r.n for r in row_rects if r.x in (row_x_poss[0],row_x_poss[-1])]
-        #add any rectangles that have a gaps between them and the previous
-        for irxp in range(1,len(row_x_poss)) :
-            if abs(row_x_poss[irxp]-row_x_poss[irxp-1])>rw :
-                island_edge_rect_ns+=[r.n for r in row_rects if r.x in (row_x_poss[irxp-1],row_x_poss[irxp])]
+      row_rects = [r for r in island_rects if r.y==row_y]
+      row_x_poss = sorted([r.x for r in row_rects])
+      #add the rectangles of the ends
+      island_edge_rect_ns+=[r.n for r in row_rects if r.x in (row_x_poss[0],row_x_poss[-1])]
+      ##add any rectangles that have a gaps between them and the previous
+      #for irxp in range(1,len(row_x_poss)) :
+      #  if abs(row_x_poss[irxp]-row_x_poss[irxp-1])>rw :
+      #    island_edge_rect_ns+=[r.n for r in row_rects if r.x in (row_x_poss[irxp-1],row_x_poss[irxp])]
     #iterate over them again from left to right to add the horizontal edges
     for col_x in x_poss :
-        col_rects = [r for r in island_rects if r.x==col_x]
-        col_y_poss = sorted([r.y for r in col_rects])
-        #add the rectangles of the ends
-        island_edge_rect_ns+=[r.n for r in col_rects if r.y in (col_y_poss[0],col_y_poss[-1])]
-        #add any rectangles that have a gaps between them and the previous
-        for icyp in range(1,len(col_y_poss)) :
-            if abs(col_y_poss[icyp]-col_y_poss[icyp-1])>rh :
-                island_edge_rect_ns+=[r.n for r in col_rects if r.y in (col_y_poss[icyp-1],col_y_poss[icyp])]
+      col_rects = [r for r in island_rects if r.x==col_x]
+      col_y_poss = sorted([r.y for r in col_rects])
+      #add the rectangles of the ends
+      island_edge_rect_ns+=[r.n for r in col_rects if r.y in (col_y_poss[0],col_y_poss[-1])]
+      ##add any rectangles that have a gaps between them and the previous
+      #for icyp in range(1,len(col_y_poss)) :
+      #  if abs(col_y_poss[icyp]-col_y_poss[icyp-1])>rh :
+      #    island_edge_rect_ns+=[r.n for r in col_rects if r.y in (col_y_poss[icyp-1],col_y_poss[icyp])]
     #add this island's edge rectangles' ns to the total list
     edge_rect_ns+=island_edge_rect_ns
   return list(set(edge_rect_ns))
@@ -222,6 +222,25 @@ def re_subs(string, *patternsandrepls, **kwargs):
   for p, r in patternsandrepls:
     string = re.sub(p, r, string, **kwargs)
   return string
+
+class UnequalDictsError(ValueError):
+    def __init__(self, details=None):
+        msg = 'Dicts have different keys'
+        if details is not None:
+            msg += (': index 0 has keys {}; index {} has keys {}').format(
+                *details
+            )
+
+        super().__init__(msg)
+
+def dict_zip_equal(*dicts):
+  for i, d in enumerate(dicts[1:]):
+    if i == 0:
+      keys = dicts[i].keys()
+      continue
+    if d.keys() != keys:
+      raise UnequalDictsError(details=(keys, i, d.keys()))
+  return {k: tuple(d[k] for d in dicts) for k in keys}
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())

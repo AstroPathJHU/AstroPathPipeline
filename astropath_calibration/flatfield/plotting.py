@@ -1,6 +1,7 @@
 #imports
 from .config import CONST
 from ..utilities.misc import cd, cropAndOverwriteImage
+from ..utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt
 import os, glob, statistics
 
@@ -9,9 +10,9 @@ def flatfieldImagePixelIntensityPlot(flatfield_image,savename=None) :
     #figure out the number of layers and the filter breaks
     nlayers=flatfield_image.shape[-1]
     if nlayers==35 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_35 
+        LAST_FILTER_LAYERS = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_35[:-1]] 
     elif nlayers==43 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_43
+        LAST_FILTER_LAYERS = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_43[:-1]]
     else :
         raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
     yclip = int(flatfield_image.shape[0]*0.1)
@@ -94,9 +95,9 @@ def correctedMeanImagePIandIVplots(smoothed_mean_image,smoothed_corrected_mean_i
     #figure out the number of layers and filter breaks
     nlayers=smoothed_mean_image.shape[-1]
     if nlayers==35 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_35 
+        LAST_FILTER_LAYERS = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_35[:-1]] 
     elif nlayers==43 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_43
+        LAST_FILTER_LAYERS = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_43[:-1]]
     else :
         raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
     #keep track of the uncorrected and corrected images' minimum and maximum (and 5/95%ile) pixel intensities while the other plots are made
@@ -189,7 +190,7 @@ def slideBackgroundThresholdsPlot(flatfield_top_dir,nlayers,savename=None) :
     all_bgts_by_layer = [[] for _ in range(nlayers)]
     slide_names = []
     with cd(os.path.join(flatfield_top_dir,CONST.THRESHOLDING_PLOT_DIR_NAME)) :
-        all_threshold_fns = glob.glob(f'*_{CONST.THRESHOLD_TEXT_FILE_NAME_STEM}')
+        all_threshold_fns = glob.glob(f'*_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         for tfn in all_threshold_fns :
             sn = tfn.split('_')[0]
             slide_names.append(sn)
@@ -219,10 +220,10 @@ def slideBackgroundThresholdsPlot(flatfield_top_dir,nlayers,savename=None) :
             ax.fill([li+0.5,li+0.5,li+1.5,li+1.5],[boxlow,boxhi,boxhi,boxlow],'skyblue',alpha=0.5)
     #plot the other statistics for each filter region
     if nlayers==35 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_35 
+        LAST_FILTER_LAYERS = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_35[:-1]]  
         microscope_name_stem = 'Vectra 3.0'
     elif nlayers==43 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_43
+        LAST_FILTER_LAYERS = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_43[:-1]]
         microscope_name_stem = 'Vectra Polaris'
     else :
         raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
@@ -263,9 +264,9 @@ def slideBackgroundThresholdsPlot(flatfield_top_dir,nlayers,savename=None) :
 def maskStackEdgeVsCentralRegion(mask_stack,savename=None) :
     nlayers=mask_stack.shape[-1]
     if nlayers==35 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_35 
+        LAST_FILTER_LAYERS = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_35[:-1]] 
     elif nlayers==43 :
-        LAST_FILTER_LAYERS = CONST.LAST_FILTER_LAYERS_43
+        LAST_FILTER_LAYERS = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_43[:-1]]
     else :
         raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
     yclip = int(mask_stack.shape[0]*0.1)
@@ -331,3 +332,134 @@ def maskStackEdgeVsCentralRegion(mask_stack,savename=None) :
     print(f'Mean central 64% 5th-95th %ile = {np.mean(np.array(c_hi_lo_spread))}')
     print(f'Mean whole image std. dev. = {np.mean(np.array(u_std_devs))}')
     print(f'Mean central 64% std. dev. = {np.mean(np.array(c_std_devs))}')
+
+#helper function to write out a sheet of masking information plots for an image
+def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,compressed_full_mask,workingdir=None) :
+    #figure out how many rows/columns will be in the sheet and set up the plots
+    n_rows = len(plot_dict_lists)+1
+    n_cols = max(n_rows,len(plot_dict_lists[0]))
+    for pdi in range(1,len(plot_dict_lists)) :
+        if len(plot_dict_lists[pdi]) > n_cols :
+            n_cols = len(plot_dict_lists[pdi])
+    f,ax = plt.subplots(n_rows,n_cols,figsize=(n_cols*6.4,n_rows*tissue_mask.shape[0]/tissue_mask.shape[1]*6.4))
+    #add the masking plots for each layer group
+    for row,plot_dicts in enumerate(plot_dict_lists) :
+        for col,pd in enumerate(plot_dicts) :
+            dkeys = pd.keys()
+            #imshow plots
+            if 'image' in dkeys :
+                #edit the overlay based on the full mask
+                if 'title' in dkeys and 'overlay (clipped)' in pd['title'] :
+                    pd['image'][:,:,1][compressed_full_mask[:,:,row+1]>1]=pd['image'][:,:,0][compressed_full_mask[:,:,row+1]>1]
+                    pd['image'][:,:,0][(compressed_full_mask[:,:,row+1]>1) & (pd['image'][:,:,2]!=0)]=0
+                    pd['image'][:,:,2][(compressed_full_mask[:,:,row+1]>1) & (pd['image'][:,:,2]!=0)]=0
+                imshowkwargs = {}
+                possible_keys = ['cmap','vmin','vmax']
+                for pk in possible_keys :
+                    if pk in dkeys :
+                        imshowkwargs[pk]=pd[pk]
+                pos = ax[row][col].imshow(pd['image'],**imshowkwargs)
+                f.colorbar(pos,ax=ax[row][col])
+                if 'title' in dkeys :
+                    title_text = pd['title'].replace('IMAGE',image_key)
+                    ax[row][col].set_title(title_text)
+            #histogram plots
+            elif 'hist' in dkeys :
+                binsarg=100
+                logarg=False
+                if 'bins' in dkeys :
+                    binsarg=pd['bins']
+                if 'log_scale' in dkeys :
+                    logarg=pd['log_scale']
+                ax[row][col].hist(pd['hist'],binsarg,log=logarg)
+                if 'xlabel' in dkeys :
+                    xlabel_text = pd['xlabel'].replace('IMAGE',image_key)
+                    ax[row][col].set_xlabel(xlabel_text)
+                if 'line_at' in dkeys :
+                    ax[row][col].plot([pd['line_at'],pd['line_at']],
+                                    [0.8*y for y in ax[row][col].get_ylim()],
+                                    linewidth=2,color='tab:red',label=pd['line_at'])
+                    ax[row][col].legend(loc='best')
+            #bar plots
+            elif 'bar' in dkeys :
+                ax[row][col].bar(pd['bins'][:-1],pd['bar'],width=1.0)
+                if 'xlabel' in dkeys :
+                    xlabel_text = pd['xlabel'].replace('IMAGE',image_key)
+                    ax[row][col].set_xlabel(xlabel_text)
+                if 'line_at' in dkeys :
+                    ax[row][col].plot([pd['line_at'],pd['line_at']],
+                                    [0.8*y for y in ax[row][col].get_ylim()],
+                                    linewidth=2,color='tab:red',label=pd['line_at'])
+                    ax[row][col].legend(loc='best')
+            #remove axes from any extra slots
+            if col==len(plot_dicts)-1 and col<n_cols-1 :
+                for ci in range(col+1,n_cols) :
+                    ax[row][ci].axis('off')
+    #add the plots of the full mask layer groups
+    enumerated_mask_max = np.max(compressed_full_mask)
+    for lgi in range(compressed_full_mask.shape[-1]-1) :
+        pos = ax[n_rows-1][lgi].imshow(compressed_full_mask[:,:,lgi+1],vmin=0.,vmax=enumerated_mask_max,cmap='rainbow')
+        f.colorbar(pos,ax=ax[n_rows-1][lgi])
+        ax[n_rows-1][lgi].set_title(f'full mask, layer group {lgi+1}')
+    #empty the other unused axes in the last row
+    for ci in range(n_rows-1,n_cols) :
+        ax[n_rows-1][ci].axis('off')
+    #show/save the plot
+    if workingdir is None :
+        plt.show()
+    else :
+        with cd(workingdir) :
+            fn = f'{image_key}_masking_plots.png'
+            plt.savefig(fn); plt.close(); cropAndOverwriteImage(fn)
+
+#helper function to plot all of the hpf locations for a slide with their reasons for being flagged
+def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
+    all_flagged_hpf_keys = [lmr.image_key for lmr in lmrs]
+    hpf_identifiers = []
+    for rfp in all_rfps :
+        key = (os.path.basename(rfp)).rstrip(UNIV_CONST.RAW_EXT)
+        key_x = float(key.split(',')[0].split('[')[1])
+        key_y = float(key.split(',')[1].split(']')[0])
+        if key in all_flagged_hpf_keys :
+            key_strings = set([lmr.reason_flagged for lmr in lmrs if lmr.image_key==key])
+            blur_flagged = 1 if CONST.BLUR_FLAG_STRING in key_strings else 0
+            saturation_flagged = 1 if CONST.SATURATION_FLAG_STRING in key_strings else 0
+            flagged_int = 1*blur_flagged+2*saturation_flagged
+        elif rfp in rfps_added :
+            flagged_int = 0
+        else :
+            flagged_int = 4
+        hpf_identifiers.append({'x':key_x,'y':key_y,'flagged':flagged_int})
+    colors_by_flag_int = ['gray','royalblue','gold','limegreen','black']
+    labels_by_flag_int = ['not flagged','blur flagged','saturation flagged','blur and saturation','not read/stacked']
+    w = max([identifier['x'] for identifier in hpf_identifiers])-min([identifier['x'] for identifier in hpf_identifiers])
+    h = max([identifier['y'] for identifier in hpf_identifiers])-min([identifier['y'] for identifier in hpf_identifiers])
+    if h>w :
+        f,ax = plt.subplots(figsize=(((1.1*w)/(1.1*h))*9.6,9.6))
+    else :
+        f,ax = plt.subplots(figsize=(9.6,9.6*((1.1*h)/(1.1*w))))
+    for i in range(len(colors_by_flag_int)) :
+        hpf_ids_to_plot = [identifier for identifier in hpf_identifiers if identifier['flagged']==i]
+        if len(hpf_ids_to_plot)<1 :
+            continue
+        ax.scatter([hpfid['x'] for hpfid in hpf_ids_to_plot],
+                   [hpfid['y'] for hpfid in hpf_ids_to_plot],
+                   marker='o',
+                   color=colors_by_flag_int[i],
+                   label=labels_by_flag_int[i])
+    ax.set_xlim(ax.get_xlim()[0]-0.05*w,ax.get_xlim()[1]+0.05*w)
+    ax.set_ylim(ax.get_ylim()[0]-0.05*h,ax.get_ylim()[1]+0.05*h)
+    ax.invert_yaxis()
+    title_text = f'{sid} HPF center locations, ({len(all_rfps)} in slide, {len(rfps_added)} read, {len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"] not in (0,4)])} flagged)'
+    ax.set_title(title_text,fontsize=16)
+    ax.legend(loc='best',fontsize=10)
+    ax.set_xlabel('HPF local x position',fontsize=16)
+    ax.set_ylabel('HPF local y position',fontsize=16)
+    fn = f'{sid}_flagged_hpf_locations.png'
+    if plotdir_path is not None :
+        with cd(plotdir_path) :
+            plt.savefig(fn)
+            cropAndOverwriteImage(fn)
+    else :
+        plt.show()
+

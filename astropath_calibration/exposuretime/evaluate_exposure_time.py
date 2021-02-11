@@ -1,12 +1,12 @@
 #imports
 from .alignmentset import AlignmentSetForExposureTime
 from .utilities import getFirstLayerInGroup, getOverlapsWithExposureTimeDifferences
-from .config import CONST
 from ..flatfield.utilities import FlatfieldSlideInfo
 from ..utilities.img_file_io import LayerOffset, getExposureTimesByLayer, getImageHWLFromXMLFile, getRawAsHWL, getSlideMedianExposureTimesByLayer
 from ..utilities.img_correction import correctImageLayerForExposureTime
 from ..utilities.tableio import readtable, writetable
 from ..utilities.misc import cd
+from ..utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
 import numpy as np, multiprocessing as mp
 import os, time, logging, glob, dataclassy, platform
@@ -39,9 +39,9 @@ def getExposureTimeDicts(samp_name,rtd,nlayers) :
     for li in range(nlayers) :
         return_list.append({})
     with cd(os.path.join(rtd,samp_name)) :
-        fps = [os.path.join(rtd,samp_name,fn) for fn in glob.glob(f'*{CONST.RAW_EXT}')]
+        fps = [os.path.join(rtd,samp_name,fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
     for fp in fps :
-        fstem = os.path.basename(os.path.normpath(fp)).rstrip(CONST.RAW_EXT)
+        fstem = os.path.basename(os.path.normpath(fp)).rstrip(UNIV_CONST.RAW_EXT)
         this_file_exp_times = getExposureTimesByLayer(fp,nlayers,rtd)
         for li in range(nlayers) :
             return_list[li][fstem] = this_file_exp_times[li]
@@ -89,7 +89,7 @@ def writeResultsForSlide(slide,offsets,ff_file,workingdir,smoothsigma,allow_edge
     #get the image dimensions for files from this slide
     h,w,nlayers = getImageHWLFromXMLFile(slide.rawfile_top_dir,slide.name)
     #read the flatfield from the file
-    flatfield = getRawAsHWL(ff_file,h,w,nlayers,CONST.FLATFIELD_DTYPE)
+    flatfield = getRawAsHWL(ff_file,h,w,nlayers,UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
     #get the median exposure times for this slide by layer
     logger.info(f'Getting median exposure times for {slide.name}')
     med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(slide.rawfile_top_dir,slide.name)
@@ -143,7 +143,7 @@ def writeResultsForSlide(slide,offsets,ff_file,workingdir,smoothsigma,allow_edge
         use_GPU = platform.system()!='Darwin'
         a = AlignmentSetForExposureTime(slide.metadata_top_dir,slide.rawfile_top_dir,slide.name,
                                         selectoverlaps=olaps_with_et_diffs,onlyrectanglesinoverlaps=True,
-                                        nclip=CONST.N_CLIP,useGPU=use_GPU,readlayerfile=False,layer=li+1,filetype='raw',
+                                        nclip=UNIV_CONST.N_CLIP,useGPU=use_GPU,readlayerfile=False,layer=li+1,filetype='raw',
                                         smoothsigma=smoothsigma,flatfield=flatfield[:,:,li])
         a.getDAPI()
         logger.info(f'Aligning {slide.name} layer {li+1} overlaps with corrected/smoothed images....')
