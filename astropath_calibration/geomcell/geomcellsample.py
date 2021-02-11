@@ -141,14 +141,44 @@ class CellGeomLoad(DataClassWithPolygon):
       **boxkwargs,
     )
 
-def joinbrokenmembrane(mask, *, logger=dummylogger, loginfo=""):
-  #first find the pieces of membrane
-  labeled, nlabels = scipy.ndimage.label(mask, structure=np.ones(shape=(3, 3)))
-
+def joinbrokenmembrane(membranemask, *, logger=dummylogger, loginfo=""):
   #find the endpoints: pixels of membrane that have exactly one membrane neighbor
-  nneighbors = scipy.ndimage.convolve(mask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
-  if not np.any(mask & (nneighbors <= 1)):
-    return mask
+  nneighbors = scipy.ndimage.convolve(membranemask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
+  if not np.any(membranemask & (nneighbors <= 1)):
+    return membranemask
+
+  nneighborsnodiag = scipy.ndimage.convolve(membranemask, [[0, 1, 0], [1, 0, 1], [0, 1, 0]], mode="constant")
+
+  #find the separate pieces of membrane
+  labeled, nlabels = scipy.ndimage.label(membranemask, structure=np.ones(shape=(3, 3)))
+
+  #sometimes you can have cases where there's an endpoint but it has 2 neighbors.
+  #example:
+  # x
+  # xx
+  #   xxxxxxxx
+  #the upper x is an endpoint but has 2 neighbors
+  #in that case there will be at least one pixel of membrane
+  #that has 3 or more neighbors, and one of its neighbors can
+  #be removed without splitting the membrane in 2 parts.
+  keepgoing = True
+  while keepgoing and np.any(membranemask & (nneighbors >= 3)):
+    keepgoing = False
+    for coords in np.argwhere(membranemask & (nneighbors >= 3)):
+      for offset in itertools.product((-1, 0, 1), repeat=2):
+        if not any(offset): continue
+        newcoords = tuple(coords+offset)
+        if not membranemask[newcoords]: continue
+        if nneighborsnodiag[newcoords] == 2:
+          newmembranemask = membranemask.copy()
+          newmembranemask[newcoords] = 2
+          newlabeled, newnlabels = scipy.ndimage.label(newmembranemask, structure=np.ones(shape=(3, 3)))
+          if newnlabels == nlabels:
+            labeled = newlabeled
+            membranemask = newmembranemask
+            nneighbors = scipy.ndimage.convolve(membranemask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
+            nneighborsnodiag = scipy.ndimage.convolve(membranemask, [[0, 1, 0], [1, 0, 1], [0, 1, 0]], mode="constant")
+            keepgoing = True
 
   labels = range(1, nlabels+1)
 
@@ -183,22 +213,22 @@ def joinbrokenmembrane(mask, *, logger=dummylogger, loginfo=""):
       possiblepointstoconnect,
       key=totaldistance,
     )
-    lines = np.zeros_like(mask)
+    lines = np.zeros_like(membranemask)
     for point1, point2 in bestpointstoconnect:
       lines = cv2.line(lines, tuple(point1)[::-1], tuple(point2)[::-1], 1)
-    intersectionsize = np.count_nonzero(lines & mask)
+    intersectionsize = np.count_nonzero(lines & membranemask)
     linepixels = np.count_nonzero(lines)
     nlines = len(bestpointstoconnect)
     if intersectionsize > nlines*3:
-      logger.debug(f"{nlines} lines with {linepixels} pixels total, {intersectionsize} intersection with mask")
+      logger.debug(f"{nlines} lines with {linepixels} pixels total, {intersectionsize} intersection with membranemask")
       possiblepointstoconnect.remove(bestpointstoconnect)
       continue
     else:
       logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {loginfo}")
-      mask |= lines
+      membranemask = membranemask | lines
       break
 
-  return mask
+  return membranemask
 
 def debugdraw(img, polygons, field, xlim={}, ylim={}, logger=dummylogger):
   plt.imshow(img)
