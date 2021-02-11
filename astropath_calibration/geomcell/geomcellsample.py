@@ -56,6 +56,20 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
             celllabel = cellproperties.label
             thiscell = imlayer==celllabel
             polygons = findcontoursaspolygons(thiscell.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec), fill=True)
+
+            for i, poly in reversed(list(enumerate(polygons[:]))):
+              if poly.area == 0 or poly.perimeter / poly.area > 2 / self.onepixel:
+                try:
+                  hull = poly.convexhull
+                except RuntimeError as e:
+                  self.logger.warning(f"can't get convex hull for small polygon {poly}: {e}")
+                  continue
+                if hull.area != 0 and hull.perimeter / hull.area <= 1 / self.onepixel:
+                  polygons[i] = hull
+
+            if len(polygons) > 1:
+              polygons.sort(key=lambda x: x.area, reverse=True)
+
             if (field.n, celltype, celllabel) in _debugdraw:
               kwargs = _debugdraw[field.n, celltype, celllabel]
               plt.imshow(thiscell)
@@ -67,9 +81,6 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               plt.show()
               print(polygons)
               assert not kwargs, kwargs
-
-            if len(polygons) > 1:
-              polygons.sort(key=lambda x: x.area, reverse=True)
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += units.nominal_values(field.pxvec)
