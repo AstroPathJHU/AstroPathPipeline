@@ -99,14 +99,22 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               )
             )
 
-            for polygon in polygons[1:]:
-              area = polygon.area
-              perimeter = polygon.perimeter
-              message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {field.n} {celltype} {celllabel}"
-              if area <= 10*self.onepixel**2:
-                self.logger.warning(message)
-              else:
-                raise ValueError(message)
+            if len(polygons) == 1:
+              if self.ismembrane(imlayernumber):
+                polygon = polygons[0]
+                area = polygon.area
+                perimeter = polygon.perimeter
+                if area / perimeter <= 1 * self.onepixel:
+                  self.logger.warningglobal(f"Long, thin polygon (perimeter = {perimeter / self.onepixel} pixels, area = {area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {field.n} {celltype} {celllabel}")
+            else:
+              for polygon in polygons[1:]:
+                area = polygon.area
+                perimeter = polygon.perimeter
+                message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {field.n} {celltype} {celllabel}"
+                if area <= 10*self.onepixel**2:
+                  self.logger.warning(message)
+                else:
+                  raise ValueError(message)
 
       writetable(field.geomloadcsv, geomload)
 
@@ -192,8 +200,6 @@ def joinbrokenmembrane(mask, *, logger=dummylogger, loginfo=""):
       logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {loginfo}")
       mask |= lines
       break
-  else:
-    logger.warning(f"Possibly broken membrane, but couldn't connect it: {loginfo}")
 
   if mask.dtype != dtype:
     mask = mask.astype(dtype)
