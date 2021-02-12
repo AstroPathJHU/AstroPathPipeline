@@ -54,7 +54,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
   def logmodule(self):
     return "geomcell"
 
-  def rungeomcell(self, *, _debugdraw={}):
+  def rungeomcell(self, *, _debugdraw=()):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
     nfields = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
@@ -81,7 +81,9 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
 
             finally:
               if (field.n, celltype, celllabel) in _debugdraw:
-                debugdraw(img=thiscell, polygons=polygons, field=field, logger=self.logger, **_debugdraw[field.n, celltype, celllabel])
+                debugdraw(img=thiscell, polygons=polygons, field=field, logger=self.logger, bbox=cellproperties.bbox)
+
+            polygon = polygons[0]
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += units.nominal_values(field.pxvec)
@@ -93,7 +95,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
                 ctype=celltype,
                 n=celllabel,
                 box=box,
-                poly=polygons[0],
+                poly=polygon,
                 pscale=self.pscale,
                 apscale=self.apscale,
               )
@@ -152,34 +154,6 @@ def joinbrokenmembrane(membranemask, *, logger=dummylogger, loginfo=""):
   #find the separate pieces of membrane
   labeled, nlabels = scipy.ndimage.label(membranemask, structure=np.ones(shape=(3, 3)))
 
-  #sometimes you can have cases where there's an endpoint but it has 2 neighbors.
-  #example:
-  # x
-  # xx
-  #   xxxxxxxx
-  #the upper x is an endpoint but has 2 neighbors
-  #in that case there will be at least one pixel of membrane
-  #that has 3 or more neighbors, and one of its neighbors can
-  #be removed without splitting the membrane in 2 parts.
-  keepgoing = True
-  while keepgoing and np.any(membranemask & (nneighbors >= 3)):
-    keepgoing = False
-    for coords in np.argwhere(membranemask & (nneighbors >= 3)):
-      for offset in itertools.product((-1, 0, 1), repeat=2):
-        if not any(offset): continue
-        newcoords = tuple(coords+offset)
-        if not membranemask[newcoords]: continue
-        if nneighborsnodiag[newcoords] == 2:
-          newmembranemask = membranemask.copy()
-          newmembranemask[newcoords] = 2
-          newlabeled, newnlabels = scipy.ndimage.label(newmembranemask, structure=np.ones(shape=(3, 3)))
-          if newnlabels == nlabels:
-            labeled = newlabeled
-            membranemask = newmembranemask
-            nneighbors = scipy.ndimage.convolve(membranemask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
-            nneighborsnodiag = scipy.ndimage.convolve(membranemask, [[0, 1, 0], [1, 0, 1], [0, 1, 0]], mode="constant")
-            keepgoing = True
-
   labels = range(1, nlabels+1)
 
   labelendpoints = {label: list(np.argwhere((labeled==label) & (nneighbors == 1))) for label in labels}
@@ -230,12 +204,13 @@ def joinbrokenmembrane(membranemask, *, logger=dummylogger, loginfo=""):
 
   return membranemask
 
-def debugdraw(img, polygons, field, xlim={}, ylim={}, logger=dummylogger):
+def debugdraw(img, polygons, field, bbox, logger=dummylogger):
   plt.imshow(img)
   ax = plt.gca()
   for i, polygon in enumerate(polygons):
     ax.add_patch(polygon.matplotlibpolygon(color=f"C{i}", alpha=0.7, shiftby=-units.nominal_values(field.pxvec)))
-  plt.xlim(**xlim)
-  plt.ylim(**ylim)
+  top, left, bottom, right = bbox
+  plt.xlim(left=left-1, right=right)
+  plt.ylim(top=top-1, bottom=bottom)
   plt.show()
   logger.debug(f"{polygons}")

@@ -43,7 +43,7 @@ setuptools.setup(
     "seaborn",
     "scikit-image",
     "scikit-learn>=0.17",
-    "scipy",
+    "scipy>=0.12",
     "setuptools-scm",
     "uncertainties",
   ],
