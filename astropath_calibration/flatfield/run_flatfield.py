@@ -58,7 +58,7 @@ def checkArgs(a) :
                 raise ValueError('ERROR: exposure time arguments are irrelevant in batch_flatfield mode!')
     #otherwise there needs to be a working directory
     elif a.workingdir is None :
-            raise ValueError('ERROR: the workingdir argument is required!') 
+        raise ValueError('ERROR: the workingdir argument is required!') 
     #batchID not needed
     if a.mode!='batch_flatfield' and (a.batchID!=-1) :
         raise ValueError('ERROR: batchID argument is only valid in batch_flatfield mode!')
