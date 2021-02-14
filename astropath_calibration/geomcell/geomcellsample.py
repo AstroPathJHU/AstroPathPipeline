@@ -71,12 +71,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               continue
             celllabel = cellproperties.label
             thiscell = (imlayer==celllabel).astype(np.uint8)
-            polygons = []
-            try:
-              polygons = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}").findpolygons()
-            finally:
-              if (field.n, celltype, celllabel) in _debugdraw:
-                debugdraw(img=thiscell, polygons=polygons, field=field, logger=self.logger, bbox=cellproperties.bbox)
+            polygons = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw).findpolygons()
 
             polygon = polygons[0]
 
@@ -124,7 +119,7 @@ class CellGeomLoad(DataClassWithPolygon):
 
 
 class PolygonFinder(ThingWithPscale, ThingWithApscale):
-  def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, logger=dummylogger, loginfo=""):
+  def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, _debugdraw=False, logger=dummylogger, loginfo=""):
     self.cellmask = self.originalcellmask = cellmask
     self.ismembrane = ismembrane
     self.bbox = bbox
@@ -133,6 +128,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     self.__pscale = pscale
     self.__apscale = apscale
     self.pxvec = pxvec
+    self._debugdraw = _debugdraw
 
   @property
   def pscale(self): return self.__pscale
@@ -140,25 +136,29 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   def apscale(self): return self.__apscale
 
   def findpolygons(self):
-    if self.ismembrane:
-      self.joinbrokenmembrane()
-    polygons = self.__findpolygons()
+    polygons = []
+    try:
+      if self.ismembrane:
+        self.joinbrokenmembrane()
+      polygons = self.__findpolygons()
 
-    if self.ismembrane:
-      if self.istoothin(polygons[0]):
-        self.logger.warningglobal(f"Long, thin polygon (perimeter = {polygons[0].perimeter / self.onepixel} pixels, area = {polygons[0].area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {self.loginfo}")
-    for polygon in polygons[1:]:
-      area = polygon.area
-      perimeter = polygon.perimeter
-      message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {self.loginfo}"
-      if area <= 10*self.onepixel**2:
-        self.logger.warning(message)
-      else:
-        raise ValueError(message)
+      if self.ismembrane:
+        if self.istoothin(polygons[0]):
+          self.logger.warningglobal(f"Long, thin polygon (perimeter = {polygons[0].perimeter / self.onepixel} pixels, area = {polygons[0].area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {self.loginfo}")
+      for polygon in polygons[1:]:
+        area = polygon.area
+        perimeter = polygon.perimeter
+        message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {self.loginfo}"
+        if area <= 10*self.onepixel**2:
+          self.logger.warning(message)
+        else:
+          raise ValueError(message)
+    finally:
+      self.debugdraw(polygons)
 
     return polygons
 
-  def __findpolygons(self, cellmask=None):
+  def __findpolygons(self, cellmask=None, _debugdraw=False):
     if cellmask is None: cellmask = self.cellmask
     polygons = findcontoursaspolygons(cellmask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=self.pxvec, fill=True)
     if len(polygons) > 1:
@@ -259,13 +259,14 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
           slicedmask[:] = testmask
           break
 
-def debugdraw(img, polygons, field, bbox, logger=dummylogger):
-  plt.imshow(img)
-  ax = plt.gca()
-  for i, polygon in enumerate(polygons):
-    ax.add_patch(polygon.matplotlibpolygon(color=f"C{i}", alpha=0.7, shiftby=-units.nominal_values(field.pxvec)))
-  top, left, bottom, right = bbox
-  plt.xlim(left=left-1, right=right)
-  plt.ylim(top=top-1, bottom=bottom)
-  plt.show()
-  logger.debug(f"{polygons}")
+  def debugdraw(self, polygons):
+    if not self._debugdraw: return
+    plt.imshow(self.cellmask)
+    ax = plt.gca()
+    for i, polygon in enumerate(polygons):
+      ax.add_patch(polygon.matplotlibpolygon(color=f"C{i}", alpha=0.7, shiftby=-self.pxvec))
+    top, left, bottom, right = self.bbox
+    plt.xlim(left=left-1, right=right)
+    plt.ylim(top=top-1, bottom=bottom)
+    plt.show()
+    self.logger.debug(f"{polygons}: {self.loginfo}")
