@@ -78,22 +78,6 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               if (field.n, celltype, celllabel) in _debugdraw:
                 debugdraw(img=thiscell, polygons=polygons, field=field, logger=self.logger, bbox=cellproperties.bbox)
 
-            if self.ismembrane(imlayernumber):
-              polygon = polygons[0]
-              area = polygon.area
-              perimeter = polygon.perimeter
-              if area / perimeter <= 1 * self.onepixel:
-                self.logger.warningglobal(f"Long, thin polygon (perimeter = {perimeter / self.onepixel} pixels, area = {area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {field.n} {celltype} {celllabel}")
-
-            for polygon in polygons[1:]:
-              area = polygon.area
-              perimeter = polygon.perimeter
-              message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {field.n} {celltype} {celllabel}"
-              if area <= 10*self.onepixel**2:
-                self.logger.warning(message)
-              else:
-                raise ValueError(message)
-
             polygon = polygons[0]
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
@@ -158,7 +142,21 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   def findpolygons(self):
     if self.ismembrane:
       self.joinbrokenmembrane()
-    return self.__findpolygons()
+    polygons = self.__findpolygons()
+
+    if self.ismembrane:
+      if self.istoothin(polygons[0]):
+        self.logger.warningglobal(f"Long, thin polygon (perimeter = {polygons[0].perimeter / self.onepixel} pixels, area = {polygons[0].area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {self.loginfo}")
+    for polygon in polygons[1:]:
+      area = polygon.area
+      perimeter = polygon.perimeter
+      message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {self.loginfo}"
+      if area <= 10*self.onepixel**2:
+        self.logger.warning(message)
+      else:
+        raise ValueError(message)
+
+    return polygons
 
   def __findpolygons(self, cellmask=None):
     if cellmask is None: cellmask = self.cellmask
