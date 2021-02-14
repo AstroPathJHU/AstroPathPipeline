@@ -181,7 +181,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
   def joinbrokenmembrane(self):
     polygons = self.__findpolygons()
-    #if not self.istoothin(polygons[0]): return polygons
+    if not self.istoothin(polygons[0]): return polygons
 
     slicedmask = self.slicedmask
 
@@ -252,7 +252,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
         self.logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {self.loginfo}")
         testmask = slicedmask | lines
         polygons = self.__findpolygons(testmask)
-        if self.istoothin(polygons[0]) and False:
+        if self.istoothin(polygons[0]):
           self.logger.debug(f"tried connecting lines but polygon is still long and thin, will try other endpoints: {self.loginfo}")
           continue
         else:
