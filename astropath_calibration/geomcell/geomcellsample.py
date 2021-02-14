@@ -7,6 +7,7 @@ from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
 from ..utilities.misc import dict_product, dummylogger
 from ..utilities.tableio import writetable
+from ..utilities.units import ThingWithApscale, ThingWithPscale
 from ..utilities.units.dataclasses import distancefield
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer, GeomLoadRectangle):
@@ -72,16 +73,26 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
             thiscell = (imlayer==celllabel).astype(np.uint8)
             polygons = []
             try:
-              if self.ismembrane(imlayernumber):
-                joinbrokenmembrane(thiscell, bbox=cellproperties.bbox, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}")
-              polygons = findcontoursaspolygons(thiscell, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec), fill=True)
-
-              if len(polygons) > 1:
-                polygons.sort(key=lambda x: x.area, reverse=True)
-
+              polygons = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}").findpolygons()
             finally:
               if (field.n, celltype, celllabel) in _debugdraw:
                 debugdraw(img=thiscell, polygons=polygons, field=field, logger=self.logger, bbox=cellproperties.bbox)
+
+            if self.ismembrane(imlayernumber):
+              polygon = polygons[0]
+              area = polygon.area
+              perimeter = polygon.perimeter
+              if area / perimeter <= 1 * self.onepixel:
+                self.logger.warningglobal(f"Long, thin polygon (perimeter = {perimeter / self.onepixel} pixels, area = {area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {field.n} {celltype} {celllabel}")
+
+            for polygon in polygons[1:]:
+              area = polygon.area
+              perimeter = polygon.perimeter
+              message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {field.n} {celltype} {celllabel}"
+              if area <= 10*self.onepixel**2:
+                self.logger.warning(message)
+              else:
+                raise ValueError(message)
 
             polygon = polygons[0]
 
@@ -100,22 +111,6 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
                 apscale=self.apscale,
               )
             )
-
-            if self.ismembrane(imlayernumber):
-              polygon = polygons[0]
-              area = polygon.area
-              perimeter = polygon.perimeter
-              if area / perimeter <= 1 * self.onepixel:
-                self.logger.warningglobal(f"Long, thin polygon (perimeter = {perimeter / self.onepixel} pixels, area = {area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {field.n} {celltype} {celllabel}")
-
-            for polygon in polygons[1:]:
-              area = polygon.area
-              perimeter = polygon.perimeter
-              message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {field.n} {celltype} {celllabel}"
-              if area <= 10*self.onepixel**2:
-                self.logger.warning(message)
-              else:
-                raise ValueError(message)
 
       writetable(field.geomloadcsv, geomload)
 
@@ -142,79 +137,129 @@ class CellGeomLoad(DataClassWithPolygon):
       **boxkwargs,
     )
 
-def joinbrokenmembrane(wholemembranemask, *, bbox, logger=dummylogger, loginfo=""):
-  top, left, bottom, right = bbox
-  membranemask = wholemembranemask[top:bottom+1, left:right+1]
 
-  #find the endpoints: pixels of membrane that have exactly one membrane neighbor
-  nneighbors = scipy.ndimage.convolve(membranemask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
-  if not np.any(membranemask & (nneighbors <= 1)):
-    return wholemembranemask
 
-  identifyneighborssides = scipy.ndimage.convolve(membranemask, [[0, 1, 0], [8, 0, 2], [0, 4, 0]], mode="constant")
-  identifyneighborscorners = scipy.ndimage.convolve(membranemask, [[9, 0, 3], [0, 0, 0], [12, 0, 6]], mode="constant")
-  hastwoadjacentneighbors = (identifyneighborssides & identifyneighborscorners).astype(bool) & (nneighbors == 2)
+class PolygonFinder(ThingWithPscale, ThingWithApscale):
+  def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, logger=dummylogger, loginfo=""):
+    self.cellmask = self.originalcellmask = cellmask
+    self.ismembrane = ismembrane
+    self.bbox = bbox
+    self.logger = logger
+    self.loginfo = loginfo
+    self.__pscale = pscale
+    self.__apscale = apscale
+    self.pxvec = pxvec
 
-  #find the separate pieces of membrane
-  labeled, nlabels = scipy.ndimage.label(membranemask, structure=np.ones(shape=(3, 3)))
+  @property
+  def pscale(self): return self.__pscale
+  @property
+  def apscale(self): return self.__apscale
 
-  labels = range(1, nlabels+1)
+  def findpolygons(self):
+    if self.ismembrane:
+      self.joinbrokenmembrane()
+    return self.__findpolygons()
 
-  labelendpoints = {label: list(np.argwhere((labeled==label) & (nneighbors == 1))) for label in labels}
-  labelsinglepixels = {label: list(np.argwhere((labeled==label) & (nneighbors == 0))) for label in labels}
+  def __findpolygons(self, cellmask=None):
+    if cellmask is None: cellmask = self.cellmask
+    polygons = findcontoursaspolygons(cellmask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=self.pxvec, fill=True)
+    if len(polygons) > 1:
+      polygons.sort(key=lambda x: x.area, reverse=True)
+    return polygons
 
-  for label in labels:
-    if labelsinglepixels[label]:
-      labelendpoints[label] += labelsinglepixels[label]*2
-    if len(labelendpoints[label]) == 1:
-      #try to find a place like this
-      # x
-      # xx
-      #   xxxxxxx
-      #where it's an endpoint but has 2 neighbors
-      endpointcandidates = np.argwhere((labeled==label) & hastwoadjacentneighbors)
-      labelendpoints[label] += list(endpointcandidates)
+  def istoothin(self, polygon):
+    area = polygon.area
+    perimeter = polygon.perimeter
+    return area / perimeter <= 1 * self.onepixel
 
-  possibleendpointorder = {label: itertools.permutations(labelendpoints[label], 2) for label in labels}
+  @property
+  def bboxslice(self):
+    top, left, bottom, right = self.bbox
+    return slice(top, bottom+1), slice(left, right+1)
 
-  possiblepointstoconnect = []
-  for labelordering in itertools.permutations(labels):
-    if labelordering[-1] > labelordering[0]: continue #[1, 2, 3] is the same as [3, 2, 1]
-    for endpointorder in dict_product(possibleendpointorder):
-      pointstoconnect = []
-      possiblepointstoconnect.append(pointstoconnect)
-      for label1, label2 in more_itertools.pairwise(labelordering+(labelordering[0],)):
-        endpoint1 = endpointorder[label1][1]
-        endpoint2 = endpointorder[label2][0]
-        pointstoconnect.append((endpoint1, endpoint2))
+  @property
+  def slicedmask(self):
+    return self.cellmask[self.bboxslice]
 
-  def totaldistance(pointstoconnect):
-    return sum(
-      np.sum((point1-point2)**2)**.5
-      for point1, point2 in pointstoconnect
-    )
+  def joinbrokenmembrane(self):
+    polygons = self.__findpolygons()
+    #if not self.istoothin(polygons[0]): return polygons
 
-  while possiblepointstoconnect:
-    distances = np.array([totaldistance(pointstoconnect) for pointstoconnect in possiblepointstoconnect])
-    bestidx = np.argmin(distances)
-    bestpointstoconnect = possiblepointstoconnect[bestidx]
-    lines = np.zeros_like(membranemask)
-    for point1, point2 in bestpointstoconnect:
-      lines = cv2.line(lines, tuple(point1)[::-1], tuple(point2)[::-1], 1)
-    intersectionsize = np.count_nonzero(lines & membranemask)
-    touchingsize = np.count_nonzero(lines & (~membranemask) & nneighbors.astype(bool))
-    linepixels = np.count_nonzero(lines)
-    nlines = len(bestpointstoconnect)
-    if intersectionsize > nlines*2 or touchingsize > nlines*3:
-      logger.debug(f"{nlines} lines with {linepixels} pixels total, {intersectionsize} intersection with membranemask and {touchingsize} touching membranemask: {loginfo}")
-      del possiblepointstoconnect[bestidx]
-      continue
-    else:
-      logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {loginfo}")
-      membranemask |= lines
-      break
+    slicedmask = self.slicedmask
 
-  return wholemembranemask
+    #find the endpoints: pixels of membrane that have exactly one membrane neighbor
+    nneighbors = scipy.ndimage.convolve(slicedmask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
+    if not np.any(slicedmask & (nneighbors <= 1)):
+      return
+
+    identifyneighborssides = scipy.ndimage.convolve(slicedmask, [[0, 1, 0], [8, 0, 2], [0, 4, 0]], mode="constant")
+    identifyneighborscorners = scipy.ndimage.convolve(slicedmask, [[9, 0, 3], [0, 0, 0], [12, 0, 6]], mode="constant")
+    hastwoadjacentneighbors = (identifyneighborssides & identifyneighborscorners).astype(bool) & (nneighbors == 2)
+
+    #find the separate pieces of membrane
+    labeled, nlabels = scipy.ndimage.label(slicedmask, structure=np.ones(shape=(3, 3)))
+
+    labels = range(1, nlabels+1)
+
+    labelendpoints = {label: list(np.argwhere((labeled==label) & (nneighbors == 1))) for label in labels}
+    labelsinglepixels = {label: list(np.argwhere((labeled==label) & (nneighbors == 0))) for label in labels}
+
+    for label in labels:
+      if labelsinglepixels[label]:
+        labelendpoints[label] += labelsinglepixels[label]*2
+      if len(labelendpoints[label]) == 1:
+        #try to find a place like this
+        # x
+        # xx
+        #   xxxxxxx
+        #where it's an endpoint but has 2 neighbors
+        endpointcandidates = np.argwhere((labeled==label) & hastwoadjacentneighbors)
+        labelendpoints[label] += list(endpointcandidates)
+  
+    possibleendpointorder = {label: itertools.permutations(labelendpoints[label], 2) for label in labels}
+  
+    possiblepointstoconnect = []
+    for labelordering in itertools.permutations(labels):
+      if labelordering[-1] > labelordering[0]: continue #[1, 2, 3] is the same as [3, 2, 1]
+      for endpointorder in dict_product(possibleendpointorder):
+        pointstoconnect = []
+        possiblepointstoconnect.append(pointstoconnect)
+        for label1, label2 in more_itertools.pairwise(labelordering+(labelordering[0],)):
+          endpoint1 = endpointorder[label1][1]
+          endpoint2 = endpointorder[label2][0]
+          pointstoconnect.append((endpoint1, endpoint2))
+  
+    def totaldistance(pointstoconnect):
+      return sum(
+        np.sum((point1-point2)**2)**.5
+        for point1, point2 in pointstoconnect
+      )
+  
+    while possiblepointstoconnect:
+      distances = np.array([totaldistance(pointstoconnect) for pointstoconnect in possiblepointstoconnect])
+      bestidx = np.argmin(distances)
+      bestpointstoconnect = possiblepointstoconnect[bestidx]
+      lines = np.zeros_like(slicedmask)
+      for point1, point2 in bestpointstoconnect:
+        lines = cv2.line(lines, tuple(point1)[::-1], tuple(point2)[::-1], 1)
+      intersectionsize = np.count_nonzero(lines & slicedmask)
+      touchingsize = np.count_nonzero(lines & (~slicedmask) & nneighbors.astype(bool))
+      linepixels = np.count_nonzero(lines)
+      nlines = len(bestpointstoconnect)
+      if intersectionsize > nlines*2 or touchingsize > nlines*3:
+        self.logger.debug(f"{nlines} lines with {linepixels} pixels total, {intersectionsize} intersection with slicedmask and {touchingsize} touching slicedmask: {self.loginfo}")
+        del possiblepointstoconnect[bestidx]
+        continue
+      else:
+        self.logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {self.loginfo}")
+        testmask = slicedmask | lines
+        polygons = self.__findpolygons(testmask)
+        if self.istoothin(polygons[0]) and False:
+          self.logger.debug(f"tried connecting lines but polygon is still long and thin, will try other endpoints: {self.loginfo}")
+          continue
+        else:
+          slicedmask[:] = testmask
+          break
 
 def debugdraw(img, polygons, field, bbox, logger=dummylogger):
   plt.imshow(img)
