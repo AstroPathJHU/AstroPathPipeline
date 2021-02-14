@@ -73,7 +73,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
             polygons = []
             try:
               if self.ismembrane(imlayernumber):
-                thiscell = joinbrokenmembrane(thiscell, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}")
+                joinbrokenmembrane(thiscell, bbox=cellproperties.bbox, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}")
               polygons = findcontoursaspolygons(thiscell, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec), fill=True)
 
               if len(polygons) > 1:
@@ -142,11 +142,14 @@ class CellGeomLoad(DataClassWithPolygon):
       **boxkwargs,
     )
 
-def joinbrokenmembrane(membranemask, *, logger=dummylogger, loginfo=""):
+def joinbrokenmembrane(wholemembranemask, *, bbox, logger=dummylogger, loginfo=""):
+  top, left, bottom, right = bbox
+  membranemask = wholemembranemask[top:bottom+1, left:right+1]
+
   #find the endpoints: pixels of membrane that have exactly one membrane neighbor
   nneighbors = scipy.ndimage.convolve(membranemask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
   if not np.any(membranemask & (nneighbors <= 1)):
-    return membranemask
+    return wholemembranemask
 
   identifyneighborssides = scipy.ndimage.convolve(membranemask, [[0, 1, 0], [8, 0, 2], [0, 4, 0]], mode="constant")
   identifyneighborscorners = scipy.ndimage.convolve(membranemask, [[9, 0, 3], [0, 0, 0], [12, 0, 6]], mode="constant")
@@ -208,10 +211,10 @@ def joinbrokenmembrane(membranemask, *, logger=dummylogger, loginfo=""):
       continue
     else:
       logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {loginfo}")
-      membranemask = membranemask | lines
+      membranemask |= lines
       break
 
-  return membranemask
+  return wholemembranemask
 
 def debugdraw(img, polygons, field, bbox, logger=dummylogger):
   plt.imshow(img)
