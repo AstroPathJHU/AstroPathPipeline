@@ -101,22 +101,21 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               )
             )
 
-            if len(polygons) == 1:
-              if self.ismembrane(imlayernumber):
-                polygon = polygons[0]
-                area = polygon.area
-                perimeter = polygon.perimeter
-                if area / perimeter <= 1 * self.onepixel:
-                  self.logger.warningglobal(f"Long, thin polygon (perimeter = {perimeter / self.onepixel} pixels, area = {area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {field.n} {celltype} {celllabel}")
-            else:
-              for polygon in polygons[1:]:
-                area = polygon.area
-                perimeter = polygon.perimeter
-                message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {field.n} {celltype} {celllabel}"
-                if area <= 10*self.onepixel**2:
-                  self.logger.warning(message)
-                else:
-                  raise ValueError(message)
+            if self.ismembrane(imlayernumber):
+              polygon = polygons[0]
+              area = polygon.area
+              perimeter = polygon.perimeter
+              if area / perimeter <= 1 * self.onepixel:
+                self.logger.warningglobal(f"Long, thin polygon (perimeter = {perimeter / self.onepixel} pixels, area = {area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {field.n} {celltype} {celllabel}")
+
+            for polygon in polygons[1:]:
+              area = polygon.area
+              perimeter = polygon.perimeter
+              message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {field.n} {celltype} {celllabel}"
+              if area <= 10*self.onepixel**2:
+                self.logger.warning(message)
+              else:
+                raise ValueError(message)
 
       writetable(field.geomloadcsv, geomload)
 
@@ -149,7 +148,9 @@ def joinbrokenmembrane(membranemask, *, logger=dummylogger, loginfo=""):
   if not np.any(membranemask & (nneighbors <= 1)):
     return membranemask
 
-  nneighborsnodiag = scipy.ndimage.convolve(membranemask, [[0, 1, 0], [1, 0, 1], [0, 1, 0]], mode="constant")
+  identifyneighborssides = scipy.ndimage.convolve(membranemask, [[0, 1, 0], [8, 0, 2], [0, 4, 0]], mode="constant")
+  identifyneighborscorners = scipy.ndimage.convolve(membranemask, [[9, 0, 3], [0, 0, 0], [12, 0, 6]], mode="constant")
+  hastwoadjacentneighbors = (identifyneighborssides & identifyneighborscorners).astype(bool) & (nneighbors == 2)
 
   #find the separate pieces of membrane
   labeled, nlabels = scipy.ndimage.label(membranemask, structure=np.ones(shape=(3, 3)))
@@ -162,6 +163,14 @@ def joinbrokenmembrane(membranemask, *, logger=dummylogger, loginfo=""):
   for label in labels:
     if labelsinglepixels[label]:
       labelendpoints[label] += labelsinglepixels[label]*2
+    if len(labelendpoints[label]) == 1:
+      #try to find a place like this
+      # x
+      # xx
+      #   xxxxxxx
+      #where it's an endpoint but has 2 neighbors
+      endpointcandidates = np.argwhere((labeled==label) & hastwoadjacentneighbors)
+      labelendpoints[label] += list(endpointcandidates)
 
   possibleendpointorder = {label: itertools.permutations(labelendpoints[label], 2) for label in labels}
 
@@ -183,19 +192,19 @@ def joinbrokenmembrane(membranemask, *, logger=dummylogger, loginfo=""):
     )
 
   while possiblepointstoconnect:
-    bestpointstoconnect = min(
-      possiblepointstoconnect,
-      key=totaldistance,
-    )
+    distances = np.array([totaldistance(pointstoconnect) for pointstoconnect in possiblepointstoconnect])
+    bestidx = np.argmin(distances)
+    bestpointstoconnect = possiblepointstoconnect[bestidx]
     lines = np.zeros_like(membranemask)
     for point1, point2 in bestpointstoconnect:
       lines = cv2.line(lines, tuple(point1)[::-1], tuple(point2)[::-1], 1)
     intersectionsize = np.count_nonzero(lines & membranemask)
+    touchingsize = np.count_nonzero(lines & (~membranemask) & nneighbors.astype(bool))
     linepixels = np.count_nonzero(lines)
     nlines = len(bestpointstoconnect)
-    if intersectionsize > nlines*3:
-      logger.debug(f"{nlines} lines with {linepixels} pixels total, {intersectionsize} intersection with membranemask")
-      possiblepointstoconnect.remove(bestpointstoconnect)
+    if intersectionsize > nlines*2 or touchingsize > nlines*3:
+      logger.debug(f"{nlines} lines with {linepixels} pixels total, {intersectionsize} intersection with membranemask and {touchingsize} touching membranemask: {loginfo}")
+      del possiblepointstoconnect[bestidx]
       continue
     else:
       logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {loginfo}")
