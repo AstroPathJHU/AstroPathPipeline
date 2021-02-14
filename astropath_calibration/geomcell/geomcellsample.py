@@ -140,7 +140,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     try:
       if self.ismembrane:
         self.joinbrokenmembrane()
-      polygons = self.__findpolygons()
+      polygons = self.__findpolygons(cellmask=self.slicedmask)
 
       if self.ismembrane:
         if self.istoothin(polygons[0]):
@@ -158,9 +158,10 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
     return polygons
 
-  def __findpolygons(self, cellmask=None, _debugdraw=False):
-    if cellmask is None: cellmask = self.cellmask
-    polygons = findcontoursaspolygons(cellmask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=self.pxvec, fill=True)
+  def __findpolygons(self, cellmask):
+    top, left, bottom, right = self.bbox
+    shiftby = self.pxvec + np.array([left, top]) * self.onepixel
+    polygons = findcontoursaspolygons(cellmask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=shiftby, fill=True)
     if len(polygons) > 1:
       polygons.sort(key=lambda x: x.area, reverse=True)
     return polygons
@@ -180,10 +181,10 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     return self.cellmask[self.bboxslice]
 
   def joinbrokenmembrane(self):
-    polygons = self.__findpolygons()
-    if not self.istoothin(polygons[0]): return polygons
-
     slicedmask = self.slicedmask
+
+    polygons = self.__findpolygons(cellmask=self.slicedmask)
+    if not self.istoothin(polygons[0]): return
 
     #find the endpoints: pixels of membrane that have exactly one membrane neighbor
     nneighbors = scipy.ndimage.convolve(slicedmask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
@@ -251,7 +252,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       else:
         self.logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {self.loginfo}")
         testmask = slicedmask | lines
-        polygons = self.__findpolygons(testmask)
+        polygons = self.__findpolygons(cellmask=testmask)
         if self.istoothin(polygons[0]):
           self.logger.debug(f"tried connecting lines but polygon is still long and thin, will try other endpoints: {self.loginfo}")
           continue
