@@ -209,7 +209,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
       self.result = self.alignmentresulttype(
         exit=255,
         dxvec=(unc.ufloat(0, 9999)*self.onepixel, unc.ufloat(0, 9999)*self.onepixel),
-        mse=(0., 0., 0.),
+        mse3=0.,
         exception=e,
         **self.alignmentresultkwargs,
       )
