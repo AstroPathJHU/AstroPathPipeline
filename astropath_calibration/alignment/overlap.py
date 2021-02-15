@@ -177,7 +177,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
 
   unshifted = cutimages
 
-  def align(self, *, debug=False, alreadyalignedstrategy="error", **computeshiftkwargs):
+  def align(self, *, debug=False, alreadyalignedstrategy="error", mseonly=False, **computeshiftkwargs):
     if self.result is None:
       alreadyalignedstrategy = None
     else:
@@ -193,6 +193,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
         raise ValueError(f"Unknown value alreadyalignedstrategy={alreadyalignedstrategy!r}")
 
     try:
+      if mseonly: raise Exception("Not aligning this overlap because you specified mseonly")
       if alreadyalignedstrategy != "shift_only":
         kwargs1 = self.__computeshift(**computeshiftkwargs)
         if "gputhread" in computeshiftkwargs.keys() and "gpufftdict" in computeshiftkwargs.keys() :
