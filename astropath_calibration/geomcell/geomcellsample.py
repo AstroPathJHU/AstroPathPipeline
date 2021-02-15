@@ -246,7 +246,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       touchingsize = np.count_nonzero(lines & (~slicedmask) & nneighbors.astype(bool))
       linepixels = np.count_nonzero(lines)
       nlines = len(bestpointstoconnect)
-      if intersectionsize > nlines*2 or touchingsize > nlines*3:
+      if intersectionsize > nlines*3 or touchingsize > nlines*3:
         self.logger.debug(f"{nlines} lines with {linepixels} pixels total, {intersectionsize} intersection with slicedmask and {touchingsize} touching slicedmask: {self.loginfo}")
         del possiblepointstoconnect[bestidx]
         continue
@@ -256,6 +256,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
         polygons = self.__findpolygons(cellmask=testmask)
         if self.istoothin(polygons[0]):
           self.logger.debug(f"tried connecting lines but polygon is still long and thin, will try other endpoints: {self.loginfo}")
+          del possiblepointstoconnect[bestidx]
           continue
         else:
           slicedmask[:] = testmask
