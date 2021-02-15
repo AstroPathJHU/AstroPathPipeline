@@ -44,6 +44,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     return overlap.p2, overlap.p1
 
   def align(self,*,skip_corners=False,return_on_invalid_result=False,warpwarnings=False,**kwargs):
+    self.getDAPI()
     self.logger.info("starting alignment")
 
     sum_mse = 0.
@@ -80,7 +81,6 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     return sum_mse
 
   def getDAPI(self, keeprawimages=False, mean_image=None):
-    self.logger.info("getDAPI")
     with contextlib.ExitStack() as stack:
       for r in self.rectangles:
         stack.enter_context(r.using_image_before_flatfield())
