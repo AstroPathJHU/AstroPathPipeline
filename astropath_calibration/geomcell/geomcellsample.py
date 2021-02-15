@@ -1,4 +1,4 @@
-import cv2, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.measure
+import cv2, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ..alignment.field import Field
 from ..baseclasses.polygon import DataClassWithPolygon, polygonfield
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLoadRectangle
@@ -323,7 +323,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     slicedmask = self.slicedmask
     connected, nfilled, nlabels = self.__connectdisjointregions(slicedmask)
     if nfilled:
-      self.logger.warningglobal(f"Connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
+      self.logger.warningglobal(f"Broken cell: connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
       slicedmask[:] = connected
 
   def debugdraw(self, polygons):
