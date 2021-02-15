@@ -140,6 +140,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     try:
       if self.ismembrane:
         self.joinbrokenmembrane()
+      self.connectdisjointregions()
       polygons = self.__findpolygons(cellmask=self.slicedmask)
 
       if self.ismembrane:
@@ -259,6 +260,71 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
         else:
           slicedmask[:] = testmask
           break
+
+  def __connectdisjointregions(self, slicedmask):
+    labeled, nlabels = scipy.ndimage.label(slicedmask, structure=np.ones(shape=(3, 3)))
+    labels = range(1, nlabels+1)
+    if nlabels == 1:
+      return slicedmask, 0, 1
+
+    best = None
+    bestnfilled = float("inf")
+
+    for label in labels:
+      """
+      following the algorithm here:
+      https://blogs.mathworks.com/steve/2011/11/01/exploring-shortest-paths-part-1/
+      """
+      thisregion = labeled == label
+      otherregions = (labeled != 0) & (labeled != label)
+      distance1 = scipy.ndimage.distance_transform_edt(~thisregion)
+      distance2 = scipy.ndimage.distance_transform_edt(~otherregions)
+      totaldistance = np.round(distance1+distance2, 0)
+
+      path = np.where(totaldistance == np.min(totaldistance), True, False)
+      thinnedpath = skimage.morphology.thin(path)
+
+      partiallyconnected = slicedmask | thinnedpath
+
+      labeled2, nlabels2 = scipy.ndimage.label(partiallyconnected, structure=np.ones(shape=(3, 3)))
+      if not nlabels2 < nlabels:
+        plt.imshow(slicedmask)
+        plt.show()
+        print(nlabels)
+        plt.imshow(thisregion)
+        plt.show()
+        plt.imshow(distance1)
+        plt.show()
+        plt.imshow(otherregions)
+        plt.show()
+        plt.imshow(distance2)
+        plt.show()
+        plt.imshow(totaldistance)
+        plt.show()
+        plt.imshow(path)
+        plt.show()
+        plt.imshow(thinnedpath)
+        plt.show()
+        plt.imshow(partiallyconnected)
+        plt.show()
+        print(nlabels2)
+        assert False
+
+      fullyconnected, nfilled, _ = self.__connectdisjointregions(partiallyconnected)
+      nfilled += np.count_nonzero(thinnedpath)
+
+      if nfilled < bestnfilled:
+        bestnfilled = nfilled
+        best = fullyconnected
+
+    return best, bestnfilled, nlabels
+
+  def connectdisjointregions(self):
+    slicedmask = self.slicedmask
+    connected, nfilled, nlabels = self.__connectdisjointregions(slicedmask)
+    if nfilled:
+      self.logger.warningglobal(f"Connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
+      slicedmask[:] = connected
 
   def debugdraw(self, polygons):
     if not self._debugdraw: return
