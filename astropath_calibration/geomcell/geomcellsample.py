@@ -70,7 +70,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               assert False
               continue
             celllabel = cellproperties.label
-            thiscell = (imlayer==celllabel).astype(np.uint8)
+            thiscell = imlayer==celllabel
             polygons = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw).findpolygons()
 
             polygon = polygons[0]
@@ -141,7 +141,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       if self.ismembrane:
         self.joinbrokenmembrane()
       self.connectdisjointregions()
-      polygons = self.__findpolygons(cellmask=self.slicedmask)
+      polygons = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
       if self.ismembrane:
         if self.istoothin(polygons[0]):
@@ -182,9 +182,9 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     return self.cellmask[self.bboxslice]
 
   def joinbrokenmembrane(self):
-    slicedmask = self.slicedmask
+    slicedmask = self.slicedmask.astype(np.uint8)
 
-    polygons = self.__findpolygons(cellmask=self.slicedmask)
+    polygons = self.__findpolygons(cellmask=slicedmask)
     if not self.istoothin(polygons[0]): return
 
     #find the endpoints: pixels of membrane that have exactly one membrane neighbor
@@ -259,7 +259,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
           del possiblepointstoconnect[bestidx]
           continue
         else:
-          slicedmask[:] = testmask
+          self.slicedmask[:] = testmask
           break
 
   def __connectdisjointregions(self, slicedmask):
@@ -282,7 +282,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       distance2 = scipy.ndimage.distance_transform_edt(~otherregions)
       totaldistance = np.round(distance1+distance2, 0)
 
-      path = np.where(totaldistance == np.min(totaldistance), True, False)
+      path = np.where(totaldistance == np.min(totaldistance[~slicedmask]), True, False)
       thinnedpath = skimage.morphology.thin(path)
 
       partiallyconnected = slicedmask | thinnedpath
