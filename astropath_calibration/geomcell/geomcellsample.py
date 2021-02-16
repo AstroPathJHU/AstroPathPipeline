@@ -174,7 +174,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   def istoothin(self, polygon):
     area = polygon.area
     perimeter = polygon.perimeter
-    return area / perimeter <= 1 * self.onepixel
+    return area / perimeter <= .8 * self.onepixel
 
   @property
   def bboxslice(self):
@@ -193,35 +193,28 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
     #find the endpoints: pixels of membrane that have exactly one membrane neighbor
     nneighbors = scipy.ndimage.convolve(slicedmask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
-    if not np.any(slicedmask & (nneighbors <= 1)):
-      return
 
     identifyneighborssides = scipy.ndimage.convolve(slicedmask, [[0, 1, 0], [8, 0, 2], [0, 4, 0]], mode="constant")
     identifyneighborscorners = scipy.ndimage.convolve(slicedmask, [[9, 0, 3], [0, 0, 0], [12, 0, 6]], mode="constant")
     hastwoadjacentneighbors = (identifyneighborssides & identifyneighborscorners).astype(bool) & (nneighbors == 2)
+
+    if not np.any(slicedmask & ((nneighbors <= 1) | hastwoadjacentneighbors)):
+      return
 
     #find the separate pieces of membrane
     labeled, nlabels = scipy.ndimage.label(slicedmask, structure=np.ones(shape=(3, 3)))
 
     labels = range(1, nlabels+1)
 
-    labelendpoints = {label: list(np.argwhere((labeled==label) & (nneighbors == 1))) for label in labels}
+    labelendpoints = {label: list(np.argwhere((labeled==label) & ((nneighbors == 1) | hastwoadjacentneighbors))) for label in labels}
     labelsinglepixels = {label: list(np.argwhere((labeled==label) & (nneighbors == 0))) for label in labels}
 
     for label in labels:
       if labelsinglepixels[label]:
         labelendpoints[label] += labelsinglepixels[label]*2
-      if len(labelendpoints[label]) == 1:
-        #try to find a place like this
-        # x
-        # xx
-        #   xxxxxxx
-        #where it's an endpoint but has 2 neighbors
-        endpointcandidates = np.argwhere((labeled==label) & hastwoadjacentneighbors)
-        labelendpoints[label] += list(endpointcandidates)
   
     possibleendpointorder = {label: itertools.permutations(labelendpoints[label], 2) for label in labels}
-  
+
     possiblepointstoconnect = []
     for labelordering in itertools.permutations(labels):
       if labelordering[-1] > labelordering[0]: continue #[1, 2, 3] is the same as [3, 2, 1]
@@ -247,22 +240,21 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       for point1, point2 in bestpointstoconnect:
         lines = cv2.line(lines, tuple(point1)[::-1], tuple(point2)[::-1], 1)
       intersectionsize = np.count_nonzero(lines & slicedmask)
-      touchingsize = np.count_nonzero(lines & (~slicedmask) & nneighbors.astype(bool))
       linepixels = np.count_nonzero(lines)
       nlines = len(bestpointstoconnect)
-      if intersectionsize > nlines*3 or touchingsize > nlines*3:
+      if intersectionsize > nlines*3:
         self.logger.debug(f"{nlines} lines with {linepixels} pixels total, {intersectionsize} intersection with slicedmask and {touchingsize} touching slicedmask: {self.loginfo}")
         del possiblepointstoconnect[bestidx]
         continue
       else:
-        self.logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {self.loginfo}")
         testmask = slicedmask | lines
         polygons = self.__findpolygons(cellmask=testmask)
         if self.istoothin(polygons[0]):
-          self.logger.debug(f"tried connecting lines but polygon is still long and thin, will try other endpoints: {self.loginfo}")
+          self.logger.debug(f"tried connecting lines but polygon is still long and thin (area = {polygons[0].area}, perimeter = {polygons[0].perimeter}), will try other endpoints: {self.loginfo}")
           del possiblepointstoconnect[bestidx]
           continue
         else:
+          self.logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {self.loginfo}")
           self.slicedmask[:] = testmask
           break
 
