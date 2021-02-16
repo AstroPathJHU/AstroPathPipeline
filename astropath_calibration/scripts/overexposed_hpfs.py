@@ -93,6 +93,7 @@ def findOverexposedHPFsForSlide(rtd,rd,sid,etof,workingdir) :
     for lgi,ln in enumerate(UNIV_CONST.BRIGHTEST_LAYERS_35) :
         if lgi==UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35 :
             continue
+        logger.info(f'comparing overlap mse differences in layers {UNIV_CONST.BRIGHTEST_LAYERS_35[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35]} and {ln}')
         #plot the mean absolute and fractional mse difference ratios (neglecting corner overlaps and the max differences) 
         #for each HPF and show which would be flagged with the cut applied
         to_plot = []
@@ -124,14 +125,14 @@ def findOverexposedHPFsForSlide(rtd,rd,sid,etof,workingdir) :
                                    c=[p['abs'] for p in to_plot],cmap='plasma')
         ax[lgi-1][0].invert_yaxis()
         f.colorbar(pos,ax=ax[lgi-1][0])
-        ax[lgi-1][0].set_title(f'{sid} HPF abs. mse diff. devs btwn layers {UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35} and {ln}',fontsize=16)
+        ax[lgi-1][0].set_title(f'{sid} HPF abs. mse diff. devs btwn layers {UNIV_CONST.BRIGHTEST_LAYERS_35[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35]} and {ln}',fontsize=16)
         pos = ax[lgi-1][1].scatter([p['x'] for p in to_plot],
                                    [p['y'] for p in to_plot],
                                    marker='o',
                                    c=[p['frac'] for p in to_plot],cmap='plasma')
         ax[lgi-1][1].invert_yaxis()
         f.colorbar(pos,ax=ax[lgi-1][1])
-        ax[lgi-1][1].set_title(f'{sid} HPF frac. mse diff. devs btwn layers {UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35} and {ln}',fontsize=16)
+        ax[lgi-1][1].set_title(f'{sid} HPF frac. mse diff. devs btwn layers {UNIV_CONST.BRIGHTEST_LAYERS_35[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35]} and {ln}',fontsize=16)
         ax[lgi-1][2].scatter([p['x'] for p in to_plot if p['frac']<CUT],
                              [p['y'] for p in to_plot if p['frac']<CUT],
                              marker='o',
