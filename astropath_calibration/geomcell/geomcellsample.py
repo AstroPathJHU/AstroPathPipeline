@@ -122,7 +122,7 @@ class CellGeomLoad(DataClassWithPolygon):
 
 class PolygonFinder(ThingWithPscale, ThingWithApscale):
   def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, _debugdraw=False, logger=dummylogger, loginfo=""):
-    self.cellmask = self.originalcellmask = cellmask
+    self.cellmask = cellmask
     self.ismembrane = ismembrane
     self.bbox = bbox
     self.logger = logger
@@ -131,6 +131,8 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     self.__apscale = apscale
     self.pxvec = pxvec
     self._debugdraw = _debugdraw
+    if self._debugdraw:
+      self.originalcellmask = self.cellmask.copy()
 
   @property
   def pscale(self): return self.__pscale
@@ -331,7 +333,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
   def debugdraw(self, polygons):
     if not self._debugdraw: return
-    plt.imshow(self.cellmask)
+    plt.imshow(self.originalcellmask.astype(np.uint8) + self.cellmask)
     ax = plt.gca()
     for i, polygon in enumerate(polygons):
       ax.add_patch(polygon.matplotlibpolygon(color=f"C{i}", alpha=0.7, shiftby=-self.pxvec))
