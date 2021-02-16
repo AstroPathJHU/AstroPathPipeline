@@ -284,7 +284,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       otherregions = (labeled != 0) & (labeled != label)
       distance1 = scipy.ndimage.distance_transform_edt(~thisregion)
       distance2 = scipy.ndimage.distance_transform_edt(~otherregions)
-      totaldistance = np.round(distance1+distance2, 0)
+      totaldistance = np.round((distance1+distance2)*2, 0)
 
       path = np.where(totaldistance == np.min(totaldistance[~slicedmask]), True, False)
       thinnedpath = skimage.morphology.thin(path)
