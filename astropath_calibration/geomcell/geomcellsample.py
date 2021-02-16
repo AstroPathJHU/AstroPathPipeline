@@ -57,6 +57,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
 
   def rungeomcell(self, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
+    if not _debugdraw: _onlydebug = False
     nfields = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
       if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): continue
@@ -183,6 +184,8 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   @property
   def bboxslice(self):
     top, left, bottom, right = self.bbox
+    if self.ismembrane:
+      assert top >= 1 and left >= 1 and bottom <= 1003 and right <= 1343
     return slice(top, bottom+1), slice(left, right+1)
 
   @property
@@ -334,7 +337,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     for i, polygon in enumerate(polygons):
       ax.add_patch(polygon.matplotlibpolygon(color=f"C{i}", alpha=0.7, shiftby=-self.pxvec))
     top, left, bottom, right = self.bbox
-    plt.xlim(left=left-1, right=right)
-    plt.ylim(top=top-1, bottom=bottom)
+    plt.xlim(left=left-1.5, right=right+.5)
+    plt.ylim(top=top-1.5, bottom=bottom+.5)
     plt.show()
     self.logger.debug(f"{polygons}: {self.loginfo}")
