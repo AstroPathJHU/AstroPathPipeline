@@ -125,7 +125,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, _debugdraw=False, _debugdrawonerror=False, logger=dummylogger, loginfo=""):
     self.originalcellmask = self.cellmask = cellmask
     self.ismembrane = ismembrane
-    self.bbox = bbox
+    self.__bbox = bbox
     self.logger = logger
     self.loginfo = loginfo
     self.__pscale = pscale
@@ -169,7 +169,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     return polygons
 
   def __findpolygons(self, cellmask):
-    top, left, bottom, right = self.bbox
+    top, left, bottom, right = self.adjustedbbox
     shiftby = self.pxvec + np.array([left, top]) * self.onepixel
     polygons = findcontoursaspolygons(cellmask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=shiftby, fill=True)
     if len(polygons) > 1:
@@ -182,10 +182,30 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     return area / perimeter <= .8 * self.onepixel
 
   @property
-  def bboxslice(self):
-    top, left, bottom, right = self.bbox
+  def adjustedbbox(self):
+    top, left, bottom, right = self.__bbox
     if self.ismembrane:
-      assert top >= 1 and left >= 1 and bottom <= 1003 and right <= 1343
+      if top == 1: top = 0
+      if left == 1: left = 0
+      height, width = self.cellmask.shape
+      if bottom == height - 1: bottom = height
+      if right == width - 1: right = width
+    return top, left, bottom, right
+
+  @property
+  def isonedge(self):
+    result = [0, 0]
+    top, left, bottom, right = self.adjustedbbox
+    height, width = self.cellmask.shape
+    if top == 0: result[0] = -1
+    if bottom == height: result[0] = 1
+    if left == 0: result[1] = -1
+    if right == width: result[1] = 1
+    return result
+
+  @property
+  def bboxslice(self):
+    top, left, bottom, right = self.adjustedbbox
     return slice(top, bottom+1), slice(left, right+1)
 
   @property
@@ -273,6 +293,17 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
           continue
         else:
           self.logger.warning(f"Broken membrane: connecting {len(labels)} components, total length of broken line segments is {totaldistance(pointstoconnect)} pixels: {self.loginfo}")
+
+          verticaledge, horizontaledge = self.isonedge
+          if verticaledge == -1:
+            testmask[0, :] |= lines[1, :] & ~(slicedmask[1, :])
+          if verticaledge == 1:
+            testmask[-1, :] |= lines[-2, :] & ~(slicedmask[-2, :])
+          if horizontaledge == -1:
+            testmask[:, 0] |= lines[:, 1] & ~(slicedmask[:, 1])
+          if horizontaledge == 1:
+            testmask[:, -1] |= lines[:, -2] & ~(slicedmask[:, -2])
+
           self.slicedmask[:] = testmask
           break
 
@@ -347,8 +378,8 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     ax = plt.gca()
     for i, polygon in enumerate(polygons):
       ax.add_patch(polygon.matplotlibpolygon(color=f"C{i}", alpha=0.7, shiftby=-self.pxvec))
-    top, left, bottom, right = self.bbox
-    plt.xlim(left=left-1.5, right=right+.5)
-    plt.ylim(top=top-1.5, bottom=bottom+.5)
+    top, left, bottom, right = self.adjustedbbox
+    plt.xlim(left=left-1, right=right)
+    plt.ylim(top=top-1, bottom=bottom)
     plt.show()
     self.logger.debug(f"{polygons}: {self.loginfo}")
