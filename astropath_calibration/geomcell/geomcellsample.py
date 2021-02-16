@@ -224,7 +224,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     # xx
     # xxxxxxxxx
     #this actually happens in L1_4 23 1 194
-    hasthreeadjacentneighborsbox = (identifyneighborshorizontal & identifyneighborscorners).astype(bool) & (identifyneighborsvertical & identifyneighborscorners).astype(bool)
+    hasthreeadjacentneighborsbox = (identifyneighborshorizontal & identifyneighborscorners).astype(bool) & (identifyneighborsvertical & identifyneighborscorners).astype(bool) & (nneighbors==3)
 
     if not np.any(slicedmask & ((nneighbors <= 1) | hastwoadjacentneighbors | hasthreeadjacentneighborsbox)):
       return
