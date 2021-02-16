@@ -201,11 +201,22 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     #find the endpoints: pixels of membrane that have exactly one membrane neighbor
     nneighbors = scipy.ndimage.convolve(slicedmask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
 
-    identifyneighborssides = scipy.ndimage.convolve(slicedmask, [[0, 1, 0], [8, 0, 2], [0, 4, 0]], mode="constant")
+    identifyneighborshorizontal = scipy.ndimage.convolve(slicedmask, [[8, 0, 2]], mode="constant")
+    identifyneighborsvertical = scipy.ndimage.convolve(slicedmask, [[1], [0], [4]], mode="constant")
+    identifyneighborssides = identifyneighborshorizontal | identifyneighborsvertical
     identifyneighborscorners = scipy.ndimage.convolve(slicedmask, [[9, 0, 3], [0, 0, 0], [12, 0, 6]], mode="constant")
+    #endpoint that looks like this
+    # x
+    # xx
+    #  xxxxx
     hastwoadjacentneighbors = (identifyneighborssides & identifyneighborscorners).astype(bool) & (nneighbors == 2)
+    #endpoint that looks like this
+    # xx
+    # xxxxxxxxx
+    #this actually happens in L1_4 23 1 194
+    hasthreeadjacentneighborsbox = (identifyneighborshorizontal & identifyneighborscorners).astype(bool) & (identifyneighborsvertical & identifyneighborscorners).astype(bool)
 
-    if not np.any(slicedmask & ((nneighbors <= 1) | hastwoadjacentneighbors)):
+    if not np.any(slicedmask & ((nneighbors <= 1) | hastwoadjacentneighbors | hasthreeadjacentneighborsbox)):
       return
 
     #find the separate pieces of membrane
@@ -213,7 +224,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
     labels = range(1, nlabels+1)
 
-    labelendpoints = {label: list(np.argwhere((labeled==label) & ((nneighbors == 1) | hastwoadjacentneighbors))) for label in labels}
+    labelendpoints = {label: list(np.argwhere((labeled==label) & ((nneighbors == 1) | hastwoadjacentneighbors | hasthreeadjacentneighborsbox))) for label in labels}
     labelsinglepixels = {label: list(np.argwhere((labeled==label) & (nneighbors == 0))) for label in labels}
 
     for label in labels:
