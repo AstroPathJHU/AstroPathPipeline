@@ -50,7 +50,7 @@ def findOverexposedHPFsForSlide(rtd,rd,sid,etof,workingdir) :
         logger.info(f'Getting overlap mses for image layer {ln}....')
         a = AlignmentSetForWarping(rd,rtd,sid,
                                    med_et=med_ets[ln-1],offset=offsets[ln-1],flatfield=None,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,
-                                   layer=1,filetype='raw',useGPU=True)
+                                   layer=ln,filetype='raw')
         a.logger.setLevel(logging.WARN)
         a.align(mseonly=True)
         asets.append(a)
