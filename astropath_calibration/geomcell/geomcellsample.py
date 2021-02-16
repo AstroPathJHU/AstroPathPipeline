@@ -55,7 +55,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
   def logmodule(self):
     return "geomcell"
 
-  def rungeomcell(self, *, _debugdraw=(), _onlydebug=False):
+  def rungeomcell(self, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
     nfields = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
@@ -73,7 +73,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
             celllabel = cellproperties.label
             if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
             thiscell = imlayer==celllabel
-            polygons = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw).findpolygons()
+            polygons = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygons()
 
             polygon = polygons[0]
 
@@ -121,8 +121,8 @@ class CellGeomLoad(DataClassWithPolygon):
 
 
 class PolygonFinder(ThingWithPscale, ThingWithApscale):
-  def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, _debugdraw=False, logger=dummylogger, loginfo=""):
-    self.cellmask = cellmask
+  def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, _debugdraw=False, _debugdrawonerror=False, logger=dummylogger, loginfo=""):
+    self.originalcellmask = self.cellmask = cellmask
     self.ismembrane = ismembrane
     self.bbox = bbox
     self.logger = logger
@@ -131,6 +131,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     self.__apscale = apscale
     self.pxvec = pxvec
     self._debugdraw = _debugdraw
+    self._debugdrawonerror = _debugdrawonerror
     if self._debugdraw:
       self.originalcellmask = self.cellmask.copy()
 
@@ -158,6 +159,9 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
           self.logger.warning(message)
         else:
           raise ValueError(message)
+    except:
+      if self._debugdrawonerror: self._debugdraw = True
+      raise
     finally:
       self.debugdraw(polygons)
 
@@ -243,7 +247,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       linepixels = np.count_nonzero(lines)
       nlines = len(bestpointstoconnect)
       if intersectionsize > nlines*3:
-        self.logger.debug(f"{nlines} lines with {linepixels} pixels total, {intersectionsize} intersection with slicedmask and {touchingsize} touching slicedmask: {self.loginfo}")
+        self.logger.debug(f"{nlines} lines with {linepixels} pixels total, {intersectionsize} intersection with slicedmask: {self.loginfo}")
         del possiblepointstoconnect[bestidx]
         continue
       else:
