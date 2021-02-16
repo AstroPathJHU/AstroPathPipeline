@@ -74,9 +74,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
             celllabel = cellproperties.label
             if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
             thiscell = imlayer==celllabel
-            polygons = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygons()
-
-            polygon = polygons[0]
+            polygon = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygon()
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += units.nominal_values(field.pxvec)
@@ -141,32 +139,24 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   @property
   def apscale(self): return self.__apscale
 
-  def findpolygons(self):
-    polygons = []
+  def findpolygon(self):
+    polygon = None
     try:
       if self.ismembrane:
         self.joinbrokenmembrane()
       self.connectdisjointregions()
-      polygons = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
+      polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
       if self.ismembrane:
-        if self.istoothin(polygons[0]):
-          self.logger.warningglobal(f"Long, thin polygon (perimeter = {polygons[0].perimeter / self.onepixel} pixels, area = {polygons[0].area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {self.loginfo}")
-      for polygon in polygons[1:]:
-        area = polygon.area
-        perimeter = polygon.perimeter
-        message = f"Extra disjoint polygon with an area of {area/self.onepixel**2} pixels^2 and a perimeter of {perimeter / polygon.onepixel} pixels: {self.loginfo}"
-        if area <= 10*self.onepixel**2:
-          self.logger.warning(message)
-        else:
-          raise ValueError(message)
+        if self.istoothin(polygon):
+          self.logger.warningglobal(f"Long, thin polygon (perimeter = {polygon.perimeter / self.onepixel} pixels, area = {polygon.area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {self.loginfo}")
     except:
       if self._debugdrawonerror: self._debugdraw = True
       raise
     finally:
-      self.debugdraw(polygons)
+      self.debugdraw(polygon)
 
-    return polygons
+    return polygon
 
   def __findpolygons(self, cellmask):
     top, left, bottom, right = self.adjustedbbox
@@ -372,14 +362,13 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       self.logger.warningglobal(f"Broken cell: connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
       slicedmask[:] = connected
 
-  def debugdraw(self, polygons):
+  def debugdraw(self, polygon):
     if not self._debugdraw: return
     plt.imshow(self.originalcellmask.astype(np.uint8) + self.cellmask)
     ax = plt.gca()
-    for i, polygon in enumerate(polygons):
-      ax.add_patch(polygon.matplotlibpolygon(color=f"C{i}", alpha=0.7, shiftby=-self.pxvec))
+    ax.add_patch(polygon.matplotlibpolygon(alpha=0.7, shiftby=-self.pxvec))
     top, left, bottom, right = self.adjustedbbox
     plt.xlim(left=left-1, right=right)
     plt.ylim(top=top-1, bottom=bottom)
     plt.show()
-    self.logger.debug(f"{polygons}: {self.loginfo}")
+    self.logger.debug(f"{polygon}: {self.loginfo}")
