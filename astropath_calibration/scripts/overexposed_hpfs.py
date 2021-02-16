@@ -171,6 +171,7 @@ def main(args=None) :
     logger.addHandler(filehandler)
     #run alignments and check for overexposed HPFs
     findOverexposedHPFsForSlide(args.rawfile_top_dir,args.root_dir,args.slideID,args.exposure_time_offset_file,args.workingdir)
+    logger.info('Done : )')
 
 if __name__=='__main__' :
     main()
