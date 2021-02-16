@@ -55,10 +55,11 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
   def logmodule(self):
     return "geomcell"
 
-  def rungeomcell(self, *, _debugdraw=()):
+  def rungeomcell(self, *, _debugdraw=(), _onlydebug=False):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
     nfields = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
+      if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): continue
       self.logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
       geomload = []
       with field.using_image() as im:
@@ -70,6 +71,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
               assert False
               continue
             celllabel = cellproperties.label
+            if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
             thiscell = imlayer==celllabel
             polygons = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw).findpolygons()
 
