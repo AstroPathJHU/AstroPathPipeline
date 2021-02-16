@@ -5,8 +5,10 @@ from astropath_calibration.utilities.img_file_io import getMedianExposureTimesAn
 from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser, cropAndOverwriteImage
 from astropath_calibration.utilities.config import CONST as UNIV_CONST
 from matplotlib import colors
+from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt
-import logging, os, glob, cv2
+import logging, os
+units.setup('fast')
 
 #constants
 CUT=0.15
@@ -39,15 +41,15 @@ def checkArgs(args) :
 #################### HELPER FUNCTIONS ####################
 
 #find/plot overexposed HPFs in a single image layer by comparing differences in overlap region mean squared fluxes
-def findOverexposedHPFsForSlideLayer(rtd,rd,sid,etof,workingdir) :
+def findOverexposedHPFsForSlide(rtd,rd,sid,etof,workingdir) :
     #get the correction details
     med_ets, offsets = getMedianExposureTimesAndCorrectionOffsetsForSlide(rd,sid,etof)
     #align the slide's raw images in each of the brightest layers
     asets = []
     for ln in UNIV_CONST.BRIGHTEST_LAYERS_35 :
         logger.info(f'Getting overlap mses for image layer {ln}....')
-        a = AlignmentSetForWarping(root_dir,rawfile_top_dir,sid,
-                                   med_et=med_ets[0],offset=offsets[0],flatfield=None,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,
+        a = AlignmentSetForWarping(rd,rtd,sid,
+                                   med_et=med_ets[ln-1],offset=offsets[ln-1],flatfield=None,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,
                                    layer=1,filetype='raw',useGPU=True)
         a.logger.setLevel(logging.WARN)
         a.align(mseonly=True)
@@ -65,15 +67,15 @@ def findOverexposedHPFsForSlideLayer(rtd,rd,sid,etof,workingdir) :
         f,ax=plt.subplots(1,3,figsize=(3*6.4,6.4))
         ax[0].hist(mse_diffs,bins=60,log=True)
         ax[0].set_title(f'{sid} absolute overlap mse differences layer {ln}')
-        ax[0].set_xlabel(f'mse2-mse1')
+        ax[0].set_xlabel('mse2-mse1')
         ax[1].hist(frac_mse_diffs,bins=60,log=True)
         ax[1].set_title(f'{sid} fractional overlap mse differences layer {ln}')
-        ax[1].set_xlabel(f'(mse2-mse1)/(0.5*(mse2+mse1))')
+        ax[1].set_xlabel('(mse2-mse1)/(0.5*(mse2+mse1))')
         pos = ax[2].hist2d(frac_mse_diffs,mse_diffs,bins=60,norm=colors.LogNorm(),cmap='gray')
         f.colorbar(pos[3],ax=ax[2])
         ax[2].set_title(f'{sid} fractional vs. absolute mse differences layer {ln}')
-        ax[2].set_xlabel(f'mse2-mse1')
-        ax[2].set_ylabel(f'(mse2-mse1)/(0.5*(mse2+mse1))')
+        ax[2].set_xlabel('mse2-mse1')
+        ax[2].set_ylabel('(mse2-mse1)/(0.5*(mse2+mse1))')
         fn = f'{sid}_overlap_mse_diffs_layer_{ln}.png'
         with cd(workingdir) :
             plt.savefig(fn)
@@ -164,7 +166,7 @@ def main(args=None) :
     #check the arguments
     checkArgs(args)
     #add a file to the logger
-    filehandler = logging.FileHandler(os.path.join(args.workingdir,f'{sid}_overexposed_hpfs.log'))
+    filehandler = logging.FileHandler(os.path.join(args.workingdir,f'{args.slideID}_overexposed_hpfs.log'))
     logger.addHandler(filehandler)
     #run alignments and check for overexposed HPFs
     findOverexposedHPFsForSlide(args.rawfile_top_dir,args.root_dir,args.slideID,args.exposure_time_offset_file,args.workingdir)
