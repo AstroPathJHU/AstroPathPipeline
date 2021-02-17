@@ -1,17 +1,20 @@
 #imports
 from astropath_calibration.warping.alignmentset import AlignmentSetForWarping 
-from astropath_calibration.utilities import units
 from astropath_calibration.utilities.img_file_io import getMedianExposureTimesAndCorrectionOffsetsForSlide
+from astropath_calibration.utilities.tableio import writetable
+from astropath_calibration.utilities import units
+from astropath_calibration.utilities.dataclasses import MyDataClass
 from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser, cropAndOverwriteImage
 from astropath_calibration.utilities.config import CONST as UNIV_CONST
 from matplotlib import colors
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt
-import logging, os
+import logging, os, dataclasses
 units.setup('fast')
 
 #constants
-CUT=0.15
+CUT_MEAN=0.10
+CUT_SIGMA=5.0
 
 #logger
 logger = logging.getLogger("overexposed_hpfs")
@@ -19,6 +22,25 @@ logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S"))
 logger.addHandler(handler)
+
+#dataclass to hold a rectangle's mse comparison information
+class RectangleMSEComparisonInfo(MyDataClass) :
+    file : str
+    n : int
+    x : float
+    y : float
+    lg1_mean_abs_diff_dev : float = 0.
+    lg1_mean_frac_diff_dev : float = 0.
+    lg1_mean_frac_diff_dev_err : float = 0.
+    lg2_mean_abs_diff_dev : float = 0.
+    lg2_mean_frac_diff_dev : float = 0.
+    lg2_mean_frac_diff_dev_err : float = 0.
+    lg3_mean_abs_diff_dev : float = 0.
+    lg3_mean_frac_diff_dev : float = 0.
+    lg3_mean_frac_diff_dev_err : float = 0.
+    lg4_mean_abs_diff_dev : float = 0.
+    lg4_mean_frac_diff_dev : float = 0.
+    lg4_mean_frac_diff_dev_err : float = 0.
 
 #helper function to make sure all the necessary information is available from the command line arguments
 def checkArgs(args) :
@@ -37,8 +59,6 @@ def checkArgs(args) :
     #create the working directory if it doesn't already exist
     if not os.path.isdir(args.workingdir) :
         os.mkdir(args.workingdir)
-
-#################### HELPER FUNCTIONS ####################
 
 #find/plot overexposed HPFs in a single image layer by comparing differences in overlap region mean squared fluxes
 def findOverexposedHPFsForSlide(rtd,rd,sid,etof,workingdir) :
@@ -80,15 +100,17 @@ def findOverexposedHPFsForSlide(rtd,rd,sid,etof,workingdir) :
         with cd(workingdir) :
             plt.savefig(fn)
             cropAndOverwriteImage(fn)
+    #start a dictionary for all of the RectangleMSEComparisonInfo objects
+    rectangle_info_objs = {}
     #start up the other sheet of plots
     xs = np.array([r.cx for r in asets[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35].rectangles])
     ys = np.array([r.cy for r in asets[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35].rectangles])
     w = np.max(xs)-np.min(xs)
     h = np.max(ys)-np.min(ys)
     if h>w :
-        f,ax = plt.subplots(len(UNIV_CONST.BRIGHTEST_LAYERS_35)-1,3,figsize=(3*((1.1*w)/(1.1*h))*9.6,(len(UNIV_CONST.BRIGHTEST_LAYERS_35)-1)*9.6))
+        f,ax = plt.subplots(len(UNIV_CONST.BRIGHTEST_LAYERS_35)-1,5,figsize=(5*((1.1*w)/(1.1*h))*9.6,(len(UNIV_CONST.BRIGHTEST_LAYERS_35)-1)*9.6))
     else :
-        f,ax = plt.subplots(len(UNIV_CONST.BRIGHTEST_LAYERS_35)-1,3,figsize=(3*9.6,(len(UNIV_CONST.BRIGHTEST_LAYERS_35)-1)*9.6*((1.1*h)/(1.1*w))))
+        f,ax = plt.subplots(len(UNIV_CONST.BRIGHTEST_LAYERS_35)-1,5,figsize=(5*9.6,(len(UNIV_CONST.BRIGHTEST_LAYERS_35)-1)*9.6*((1.1*h)/(1.1*w))))
     #for the DAPI layer compared to each other layer
     for lgi,ln in enumerate(UNIV_CONST.BRIGHTEST_LAYERS_35) :
         if lgi==UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35 :
@@ -109,16 +131,47 @@ def findOverexposedHPFsForSlide(rtd,rd,sid,etof,workingdir) :
                 r12 = o1.result.mse2
                 r21 = o2.result.mse1
                 r22 = o2.result.mse2
-                abs_diff_devs.append(abs(abs(r12-r11)-abs(r22-r21)))
-                frac_diff_devs.append(abs(abs((r12-r11)/(0.5*(r12+r11)))-abs((r22-r21)/(0.5*(r22+r21)))))
-            abs_diff_devs.remove(max(abs_diff_devs))
-            frac_diff_devs.remove(max(frac_diff_devs))
-            mean_abs_diff_dev = np.mean(np.array(abs_diff_devs))
-            mean_frac_diff_dev = np.mean(np.array(frac_diff_devs))
-            to_plot.append({'x':r.cx,'y':r.cy,'n':r.n,'f':r.file,'abs':mean_abs_diff_dev,'frac':mean_frac_diff_dev})
+                #abs_diff_devs.append(abs(abs(r12-r11)-abs(r22-r21)))
+                #frac_diff_devs.append(abs(abs((r12-r11)/(0.5*(r12+r11)))-abs((r22-r21)/(0.5*(r22+r21)))))
+                abs_diff_devs.append(abs((r12-r11)-(r22-r21)))
+                frac_diff_devs.append(abs(((r12-r11)/(0.5*(r12+r11)))-((r22-r21)/(0.5*(r22+r21)))))
+            abs_diff_devs = np.array(abs_diff_devs)
+            frac_diff_devs = np.array(frac_diff_devs)
+            mean_abs_diff_dev = np.mean(abs_diff_devs)
+            mean_frac_diff_dev = np.mean(frac_diff_devs)
+            mean_frac_diff_dev_err = np.std(frac_diff_devs)/np.sqrt(len(frac_diff_devs)) if len(frac_diff_devs)>1 else 0
+            if r.n not in rectangle_info_objs.keys() :
+                rectangle_info_objs[r.n] = RectangleMSEComparisonInfo(r.file,r.n,r.cx,r.cy)
+            if lgi==1 :
+                rectangle_info_objs[r.n].lg1_mean_abs_diff_dev      = mean_abs_diff_dev
+                rectangle_info_objs[r.n].lg1_mean_frac_diff_dev     = mean_frac_diff_dev
+                rectangle_info_objs[r.n].lg1_mean_frac_diff_dev_err = mean_frac_diff_dev_err
+            elif lgi==2 :
+                rectangle_info_objs[r.n].lg2_mean_abs_diff_dev      = mean_abs_diff_dev
+                rectangle_info_objs[r.n].lg2_mean_frac_diff_dev     = mean_frac_diff_dev
+                rectangle_info_objs[r.n].lg2_mean_frac_diff_dev_err = mean_frac_diff_dev_err
+            elif lgi==3 :
+                rectangle_info_objs[r.n].lg3_mean_abs_diff_dev      = mean_abs_diff_dev
+                rectangle_info_objs[r.n].lg3_mean_frac_diff_dev     = mean_frac_diff_dev
+                rectangle_info_objs[r.n].lg3_mean_frac_diff_dev_err = mean_frac_diff_dev_err
+            elif lgi==4 :
+                rectangle_info_objs[r.n].lg4_mean_abs_diff_dev      = mean_abs_diff_dev
+                rectangle_info_objs[r.n].lg4_mean_frac_diff_dev     = mean_frac_diff_dev
+                rectangle_info_objs[r.n].lg4_mean_frac_diff_dev_err = mean_frac_diff_dev_err
+            to_plot.append({'x':r.cx,
+                            'y':r.cy,
+                            'n':r.n,
+                            'f':r.file,
+                            'abs':mean_abs_diff_dev,
+                            'frac':mean_frac_diff_dev,
+                            'frac_err':mean_frac_diff_dev_err,
+                            'sigma_diff':(mean_frac_diff_dev-CUT_MEAN)/mean_frac_diff_dev_err if mean_frac_diff_dev_err!=0 else 0.})
         for p in to_plot :
-            if p['frac']>=CUT :
-                logger.info(f"rectangle # {p['n']} (file {p['f']}) flagged using layer {ln} with abs. diff {p['abs']:.2f}, frac. diff {p['frac']:.6f}")
+            if (p['frac_err']!=0. and p['sigma_diff']>=CUT_SIGMA) or (p['frac_err']==0. and p['frac']>=CUT_MEAN) :
+                msg=f"rectangle # {p['n']} (file {p['f']}) flagged using layer {ln} with mean abs. "
+                msg+=f"diff dev. {p['abs']:.2f}, mean frac. diff dev {p['frac']:.6f} +/- {p['frac_err']:.6f} "
+                msg+=f"({p['sigma_diff']} sigma from mean frac. diff. dev. cut at {CUT_MEAN})"
+                logger.info(msg)
         pos = ax[lgi-1][0].scatter([p['x'] for p in to_plot],
                                    [p['y'] for p in to_plot],
                                    marker='o',
@@ -133,23 +186,38 @@ def findOverexposedHPFsForSlide(rtd,rd,sid,etof,workingdir) :
         ax[lgi-1][1].invert_yaxis()
         f.colorbar(pos,ax=ax[lgi-1][1])
         ax[lgi-1][1].set_title(f'{sid} HPF frac. mse diff. devs btwn layers {UNIV_CONST.BRIGHTEST_LAYERS_35[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35]} and {ln}',fontsize=16)
-        ax[lgi-1][2].scatter([p['x'] for p in to_plot if p['frac']<CUT],
-                             [p['y'] for p in to_plot if p['frac']<CUT],
+        pos = ax[lgi-1][2].scatter([p['x'] for p in to_plot],
+                                   [p['y'] for p in to_plot],
+                                   marker='o',
+                                   c=[p['frac_err'] for p in to_plot],cmap='plasma')
+        ax[lgi-1][2].invert_yaxis()
+        f.colorbar(pos,ax=ax[lgi-1][2])
+        ax[lgi-1][2].set_title(f'{sid} HPF frac. mse diff. dev. sigma from cut btwn layers {UNIV_CONST.BRIGHTEST_LAYERS_35[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35]} and {ln}',fontsize=16)
+        pos = ax[lgi-1][3].scatter([p['x'] for p in to_plot],
+                                   [p['y'] for p in to_plot],
+                                   marker='o',
+                                   c=[p['sigma_diff'] for p in to_plot],cmap='plasma')
+        ax[lgi-1][3].invert_yaxis()
+        f.colorbar(pos,ax=ax[lgi-1][3])
+        ax[lgi-1][3].set_title(f'{sid} HPF frac. mse diff. dev. err. btwn layers {UNIV_CONST.BRIGHTEST_LAYERS_35[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35]} and {ln}',fontsize=16)
+        ax[lgi-1][4].scatter([p['x'] for p in to_plot if (p['frac_err']!=0. and p['sigma_diff']<CUT_SIGMA) or (p['frac_err']==0. and p['frac']<CUT_MEAN)],
+                             [p['y'] for p in to_plot if (p['frac_err']!=0. and p['sigma_diff']<CUT_SIGMA) or (p['frac_err']==0. and p['frac']<CUT_MEAN)],
                              marker='o',
                              c='gray',
                              label='not flagged')
-        ax[lgi-1][2].scatter([p['x'] for p in to_plot if p['frac']>=CUT],
-                             [p['y'] for p in to_plot if p['frac']>=CUT],
+        ax[lgi-1][4].scatter([p['x'] for p in to_plot if (p['frac_err']!=0. and p['sigma_diff']>=CUT_SIGMA) or (p['frac_err']==0. and p['frac']>=CUT_MEAN)],
+                             [p['y'] for p in to_plot if (p['frac_err']!=0. and p['sigma_diff']>=CUT_SIGMA) or (p['frac_err']==0. and p['frac']>=CUT_MEAN)],
                              marker='o',
                              c='tab:red',
                              label='flagged')
-        ax[lgi-1][2].invert_yaxis()
-        ax[lgi-1][2].set_title(f'{sid} HPFs flagged using layer {ln}',fontsize=16)
-        ax[lgi-1][2].legend(loc='best')
+        ax[lgi-1][4].invert_yaxis()
+        ax[lgi-1][4].set_title(f'{sid} HPFs flagged using layer {ln}',fontsize=16)
+        ax[lgi-1][4].legend(loc='best')
     fn=f'{sid}_overexposed_hpf_locations.png'
     with cd(workingdir) :
         plt.savefig(fn)
         cropAndOverwriteImage(fn)
+        writetable(f'{sid}_rectangle_mse_comparison_info.csv',rectangle_info_objs.values())
 
 #################### MAIN SCRIPT ####################
 
