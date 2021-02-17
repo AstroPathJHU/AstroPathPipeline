@@ -192,14 +192,14 @@ def findOverexposedHPFsForSlide(rtd,rd,sid,etof,workingdir) :
                                    c=[p['frac_err'] for p in to_plot],cmap='plasma')
         ax[lgi-1][2].invert_yaxis()
         f.colorbar(pos,ax=ax[lgi-1][2])
-        ax[lgi-1][2].set_title(f'{sid} HPF frac. mse diff. dev. sigma from cut btwn layers {UNIV_CONST.BRIGHTEST_LAYERS_35[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35]} and {ln}',fontsize=16)
+        ax[lgi-1][2].set_title(f'{sid} HPF frac. mse diff. dev. err. btwn layers {UNIV_CONST.BRIGHTEST_LAYERS_35[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35]} and {ln}',fontsize=16)
         pos = ax[lgi-1][3].scatter([p['x'] for p in to_plot],
                                    [p['y'] for p in to_plot],
                                    marker='o',
                                    c=[p['sigma_diff'] for p in to_plot],cmap='plasma')
         ax[lgi-1][3].invert_yaxis()
         f.colorbar(pos,ax=ax[lgi-1][3])
-        ax[lgi-1][3].set_title(f'{sid} HPF frac. mse diff. dev. err. btwn layers {UNIV_CONST.BRIGHTEST_LAYERS_35[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35]} and {ln}',fontsize=16)
+        ax[lgi-1][3].set_title(f'{sid} HPF frac. mse diff. dev. sigma from cut btwn layers {UNIV_CONST.BRIGHTEST_LAYERS_35[UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35]} and {ln}',fontsize=16)
         ax[lgi-1][4].scatter([p['x'] for p in to_plot if (p['frac_err']!=0. and p['sigma_diff']<CUT_SIGMA) or (p['frac_err']==0. and p['frac']<CUT_MEAN)],
                              [p['y'] for p in to_plot if (p['frac_err']!=0. and p['sigma_diff']<CUT_SIGMA) or (p['frac_err']==0. and p['frac']<CUT_MEAN)],
                              marker='o',
