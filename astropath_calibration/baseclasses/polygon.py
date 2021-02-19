@@ -22,7 +22,11 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       if apscale is None: raise ValueError("Have to provide apscale if you give a string to Polygon")
       if pscale is None: raise ValueError("Have to provide pscale if you give a string to Polygon")
 
-      gdalpolygon = ogr.CreateGeometryFromWkt(string)
+      if isinstance(string, ogr.Geometry):
+        gdalpolygon = string
+      else:
+        gdalpolygon = ogr.CreateGeometryFromWkt(string)
+
       vertices = []
       for polygon in gdalpolygon:
         polyvertices = []
@@ -34,11 +38,6 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
           polyvertices.append(Vertex(im3x=x, im3y=y, vid=j, regionid=None, apscale=apscale, pscale=pscale))
 
     self.__vertices = [[v for v in vv] for vv in vertices]
-    for vv in self.__vertices:
-      if len(vv) > 1 and np.all(vv[0].xvec == vv[-1].xvec): del vv[-1]
-    for i, (vv, area) in enumerate(more_itertools.zip_equal(self.__vertices, self.areas)):
-      if i == 0 and area < 0 or i != 0 and area > 0:
-        vv[:] = [vv[0]] + vv[:0:-1]
 
     apscale = {apscale, *(v.apscale for vv in self.__vertices for v in vv)}
     apscale.discard(None)
@@ -49,6 +48,12 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     pscale.discard(None)
     if len(pscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
     self.__pscale, = pscale
+
+    for vv in self.__vertices:
+      if len(vv) > 1 and np.all(vv[0].xvec == vv[-1].xvec): del vv[-1]
+    for i, (vv, area) in enumerate(more_itertools.zip_equal(self.__vertices, self.areas)):
+      if i == 0 and area < 0 or i != 0 and area > 0:
+        vv[:] = [vv[0]] + vv[:0:-1]
 
   @property
   def pscale(self):
@@ -76,13 +81,22 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     return [Polygon(vertices=[vv]) for vv in self.vertices]
   @property
   def areas(self):
-    return [
+    return units.convertpscale([
       1/2 * sum(v1.x*v2.y - v2.x*v1.y for v1, v2 in more_itertools.pairwise(itertools.chain(vv, [vv[0]])))
       for vv in self.vertices
-    ]
+    ], self.apscale, self.pscale, power=2)
   @property
-  def totalarea(self):
+  def area(self):
     return np.sum(self.areas)
+  @property
+  def perimeters(self):
+    return units.convertpscale([
+      sum(np.sum((v1.xvec - v2.xvec)**2)**.5 for v1, v2 in more_itertools.pairwise(itertools.chain(vv, [vv[0]])))
+      for vv in self.vertices
+    ], self.apscale, self.pscale)
+  @property
+  def perimeter(self):
+    return np.sum(self.perimeters)
 
   def gdalpolygon(self, *, imagescale=None, round=False):
     if imagescale is None: imagescale = self.pscale
@@ -99,7 +113,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       poly.AddGeometry(ring)
     return poly
 
-  def matplotlibpolygon(self, *, imagescale=None, **kwargs):
+  def matplotlibpolygon(self, *, imagescale=None, shiftby=0, **kwargs):
     if imagescale is None: imagescale = self.pscale
     vertices = []
     for vv in self.vertices:
@@ -107,13 +121,19 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       if newvertices[-1] != newvertices[0]: newvertices.append(newvertices[0])
       vertices += newvertices
     return matplotlib.patches.Polygon(
-      units.convertpscale(
+      (units.convertpscale(
         vertices,
         self.apscale,
         imagescale,
-      ) / units.onepixel(imagescale),
+      ) + shiftby) / units.onepixel(imagescale),
       **kwargs,
     )
+
+  @property
+  def convexhull(self):
+    gdalpolygon = self.gdalpolygon(imagescale=self.pscale)
+    gdalhull = gdalpolygon.ConvexHull()
+    return Polygon(pixels=gdalhull, pscale=self.pscale, apscale=self.apscale)
 
 class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
   @classmethod
@@ -126,7 +146,7 @@ class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
       poly = getattr(self, field)
       if isinstance(poly, Polygon):
         pass
-      elif poly is None or poly == "poly":
+      elif poly is None or isinstance(poly, str) and poly == "poly":
         setattr(self, field, None)
       elif isinstance(poly, str):
         setattr(self, field, Polygon(
