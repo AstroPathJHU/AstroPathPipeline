@@ -390,6 +390,21 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
   def apscale(self):
     return self.constantsdict["apscale"]
 
+class MaskSampleBase(SampleBase):
+  def __init__(self, *args, maskroot=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if maskroot is None: maskroot = self.root
+    self.__maskroot = pathlib.Path(maskroot)
+  @property
+  def maskroot(self): return self.__maskroot
+
+  @property
+  def maskfolder(self):
+    result = self.im3folder/"meanimage"
+    if self.maskroot != self.root:
+      result = self.maskroot/result.relative_to(self.root)
+    return result
+
 class FlatwSampleBase(SampleBase):
   def __init__(self, root, root2, samp, *args, root3=None, xmlfolders=None, **kwargs):
     if xmlfolders is None: xmlfolders = []
@@ -407,7 +422,7 @@ class FlatwSampleBase(SampleBase):
       result.append(self.__root3/self.SlideID)
     return result
 
-class ZoomSampleBase(SampleBase):
+class ZoomFolderSampleBase(SampleBase):
   def __init__(self, *args, zoomroot, **kwargs):
     super().__init__(*args, **kwargs)
     self.__zoomroot = pathlib.Path(zoomroot)
