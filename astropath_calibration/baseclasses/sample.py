@@ -351,6 +351,10 @@ class DbloadSampleBase(SampleBase):
   def writecsv(self, csv, *args, **kwargs):
     return writetable(self.csv(csv), *args, logger=self.logger, **kwargs)
 
+  @methodtools.lru_cache()
+  def qptiffjpgimage(self):
+    return cv2.imread(os.fspath(self.dbload/(self.SlideID+"_qptiff.jpg")))
+
 class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale):
   def getimageinfofromconstants(self):
     dct = constantsdict(self.csv("constants"))
