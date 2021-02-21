@@ -5,6 +5,18 @@ from ..utilities.misc import floattoint, memmapcontext
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
 class Rectangle(DataClassWithPscale):
+  """
+  Base class for all HPFs
+  n, x, y, w, h, cx, cy, t, and file are columns in SlideID_rect.csv
+
+  n: the id of the HPF, starting from 1
+  x, y: the coordinates of the top left corner
+  w, h: the size of the field
+  cx, cy: the coordinates of the center, in integer pixels
+  t: what time the HPF image was recorded
+  file: the filename of the im3 for the HPF
+  """
+
   pixelsormicrons = "microns"
 
   n: int
@@ -19,17 +31,18 @@ class Rectangle(DataClassWithPscale):
 
   @classmethod
   def transforminitargs(cls, *args, rectangle=None, **kwargs):
+    """
+    If you give an existing Rectangle to init, the current rectangle
+    will be identical to that one.  This is useful for subclasses.
+    """
     rectanglekwargs = {}
     if rectangle is not None:
       rectanglekwargs = {
-        "pscale": rectangle.pscale,
         **{
           field: getattr(rectangle, field)
           for field in dataclassy.fields(type(rectangle))
         }
       }
-      if "pscale" in kwargs:
-        del rectanglekwargs["pscale"]
     return super().transforminitargs(
       *args,
       **rectanglekwargs,
@@ -38,17 +51,44 @@ class Rectangle(DataClassWithPscale):
 
   @property
   def xvec(self):
+    """
+    Gives [x, y] as a numpy array
+    """
     return np.array([self.x, self.y])
 
   @property
   def cxvec(self):
+    """
+    Gives [cx, cy] as a numpy array
+    """
     return np.array([self.cx, self.cy])
 
   @property
   def shape(self):
+    """
+    Gives [w, h] as a numpy array
+    """
     return np.array([self.w, self.h])
 
 class RectangleWithImageBase(Rectangle):
+  """
+  Base class for any kind of rectangle that has a way of getting an image.
+  To get the image and keep it indefinitely, you can access `rectangle.image`.
+  However, you might also want to do instead
+  ```
+  with rectangle.using_image() as im:
+    ... #do stuff with im
+  ```
+  This frees up the memory of im after the with block is finished.
+
+  Subclasses have to implement `getimage`, which loads the image from
+  an im3 or component tiff or somewhere else.
+
+  A rectangle can also have transformations, which are applied to the
+  raw image to make the final image returned by `using_image()` or `image`.
+  They should inherit from RectangleTransformationBase below.
+  """
+
   __DEBUG = True
 
   def __user_init__(self, *args, transformations=[], **kwargs):
@@ -68,7 +108,10 @@ class RectangleWithImageBase(Rectangle):
 
   @abc.abstractmethod
   def getimage(self):
-    pass
+    """
+    Override this function in subclasses that actually implement
+    a way of loading the image
+    """
 
   @property
   def nimages(self):
@@ -78,18 +121,28 @@ class RectangleWithImageBase(Rectangle):
   #override getimage() instead and call super().getimage()
 
   def any_image(self, index):
-    #previous_image(-1) gives the actual image
-    #previous_image(-2) gives the previous image
-    #etc.
+    """
+    any_image(-1) gives the actual image
+    any_image(-2) gives the previous image, immediately before the last transformation
+    The image gets saved indefinitely until you call delete_any_image
+    etc.
+    """
     self.__accessed_image[index] = True
     return self.__image(index)
 
   def delete_any_image(self, index):
+    """
+    Call this to free the memory from an image accessed by any_image
+    """
     self.__accessed_image[index] = False
     self.__check_delete_images()
 
   @property
   def image(self):
+    """
+    Gives the HPF image.
+    It gets saved in memory until you call `del rectangle.image`
+    """
     return self.any_image(-1)
   @image.deleter
   def image(self):
@@ -100,10 +153,17 @@ class RectangleWithImageBase(Rectangle):
   def all_images(self):
     return [self.any_image(i) for i in range(len(self.__images_cache))]
   def delete_all_images(self, index):
+    """
+    Free up the memory from all previously accessed images
+    """
     self.__accessed_image[:] = False
     self.__check_delete_images()
 
   def __check_delete_images(self):
+    """
+    This gets called whenever you delete an image or leave a using_image context.
+    It deletes images that are no longer needed in memory.
+    """
     for i, (ctr, usingproperty) in enumerate(zip(self.__using_image_counter, self.__accessed_image)):
       if not ctr and not usingproperty:
         self.__images_cache[i] = None
@@ -120,6 +180,10 @@ class RectangleWithImageBase(Rectangle):
 
   @contextlib.contextmanager
   def using_image(self, index=-1):
+    """
+    Use this in a with statement to load the image for the HPF.
+    It gets freed from memory when the with statement ends.
+    """
     self.__using_image_counter[index] += 1
     try:
       yield self.__image(index)
@@ -137,6 +201,9 @@ class RectangleWithImageBase(Rectangle):
   def _imshowextent(self):
     return self.x, self.x+self.w, self.y+self.h, self.y
   def imshow(self, slice, *, imagescale=None):
+    """
+    Convenience function to show the image.
+    """
     if imagescale is None: imagescale = self.pscale
     extent = units.convertpscale(self._imshowextent, self.pscale, imagescale)
     with self.using_image() as im:
@@ -144,38 +211,22 @@ class RectangleWithImageBase(Rectangle):
 
 class RectangleTransformationBase(abc.ABC):
   @abc.abstractmethod
-  def transform(self, previousimage): pass
-
-class RectangleReadImageBase(RectangleWithImageBase):
-  @abc.abstractproperty
-  def imageshape(self): pass
-  @abc.abstractproperty
-  def imagefile(self): pass
-  @abc.abstractproperty
-  def imageshapeininput(self): pass
-  @abc.abstractproperty
-  def imagetransposefrominput(self): pass
-  @abc.abstractproperty
-  def imageslicefrominput(self): pass
-
-  def getimage(self):
-    image = np.ndarray(shape=self.imageshape, dtype=np.uint16)
-
-    with open(self.imagefile, "rb") as f:
-      #use fortran order, like matlab!
-      with memmapcontext(
-        f,
-        dtype=np.uint16,
-        shape=tuple(self.imageshapeininput),
-        order="F",
-        mode="r"
-      ) as memmap:
-        image[:] = memmap.transpose(self.imagetransposefrominput)[self.imageslicefrominput]
-
-    return image
+  def transform(self, previousimage):
+    """
+    Takes in the previous image, returns the new image.
+    """
 
 class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
-  def __user_init__(self, *args, imagefolder, layers, nlayers, with_seg=False, **kwargs):
+  """
+  Rectangle class that reads the image from a component tiff
+
+  imagefolder: folder where the component tiff is located
+  nlayers: the number of layers in the *input* file (optional, just used as a sanity check)
+  layers: which layers you actually want to access
+  with_seg: indicates if you want to use the _w_seg.tif which contains some segmentation info from inform
+  """
+
+  def __user_init__(self, *args, imagefolder, layers, nlayers=None, with_seg=False, **kwargs):
     super().__user_init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__layers = layers
@@ -195,6 +246,7 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
       pages = []
       shape = None
       dtype = None
+      #make sure the tiff is self consistent in shape and dtype
       for page in f.pages:
         if len(page.shape) == 2:
           pages.append(page)
@@ -207,18 +259,35 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
           elif dtype != page.dtype:
             raise ValueError(f"Found pages with different dtypes in the component tiff {dtype} {page.dtype}")
       expectpages = self.__nlayers
-      if self.__with_seg: expectpages += 5
-      if len(pages) != expectpages:
-        raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
+      if expectpages is not None:
+        if self.__with_seg: expectpages += 5
+        if len(pages) != expectpages:
+          raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
+
+      #make the destination array
       image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)
 
+      #load the desired layers
       for i, layer in enumerate(self.__layers):
         image[i] = pages[layer-1].asarray()
 
       return image
 
-class RectangleWithImageMultiLayer(RectangleReadImageBase):
-  def __user_init__(self, *args, imagefolder, filetype, width, height, layers, nlayers, xmlfolder=None, **kwargs):
+class RectangleWithImageMultiLayer(RectangleWithImageBase):
+  """
+  Rectangle class that reads the image from a sharded im3
+  (could be raw, flatw, etc.)
+
+  imagefolder: folder where the im3 image is located
+  filetype: flatWarp, camWarp, or raw (determines the file extension)
+  width, height: the shape of the HPF image
+  nlayers: the number of layers in the *input* file
+  layers: which layers you actually want to access
+  xmlfolder: the folder where the xml file with metadata for the HPF lives
+             (optional, but if you provide it then you can get the exposure time)
+  """
+
+  def __user_init__(self, *args, imagefolder, filetype, width, height, nlayers, layers, xmlfolder=None, **kwargs):
     super().__user_init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__filetype = filetype
@@ -238,6 +307,9 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
 
   @property
   def imagefile(self):
+    """
+    The full file path to the image file
+    """
     if self.__filetype=="flatWarp" :
       ext = ".fw"
     elif self.__filetype=="camWarp" :
@@ -254,10 +326,27 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
     return self.__nlayers, floattoint(self.__width / self.onepixel), floattoint(self.__height / self.onepixel)
   @property
   def imagetransposefrominput(self):
+    #it's saved as (layers, width, height), we want (layers, height, width)
     return (0, 2, 1)
   @property
   def imageslicefrominput(self):
     return tuple(_-1 for _ in self.__layers), slice(None), slice(None)
+
+  def getimage(self):
+    image = np.ndarray(shape=self.imageshape, dtype=np.uint16)
+
+    with open(self.imagefile, "rb") as f:
+      #use fortran order, like matlab!
+      with memmapcontext(
+        f,
+        dtype=np.uint16,
+        shape=tuple(self.imageshapeininput),
+        order="F",
+        mode="r"
+      ) as memmap:
+        image[:] = memmap.transpose(self.imagetransposefrominput)[self.imageslicefrominput]
+
+    return image
 
   @property
   def layers(self):
@@ -287,15 +376,29 @@ class RectangleWithImageMultiLayer(RectangleReadImageBase):
 
   @property
   def exposuretimes(self):
+    """
+    The exposure times for the HPF layers you access
+    """
     all = self.__allexposuretimesandbroadbandfilters
     return [all[layer-1][0] for layer in self.__layers]
 
   @property
   def broadbandfilters(self):
+    """
+    The broadband filter ids (numbered from 1) of the layers you access
+    """
     all = self.__allexposuretimesandbroadbandfilters
     return [all[layer-1][1] for layer in self.__layers]
 
 class RectangleWithImage(RectangleWithImageMultiLayer):
+  """
+  Single layer image read from a sharded im3.
+  You can also use RectangleWithImageMultiLayer and write layers=[i],
+  but this class gives you a 2D array as the image instead of a 3D array
+  with shape[0] = 1.
+  Also, in this class you can read a layer file (e.g. fw01).
+  """
+
   def __user_init__(self, *args, layer, readlayerfile=True, **kwargs):
     morekwargs = {
       "layers": (layer,),
@@ -341,8 +444,10 @@ class RectangleWithImage(RectangleWithImageMultiLayer):
   @property
   def imagetransposefrominput(self):
     if self.__readlayerfile:
+      #it's saved as (height, width), which is what we want
       return (0, 1, 2)
     else:
+      #it's saved as (layers, width, height), we want (layers, height, width)
       return (0, 2, 1)
   @property
   def imageslicefrominput(self):
@@ -353,14 +458,26 @@ class RectangleWithImage(RectangleWithImageMultiLayer):
 
   @property
   def exposuretime(self):
+    """
+    The exposure time for this layer
+    """
     _, = self.exposuretimes
     return _
   @property
   def broadbandfilter(self):
+    """
+    The broadband filter id for this layer
+    """
     _, = self.broadbandfilters
     return _
 
 class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
+  """
+  Single layer image read from a component tiff.
+  You can also use RectangleWithImageMultiLayer and write layers=[i],
+  but this class gives you a 2D array as the image instead of a 3D array
+  with shape[0] = 1.
+  """
   def __user_init__(self, *args, layer, **kwargs):
     morekwargs = {
       "layers": (layer,),
@@ -376,24 +493,50 @@ class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
     return image
 
 class RectangleCollection(abc.ABC):
+  """
+  Base class for a group of rectangles.
+  You can get a rectangledict from it, which allows indexing rectangles
+  by their id.
+  """
   @abc.abstractproperty
   def rectangles(self): pass
   @methodtools.lru_cache()
   @property
   def rectangledict(self):
+    """
+    Make a dict that allows accessing the rectangles in the collection
+    by their index
+    """
     return rectangledict(self.rectangles)
   @property
   def rectangleindices(self):
+    """
+    Indices of all rectangles in the collection.
+    """
     return {r.n for r in self.rectangles}
 
 class RectangleList(list, RectangleCollection):
+  """
+  A list of rectangles.  You can get rectangledict and rectangleindices from it.
+  """
   @property
   def rectangles(self): return self
 
 def rectangledict(rectangles):
+  """
+  Make a dict that allows accessing the rectangles by their index
+  """
   return {rectangle.n: i for i, rectangle in enumerate(rectangles)}
 
 def rectangleoroverlapfilter(selection, *, compatibility=False):
+  """
+  Makes a filter that can be called to determine whether or not a rectangle
+  or overlap is selected.
+  selection can be:
+    - None - selects all rectangles or overlaps
+    - list, tuple, set, etc. of numbers - returns rectangles or overlaps with those ids
+    - a function: just calls that function to determine whether it's selected
+  """
   if compatibility:
     if selection == -1:
       selection = None
@@ -413,6 +556,9 @@ def rectangleoroverlapfilter(selection, *, compatibility=False):
     raise ValueError(f"Unknown rectangle or overlap selection: {selection}")
 
 class RectangleProvideImage(RectangleWithImageBase):
+  """
+  Rectangle where you just input an image and that will be the image returned by image or using_image.
+  """
   def __user_init__(self, *args, image, **kwargs):
     self.__image = image
     super().__user_init__(*args, **kwargs)
@@ -420,6 +566,11 @@ class RectangleProvideImage(RectangleWithImageBase):
     return self.__image
 
 class RectangleFromOtherRectangle(RectangleWithImageBase):
+  """
+  Rectangle where the image comes from another rectangle.
+  The reason you'd want to do this is if you have transformations, but
+  also want the original rectangle to keep its images.
+  """
   def __user_init__(self, *args, originalrectangle, **kwargs):
     self.__originalrectangle = originalrectangle
     super().__user_init__(*args, rectangle=originalrectangle, readingfromfile=False, **kwargs)
@@ -431,6 +582,10 @@ class RectangleFromOtherRectangle(RectangleWithImageBase):
       return image
 
 class GeomLoadRectangle(Rectangle):
+  """
+  Rectangle that has a cellGeomLoad.csv
+  You have to provide the folder where that csv lives.
+  """
   def __user_init__(self, *args, geomfolder, **kwargs):
     self.__geomfolder = pathlib.Path(geomfolder)
     super().__user_init__(*args, **kwargs)
