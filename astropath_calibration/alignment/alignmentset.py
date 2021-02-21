@@ -2,7 +2,6 @@
 
 import contextlib, numpy as np, traceback
 
-from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase
 from ..utilities.tableio import readtable, writetable
 from .imagestats import ImageStats
