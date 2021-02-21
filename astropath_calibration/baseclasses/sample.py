@@ -1,4 +1,4 @@
-import abc, contextlib, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
