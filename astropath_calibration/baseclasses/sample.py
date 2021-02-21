@@ -8,7 +8,7 @@ from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import constantsdict, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleWithImage, RectangleWithImageMultiLayer
-from .overlap import Overlap, RectangleOverlapCollection
+from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 
 class SampleDef(MyDataClass):
   SampleID: int
@@ -462,7 +462,7 @@ class SampleThatReadsRectangles(SampleBase):
 class SampleThatReadsOverlaps(SampleThatReadsRectangles):
   overlaptype = Overlap #can be overridden in subclasses
 
-class ReadRectanglesBase(SampleThatReadsRectangles, RectangleCollection):
+class ReadRectanglesBase(SampleThatReadsRectangles, RectangleCollection, SampleBase):
   @abc.abstractmethod
   def readallrectangles(self): pass
   @abc.abstractproperty
@@ -616,7 +616,7 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
       raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
     return self.__layer
 
-class ReadRectanglesOverlapsBase(ReadRectanglesBase, SampleThatReadsOverlaps, RectangleOverlapCollection):
+class ReadRectanglesOverlapsBase(ReadRectanglesBase, SampleThatReadsOverlaps, RectangleOverlapCollection, OverlapCollection, SampleBase):
   @abc.abstractmethod
   def readalloverlaps(self): pass
   @property
@@ -642,26 +642,32 @@ class ReadRectanglesOverlapsBase(ReadRectanglesBase, SampleThatReadsOverlaps, Re
 class ReadRectanglesOverlapsIm3Base(ReadRectanglesOverlapsBase, ReadRectanglesIm3Base):
   pass
 
+class ReadRectanglesOverlapsComponentTiffBase(ReadRectanglesOverlapsBase, ReadRectanglesComponentTiffBase):
+  pass
+
 class ReadRectangles(ReadRectanglesBase, DbloadSample):
   @property
   def rectanglecsv(self): return "rect"
   def readallrectangles(self, **extrakwargs):
     return self.readcsv(self.rectanglecsv, self.rectangletype, extrakwargs={**self.rectangleextrakwargs, **extrakwargs})
 
-class ReadRectanglesIm3(ReadRectangles, ReadRectanglesIm3Base):
+class ReadRectanglesIm3(ReadRectanglesIm3Base, ReadRectangles):
   pass
 
-class ReadRectanglesComponentTiff(ReadRectangles, ReadRectanglesComponentTiffBase):
+class ReadRectanglesComponentTiff(ReadRectanglesComponentTiffBase, ReadRectangles):
   pass
 
-class ReadRectanglesOverlaps(ReadRectangles, ReadRectanglesOverlapsBase):
+class ReadRectanglesOverlaps(ReadRectanglesOverlapsBase, ReadRectangles):
   @property
   def overlapcsv(self): return "overlap"
   def readalloverlaps(self, *, overlaptype=None, **extrakwargs):
     if overlaptype is None: overlaptype = self.overlaptype
     return self.readcsv(self.overlapcsv, overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
 
-class ReadRectanglesOverlapsIm3(ReadRectanglesOverlaps, ReadRectanglesOverlapsIm3Base):
+class ReadRectanglesOverlapsIm3(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlaps):
+  pass
+
+class ReadRectanglesOverlapsComponentTiff(ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlaps):
   pass
 
 class XMLLayoutReader(SampleThatReadsOverlaps):
@@ -775,11 +781,17 @@ class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
 class ReadRectanglesIm3FromXML(ReadRectanglesIm3Base, ReadRectanglesFromXML):
   pass
 
-class ReadRectanglesOverlapsFromXML(ReadRectanglesFromXML, ReadRectanglesOverlapsBase):
+class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRectanglesFromXML):
+  pass
+
+class ReadRectanglesOverlapsFromXML(ReadRectanglesOverlapsBase, ReadRectanglesIm3Base, ReadRectanglesFromXML):
   def readalloverlaps(self, **kwargs):
     return self.getoverlaps(**kwargs)
 
-class ReadRectanglesOverlapsIm3FromXML(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsFromXML):
+class ReadRectanglesOverlapsIm3FromXML(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsFromXML, ReadRectanglesIm3FromXML):
+  pass
+
+class ReadRectanglesOverlapsComponentTiffFromXML(ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsFromXML, ReadRectanglesComponentTiffFromXML):
   pass
 
 class TempDirSample(SampleBase):

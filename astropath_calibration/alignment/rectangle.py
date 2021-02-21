@@ -1,6 +1,6 @@
 import collections, contextlib, contextlib2, cv2, more_itertools, numpy as np, sklearn.decomposition
 
-from ..baseclasses.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleTransformationBase, RectangleWithImage, RectangleWithImageBase, RectangleWithImageMultiLayer
+from ..baseclasses.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleTransformationBase, RectangleWithImage, RectangleWithImageBase, RectangleWithImageMultiLayer
 from ..utilities import units
 from ..utilities.misc import dummylogger
 from .flatfield import meanimage
@@ -80,6 +80,12 @@ class AlignmentRectangle(AlignmentRectangleBase, RectangleWithImage):
   pass
 
 class AlignmentRectangleMultiLayer(AlignmentRectangleBase, RectangleWithImageMultiLayer):
+  pass
+
+class AlignmentRectangleComponentTiff(AlignmentRectangleBase, RectangleReadComponentTiff):
+  pass
+
+class AlignmentRectangleComponentTiffMultiLayer(AlignmentRectangleBase, RectangleReadComponentTiffMultiLayer):
   pass
 
 class AlignmentRectangleProvideImage(AlignmentRectangleBase, RectangleProvideImage):
