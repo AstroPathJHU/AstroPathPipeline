@@ -6,6 +6,21 @@ from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .rectangle import Rectangle, RectangleCollection, RectangleList, rectangleoroverlapfilter, rectangleoroverlapfilter as overlapfilter
 
 class Overlap(DataClassWithPscale):
+  """
+  Overlap between two HPFs.
+
+  n: id of the overlap, starting from 1
+  p1, p2: ids of the two HPFs
+  x1, y1, x2, y2: location of the two HPFs
+  tag: gives the relative location of the HPFs:
+    1 2 3
+    4 5 6
+    7 8 9
+  nclip: how many pixels to cut off when doing alignment
+  rectangles: a list of rectangles, which can be just p1 and p2
+              but can also include others if that's easier
+  """
+
   pixelsormicrons = "microns"
 
   n: int
@@ -26,6 +41,11 @@ class Overlap(DataClassWithPscale):
     self.updaterectangles(rectangles)
 
   def updaterectangles(self, rectangles):
+    """
+    update the rectangles in the overlap with a new list
+    rectangles: a list of rectangles, which can be just p1 and p2
+                but can also include others if that's easier
+    """
     p1rect = None; p2rect=None
     for r in rectangles :
       if r.n==self.p1 :
@@ -40,6 +60,9 @@ class Overlap(DataClassWithPscale):
 
   @property
   def layer(self):
+    """
+    Layer number of the rectangles in the overlap
+    """
     try:
       layers = [r.layer for r in self.rectangles]
     except KeyError:
@@ -50,16 +73,34 @@ class Overlap(DataClassWithPscale):
 
   @property
   def x1vec(self):
+    """
+    [x1, y1] as a numpy array
+    """
     return np.array([self.x1, self.y1])
   @property
   def x2vec(self):
+    """
+    [x2, y2] as a numpy array
+    """
     return np.array([self.x2, self.y2])
 
 class OverlapCollection(abc.ABC):
+  """
+  Base class for a group of overlaps.
+  """
   @abc.abstractproperty
   def overlaps(self): pass
 
   def overlapgraph(self, useexitstatus=False):
+    """
+    Get a networkx graph object.
+    It has a node for each rectangle id and an edge for
+    each overlap in the collection.
+
+    If useexitstatus is true (which will only work if the overlaps
+    have been aligned), it will only include overlaps with an exit
+    status of 0.
+    """
     g = nx.DiGraph()
     for o in self.overlaps:
       if useexitstatus and o.result.exit: continue
@@ -68,16 +109,37 @@ class OverlapCollection(abc.ABC):
     return g
 
   def nislands(self, *args, **kwargs):
+    """
+    Number of islands in the overlap graph.
+
+    If useexitstatus is true (which will only work if the overlaps
+    have been aligned), it will only include overlaps with an exit
+    status of 0.
+    """
     return nx.number_strongly_connected_components(self.overlapgraph(*args, **kwargs))
 
   def islands(self, *args, **kwargs):
+    """
+    List of islands in the overlap graph.
+
+    If useexitstatus is true (which will only work if the overlaps
+    have been aligned), it will only include overlaps with an exit
+    status of 0.
+    """
     return list(nx.strongly_connected_components(self.overlapgraph(*args, **kwargs)))
 
   def overlapsdictkey(self, overlap):
+    """
+    Key to be used for computing overlaps dict (can be overridden in subclasses)
+    """
     return overlap.p1, overlap.p2
 
   @property
   def overlapsdict(self):
+    """
+    Gives a dict that can be used to access overlaps by the overlapsdictkey,
+    by default the two rectangle ids.
+    """
     result = {}
     for o in self.overlaps:
       key = self.overlapsdictkey(o)
@@ -88,24 +150,42 @@ class OverlapCollection(abc.ABC):
 
   @property
   def overlaprectangleindices(self):
+    """
+    Gives the ids of all rectangles in overlaps.
+    """
     return frozenset(o.p1 for o in self.overlaps) | frozenset(o.p2 for o in self.overlaps)
 
   @property
   def selectoverlaprectangles(self):
+    """
+    Gives a filter that returns whether or not the rectangle is in
+    one of the overlaps.
+    """
     return overlapfilter(self.overlaprectangleindices)
 
 class OverlapList(list, OverlapCollection):
+  """
+  A list of overlaps with all the functionality of OverlapCollections.
+  """
   @property
   def overlaps(self): return self
 
 class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
+  """
+  A collection of both rectangles and overlaps.  The overlapgraph
+  has metadata for the nodes and also includes rectangles that
+  aren't in an overlap.
+  """
   def overlapgraph(self, *args, **kwargs):
     g = super().overlapgraph(*args, **kwargs)
     for r in self.rectangles:
-      g.add_node(r.n)
+      g.add_node(r.n, rectangle=r)
     return g
 
 class RectangleOverlapList(RectangleOverlapCollection):
+  """
+  Contains a list of rectangles and a list of overlaps.
+  """
   def __init__(self, rectangles, overlaps):
     self.__rectangles = rectangles
     self.__overlaps = overlaps
@@ -116,6 +196,10 @@ class RectangleOverlapList(RectangleOverlapCollection):
   def overlaps(self): return self.__overlaps
 
 def rectangleoverlaplist_fromcsvs(dbloadfolder, *, layer, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, rectangletype=Rectangle, overlaptype=Overlap):
+  """
+  Standalone function to assemble lists of rectangles and overlaps from
+  the dbload folder.
+  """
   dbload = pathlib.Path(dbloadfolder)
   samp = dbload.parent.name
   dct = constantsdict(dbload/f"{samp}_constants.csv")
