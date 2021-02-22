@@ -46,6 +46,7 @@ class RectangleMSEComparisonInfo(MyDataClass) :
 #dataclass to hold an overlap's mse comparison information
 class OverlapMSEComparisonInfo(MyDataClass) :
     olap_n : int
+    olap_tag : int
     p1_rect_n : int 
     p2_rect_n : int
     p1_file : str = ''
@@ -260,7 +261,7 @@ def writeOverlapMSETable(rtd,rd,sid,etof,workingdir) :
         #add this layer's information to each overlap
         for olap in a.overlaps :
             if olap.n not in all_olap_mse_infos.keys() :
-                all_olap_mse_infos[olap.n] = OverlapMSEComparisonInfo(olap.n,olap.p1,olap.p2)
+                all_olap_mse_infos[olap.n] = OverlapMSEComparisonInfo(olap.n,olap.tag,olap.p1,olap.p2)
             if olap.result is None :
                 continue
             mse1 = olap.result.mse1
