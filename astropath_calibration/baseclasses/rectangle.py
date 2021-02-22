@@ -216,63 +216,6 @@ class RectangleTransformationBase(abc.ABC):
     Takes in the previous image, returns the new image.
     """
 
-class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
-  """
-  Rectangle class that reads the image from a component tiff
-
-  imagefolder: folder where the component tiff is located
-  nlayers: the number of layers in the *input* file (optional, just used as a sanity check)
-  layers: which layers you actually want to access
-  with_seg: indicates if you want to use the _w_seg.tif which contains some segmentation info from inform
-  """
-
-  def __user_init__(self, *args, imagefolder, layers, nlayers=None, with_seg=False, **kwargs):
-    super().__user_init__(*args, **kwargs)
-    self.__imagefolder = pathlib.Path(imagefolder)
-    self.__layers = layers
-    self.__nlayers = nlayers
-    self.__with_seg = with_seg
-
-  @property
-  def imagefile(self):
-    return self.__imagefolder/self.file.replace(".im3", f"_component_data{'_w_seg' if self.__with_seg else ''}.tif")
-
-  @property
-  def layers(self):
-    return self.__layers
-
-  def getimage(self):
-    with tifffile.TiffFile(self.imagefile) as f:
-      pages = []
-      shape = None
-      dtype = None
-      #make sure the tiff is self consistent in shape and dtype
-      for page in f.pages:
-        if len(page.shape) == 2:
-          pages.append(page)
-          if shape is None:
-            shape = page.shape
-          elif shape != page.shape:
-            raise ValueError(f"Found pages with different shapes in the component tiff {shape} {page.shape}")
-          if dtype is None:
-            dtype = page.dtype
-          elif dtype != page.dtype:
-            raise ValueError(f"Found pages with different dtypes in the component tiff {dtype} {page.dtype}")
-      expectpages = self.__nlayers
-      if expectpages is not None:
-        if self.__with_seg: expectpages += 5
-        if len(pages) != expectpages:
-          raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
-
-      #make the destination array
-      image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)
-
-      #load the desired layers
-      for i, layer in enumerate(self.__layers):
-        image[i] = pages[layer-1].asarray()
-
-      return image
-
 class RectangleWithImageMultiLayer(RectangleWithImageBase):
   """
   Rectangle class that reads the image from a sharded im3
@@ -470,6 +413,63 @@ class RectangleWithImage(RectangleWithImageMultiLayer):
     """
     _, = self.broadbandfilters
     return _
+
+class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
+  """
+  Rectangle class that reads the image from a component tiff
+
+  imagefolder: folder where the component tiff is located
+  nlayers: the number of layers in the *input* file (optional, just used as a sanity check)
+  layers: which layers you actually want to access
+  with_seg: indicates if you want to use the _w_seg.tif which contains some segmentation info from inform
+  """
+
+  def __user_init__(self, *args, imagefolder, layers, nlayers=None, with_seg=False, **kwargs):
+    super().__user_init__(*args, **kwargs)
+    self.__imagefolder = pathlib.Path(imagefolder)
+    self.__layers = layers
+    self.__nlayers = nlayers
+    self.__with_seg = with_seg
+
+  @property
+  def imagefile(self):
+    return self.__imagefolder/self.file.replace(".im3", f"_component_data{'_w_seg' if self.__with_seg else ''}.tif")
+
+  @property
+  def layers(self):
+    return self.__layers
+
+  def getimage(self):
+    with tifffile.TiffFile(self.imagefile) as f:
+      pages = []
+      shape = None
+      dtype = None
+      #make sure the tiff is self consistent in shape and dtype
+      for page in f.pages:
+        if len(page.shape) == 2:
+          pages.append(page)
+          if shape is None:
+            shape = page.shape
+          elif shape != page.shape:
+            raise ValueError(f"Found pages with different shapes in the component tiff {shape} {page.shape}")
+          if dtype is None:
+            dtype = page.dtype
+          elif dtype != page.dtype:
+            raise ValueError(f"Found pages with different dtypes in the component tiff {dtype} {page.dtype}")
+      expectpages = self.__nlayers
+      if expectpages is not None:
+        if self.__with_seg: expectpages += 5
+        if len(pages) != expectpages:
+          raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
+
+      #make the destination array
+      image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)
+
+      #load the desired layers
+      for i, layer in enumerate(self.__layers):
+        image[i] = pages[layer-1].asarray()
+
+      return image
 
 class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
   """
