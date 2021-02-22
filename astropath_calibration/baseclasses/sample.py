@@ -780,7 +780,9 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   def readallrectangles(self, **extrakwargs):
     rectangles = self.getrectanglelayout()
-    return [self.rectangletype(rectangle=r, readingfromfile=False, **self.rectangleextrakwargs, **extrakwargs) for r in rectangles]
+    rectangleextrakwargs = self.rectangleextrakwargs
+    del rectangleextrakwargs["pscale"]
+    return [self.rectangletype(rectangle=r, readingfromfile=False, **rectangleextrakwargs, **extrakwargs) for r in rectangles]
 
 class ReadRectanglesIm3FromXML(ReadRectanglesIm3Base, ReadRectanglesFromXML):
   pass
