@@ -1,5 +1,6 @@
 #imports
 from astropath_calibration.warping.alignmentset import AlignmentSetForWarping 
+from astropath_calibration.alignment.alignmentset import AlignmentSetComponentTiffFromXML
 from astropath_calibration.utilities.img_file_io import getMedianExposureTimesAndCorrectionOffsetsForSlide
 from astropath_calibration.utilities.tableio import writetable
 from astropath_calibration.utilities import units
@@ -41,6 +42,29 @@ class RectangleMSEComparisonInfo(MyDataClass) :
     lg4_mean_abs_diff_dev : float = 0.
     lg4_mean_frac_diff_dev : float = 0.
     lg4_mean_frac_diff_dev_err : float = 0.
+
+#dataclass to hold an overlap's mse comparison information
+class OverlapMSEComparisonInfo(MyDataClass) :
+    olap_n : int
+    p1_rect_n : int 
+    p2_rect_n : int
+    p1_file : str = ''
+    p1_x : float = -1.
+    p1_y : float = -1.
+    raw_dapi_mse1 : float = -1.
+    raw_dapi_mse2 : float = -1.
+    raw_lg2_mse1 : float = -1.
+    raw_lg2_mse2 : float = -1.
+    raw_lg3_mse1 : float = -1.
+    raw_lg3_mse2 : float = -1.
+    raw_lg4_mse1 : float = -1.
+    raw_lg4_mse2 : float = -1.
+    raw_lg5_mse1 : float = -1.
+    raw_lg5_mse2 : float = -1.
+    comp_tiff_dapi_mse1 : float = -1.
+    comp_tiff_dapi_mse2 : float = -1.
+    comp_tiff_af_mse1 : float = -1.
+    comp_tiff_af_mse2 : float = -1.
 
 #helper function to make sure all the necessary information is available from the command line arguments
 def checkArgs(args) :
@@ -219,6 +243,77 @@ def findOverexposedHPFsForSlide(rtd,rd,sid,etof,workingdir) :
         cropAndOverwriteImage(fn)
         writetable(f'{sid}_rectangle_mse_comparison_info.csv',rectangle_info_objs.values())
 
+#helper function to write out a bunch of overlaps' mse values in several different layers using raw and component tiff files
+def writeOverlapMSETable(rtd,rd,sid,etof,workingdir) :
+    #start the dictionary of all the overlap mse info objects keyed by overlap n
+    all_olap_mse_infos = {}
+    #get the correction details
+    med_ets, offsets = getMedianExposureTimesAndCorrectionOffsetsForSlide(rd,sid,etof)
+    #get overlap mse information from the slide's raw images in each of the brightest layers
+    for lgi,ln in enumerate(UNIV_CONST.BRIGHTEST_LAYERS_35) :
+        logger.info(f'Getting overlap mses for raw image layer {ln}....')
+        a = AlignmentSetForWarping(rd,rtd,sid,
+                                   med_et=med_ets[ln-1],offset=offsets[ln-1],flatfield=None,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,
+                                   layer=ln,filetype='raw')
+        a.logger.setLevel(logging.WARN)
+        a.align(mseonly=True)
+        #add this layer's information to each overlap
+        for olap in a.overlaps :
+            if olap.n not in all_olap_mse_infos.keys() :
+                all_olap_mse_infos[olap.n] = OverlapMSEComparisonInfo(olap.n,olap.p1,olap.p2)
+            if olap.result is None :
+                continue
+            mse1 = olap.result.mse1
+            mse2 = olap.result.mse2
+            if lgi==0 :
+                all_olap_mse_infos[olap.n].raw_dapi_mse1 = mse1
+                all_olap_mse_infos[olap.n].raw_dapi_mse2 = mse2
+            elif lgi==1 :
+                all_olap_mse_infos[olap.n].raw_lg2_mse1 = mse1
+                all_olap_mse_infos[olap.n].raw_lg2_mse2 = mse2
+            elif lgi==2 :
+                all_olap_mse_infos[olap.n].raw_lg3_mse1 = mse1
+                all_olap_mse_infos[olap.n].raw_lg3_mse2 = mse2
+            elif lgi==3 :
+                all_olap_mse_infos[olap.n].raw_lg4_mse1 = mse1
+                all_olap_mse_infos[olap.n].raw_lg4_mse2 = mse2
+            elif lgi==4 :
+                all_olap_mse_infos[olap.n].raw_lg5_mse1 = mse1
+                all_olap_mse_infos[olap.n].raw_lg5_mse2 = mse2
+        if lgi==0 :
+            for rect in a.rectangles :
+                for olap_n in all_olap_mse_infos.keys() :
+                    if all_olap_mse_infos[olap_n].p1_rect_n==rect.n :
+                        all_olap_mse_infos[olap_n].p1_file=rect.file
+                        all_olap_mse_infos[olap_n].p1_x = rect.cx
+                        all_olap_mse_infos[olap_n].p1_y = rect.cy
+    #get overlap mse information from the slide's component .tiff images in the DAPI and autofluorescence layers
+    for lgi,ln in enumerate((1,8)) :
+        logger.info(f'Getting overlap mses for component .tiff image layer {ln}....')
+        a = AlignmentSetComponentTiffFromXML(rd,sid,
+                                             nclip=UNIV_CONST.N_CLIP,
+                                             layer=ln)
+        a.logger.setLevel(logging.WARN)
+        a.align(mseonly=True)
+        asets.append(a)
+        #add this layer's information to each overlap
+        for olap in a.overlaps :
+            if olap.n not in all_olap_mse_infos.keys() :
+                all_olap_mse_infos[olap.n] = OverlapMSEComparisonInfo(olap.n,olap.p1,olap.p2)
+            if olap.result is None :
+                continue
+            mse1 = olap.result.mse1
+            mse2 = olap.result.mse2
+            if lgi==0 :
+                all_olap_mse_infos[olap.n].comp_tiff_dapi_mse1 = mse1
+                all_olap_mse_infos[olap.n].comp_tiff_dapi_mse2 = mse2
+            elif lgi==1 :
+                all_olap_mse_infos[olap.n].comp_tiff_af_mse1 = mse1
+                all_olap_mse_infos[olap.n].comp_tiff_af_mse2 = mse2
+    #write out the final table
+    with cd(workingdir) :
+        writetable(f'{sid}_overlap_mse_comparison_info.csv',rectangle_info_objs.values())
+
 #################### MAIN SCRIPT ####################
 
 def main(args=None) :
@@ -238,7 +333,8 @@ def main(args=None) :
     filehandler = logging.FileHandler(os.path.join(args.workingdir,f'{args.slideID}_overexposed_hpfs.log'))
     logger.addHandler(filehandler)
     #run alignments and check for overexposed HPFs
-    findOverexposedHPFsForSlide(args.rawfile_top_dir,args.root_dir,args.slideID,args.exposure_time_offset_file,args.workingdir)
+    #findOverexposedHPFsForSlide(args.rawfile_top_dir,args.root_dir,args.slideID,args.exposure_time_offset_file,args.workingdir)
+    writeOverlapMSETable(args.rawfile_top_dir,args.root_dir,args.slideID,args.exposure_time_offset_file,args.workingdir)
     logger.info('Done : )')
 
 if __name__=='__main__' :
