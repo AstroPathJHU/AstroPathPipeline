@@ -36,9 +36,14 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"alignment_test_for_jenkins"/"YZ71"/"dbload"/filename.name
       for filename in (thisfolder/"reference"/"alignment"/"YZ71").glob("YZ71_*")
     ] + [
+      thisfolder/"alignment_test_for_jenkins"/"component_tiff"/"M206"/"dbload"/filename.name
+      for filename in (thisfolder/"reference"/"alignment"/"component_tiff"/"M206").glob("M206_*")
+    ] + [
       thisfolder/"alignment_test_for_jenkins"/"logfiles"/"align.log",
+      thisfolder/"alignment_test_for_jenkins"/"component_tiff"/"logfiles"/"align.log",
       thisfolder/"alignment_test_for_jenkins"/"M21_1"/"logfiles"/"M21_1-align.log",
       thisfolder/"alignment_test_for_jenkins"/"YZ71"/"logfiles"/"YZ71-align.log",
+      thisfolder/"alignment_test_for_jenkins"/"component_tiff"/"M206"/"logfiles"/"M206-align.log",
     ]
 
   def testAlignment(self, SlideID="M21_1", componenttiff=False, **kwargs):
