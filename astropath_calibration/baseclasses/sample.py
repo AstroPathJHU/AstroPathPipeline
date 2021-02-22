@@ -7,7 +7,7 @@ from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import constantsdict, RectangleFile
 from .logging import getlogger
-from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleWithImage, RectangleWithImageMultiLayer
+from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 
 class SampleDef(MyDataClass):
@@ -509,9 +509,9 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
   @property
   def rectangletype(self):
     if self.multilayer:
-      return RectangleWithImageMultiLayer
+      return RectangleReadIm3MultiLayer
     else:
-      return RectangleWithImage
+      return RectangleReadIm3
   @property
   def rectangleextrakwargs(self):
     kwargs = {
@@ -780,7 +780,9 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   def readallrectangles(self, **extrakwargs):
     rectangles = self.getrectanglelayout()
-    return [self.rectangletype(rectangle=r, readingfromfile=False, **self.rectangleextrakwargs, **extrakwargs) for r in rectangles]
+    rectangleextrakwargs = self.rectangleextrakwargs
+    del rectangleextrakwargs["pscale"]
+    return [self.rectangletype(rectangle=r, readingfromfile=False, **rectangleextrakwargs, **extrakwargs) for r in rectangles]
 
 class ReadRectanglesIm3FromXML(ReadRectanglesIm3Base, ReadRectanglesFromXML):
   pass
@@ -788,7 +790,7 @@ class ReadRectanglesIm3FromXML(ReadRectanglesIm3Base, ReadRectanglesFromXML):
 class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRectanglesFromXML):
   pass
 
-class ReadRectanglesOverlapsFromXML(ReadRectanglesOverlapsBase, ReadRectanglesIm3Base, ReadRectanglesFromXML):
+class ReadRectanglesOverlapsFromXML(ReadRectanglesOverlapsBase, ReadRectanglesFromXML):
   def readalloverlaps(self, **kwargs):
     return self.getoverlaps(**kwargs)
 
