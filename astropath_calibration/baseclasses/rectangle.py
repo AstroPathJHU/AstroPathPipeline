@@ -200,14 +200,18 @@ class RectangleWithImageBase(Rectangle):
   @property
   def _imshowextent(self):
     return self.x, self.x+self.w, self.y+self.h, self.y
-  def imshow(self, slice, *, imagescale=None):
+  def imshow(self, *, imagescale=None, xlim=(), ylim=()):
     """
     Convenience function to show the image.
     """
     if imagescale is None: imagescale = self.pscale
     extent = units.convertpscale(self._imshowextent, self.pscale, imagescale)
+    xlim = (np.array(xlim) / units.onepixel(imagescale)).astype(float)
+    ylim = (np.array(ylim) / units.onepixel(imagescale)).astype(float)
     with self.using_image() as im:
-      plt.imshow(im[slice], extent=(extent / units.onepixel(imagescale)).astype(float))
+      plt.imshow(im, extent=(extent / units.onepixel(imagescale)).astype(float))
+      plt.xlim(*xlim)
+      plt.ylim(*ylim)
 
 class RectangleTransformationBase(abc.ABC):
   @abc.abstractmethod
