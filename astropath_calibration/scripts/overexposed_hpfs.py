@@ -10,7 +10,7 @@ from astropath_calibration.utilities.config import CONST as UNIV_CONST
 from matplotlib import colors
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt
-import logging, os, dataclasses
+import logging, os
 units.setup('fast')
 
 #constants
@@ -295,7 +295,6 @@ def writeOverlapMSETable(rtd,rd,sid,etof,workingdir) :
                                              layer=ln)
         a.logger.setLevel(logging.WARN)
         a.align(mseonly=True)
-        asets.append(a)
         #add this layer's information to each overlap
         for olap in a.overlaps :
             if olap.n not in all_olap_mse_infos.keys() :
@@ -312,7 +311,7 @@ def writeOverlapMSETable(rtd,rd,sid,etof,workingdir) :
                 all_olap_mse_infos[olap.n].comp_tiff_af_mse2 = mse2
     #write out the final table
     with cd(workingdir) :
-        writetable(f'{sid}_overlap_mse_comparison_info.csv',rectangle_info_objs.values())
+        writetable(f'{sid}_overlap_mse_comparison_info.csv',all_olap_mse_infos.values())
 
 #################### MAIN SCRIPT ####################
 
