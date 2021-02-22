@@ -92,13 +92,12 @@ class RectangleWithImageBase(Rectangle):
   __DEBUG = True
 
   def __user_init__(self, *args, transformations=[], **kwargs):
-    self.__debug_load_images_counter = []  #in case something fails in super().__user_init__(), __del__ will still work
-    super().__user_init__(*args, **kwargs)
     self.__transformations = transformations
     self.__images_cache = [None for _ in range(self.nimages)]
     self.__accessed_image = np.zeros(dtype=bool, shape=self.nimages)
     self.__using_image_counter = np.zeros(dtype=int, shape=self.nimages)
     self.__debug_load_images_counter = np.zeros(dtype=int, shape=self.nimages)
+    super().__user_init__(*args, **kwargs)
 
   def __del__(self):
     if self.__DEBUG:
@@ -170,6 +169,7 @@ class RectangleWithImageBase(Rectangle):
 
   def __image(self, i):
     if self.__images_cache[i] is None:
+      self.__debug_load_images_counter[i] += 1
       if i < 0: i = self.nimages + i
       if i == 0:
         self.__images_cache[i] = self.getimage()
