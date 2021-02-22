@@ -1,6 +1,6 @@
 import contextlib2, logging, more_itertools, numpy as np, os, pathlib, re
 from astropath_calibration.alignment.alignmentcohort import AlignmentCohort
-from astropath_calibration.alignment.alignmentset import AlignmentSet, AlignmentSetFromXML, ImageStats
+from astropath_calibration.alignment.alignmentset import AlignmentSet, AlignmentSetComponentTiff, AlignmentSetFromXML, ImageStats
 from astropath_calibration.alignment.overlap import AlignmentResult
 from astropath_calibration.alignment.field import Field, FieldOverlap
 from astropath_calibration.alignment.stitch import AffineEntry
@@ -15,15 +15,17 @@ thisfolder = pathlib.Path(__file__).parent
 class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
   @classmethod
   def filestocopy(cls):
-    for SlideID in "M21_1", "YZ71":
+    for SlideID in "M21_1", "YZ71", "M206":
       olddbload = thisfolder/"data"/SlideID/"dbload"
       newdbload = thisfolder/"alignment_test_for_jenkins"/SlideID/"dbload"
+      newdbload2 = thisfolder/"alignment_test_for_jenkins"/"component_tiff"/SlideID/"dbload"
       for csv in (
         "constants",
         "overlap",
         "rect",
       ):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
+        yield olddbload/f"{SlideID}_{csv}.csv", newdbload2
 
   @property
   def outputfilenames(self):
@@ -34,21 +36,35 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"alignment_test_for_jenkins"/"YZ71"/"dbload"/filename.name
       for filename in (thisfolder/"reference"/"alignment"/"YZ71").glob("YZ71_*")
     ] + [
+      thisfolder/"alignment_test_for_jenkins"/"component_tiff"/"M206"/"dbload"/filename.name
+      for filename in (thisfolder/"reference"/"alignment"/"component_tiff"/"M206").glob("M206_*")
+    ] + [
       thisfolder/"alignment_test_for_jenkins"/"logfiles"/"align.log",
+      thisfolder/"alignment_test_for_jenkins"/"component_tiff"/"logfiles"/"align.log",
       thisfolder/"alignment_test_for_jenkins"/"M21_1"/"logfiles"/"M21_1-align.log",
       thisfolder/"alignment_test_for_jenkins"/"YZ71"/"logfiles"/"YZ71-align.log",
+      thisfolder/"alignment_test_for_jenkins"/"component_tiff"/"M206"/"logfiles"/"M206-align.log",
     ]
 
-  def testAlignment(self, SlideID="M21_1", **kwargs):
+  def testAlignment(self, SlideID="M21_1", componenttiff=False, **kwargs):
     samp = SampleDef(SlideID=SlideID, SampleID=0, Project=0, Cohort=0)
-    a = AlignmentSet(
+    dbloadroot = thisfolder/"alignment_test_for_jenkins"/("" if not componenttiff else "component_tiff")
+    alignmentsettype = AlignmentSet if not componenttiff else AlignmentSetComponentTiff
+    alignmentsetargs = (
       thisfolder/"data",
       thisfolder/"data"/"flatw",
       samp,
+    ) if not componenttiff else (
+      thisfolder/"data",
+      samp,
+    )
+    a = alignmentsettype(
+      *alignmentsetargs,
       uselogfiles=True,
-      dbloadroot=thisfolder/"alignment_test_for_jenkins",
-      logroot=thisfolder/"alignment_test_for_jenkins",
-      **kwargs
+      dbloadroot=dbloadroot,
+      logroot=dbloadroot,
+      layer=1,
+      **kwargs,
     )
     with a:
       a.getDAPI()
@@ -56,12 +72,12 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       a.stitch(checkwriting=True)
 
     try:
-      self.compareoutput(a, SlideID=SlideID)
+      self.compareoutput(a, SlideID=SlideID, componenttiff=componenttiff)
     except:
       self.saveoutput()
       raise
 
-  def compareoutput(self, alignmentset, SlideID="M21_1"):
+  def compareoutput(self, alignmentset, SlideID="M21_1", componenttiff=False):
     a = alignmentset
     for filename, cls, extrakwargs in (
       (f"{SlideID}_imstat.csv", ImageStats, {"pscale": a.pscale}),
@@ -70,9 +86,11 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       (f"{SlideID}_affine.csv", AffineEntry, {}),
       (f"{SlideID}_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "nclip": a.nclip}),
     ):
+      testfolder = thisfolder/"alignment_test_for_jenkins"/("" if not componenttiff else "component_tiff")
+      reffolder = thisfolder/"reference"/"alignment"/("" if not componenttiff else "component_tiff")
       try:
-        rows = readtable(thisfolder/"alignment_test_for_jenkins"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        targetrows = readtable(thisfolder/"reference"/"alignment"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        rows = readtable(testfolder/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        targetrows = readtable(reffolder/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           if cls == AlignmentResult and row.exit != 0 and target.exit != 0: continue
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
@@ -80,10 +98,10 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
         raise ValueError(f"Error in {filename}")
 
     for log in (
-      thisfolder/"alignment_test_for_jenkins"/"logfiles"/"align.log",
-      thisfolder/"alignment_test_for_jenkins"/SlideID/"logfiles"/f"{SlideID}-align.log",
+      testfolder/"logfiles"/"align.log",
+      testfolder/SlideID/"logfiles"/f"{SlideID}-align.log",
     ):
-      ref = thisfolder/"reference"/"alignment"/SlideID/log.name
+      ref = reffolder/SlideID/log.name
       with open(ref) as fref, open(log) as fnew:
         subs = (";[^;]*$", ""), (r"(WARNING: (component tiff|xml files|constants\.csv)).*$", r"\1")
         from astropath_calibration.utilities.version import astropathversion
@@ -365,3 +383,6 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       readfilename = thisfolder/"reference"/"alignment"/SlideID/f"{SlideID}_align.csv"
       a.readalignments(filename=readfilename)
       a.stitch()
+
+  def testComponentTiff(self, SlideID="M206"):
+    self.testAlignment(SlideID=SlideID, componenttiff=True)

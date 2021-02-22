@@ -34,13 +34,13 @@ class TestGeom(TestBaseSaveOutput):
       targetrows = readtable(fieldreference, Boundary, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5)
-        self.assertGreater(row.poly.totalarea, 0)
+        self.assertGreater(row.poly.area, 0)
 
       rows = readtable(tumorfilename, Boundary, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
       targetrows = readtable(tumorreference, Boundary, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5)
-        self.assertGreater(row.poly.totalarea, 0)
+        self.assertGreater(row.poly.area, 0)
     except:
       self.saveoutput()
       raise

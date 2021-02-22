@@ -137,7 +137,7 @@ def maximize1D():
 def islands():
   A = alignmentset()
   with plt.rc_context(rc=rc):
-    plt.imshow(A.image())
+    plt.imshow(A.qptiffjpgimage())
     plt.xticks([])
     plt.yticks([])
     plt.savefig(here/"islands.pdf")
