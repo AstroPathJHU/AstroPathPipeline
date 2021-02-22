@@ -1,4 +1,4 @@
-import collections, contextlib, cv2, logging, matplotlib.pyplot as plt, numpy as np, os, PIL.Image, re, scipy.stats, uncertainties as unc
+import collections, contextlib, cv2, itertools, logging, matplotlib.pyplot as plt, more_itertools, numpy as np, os, PIL.Image, re, scipy.stats, uncertainties as unc
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -241,6 +241,12 @@ def dict_zip_equal(*dicts):
     if d.keys() != keys:
       raise UnequalDictsError(details=(keys, i, d.keys()))
   return {k: tuple(d[k] for d in dicts) for k in keys}
+
+def dict_product(dct):
+  keys = dct.keys()
+  valuelists = dct.values()
+  for values in itertools.product(*valuelists):
+    yield {k: v for k, v in more_itertools.zip_equal(keys, values)}
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
