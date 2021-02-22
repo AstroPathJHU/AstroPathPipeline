@@ -82,13 +82,14 @@ class AlignmentSetBase(SampleBase):
 
   def getDAPI(self, keeprawimages=False, mean_image=None):
     if self.__images is None or keeprawimages:
+      if self.__images is None: self.__images = self.enter_context(contextlib.ExitStack())
       with contextlib.ExitStack() as stack:
         for r in self.rectangles:
           stack.enter_context(r.using_image_before_flatfield())
           if keeprawimages:
-            for r in self.rectangles:
-              self.enter_context(r.using_image_before_flatfield())
-        self.__images = [self.enter_context(r.using_image()) for r in self.rectangles]
+            self.__images.enter_context(r.using_image_before_flatfield())
+        for r in self.rectangles:
+          self.__images.enter_context(r.using_image())
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -110,6 +111,10 @@ class AlignmentSetBase(SampleBase):
     imgs            = list of WarpImages to use for update
     usewarpedimages = if True, warped rather than raw images will be read
     """
+    if self.__images is not None:
+      self.__images.close()
+      self.__images = None
+
     for img in imgs:
       if usewarpedimages :
         thisupdateimg=img.warped_image

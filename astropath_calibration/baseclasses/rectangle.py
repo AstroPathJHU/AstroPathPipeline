@@ -1,4 +1,4 @@
-import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, warnings
+import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation
 from ..utilities.misc import floattoint, memmapcontext
@@ -89,7 +89,13 @@ class RectangleWithImageBase(Rectangle):
   They should inherit from RectangleTransformationBase below.
   """
 
+  #if __DEBUG is true, then when the rectangle is deleted, it will print
+  #a warning if its image has been loaded multiple times, for debug
+  #purposes.  If __DEBUG_PRINT_TRACEBACK is also true, it will print the
+  #tracebacks for each of the times the image was loaded.
   __DEBUG = True
+  def __DEBUG_PRINT_TRACEBACK(self, i):
+    return False
 
   def __user_init__(self, *args, transformations=[], **kwargs):
     self.__transformations = transformations
@@ -97,13 +103,16 @@ class RectangleWithImageBase(Rectangle):
     self.__accessed_image = np.zeros(dtype=bool, shape=self.nimages)
     self.__using_image_counter = np.zeros(dtype=int, shape=self.nimages)
     self.__debug_load_images_counter = np.zeros(dtype=int, shape=self.nimages)
+    self.__debug_load_images_tracebacks = [[] for _ in range(self.nimages)]
     super().__user_init__(*args, **kwargs)
 
   def __del__(self):
     if self.__DEBUG:
       for i, ctr in enumerate(self.__debug_load_images_counter):
         if ctr > 1:
-           warnings.warn(f"Loaded image {i} for rectangle {self} {ctr} times")
+          for formattedtb in self.__debug_load_images_tracebacks[i]:
+            print("".join(formattedtb))
+          warnings.warn(f"Loaded image {i} for rectangle {self} {ctr} times")
 
   @abc.abstractmethod
   def getimage(self):
@@ -170,6 +179,8 @@ class RectangleWithImageBase(Rectangle):
   def __image(self, i):
     if self.__images_cache[i] is None:
       self.__debug_load_images_counter[i] += 1
+      if self.__DEBUG_PRINT_TRACEBACK(i):
+        self.__debug_load_images_tracebacks[i].append(traceback.format_stack())
       if i < 0: i = self.nimages + i
       if i == 0:
         self.__images_cache[i] = self.getimage()
