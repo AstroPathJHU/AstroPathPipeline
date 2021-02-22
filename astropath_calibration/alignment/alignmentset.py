@@ -35,6 +35,7 @@ class AlignmentSetBase(SampleBase):
 
     self.gpufftdict = None
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
+    self.__images = None
 
   @property
   def logmodule(self): return "align"
@@ -80,13 +81,14 @@ class AlignmentSetBase(SampleBase):
     return sum_mse
 
   def getDAPI(self, keeprawimages=False, mean_image=None):
-    with contextlib.ExitStack() as stack:
-      for r in self.rectangles:
-        stack.enter_context(r.using_image_before_flatfield())
-        if keeprawimages:
-          for r in self.rectangles:
-            self.enter_context(r.using_image_before_flatfield())
-      self.images = [self.enter_context(r.using_image()) for r in self.rectangles]
+    if self.__images is None or keeprawimages:
+      with contextlib.ExitStack() as stack:
+        for r in self.rectangles:
+          stack.enter_context(r.using_image_before_flatfield())
+          if keeprawimages:
+            for r in self.rectangles:
+              self.enter_context(r.using_image_before_flatfield())
+        self.__images = [self.enter_context(r.using_image()) for r in self.rectangles]
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
