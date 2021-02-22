@@ -216,7 +216,7 @@ class RectangleTransformationBase(abc.ABC):
     Takes in the previous image, returns the new image.
     """
 
-class RectangleWithImageMultiLayer(RectangleWithImageBase):
+class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   """
   Rectangle class that reads the image from a sharded im3
   (could be raw, flatw, etc.)
@@ -333,10 +333,10 @@ class RectangleWithImageMultiLayer(RectangleWithImageBase):
     all = self.__allexposuretimesandbroadbandfilters
     return [all[layer-1][1] for layer in self.__layers]
 
-class RectangleWithImage(RectangleWithImageMultiLayer):
+class RectangleReadIm3(RectangleReadIm3MultiLayer):
   """
   Single layer image read from a sharded im3.
-  You can also use RectangleWithImageMultiLayer and write layers=[i],
+  You can also use RectangleReadIm3MultiLayer and write layers=[i],
   but this class gives you a 2D array as the image instead of a 3D array
   with shape[0] = 1.
   Also, in this class you can read a layer file (e.g. fw01).
@@ -474,7 +474,7 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
 class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
   """
   Single layer image read from a component tiff.
-  You can also use RectangleWithImageMultiLayer and write layers=[i],
+  You can also use RectangleReadIm3MultiLayer and write layers=[i],
   but this class gives you a 2D array as the image instead of a 3D array
   with shape[0] = 1.
   """

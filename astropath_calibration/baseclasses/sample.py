@@ -7,7 +7,7 @@ from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import constantsdict, RectangleFile
 from .logging import getlogger
-from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleWithImage, RectangleWithImageMultiLayer
+from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 
 class SampleDef(MyDataClass):
@@ -509,9 +509,9 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
   @property
   def rectangletype(self):
     if self.multilayer:
-      return RectangleWithImageMultiLayer
+      return RectangleReadIm3MultiLayer
     else:
-      return RectangleWithImage
+      return RectangleReadIm3
   @property
   def rectangleextrakwargs(self):
     kwargs = {
