@@ -63,7 +63,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       uselogfiles=True,
       dbloadroot=dbloadroot,
       logroot=dbloadroot,
-      **kwargs
+      layer=1,
+      **kwargs,
     )
     with a:
       a.getDAPI()

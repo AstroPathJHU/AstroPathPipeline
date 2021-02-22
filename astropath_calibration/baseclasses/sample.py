@@ -790,7 +790,7 @@ class ReadRectanglesIm3FromXML(ReadRectanglesIm3Base, ReadRectanglesFromXML):
 class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRectanglesFromXML):
   pass
 
-class ReadRectanglesOverlapsFromXML(ReadRectanglesOverlapsBase, ReadRectanglesIm3Base, ReadRectanglesFromXML):
+class ReadRectanglesOverlapsFromXML(ReadRectanglesOverlapsBase, ReadRectanglesFromXML):
   def readalloverlaps(self, **kwargs):
     return self.getoverlaps(**kwargs)
 
