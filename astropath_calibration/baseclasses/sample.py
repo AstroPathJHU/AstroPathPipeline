@@ -754,6 +754,7 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase):
 
   @property
   def nlayers(self):
+    if self.__readlayerfile: return 1
     return self.nlayersim3
   @property
   def rectangletype(self):

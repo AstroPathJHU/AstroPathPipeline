@@ -362,6 +362,8 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
       "layers": (layer,),
     }
     if readlayerfile:
+      if kwargs.pop("nlayers", 1) != 1:
+        raise ValueError("Provided nlayers!=1, readlayerfile=True")
       morekwargs.update({
         "nlayers": 1,
       })
