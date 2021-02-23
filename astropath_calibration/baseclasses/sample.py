@@ -559,20 +559,16 @@ class FlatwSampleBase(SampleBase):
   root2: Root location of the im3 images.
          (The images are in root2/SlideID)
   """
-  def __init__(self, root, root2, samp, *args, root3=None, **kwargs):
+  def __init__(self, root, root2, samp, *args, **kwargs):
     super().__init__(root=root, samp=samp, *args, **kwargs)
     self.root2 = pathlib.Path(root2)
-    self.__root3 = pathlib.Path(root3) if root3 is not None else root3
 
   @property
   def root1(self): return self.root
 
   @property
   def possiblexmlfolders(self):
-    result = super().possiblexmlfolders + [self.root2/self.SlideID]
-    if self.__root3 is not None:
-      result.append(self.__root3/self.SlideID)
-    return result
+    return super().possiblexmlfolders + [self.root2/self.SlideID]
 
 class ZoomSampleBase(SampleBase):
   """
