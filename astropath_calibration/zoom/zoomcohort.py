@@ -1,7 +1,7 @@
-from ..baseclasses.cohort import DbloadCohort, LayerCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort
+from ..baseclasses.cohort import DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort
 from .zoom import Zoom
 
-class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort, LayerCohort):
+class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort, SelectLayersCohort):
   def __init__(self, *args, mode="vips", **kwargs):
     self.__mode = mode
     super().__init__(*args, **kwargs)
