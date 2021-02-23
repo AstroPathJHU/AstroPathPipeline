@@ -2,7 +2,7 @@ import cv2, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, sc
 from ..alignment.field import Field
 from ..baseclasses.polygon import DataClassWithPolygon, polygonfield
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLoadRectangle
-from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesComponentTiff
+from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff
 from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
 from ..utilities.misc import dict_product, dummylogger
@@ -13,7 +13,7 @@ from ..utilities.units.dataclasses import distancefield
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
-class GeomCellSample(GeomSampleBase, ReadRectanglesComponentTiff, DbloadSample):
+class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample):
   MEMBRANE_TUMOR = 13
   MEMBRANE_IMMUNE = 12
   NUCLEUS_TUMOR = 11

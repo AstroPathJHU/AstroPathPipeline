@@ -867,7 +867,7 @@ class ReadRectanglesOverlapsComponentTiffBase(ReadRectanglesOverlapsBase, ReadRe
   and loads the rectangle images from component tiff files.
   """
 
-class ReadRectangles(ReadRectanglesBase, DbloadSample):
+class ReadRectanglesDbload(ReadRectanglesBase, DbloadSample):
   """
   Base class for any sample that reads rectangles from the dbload folder.
   """
@@ -876,19 +876,19 @@ class ReadRectangles(ReadRectanglesBase, DbloadSample):
   def readallrectangles(self, **extrakwargs):
     return self.readcsv(self.rectanglecsv, self.rectangletype, extrakwargs={**self.rectangleextrakwargs, **extrakwargs})
 
-class ReadRectanglesIm3(ReadRectanglesIm3Base, ReadRectangles):
+class ReadRectanglesDbloadIm3(ReadRectanglesIm3Base, ReadRectanglesDbload):
   """
   Base class for any sample that reads rectangles from the dbload folder
   and loads the rectangle images from im3 files.
   """
 
-class ReadRectanglesComponentTiff(ReadRectanglesComponentTiffBase, ReadRectangles):
+class ReadRectanglesDbloadComponentTiff(ReadRectanglesComponentTiffBase, ReadRectanglesDbload):
   """
   Base class for any sample that reads rectangles from the dbload folder
   and loads the rectangle images from component tiff files.
   """
 
-class ReadRectanglesOverlaps(ReadRectanglesOverlapsBase, ReadRectangles):
+class ReadRectanglesOverlapsDbload(ReadRectanglesOverlapsBase, ReadRectanglesDbload):
   """
   Base class for any sample that reads rectangles and overlaps from the dbload folder.
   """
@@ -898,13 +898,13 @@ class ReadRectanglesOverlaps(ReadRectanglesOverlapsBase, ReadRectangles):
     if overlaptype is None: overlaptype = self.overlaptype
     return self.readcsv(self.overlapcsv, overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
 
-class ReadRectanglesOverlapsIm3(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlaps):
+class ReadRectanglesOverlapsDbloadIm3(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsDbload, ReadRectanglesDbloadIm3):
   """
   Base class for any sample that reads rectangles and overlaps from the dbload folder
   and loads the rectangle images from im3 files.
   """
 
-class ReadRectanglesOverlapsComponentTiff(ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlaps):
+class ReadRectanglesOverlapsDbloadComponentTiff(ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsDbload, ReadRectanglesDbloadComponentTiff):
   """
   Base class for any sample that reads rectangles and overlaps from the dbload folder
   and loads the rectangle images from component tiff files.

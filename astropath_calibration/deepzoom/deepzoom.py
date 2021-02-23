@@ -1,10 +1,10 @@
 import collections, functools, numpy as np, os, PIL, re
 
-from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, ReadRectanglesComponentTiff, ZoomSampleBase
+from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, ReadRectanglesDbloadComponentTiff, ZoomSampleBase
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.tableio import pathfield, writetable
 
-class DeepZoomSample(ReadRectanglesComponentTiff, DbloadSampleBase, ZoomSampleBase, DeepZoomSampleBase):
+class DeepZoomSample(ReadRectanglesDbloadComponentTiff, DbloadSampleBase, ZoomSampleBase, DeepZoomSampleBase):
   def __init__(self, *args, tilesize=256, **kwargs):
     super().__init__(*args, **kwargs)
     self.__tilesize = tilesize

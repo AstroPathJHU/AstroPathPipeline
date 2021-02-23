@@ -2,14 +2,14 @@ import argparse, contextlib, cv2, itertools, methodtools, numpy as np, os, pathl
 
 from ..alignment.field import Field
 from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
-from ..baseclasses.sample import ReadRectanglesComponentTiff, TempDirSample, ZoomSampleBase
+from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, ZoomSampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint, memmapcontext, PILmaximagepixels
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
   pass
 
-class ZoomSample(ReadRectanglesComponentTiff, ZoomSampleBase, TempDirSample):
+class ZoomSample(ReadRectanglesDbloadComponentTiff, ZoomSampleBase, TempDirSample):
   rectanglecsv = "fields"
   rectangletype = FieldReadComponentTiffMultiLayer
   def __init__(self, *args, zoomtilesize=16384, **kwargs):
