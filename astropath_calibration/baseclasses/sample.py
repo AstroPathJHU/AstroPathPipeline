@@ -703,8 +703,9 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
   readlayerfile: whether or not to read from a file with a single layer, e.g. .fw01
   """
 
-  def __init__(self, *args, filetype, layer=None, layers=None, readlayerfile=True, **kwargs):
+  def __init__(self, *args, filetype, layer=None, layers=None, readlayerfile=None, **kwargs):
     self.__filetype = filetype
+    if readlayerfile is None: readlayerfile = not self.multilayer
 
     if self.multilayer:
       if layer is not None:
