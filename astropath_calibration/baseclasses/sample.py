@@ -553,7 +553,7 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
     """
     return self.constantsdict["apscale"]
 
-class FlatwSampleBase(SampleBase):
+class Im3SampleBase(SampleBase):
   """
   Base class for any sample that uses sharded im3 images.
   root2: Root location of the im3 images.
@@ -679,7 +679,7 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
   @property
   def rectangles(self): return self.__rectangles
 
-class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
+class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase):
   """
   Base class for any sample that loads images from an im3 file.
   filetype: "raw", "flatWarp", or "camWarp"
