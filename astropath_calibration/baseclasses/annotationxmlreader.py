@@ -1,5 +1,5 @@
 import abc, dateutil, jxmlease, methodtools, numpy as np, pathlib
-from ..baseclasses.csvclasses import Globals, Perimeter
+from ..baseclasses.csvclasses import ROIGlobals, ROIPerimeter
 from ..baseclasses.rectangle import Rectangle
 from ..utilities import units
 from ..utilities.misc import floattoint
@@ -33,10 +33,10 @@ class AnnotationXMLReader(units.ThingWithPscale):
       ):
         annotation = AnnotationFactory(node, pscale=self.pscale)
         globalkwargs = annotation.globals
-        if globalkwargs is not None: globals.append(Globals(**globalkwargs, pscale=self.pscale))
+        if globalkwargs is not None: globals.append(ROIGlobals(**globalkwargs, pscale=self.pscale))
         perimeterkwargs = annotation.perimeters
         if perimeterkwargs is not None: perimeters += [
-          Perimeter(**kwargs, pscale=self.pscale)
+          ROIPerimeter(**kwargs, pscale=self.pscale)
             for kwargs in perimeterkwargs
         ]
 
