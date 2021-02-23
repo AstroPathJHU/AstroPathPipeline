@@ -9,6 +9,8 @@ class DeepZoomSample(ReadRectanglesDbloadComponentTiff, DbloadSampleBase, ZoomSa
     super().__init__(*args, **kwargs)
     self.__tilesize = tilesize
 
+  multilayer = True
+
   @property
   def logmodule(self): return "deepzoom"
 

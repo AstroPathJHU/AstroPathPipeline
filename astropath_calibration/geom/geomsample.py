@@ -18,7 +18,6 @@ class GeomSample(ReadRectanglesDbloadComponentTiff):
   @property
   def logmodule(self): return "geom"
 
-  multilayer = False
   @property
   def rectanglecsv(self): return "fields"
   rectangletype = FieldReadComponentTiff

@@ -817,8 +817,6 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers):
     }
     return kwargs
 
-  multilayer = True #can override in subclasses
-
 class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection, OverlapCollection, SampleBase):
   """
   Base class for any sample that reads rectangles and overlaps from any source.
@@ -842,8 +840,6 @@ class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection,
   @property
   def overlapextrakwargs(self):
     return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}
-
-  multilayer = False #can override in subclasses
 
   @property
   def overlaps(self): return self.__overlaps

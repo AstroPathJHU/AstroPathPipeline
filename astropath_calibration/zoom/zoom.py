@@ -15,6 +15,7 @@ class ZoomSample(ReadRectanglesDbloadComponentTiff, ZoomSampleBase, TempDirSampl
   def __init__(self, *args, zoomtilesize=16384, **kwargs):
     self.__tilesize = zoomtilesize
     super().__init__(*args, **kwargs)
+  multilayer = True
   @property
   def zoomtilesize(self): return self.__tilesize
   @methodtools.lru_cache()

@@ -40,6 +40,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       **kwargs
     )
 
+  multilayer = True
+
   @property
   def rectanglecsv(self): return "fields"
   rectangletype = FieldReadComponentTiffMultiLayer
