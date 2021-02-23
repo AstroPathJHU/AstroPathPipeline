@@ -32,7 +32,7 @@ class TestPrepDb(unittest.TestCase):
       sample.writemetadata()
 
     for filename, cls, extrakwargs in (
-      (f"{SlideID}_annotations.csv", Annotation, {}),
+      (f"{SlideID}_annotations.csv", Annotation, {"pscale": sample.pscale, "apscale": sample.apscale}),
       (f"{SlideID}_batch.csv", Batch, {}),
       (f"{SlideID}_constants.csv", Constant, {"pscale": sample.pscale, "apscale": sample.apscale, "qpscale": sample.qpscale, "readingfromfile": True}),
       (f"{SlideID}_globals.csv", ROIGlobals, {"pscale": sample.pscale}),
