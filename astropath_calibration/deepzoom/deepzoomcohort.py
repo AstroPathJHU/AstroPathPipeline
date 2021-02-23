@@ -1,7 +1,7 @@
-from ..baseclasses.cohort import DbloadCohort, DeepZoomCohort, SelectRectanglesCohort, ZoomCohort
+from ..baseclasses.cohort import DbloadCohort, DeepZoomCohort, LayerCohort, SelectRectanglesCohort, ZoomCohort
 from .deepzoom import DeepZoomSample
 
-class DeepZoomCohort(DbloadCohort, ZoomCohort, DeepZoomCohort, SelectRectanglesCohort):
+class DeepZoomCohort(DbloadCohort, ZoomCohort, DeepZoomCohort, SelectRectanglesCohort, LayerCohort):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
