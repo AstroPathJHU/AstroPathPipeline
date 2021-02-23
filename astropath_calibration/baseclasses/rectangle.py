@@ -367,12 +367,13 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
       morekwargs.update({
         "nlayers": 1,
       })
-    super().__user_init__(*args, **kwargs, **morekwargs)
     self.__readlayerfile = readlayerfile
-    self.__layer = layer
+    super().__user_init__(*args, **kwargs, **morekwargs)
 
   @property
-  def layer(self): return self.__layer
+  def layer(self):
+    layer, = self.layers
+    return layer
 
   @property
   def imageshape(self):
@@ -385,9 +386,9 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
       folder = result.parent
       basename = result.name
       if basename.endswith(".camWarp") or basename.endswith(".dat"):
-        basename += f"_layer{self.__layer:02d}"
+        basename += f"_layer{self.layer:02d}"
       elif basename.endswith(".fw"):
-        basename += f"{self.__layer:02d}"
+        basename += f"{self.layer:02d}"
       else:
         assert False
       result = folder/basename
@@ -500,10 +501,11 @@ class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
       "layers": (layer,),
     }
     super().__user_init__(*args, **kwargs, **morekwargs)
-    self.__layer = layer
 
   @property
-  def layer(self): return self.__layer
+  def layer(self):
+    layer, = self.layers
+    return layer
 
   def getimage(self):
     image, = super().getimage()

@@ -744,11 +744,10 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase):
 
     if readlayerfile is None: readlayerfile = not self.multilayer
 
-    if self.multilayer:
-      if readlayerfile:
-        raise ValueError(f"Can't read a layer file for a multilayer sample {type(self).__name__}")
-    else:
-      self.__readlayerfile = readlayerfile
+    if self.multilayer and readlayerfile:
+      raise ValueError(f"Can't read a layer file for a multilayer sample {type(self).__name__}")
+
+    self.__readlayerfile = readlayerfile
 
     super().__init__(*args, **kwargs)
 
