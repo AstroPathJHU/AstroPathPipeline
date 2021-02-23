@@ -646,11 +646,8 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
   Base class for any sample that reads HPF info from any source.
   selectrectangles: filter for selecting rectangles (a list of ids or a function)
   """
-  def __init__(self, *args, selectrectangles=None, layers=None, **kwargs):
+  def __init__(self, *args, selectrectangles=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if layers is None:
-      layers = range(1, self.nlayers+1)
-    self.__layers = layers
     rectanglefilter = rectangleoroverlapfilter(selectrectangles)
     self.__rectangles  = self.readallrectangles()
     self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
@@ -661,11 +658,6 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
     The function that actually reads the HPF info and returns a list of rectangletype
     """
   rectangletype = Rectangle #can be overridden in subclasses
-  @abc.abstractproperty
-  def nlayers(self):
-    """
-    The number of layers in the rectangle
-    """
   @property
   def rectangleextrakwargs(self):
     """
@@ -687,9 +679,6 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
   @property
   def rectangles(self): return self.__rectangles
 
-  @property
-  def layers(self): return self.__layers
-
 class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
   """
   Base class for any sample that loads images from an im3 file.
@@ -708,6 +697,8 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
         raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
       if readlayerfile:
         raise ValueError(f"Can't read a layer file for a multilayer sample {type(self).__name__}")
+      if layers is None:
+        layers = range(1, self.nlayers+1)
     else:
       if layers is not None:
         raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
@@ -717,7 +708,9 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
       layers = layer,
       self.__readlayerfile = readlayerfile
 
-    super().__init__(*args, layers=layers, **kwargs)
+    self.__layers = layers
+
+    super().__init__(*args, **kwargs)
 
   @property
   def nlayers(self):
@@ -763,6 +756,9 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
   multilayer = False #can override in subclasses
 
   @property
+  def layers(self): return self.__layers
+
+  @property
   def layer(self):
     if self.multilayer:
       raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
@@ -781,6 +777,8 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
     if self.multilayer:
       if layer is not None:
         raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
+      if layers is None:
+        layers = range(1, self.nlayers+1)
     else:
       if layers is not None:
         raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
@@ -789,7 +787,9 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
       self.__layer = layer
       layers = layer,
 
-    super().__init__(*args, layers=layers, **kwargs)
+    self.__layers = layers
+
+    super().__init__(*args, **kwargs)
 
   @property
   def nlayers(self):
@@ -819,6 +819,9 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
     return kwargs
 
   multilayer = True #can override in subclasses
+
+  @property
+  def layers(self): return self.__layers
 
   @property
   def layer(self):
