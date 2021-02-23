@@ -181,7 +181,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     """
     Possible places to look for xml metadata
     """
-    return self.__xmlfolders + [self.im3folder/"xml"]
+    return self.__xmlfolders + [folder/self.SlideID for folder in self.__xmlfolders] + [self.im3folder/"xml"]
   @property
   def xmlfolder(self):
     """
