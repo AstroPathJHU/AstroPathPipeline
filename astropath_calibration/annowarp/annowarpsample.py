@@ -155,8 +155,11 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       qptiffy1 -= initialdy
       wsiy2 += initialdy
 
-    wsi = wsi[wsiy1:wsiy2, wsix1:wsix2]
-    qptiff = qptiff[qptiffy1:qptiffy2, qptiffx1:qptiffx2]
+    wsiinitialslice = slice(wsiy1, wsiy2), slice(wsix1, wsix2)
+    qptiffinitialslice = slice(qptiffy1, qptiffy2), slice(qptiffx1, qptiffx2)
+
+    wsi = wsi[wsiinitialslice]
+    qptiff = qptiff[qptiffinitialslice]
 
     onepixel = self.oneimpixel
 
@@ -202,7 +205,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       )
       wsitile = wsi[slc]
       if not wsitile.size: continue
-      tissuefraction = self.ngoodpixels(wsi, qptiff, slc) / wsitile.size
+      tissuefraction = self.ngoodpixels(wsi, qptiff, slc, wsiinitialslice) / wsitile.size
       if tissuefraction < self.mintissuefraction: continue
       qptifftile = qptiff[slc]
 
@@ -259,7 +262,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
   @abc.abstractmethod
   def printcuts(self): pass
   @abc.abstractmethod
-  def ngoodpixels(self, wsi, qptiff, slc): pass
+  def ngoodpixels(self, wsi, qptiff, slc, wsiinitialslice): pass
 
   @property
   def alignmentcsv(self): return self.csv(f"warp-{self.__tilepixels}")
@@ -549,7 +552,7 @@ class AnnoWarpSampleBrightnessThreshold(AnnoWarpSampleBase):
   def printcuts(self):
     self.logger.info(f"Cuts: {self.mintissuefraction:.0%} of pixels have flux >= {self.tilebrightnessthreshold}, and flux range in the tile >= {self.mintilerange}.")
 
-  def ngoodpixels(self, wsi, qptiff, slc):
+  def ngoodpixels(self, wsi, qptiff, slc, wsiinitialslice):
     wsitile = wsi[slc]
     if np.max(wsitile) - np.min(wsitile) < self.mintilerange: return 0
     return np.sum(wsitile>self.tilebrightnessthreshold)
@@ -557,10 +560,19 @@ class AnnoWarpSampleBrightnessThreshold(AnnoWarpSampleBase):
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
   def printcuts(self):
     self.logger.info(f"Cuts: {self.mintissuefraction:.0%} of the HPF is in a tissue region")
-  def ngoodpixels(self, wsi, qptiff, slc):
+  def ngoodpixels(self, wsi, qptiff, slc, wsiinitialslice):
     with self.using_tissuemask() as mask:
-      maskslice = mask[slc]
-      return np.count_nonzero(maskslice)
+      y1, x1 = wsiinitialslice
+      y1 = slice(y1.start*self.ppscale, y1.stop*self.ppscale)
+      x1 = slice(x1.start*self.ppscale, x1.stop*self.ppscale)
+
+      y2, x2 = slc
+      y2 = slice(y2.start*self.ppscale, y2.stop*self.ppscale)
+      x2 = slice(x2.start*self.ppscale, x2.stop*self.ppscale)
+
+      maskslice = mask[y1,x1][y2,x2]
+
+      return np.count_nonzero(maskslice) / self.ppscale**2
   def align(self, *args, **kwargs):
     with self.using_tissuemask():
       return super().align(*args, **kwargs)
