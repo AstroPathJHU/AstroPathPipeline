@@ -3,7 +3,7 @@ from ..alignment.field import Field
 from ..baseclasses.csvclasses import Vertex
 from ..baseclasses.polygon import DataClassWithPolygon, Polygon, polygonfield
 from ..baseclasses.rectangle import RectangleReadComponentTiff
-from ..baseclasses.sample import ReadRectanglesComponentTiff
+from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff
 from ..utilities import units
 from ..utilities.tableio import writetable
 from .contours import findcontoursaspolygons
@@ -11,14 +11,13 @@ from .contours import findcontoursaspolygons
 class FieldReadComponentTiff(Field, RectangleReadComponentTiff):
   pass
 
-class GeomSample(ReadRectanglesComponentTiff):
+class GeomSample(ReadRectanglesDbloadComponentTiff):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, layer=9, with_seg=True, **kwargs)
 
   @property
   def logmodule(self): return "geom"
 
-  multilayer = False
   @property
   def rectanglecsv(self): return "fields"
   rectangletype = FieldReadComponentTiff

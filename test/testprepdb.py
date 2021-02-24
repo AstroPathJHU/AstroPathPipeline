@@ -1,5 +1,5 @@
 import more_itertools, numpy as np, os, pathlib, PIL.Image, re, unittest
-from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, Globals, QPTiffCsv, Region, Vertex
+from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, QPTiffCsv, Region, ROIGlobals, Vertex
 from astropath_calibration.baseclasses.sample import SampleDef
 from astropath_calibration.baseclasses.overlap import Overlap
 from astropath_calibration.baseclasses.rectangle import Rectangle
@@ -32,10 +32,10 @@ class TestPrepDb(unittest.TestCase):
       sample.writemetadata()
 
     for filename, cls, extrakwargs in (
-      (f"{SlideID}_annotations.csv", Annotation, {}),
+      (f"{SlideID}_annotations.csv", Annotation, {"pscale": sample.pscale, "apscale": sample.apscale}),
       (f"{SlideID}_batch.csv", Batch, {}),
       (f"{SlideID}_constants.csv", Constant, {"pscale": sample.pscale, "apscale": sample.apscale, "qpscale": sample.qpscale, "readingfromfile": True}),
-      (f"{SlideID}_globals.csv", Globals, {"pscale": sample.pscale}),
+      (f"{SlideID}_globals.csv", ROIGlobals, {"pscale": sample.pscale}),
       (f"{SlideID}_overlap.csv", Overlap, {"pscale": sample.pscale, "nclip": sample.nclip, "rectangles": sample.rectangles}),
       (f"{SlideID}_qptiff.csv", QPTiffCsv, {"pscale": sample.pscale}),
       (f"{SlideID}_rect.csv", Rectangle, {"pscale": sample.pscale}),

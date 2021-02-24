@@ -55,6 +55,8 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
             sampleid=0,
             layer=n,
             poly="poly",
+            pscale=self.pscale,
+            apscale=self.apscale,
           )
         )
 
@@ -342,7 +344,7 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
 
   def writeoverlaps(self):
     self.logger.info("writeoverlaps")
-    self.writecsv("overlap", self.getoverlaps())
+    self.writecsv("overlap", self.overlaps)
 
   def writeconstants(self):
     self.logger.info("writeconstants")

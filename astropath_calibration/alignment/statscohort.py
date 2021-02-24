@@ -1,10 +1,10 @@
 import numpy as np, pathlib
 
-from ..baseclasses.cohort import DbloadCohort, FlatwCohort
+from ..baseclasses.cohort import DbloadCohort, Im3Cohort
 from ..utilities import units
 from .alignmentset import AlignmentSet
 
-class StatsCohort(DbloadCohort, FlatwCohort):
+class StatsCohort(DbloadCohort, Im3Cohort):
   def __init__(self, *args, outfile, **kwargs):
     super().__init__(*args, uselogfiles=False, **kwargs)
     self.__outfile = outfile

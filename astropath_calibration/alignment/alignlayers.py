@@ -1,5 +1,5 @@
 import cv2, itertools, methodtools, numpy as np
-from ..baseclasses.sample import ReadRectanglesOverlapsBase, ReadRectanglesOverlapsIm3, ReadRectanglesOverlapsIm3Base
+from ..baseclasses.sample import ReadRectanglesOverlapsBase, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base
 from .alignmentset import AlignmentSet, AlignmentSetBase
 from .rectangle import AlignmentRectangleMultiLayer, RectanglePCAByBroadbandFilter
 from .overlap import AlignmentOverlap, LayerAlignmentResult
@@ -205,7 +205,7 @@ class AlignBroadbandFilters(AlignBroadbandFiltersBase, AlignLayers):
   def stitchfilenames(self):
     return self.csv("broadbandfilterpositions"), self.csv("broadbandpositioncovariances")
 
-class AlignLayersByBroadbandFilter(SampleWithLayerOverlaps, ReadRectanglesOverlapsIm3):
+class AlignLayersByBroadbandFilter(SampleWithLayerOverlaps, ReadRectanglesOverlapsDbloadIm3):
   def __init__(self, *args, filetype="flatWarp", **kwargs):
     super().__init__(*args, filetype=filetype, **kwargs)
     self.__step1s = [AlignLayersForBroadbandFilter(*args, broadbandfilter=i, inputrectangles=self.rectangles, inputoverlaps=self.overlaps, **kwargs) for i in sorted(set(self.rectangles[0].broadbandfilters))]

@@ -1,6 +1,6 @@
 import argparse, matplotlib.pyplot as plt, numpy as np, pathlib, pickle, sklearn.decomposition
 
-from microscopealignment.baseclasses.sample import ReadRectanglesOverlapsIm3
+from microscopealignment.baseclasses.sample import ReadRectanglesOverlapsDbloadIm3
 from microscopealignment.utilities import units
 
 here = pathlib.Path(__file__).parent
@@ -9,7 +9,7 @@ root1 = pathlib.Path(r"\\Bki02\e\Clinical_Specimen")
 root2 = pathlib.Path(r"\\BKI04\flatw")
 samp = "M41_1"
 
-class MyReadRectanglesOverlapsIm3(ReadRectanglesOverlapsIm3):
+class MyReadRectanglesOverlapsIm3(ReadRectanglesOverlapsDbloadIm3):
   @property
   def filetype(self):
     return "flatWarp"
