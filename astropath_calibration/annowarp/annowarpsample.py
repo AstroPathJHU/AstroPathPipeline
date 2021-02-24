@@ -1,10 +1,12 @@
 import abc, contextlib, csv, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
+from ..alignment.field import FieldReadComponentTiffMultiLayer
 from ..alignment.overlap import AlignmentComparison
 from ..baseclasses.csvclasses import Region, Vertex
 from ..baseclasses.polygon import Polygon
 from ..baseclasses.qptiff import QPTiff
+from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff
 from ..zoom.zoom import ZoomSample
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
@@ -13,7 +15,9 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, ThingWithImscale
 
-class AnnoWarpSample(ZoomSample, ThingWithImscale):
+class AnnoWarpSample(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWithImscale):
+  rectangletype = FieldReadComponentTiffMultiLayer
+
   defaulttilepixels = 100
   defaulttilebrightnessthreshold = 45
   defaultmintilebrightfraction = 0.2
