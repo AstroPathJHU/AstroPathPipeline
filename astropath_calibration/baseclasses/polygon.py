@@ -5,6 +5,14 @@ from ..utilities.dataclasses import MetaDataAnnotation
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithPscale
 
 class Polygon(units.ThingWithPscale, units.ThingWithApscale):
+  """
+  Represents a polygon as a list of vertices in a way that works
+  with the units functionality.  Also interfaces to gdal and matplotlib.
+
+  vertices: a list of Vertex objects for the corners of the polygon
+  pixels: a string in GDAL format giving the corners of the polygon in pixels
+  """
+
   pixelsormicrons = "pixels"
 
   def __init__(self, *, vertices=None, pixels=None, microns=None, pscale=None, apscale=None, power=1):
@@ -77,28 +85,44 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     return Polygon(vertices=self.vertices+other.vertices)
 
   @property
-  def separate(self):
-    return [Polygon(vertices=[vv]) for vv in self.vertices]
-  @property
   def areas(self):
+    """
+    Area of the outer ring and negative areas of the inner rings
+    """
     return units.convertpscale([
       1/2 * sum(v1.x*v2.y - v2.x*v1.y for v1, v2 in more_itertools.pairwise(itertools.chain(vv, [vv[0]])))
       for vv in self.vertices
     ], self.apscale, self.pscale, power=2)
   @property
   def area(self):
+    """
+    Total area of the polygon
+    """
     return np.sum(self.areas)
   @property
   def perimeters(self):
+    """
+    Perimeters of the outer and inner rings
+    """
     return units.convertpscale([
       sum(np.sum((v1.xvec - v2.xvec)**2)**.5 for v1, v2 in more_itertools.pairwise(itertools.chain(vv, [vv[0]])))
       for vv in self.vertices
     ], self.apscale, self.pscale)
   @property
   def perimeter(self):
+    """
+    Total perimeter of the polygon
+    """
     return np.sum(self.perimeters)
 
   def gdalpolygon(self, *, imagescale=None, round=False):
+    """
+    An ogr.Geometry object corresponding to the polygon
+
+    imagescale: the scale to use for converting to pixels
+                (default: pscale)
+    round: round to the nearest pixel?
+    """
     if imagescale is None: imagescale = self.pscale
     poly = ogr.Geometry(ogr.wkbPolygon)
     for vv in self.vertices:
@@ -114,6 +138,14 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     return poly
 
   def matplotlibpolygon(self, *, imagescale=None, shiftby=0, **kwargs):
+    """
+    An matplotlib.patches.Polygon object corresponding to the polygon
+
+    imagescale: the scale to use for converting to pixels
+                (default: pscale)
+    shiftby: a 2D vector (distance in imscale) to shift all the vertices by
+             (default: 0)
+    """
     if imagescale is None: imagescale = self.pscale
     vertices = []
     for vv in self.vertices:
@@ -139,13 +171,16 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       array[coordinates] = (i == 0)
     return array
 
-  @property
-  def convexhull(self):
-    gdalpolygon = self.gdalpolygon(imagescale=self.pscale)
-    gdalhull = gdalpolygon.ConvexHull()
-    return Polygon(pixels=gdalhull, pscale=self.pscale, apscale=self.apscale)
-
 class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
+  """
+  Dataclass that has at least one field for a polygon
+
+  Usage:
+  class HasPolygon(DataClassWithPolygon):
+    poly: polygonfield()
+  ihaveatriangle = HasPolygon(poly="POLYGON((0 0, 1 1, 1 0))", pscale=2, apscale=1)
+  """
+
   @classmethod
   def polygonfields(cls):
     return [field for field in dataclassy.fields(cls) if cls.metadata(field).get("ispolygonfield", False)]
@@ -168,6 +203,9 @@ class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
         raise TypeError(f"Unknown type {type(poly).__name__} for {field}")
 
 def polygonfield(**metadata):
+  """
+  A field in a dataclass that is going to get a polygon.
+  """
   def polywritefunction(poly):
     if poly is None: return "poly"
     return str(poly)

@@ -1,4 +1,4 @@
-import abc, contextlib, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
@@ -7,10 +7,16 @@ from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .csvclasses import constantsdict, RectangleFile
 from .logging import getlogger
-from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleWithImage, RectangleWithImageMultiLayer
-from .overlap import Overlap, RectangleOverlapCollection
+from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
+from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 
 class SampleDef(MyDataClass):
+  """
+  The sample definition from sampledef.csv in the cohort folder.
+  To construct it, you can give all the arguments, or you can give
+  SlideID and leave out some of the others.  If you give a root,
+  it will try to figure out the other arguments from there.
+  """
   SampleID: int
   SlideID: str
   Project: int = None
@@ -63,7 +69,20 @@ class SampleDef(MyDataClass):
     return bool(self.isGood)
 
 class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
-  def __init__(self, root, samp, *, uselogfiles=False, logthreshold=logging.DEBUG, xmlfolders=None, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None):
+  """
+  Base class for all sample classes.
+
+  root: the Clinical_Specimen_i folder, which contains a bunch of SlideID folders
+  samp: the SampleDef for this sample, or the SlideID for this sample as a string
+  xmlfolders: possible places to look for xml metadata
+              (will look by default in root/SlideID/im3/xml as well as
+              with image files if they exist)
+
+  uselogfiles, logthreshold, reraiseexceptions, logroot, mainlog, samplelog:
+    these arguments get passed to getlogger
+    logroot, by default, is the same as root
+  """
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None):
     self.root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
@@ -98,25 +117,43 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
 
   @property
   def mainfolder(self):
+    """
+    The folder where this sample's data lives
+    """
     return self.root/self.SlideID
 
   @property
   def im3folder(self):
+    """
+    The sample's im3 folder
+    """
     return self.mainfolder/"im3"
 
   @property
   def scanfolder(self):
+    """
+    The sample's scan folder
+    """
     return self.im3folder/f"Scan{self.Scan}"
 
   @property
   def qptifffilename(self):
+    """
+    The sample's qptiff image
+    """
     return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".qptiff")
 
   @property
   def componenttiffsfolder(self):
+    """
+    The sample's component tiffs folder
+    """
     return self.mainfolder/"inform_data"/"Component_Tiffs"
 
-  def getimageinfofromcomponenttiff(self):
+  def __getimageinfofromcomponenttiff(self):
+    """
+    Find the pscale and image dimensions from the component tiff.
+    """
     try:
       componenttifffilename = next(self.componenttiffsfolder.glob(self.SlideID+"*_component_data.tif"))
     except StopIteration:
@@ -141,15 +178,25 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
 
   @property
   def possiblexmlfolders(self):
-    return self.__xmlfolders + [self.im3folder/"xml"]
+    """
+    Possible places to look for xml metadata
+    """
+    return self.__xmlfolders + [folder/self.SlideID for folder in self.__xmlfolders] + [self.im3folder/"xml"]
   @property
   def xmlfolder(self):
+    """
+    The folder where the xml metadata lives.
+    It's the first one in possiblexmlfolders that contains SlideID.Parameters.xml
+    """
     possibilities = self.possiblexmlfolders
     for possibility in possibilities:
       if (possibility/(self.SlideID+".Parameters.xml")).exists(): return possibility
     raise FileNotFoundError(f"Didn't find {self.SlideID}.Parameters.xml in any of these folders:\n" + ", ".join(str(_) for _ in possibilities))
 
-  def getimageinfofromXMLfiles(self):
+  def __getimageinfofromXMLfiles(self):
+    """
+    Find the pscale, image dimensions, and number of layers from the XML metadata.
+    """
     with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "Shape":
@@ -168,13 +215,19 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
   @methodtools.lru_cache()
   @property
   def samplelocation(self):
+    """
+    Find the location of the image on the slide from the xml metadata
+    """
     with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "SampleLocation":
           return np.array([float(_) for _ in str(node).split()]) * units.onemicron(pscale=self.apscale)
 
   @methodtools.lru_cache()
-  def getcamerastateparameter(self, parametername):
+  def __getcamerastateparameter(self, parametername):
+    """
+    Find info from the CameraState Parameters block in the xml metadata
+    """
     with open(self.xmlfolder/(self.SlideID+".Full.xml"), "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3/G/G/G/G/G/G/G/G"):
         if node.xml_attrs["name"] == "CameraState":
@@ -193,14 +246,23 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
 
   @property
   def resolutionbits(self):
-    return self.getcamerastateparameter("ResolutionBits")
+    """
+    Find the number of resolution bits from the xml metadata
+    """
+    return self.__getcamerastateparameter("ResolutionBits")
 
   @property
   def gainfactor(self):
-    return self.getcamerastateparameter("GainFactor")
+    """
+    Find the camera gain factor from the xml metadata
+    """
+    return self.__getcamerastateparameter("GainFactor")
 
   @methodtools.lru_cache()
-  def getcamerabinning(self, xory):
+  def __getcamerabinning(self, xory):
+    """
+    Find the camera binning from the xml metadata
+    """
     with open(self.xmlfolder/(self.SlideID+".Full.xml"), "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3/G/G/G/G/G/G/G/G"):
         if node.xml_attrs["name"] == "CameraState":
@@ -212,13 +274,24 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     assert False
 
   @property
-  def camerabinningx(self): return self.getcamerabinning("X")
+  def camerabinningx(self):
+    """
+    Find the camera binning in x
+    """
+    return self.__getcamerabinning("X")
   @property
-  def camerabinningy(self): return self.getcamerabinning("Y")
+  def camerabinningy(self):
+    """
+    Find the camera binning in y
+    """
+    return self.__getcamerabinning("Y")
 
   @methodtools.lru_cache()
   @property
   def nlayersim3(self):
+    """
+    Find the number of im3 layers from the xml metadata
+    """
     with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "Shape":
@@ -230,25 +303,36 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
   @methodtools.lru_cache()
   @property
   def nlayersunmixed(self):
+    """
+    Find the number of component tiff layers from the xml metadata
+    """
     with open(self.componenttiffsfolder/"batch_procedure.ifp", "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="AllComponents"):
         return int(node.xml_attrs["dim"])
 
-  def getimageinfos(self):
+  def _getimageinfos(self):
+    """
+    Try to find the image info from a bunch of sources.
+    Called by getimageinfo.
+    """
     result = {}
     try:
-      result["component tiff"] = self.getimageinfofromcomponenttiff()
+      result["component tiff"] = self.__getimageinfofromcomponenttiff()
     except FileNotFoundError:
       result["component tiff"] = None
     try:
-      result["xml files"] = self.getimageinfofromXMLfiles()
+      result["xml files"] = self.__getimageinfofromXMLfiles()
     except (FileNotFoundError, IOError):
       result["xml files"] = None
     return result
 
   @methodtools.lru_cache()
   def getimageinfo(self):
-    results = self.getimageinfos()
+    """
+    Try to find the image info from a bunch of sources.
+    Gives a warning or error if they are inconsistent, then returns one of them.
+    """
+    results = self._getimageinfos()
     result = None
     warnfunction = None
     for k, v in sorted(results.items(), key=lambda kv: kv[1] is None or any(_ is None for _ in kv[1])):
@@ -268,7 +352,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
 
     if warnfunction is not None:
       if not self.logger.nentered:
-        warnfunction = functools.partial(self.logonenter, warnfunction=warnfunction)
+        warnfunction = functools.partial(self._logonenter, warnfunction=warnfunction)
       fmt = "{:30} {:30} {:30} {:30}"
       warninglines = [
         "Found inconsistent image infos from different sources:",
@@ -285,29 +369,56 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
 
     return result
 
-  def logonenter(self, warning, warnfunction):
+  def _logonenter(self, warning, warnfunction):
+    """
+    Puts the function and warning into a queue to be logged
+    when we enter the with statement.
+    """
     self.__logonenter.append((warnfunction, warning))
 
   @property
-  def pscale(self): return self.getimageinfo()[0]
+  def pscale(self):
+    """
+    Pixels per micron of the im3 image.
+    """
+    return self.getimageinfo()[0]
   @property
-  def fwidth(self): return self.getimageinfo()[1]
+  def fwidth(self):
+    """
+    Width of the im3 image.
+    """
+    return self.getimageinfo()[1]
   @property
-  def fheight(self): return self.getimageinfo()[2]
+  def fheight(self):
+    """
+    Height of the im3 image.
+    """
+    return self.getimageinfo()[2]
   @property
   def flayers(self):
+    """
+    Number of layers in the im3 image.
+    """
     layers = self.getimageinfo()[3]
     if layers is None: raise FileNotFoundError("Couldn't get image info from any source that has flayers")
     return layers
 
   @methodtools.lru_cache()
   def getXMLplan(self):
+    """
+    Read the annotations xml file to get the structure of the
+    image as well as the microscope name (really the name of the
+    computer that processed the image).
+    """
     xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
     reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
     return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
 
   @property
   def microscopename(self):
+    """
+    Name of the computer that processed the image.
+    """
     return self.getXMLplan()[3]
 
   def __enter__(self):
@@ -327,6 +438,14 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     "name of the log files for this class (e.g. align)"
 
 class DbloadSampleBase(SampleBase):
+  """
+  Base class for any sample that uses the csvs in the dbload folder.
+  If the dbload folder is initialized already, you should instead inherit
+  from DbloadSample to get more functionality.
+
+  dbloadfolder: Folder to look for the csv files in (default: dbloadroot/SlideID/dbload)
+  dbloadroot: A different root to use to find the dbload (default: same as root)
+  """
   def __init__(self, *args, dbloadroot=None, dbloadfolder=None, **kwargs):
     super().__init__(*args, **kwargs)
     if dbloadroot is not None and dbloadfolder is not None:
@@ -342,17 +461,46 @@ class DbloadSampleBase(SampleBase):
     self.__dbloadfolder = dbloadfolder
   @property
   def dbload(self):
+    """
+    The folder where the csv files live.
+    """
     return self.__dbloadfolder
 
   def csv(self, csv):
+    """
+    Full path to the csv file identified by csv.
+    """
     return self.dbload/f"{self.SlideID}_{csv}.csv"
   def readcsv(self, csv, *args, **kwargs):
+    """
+    Read the csv file using readtable.
+    """
     return readtable(self.csv(csv), *args, **kwargs)
   def writecsv(self, csv, *args, **kwargs):
+    """
+    Write the csv file using writetable.
+    """
     return writetable(self.csv(csv), *args, logger=self.logger, **kwargs)
 
+  @methodtools.lru_cache()
+  def qptiffjpgimage(self):
+    """
+    Read the qptiff jpg thumbnail as an image.
+    """
+    return cv2.imread(os.fspath(self.dbload/(self.SlideID+"_qptiff.jpg")))
+
 class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale):
-  def getimageinfofromconstants(self):
+  """
+  Base class for any sample that uses the csvs in the dbload folder
+  after the folder has been set up.
+
+  dbloadfolder: Folder where the csv files live (default: dbloadroot/SlideID/dbload)
+  dbloadroot: A different root to use to find the dbload (default: same as root)
+  """
+  def __getimageinfofromconstants(self):
+    """
+    Find the image size and pscale from the constants csv.
+    """
     dct = constantsdict(self.csv("constants"))
 
     fwidth    = dct["fwidth"]
@@ -362,11 +510,11 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
 
     return pscale, fwidth, fheight, flayers
 
-  def getimageinfos(self):
-    result = super().getimageinfos()
+  def _getimageinfos(self):
+    result = super()._getimageinfos()
 
     try:
-      result["constants.csv"] = self.getimageinfofromconstants()
+      result["constants.csv"] = self.__getimageinfofromconstants()
     except (FileNotFoundError, KeyError):
       result["constants.csv"] = None
 
@@ -375,22 +523,42 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
   @methodtools.lru_cache()
   @property
   def constantsdict(self):
+    """
+    Read the constants.csv file into a dict.
+    """
     return constantsdict(self.csv("constants"), pscale=self.pscale)
 
   @property
   def position(self):
+    """
+    x and y position of the tissue from constants.csv
+    """
     return np.array([self.constantsdict["xposition"], self.constantsdict["yposition"]])
   @property
   def nclip(self):
+    """
+    number of pixels to clip off the edge of the image for calibration
+    """
     return self.constantsdict["nclip"]
   @property
   def qpscale(self):
+    """
+    Pixels/micron of the qptiff layer used for the jpg thumbnail
+    """
     return self.constantsdict["qpscale"]
   @property
   def apscale(self):
+    """
+    Pixels/micron of the first qptiff layer
+    """
     return self.constantsdict["apscale"]
 
 class MaskSampleBase(SampleBase):
+  """
+  Base class for any sample that uses the masks in im3/meanimage
+
+  maskroot: A different root to use to find the masks (default: same as root)
+  """
   def __init__(self, *args, maskroot=None, **kwargs):
     super().__init__(*args, **kwargs)
     if maskroot is None: maskroot = self.root
@@ -405,24 +573,29 @@ class MaskSampleBase(SampleBase):
       result = self.maskroot/result.relative_to(self.root)
     return result
 
-class FlatwSampleBase(SampleBase):
-  def __init__(self, root, root2, samp, *args, root3=None, xmlfolders=None, **kwargs):
-    if xmlfolders is None: xmlfolders = []
-    super().__init__(root=root, samp=samp, *args, xmlfolders=xmlfolders, **kwargs)
+class Im3SampleBase(SampleBase):
+  """
+  Base class for any sample that uses sharded im3 images.
+  root2: Root location of the im3 images.
+         (The images are in root2/SlideID)
+  """
+  def __init__(self, root, root2, samp, *args, **kwargs):
+    super().__init__(root=root, samp=samp, *args, **kwargs)
     self.root2 = pathlib.Path(root2)
-    self.__root3 = pathlib.Path(root3) if root3 is not None else root3
 
   @property
   def root1(self): return self.root
 
   @property
   def possiblexmlfolders(self):
-    result = super().possiblexmlfolders + [self.root2/self.SlideID]
-    if self.__root3 is not None:
-      result.append(self.__root3/self.SlideID)
-    return result
+    return super().possiblexmlfolders + [self.root2/self.SlideID]
 
 class ZoomFolderSampleBase(SampleBase):
+  """
+  Base class for any sample that uses the zoomed "big" or "wsi" images.
+  zoomroot: Root location of the zoomed images.
+            (The images are in zoomroot/SlideID/big and zoomroot/SlideID/wsi)
+  """
   def __init__(self, *args, zoomroot, **kwargs):
     super().__init__(*args, **kwargs)
     self.__zoomroot = pathlib.Path(zoomroot)
@@ -436,11 +609,22 @@ class ZoomFolderSampleBase(SampleBase):
   @property
   def zmax(self): return 9
   def zoomfilename(self, layer, tilex, tiley):
+    """
+    Zoom filename for a given layer and tile.
+    """
     return self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
   def wsifilename(self, layer):
+    """
+    Wsi filename for a given layer.
+    """
     return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
 
 class DeepZoomSampleBase(SampleBase):
+  """
+  Base class for any sample that uses the deepzoomed images.
+  deepzoomroot: Root location of the deepzoomed images.
+                (The images are in deepzoomroot/SlideID)
+  """
   def __init__(self, *args, deepzoomroot, **kwargs):
     super().__init__(*args, **kwargs)
     self.__deepzoomroot = pathlib.Path(deepzoomroot)
@@ -450,6 +634,12 @@ class DeepZoomSampleBase(SampleBase):
   def deepzoomfolder(self): return self.deepzoomroot/self.SlideID
 
 class GeomSampleBase(SampleBase):
+  """
+  Base class for any sample that uses the _cellgeomload.csv files
+
+  geomfolder: Folder where the _cellgeomload.csv files live (default: geomroot/SlideID/geom)
+  geomroot: A different root to use to find the cellgeomload (default: same as root)
+  """
   def __init__(self, *args, geomroot=None, geomfolder=None, **kwargs):
     if geomroot is not None and geomfolder is not None:
       raise TypeError("Can't provide both geomroot and geomfolder")
@@ -471,34 +661,33 @@ class GeomSampleBase(SampleBase):
     else:
       return pathlib.Path(geomfolder)
 
-class SampleThatReadsRectangles(SampleBase):
-  rectangletype = Rectangle #can be overridden in subclasses
+class ReadRectanglesBase(RectangleCollection, SampleBase):
+  """
+  Base class for any sample that reads HPF info from any source.
+  selectrectangles: filter for selecting rectangles (a list of ids or a function)
+  """
+  def __init__(self, *args, selectrectangles=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    rectanglefilter = rectangleoroverlapfilter(selectrectangles)
+    self.__rectangles  = self.readallrectangles()
+    self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
 
-class SampleThatReadsOverlaps(SampleThatReadsRectangles):
-  overlaptype = Overlap #can be overridden in subclasses
-
-class ReadRectanglesBase(SampleThatReadsRectangles, RectangleCollection):
   @abc.abstractmethod
-  def readallrectangles(self): pass
-  @abc.abstractproperty
-  def rectangletype(self): pass
-  @abc.abstractproperty
-  def nlayers(self): pass
+  def readallrectangles(self):
+    """
+    The function that actually reads the HPF info and returns a list of rectangletype
+    """
+  rectangletype = Rectangle #can be overridden in subclasses
   @property
   def rectangleextrakwargs(self):
+    """
+    Extra keyword arguments to give to the rectangle constructor
+    besides the ones determined from the direct source in readallrectangles
+    """
     kwargs = {
       "pscale": self.pscale,
     }
     return kwargs
-
-  def __init__(self, *args, selectrectangles=None, layers=None, **kwargs):
-    super().__init__(*args, **kwargs)
-    if layers is None:
-      layers = range(1, self.nlayers+1)
-    self.__layers = layers
-    rectanglefilter = rectangleoroverlapfilter(selectrectangles)
-    self.__rectangles  = self.readallrectangles()
-    self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
 
   @property
   def _rectangles(self):
@@ -510,19 +699,88 @@ class ReadRectanglesBase(SampleThatReadsRectangles, RectangleCollection):
   @property
   def rectangles(self): return self.__rectangles
 
-  @property
-  def layers(self): return self.__layers
+class ReadRectanglesWithLayers(ReadRectanglesBase):
+  """
+  Base class for any sample that reads rectangles
+  and needs a layer selection.
+  """
+  def __init__(self, *args, layer=None, layers=None, **kwargs):
+    if self.multilayer:
+      if layer is not None:
+        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
+    else:
+      if layers is not None:
+        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
+      if layer is None:
+        layer = 1
+      self.__layer = layer
+      layers = layer,
 
-class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
+    self.__layers = layers
+
+    super().__init__(*args, **kwargs)
+
+  @property
+  def rectangleextrakwargs(self):
+    kwargs = {
+      **super().rectangleextrakwargs,
+      "nlayers": self.nlayers,
+    }
+    if self.multilayer:
+      kwargs.update({
+        "layers": self.layers,
+      })
+    else:
+      kwargs.update({
+        "layer": self.layer,
+      })
+    return kwargs
+
+  @property
+  def layers(self):
+    result = self.__layers
+    if result is None: return range(1, self.nlayers+1)
+    return result
+
+  @property
+  def layer(self):
+    if self.multilayer:
+      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
+    return self.__layer
+
+  multilayer = False #can override in subclasses
+
+class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase):
+  """
+  Base class for any sample that loads images from an im3 file.
+  filetype: "raw", "flatWarp", or "camWarp"
+  layer or layers: the layer or layers to read, depending on whether
+                   the class uses multilayer images or not
+  readlayerfile: whether or not to read from a file with a single layer, e.g. .fw01
+  """
+
+  def __init__(self, *args, filetype, readlayerfile=None, **kwargs):
+    self.__filetype = filetype
+
+    if readlayerfile is None: readlayerfile = not self.multilayer
+
+    if self.multilayer and readlayerfile:
+      raise ValueError(f"Can't read a layer file for a multilayer sample {type(self).__name__}")
+
+    self.__readlayerfile = readlayerfile
+
+    super().__init__(*args, **kwargs)
+
   @property
   def nlayers(self):
+    if self.__readlayerfile: return 1
     return self.nlayersim3
   @property
   def rectangletype(self):
     if self.multilayer:
-      return RectangleWithImageMultiLayer
+      return RectangleReadIm3MultiLayer
     else:
-      return RectangleWithImage
+      return RectangleReadIm3
   @property
   def rectangleextrakwargs(self):
     kwargs = {
@@ -539,48 +797,28 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
     except FileNotFoundError:
       pass
     if self.multilayer:
-      kwargs.update({
-        "layers": self.layers,
-        "nlayers": self.nlayers,
-      })
+      pass
     else:
       kwargs.update({
-        "layer": self.layer,
         "readlayerfile": self.__readlayerfile,
       })
-      if not self.__readlayerfile:
-        kwargs["nlayers"] = self.nlayers
     return kwargs
 
   @property
   def filetype(self): return self.__filetype
 
-  multilayer = False #can override in subclasses
+class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers):
+  """
+  Base class for any sample that loads images from a component tiff file.
+  layer or layers: the layer or layers to read, depending on whether
+                   the class uses multilayer images or not
+  with_seg: whether or not to read from the _w_seg component tiff file
+  """
 
-  def __init__(self, *args, filetype, layer=None, layers=None, readlayerfile=True, **kwargs):
-    self.__filetype = filetype
+  def __init__(self, *args, with_seg=False, **kwargs):
+    self.__with_seg = with_seg
+    super().__init__(*args, **kwargs)
 
-    if self.multilayer:
-      if layer is not None:
-        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
-    else:
-      if layers is not None:
-        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
-      if layer is None:
-        layer = 1
-      self.__layer = layer
-      layers = layer,
-    self.__readlayerfile = readlayerfile
-
-    super().__init__(*args, layers=layers, **kwargs)
-
-  @property
-  def layer(self):
-    if self.multilayer:
-      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
-    return self.__layer
-
-class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
   @property
   def nlayers(self):
     return self.nlayersunmixed
@@ -596,49 +834,15 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
       **super().rectangleextrakwargs,
       "imagefolder": self.componenttiffsfolder,
       "with_seg": self.__with_seg,
-      "nlayers": self.nlayers,
     }
-    if self.multilayer:
-      kwargs.update({
-        "layers": self.layers,
-      })
-    else:
-      kwargs.update({
-        "layer": self.layer,
-      })
     return kwargs
 
-  multilayer = True #can override in subclasses
-
-  def __init__(self, *args, layer=None, layers=None, with_seg=False, **kwargs):
-    self.__with_seg = with_seg
-    if self.multilayer:
-      if layer is not None:
-        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
-    else:
-      if layers is not None:
-        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
-      if layer is None:
-        layer = 1
-      self.__layer = layer
-      layers = layer,
-
-    super().__init__(*args, layers=layers, **kwargs)
-
-  @property
-  def layer(self):
-    if self.multilayer:
-      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
-    return self.__layer
-
-class ReadRectanglesOverlapsBase(ReadRectanglesBase, SampleThatReadsOverlaps, RectangleOverlapCollection):
-  @abc.abstractmethod
-  def readalloverlaps(self): pass
-  @property
-  def overlapextrakwargs(self):
-    return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}
-
-  multilayer = False #can override in subclasses
+class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection, OverlapCollection, SampleBase):
+  """
+  Base class for any sample that reads rectangles and overlaps from any source.
+  selectoverlaps: filter for which overlaps to use (a list of overlap ids or a function that returns True or False).
+  onlyrectanglesinoverlaps: an additional selection that only includes rectangles that are in selected overlaps.
+  """
 
   def __init__(self, *args, selectoverlaps=None, onlyrectanglesinoverlaps=False, **kwargs):
     super().__init__(*args, **kwargs)
@@ -651,41 +855,84 @@ class ReadRectanglesOverlapsBase(ReadRectanglesBase, SampleThatReadsOverlaps, Re
     if onlyrectanglesinoverlaps:
       self._rectangles = [r for r in self.rectangles if self.selectoverlaprectangles(r)]
 
+  @abc.abstractmethod
+  def readalloverlaps(self): pass
+  @property
+  def overlapextrakwargs(self):
+    return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}
+
   @property
   def overlaps(self): return self.__overlaps
 
 class ReadRectanglesOverlapsIm3Base(ReadRectanglesOverlapsBase, ReadRectanglesIm3Base):
-  pass
+  """
+  Base class for any sample that reads rectangles and overlaps from any source
+  and loads the rectangle images from im3 files.
+  """
 
-class ReadRectangles(ReadRectanglesBase, DbloadSample):
+class ReadRectanglesOverlapsComponentTiffBase(ReadRectanglesOverlapsBase, ReadRectanglesComponentTiffBase):
+  """
+  Base class for any sample that reads rectangles and overlaps from any source
+  and loads the rectangle images from component tiff files.
+  """
+
+class ReadRectanglesDbload(ReadRectanglesBase, DbloadSample):
+  """
+  Base class for any sample that reads rectangles from the dbload folder.
+  """
   @property
   def rectanglecsv(self): return "rect"
   def readallrectangles(self, **extrakwargs):
     return self.readcsv(self.rectanglecsv, self.rectangletype, extrakwargs={**self.rectangleextrakwargs, **extrakwargs})
 
-class ReadRectanglesIm3(ReadRectangles, ReadRectanglesIm3Base):
-  pass
+class ReadRectanglesDbloadIm3(ReadRectanglesIm3Base, ReadRectanglesDbload):
+  """
+  Base class for any sample that reads rectangles from the dbload folder
+  and loads the rectangle images from im3 files.
+  """
 
-class ReadRectanglesComponentTiff(ReadRectangles, ReadRectanglesComponentTiffBase):
-  pass
+class ReadRectanglesDbloadComponentTiff(ReadRectanglesComponentTiffBase, ReadRectanglesDbload):
+  """
+  Base class for any sample that reads rectangles from the dbload folder
+  and loads the rectangle images from component tiff files.
+  """
 
-class ReadRectanglesOverlaps(ReadRectangles, ReadRectanglesOverlapsBase):
+class ReadRectanglesOverlapsDbload(ReadRectanglesOverlapsBase, ReadRectanglesDbload):
+  """
+  Base class for any sample that reads rectangles and overlaps from the dbload folder.
+  """
   @property
   def overlapcsv(self): return "overlap"
   def readalloverlaps(self, *, overlaptype=None, **extrakwargs):
     if overlaptype is None: overlaptype = self.overlaptype
     return self.readcsv(self.overlapcsv, overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
 
-class ReadRectanglesOverlapsIm3(ReadRectanglesOverlaps, ReadRectanglesOverlapsIm3Base):
-  pass
+class ReadRectanglesOverlapsDbloadIm3(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsDbload, ReadRectanglesDbloadIm3):
+  """
+  Base class for any sample that reads rectangles and overlaps from the dbload folder
+  and loads the rectangle images from im3 files.
+  """
 
-class XMLLayoutReader(SampleThatReadsOverlaps):
+class ReadRectanglesOverlapsDbloadComponentTiff(ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsDbload, ReadRectanglesDbloadComponentTiff):
+  """
+  Base class for any sample that reads rectangles and overlaps from the dbload folder
+  and loads the rectangle images from component tiff files.
+  """
+
+class XMLLayoutReader(SampleBase):
+  """
+  Base class for any sample that reads the HPF layout from the XML metadata.
+  """
   def __init__(self, *args, checkim3s=False, **kwargs):
     self.__checkim3s = checkim3s
     super().__init__(*args, **kwargs)
 
   @methodtools.lru_cache()
   def getrectanglelayout(self):
+    """
+    Find the rectangle layout from both the XML metadata
+    and the im3 files, compare them, and return the rectangles.
+    """
     rectangles, globals, perimeters, microscopename = self.getXMLplan()
     self.fixM2(rectangles)
     self.fixrectanglefilenames(rectangles)
@@ -714,6 +961,9 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
     return rectangles
 
   def fixM2(self, rectangles):
+    """
+    Fix any _M2 in the rectangle filenames
+    """
     for rectangle in rectangles[:]:
       if "_M2" in rectangle.file:
         duplicates = [r for r in rectangles if r is not rectangle and np.all(r.cxvec == rectangle.cxvec)]
@@ -726,6 +976,9 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
       rectangle.n = i
 
   def fixrectanglefilenames(self, rectangles):
+    """
+    Fix rectangle filenames if the coordinates are messed up
+    """
     for r in rectangles:
       expected = self.SlideID+f"_[{floattoint(r.cx/r.onemicron, atol=1e-10):d},{floattoint(r.cy/r.onemicron, atol=1e-10):d}].im3"
       actual = r.file
@@ -735,6 +988,9 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
 
   @methodtools.lru_cache()
   def getdir(self):
+    """
+    List all rectangles that have im3 files.
+    """
     folder = self.scanfolder/"MSI"
     im3s = folder.glob("*.im3")
     result = []
@@ -757,8 +1013,10 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
     return result
 
   @methodtools.lru_cache()
-  def getoverlaps(self, *, overlaptype=None):
-    if overlaptype is None: overlaptype = self.overlaptype
+  def getoverlaps(self, *, overlaptype=Overlap):
+    """
+    Calculate all overlaps between rectangles.
+    """
     overlaps = []
     for r1, r2 in itertools.product(self.rectangles, repeat=2):
       if r1 is r2: continue
@@ -783,21 +1041,51 @@ class XMLLayoutReader(SampleThatReadsOverlaps):
     return overlaps
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
+  """
+  Base class for any sample that reads rectangles from the XML metadata.
+  """
   def readallrectangles(self, **extrakwargs):
     rectangles = self.getrectanglelayout()
-    return [self.rectangletype(rectangle=r, readingfromfile=False, **self.rectangleextrakwargs, **extrakwargs) for r in rectangles]
+    rectangleextrakwargs = self.rectangleextrakwargs
+    del rectangleextrakwargs["pscale"]
+    return [self.rectangletype(rectangle=r, readingfromfile=False, **rectangleextrakwargs, **extrakwargs) for r in rectangles]
 
 class ReadRectanglesIm3FromXML(ReadRectanglesIm3Base, ReadRectanglesFromXML):
-  pass
+  """
+  Base class for any sample that reads rectangles from the XML metadata
+  and loads the rectangle images from im3 files.
+  """
 
-class ReadRectanglesOverlapsFromXML(ReadRectanglesFromXML, ReadRectanglesOverlapsBase):
+class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRectanglesFromXML):
+  """
+  Base class for any sample that reads rectangles from the XML metadata
+  and loads the rectangle images from component tiff files.
+  """
+
+class ReadRectanglesOverlapsFromXML(ReadRectanglesOverlapsBase, ReadRectanglesFromXML):
+  """
+  Base class for any sample that reads rectangles and overlaps from the XML metadata.
+  """
   def readalloverlaps(self, **kwargs):
-    return self.getoverlaps(**kwargs)
+    return self.getoverlaps(overlaptype=self.overlaptype, **kwargs)
 
-class ReadRectanglesOverlapsIm3FromXML(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsFromXML):
-  pass
+class ReadRectanglesOverlapsIm3FromXML(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsFromXML, ReadRectanglesIm3FromXML):
+  """
+  Base class for any sample that reads rectangles and overlaps from the XML metadata
+  and loads the rectangle images from im3 files.
+  """
+
+class ReadRectanglesOverlapsComponentTiffFromXML(ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsFromXML, ReadRectanglesComponentTiffFromXML):
+  """
+  Base class for any sample that reads rectangles and overlaps from the XML metadata
+  and loads the rectangle images from component tiff files.
+  """
 
 class TempDirSample(SampleBase):
+  """
+  Base class for any sample that wants to use a temp folder
+  temproot: main folder to make the tmpdir in (default is whatever the system uses)
+  """
   def __init__(self, *args, temproot=None, **kwargs):
     if temproot is not None: temproot = pathlib.Path(temproot)
     self.__temproot = temproot

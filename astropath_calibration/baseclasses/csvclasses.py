@@ -6,7 +6,10 @@ from ..utilities.tableio import readtable
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, distancefield, pscalefield
 from .polygon import DataClassWithPolygon, Polygon, polygonfield
 
-class Globals(DataClassWithPscale):
+class ROIGlobals(DataClassWithPscale):
+  """
+  Global info about an ROI of the microscope scan
+  """
   pixelsormicrons = "microns"
 
   x: distancefield(pixelsormicrons=pixelsormicrons)
@@ -16,7 +19,10 @@ class Globals(DataClassWithPscale):
   Unit: str
   Tc: MetaDataAnnotation(datetime.datetime, readfunction=lambda x: datetime.datetime.fromtimestamp(int(x)), writefunction=lambda x: int(datetime.datetime.timestamp(x)))
 
-class Perimeter(DataClassWithPscale):
+class ROIPerimeter(DataClassWithPscale):
+  """
+  Perimeter of an ROI of the microscope scan
+  """
   pixelsormicrons = "microns"
 
   n: int
@@ -24,12 +30,33 @@ class Perimeter(DataClassWithPscale):
   y: distancefield(pixelsormicrons=pixelsormicrons)
 
 class Batch(MyDataClass):
+  """
+  Global info about a sample
+
+  SampleID: numerical ID of the sample
+  Sample: the SlideID string
+  Scan: the scan number to be used
+  Batch: the id of the batch of samples
+  """
   SampleID: int
   Sample: str
   Scan: int
   Batch: int
 
 class QPTiffCsv(DataClassWithPscale):
+  """
+  Info from the qptiff file
+
+  SampleID: numerical ID of the sample
+  SlideID: the SlideID string
+  ResolutionUnit: units of the qptiff
+  XPosition, YPosition: global coordinates of the qptiff
+  XResolution, YResolution: resolution of the image used for the jpg thumbnail in pixels/cm
+  qpscale: resolution of the image used for the jpg thumbnail in pixels/micron
+  apscale: resolution of the first layer of the qptiff
+  fname: the filename of the image
+  img: currently a dummy string
+  """
   pixelsormicrons = "microns"
 
   SampleID: int
@@ -45,6 +72,11 @@ class QPTiffCsv(DataClassWithPscale):
   img: str
 
 class Constant(DataClassWithDistances):
+  """
+  An entry in the constants.csv spreadsheet.
+  This is a little complicated because there are distances with different powers
+  and different pscales.
+  """
   def __intorfloat(string):
     if isinstance(string, np.ndarray): string = string[()]
     if isinstance(string, str):
@@ -75,6 +107,12 @@ class Constant(DataClassWithDistances):
   qpscale: pscalefield() = None
 
 def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
+  """
+  read constants.csv into a dict {constantname: constantvalue}
+
+  pscale, apscale, and qpscale will be read automatically from the csv
+  if not provided as kwargs.
+  """
   scalekwargs = {"pscale": pscale, "qpscale": qpscale, "apscale": apscale}
 
   if any(scale is None for scale in scalekwargs.values()):
@@ -96,6 +134,10 @@ def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
 
 @dataclassy.dataclass(unsafe_hash=True)
 class RectangleFile(DataClassWithPscale):
+  """
+  Info about a rectangle im3 file (used for sanity checking the
+  HPF info in the annotations).
+  """
   pixelsormicrons = "microns"
 
   cx: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
@@ -106,15 +148,38 @@ class RectangleFile(DataClassWithPscale):
   def cxvec(self):
     return np.array([self.cx, self.cy])
 
-class Annotation(MyDataClass):
+class Annotation(DataClassWithPolygon):
+  """
+  An annotation from a pathologist.
+
+  sampleid: numerical id of the slide
+  layer: layer number of the annotation
+  name: name of the annotation, e.g. tuor
+  color: color of the annotation
+  visible: should it be drawn?
+  poly: the gdal polygon for the annotation
+  """
   sampleid: int
   layer: int
   name: str
   color: str
   visible: MetaDataAnnotation(bool, readfunction=lambda x: bool(int(x)), writefunction=lambda x: int(x))
-  poly: str
+  poly: polygonfield()
 
 class Vertex(DataClassWithPscale, DataClassWithApscale):
+  """
+  A vertex of a polygon.
+
+  regionid: numerical id of the region that this vertex is part of
+  vid: numerical id of the vertex within the region
+  x, y: coordinates of the vertex
+
+  vertices are defined in qptiff coordinates.  However, you can also
+  access im3x, im3y, and im3xvec, and you can use those as keyword
+  arguments in the Vertex constructor, if you prefer to work in im3
+  coordinates.
+  """
+
   pixelsormicrons = "pixels"
 
   regionid: int
@@ -127,6 +192,7 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
 
   @property
   def xvec(self):
+    """[x, y] as a numpy array"""
     return np.array([self.x, self.y])
 
   @classmethod
@@ -166,17 +232,35 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
 
   @property
   def im3xvec(self):
+    """
+    [x, y] as a numpy array in im3 coordinates
+    """
     if self.pscale is None:
       raise ValueError("Can't get im3 dimensions if you don't provide a pscale")
     return units.convertpscale(self.xvec, self.apscale, self.pscale)
   @property
   def im3x(self):
+    """x in im3 coordinates"""
     return self.xvec[0]
   @property
   def im3y(self):
+    """y in im3 coordinates"""
     return self.xvec[1]
 
 class Region(DataClassWithPolygon):
+  """
+  An annotation region
+
+  regionid: numerical id of the region
+  sampleid: numerical id of the sample
+  layer: layer number to draw the region on
+  rid: id of the region within its layer
+  isNeg: is this a region or a hole in a region?
+  type: Polygon
+  nvert: number of vertices of the region
+  poly: gdal polygon for the region
+  """
+
   pixelsormicrons = Polygon.pixelsormicrons
 
   regionid: int

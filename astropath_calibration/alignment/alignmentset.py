@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 
-import contextlib, cv2, methodtools, numpy as np, traceback
+import contextlib, numpy as np, traceback
 
-from ..baseclasses.overlap import RectangleOverlapCollection
-from ..baseclasses.sample import FlatwSampleBase, ReadRectanglesOverlapsIm3, ReadRectanglesOverlapsIm3FromXML
+from ..baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase
 from ..utilities.tableio import readtable, writetable
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
-from .rectangle import AlignmentRectangle, AlignmentRectangleProvideImage
+from .rectangle import AlignmentRectangle, AlignmentRectangleBase, AlignmentRectangleComponentTiff, AlignmentRectangleProvideImage
 from .stitch import ReadStitchResult, stitch
 
-class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
+class AlignmentSetBase(SampleBase):
   """
   Main class for aligning a set of images
   """
-  def __init__(self, *args, interactive=False, useGPU=False, forceGPU=False, filetype="flatWarp", use_mean_image=True, **kwargs):
+  def __init__(self, *args, interactive=False, useGPU=False, forceGPU=False, use_mean_image=True, **kwargs):
     """
     Directory structure should be
     root/
@@ -23,19 +22,20 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
           samp_*.csv
     root2/
       samp/
-        samp_*.(fw01/camWarp_layer01) (if using DAPI, could also be 02 etc. to align with other markers)
+        samp_*.(fw01/camWarp_layer01) (if using DAPI; could also be 02 etc. to align with other markers)
 
     interactive: if this is true, then the script might try to prompt
                  you for input if things go wrong
     """
     self.__use_mean_image = use_mean_image
     self.interactive = interactive
-    super().__init__(*args, filetype=filetype, **kwargs)
+    super().__init__(*args, **kwargs)
     for r in self.rectangles:
       r.setrectanglelist(self.rectangles)
 
     self.gpufftdict = None
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
+    self.__images = None
 
   @property
   def logmodule(self): return "align"
@@ -81,13 +81,15 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     return sum_mse
 
   def getDAPI(self, keeprawimages=False, mean_image=None):
-    with contextlib.ExitStack() as stack:
-      for r in self.rectangles:
-        stack.enter_context(r.using_image_before_flatfield())
-        if keeprawimages:
-          for r in self.rectangles:
-            self.enter_context(r.using_image_before_flatfield())
-      self.images = [self.enter_context(r.using_image()) for r in self.rectangles]
+    if self.__images is None or keeprawimages:
+      if self.__images is None: self.__images = self.enter_context(contextlib.ExitStack())
+      with contextlib.ExitStack() as stack:
+        for r in self.rectangles:
+          stack.enter_context(r.using_image_before_flatfield())
+          if keeprawimages:
+            self.__images.enter_context(r.using_image_before_flatfield())
+        for r in self.rectangles:
+          self.__images.enter_context(r.using_image())
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -109,6 +111,10 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
     imgs            = list of WarpImages to use for update
     usewarpedimages = if True, warped rather than raw images will be read
     """
+    if self.__images is not None:
+      self.__images.close()
+      self.__images = None
+
     for img in imgs:
       if usewarpedimages :
         thisupdateimg=img.warped_image
@@ -176,7 +182,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
       self.logger.warningglobal('Failed to create an OpenCL API, no GPU computation will be available!!')
       return None
 
-  rectangletype = AlignmentRectangle
+  rectangletype = AlignmentRectangleBase
   overlaptype = AlignmentOverlap
   alignmentresulttype = AlignmentResult
   @property
@@ -226,11 +232,7 @@ class AlignmentSetBase(FlatwSampleBase, RectangleOverlapCollection):
   def stitchresult(self, stitchresult):
     self.__stitchresult = stitchresult
 
-class AlignmentSet(AlignmentSetBase, ReadRectanglesOverlapsIm3):
-  @methodtools.lru_cache()
-  def image(self):
-    return cv2.imread(str(self.dbload/(self.SlideID+"_qptiff.jpg")))
-
+class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample):
   @property
   def alignmentsfilename(self): return self.csv("align")
 
@@ -353,7 +355,7 @@ class AlignmentSet(AlignmentSetBase, ReadRectanglesOverlapsIm3):
       self.writealignments()
     return result
 
-class AlignmentSetFromXML(AlignmentSetBase, ReadRectanglesOverlapsIm3FromXML):
+class AlignmentSetFromXMLBase(AlignmentSetBase, ReadRectanglesOverlapsFromXML):
   def __init__(self, *args, nclip, position=None, **kwargs):
     self.__nclip = nclip
     super().__init__(*args, **kwargs)
@@ -363,3 +365,23 @@ class AlignmentSetFromXML(AlignmentSetBase, ReadRectanglesOverlapsIm3FromXML):
   def nclip(self): return self.__nclip*self.onepixel
   @property
   def position(self): return self.__position
+
+class AlignmentSetIm3Base(AlignmentSetBase, ReadRectanglesOverlapsIm3Base):
+  rectangletype = AlignmentRectangle
+  def __init__(self, *args, filetype="flatWarp", **kwargs):
+    super().__init__(*args, filetype=filetype, **kwargs)
+
+class AlignmentSetComponentTiffBase(AlignmentSetBase, ReadRectanglesOverlapsComponentTiffBase):
+  rectangletype = AlignmentRectangleComponentTiff
+
+class AlignmentSet(AlignmentSetIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignmentSetDbloadBase):
+  pass
+
+class AlignmentSetFromXML(AlignmentSetIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignmentSetFromXMLBase):
+  pass
+
+class AlignmentSetComponentTiff(AlignmentSetComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignmentSetDbloadBase):
+  pass
+
+class AlignmentSetComponentTiffFromXML(AlignmentSetComponentTiffBase, AlignmentSetFromXMLBase, ReadRectanglesOverlapsComponentTiffFromXML):
+  pass

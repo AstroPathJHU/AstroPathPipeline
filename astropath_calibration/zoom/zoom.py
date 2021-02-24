@@ -1,7 +1,7 @@
 import argparse, contextlib, cv2, itertools, methodtools, numpy as np, os, pathlib, PIL, skimage
 
 from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
-from ..baseclasses.sample import ReadRectanglesBase, ReadRectanglesComponentTiff, TempDirSample, ZoomFolderSampleBase
+from ..baseclasses.sample import ReadRectanglesBase, ReadRectanglesDbloadComponentTiff, TempDirSample, ZoomFolderSampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint, memmapcontext, PILmaximagepixels
 
@@ -11,6 +11,7 @@ class ZoomSampleBase(ReadRectanglesBase):
   def __init__(self, *args, zoomtilesize=16384, **kwargs):
     self.__tilesize = zoomtilesize
     super().__init__(*args, **kwargs)
+  multilayer = True
   @property
   def zoomtilesize(self): return self.__tilesize
   @methodtools.lru_cache()

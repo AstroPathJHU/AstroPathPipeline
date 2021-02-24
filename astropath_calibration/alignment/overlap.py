@@ -177,7 +177,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
 
   unshifted = cutimages
 
-  def align(self, *, debug=False, alreadyalignedstrategy="error", **computeshiftkwargs):
+  def align(self, *, debug=False, alreadyalignedstrategy="error", mseonly=False, **computeshiftkwargs):
     if self.result is None:
       alreadyalignedstrategy = None
     else:
@@ -193,6 +193,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
         raise ValueError(f"Unknown value alreadyalignedstrategy={alreadyalignedstrategy!r}")
 
     try:
+      if mseonly: raise Exception("Not aligning this overlap because you specified mseonly")
       if alreadyalignedstrategy != "shift_only":
         kwargs1 = self.__computeshift(**computeshiftkwargs)
         if "gputhread" in computeshiftkwargs.keys() and "gpufftdict" in computeshiftkwargs.keys() :
@@ -208,8 +209,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
       self.result = self.alignmentresulttype(
         exit=255,
         dxvec=(unc.ufloat(0, 9999)*self.onepixel, unc.ufloat(0, 9999)*self.onepixel),
-        sc=1.,
-        mse=(0., 0., 0.),
+        mse3=0.,
         exception=e,
         **self.alignmentresultkwargs,
       )
@@ -222,6 +222,22 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     else:
       return AlignmentResult
 
+  @methodtools.lru_cache()
+  @property
+  def mse1(self): return mse(self.cutimages[0].astype(float))
+
+  @methodtools.lru_cache()
+  @property
+  def mse2(self): return mse(self.cutimages[1].astype(float))
+
+  @methodtools.lru_cache()
+  @property
+  def sc(self):
+    mse1 = self.mse1
+    mse2 = self.mse2
+    if mse2 == 0: return 1
+    return (mse1 / mse2) ** .5
+
   @property
   def alignmentresultkwargs(self):
     result = {
@@ -230,6 +246,9 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
       "p2": self.p2,
       "code": self.tag,
       "pscale": self.pscale,
+      "mse1": self.mse1,
+      "mse2": self.mse2,
+      "sc": self.sc,
     }
     if self.ismultilayer:
       result.update({
@@ -250,9 +269,6 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     self.result = AlignmentResult(
       exit = inverse.result.exit,
       dxvec = -inverse.result.dxvec,
-      sc = 1/inverse.result.sc,
-      mse1 = inverse.result.mse2,
-      mse2 = inverse.result.mse1,
       mse3 = inverse.result.mse3 / inverse.result.sc**2,
       **self.alignmentresultkwargs,
     )
@@ -277,16 +293,10 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     """
     b1, b2 = shiftimg(self.cutimages, *units.nominal_values(dxvec / self.onepixel),use_gpu=self.use_gpu)
 
-    mse1 = mse(b1)
-    mse2 = mse(b2)
-
-    sc = (mse1 / mse2) ** 0.5
-
-    diff = b1 - b2*sc
+    diff = b1 - b2*self.sc
 
     return {
-      "sc": sc,
-      "mse": (mse1, mse2, mse(diff))
+      "mse3": mse(diff)
     }
 
   def getShiftComparisonDetailTuple(self) :

@@ -57,17 +57,6 @@ class TestMisc(unittest.TestCase):
     with units.setup_context("fast"):
       self.testPolygonAreas()
 
-  def testPolygonHull(self):
-    poly = Polygon(pixels="POLYGON((1 1, 1 3, 2 3, 2 2, 3 2, 3 3, 4 3, 4 1, 1 1), (.25 .25, .25 .75, .75 .75, .75 .25))", pscale=5, apscale=3)
-    assertAlmostEqual(poly.area, 4.75 * poly.onepixel**2)
-    hull = poly.convexhull
-    self.assertEqual(hull, Polygon(pixels="POLYGON((1 1, 1 3, 4 3, 4 1, 1 1))", pscale=5, apscale=3))
-    assertAlmostEqual(hull.area, 6 * poly.onepixel**2)
-
-  def testPolygonHullFastUnits(self):
-    with units.setup_context("fast"):
-      self.testPolygonHull()
-
   def testPolygonNumpyArray(self):
     polystring = "POLYGON((1 1, 1 9, 2 9, 2 2, 3 2, 3 9, 9 9, 9 1, 1 1), (4 6, 8 6, 8 4, 4 4))"
     poly = Polygon(pixels=polystring, pscale=1, apscale=3)
