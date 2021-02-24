@@ -1,10 +1,14 @@
-import abc, numpy as np, pathlib
+import abc, contextlib, numpy as np, pathlib
 from ..alignment.field import FieldReadComponentTiff
 from ..baseclasses.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff
 from ..utilities.misc import floattoint
 from ..zoom.zoom import ZoomSampleBase
 
 class MaskSample(MaskSampleBase):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__using_mask_count = 0
+
   @abc.abstractproperty
   def maskfilestem(self): pass
 
@@ -33,6 +37,39 @@ class MaskSample(MaskSampleBase):
     else:
       raise ValueError("Don't know how to deal with mask file type {filetype}")
 
+  @contextlib.contextmanager
+  def using_mask(self):
+    if self.__using_mask_count == 0:
+      self.__mask = self.readmask()
+    self.__using_mask_count += 1
+    try:
+      yield self.__mask
+    finally:
+      self.__using_mask_count -= 1
+      if self.__using_mask_count == 0:
+        del self.__mask
+
+class TissueMaskSample(MaskSample):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__using_tissuemask_count = 0
+
+  @classmethod
+  @abc.abstractmethod
+  def tissuemask(cls, mask): pass
+
+  @contextlib.contextmanager
+  def using_tissuemask(self):
+    if self.__using_tissuemask_count == 0:
+      self.__tissuemask = self.tissuemask(self.readmask())
+    self.__using_tissuemask_count += 1
+    try:
+      yield self.__tissuemask
+    finally:
+      self.__using_tissuemask_count -= 1
+      if self.__using_tissuemask_count == 0:
+        del self.__tissuemask
+
 class WriteMaskSampleBase(MaskSample):
   def writemask(self, mask, **filekwargs):
     filename = self.maskfilename(**filekwargs)
@@ -53,12 +90,16 @@ class StitchMaskSampleBase(WriteMaskSampleBase):
   @abc.abstractmethod
   def stitchmask(self): pass
 
-class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, StitchMaskSampleBase):
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, layer=9, with_seg=True, **kwargs)
-
+class InformMaskSample(TissueMaskSample):
   @property
   def maskfilestem(self): return "informmask"
+  @classmethod
+  def tissuemask(cls, mask):
+    return mask != 2
+
+class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, StitchMaskSampleBase, InformMaskSample):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, layer=9, with_seg=True, **kwargs)
 
   @property
   def logmodule(self): return "stitchinformmask"
@@ -76,7 +117,7 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, Stitch
 
   def stitchmask(self):
     self.logger.info("getting tissue mask")
-    mask = np.zeros(shape=tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=bool)
+    mask = np.full(fill_value=2, shape=tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.uint8)
     onepixel = self.onepixel
     nfields = len(self.rectangles)
     for n, field in enumerate(self.rectangles, start=1):

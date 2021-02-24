@@ -1,5 +1,5 @@
 import argparse, numpy as np, pathlib, PIL
-from astropath_calibration.annowarp.annowarpsample import AnnoWarpSample
+from astropath_calibration.annowarp.annowarpsample import AnnoWarpSampleBrightnessThreshold
 from astropath_calibration.annowarp.visualization import showannotation
 from astropath_calibration.baseclasses.csvclasses import Region
 from astropath_calibration.utilities import units
@@ -14,7 +14,7 @@ samp = "M206"
 def makeplots():
   from ...test.testzoom import gunzipreference
   gunzipreference(samp)
-  A = AnnoWarpSample(data, samp, zoomroot=zoomroot)
+  A = AnnoWarpSampleBrightnessThreshold(data, samp, zoomroot=zoomroot)
   warpedregions = readtable(annowarproot/samp/A.newregionscsv.name, Region, extrakwargs={"apscale": A.apscale, "pscale": A.pscale})
 
   with A.using_images() as (wsi, fqptiff):

@@ -1,6 +1,6 @@
 import more_itertools, numpy as np, pathlib, re
 
-from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSample, WarpedVertex
+from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleBrightnessThreshold, WarpedVertex
 from astropath_calibration.annowarp.annowarpcohort import AnnoWarpCohort
 from astropath_calibration.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath_calibration.baseclasses.csvclasses import Region
@@ -28,7 +28,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     ]
 
   def testAlignment(self, SlideID="M206"):
-    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
+    s = AnnoWarpSampleBrightnessThreshold(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
     s.align()
     alignmentfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.alignmentcsv.name
     alignmentfilename.parent.mkdir(parents=True, exist_ok=True)
@@ -70,7 +70,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
       self.assertGreater(row.poly.area, 0)
 
   def testReadingWritingAlignments(self, SlideID="M206"):
-    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
+    s = AnnoWarpSampleBrightnessThreshold(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     testfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/"testreadannowarpalignments.csv"
     testfilename.parent.mkdir(parents=True, exist_ok=True)
@@ -83,7 +83,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     testfilename.unlink()
 
   def testStitchCvxpy(self, SlideID="M206"):
-    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
+    s = AnnoWarpSampleBrightnessThreshold(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)
     result1 = s.stitch()
@@ -108,7 +108,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     AnnoWarpCohort.runfromargumentparser(args)
 
   def testConstraint(self, SlideID="M206"):
-    s = AnnoWarpSample(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
+    s = AnnoWarpSampleBrightnessThreshold(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom")
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)
     result1 = s.stitch()

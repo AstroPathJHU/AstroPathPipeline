@@ -1,5 +1,5 @@
 from ..baseclasses.cohort import DbloadCohort, ZoomCohort
-from .annowarpsample import AnnoWarpSample
+from .annowarpsample import AnnoWarpSampleBrightnessThreshold
 
 class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
   def __init__(self, *args, tilepixels=None, tilebrightnessthreshold=None, mintilebrightfraction=None, mintilerange=None, **kwargs):
@@ -21,7 +21,7 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
       **self.__initiatesamplekwargs,
     }
 
-  sampleclass = AnnoWarpSample
+  sampleclass = AnnoWarpSampleBrightnessThreshold
 
   @property
   def logmodule(self): return "annowarp"
@@ -30,10 +30,10 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     p.add_argument("--skip-stitched", action="store_true")
-    p.add_argument("--tilepixels", type=int, default=AnnoWarpSample.defaulttilepixels)
-    p.add_argument("--tile-brightness-threshold", type=int, default=AnnoWarpSample.defaulttilebrightnessthreshold)
-    p.add_argument("--min-tile-bright-fraction", type=float, default=AnnoWarpSample.defaultmintilebrightfraction)
-    p.add_argument("--min-tile-range", type=int, default=AnnoWarpSample.defaultmintilerange)
+    p.add_argument("--tilepixels", type=int, default=AnnoWarpSampleBrightnessThreshold.defaulttilepixels)
+    p.add_argument("--tile-brightness-threshold", type=int, default=AnnoWarpSampleBrightnessThreshold.defaulttilebrightnessthreshold)
+    p.add_argument("--min-tile-bright-fraction", type=float, default=AnnoWarpSampleBrightnessThreshold.defaultmintilebrightfraction)
+    p.add_argument("--min-tile-range", type=int, default=AnnoWarpSampleBrightnessThreshold.defaultmintilerange)
     return p
 
   @classmethod
