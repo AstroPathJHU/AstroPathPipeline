@@ -210,7 +210,6 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
         n=n,
         x=x+qptiffx1,
         y=y+qptiffy1,
-        mi=tissuefraction,
         pscale=imscale,
         tilesize=tilesize,
         bigtilesize=bigtilesize,
@@ -664,7 +663,6 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  mi: float
   exit: int
 
   @classmethod
