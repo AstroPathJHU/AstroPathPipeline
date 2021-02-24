@@ -20,16 +20,14 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
   rectangletype = FieldReadComponentTiffMultiLayer
 
   defaulttilepixels = 100
-  defaultmintissuefraction = 0.2
 
-  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=defaulttilepixels, mintissuefraction=defaultmintissuefraction, **kwargs):
+  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=defaulttilepixels, **kwargs):
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
     self.__bigtilepixels = np.array(bigtilepixels)
     self.__bigtileoffsetpixels = np.array(bigtileoffsetpixels)
     self.__tilepixels = tilepixels
-    self.mintissuefraction = mintissuefraction
     if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
       raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
 
@@ -205,8 +203,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       )
       wsitile = wsi[slc]
       if not wsitile.size: continue
-      tissuefraction = self.ngoodpixels(wsi, qptiff, slc, wsiinitialslice) / wsitile.size
-      if tissuefraction < self.mintissuefraction: continue
+      if not self.passescut(wsi, qptiff, slc, wsiinitialslice) / wsitile.size: continue
       qptifftile = qptiff[slc]
 
       alignmentresultkwargs = dict(
@@ -262,7 +259,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
   @abc.abstractmethod
   def printcuts(self): pass
   @abc.abstractmethod
-  def ngoodpixels(self, wsi, qptiff, slc, wsiinitialslice): pass
+  def passescut(self, wsi, qptiff, slc, wsiinitialslice): pass
 
   @property
   def alignmentcsv(self): return self.csv(f"warp-{self.__tilepixels}")
@@ -540,27 +537,16 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     self.writevertices()
     self.writeregions()
 
-class AnnoWarpSampleBrightnessThreshold(AnnoWarpSampleBase):
-  defaulttilebrightnessthreshold = 45
-  defaultmintilerange = 45
-
-  def __init__(self, *args, tilebrightnessthreshold=defaulttilebrightnessthreshold, mintilerange=defaultmintilerange, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.tilebrightnessthreshold = tilebrightnessthreshold
-    self.mintilerange = mintilerange
-
-  def printcuts(self):
-    self.logger.info(f"Cuts: {self.mintissuefraction:.0%} of pixels have flux >= {self.tilebrightnessthreshold}, and flux range in the tile >= {self.mintilerange}.")
-
-  def ngoodpixels(self, wsi, qptiff, slc, wsiinitialslice):
-    wsitile = wsi[slc]
-    if np.max(wsitile) - np.min(wsitile) < self.mintilerange: return 0
-    return np.sum(wsitile>self.tilebrightnessthreshold)
-
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
+  defaultmintissuefraction = 0.2
+
+  def __init__(self, *args, mintissuefraction=defaultmintissuefraction, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.mintissuefraction = mintissuefraction
+
   def printcuts(self):
     self.logger.info(f"Cuts: {self.mintissuefraction:.0%} of the HPF is in a tissue region")
-  def ngoodpixels(self, wsi, qptiff, slc, wsiinitialslice):
+  def passescut(self, wsi, qptiff, slc, wsiinitialslice):
     with self.using_tissuemask() as mask:
       y1, x1 = wsiinitialslice
       y1 = slice(y1.start*self.ppscale, y1.stop*self.ppscale)
@@ -572,7 +558,8 @@ class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
 
       maskslice = mask[y1,x1][y2,x2]
 
-      return np.count_nonzero(maskslice) / self.ppscale**2
+      return np.count_nonzero(maskslice) / maskslice.size >= self.mintissuefraction
+
   def align(self, *args, **kwargs):
     with self.using_tissuemask():
       return super().align(*args, **kwargs)
