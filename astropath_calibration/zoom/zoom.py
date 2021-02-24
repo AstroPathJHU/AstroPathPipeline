@@ -25,7 +25,7 @@ class ZoomSampleBase(ReadRectanglesBase):
 class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample):
   pass
 
-class Zoom(ZoomSample, ReadRectanglesComponentTiff):
+class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
   rectangletype = FieldReadComponentTiffMultiLayer
 
   @property

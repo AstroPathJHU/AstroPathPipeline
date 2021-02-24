@@ -1,6 +1,6 @@
 import abc, numpy as np, pathlib
 from ..alignment.field import FieldReadComponentTiff
-from ..baseclasses.sample import MaskSampleBase, ReadRectanglesComponentTiff
+from ..baseclasses.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff
 from ..utilities.misc import floattoint
 from ..zoom.zoom import ZoomSampleBase
 
@@ -53,7 +53,7 @@ class StitchMaskSampleBase(WriteMaskSampleBase):
   @abc.abstractmethod
   def stitchmask(self): pass
 
-class StitchInformMask(ZoomSampleBase, ReadRectanglesComponentTiff, StitchMaskSampleBase):
+class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, StitchMaskSampleBase):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, layer=9, with_seg=True, **kwargs)
 
