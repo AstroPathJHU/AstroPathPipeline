@@ -553,6 +553,26 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
     """
     return self.constantsdict["apscale"]
 
+class MaskSampleBase(SampleBase):
+  """
+  Base class for any sample that uses the masks in im3/meanimage
+
+  maskroot: A different root to use to find the masks (default: same as root)
+  """
+  def __init__(self, *args, maskroot=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if maskroot is None: maskroot = self.root
+    self.__maskroot = pathlib.Path(maskroot)
+  @property
+  def maskroot(self): return self.__maskroot
+
+  @property
+  def maskfolder(self):
+    result = self.im3folder/"meanimage"
+    if self.maskroot != self.root:
+      result = self.maskroot/result.relative_to(self.root)
+    return result
+
 class Im3SampleBase(SampleBase):
   """
   Base class for any sample that uses sharded im3 images.
@@ -570,7 +590,7 @@ class Im3SampleBase(SampleBase):
   def possiblexmlfolders(self):
     return super().possiblexmlfolders + [self.root2/self.SlideID]
 
-class ZoomSampleBase(SampleBase):
+class ZoomFolderSampleBase(SampleBase):
   """
   Base class for any sample that uses the zoomed "big" or "wsi" images.
   zoomroot: Root location of the zoomed images.

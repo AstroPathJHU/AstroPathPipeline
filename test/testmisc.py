@@ -1,7 +1,8 @@
-import hashlib, numpy as np, os, pathlib, unittest
+import cv2, hashlib, numpy as np, os, pathlib, unittest
 from astropath_calibration.baseclasses.csvclasses import Vertex
 from astropath_calibration.baseclasses.polygon import Polygon
 from astropath_calibration.baseclasses.overlap import rectangleoverlaplist_fromcsvs
+from astropath_calibration.geom.contours import findcontoursaspolygons
 from astropath_calibration.utilities import units
 from .testbase import assertAlmostEqual
 
@@ -55,3 +56,17 @@ class TestMisc(unittest.TestCase):
   def testPolygonAreasFastUnits(self):
     with units.setup_context("fast"):
       self.testPolygonAreas()
+
+  def testPolygonNumpyArray(self):
+    polystring = "POLYGON((1 1, 1 9, 2 9, 2 2, 3 2, 3 9, 9 9, 9 1, 1 1), (4 6, 8 6, 8 4, 4 4))"
+    poly = Polygon(pixels=polystring, pscale=1, apscale=3)
+    nparray = poly.numpyarray(shape=(10, 10), dtype=np.uint8)
+    #doesn't work for arbitrary polygons unless you increase the tolerance, but works for a polygon with right angles
+    assertAlmostEqual(poly.area / poly.onepixel**2, np.sum(nparray))
+
+    poly2, = findcontoursaspolygons(nparray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=poly.pscale, apscale=poly.apscale)
+    #does not equal poly1, some gets eaten away
+
+  def testPolygonNumpyArrayFastUnits(self):
+    with units.setup_context("fast"):
+      self.testPolygonNumpyArray()

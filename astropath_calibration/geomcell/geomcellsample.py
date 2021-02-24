@@ -1,7 +1,7 @@
 import cv2, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
-from ..alignment.field import Field
+from ..alignment.field import FieldReadComponentTiffMultiLayer
 from ..baseclasses.polygon import DataClassWithPolygon, polygonfield
-from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer, GeomLoadRectangle
+from ..baseclasses.rectangle import GeomLoadRectangle
 from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff
 from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
@@ -10,7 +10,7 @@ from ..utilities.tableio import writetable
 from ..utilities.units import ThingWithApscale, ThingWithPscale
 from ..utilities.units.dataclasses import distancefield
 
-class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer, GeomLoadRectangle):
+class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
 class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample):
@@ -44,7 +44,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
 
   @property
   def rectanglecsv(self): return "fields"
-  rectangletype = FieldReadComponentTiffMultiLayer
+  rectangletype = GeomLoadFieldReadComponentTiffMultiLayer
   @property
   def rectangleextrakwargs(self):
     return {

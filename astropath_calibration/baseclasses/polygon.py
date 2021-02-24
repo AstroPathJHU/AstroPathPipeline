@@ -1,4 +1,4 @@
-import dataclassy, itertools, matplotlib.patches, more_itertools, numbers, numpy as np
+import dataclassy, itertools, matplotlib.patches, more_itertools, numbers, numpy as np, skimage.draw
 from osgeo import ogr
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation
@@ -160,6 +160,16 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       ) + shiftby) / units.onepixel(imagescale),
       **kwargs,
     )
+
+  def numpyarray(self, *, shape, dtype, imagescale=None, shiftby=0):
+    if imagescale is None: imagescale = self.pscale
+    array = np.zeros(shape, dtype)
+    for i, vv in enumerate(self.vertices):
+      vv = np.array([v.xvec for v in vv])
+      vv = (units.convertpscale(vv, self.apscale, imagescale) + shiftby) // units.onepixel(imagescale)
+      coordinates = skimage.draw.polygon(r=vv[:, 1], c=vv[:, 0], shape=shape)
+      array[coordinates] = (i == 0)
+    return array
 
 class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
   """

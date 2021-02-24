@@ -133,6 +133,12 @@ pipeline {
           }
         }
 
+        stage('stitch mask') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.teststitchmask'
+          }
+        }
+
         stage('warping') {
           stages {
             stage('test warping') {

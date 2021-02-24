@@ -113,6 +113,8 @@ class Distance:
     except (TypeError, AttributeError):
       if np.conjugate(self.nominal_value) != self.nominal_value: raise AssertionError
       return self
+  def rint(self, *args, **kwargs):
+    return np.rint(self.asdimensionless, *args, **kwargs)
 
   @property
   def nominal_value(self): return Distance(pscale=self._pscale, power=self._power, pixels=unc.nominal_value(self._pixels))
