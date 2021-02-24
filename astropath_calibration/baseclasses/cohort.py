@@ -260,6 +260,34 @@ class DeepZoomCohort(Cohort):
       "deepzoomroot": parsed_args_dict.pop("deepzoomroot"),
     }
 
+class MaskCohort(Cohort):
+  """
+  Base class for any cohort that uses the mask folder
+  maskroot: an alternate root to use for the mask folder instead of root
+            (default: same as root)
+  """
+  def __init__(self, *args, maskroot=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if maskroot is None: maskroot = self.root
+    self.maskroot = pathlib.Path(maskroot)
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "maskroot": self.maskroot}
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--maskroot", type=pathlib.Path, help="root location of mask folder (default: same as root)")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "maskroot": parsed_args_dict.pop("maskroot"),
+    }
+
 class SelectRectanglesCohort(Cohort):
   """
   Base class for any cohort that allows the user to select rectangles

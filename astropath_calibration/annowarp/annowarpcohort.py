@@ -1,13 +1,11 @@
-from ..baseclasses.cohort import DbloadCohort, ZoomCohort
-from .annowarpsample import AnnoWarpSampleBrightnessThreshold
+from ..baseclasses.cohort import DbloadCohort, MaskCohort, ZoomCohort
+from .annowarpsample import AnnoWarpSampleInformTissueMask
 
-class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
-  def __init__(self, *args, tilepixels=None, tilebrightnessthreshold=None, mintissuefraction=None, mintilerange=None, **kwargs):
+class AnnoWarpCohortBase(DbloadCohort, ZoomCohort, MaskCohort):
+  def __init__(self, *args, tilepixels=None, mintissuefraction=None, **kwargs):
     self.__initiatesamplekwargs = {
       "tilepixels": tilepixels,
-      "tilebrightnessthreshold": tilebrightnessthreshold,
       "mintissuefraction": mintissuefraction,
-      "mintilerange": mintilerange,
     }
     for k, v in list(self.__initiatesamplekwargs.items()):
       if v is None:
@@ -21,7 +19,7 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
       **self.__initiatesamplekwargs,
     }
 
-  sampleclass = AnnoWarpSampleBrightnessThreshold
+  sampleclass = AnnoWarpSampleInformTissueMask
 
   @property
   def logmodule(self): return "annowarp"
@@ -30,10 +28,8 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     p.add_argument("--skip-stitched", action="store_true")
-    p.add_argument("--tilepixels", type=int, default=AnnoWarpSampleBrightnessThreshold.defaulttilepixels)
-    p.add_argument("--tile-brightness-threshold", type=int, default=AnnoWarpSampleBrightnessThreshold.defaulttilebrightnessthreshold)
-    p.add_argument("--min-tissue-fraction", type=float, default=AnnoWarpSampleBrightnessThreshold.defaultmintissuefraction)
-    p.add_argument("--min-tile-range", type=int, default=AnnoWarpSampleBrightnessThreshold.defaultmintilerange)
+    p.add_argument("--tilepixels", type=int, default=AnnoWarpSampleInformTissueMask.defaulttilepixels)
+    p.add_argument("--min-tissue-fraction", type=float, default=AnnoWarpSampleInformTissueMask.defaultmintissuefraction)
     return p
 
   @classmethod
@@ -41,9 +37,7 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "tilepixels": parsed_args_dict.pop("tilepixels"),
-      "tilebrightnessthreshold": parsed_args_dict.pop("tile_brightness_threshold"),
       "mintissuefraction": parsed_args_dict.pop("min_tissue_fraction"),
-      "mintilerange": parsed_args_dict.pop("min_tile_range"),
     }
     if parsed_args_dict.pop("skip_stitched"):
       dbloadroot = kwargs["dbloadroot"]
