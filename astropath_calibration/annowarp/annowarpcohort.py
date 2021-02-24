@@ -2,11 +2,11 @@ from ..baseclasses.cohort import DbloadCohort, ZoomCohort
 from .annowarpsample import AnnoWarpSampleBrightnessThreshold
 
 class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
-  def __init__(self, *args, tilepixels=None, tilebrightnessthreshold=None, mintilebrightfraction=None, mintilerange=None, **kwargs):
+  def __init__(self, *args, tilepixels=None, tilebrightnessthreshold=None, mintissuefraction=None, mintilerange=None, **kwargs):
     self.__initiatesamplekwargs = {
       "tilepixels": tilepixels,
       "tilebrightnessthreshold": tilebrightnessthreshold,
-      "mintilebrightfraction": mintilebrightfraction,
+      "mintissuefraction": mintissuefraction,
       "mintilerange": mintilerange,
     }
     for k, v in list(self.__initiatesamplekwargs.items()):
@@ -32,7 +32,7 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
     p.add_argument("--skip-stitched", action="store_true")
     p.add_argument("--tilepixels", type=int, default=AnnoWarpSampleBrightnessThreshold.defaulttilepixels)
     p.add_argument("--tile-brightness-threshold", type=int, default=AnnoWarpSampleBrightnessThreshold.defaulttilebrightnessthreshold)
-    p.add_argument("--min-tile-bright-fraction", type=float, default=AnnoWarpSampleBrightnessThreshold.defaultmintilebrightfraction)
+    p.add_argument("--min-tissue-fraction", type=float, default=AnnoWarpSampleBrightnessThreshold.defaultmintissuefraction)
     p.add_argument("--min-tile-range", type=int, default=AnnoWarpSampleBrightnessThreshold.defaultmintilerange)
     return p
 
@@ -42,7 +42,7 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort):
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "tilepixels": parsed_args_dict.pop("tilepixels"),
       "tilebrightnessthreshold": parsed_args_dict.pop("tile_brightness_threshold"),
-      "mintilebrightfraction": parsed_args_dict.pop("min_tile_bright_fraction"),
+      "mintissuefraction": parsed_args_dict.pop("min_tissue_fraction"),
       "mintilerange": parsed_args_dict.pop("min_tile_range"),
     }
     if parsed_args_dict.pop("skip_stitched"):

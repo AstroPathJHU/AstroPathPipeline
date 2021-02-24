@@ -203,7 +203,6 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       wsitile = wsi[slc]
       if not wsitile.size: continue
       tissuefraction = self.ngoodpixels(wsi, qptiff, slc) / wsitile.size
-      if tissuefraction: self.logger.debug(tissuefraction)
       if tissuefraction < self.mintissuefraction: continue
       qptifftile = qptiff[slc]
 
@@ -563,7 +562,7 @@ class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
       maskslice = mask[slc]
       return np.count_nonzero(maskslice)
   def align(self, *args, **kwargs):
-    with self.using_tissuemask() as mask:
+    with self.using_tissuemask():
       return super().align(*args, **kwargs)
 
 class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample):
