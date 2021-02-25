@@ -327,7 +327,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testFromXML(self, SlideID="M21_1", **kwargs):
     args = thisfolder/"data", thisfolder/"data"/"flatw", SlideID
-    kwargs = {**kwargs, "selectrectangles": range(10), "root3": thisfolder/"data"/"raw", "logroot": thisfolder/"alignment_test_for_jenkins"}
+    kwargs = {**kwargs, "selectrectangles": range(10), "xmlfolders": [thisfolder/"data"/"raw"], "logroot": thisfolder/"alignment_test_for_jenkins"}
     a1 = AlignmentSet(*args, dbloadroot=thisfolder/"alignment_test_for_jenkins", **kwargs)
     a1.getDAPI()
     a1.align()
@@ -363,15 +363,15 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     np.testing.assert_array_equal(i1, i2)
 
   def testPolaris(self):
-    self.testAlignment(SlideID="YZ71", root3=thisfolder/"data"/"raw")
+    self.testAlignment(SlideID="YZ71", xmlfolders=[thisfolder/"data"/"raw"])
 
   def testPolarisFastUnits(self):
     with units.setup_context("fast"):
-      self.testAlignment(SlideID="YZ71", root3=thisfolder/"data"/"raw")
+      self.testAlignment(SlideID="YZ71", xmlfolders=[thisfolder/"data"/"raw"])
 
   def testPolarisFromXMLFastUnits(self):
     with units.setup_context("fast"):
-      self.testFromXML(SlideID="YZ71", root3=thisfolder/"data"/"raw")
+      self.testFromXML(SlideID="YZ71", xmlfolders=[thisfolder/"data"/"raw"])
 
   def testIslands(self, SlideID="M21_1"):
     for island in (

@@ -1,10 +1,10 @@
 import abc, argparse, collections, methodtools, numpy as np, pathlib, subprocess, tempfile
-from ..baseclasses.sample import FlatwSampleBase
+from ..baseclasses.sample import Im3SampleBase
 from ..utilities.misc import floattoint, memmapcontext
 
 here = pathlib.Path(__file__).parent
 
-class LayerExtractorBase(FlatwSampleBase, collections.abc.Sized):
+class LayerExtractorBase(Im3SampleBase, collections.abc.Sized):
   @property
   def logmodule(self): return "extractlayer"
 

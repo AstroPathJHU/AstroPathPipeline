@@ -232,7 +232,11 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
 
   @methodtools.lru_cache()
   @property
-  def sc(self): return (self.mse1 / self.mse2) ** .5
+  def sc(self):
+    mse1 = self.mse1
+    mse2 = self.mse2
+    if mse2 == 0: return 1
+    return (mse1 / mse2) ** .5
 
   @property
   def alignmentresultkwargs(self):
