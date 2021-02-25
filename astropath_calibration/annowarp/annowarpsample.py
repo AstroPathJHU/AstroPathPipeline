@@ -17,11 +17,30 @@ from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, ThingWithImscale
 
 class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWithImscale):
+  r"""
+  The annowarp module aligns the wsi image created by zoom to the qptiff.
+  It rewrites the annotations, which were drawn in qptiff coordinates,
+  in im3 coordinates.
+
+  The qptiff is scanned and stitched by the inform software in tiles of
+  1400 x 2100 pixels, with an offset of 1000 pixels in the y direction.
+  We divide the qptiff and wsi into tiles of 100x100 pixels and align
+  them with respect to each other, then fit to a model where \Delta\vec{x}
+  is linear in \vec{x} within the tile as well as the index \vec{i} of the
+  tile, with a possible constant piece.
+  """
+
   rectangletype = FieldReadComponentTiffMultiLayer
 
   defaulttilepixels = 100
+  __bigtilepixels = np.array([1400, 2100])
+  __bigtileoffsetpixels = np.array([0, 1000])
 
-  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=defaulttilepixels, **kwargs):
+  def __init__(self, *args, tilepixels=defaulttilepixels, **kwargs):
+    """
+    tilepixels: we divide the wsi and qptiff into tiles of this size
+                in order to align (default: 100)
+    """
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
@@ -38,8 +57,14 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
 
   @contextlib.contextmanager
   def using_images(self):
+    """
+    Context manager for opening the wsi and qptiff images
+    """
     if self.__nentered == 0:
+      #if they're not currently open
+      #disable PIL's warning when opening big images
       self.__using_images_context.enter_context(self.PILmaximagepixels())
+      #open the images
       self.__wsi = self.__using_images_context.enter_context(PIL.Image.open(self.wsifilename(layer=self.wsilayer)))
       self.__qptiff = self.__using_images_context.enter_context(QPTiff(self.qptifffilename))
     self.__nentered += 1
@@ -50,19 +75,37 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     finally:
       self.__nentered -= 1
       if self.__nentered == 0:
+        #if we don't have any other copies of this context manager going,
+        #close the images and free the memory
         self.__wsi = self.__qptiff = None
         self.__using_images_context.close()
 
   @property
-  def tilesize(self): return units.Distance(pixels=self.__tilepixels, pscale=self.imscale)
+  def tilesize(self):
+    """
+    The tile size as a Distance
+    """
+    return units.Distance(pixels=self.__tilepixels, pscale=self.imscale)
   @property
-  def bigtilesize(self): return units.distances(pixels=self.__bigtilepixels, pscale=self.imscale)
+  def bigtilesize(self):
+    """
+    The big tile size (1400, 2100) as a distance
+    """
+    return units.distances(pixels=self.__bigtilepixels, pscale=self.imscale)
   @property
-  def bigtileoffset(self): return units.distances(pixels=self.__bigtileoffsetpixels, pscale=self.imscale)
+  def bigtileoffset(self):
+    """
+    The big tile size (0, 1000) as a distance
+    """
+    return units.distances(pixels=self.__bigtileoffsetpixels, pscale=self.imscale)
 
   @methodtools.lru_cache()
   @property
   def __imageinfo(self):
+    """
+    Get the image info from the wsi and qptiff
+    (various scales and the x and y position)
+    """
     with self.using_images() as (wsi, fqptiff):
       zoomlevel = fqptiff.zoomlevels[0]
       apscale = zoomlevel.qpscale
@@ -82,24 +125,68 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       }
 
   @property
-  def apscale(self): return self.__imageinfo["apscale"]
+  def apscale(self):
+    """
+    The pixels/micron scale of the qptiff image
+    """
+    return self.__imageinfo["apscale"]
   @property
-  def ppscale(self): return self.__imageinfo["ppscale"]
+  def ipscale(self):
+    """
+    The ratio of pixels/micron scales of the im3 and qptiff images
+    """
+    return self.__imageinfo["ipscale"]
   @property
-  def iqscale(self): return self.__imageinfo["iqscale"]
+  def ppscale(self):
+    """
+    The ratio of pixels/micron scales of the im3 and qptiff images,
+    rounded to an integer
+    """
+    return self.__imageinfo["ppscale"]
   @property
-  def imscale(self): return self.__imageinfo["imscale"]
+  def iqscale(self):
+    """
+    The ratio of ipscale and ppscale, i.e. the remaining non-integer
+    part of the ratio of pixels/micron scales of the im3 and qptiff
+    images
+    """
+    return self.__imageinfo["iqscale"]
   @property
-  def xposition(self): return self.__imageinfo["xposition"]
+  def imscale(self):
+    """
+    The scale used for alignment: the wsi is scaled by ppscale,
+    which is the integer that brings it closest to the qptiff's
+    scale, and the qptiff is scaled by whatever 1.00x is needed
+    to bring it to the same scale.
+    """
+    return self.__imageinfo["imscale"]
   @property
-  def yposition(self): return self.__imageinfo["yposition"]
+  def xposition(self):
+    """
+    x position of the qptiff image
+    """
+    return self.__imageinfo["xposition"]
+  @property
+  def yposition(self):
+    """
+    y position of the qptiff image
+    """
+    return self.__imageinfo["yposition"]
 
-  def getimages(self, keep=False):
+  def getimages(self, *, keep=False):
+    """
+    Load the wsi and qptiff images and scale them to the same scale
+
+    keep: save the images in memory so that next time you call
+          this function it's quicker (default: False)
+    """
     if self.__images is not None: return self.__images
     with self.using_images() as (wsi, fqptiff):
+      #load the images
       zoomlevel = fqptiff.zoomlevels[0]
       qptiff = PIL.Image.fromarray(zoomlevel[self.qptifflayer-1].asarray())
 
+      #scale them so that they're at the same scale
       wsisize = np.array(wsi.size, dtype=np.uint)
       qptiffsize = np.array(qptiff.size, dtype=np.uint)
       wsisize //= self.ppscale
@@ -107,6 +194,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       wsi = wsi.resize(wsisize)
       qptiff = qptiff.resize(qptiffsize)
 
+      #crop them to the same size
       newsize = 0, 0, np.min((wsisize[0], qptiffsize[0])), np.min((wsisize[1], qptiffsize[1]))
       wsi = wsi.crop(newsize)
       qptiff = qptiff.crop(newsize)
@@ -118,12 +206,31 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       return wsi, qptiff
 
   def align(self, *, debug=False, write_result=False):
+    """
+    Break the wsi and qptiff into tiles and align them
+    with respect to each other.  Returns a list of results.
+
+    debug: raise exceptions instead of catching them
+           and reporting the individual alignment as
+           failed (default: False)
+    write_result: write the alignment results to a csv
+                  file (default: False)
+    """
     wsi, qptiff = self.getimages()
 
     self.logger.info("doing the initial rough alignment")
-    #first align the two with respect to each other
-    #in case there are big shifts, this makes sure the tiles line up
-    #and can be aligned
+
+    #first align the two with respect to each other in case there are
+    #big shifts. this makes sure that when we align a wsi tile and a
+    #qptiff tile, the two actually contain at least some of the same data.
+    #we do this with a signficant zoom (which also smooths the images).
+
+    #we want to keep the tiles of 100x100 pixels, so we round the shift
+    #to the nearest 100 pixels in x and y and shift by that much.  The
+    #initial shift is included in the final alignment results, so that
+    #the results reported are the total relative shift of the wsi and
+    #qptiff.
+
     zoomfactor = 5
     wsizoom = PIL.Image.fromarray(wsi)
     wsizoom = np.asarray(wsizoom.resize(np.array(wsizoom.size)//zoomfactor))
@@ -137,6 +244,8 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     if initialdx or initialdy:
       self.logger.warning(f"found a relative shift of around {initialdx, initialdy} pixels between the qptiff and wsi")
 
+    #slice and shift the images so that they line up to within 100 pixels
+    #we slice both so that they're the same size
     wsix1 = wsiy1 = qptiffx1 = qptiffy1 = 0
     qptiffy2, qptiffx2 = qptiff.shape
     wsiy2, wsix2 = wsi.shape
@@ -166,23 +275,26 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     bigtilesize = self.bigtilesize
     bigtileoffset = self.bigtileoffset
 
+    #find the bounding box of the area we need to align
     mx1 = units.convertpscale(min(field.mx1 for field in self.rectangles), self.pscale, imscale, 1)
     mx2 = units.convertpscale(max(field.mx2 for field in self.rectangles), self.pscale, imscale, 1)
     my1 = units.convertpscale(min(field.my1 for field in self.rectangles), self.pscale, imscale, 1)
     my2 = units.convertpscale(max(field.my2 for field in self.rectangles), self.pscale, imscale, 1)
 
-    #tweak the y position by -900 for the microsocope glitches
-    #(from Alex's code.  I don't know what this means.)
-    qshifty = 0
-    if self.yposition == 0: qshifty = units.Distance(pixels=900, pscale=imscale)
-
     mx2 = min(mx2, units.Distance(pixels=wsi.shape[1], pscale=imscale) - tilesize)
     my2 = min(my2, units.Distance(pixels=wsi.shape[0], pscale=imscale) - tilesize)
 
+    #find the area we need to align in coordinates of tile index
     n1 = floattoint(my1//tilesize)-1
     n2 = floattoint(my2//tilesize)+1
     m1 = floattoint(mx1//tilesize)-1
     m2 = floattoint(mx2//tilesize)+1
+
+    #tweak the y position by -900 for the microsocope glitches
+    #sometimes the y position is < 0 but reported by the microscope
+    #as 0.  we exclude the fields at negative y from alignment.
+    qshifty = 0
+    if self.yposition == 0: qshifty = units.Distance(pixels=900, pscale=imscale)
 
     results = AnnoWarpAlignmentResults()
     ntiles = (m2+1-m1) * (n2+1-n1)
@@ -194,6 +306,10 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       y = tilesize * (iy-1)
       if y+onepixel-qshifty <= 0: continue
 
+      #find the slice of the wsi and qptiff to use
+      #note that initialdx and initialdy are not needed here
+      #because we already took care of that by slicing the
+      #wsi and qptiff
       slc = slice(
         floattoint(units.pixels(y, pscale=imscale)),
         floattoint(units.pixels(y+tilesize, pscale=imscale))
@@ -202,7 +318,9 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
         floattoint(units.pixels(x+tilesize, pscale=imscale)),
       )
       wsitile = wsi[slc]
+      #if this ends up with no pixels inside the wsi, continue
       if not wsitile.size: continue
+      #apply cuts to make sure we're in a tissue region that can be aligned
       if not self.passescut(wsi, qptiff, slc, wsiinitialslice) / wsitile.size: continue
       qptifftile = qptiff[slc]
 
@@ -217,10 +335,13 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
         imageshandle=self.getimages,
       )
 
+      #smooth the wsi and qptiff tiles
       wsitile = wsitile - skimage.filters.gaussian(wsitile, sigma=20)
       wsitile = skimage.filters.gaussian(wsitile, sigma=3)
       qptifftile = qptifftile - skimage.filters.gaussian(qptifftile, sigma=20)
       qptifftile = skimage.filters.gaussian(qptifftile, sigma=3)
+
+      #do the alignment
       try:
         shiftresult = computeshift((qptifftile, wsitile), usemaxmovementcut=False)
       except Exception as e:
@@ -241,6 +362,8 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
           AnnoWarpAlignmentResult(
             **alignmentresultkwargs,
             dxvec=units.correlated_distances(
+              #here we apply initialdx and initialdy so that the reported
+              #result is the global shift
               pixels=(shiftresult.dx+initialdx, shiftresult.dy+initialdy),
               pscale=imscale,
               power=1,
@@ -256,9 +379,14 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     return results
 
   @abc.abstractmethod
-  def printcuts(self): pass
+  def printcuts(self):
+    """print an info message to the logger describing the cuts used"""
   @abc.abstractmethod
-  def passescut(self, wsi, qptiff, slc, wsiinitialslice): pass
+  def passescut(self, wsi, qptiff, slc, wsiinitialslice):
+    """
+    return whether the tile described by slc passes the cut
+
+    wsi:
 
   @property
   def alignmentcsv(self): return self.csv(f"warp-{self.__tilepixels}")
