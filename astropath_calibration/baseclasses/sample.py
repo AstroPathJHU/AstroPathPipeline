@@ -181,7 +181,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     """
     Possible places to look for xml metadata
     """
-    return self.__xmlfolders + [self.im3folder/"xml"]
+    return self.__xmlfolders + [folder/self.SlideID for folder in self.__xmlfolders] + [self.im3folder/"xml"]
   @property
   def xmlfolder(self):
     """
@@ -553,28 +553,44 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
     """
     return self.constantsdict["apscale"]
 
-class FlatwSampleBase(SampleBase):
+class MaskSampleBase(SampleBase):
+  """
+  Base class for any sample that uses the masks in im3/meanimage
+
+  maskroot: A different root to use to find the masks (default: same as root)
+  """
+  def __init__(self, *args, maskroot=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if maskroot is None: maskroot = self.root
+    self.__maskroot = pathlib.Path(maskroot)
+  @property
+  def maskroot(self): return self.__maskroot
+
+  @property
+  def maskfolder(self):
+    result = self.im3folder/"meanimage"
+    if self.maskroot != self.root:
+      result = self.maskroot/result.relative_to(self.root)
+    return result
+
+class Im3SampleBase(SampleBase):
   """
   Base class for any sample that uses sharded im3 images.
   root2: Root location of the im3 images.
          (The images are in root2/SlideID)
   """
-  def __init__(self, root, root2, samp, *args, root3=None, **kwargs):
+  def __init__(self, root, root2, samp, *args, **kwargs):
     super().__init__(root=root, samp=samp, *args, **kwargs)
     self.root2 = pathlib.Path(root2)
-    self.__root3 = pathlib.Path(root3) if root3 is not None else root3
 
   @property
   def root1(self): return self.root
 
   @property
   def possiblexmlfolders(self):
-    result = super().possiblexmlfolders + [self.root2/self.SlideID]
-    if self.__root3 is not None:
-      result.append(self.__root3/self.SlideID)
-    return result
+    return super().possiblexmlfolders + [self.root2/self.SlideID]
 
-class ZoomSampleBase(SampleBase):
+class ZoomFolderSampleBase(SampleBase):
   """
   Base class for any sample that uses the zoomed "big" or "wsi" images.
   zoomroot: Root location of the zoomed images.
@@ -650,11 +666,8 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
   Base class for any sample that reads HPF info from any source.
   selectrectangles: filter for selecting rectangles (a list of ids or a function)
   """
-  def __init__(self, *args, selectrectangles=None, layers=None, **kwargs):
+  def __init__(self, *args, selectrectangles=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if layers is None:
-      layers = range(1, self.nlayers+1)
-    self.__layers = layers
     rectanglefilter = rectangleoroverlapfilter(selectrectangles)
     self.__rectangles  = self.readallrectangles()
     self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
@@ -665,11 +678,6 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
     The function that actually reads the HPF info and returns a list of rectangletype
     """
   rectangletype = Rectangle #can be overridden in subclasses
-  @abc.abstractproperty
-  def nlayers(self):
-    """
-    The number of layers in the rectangle
-    """
   @property
   def rectangleextrakwargs(self):
     """
@@ -691,10 +699,58 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
   @property
   def rectangles(self): return self.__rectangles
 
-  @property
-  def layers(self): return self.__layers
+class ReadRectanglesWithLayers(ReadRectanglesBase):
+  """
+  Base class for any sample that reads rectangles
+  and needs a layer selection.
+  """
+  def __init__(self, *args, layer=None, layers=None, **kwargs):
+    if self.multilayer:
+      if layer is not None:
+        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
+    else:
+      if layers is not None:
+        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
+      if layer is None:
+        layer = 1
+      self.__layer = layer
+      layers = layer,
 
-class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
+    self.__layers = layers
+
+    super().__init__(*args, **kwargs)
+
+  @property
+  def rectangleextrakwargs(self):
+    kwargs = {
+      **super().rectangleextrakwargs,
+      "nlayers": self.nlayers,
+    }
+    if self.multilayer:
+      kwargs.update({
+        "layers": self.layers,
+      })
+    else:
+      kwargs.update({
+        "layer": self.layer,
+      })
+    return kwargs
+
+  @property
+  def layers(self):
+    result = self.__layers
+    if result is None: return range(1, self.nlayers+1)
+    return result
+
+  @property
+  def layer(self):
+    if self.multilayer:
+      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
+    return self.__layer
+
+  multilayer = False #can override in subclasses
+
+class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase):
   """
   Base class for any sample that loads images from an im3 file.
   filetype: "raw", "flatWarp", or "camWarp"
@@ -703,27 +759,21 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
   readlayerfile: whether or not to read from a file with a single layer, e.g. .fw01
   """
 
-  def __init__(self, *args, filetype, layer=None, layers=None, readlayerfile=True, **kwargs):
+  def __init__(self, *args, filetype, readlayerfile=None, **kwargs):
     self.__filetype = filetype
 
-    if self.multilayer:
-      if layer is not None:
-        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
-      if readlayerfile:
-        raise ValueError(f"Can't read a layer file for a multilayer sample {type(self).__name__}")
-    else:
-      if layers is not None:
-        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
-      if layer is None:
-        layer = 1
-      self.__layer = layer
-      layers = layer,
-      self.__readlayerfile = readlayerfile
+    if readlayerfile is None: readlayerfile = not self.multilayer
 
-    super().__init__(*args, layers=layers, **kwargs)
+    if self.multilayer and readlayerfile:
+      raise ValueError(f"Can't read a layer file for a multilayer sample {type(self).__name__}")
+
+    self.__readlayerfile = readlayerfile
+
+    super().__init__(*args, **kwargs)
 
   @property
   def nlayers(self):
+    if self.__readlayerfile: return 1
     return self.nlayersim3
   @property
   def rectangletype(self):
@@ -747,31 +797,17 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, FlatwSampleBase):
     except FileNotFoundError:
       pass
     if self.multilayer:
-      kwargs.update({
-        "layers": self.layers,
-        "nlayers": self.nlayers,
-      })
+      pass
     else:
       kwargs.update({
-        "layer": self.layer,
         "readlayerfile": self.__readlayerfile,
       })
-      if not self.__readlayerfile:
-        kwargs["nlayers"] = self.nlayers
     return kwargs
 
   @property
   def filetype(self): return self.__filetype
 
-  multilayer = False #can override in subclasses
-
-  @property
-  def layer(self):
-    if self.multilayer:
-      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
-    return self.__layer
-
-class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
+class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers):
   """
   Base class for any sample that loads images from a component tiff file.
   layer or layers: the layer or layers to read, depending on whether
@@ -779,20 +815,9 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
   with_seg: whether or not to read from the _w_seg component tiff file
   """
 
-  def __init__(self, *args, layer=None, layers=None, with_seg=False, **kwargs):
+  def __init__(self, *args, with_seg=False, **kwargs):
     self.__with_seg = with_seg
-    if self.multilayer:
-      if layer is not None:
-        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
-    else:
-      if layers is not None:
-        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
-      if layer is None:
-        layer = 1
-      self.__layer = layer
-      layers = layer,
-
-    super().__init__(*args, layers=layers, **kwargs)
+    super().__init__(*args, **kwargs)
 
   @property
   def nlayers(self):
@@ -809,25 +834,8 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase):
       **super().rectangleextrakwargs,
       "imagefolder": self.componenttiffsfolder,
       "with_seg": self.__with_seg,
-      "nlayers": self.nlayers,
     }
-    if self.multilayer:
-      kwargs.update({
-        "layers": self.layers,
-      })
-    else:
-      kwargs.update({
-        "layer": self.layer,
-      })
     return kwargs
-
-  multilayer = True #can override in subclasses
-
-  @property
-  def layer(self):
-    if self.multilayer:
-      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
-    return self.__layer
 
 class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection, OverlapCollection, SampleBase):
   """
@@ -853,8 +861,6 @@ class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection,
   def overlapextrakwargs(self):
     return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}
 
-  multilayer = False #can override in subclasses
-
   @property
   def overlaps(self): return self.__overlaps
 
@@ -870,7 +876,7 @@ class ReadRectanglesOverlapsComponentTiffBase(ReadRectanglesOverlapsBase, ReadRe
   and loads the rectangle images from component tiff files.
   """
 
-class ReadRectangles(ReadRectanglesBase, DbloadSample):
+class ReadRectanglesDbload(ReadRectanglesBase, DbloadSample):
   """
   Base class for any sample that reads rectangles from the dbload folder.
   """
@@ -879,19 +885,19 @@ class ReadRectangles(ReadRectanglesBase, DbloadSample):
   def readallrectangles(self, **extrakwargs):
     return self.readcsv(self.rectanglecsv, self.rectangletype, extrakwargs={**self.rectangleextrakwargs, **extrakwargs})
 
-class ReadRectanglesIm3(ReadRectanglesIm3Base, ReadRectangles):
+class ReadRectanglesDbloadIm3(ReadRectanglesIm3Base, ReadRectanglesDbload):
   """
   Base class for any sample that reads rectangles from the dbload folder
   and loads the rectangle images from im3 files.
   """
 
-class ReadRectanglesComponentTiff(ReadRectanglesComponentTiffBase, ReadRectangles):
+class ReadRectanglesDbloadComponentTiff(ReadRectanglesComponentTiffBase, ReadRectanglesDbload):
   """
   Base class for any sample that reads rectangles from the dbload folder
   and loads the rectangle images from component tiff files.
   """
 
-class ReadRectanglesOverlaps(ReadRectanglesOverlapsBase, ReadRectangles):
+class ReadRectanglesOverlapsDbload(ReadRectanglesOverlapsBase, ReadRectanglesDbload):
   """
   Base class for any sample that reads rectangles and overlaps from the dbload folder.
   """
@@ -901,13 +907,13 @@ class ReadRectanglesOverlaps(ReadRectanglesOverlapsBase, ReadRectangles):
     if overlaptype is None: overlaptype = self.overlaptype
     return self.readcsv(self.overlapcsv, overlaptype, filter=lambda row: row["p1"] in self.rectangleindices and row["p2"] in self.rectangleindices, extrakwargs={**self.overlapextrakwargs, **extrakwargs})
 
-class ReadRectanglesOverlapsIm3(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlaps):
+class ReadRectanglesOverlapsDbloadIm3(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsDbload, ReadRectanglesDbloadIm3):
   """
   Base class for any sample that reads rectangles and overlaps from the dbload folder
   and loads the rectangle images from im3 files.
   """
 
-class ReadRectanglesOverlapsComponentTiff(ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlaps):
+class ReadRectanglesOverlapsDbloadComponentTiff(ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsDbload, ReadRectanglesDbloadComponentTiff):
   """
   Base class for any sample that reads rectangles and overlaps from the dbload folder
   and loads the rectangle images from component tiff files.

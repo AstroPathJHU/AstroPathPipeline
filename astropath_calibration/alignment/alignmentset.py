@@ -2,7 +2,7 @@
 
 import contextlib, numpy as np, traceback
 
-from ..baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase
+from ..baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase
 from ..utilities.tableio import readtable, writetable
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
@@ -374,13 +374,13 @@ class AlignmentSetIm3Base(AlignmentSetBase, ReadRectanglesOverlapsIm3Base):
 class AlignmentSetComponentTiffBase(AlignmentSetBase, ReadRectanglesOverlapsComponentTiffBase):
   rectangletype = AlignmentRectangleComponentTiff
 
-class AlignmentSet(AlignmentSetIm3Base, ReadRectanglesOverlapsIm3, AlignmentSetDbloadBase):
+class AlignmentSet(AlignmentSetIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignmentSetDbloadBase):
   pass
 
 class AlignmentSetFromXML(AlignmentSetIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignmentSetFromXMLBase):
   pass
 
-class AlignmentSetComponentTiff(AlignmentSetComponentTiffBase, ReadRectanglesOverlapsComponentTiff, AlignmentSetDbloadBase):
+class AlignmentSetComponentTiff(AlignmentSetComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignmentSetDbloadBase):
   pass
 
 class AlignmentSetComponentTiffFromXML(AlignmentSetComponentTiffBase, AlignmentSetFromXMLBase, ReadRectanglesOverlapsComponentTiffFromXML):

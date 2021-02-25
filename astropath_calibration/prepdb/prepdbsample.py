@@ -55,6 +55,8 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
             sampleid=0,
             layer=n,
             poly="poly",
+            pscale=self.pscale,
+            apscale=self.apscale,
           )
         )
 

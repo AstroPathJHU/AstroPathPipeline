@@ -1,6 +1,25 @@
 import collections, functools, logging, pathlib, traceback
 
 class MyLogger:
+  """
+  Logger that follows the astropath logging conventions.
+  It should always be used in a with statement that contains everything
+  you want to do in the module.
+
+  module: name of the process that's being run, e.g. "align"
+  root: the Clinical_Specimen_* folder (or another folder if you want to log somewhere else)
+  samp: the SampleDef object
+  uselogfiles: should we write to log files (default: false)
+  threshold: minimum level of messages that should be logged (default: logging.DEBUG)
+  mainlog: main log file, which gets errors and the most important warnings
+           (default: root/logfiles/module.log)
+  samplelog: sample log file, which gets errors, warnings, and info
+             (default: root/SlideID/logfiles/SlideID-module.log)
+  imagelog: image log file, which gets errors, warnings, and more info
+            (default: None)
+  reraiseexceptions: should the logger reraise exceptions after logging them
+                     (default: True)
+  """
   def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
     self.module = module
     self.root = pathlib.Path(root)
@@ -113,11 +132,21 @@ class MyLogger:
       raise RuntimeError("Have to use this in a context manager if you want to uselogfiles")
     return getattr(self.logger, attr)
   def warningglobal(self, *args, **kwargs):
+    """
+    A warning that also goes in the main log
+    """
     return self.logger.log(logging.WARNING+1, *args, **kwargs)
   def imageinfo(self, *args, **kwargs):
+    """
+    An info message that only goes in the image log
+    """
     return self.logger.log(logging.INFO-1, *args, **kwargs)
 
 class MyFileHandler:
+  """
+  Allows the same file to be used by multiple loggers
+  without conflicting with each other
+  """
   __handlers = {}
   __counts = collections.Counter()
 

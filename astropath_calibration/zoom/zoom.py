@@ -1,20 +1,17 @@
 import argparse, contextlib, cv2, itertools, methodtools, numpy as np, os, pathlib, PIL, skimage
 
-from ..alignment.field import Field
-from ..baseclasses.rectangle import RectangleReadComponentTiffMultiLayer
-from ..baseclasses.sample import ReadRectanglesComponentTiff, TempDirSample, ZoomSampleBase
+from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
+from ..baseclasses.sample import ReadRectanglesBase, ReadRectanglesDbloadComponentTiff, TempDirSample, ZoomFolderSampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint, memmapcontext, PILmaximagepixels
 
-class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
-  pass
-
-class ZoomSample(ReadRectanglesComponentTiff, ZoomSampleBase, TempDirSample):
+class ZoomSampleBase(ReadRectanglesBase):
   rectanglecsv = "fields"
-  rectangletype = FieldReadComponentTiffMultiLayer
+  rectangletype = Field
   def __init__(self, *args, zoomtilesize=16384, **kwargs):
     self.__tilesize = zoomtilesize
     super().__init__(*args, **kwargs)
+  multilayer = True
   @property
   def zoomtilesize(self): return self.__tilesize
   @methodtools.lru_cache()
@@ -25,7 +22,12 @@ class ZoomSample(ReadRectanglesComponentTiff, ZoomSampleBase, TempDirSample):
   def PILmaximagepixels(self):
     return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
 
-class Zoom(ZoomSample):
+class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample):
+  pass
+
+class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
+  rectangletype = FieldReadComponentTiffMultiLayer
+
   @property
   def logmodule(self): return "zoom"
 

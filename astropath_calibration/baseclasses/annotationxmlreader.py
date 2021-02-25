@@ -1,10 +1,13 @@
 import abc, dateutil, jxmlease, methodtools, numpy as np, pathlib
-from ..baseclasses.csvclasses import Globals, Perimeter
+from ..baseclasses.csvclasses import ROIGlobals, ROIPerimeter
 from ..baseclasses.rectangle import Rectangle
 from ..utilities import units
 from ..utilities.misc import floattoint
 
 class AnnotationXMLReader(units.ThingWithPscale):
+  """
+  Class to read the annotations from an xml file
+  """
   def __init__(self, filename, *, pscale):
     self.__filename = filename
     self.__pscale = pscale
@@ -14,6 +17,10 @@ class AnnotationXMLReader(units.ThingWithPscale):
 
   @methodtools.lru_cache()
   def getdata(self):
+    """
+    Reads the annotations and gives the rectangles,
+    global variables, perimeters, and microscope name
+    """
     rectangles = []
     globals = []
     perimeters = []
@@ -26,10 +33,10 @@ class AnnotationXMLReader(units.ThingWithPscale):
       ):
         annotation = AnnotationFactory(node, pscale=self.pscale)
         globalkwargs = annotation.globals
-        if globalkwargs is not None: globals.append(Globals(**globalkwargs, pscale=self.pscale))
+        if globalkwargs is not None: globals.append(ROIGlobals(**globalkwargs, pscale=self.pscale))
         perimeterkwargs = annotation.perimeters
         if perimeterkwargs is not None: perimeters += [
-          Perimeter(**kwargs, pscale=self.pscale)
+          ROIPerimeter(**kwargs, pscale=self.pscale)
             for kwargs in perimeterkwargs
         ]
 
@@ -54,7 +61,7 @@ class AnnotationXMLReader(units.ThingWithPscale):
               w=field.w,
               h=field.h,
               t=field.time,
-              file=pathlib.Path(field.im3path.replace("\\", "/")).name,
+              file=field.im3path.name,
               pscale=self.pscale,
               readingfromfile=False,
             )
@@ -76,6 +83,11 @@ class AnnotationXMLReader(units.ThingWithPscale):
   def microscopename(self): return self.getdata()[3]
 
 class AnnotationBase(units.ThingWithPscale):
+  """
+  There are two kinds of annotations in the xml files,
+  depending on the microscope model and software version.
+  This is the base class for both of them. 
+  """
   def __init__(self, xmlnode, *, pscale, nestdepth=1):
     self.__xmlnode = xmlnode
     self.__nestdepth = nestdepth
@@ -87,63 +99,137 @@ class AnnotationBase(units.ThingWithPscale):
   @property
   def nestdepth(self): return self.__nestdepth
   @abc.abstractproperty
-  def fields(self): pass
+  def fields(self):
+    """
+    RectangleAnnotations for all HPFs within this annotation
+    """
   @abc.abstractproperty
-  def globals(self): pass
+  def globals(self):
+    """
+    Global variables from the annotation
+    """
   @abc.abstractproperty
-  def microscopename(self): pass
+  def perimeters(self):
+    """
+    ROI perimeters from the annotation
+    """
+  @abc.abstractproperty
+  def microscopename(self):
+    """
+    The microscope name from the annotation
+    (really the name of the computer connected to the microscope)
+    """
+
   @property
-  def subtype(self): return self.__xmlnode.get_xml_attr("subtype")
+  def subtype(self):
+    """
+    The annotation subtype - RectangleAnnotation or ROIAnnotation
+    """
+    return self.__xmlnode.get_xml_attr("subtype")
 
 class RectangleAnnotation(AnnotationBase):
+  """
+  A rectangle annotation is for a single HPF.
+  """
   @property
-  def fields(self): return self,
+  def fields(self):
+    """
+    A rectangle annotation is for a single HPF
+    """
+    return self,
   @property
   def history(self):
+    """
+    The history of the HPF scanning
+    """
     history = self.xmlnode["History"]["History-i"]
     if isinstance(history, jxmlease.XMLDictNode): history = history,
     return history
   @property
   def isacquired(self):
+    """
+    Was this HPF acquired? (i.e. did it finish successfully?)
+    """
     return self.history[-1]["Type"] == "Acquired"
   @property
   def im3path(self):
-    return self.history[-1]["Im3Path"]
+    """
+    Path to the im3 file
+    """
+    return pathlib.PureWindowsPath(self.history[-1]["Im3Path"])
   @property
   def microscopename(self):
+    """
+    Name of the computer operating the microscope
+    """
     if not self.isacquired: return None
     return self.history[-1]["UserName"]
   @property
-  def x(self): return float(self.xmlnode["Bounds"]["Origin"]["X"]) * self.onemicron
+  def x(self):
+    """
+    x position of the HPF
+    """
+    return float(self.xmlnode["Bounds"]["Origin"]["X"]) * self.onemicron
   @property
-  def y(self): return float(self.xmlnode["Bounds"]["Origin"]["Y"]) * self.onemicron
+  def y(self):
+    """
+    y position of the HPF
+    """
+    return float(self.xmlnode["Bounds"]["Origin"]["Y"]) * self.onemicron
   @property
-  def w(self): return float(self.xmlnode["Bounds"]["Size"]["Width"]) * self.onemicron
+  def w(self):
+    """
+    width of the HPF
+    """
+    return float(self.xmlnode["Bounds"]["Size"]["Width"]) * self.onemicron
   @property
-  def h(self): return float(self.xmlnode["Bounds"]["Size"]["Height"]) * self.onemicron
+  def h(self):
+    """
+    height of the HPF
+    """
+    return float(self.xmlnode["Bounds"]["Size"]["Height"]) * self.onemicron
   @property
   def cx(self):
+    """
+    x of the HPF's center in integer pixels
+    """
     return floattoint(np.round(float((self.x+0.5*self.w) / self.onemicron))) * self.onemicron
   @property
   def cy(self):
+    """
+    y of the HPF's center in integer pixels
+    """
     return floattoint(np.round(float((self.y+0.5*self.h) / self.onemicron))) * self.onemicron
   @property
-  def time(self): return dateutil.parser.parse(self.history[-1]["TimeStamp"])
+  def time(self):
+    """
+    time stamp when the HPF was acquired
+    """
+    return dateutil.parser.parse(self.history[-1]["TimeStamp"])
 
   @property
-  def globals(self): return None
+  def globals(self): "RectangleAnnotations don't have global variables"
   @property
-  def perimeters(self): return None
+  def perimeters(self): "RectangleAnnotations don't have perimeters"
 
 class ROIAnnotation(AnnotationBase):
+  """
+  An ROIAnnotation includes multiple HPFs within the region of interest
+  """
   @property
   def fields(self):
+    """
+    The HPFs in this ROI
+    """
     fields = self.xmlnode["Fields"]["Fields-i"]
     if isinstance(fields, jxmlease.XMLDictNode): fields = fields,
     for field in fields:
       yield from AnnotationFactory(field, nestdepth=self.nestdepth+1, pscale=self.pscale).fields
   @property
   def globals(self):
+    """
+    Global variables for the ROI
+    """
     return {
       "x": float(self.xmlnode["Bounds"]["Origin"]["X"]) * self.onemicron,
       "y": float(self.xmlnode["Bounds"]["Origin"]["Y"]) * self.onemicron,
@@ -154,6 +240,9 @@ class ROIAnnotation(AnnotationBase):
     }
   @property
   def perimeters(self):
+    """
+    Describes the perimeter of the ROI
+    """
     result = []
     perimeters = self.xmlnode["Perimeter"]["Perimeter-i"]
     if isinstance(perimeters, jxmlease.XMLDictNode): perimeters = perimeters,
@@ -167,6 +256,9 @@ class ROIAnnotation(AnnotationBase):
 
   @property
   def microscopename(self):
+    """
+    Name of the computer operating the microscope
+    """
     names = {field.microscopename for field in self.fields if field.microscopename is not None}
     if not names:
       return None
@@ -175,6 +267,9 @@ class ROIAnnotation(AnnotationBase):
     return names.pop()
 
 def AnnotationFactory(xmlnode, **kwargs):
+  """
+  Returns the right kind of annotation, either Rectangle or ROI
+  """
   return {
     "RectangleAnnotation": RectangleAnnotation,
     "ROIAnnotation": ROIAnnotation,

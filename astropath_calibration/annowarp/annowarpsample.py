@@ -1,10 +1,13 @@
 import abc, contextlib, csv, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ..alignment.computeshift import computeshift
+from ..alignment.field import FieldReadComponentTiffMultiLayer
 from ..alignment.overlap import AlignmentComparison
 from ..baseclasses.csvclasses import Region, Vertex
 from ..baseclasses.polygon import Polygon
 from ..baseclasses.qptiff import QPTiff
+from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff
+from ..zoom.stitchmask import InformMaskSample, TissueMaskSample
 from ..zoom.zoom import ZoomSample
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
@@ -13,13 +16,12 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, ThingWithImscale
 
-class AnnoWarpSample(ZoomSample, ThingWithImscale):
-  defaulttilepixels = 100
-  defaulttilebrightnessthreshold = 45
-  defaultmintilebrightfraction = 0.2
-  defaultmintilerange = 45
+class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWithImscale):
+  rectangletype = FieldReadComponentTiffMultiLayer
 
-  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=defaulttilepixels, tilebrightnessthreshold=defaulttilebrightnessthreshold, mintilebrightfraction=defaultmintilebrightfraction, mintilerange=defaultmintilerange, **kwargs):
+  defaulttilepixels = 100
+
+  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=defaulttilepixels, **kwargs):
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
@@ -28,9 +30,6 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     self.__tilepixels = tilepixels
     if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
       raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
-    self.tilebrightnessthreshold = tilebrightnessthreshold
-    self.mintilebrightfraction = mintilebrightfraction
-    self.mintilerange = mintilerange
 
     self.__nentered = 0
     self.__using_images_context = self.enter_context(contextlib.ExitStack())
@@ -154,8 +153,11 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
       qptiffy1 -= initialdy
       wsiy2 += initialdy
 
-    wsi = wsi[wsiy1:wsiy2, wsix1:wsix2]
-    qptiff = qptiff[qptiffy1:qptiffy2, qptiffx1:qptiffx2]
+    wsiinitialslice = slice(wsiy1, wsiy2), slice(wsix1, wsix2)
+    qptiffinitialslice = slice(qptiffy1, qptiffy2), slice(qptiffx1, qptiffx2)
+
+    wsi = wsi[wsiinitialslice]
+    qptiff = qptiff[qptiffinitialslice]
 
     onepixel = self.oneimpixel
 
@@ -185,30 +187,29 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     results = AnnoWarpAlignmentResults()
     ntiles = (m2+1-m1) * (n2+1-n1)
     self.logger.info("aligning %d tiles of %d x %d pixels", ntiles, self.__tilepixels, self.__tilepixels)
-    self.logger.info(f"Cuts: {self.mintilebrightfraction:.0%} of pixels have flux >= {self.tilebrightnessthreshold}, and flux range in the tile >= {self.mintilerange}.")
+    self.printcuts()
     for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1)), start=1):
       if n%100==0 or n==ntiles: self.logger.debug("aligning tile %d/%d", n, ntiles)
       x = tilesize * (ix-1)
       y = tilesize * (iy-1)
       if y+onepixel-qshifty <= 0: continue
-      wsitile = wsi[
-        floattoint(units.pixels(y, pscale=imscale)):floattoint(units.pixels(y+tilesize, pscale=imscale)),
-        floattoint(units.pixels(x, pscale=imscale)):floattoint(units.pixels(x+tilesize, pscale=imscale)),
-      ]
+
+      slc = slice(
+        floattoint(units.pixels(y, pscale=imscale)),
+        floattoint(units.pixels(y+tilesize, pscale=imscale))
+      ), slice(
+        floattoint(units.pixels(x, pscale=imscale)),
+        floattoint(units.pixels(x+tilesize, pscale=imscale)),
+      )
+      wsitile = wsi[slc]
       if not wsitile.size: continue
-      brightfraction = np.mean(wsitile>self.tilebrightnessthreshold)
-      if brightfraction < self.mintilebrightfraction: continue
-      if np.max(wsitile) - np.min(wsitile) < self.mintilerange: continue
-      qptifftile = qptiff[
-        units.pixels(y, pscale=imscale):units.pixels(y+tilesize, pscale=imscale),
-        units.pixels(x, pscale=imscale):units.pixels(x+tilesize, pscale=imscale),
-      ]
+      if not self.passescut(wsi, qptiff, slc, wsiinitialslice) / wsitile.size: continue
+      qptifftile = qptiff[slc]
 
       alignmentresultkwargs = dict(
         n=n,
         x=x+qptiffx1,
         y=y+qptiffy1,
-        mi=brightfraction,
         pscale=imscale,
         tilesize=tilesize,
         bigtilesize=bigtilesize,
@@ -253,6 +254,11 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     if write_result:
       self.writealignments()
     return results
+
+  @abc.abstractmethod
+  def printcuts(self): pass
+  @abc.abstractmethod
+  def passescut(self, wsi, qptiff, slc, wsiinitialslice): pass
 
   @property
   def alignmentcsv(self): return self.csv(f"warp-{self.__tilepixels}")
@@ -530,6 +536,36 @@ class AnnoWarpSample(ZoomSample, ThingWithImscale):
     self.writevertices()
     self.writeregions()
 
+class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
+  defaultmintissuefraction = 0.2
+
+  def __init__(self, *args, mintissuefraction=defaultmintissuefraction, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.mintissuefraction = mintissuefraction
+
+  def printcuts(self):
+    self.logger.info(f"Cuts: {self.mintissuefraction:.0%} of the HPF is in a tissue region")
+  def passescut(self, wsi, qptiff, slc, wsiinitialslice):
+    with self.using_tissuemask() as mask:
+      y1, x1 = wsiinitialslice
+      y1 = slice(y1.start*self.ppscale, y1.stop*self.ppscale)
+      x1 = slice(x1.start*self.ppscale, x1.stop*self.ppscale)
+
+      y2, x2 = slc
+      y2 = slice(y2.start*self.ppscale, y2.stop*self.ppscale)
+      x2 = slice(x2.start*self.ppscale, x2.stop*self.ppscale)
+
+      maskslice = mask[y1,x1][y2,x2]
+
+      return np.count_nonzero(maskslice) / maskslice.size >= self.mintissuefraction
+
+  def align(self, *args, **kwargs):
+    with self.using_tissuemask():
+      return super().align(*args, **kwargs)
+
+class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample):
+  pass
+
 class QPTiffCoordinateBase(abc.ABC):
   @abc.abstractproperty
   def bigtilesize(self): pass
@@ -627,7 +663,6 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
   covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  mi: float
   exit: int
 
   @classmethod
