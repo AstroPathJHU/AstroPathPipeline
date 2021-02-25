@@ -261,7 +261,7 @@ def writeOverlapMSETable(rtd,rd,sid,etof,workingdir) :
         #add this layer's information to each overlap
         for olap in a.overlaps :
             if olap.n not in all_olap_mse_infos.keys() :
-                all_olap_mse_infos[olap.n] = OverlapMSEComparisonInfo(olap.n,olap.tag,olap.p1,olap.p2)
+                all_olap_mse_infos[olap.n] = OverlapMSEComparisonInfo(olap.n,olap.p1,olap.p2)
             if olap.result is None :
                 continue
             mse1 = olap.result.mse1
