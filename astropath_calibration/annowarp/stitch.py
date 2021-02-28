@@ -231,7 +231,7 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
     bigtileindexcoeff = units.convertpscale(self.bigtileindexcoeff, self.imscale, apscale)
     constant = units.convertpscale(self.constant, self.imscale, apscale)
     return (
-      coeffrelativetobigtile @ qptiffcoordinate.centerrelativetobigtile
+      coeffrelativetobigtile @ qptiffcoordinate.coordinaterelativetobigtile
       + bigtileindexcoeff @ qptiffcoordinate.bigtileindex
       + constant
     )
@@ -323,7 +323,7 @@ class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, Ann
     b = np.zeros(shape=nparams, dtype=units.unitdtype)
     c = 0
 
-    crtbt = alignmentresult.centerrelativetobigtile
+    crtbt = alignmentresult.coordinaterelativetobigtile
     bti = alignmentresult.bigtileindex
 
     dxvec = units.nominal_values(alignmentresult.dxvec)
@@ -417,7 +417,7 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
   @classmethod
   def cvxpydxvec(cls, alignmentresult, *, coeffrelativetobigtile, bigtileindexcoeff, constant):
     return (
-      coeffrelativetobigtile @ (alignmentresult.centerrelativetobigtile / alignmentresult.onepixel)
+      coeffrelativetobigtile @ (alignmentresult.coordinaterelativetobigtile / alignmentresult.onepixel)
       + bigtileindexcoeff @ alignmentresult.bigtileindex
       + constant
     )

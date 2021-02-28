@@ -44,8 +44,6 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
-    self.__bigtilepixels = np.array(bigtilepixels)
-    self.__bigtileoffsetpixels = np.array(bigtileoffsetpixels)
     self.__tilepixels = tilepixels
     if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
       raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
@@ -321,7 +319,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       #if this ends up with no pixels inside the wsi, continue
       if not wsitile.size: continue
       #apply cuts to make sure we're in a tissue region that can be aligned
-      if not self.passescut(wholewsi, wholeqptiff, wsiinitialslice, qptiffinitialslice, tileslice): continue
+      if not self.passescut(wholewsi, wholeqptiff, wsiinitialslice, qptiffinitialslice, slc): continue
       qptifftile = qptiff[slc]
 
       alignmentresultkwargs = dict(
@@ -434,7 +432,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     }[model][cvxpy]
 
   def stitch(self, *args, cvxpy=False, **kwargs):
-    """
+    r"""
     Do the stitching
 
     cvxpy: use cvxpy for the stitching.  this does not give uncertainties
@@ -825,24 +823,51 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
   which tiles to use for alignment
   """
 
-class QPTiffCoordinateBase(abc.ABC):
+class QPTiffCoordinateBase(units.ThingWithApscale):
+  """
+  Base class for any coordinate in the qptiff that works with the big tiles
+  You can get the index of the big tile and the location within the big tile
+  """
   @abc.abstractproperty
-  def bigtilesize(self): pass
+  def bigtilesize(self):
+    """
+    (width, height) of the big qptiff tiles
+    """
   @abc.abstractproperty
-  def bigtileoffset(self): pass
+  def bigtileoffset(self):
+    """
+    offset of the first qptiff tile
+    """
   @abc.abstractproperty
-  def qptiffcoordinate(self): pass
+  def qptiffcoordinate(self):
+    """
+    coordinate of this object in apscale
+    """
   @property
   def bigtileindex(self):
+    """
+    Index of the big tile this coordinate is in
+    """
     return (self.xvec - self.bigtileoffset) // self.bigtilesize
   @property
   def bigtilecorner(self):
+    """
+    Top left corner of the big tile this coordinate is in
+    """
     return self.bigtileindex * self.bigtilesize + self.bigtileoffset
   @property
-  def centerrelativetobigtile(self):
+  def coordinaterelativetobigtile(self):
+    """
+    Location of this coordinate within the big tile
+    """
     return self.qptiffcoordinate - self.bigtilecorner
 
 class QPTiffCoordinate(MyDataClass, QPTiffCoordinateBase):
+  """
+  Base class for a dataclass that wants to use the big tile
+  index of a qptiff coordinate.  bigtilesize and bigtileoffset
+  are given to the constructor
+  """
   def __user_init__(self, *args, bigtilesize, bigtileoffset, **kwargs):
     self.__bigtilesize = bigtilesize
     self.__bigtileoffset = bigtileoffset
@@ -853,6 +878,9 @@ class QPTiffCoordinate(MyDataClass, QPTiffCoordinateBase):
   def bigtileoffset(self): return self.__bigtileoffset
 
 class QPTiffVertex(QPTiffCoordinate, Vertex):
+  """
+  A vertex that has qptiff info
+  """
   @classmethod
   def transforminitargs(cls, *args, vertex=None, **kwargs):
     vertexkwargs = {"vertex": vertex}
@@ -871,6 +899,10 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
     return self.xvec
 
 class WarpedVertex(QPTiffVertex):
+  """
+  A warped vertex, which includes info about the original
+  and warped positions
+  """
   __pixelsormicrons = "pixels"
   wx: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
   wy: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
@@ -888,10 +920,17 @@ class WarpedVertex(QPTiffVertex):
     )
 
   @property
-  def wxvec(self): return np.array([self.wx, self.wy])
+  def wxvec(self):
+    """
+    The warped position [wx, wy] as a numpy array
+    """
+    return np.array([self.wx, self.wy])
 
   @property
   def originalvertex(self):
+    """
+    The original vertex without the warped info
+    """
     return QPTiffVertex(
       regionid=self.regionid,
       vid=self.vid,
@@ -904,6 +943,9 @@ class WarpedVertex(QPTiffVertex):
 
   @property
   def finalvertex(self):
+    """
+    The new vertex without the original info
+    """
     return Vertex(
       regionid=self.regionid,
       vid=self.vid,
@@ -913,6 +955,15 @@ class WarpedVertex(QPTiffVertex):
     )
 
 class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataClassWithPscale):
+  """
+  A result from the alignment of one tile of the annowarp
+
+  n: the numerical id of the tile, starting from 1
+  x, y: the x and y positions of the tile
+  dx, dy: the shift in x and y
+  covxx, covxy, covyy: the covariance matrix for dx and dy
+  exit: the exit code of the alignment (0=success, nonzero=failure, 255=exception)
+  """
   pixelsormicrons = "pixels"
   n: int
   x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
@@ -955,23 +1006,41 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
 
   @property
   def xvec(self):
+    """
+    [x, y] as a numpy array
+    """
     return np.array([self.x, self.y])
   @property
   def covariance(self):
+    """
+    the covariance matrix as a numpy array
+    """
     return np.array([[self.covxx, self.covxy], [self.covxy, self.covyy]])
   @property
   def dxvec(self):
+    """
+    [dx, dy] as a numpy array with their correlated uncertainties
+    """
     return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
   @property
   def center(self):
+    """
+    the center of the tile
+    """
     return self.xvec + self.tilesize/2
   qptiffcoordinate = center
   @property
   def tileindex(self):
+    """
+    the index of the tile in [x, y]
+    """
     return self.xvec // self.tilesize
 
   @property
   def unshifted(self):
+    """
+    the wsi and qptiff images before they are shifted
+    """
     wsi, qptiff = self.imageshandle()
     wsitile = wsi[
       units.pixels(self.y, pscale=self.pscale):units.pixels(self.y+self.tilesize, pscale=self.pscale),
@@ -984,8 +1053,14 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     return wsitile, qptifftile
 
 class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
+  """
+  A list of alignment results with some extra methods
+  """
   @property
   def goodresults(self):
+    """
+    All results with exit code == 0
+    """
     return type(self)(r for r in self if not r.exit)
   @methodtools.lru_cache()
   @property
@@ -997,8 +1072,13 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
   def pscale(self):
     result, = {_.pscale for _ in self}
     return result
+  @methodtools.lru_cache()
   @property
   def adjacencygraph(self):
+    """
+    Graph with edges between tiles that are adjacent to each other
+    (by edges, not corners)
+    """
     g = nx.Graph()
     dct = {tuple(_.tileindex): _ for _ in self}
 
@@ -1011,6 +1091,9 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
     return g
 
   def goodconnectedresults(self, *, minislandsize=8):
+    """
+    all results with 0 exit code that are in large enough islands
+    """
     onepixel = self.onepixel
     good = self.goodresults
     g = good.adjacencygraph
