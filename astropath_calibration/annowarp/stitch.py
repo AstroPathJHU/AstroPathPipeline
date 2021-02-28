@@ -5,15 +5,7 @@ from ..utilities.misc import dict_zip_equal
 from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
-class ThingWithImscale(abc.ABC):
-  @abc.abstractproperty
-  def imscale(self): pass
-  @property
-  def oneimpixel(self): return units.onepixel(pscale=self.imscale)
-  @property
-  def oneimmicron(self): return units.onemicron(pscale=self.imscale)
-
-class AnnoWarpStitchResultBase(ThingWithImscale):
+class AnnoWarpStitchResultBase(units.ThingWithImscale):
   def __init__(self, *, imscale, **kwargs):
     self.__imscale = imscale
     super().__init__(**kwargs)

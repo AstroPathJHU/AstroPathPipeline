@@ -1,7 +1,7 @@
 import dataclassy, functools, numbers, numpy as np
 from ..dataclasses import MetaDataAnnotation, MyDataClass
 from ..misc import floattoint
-from .core import Distance, ThingWithApscale, ThingWithPscale, ThingWithQpscale, UnitsError
+from .core import Distance, ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
 
 def __setup(mode):
   global currentmode, Distance, microns, pixels, _pscale, safe, UnitsError
@@ -160,3 +160,11 @@ class DataClassWithApscale(DataClassWithDistances, ThingWithApscale):
   @apscale.setter
   def apscale(self, apscale): self.__apscale = apscale
 DataClassWithApscale.__defaults__.pop("apscale")
+
+class DataClassWithImscale(DataClassWithDistances, ThingWithImscale):
+  imscale: pscalefield(float)
+  @property
+  def imscale(self): return self.__imscale
+  @imscale.setter
+  def imscale(self, imscale): self.__imscale = imscale
+DataClassWithImscale.__defaults__.pop("imscale")

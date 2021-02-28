@@ -13,10 +13,10 @@ from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import covariance_matrix, floattoint
 from ..utilities.tableio import readtable, writetable
-from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
-from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, ThingWithImscale
+from ..utilities.units.dataclasses import DataClassWithImscale, DataClassWithPscale, distancefield
+from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
-class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWithImscale):
+class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.ThingWithImscale):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -823,7 +823,7 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
   which tiles to use for alignment
   """
 
-class QPTiffCoordinateBase(units.ThingWithApscale):
+class QPTiffCoordinateBase(abc.ABC):
   """
   Base class for any coordinate in the qptiff that works with the big tiles
   You can get the index of the big tile and the location within the big tile
