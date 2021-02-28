@@ -216,7 +216,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     write_result: write the alignment results to a csv
                   file (default: False)
     """
-    wsi, qptiff = self.getimages()
+    wholewsi, wholeqptiff = wsi, qptiff = self.getimages()
 
     self.logger.info("doing the initial rough alignment")
 
@@ -321,7 +321,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       #if this ends up with no pixels inside the wsi, continue
       if not wsitile.size: continue
       #apply cuts to make sure we're in a tissue region that can be aligned
-      if not self.passescut(wsi, qptiff, slc, wsiinitialslice) / wsitile.size: continue
+      if not self.passescut(wholewsi, wholeqptiff, wsiinitialslice, qptiffinitialslice, tileslice): continue
       qptifftile = qptiff[slc]
 
       alignmentresultkwargs = dict(
@@ -382,38 +382,86 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
   def printcuts(self):
     """print an info message to the logger describing the cuts used"""
   @abc.abstractmethod
-  def passescut(self, wsi, qptiff, slc, wsiinitialslice):
+  def passescut(self, wholewsi, wholeqptiff, wsiinitialslice, qptiffinitialslice, tileslice):
     """
     return whether the tile described by slc passes the cut
 
-    wsi:
+    wholewsi: the whole wsi image (before the initial slice)
+    wholeqptiff: the whole qptiff image (before the initial slice)
+    wsiinitialslice: the slice for the wsi from the initial alignment
+    qptiffinitialslice: the slice for the qptiff from the initial alignment
+    tileslice: the slice for this tile
+    """
 
   @property
-  def alignmentcsv(self): return self.csv(f"warp-{self.__tilepixels}")
+  def alignmentcsv(self):
+    """
+    The filename for the csv file where the alignments
+    are written
+    """
+    return self.csv(f"warp-{self.__tilepixels}")
 
   def writealignments(self, *, filename=None):
+    """
+    write the alignments to a csv file
+    """
     if filename is None: filename = self.alignmentcsv
     writetable(filename, self.__alignmentresults, logger=self.logger)
 
   def readalignments(self, *, filename=None):
+    """
+    read the alignments from a csv file
+    """
     if filename is None: filename = self.alignmentcsv
     results = self.__alignmentresults = AnnoWarpAlignmentResults(readtable(filename, AnnoWarpAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize, "bigtilesize": self.bigtilesize, "bigtileoffset": self.bigtileoffset, "imageshandle": self.getimages}))
     return results
 
   @property
   def logmodule(self):
+    """
+    The name of this module for logging purposes
+    """
     return "annowarp"
 
   @staticmethod
   def stitchresultcls(*, model, cvxpy):
+    """
+    Which stitch result class to use, given a stitching model and whether
+    or not to use cvxpy
+    """
     return {
       "default": (AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy),
     }[model][cvxpy]
 
   def stitch(self, *args, cvxpy=False, **kwargs):
+    """
+    Do the stitching
+
+    cvxpy: use cvxpy for the stitching.  this does not give uncertainties
+           on the stitching parameters and is mostly useful for debugging
+    model: which model to use for stitching.  The only option is "default",
+           which breaks the qptiff into tiles and assumes a linear dependence
+           of d\vec{x} on \vec{x} within the tile and the tile index \vec{i}
+    constraintmus:    means of gaussian constraints on parameters
+    constraintsigmas: widths of gaussian constraints on parameters
+                      both mus and sigmas have to be None or lists of the same length.  
+                      set a particular mu and sigma as None in the list to leave the
+                      corresponding parameter unconstrained
+
+    For cvxpy = False only:
+    floatedparams: for the default model, options are "all" and "constants"
+                   you can also give an list of bools, where True means a parameter
+                   is floated and False means it's fixed
+    residualpullcutoff: if any tiles have a normalized residual (=residual/error) larger than this,
+                        redo the stitching without those tiles (default: 5).
+                        can also be None
+    """
     return (self.stitch_cvxpy if cvxpy else self.stitch_nocvxpy)(*args, **kwargs)
 
   def stitch_nocvxpy(self, **kwargs):
+    #process the keyword arguments
+    #the reason we do it this way rather than in the function definition
+    #is so that we can recursively call the function by excluding certain tiles
     allkwargs = kwargs.copy()
     model = kwargs.pop("model", "default")
     constraintmus = kwargs.pop("constraintmus", None)
@@ -428,12 +476,8 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       self.logger.info("doing the global fit")
     else:
       self.logger.warningglobal("doing the global fit with constraints")
-    stitchresultcls = self.stitchresultcls(model=model, cvxpy=False)
-    nparams = stitchresultcls.nparams()
-    A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
-    b = np.zeros(shape=nparams, dtype=units.unitdtype)
-    c = 0
 
+    #select the tiles to use, recursively using a looser selection if needed
     alignmentresults = AnnoWarpAlignmentResults(_ for _ in self.__alignmentresults if _.n not in _removetiles)
     if _choosetiles == "bigislands":
       alignmentresults = alignmentresults.goodconnectedresults(minislandsize=8)
@@ -452,11 +496,16 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     else:
       raise ValueError(f"Invalid _choosetiles {_choosetiles}")
 
+    #get the A, b, c arrays
+    #we are minimizing x^T A x + b^T x + c
+    stitchresultcls = self.stitchresultcls(model=model, cvxpy=False)
     A, b, c = stitchresultcls.Abc(alignmentresults, constraintmus, constraintsigmas, floatedparams=floatedparams)
 
     try:
+      #solve the linear equation
       result = units.np.linalg.solve(2*A, -b)
     except np.linalg.LinAlgError:
+      #if the fit fails, try again with a looser selection
       if _choosetiles == "bigislands":
         self.logger.warningglobal("fit failed using big islands, trying to stitch with smaller islands")
         allkwargs["_choosetiles"] = "smallislands"
@@ -467,12 +516,16 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
         return self.stitch_nocvxpy(**allkwargs)
       raise
 
+    #get the covariance matrix
     delta2nllfor1sigma = 1
     covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
     result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
+    #initialize the stitch result object
     stitchresult = stitchresultcls(result, A=A, b=b, c=c, imscale=self.imscale)
 
+    #check if there are any outliers
+    #if there are, log them, remove them, and recursively rerun
     if residualpullcutoff is not None:
       removemoretiles = []
       infolines = []
@@ -499,9 +552,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     _choosetiles = kwargs.pop("_choosetiles", "bigislands")
     if kwargs: raise TypeError(f"Unknown kwargs {kwargs}")
 
-    stitchresultcls = self.stitchresultcls(model=model, cvxpy=True)
-    variables = stitchresultcls.makecvxpyvariables()
-
+    #select the tiles to use, recursively using a looser selection if needed
     alignmentresults = AnnoWarpAlignmentResults(_ for _ in self.__alignmentresults if _.n not in _removetiles)
     if _choosetiles == "bigislands":
       alignmentresults = alignmentresults.goodconnectedresults(minislandsize=8)
@@ -520,18 +571,27 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     else:
       raise ValueError(f"Invalid _choosetiles {_choosetiles}")
 
+    #get the cvxpy variable objects
+    stitchresultcls = self.stitchresultcls(model=model, cvxpy=True)
+    variables = stitchresultcls.makecvxpyvariables()
+
     tominimize = 0
+
+    #find the residuals and add their quadratic forms to the problem
     onepixel = self.oneimpixel
     for result in alignmentresults:
       residual = stitchresultcls.cvxpyresidual(result, **variables)
       tominimize += cp.quad_form(residual, units.np.linalg.inv(result.covariance) * onepixel**2)
 
+    #add the constraint quadratic forms to the problem
     tominimize += stitchresultcls.constraintquadforms(variables, constraintmus, constraintsigmas, imscale=self.imscale)
 
+    #do the minimization
     minimize = cp.Minimize(tominimize)
     prob = cp.Problem(minimize)
     prob.solve()
 
+    #create the stitch result object
     self.__stitchresult = stitchresultcls(
       problem=prob,
       imscale=self.imscale,
@@ -541,23 +601,49 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     return self.__stitchresult
 
   @property
-  def stitchcsv(self): return self.csv(f"warp-{self.__tilepixels}-stitch")
+  def stitchcsv(self):
+    """
+    filename for the stitch csv file
+    """
+    return self.csv(f"warp-{self.__tilepixels}-stitch")
 
   def writestitchresult(self, *, filename=None):
+    """
+    write the stitch result to file
+    """
     if filename is None: filename = self.stitchcsv
     self.__stitchresult.writestitchresult(filename=filename, logger=self.logger)
 
   @property
-  def oldverticescsv(self): return self.csv("vertices")
+  def oldverticescsv(self):
+    """
+    filename of the original vertices csv file
+    """
+    return self.csv("vertices")
   @property
-  def newverticescsv(self): return self.csv("vertices")
+  def newverticescsv(self):
+    """
+    filename of the new vertices csv file
+    """
+    return self.csv("vertices")
   @property
-  def oldregionscsv(self): return self.csv("regions")
+  def oldregionscsv(self):
+    """
+    filename of the original regions csv file
+    """
+    return self.csv("regions")
   @property
-  def newregionscsv(self): return self.csv("regions")
+  def newregionscsv(self):
+    """
+    filename of the new regions csv file
+    """
+    return self.csv("regions")
 
   @methodtools.lru_cache()
   def __getvertices(self, *, apscale, pscale, filename=None):
+    """
+    read in the original vertices from vertices.csv
+    """
     if filename is None: filename = self.oldverticescsv
     extrakwargs={
      "apscale": apscale,
@@ -567,6 +653,8 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     }
     with open(filename) as f:
       reader = csv.DictReader(f)
+      #allow reading in a file that already has previous warped vertex positions
+      #(which will be overwritten) or one that only has original positions
       if "wx" in reader.fieldnames and "wy" in reader.fieldnames:
         typ = WarpedVertex
       else:
@@ -578,13 +666,22 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
 
   @property
   def vertices(self):
+    """
+    get the original vertices in im3 coordinates
+    """
     return self.__getvertices(apscale=self.apscale, pscale=self.pscale)
   @property
   def apvertices(self):
+    """
+    get the original vertices in qptiff coordinates
+    """
     return self.__getvertices(apscale=self.apscale, pscale=self.apscale)
 
   @methodtools.lru_cache()
   def __getwarpedvertices(self, *, apscale, pscale):
+    """
+    Create the new warped vertices
+    """
     oneapmicron = units.onemicron(pscale=apscale)
     onemicron = self.onemicron
     onepixel = self.onepixel
@@ -598,20 +695,32 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
 
   @property
   def warpedvertices(self):
+    """
+    Get the new warped vertices in im3 coordinates
+    """
     return self.__getwarpedvertices(apscale=self.apscale, pscale=self.pscale)
 
   @methodtools.lru_cache()
   def __getregions(self, *, apscale, filename=None):
+    """
+    read in the original regions from regions.csv
+    """
     if filename is None: filename = self.oldregionscsv
     return readtable(filename, Region, extrakwargs={"apscale": apscale, "pscale": self.pscale})
 
   @property
   def regions(self):
+    """
+    read in the original regions from regions.csv
+    """
     return self.__getregions(apscale=self.apscale)
 
   @methodtools.lru_cache()
   @property
   def warpedregions(self):
+    """
+    Create the new warped regions
+    """
     regions = self.regions
     warpedverticesiterator = iter(self.warpedvertices)
     result = []
@@ -644,16 +753,29 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     return result
 
   def writevertices(self, *, filename=None):
+    """
+    write the warped vertices to the csv file
+    """
     self.logger.info("writing vertices")
     if filename is None: filename = self.newverticescsv
     writetable(filename, self.warpedvertices)
 
   def writeregions(self, *, filename=None):
+    """
+    write the warped regions to the csv file
+    """
     self.logger.info("writing regions")
     if filename is None: filename = self.newregionscsv
     writetable(filename, self.warpedregions)
 
   def runannowarp(self, *, readalignments=False, **kwargs):
+    """
+    run the full chain
+
+    readalignments: if True, read the alignments from the alignment csv file,
+                    otherwise actually do the alignment
+    other kwargs are passed to stitch()
+    """
     if not readalignments:
       self.align()
       self.writealignments()
@@ -665,6 +787,12 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     self.writeregions()
 
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
+  """
+  Use a tissue mask to determine which tiles to use for alignment
+
+  mintissuefraction: the minimum fraction of tissue pixels in the tile
+                     to be used for alignment (default: 0.2)
+  """
   defaultmintissuefraction = 0.2
 
   def __init__(self, *args, mintissuefraction=defaultmintissuefraction, **kwargs):
@@ -673,13 +801,13 @@ class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
 
   def printcuts(self):
     self.logger.info(f"Cuts: {self.mintissuefraction:.0%} of the HPF is in a tissue region")
-  def passescut(self, wsi, qptiff, slc, wsiinitialslice):
+  def passescut(self, wholewsi, wholeqptiff, wsiinitialslice, qptiffinitialslice, tileslice):
     with self.using_tissuemask() as mask:
       y1, x1 = wsiinitialslice
       y1 = slice(y1.start*self.ppscale, y1.stop*self.ppscale)
       x1 = slice(x1.start*self.ppscale, x1.stop*self.ppscale)
 
-      y2, x2 = slc
+      y2, x2 = tileslice
       y2 = slice(y2.start*self.ppscale, y2.stop*self.ppscale)
       x2 = slice(x2.start*self.ppscale, x2.stop*self.ppscale)
 
@@ -692,7 +820,10 @@ class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
       return super().align(*args, **kwargs)
 
 class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample):
-  pass
+  """
+  Use the tissue mask from inform in the component tiff to determine
+  which tiles to use for alignment
+  """
 
 class QPTiffCoordinateBase(abc.ABC):
   @abc.abstractproperty
