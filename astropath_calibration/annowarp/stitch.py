@@ -6,6 +6,13 @@ from ..utilities.tableio import writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
 class AnnoWarpStitchResultBase(units.ThingWithImscale):
+  """
+  Base class for annowarp stitch results.
+
+  Stitch result classes basically have 2 degrees of freedom:
+   1. the stitching model to use
+   2. how to solve the equation (with cvxpy or standalone linear algebra)
+  """
   def __init__(self, *, imscale, **kwargs):
     self.__imscale = imscale
     super().__init__(**kwargs)
@@ -15,21 +22,37 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
 
   @abc.abstractmethod
   def dxvec(self, qptiffcoordinate, *, apscale):
-    pass
+    r"""
+    \Delta\vec{x} for the qptiff coordinate, calculated from the
+    fitted stitching parameters
+    """
 
   def residual(self, alignmentresult, *, apscale):
+    r"""
+    The residual, \Delta\vec{x} for an alignment result - \Delta\vec{x} predicted
+    for that alignment from the stitching model
+    """
     return alignmentresult.dxvec - self.dxvec(alignmentresult, apscale=apscale)
 
   def writestitchresult(self, *, filename, **kwargs):
+    """
+    Write the fitted parameters to a csv file
+    """
     writetable(filename, self.allstitchresultentries, **kwargs)
 
   EntryLite = collections.namedtuple("EntryLite", "value description")
 
   @abc.abstractproperty
-  def stitchresultentries(self): pass
+  def stitchresultentries(self):
+    """
+    A list of EntryLite objects that give the stitching parameters.
+    """
 
   @property
   def stitchresultnominalentries(self):
+    """
+    AnnoWarpStitchResultEntries for the fitted values of the parameters
+    """
     for n, (value, description) in enumerate(self.stitchresultentries, start=1):
       yield AnnoWarpStitchResultEntry(
         n=n,
@@ -38,11 +61,27 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
         pscale=self.imscale,
       )
 
-  @abc.abstractproperty
-  def stitchresultcovarianceentries(self): pass
+  @property
+  def stitchresultcovarianceentries(self):
+    """
+    AnnoWarpStitchResultEntries for the parameter covariance matrix
+    """
+    entries = self.stitchresultentries
+    if all(uncertainties.std_dev(value) == 0) for value, description in entries: return
+    for n, ((value1, description1), (value2, description2)) in enumerate(itertools.combinations_with_replacement(entries, 2), start=len(entries)+1):
+      yield AnnoWarpStitchResultEntry(
+        n=n,
+        value=np.array(units.covariance_matrix([value1, value2]))[0, 1],
+        description="covariance("+description1+", "+description2+")",
+        pscale=self.imscale,
+      )
 
   @property
   def allstitchresultentries(self):
+    """
+    AnnoWarpStitchResultEntries for both the nominal and covariance
+    (these are the ones that get written to csv)
+    """
     nominal = list(self.stitchresultnominalentries)
     for entry, power in more_itertools.zip_equal(nominal, self.variablepowers()):
       if entry.powerfordescription(entry) != power:
@@ -51,16 +90,24 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
 
   @classmethod
   @abc.abstractmethod
-  def variablepowers(cls): pass
+  def variablepowers(cls):
+    """
+    powers of the distance units for the variables (e.g. 1 for pixels, 2 for pixels^2)
+    """
 
   @classmethod
   @abc.abstractmethod
-  def nparams(cls): pass
+  def nparams(cls):
+    """
+    number of parameters in the stitching model
+    """
 
   @classmethod
   def floatedparams(cls, floatedparams):
-    if isinstance(floatedparams, np.ndarray):
-      return floatedparams
+    """
+    Returns an array of bools that determine which parameters get floated.
+
+    """
     if isinstance(floatedparams, str):
       if floatedparams == "all":
         floatedparams = [True] * cls.nparams()
@@ -148,17 +195,6 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
 
     return A, b, c
 
-  @property
-  def stitchresultcovarianceentries(self):
-    entries = self.stitchresultentries
-    for n, ((value1, description1), (value2, description2)) in enumerate(itertools.combinations_with_replacement(entries, 2), start=len(entries)+1):
-      yield AnnoWarpStitchResultEntry(
-        n=n,
-        value=np.array(units.covariance_matrix([value1, value2]))[0, 1],
-        description="covariance("+description1+", "+description2+")",
-        pscale=self.imscale,
-      )
-
 class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
   def __init__(self, *, problem, **kwargs):
     self.problem = problem
@@ -207,9 +243,6 @@ class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
       result += cp.sum(((variable-mu)/sigma)**2)
 
     return result
-
-  @property
-  def stitchresultcovarianceentries(self): return []
 
 class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
   def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, **kwargs):
