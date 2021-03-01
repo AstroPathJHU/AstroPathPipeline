@@ -406,6 +406,9 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
     return super().floatedparams(floatedparams)
 
 class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultNoCvxpyBase):
+  """
+  Stitch result for the default model with no cvxpy
+  """
   def __init__(self, flatresult, **kwargs):
     coeffrelativetobigtile, bigtileindexcoeff, constant = np.split(flatresult, [4, 8])
     coeffrelativetobigtile = coeffrelativetobigtile.reshape(2, 2)
@@ -414,7 +417,13 @@ class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, Ann
 
   @classmethod
   def unconstrainedAbccontributions(cls, alignmentresult):
+    """
+    Assemble the A matrix, b vector, and c scalar for the default model
+    from the alignment result
+    """
+
     nparams = cls.nparams()
+    #get the indices for each parameter
     (
       crtbt_xx,
       crtbt_xy,
@@ -427,16 +436,21 @@ class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, Ann
       const_x,
       const_y,
     ) = range(nparams)
+
+    #create A, b, and c
     A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
     b = np.zeros(shape=nparams, dtype=units.unitdtype)
     c = 0
 
+    #get the factors that the parameters are going to multiply
     crtbt = alignmentresult.coordinaterelativetobigtile
     bti = alignmentresult.bigtileindex
 
+    #get the alignment result dxvec and covariance matrix
     dxvec = units.nominal_values(alignmentresult.dxvec)
     invcov = units.np.linalg.inv(alignmentresult.covariance)
 
+    #fill the A matrix
     A[crtbt_xx:crtbt_xy+1, crtbt_xx:crtbt_xy+1] += np.outer(crtbt, crtbt) * invcov[0,0]
     A[crtbt_yx:crtbt_yy+1, crtbt_xx:crtbt_xy+1] += np.outer(crtbt, crtbt) * invcov[0,1]
     A[crtbt_xx:crtbt_xy+1, crtbt_yx:crtbt_yy+1] += np.outer(crtbt, crtbt) * invcov[1,0]
@@ -482,6 +496,7 @@ class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, Ann
     A[const_y, const_x] += invcov[1,0]
     A[const_y, const_y] += invcov[1,1]
 
+    #fill the b vector
     b[crtbt_xx:crtbt_xy+1] -= 2 * crtbt * invcov[0,0] * dxvec[0]
     b[crtbt_xx:crtbt_xy+1] -= 2 * crtbt * invcov[0,1] * dxvec[1]
     b[crtbt_yx:crtbt_yy+1] -= 2 * crtbt * invcov[1,0] * dxvec[0]
@@ -497,11 +512,15 @@ class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, Ann
     b[const_y] -= 2 * invcov[1,0] * dxvec[0]
     b[const_y] -= 2 * invcov[1,1] * dxvec[1]
 
+    #fill c
     c += dxvec @ invcov @ dxvec
 
     return A, b, c
 
 class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultCvxpyBase):
+  """
+  Stitch result for the default model with cvxpy
+  """
   def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale, **kwargs):
     onepixel = units.onepixel(pscale=imscale)
     super().__init__(
@@ -516,11 +535,12 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
     self.constantvar = constant
 
   @classmethod
-  def makecvxpyvariables(cls): return {
-    "coeffrelativetobigtile": cp.Variable(shape=(2, 2)),
-    "bigtileindexcoeff": cp.Variable(shape=(2, 2)),
-    "constant": cp.Variable(shape=2),
-  }
+  def makecvxpyvariables(cls):
+    return {
+      "coeffrelativetobigtile": cp.Variable(shape=(2, 2)),
+      "bigtileindexcoeff": cp.Variable(shape=(2, 2)),
+      "constant": cp.Variable(shape=2),
+    }
 
   @classmethod
   def cvxpydxvec(cls, alignmentresult, *, coeffrelativetobigtile, bigtileindexcoeff, constant):
@@ -531,13 +551,20 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
     )
 
 class AnnoWarpStitchResultEntry(DataClassWithPscale):
+  """
+  Stitch result entry dataclass for the csv file
+
+  n: numerical index of the entry
+  value: the value of the parameter or covariance entry
+  description: description in words
+  """
   pixelsormicrons = "pixels"
   @classmethod
-  def powerfordescription(cls, selfordescription):
-    if isinstance(selfordescription, cls):
-      description = selfordescription.description
+  def powerfordescription(cls, self_or_description):
+    if isinstance(self_or_description, cls):
+      description = self_or_description.description
     else:
-      description = selfordescription
+      description = self_or_description
     dct = {
       "coefficient of delta x as a function of x within the tile": 0,
       "coefficient of delta x as a function of y within the tile": 0,
