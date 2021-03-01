@@ -1,13 +1,10 @@
 #imports
-from astropath_calibration.warping.alignmentset import AlignmentSetForWarping 
 from astropath_calibration.alignment.alignmentset import AlignmentSetComponentTiffFromXML
-from astropath_calibration.utilities.img_file_io import getMedianExposureTimesAndCorrectionOffsetsForSlide
 from astropath_calibration.utilities.tableio import writetable
 from astropath_calibration.utilities import units
 from astropath_calibration.utilities.dataclasses import MyDataClass
-from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser, cropAndOverwriteImage
+from astropath_calibration.utilities.misc import cd, cropAndOverwriteImage
 from astropath_calibration.utilities.config import CONST as UNIV_CONST
-from matplotlib import colors
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt
 import logging, os
@@ -79,8 +76,8 @@ def plotRectangleInfo(sid,rects) :
                 marker='o',
                 c='gray',label='not flagged')
     flagged_rs = [r for r in rects.values() if r['rel_diff_dev']>=SEP_CUT]
-    ax2.scatter([r['x'] for r in correctly_flagged_rs],
-                  [r['y'] for r in correctly_flagged_rs],
+    ax2.scatter([r['x'] for r in flagged_rs],
+                  [r['y'] for r in flagged_rs],
                   marker='o',
                   c='tab:red',label='flagged')
     ax2.invert_yaxis()
@@ -105,7 +102,7 @@ def getRectangleRelativeDifferenceSeparation(rn,this_rect_olaps) :
         if mse1==0 or omse1==0 :
             msg=f'WARNING: rectangle {rn} (x={olap.p1_x:.1f}, y={olap.p1_y:.1f}) overlap {olap.olap_tag} '
             msg+=f'has DAPI mse1={mse1:.1f}, AF mse1={omse1:.1f}; '
-            msg+=f'will be skipped!'
+            msg+='will be skipped!'
             logger.warn(msg)
             continue
         dapi_rel_diff = (mse1-mse2)/mse1
@@ -183,7 +180,7 @@ def findOverexposedHPFs(rd,sid,workingdir) :
         flagged_rect_ns = [rn for rn,r in rects.items() if r['rel_diff_dev']>=SEP_CUT]
         ii+=1
     #make and write out the list of flagged rectangle info objects
-    overexposed_hpf_infos = [OverexposedHPFInfo(r['file'],r['n'],r['x'],r['y'],r['rel_diff_dev']) for r in [rects[n] for in n flagged_rect_ns]]
+    overexposed_hpf_infos = [OverexposedHPFInfo(rects[n]['file'],rects[n]['n'],rects[n]['x'],rects[n]['y'],rects[n]['rel_diff_dev']) for n in flagged_rect_ns]
     logger.info(f'Found {len(overexposed_hpf_infos)} total overexposed HPFs in {sid}')
     with cd(workingdir) :
         writetable(f'{sid}_overexposed_HPFs.csv',overexposed_hpf_infos)
