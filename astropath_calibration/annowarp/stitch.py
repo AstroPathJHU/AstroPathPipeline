@@ -1,4 +1,4 @@
-import abc, collections, cvxpy as cp, itertools, more_itertools, numpy as np, re
+import abc, collections, cvxpy as cp, itertools, more_itertools, numpy as np, re, uncertainties as unc
 
 from ..utilities import units
 from ..utilities.misc import dict_zip_equal
@@ -67,7 +67,7 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
     AnnoWarpStitchResultEntries for the parameter covariance matrix
     """
     entries = self.stitchresultentries
-    if all(uncertainties.std_dev(value) == 0 for value, description in entries): return
+    if all(unc.std_dev(value) == 0 for value, description in entries): return
     for n, ((value1, description1), (value2, description2)) in enumerate(itertools.combinations_with_replacement(entries, 2), start=len(entries)+1):
       yield AnnoWarpStitchResultEntry(
         n=n,
