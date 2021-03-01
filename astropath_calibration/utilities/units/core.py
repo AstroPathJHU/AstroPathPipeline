@@ -59,3 +59,14 @@ class ThingWithApscale(abc.ABC):
   @property
   def oneapmicron(self):
     return onemicron(pscale=self.apscale)
+
+class ThingWithImscale(abc.ABC):
+  @abc.abstractproperty
+  def imscale(self): pass
+  @imscale.setter
+  def imscale(self, imscale): object.__setattr__(self, "_ThingWithImscale__imscale", imscale)
+  @property
+  def oneimpixel(self): return onepixel(pscale=self.imscale)
+  @property
+  def oneimmicron(self): return onemicron(pscale=self.imscale)
+

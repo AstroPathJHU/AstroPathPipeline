@@ -14,19 +14,36 @@ from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import covariance_matrix, floattoint
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
-from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy, ThingWithImscale
+from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
-class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWithImscale):
+class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.ThingWithImscale):
+  r"""
+  The annowarp module aligns the wsi image created by zoom to the qptiff.
+  It rewrites the annotations, which were drawn in qptiff coordinates,
+  in im3 coordinates.
+
+  The qptiff is scanned and stitched by the inform software in tiles of
+  1400 x 2100 pixels, with an offset of 1000 pixels in the y direction.
+  We divide the qptiff and wsi into tiles of 100x100 pixels and align
+  them with respect to each other, then fit to a model where \Delta\vec{x}
+  is linear in \vec{x} within the tile as well as the index \vec{i} of the
+  tile, with a possible constant piece.
+  """
+
   rectangletype = FieldReadComponentTiffMultiLayer
 
   defaulttilepixels = 100
+  __bigtilepixels = np.array([1400, 2100])
+  __bigtileoffsetpixels = np.array([0, 1000])
 
-  def __init__(self, *args, bigtilepixels=(1400, 2100), bigtileoffsetpixels=(0, 1000), tilepixels=defaulttilepixels, **kwargs):
+  def __init__(self, *args, tilepixels=defaulttilepixels, **kwargs):
+    """
+    tilepixels: we divide the wsi and qptiff into tiles of this size
+                in order to align (default: 100)
+    """
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
-    self.__bigtilepixels = np.array(bigtilepixels)
-    self.__bigtileoffsetpixels = np.array(bigtileoffsetpixels)
     self.__tilepixels = tilepixels
     if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
       raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
@@ -38,8 +55,14 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
 
   @contextlib.contextmanager
   def using_images(self):
+    """
+    Context manager for opening the wsi and qptiff images
+    """
     if self.__nentered == 0:
+      #if they're not currently open
+      #disable PIL's warning when opening big images
       self.__using_images_context.enter_context(self.PILmaximagepixels())
+      #open the images
       self.__wsi = self.__using_images_context.enter_context(PIL.Image.open(self.wsifilename(layer=self.wsilayer)))
       self.__qptiff = self.__using_images_context.enter_context(QPTiff(self.qptifffilename))
     self.__nentered += 1
@@ -50,19 +73,37 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     finally:
       self.__nentered -= 1
       if self.__nentered == 0:
+        #if we don't have any other copies of this context manager going,
+        #close the images and free the memory
         self.__wsi = self.__qptiff = None
         self.__using_images_context.close()
 
   @property
-  def tilesize(self): return units.Distance(pixels=self.__tilepixels, pscale=self.imscale)
+  def tilesize(self):
+    """
+    The tile size as a Distance
+    """
+    return units.Distance(pixels=self.__tilepixels, pscale=self.imscale)
   @property
-  def bigtilesize(self): return units.distances(pixels=self.__bigtilepixels, pscale=self.imscale)
+  def bigtilesize(self):
+    """
+    The big tile size (1400, 2100) as a distance
+    """
+    return units.distances(pixels=self.__bigtilepixels, pscale=self.imscale)
   @property
-  def bigtileoffset(self): return units.distances(pixels=self.__bigtileoffsetpixels, pscale=self.imscale)
+  def bigtileoffset(self):
+    """
+    The big tile size (0, 1000) as a distance
+    """
+    return units.distances(pixels=self.__bigtileoffsetpixels, pscale=self.imscale)
 
   @methodtools.lru_cache()
   @property
   def __imageinfo(self):
+    """
+    Get the image info from the wsi and qptiff
+    (various scales and the x and y position)
+    """
     with self.using_images() as (wsi, fqptiff):
       zoomlevel = fqptiff.zoomlevels[0]
       apscale = zoomlevel.qpscale
@@ -82,24 +123,68 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       }
 
   @property
-  def apscale(self): return self.__imageinfo["apscale"]
+  def apscale(self):
+    """
+    The pixels/micron scale of the qptiff image
+    """
+    return self.__imageinfo["apscale"]
   @property
-  def ppscale(self): return self.__imageinfo["ppscale"]
+  def ipscale(self):
+    """
+    The ratio of pixels/micron scales of the im3 and qptiff images
+    """
+    return self.__imageinfo["ipscale"]
   @property
-  def iqscale(self): return self.__imageinfo["iqscale"]
+  def ppscale(self):
+    """
+    The ratio of pixels/micron scales of the im3 and qptiff images,
+    rounded to an integer
+    """
+    return self.__imageinfo["ppscale"]
   @property
-  def imscale(self): return self.__imageinfo["imscale"]
+  def iqscale(self):
+    """
+    The ratio of ipscale and ppscale, i.e. the remaining non-integer
+    part of the ratio of pixels/micron scales of the im3 and qptiff
+    images
+    """
+    return self.__imageinfo["iqscale"]
   @property
-  def xposition(self): return self.__imageinfo["xposition"]
+  def imscale(self):
+    """
+    The scale used for alignment: the wsi is scaled by ppscale,
+    which is the integer that brings it closest to the qptiff's
+    scale, and the qptiff is scaled by whatever 1.00x is needed
+    to bring it to the same scale.
+    """
+    return self.__imageinfo["imscale"]
   @property
-  def yposition(self): return self.__imageinfo["yposition"]
+  def xposition(self):
+    """
+    x position of the qptiff image
+    """
+    return self.__imageinfo["xposition"]
+  @property
+  def yposition(self):
+    """
+    y position of the qptiff image
+    """
+    return self.__imageinfo["yposition"]
 
-  def getimages(self, keep=False):
+  def getimages(self, *, keep=False):
+    """
+    Load the wsi and qptiff images and scale them to the same scale
+
+    keep: save the images in memory so that next time you call
+          this function it's quicker (default: False)
+    """
     if self.__images is not None: return self.__images
     with self.using_images() as (wsi, fqptiff):
+      #load the images
       zoomlevel = fqptiff.zoomlevels[0]
       qptiff = PIL.Image.fromarray(zoomlevel[self.qptifflayer-1].asarray())
 
+      #scale them so that they're at the same scale
       wsisize = np.array(wsi.size, dtype=np.uint)
       qptiffsize = np.array(qptiff.size, dtype=np.uint)
       wsisize //= self.ppscale
@@ -107,6 +192,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       wsi = wsi.resize(wsisize)
       qptiff = qptiff.resize(qptiffsize)
 
+      #crop them to the same size
       newsize = 0, 0, np.min((wsisize[0], qptiffsize[0])), np.min((wsisize[1], qptiffsize[1]))
       wsi = wsi.crop(newsize)
       qptiff = qptiff.crop(newsize)
@@ -118,12 +204,31 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       return wsi, qptiff
 
   def align(self, *, debug=False, write_result=False):
-    wsi, qptiff = self.getimages()
+    """
+    Break the wsi and qptiff into tiles and align them
+    with respect to each other.  Returns a list of results.
+
+    debug: raise exceptions instead of catching them
+           and reporting the individual alignment as
+           failed (default: False)
+    write_result: write the alignment results to a csv
+                  file (default: False)
+    """
+    wholewsi, wholeqptiff = wsi, qptiff = self.getimages()
 
     self.logger.info("doing the initial rough alignment")
-    #first align the two with respect to each other
-    #in case there are big shifts, this makes sure the tiles line up
-    #and can be aligned
+
+    #first align the two with respect to each other in case there are
+    #big shifts. this makes sure that when we align a wsi tile and a
+    #qptiff tile, the two actually contain at least some of the same data.
+    #we do this with a signficant zoom (which also smooths the images).
+
+    #we want to keep the tiles of 100x100 pixels, so we round the shift
+    #to the nearest 100 pixels in x and y and shift by that much.  The
+    #initial shift is included in the final alignment results, so that
+    #the results reported are the total relative shift of the wsi and
+    #qptiff.
+
     zoomfactor = 5
     wsizoom = PIL.Image.fromarray(wsi)
     wsizoom = np.asarray(wsizoom.resize(np.array(wsizoom.size)//zoomfactor))
@@ -137,6 +242,8 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     if initialdx or initialdy:
       self.logger.warning(f"found a relative shift of around {initialdx, initialdy} pixels between the qptiff and wsi")
 
+    #slice and shift the images so that they line up to within 100 pixels
+    #we slice both so that they're the same size
     wsix1 = wsiy1 = qptiffx1 = qptiffy1 = 0
     qptiffy2, qptiffx2 = qptiff.shape
     wsiy2, wsix2 = wsi.shape
@@ -166,23 +273,26 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     bigtilesize = self.bigtilesize
     bigtileoffset = self.bigtileoffset
 
+    #find the bounding box of the area we need to align
     mx1 = units.convertpscale(min(field.mx1 for field in self.rectangles), self.pscale, imscale, 1)
     mx2 = units.convertpscale(max(field.mx2 for field in self.rectangles), self.pscale, imscale, 1)
     my1 = units.convertpscale(min(field.my1 for field in self.rectangles), self.pscale, imscale, 1)
     my2 = units.convertpscale(max(field.my2 for field in self.rectangles), self.pscale, imscale, 1)
 
-    #tweak the y position by -900 for the microsocope glitches
-    #(from Alex's code.  I don't know what this means.)
-    qshifty = 0
-    if self.yposition == 0: qshifty = units.Distance(pixels=900, pscale=imscale)
-
     mx2 = min(mx2, units.Distance(pixels=wsi.shape[1], pscale=imscale) - tilesize)
     my2 = min(my2, units.Distance(pixels=wsi.shape[0], pscale=imscale) - tilesize)
 
+    #find the area we need to align in coordinates of tile index
     n1 = floattoint(my1//tilesize)-1
     n2 = floattoint(my2//tilesize)+1
     m1 = floattoint(mx1//tilesize)-1
     m2 = floattoint(mx2//tilesize)+1
+
+    #tweak the y position by -900 for the microsocope glitches
+    #sometimes the y position is < 0 but reported by the microscope
+    #as 0.  we exclude the fields at negative y from alignment.
+    qshifty = 0
+    if self.yposition == 0: qshifty = units.Distance(pixels=900, pscale=imscale)
 
     results = AnnoWarpAlignmentResults()
     ntiles = (m2+1-m1) * (n2+1-n1)
@@ -194,6 +304,10 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       y = tilesize * (iy-1)
       if y+onepixel-qshifty <= 0: continue
 
+      #find the slice of the wsi and qptiff to use
+      #note that initialdx and initialdy are not needed here
+      #because we already took care of that by slicing the
+      #wsi and qptiff
       slc = slice(
         floattoint(units.pixels(y, pscale=imscale)),
         floattoint(units.pixels(y+tilesize, pscale=imscale))
@@ -202,8 +316,10 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
         floattoint(units.pixels(x+tilesize, pscale=imscale)),
       )
       wsitile = wsi[slc]
+      #if this ends up with no pixels inside the wsi, continue
       if not wsitile.size: continue
-      if not self.passescut(wsi, qptiff, slc, wsiinitialslice) / wsitile.size: continue
+      #apply cuts to make sure we're in a tissue region that can be aligned
+      if not self.passescut(wholewsi, wholeqptiff, wsiinitialslice, qptiffinitialslice, slc): continue
       qptifftile = qptiff[slc]
 
       alignmentresultkwargs = dict(
@@ -217,10 +333,13 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
         imageshandle=self.getimages,
       )
 
+      #smooth the wsi and qptiff tiles
       wsitile = wsitile - skimage.filters.gaussian(wsitile, sigma=20)
       wsitile = skimage.filters.gaussian(wsitile, sigma=3)
       qptifftile = qptifftile - skimage.filters.gaussian(qptifftile, sigma=20)
       qptifftile = skimage.filters.gaussian(qptifftile, sigma=3)
+
+      #do the alignment
       try:
         shiftresult = computeshift((qptifftile, wsitile), usemaxmovementcut=False)
       except Exception as e:
@@ -241,6 +360,8 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
           AnnoWarpAlignmentResult(
             **alignmentresultkwargs,
             dxvec=units.correlated_distances(
+              #here we apply initialdx and initialdy so that the reported
+              #result is the global shift
               pixels=(shiftresult.dx+initialdx, shiftresult.dy+initialdy),
               pscale=imscale,
               power=1,
@@ -256,36 +377,89 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     return results
 
   @abc.abstractmethod
-  def printcuts(self): pass
+  def printcuts(self):
+    """print an info message to the logger describing the cuts used"""
   @abc.abstractmethod
-  def passescut(self, wsi, qptiff, slc, wsiinitialslice): pass
+  def passescut(self, wholewsi, wholeqptiff, wsiinitialslice, qptiffinitialslice, tileslice):
+    """
+    return whether the tile described by slc passes the cut
+
+    wholewsi: the whole wsi image (before the initial slice)
+    wholeqptiff: the whole qptiff image (before the initial slice)
+    wsiinitialslice: the slice for the wsi from the initial alignment
+    qptiffinitialslice: the slice for the qptiff from the initial alignment
+    tileslice: the slice for this tile
+    """
 
   @property
-  def alignmentcsv(self): return self.csv(f"warp-{self.__tilepixels}")
+  def alignmentcsv(self):
+    """
+    The filename for the csv file where the alignments
+    are written
+    """
+    return self.csv(f"warp-{self.__tilepixels}")
 
   def writealignments(self, *, filename=None):
+    """
+    write the alignments to a csv file
+    """
     if filename is None: filename = self.alignmentcsv
     writetable(filename, self.__alignmentresults, logger=self.logger)
 
   def readalignments(self, *, filename=None):
+    """
+    read the alignments from a csv file
+    """
     if filename is None: filename = self.alignmentcsv
     results = self.__alignmentresults = AnnoWarpAlignmentResults(readtable(filename, AnnoWarpAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize, "bigtilesize": self.bigtilesize, "bigtileoffset": self.bigtileoffset, "imageshandle": self.getimages}))
     return results
 
   @property
   def logmodule(self):
+    """
+    The name of this module for logging purposes
+    """
     return "annowarp"
 
   @staticmethod
   def stitchresultcls(*, model, cvxpy):
+    """
+    Which stitch result class to use, given a stitching model and whether
+    or not to use cvxpy
+    """
     return {
       "default": (AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy),
     }[model][cvxpy]
 
   def stitch(self, *args, cvxpy=False, **kwargs):
+    r"""
+    Do the stitching
+
+    cvxpy: use cvxpy for the stitching.  this does not give uncertainties
+           on the stitching parameters and is mostly useful for debugging
+    model: which model to use for stitching.  The only option is "default",
+           which breaks the qptiff into tiles and assumes a linear dependence
+           of d\vec{x} on \vec{x} within the tile and the tile index \vec{i}
+    constraintmus:    means of gaussian constraints on parameters
+    constraintsigmas: widths of gaussian constraints on parameters
+                      both mus and sigmas have to be None or lists of the same length.  
+                      set a particular mu and sigma as None in the list to leave the
+                      corresponding parameter unconstrained
+
+    For cvxpy = False only:
+    floatedparams: for the default model, options are "all" and "constants"
+                   you can also give an list of bools, where True means a parameter
+                   is floated and False means it's fixed
+    residualpullcutoff: if any tiles have a normalized residual (=residual/error) larger than this,
+                        redo the stitching without those tiles (default: 5).
+                        can also be None
+    """
     return (self.stitch_cvxpy if cvxpy else self.stitch_nocvxpy)(*args, **kwargs)
 
   def stitch_nocvxpy(self, **kwargs):
+    #process the keyword arguments
+    #the reason we do it this way rather than in the function definition
+    #is so that we can recursively call the function by excluding certain tiles
     allkwargs = kwargs.copy()
     model = kwargs.pop("model", "default")
     constraintmus = kwargs.pop("constraintmus", None)
@@ -300,12 +474,8 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
       self.logger.info("doing the global fit")
     else:
       self.logger.warningglobal("doing the global fit with constraints")
-    stitchresultcls = self.stitchresultcls(model=model, cvxpy=False)
-    nparams = stitchresultcls.nparams()
-    A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
-    b = np.zeros(shape=nparams, dtype=units.unitdtype)
-    c = 0
 
+    #select the tiles to use, recursively using a looser selection if needed
     alignmentresults = AnnoWarpAlignmentResults(_ for _ in self.__alignmentresults if _.n not in _removetiles)
     if _choosetiles == "bigislands":
       alignmentresults = alignmentresults.goodconnectedresults(minislandsize=8)
@@ -324,11 +494,16 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     else:
       raise ValueError(f"Invalid _choosetiles {_choosetiles}")
 
+    #get the A, b, c arrays
+    #we are minimizing x^T A x + b^T x + c
+    stitchresultcls = self.stitchresultcls(model=model, cvxpy=False)
     A, b, c = stitchresultcls.Abc(alignmentresults, constraintmus, constraintsigmas, floatedparams=floatedparams)
 
     try:
+      #solve the linear equation
       result = units.np.linalg.solve(2*A, -b)
     except np.linalg.LinAlgError:
+      #if the fit fails, try again with a looser selection
       if _choosetiles == "bigislands":
         self.logger.warningglobal("fit failed using big islands, trying to stitch with smaller islands")
         allkwargs["_choosetiles"] = "smallislands"
@@ -339,12 +514,16 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
         return self.stitch_nocvxpy(**allkwargs)
       raise
 
+    #get the covariance matrix
     delta2nllfor1sigma = 1
     covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
     result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
+    #initialize the stitch result object
     stitchresult = stitchresultcls(result, A=A, b=b, c=c, imscale=self.imscale)
 
+    #check if there are any outliers
+    #if there are, log them, remove them, and recursively rerun
     if residualpullcutoff is not None:
       removemoretiles = []
       infolines = []
@@ -371,9 +550,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     _choosetiles = kwargs.pop("_choosetiles", "bigislands")
     if kwargs: raise TypeError(f"Unknown kwargs {kwargs}")
 
-    stitchresultcls = self.stitchresultcls(model=model, cvxpy=True)
-    variables = stitchresultcls.makecvxpyvariables()
-
+    #select the tiles to use, recursively using a looser selection if needed
     alignmentresults = AnnoWarpAlignmentResults(_ for _ in self.__alignmentresults if _.n not in _removetiles)
     if _choosetiles == "bigislands":
       alignmentresults = alignmentresults.goodconnectedresults(minislandsize=8)
@@ -392,18 +569,27 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     else:
       raise ValueError(f"Invalid _choosetiles {_choosetiles}")
 
+    #get the cvxpy variable objects
+    stitchresultcls = self.stitchresultcls(model=model, cvxpy=True)
+    variables = stitchresultcls.makecvxpyvariables()
+
     tominimize = 0
+
+    #find the residuals and add their quadratic forms to the problem
     onepixel = self.oneimpixel
     for result in alignmentresults:
       residual = stitchresultcls.cvxpyresidual(result, **variables)
       tominimize += cp.quad_form(residual, units.np.linalg.inv(result.covariance) * onepixel**2)
 
+    #add the constraint quadratic forms to the problem
     tominimize += stitchresultcls.constraintquadforms(variables, constraintmus, constraintsigmas, imscale=self.imscale)
 
+    #do the minimization
     minimize = cp.Minimize(tominimize)
     prob = cp.Problem(minimize)
     prob.solve()
 
+    #create the stitch result object
     self.__stitchresult = stitchresultcls(
       problem=prob,
       imscale=self.imscale,
@@ -413,23 +599,49 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     return self.__stitchresult
 
   @property
-  def stitchcsv(self): return self.csv(f"warp-{self.__tilepixels}-stitch")
+  def stitchcsv(self):
+    """
+    filename for the stitch csv file
+    """
+    return self.csv(f"warp-{self.__tilepixels}-stitch")
 
   def writestitchresult(self, *, filename=None):
+    """
+    write the stitch result to file
+    """
     if filename is None: filename = self.stitchcsv
     self.__stitchresult.writestitchresult(filename=filename, logger=self.logger)
 
   @property
-  def oldverticescsv(self): return self.csv("vertices")
+  def oldverticescsv(self):
+    """
+    filename of the original vertices csv file
+    """
+    return self.csv("vertices")
   @property
-  def newverticescsv(self): return self.csv("vertices")
+  def newverticescsv(self):
+    """
+    filename of the new vertices csv file
+    """
+    return self.csv("vertices")
   @property
-  def oldregionscsv(self): return self.csv("regions")
+  def oldregionscsv(self):
+    """
+    filename of the original regions csv file
+    """
+    return self.csv("regions")
   @property
-  def newregionscsv(self): return self.csv("regions")
+  def newregionscsv(self):
+    """
+    filename of the new regions csv file
+    """
+    return self.csv("regions")
 
   @methodtools.lru_cache()
   def __getvertices(self, *, apscale, pscale, filename=None):
+    """
+    read in the original vertices from vertices.csv
+    """
     if filename is None: filename = self.oldverticescsv
     extrakwargs={
      "apscale": apscale,
@@ -439,6 +651,8 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     }
     with open(filename) as f:
       reader = csv.DictReader(f)
+      #allow reading in a file that already has previous warped vertex positions
+      #(which will be overwritten) or one that only has original positions
       if "wx" in reader.fieldnames and "wy" in reader.fieldnames:
         typ = WarpedVertex
       else:
@@ -450,13 +664,22 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
 
   @property
   def vertices(self):
+    """
+    get the original vertices in im3 coordinates
+    """
     return self.__getvertices(apscale=self.apscale, pscale=self.pscale)
   @property
   def apvertices(self):
+    """
+    get the original vertices in qptiff coordinates
+    """
     return self.__getvertices(apscale=self.apscale, pscale=self.apscale)
 
   @methodtools.lru_cache()
   def __getwarpedvertices(self, *, apscale, pscale):
+    """
+    Create the new warped vertices
+    """
     oneapmicron = units.onemicron(pscale=apscale)
     onemicron = self.onemicron
     onepixel = self.onepixel
@@ -470,20 +693,32 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
 
   @property
   def warpedvertices(self):
+    """
+    Get the new warped vertices in im3 coordinates
+    """
     return self.__getwarpedvertices(apscale=self.apscale, pscale=self.pscale)
 
   @methodtools.lru_cache()
   def __getregions(self, *, apscale, filename=None):
+    """
+    read in the original regions from regions.csv
+    """
     if filename is None: filename = self.oldregionscsv
     return readtable(filename, Region, extrakwargs={"apscale": apscale, "pscale": self.pscale})
 
   @property
   def regions(self):
+    """
+    read in the original regions from regions.csv
+    """
     return self.__getregions(apscale=self.apscale)
 
   @methodtools.lru_cache()
   @property
   def warpedregions(self):
+    """
+    Create the new warped regions
+    """
     regions = self.regions
     warpedverticesiterator = iter(self.warpedvertices)
     result = []
@@ -516,16 +751,29 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     return result
 
   def writevertices(self, *, filename=None):
+    """
+    write the warped vertices to the csv file
+    """
     self.logger.info("writing vertices")
     if filename is None: filename = self.newverticescsv
     writetable(filename, self.warpedvertices)
 
   def writeregions(self, *, filename=None):
+    """
+    write the warped regions to the csv file
+    """
     self.logger.info("writing regions")
     if filename is None: filename = self.newregionscsv
     writetable(filename, self.warpedregions)
 
   def runannowarp(self, *, readalignments=False, **kwargs):
+    """
+    run the full chain
+
+    readalignments: if True, read the alignments from the alignment csv file,
+                    otherwise actually do the alignment
+    other kwargs are passed to stitch()
+    """
     if not readalignments:
       self.align()
       self.writealignments()
@@ -537,6 +785,12 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, ThingWit
     self.writeregions()
 
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
+  """
+  Use a tissue mask to determine which tiles to use for alignment
+
+  mintissuefraction: the minimum fraction of tissue pixels in the tile
+                     to be used for alignment (default: 0.2)
+  """
   defaultmintissuefraction = 0.2
 
   def __init__(self, *args, mintissuefraction=defaultmintissuefraction, **kwargs):
@@ -545,13 +799,13 @@ class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
 
   def printcuts(self):
     self.logger.info(f"Cuts: {self.mintissuefraction:.0%} of the HPF is in a tissue region")
-  def passescut(self, wsi, qptiff, slc, wsiinitialslice):
+  def passescut(self, wholewsi, wholeqptiff, wsiinitialslice, qptiffinitialslice, tileslice):
     with self.using_tissuemask() as mask:
       y1, x1 = wsiinitialslice
       y1 = slice(y1.start*self.ppscale, y1.stop*self.ppscale)
       x1 = slice(x1.start*self.ppscale, x1.stop*self.ppscale)
 
-      y2, x2 = slc
+      y2, x2 = tileslice
       y2 = slice(y2.start*self.ppscale, y2.stop*self.ppscale)
       x2 = slice(x2.start*self.ppscale, x2.stop*self.ppscale)
 
@@ -564,26 +818,56 @@ class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
       return super().align(*args, **kwargs)
 
 class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample):
-  pass
+  """
+  Use the tissue mask from inform in the component tiff to determine
+  which tiles to use for alignment
+  """
 
 class QPTiffCoordinateBase(abc.ABC):
+  """
+  Base class for any coordinate in the qptiff that works with the big tiles
+  You can get the index of the big tile and the location within the big tile
+  """
   @abc.abstractproperty
-  def bigtilesize(self): pass
+  def bigtilesize(self):
+    """
+    (width, height) of the big qptiff tiles
+    """
   @abc.abstractproperty
-  def bigtileoffset(self): pass
+  def bigtileoffset(self):
+    """
+    offset of the first qptiff tile
+    """
   @abc.abstractproperty
-  def qptiffcoordinate(self): pass
+  def qptiffcoordinate(self):
+    """
+    coordinate of this object in apscale
+    """
   @property
   def bigtileindex(self):
+    """
+    Index of the big tile this coordinate is in
+    """
     return (self.xvec - self.bigtileoffset) // self.bigtilesize
   @property
   def bigtilecorner(self):
+    """
+    Top left corner of the big tile this coordinate is in
+    """
     return self.bigtileindex * self.bigtilesize + self.bigtileoffset
   @property
-  def centerrelativetobigtile(self):
+  def coordinaterelativetobigtile(self):
+    """
+    Location of this coordinate within the big tile
+    """
     return self.qptiffcoordinate - self.bigtilecorner
 
 class QPTiffCoordinate(MyDataClass, QPTiffCoordinateBase):
+  """
+  Base class for a dataclass that wants to use the big tile
+  index of a qptiff coordinate.  bigtilesize and bigtileoffset
+  are given to the constructor
+  """
   def __user_init__(self, *args, bigtilesize, bigtileoffset, **kwargs):
     self.__bigtilesize = bigtilesize
     self.__bigtileoffset = bigtileoffset
@@ -594,6 +878,9 @@ class QPTiffCoordinate(MyDataClass, QPTiffCoordinateBase):
   def bigtileoffset(self): return self.__bigtileoffset
 
 class QPTiffVertex(QPTiffCoordinate, Vertex):
+  """
+  A vertex that has qptiff info
+  """
   @classmethod
   def transforminitargs(cls, *args, vertex=None, **kwargs):
     vertexkwargs = {"vertex": vertex}
@@ -612,6 +899,10 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
     return self.xvec
 
 class WarpedVertex(QPTiffVertex):
+  """
+  A warped vertex, which includes info about the original
+  and warped positions
+  """
   __pixelsormicrons = "pixels"
   wx: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
   wy: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
@@ -629,10 +920,17 @@ class WarpedVertex(QPTiffVertex):
     )
 
   @property
-  def wxvec(self): return np.array([self.wx, self.wy])
+  def wxvec(self):
+    """
+    The warped position [wx, wy] as a numpy array
+    """
+    return np.array([self.wx, self.wy])
 
   @property
   def originalvertex(self):
+    """
+    The original vertex without the warped info
+    """
     return QPTiffVertex(
       regionid=self.regionid,
       vid=self.vid,
@@ -645,6 +943,9 @@ class WarpedVertex(QPTiffVertex):
 
   @property
   def finalvertex(self):
+    """
+    The new vertex without the original info
+    """
     return Vertex(
       regionid=self.regionid,
       vid=self.vid,
@@ -654,6 +955,15 @@ class WarpedVertex(QPTiffVertex):
     )
 
 class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataClassWithPscale):
+  """
+  A result from the alignment of one tile of the annowarp
+
+  n: the numerical id of the tile, starting from 1
+  x, y: the x and y positions of the tile
+  dx, dy: the shift in x and y
+  covxx, covxy, covyy: the covariance matrix for dx and dy
+  exit: the exit code of the alignment (0=success, nonzero=failure, 255=exception)
+  """
   pixelsormicrons = "pixels"
   n: int
   x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
@@ -696,23 +1006,41 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
 
   @property
   def xvec(self):
+    """
+    [x, y] as a numpy array
+    """
     return np.array([self.x, self.y])
   @property
   def covariance(self):
+    """
+    the covariance matrix as a numpy array
+    """
     return np.array([[self.covxx, self.covxy], [self.covxy, self.covyy]])
   @property
   def dxvec(self):
+    """
+    [dx, dy] as a numpy array with their correlated uncertainties
+    """
     return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
   @property
   def center(self):
+    """
+    the center of the tile
+    """
     return self.xvec + self.tilesize/2
   qptiffcoordinate = center
   @property
   def tileindex(self):
+    """
+    the index of the tile in [x, y]
+    """
     return self.xvec // self.tilesize
 
   @property
   def unshifted(self):
+    """
+    the wsi and qptiff images before they are shifted
+    """
     wsi, qptiff = self.imageshandle()
     wsitile = wsi[
       units.pixels(self.y, pscale=self.pscale):units.pixels(self.y+self.tilesize, pscale=self.pscale),
@@ -725,8 +1053,14 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     return wsitile, qptifftile
 
 class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
+  """
+  A list of alignment results with some extra methods
+  """
   @property
   def goodresults(self):
+    """
+    All results with exit code == 0
+    """
     return type(self)(r for r in self if not r.exit)
   @methodtools.lru_cache()
   @property
@@ -738,8 +1072,13 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
   def pscale(self):
     result, = {_.pscale for _ in self}
     return result
+  @methodtools.lru_cache()
   @property
   def adjacencygraph(self):
+    """
+    Graph with edges between tiles that are adjacent to each other
+    (by edges, not corners)
+    """
     g = nx.Graph()
     dct = {tuple(_.tileindex): _ for _ in self}
 
@@ -752,6 +1091,9 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
     return g
 
   def goodconnectedresults(self, *, minislandsize=8):
+    """
+    all results with 0 exit code that are in large enough islands
+    """
     onepixel = self.onepixel
     good = self.goodresults
     g = good.adjacencygraph
