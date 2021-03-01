@@ -67,7 +67,7 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
     AnnoWarpStitchResultEntries for the parameter covariance matrix
     """
     entries = self.stitchresultentries
-    if all(uncertainties.std_dev(value) == 0) for value, description in entries: return
+    if all(uncertainties.std_dev(value) == 0 for value, description in entries): return
     for n, ((value1, description1), (value2, description2)) in enumerate(itertools.combinations_with_replacement(entries, 2), start=len(entries)+1):
       yield AnnoWarpStitchResultEntry(
         n=n,
@@ -106,7 +106,9 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
   def floatedparams(cls, floatedparams):
     """
     Returns an array of bools that determine which parameters get floated.
-
+    takes in an array of bools, in which case it returns the input,
+    or a string that depends on the model (e.g. "all" for any model,
+    or "constants" for the default model)
     """
     if isinstance(floatedparams, str):
       if floatedparams == "all":
@@ -116,6 +118,13 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
     return np.asarray(floatedparams)
 
 class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
+  """
+  Stitch result that uses standalone linear algebra and not cvxpy.
+
+  A, b, c: the matrix, vector, and constant that define the quadratic
+  to minimize: x^T A x + b^T x + c
+  flatresult: the x vector
+  """
   def __init__(self, *, A, b, c, flatresult, **kwargs):
     self.A = A
     self.b = b
@@ -125,16 +134,29 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
 
   @classmethod
   @abc.abstractmethod
-  def unconstrainedAbccontributions(cls, alignmentresult): pass
+  def unconstrainedAbccontributions(cls, alignmentresult):
+    """
+    Gives the contributions to A, b, and c from this alignment
+    result's residual
+    """
 
   @classmethod
   def constraintAbccontributions(cls, mus, sigmas):
+    """
+    Gives the contributions to A, b, and c from the constraints.
+
+    mus: means of the gaussian constraints
+    sigmas: widths of the gaussian constraints
+    """
     if mus is sigmas is None: return 0, 0, 0
     nparams = cls.nparams()
     A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
     b = np.zeros(shape=nparams, dtype=units.unitdtype)
     c = 0
     for i, (mu, sigma) in enumerate(more_itertools.zip_equal(mus, sigmas)):
+      #add to negative log likelihood
+      #   (x-mu)^2/sigma^2
+      # = (1/sigma^2) x^2 - 2 (mu/sigma) x + (mu/sigma)^2
       if mu is sigma is None: continue
       A[i,i] += 1/sigma**2
       b[i] -= 2*mu/sigma**2
@@ -143,8 +165,17 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
 
   @classmethod
   def Abc(cls, alignmentresults, mus, sigmas, floatedparams="all"):
+    """
+    Gives the total A, b, and c from the alignment results and constraints.
+
+    alignmentresults: the list of alignment results to use
+    mus: means of the gaussian constraints
+    sigmas: widths of the gaussian constraints
+    floatedparams: which parameters to float
+    """
     floatedparams = cls.floatedparams(floatedparams)
 
+    #add the alignment result contributions
     A = b = c = 0
     for alignmentresult in alignmentresults:
       addA, addb, addc = cls.unconstrainedAbccontributions(alignmentresult)
@@ -152,6 +183,10 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
       b += addb
       c += addc
 
+    #if any parameters are fixed, remove the dependence of A and b on those
+    #parameters.  The dependence is added to b and c in such a way that, when
+    #those parameters are set to the values they're fixed to, the total log
+    #likelihood is unchanged.
     floatedindices = np.arange(cls.nparams())[floatedparams]
     fixedindices = np.arange(cls.nparams())[~floatedparams]
 
@@ -173,20 +208,26 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     if badindices:
       raise ValueError(f"Have to provide non-None constraint mu and sigma for variables #{badindices} if you want to fix them")
 
-    #floatfloat = np.ix_(floatedindices, floatedindices)
     floatfix = np.ix_(floatedindices, fixedindices)
     fixfloat = np.ix_(fixedindices, floatedindices)
     fixfix = np.ix_(fixedindices, fixedindices)
 
+    #A entries that correspond to 2 fixed parameters: goes into c
     c += fixedmus @ A[fixfix] @ fixedmus
     A[fixfix] = 0
 
+    #A entries that correspond to a fixed parameter and a floated parameter
     b[floatedindices] += A[floatfix] @ fixedmus + fixedmus @ A[fixfloat]
     A[floatfix] = A[fixfloat] = 0
 
+    #b entries that correspond to a fixed parameter
     c += b[fixedindices] @ fixedmus
     b[fixedindices] = 0
 
+    #add the constraints
+    #the only dependence of A and b on the fixed parameters is the constraints
+    #so they end up fitting to mu +/- sigma.  For the floated parameters it's a
+    #gaussian constraint but A and b also depend on the alignment results
     addA, addb, addc = cls.constraintAbccontributions(mus, sigmas)
 
     A += addA
@@ -196,33 +237,58 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     return A, b, c
 
 class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
+  """
+  Stitch result that uses cvxpy.
+  This is intended for debugging because it has a nice syntax for setting
+  up the minimization in terms of variables.
+
+  problem: the cvxpy Problem object
+  """
   def __init__(self, *, problem, **kwargs):
     self.problem = problem
     super().__init__(**kwargs)
 
   def residual(self, *args, **kwargs):
+    """
+    The residual for an alignment result.
+    We take the nominal value because cvxpy doesn't return the error
+    """
     return units.nominal_values(super().residual(*args, **kwargs))
 
   @classmethod
   @abc.abstractmethod
-  def makecvxpyvariables(cls): return {}
+  def makecvxpyvariables(cls):
+    """
+    Make the cvxpy Variable objects needed for this class
+    """
+    return {}
 
   @classmethod
   @abc.abstractmethod
-  def cvxpydxvec(cls, alignmentresult, **cvxpyvariables): pass
+  def cvxpydxvec(cls, alignmentresult, **cvxpyvariables):
+    """
+    Get the stitch result dxvec for the alignmentresult as a function of the variables
+    """
 
   @classmethod
   def cvxpyresidual(cls, alignmentresult, **cvxpyvariables):
+    """
+    Get the residual for the alignmentresult as a function of the variables
+    """
     return units.nominal_values(alignmentresult.dxvec)/alignmentresult.onepixel - cls.cvxpydxvec(alignmentresult, **cvxpyvariables)
 
   @classmethod
   def constraintquadforms(cls, cvxpyvariables, mus, sigmas, *, imscale):
+    """
+    Create the quadratic forms for the constraints
+    """
     if mus is sigmas is None: return 0
     onepixel = units.onepixel(imscale)
     result = 0
     musdict = {}
     sigmasdict = {}
     iterator = iter(more_itertools.zip_equal(mus, sigmas, cls.variablepowers(), range(sum(v.size for k, v in cvxpyvariables.items()))))
+    #get the mus and sigmas in the right shape
     for name, variable in cvxpyvariables.items():
       musdict[name] = np.zeros(shape=variable.shape)
       sigmasdict[name] = np.zeros(shape=variable.shape)
@@ -239,12 +305,17 @@ class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
     with np.testing.assert_raises(StopIteration):
       next(iterator)
 
+    #create and sum the quadratic forms ((x-mu)/sigma)^2
     for k, (variable, mu, sigma) in dict_zip_equal(cvxpyvariables, musdict, sigmasdict).items():
       result += cp.sum(((variable-mu)/sigma)**2)
 
     return result
 
 class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
+  """
+  Stitch result for the default model, which gives \delta\vec{x} as linear
+  in the index of the big tile and in the location within the big tile
+  """
   def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, **kwargs):
     self.coeffrelativetobigtile = coeffrelativetobigtile
     self.bigtileindexcoeff = bigtileindexcoeff
@@ -252,6 +323,9 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
     super().__init__(**kwargs)
 
   def dxvec(self, qptiffcoordinate, *, apscale):
+    """
+    Get \Delta\vec{x} for a qptiff coordinate based on the fitted model
+    """
     coeffrelativetobigtile = self.coeffrelativetobigtile
     bigtileindexcoeff = units.convertpscale(self.bigtileindexcoeff, self.imscale, apscale)
     constant = units.convertpscale(self.constant, self.imscale, apscale)
@@ -263,6 +337,9 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
 
   @property
   def stitchresultentries(self):
+    """
+    Get the stitch result entries for the fitted result
+    """
     return (
       self.EntryLite(
         value=self.coeffrelativetobigtile[0,0],
@@ -310,10 +387,16 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
 
   @classmethod
   def variablepowers(cls):
+    """
+    powers of the distance units for the variables
+    coeffrelativetobigtile is dimensionless, bigtileindexcoeff and constant
+    have units of distance
+    """
     return 0, 0, 0, 0, 1, 1, 1, 1, 1, 1
 
   @classmethod
-  def nparams(cls): return 10
+  def nparams(cls):
+    return 10
 
   @classmethod
   def floatedparams(cls, floatedparams):
