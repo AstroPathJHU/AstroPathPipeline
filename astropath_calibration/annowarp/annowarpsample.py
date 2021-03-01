@@ -13,7 +13,7 @@ from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import covariance_matrix, floattoint
 from ..utilities.tableio import readtable, writetable
-from ..utilities.units.dataclasses import DataClassWithImscale, DataClassWithPscale, distancefield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.ThingWithImscale):
