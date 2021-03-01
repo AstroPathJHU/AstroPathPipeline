@@ -69,7 +69,7 @@ def plotRectangleInfo(sid,rects) :
                        c=[r['rel_diff_dev']for r in rects.values()],cmap='gist_ncar')
     ax1.invert_yaxis()
     f.colorbar(pos,ax=ax1)
-    ax1.set_title(f'{sid} mean overlap rel. mse diff. sep. btwn layers per pixel',fontsize=16)
+    ax1.set_title(f'{sid} mean rel. mse diff. sep. btwn layers',fontsize=16)
     ax2 = f.add_subplot(2,2,2)
     ax2.scatter([r['x'] for r in rects.values()],
                 [r['y'] for r in rects.values()],
@@ -82,8 +82,8 @@ def plotRectangleInfo(sid,rects) :
                   c='tab:red',label='flagged')
     ax2.invert_yaxis()
     ax2.legend(loc='best')
-    ax2.set_title(f'{sid} HPFs of interest',fontsize=16)
-    ax3 = f.add_subplot(2,1,3)
+    ax2.set_title(f'{sid} HPF locations',fontsize=16)
+    ax3 = f.add_subplot(2,2,(3,4))
     ax3.hist([r['rel_diff_dev'] for r in rects.values()],100)
     ax3.plot([SEP_CUT,SEP_CUT],
             [0.8*y for y in ax3.get_ylim()],linewidth=3,alpha=0.8,color='tab:red',label=f"cut at {SEP_CUT}")
@@ -113,7 +113,7 @@ def getRectangleRelativeDifferenceSeparation(rn,this_rect_olaps) :
     return sum_rel_diff_seps/sum_weights
 
 #helper function to get the list of overlap MSE comparison info objects
-def getOverlapMSEComparisonDict(rd,sid) :
+def getOverlapMSEComparisons(rd,sid) :
     #start the dictionary of all the overlap MSE comparison info objects keyed by overlap n
     all_olap_mse_infos = {}
     #get overlap mse information from the slide's component .tiff images in the DAPI and autofluorescence layers
@@ -148,12 +148,12 @@ def getOverlapMSEComparisonDict(rd,sid) :
                         all_olap_mse_infos[olap_n].p1_file=rect.file
                         all_olap_mse_infos[olap_n].p1_x = rect.cx
                         all_olap_mse_infos[olap_n].p1_y = rect.cy
-    return all_olap_mse_infos
+    return all_olap_mse_infos.values()
 
 #helper function to write out a bunch of overlaps' mse values in several different layers using raw and component tiff files
 def findOverexposedHPFs(rd,sid,workingdir) :
     #get the overlap MSE comparison info objects
-    overlaps = getOverlapMSEComparisonDict(rd,sid)
+    overlaps = getOverlapMSEComparisons(rd,sid)
     #find the mean relative difference separation for every rectangle 
     rects = {}
     for rn in set([olap.p1_rect_n for olap in overlaps]) :
@@ -182,8 +182,9 @@ def findOverexposedHPFs(rd,sid,workingdir) :
     #make and write out the list of flagged rectangle info objects
     overexposed_hpf_infos = [OverexposedHPFInfo(rects[n]['file'],rects[n]['n'],rects[n]['x'],rects[n]['y'],rects[n]['rel_diff_dev']) for n in flagged_rect_ns]
     logger.info(f'Found {len(overexposed_hpf_infos)} total overexposed HPFs in {sid}')
-    with cd(workingdir) :
-        writetable(f'{sid}_overexposed_HPFs.csv',overexposed_hpf_infos)
+    if len(overexposed_hpf_infos)>0 :
+	    with cd(workingdir) :
+	        writetable(f'{sid}_overexposed_HPFs.csv',overexposed_hpf_infos)
     #make and write out the plot of all the rectangles
     with cd(workingdir) :
         plotRectangleInfo(sid,rects)
@@ -198,6 +199,9 @@ def main(args=None) :
     args = parser.parse_args(args=args)
     #check the arguments
     checkArgs(args)
+    #add a file to the logger
+    filehandler = logging.FileHandler(os.path.join(args.workingdir,f'{args.slideID}_overexposed_hpfs.log'))
+    logger.addHandler(filehandler)
     #run alignments and check for overexposed HPFs
     findOverexposedHPFs(args.root_dir,args.slideID,args.workingdir)
     logger.info('Done')
