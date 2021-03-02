@@ -271,15 +271,15 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,root_dir,slide_ID,layer) :
     #read the overlap ns from the file
     octets = readtable(octet_filepath,OverlapOctet)
     for octet_olap_n in octets :
-        if octet_olap_n.root_dir!=root_dir :
+        if octet_olap_n.root_dir.lower()!=root_dir.lower() :
             msg = f'ERROR: root_dir {root_dir} passed to readOctetsFromFile does not match '
             msg+= f'{octet_olap_n.root_dir} in octet file {octet_filepath}!'
             raise(WarpingError(msg))   
-        if octet_olap_n.rawfile_top_dir!=rawfile_top_dir :
+        if octet_olap_n.rawfile_top_dir.lower()!=rawfile_top_dir.lower() :
             msg = f'ERROR: rawfile_top_dir {rawfile_top_dir} passed to readOctetsFromFile does not match '
             msg+= f'{octet_olap_n.rawfile_top_dir} in octet file {octet_filepath}!'
             raise(WarpingError(msg))
-        if octet_olap_n.slide_ID!=slide_ID :
+        if octet_olap_n.slide_ID.lower()!=slide_ID.lower() :
             msg = f'ERROR: slide_ID {slide_ID} passed to readOctetsFromFile does not match '
             msg+= f'{octet_olap_n.slide_ID} in octet file {octet_filepath}!'
             raise(WarpingError(msg))
