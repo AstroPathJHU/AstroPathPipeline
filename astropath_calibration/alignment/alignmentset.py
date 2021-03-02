@@ -79,7 +79,7 @@ class AlignmentSetBase(SampleBase):
         else :
           if warpwarnings: self.logger.warningglobal(f'Overlap number {i} alignment result {reason}: adding 1e10 to sum_mse!!')
           w = (overlap.cutimages[0].shape[0]*overlap.cutimages[0].shape[1])
-          sum_mse+=w*1e10
+          weighted_sum_mse+=w*1e10
           sum_weights+=w
 
     self.logger.info("finished align loop for "+self.SlideID)

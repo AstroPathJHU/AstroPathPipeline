@@ -90,22 +90,23 @@ def getOverlaps(args) :
 
 def main(args=None) :
     mp.freeze_support()
-    #define and get the command-line arguments
-    parser = ArgumentParser()
-    #positional arguments
-    parser.add_argument('mode', help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
-    #add the common arguments
-    addCommonWarpingArgumentsToParser(parser,job_organization=False)
-    #additional group for how to figure out which overlaps will be used
-    overlap_selection_group = parser.add_argument_group('overlap selection', 'what set of overlaps should be used?')
-    overlap_selection_group.add_argument('--overlaps',       default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
-                                         help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
-    overlap_selection_group.add_argument('--octets',         default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
-                                         help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
-    #unique arguments
-    parser.add_argument('--save_warp_fields', action='store_true',
-                     help='Add this flag to save the warping fields for this fit and not just the result file')
-    args = parser.parse_args(args=args)
+    if args is None :
+        #define and get the command-line arguments
+        parser = ArgumentParser()
+        #positional arguments
+        parser.add_argument('mode', help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
+        #add the common arguments
+        addCommonWarpingArgumentsToParser(parser,job_organization=False)
+        #additional group for how to figure out which overlaps will be used
+        overlap_selection_group = parser.add_argument_group('overlap selection', 'what set of overlaps should be used?')
+        overlap_selection_group.add_argument('--overlaps',       default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
+                                             help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
+        overlap_selection_group.add_argument('--octets',         default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
+                                             help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
+        #unique arguments
+        parser.add_argument('--save_warp_fields', action='store_true',
+                         help='Add this flag to save the warping fields for this fit and not just the result file')
+        args = parser.parse_args(args=args)
     #apply some checks to the arguments to make sure they're valid
     checkArgs(args)
     #get the overlaps to use for fitting
