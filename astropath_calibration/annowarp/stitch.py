@@ -73,7 +73,7 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
       yield AnnoWarpStitchResultEntry(
         n=n,
         value=np.array(units.covariance_matrix([value1, value2]))[0, 1],
-        description="covariance("+description1+", "+description2+")",
+        description="cov("+description1+", "+description2+")",
         pscale=self.imscale,
       )
 
@@ -344,45 +344,45 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
     return (
       self.EntryLite(
         value=self.coeffrelativetobigtile[0,0],
-        description="coefficient of delta x as a function of x within the tile",
+        description="coeff dx(x)",
       ),
       self.EntryLite(
         value=self.coeffrelativetobigtile[0,1],
-        description="coefficient of delta x as a function of y within the tile",
+        description="coeff dx(y)",
       ),
       self.EntryLite(
         value=self.coeffrelativetobigtile[1,0],
-        description="coefficient of delta y as a function of x within the tile",
+        description="coeff dy(x)",
       ),
       self.EntryLite(
         value=self.coeffrelativetobigtile[1,1],
-        description="coefficient of delta y as a function of y within the tile",
+        description="coeff dy(y)",
       ),
 
       self.EntryLite(
         value=self.bigtileindexcoeff[0,0],
-        description="coefficient of delta x as a function of tile index in x",
+        description="coeff dx(ix)",
       ),
       self.EntryLite(
         value=self.bigtileindexcoeff[0,1],
-        description="coefficient of delta x as a function of tile index in y",
+        description="coeff dx(iy)",
       ),
       self.EntryLite(
         value=self.bigtileindexcoeff[1,0],
-        description="coefficient of delta y as a function of tile index in x",
+        description="coeff dy(ix)",
       ),
       self.EntryLite(
         value=self.bigtileindexcoeff[1,1],
-        description="coefficient of delta y as a function of tile index in y",
+        description="coeff dy(iy)",
       ),
 
       self.EntryLite(
         value=self.constant[0],
-        description="constant piece in delta x",
+        description="const dx",
       ),
       self.EntryLite(
         value=self.constant[1],
-        description="constant piece in delta y",
+        description="const dy",
       ),
     )
 
@@ -567,18 +567,18 @@ class AnnoWarpStitchResultEntry(DataClassWithPscale):
     else:
       description = self_or_description
     dct = {
-      "coefficient of delta x as a function of x within the tile": 0,
-      "coefficient of delta x as a function of y within the tile": 0,
-      "coefficient of delta y as a function of x within the tile": 0,
-      "coefficient of delta y as a function of y within the tile": 0,
-      "coefficient of delta x as a function of tile index in x": 1,
-      "coefficient of delta x as a function of tile index in y": 1,
-      "coefficient of delta y as a function of tile index in x": 1,
-      "coefficient of delta y as a function of tile index in y": 1,
-      "constant piece in delta x": 1,
-      "constant piece in delta y": 1,
+      "coeff dx(x)": 0,
+      "coeff dx(y)": 0,
+      "coeff dy(x)": 0,
+      "coeff dy(y)": 0,
+      "coeff dx(ix)": 1,
+      "coeff dx(iy)": 1,
+      "coeff dy(ix)": 1,
+      "coeff dy(iy)": 1,
+      "const dx": 1,
+      "const dy": 1,
     }
-    covmatch = re.match(r"covariance\((.*), (.*)\)", description)
+    covmatch = re.match(r"cov\((.*), (.*)\)", description)
     if covmatch:
       return dct[covmatch.group(1)] + dct[covmatch.group(2)]
     else:

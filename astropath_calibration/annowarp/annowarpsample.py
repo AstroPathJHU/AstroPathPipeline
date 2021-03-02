@@ -397,14 +397,15 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.Th
     The filename for the csv file where the alignments
     are written
     """
-    return self.csv(f"warp-{self.__tilepixels}")
+    return self.csv("annowarp")
 
   def writealignments(self, *, filename=None):
     """
     write the alignments to a csv file
     """
     if filename is None: filename = self.alignmentcsv
-    writetable(filename, self.__alignmentresults, logger=self.logger)
+    alignmentresults = [result for result in self.__alignmentresults if result]
+    writetable(filename, alignmentresults, logger=self.logger)
 
   def readalignments(self, *, filename=None):
     """
@@ -603,7 +604,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.Th
     """
     filename for the stitch csv file
     """
-    return self.csv(f"warp-{self.__tilepixels}-stitch")
+    return self.csv("annowarp-stitch")
 
   def writestitchresult(self, *, filename=None):
     """
@@ -967,16 +968,18 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   covxx, covxy, covyy: the covariance matrix for dx and dy
   exit: the exit code of the alignment (0=success, nonzero=failure, 255=exception)
   """
+  __fmt = "{:.6g}"
   pixelsormicrons = "pixels"
   n: int
   x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  dx: distancefield(pixelsormicrons=pixelsormicrons)
-  dy: distancefield(pixelsormicrons=pixelsormicrons)
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format)
+  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format)
+  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
+  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
+  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
   exit: int
+  del __fmt
 
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
@@ -1054,6 +1057,9 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
       units.pixels(self.x, pscale=self.pscale):units.pixels(self.x+self.tilesize, pscale=self.pscale),
     ]
     return wsitile, qptifftile
+
+  def __bool__(self):
+    return not self.exit
 
 class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
   """
