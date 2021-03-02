@@ -397,7 +397,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.Th
     The filename for the csv file where the alignments
     are written
     """
-    return self.csv(f"annowarp")
+    return self.csv("annowarp")
 
   def writealignments(self, *, filename=None):
     """
@@ -604,7 +604,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.Th
     """
     filename for the stitch csv file
     """
-    return self.csv(f"annowarp-stitch")
+    return self.csv("annowarp-stitch")
 
   def writestitchresult(self, *, filename=None):
     """
@@ -968,16 +968,18 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   covxx, covxy, covyy: the covariance matrix for dx and dy
   exit: the exit code of the alignment (0=success, nonzero=failure, 255=exception)
   """
+  __fmt = "{:.6g}"
   pixelsormicrons = "pixels"
   n: int
   x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction="{:.6g}".format)
-  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction="{:.6g}".format)
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction="{:.6g}".format)
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction="{:.6g}".format)
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction="{:.6g}".format)
+  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format)
+  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format)
+  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
+  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
+  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
   exit: int
+  del __fmt
 
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
