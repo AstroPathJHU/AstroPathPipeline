@@ -114,7 +114,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     s.readalignments(filename=referencefilename)
     result1 = s.stitch(residualpullcutoff=None)
     constraintmus = np.array([e.value for e in result1.stitchresultnominalentries])
-    constraintsigmas = np.array([e.value for e in result1.stitchresultcovarianceentries if re.match(r"covariance\((.*), \1\)", e.description)]) ** 0.5
+    constraintsigmas = np.array([e.value for e in result1.stitchresultcovarianceentries if re.match(r"cov\((.*), \1\)", e.description)]) ** 0.5
     result2 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, residualpullcutoff=None)
     result3 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, residualpullcutoff=None, floatedparams="constants")
 

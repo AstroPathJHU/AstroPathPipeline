@@ -50,8 +50,8 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort, MaskCohort):
       dbloadroot = kwargs["dbloadroot"]
       if dbloadroot is None: dbloadroot = kwargs["root"]
       def isnotstitched(sample):
-        if not (dbloadroot/sample.SlideID/"dbload"/f"{sample.SlideID}_warp-{kwargs['tilepixels']}.csv").exists(): return True
-        if not (dbloadroot/sample.SlideID/"dbload"/f"{sample.SlideID}_warp-{kwargs['tilepixels']}-stitch.csv").exists(): return True
+        if not (dbloadroot/sample.SlideID/"dbload"/f"{sample.SlideID}_annowarp.csv").exists(): return True
+        if not (dbloadroot/sample.SlideID/"dbload"/f"{sample.SlideID}_annowarp-stitch.csv").exists(): return True
         return False
       kwargs["filters"].append(isnotstitched)
     return kwargs
