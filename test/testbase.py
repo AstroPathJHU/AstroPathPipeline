@@ -57,7 +57,8 @@ class TestBaseSaveOutput(abc.ABC, unittest.TestCase):
     cls.__saved = set()
     super().setUpClass()
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def outputfilenames(self): pass
 
   def saveoutput(self):

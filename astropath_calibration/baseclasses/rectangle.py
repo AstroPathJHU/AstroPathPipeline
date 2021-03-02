@@ -517,7 +517,8 @@ class RectangleCollection(abc.ABC):
   You can get a rectangledict from it, which allows indexing rectangles
   by their id.
   """
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def rectangles(self): pass
   @methodtools.lru_cache()
   @property

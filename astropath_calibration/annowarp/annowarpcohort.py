@@ -1,7 +1,14 @@
 from ..baseclasses.cohort import DbloadCohort, MaskCohort, ZoomCohort
-from .annowarpsample import AnnoWarpSampleInformTissueMask
+from .annowarpsample import AnnoWarpSampleBase, AnnoWarpSampleInformTissueMask
 
 class AnnoWarpCohortBase(DbloadCohort, ZoomCohort, MaskCohort):
+  """
+  Cohort for running annowarp over a whole folder of samples.
+
+  tilepixels: size of the tiles for alignment (default: 100)
+  mintissuefraction: minimum amount of tissue in the tiles to
+                     be used for alignment (default: 0.2)
+  """
   def __init__(self, *args, tilepixels=None, mintissuefraction=None, **kwargs):
     self.__initiatesamplekwargs = {
       "tilepixels": tilepixels,
@@ -28,8 +35,8 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort, MaskCohort):
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     p.add_argument("--skip-stitched", action="store_true")
-    p.add_argument("--tilepixels", type=int, default=AnnoWarpSampleInformTissueMask.defaulttilepixels)
-    p.add_argument("--min-tissue-fraction", type=float, default=AnnoWarpSampleInformTissueMask.defaultmintissuefraction)
+    p.add_argument("--tilepixels", type=int, default=AnnoWarpSampleInformTissueMask.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {AnnoWarpSampleInformTissueMask.defaulttilepixels})")
+    p.add_argument("--min-tissue-fraction", type=float, default=AnnoWarpSampleInformTissueMask.defaultmintissuefraction, help=f"minimum fraction of pixels in the tile that are considered tissue if it's to be used for alignment (default: {AnnoWarpSampleInformTissueMask.defaultmintissuefraction})")
     return p
 
   @classmethod
@@ -58,9 +65,13 @@ class AnnoWarpCohort(AnnoWarpCohortBase):
     return sample.runannowarp(readalignments=self.readalignments)
 
   @classmethod
+  def argumentparserhelpmessage(cls):
+    return AnnoWarpSampleBase.__doc__
+
+  @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument("--dont-align", action="store_true")
+    p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
     return p
 
   @classmethod

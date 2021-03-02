@@ -46,7 +46,8 @@ class Cohort(abc.ABC):
   def runsample(self, sample, **kwargs):
     "actually run whatever is supposed to be run on the sample"
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def sampleclass(self):
     "What type of samples to create"
 
@@ -59,7 +60,8 @@ class Cohort(abc.ABC):
     "Keyword arguments to pass to the sample class"
     return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot}
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def logmodule(self):
     "name of the log files for this class (e.g. align)"
 
@@ -86,11 +88,15 @@ class Cohort(abc.ABC):
     for samp in self: print(samp)
 
   @classmethod
+  def argumentparserhelpmessage(cls):
+    return cls.__doc__
+
+  @classmethod
   def makeargumentparser(cls):
     """
     Create an argument parser to run this cohort on the command line
     """
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(description=cls.argumentparserhelpmessage())
     p.add_argument("root", type=pathlib.Path, help="The Clinical_Specimen folder where sample data is stored")
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
