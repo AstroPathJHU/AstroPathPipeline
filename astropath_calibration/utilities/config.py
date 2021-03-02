@@ -38,6 +38,12 @@ class Const :
     @property
     def RBC_LAYER_GROUP_INDEX_43(self) :
         return 4 #index of the layer group that tends to brightly show skin and red blood cells for 43-layer images 
+    @property
+    def COMP_TIFF_DAPI_LAYER(self) :
+        return 1 #number of the DAPI layer in component tiff images
+    @property
+    def COMP_TIFF_AF_LAYER(self) :
+        return 8 #number of the autofluorescence (AF) layer in component tiff images
     #information for corrections
     @property
     def LAYER_ET_OFFSET_FILE_NAME_STEM(self) :
