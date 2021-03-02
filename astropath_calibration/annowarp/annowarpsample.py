@@ -971,11 +971,11 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   n: int
   x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  dx: distancefield(pixelsormicrons=pixelsormicrons)
-  dy: distancefield(pixelsormicrons=pixelsormicrons)
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
+  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction="{:.6g}".format)
+  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction="{:.6g}".format)
+  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction="{:.6g}".format)
+  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction="{:.6g}".format)
+  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction="{:.6g}".format)
   exit: int
 
   @classmethod
