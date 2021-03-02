@@ -53,10 +53,10 @@ class GatherStatsCohort(AnnoWarpCohortBase):
     self.run()
     stats = []
     for name, values in self.__parametervalues.items():
-      if "covariance(" in name: continue
+      if "cov(" in name: continue
       #extract the fitted value and error for each parameter
       nominals = np.array(values)
-      errors = np.array(self.__parametervalues[f"covariance({name}, {name})"]) ** .5
+      errors = np.array(self.__parametervalues[f"cov({name}, {name})"]) ** .5
       #calculate the weighted average and standard deviation
       average = np.sum(nominals/errors**2) / np.sum(1/errors**2)
       std = np.sqrt(np.sum((nominals-average)**2/errors**2) / np.sum(1/errors**2))
