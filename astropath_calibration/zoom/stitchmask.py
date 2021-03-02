@@ -9,7 +9,8 @@ class MaskSample(MaskSampleBase):
     super().__init__(*args, **kwargs)
     self.__using_mask_count = 0
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def maskfilestem(self): pass
 
   def maskfilename(self, folder=None, filename=None, filetype=".npz"):

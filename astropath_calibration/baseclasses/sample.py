@@ -433,7 +433,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
   #    raise ValueError(f"Have to use {self} in a with statement if you want to enter_context")
   #  return super().enter_context(*args, **kwargs)
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def logmodule(self):
     "name of the log files for this class (e.g. align)"
 

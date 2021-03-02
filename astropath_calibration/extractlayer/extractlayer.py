@@ -8,7 +8,8 @@ class LayerExtractorBase(Im3SampleBase, collections.abc.Sized):
   @property
   def logmodule(self): return "extractlayer"
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def fwfiles(self): pass
 
   @methodtools.lru_cache()

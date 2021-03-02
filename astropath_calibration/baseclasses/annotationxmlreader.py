@@ -98,22 +98,26 @@ class AnnotationBase(units.ThingWithPscale):
   def xmlnode(self): return self.__xmlnode
   @property
   def nestdepth(self): return self.__nestdepth
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def fields(self):
     """
     RectangleAnnotations for all HPFs within this annotation
     """
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def globals(self):
     """
     Global variables from the annotation
     """
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def perimeters(self):
     """
     ROI perimeters from the annotation
     """
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def microscopename(self):
     """
     The microscope name from the annotation
