@@ -88,11 +88,15 @@ class Cohort(abc.ABC):
     for samp in self: print(samp)
 
   @classmethod
+  def argumentparserhelpmessage(cls):
+    return cls.__doc__
+
+  @classmethod
   def makeargumentparser(cls):
     """
     Create an argument parser to run this cohort on the command line
     """
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(description=cls.argumentparserhelpmessage())
     p.add_argument("root", type=pathlib.Path, help="The Clinical_Specimen folder where sample data is stored")
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")

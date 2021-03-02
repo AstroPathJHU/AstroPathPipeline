@@ -1,5 +1,5 @@
 from ..baseclasses.cohort import DbloadCohort, MaskCohort, ZoomCohort
-from .annowarpsample import AnnoWarpSampleInformTissueMask
+from .annowarpsample import AnnoWarpSampleBase, AnnoWarpSampleInformTissueMask
 
 class AnnoWarpCohortBase(DbloadCohort, ZoomCohort, MaskCohort):
   """
@@ -63,6 +63,10 @@ class AnnoWarpCohort(AnnoWarpCohortBase):
 
   def runsample(self, sample):
     return sample.runannowarp(readalignments=self.readalignments)
+
+  @classmethod
+  def argumentparserhelpmessage(cls):
+    return AnnoWarpSampleBase.__doc__
 
   @classmethod
   def makeargumentparser(cls):

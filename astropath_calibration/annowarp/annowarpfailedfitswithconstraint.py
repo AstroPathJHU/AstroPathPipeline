@@ -72,9 +72,6 @@ class StitchFailedCohort(AnnoWarpCohortBase):
   The constant pieces will be allowed to float, with a Gaussian constraint obtained
   from the weighted average and standard deviation of the other samples in the cohort.
   The other parameters are fixed to the weighted average of the other samples.
-
-  multiplystd: multiply the standard deviation of the parameters by this number
-               to obtain the gaussian width
   """
   def __init__(self, *args, multiplystd=np.array([1]*8+[1]*2), filters=[], **kwargs):
     super().__init__(
