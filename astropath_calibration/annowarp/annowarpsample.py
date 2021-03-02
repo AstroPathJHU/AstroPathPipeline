@@ -828,17 +828,20 @@ class QPTiffCoordinateBase(abc.ABC):
   Base class for any coordinate in the qptiff that works with the big tiles
   You can get the index of the big tile and the location within the big tile
   """
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def bigtilesize(self):
     """
     (width, height) of the big qptiff tiles
     """
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def bigtileoffset(self):
     """
     offset of the first qptiff tile
     """
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def qptiffcoordinate(self):
     """
     coordinate of this object in apscale

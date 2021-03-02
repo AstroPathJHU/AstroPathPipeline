@@ -21,10 +21,12 @@ class AlignmentComparison(abc.ABC):
   def use_gpu(self,use_gpu) :
     self.__use_gpu = use_gpu
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def dxvec(self): pass
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def unshifted(self): pass
   @property
   def shifted(self):

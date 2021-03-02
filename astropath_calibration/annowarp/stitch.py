@@ -42,7 +42,8 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
 
   EntryLite = collections.namedtuple("EntryLite", "value description")
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def stitchresultentries(self):
     """
     A list of EntryLite objects that give the stitching parameters.

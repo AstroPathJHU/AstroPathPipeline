@@ -270,9 +270,11 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
   def x(self, rectangle_or_id=None): pass
   @abc.abstractmethod
   def dx(self, overlap): pass
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def T(self): pass
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def fieldoverlaps(self): pass
 
   def applytooverlaps(self):

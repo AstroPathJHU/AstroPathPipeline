@@ -88,7 +88,8 @@ class OverlapCollection(abc.ABC):
   """
   Base class for a group of overlaps.
   """
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def overlaps(self): pass
 
   def overlapgraph(self, useexitstatus=False):

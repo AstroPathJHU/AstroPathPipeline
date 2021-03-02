@@ -46,7 +46,8 @@ class Cohort(abc.ABC):
   def runsample(self, sample, **kwargs):
     "actually run whatever is supposed to be run on the sample"
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def sampleclass(self):
     "What type of samples to create"
 
@@ -59,7 +60,8 @@ class Cohort(abc.ABC):
     "Keyword arguments to pass to the sample class"
     return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot}
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def logmodule(self):
     "name of the log files for this class (e.g. align)"
 
