@@ -29,13 +29,13 @@ def checkArgs(a) :
             raise ValueError(f'ERROR: must specify rawfile and root directories to run in {a.mode} mode!')
         #the whole file selection group is irrelevant (plus also other runs to exclude)
         if (a.prior_run_dir is not None) or (a.max_images!=-1) or (a.selection_mode!='random') or a.allow_edge_HPFs or a.other_runs_to_exclude!=[''] :
-            raise ValueError('ERROR: file selection is done automatically in {a.mode} mode!')
+            raise ValueError(f'ERROR: file selection is done automatically in {a.mode} mode!')
         #only ever run using image masks
         if a.skip_masking :
-            raise ValueError('ERROR: running in {a.mode} mode is not compatible with skipping masking! Remove the skip_masking flag!')
+            raise ValueError(f'ERROR: running in {a.mode} mode is not compatible with skipping masking! Remove the skip_masking flag!')
         #can't save masking images
         if a.n_masking_images_per_slide!=0 :
-            raise ValueError('ERROR: cannot save masking images when running in {a.mode} mode!')
+            raise ValueError(f'ERROR: cannot save masking images when running in {a.mode} mode!')
         #can only use the default selected pixel cut
         if a.selected_pixel_cut!=DEFAULT_SELECTED_PIXEL_CUT :
             raise ValueError(f'ERROR: when running in {a.mode} mode only the default selected pixel cut of {DEFAULT_SELECTED_PIXEL_CUT} is valid!')
@@ -58,7 +58,7 @@ def checkArgs(a) :
                 raise ValueError('ERROR: exposure time arguments are irrelevant in batch_flatfield mode!')
     #otherwise there needs to be a working directory
     elif a.workingdir is None :
-            raise ValueError('ERROR: the workingdir argument is required!') 
+        raise ValueError('ERROR: the workingdir argument is required!') 
     #batchID not needed
     if a.mode!='batch_flatfield' and (a.batchID!=-1) :
         raise ValueError('ERROR: batchID argument is only valid in batch_flatfield mode!')
