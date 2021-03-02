@@ -47,7 +47,8 @@ class AlignmentSetBase(SampleBase):
     self.getDAPI()
     self.logger.info("starting alignment")
 
-    sum_mse = 0.
+    weighted_sum_mse = 0.
+    sum_weights = 0.
     done = set()
 
     for i, overlap in enumerate(self.overlaps, start=1):
@@ -64,7 +65,9 @@ class AlignmentSetBase(SampleBase):
       done.add(self.overlapsdictkey(overlap))
 
       if result is not None and result.exit == 0: 
-        sum_mse+=result.mse[2]
+        w = (overlap.cutimages[0].shape[0]*overlap.cutimages[0].shape[1])
+        weighted_sum_mse+=w*result.mse[2]
+        sum_weights+=w
       else :
         if result is None:
           reason = "is None"
@@ -75,10 +78,12 @@ class AlignmentSetBase(SampleBase):
           return 1e10
         else :
           if warpwarnings: self.logger.warningglobal(f'Overlap number {i} alignment result {reason}: adding 1e10 to sum_mse!!')
-          sum_mse+=1e10
+          w = (overlap.cutimages[0].shape[0]*overlap.cutimages[0].shape[1])
+          sum_mse+=w*1e10
+          sum_weights+=w
 
     self.logger.info("finished align loop for "+self.SlideID)
-    return sum_mse
+    return weighted_sum_mse/sum_weights
 
   def getDAPI(self, keeprawimages=False, mean_image=None):
     if self.__images is None or keeprawimages:

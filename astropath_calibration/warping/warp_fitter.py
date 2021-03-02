@@ -222,8 +222,6 @@ class WarpFitter :
                                     )
         #if the alignment was valid add the other parts of the cost
         if aligncost<1e10 :
-            #normalize the alignment cost by the total number of pixels
-            aligncost/=self.cost_norm
             #compute the cost from the LASSO constraint on the specified parameters
             lasso_cost=self.fitpars.getLassoCost(pars)
             #sum the costs
@@ -269,8 +267,6 @@ class WarpFitter :
         self._de_population_size = len(initial_population)
         #don't skip the corner overlaps
         self.skip_corners = False
-        #figure out the normalization for the image slide used
-        self.cost_norm = self.__getCostNormalization()
         #run the minimization
         warp_logger.info('Starting initial minimization....')
         with cd(self.working_dir) :
@@ -298,8 +294,6 @@ class WarpFitter :
         parameter_bounds, constraints, init_pars, rel_steps = self.__getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
         #still don't skip the corner overlaps
         self.skip_corners = False
-        #figure out the normalization for the image slide used
-        self.cost_norm = self.__getCostNormalization()
         #call minimize with trust_constr
         warp_logger.info('Starting polishing minimization....')
         with cd(self.working_dir) :
@@ -435,13 +429,12 @@ class WarpFitter :
         olap_singlet_p1s = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])!=8 and olap1.p2 not in olap_octet_p1s]
         #do use the corner overlaps in the final cost reduction calculation
         self.skip_corners = False
-        self.cost_norm = self.__getCostNormalization()
         #make the overlap comparison figures
         addl_singlet_p1s_and_codes = set()
         failed_p1s_and_codes = None
         #start by aligning the raw, unwarped images and getting their shift comparison information/images and the raw p1 images
         self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
-        rawcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
+        rawcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)
         raw_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         raw_octets_olaps = [[olap for olap in self.alignset.overlaps if olap.p1==octetp1] for octetp1 in olap_octet_p1s]
         for octetp1,raw_octet_overlaps in zip(olap_octet_p1s,raw_octets_olaps) :
@@ -459,7 +452,7 @@ class WarpFitter :
         #next warp and align the images with the best fit warp and do the same thing
         self.warpset.warpLoadedImages()
         self.alignset.updateRectangleImages(self.warpset.images)
-        bestcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
+        bestcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)
         warped_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         warped_octets_olaps = [[olap for olap in self.alignset.overlaps if olap.p1==octetp1] for octetp1 in olap_octet_p1s]
         for octetp1,warped_octet_overlaps in zip(olap_octet_p1s,warped_octets_olaps) :
@@ -612,11 +605,3 @@ class WarpFitter :
             return constraints[0]
         else :
             return constraints
-
-    #helper function to calculate the normalization for the cost
-    def __getCostNormalization(self) :
-        norm = 0
-        for olap in self.alignset.overlaps :
-            if (not self.skip_corners) or (self.skip_corners and olap.tag not in CONST.CORNER_OVERLAP_TAGS) : 
-                norm+=((olap.cutimages[0]).shape[0])*((olap.cutimages[0]).shape[1])
-        return norm
