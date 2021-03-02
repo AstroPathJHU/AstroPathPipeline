@@ -97,13 +97,12 @@ class WarpFitter :
         except TypeError: #units was garbage collected before the warpfitter
             pass
 
-    def loadRawFiles(self,flatfield_file_path,et_correction_offset_file,n_threads=1) :
+    def loadRawFiles(self,flatfield_file_path,et_correction_offset_file) :
         """
         Load the raw files into the warpset, warp/save them, and load them into the alignment set 
         flatfield_file_path       = path to the flatfield file to use in correcting the rawfile illumination
         et_correction_offset_file = path to file containing records of LayerOffset objects specifying an offset to use 
                                     for each layer (or None if no correction is to be applied)
-        n_threads                 = how many different processes to run when loading files
         """
         #load the exposure time correction offsets and the median exposure times by layer
         if et_correction_offset_file is not None :
@@ -113,8 +112,7 @@ class WarpFitter :
             med_exp_time, et_correction_offset = None, None
         #load the raw images
         self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.root_dir,
-                                   flatfield_file_path,med_exp_time,et_correction_offset,
-                                   n_threads)
+                                   flatfield_file_path,med_exp_time,et_correction_offset)
         #warp the loaded images and write them out once to replace the images in the alignment set
         self.warpset.warpLoadedImages()
         with cd(self.working_dir) :

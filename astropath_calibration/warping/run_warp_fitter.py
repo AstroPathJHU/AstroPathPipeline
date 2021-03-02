@@ -102,9 +102,7 @@ def main(args=None) :
                                          help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
     overlap_selection_group.add_argument('--octets',         default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
                                          help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
-    #a couple more unique arguments
-    parser.add_argument('--n_threads',        default=10, type=int,         
-                        help='Maximum number of threads/processes to run at once')
+    #unique arguments
     parser.add_argument('--save_warp_fields', action='store_true',
                      help='Add this flag to save the warping fields for this fit and not just the result file')
     args = parser.parse_args(args=args)
@@ -130,7 +128,7 @@ def main(args=None) :
         elif args.mode in ('fit', 'cProfile') :
             #load the raw files
             warp_logger.info('Loading raw files')
-            fitter.loadRawFiles(args.flatfield_file,args.exposure_time_offset_file,args.n_threads)
+            fitter.loadRawFiles(args.flatfield_file,args.exposure_time_offset_file)
              #fit the model to the data
             warp_logger.info('Running doFit')
             if args.mode == 'fit' :

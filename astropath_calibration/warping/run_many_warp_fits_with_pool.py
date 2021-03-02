@@ -63,7 +63,6 @@ def getListOfJobCommands(args) :
         for pfn in PASSTHROUGH_FLAG_NAMES :
             if argvars[pfn] :
                 thisjobcmdstring+=f'--{pfn} '
-        thisjobcmdstring+='--n_threads 1'
         job_cmds.append(thisjobcmdstring)
     return job_cmds, workingdir_names
 

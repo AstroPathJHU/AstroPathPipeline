@@ -4,7 +4,7 @@ from .utilities import warp_logger, WarpingError, loadRawImageWorker, WarpImage
 from .config import CONST
 from ..utilities.img_file_io import getRawAsHWL
 from ..utilities.misc import cd
-import numpy as np, multiprocessing as mp
+import numpy as np
 import cv2, contextlib2
 
 class WarpSet :
@@ -44,7 +44,7 @@ class WarpSet :
         self.layer=layer
         self.images = []
 
-    def loadRawImages(self,rawfiles,overlaps,rectangles,root_dir,flatfield_file,med_exp_time,et_correction_offset,n_threads=1,smoothsigma=CONST.SMOOTH_SIGMA) :
+    def loadRawImages(self,rawfiles,overlaps,rectangles,root_dir,flatfield_file,med_exp_time,et_correction_offset,smoothsigma=CONST.SMOOTH_SIGMA) :
         """
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
         rawfiles             = list of raw, unwarped image filenames (optional, will use value from init if None)
@@ -54,7 +54,6 @@ class WarpSet :
         flatfield_file       = path to flatfield file to apply when reading in raw images
         med_exp_time         = the median exposure time for images in this layer of this slide (None if no correction should be applied)
         et_correction_offset = the offset for the exposure time correction for images in this layer of this slide (None if no correction should be applied)
-        n_threads            = number of parallel processes to run for reading raw files
         smoothsigma          = sigma for Gaussian smoothing filter applied to raw images on load (set to None to skip smoothing)
         """
         #first load the flatfield corrections
@@ -62,42 +61,19 @@ class WarpSet :
         flatfield_layer = (getRawAsHWL(flatfield_file,self.m,self.n,self.nlayers,np.float64))[:,:,self.layer-1] if flatfield_file is not None else None
         if rawfiles is not None :
             self.raw_filenames=rawfiles
-        #load the raw images in parallel
+        #load the raw images
         warp_logger.info("Loading raw images...")
-        if n_threads> 1 :
-            manager = mp.Manager()
-            return_dict = manager.dict()
-            procs = []
-            for i,rf in enumerate(self.raw_filenames,start=1) :
-                warp_logger.info(f"    loading {rf} ({i} of {len(self.raw_filenames)}) ...")
-                p = mp.Process(target=loadRawImageWorker, 
-                               args=(rf,self.m,self.n,self.nlayers,self.layer,
-                                     flatfield_layer,med_exp_time,et_correction_offset,
-                                     overlaps,rectangles,root_dir,
-                                     smoothsigma,return_dict,i-1))
-                procs.append(p)
-                p.start()
-                if len(procs)>=n_threads :
-                    for proc in procs :
-                        proc.join()
-            for proc in procs:
-                proc.join()
-            for d in return_dict.values() :
-                rfkey = d['rfkey']; image = d['image']; is_corner_only = d['is_corner_only']; list_index = d['list_index']
-                self.images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),is_corner_only,list_index))
-        #or serially
-        else :
-            for i,rf in enumerate(self.raw_filenames,start=1) :
-                warp_logger.info(f"    loading {rf} ({i} of {len(self.raw_filenames)}) ...")
-                d = loadRawImageWorker(rf,self.m,self.n,self.nlayers,self.layer,
-                                       flatfield_layer,med_exp_time,et_correction_offset,
-                                       overlaps,rectangles,root_dir,
-                                       smoothsigma)
-                rfkey = d['rfkey']; image = d['image']; is_corner_only = d['is_corner_only']; list_index = d['list_index']
-                self.images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),is_corner_only,list_index))
+        for i,rf in enumerate(self.raw_filenames,start=1) :
+            warp_logger.info(f"    loading {rf} ({i} of {len(self.raw_filenames)}) ...")
+            d = loadRawImageWorker(rf,self.m,self.n,self.nlayers,self.layer,
+                                   flatfield_layer,med_exp_time,et_correction_offset,
+                                   overlaps,rectangles,root_dir,
+                                   smoothsigma)
+            rfkey = d['rfkey']; image = d['image']; is_corner_only = d['is_corner_only']; list_index = d['list_index']
+            self.images.append(WarpImage(rfkey,cv2.UMat(image),cv2.UMat(np.empty_like(image)),is_corner_only,list_index))
         #sort them by rectangle index
         self.images.sort(key=lambda x: x.rectangle_list_index)
-        #if the list of rectangles was given, make sure that the images are the same length and in the same order
+        #if the list of rectangles was given, make sure that the images are the same
         if rectangles is not None :
             assert len(rectangles)==len(self.images)
         warp_logger.info("Done.")
