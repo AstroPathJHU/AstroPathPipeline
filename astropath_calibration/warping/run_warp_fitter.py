@@ -79,8 +79,7 @@ def getOverlaps(args) :
                 if octet.p1_rect_n in args.octets or args.octets==[-1]:
                     warp_logger.info(f'Adding overlaps in octet surrounding rectangle {octet.p1_rect_n}...')
                     overlaps+=octet.overlap_ns
-                    overlaps+=octet.opposite_overlap_ns
-            if (args.octets!=[-1] and len(overlaps)!=2*8*len(args.octets)) or (args.octets==[-1] and len(overlaps)!=2*8*len(valid_octets)) :
+            if (args.octets!=[-1] and len(overlaps)!=8*len(args.octets)) or (args.octets==[-1] and len(overlaps)!=8*len(valid_octets)) :
                 msg =f'specified octets ({args.octets}) did not result in the desired set of overlaps! '
                 msg+=f'(asked for {len(args.octets)} octets but found {len(overlaps)} corresponding overlaps.)'
                 msg+=f' There are {len(valid_octets)} octets to choose from.'
@@ -103,7 +102,7 @@ def main(args=None) :
                                          help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
     overlap_selection_group.add_argument('--octets',         default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
                                          help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
-    #a couplte more unique arguments
+    #a couple more unique arguments
     parser.add_argument('--n_threads',        default=10, type=int,         
                         help='Maximum number of threads/processes to run at once')
     parser.add_argument('--save_warp_fields', action='store_true',

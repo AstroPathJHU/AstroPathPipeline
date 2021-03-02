@@ -22,8 +22,8 @@ class ApplyFlatfield(RectangleTransformationBase):
         return correctImageLayerWithFlatfield(originalimage,self.__flatfield)
 
 class RectangleForWarping(AlignmentRectangle):
-    def __init__(self, *args, rtd, root_dir, slide_ID, number_of_layers, med_et, offset, flatfield, transformations=None, **kwargs):
-        super().__init__(*args, transformations=None, **kwargs)
+    def __user_init__(self, *args, rtd, root_dir, slide_ID, number_of_layers, med_et, offset, flatfield, transformations=None, **kwargs):
+        super().__user_init__(*args, transformations=None, **kwargs)
         exp_time = None
         if transformations is None: transformations = []
         if (med_et is not None) and (offset is not None) :
@@ -38,7 +38,7 @@ class RectangleForWarping(AlignmentRectangle):
             transformations.append(CorrectForExposureTime(exp_time,med_et,offset))
         if flatfield is not None:
             transformations.append(ApplyFlatfield(flatfield))
-        super().__init__(*args, transformations=transformations, **kwargs)
+        super().__user_init__(*args, transformations=transformations, **kwargs)
         
 
 class AlignmentSetForWarping(AlignmentSetFromXML):
