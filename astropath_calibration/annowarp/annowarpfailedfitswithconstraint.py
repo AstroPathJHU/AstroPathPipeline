@@ -33,7 +33,7 @@ class GatherStatsCohort(AnnoWarpCohortBase):
       *args,
       **kwargs,
       uselogfiles=False,
-      filters=filters+[lambda samp: (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_warp-100-stitch.csv").exists()],
+      filters=filters+[lambda samp: (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp-stitch.csv").exists()],
     )
     self.__parametervalues = collections.defaultdict(list)
 
@@ -79,8 +79,8 @@ class StitchFailedCohort(AnnoWarpCohortBase):
       **kwargs,
       filters=filters+[
         lambda samp:
-          (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_warp-100.csv").exists()
-          and not (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_warp-100-stitch.csv").exists()
+          (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp.csv").exists()
+          and not (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp-stitch.csv").exists()
       ],
     )
     self.__gatherstatscohort = GatherStatsCohort(*args, **kwargs)

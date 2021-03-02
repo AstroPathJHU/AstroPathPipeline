@@ -397,7 +397,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.Th
     The filename for the csv file where the alignments
     are written
     """
-    return self.csv(f"warp-{self.__tilepixels}")
+    return self.csv(f"annowarp")
 
   def writealignments(self, *, filename=None):
     """
@@ -603,7 +603,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.Th
     """
     filename for the stitch csv file
     """
-    return self.csv(f"warp-{self.__tilepixels}-stitch")
+    return self.csv(f"annowarp-stitch")
 
   def writestitchresult(self, *, filename=None):
     """
