@@ -306,7 +306,8 @@ def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,worki
     flatfield = (getRawAsHWL(flatfield_file,*(img_dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE))[:,:,layer-1] if flatfield_file is not None else None
     med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSlideLayer(rootdir,slideID,et_offset_file,layer) if et_offset_file is not None else None
     use_GPU = platform.system()!='Darwin'
-    a = AlignmentSetForWarping(rootdir,rtd,slideID,med_et=med_et,offset=offset,flatfield=flatfield,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=layer,filetype='raw',useGPU=use_GPU)
+    a = AlignmentSetForWarping(rootdir,rtd,slideID,med_et=med_et,offset=offset,flatfield=flatfield,nclip=UNIV_CONST.N_CLIP,
+                               readlayerfile=False,layer=layer,filetype='raw',useGPU=use_GPU)
     a.getDAPI()
     a.align()
     #get the list of overlaps
