@@ -404,7 +404,8 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.Th
     write the alignments to a csv file
     """
     if filename is None: filename = self.alignmentcsv
-    writetable(filename, self.__alignmentresults, logger=self.logger)
+    alignmentresults = [result for result in self.__alignmentresults if result]
+    writetable(filename, alignmentresults, logger=self.logger)
 
   def readalignments(self, *, filename=None):
     """
@@ -1054,6 +1055,9 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
       units.pixels(self.x, pscale=self.pscale):units.pixels(self.x+self.tilesize, pscale=self.pscale),
     ]
     return wsitile, qptifftile
+
+  def __bool__(self):
+    return not self.exit
 
 class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
   """
