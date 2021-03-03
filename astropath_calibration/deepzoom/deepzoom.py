@@ -110,6 +110,9 @@ class DeepZoomSample(ReadRectanglesDbloadComponentTiff, DbloadSampleBase, ZoomFo
     Also, sometimes the images on the right or bottom edges have 128 pixels
     in one of their dimensions.  We pad them to be 256x256.
     """
+    self.logger.info("patching zoom image sizes for layer %d", layer)
+    destfolder = self.layerfolder(layer)
+
     #pad images that are too small
     def tilexy(filename):
       match = re.match("([0-9]+)_([0-9]+)[.]png$", filename.name)
