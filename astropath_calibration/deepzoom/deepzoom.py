@@ -105,41 +105,18 @@ class DeepZoomSample(ReadRectanglesDbloadComponentTiff, DbloadSampleBase, ZoomFo
     ngood = nfiles - nbad
     self.logger.info("there are %d remaining non-empty files", ngood)
 
-  def patchzoom(self, layer):
+  def patchsmallimages(self, layer):
     """
-    Rename the folders to our desired convention: Z9 is always the most zoomed in,
-    Z0 is always the most zoomed out.  If there are less than 10 different zoom
-    levels produced by vips, we produce the missing levels manually by zooming
-    in on the smallest one from vips.
-
     Also, sometimes the images on the right or bottom edges have 128 pixels
     in one of their dimensions.  We pad them to be 256x256.
     """
-
-    #rename the folders
-    self.logger.info("relabeling zooms for layer %d", layer)
-    destfolder = self.layerfolder(layer)
-    folders = sorted(destfolder.iterdir(), key=lambda x: int(x.name))
-    maxfolder = int(folders[-1].name)
-    if maxfolder > 9:
-      raise ValueError(f"Need more zoom levels than 0-9 (max from vips is {maxfolder})")
-    newfolders = []
-    for folder in reversed(folders):
-      newnumber = int(folder.name) + 9 - maxfolder
-      newfolder = destfolder/f"Z{newnumber}"
-      folder.rename(newfolder)
-      newfolders.append(newfolder)
-
-    minzoomnumber = newnumber
-    minzoomfolder = newfolder
-
     #pad images that are too small
     def tilexy(filename):
       match = re.match("([0-9]+)_([0-9]+)[.]png$", filename.name)
       return int(match.group(1)), int(match.group(2))
     def tilex(filename): return tilexy(filename)[0]
     def tiley(filename): return tilexy(filename)[1]
-    for folder in newfolders:
+    for folder in sorted(destfolder.iterdir(), key=lambda x: int(x.name)):
       #find the images that have the max x or the max y
       filenames = list(folder.glob("*.png"))
       maxx = tilex(max(filenames, key=tilex))
@@ -184,6 +161,30 @@ class DeepZoomSample(ReadRectanglesDbloadComponentTiff, DbloadSampleBase, ZoomFo
           #pad it with 0s and save it
           im = PIL.Image.fromarray(np.pad(np.asarray(im), ((0, self.tilesize-m), (0, self.tilesize-n))))
           im.save(edgefilename)
+
+  def patchfolderstructure(self, layer):
+    """
+    Rename the folders to our desired convention: Z9 is always the most zoomed in,
+    Z0 is always the most zoomed out.  If there are less than 10 different zoom
+    levels produced by vips, we produce the missing levels manually by zooming
+    in on the smallest one from vips.
+    """
+    #rename the folders
+    self.logger.info("relabeling zooms for layer %d", layer)
+    destfolder = self.layerfolder(layer)
+    folders = sorted(destfolder.iterdir(), key=lambda x: int(x.name))
+    maxfolder = int(folders[-1].name)
+    if maxfolder > 9:
+      raise ValueError(f"Need more zoom levels than 0-9 (max from vips is {maxfolder})")
+    newfolders = []
+    for folder in reversed(folders):
+      newnumber = int(folder.name) + 9 - maxfolder
+      newfolder = destfolder/f"Z{newnumber}"
+      folder.rename(newfolder)
+      newfolders.append(newfolder)
+
+    minzoomnumber = newnumber
+    minzoomfolder = newfolder
 
     #fill in the missing zoom levels by zooming the smallest image ourselves
     if minzoomnumber:
@@ -233,7 +234,8 @@ class DeepZoomSample(ReadRectanglesDbloadComponentTiff, DbloadSampleBase, ZoomFo
     for layer in self.layers:
       self.deepzoom_vips(layer)
       self.prunezoom(layer)
-      self.patchzoom(layer)
+      self.patchsmallimages(layer)
+      self.patchfolderstructure(layer)
     self.writezoomlist()
 
 @functools.total_ordering
