@@ -2,10 +2,11 @@ from ..baseclasses.cohort import DbloadCohort, DeepZoomCohort, SelectLayersCohor
 from .deepzoom import DeepZoomSample
 
 class DeepZoomCohort(DbloadCohort, ZoomCohort, DeepZoomCohort, SelectRectanglesCohort, SelectLayersCohort):
+  sampleclass = DeepZoomSample
+  __doc__ = sampleclass.__doc__
+
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-
-  sampleclass = DeepZoomSample
 
   def runsample(self, sample):
     return sample.deepzoom()
