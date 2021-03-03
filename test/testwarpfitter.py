@@ -23,13 +23,13 @@ args = Namespace(
         flatfield_file=None,
         skip_flatfielding=True,
         max_iter=100,
-        normalize=['cx','cy','fx','fy','k1','k2','k3','p1','p2'],
+        normalize='cx,cy,fx,fy,k1,k2,k3,p1,p2',
         max_radial_warp=8.,
         max_tangential_warp=4.,
         print_every=25,
-        fixed=['fx','fy','p1','p2'],
-        init_pars={'cx':596.5,'cy':601.2,'k1':10.25,'k2':8913.,'k3':-10980000.},
-        init_bounds={'cx':(529.3,663.7),'cy':(551.0,651.4)},
+        fixed='fx,fy,p1,p2',
+        init_pars='cx=596.5,cy=601.2,k1=10.25,k2=8913.,k3=-10980000.',
+        init_bounds='cx=529.3:663.7,cy=551.0:651.4',
         float_p1p2_to_polish=True,
         p1p2_polish_lasso_lambda=1.0,
         octet_run_dir=None,
@@ -39,7 +39,7 @@ args = Namespace(
         workers=None,
         layer=1,
         overlaps=[46],
-        octets='-999',
+        octets=[-999],
         save_warp_fields=False
     )
 main(args)

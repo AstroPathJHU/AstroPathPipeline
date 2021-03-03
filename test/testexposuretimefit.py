@@ -40,7 +40,7 @@ main(args)
 
 #check the results against the reference
 print('Checking fit results....')
-new = readtable(args.working_dir/f"{args.slideID}_layers_{args.layers[0]}-{args.layers[-1]}_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
+new = readtable(args.workingdir/f"{args.slideID}_layers_{args.layers[0]}-{args.layers[-1]}_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
 ref = readtable(folder/"reference"/"exposuretimefit"/f"{args.slideID}_layers_{args.layers[0]}-{args.layers[-1]}_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
 for offsetnew, offsetref in zip(new, ref):
   assertAlmostEqual(offsetnew, offsetref, rtol=1e-4, atol=1e-8)
