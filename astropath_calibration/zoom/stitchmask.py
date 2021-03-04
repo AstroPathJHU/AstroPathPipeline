@@ -5,15 +5,24 @@ from ..utilities.misc import floattoint
 from ..zoom.zoom import ZoomSampleBase
 
 class MaskSample(MaskSampleBase):
+  """
+  Base class for any sample that has a mask that can be loaded from a file.
+  """
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.__using_mask_count = 0
 
   @property
   @abc.abstractmethod
-  def maskfilestem(self): pass
+  def maskfilestem(self):
+    """
+    The file stem of the mask file (without the folder or the suffix)
+    """
 
-  def maskfilename(self, folder=None, filename=None, filetype=".npz"):
+  def maskfilename(self, *, folder=None, filename=None, filetype=".npz"):
+    """
+    Get the mask filename
+    """
     if filename is filetype is None:
       raise ValueError("Have to give either a filename or a filetype")
 
@@ -29,6 +38,9 @@ class MaskSample(MaskSampleBase):
     return folder/filename
 
   def readmask(self, **filekwargs):
+    """
+    Read the mask for the sample and return it
+    """
     filename = self.maskfilename(**filekwargs)
 
     filetype = filename.suffix
@@ -40,6 +52,11 @@ class MaskSample(MaskSampleBase):
 
   @contextlib.contextmanager
   def using_mask(self):
+    """
+    Context manager for using the mask.  When you enter it for the first time
+    it will load the mask. If you enter it again it won't have to load it again.
+    When all enters have a matching exit, it will remove it from memory.
+    """
     if self.__using_mask_count == 0:
       self.__mask = self.readmask()
     self.__using_mask_count += 1
@@ -51,13 +68,22 @@ class MaskSample(MaskSampleBase):
         del self.__mask
 
 class TissueMaskSample(MaskSample):
+  """
+  Base class for a sample that has a mask for tissue,
+  which can be obtained from the main mask. (e.g. if the
+  main mask has multiple classifications, the tissue mask
+  could be mask == 1)
+  """
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.__using_tissuemask_count = 0
 
   @classmethod
   @abc.abstractmethod
-  def tissuemask(cls, mask): pass
+  def tissuemask(cls, mask):
+    """
+    Get the tissue mask from the main mask
+    """
 
   @contextlib.contextmanager
   def using_tissuemask(self):
@@ -72,33 +98,45 @@ class TissueMaskSample(MaskSample):
         del self.__tissuemask
 
 class WriteMaskSampleBase(MaskSample):
-  def writemask(self, mask, **filekwargs):
+  """
+  Base class for a sample that creates and writes a mask to file
+  """
+  def writemask(self, **filekwargs):
     filename = self.maskfilename(**filekwargs)
+    filename.parent.mkdir(exist_ok=True, parents=True)
 
+    mask = self.createmask()
+
+    self.logger.info("saving mask")
     filetype = filename.suffix
     if filetype == ".npz":
       np.savez_compressed(filename, mask=mask)
     else:
       raise ValueError("Don't know how to deal with mask file type {filetype}")
 
-class StitchMaskSampleBase(WriteMaskSampleBase):
-  def writemask(self, **filekwargs):
-    self.maskfilename(**filekwargs).parent.mkdir(exist_ok=True, parents=True)
-    mask = self.stitchmask()
-    self.logger.info("saving mask")
-    super().writemask(mask, **filekwargs)
-
   @abc.abstractmethod
-  def stitchmask(self): pass
+  def createmask(self): "create the mask"
 
 class InformMaskSample(TissueMaskSample):
+  """
+  Any class that inherits from this can load the inform mask,
+  which is layer 9 in the _w_seg component tiff.
+  0 is tumor, 1 is healthy tissue, 2 is background.
+  The tissue mask is a bool mask that has True for 0 and 1, False for 2
+  """
   @property
   def maskfilestem(self): return "informmask"
   @classmethod
   def tissuemask(cls, mask):
     return mask != 2
 
-class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, StitchMaskSampleBase, InformMaskSample):
+class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteMaskSampleBase, InformMaskSample):
+  """
+  Stitch the inform mask together from layer 9 of the component tiffs.
+  The implementation is the same as zoom, and the mask will match the
+  wsi image to within a pixel (fractional pixel shifts are unavoidable
+  because the mask is discrete)
+  """
   def __init__(self, *args, **kwargs):
     super().__init__(*args, layer=9, with_seg=True, **kwargs)
 
@@ -116,8 +154,14 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, Stitch
       "with_seg": True,
     }
 
-  def stitchmask(self):
+  def createmask(self):
+    """
+    Stitch the mask together from the component tiffs
+    """
     self.logger.info("getting tissue mask")
+    #allocate memory for the mask array
+    #the default value, which will remain for any pixels that aren't
+    #in an HPF, is 2, which corresponds to background
     mask = np.full(fill_value=2, shape=tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.uint8)
     onepixel = self.onepixel
     nfields = len(self.rectangles)
@@ -133,7 +177,9 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, Stitch
         localx2 = localx1 + globalx2 - globalx1
         localy1 = field.my1 - field.py
         localy2 = localy1 + globaly2 - globaly1
-        #this part is different
+        #this part is different, because we can't shift a mask to
+        #account for the fractional pixel difference between global
+        #and local, so we do the best we can which is to round
         localx1 = np.round(localx1 / onepixel) * onepixel
         localx2 = np.round(localx2 / onepixel) * onepixel
         localy1 = np.round(localy1 / onepixel) * onepixel
