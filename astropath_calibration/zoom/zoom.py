@@ -1,4 +1,4 @@
-import argparse, contextlib, cv2, itertools, methodtools, numpy as np, os, pathlib, PIL, skimage
+import contextlib, cv2, itertools, methodtools, numpy as np, os, PIL, skimage
 
 from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
 from ..baseclasses.sample import ReadRectanglesBase, ReadRectanglesDbloadComponentTiff, TempDirSample, ZoomFolderSampleBase
@@ -6,6 +6,10 @@ from ..utilities import units
 from ..utilities.misc import floattoint, memmapcontext, PILmaximagepixels
 
 class ZoomSampleBase(ReadRectanglesBase):
+  """
+  Base class for any sample that does zooming and makes
+  a wsi sized image
+  """
   rectanglecsv = "fields"
   rectangletype = Field
   def __init__(self, *args, zoomtilesize=16384, **kwargs):
@@ -22,52 +26,76 @@ class ZoomSampleBase(ReadRectanglesBase):
   def PILmaximagepixels(self):
     return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
 
-class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample):
-  pass
+class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff):
+  """
+  Run the zoom step of the pipeline:
+  create big images of 16384x16384 pixels by merging the fields
+  using the primary areas (mx1, my1) to (mx2, my2) defined by the
+  alignment step, and merge them into a wsi image that shows the
+  whole slide.
 
-class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
+  There are three modes:
+    1. fast assembles the image in memory
+    2. memmap assembles the image in a memmap in a temp directory
+    3. vips assembles each 16384x16384 tile in memory and uses
+       libvips to merge them together into the wsi
+  """
   rectangletype = FieldReadComponentTiffMultiLayer
 
   @property
   def logmodule(self): return "zoom"
 
   def zoom_wsi_fast(self, fmax=50, usememmap=False):
+    """
+    Assemble the big and wsi images either in memory (usememmap=False)
+    or in a memmap in a temp directory (usememmap=True)
+
+    fmax (default: 50) is a scaling factor for the image.
+    """
     onepixel = self.onepixel
     self.logger.info("allocating memory for the global array")
     with contextlib.ExitStack() as stack:
       if usememmap:
-        bigimage = np.ndarray(shape=len(self.layers), dtype=object)
-        for i, layer in enumerate(self.layers):
-          tempfile = self.enter_context(self.tempfile())
-          bigimage[i] = stack.enter_context(
-            memmapcontext(
-              tempfile,
-              shape=tuple((self.ntiles * self.zoomtilesize)[::-1]),
-              dtype=np.uint8,
-              mode="w+",
-            )
+        tempfile = stack.enter_context(self.tempfile())
+        bigimage = stack.enter_context(
+          memmapcontext(
+            tempfile,
+            shape=(len(self.layers),)+tuple((self.ntiles * self.zoomtilesize)[::-1]),
+            dtype=np.uint8,
+            mode="w+",
           )
-          bigimage[i][:] = 0
+        )
+        bigimage[:] = 0
       else:
         bigimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.uint8)
 
+      #loop over HPFs and fill them into the big image
       nrectangles = len(self.rectangles)
       self.logger.info("assembling the global array")
       for i, field in enumerate(self.rectangles, start=1):
         self.logger.debug("%d / %d", i, nrectangles)
+        #load the image file
         with field.using_image() as image:
+          #scale the intensity
           image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
+
+          #find where it should sit in the wsi
           globalx1 = field.mx1 // onepixel * onepixel
           globalx2 = field.mx2 // onepixel * onepixel
           globaly1 = field.my1 // onepixel * onepixel
           globaly2 = field.my2 // onepixel * onepixel
+          #and what part of the image we should take
           localx1 = field.mx1 - field.px
           localx2 = localx1 + globalx2 - globalx1
           localy1 = field.my1 - field.py
           localy2 = localy1 + globaly2 - globaly1
 
+          #shift the image by the fractional pixel difference between global
+          #and local coordinates
           shiftby = np.array([globalx1 - localx1, globaly1 - localy1]) % onepixel
 
+          #new local coordinates after the shift
+          #they should be integer pixels (will be checked when filling the image)
           newlocalx1 = localx1 + shiftby[0]
           newlocaly1 = localy1 + shiftby[1]
           newlocalx2 = localx2 + shiftby[0]
@@ -88,7 +116,9 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
               dsize=layer.T.shape,
             )
 
-            bigimage[i][
+            #fill the big image with the HPF image
+            bigimage[
+              i,
               floattoint(globaly1/onepixel):floattoint(globaly2/onepixel),
               floattoint(globalx1/onepixel):floattoint(globalx2/onepixel),
             ] = shifted[
@@ -98,12 +128,13 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
 
       self.zoomfolder.mkdir(parents=True, exist_ok=True)
       ntiles = np.product(self.ntiles)
+      #save the tiles
       for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1])), start=1):
         xmin = tilex * self.zoomtilesize
         xmax = (tilex+1) * self.zoomtilesize
         ymin = tiley * self.zoomtilesize
         ymax = (tiley+1) * self.zoomtilesize
-        slc = [layer[ymin:ymax, xmin:xmax] for layer in bigimage]
+        slc = bigimage[:, ymin:ymax, xmin:xmax]
         if not np.any(slc):
           self.logger.info(f"       tile {tilen} / {ntiles} is empty")
           continue
@@ -113,6 +144,7 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
           image = PIL.Image.fromarray(slc[i])
           image.save(filename, "PNG")
 
+      #save the wsi
       self.wsifolder.mkdir(parents=True, exist_ok=True)
       for i, layer in enumerate(self.layers):
         filename = self.wsifilename(layer)
@@ -121,14 +153,23 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
         image.save(filename, "PNG")
 
   def zoom_memory(self, fmax=50):
+    """
+    Run zoom by saving one big tile at a time
+    (afterwards you can call wsi_vips to save the wsi)
+    """
     onepixel = self.onepixel
-    #minxy = np.min([units.nominal_values(field.pxvec) for field in self.rectangles], axis=0)
     buffer = -(-self.rectangles[0].shape // onepixel).astype(int) * onepixel
     nrectangles = len(self.rectangles)
     ntiles = np.product(self.ntiles)
     self.zoomfolder.mkdir(parents=True, exist_ok=True)
 
     class Tile(contextlib.ExitStack):
+      """
+      Helper class to save the big tiles.
+
+      The class also inherits from ExitStack so that you can use it
+      to enter using_image contexts for rectangles.
+      """
       def __init__(self, tilex, tiley, tilesize, bufferx, buffery):
         super().__init__()
         self.tilex = tilex
@@ -137,14 +178,6 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
         self.bufferx = bufferx
         self.buffery = buffery
 
-      @property
-      def xmin(self): return self.tilex * self.tilesize * onepixel - self.bufferx
-      @property
-      def xmax(self): return (self.tilex+1) * self.tilesize * onepixel + self.bufferx
-      @property
-      def ymin(self): return self.tiley * self.tilesize * onepixel - self.buffery
-      @property
-      def ymax(self): return (self.tiley+1) * self.tilesize * onepixel + self.buffery
       @property
       def primaryxmin(self): return self.tilex * self.tilesize * onepixel
       @property
@@ -155,7 +188,27 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
       def primaryymax(self): return (self.tiley+1) * self.tilesize * onepixel
 
       def overlapsrectangle(self, globalx1, globalx2, globaly1, globaly2):
+        """
+        Does this tile overlap the rectangle with the given global coordinates?
+        """
         return globalx1 < self.primaryxmax and globalx2 > self.primaryxmin and globaly1 < self.primaryymax and globaly2 > self.primaryymin
+
+    #how this works in terms of context managers:
+
+    #we first have an ExitStack that __enter__s ALL the tiles
+    #for each tile:
+    #  with tile:
+    #    for each rectangle that overlaps the tile:
+    #      for each other tile that we haven't gotten to yet that overlaps the rectangle:
+    #        othertile.enter_context(rectangle.using_image())
+    #      with rectangle.using_image():
+    #        fill the image into this tile
+
+    #in this way, we load each image in the first tile that uses it,
+    #and only take it out of memory after finishing the last tile that uses it.
+
+    #the initial ExitStack is so that we call __exit__ on all the tiles,
+    #even if there's an exception while processing one of the earlier ones.
 
     with contextlib.ExitStack() as stack:
       tiles = [
@@ -169,17 +222,19 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
 
       for tilen, tile in enumerate(tiles, start=1):
         with tile:
+          #tileimage is initialized to None so that we don't have
+          #to initialize the big array unless there are actually
+          #nonzero pixels in the tile
           tileimage = None
 
           self.logger.info("assembling tile %d / %d", tilen, ntiles)
           xmin = tile.tilex * self.zoomtilesize * onepixel - buffer[0]
-          #xmax = (tilex+1) * self.zoomtilesize * onepixel + buffer[0]
           ymin = tile.tiley * self.zoomtilesize * onepixel - buffer[1]
-          #ymax = (tiley+1) * self.zoomtilesize * onepixel + buffer[1]
 
           for i, field in enumerate(self.rectangles, start=1):
             self.logger.debug("  rectangle %d / %d", i, nrectangles)
 
+            #find where it should sit in the wsi
             globalx1 = field.mx1 // onepixel * onepixel
             globalx2 = field.mx2 // onepixel * onepixel
             globaly1 = field.my1 // onepixel * onepixel
@@ -194,20 +249,24 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
               if othertile.overlapsrectangle(globalx1=globalx1, globalx2=globalx2, globaly1=globaly1, globaly2=globaly2):
                 othertile.enter_context(field.using_image())
 
-            tilex1 = globalx1 - xmin
-            tilex2 = globalx2 - xmin
-            tiley1 = globaly1 - ymin
-            tiley2 = globaly2 - ymin
-            localx1 = field.mx1 - field.px
-            localx2 = localx1 + tilex2 - tilex1
-            localy1 = field.my1 - field.py
-            localy2 = localy1 + tiley2 - tiley1
-
             if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.zoomtilesize + 2*floattoint(buffer/onepixel))[::-1]), dtype=np.uint8)
 
             with field.using_image() as image:
               image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
 
+              #find where it should sit in the tile
+              tilex1 = globalx1 - xmin
+              tilex2 = globalx2 - xmin
+              tiley1 = globaly1 - ymin
+              tiley2 = globaly2 - ymin
+              #and what part of the image we should take
+              localx1 = field.mx1 - field.px
+              localx2 = localx1 + tilex2 - tilex1
+              localy1 = field.my1 - field.py
+              localy2 = localy1 + tiley2 - tiley1
+
+              #shift the image by the fractional pixel difference between tile
+              #and local coordinates
               shiftby = np.array([tilex1 - localx1, tiley1 - localy1]) % onepixel
 
               shifted = np.array([
@@ -225,6 +284,9 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
                   dsize=layer.T.shape,
                 ) for layer in image
               ])
+
+              #new local coordinates after the shift
+              #they should be integer pixels (will be checked when filling the image)
               newlocalx1 = localx1 + shiftby[0]
               newlocaly1 = localy1 + shiftby[1]
               newlocalx2 = localx2 + shiftby[0]
@@ -242,12 +304,14 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
               ]
 
         if tileimage is None: continue
+        #remove the buffer
         slc = tileimage[
           :,
           floattoint(buffer[1]/self.onepixel):floattoint(-buffer[1]/self.onepixel),
           floattoint(buffer[0]/self.onepixel):floattoint(-buffer[0]/self.onepixel),
         ]
         if not np.any(slc): continue
+        #save the tile images
         for layer in self.layers:
           filename = self.zoomfilename(layer, tile.tilex, tile.tiley)
           self.logger.info(f"  saving {filename.name}")
@@ -255,6 +319,9 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
           image.save(filename, "PNG")
 
   def wsi_vips(self):
+    """
+    Call vips to assemble the big images into the wsi
+    """
     import pyvips
 
     self.wsifolder.mkdir(parents=True, exist_ok=True)
@@ -284,25 +351,8 @@ class Zoom(ZoomSample, ReadRectanglesDbloadComponentTiff):
     if mode == "vips":
       return self.zoom_wsi_memory(*args, **kwargs)
     elif mode == "fast":
-      return self.zoom_wsi_fast(*args, **kwargs)
+      return self.zoom_wsi_fast(*args, usememmap=False, **kwargs)
     elif mode == "memmap":
       return self.zoom_wsi_fast(*args, usememmap=True, **kwargs)
     else:
       raise ValueError(f"Bad mode {mode}")
-
-def main(args=None):
-  p = argparse.ArgumentParser()
-  p.add_argument("root1", type=pathlib.Path)
-  p.add_argument("root2", type=pathlib.Path)
-  p.add_argument("zoomroot", type=pathlib.Path)
-  p.add_argument("samp")
-  p.add_argument("--units", choices=("fast", "safe"), default="fast")
-  p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips")
-  args = p.parse_args(args=args)
-
-  units.setup(args.units)
-
-  return Zoom(root=args.root1, root2=args.root2, samp=args.samp, zoomroot=args.zoomroot).zoom_wsi(mode=args.mode)
-
-if __name__ == "__main__":
-  main()
