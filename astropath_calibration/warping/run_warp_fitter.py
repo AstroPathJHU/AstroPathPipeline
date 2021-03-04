@@ -42,8 +42,8 @@ def checkArgs(args) :
         tfp = os.path.join(args.threshold_file_dir,f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         if not os.path.isfile(tfp) :
             raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this slide ({tfp})!')
-    #The user must specify either an octet run dir or a threshold file dir
-    if args.threshold_file_dir is None and args.octet_run_dir is None :
+    #The user must specify either an octet run dir or a threshold file dir if they're not giving overlaps
+    if args.overlaps==split_csv_to_list_of_ints(DEFAULT_OVERLAPS) and args.threshold_file_dir is None and args.octet_run_dir is None :
         raise ValueError('ERROR: must specify either an octet_run_dir or a threshold_file_dir!')
     #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate
     if args.threshold_file_dir is not None and args.octet_run_dir is not None :
@@ -79,8 +79,7 @@ def getOverlaps(args) :
                 if octet.p1_rect_n in args.octets or args.octets==[-1]:
                     warp_logger.info(f'Adding overlaps in octet surrounding rectangle {octet.p1_rect_n}...')
                     overlaps+=octet.overlap_ns
-                    overlaps+=octet.opposite_overlap_ns
-            if (args.octets!=[-1] and len(overlaps)!=2*8*len(args.octets)) or (args.octets==[-1] and len(overlaps)!=2*8*len(valid_octets)) :
+            if (args.octets!=[-1] and len(overlaps)!=8*len(args.octets)) or (args.octets==[-1] and len(overlaps)!=8*len(valid_octets)) :
                 msg =f'specified octets ({args.octets}) did not result in the desired set of overlaps! '
                 msg+=f'(asked for {len(args.octets)} octets but found {len(overlaps)} corresponding overlaps.)'
                 msg+=f' There are {len(valid_octets)} octets to choose from.'
@@ -91,24 +90,23 @@ def getOverlaps(args) :
 
 def main(args=None) :
     mp.freeze_support()
-    #define and get the command-line arguments
-    parser = ArgumentParser()
-    #positional arguments
-    parser.add_argument('mode', help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
-    #add the common arguments
-    addCommonWarpingArgumentsToParser(parser,job_organization=False)
-    #additional group for how to figure out which overlaps will be used
-    overlap_selection_group = parser.add_argument_group('overlap selection', 'what set of overlaps should be used?')
-    overlap_selection_group.add_argument('--overlaps',       default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
-                                         help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
-    overlap_selection_group.add_argument('--octets',         default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
-                                         help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
-    #a couplte more unique arguments
-    parser.add_argument('--n_threads',        default=10, type=int,         
-                        help='Maximum number of threads/processes to run at once')
-    parser.add_argument('--save_warp_fields', action='store_true',
-                     help='Add this flag to save the warping fields for this fit and not just the result file')
-    args = parser.parse_args(args=args)
+    if args is None :
+        #define and get the command-line arguments
+        parser = ArgumentParser()
+        #positional arguments
+        parser.add_argument('mode', help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
+        #add the common arguments
+        addCommonWarpingArgumentsToParser(parser,job_organization=False)
+        #additional group for how to figure out which overlaps will be used
+        overlap_selection_group = parser.add_argument_group('overlap selection', 'what set of overlaps should be used?')
+        overlap_selection_group.add_argument('--overlaps',       default=DEFAULT_OVERLAPS, type=split_csv_to_list_of_ints,         
+                                             help='Comma-separated list of numbers (n) of the overlaps to use (two-element defines a range)')
+        overlap_selection_group.add_argument('--octets',         default=DEFAULT_OCTETS,   type=split_csv_to_list_of_ints,         
+                                             help='Comma-separated list of overlap octet indices (ordered by n of octet central rectangle) to use')
+        #unique arguments
+        parser.add_argument('--save_warp_fields', action='store_true',
+                         help='Add this flag to save the warping fields for this fit and not just the result file')
+        args = parser.parse_args(args=args)
     #apply some checks to the arguments to make sure they're valid
     checkArgs(args)
     #get the overlaps to use for fitting
@@ -131,7 +129,7 @@ def main(args=None) :
         elif args.mode in ('fit', 'cProfile') :
             #load the raw files
             warp_logger.info('Loading raw files')
-            fitter.loadRawFiles(args.flatfield_file,args.exposure_time_offset_file,args.n_threads)
+            fitter.loadRawFiles(args.flatfield_file,args.exposure_time_offset_file)
              #fit the model to the data
             warp_logger.info('Running doFit')
             if args.mode == 'fit' :

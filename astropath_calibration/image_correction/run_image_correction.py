@@ -59,30 +59,31 @@ def checkArgs(args) :
 #################### MAIN SCRIPT ####################
 
 def main(args=None) :
-    #define and get the command-line arguments
-    parser = ArgumentParser()
-    #add the common options to the parser
-    addCommonArgumentsToParser(parser,et_correction=False)
-    #add the arguments for shifting the warp pattern
-    warp_shift_group = parser.add_mutually_exclusive_group()
-    warp_shift_group.add_argument('--warp_shift_file',
-                                 help='Path to the warp_shifts.csv file that should be applied to the files in this slide')
-    warp_shift_group.add_argument('--warp_shift', 
-                                 help='Use this argument to define a (delta-x, delta-y) shift from the inputted warp field')
-    #group for other run options
-    run_option_group = parser.add_argument_group('run options', 'other options for this run')
-    run_option_group.add_argument('--warping_scalefactor',   default=1.0,   type=float,         
-                                  help='Scalefactor by which the warping fields should be multiplied before application (default=1.0)')
-    run_option_group.add_argument('--layer',                 default=-1,     type=int,         
-                                  help='Image layer to use (indexed from 1; default=-1 does all layers)')
-    run_option_group.add_argument('--input_file_extension', default='.Data.dat',
-                                  help='Extension for the raw files that will be read in (default = ".Data.dat")')
-    run_option_group.add_argument('--output_file_extension', default='.fw',
-                                  help="""Extension for the corrected files that will be written out 
-                                       (default = ".fw"; 2-digit layer code will be appended if layer != -1)""")
-    run_option_group.add_argument('--max_files',             default=-1,    type=int,
-                                  help='Maximum number of files to use (default = -1 runs all files for the requested slide)')
-    args = parser.parse_args(args=args)
+    if args is None :
+        #define and get the command-line arguments
+        parser = ArgumentParser()
+        #add the common options to the parser
+        addCommonArgumentsToParser(parser,et_correction=False)
+        #add the arguments for shifting the warp pattern
+        warp_shift_group = parser.add_mutually_exclusive_group()
+        warp_shift_group.add_argument('--warp_shift_file',
+                                     help='Path to the warp_shifts.csv file that should be applied to the files in this slide')
+        warp_shift_group.add_argument('--warp_shift', 
+                                     help='Use this argument to define a (delta-x, delta-y) shift from the inputted warp field')
+        #group for other run options
+        run_option_group = parser.add_argument_group('run options', 'other options for this run')
+        run_option_group.add_argument('--warping_scalefactor',   default=1.0,   type=float,         
+                                      help='Scalefactor by which the warping fields should be multiplied before application (default=1.0)')
+        run_option_group.add_argument('--layer',                 default=-1,     type=int,         
+                                      help='Image layer to use (indexed from 1; default=-1 does all layers)')
+        run_option_group.add_argument('--input_file_extension', default='.Data.dat',
+                                      help='Extension for the raw files that will be read in (default = ".Data.dat")')
+        run_option_group.add_argument('--output_file_extension', default='.fw',
+                                      help="""Extension for the corrected files that will be written out 
+                                           (default = ".fw"; 2-digit layer code will be appended if layer != -1)""")
+        run_option_group.add_argument('--max_files',             default=-1,    type=int,
+                                      help='Maximum number of files to use (default = -1 runs all files for the requested slide)')
+        args = parser.parse_args(args=args)
     #make the working directory
     if not os.path.isdir(args.workingdir) :
         os.mkdir(args.workingdir)

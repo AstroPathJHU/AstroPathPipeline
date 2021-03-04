@@ -320,66 +320,67 @@ def doRun(args,workingdir_path,logger=None) :
 
 #################### MAIN SCRIPT ####################
 def main(args=None) :
-    #define and get the command-line arguments
-    parser = ArgumentParser()
-    #general positional arguments
-    parser.add_argument('mode', 
-                choices=['slide_mean_image','batch_flatfield','make_flatfield','apply_flatfield','calculate_thresholds','check_run','choose_image_files'],                  
-                        help='Which operation to perform')
-    #the name of the working directory (optional because it's automatic in batch mode)
-    parser.add_argument('--workingdir', 
-                        help='Name of working directory to save created files in (set automatically in slide_mean_image and batch_flatfield modes)')
-    #the batchID (optional because it's only needed in batch_flatfield mode)
-    parser.add_argument('--batchID', type=int, default=-1,
-                        help='BatchID for the created flatfield file and directory')
-    #add the exposure time correction arguments
-    et_correction_group = parser.add_mutually_exclusive_group()
-    et_correction_group.add_argument('--exposure_time_offset_file',
-                                     help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
-                                    [use this argument to apply corrections for differences in image exposure time]""")
-    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
-                                     help='Add this flag to entirely skip correcting image flux for exposure time differences')
-    #add the group for defining the slide(s) to run on
-    slide_definition_group = parser.add_argument_group('slide definition',
-                                                        'what slides should be used, and where to find their files')
-    slide_definition_group.add_argument('--slides',     
-                                         help="""Path to .csv file listing FlatfieldSlideInfo objects (to use slides from multiple raw/root file paths),
-                                                 or a comma-separated list of slide names to use with the common raw/root file paths""")
-    slide_definition_group.add_argument('--rawfile_top_dir',
-                                         help=f'Path to directory containing [slidename] subdirectories with raw "{UNIV_CONST.RAW_EXT}" files for all slides')
-    slide_definition_group.add_argument('--root_dir',
-                                         help='Path to Clinical_Specimen directory for all slides')
-    #mutually exclusive group for how to handle the thresholding
-    thresholding_group = parser.add_mutually_exclusive_group()
-    thresholding_group.add_argument('--threshold_file_dir',
-                                    help="""Path to the directory holding background threshold files created in previous runs for the slides in question
-                                    [use this argument to re-use previously-calculated background thresholds]""")
-    thresholding_group.add_argument('--skip_masking',       action='store_true',
-                                    help="""Add this flag to entirely skip masking out the background regions of the images as they get added
-                                    [use this argument to completely skip the background thresholding and masking]""")
-    #group for how to select a subset of the slides' files
-    file_selection_group = parser.add_argument_group('file selection',
-                                                     'how many images from the slide set should be used, how to choose them, and where to find them')
-    file_selection_group.add_argument('--prior_run_dir',     
-                                      help="""Path to the working directory of a previous run whose raw files you want to use again, or whose calculated
-                                      flatfield you want to apply to a different, orthogonal, set of files in the same slides""")
-    file_selection_group.add_argument('--max_images',      default=-1,       type=int,         
-                                      help='Number of images to load from the inputted list of slides')
-    file_selection_group.add_argument('--selection_mode',  default='random', choices=['random','first','last'],
-                                      help='Select "first", "last", or "random" (default) n images (where n=max_images) from the slide group.')
-    file_selection_group.add_argument('--allow_edge_HPFs', action='store_true',
-                                      help="""Add this flag to allow HPFs on the tissue edges to be stacked (not allowed by default)""")
-    #group for some run options
-    run_option_group = parser.add_argument_group('run options','other options for this run')
-    run_option_group.add_argument('--n_threads',                   default=10,                         type=int,         
-                                  help='Number of threads/processes to run at once in parallelized portions of the code')
-    run_option_group.add_argument('--n_masking_images_per_slide',  default=0,                          type=int,         
-                                  help='How many example masking images to save for each slide (randomly chosen)')
-    run_option_group.add_argument('--selected_pixel_cut',          default=DEFAULT_SELECTED_PIXEL_CUT, type=float,         
-                                  help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
-    run_option_group.add_argument('--other_runs_to_exclude',       default='',                         type=split_csv_to_list,
-                                  help='Comma-separated list of additional, previously-run, working directories whose filepaths should be excluded')
-    args = parser.parse_args()
+    if args is None :
+        #define and get the command-line arguments
+        parser = ArgumentParser()
+        #general positional arguments
+        parser.add_argument('mode', 
+                    choices=['slide_mean_image','batch_flatfield','make_flatfield','apply_flatfield','calculate_thresholds','check_run','choose_image_files'],                  
+                            help='Which operation to perform')
+        #the name of the working directory (optional because it's automatic in batch mode)
+        parser.add_argument('--workingdir', 
+                            help='Name of working directory to save created files in (set automatically in slide_mean_image and batch_flatfield modes)')
+        #the batchID (optional because it's only needed in batch_flatfield mode)
+        parser.add_argument('--batchID', type=int, default=-1,
+                            help='BatchID for the created flatfield file and directory')
+        #add the exposure time correction arguments
+        et_correction_group = parser.add_mutually_exclusive_group()
+        et_correction_group.add_argument('--exposure_time_offset_file',
+                                         help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
+                                        [use this argument to apply corrections for differences in image exposure time]""")
+        et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
+                                         help='Add this flag to entirely skip correcting image flux for exposure time differences')
+        #add the group for defining the slide(s) to run on
+        slide_definition_group = parser.add_argument_group('slide definition',
+                                                            'what slides should be used, and where to find their files')
+        slide_definition_group.add_argument('--slides',     
+                                             help="""Path to .csv file listing FlatfieldSlideInfo objects (to use slides from multiple raw/root file paths),
+                                                     or a comma-separated list of slide names to use with the common raw/root file paths""")
+        slide_definition_group.add_argument('--rawfile_top_dir',
+                                             help=f'Path to directory containing [slidename] subdirectories with raw "{UNIV_CONST.RAW_EXT}" files for all slides')
+        slide_definition_group.add_argument('--root_dir',
+                                             help='Path to Clinical_Specimen directory for all slides')
+        #mutually exclusive group for how to handle the thresholding
+        thresholding_group = parser.add_mutually_exclusive_group()
+        thresholding_group.add_argument('--threshold_file_dir',
+                                        help="""Path to the directory holding background threshold files created in previous runs for the slides in question
+                                        [use this argument to re-use previously-calculated background thresholds]""")
+        thresholding_group.add_argument('--skip_masking',       action='store_true',
+                                        help="""Add this flag to entirely skip masking out the background regions of the images as they get added
+                                        [use this argument to completely skip the background thresholding and masking]""")
+        #group for how to select a subset of the slides' files
+        file_selection_group = parser.add_argument_group('file selection',
+                                                         'how many images from the slide set should be used, how to choose them, and where to find them')
+        file_selection_group.add_argument('--prior_run_dir',     
+                                          help="""Path to the working directory of a previous run whose raw files you want to use again, or whose calculated
+                                          flatfield you want to apply to a different, orthogonal, set of files in the same slides""")
+        file_selection_group.add_argument('--max_images',      default=-1,       type=int,         
+                                          help='Number of images to load from the inputted list of slides')
+        file_selection_group.add_argument('--selection_mode',  default='random', choices=['random','first','last'],
+                                          help='Select "first", "last", or "random" (default) n images (where n=max_images) from the slide group.')
+        file_selection_group.add_argument('--allow_edge_HPFs', action='store_true',
+                                          help="""Add this flag to allow HPFs on the tissue edges to be stacked (not allowed by default)""")
+        #group for some run options
+        run_option_group = parser.add_argument_group('run options','other options for this run')
+        run_option_group.add_argument('--n_threads',                   default=10,                         type=int,         
+                                      help='Number of threads/processes to run at once in parallelized portions of the code')
+        run_option_group.add_argument('--n_masking_images_per_slide',  default=0,                          type=int,         
+                                      help='How many example masking images to save for each slide (randomly chosen)')
+        run_option_group.add_argument('--selected_pixel_cut',          default=DEFAULT_SELECTED_PIXEL_CUT, type=float,         
+                                      help='Minimum fraction (0->1) of pixels that must be selected as signal for an image to be added to the stack')
+        run_option_group.add_argument('--other_runs_to_exclude',       default='',                         type=split_csv_to_list,
+                                      help='Comma-separated list of additional, previously-run, working directories whose filepaths should be excluded')
+        args = parser.parse_args()
     #make the working directory and start up the logger
     if args.mode=='slide_mean_image' :
         workingdir_path = getSlideMeanImageWorkingDirPath(FlatfieldSlideInfo((split_csv_to_list(args.slides))[0],args.rawfile_top_dir,args.root_dir))

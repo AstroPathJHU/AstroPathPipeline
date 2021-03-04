@@ -97,13 +97,12 @@ class WarpFitter :
         except TypeError: #units was garbage collected before the warpfitter
             pass
 
-    def loadRawFiles(self,flatfield_file_path,et_correction_offset_file,n_threads=1) :
+    def loadRawFiles(self,flatfield_file_path,et_correction_offset_file) :
         """
         Load the raw files into the warpset, warp/save them, and load them into the alignment set 
         flatfield_file_path       = path to the flatfield file to use in correcting the rawfile illumination
         et_correction_offset_file = path to file containing records of LayerOffset objects specifying an offset to use 
                                     for each layer (or None if no correction is to be applied)
-        n_threads                 = how many different processes to run when loading files
         """
         #load the exposure time correction offsets and the median exposure times by layer
         if et_correction_offset_file is not None :
@@ -113,8 +112,7 @@ class WarpFitter :
             med_exp_time, et_correction_offset = None, None
         #load the raw images
         self.warpset.loadRawImages(self.rawfile_paths,self.alignset.overlaps,self.alignset.rectangles,self.root_dir,
-                                   flatfield_file_path,med_exp_time,et_correction_offset,
-                                   n_threads)
+                                   flatfield_file_path,med_exp_time,et_correction_offset)
         #warp the loaded images and write them out once to replace the images in the alignment set
         self.warpset.warpLoadedImages()
         with cd(self.working_dir) :
@@ -224,8 +222,6 @@ class WarpFitter :
                                     )
         #if the alignment was valid add the other parts of the cost
         if aligncost<1e10 :
-            #normalize the alignment cost by the total number of pixels
-            aligncost/=self.cost_norm
             #compute the cost from the LASSO constraint on the specified parameters
             lasso_cost=self.fitpars.getLassoCost(pars)
             #sum the costs
@@ -271,8 +267,6 @@ class WarpFitter :
         self._de_population_size = len(initial_population)
         #don't skip the corner overlaps
         self.skip_corners = False
-        #figure out the normalization for the image slide used
-        self.cost_norm = self.__getCostNormalization()
         #run the minimization
         warp_logger.info('Starting initial minimization....')
         with cd(self.working_dir) :
@@ -300,8 +294,6 @@ class WarpFitter :
         parameter_bounds, constraints, init_pars, rel_steps = self.__getPolishingSetup(float_p1p2_in_polish_fit,p1p2_polish_lasso_lambda)
         #still don't skip the corner overlaps
         self.skip_corners = False
-        #figure out the normalization for the image slide used
-        self.cost_norm = self.__getCostNormalization()
         #call minimize with trust_constr
         warp_logger.info('Starting polishing minimization....')
         with cd(self.working_dir) :
@@ -437,23 +429,19 @@ class WarpFitter :
         olap_singlet_p1s = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])!=8 and olap1.p2 not in olap_octet_p1s]
         #do use the corner overlaps in the final cost reduction calculation
         self.skip_corners = False
-        self.cost_norm = self.__getCostNormalization()
         #make the overlap comparison figures
         addl_singlet_p1s_and_codes = set()
         failed_p1s_and_codes = None
         #start by aligning the raw, unwarped images and getting their shift comparison information/images and the raw p1 images
         self.alignset.updateRectangleImages(self.warpset.images,usewarpedimages=False)
-        rawcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
+        rawcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)
         raw_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         raw_octets_olaps = [[olap for olap in self.alignset.overlaps if olap.p1==octetp1] for octetp1 in olap_octet_p1s]
-        raw_octets_opposite_olaps = [[olap for olap in self.alignset.overlaps if olap.p2==octetp1] for octetp1 in olap_octet_p1s]
-        for octetp1,raw_octet_overlaps,raw_octet_opposite_overlaps in zip(olap_octet_p1s,raw_octets_olaps,raw_octets_opposite_olaps) :
+        for octetp1,raw_octet_overlaps in zip(olap_octet_p1s,raw_octets_olaps) :
             #start up the figures
             raw_octet_image = OctetComparisonVisualization(raw_octet_overlaps,False,f'octet_p1={octetp1}_raw_overlap_comparisons')
-            raw_octet_opposite_image = OctetComparisonVisualization(raw_octet_opposite_overlaps,False,f'octet_p1={octetp1}_raw_opposite_overlap_comparisons',True)
             raw_aligned_octet_image = OctetComparisonVisualization(raw_octet_overlaps,True,f'octet_p1={octetp1}_raw_aligned_overlap_comparisons')
-            raw_aligned_octet_opposite_image = OctetComparisonVisualization(raw_octet_opposite_overlaps,True,f'octet_p1={octetp1}_raw_aligned_opposite_overlap_comparisons',True)
-            all_octet_comparison_images = [raw_octet_image,raw_octet_opposite_image,raw_aligned_octet_image,raw_aligned_octet_opposite_image]
+            all_octet_comparison_images = [raw_octet_image,raw_aligned_octet_image]
             #stack the overlay images and write out the figures
             for oci in all_octet_comparison_images :
                 failed_p1s_and_codes = oci.stackOverlays()
@@ -464,17 +452,14 @@ class WarpFitter :
         #next warp and align the images with the best fit warp and do the same thing
         self.warpset.warpLoadedImages()
         self.alignset.updateRectangleImages(self.warpset.images)
-        bestcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)/self.cost_norm
+        bestcost = self.alignset.align(alreadyalignedstrategy="overwrite",warpwarnings=True)
         warped_olap_comps = self.alignset.getOverlapComparisonImagesDict()
         warped_octets_olaps = [[olap for olap in self.alignset.overlaps if olap.p1==octetp1] for octetp1 in olap_octet_p1s]
-        warped_octets_ooposite_olaps = [[olap for olap in self.alignset.overlaps if olap.p2==octetp1] for octetp1 in olap_octet_p1s]
-        for octetp1,warped_octet_overlaps,warped_octet_opposite_overlaps in zip(olap_octet_p1s,warped_octets_olaps,warped_octets_ooposite_olaps) :
+        for octetp1,warped_octet_overlaps in zip(olap_octet_p1s,warped_octets_olaps) :
             #start up the figures
             warped_octet_image = OctetComparisonVisualization(warped_octet_overlaps,False,f'octet_p1={octetp1}_warped_overlap_comparisons')
-            warped_octet_opposite_image = OctetComparisonVisualization(warped_octet_opposite_overlaps,False,f'octet_p1={octetp1}_warped_opposite_overlap_comparisons',True)
             warped_aligned_octet_image = OctetComparisonVisualization(warped_octet_overlaps,True,f'octet_p1={octetp1}_warped_aligned_overlap_comparisons')
-            warped_aligned_octet_opposite_image = OctetComparisonVisualization(warped_octet_opposite_overlaps,True,f'octet_p1={octetp1}_warped_aligned_opposite_overlap_comparisons',True)
-            all_octet_comparison_images = [warped_octet_image,warped_octet_opposite_image,warped_aligned_octet_image,warped_aligned_octet_opposite_image]
+            all_octet_comparison_images = [warped_octet_image,warped_aligned_octet_image]
             #stack the overlay images and write out the figures
             for oci in all_octet_comparison_images :
                 failed_p1s_and_codes = oci.stackOverlays()
@@ -620,11 +605,3 @@ class WarpFitter :
             return constraints[0]
         else :
             return constraints
-
-    #helper function to calculate the normalization for the cost
-    def __getCostNormalization(self) :
-        norm = 0
-        for olap in self.alignset.overlaps :
-            if (not self.skip_corners) or (self.skip_corners and olap.tag not in CONST.CORNER_OVERLAP_TAGS) : 
-                norm+=((olap.cutimages[0]).shape[0])*((olap.cutimages[0]).shape[1])
-        return norm
