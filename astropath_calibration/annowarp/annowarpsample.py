@@ -872,10 +872,10 @@ class QPTiffCoordinate(MyDataClass, QPTiffCoordinateBase):
   index of a qptiff coordinate.  bigtilesize and bigtileoffset
   are given to the constructor
   """
-  def __user_init__(self, *args, bigtilesize, bigtileoffset, **kwargs):
+  def __post_init__(self, *args, bigtilesize, bigtileoffset, **kwargs):
     self.__bigtilesize = bigtilesize
     self.__bigtileoffset = bigtileoffset
-    super().__user_init__(*args, **kwargs)
+    super().__post_init__(*args, **kwargs)
   @property
   def bigtilesize(self): return self.__bigtilesize
   @property
@@ -996,9 +996,9 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
 
     return super().transforminitargs(*args, **kwargs)
 
-  def __user_init__(self, tilesize, bigtilesize, bigtileoffset, exception=None, imageshandle=None, *args, **kwargs):
+  def __post_init__(self, tilesize, bigtilesize, bigtileoffset, exception=None, imageshandle=None, *args, **kwargs):
     self.use_gpu = False
-    super().__user_init__(*args, **kwargs)
+    super().__post_init__(*args, **kwargs)
     self.tilesize = tilesize
     self.__bigtilesize = bigtilesize
     self.__bigtileoffset = bigtileoffset

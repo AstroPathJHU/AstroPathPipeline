@@ -43,5 +43,5 @@ class MyDataClassMeta(abc.ABCMeta, DataClassTransformArgsMeta, DataClassWithMeta
   pass
 
 class MyDataClass(DataClassTransformArgs, DataClassWithMetaData, metaclass=MyDataClassMeta):
-  def __user_init__(self):
+  def __post_init__(self):
     pass

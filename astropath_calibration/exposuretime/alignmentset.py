@@ -18,13 +18,13 @@ class SmoothImage(RectangleTransformationBase):
         return smoothImageWorker(originalimage, self.__smoothsigma)
 
 class RectangleForExposureTime(AlignmentRectangle):
-    def __user_init__(self, *args, flatfield, smoothsigma, transformations=None, **kwargs):
+    def __post_init__(self, *args, flatfield, smoothsigma, transformations=None, **kwargs):
         if transformations is None: transformations = []
         if flatfield is not None:
             transformations.append(ApplyFlatfield(flatfield))
         if smoothsigma is not None:
             transformations.append(SmoothImage(smoothsigma))
-        super().__user_init__(*args, transformations=transformations, **kwargs)
+        super().__post_init__(*args, transformations=transformations, **kwargs)
 
 class AlignmentSetForExposureTime(AlignmentSetFromXML):
     def __init__(self, *args, flatfield, smoothsigma, **kwargs):
