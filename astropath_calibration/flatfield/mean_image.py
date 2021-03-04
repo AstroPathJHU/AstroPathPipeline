@@ -9,7 +9,7 @@ from ..utilities.tableio import writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
 from ..utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import os, copy
+import os
 
 class MeanImage :
     """
@@ -101,7 +101,7 @@ class MeanImage :
         """
         #add the mean image times the mask stack to the image stack, and the mask stack to the running total
         thismeanimage = getRawAsHWL(mean_image_fp,*(self._dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
-        thisimagesquaredstack = getRawAsHWL(std_err_mean_image_fp,*(self._dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+        thisimagesquaredstack = getRawAsHWL(image_squared_fp,*(self._dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         thismaskstack = getRawAsHWL(mask_stack_fp,*(self._dims),CONST.MASK_STACK_DTYPE_OUT)
         self.mask_stack+=thismaskstack
         self.image_stack+=thismaskstack*thismeanimage

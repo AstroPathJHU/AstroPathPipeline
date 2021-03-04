@@ -110,10 +110,10 @@ def smoothImageWorker(im_array,smoothsigma,return_list=None) :
 #this can be run in parallel on the GPU
 def smoothImageWithUncertaintyWorker(im_array,im_unc_array,smoothsigma,return_list=None) :
   ksize = 5*smoothsigma
-    if ksize%2==0 :
-      ksize+=1
-    x_kernel = cv2.getGaussianKernel(ksize,smoothsigma)
-    gaussian_kernel = (x_kernel.T)*(x_kernel)
+  if ksize%2==0 :
+    ksize+=1
+  x_kernel = cv2.getGaussianKernel(ksize,smoothsigma)
+  gaussian_kernel = (x_kernel.T)*(x_kernel)
   if return_list is not None :
     im_in_umat = cv2.UMat(im_array); im_out_umat = cv2.UMat(np.empty_like(im_array))
     im_var_in_umat = cv2.UMat(im_unc_array**2); im_var_out_umat = cv2.UMat(np.empty_like(im_unc_array))

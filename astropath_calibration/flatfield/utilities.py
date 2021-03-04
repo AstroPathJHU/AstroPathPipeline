@@ -75,7 +75,7 @@ def getSlideMeanImageFilepath(slide) :
     return p
 
 #helper function to return the automatic path to a given slide's sum of images squared file
-def getSlideImageSquaredFilepath(slide)
+def getSlideImageSquaredFilepath(slide) :
     p = os.path.join(slide.root_dir,slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME,f'{slide.name}-{CONST.SUM_IMAGES_SQUARED_FILE_NAME_STEM}{CONST.FILE_EXT}')
     return p
 
