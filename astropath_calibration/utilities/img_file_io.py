@@ -106,6 +106,25 @@ def smoothImageWorker(im_array,smoothsigma,return_list=None) :
   else :
     return cv2.GaussianBlur(im_array,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
 
+#helper function to smooth an image and its uncertainty image
+#this can be run in parallel on the GPU
+def smoothImageWithUncertaintyWorker(im_array,im_unc_array,smoothsigma,return_list=None) :
+  ksize = 5*smoothsigma
+  if ksize%2==0 :
+    ksize+=1
+  x_kernel = cv2.getGaussianKernel(ksize,smoothsigma)
+  gaussian_kernel = (x_kernel.T)*(x_kernel)
+  if return_list is not None :
+    im_in_umat = cv2.UMat(im_array); im_out_umat = cv2.UMat(np.empty_like(im_array))
+    im_var_in_umat = cv2.UMat(im_unc_array**2); im_var_out_umat = cv2.UMat(np.empty_like(im_unc_array))
+    cv2.filter2D(im_in_umat,cv2.CV_64F,cv2.UMat(gaussian_kernel),im_out_umat,borderType=cv2.BORDER_REPLICATE)
+    cv2.filter2D(im_var_in_umat,cv2.CV_64F,cv2.UMat(gaussian_kernel**2),im_var_out_umat,borderType=cv2.BORDER_REPLICATE)
+    return_list.append((im_out_umat.get(),np.sqrt(im_var_out_umat.get())))
+  else :
+    sm_im = cv2.filter2D(im_array,cv2.CV_64F,gaussian_kernel,borderType=cv2.BORDER_REPLICATE)
+    sm_im_var = cv2.filter2D(im_unc_array**2,cv2.CV_64F,gaussian_kernel**2,borderType=cv2.BORDER_REPLICATE)
+    return sm_im,np.sqrt(sm_im_var)
+
 #helper function to get an image dimension tuple from the slide's XML file
 def getImageHWLFromXMLFile(root_dir,slideID) :
   subdir_filepath = os.path.join(root_dir,slideID,'im3','xml',f'{slideID}{PARAMETER_XMLFILE_EXT}')
