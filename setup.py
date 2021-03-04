@@ -20,7 +20,8 @@ setuptools.setup(
       "run_many_warp_fits_with_pool=astropath_calibration.warping.run_many_warp_fits_with_pool:main",
       "run_warp_fitter=astropath_calibration.warping.run_warp_fitter:main",
       "run_warping_fits=astropath_calibration.warping.run_warping_fits:main",
-      "zoomcohort.py=astropath_calibration.zoom.zoomcohort:main",
+      "stitchmaskcohort=astropath_calibration.zoom.stitchmaskcohort:main",
+      "zoomcohort=astropath_calibration.zoom.zoomcohort:main",
     ],
   },
   install_requires = [
