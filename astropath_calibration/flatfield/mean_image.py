@@ -229,14 +229,14 @@ class MeanImage :
                     flatfield_logger.warn(msg)
         if self.mean_image is None :
             self.mean_image, self.std_err_of_mean_image = self.__getMeanImage(logger)
-        self.smoothed_mean_image,sm_mean_img_err = smoothImageWithUncertaintyWorker(self.mean_image,self.std_err_of_meanimage,self.final_smooth_sigma)
+        self.smoothed_mean_image,sm_mean_img_err = smoothImageWithUncertaintyWorker(self.mean_image,self.std_err_of_mean_image,self.final_smooth_sigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
-            if np.min(self.smoothed_mean_image)==0 and np.max(self.smoothed_mean_image)==0 :
+            if np.min(self.smoothed_mean_image[:,:,layer_i])==0 and np.max(self.smoothed_mean_image[:,:,layer_i])==0 :
                 self.flatfield_image[:,:,layer_i]=1.0
             else :
-                weights = (1./(sm_mean_img_err[:,:,layer_i]**2))
-                layermean = (weights*self.smoothed_mean_image[:,:,layer_i])/np.sum(weights)
+                weights = (1./((sm_mean_img_err[:,:,layer_i])**2))
+                layermean = np.average(self.smoothed_mean_image[:,:,layer_i],weights=weights)
                 self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
 
     def makeCorrectedMeanImage(self,flatfield_file_path) :
