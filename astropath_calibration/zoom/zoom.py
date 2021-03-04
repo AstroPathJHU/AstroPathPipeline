@@ -1,4 +1,4 @@
-import argparse, contextlib, cv2, itertools, methodtools, numpy as np, os, pathlib, PIL, skimage
+import contextlib, cv2, itertools, methodtools, numpy as np, os, PIL, skimage
 
 from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
 from ..baseclasses.sample import ReadRectanglesBase, ReadRectanglesDbloadComponentTiff, TempDirSample, ZoomFolderSampleBase

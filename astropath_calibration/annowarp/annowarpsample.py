@@ -6,9 +6,9 @@ from ..alignment.overlap import AlignmentComparison
 from ..baseclasses.csvclasses import Region, Vertex
 from ..baseclasses.polygon import Polygon
 from ..baseclasses.qptiff import QPTiff
-from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff
+from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, ZoomFolderSampleBase
 from ..zoom.stitchmask import InformMaskSample, TissueMaskSample
-from ..zoom.zoom import ZoomSample
+from ..zoom.zoom import ZoomSampleBase
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import covariance_matrix, floattoint
@@ -16,7 +16,7 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
-class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.ThingWithImscale):
+class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, units.ThingWithImscale):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
