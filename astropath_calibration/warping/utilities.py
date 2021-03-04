@@ -52,14 +52,6 @@ class OverlapOctet(MyDataClass) :
     olap_7_n             : int
     olap_9_n             : int
     olap_8_n             : int
-    opposite_olap_1_n    : int
-    opposite_olap_2_n    : int
-    opposite_olap_3_n    : int
-    opposite_olap_4_n    : int
-    opposite_olap_6_n    : int
-    opposite_olap_7_n    : int
-    opposite_olap_9_n    : int
-    opposite_olap_8_n    : int
     olap_1_p1_pixel_frac : float
     olap_2_p1_pixel_frac : float
     olap_3_p1_pixel_frac : float
@@ -79,11 +71,6 @@ class OverlapOctet(MyDataClass) :
     @property
     def overlap_ns(self) :
         return [self.olap_1_n,self.olap_2_n,self.olap_3_n,self.olap_4_n,self.olap_6_n,self.olap_7_n,self.olap_8_n,self.olap_9_n]
-    @property
-    def opposite_overlap_ns(self):
-        return [self.opposite_olap_1_n,self.opposite_olap_2_n,self.opposite_olap_3_n,self.opposite_olap_4_n,
-                self.opposite_olap_6_n,self.opposite_olap_7_n,self.opposite_olap_8_n,self.opposite_olap_9_n]
-    
 
 #little utility class to represent a warp fit result
 class WarpFitResult(MyDataClass) :
@@ -284,20 +271,20 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,root_dir,slide_ID,layer) :
     #read the overlap ns from the file
     octets = readtable(octet_filepath,OverlapOctet)
     for octet_olap_n in octets :
-        if octet_olap_n.root_dir!=root_dir :
+        if octet_olap_n.root_dir.lower()!=root_dir.lower() :
             msg = f'ERROR: root_dir {root_dir} passed to readOctetsFromFile does not match '
             msg+= f'{octet_olap_n.root_dir} in octet file {octet_filepath}!'
             raise(WarpingError(msg))   
-        if octet_olap_n.rawfile_top_dir!=rawfile_top_dir :
+        if octet_olap_n.rawfile_top_dir.lower()!=rawfile_top_dir.lower() :
             msg = f'ERROR: rawfile_top_dir {rawfile_top_dir} passed to readOctetsFromFile does not match '
             msg+= f'{octet_olap_n.rawfile_top_dir} in octet file {octet_filepath}!'
             raise(WarpingError(msg))
-        if octet_olap_n.slide_ID!=slide_ID :
+        if octet_olap_n.slide_ID.lower()!=slide_ID.lower() :
             msg = f'ERROR: slide_ID {slide_ID} passed to readOctetsFromFile does not match '
             msg+= f'{octet_olap_n.slide_ID} in octet file {octet_filepath}!'
             raise(WarpingError(msg))
-        if octet_olap_n.nclip!=CONST.N_CLIP :
-            msg = f'ERROR: constant nclip {CONST.N_CLIP} in readOctetsFromFile does not match '
+        if octet_olap_n.nclip!=UNIV_CONST.N_CLIP :
+            msg = f'ERROR: constant nclip {UNIV_CONST.N_CLIP} in readOctetsFromFile does not match '
             msg+= f'{octet_olap_n.nclip} in octet file {octet_filepath}!'
             raise(WarpingError(msg))
         if octet_olap_n.layer!=layer :
@@ -357,9 +344,8 @@ def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,worki
             ons = [o[0].n for o in overlapswiththisp1]
             op1pfs = [o[1] for o in overlapswiththisp1]
             op2pfs = [o[2] for o in overlapswiththisp1]
-            opposite_ons = [[opp_o[0].n for opp_o in good_overlaps if opp_o[0].p1==o[0].p2 and opp_o[0].p2==o[0].p1][0] for o in overlapswiththisp1]
             warp_logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
-            octets.append(OverlapOctet(rootdir,rtd,slideID,CONST.N_CLIP,layer,threshold_value,p1,*(ons),*(opposite_ons),*(op1pfs),*(op2pfs)))
+            octets.append(OverlapOctet(rootdir,rtd,slideID,UNIV_CONST.N_CLIP,layer,threshold_value,p1,*(ons),*(op1pfs),*(op2pfs)))
     octets.sort(key=lambda x: x.p1_rect_n)
     #save the file of which overlaps are in each valid octet
     with cd(working_dir) :

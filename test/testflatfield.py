@@ -1,7 +1,7 @@
-# A script to run a quick test run of a flatfield
+# A script to do a test run of a flatfield
 
 #imports
-from astropath_calibration.flatfield.run_flatfield import checkArgs, doRun
+from astropath_calibration.flatfield.run_flatfield import main
 from astropath_calibration.flatfield.utilities import flatfield_logger
 from argparse import Namespace
 import pathlib, os, shutil
@@ -9,10 +9,6 @@ import pathlib, os, shutil
 #some constants
 folder = pathlib.Path(__file__).parent
 slide_ID = 'M21_1'
-rawfile_top_dir = folder/'data'/'raw'
-rawfile_ext = '.Data.dat'
-root_dir = folder/'data'
-dims = (1004,1344,35)
 
 #First make a flatfield
 flatfield_logger.info('TESTING make_flatfield')
@@ -39,8 +35,7 @@ args = Namespace(
         selected_pixel_cut=0.0,
         other_runs_to_exclude=['']
     )
-checkArgs(args)
-doRun(args,make_flatfield_working_dir,None)
+main(args)
 #overwrite the file log so that applying the flatfield doesn't crash because it's using the same files
 flp = make_flatfield_working_dir/'filepath_log.txt'
 os.remove(flp)
@@ -72,8 +67,7 @@ args = Namespace(
         selected_pixel_cut=0.0,
         other_runs_to_exclude=['']
     )
-checkArgs(args)
-doRun(args,apply_flatfield_working_dir,None)
+main(args)
 
 #get rid of both working directories
 flatfield_logger.info('Removing working directories....')

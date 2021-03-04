@@ -1,8 +1,7 @@
-# A script to run a quick test run of a flatfield
+# A script to run tests of the flatfield batch modes
 
 #imports
-from astropath_calibration.flatfield.run_flatfield import checkArgs, doRun
-from astropath_calibration.flatfield.logging import RunLogger
+from astropath_calibration.flatfield.run_flatfield import main
 from astropath_calibration.flatfield.utilities import flatfield_logger, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath
 from argparse import Namespace
 import pathlib, os, shutil
@@ -10,15 +9,9 @@ import pathlib, os, shutil
 #some constants
 folder = pathlib.Path(__file__).parent
 slide_ID = 'M21_1'
-rawfile_top_dir = folder/'data'/'raw'
-rawfile_ext = '.Data.dat'
-root_dir = folder/'data'
-dims = (1004,1344,35)
 
 #Run the slide_mean_image test
 flatfield_logger.info('TESTING slide_mean_image')
-slide = FlatfieldSlideInfo(slide_ID,str(folder/'data'/'raw'),str(folder/'data'))
-slide_mean_image_working_dir = getSlideMeanImageWorkingDirPath(slide)
 args = Namespace(
         mode='slide_mean_image',
         exposure_time_offset_file=str(folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'),
@@ -39,10 +32,10 @@ args = Namespace(
         selected_pixel_cut=0.8,
         other_runs_to_exclude=['']
     )
-with RunLogger(args.mode,slide_mean_image_working_dir) as logger :
-    checkArgs(args)
-    doRun(args,slide_mean_image_working_dir,logger)
+main(args)
 #check the logfile for error messages
+slide = FlatfieldSlideInfo(slide_ID,str(folder/'data'/'raw'),str(folder/'data'))
+slide_mean_image_working_dir = getSlideMeanImageWorkingDirPath(slide)
 with open(os.path.join(slide_mean_image_working_dir,'global-slide_mean_image.log'),'r') as fp :
     for l in fp.readlines() :
         if 'ERROR' in l :
@@ -53,7 +46,6 @@ flatfield_logger.info('TESTING batch_flatfield')
 ff_dirpath = folder/'data'/'Flatfield'
 if not os.path.isdir(ff_dirpath) :
     os.mkdir(ff_dirpath)
-batch_flatfield_working_dir = getBatchFlatfieldWorkingDirPath(folder/'data',1)
 args = Namespace(
         mode='batch_flatfield',
         exposure_time_offset_file=None,
@@ -74,10 +66,9 @@ args = Namespace(
         selected_pixel_cut=0.8,
         other_runs_to_exclude=['']
     )
-with RunLogger(args.mode,batch_flatfield_working_dir) as logger :
-    checkArgs(args)
-    doRun(args,batch_flatfield_working_dir,logger)
+main(args)
 #check the logfile for error messages
+batch_flatfield_working_dir = getBatchFlatfieldWorkingDirPath(folder/'data',1)
 with open(os.path.join(batch_flatfield_working_dir,'global-batch_flatfield.log'),'r') as fp :
     for l in fp.readlines() :
         if 'ERROR' in l :
