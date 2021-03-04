@@ -3,7 +3,7 @@ from .flatfield_slide import FlatfieldSlide
 from .mean_image import MeanImage
 from .latex_summary import LatexSummary
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, slideNameFromFilepath, FieldLog
-from .utilities import getSlideMeanImageFilepath, getSlideMaskStackFilepath
+from .utilities import getSlideMeanImageFilepath, getSlideImageSquaredFilepath, getSlideMaskStackFilepath
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities.img_file_io import LayerOffset
@@ -71,9 +71,10 @@ class FlatfieldProducer :
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
             #get and add this slide's mean image and mask stack
             mifp = getSlideMeanImageFilepath(slide)
+            semifp = getSlideImageSquaredFilepath(slide)
             msfp = getSlideMaskStackFilepath(slide)
             self.__writeLog(f'Reading and adding slide {sn} mean image for flatfield model with BatchID = {batchID:02d}','info',sn,slide.root_dir)
-            self.mean_image.addSlideMeanImageAndMaskStack(mifp,msfp)
+            self.mean_image.addSlideMeanImageAndMaskStack(mifp,semifp,msfp)
             #aggregate the slide's metadata as well
             mds = readtable(os.path.join(os.path.dirname(mifp),f'{self.IMAGE_STACK_MDS_FN_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),MetadataSummary)
             self._metadata_summaries+=mds

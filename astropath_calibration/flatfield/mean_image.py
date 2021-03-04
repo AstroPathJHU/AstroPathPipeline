@@ -4,7 +4,7 @@ from .utilities import flatfield_logger, FlatFieldError
 from .utilities import getImageTissueMask, getImageBlurMask, getImageSaturationMasks
 from .config import CONST 
 from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots, doMaskingPlotsForImage
-from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker, getExposureTimesByLayer
+from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker, smoothImageWithUncertaintyWorker, getExposureTimesByLayer
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
 from ..utilities.config import CONST as UNIV_CONST
@@ -92,17 +92,20 @@ class MeanImage :
         self.corrected_mean_image=None
         self.smoothed_corrected_mean_image=None
 
-    def addSlideMeanImageAndMaskStack(self,mean_image_fp,mask_stack_fp) :
+    def addSlideMeanImageAndMaskStack(self,mean_image_fp,image_squared_fp,mask_stack_fp) :
         """
         A function to add a mean image and mask stack from a particular slide to the running total, including updating the aggregated metadata
-        mean_image_fp = path to this slide's already existing mean image file
-        mask_stack_fp = path to this slide's already existing mask_stack file
+        mean_image_fp    = path to this slide's already existing mean image file
+        image_squared_fp = path to this slide's already existing sum of images squared file
+        mask_stack_fp    = path to this slide's already existing mask_stack file
         """
         #add the mean image times the mask stack to the image stack, and the mask stack to the running total
         thismeanimage = getRawAsHWL(mean_image_fp,*(self._dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+        thisimagesquaredstack = getRawAsHWL(std_err_mean_image_fp,*(self._dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         thismaskstack = getRawAsHWL(mask_stack_fp,*(self._dims),CONST.MASK_STACK_DTYPE_OUT)
         self.mask_stack+=thismaskstack
         self.image_stack+=thismaskstack*thismeanimage
+        self.image_squared_stack+=thisimagesquaredstack
         #aggregate some of the metadata also
         nisblfp = os.path.join(os.path.dirname(mean_image_fp),CONST.POSTRUN_PLOT_DIRECTORY_NAME,self.N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME)
         with open(nisblfp,'r') as fp :
@@ -226,13 +229,14 @@ class MeanImage :
                     flatfield_logger.warn(msg)
         if self.mean_image is None :
             self.mean_image, self.std_err_of_mean_image = self.__getMeanImage(logger)
-        self.smoothed_mean_image = smoothImageWorker(self.mean_image,self.final_smooth_sigma)
+        self.smoothed_mean_image,sm_mean_img_err = smoothImageWithUncertaintyWorker(self.mean_image,self.std_err_of_meanimage,self.final_smooth_sigma)
         self.flatfield_image = np.empty_like(self.smoothed_mean_image)
         for layer_i in range(self.nlayers) :
-            layermean = np.mean(self.smoothed_mean_image[:,:,layer_i])
-            if layermean==0 :
+            if np.min(self.smoothed_mean_image)==0 and np.max(self.smoothed_mean_image)==0 :
                 self.flatfield_image[:,:,layer_i]=1.0
             else :
+                weights = (1./(sm_mean_img_err[:,:,layer_i]**2))
+                layermean = (weights*self.smoothed_mean_image[:,:,layer_i])/np.sum(weights)
                 self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
 
     def makeCorrectedMeanImage(self,flatfield_file_path) :
@@ -266,13 +270,16 @@ class MeanImage :
             if self.flatfield_image is not None :
                 flatfieldimage_filename = f'{prepend}{CONST.FLATFIELD_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
                 writeImageToFile(self.flatfield_image,flatfieldimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+            if self.mean_image is not None :
+                meanimage_filename = f'{prepend}{CONST.MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
+                writeImageToFile(self.mean_image,meanimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+            if self.std_err_of_mean_image is not None :
+                std_err_of_meanimage_filename = f'{prepend}{CONST.STD_ERR_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
+                writeImageToFile(self.std_err_of_mean_image,std_err_of_meanimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
             if append=='' :
-                if self.mean_image is not None :
-                    meanimage_filename = f'{prepend}{CONST.MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                    writeImageToFile(self.mean_image,meanimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
-                if self.std_err_of_mean_image is not None :
-                    std_err_of_meanimage_filename = f'{prepend}{CONST.STD_ERR_MEAN_IMAGE_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
-                    writeImageToFile(self.std_err_of_mean_image,std_err_of_meanimage_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+                if self.image_squared_stack is not None :
+                    sumimagessquared_filename = f'{prepend}{CONST.SUM_IMAGES_SQUARED_FILE_NAME_STEM}{append}{CONST.FILE_EXT}'
+                    writeImageToFile(self.image_squared_stack,sumimagessquared_filename,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
                 if (not self.skip_masking) and (self.mask_stack is not None) :
                     writeImageToFile(self.mask_stack,f'{prepend}{CONST.MASK_STACK_FILE_NAME_STEM}{append}{CONST.FILE_EXT}',dtype=CONST.MASK_STACK_DTYPE_OUT)
                 if self.smoothed_mean_image is not None :
@@ -339,7 +346,7 @@ class MeanImage :
             return meanimage, std_err_of_meanimage
         #otherwise though we have to be a bit careful and take the mean value pixel-wise, 
         #being careful to fix any pixels that never got added to so there's no division by zero
-        zero_fixed_mask_stack = copy.deepcopy(self.mask_stack)
+        zero_fixed_mask_stack = np.copy(self.mask_stack)
         zero_fixed_mask_stack[zero_fixed_mask_stack==0] = np.min(zero_fixed_mask_stack[zero_fixed_mask_stack!=0])
         meanimage = self.image_stack/zero_fixed_mask_stack
         std_err_of_meanimage = np.sqrt(np.abs(self.image_squared_stack/zero_fixed_mask_stack-(meanimage*meanimage))/zero_fixed_mask_stack)
