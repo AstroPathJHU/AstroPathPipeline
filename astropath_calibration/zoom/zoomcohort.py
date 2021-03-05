@@ -2,6 +2,8 @@ from ..baseclasses.cohort import DbloadCohort, SelectLayersCohort, SelectRectang
 from .zoom import Zoom
 
 class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort, SelectLayersCohort):
+  __doc__ = Zoom.__doc__
+
   def __init__(self, *args, mode="vips", **kwargs):
     self.__mode = mode
     super().__init__(*args, **kwargs)
@@ -18,8 +20,8 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips")
-    p.add_argument("--skip-if-wsi-exists", action="store_true")
+    p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips", help="mode to run zoom: fast is fastest, vips uses the least memory.")
+    p.add_argument("--skip-if-wsi-exists", action="store_true", help="skip a sample if the wsi image already exists")
     return p
 
   @classmethod

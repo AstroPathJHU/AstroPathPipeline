@@ -185,8 +185,8 @@ class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
   def polygonfields(cls):
     return [field for field in dataclassy.fields(cls) if cls.metadata(field).get("ispolygonfield", False)]
 
-  def __user_init__(self, *args, **kwargs):
-    super().__user_init__(*args, **kwargs)
+  def __post_init__(self, *args, **kwargs):
+    super().__post_init__(*args, **kwargs)
     for field in self.polygonfields():
       poly = getattr(self, field)
       if isinstance(poly, Polygon):

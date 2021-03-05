@@ -22,8 +22,8 @@ class OverlapForLayerAlignment(AlignmentOverlap):
       "tag": tag,
       **kwargs,
     }
-  def __user_init__(self, *, _x2, _y2, layer1, layer2, positionaloverlaps, **kwargs):
-    super().__user_init__(layer1=layer1, layer2=layer2, **kwargs)
+  def __post_init__(self, *, _x2, _y2, layer1, layer2, positionaloverlaps, **kwargs):
+    super().__post_init__(layer1=layer1, layer2=layer2, **kwargs)
     self.__layeroverlaps = (
       AlignmentOverlap(n=self.n, p1=self.p1, p2=self.p1, x1=self.x1, y1=self.y1, x2=self.x1, y2=self.y1, layer1=layer1, layer2=layer2, tag=5, pscale=self.pscale, **kwargs),
       AlignmentOverlap(n=self.n, p1=self.p2, p2=self.p2, x1=_x2,     y1=_y2,     x2=_x2,     y2=_y2,     layer1=layer1, layer2=layer2, tag=5, pscale=self.pscale, **kwargs),
