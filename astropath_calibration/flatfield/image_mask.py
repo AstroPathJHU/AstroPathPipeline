@@ -3,7 +3,7 @@ from .utilities import LabelledMaskRegion
 from .config import CONST
 from ..utilities.config import CONST as UNIV_CONST
 import numpy as np
-import cv2
+import os, cv2
 
 class ImageMask() :
     """
