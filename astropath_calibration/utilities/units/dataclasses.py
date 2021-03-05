@@ -70,7 +70,7 @@ class DataClassWithDistances(MyDataClass):
   def _distances_passed_to_init(self):
     return [getattr(self, fieldname) for fieldname in self.distancefields()]
 
-  def __user_init__(self, *args, readingfromfile=False, **kwargs):
+  def __post_init__(self, *args, readingfromfile=False, **kwargs):
     powers = {}
     pscalenames = {}
     types = dataclassy.fields(self)
@@ -135,7 +135,7 @@ class DataClassWithDistances(MyDataClass):
       for fieldname in self.distancefields():
         setattr(self, fieldname, types[fieldname](power=powers[fieldname], pscale=pscales[fieldname], **{self.metadata(fieldname)["pixelsormicrons"](self): getattr(self, fieldname)}))
 
-    super().__user_init__(*args, **kwargs)
+    super().__post_init__(*args, **kwargs)
 
 class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
   pscale: pscalefield(float)

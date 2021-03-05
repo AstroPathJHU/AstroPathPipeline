@@ -97,14 +97,14 @@ class RectangleWithImageBase(Rectangle):
   def __DEBUG_PRINT_TRACEBACK(self, i):
     return False
 
-  def __user_init__(self, *args, transformations=[], **kwargs):
+  def __post_init__(self, *args, transformations=[], **kwargs):
     self.__transformations = transformations
     self.__images_cache = [None for _ in range(self.nimages)]
     self.__accessed_image = np.zeros(dtype=bool, shape=self.nimages)
     self.__using_image_counter = np.zeros(dtype=int, shape=self.nimages)
     self.__debug_load_images_counter = np.zeros(dtype=int, shape=self.nimages)
     self.__debug_load_images_tracebacks = [[] for _ in range(self.nimages)]
-    super().__user_init__(*args, **kwargs)
+    super().__post_init__(*args, **kwargs)
 
   def __del__(self):
     if self.__DEBUG:
@@ -245,8 +245,8 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
              (optional, but if you provide it then you can get the exposure time)
   """
 
-  def __user_init__(self, *args, imagefolder, filetype, width, height, nlayers, layers, xmlfolder=None, **kwargs):
-    super().__user_init__(*args, **kwargs)
+  def __post_init__(self, *args, imagefolder, filetype, width, height, nlayers, layers, xmlfolder=None, **kwargs):
+    super().__post_init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__filetype = filetype
     self.__width = width
@@ -357,7 +357,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   Also, in this class you can read a layer file (e.g. fw01).
   """
 
-  def __user_init__(self, *args, layer, readlayerfile=True, **kwargs):
+  def __post_init__(self, *args, layer, readlayerfile=True, **kwargs):
     morekwargs = {
       "layers": (layer,),
     }
@@ -368,7 +368,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
         "nlayers": 1,
       })
     self.__readlayerfile = readlayerfile
-    super().__user_init__(*args, **kwargs, **morekwargs)
+    super().__post_init__(*args, **kwargs, **morekwargs)
 
   @property
   def layer(self):
@@ -442,8 +442,8 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
   with_seg: indicates if you want to use the _w_seg.tif which contains some segmentation info from inform
   """
 
-  def __user_init__(self, *args, imagefolder, layers, nlayers=None, with_seg=False, **kwargs):
-    super().__user_init__(*args, **kwargs)
+  def __post_init__(self, *args, imagefolder, layers, nlayers=None, with_seg=False, **kwargs):
+    super().__post_init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__layers = layers
     self.__nlayers = nlayers
@@ -496,11 +496,11 @@ class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
   but this class gives you a 2D array as the image instead of a 3D array
   with shape[0] = 1.
   """
-  def __user_init__(self, *args, layer, **kwargs):
+  def __post_init__(self, *args, layer, **kwargs):
     morekwargs = {
       "layers": (layer,),
     }
-    super().__user_init__(*args, **kwargs, **morekwargs)
+    super().__post_init__(*args, **kwargs, **morekwargs)
 
   @property
   def layer(self):
@@ -579,9 +579,9 @@ class RectangleProvideImage(RectangleWithImageBase):
   """
   Rectangle where you just input an image and that will be the image returned by image or using_image.
   """
-  def __user_init__(self, *args, image, **kwargs):
+  def __post_init__(self, *args, image, **kwargs):
     self.__image = image
-    super().__user_init__(*args, **kwargs)
+    super().__post_init__(*args, **kwargs)
   def getimage(self):
     return self.__image
 
@@ -591,9 +591,9 @@ class RectangleFromOtherRectangle(RectangleWithImageBase):
   The reason you'd want to do this is if you have transformations, but
   also want the original rectangle to keep its images.
   """
-  def __user_init__(self, *args, originalrectangle, **kwargs):
+  def __post_init__(self, *args, originalrectangle, **kwargs):
     self.__originalrectangle = originalrectangle
-    super().__user_init__(*args, rectangle=originalrectangle, readingfromfile=False, **kwargs)
+    super().__post_init__(*args, rectangle=originalrectangle, readingfromfile=False, **kwargs)
   @property
   def originalrectangle(self):
     return self.__originalrectangle
@@ -606,9 +606,9 @@ class GeomLoadRectangle(Rectangle):
   Rectangle that has a cellGeomLoad.csv
   You have to provide the folder where that csv lives.
   """
-  def __user_init__(self, *args, geomfolder, **kwargs):
+  def __post_init__(self, *args, geomfolder, **kwargs):
     self.__geomfolder = pathlib.Path(geomfolder)
-    super().__user_init__(*args, **kwargs)
+    super().__post_init__(*args, **kwargs)
   @property
   def geomloadcsv(self):
     return self.__geomfolder/self.file.replace(".im3", "_cellGeomLoad.csv")

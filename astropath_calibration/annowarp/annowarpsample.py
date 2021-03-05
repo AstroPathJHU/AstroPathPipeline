@@ -6,9 +6,9 @@ from ..alignment.overlap import AlignmentComparison
 from ..baseclasses.csvclasses import Region, Vertex
 from ..baseclasses.polygon import Polygon
 from ..baseclasses.qptiff import QPTiff
-from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff
+from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, ZoomFolderSampleBase
 from ..zoom.stitchmask import InformMaskSample, TissueMaskSample
-from ..zoom.zoom import ZoomSample
+from ..zoom.zoom import ZoomSampleBase
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import covariance_matrix, floattoint
@@ -16,7 +16,7 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
-class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.ThingWithImscale):
+class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, units.ThingWithImscale):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -240,7 +240,7 @@ class AnnoWarpSampleBase(ZoomSample, ReadRectanglesDbloadComponentTiff, units.Th
     initialdy = floattoint(np.rint(firstresult.dy.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
 
     if initialdx or initialdy:
-      self.logger.warning(f"found a relative shift of around {initialdx, initialdy} pixels between the qptiff and wsi")
+      self.logger.warningglobal(f"found a relative shift of {firstresult.dx*zoomfactor, firstresult.dy*zoomfactor} pixels between the qptiff and wsi")
 
     #slice and shift the images so that they line up to within 100 pixels
     #we slice both so that they're the same size
@@ -872,10 +872,10 @@ class QPTiffCoordinate(MyDataClass, QPTiffCoordinateBase):
   index of a qptiff coordinate.  bigtilesize and bigtileoffset
   are given to the constructor
   """
-  def __user_init__(self, *args, bigtilesize, bigtileoffset, **kwargs):
+  def __post_init__(self, *args, bigtilesize, bigtileoffset, **kwargs):
     self.__bigtilesize = bigtilesize
     self.__bigtileoffset = bigtileoffset
-    super().__user_init__(*args, **kwargs)
+    super().__post_init__(*args, **kwargs)
   @property
   def bigtilesize(self): return self.__bigtilesize
   @property
@@ -996,9 +996,9 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
 
     return super().transforminitargs(*args, **kwargs)
 
-  def __user_init__(self, tilesize, bigtilesize, bigtileoffset, exception=None, imageshandle=None, *args, **kwargs):
+  def __post_init__(self, tilesize, bigtilesize, bigtileoffset, exception=None, imageshandle=None, *args, **kwargs):
     self.use_gpu = False
-    super().__user_init__(*args, **kwargs)
+    super().__post_init__(*args, **kwargs)
     self.tilesize = tilesize
     self.__bigtilesize = bigtilesize
     self.__bigtileoffset = bigtileoffset

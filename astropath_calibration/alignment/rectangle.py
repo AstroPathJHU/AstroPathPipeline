@@ -44,7 +44,7 @@ class ApplyMeanImage(RectangleTransformationBase):
       self.__meanimage = mean_image
 
 class AlignmentRectangleBase(RectangleWithImageBase):
-  def __user_init__(self, *args, mean_image=None, use_mean_image=True, logger=dummylogger, transformations=None, **kwargs):
+  def __post_init__(self, *args, mean_image=None, use_mean_image=True, logger=dummylogger, transformations=None, **kwargs):
     if transformations is None: transformations = []
     if use_mean_image:
       self.__meanimagetransformation = ApplyMeanImage(mean_image=mean_image, logger=logger)
@@ -52,7 +52,7 @@ class AlignmentRectangleBase(RectangleWithImageBase):
       transformations.append(self.__meanimagetransformation)
     else:
       self.__meanimagetransformation = None
-    super().__user_init__(*args, transformations=transformations, **kwargs)
+    super().__post_init__(*args, transformations=transformations, **kwargs)
     self.__rawimage = None
     self.__logger = logger
 
@@ -89,9 +89,9 @@ class AlignmentRectangleComponentTiffMultiLayer(AlignmentRectangleBase, Rectangl
   pass
 
 class AlignmentRectangleProvideImage(AlignmentRectangleBase, RectangleProvideImage):
-  def __user_init__(self, *args, layer, **kwargs):
+  def __post_init__(self, *args, layer, **kwargs):
     self.__layer = layer
-    super().__user_init__(*args, **kwargs)
+    super().__post_init__(*args, **kwargs)
   @property
   def layer(self):
     return self.__layer
@@ -139,11 +139,11 @@ class ConsolidateBroadbandFilters(RectangleTransformationBase):
     return np.array(list(pcas.values()))
 
 class RectanglePCAByBroadbandFilter(RectangleFromOtherRectangle):
-  def __user_init__(self, *args, layershifts, transformations=None, **kwargs):
+  def __post_init__(self, *args, layershifts, transformations=None, **kwargs):
     if transformations is None: transformations = []
     self.__pcabroadbandtransformation = ConsolidateBroadbandFilters(layershifts=layershifts)
     transformations.append(self.__pcabroadbandtransformation)
-    super().__user_init__(*args, transformations=transformations, **kwargs)
+    super().__post_init__(*args, transformations=transformations, **kwargs)
     self.__pcabroadbandtransformation.setbroadbandfilters(broadbandfilters=self.originalrectangle.broadbandfilters)
 
   def setrectanglelist(self, rectanglelist): pass

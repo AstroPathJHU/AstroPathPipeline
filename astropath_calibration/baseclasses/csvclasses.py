@@ -132,7 +132,6 @@ def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
 
   return dct
 
-@dataclassy.dataclass(unsafe_hash=True)
 class RectangleFile(DataClassWithPscale):
   """
   Info about a rectangle im3 file (used for sanity checking the

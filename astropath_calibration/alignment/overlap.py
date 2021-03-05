@@ -67,8 +67,8 @@ class AlignmentComparison(abc.ABC):
       plt.close()
 
 class AlignmentOverlap(AlignmentComparison, Overlap):
-  def __user_init__(self, *args, layer1=None, layer2=None, **kwargs):
-    super().__user_init__(*args, **kwargs)
+  def __post_init__(self, *args, layer1=None, layer2=None, **kwargs):
+    super().__post_init__(*args, **kwargs)
     if layer1 is None:
       try:
         self.rectangles[0].layer
