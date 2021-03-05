@@ -13,6 +13,11 @@ class ImageMask() :
     #################### PROPERTIES ####################
 
     @property
+    def packed_tissue_mask(self):
+        if self._tissue_mask is None :
+            raise RuntimeError('ERROR: pasked_tissue_mask called before setting a tissue mask')
+        return np.packbits(self._tissue_mask)
+    @property
     def compressed_mask(self): #the compressed mask with (# layers groups)+1 layers
         return self._compressed_mask
     @property
@@ -44,6 +49,7 @@ class ImageMask() :
         #initialize the compresssed mask and some associated info as None for now
         self._layer_groups = None
         self._compressed_mask = None
+        self._tissue_mask = None
 
     def addCreatedMasks(self,tissue_mask,blur_mask,saturation_masks) :
         """
@@ -51,6 +57,8 @@ class ImageMask() :
         blur_mask        = the blurred region mask (1=not blurred, 0=blurred) that should be added to the file
         saturation_masks = the list of saturation masks (1=not saturated, 0=saturated) to add to the file, one per broadband filter layer group
         """
+        #set the tissue mask
+        self._tissue_mask = tissue_mask
         #figure out the layer groups to use from the dimensions of the masks passed in
         if len(saturation_masks)==len(UNIV_CONST.LAYER_GROUPS_35) :
             self._layer_groups = UNIV_CONST.LAYER_GROUPS_35
@@ -101,4 +109,11 @@ def getEnumeratedMask(layer_mask,start_i) :
         return_mask[labels_im==label_i] = start_i+label_i-1
     #return the mask
     return return_mask
+
+#helper function to unpack, reshape, and return a tissue mask from the packed mask file
+def unpackTissueMask(filepath,dimensions) :
+    if not os.path.isfile(filepath) :
+        raise ValueError(f'ERROR: tissue mask file {filepath} does not exist!')
+    packed_mask = np.memmap(filepath,dtype=np.uint8,mode='r')
+    return (np.unpackbits(packed_mask)).reshape(dimensions)
 
