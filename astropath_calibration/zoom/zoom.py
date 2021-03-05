@@ -116,6 +116,12 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
               dsize=layer.T.shape,
             )
 
+            if globaly1 < 0:
+              newlocaly1 -= globaly1
+              globaly1 -= globaly1
+            if globalx1 < 0:
+              newlocalx1 -= globalx1
+              globalx1 -= globalx1
             #fill the big image with the HPF image
             bigimage[
               i,
@@ -292,6 +298,12 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
               newlocalx2 = localx2 + shiftby[0]
               newlocaly2 = localy2 + shiftby[1]
 
+              if tiley1 < 0:
+                newlocaly1 -= tiley1
+                tiley1 -= tiley1
+              if tilex1 < 0:
+                newlocalx1 -= tilex1
+                tilex1 -= tilex1
               kw = {"atol": 1e-7}
               tileimage[
                 :,

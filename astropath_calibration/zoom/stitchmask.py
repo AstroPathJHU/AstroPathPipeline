@@ -184,6 +184,12 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteM
         localx2 = np.round(localx2 / onepixel) * onepixel
         localy1 = np.round(localy1 / onepixel) * onepixel
         localy2 = np.round(localy2 / onepixel) * onepixel
+        if globaly1 < 0:
+          localy1 -= globaly1
+          globaly1 -= globaly1
+        if globalx1 < 0:
+          localx1 -= globalx1
+          globalx1 -= globalx1
         mask[
           floattoint(globaly1/onepixel):floattoint(globaly2/onepixel),
           floattoint(globalx1/onepixel):floattoint(globalx2/onepixel),
