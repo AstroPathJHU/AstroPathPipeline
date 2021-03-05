@@ -4,7 +4,7 @@ from .utilities import flatfield_logger, FlatFieldError
 from .utilities import getImageTissueMask, getImageBlurMask, getImageSaturationMasks
 from .config import CONST 
 from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots, doMaskingPlotsForImage
-from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker, smoothImageWithUncertaintyWorker, getExposureTimesByLayer
+from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, im3writeraw, smoothImageWorker, smoothImageWithUncertaintyWorker, getExposureTimesByLayer
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
 from ..utilities.config import CONST as UNIV_CONST
@@ -479,7 +479,7 @@ def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,min_pixel_frac
                 break
     if plotdir_path is not None :
         with cd(plotdir_path) :
-            writeImageToFile(image_mask.packed_tissue_mask,f'{key}_tissue_mask.bin',dtype=np.uint8)
+            im3writeraw(f'{key}_tissue_mask.bin',image_mask.packed_tissue_mask)
             if is_masked :
                 writeImageToFile(image_mask.compressed_mask,f'{key}_full_mask.bin',dtype=np.uint8)
     #return the mask (either in the shared dict or just on its own)
