@@ -240,7 +240,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     initialdy = floattoint(np.rint(firstresult.dy.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
 
     if initialdx or initialdy:
-      self.logger.warning(f"found a relative shift of around {initialdx, initialdy} pixels between the qptiff and wsi")
+      self.logger.warningglobal(f"found a relative shift of {firstresult.dx*zoomfactor, firstresult.dy*zoomfactor} pixels between the qptiff and wsi")
 
     #slice and shift the images so that they line up to within 100 pixels
     #we slice both so that they're the same size
