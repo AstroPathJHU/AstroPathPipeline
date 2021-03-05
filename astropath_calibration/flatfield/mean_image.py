@@ -458,6 +458,9 @@ def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,min_pixel_frac
     exp_times = getExposureTimesByLayer(rfp,im_array.shape[-1],rawfile_top_dir)
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(im_array,bg_thresholds)
+    if plotdir_path is not None :
+        with cd(plotdir_path) :
+            writeImageToFile(tissue_mask.astype(bool),f'{key}_tissue_mask.bin',dtype=bool)
     #next create the blur mask
     blur_mask,blur_mask_plots = getImageBlurMask(im_array,exp_times,tissue_mask,exp_time_hists,make_plots)
     #finally create masks for the saturated regions in each layer group
@@ -477,9 +480,9 @@ def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,min_pixel_frac
             if np.min(lgsm)<1 :
                 is_masked=True
                 break
-    if is_masked :
+    if is_masked and plotdir_path is not None :
         with cd(plotdir_path) :
-            writeImageToFile(image_mask.compressed_mask,f'{key}_mask.bin',dtype=np.uint8)
+            writeImageToFile(image_mask.compressed_mask,f'{key}_full_mask.bin',dtype=np.uint8)
     #return the mask (either in the shared dict or just on its own)
     if i is not None and return_dict is not None :
         return_dict[i] = image_mask
