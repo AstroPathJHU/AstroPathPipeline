@@ -352,14 +352,14 @@ COPY --from=gdal  /build_gdal_python/usr/ /usr/
 COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
-ENV ASTROPATH_DEPENDENCY_COMMIT 5fbeea2e78cda3072ce5a8ec26a25d4f8b68c11d
+ENV ASTROPATH_DEPENDENCY_COMMIT aec67cf5f9eb50b41fd454fb79ce5eeb825a1417
 ARG GITHUB_TOKEN
 
 #add python packages
 RUN sudo pip install --upgrade pip
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
-  sudo pip install "astropath-calibration[test] @ git+https://github.com/AstropathJHU/microscopealignment@${ASTROPATH_DEPENDENCY_COMMIT}" && \
+  sudo pip install "astropath-calibration[test,gdal,vips] @ git+https://github.com/AstropathJHU/microscopealignment@${ASTROPATH_DEPENDENCY_COMMIT}" && \
   sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
 RUN sudo pip uninstall -y astropath-calibration
 
