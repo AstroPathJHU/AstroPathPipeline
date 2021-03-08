@@ -220,10 +220,11 @@ class _OgrImport:
   def __getattr__(self, attr):
     global ogr
     try:
-      import ogr
+      from osgeo import ogr
     except ImportError:
       raise ValueError("Please pip install gdal to use this feature")
-    except:
+    else:
+      ogr.UseExceptions()
       return getattr(ogr, attr)
 
 ogr = _OgrImport()
