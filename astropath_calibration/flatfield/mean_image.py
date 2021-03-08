@@ -1,5 +1,4 @@
 #imports
-from .image_mask import ImageMask
 from .utilities import flatfield_logger, FlatFieldError
 from .utilities import getImageMaskWorker
 from .config import CONST 
