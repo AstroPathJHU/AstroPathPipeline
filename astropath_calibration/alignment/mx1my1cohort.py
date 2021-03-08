@@ -1,9 +1,5 @@
-import numpy as np, pathlib
-
 from ..baseclasses.sample import ReadRectanglesDbloadIm3
 from ..baseclasses.cohort import DbloadCohort, Im3Cohort
-from ..utilities import units
-from .alignmentset import AlignmentSet
 from .field import FieldReadIm3
 
 class Mx1My1Sample(ReadRectanglesDbloadIm3):
