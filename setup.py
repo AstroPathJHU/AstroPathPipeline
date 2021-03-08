@@ -1,4 +1,6 @@
-import setuptools
+import setuptools, site
+
+site.ENABLE_USER_SITE = True #https://www.scivision.dev/python-pip-devel-user-install/
 
 setuptools.setup(
   name = "astropath-calibration",
@@ -29,7 +31,6 @@ setuptools.setup(
     "cvxpy",
     "dataclassy @ git+git://github.com/hroskes/dataclassy@262fdeff62fd401f2da83bfadafdb1a22fa16448#egg=dataclassy",
     "imagecodecs",
-    "gdal>=3.2.1",
     "jxmlease>=1.0.2dev1",
     "matplotlib>=3.3.2",
     "methodtools",
@@ -50,5 +51,6 @@ setuptools.setup(
   ],
   extras_require = {
     "test": ["flake8", "pyflakes", "texoutparse"],
+    "gdal": ["gdal>=3.2.1"],
   }
 )

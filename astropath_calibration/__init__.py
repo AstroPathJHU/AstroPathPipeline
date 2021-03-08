@@ -1,2 +1,6 @@
-from osgeo import ogr
-ogr.UseExceptions()
+try:
+  from osgeo import ogr
+except ImportError:
+  pass
+else:
+  ogr.UseExceptions()
