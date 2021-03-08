@@ -425,10 +425,12 @@ def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
             blur_flagged = 1 if CONST.BLUR_FLAG_STRING in key_strings else 0
             saturation_flagged = 1 if CONST.SATURATION_FLAG_STRING in key_strings else 0
             flagged_int = 1*blur_flagged+2*saturation_flagged
-        elif rfp in rfps_added :
-            flagged_int = 0
         else :
-            flagged_int = 4
+            flagged_int = 0
+        #elif rfp in rfps_added :
+        #    flagged_int = 0
+        #else :
+        #    flagged_int = 4
         hpf_identifiers.append({'x':key_x,'y':key_y,'flagged':flagged_int})
     colors_by_flag_int = ['gray','royalblue','gold','limegreen','black']
     labels_by_flag_int = ['not flagged','blur flagged','saturation flagged','blur and saturation','not read/stacked']

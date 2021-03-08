@@ -316,6 +316,12 @@ class MeanImage :
             with cd(os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)) :
                 writetable(self.LABELLED_MASK_REGIONS_CSV_FILE_NAME,self._labelled_mask_regions)
 
+    def addLMRs(self,lmrs_to_add) :
+        """
+        add a list of Labelled Mask Region objects to this mean image's list
+        """
+        self._labelled_mask_regions+=lmrs_to_add
+
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to create and return the mean image from the image (and mask, if applicable, stack)
