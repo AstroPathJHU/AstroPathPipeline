@@ -1,5 +1,5 @@
 import dataclassy, numpy as np
-from ..baseclasses.rectangle import Rectangle, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer
+from ..baseclasses.rectangle import Rectangle, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from ..baseclasses.overlap import Overlap
 from ..utilities import units
 from ..utilities.units.dataclasses import distancefield
@@ -82,4 +82,10 @@ class FieldReadComponentTiff(Field, RectangleReadComponentTiff):
   pass
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
+  pass
+
+class FieldReadIm3(Field, RectangleReadIm3):
+  pass
+
+class FieldReadIm3MultiLayer(Field, RectangleReadIm3MultiLayer):
   pass
