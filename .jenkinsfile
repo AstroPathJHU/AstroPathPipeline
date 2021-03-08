@@ -24,7 +24,7 @@ pipeline {
     stage('pip install') {
       steps {
         sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags "$url"'
-        sh 'pip install .[test,gdal]'
+        sh 'pip install .[test,gdal,vips]'
         sh '''echo "from astropath_calibration.utilities.version import astropathversion; print(astropathversion); assert astropathversion != 'unknown version'" | python'''
         sh '''cd ..; echo "from astropath_calibration.utilities.version import astropathversion; print(astropathversion); assert astropathversion != 'unknown version'" | python'''
       }

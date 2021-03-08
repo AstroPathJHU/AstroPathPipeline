@@ -40,7 +40,6 @@ setuptools.setup(
     "numpy>=1.17.0",
     "opencv-python",
     "pyopencl",
-    "pyvips",
     "reikna",
     "seaborn",
     "scikit-image",
@@ -52,5 +51,6 @@ setuptools.setup(
   extras_require = {
     "test": ["flake8", "pyflakes", "texoutparse"],
     "gdal": ["gdal>=3.2.1"],
+    "vips": ["pyvips"],
   }
 )
