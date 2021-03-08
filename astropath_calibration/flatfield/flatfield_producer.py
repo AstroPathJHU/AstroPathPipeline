@@ -171,7 +171,7 @@ class FlatfieldProducer :
             if not allow_edge_HPFs :
                 self.__writeLog(f'Neglecting {len(this_slide_edge_HPF_filepaths)} files on the edge of the tissue','info',sn,slide.root_dir)
                 #run just the masking for the tissue edge files
-                self.__writeLog(f'Running masking routines for tissue edge images...','info',sn,slide.root_dir)
+                self.__writeLog('Running masking routines for tissue edge images','info',sn,slide.root_dir)
                 tissue_edge_fileread_chunks = chunkListOfFilepaths(this_slide_edge_HPF_filepaths,slide.img_dims,slide.root_dir,n_threads)
                 for fr_chunk in tissue_edge_fileread_chunks :
                     im_arrays = readImagesMT(fr_chunk,

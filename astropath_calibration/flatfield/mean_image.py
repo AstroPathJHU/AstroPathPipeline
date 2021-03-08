@@ -2,8 +2,8 @@
 from .utilities import flatfield_logger, FlatFieldError
 from .utilities import getImageMaskWorker
 from .config import CONST 
-from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots, doMaskingPlotsForImage
-from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, im3writeraw, smoothImageWorker, smoothImageWithUncertaintyWorker
+from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots
+from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker, smoothImageWithUncertaintyWorker
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
 from ..utilities.config import CONST as UNIV_CONST
