@@ -1,6 +1,6 @@
 #imports
+from .image_mask import getImageMaskWorker
 from .utilities import flatfield_logger, FlatFieldError
-from .utilities import getImageMaskWorker
 from .config import CONST 
 from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots
 from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker, smoothImageWithUncertaintyWorker

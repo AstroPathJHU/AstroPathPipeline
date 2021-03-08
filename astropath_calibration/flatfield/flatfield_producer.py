@@ -1,9 +1,10 @@
 #imports
 from .flatfield_slide import FlatfieldSlide 
 from .mean_image import MeanImage
+from .image_mask import getImageMaskWorker
 from .latex_summary import LatexSummary
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, slideNameFromFilepath, FieldLog
-from .utilities import getSlideMeanImageFilepath, getSlideImageSquaredFilepath, getSlideMaskStackFilepath, getImageMaskWorker
+from .utilities import getSlideMeanImageFilepath, getSlideImageSquaredFilepath, getSlideMaskStackFilepath
 from .config import CONST
 from ..alignment.alignmentset import AlignmentSetFromXML
 from ..utilities.img_file_io import LayerOffset
