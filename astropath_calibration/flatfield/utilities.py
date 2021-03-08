@@ -1,6 +1,6 @@
 from .config import CONST
 from ..utilities.dataclasses import MyDataClass
-from ..utilities.img_file_io import getRawAsHWL, smoothImageWorker
+from ..utilities.img_file_io import getRawAsHWL, smoothImageWorker, getExposureTimesByLayer
 from ..utilities.img_correction import correctImageForExposureTime
 from ..utilities.config import CONST as UNIV_CONST
 from concurrent.futures import ThreadPoolExecutor
