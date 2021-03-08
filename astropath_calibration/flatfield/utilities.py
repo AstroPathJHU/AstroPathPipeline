@@ -595,6 +595,43 @@ def getImageSaturationMasks(image_arr,norm_ets) :
         layer_group_saturation_masks.append(group_mask)
     return layer_group_saturation_masks
 
+#helper function to create a layered binary image mask for a given image array
+#this can be run in parallel with a given index and return dict
+def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,exp_time_hists,norm_ets,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
+    #need the exposure times for this image
+    exp_times = getExposureTimesByLayer(rfp,im_array.shape[-1],rawfile_top_dir)
+    #start by creating the tissue mask
+    tissue_mask = getImageTissueMask(im_array,bg_thresholds)
+    #next create the blur mask
+    blur_mask,blur_mask_plots = getImageBlurMask(im_array,exp_times,tissue_mask,exp_time_hists,make_plots)
+    #finally create masks for the saturated regions in each layer group
+    layer_group_saturation_masks = getImageSaturationMasks(im_array,norm_ets if norm_ets is not None else exp_times)
+    #make the image_mask object 
+    key = (os.path.basename(rfp)).rstrip(UNIV_CONST.RAW_EXT)
+    image_mask = ImageMask(key)
+    image_mask.addCreatedMasks(tissue_mask,blur_mask,layer_group_saturation_masks)
+    #make the plots for this image if requested
+    if make_plots :
+        flatfield_logger.info(f'Saving masking plots for image {i}')
+        doMaskingPlotsForImage(key,tissue_mask,blur_mask_plots,image_mask.compressed_mask,plotdir_path)
+    #if there is anything flagged in the final blur and saturation masks, write out the compressed mask
+    is_masked = np.min(blur_mask)<1
+    if not is_masked :
+        for lgsm in layer_group_saturation_masks :
+            if np.min(lgsm)<1 :
+                is_masked=True
+                break
+    if plotdir_path is not None :
+        with cd(plotdir_path) :
+            im3writeraw(f'{key}_tissue_mask.bin',image_mask.packed_tissue_mask)
+            if is_masked :
+                writeImageToFile(image_mask.compressed_mask,f'{key}_full_mask.bin',dtype=np.uint8)
+    #return the mask (either in the shared dict or just on its own)
+    if i is not None and return_dict is not None :
+        return_dict[i] = image_mask
+    else :
+        return image_mask
+
 #################### USEFUL PLOTTING FUNCTION ####################
 
 def drawThresholds(img_array, *, layer_index=0, emphasize_mask=None, show_regions=False, saveas=None, plotstyling = lambda fig, ax: None):
