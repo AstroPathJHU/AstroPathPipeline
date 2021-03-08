@@ -175,6 +175,8 @@ class FlatfieldProducer :
                 self.__writeLog('Running masking routines for tissue edge images','info',sn,slide.root_dir)
                 tissue_edge_fileread_chunks = chunkListOfFilepaths(this_slide_edge_HPF_filepaths,slide.img_dims,slide.root_dir,n_threads)
                 for fr_chunk in tissue_edge_fileread_chunks :
+                    if len(fr_chunk)<1 :
+                        continue
                     im_arrays = readImagesMT(fr_chunk,
                                              med_exposure_times_by_layer=slide.med_exp_times_by_layer if (not self.mean_image.skip_et_correction) else None,
                                              et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
