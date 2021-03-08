@@ -2,7 +2,7 @@ import setuptools, site
 
 site.ENABLE_USER_SITE = True #https://www.scivision.dev/python-pip-devel-user-install/
 
-setuptools.setup(
+setupkwargs = dict(
   name = "astropath-calibration",
   packages = setuptools.find_packages(include=["astropath_calibration*"]),
   entry_points = {
@@ -54,3 +54,7 @@ setuptools.setup(
     "vips": ["pyvips"],
   }
 )
+
+setupkwargs["extras_require"]["all"] = sum(setupkwargs["extras_require"].values(), [])
+
+setuptools.setup(**setupkwargs)
