@@ -41,16 +41,33 @@ class Field(Rectangle):
       **kwargs,
     )
 
-  def __post_init__(self, *args, **kwargs):
-    super().__post_init__(*args, **kwargs)
-
-    nominal = [self.px, self.py]
-    covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
-    self.pxvec = np.array(units.correlated_distances(distances=nominal, covariance=covariance))
-
   @property
   def _imshowextent(self):
     return [self.px, self.px+self.w, self.py+self.h, self.py]
+
+  @property
+  def pxvec(self):
+    nominal = [self.px, self.py]
+    covariance = [[self.cov_x_x, self.cov_x_y], [self.cov_x_y, self.cov_y_y]]
+    return np.array(units.correlated_distances(distances=nominal, covariance=covariance))
+  @pxvec.setter
+  def pxvec(self, pxvec):
+    self.px, self.py = units.nominal_values(pxvec)
+    ((self.cov_x_x, self.cov_x_y), (self.cov_x_y, self.cov_y_y)) = units.covariance_matrix(pxvec)
+
+  @property
+  def primaryregionx(self):
+    return np.array([self.mx1, self.mx2])
+  @primaryregionx.setter
+  def primaryregionx(self, primaryregionx):
+    self.mx1, self.mx2 = primaryregionx
+
+  @property
+  def primaryregiony(self):
+    return np.array([self.my1, self.my2])
+  @primaryregiony.setter
+  def primaryregiony(self, primaryregiony):
+    self.my1, self.my2 = primaryregiony
 
 class FieldOverlap(Overlap):
   __pixelsormicrons = "pixels"
