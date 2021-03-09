@@ -10,6 +10,7 @@ setupkwargs = dict(
       "alignmentcohort=astropath_calibration.alignment.alignmentcohort:main",
       "annowarpcohort=astropath_calibration.annowarp.annowarpcohort:main",
       "annowarpfailedfitswithconstraint=astropath_calibration.annowarp.annowarpfailedfitswithconstraint:main",
+      "compareprepdbcohort=astropath_calibration.prepdb.compareprepdbcohort:main",
       "deepzoomcohort=astropath_calibration.deepzoom.deepzoomcohort:main",
       "evaluate_exposure_time=astropath_calibration.exposuretime.evaluate_exposure_time:main",
       "extractlayer=astropath_calibration.extractlayer.extractlayer:main",
