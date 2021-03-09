@@ -33,10 +33,13 @@ class DeepZoomSample(ReadRectanglesDbloadComponentTiff, DbloadSampleBase, ZoomFo
 
   def deepzoom_vips(self, layer):
     """
-    Use vips to create the image pyramid.  This is out of the box
+    Use vips to create the image pyramid.  This is an out of the box
     functionality of vips.
     """
-    import pyvips
+    try:
+      import pyvips
+    except ImportError:
+      raise ImportError("Please pip install pyvips to use this functionality")
     self.logger.info("running vips for layer %d", layer)
     filename = self.wsifilename(layer)
 

@@ -1,6 +1,8 @@
-import setuptools
+import setuptools, site
 
-setuptools.setup(
+site.ENABLE_USER_SITE = True #https://www.scivision.dev/python-pip-devel-user-install/
+
+setupkwargs = dict(
   name = "astropath-calibration",
   packages = setuptools.find_packages(include=["astropath_calibration*"]),
   entry_points = {
@@ -29,7 +31,6 @@ setuptools.setup(
     "cvxpy",
     "dataclassy @ git+git://github.com/hroskes/dataclassy@262fdeff62fd401f2da83bfadafdb1a22fa16448#egg=dataclassy",
     "imagecodecs",
-    "gdal>=3.2.1",
     "jxmlease>=1.0.2dev1",
     "matplotlib>=3.3.2",
     "methodtools",
@@ -39,7 +40,6 @@ setuptools.setup(
     "numpy>=1.17.0",
     "opencv-python",
     "pyopencl",
-    "pyvips",
     "reikna",
     "seaborn",
     "scikit-image",
@@ -50,5 +50,11 @@ setuptools.setup(
   ],
   extras_require = {
     "test": ["flake8", "pyflakes", "texoutparse"],
+    "gdal": ["gdal>=3.2.1"],
+    "vips": ["pyvips"],
   }
 )
+
+setupkwargs["extras_require"]["all"] = sum(setupkwargs["extras_require"].values(), [])
+
+setuptools.setup(**setupkwargs)

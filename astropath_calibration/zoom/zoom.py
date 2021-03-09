@@ -334,7 +334,10 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
     """
     Call vips to assemble the big images into the wsi
     """
-    import pyvips
+    try:
+      import pyvips
+    except ImportError:
+      raise ImportError("Please pip install pyvips to use this functionality")
 
     self.wsifolder.mkdir(parents=True, exist_ok=True)
     for layer in self.layers:

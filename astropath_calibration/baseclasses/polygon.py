@@ -1,5 +1,4 @@
 import dataclassy, itertools, matplotlib.patches, more_itertools, numbers, numpy as np, skimage.draw
-from osgeo import ogr
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithPscale
@@ -216,3 +215,16 @@ def polygonfield(**metadata):
     **metadata,
   }
   return MetaDataAnnotation(Polygon, **metadata)
+
+class _OgrImport:
+  def __getattr__(self, attr):
+    global ogr
+    try:
+      from osgeo import ogr
+    except ImportError:
+      raise ValueError("Please pip install gdal to use this feature")
+    else:
+      ogr.UseExceptions()
+      return getattr(ogr, attr)
+
+ogr = _OgrImport()
