@@ -46,7 +46,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
         color = f"{int(node.get_xml_attr('LineColor')):06X}"
         color = color[4:6] + color[2:4] + color[0:2]
         visible = node.get_xml_attr("Visible").lower() == "true"
-        name = node.get_xml_attr("Name")
+        name = node.get_xml_attr("Name").lower()
         annotations.append(
           Annotation(
             color=color,

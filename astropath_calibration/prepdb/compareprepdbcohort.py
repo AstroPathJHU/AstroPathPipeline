@@ -61,6 +61,10 @@ class ComparePrepdbCohort(PrepdbCohort):
               target.t += datetime.timedelta(hours=4)
               if abs(row.t - target.t) <= datetime.timedelta(seconds=1): target.t = row.t
             if cls is Region: target.poly = None
+            if cls is Annotation:
+              target.name = target.name.lower()
+            if cls is Batch:
+              target.SampleID = sample.SampleID
             assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
       except:
         raise ValueError(f"Error in {filename}")
