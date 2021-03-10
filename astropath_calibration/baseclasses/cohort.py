@@ -385,8 +385,9 @@ class PrintErrorsCohort(Cohort):
     def logmodule(self): return self.__module
   sampleclass = PrintErrorsSample
 
-  def __init__(self, *args, module, uselogfiles=False, **kwargs):
+  def __init__(self, *args, module, ignore_errors=(), uselogfiles=False, **kwargs):
     self.__module = module
+    self.__ignore_errors = ignore_errors
     super().__init__(*args, uselogfiles=False, **kwargs)
   @property
   def initiatesamplekwargs(self):
@@ -419,8 +420,11 @@ class PrintErrorsCohort(Cohort):
     if not nstarted:
       print(f"{sample.SlideID} did not run")
     elif error is not None:
-      print(f"{sample.SlideID} gave an error:")
-      print(error)
+      if any(ignore.search(error) for ignore in self.__ignore_errors):
+        pass
+      else:
+        print(f"{sample.SlideID} gave an error:")
+        print(error)
     elif not ended:
       print(f"{sample.SlideID} started, but did not end")
 
@@ -431,6 +435,7 @@ class PrintErrorsCohort(Cohort):
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     p.add_argument("--module", help="the module to examine the logs for", required=True)
+    p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="ignore any errors that match this regex")
     return p
 
   @classmethod
@@ -438,6 +443,7 @@ class PrintErrorsCohort(Cohort):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "module": parsed_args_dict.pop("module"),
+      "ignore_errors": parsed_args_dict.pop("ignore_errors"),
     }
 
 def printerrorscohort(args=None):
