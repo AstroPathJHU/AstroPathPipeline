@@ -31,9 +31,9 @@ class ComparePrepdbCohort(PrepdbCohort):
       ("batch", Batch, {}),
       ("constants", Constant, {"pscale": sample.pscale, "apscale": sample.apscale, "qpscale": sample.qpscale, "readingfromfile": True}),
       ("globals", ROIGlobals, {"pscale": sample.pscale}),
+      ("rect", Rectangle, {"pscale": sample.pscale}),
       ("overlap", Overlap, {"pscale": sample.pscale, "nclip": sample.nclip, "rectangles": sample.rectangles}),
       ("qptiff", QPTiffCsv, {"pscale": sample.pscale}),
-      ("rect", Rectangle, {"pscale": sample.pscale}),
       ("vertices", Vertex, {"apscale": sample.apscale}),
       ("regions", Region, {"apscale": sample.apscale, "pscale": sample.pscale}),
     ):
@@ -53,13 +53,16 @@ class ComparePrepdbCohort(PrepdbCohort):
                 newf.write(line)
               else:
                 reffilename = tempfilename
-          rows = readtable(filename, cls, extrakwargs=extrakwargs, checkorder=True)
-          targetrows = readtable(reffilename, cls, extrakwargs=extrakwargs, checkorder=True)
+          rows = readtable(filename, cls, extrakwargs=extrakwargs, checkorder=True, fieldsizelimit=int(1e6))
+          targetrows = readtable(reffilename, cls, extrakwargs=extrakwargs, checkorder=True, fieldsizelimit=int(1e6))
           for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
             if cls is Constant and row.name == "flayers" and target.unit == "pixels": target.unit = ""
             if cls is Rectangle:
-              target.t += datetime.timedelta(hours=4)
-              if abs(row.t - target.t) <= datetime.timedelta(seconds=1): target.t = row.t
+              if datetime.datetime(2018, 3, 11, 2) <= target.t <= datetime.datetime(2018, 11, 4, 2):
+                target.t += datetime.timedelta(hours=4)
+              else:
+                target.t += datetime.timedelta(hours=5)
+              if abs(row.t - target.t) <= datetime.timedelta(minutes=1): target.t = row.t
             if cls is Region: target.poly = None
             if cls is Annotation:
               target.name = target.name.lower()
