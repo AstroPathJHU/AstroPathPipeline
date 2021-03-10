@@ -108,8 +108,8 @@ class MyLogger:
     else:
       if not record.msg.startswith(levelname+": "):
         record.msg = f"{levelname}: {record.msg}"
-    if ";" in record.msg:
-      raise ValueError("log messages aren't supposed to have semicolons:\n\n"+record.msg)
+    if ";" in record.msg or "\n" in record.msg:
+      raise ValueError("log messages aren't supposed to have semicolons or newlines:\n\n"+record.msg)
     return True
 
   def __exit__(self, exc_type, exc_value, exc_traceback):

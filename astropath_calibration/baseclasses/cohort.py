@@ -1,8 +1,8 @@
-import abc, argparse, pathlib, re
+import abc, argparse, contextlib, csv, more_itertools, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable
 from .logging import getlogger
-from .sample import SampleDef
+from .sample import SampleBase, SampleDef
 
 class Cohort(abc.ABC):
   """
@@ -372,3 +372,73 @@ class TempDirCohort(Cohort):
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "temproot": parsed_args_dict.pop("temproot"),
     }
+
+class PrintErrorsCohort(Cohort):
+  """
+  Go through a cohort's logs and print all the error messages.
+  """
+  class PrintErrorsSample(SampleBase):
+    def __init__(self, *args, module, **kwargs):
+      self.__module = module
+      super().__init__(*args, **kwargs)
+    @property
+    def logmodule(self): return self.__module
+  sampleclass = PrintErrorsSample
+
+  def __init__(self, *args, module, uselogfiles=False, **kwargs):
+    self.__module = module
+    super().__init__(*args, uselogfiles=False, **kwargs)
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
+      "module": self.__module,
+    }
+  def runsample(self, sample):
+    nstarted = 0
+    with contextlib.ExitStack() as stack:
+      try:
+        f = stack.enter_context(open(sample.logger.samplelog))
+      except IOError:
+        print(sample.logger.samplelog)
+      else:
+        reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
+        for row in reader:
+          if re.match(rf"{self.__module} v[0-9a-f.devgd+]+", row["message"]):
+            nstarted += 1
+            error = None
+            ended = False
+          elif row["message"].startswith("ERROR:"):
+            error = reader.peek(default={"message": ""})["message"]
+            if error[0] == "[" and error[-1] == "]":
+              error = "".join(eval(error))
+            else:
+              error = row["message"]
+          elif row["message"] == f"end {self.__module}":
+            ended = True
+    if not nstarted:
+      print(f"{sample.SlideID} did not run")
+    elif error is not None:
+      print(f"{sample.SlideID} gave an error:")
+      print(error)
+    elif not ended:
+      print(f"{sample.SlideID} started, but did not end")
+
+  @property
+  def logmodule(self): return self.__module
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--module", help="the module to examine the logs for", required=True)
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "module": parsed_args_dict.pop("module"),
+    }
+
+def printerrorscohort(args=None):
+  PrintErrorsCohort.runfromargumentparser(args=args)

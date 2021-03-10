@@ -18,6 +18,7 @@ setupkwargs = dict(
       "find_slide_overexposed_hpfs=astropath_calibration.overexposed_hpfs.find_slide_overexposed_hpfs:main",
       "prepdbcohort=astropath_calibration.prepdb.prepdbcohort:main",
       "prepdbsample=astropath_calibration.prepdb.prepdbsample:main",
+      "printerrorscohort=astropath_calibration.baseclasses.cohort:printerrorscohort",
       "run_exposure_time_fits=astropath_calibration.exposuretime.run_exposure_time_fits:main",
       "run_flatfield=astropath_calibration.flatfield.run_flatfield:main",
       "run_image_correction=astropath_calibration.image_correction.run_image_correction:main",
