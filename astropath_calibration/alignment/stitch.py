@@ -466,7 +466,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           ):
             raise ValueError(f"Primary regions for fields {rid1} and {rid2} still overlap")
 
-    minpxvec = [float("inf"), float("inf")]
+    minpxvec = [np.inf * onepixel, np.inf * onepixel]
     for rectangle in self.rectangles:
       for gc, island in enumerate(islands, start=1):
         if rectangle.n in island:
