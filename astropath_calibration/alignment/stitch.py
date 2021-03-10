@@ -466,6 +466,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           ):
             raise ValueError(f"Primary regions for fields {rid1} and {rid2} still overlap")
 
+    minpxvec = [np.inf * onepixel, np.inf * onepixel]
     for rectangle in self.rectangles:
       for gc, island in enumerate(islands, start=1):
         if rectangle.n in island:
@@ -474,18 +475,31 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         assert False
       gx = gxdict[gc][rectangle.cx]
       gy = gydict[gc][rectangle.cy]
+      pxvec = self.x(rectangle) - self.origin
+      minpxvec = np.min([minpxvec, units.nominal_values(pxvec)], axis=0)
       result.append(
         Field(
           rectangle=rectangle,
           ixvec=floattoint(np.round((rectangle.xvec / onepixel).astype(float))) * onepixel,
           gc=0 if len(island) == 1 else gc,
-          pxvec=self.x(rectangle) - self.origin,
+          pxvec=pxvec,
           gxvec=(gx, gy),
           primaryregionx=np.array([mx1[rectangle.n], mx2[rectangle.n]]) - self.origin[0],
           primaryregiony=np.array([my1[rectangle.n], my2[rectangle.n]]) - self.origin[1],
           readingfromfile=False,
         )
       )
+
+    minx, miny = np.floor(minpxvec/(100*onepixel))*100*onepixel
+    if minx > 0: minx = 0
+    if miny > 0: miny = 0
+    if minx or miny:
+      self.__logger.warningglobal(f"Some HPFs have (x, y) < (xposition, yposition), shifting the whole slide by {-minx, -miny}")
+      for f in result:
+        f.pxvec -= (minx, miny)
+        f.primaryregionx -= minx
+        f.primaryregiony -= miny
+
     return result
 
   @property
