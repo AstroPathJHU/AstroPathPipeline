@@ -937,6 +937,7 @@ class XMLLayoutReader(SampleBase):
     rectangles, globals, perimeters, microscopename = self.getXMLplan()
     self.fixM2(rectangles)
     self.fixrectanglefilenames(rectangles)
+    self.fixduplicaterectangles(rectangles)
     rectanglefiles = self.getdir()
     maxtimediff = datetime.timedelta(0)
     for r in rectangles:
@@ -986,6 +987,25 @@ class XMLLayoutReader(SampleBase):
       if expected != actual:
         self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
       r.file = expected
+
+  def fixduplicaterectangles(self, rectangles):
+    """
+    Remove duplicate rectangles from the list
+    """
+    seen = set()
+    for r in rectangles[:]:
+      if tuple(r.cxvec) in seen: continue
+      seen.add(tuple(r.cxvec))
+      duplicates = [r2 for r2 in rectangles if r2 is not r and np.all(r2.cxvec == r.cxvec)]
+      if not duplicates: continue
+      for r2 in duplicates:
+        if r2.file != r.file:
+          raise ValueError(f"Multiple rectangles at {r.cxvec} with different filenames {', '.join(r3.file for r3 in [r]+duplicates)}")
+      self.logger.warningglobal(f"annotations.xml has the rectangle at {r.cxvec} with filename {r.file} {len(duplicates)+1} times")
+      for r2 in [r]+duplicates[:-1]:
+        rectangles.remove(r2)
+    for i, rectangle in enumerate(rectangles, start=1):
+      rectangle.n = i
 
   @methodtools.lru_cache()
   def getdir(self):
