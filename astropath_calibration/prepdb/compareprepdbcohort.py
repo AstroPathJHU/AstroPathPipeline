@@ -68,6 +68,16 @@ class ComparePrepdbCohort(PrepdbCohort):
               target.name = target.name.lower()
             if cls is Batch:
               target.SampleID = sample.SampleID
+            if cls is Overlap:
+              if row.tag != target.tag and row.tag % 2 == 1 and target.tag % 2 == 0:
+                if row.x1 < row.x2 and row.y1 < row.y2:
+                  target.tag = 1
+                elif row.x1 > row.x2 and row.y1 < row.y2:
+                  target.tag = 3
+                elif row.x1 < row.x2 and row.y1 > row.y2:
+                  target.tag = 7
+                elif row.x1 > row.x2 and row.y1 > row.y2:
+                  target.tag = 9
             assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
       except:
         raise ValueError(f"Error in {filename}")
