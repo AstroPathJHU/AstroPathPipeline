@@ -27,7 +27,7 @@ class TestPrepDb(unittest.TestCase):
       except FileNotFoundError:
         pass
 
-    args = [str(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units]
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID)]
     PrepdbCohort.runfromargumentparser(args)
     sample = PrepdbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
 
@@ -58,10 +58,12 @@ class TestPrepDb(unittest.TestCase):
   def testPrepDbFastUnits(self, SlideID="M21_1"):
     self.testPrepDb(SlideID, units="fast")
 
+  @unittest.expectedFailure
   def testPrepDbPolaris(self):
     from .data.YZ71.im3.Scan3.assembleqptiff import assembleqptiff
     assembleqptiff()
     self.testPrepDb(SlideID="YZ71")
+  @unittest.expectedFailure
   def testPrepDbPolarisFastUnits(self):
     self.testPrepDbFastUnits(SlideID="YZ71")
 

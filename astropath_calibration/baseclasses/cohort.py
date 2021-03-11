@@ -16,7 +16,7 @@ class Cohort(abc.ABC):
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, root, *, filters=[], debug=False, uselogfiles=True, logroot=None):
+  def __init__(self, root, *, filters=[], debug=False, uselogfiles=True, logroot=None, xmlfolders=[]):
     super().__init__()
     self.root = pathlib.Path(root)
     if logroot is None: logroot = root
@@ -24,6 +24,7 @@ class Cohort(abc.ABC):
     self.filters = filters
     self.debug = debug
     self.uselogfiles = uselogfiles
+    self.xmlfolders = xmlfolders
 
   def filter(self, samp):
     """
@@ -58,7 +59,7 @@ class Cohort(abc.ABC):
   @property
   def initiatesamplekwargs(self):
     "Keyword arguments to pass to the sample class"
-    return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot}
+    return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "xmlfolders": self.xmlfolders}
 
   @property
   @abc.abstractmethod
@@ -109,6 +110,7 @@ class Cohort(abc.ABC):
     g = p.add_mutually_exclusive_group()
     g.add_argument("--logroot", type=pathlib.Path, help="root location where the log files are stored (default: same as root)")
     g.add_argument("--no-log", action="store_true", help="do not write to log files")
+    p.add_argument("--xmlfolder", type=pathlib.Path, action="append", help="additional folders to look for xml metadata", default=[], dest="xmlfolders")
     return p
 
   @classmethod
@@ -123,6 +125,7 @@ class Cohort(abc.ABC):
       "debug": dct.pop("debug"),
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
+      "xmlfolders": dct.pop("xmlfolders"),
       "filters": [],
     }
     if kwargs["logroot"] is None: kwargs["logroot"] = kwargs["root"]
