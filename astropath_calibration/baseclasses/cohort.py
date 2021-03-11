@@ -401,7 +401,7 @@ class PrintErrorsCohort(Cohort):
       try:
         f = stack.enter_context(open(sample.logger.samplelog))
       except IOError:
-        print(sample.logger.samplelog)
+        pass
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
