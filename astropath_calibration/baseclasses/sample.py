@@ -451,11 +451,16 @@ class WorkflowSample(SampleBase):
     the sample ran successfully or not, and information about
     the failure, if any.
     """
-    return SampleRunStatus.fromlog(self.logger.samplelog, self.logmodule, self.expectedoutputfiles)
+    return SampleRunStatus.fromlog(self.logger.samplelog, self.logmodule, self.missingoutputfiles)
 
   @property
+  @abc.abstractmethod
   def expectedoutputfiles(self):
     return []
+
+  @property
+  def missingoutputfiles(self):
+    return [_ for _ in expectedoutputfiles if not _.exists()]
 
 class DbloadSampleBase(SampleBase):
   """
@@ -1169,7 +1174,7 @@ class SampleRunStatus:
     return self.previousrun.nruns + 1
 
   @classmethod
-  def fromlog(cls, samplelog, module, expectedoutputfiles=[]):
+  def fromlog(cls, samplelog, module, missingfiles=[]):
     """
     Create a SampleRunStatus object by reading the log file.
     samplelog: from CohortFolder/SlideID/logfiles/SlideID-module.log
@@ -1178,7 +1183,6 @@ class SampleRunStatus:
     """
     result = None
     started = False
-    missingfiles = [f for f in expectedoutputfiles if not f.exists()]
     with contextlib.ExitStack() as stack:
       try:
         f = stack.enter_context(open(samplelog))

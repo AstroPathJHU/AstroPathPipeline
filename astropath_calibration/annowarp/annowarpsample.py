@@ -6,7 +6,7 @@ from ..alignment.overlap import AlignmentComparison
 from ..baseclasses.csvclasses import Region, Vertex
 from ..baseclasses.polygon import Polygon
 from ..baseclasses.qptiff import QPTiff
-from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, ZoomFolderSampleBase
+from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ..zoom.stitchmask import InformMaskSample, TissueMaskSample
 from ..zoom.zoom import ZoomSampleBase
 from ..utilities import units
@@ -16,7 +16,7 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
-class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, units.ThingWithImscale):
+class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample, units.ThingWithImscale):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -784,6 +784,31 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     self.writestitchresult()
     self.writevertices()
     self.writeregions()
+
+  @property
+  def expectedoutputfiles(self):
+    return [
+      self.alignmentcsv,
+      self.stitchcsv,
+      self.newverticescsv,
+      self.newregionscsv,
+    ]
+
+  @property
+  def missingoutputfiles(self):
+    result = super().missingoutputfiles
+    if self.newverticescsv not in result:
+      with open(self.newverticescsv) as f:
+        reader = csv.DictReader(f)
+        if "wx" not in reader.fieldnames or "wy" not in reader.fieldnames:
+          result.append(self.newverticescsv)
+    if self.newregionscsv not in result:
+      regions = readtable(self.newregionscsv, Region, extrakwargs={"apscale": apscale, "pscale": self.pscale}, maxrows=1)
+      if regions:
+        region, = regions
+        if region.poly is None:
+          result.append(newregionscsv)
+    return result
 
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
   """
