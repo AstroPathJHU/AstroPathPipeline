@@ -75,7 +75,10 @@ class Cohort(abc.ABC):
         if sample.logmodule != self.logmodule:
           raise ValueError(f"Wrong logmodule: {self.logmodule} != {sample.logmodule}")
         with sample:
-          self.runsample(sample, **kwargs)
+          self.processsample(sample, **kwargs)
+
+  def processsample(self, sample, **kwargs):
+    return self.runsample(sample, **kwargs)
 
   @property
   def dryrunheader(self):
@@ -100,7 +103,6 @@ class Cohort(abc.ABC):
     p.add_argument("root", type=pathlib.Path, help="The Clinical_Specimen folder where sample data is stored")
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
-    p.add_argument("--skip-finished", action="store_true", help="only run samples that have not already run successfully")
     p.add_argument("--units", choices=("safe", "fast"), default="fast", help="unit implementation (default: fast; safe is only needed for debugging code)")
     p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     g = p.add_mutually_exclusive_group()
@@ -126,8 +128,6 @@ class Cohort(abc.ABC):
     regex = dct.pop("sampleregex")
     if regex is not None:
       kwargs["filters"].append(lambda self, sample: regex.match(sample.SlideID))
-    if dct.pop("skip_finished"):
-      kwargs["filters"].append(lambda self, sample: not SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{self.logmodule}.log", self.logmodule))
     return kwargs
 
   @classmethod
@@ -377,51 +377,50 @@ class TempDirCohort(Cohort):
       "temproot": parsed_args_dict.pop("temproot"),
     }
 
-class PrintErrorsCohort(Cohort):
+class WorkflowCohort(Cohort):
   """
-  Go through a cohort's logs and print all the error messages.
+  Base class for a cohort that runs as a workflow:
+  it takes input files and produces output files.
+  It will check for you that the output files exist.
+  Also you can check which samples have already run
+  successfully, and you can automatically filter
+  to only run the ones that haven't.
   """
-  class PrintErrorsSample(SampleBase):
-    def __init__(self, *args, module, **kwargs):
-      self.__module = module
-      super().__init__(*args, **kwargs)
-    @property
-    def logmodule(self): return self.__module
-  sampleclass = PrintErrorsSample
-
-  def __init__(self, *args, module, ignore_errors=(), uselogfiles=False, **kwargs):
-    self.__module = module
-    self.__ignore_errors = ignore_errors
-    super().__init__(*args, uselogfiles=False, **kwargs)
-  @property
-  def initiatesamplekwargs(self):
-    return {
-      **super().initiatesamplekwargs,
-      "module": self.__module,
-    }
-  def runsample(self, sample):
-    status = sample.runstatus
-    if status: return
-    if status.error and any(ignore.search(status.error) for ignore in self.__ignore_errors): return
-    print(f"{sample.SlideID} {status}")
-
-  @property
-  def logmodule(self): return self.__module
 
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument("--module", help="the module to examine the logs for", required=True)
+    p.add_argument("--skip-finished", action="store_true", help="only run samples that have not already run successfully")
+    p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
     p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="ignore any errors that match this regex")
     return p
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
+    kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
-      "module": parsed_args_dict.pop("module"),
+    }
+    if parsed_args_dict.pop("skip_finished"):
+      kwargs["filters"].append(lambda self, sample: not SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{self.logmodule}.log", self.logmodule))
+    if parsed_args_dict["print_errors"]:
+      kwargs["uselogfiles"] = False
+    return kwargs
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().runkwargsfromargumentparser(parsed_args_dict),
+      "print_errors": parsed_args_dict.pop("print_errors"),
       "ignore_errors": parsed_args_dict.pop("ignore_errors"),
     }
+    return kwargs
 
-def printerrorscohort(args=None):
-  PrintErrorsCohort.runfromargumentparser(args=args)
+  def processsample(self, sample, *, print_errors, ignore_errors, **kwargs):
+    if print_errors:
+      if ignore_errors is None: ignore_errors = []
+      status = sample.runstatus
+      if status: return
+      if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
+      print(f"{sample.SlideID} {status}")
+    else:
+      super().processsample(sample, **kwargs)

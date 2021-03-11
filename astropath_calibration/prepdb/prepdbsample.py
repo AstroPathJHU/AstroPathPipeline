@@ -404,6 +404,7 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
     self.writeregions()
     self.writevertices()
 
+  @property
   def expectedoutputfiles(self):
     return [
       self.csv("annotations"),

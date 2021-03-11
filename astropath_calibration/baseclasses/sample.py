@@ -460,7 +460,7 @@ class WorkflowSample(SampleBase):
 
   @property
   def missingoutputfiles(self):
-    return [_ for _ in expectedoutputfiles if not _.exists()]
+    return [_ for _ in self.expectedoutputfiles if not _.exists()]
 
 class DbloadSampleBase(SampleBase):
   """
