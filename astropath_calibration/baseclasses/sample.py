@@ -438,6 +438,12 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
   def logmodule(self):
     "name of the log files for this class (e.g. align)"
 
+class WorkflowSample(SampleBase):
+  """
+  Base class for a sample that will be used in a workflow,
+  i.e. it takes in input files and creates output files.
+  It contains functions to assess the status of the run.
+  """
   @property
   def runstatus(self):
     """
@@ -445,7 +451,11 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     the sample ran successfully or not, and information about
     the failure, if any.
     """
-    return SampleRunStatus.fromlog(self.logger.samplelog, self.logmodule)
+    return SampleRunStatus.fromlog(self.logger.samplelog, self.logmodule, self.expectedoutputfiles)
+
+  @property
+  def expectedoutputfiles(self):
+    return []
 
 class DbloadSampleBase(SampleBase):
   """
@@ -1136,17 +1146,19 @@ class SampleRunStatus:
   ended: did it finish running?
   error: error traceback as a string, if any
   previousrun: SampleRunStatus for the previous run of this sample, if any
+  missingfiles: files that are supposed to be in the output, but are missing
   """
-  def __init__(self, started, ended, error=None, previousrun=None):
+  def __init__(self, started, ended, error=None, previousrun=None, missingfiles=()):
     self.started = started
     self.ended = ended
     self.error = error
     self.previousrun = previousrun
+    self.missingfiles = missingfiles
   def __bool__(self):
     """
-    True if the sample started and ended with no error
+    True if the sample started and ended with no error and all output files are present
     """
-    return self.started and self.ended and self.error is None
+    return self.started and self.ended and self.error is None and not self.missingfiles
   @property
   def nruns(self):
     """
@@ -1157,7 +1169,7 @@ class SampleRunStatus:
     return self.previousrun.nruns + 1
 
   @classmethod
-  def fromlog(cls, samplelog, module):
+  def fromlog(cls, samplelog, module, expectedoutputfiles=[]):
     """
     Create a SampleRunStatus object by reading the log file.
     samplelog: from CohortFolder/SlideID/logfiles/SlideID-module.log
@@ -1166,11 +1178,12 @@ class SampleRunStatus:
     """
     result = None
     started = False
+    missingfiles = [f for f in expectedoutputfiles if not f.exists()]
     with contextlib.ExitStack() as stack:
       try:
         f = stack.enter_context(open(samplelog))
       except IOError:
-        return cls(started=False, ended=False)
+        return cls(started=False, ended=False, missingfiles=missingfiles)
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
@@ -1188,9 +1201,9 @@ class SampleRunStatus:
               error = row["message"]
           elif row["message"] == f"end {module}":
             ended = True
-            result = cls(started=started, ended=ended, error=error, previousrun=previousrun)
+            result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
     if result is None:
-      result = cls(started=started, ended=ended, error=error, previousrun=previousrun)
+      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
     return result
 
   def __str__(self):
@@ -1201,4 +1214,6 @@ class SampleRunStatus:
       return "gave an error:\n\n"+self.error
     elif not self.ended:
       return "started, but did not end"
+    elif self.missingfiles:
+      return "ran successfully but some output files are missing: " + ", ".join(self.missingfiles)
     assert False, self

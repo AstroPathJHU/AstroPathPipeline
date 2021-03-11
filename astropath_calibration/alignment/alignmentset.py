@@ -2,7 +2,7 @@
 
 import contextlib, numpy as np, traceback
 
-from ..baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase
+from ..baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
 from ..utilities.tableio import readtable, writetable
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
@@ -237,7 +237,7 @@ class AlignmentSetBase(SampleBase):
   def stitchresult(self, stitchresult):
     self.__stitchresult = stitchresult
 
-class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample):
+class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
   @property
   def alignmentsfilename(self): return self.csv("align")
 
@@ -359,6 +359,13 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample):
     if write_result :
       self.writealignments()
     return result
+
+  @property
+  def expectedoutputfiles(self):
+    return [
+      self.alignmentsfilename,
+      *self.stitchfilenames,
+    ]
 
 class AlignmentSetFromXMLBase(AlignmentSetBase, ReadRectanglesOverlapsFromXML):
   def __init__(self, *args, nclip, position=None, **kwargs):

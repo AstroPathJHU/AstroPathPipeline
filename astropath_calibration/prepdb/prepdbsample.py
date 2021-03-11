@@ -2,10 +2,10 @@ import argparse, collections, itertools, jxmlease, methodtools, more_itertools, 
 from ..baseclasses.csvclasses import Annotation, Constant, Batch, QPTiffCsv, Region, Vertex
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.qptiff import QPTiff
-from ..baseclasses.sample import DbloadSampleBase, XMLLayoutReader
+from ..baseclasses.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
 from ..utilities import units
 
-class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingWithQpscale, units.ThingWithApscale):
+class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, checkim3s=True, **kwargs)
 
@@ -403,6 +403,19 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
     self.writerectangles()
     self.writeregions()
     self.writevertices()
+
+  def expectedoutputfiles(self):
+    return [
+      self.csv("annotations"),
+      self.csv("batch"),
+      self.csv("constants"),
+      self.csv("overlap"),
+      self.csv("qptiff"),
+      self.csv("qptiff").with_suffix(".jpg"),
+      self.csv("rect"),
+      self.csv("regions"),
+      self.csv("vertices"),
+    ]
 
 def main(args=None):
   p = argparse.ArgumentParser()
