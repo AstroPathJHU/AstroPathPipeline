@@ -58,7 +58,7 @@ class ComparePrepdbCohort(PrepdbCohort):
           for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
             if cls is Constant and row.name == "flayers" and target.unit == "pixels": target.unit = ""
             if cls is Rectangle:
-              if datetime.datetime(2018, 3, 11, 2) <= target.t <= datetime.datetime(2018, 11, 4, 2):
+              if datetime.datetime(2018, 3, 11, 2) <= target.t <= datetime.datetime(2018, 11, 4, 2) or datetime.datetime(2019, 3, 10, 2) <= target.t <= datetime.datetime(2019, 11, 3, 2):
                 target.t += datetime.timedelta(hours=4)
               else:
                 target.t += datetime.timedelta(hours=5)
