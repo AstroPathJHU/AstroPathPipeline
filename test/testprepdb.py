@@ -3,6 +3,7 @@ from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Cons
 from astropath_calibration.baseclasses.sample import SampleDef
 from astropath_calibration.baseclasses.overlap import Overlap
 from astropath_calibration.baseclasses.rectangle import Rectangle
+from astropath_calibration.prepdb.prepdbcohort import PrepdbCohort
 from astropath_calibration.prepdb.prepdbsample import PrepdbSample
 from astropath_calibration.utilities import units
 from astropath_calibration.utilities.misc import re_subs
@@ -15,7 +16,7 @@ class TestPrepDb(unittest.TestCase):
   def setUp(self):
     self.maxDiff = None
 
-  def testPrepDb(self, SlideID="M21_1"):
+  def testPrepDb(self, SlideID="M21_1", units="safe"):
     logs = (
       thisfolder/"data"/"logfiles"/"prepdb.log",
       thisfolder/"data"/SlideID/"logfiles"/f"{SlideID}-prepdb.log",
@@ -26,10 +27,9 @@ class TestPrepDb(unittest.TestCase):
       except FileNotFoundError:
         pass
 
-    samp = SampleDef(SlideID=SlideID, SampleID=0, Project=0, Cohort=0, root=thisfolder/"data")
-    sample = PrepdbSample(thisfolder/"data", samp, uselogfiles=True, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
-    with sample:
-      sample.writemetadata()
+    args = [str(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units]
+    PrepdbCohort.runfromargumentparser(args)
+    sample = PrepdbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
 
     for filename, cls, extrakwargs in (
       (f"{SlideID}_annotations.csv", Annotation, {"pscale": sample.pscale, "apscale": sample.apscale}),
@@ -55,20 +55,8 @@ class TestPrepDb(unittest.TestCase):
          PIL.Image.open(thisfolder/"reference"/"prepdb"/SlideID/(f"{SlideID}_qptiff_windows.jpg" if sys.platform == "win32" else f"{SlideID}_qptiff.jpg")) as targetimg:
       np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
 
-      for log in logs:
-        ref = thisfolder/"reference"/"prepdb"/SlideID/log.name
-        with open(ref) as fref, open(log) as fnew:
-          subs = (";[^;]*$", ""), (r"(WARNING: (component tiff|xml files|constants\.csv)).*$", r"\1")
-          from astropath_calibration.utilities.version import astropathversion
-          refsubs = *subs, (r"(prepdb )v[\w+.]+", rf"\1{astropathversion}")
-          newsubs = *subs,
-          refcontents = os.linesep.join([re_subs(line, *refsubs, flags=re.MULTILINE) for line in fref.read().splitlines() if "Biggest time difference" not in line])+os.linesep
-          newcontents = os.linesep.join([re_subs(line, *newsubs, flags=re.MULTILINE) for line in fnew.read().splitlines() if "Biggest time difference" not in line])+os.linesep
-          self.assertEqual(newcontents, refcontents)
-
   def testPrepDbFastUnits(self, SlideID="M21_1"):
-    with units.setup_context("fast"):
-      self.testPrepDb(SlideID)
+    self.testPrepDb(SlideID, units="fast")
 
   def testPrepDbPolaris(self):
     from .data.YZ71.im3.Scan3.assembleqptiff import assembleqptiff

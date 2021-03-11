@@ -70,15 +70,16 @@ class Cohort(abc.ABC):
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     for samp in self:
-      with getlogger(module=self.logmodule, root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):  #log exceptions in __init__ of the sample
+      with getlogger(module=self.logmodule, root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):
+        #enter the logger here to log exceptions in __init__ of the sample
         sample = self.initiatesample(samp)
         if sample.logmodule != self.logmodule:
           raise ValueError(f"Wrong logmodule: {self.logmodule} != {sample.logmodule}")
-        with sample:
-          self.processsample(sample, **kwargs)
+        self.processsample(sample, **kwargs)
 
   def processsample(self, sample, **kwargs):
-    return self.runsample(sample, **kwargs)
+    with sample:
+      self.runsample(sample, **kwargs)
 
   @property
   def dryrunheader(self):
@@ -424,3 +425,10 @@ class WorkflowCohort(Cohort):
       print(f"{sample.SlideID} {status}")
     else:
       super().processsample(sample, **kwargs)
+      status = sample.runstatus
+      #we don't care about ended, because it hasn't actually logged
+      #"end <module>" yet because we're still inside "with getlogger" in run()
+      #also we don't want to do anything if there's an error, because that
+      #was already logged so no need to log it again and confuse the issue.
+      if status.missingfiles:
+        raise RuntimeError(f"{sample.SlideID} {status}")
