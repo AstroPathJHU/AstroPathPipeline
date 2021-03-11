@@ -396,37 +396,10 @@ class PrintErrorsCohort(Cohort):
       "module": self.__module,
     }
   def runsample(self, sample):
-    nstarted = 0
-    with contextlib.ExitStack() as stack:
-      try:
-        f = stack.enter_context(open(sample.logger.samplelog))
-      except IOError:
-        pass
-      else:
-        reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
-        for row in reader:
-          if re.match(rf"{self.__module} v[0-9a-f.devgd+]+", row["message"]):
-            nstarted += 1
-            error = None
-            ended = False
-          elif row["message"].startswith("ERROR:"):
-            error = reader.peek(default={"message": ""})["message"]
-            if error[0] == "[" and error[-1] == "]":
-              error = "".join(eval(error))
-            else:
-              error = row["message"]
-          elif row["message"] == f"end {self.__module}":
-            ended = True
-    if not nstarted:
-      print(f"{sample.SlideID} did not run")
-    elif error is not None:
-      if any(ignore.search(error) for ignore in self.__ignore_errors):
-        pass
-      else:
-        print(f"{sample.SlideID} gave an error:")
-        print(error)
-    elif not ended:
-      print(f"{sample.SlideID} started, but did not end")
+    status = sample.runstatus
+    if status: return
+    if status.error and any(ignore.search(status.error) for ignore in self.__ignore_errors): return
+    print(f"{sample.SlideID} {status}")
 
   @property
   def logmodule(self): return self.__module
