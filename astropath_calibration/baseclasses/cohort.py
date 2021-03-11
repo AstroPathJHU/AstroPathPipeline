@@ -2,7 +2,7 @@ import abc, argparse, contextlib, csv, more_itertools, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable
 from .logging import getlogger
-from .sample import SampleBase, SampleDef
+from .sample import SampleBase, SampleDef, SampleRunStatus
 
 class Cohort(abc.ABC):
   """
@@ -29,7 +29,7 @@ class Cohort(abc.ABC):
     """
     Does this sample pass all the filters?
     """
-    return all(filter(samp) for filter in self.filters)
+    return all(filter(self, samp) for filter in self.filters)
 
   def __iter__(self):
     """
@@ -100,6 +100,7 @@ class Cohort(abc.ABC):
     p.add_argument("root", type=pathlib.Path, help="The Clinical_Specimen folder where sample data is stored")
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
+    p.add_argument("--skip-finished", action="store_true", help="only run samples that have not already run successfully")
     p.add_argument("--units", choices=("safe", "fast"), default="fast", help="unit implementation (default: fast; safe is only needed for debugging code)")
     p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     g = p.add_mutually_exclusive_group()
@@ -121,9 +122,12 @@ class Cohort(abc.ABC):
       "uselogfiles": not dct.pop("no_log"),
       "filters": [],
     }
+    if kwargs["logroot"] is None: kwargs["logroot"] = kwargs["root"]
     regex = dct.pop("sampleregex")
     if regex is not None:
-      kwargs["filters"].append(lambda sample: regex.match(sample.SlideID))
+      kwargs["filters"].append(lambda self, sample: regex.match(sample.SlideID))
+    if dct.pop("skip_finished"):
+      kwargs["filters"].append(lambda self, sample: not SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{self.logmodule}.log", self.logmodule))
     return kwargs
 
   @classmethod

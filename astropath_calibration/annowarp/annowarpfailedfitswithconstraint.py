@@ -33,7 +33,7 @@ class GatherStatsCohort(AnnoWarpCohortBase):
       *args,
       **kwargs,
       uselogfiles=False,
-      filters=filters+[lambda samp: (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp-stitch.csv").exists()],
+      filters=filters+[lambda self, samp: (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp-stitch.csv").exists()],
     )
     self.__parametervalues = collections.defaultdict(list)
 

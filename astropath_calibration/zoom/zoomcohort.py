@@ -21,7 +21,6 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips", help="mode to run zoom: fast is fastest, vips uses the least memory.")
-    p.add_argument("--skip-if-wsi-exists", action="store_true", help="skip a sample if the wsi image already exists")
     return p
 
   @classmethod
@@ -31,9 +30,6 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "mode": parsed_args_dict.pop("mode"),
     }
-    skip_if_wsi_exists = parsed_args_dict.pop("skip_if_wsi_exists")
-    if skip_if_wsi_exists:
-      kwargs["filters"].append(lambda sample: not all((zoomroot/sample.SlideID/"wsi"/(sample.SlideID+f"-Z9-L{layer}-wsi.png")).exists() for layer in range(1, 9)))
     return kwargs
 
 def main(args=None):

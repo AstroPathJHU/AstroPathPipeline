@@ -30,7 +30,6 @@ class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort):
     g = p.add_mutually_exclusive_group()
     g.add_argument("--dont-align", action="store_true")
     g.add_argument("--dont-stitch", action="store_true")
-    p.add_argument("--skip-aligned", action="store_true")
     return p
 
   @classmethod
@@ -42,9 +41,6 @@ class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort):
       "doalignment": not parsed_args_dict.pop("dont_align"),
       "dostitching": not parsed_args_dict.pop("dont_stitch"),
     }
-    skipaligned = parsed_args_dict.pop("skip_aligned")
-    if skipaligned:
-      kwargs["filters"].append(lambda sample: not (root/sample.SlideID/"dbload"/f"{sample.SlideID}_{'fields' if not dontstitch else 'align'}.csv").exists())
     return kwargs
 
 def main(args=None):
