@@ -66,6 +66,7 @@ class ComparePrepdbCohort(PrepdbCohort):
             if cls is Region: target.poly = None
             if cls is Annotation:
               target.name = target.name.lower()
+              if target.name == "empty": target.visible = False
             if cls is Batch:
               target.SampleID = sample.SampleID
             if cls is Overlap:
