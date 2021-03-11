@@ -35,7 +35,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
-    xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".annotations.polygons.xml")
+    xmlfile = self.annotationspolygonsxmlfile
     if not xmlfile.exists():
       return [], [], []
     annotations = []
@@ -405,7 +405,18 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
     self.writevertices()
 
   @property
-  def expectedoutputfiles(self):
+  def inputfiles(self):
+    return [
+      self.annotationspolygonsxmlfile,
+      self.annotationsxmlfile,
+      self.fullxmlfile,
+      self.parametersxmlfile,
+      self.qptifffilename,
+      self.scanfolder/"MSI",
+    ]
+
+  @property
+  def outputfiles(self):
     return [
       self.csv("annotations"),
       self.csv("batch"),

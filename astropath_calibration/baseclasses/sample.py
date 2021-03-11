@@ -193,11 +193,24 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
       if (possibility/(self.SlideID+".Parameters.xml")).exists(): return possibility
     raise FileNotFoundError(f"Didn't find {self.SlideID}.Parameters.xml in any of these folders:\n" + ", ".join(str(_) for _ in possibilities))
 
+  @property
+  def parametersxmlfile(self):
+    return self.xmlfolder/(self.SlideID+".Parameters.xml")
+  @property
+  def fullxmlfile(self):
+    return self.xmlfolder/(self.SlideID+".Full.xml")
+  @property
+  def annotationsxmlfile(self):
+    return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
+  @property
+  def annotationspolygonsxmlfile(self):
+    return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".annotations.polygons.xml")
+
   def __getimageinfofromXMLfiles(self):
     """
     Find the pscale, image dimensions, and number of layers from the XML metadata.
     """
-    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
+    with open(self.parametersxmlfile, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "Shape":
           width, height, nlayers = (int(_) for _ in str(node).split())
@@ -208,7 +221,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
       width *= units.onepixel(pscale=pscale)
       height *= units.onepixel(pscale=pscale)
     except NameError:
-      raise IOError(f'Couldn\'t find Shape and/or MillimetersPerPixel in {self.xmlfolder/(self.SlideID+".Parameters.xml")}')
+      raise IOError(f'Couldn\'t find Shape and/or MillimetersPerPixel in {self.parametersxmlfile}')
 
     return pscale, width, height, nlayers
 
@@ -218,7 +231,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     """
     Find the location of the image on the slide from the xml metadata
     """
-    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
+    with open(self.parametersxmlfile, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "SampleLocation":
           return np.array([float(_) for _ in str(node).split()]) * units.onemicron(pscale=self.apscale)
@@ -228,7 +241,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     """
     Find info from the CameraState Parameters block in the xml metadata
     """
-    with open(self.xmlfolder/(self.SlideID+".Full.xml"), "rb") as f:
+    with open(self.fullxmlfile, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3/G/G/G/G/G/G/G/G"):
         if node.xml_attrs["name"] == "CameraState":
           for G in node["G"]["G"]:
@@ -263,7 +276,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     """
     Find the camera binning from the xml metadata
     """
-    with open(self.xmlfolder/(self.SlideID+".Full.xml"), "rb") as f:
+    with open(self.fullxmlfile, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3/G/G/G/G/G/G/G/G"):
         if node.xml_attrs["name"] == "CameraState":
           for G in node["G"]["G"]:
@@ -292,13 +305,13 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     """
     Find the number of im3 layers from the xml metadata
     """
-    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
+    with open(self.parametersxmlfile, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "Shape":
           width, height, nlayers = (int(_) for _ in str(node).split())
           return nlayers
       else:
-        raise IOError(f'Couldn\'t find Shape in {self.xmlfolder/(self.SlideID+".Parameters.xml")}')
+        raise IOError(f'Couldn\'t find Shape in {self.parametersxmlfile}')
 
   @methodtools.lru_cache()
   @property
@@ -410,7 +423,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     image as well as the microscope name (really the name of the
     computer that processed the image).
     """
-    xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
+    xmlfile = self.annotationsxmlfile
     reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
     return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
 
@@ -455,12 +468,17 @@ class WorkflowSample(SampleBase):
 
   @property
   @abc.abstractmethod
-  def expectedoutputfiles(self):
+  def inputfiles(self):
+    return []
+
+  @property
+  @abc.abstractmethod
+  def outputfiles(self):
     return []
 
   @property
   def missingoutputfiles(self):
-    return [_ for _ in self.expectedoutputfiles if not _.exists()]
+    return [_ for _ in self.outputfiles if not _.exists()]
 
 class DbloadSampleBase(SampleBase):
   """
@@ -1219,5 +1237,5 @@ class SampleRunStatus:
     elif not self.ended:
       return "started, but did not end"
     elif self.missingfiles:
-      return "ran successfully but some output files are missing: " + ", ".join(self.missingfiles)
+      return "ran successfully but some output files are missing: " + ", ".join(str(_) for _ in self.missingfiles)
     assert False, self

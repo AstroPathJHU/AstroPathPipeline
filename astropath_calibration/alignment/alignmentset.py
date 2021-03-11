@@ -361,7 +361,7 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
     return result
 
   @property
-  def expectedoutputfiles(self):
+  def outputfiles(self):
     return [
       self.alignmentsfilename,
       *self.stitchfilenames,

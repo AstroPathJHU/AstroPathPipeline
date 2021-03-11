@@ -424,6 +424,10 @@ class WorkflowCohort(Cohort):
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       print(f"{sample.SlideID} {status}")
     else:
+      missinginputs = [file for file in sample.inputfiles if not file.exists()]
+      if missinginputs:
+        raise IOError(f"Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
+          
       super().processsample(sample, **kwargs)
       status = sample.runstatus
       #we don't care about ended, because it hasn't actually logged

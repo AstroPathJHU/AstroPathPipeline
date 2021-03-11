@@ -786,7 +786,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     self.writeregions()
 
   @property
-  def expectedoutputfiles(self):
+  def outputfiles(self):
     return [
       self.alignmentcsv,
       self.stitchcsv,
