@@ -6,7 +6,7 @@ from ..alignment.overlap import AlignmentComparison
 from ..baseclasses.csvclasses import Region, Vertex
 from ..baseclasses.polygon import Polygon
 from ..baseclasses.qptiff import QPTiff
-from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, ZoomFolderSampleBase
+from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ..zoom.stitchmask import InformMaskSample, TissueMaskSample
 from ..zoom.zoom import ZoomSampleBase
 from ..utilities import units
@@ -16,7 +16,7 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
-class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, units.ThingWithImscale):
+class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample, units.ThingWithImscale):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -785,6 +785,45 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     self.writevertices()
     self.writeregions()
 
+  @property
+  def inputfiles(self):
+    return [
+      self.qptifffilename,
+      self.wsifilename(layer=self.wsilayer),
+      self.csv("fields"),
+      self.oldverticescsv,
+      self.oldregionscsv,
+    ]
+
+  @property
+  def outputfiles(self):
+    return [
+      self.alignmentcsv,
+      self.stitchcsv,
+      self.newverticescsv,
+      self.newregionscsv,
+    ]
+
+  @property
+  def missingoutputfiles(self):
+    result = super().missingoutputfiles
+    if self.newverticescsv not in result:
+      with open(self.newverticescsv) as f:
+        reader = csv.DictReader(f)
+        if "wx" not in reader.fieldnames or "wy" not in reader.fieldnames:
+          result.append(self.newverticescsv)
+    if self.newregionscsv not in result:
+      regions = readtable(self.newregionscsv, Region, extrakwargs={"apscale": self.apscale, "pscale": self.pscale}, maxrows=1)
+      if regions:
+        region, = regions
+        if region.poly is None:
+          result.append(self.newregionscsv)
+    return result
+
+  @classmethod
+  def workflowdependencies(cls):
+    return ["zoom"] + super().workflowdependencies()
+
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
   """
   Use a tissue mask to determine which tiles to use for alignment
@@ -823,6 +862,10 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
   Use the tissue mask from inform in the component tiff to determine
   which tiles to use for alignment
   """
+
+  @classmethod
+  def workflowdependencies(cls):
+    return ["stitchinformmask"] + super().workflowdependencies()
 
 class QPTiffCoordinateBase(abc.ABC):
   """

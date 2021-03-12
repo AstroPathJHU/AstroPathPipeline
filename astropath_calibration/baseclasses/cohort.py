@@ -2,7 +2,7 @@ import abc, argparse, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable
 from .logging import getlogger
-from .sample import SampleDef
+from .sample import SampleDef, SampleRunStatus
 
 class Cohort(abc.ABC):
   """
@@ -16,20 +16,16 @@ class Cohort(abc.ABC):
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, root, *, filters=[], debug=False, uselogfiles=True, logroot=None):
+  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, xmlfolders=[]):
     super().__init__()
     self.root = pathlib.Path(root)
     if logroot is None: logroot = root
     self.logroot = pathlib.Path(logroot)
-    self.filters = filters
+    self.slideidfilters = slideidfilters
+    self.samplefilters = samplefilters
     self.debug = debug
     self.uselogfiles = uselogfiles
-
-  def filter(self, samp):
-    """
-    Does this sample pass all the filters?
-    """
-    return all(filter(samp) for filter in self.filters)
+    self.xmlfolders = xmlfolders
 
   def __iter__(self):
     """
@@ -39,7 +35,7 @@ class Cohort(abc.ABC):
     """
     for samp in readtable(self.root/"sampledef.csv", SampleDef):
       if not samp: continue
-      if not self.filter(samp): continue
+      if not all(filter(self, samp) for filter in self.slideidfilters): continue
       yield samp
 
   @abc.abstractmethod
@@ -58,7 +54,7 @@ class Cohort(abc.ABC):
   @property
   def initiatesamplekwargs(self):
     "Keyword arguments to pass to the sample class"
-    return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot}
+    return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "xmlfolders": self.xmlfolders}
 
   @property
   @abc.abstractmethod
@@ -70,12 +66,22 @@ class Cohort(abc.ABC):
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     for samp in self:
-      with getlogger(module=self.logmodule, root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):  #log exceptions in __init__ of the sample
+      try:
         sample = self.initiatesample(samp)
+      except:
+        #enter the logger here to log exceptions in __init__ of the sample
+        with getlogger(module=self.logmodule, root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):
+          raise
+      else:
+        if not all(filter(self, sample) for filter in self.samplefilters):
+          continue
         if sample.logmodule != self.logmodule:
           raise ValueError(f"Wrong logmodule: {self.logmodule} != {sample.logmodule}")
-        with sample:
-          self.runsample(sample, **kwargs)
+        self.processsample(sample, **kwargs)
+
+  def processsample(self, sample, **kwargs):
+    with sample:
+      self.runsample(sample, **kwargs)
 
   @property
   def dryrunheader(self):
@@ -105,6 +111,7 @@ class Cohort(abc.ABC):
     g = p.add_mutually_exclusive_group()
     g.add_argument("--logroot", type=pathlib.Path, help="root location where the log files are stored (default: same as root)")
     g.add_argument("--no-log", action="store_true", help="do not write to log files")
+    p.add_argument("--xmlfolder", type=pathlib.Path, action="append", help="additional folders to look for xml metadata", default=[], dest="xmlfolders")
     return p
 
   @classmethod
@@ -119,11 +126,14 @@ class Cohort(abc.ABC):
       "debug": dct.pop("debug"),
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
-      "filters": [],
+      "xmlfolders": dct.pop("xmlfolders"),
+      "slideidfilters": [],
+      "samplefilters": [],
     }
+    if kwargs["logroot"] is None: kwargs["logroot"] = kwargs["root"]
     regex = dct.pop("sampleregex")
     if regex is not None:
-      kwargs["filters"].append(lambda sample: regex.match(sample.SlideID))
+      kwargs["slideidfilters"].append(lambda self, sample: regex.match(sample.SlideID))
     return kwargs
 
   @classmethod
@@ -372,3 +382,66 @@ class TempDirCohort(Cohort):
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "temproot": parsed_args_dict.pop("temproot"),
     }
+
+class WorkflowCohort(Cohort):
+  """
+  Base class for a cohort that runs as a workflow:
+  it takes input files and produces output files.
+  It will check for you that the output files exist.
+  Also you can check which samples have already run
+  successfully, and you can automatically filter
+  to only run the ones that haven't.
+  """
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--skip-finished", action="store_true", help="only run samples that have not already run successfully")
+    p.add_argument("--dependencies", action="store_true", help="only run samples whose dependencies have finished by checking the logs")
+    p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
+    p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+    }
+    if parsed_args_dict.pop("skip_finished"):
+      kwargs["slideidfilters"].append(lambda self, sample: not SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{self.logmodule}.log", self.logmodule))
+    if parsed_args_dict.pop("dependencies"):
+      kwargs["slideidfilters"].append(lambda self, sample: all(SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{logmodule}.log", logmodule) for logmodule in self.sampleclass.workflowdependencies()))
+    if parsed_args_dict["print_errors"]:
+      kwargs["uselogfiles"] = False
+    return kwargs
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().runkwargsfromargumentparser(parsed_args_dict),
+      "print_errors": parsed_args_dict.pop("print_errors"),
+      "ignore_errors": parsed_args_dict.pop("ignore_errors"),
+    }
+    return kwargs
+
+  def processsample(self, sample, *, print_errors, ignore_errors, **kwargs):
+    if print_errors:
+      if ignore_errors is None: ignore_errors = []
+      status = sample.runstatus
+      if status: return
+      if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
+      print(f"{sample.SlideID} {status}")
+    else:
+      missinginputs = [file for file in sample.inputfiles if not file.exists()]
+      if missinginputs:
+        raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
+          
+      super().processsample(sample, **kwargs)
+      status = sample.runstatus
+      #we don't care about ended, because it hasn't actually logged
+      #"end <module>" yet because we're still inside "with getlogger" in run()
+      #also we don't want to do anything if there's an error, because that
+      #was already logged so no need to log it again and confuse the issue.
+      if status.missingfiles:
+        status.ended = True #so that the message is about the missing files
+        raise RuntimeError(f"{sample.SlideID} {status}")

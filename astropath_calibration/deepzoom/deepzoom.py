@@ -1,10 +1,10 @@
 import collections, functools, numpy as np, os, PIL, re
 
-from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, ReadRectanglesDbloadComponentTiff, ZoomFolderSampleBase
+from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ..utilities.dataclasses import MyDataClass
-from ..utilities.tableio import pathfield, writetable
+from ..utilities.tableio import pathfield, readtable, writetable
 
-class DeepZoomSample(ReadRectanglesDbloadComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase):
+class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample):
   """
   The deepzoom step takes the whole slide image and produces an image pyramid
   of different zoom levels.
@@ -243,6 +243,28 @@ class DeepZoomSample(ReadRectanglesDbloadComponentTiff, DbloadSampleBase, ZoomFo
       self.patchsmallimages(layer)
       self.patchfolderstructure(layer)
     self.writezoomlist()
+
+  @property
+  def inputfiles(self):
+    return [
+      *(self.wsifilename(layer) for layer in self.layers),
+    ]
+
+  @property
+  def outputfiles(self):
+    zoomlist = self.deepzoomfolder/"zoomlist.csv"
+    result = [
+      zoomlist,
+      *(self.deepzoomfolder/f"L{layer}.dzi" for layer in self.layers),
+    ]
+    if zoomlist.exists():
+      files = readtable(zoomlist, DeepZoomFile)
+    result += [file.name for file in files]
+    return result
+
+  @classmethod
+  def workflowdependencies(cls):
+    return ["zoom"] + super().workflowdependencies()
 
 @functools.total_ordering
 class DeepZoomFile(MyDataClass):

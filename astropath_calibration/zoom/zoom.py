@@ -1,7 +1,7 @@
 import contextlib, cv2, itertools, methodtools, numpy as np, os, PIL, skimage
 
 from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
-from ..baseclasses.sample import ReadRectanglesBase, ReadRectanglesDbloadComponentTiff, TempDirSample, ZoomFolderSampleBase
+from ..baseclasses.sample import ReadRectanglesBase, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ..utilities import units
 from ..utilities.misc import floattoint, memmapcontext, PILmaximagepixels
 
@@ -26,7 +26,7 @@ class ZoomSampleBase(ReadRectanglesBase):
   def PILmaximagepixels(self):
     return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
 
-class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff):
+class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample):
   """
   Run the zoom step of the pipeline:
   create big images of 16384x16384 pixels by merging the fields
@@ -371,3 +371,22 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
       return self.zoom_wsi_fast(*args, usememmap=True, **kwargs)
     else:
       raise ValueError(f"Bad mode {mode}")
+
+  @property
+  def inputfiles(self):
+    return [
+      *(r.imagefile for r in self.rectangles),
+      self.csv("fields"),
+    ]
+
+  @property
+  def outputfiles(self):
+    return [
+      #not the big filenames, we don't know which ones are nonempty
+      #*(self.zoomfilename(layer, tilex, tiley) for layer in self.layers for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))),
+      *(self.wsifilename(layer) for layer in self.layers),
+    ]
+
+  @classmethod
+  def workflowdependencies(cls):
+    return ["align"] + super().workflowdependencies()

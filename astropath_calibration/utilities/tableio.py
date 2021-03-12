@@ -4,7 +4,7 @@ from .dataclasses import MetaDataAnnotation, MyDataClass
 from .misc import dummylogger
 from .units.dataclasses import DataClassWithDistances
 
-def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, **columntypes):
+def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, maxrows=float("inf"), **columntypes):
   """
   Read a csv table into a list of named tuples
 
@@ -75,7 +75,8 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
     if issubclass(Row, DataClassWithDistances) and "readingfromfile" not in extrakwargs:
       extrakwargs["readingfromfile"] = True
 
-    for row in reader:
+    for i, row in enumerate(reader):
+      if i >= maxrows: break
       for column, typ in columntypes.items():
         row[column] = typ(row[column])
 

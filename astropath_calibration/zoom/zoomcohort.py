@@ -1,7 +1,7 @@
-from ..baseclasses.cohort import DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort
+from ..baseclasses.cohort import DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomCohort
 from .zoom import Zoom
 
-class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort, SelectLayersCohort):
+class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort, SelectLayersCohort, WorkflowCohort):
   __doc__ = Zoom.__doc__
 
   def __init__(self, *args, mode="vips", **kwargs):
@@ -21,19 +21,14 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips", help="mode to run zoom: fast is fastest, vips uses the least memory.")
-    p.add_argument("--skip-if-wsi-exists", action="store_true", help="skip a sample if the wsi image already exists")
     return p
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    zoomroot = parsed_args_dict["zoomroot"]
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "mode": parsed_args_dict.pop("mode"),
     }
-    skip_if_wsi_exists = parsed_args_dict.pop("skip_if_wsi_exists")
-    if skip_if_wsi_exists:
-      kwargs["filters"].append(lambda sample: not all((zoomroot/sample.SlideID/"wsi"/(sample.SlideID+f"-Z9-L{layer}-wsi.png")).exists() for layer in range(1, 9)))
     return kwargs
 
 def main(args=None):

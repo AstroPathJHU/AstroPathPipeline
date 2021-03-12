@@ -98,6 +98,7 @@ class AnnotationBase(units.ThingWithPscale):
   def xmlnode(self): return self.__xmlnode
   @property
   def nestdepth(self): return self.__nestdepth
+  def __str__(self): return str(self.xmlnode)
   @property
   @abc.abstractmethod
   def fields(self):

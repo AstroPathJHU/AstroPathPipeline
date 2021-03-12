@@ -65,7 +65,7 @@ pipeline {
           stages {
             stage('align') {
               steps {
-                sh 'alignmentcohort test/data test/data/flatw --sampleregex M21_1'
+                sh 'alignmentcohort test/data test/data/flatw --sampleregex M21_1 --debug'
               }
             }
             stage('alignment documentation') {
