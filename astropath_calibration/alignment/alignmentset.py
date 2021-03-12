@@ -30,12 +30,15 @@ class AlignmentSetBase(SampleBase):
     self.__use_mean_image = use_mean_image
     self.interactive = interactive
     super().__init__(*args, **kwargs)
-    for r in self.rectangles:
-      r.setrectanglelist(self.rectangles)
 
     self.gpufftdict = None
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
     self.__images = None
+
+  def initrectangles(self):
+    super().initrectangles()
+    for r in self.rectangles:
+      r.setrectanglelist(self.rectangles)
 
   @property
   def logmodule(self): return "align"

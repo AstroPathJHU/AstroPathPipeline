@@ -756,9 +756,13 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
   """
   def __init__(self, *args, selectrectangles=None, **kwargs):
     super().__init__(*args, **kwargs)
-    rectanglefilter = rectangleoroverlapfilter(selectrectangles)
+    self.__rectanglefilter = rectangleoroverlapfilter(selectrectangles)
+    self.__initedrectangles = False
+
+  def initrectangles(self):
+    self.__initedrectangles = True
     self.__rectangles  = self.readallrectangles()
-    self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
+    self.__rectangles = [r for r in self.rectangles if self.__rectanglefilter(r)]
 
   @abc.abstractmethod
   def readallrectangles(self):
@@ -785,7 +789,9 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
     self.__rectangles = value
 
   @property
-  def rectangles(self): return self.__rectangles
+  def rectangles(self):
+    if not self.__initedrectangles: self.initrectangles()
+    return self.__rectangles
 
 class ReadRectanglesWithLayers(ReadRectanglesBase, SelectLayersSample):
   """
@@ -906,11 +912,14 @@ class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection,
     super().__init__(*args, **kwargs)
 
     _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
-    overlapfilter = lambda o: _overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
+    self.__overlapfilter = lambda o: _overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
+    self.__onlyrectanglesinoverlaps = onlyrectanglesinoverlaps
 
+  def initrectangles(self):
+    super().initrectangles()
     self.__overlaps  = self.readalloverlaps()
-    self.__overlaps = [o for o in self.overlaps if overlapfilter(o)]
-    if onlyrectanglesinoverlaps:
+    self.__overlaps = [o for o in self.overlaps if self.__overlapfilter(o)]
+    if self.__onlyrectanglesinoverlaps:
       self._rectangles = [r for r in self.rectangles if self.selectoverlaprectangles(r)]
 
   @abc.abstractmethod
