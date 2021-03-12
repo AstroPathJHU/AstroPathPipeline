@@ -704,6 +704,51 @@ class GeomSampleBase(SampleBase):
     else:
       return pathlib.Path(geomfolder)
 
+class SelectLayersSample(SampleBase):
+  """
+  Base class for any sample that needs a layer selection.
+  """
+  def __init__(self, *args, layer=None, layers=None, **kwargs):
+    if self.multilayer:
+      if layer is not None:
+        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
+    else:
+      if layers is not None:
+        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
+      if layer is None:
+        layer = 1
+      self.__layer = layer
+      layers = layer,
+
+    self.__layers = layers
+
+    super().__init__(*args, **kwargs)
+
+  @property
+  def layers(self):
+    result = self.__layers
+    if result is None: return range(1, self.nlayers+1)
+    return result
+
+  @property
+  def layer(self):
+    if self.multilayer:
+      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
+    return self.__layer
+
+  @abc.abstractproperty
+  def nlayers(self): pass
+
+  multilayer = False #can override in subclasses
+
+class SelectLayersIm3(SelectLayersSample):
+  @property
+  def nlayers(self): return self.nlayersim3
+
+class SelectLayersComponentTiff(SelectLayersSample):
+  @property
+  def nlayers(self): return self.nlayersunmixed
+
 class ReadRectanglesBase(RectangleCollection, SampleBase):
   """
   Base class for any sample that reads HPF info from any source.
@@ -742,27 +787,11 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
   @property
   def rectangles(self): return self.__rectangles
 
-class ReadRectanglesWithLayers(ReadRectanglesBase):
+class ReadRectanglesWithLayers(ReadRectanglesBase, SelectLayersSample):
   """
   Base class for any sample that reads rectangles
   and needs a layer selection.
   """
-  def __init__(self, *args, layer=None, layers=None, **kwargs):
-    if self.multilayer:
-      if layer is not None:
-        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
-    else:
-      if layers is not None:
-        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
-      if layer is None:
-        layer = 1
-      self.__layer = layer
-      layers = layer,
-
-    self.__layers = layers
-
-    super().__init__(*args, **kwargs)
-
   @property
   def rectangleextrakwargs(self):
     kwargs = {
@@ -779,21 +808,7 @@ class ReadRectanglesWithLayers(ReadRectanglesBase):
       })
     return kwargs
 
-  @property
-  def layers(self):
-    result = self.__layers
-    if result is None: return range(1, self.nlayers+1)
-    return result
-
-  @property
-  def layer(self):
-    if self.multilayer:
-      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
-    return self.__layer
-
-  multilayer = False #can override in subclasses
-
-class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase):
+class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase, SelectLayersIm3):
   """
   Base class for any sample that loads images from an im3 file.
   filetype: "raw", "flatWarp", or "camWarp"
@@ -817,7 +832,7 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase):
   @property
   def nlayers(self):
     if self.__readlayerfile: return 1
-    return self.nlayersim3
+    return super().nlayers
   @property
   def rectangletype(self):
     if self.multilayer:
@@ -850,7 +865,7 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase):
   @property
   def filetype(self): return self.__filetype
 
-class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers):
+class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComponentTiff):
   """
   Base class for any sample that loads images from a component tiff file.
   layer or layers: the layer or layers to read, depending on whether
