@@ -1,6 +1,6 @@
 import abc, contextlib, numpy as np, pathlib
 from ..alignment.field import FieldReadComponentTiff
-from ..baseclasses.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff
+from ..baseclasses.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ..utilities.misc import floattoint
 from ..zoom.zoom import ZoomSampleBase
 
@@ -97,7 +97,7 @@ class TissueMaskSample(MaskSample):
       if self.__using_tissuemask_count == 0:
         del self.__tissuemask
 
-class WriteMaskSampleBase(MaskSample):
+class WriteMaskSampleBase(MaskSample, WorkflowSample):
   """
   Base class for a sample that creates and writes a mask to file
   """
@@ -116,6 +116,12 @@ class WriteMaskSampleBase(MaskSample):
 
   @abc.abstractmethod
   def createmask(self): "create the mask"
+
+  @property
+  def outputfiles(self):
+    return [
+      self.maskfilename(),
+    ]
 
 class InformMaskSample(TissueMaskSample):
   """
@@ -198,3 +204,10 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteM
           floattoint(localx1/onepixel):floattoint(localx2/onepixel),
         ]
     return mask
+
+  @property
+  def inputfiles(self):
+    return [
+      *(r.imagefilename for r in self.rectangles),
+      self.csv("fields"),
+    ]

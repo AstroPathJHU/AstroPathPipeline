@@ -1,4 +1,5 @@
 import collections, methodtools, numpy as np
+from ..baseclasses.cohort import WorkflowCohort
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.tableio import readtable
 from .annowarpcohort import AnnoWarpCohortBase
@@ -64,7 +65,7 @@ class GatherStatsCohort(AnnoWarpCohortBase):
       stats.append(Stats(description=name, average=average, std=std))
     return stats
 
-class StitchFailedCohort(AnnoWarpCohortBase):
+class StitchFailedCohort(AnnoWarpCohortBase, WorkflowCohort):
   """
   Rerun any samples that aligned successfully but didn't stitch,
   using a constraint obtained from the other samples in the cohort.
