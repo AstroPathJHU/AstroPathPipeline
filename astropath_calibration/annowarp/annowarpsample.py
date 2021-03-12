@@ -786,6 +786,16 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     self.writeregions()
 
   @property
+  def inputfiles(self):
+    return [
+      self.qptifffilename,
+      self.wsifilename(layer=self.wsilayer),
+      self.csv("fields"),
+      self.oldverticescsv,
+      self.oldregionscsv,
+    ]
+
+  @property
   def outputfiles(self):
     return [
       self.alignmentcsv,
