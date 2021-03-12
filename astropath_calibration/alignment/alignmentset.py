@@ -367,6 +367,15 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
       *self.stitchfilenames,
     ]
 
+  @property
+  def inputfiles(self):
+    return [
+      self.csv("constants"),
+      self.csv("overlap"),
+      self.csv("rect"),
+      *(r.imagefile for r in self.rectangles),
+    ]
+
 class AlignmentSetFromXMLBase(AlignmentSetBase, ReadRectanglesOverlapsFromXML):
   def __init__(self, *args, nclip, position=None, **kwargs):
     self.__nclip = nclip
