@@ -438,4 +438,5 @@ class WorkflowCohort(Cohort):
       #also we don't want to do anything if there's an error, because that
       #was already logged so no need to log it again and confuse the issue.
       if status.missingfiles:
+        status.ended = True #so that the message is about the missing files
         raise RuntimeError(f"{sample.SlideID} {status}")
