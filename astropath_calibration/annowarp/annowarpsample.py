@@ -820,6 +820,10 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
           result.append(self.newregionscsv)
     return result
 
+  @classmethod
+  def workflowdependencies(cls):
+    return ["zoom"] + super().workflowdependencies()
+
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
   """
   Use a tissue mask to determine which tiles to use for alignment
@@ -858,6 +862,10 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
   Use the tissue mask from inform in the component tiff to determine
   which tiles to use for alignment
   """
+
+  @classmethod
+  def workflowdependencies(cls):
+    return ["stitchinformmask"] + super().workflowdependencies()
 
 class QPTiffCoordinateBase(abc.ABC):
   """

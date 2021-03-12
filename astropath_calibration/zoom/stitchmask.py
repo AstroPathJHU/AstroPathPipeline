@@ -211,3 +211,7 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteM
       *(r.imagefilename for r in self.rectangles),
       self.csv("fields"),
     ]
+
+  @classmethod
+  def workflowdependencies(cls):
+    return ["align"] + super().workflowdependencies()

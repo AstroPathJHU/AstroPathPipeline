@@ -397,8 +397,9 @@ class WorkflowCohort(Cohort):
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     p.add_argument("--skip-finished", action="store_true", help="only run samples that have not already run successfully")
+    p.add_argument("--dependencies", action="store_true", help="only run samples whose dependencies have finished by checking the logs")
     p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
-    p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="ignore any errors that match this regex")
+    p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
     return p
 
   @classmethod
@@ -408,6 +409,8 @@ class WorkflowCohort(Cohort):
     }
     if parsed_args_dict.pop("skip_finished"):
       kwargs["slideidfilters"].append(lambda self, sample: not SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{self.logmodule}.log", self.logmodule))
+    if parsed_args_dict.pop("dependencies"):
+      kwargs["slideidfilters"].append(lambda self, sample: all(SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{logmodule}.log", logmodule) for logmodule in self.sampleclass.workflowdependencies()))
     if parsed_args_dict["print_errors"]:
       kwargs["uselogfiles"] = False
     return kwargs

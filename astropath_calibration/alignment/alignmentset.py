@@ -379,6 +379,10 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
       *(r.imagefile for r in self.rectangles),
     ]
 
+  @classmethod
+  def workflowdependencies(cls):
+    return ["prepdb"] + super().workflowdependencies()
+
 class AlignmentSetFromXMLBase(AlignmentSetBase, ReadRectanglesOverlapsFromXML):
   def __init__(self, *args, nclip, position=None, **kwargs):
     self.__nclip = nclip

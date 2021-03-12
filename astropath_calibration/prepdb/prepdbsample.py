@@ -431,6 +431,10 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
       self.csv("vertices"),
     ]
 
+  @classmethod
+  def workflowdependencies(cls):
+    return super().workflowdependencies()
+
 def main(args=None):
   p = argparse.ArgumentParser()
   p.add_argument("root")

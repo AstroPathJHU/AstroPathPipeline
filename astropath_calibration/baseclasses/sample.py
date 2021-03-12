@@ -480,6 +480,11 @@ class WorkflowSample(SampleBase):
   def missingoutputfiles(self):
     return [_ for _ in self.outputfiles if not _.exists()]
 
+  @classmethod
+  @abc.abstractmethod
+  def workflowdependencies(cls):
+    return []
+
 class DbloadSampleBase(SampleBase):
   """
   Base class for any sample that uses the csvs in the dbload folder.
