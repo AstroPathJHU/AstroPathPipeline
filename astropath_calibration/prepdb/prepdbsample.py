@@ -73,6 +73,8 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
         targetcolor = targetannotation.color
         if layer > targetlayer:
           raise ValueError(f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in allowedannotations)}, but {name} is after {annotations[-1].name}")
+        if color != targetcolor:
+          raise ValueError(f"Annotation {name} has the wrong color {color}, expected {targetcolor}")
         while layer < targetlayer:
           emptycolor = allowedannotation(layer).color
           annotations.append(
