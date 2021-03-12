@@ -1,11 +1,11 @@
-import argparse, jxmlease, methodtools, numpy as np, PIL, skimage
+import argparse, collections, itertools, jxmlease, methodtools, more_itertools, numpy as np, PIL, skimage
 from ..baseclasses.csvclasses import Annotation, Constant, Batch, QPTiffCsv, Region, Vertex
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.qptiff import QPTiff
-from ..baseclasses.sample import DbloadSampleBase, XMLLayoutReader
+from ..baseclasses.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
 from ..utilities import units
 
-class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingWithQpscale, units.ThingWithApscale):
+class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, checkim3s=True, **kwargs)
 
@@ -35,25 +35,68 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
-    xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".annotations.polygons.xml")
+    xmlfile = self.annotationspolygonsxmlfile
     if not xmlfile.exists():
       return [], [], []
     annotations = []
     allregions = []
     allvertices = []
+
+    AllowedAnnotation = collections.namedtuple("AllowedAnnotation", "name layer color")
+    allowedannotations = [
+      AllowedAnnotation("good tissue", 1, "FFFF00"),
+      AllowedAnnotation("tumor", 2, "00FF00"),
+      AllowedAnnotation("lymph node", 3, "FF0000"),
+      AllowedAnnotation("regression", 4, "00FFFF"),
+      AllowedAnnotation("epithelial islands", 5, "FF00FF"),
+    ]
+    def allowedannotation(nameornumber):
+      try:
+        result, = {a for a in allowedannotations if nameornumber in (a.layer, a.name)}
+      except ValueError:
+        typ = 'number' if isinstance(nameornumber, int) else 'name'
+        raise ValueError(f"Unknown annotation {typ} {nameornumber}")
+      return result
+
     with open(xmlfile, "rb") as f:
-      for n, (path, _, node) in enumerate(jxmlease.parse(f, generator="/Annotations/Annotation"), start=1):
+      count = more_itertools.peekable(itertools.count(1))
+      for layer, (path, _, node) in zip(count, jxmlease.parse(f, generator="/Annotations/Annotation")):
         color = f"{int(node.get_xml_attr('LineColor')):06X}"
         color = color[4:6] + color[2:4] + color[0:2]
         visible = node.get_xml_attr("Visible").lower() == "true"
-        name = node.get_xml_attr("Name")
+        name = node.get_xml_attr("Name").lower()
+        if name == "empty":
+          count.prepend(layer)
+          continue
+        targetannotation = allowedannotation(name)
+        targetlayer = targetannotation.layer
+        targetcolor = targetannotation.color
+        if layer > targetlayer:
+          raise ValueError(f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in allowedannotations)}, but {name} is after {annotations[-1].name}")
+        if color != targetcolor:
+          raise ValueError(f"Annotation {name} has the wrong color {color}, expected {targetcolor}")
+        while layer < targetlayer:
+          emptycolor = allowedannotation(layer).color
+          annotations.append(
+            Annotation(
+              color=emptycolor,
+              visible=False,
+              name="empty",
+              sampleid=0,
+              layer=layer,
+              poly="poly",
+              pscale=self.pscale,
+              apscale=self.apscale,
+            )
+          )
+          layer = next(count)
         annotations.append(
           Annotation(
             color=color,
             visible=visible,
             name=name,
             sampleid=0,
-            layer=n,
+            layer=layer,
             poly="poly",
             pscale=self.pscale,
             apscale=self.apscale,
@@ -64,7 +107,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
         regions = node["Regions"]["Region"]
         if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
         for m, region in enumerate(regions, start=1):
-          regionid = 1000*n + m
+          regionid = 1000*layer + m
           vertices = region["Vertices"]["V"]
           if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
           regionvertices = []
@@ -93,7 +136,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, units.ThingW
             Region(
               regionid=regionid,
               sampleid=0,
-              layer=n,
+              layer=layer,
               rid=m,
               isNeg=isNeg,
               type=region.get_xml_attr("Type"),
@@ -362,6 +405,35 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
     self.writerectangles()
     self.writeregions()
     self.writevertices()
+
+  @property
+  def inputfiles(self):
+    return [
+      self.annotationspolygonsxmlfile,
+      self.annotationsxmlfile,
+      self.fullxmlfile,
+      self.parametersxmlfile,
+      self.qptifffilename,
+      self.scanfolder/"MSI",
+    ]
+
+  @property
+  def outputfiles(self):
+    return [
+      self.csv("annotations"),
+      self.csv("batch"),
+      self.csv("constants"),
+      self.csv("overlap"),
+      self.csv("qptiff"),
+      self.csv("qptiff").with_suffix(".jpg"),
+      self.csv("rect"),
+      self.csv("regions"),
+      self.csv("vertices"),
+    ]
+
+  @classmethod
+  def workflowdependencies(cls):
+    return super().workflowdependencies()
 
 def main(args=None):
   p = argparse.ArgumentParser()

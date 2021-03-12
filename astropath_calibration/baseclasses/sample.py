@@ -1,4 +1,4 @@
-import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, csv, cv2, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, more_itertools, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
@@ -193,11 +193,24 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
       if (possibility/(self.SlideID+".Parameters.xml")).exists(): return possibility
     raise FileNotFoundError(f"Didn't find {self.SlideID}.Parameters.xml in any of these folders:\n" + ", ".join(str(_) for _ in possibilities))
 
+  @property
+  def parametersxmlfile(self):
+    return self.xmlfolder/(self.SlideID+".Parameters.xml")
+  @property
+  def fullxmlfile(self):
+    return self.xmlfolder/(self.SlideID+".Full.xml")
+  @property
+  def annotationsxmlfile(self):
+    return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
+  @property
+  def annotationspolygonsxmlfile(self):
+    return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".annotations.polygons.xml")
+
   def __getimageinfofromXMLfiles(self):
     """
     Find the pscale, image dimensions, and number of layers from the XML metadata.
     """
-    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
+    with open(self.parametersxmlfile, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "Shape":
           width, height, nlayers = (int(_) for _ in str(node).split())
@@ -208,7 +221,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
       width *= units.onepixel(pscale=pscale)
       height *= units.onepixel(pscale=pscale)
     except NameError:
-      raise IOError(f'Couldn\'t find Shape and/or MillimetersPerPixel in {self.xmlfolder/(self.SlideID+".Parameters.xml")}')
+      raise IOError(f'Couldn\'t find Shape and/or MillimetersPerPixel in {self.parametersxmlfile}')
 
     return pscale, width, height, nlayers
 
@@ -218,7 +231,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     """
     Find the location of the image on the slide from the xml metadata
     """
-    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
+    with open(self.parametersxmlfile, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "SampleLocation":
           return np.array([float(_) for _ in str(node).split()]) * units.onemicron(pscale=self.apscale)
@@ -228,7 +241,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     """
     Find info from the CameraState Parameters block in the xml metadata
     """
-    with open(self.xmlfolder/(self.SlideID+".Full.xml"), "rb") as f:
+    with open(self.fullxmlfile, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3/G/G/G/G/G/G/G/G"):
         if node.xml_attrs["name"] == "CameraState":
           for G in node["G"]["G"]:
@@ -263,7 +276,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     """
     Find the camera binning from the xml metadata
     """
-    with open(self.xmlfolder/(self.SlideID+".Full.xml"), "rb") as f:
+    with open(self.fullxmlfile, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3/G/G/G/G/G/G/G/G"):
         if node.xml_attrs["name"] == "CameraState":
           for G in node["G"]["G"]:
@@ -292,13 +305,13 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     """
     Find the number of im3 layers from the xml metadata
     """
-    with open(self.xmlfolder/(self.SlideID+".Parameters.xml"), "rb") as f:
+    with open(self.parametersxmlfile, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
         if node.xml_attrs["name"] == "Shape":
           width, height, nlayers = (int(_) for _ in str(node).split())
           return nlayers
       else:
-        raise IOError(f'Couldn\'t find Shape in {self.xmlfolder/(self.SlideID+".Parameters.xml")}')
+        raise IOError(f'Couldn\'t find Shape in {self.parametersxmlfile}')
 
   @methodtools.lru_cache()
   @property
@@ -410,7 +423,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     image as well as the microscope name (really the name of the
     computer that processed the image).
     """
-    xmlfile = self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
+    xmlfile = self.annotationsxmlfile
     reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
     return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
 
@@ -437,6 +450,40 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
   @abc.abstractmethod
   def logmodule(self):
     "name of the log files for this class (e.g. align)"
+
+class WorkflowSample(SampleBase):
+  """
+  Base class for a sample that will be used in a workflow,
+  i.e. it takes in input files and creates output files.
+  It contains functions to assess the status of the run.
+  """
+  @property
+  def runstatus(self):
+    """
+    returns a SampleRunStatus object that indicates whether
+    the sample ran successfully or not, and information about
+    the failure, if any.
+    """
+    return SampleRunStatus.fromlog(self.logger.samplelog, self.logmodule, self.missingoutputfiles)
+
+  @property
+  @abc.abstractmethod
+  def inputfiles(self):
+    return []
+
+  @property
+  @abc.abstractmethod
+  def outputfiles(self):
+    return []
+
+  @property
+  def missingoutputfiles(self):
+    return [_ for _ in self.outputfiles if not _.exists()]
+
+  @classmethod
+  @abc.abstractmethod
+  def workflowdependencies(cls):
+    return []
 
 class DbloadSampleBase(SampleBase):
   """
@@ -662,6 +709,51 @@ class GeomSampleBase(SampleBase):
     else:
       return pathlib.Path(geomfolder)
 
+class SelectLayersSample(SampleBase):
+  """
+  Base class for any sample that needs a layer selection.
+  """
+  def __init__(self, *args, layer=None, layers=None, **kwargs):
+    if self.multilayer:
+      if layer is not None:
+        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
+    else:
+      if layers is not None:
+        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
+      if layer is None:
+        layer = 1
+      self.__layer = layer
+      layers = layer,
+
+    self.__layers = layers
+
+    super().__init__(*args, **kwargs)
+
+  @property
+  def layers(self):
+    result = self.__layers
+    if result is None: return range(1, self.nlayers+1)
+    return result
+
+  @property
+  def layer(self):
+    if self.multilayer:
+      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
+    return self.__layer
+
+  @abc.abstractproperty
+  def nlayers(self): pass
+
+  multilayer = False #can override in subclasses
+
+class SelectLayersIm3(SelectLayersSample):
+  @property
+  def nlayers(self): return self.nlayersim3
+
+class SelectLayersComponentTiff(SelectLayersSample):
+  @property
+  def nlayers(self): return self.nlayersunmixed
+
 class ReadRectanglesBase(RectangleCollection, SampleBase):
   """
   Base class for any sample that reads HPF info from any source.
@@ -669,9 +761,13 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
   """
   def __init__(self, *args, selectrectangles=None, **kwargs):
     super().__init__(*args, **kwargs)
-    rectanglefilter = rectangleoroverlapfilter(selectrectangles)
+    self.__rectanglefilter = rectangleoroverlapfilter(selectrectangles)
+    self.__initedrectangles = False
+
+  def initrectangles(self):
+    self.__initedrectangles = True
     self.__rectangles  = self.readallrectangles()
-    self.__rectangles = [r for r in self.rectangles if rectanglefilter(r)]
+    self.__rectangles = [r for r in self.rectangles if self.__rectanglefilter(r)]
 
   @abc.abstractmethod
   def readallrectangles(self):
@@ -698,29 +794,15 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
     self.__rectangles = value
 
   @property
-  def rectangles(self): return self.__rectangles
+  def rectangles(self):
+    if not self.__initedrectangles: self.initrectangles()
+    return self.__rectangles
 
-class ReadRectanglesWithLayers(ReadRectanglesBase):
+class ReadRectanglesWithLayers(ReadRectanglesBase, SelectLayersSample):
   """
   Base class for any sample that reads rectangles
   and needs a layer selection.
   """
-  def __init__(self, *args, layer=None, layers=None, **kwargs):
-    if self.multilayer:
-      if layer is not None:
-        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
-    else:
-      if layers is not None:
-        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
-      if layer is None:
-        layer = 1
-      self.__layer = layer
-      layers = layer,
-
-    self.__layers = layers
-
-    super().__init__(*args, **kwargs)
-
   @property
   def rectangleextrakwargs(self):
     kwargs = {
@@ -737,21 +819,7 @@ class ReadRectanglesWithLayers(ReadRectanglesBase):
       })
     return kwargs
 
-  @property
-  def layers(self):
-    result = self.__layers
-    if result is None: return range(1, self.nlayers+1)
-    return result
-
-  @property
-  def layer(self):
-    if self.multilayer:
-      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
-    return self.__layer
-
-  multilayer = False #can override in subclasses
-
-class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase):
+class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase, SelectLayersIm3):
   """
   Base class for any sample that loads images from an im3 file.
   filetype: "raw", "flatWarp", or "camWarp"
@@ -775,7 +843,7 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase):
   @property
   def nlayers(self):
     if self.__readlayerfile: return 1
-    return self.nlayersim3
+    return super().nlayers
   @property
   def rectangletype(self):
     if self.multilayer:
@@ -808,7 +876,7 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase):
   @property
   def filetype(self): return self.__filetype
 
-class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers):
+class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComponentTiff):
   """
   Base class for any sample that loads images from a component tiff file.
   layer or layers: the layer or layers to read, depending on whether
@@ -849,11 +917,14 @@ class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection,
     super().__init__(*args, **kwargs)
 
     _overlapfilter = rectangleoroverlapfilter(selectoverlaps)
-    overlapfilter = lambda o: _overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
+    self.__overlapfilter = lambda o: _overlapfilter(o) and o.p1 in self.rectangleindices and o.p2 in self.rectangleindices
+    self.__onlyrectanglesinoverlaps = onlyrectanglesinoverlaps
 
+  def initrectangles(self):
+    super().initrectangles()
     self.__overlaps  = self.readalloverlaps()
-    self.__overlaps = [o for o in self.overlaps if overlapfilter(o)]
-    if onlyrectanglesinoverlaps:
+    self.__overlaps = [o for o in self.overlaps if self.__overlapfilter(o)]
+    if self.__onlyrectanglesinoverlaps:
       self._rectangles = [r for r in self.rectangles if self.selectoverlaprectangles(r)]
 
   @abc.abstractmethod
@@ -863,7 +934,9 @@ class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection,
     return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}
 
   @property
-  def overlaps(self): return self.__overlaps
+  def overlaps(self):
+    self.rectangles #make sure initrectangles() has been called
+    return self.__overlaps
 
 class ReadRectanglesOverlapsIm3Base(ReadRectanglesOverlapsBase, ReadRectanglesIm3Base):
   """
@@ -937,6 +1010,7 @@ class XMLLayoutReader(SampleBase):
     rectangles, globals, perimeters, microscopename = self.getXMLplan()
     self.fixM2(rectangles)
     self.fixrectanglefilenames(rectangles)
+    self.fixduplicaterectangles(rectangles)
     rectanglefiles = self.getdir()
     maxtimediff = datetime.timedelta(0)
     for r in rectangles:
@@ -986,6 +1060,25 @@ class XMLLayoutReader(SampleBase):
       if expected != actual:
         self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
       r.file = expected
+
+  def fixduplicaterectangles(self, rectangles):
+    """
+    Remove duplicate rectangles from the list
+    """
+    seen = set()
+    for r in rectangles[:]:
+      if tuple(r.cxvec) in seen: continue
+      seen.add(tuple(r.cxvec))
+      duplicates = [r2 for r2 in rectangles if r2 is not r and np.all(r2.cxvec == r.cxvec)]
+      if not duplicates: continue
+      for r2 in duplicates:
+        if r2.file != r.file:
+          raise ValueError(f"Multiple rectangles at {r.cxvec} with different filenames {', '.join(r3.file for r3 in [r]+duplicates)}")
+      self.logger.warningglobal(f"annotations.xml has the rectangle at {r.cxvec} with filename {r.file} {len(duplicates)+1} times")
+      for r2 in [r]+duplicates[:-1]:
+        rectangles.remove(r2)
+    for i, rectangle in enumerate(rectangles, start=1):
+      rectangle.n = i
 
   @methodtools.lru_cache()
   def getdir(self):
@@ -1099,3 +1192,81 @@ class TempDirSample(SampleBase):
 
   def tempfile(self, *args, **kwargs):
     return self.enter_context(tempfile.NamedTemporaryFile(*args, dir=self.tempfolder, **kwargs))
+
+class SampleRunStatus:
+  """
+  Stores information about if a sample ran successfully.
+  started: did it start running?
+  ended: did it finish running?
+  error: error traceback as a string, if any
+  previousrun: SampleRunStatus for the previous run of this sample, if any
+  missingfiles: files that are supposed to be in the output, but are missing
+  """
+  def __init__(self, started, ended, error=None, previousrun=None, missingfiles=()):
+    self.started = started
+    self.ended = ended
+    self.error = error
+    self.previousrun = previousrun
+    self.missingfiles = missingfiles
+  def __bool__(self):
+    """
+    True if the sample started and ended with no error and all output files are present
+    """
+    return self.started and self.ended and self.error is None and not self.missingfiles
+  @property
+  def nruns(self):
+    """
+    How many times has this sample been run?
+    """
+    if self.previousrun is None:
+      return 1 if self.started else 0
+    return self.previousrun.nruns + 1
+
+  @classmethod
+  def fromlog(cls, samplelog, module, missingfiles=[]):
+    """
+    Create a SampleRunStatus object by reading the log file.
+    samplelog: from CohortFolder/SlideID/logfiles/SlideID-module.log
+               (not CohortFolder/logfiles/module.log)
+    module: the module being run
+    """
+    result = None
+    started = False
+    with contextlib.ExitStack() as stack:
+      try:
+        f = stack.enter_context(open(samplelog))
+      except IOError:
+        return cls(started=False, ended=False, missingfiles=missingfiles)
+      else:
+        reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
+        for row in reader:
+          if re.match(rf"{module} v[0-9a-f.devgd+]+", row["message"]):
+            started = True
+            error = None
+            ended = False
+            previousrun = result
+            result = None
+          elif row["message"].startswith("ERROR:"):
+            error = reader.peek(default={"message": ""})["message"]
+            if error[0] == "[" and error[-1] == "]":
+              error = "".join(eval(error))
+            else:
+              error = row["message"]
+          elif row["message"] == f"end {module}":
+            ended = True
+            result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
+    if result is None:
+      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
+    return result
+
+  def __str__(self):
+    if self: return "ran successfully"
+    if not self.started:
+      return "did not run"
+    elif self.error is not None:
+      return "gave an error:\n\n"+self.error
+    elif not self.ended:
+      return "started, but did not end"
+    elif self.missingfiles:
+      return "ran successfully but some output files are missing: " + ", ".join(str(_) for _ in self.missingfiles)
+    assert False, self

@@ -1,4 +1,5 @@
 import collections, methodtools, numpy as np
+from ..baseclasses.cohort import WorkflowCohort
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.tableio import readtable
 from .annowarpcohort import AnnoWarpCohortBase
@@ -28,12 +29,12 @@ class GatherStatsCohort(AnnoWarpCohortBase):
   This cohort loops over the samples that finished successfully
   and saves the average and standard deviation for each parameter.
   """
-  def __init__(self, *args, uselogfiles=False, filters=[], **kwargs):
+  def __init__(self, *args, uselogfiles=False, slideidfilters=[], **kwargs):
     super().__init__(
       *args,
       **kwargs,
       uselogfiles=False,
-      filters=filters+[lambda samp: (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp-stitch.csv").exists()],
+      slideidfilters=slideidfilters+[lambda self, samp: (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp-stitch.csv").exists()],
     )
     self.__parametervalues = collections.defaultdict(list)
 
@@ -64,7 +65,7 @@ class GatherStatsCohort(AnnoWarpCohortBase):
       stats.append(Stats(description=name, average=average, std=std))
     return stats
 
-class StitchFailedCohort(AnnoWarpCohortBase):
+class StitchFailedCohort(AnnoWarpCohortBase, WorkflowCohort):
   """
   Rerun any samples that aligned successfully but didn't stitch,
   using a constraint obtained from the other samples in the cohort.
@@ -73,12 +74,12 @@ class StitchFailedCohort(AnnoWarpCohortBase):
   from the weighted average and standard deviation of the other samples in the cohort.
   The other parameters are fixed to the weighted average of the other samples.
   """
-  def __init__(self, *args, multiplystd=np.array([1]*8+[1]*2), filters=[], **kwargs):
+  def __init__(self, *args, multiplystd=np.array([1]*8+[1]*2), slideidfilters=[], **kwargs):
     super().__init__(
       *args,
       **kwargs,
-      filters=filters+[
-        lambda samp:
+      slideidfilters=slideidfilters+[
+        lambda self, samp:
           (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp.csv").exists()
           and not (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp-stitch.csv").exists()
       ],

@@ -34,7 +34,6 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort, MaskCohort):
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument("--skip-stitched", action="store_true")
     p.add_argument("--tilepixels", type=int, default=AnnoWarpSampleInformTissueMask.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {AnnoWarpSampleInformTissueMask.defaulttilepixels})")
     p.add_argument("--min-tissue-fraction", type=float, default=AnnoWarpSampleInformTissueMask.defaultmintissuefraction, help=f"minimum fraction of pixels in the tile that are considered tissue if it's to be used for alignment (default: {AnnoWarpSampleInformTissueMask.defaultmintissuefraction})")
     return p
@@ -46,14 +45,6 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort, MaskCohort):
       "tilepixels": parsed_args_dict.pop("tilepixels"),
       "mintissuefraction": parsed_args_dict.pop("min_tissue_fraction"),
     }
-    if parsed_args_dict.pop("skip_stitched"):
-      dbloadroot = kwargs["dbloadroot"]
-      if dbloadroot is None: dbloadroot = kwargs["root"]
-      def isnotstitched(sample):
-        if not (dbloadroot/sample.SlideID/"dbload"/f"{sample.SlideID}_annowarp.csv").exists(): return True
-        if not (dbloadroot/sample.SlideID/"dbload"/f"{sample.SlideID}_annowarp-stitch.csv").exists(): return True
-        return False
-      kwargs["filters"].append(isnotstitched)
     return kwargs
 
 class AnnoWarpCohort(AnnoWarpCohortBase):
