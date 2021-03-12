@@ -29,12 +29,12 @@ class GatherStatsCohort(AnnoWarpCohortBase):
   This cohort loops over the samples that finished successfully
   and saves the average and standard deviation for each parameter.
   """
-  def __init__(self, *args, uselogfiles=False, filters=[], **kwargs):
+  def __init__(self, *args, uselogfiles=False, slideidfilters=[], **kwargs):
     super().__init__(
       *args,
       **kwargs,
       uselogfiles=False,
-      filters=filters+[lambda self, samp: (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp-stitch.csv").exists()],
+      slideidfilters=slideidfilters+[lambda self, samp: (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp-stitch.csv").exists()],
     )
     self.__parametervalues = collections.defaultdict(list)
 
@@ -74,12 +74,12 @@ class StitchFailedCohort(AnnoWarpCohortBase, WorkflowCohort):
   from the weighted average and standard deviation of the other samples in the cohort.
   The other parameters are fixed to the weighted average of the other samples.
   """
-  def __init__(self, *args, multiplystd=np.array([1]*8+[1]*2), filters=[], **kwargs):
+  def __init__(self, *args, multiplystd=np.array([1]*8+[1]*2), slideidfilters=[], **kwargs):
     super().__init__(
       *args,
       **kwargs,
-      filters=filters+[
-        lambda samp:
+      slideidfilters=slideidfilters+[
+        lambda self, samp:
           (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp.csv").exists()
           and not (self.dbloadroot/samp.SlideID/"dbload"/f"{samp.SlideID}_annowarp-stitch.csv").exists()
       ],

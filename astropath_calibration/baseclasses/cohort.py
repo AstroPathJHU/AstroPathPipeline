@@ -16,21 +16,16 @@ class Cohort(abc.ABC):
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, root, *, filters=[], debug=False, uselogfiles=True, logroot=None, xmlfolders=[]):
+  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, xmlfolders=[]):
     super().__init__()
     self.root = pathlib.Path(root)
     if logroot is None: logroot = root
     self.logroot = pathlib.Path(logroot)
-    self.filters = filters
+    self.slideidfilters = slideidfilters
+    self.samplefilters = samplefilters
     self.debug = debug
     self.uselogfiles = uselogfiles
     self.xmlfolders = xmlfolders
-
-  def filter(self, samp):
-    """
-    Does this sample pass all the filters?
-    """
-    return all(filter(self, samp) for filter in self.filters)
 
   def __iter__(self):
     """
@@ -40,7 +35,7 @@ class Cohort(abc.ABC):
     """
     for samp in readtable(self.root/"sampledef.csv", SampleDef):
       if not samp: continue
-      if not self.filter(samp): continue
+      if not all(filter(self, samp) for filter in self.slideidfilters): continue
       yield samp
 
   @abc.abstractmethod
@@ -78,6 +73,8 @@ class Cohort(abc.ABC):
         with getlogger(module=self.logmodule, root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):
           raise
       else:
+        if not all(filter(self, sample) for filter in self.samplefilters):
+          continue
         if sample.logmodule != self.logmodule:
           raise ValueError(f"Wrong logmodule: {self.logmodule} != {sample.logmodule}")
         self.processsample(sample, **kwargs)
@@ -130,12 +127,13 @@ class Cohort(abc.ABC):
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
       "xmlfolders": dct.pop("xmlfolders"),
-      "filters": [],
+      "slideidfilters": [],
+      "samplefilters": [],
     }
     if kwargs["logroot"] is None: kwargs["logroot"] = kwargs["root"]
     regex = dct.pop("sampleregex")
     if regex is not None:
-      kwargs["filters"].append(lambda self, sample: regex.match(sample.SlideID))
+      kwargs["slideidfilters"].append(lambda self, sample: regex.match(sample.SlideID))
     return kwargs
 
   @classmethod
@@ -409,7 +407,7 @@ class WorkflowCohort(Cohort):
       **super().initkwargsfromargumentparser(parsed_args_dict),
     }
     if parsed_args_dict.pop("skip_finished"):
-      kwargs["filters"].append(lambda self, sample: not SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{self.logmodule}.log", self.logmodule))
+      kwargs["slideidfilters"].append(lambda self, sample: not SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{self.logmodule}.log", self.logmodule))
     if parsed_args_dict["print_errors"]:
       kwargs["uselogfiles"] = False
     return kwargs
