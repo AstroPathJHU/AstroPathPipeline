@@ -34,8 +34,6 @@ class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort):
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    root = parsed_args_dict["root"]
-    dontstitch = parsed_args_dict["dont_stitch"]
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "doalignment": not parsed_args_dict.pop("dont_align"),

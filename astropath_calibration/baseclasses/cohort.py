@@ -1,8 +1,8 @@
-import abc, argparse, contextlib, csv, more_itertools, pathlib, re
+import abc, argparse, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable
 from .logging import getlogger
-from .sample import SampleBase, SampleDef, SampleRunStatus
+from .sample import SampleDef, SampleRunStatus
 
 class Cohort(abc.ABC):
   """
@@ -429,7 +429,7 @@ class WorkflowCohort(Cohort):
     else:
       missinginputs = [file for file in sample.inputfiles if not file.exists()]
       if missinginputs:
-        raise IOError(f"Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
+        raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
           
       super().processsample(sample, **kwargs)
       status = sample.runstatus

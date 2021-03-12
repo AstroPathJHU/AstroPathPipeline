@@ -25,7 +25,6 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    zoomroot = parsed_args_dict["zoomroot"]
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "mode": parsed_args_dict.pop("mode"),

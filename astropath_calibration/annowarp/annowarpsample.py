@@ -803,11 +803,11 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
         if "wx" not in reader.fieldnames or "wy" not in reader.fieldnames:
           result.append(self.newverticescsv)
     if self.newregionscsv not in result:
-      regions = readtable(self.newregionscsv, Region, extrakwargs={"apscale": apscale, "pscale": self.pscale}, maxrows=1)
+      regions = readtable(self.newregionscsv, Region, extrakwargs={"apscale": self.apscale, "pscale": self.pscale}, maxrows=1)
       if regions:
         region, = regions
         if region.poly is None:
-          result.append(newregionscsv)
+          result.append(self.newregionscsv)
     return result
 
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):

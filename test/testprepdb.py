@@ -1,12 +1,9 @@
-import more_itertools, numpy as np, os, pathlib, PIL.Image, re, sys, unittest
+import more_itertools, numpy as np, os, pathlib, PIL.Image, sys, unittest
 from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, QPTiffCsv, Region, ROIGlobals, Vertex
-from astropath_calibration.baseclasses.sample import SampleDef
 from astropath_calibration.baseclasses.overlap import Overlap
 from astropath_calibration.baseclasses.rectangle import Rectangle
 from astropath_calibration.prepdb.prepdbcohort import PrepdbCohort
 from astropath_calibration.prepdb.prepdbsample import PrepdbSample
-from astropath_calibration.utilities import units
-from astropath_calibration.utilities.misc import re_subs
 from astropath_calibration.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 
