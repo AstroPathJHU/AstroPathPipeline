@@ -929,7 +929,9 @@ class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection,
     return {"pscale": self.pscale, "rectangles": self.rectangles, "nclip": self.nclip}
 
   @property
-  def overlaps(self): return self.__overlaps
+  def overlaps(self):
+    self.rectangles #make sure initrectangles() has been called
+    return self.__overlaps
 
 class ReadRectanglesOverlapsIm3Base(ReadRectanglesOverlapsBase, ReadRectanglesIm3Base):
   """
