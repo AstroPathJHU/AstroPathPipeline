@@ -71,9 +71,13 @@ class Cohort(abc.ABC):
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     for samp in self:
-      with getlogger(module=self.logmodule, root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):
-        #enter the logger here to log exceptions in __init__ of the sample
+      try:
         sample = self.initiatesample(samp)
+      except:
+        #enter the logger here to log exceptions in __init__ of the sample
+        with getlogger(module=self.logmodule, root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):
+          raise
+      else:
         if sample.logmodule != self.logmodule:
           raise ValueError(f"Wrong logmodule: {self.logmodule} != {sample.logmodule}")
         self.processsample(sample, **kwargs)
