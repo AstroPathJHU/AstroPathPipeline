@@ -2,7 +2,7 @@ import collections, functools, numpy as np, os, PIL, re
 
 from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ..utilities.dataclasses import MyDataClass
-from ..utilities.tableio import pathfield, writetable
+from ..utilities.tableio import pathfield, readtable, writetable
 
 class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample):
   """

@@ -382,6 +382,7 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
   @property
   def outputfiles(self):
     return [
-      *(self.zoomfilename(layer, tilex, tiley) for layer in self.layers for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))),
+      #not the big filenames, we don't know which ones are nonempty
+      #*(self.zoomfilename(layer, tilex, tiley) for layer in self.layers for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))),
       *(self.wsifilename(layer) for layer in self.layers),
     ]

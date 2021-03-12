@@ -1,4 +1,4 @@
-from ..baseclasses.cohort import DbloadCohort, MaskCohort, SelectRectanglesCohort
+from ..baseclasses.cohort import DbloadCohort, MaskCohort, SelectRectanglesCohort, Workflow
 from .stitchmask import StitchInformMask
 
 class StitchMaskCohortBase(DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort):
