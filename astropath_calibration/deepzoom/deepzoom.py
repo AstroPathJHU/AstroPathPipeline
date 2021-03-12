@@ -254,7 +254,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
   def outputfiles(self):
     zoomlist = self.deepzoomfolder/"zoomlist.csv"
     result = [
-      self.deepzoomfolder/"zoomlist.csv",
+      zoomlist,
       *(self.deepzoomfolder/f"L{layer}.dzi" for layer in self.layers),
     ]
     if zoomlist.exists():
