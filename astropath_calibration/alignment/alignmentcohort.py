@@ -1,7 +1,7 @@
-from ..baseclasses.cohort import DbloadCohort, Im3Cohort, SelectRectanglesCohort
+from ..baseclasses.cohort import DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort
 from .alignmentset import AlignmentSet
 
-class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort):
+class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort):
   def __init__(self, *args, doalignment=True, dostitching=True, **kwargs):
     super().__init__(*args, **kwargs)
     self.__doalignment = doalignment
