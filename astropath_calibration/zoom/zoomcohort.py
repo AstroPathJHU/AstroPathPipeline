@@ -1,7 +1,7 @@
-from ..baseclasses.cohort import DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomCohort
+from ..baseclasses.cohort import DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort
 from .zoom import Zoom
 
-class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort, SelectLayersCohort, WorkflowCohort):
+class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomFolderCohort, SelectLayersCohort, WorkflowCohort):
   __doc__ = Zoom.__doc__
 
   def __init__(self, *args, mode="vips", **kwargs):

@@ -1,7 +1,7 @@
-from ..baseclasses.cohort import DbloadCohort, MaskCohort, ZoomCohort
+from ..baseclasses.cohort import DbloadCohort, MaskCohort, ZoomFolderCohort
 from .annowarpsample import AnnoWarpSampleBase, AnnoWarpSampleInformTissueMask
 
-class AnnoWarpCohortBase(DbloadCohort, ZoomCohort, MaskCohort):
+class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort):
   """
   Cohort for running annowarp over a whole folder of samples.
 

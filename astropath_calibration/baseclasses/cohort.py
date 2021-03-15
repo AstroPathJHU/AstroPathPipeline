@@ -224,7 +224,7 @@ class DbloadCohort(Cohort):
       "dbloadroot": parsed_args_dict.pop("dbloadroot"),
     }
 
-class ZoomCohort(Cohort):
+class ZoomFolderCohort(Cohort):
   """
   Base class for any cohort that uses zoom files
   zoomroot: root for the zoom files
