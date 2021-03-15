@@ -4,7 +4,7 @@ from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, distancefield, pscalefield
-from .polygon import DataClassWithPolygon, Polygon, polygonfield
+from .polygon import DataClassWithPolygon, polygonfield
 
 class ROIGlobals(DataClassWithPscale):
   """
