@@ -424,7 +424,11 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     computer that processed the image).
     """
     xmlfile = self.annotationsxmlfile
-    reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
+    try:
+      xmlfolder = self.xmlfolder
+    except FileNotFoundError:
+      xmlfolder = None
+    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale)
     return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
 
   @property
@@ -784,6 +788,12 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
     kwargs = {
       "pscale": self.pscale,
     }
+    try:
+      kwargs.update({
+        "xmlfolder": self.xmlfolder,
+      })
+    except FileNotFoundError:
+      pass
     return kwargs
 
   @property
@@ -859,12 +869,6 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase, SelectLayer
       "width": self.fwidth,
       "height": self.fheight,
     }
-    try:
-      kwargs.update({
-        "xmlfolder": self.xmlfolder,
-      })
-    except FileNotFoundError:
-      pass
     if self.multilayer:
       pass
     else:

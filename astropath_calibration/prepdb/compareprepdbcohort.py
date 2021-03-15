@@ -1,5 +1,5 @@
 import contextlib, dataclassy, datetime, more_itertools, numbers, numpy as np, pathlib, tempfile
-from ..baseclasses.csvclasses import Annotation, Batch, Constant, ROIGlobals, QPTiffCsv, Vertex, Region
+from ..baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, ROIGlobals, QPTiffCsv, Vertex, Region
 from ..baseclasses.overlap import Overlap
 from ..baseclasses.rectangle import Rectangle
 from ..utilities import units
@@ -31,6 +31,7 @@ class ComparePrepdbCohort(PrepdbCohort):
       ("batch", Batch, {}),
       ("constants", Constant, {"pscale": sample.pscale, "apscale": sample.apscale, "qpscale": sample.qpscale, "readingfromfile": True}),
       ("globals", ROIGlobals, {"pscale": sample.pscale}),
+      ("exposures", ExposureTime, {"pscale": sample.pscale}),
       ("rect", Rectangle, {"pscale": sample.pscale}),
       ("overlap", Overlap, {"pscale": sample.pscale, "nclip": sample.nclip, "rectangles": sample.rectangles}),
       ("qptiff", QPTiffCsv, {"pscale": sample.pscale}),

@@ -260,8 +260,6 @@ class Region(DataClassWithPolygon):
   poly: gdal polygon for the region
   """
 
-  pixelsormicrons = Polygon.pixelsormicrons
-
   regionid: int
   sampleid: int
   layer: int
@@ -270,3 +268,20 @@ class Region(DataClassWithPolygon):
   type: str
   nvert: int
   poly: polygonfield()
+
+class ExposureTime(DataClassWithPscale):
+  """
+  The exposure time for a layer of an HPF
+  n: the rectangle id
+  cx, cy: the coordinates of the HPF center, in integer pixels
+  layer: the index of the layer, starting from 1
+  exp: the exposure time
+  """
+
+  pixelsormicrons = "microns"
+
+  n: int
+  cx: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cy: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  layer: int
+  exp: float

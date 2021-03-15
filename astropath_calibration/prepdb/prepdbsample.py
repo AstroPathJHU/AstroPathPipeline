@@ -1,5 +1,5 @@
 import argparse, collections, itertools, jxmlease, methodtools, more_itertools, numpy as np, PIL, skimage
-from ..baseclasses.csvclasses import Annotation, Constant, Batch, QPTiffCsv, Region, Vertex
+from ..baseclasses.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.qptiff import QPTiff
 from ..baseclasses.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
@@ -29,6 +29,21 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
 
   @property
   def rectangles(self): return self.getrectanglelayout()
+
+  @property
+  def exposuretimes(self):
+    return [
+      ExposureTime(
+        n=r.n,
+        cx=r.cx,
+        cy=r.cy,
+        layer=layer,
+        exp=exposuretime,
+        pscale=self.pscale,
+      )
+      for r in self.rectangles
+      for layer, exposuretime in enumerate(r.allexposuretimes, start=1)
+    ]
 
   @property
   def globals(self): return self.getXMLplan()[1]
@@ -352,59 +367,64 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
 
 class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
   def writebatch(self):
-    self.logger.info("writebatch")
+    self.logger.info("write batch")
     self.writecsv("batch", self.getbatch())
 
   def writerectangles(self):
-    self.logger.info("writerectangles")
+    self.logger.info("write rectangles")
     self.writecsv("rect", self.rectangles)
 
   def writeglobals(self):
     if not self.globals: return
-    self.logger.info("writeglobals")
+    self.logger.info("write globals")
     self.writecsv("globals", self.globals)
 
   def writeannotations(self):
-    self.logger.info("writeannotations")
+    self.logger.info("write annotations")
     self.writecsv("annotations", self.annotations, rowclass=Annotation)
 
+  def writeexposures(self):
+    self.logger.info("write exposure times")
+    self.writecsv("exposures", self.exposuretimes, rowclass=ExposureTime)
+
   def writeregions(self):
-    self.logger.info("writeregions")
+    self.logger.info("write regions")
     self.writecsv("regions", self.regions, rowclass=Region)
 
   def writevertices(self):
-    self.logger.info("writevertices")
+    self.logger.info("write vertices")
     self.writecsv("vertices", self.vertices, rowclass=Vertex)
 
   def writeqptiffcsv(self):
-    self.logger.info("writeqptiffcsv")
+    self.logger.info("write qptiff csv")
     self.writecsv("qptiff", self.getqptiffcsv())
 
   def writeqptiffjpg(self):
-    self.logger.info("writeqptiffjpg")
+    self.logger.info("write qptiff jpg")
     img = self.getqptiffimage()
     img.save(self.jpgfilename)
 
   def writeoverlaps(self):
-    self.logger.info("writeoverlaps")
+    self.logger.info("write overlaps")
     self.writecsv("overlap", self.overlaps)
 
   def writeconstants(self):
-    self.logger.info("writeconstants")
+    self.logger.info("write constants")
     self.writecsv("constants", self.getconstants())
 
   def writemetadata(self):
     self.dbload.mkdir(parents=True, exist_ok=True)
+    self.writerectangles()
+    self.writeexposures()
+    self.writeoverlaps()
     self.writeannotations()
     self.writebatch()
     self.writeconstants()
     self.writeglobals()
-    self.writeoverlaps()
     self.writeqptiffcsv()
     self.writeqptiffjpg()
-    self.writerectangles()
-    self.writeregions()
     self.writevertices()
+    self.writeregions()
 
   @property
   def inputfiles(self):
@@ -423,6 +443,7 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
       self.csv("annotations"),
       self.csv("batch"),
       self.csv("constants"),
+      self.csv("exposures"),
       self.csv("overlap"),
       self.csv("qptiff"),
       self.csv("qptiff").with_suffix(".jpg"),

@@ -12,9 +12,12 @@ class Rectangle(DataClassWithPscale):
   n: the id of the HPF, starting from 1
   x, y: the coordinates of the top left corner
   w, h: the size of the field
-  cx, cy: the coordinates of the center, in integer pixels
+  cx, cy: the coordinates of the center, in integer microns
   t: what time the HPF image was recorded
   file: the filename of the im3 for the HPF
+
+  xmlfolder: the folder where the xml file with metadata for the HPF lives
+             (optional, but if you provide it then you can get the exposure time)
   """
 
   pixelsormicrons = "microns"
@@ -28,6 +31,10 @@ class Rectangle(DataClassWithPscale):
   cy: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   t: MetaDataAnnotation(datetime.datetime, readfunction=lambda x: datetime.datetime.fromtimestamp(int(x)), writefunction=lambda x: int(datetime.datetime.timestamp(x)))
   file: str
+
+  def __post_init__(self, *args, xmlfolder=None, **kwargs):
+    self.__xmlfolder = xmlfolder
+    super().__post_init__(*args, **kwargs)
 
   @classmethod
   def transforminitargs(cls, *args, rectangle=None, **kwargs):
@@ -69,6 +76,42 @@ class Rectangle(DataClassWithPscale):
     Gives [w, h] as a numpy array
     """
     return np.array([self.w, self.h])
+
+  @property
+  def xmlfile(self):
+    if self.__xmlfolder is None:
+      raise ValueError("Can't get xml info if you don't provide the rectangle with an xml folder")
+    return self.__xmlfolder/self.file.replace(".im3", ".SpectralBasisInfo.Exposure.xml")
+
+  @methodtools.lru_cache()
+  @property
+  def __allexposuretimesandbroadbandfilters(self):
+    result = []
+    with open(self.xmlfile, "rb") as f:
+      broadbandfilter = 0
+      for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
+        if node.xml_attrs["name"] == "Exposure":
+          thisbroadbandfilter = [float(_) for _ in str(node).split()]
+          #sanity check
+          assert len(thisbroadbandfilter) == int(node.get_xml_attr("size"))
+          broadbandfilter += 1
+          for exposuretime in thisbroadbandfilter:
+            result.append((exposuretime, broadbandfilter))
+    return result
+
+  @property
+  def allexposuretimes(self):
+    """
+    The exposure times for the HPF layers
+    """
+    return [exposuretimeandbroadbandfilter[0] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
+
+  @property
+  def allbroadbandfilters(self):
+    """
+    The broadband filter ids (numbered from 1) of the layers
+    """
+    return [exposuretimeandbroadbandfilter[1] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
 
 class RectangleWithImageBase(Rectangle):
   """
@@ -241,11 +284,9 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   width, height: the shape of the HPF image
   nlayers: the number of layers in the *input* file
   layers: which layers you actually want to access
-  xmlfolder: the folder where the xml file with metadata for the HPF lives
-             (optional, but if you provide it then you can get the exposure time)
   """
 
-  def __post_init__(self, *args, imagefolder, filetype, width, height, nlayers, layers, xmlfolder=None, **kwargs):
+  def __post_init__(self, *args, imagefolder, filetype, width, height, nlayers, layers, **kwargs):
     super().__post_init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__filetype = filetype
@@ -253,7 +294,6 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     self.__height = height
     self.__nlayers = nlayers
     self.__layers = layers
-    self.__xmlfolder = xmlfolder
 
   @property
   def imageshape(self):
@@ -311,42 +351,20 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     return self.__layers
 
   @property
-  def xmlfile(self):
-    if self.__xmlfolder is None:
-      raise ValueError("Can't get xml info if you don't provide the rectangle with an xml folder")
-    return self.__xmlfolder/self.file.replace(".im3", ".SpectralBasisInfo.Exposure.xml")
-
-  @methodtools.lru_cache()
-  @property
-  def __allexposuretimesandbroadbandfilters(self):
-    result = []
-    with open(self.xmlfile, "rb") as f:
-      broadbandfilter = 0
-      for path, _, node in jxmlease.parse(f, generator="/IM3Fragment/D"):
-        if node.xml_attrs["name"] == "Exposure":
-          thisbroadbandfilter = [float(_) for _ in str(node).split()]
-          #sanity check
-          assert len(thisbroadbandfilter) == int(node.get_xml_attr("size"))
-          broadbandfilter += 1
-          for exposuretime in thisbroadbandfilter:
-            result.append((exposuretime, broadbandfilter))
-    return result
-
-  @property
   def exposuretimes(self):
     """
     The exposure times for the HPF layers you access
     """
-    all = self.__allexposuretimesandbroadbandfilters
-    return [all[layer-1][0] for layer in self.__layers]
+    all = self.allexposuretimes
+    return [all[layer-1] for layer in self.__layers]
 
   @property
   def broadbandfilters(self):
     """
     The broadband filter ids (numbered from 1) of the layers you access
     """
-    all = self.__allexposuretimesandbroadbandfilters
-    return [all[layer-1][1] for layer in self.__layers]
+    all = self.allbroadbandfilters
+    return [all[layer-1] for layer in self.__layers]
 
 class RectangleReadIm3(RectangleReadIm3MultiLayer):
   """
