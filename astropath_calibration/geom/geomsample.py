@@ -2,12 +2,12 @@ import cv2, methodtools, more_itertools, numpy as np
 from ..alignment.field import FieldReadComponentTiff
 from ..baseclasses.csvclasses import Vertex
 from ..baseclasses.polygon import DataClassWithPolygon, Polygon, polygonfield
-from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff
+from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ..utilities import units
 from ..utilities.tableio import writetable
 from .contours import findcontoursaspolygons
 
-class GeomSample(ReadRectanglesDbloadComponentTiff):
+class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, layer=9, with_seg=True, **kwargs)
 
@@ -64,6 +64,24 @@ class GeomSample(ReadRectanglesDbloadComponentTiff):
     if tumorfilename is None: tumorfilename = self.tumorfilename
     writetable(fieldfilename, self.getfieldboundaries())
     writetable(tumorfilename, self.gettumorboundaries())
+
+  @property
+  def inputfiles(self):
+    return [
+      self.csv("constants"),
+      self.csv("fields"),
+      *(r.imagefile for r in self.rectangles),
+    ]
+  @property
+  def outputfiles(self):
+    return [
+      self.fieldfilename,
+      self.tumorfilename,
+    ]
+
+  @classmethod
+  def workflowdependencies(cls):
+    return ["align"] + super().workflowdependencies()
 
 class Boundary(DataClassWithPolygon):
   n: int

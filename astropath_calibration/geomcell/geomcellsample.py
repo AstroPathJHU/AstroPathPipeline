@@ -99,7 +99,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
   @property
   def inputfiles(self):
     return [
-      self.csv("rect"),
+      self.csv("constants"),
+      self.csv("fields"),
       *(r.imagefile for r in self.rectangles),
     ]
   @property

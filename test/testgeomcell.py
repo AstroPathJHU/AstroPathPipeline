@@ -21,7 +21,7 @@ class TestGeomCell(TestBaseSaveOutput):
   def testGeomCell(self, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     geomroot = thisfolder/"geomcell_test_for_jenkins"
-    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID]
+    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug"]
     GeomCellCohort.runfromargumentparser(args=args)
 
     s = GeomCellSample(root=root, samp=SlideID, geomroot=geomroot, selectrectangles=[1])
