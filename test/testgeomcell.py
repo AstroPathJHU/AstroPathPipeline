@@ -1,5 +1,6 @@
-import more_itertools, pathlib
+import more_itertools, os, pathlib
 
+from astropath_calibration.geomcell.geomcellcohort import GeomCellCohort
 from astropath_calibration.geomcell.geomcellsample import CellGeomLoad, GeomCellSample
 from astropath_calibration.utilities import units
 from astropath_calibration.utilities.tableio import readtable
@@ -17,9 +18,13 @@ class TestGeomCell(TestBaseSaveOutput):
       for filename in (thisfolder/"reference"/"geomcell"/SlideID).iterdir()
     ]
 
-  def testGeom(self, SlideID="M206", **kwargs):
-    s = GeomCellSample(root=thisfolder/"data", samp=SlideID, geomroot=thisfolder/"geomcell_test_for_jenkins", selectrectangles=[1], **kwargs)
-    s.rungeomcell()
+  def testGeomCell(self, SlideID="M206", units="safe"):
+    root = thisfolder/"data"
+    geomroot = thisfolder/"geomcell_test_for_jenkins"
+    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID]
+    GeomCellCohort.runfromargumentparser(args=args)
+
+    s = GeomCellSample(root=root, samp=SlideID, geomroot=geomroot, selectrectangles=[1])
 
     try:
       for filename, reffilename in more_itertools.zip_equal(
@@ -45,5 +50,4 @@ class TestGeomCell(TestBaseSaveOutput):
       self.removeoutput()
 
   def testGeomCellFastUnits(self, SlideID="M206", **kwargs):
-    with units.setup_context("fast"):
-      self.testGeom(SlideID=SlideID, **kwargs)
+    self.testGeomCell(SlideID=SlideID, units="fast", **kwargs)

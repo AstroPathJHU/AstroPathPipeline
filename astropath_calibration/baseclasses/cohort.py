@@ -383,6 +383,35 @@ class TempDirCohort(Cohort):
       "temproot": parsed_args_dict.pop("temproot"),
     }
 
+class GeomFolderCohort(Cohort):
+  """
+  Base class for a cohort that uses the _cellgeomload.csv files
+  geomroot: an alternate root to use for the geom folder instead of root
+              (mostly useful for testing)
+              (default: same as root)
+  """
+  def __init__(self, *args, geomroot=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if geomroot is None: geomroot = self.root
+    self.geomroot = pathlib.Path(geomroot)
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "geomroot": self.geomroot}
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--geomroot", type=pathlib.Path, help="root location of geom folder (default: same as root)")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "geomroot": parsed_args_dict.pop("geomroot"),
+    }
+
 class WorkflowCohort(Cohort):
   """
   Base class for a cohort that runs as a workflow:

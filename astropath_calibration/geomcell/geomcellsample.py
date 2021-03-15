@@ -2,7 +2,7 @@ import cv2, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, sc
 from ..alignment.field import FieldReadComponentTiffMultiLayer
 from ..baseclasses.polygon import DataClassWithPolygon, polygonfield
 from ..baseclasses.rectangle import GeomLoadRectangle
-from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff
+from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
 from ..utilities.misc import dict_product, dummylogger
@@ -13,7 +13,7 @@ from ..utilities.units.dataclasses import distancefield
 class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
-class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample):
+class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, WorkflowSample):
   MEMBRANE_TUMOR = 13
   MEMBRANE_IMMUNE = 12
   NUCLEUS_TUMOR = 11
@@ -95,6 +95,22 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
             )
 
       writetable(field.geomloadcsv, geomload)
+
+  @property
+  def inputfiles(self):
+    return [
+      self.csv("rect"),
+      *(r.imagefile for r in self.rectangles),
+    ]
+  @property
+  def outputfiles(self):
+    return [
+      *(r.geomloadcsv for r in self.rectangles),
+    ]
+
+  @classmethod
+  def workflowdependencies(cls):
+    return ["align"] + super().workflowdependencies()
 
 class CellGeomLoad(DataClassWithPolygon):
   pixelsormicrons = "pixels"
