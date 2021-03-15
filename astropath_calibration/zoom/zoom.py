@@ -42,7 +42,7 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
   """
   rectangletype = FieldReadComponentTiffMultiLayer
 
-  @property
+  @classmethod
   def logmodule(self): return "zoom"
 
   def zoom_wsi_fast(self, fmax=50, usememmap=False):

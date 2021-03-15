@@ -245,6 +245,6 @@ class AlignLayersByBroadbandFilter(SampleWithLayerOverlaps, ReadRectanglesOverla
   def readstep2stitchresult(self, *args, **kwargs):
     self.__step2.readstitchresult(*args, **kwargs)
 
-  @property
-  def logmodule(self):
+  @classmethod
+  def logmodule(cls):
     return "alignlayers"

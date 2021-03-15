@@ -5,7 +5,7 @@ from ..utilities.misc import floattoint, memmapcontext
 here = pathlib.Path(__file__).parent
 
 class LayerExtractorBase(Im3SampleBase, collections.abc.Sized):
-  @property
+  @classmethod
   def logmodule(self): return "extractlayer"
 
   @property

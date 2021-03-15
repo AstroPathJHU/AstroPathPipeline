@@ -53,7 +53,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       "geomfolder": self.geomfolder,
     }
 
-  @property
+  @classmethod
   def logmodule(self):
     return "geomcell"
 

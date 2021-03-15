@@ -146,7 +146,7 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteM
   def __init__(self, *args, **kwargs):
     super().__init__(*args, layer=9, with_seg=True, **kwargs)
 
-  @property
+  @classmethod
   def logmodule(self): return "stitchinformmask"
 
   multilayer = False

@@ -14,9 +14,6 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort
     #sample.logger.info(f"{sample.ntiles} {len(sample.rectangles)}")
     return sample.zoom_wsi(mode=self.__mode)
 
-  @property
-  def logmodule(self): return "zoom"
-
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()

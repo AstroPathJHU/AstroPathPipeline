@@ -28,9 +28,6 @@ class StitchInformMaskCohort(StitchMaskCohortBase):
 
   sampleclass = StitchInformMask
 
-  @property
-  def logmodule(self): return "stitchinformmask"
-
 def main(args=None):
   StitchInformMaskCohort.runfromargumentparser(args)
 

@@ -11,9 +11,6 @@ class DeepZoomCohort(DbloadCohort, ZoomCohort, DeepZoomCohort, SelectLayersCohor
   def runsample(self, sample):
     return sample.deepzoom()
 
-  @property
-  def logmodule(self): return "deepzoom"
-
 def main(args=None):
   DeepZoomCohort.runfromargumentparser(args)
 

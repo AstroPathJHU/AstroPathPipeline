@@ -11,9 +11,6 @@ class GeomCellCohort(DbloadCohort, GeomFolderCohort, SelectRectanglesCohort, Wor
   def runsample(self, sample):
     return sample.rungeomcell()
 
-  @property
-  def logmodule(self): return "geomcell"
-
 def main(args=None):
   GeomCellCohort.runfromargumentparser(args)
 

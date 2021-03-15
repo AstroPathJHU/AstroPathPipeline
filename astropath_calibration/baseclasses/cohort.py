@@ -56,10 +56,10 @@ class Cohort(abc.ABC):
     "Keyword arguments to pass to the sample class"
     return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "xmlfolders": self.xmlfolders}
 
-  @property
-  @abc.abstractmethod
-  def logmodule(self):
+  @classmethod
+  def logmodule(cls):
     "name of the log files for this class (e.g. align)"
+    return cls.sampleclass.logmodule()
 
   def run(self, **kwargs):
     """
@@ -70,13 +70,13 @@ class Cohort(abc.ABC):
         sample = self.initiatesample(samp)
       except:
         #enter the logger here to log exceptions in __init__ of the sample
-        with getlogger(module=self.logmodule, root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):
+        with getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):
           raise
       else:
         if not all(filter(self, sample) for filter in self.samplefilters):
           continue
-        if sample.logmodule != self.logmodule:
-          raise ValueError(f"Wrong logmodule: {self.logmodule} != {sample.logmodule}")
+        if sample.logmodule() != self.logmodule():
+          raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
         self.processsample(sample, **kwargs)
 
   def processsample(self, sample, **kwargs):
@@ -437,7 +437,7 @@ class WorkflowCohort(Cohort):
       **super().initkwargsfromargumentparser(parsed_args_dict),
     }
     if parsed_args_dict.pop("skip_finished"):
-      kwargs["slideidfilters"].append(lambda self, sample: not SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{self.logmodule}.log", self.logmodule))
+      kwargs["slideidfilters"].append(lambda self, sample: not SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{self.logmodule()}.log", self.logmodule()))
     if parsed_args_dict.pop("dependencies"):
       kwargs["slideidfilters"].append(lambda self, sample: all(SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{logmodule}.log", logmodule) for logmodule in self.sampleclass.workflowdependencies()))
     if parsed_args_dict["print_errors"]:

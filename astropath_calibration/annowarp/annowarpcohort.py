@@ -28,9 +28,6 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomCohort, MaskCohort):
 
   sampleclass = AnnoWarpSampleInformTissueMask
 
-  @property
-  def logmodule(self): return "annowarp"
-
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()

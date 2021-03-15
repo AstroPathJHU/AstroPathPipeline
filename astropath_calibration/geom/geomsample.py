@@ -11,7 +11,7 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, layer=9, with_seg=True, **kwargs)
 
-  @property
+  @classmethod
   def logmodule(self): return "geom"
 
   @property

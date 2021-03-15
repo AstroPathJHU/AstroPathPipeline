@@ -11,9 +11,6 @@ class GeomCohort(DbloadCohort, SelectRectanglesCohort, WorkflowCohort):
   def runsample(self, sample):
     return sample.writeboundaries()
 
-  @property
-  def logmodule(self): return "geom"
-
 def main(args=None):
   GeomCohort.runfromargumentparser(args)
 

@@ -19,7 +19,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
   multilayer = True
 
-  @property
+  @classmethod
   def logmodule(self): return "deepzoom"
 
   @property

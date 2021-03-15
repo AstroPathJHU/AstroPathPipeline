@@ -89,7 +89,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
       raise IOError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
     self.logroot = pathlib.Path(logroot)
-    self.logger = getlogger(module=self.logmodule, root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog)
+    self.logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__logonenter = []
@@ -446,9 +446,9 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
   #    raise ValueError(f"Have to use {self} in a with statement if you want to enter_context")
   #  return super().enter_context(*args, **kwargs)
 
-  @property
+  @classmethod
   @abc.abstractmethod
-  def logmodule(self):
+  def logmodule(cls):
     "name of the log files for this class (e.g. align)"
 
 class WorkflowSample(SampleBase):
@@ -464,7 +464,7 @@ class WorkflowSample(SampleBase):
     the sample ran successfully or not, and information about
     the failure, if any.
     """
-    return SampleRunStatus.fromlog(self.logger.samplelog, self.logmodule, self.missingoutputfiles)
+    return SampleRunStatus.fromlog(self.logger.samplelog, self.logmodule(), self.missingoutputfiles)
 
   @property
   @abc.abstractmethod

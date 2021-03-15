@@ -40,8 +40,8 @@ class AlignmentSetBase(SampleBase):
     for r in self.rectangles:
       r.setrectanglelist(self.rectangles)
 
-  @property
-  def logmodule(self): return "align"
+  @classmethod
+  def logmodule(cls): return "align"
 
   def inverseoverlapsdictkey(self, overlap):
     return overlap.p2, overlap.p1

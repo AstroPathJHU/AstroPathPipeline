@@ -8,9 +8,6 @@ class PrepdbCohort(DbloadCohort, WorkflowCohort):
   def runsample(self, sample):
     return sample.writemetadata()
 
-  @property
-  def logmodule(self): return "prepdb"
-
 def main(args=None):
   PrepdbCohort.runfromargumentparser(args)
 

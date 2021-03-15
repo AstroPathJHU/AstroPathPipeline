@@ -9,7 +9,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
   def __init__(self, *args, **kwargs):
     super().__init__(*args, checkim3s=True, **kwargs)
 
-  @property
+  @classmethod
   def logmodule(self): return "prepdb"
 
   @property
