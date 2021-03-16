@@ -2,7 +2,8 @@ import abc, argparse, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable
 from .logging import getlogger
-from .sample import SampleDef, SampleRunStatus
+from .sample import SampleDef
+from .workflowdependency import SampleRunStatus
 
 class Cohort(abc.ABC):
   """
