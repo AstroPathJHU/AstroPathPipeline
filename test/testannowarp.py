@@ -26,6 +26,9 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
 
   @classmethod
+  def removecopiedinput(cls): return False
+
+  @classmethod
   def setUpClass(cls):
     super().setUpClass()
     from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
