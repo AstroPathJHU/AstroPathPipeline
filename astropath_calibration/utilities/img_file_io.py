@@ -9,7 +9,7 @@ import os, glob, cv2, logging, time
 
 #global variables
 PARAMETER_XMLFILE_EXT = '.Parameters.xml'
-EXPOSURE_XML_EXTS     = ['.SpectralBasisInfo.Exposure.xml','SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml']
+EXPOSURE_XML_EXTS     = ['.SpectralBasisInfo.Exposure.xml','.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml']
 EXPOSURE_ELEMENT_NAME = 'Exposure'
 CORRECTED_EXPOSURE_XML_EXT = '.Corrected.Exposure.xml'
 XML_START_LINE_TEXT = '<IM3Fragment>'
