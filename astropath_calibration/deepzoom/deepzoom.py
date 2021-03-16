@@ -251,11 +251,15 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     ]
 
   @property
-  def outputfiles(self):
-    zoomlist = self.deepzoomfolder/"zoomlist.csv"
+  def workflowkwargs(self):
+    return {"layers": self.layers, **super().workflowkwargs}
+
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, deepzoomroot, layers, **otherworkflowkwargs):
+    zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
     result = [
       zoomlist,
-      *(self.deepzoomfolder/f"L{layer}.dzi" for layer in self.layers),
+      *(deepzoomroot/SlideID/f"L{layer}.dzi" for layer in layers),
     ]
     if zoomlist.exists():
       files = readtable(zoomlist, DeepZoomFile)

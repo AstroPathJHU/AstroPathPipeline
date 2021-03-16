@@ -363,11 +363,14 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
       self.writealignments()
     return result
 
-  @property
-  def outputfiles(self):
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+    dbload = dbloadroot/SlideID/"dbload"
     return [
-      self.alignmentsfilename,
-      *self.stitchfilenames,
+      dbload/f"{SlideID}_align.csv",
+      dbload/f"{SlideID}_affine.csv",
+      dbload/f"{SlideID}_fields.csv",
+      dbload/f"{SlideID}_fieldoverlaps.csv",
     ]
 
   @property

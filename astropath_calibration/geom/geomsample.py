@@ -72,11 +72,12 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
       self.csv("fields"),
       *(r.imagefile for r in self.rectangles),
     ]
-  @property
-  def outputfiles(self):
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, dbloadroot, **otherworkflowkwargs):
+    dbload = dbloadroot/SlideID/"dbload"
     return [
-      self.fieldfilename,
-      self.tumorfilename,
+      dbload/f"{SlideID}_fieldGeometry.csv",
+      dbload/f"{SlideID}_tumorGeometry.csv",
     ]
 
   @classmethod

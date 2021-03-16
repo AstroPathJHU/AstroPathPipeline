@@ -380,6 +380,17 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
     ]
 
   @property
+  def workflowkwargs(self):
+    return {"layers": self.layers, **super().workflowkwargs}
+
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, zoomroot, layers, **otherrootkwargs):
+    return [
+      zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.zmax}-L{layer}-wsi.png"
+      for layer in layers
+    ]
+
+  @property
   def outputfiles(self):
     return [
       #not the big filenames, we don't know which ones are nonempty

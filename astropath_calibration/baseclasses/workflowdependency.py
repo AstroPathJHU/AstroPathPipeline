@@ -8,35 +8,39 @@ class ThingWithRoots(abc.ABC):
   def rootkwargs(self):
     return {name: getattr(self, name) for name in self.rootnames}
 
-class WorkflowDependency(abc.ABC):
+class WorkflowDependency(ThingWithRoots):
+  @property
+  def workflowkwargs(self):
+    return self.rootkwargs
+
   @classmethod
   @abc.abstractmethod
-  def getoutputfiles(cls, SlideID, **rootkwargs):
+  def getoutputfiles(cls, SlideID, **workflowkwargs):
     """
     Output files that this step is supposed to produce
     """
     return []
 
   @classmethod
-  def getmissingoutputfiles(cls, SlideID, **rootkwargs):
+  def getmissingoutputfiles(cls, SlideID, **workflowkwargs):
     """
     Output files that were supposed to be produced but are missing
     """
-    return [_ for _ in cls.getoutputfiles(SlideID, **rootkwargs) if not _.exists()]
+    return [_ for _ in cls.getoutputfiles(SlideID, **workflowkwargs) if not _.exists()]
 
   @property
   def outputfiles(self):
     """
     Output files that this step is supposed to produce
     """
-    return self.getoutputfiles(self.SlideID, **self.rootkwargs)
+    return self.getoutputfiles(self.SlideID, **self.workflowkwargs)
 
   @property
   def missingoutputfiles(self):
     """
     Output files that were supposed to be produced but are missing
     """
-    return self.getmissingoutputfiles(self.SlideID, **self.rootkwargs)
+    return self.getmissingoutputfiles(self.SlideID, **self.workflowkwargs)
 
   @classmethod
   @abc.abstractmethod
@@ -48,12 +52,12 @@ class WorkflowDependency(abc.ABC):
   def SlideID(self): pass
 
   @classmethod
-  def getsamplelog(cls, SlideID, *, logroot, **otherrootkwargs):
+  def getsamplelog(cls, SlideID, *, logroot, **otherworkflowkwargs):
     return logroot/SlideID/"logfiles"/f"{SlideID}-{cls.logmodule()}.log"
 
   @classmethod
-  def getrunstatus(cls, SlideID, **rootkwargs):
-    return SampleRunStatus.fromlog(cls.getsamplelog(SlideID, **rootkwargs), cls.logmodule(), cls.getmissingoutputfiles(SlideID, **rootkwargs))
+  def getrunstatus(cls, SlideID, **workflowkwargs):
+    return SampleRunStatus.fromlog(cls.getsamplelog(SlideID, **workflowkwargs), cls.logmodule(), cls.getmissingoutputfiles(SlideID, **workflowkwargs))
 
   @property
   def runstatus(self):
@@ -62,11 +66,11 @@ class WorkflowDependency(abc.ABC):
     the sample ran successfully or not, and information about
     the failure, if any.
     """
-    return self.getrunstatus(self.SlideID, **self.rootkwargs)
+    return self.getrunstatus(self.SlideID, **self.workflowkwargs)
 
   @property
   def rootnames(self):
-    return {"logroot", *super().rootnames()}
+    return {"logroot", *super().rootnames}
 
   @property
   @abc.abstractmethod

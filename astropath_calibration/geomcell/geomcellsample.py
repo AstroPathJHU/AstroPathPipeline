@@ -1,14 +1,18 @@
 import cv2, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
-from ..alignment.field import FieldReadComponentTiffMultiLayer
+from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
+from ..baseclasses.csvclasses import constantsdict
 from ..baseclasses.polygon import DataClassWithPolygon, polygonfield
-from ..baseclasses.rectangle import GeomLoadRectangle
+from ..baseclasses.rectangle import GeomLoadRectangle, rectanglefilter
 from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
 from ..utilities.misc import dict_product, dummylogger
-from ..utilities.tableio import writetable
+from ..utilities.tableio import readtable, writetable
 from ..utilities.units import ThingWithApscale, ThingWithPscale
 from ..utilities.units.dataclasses import distancefield
+
+class GeomLoadField(Field, GeomLoadRectangle):
+  pass
 
 class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
@@ -103,10 +107,20 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       self.csv("fields"),
       *(r.imagefile for r in self.rectangles),
     ]
+
   @property
-  def outputfiles(self):
+  def workflowkwargs(self):
+    return {"selectrectangles": rectanglefilter([r.n for r in self.rectangles]), **super().workflowkwargs}
+
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, dbloadroot, geomroot, selectrectangles=lambda r: True, **otherworkflowkwargs):
+    dbload = dbloadroot/SlideID/"dbload"
+    fieldscsv = dbload/f"{SlideID}_fields.csv"
+    constantscsv = dbload/f"{SlideID}_constants.csv"
+    constants = constantsdict(constantscsv)
+    rectangles = readtable(fieldscsv, GeomLoadField, extrakwargs={"pscale": constants["pscale"], "geomfolder": geomroot/SlideID/"geom"})
     return [
-      *(r.geomloadcsv for r in self.rectangles),
+      *(r.geomloadcsv for r in rectangles if selectrectangles(r)),
     ]
 
   @classmethod

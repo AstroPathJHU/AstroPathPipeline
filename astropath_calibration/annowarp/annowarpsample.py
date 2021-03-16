@@ -795,29 +795,36 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
       self.oldregionscsv,
     ]
 
-  @property
-  def outputfiles(self):
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+    dbload = dbloadroot/SlideID/"dbload"
     return [
-      self.alignmentcsv,
-      self.stitchcsv,
-      self.newverticescsv,
-      self.newregionscsv,
+      dbload/f"{SlideID}_annowarp.csv",
+      dbload/f"{SlideID}_annowarp-stitch.csv",
+      dbload/f"{SlideID}_vertices.csv",
+      dbload/f"{SlideID}_regions.csv",
     ]
 
   @property
-  def missingoutputfiles(self):
-    result = super().missingoutputfiles
-    if self.newverticescsv not in result:
-      with open(self.newverticescsv) as f:
+  def getmissingoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+    outputfiles = cls.getoutputfiles(SlideID, dbloadroot=dbloadroot, **otherrootkwargs)
+    result = super().getmissingoutputfiles(SlideID, dbloadroot, **otherrootkwargs)
+
+    vertices, = (_ for _ in outputfiles if _.name.endswith("vertices.csv"))
+    regions, = (_ for _ in outputfiles if _.name.endswith("regions.csv"))
+
+    if vertices not in result:
+      with open(vertices) as f:
         reader = csv.DictReader(f)
         if "wx" not in reader.fieldnames or "wy" not in reader.fieldnames:
-          result.append(self.newverticescsv)
-    if self.newregionscsv not in result:
-      regions = readtable(self.newregionscsv, Region, extrakwargs={"apscale": self.apscale, "pscale": self.pscale}, maxrows=1)
+          result.append(vertices)
+    if regionscsv not in result:
+      constants = constantsdict(regions.parent/f"{SlideID}_constants.csv")
+      regions = readtable(regionscsv, Region, extrakwargs={"apscale": constants["apscale"], "pscale": constants["pscale"]}, maxrows=1)
       if regions:
         region, = regions
         if region.poly is None:
-          result.append(self.newregionscsv)
+          result.append(regionscsv)
     return result
 
   @classmethod

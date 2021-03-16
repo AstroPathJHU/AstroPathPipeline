@@ -676,8 +676,8 @@ class ZoomFolderSampleBase(SampleBase):
   @property
   def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
 
-  @property
-  def zmax(self): return 9
+  zmax = 9
+
   def zoomfilename(self, layer, tilex, tiley):
     """
     Zoom filename for a given layer and tile.
