@@ -1,4 +1,4 @@
-import os, pkg_resources, re, setuptools_scm
+import datetime, os, pkg_resources, re, setuptools_scm
 from .. import __name__ as package_name
 
 try:

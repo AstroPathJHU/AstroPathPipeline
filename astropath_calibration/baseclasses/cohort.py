@@ -40,7 +40,7 @@ class Cohort(abc.ABC):
     else:
       assert False, version_requirement
 
-    from ..utilities.version import astropathversion, astropathversionmatch, env_var_no_git
+    from ..utilities.version import astropathversionmatch, env_var_no_git
     if checkdate:
       if env_var_no_git:
         raise RuntimeError("Cannot run if environment variable _ASTROPATH_VERSION_NO_GIT is set unless you set --allow-local-edits")
