@@ -96,12 +96,12 @@ where:
 Running the above command will produce:
 1. **a flatfield correction model .bin file** called `flatfield_BatchID_[batch_ID].bin` in `[root_directory]\Flatfield`
 2. **a main log file** called "`batch_flatfield.log`" in `[root_directory]\logfiles` with just a single line showing that batch_flatfield was run 
-3. **more detailed sample log files** called "`[slide_ID]-image_correction.log`" in `[root_directory]\[slide_ID]\logfiles` for each `[slide_ID]` in `[comma_separated_list_of_slide_IDs]`
+3. **more detailed sample log files** called "`[slide_ID]-batch_flatfield.log`" in `[root_directory]\[slide_ID]\logfiles` for each `[slide_ID]` in `[comma_separated_list_of_slide_IDs]`
 4. **a `flatfield_BatchID_[batch_ID]` subdirectory** in `[root_directory]\Flatfield` that contains the following:
     - **a summary PDF file** called `flatfield_BatchID_[batch_ID]_summary.pdf` that shows the layers of the flatfield image, the relative spread in the correction factors in each layer, how many images were stacked from all slides in each layer, and the layers of the combined mask stack all in one quick little document for reference
     - **a very detailed "global" log file** called "`global-batch_flatfield.log`"
     - **field log** and **metadata summary** files like in the above run mode, combined for every slide in the batch
-    - **a "`postrun_info`" subdirectory** containing similar low-leve info to that of the previous run mode
+    - **a "`postrun_info`" subdirectory** containing similar low-level info to that of the previous run mode
 
 There are currently NO OPTIONS for the user to change in this run mode, again to ensure consistency between the mean images used in making the flatfield model. Also please note that producing the summary PDF file requires running on a system that recognizes `pdflatex` as a command. If the runtime environment doesn't have LaTeX installed (along with the `graphicx` and `geometry` packages), the template .tex file for the PDF is still created but the output PDF is not, and a low-level warning is output to the log files.
 

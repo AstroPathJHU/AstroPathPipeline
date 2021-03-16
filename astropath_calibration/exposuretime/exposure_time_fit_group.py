@@ -191,7 +191,7 @@ class ExposureTimeOffsetFitGroup :
         for rfp in all_rfps :
             rfs = os.path.basename(rfp).rstrip(UNIV_CONST.RAW_EXT)
             exp_times[rfs] = []
-            all_layer_exposure_times = getExposureTimesByLayer(rfp,self.img_dims[-1],self.rawfile_top_dir)
+            all_layer_exposure_times = getExposureTimesByLayer(rfp,self.rawfile_top_dir)
             for li,ln in enumerate(self.layers) :
                 exp_times[rfs].append(all_layer_exposure_times[ln-1])
         #make the list of median exposure times

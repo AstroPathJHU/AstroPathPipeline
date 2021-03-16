@@ -233,7 +233,7 @@ def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,med_et,offset,overlaps,re
     rawimage = (getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1]   
     #correct the raw image for exposure time if requested
     if med_et is not None and offset is not None :
-        exp_time = (getExposureTimesByLayer(rfp,nlayers,root_dir))[layer-1]
+        exp_time = (getExposureTimesByLayer(rfp,root_dir))[layer-1]
         rawimage = correctImageLayerForExposureTime(rawimage,exp_time,med_et,offset)
     #correct the raw image with the flatfield   
     if flatfield is not None :
