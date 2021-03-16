@@ -16,7 +16,7 @@ class Cohort(abc.ABC):
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, xmlfolders=[]):
+  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, xmlfolders=[], version_requirement=None):
     super().__init__()
     self.root = pathlib.Path(root)
     if logroot is None: logroot = root
@@ -26,6 +26,29 @@ class Cohort(abc.ABC):
     self.debug = debug
     self.uselogfiles = uselogfiles
     self.xmlfolders = xmlfolders
+
+    if version_requirement is None:
+      version_requirement = "commit" if self.uselogfiles else "any"
+
+    if version_requirement == "any":
+      checkdate = checktag = False
+    elif version_requirement == "commit":
+      checkdate = True
+      checktag = False
+    elif version_requirement == "tag":
+      checkdate = checktag = True
+    else:
+      assert False, version_requirement
+
+    from ..utilities.version import astropathversion, astropathversionmatch, env_var_no_git
+    if checkdate:
+      if env_var_no_git:
+        raise RuntimeError("Cannot run if environment variable _ASTROPATH_VERSION_NO_GIT is set unless you set --allow-local-edits")
+      if astropathversionmatch.group("date"):
+        raise ValueError("Cannot run with local edits to git unless you set --allow-local-edits")
+    if checktag:
+      if astropathversionmatch.group("dev"):
+        raise ValueError("Specified --no-dev-version, but the current version is a dev version")
 
   def __iter__(self):
     """
@@ -112,6 +135,10 @@ class Cohort(abc.ABC):
     g.add_argument("--logroot", type=pathlib.Path, help="root location where the log files are stored (default: same as root)")
     g.add_argument("--no-log", action="store_true", help="do not write to log files")
     p.add_argument("--xmlfolder", type=pathlib.Path, action="append", help="additional folders to look for xml metadata", default=[], dest="xmlfolders")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--no-dev-version", help="refuse to run unless the package version is tagged", action="store_const", const="tag", dest="version_requirement")
+    g.add_argument("--allow-dev-version", help="ok to run even if the package is at a dev version (default if using a log file)", action="store_const", const="commit", dest="version_requirement")
+    g.add_argument("--allow-local-edits", help="ok to run even if there are local edits on top of the git commit (default if not writing to a log file)", action="store_const", const="any", dest="version_requirement")
     return p
 
   @classmethod
@@ -127,6 +154,7 @@ class Cohort(abc.ABC):
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
       "xmlfolders": dct.pop("xmlfolders"),
+      "version_requirement": dct.pop("version_requirement"),
       "slideidfilters": [],
       "samplefilters": [],
     }

@@ -49,7 +49,7 @@ class TestZoom(TestBaseSaveOutput):
   def testZoomWsi(self, SlideID="L1_1", units="safe", mode="vips"):
     root = thisfolder/"data"
     zoomroot = thisfolder/"zoom_test_for_jenkins"
-    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--mode", mode]
+    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--mode", mode, "--allow-local-edits"]
     if self.selectrectangles(SlideID) is not None:
       args += ["--selectrectangles", *(str(_) for _ in self.selectrectangles(SlideID))]
     if self.layers(SlideID) is not None:

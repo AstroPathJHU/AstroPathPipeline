@@ -31,7 +31,7 @@ class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
   def testGeom(self, SlideID="M206", units="safe", selectrectangles=None):
     root = thisfolder/"data"
     dbloadroot = thisfolder/"geom_test_for_jenkins"
-    args = [os.fspath(root), "--dbloadroot", os.fspath(dbloadroot), "--units", units, "--sampleregex", SlideID, "--debug"]
+    args = [os.fspath(root), "--dbloadroot", os.fspath(dbloadroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
     if selectrectangles is not None:
       args.append("--selectrectangles")
       for rid in selectrectangles: args.append(str(rid))

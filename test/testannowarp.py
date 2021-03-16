@@ -105,7 +105,7 @@ class TestAnnoWarp(TestBaseSaveOutput):
     zoomroot = thisfolder/"reference"/"zoom"
     logroot = thisfolder/"annowarp_test_for_jenkins"
     maskroot = thisfolder/"reference"/"stitchmask"
-    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(logroot), "--maskroot", str(maskroot), "--sampleregex", SlideID, "--debug", "--units", units]
+    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(logroot), "--maskroot", str(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits"]
     AnnoWarpCohort.runfromargumentparser(args)
 
   def testConstraint(self, SlideID="M206"):

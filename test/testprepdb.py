@@ -24,7 +24,7 @@ class TestPrepDb(unittest.TestCase):
       except FileNotFoundError:
         pass
 
-    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID)]
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits"]
     PrepdbCohort.runfromargumentparser(args)
     sample = PrepdbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
 
