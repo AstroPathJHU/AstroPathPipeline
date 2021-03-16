@@ -478,6 +478,11 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots):
   def logmodule(cls):
     "name of the log files for this class (e.g. align)"
 
+  @classmethod
+  def logstartregex(cls): return rf"{cls.logmodule()} v[0-9a-f.devgd+]+$"
+  @classmethod
+  def logendregex(cls): return rf"end {cls.logmodule()}"
+
 class WorkflowSample(SampleBase, WorkflowDependency):
   """
   Base class for a sample that will be used in a workflow,

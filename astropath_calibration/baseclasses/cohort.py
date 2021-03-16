@@ -3,9 +3,9 @@ from ..utilities import units
 from ..utilities.tableio import readtable
 from .logging import getlogger
 from .sample import SampleDef
-from .workflowdependency import SampleRunStatus
+from .workflowdependency import SampleRunStatus, ThingWithRoots
 
-class Cohort(abc.ABC):
+class Cohort(ThingWithRoots):
   """
   Base class for a cohort - a bunch of samples that can be run in a loop
 
@@ -84,6 +84,13 @@ class Cohort(abc.ABC):
   def logmodule(cls):
     "name of the log files for this class (e.g. align)"
     return cls.sampleclass.logmodule()
+
+  @property
+  def rootnames(self):
+    return {*super().rootnames, "root", "logroot"}
+  @property
+  def workflowkwargs(self):
+    return self.rootkwargs
 
   def run(self, **kwargs):
     """
@@ -208,6 +215,10 @@ class Im3Cohort(Cohort):
   def root1(self): return self.root
 
   @property
+  def rootnames(self):
+    return {*super().rootnames, "root2"}
+
+  @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "root2": self.root2}
 
@@ -237,6 +248,10 @@ class DbloadCohort(Cohort):
     self.dbloadroot = pathlib.Path(dbloadroot)
 
   @property
+  def rootnames(self):
+    return {*super().rootnames, "dbloadroot"}
+
+  @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
 
@@ -261,6 +276,10 @@ class ZoomFolderCohort(Cohort):
   def __init__(self, *args, zoomroot, **kwargs):
     super().__init__(*args, **kwargs)
     self.zoomroot = pathlib.Path(zoomroot)
+
+  @property
+  def rootnames(self):
+    return {*super().rootnames, "zoomroot"}
 
   @property
   def initiatesamplekwargs(self):
@@ -289,6 +308,10 @@ class DeepZoomCohort(Cohort):
     self.deepzoomroot = pathlib.Path(deepzoomroot)
 
   @property
+  def rootnames(self):
+    return {*super().rootnames, "deepzoomroot"}
+
+  @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "deepzoomroot": self.deepzoomroot}
 
@@ -315,6 +338,10 @@ class MaskCohort(Cohort):
     super().__init__(*args, **kwargs)
     if maskroot is None: maskroot = self.root
     self.maskroot = pathlib.Path(maskroot)
+
+  @property
+  def rootnames(self):
+    return {*super().rootnames, "maskroot"}
 
   @property
   def initiatesamplekwargs(self):
@@ -466,9 +493,9 @@ class WorkflowCohort(Cohort):
       **super().initkwargsfromargumentparser(parsed_args_dict),
     }
     if parsed_args_dict.pop("skip_finished"):
-      kwargs["slideidfilters"].append(lambda self, sample: not SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{self.logmodule()}.log", self.logmodule()))
+      kwargs["slideidfilters"].append(lambda self, sample: self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs))
     if parsed_args_dict.pop("dependencies"):
-      kwargs["slideidfilters"].append(lambda self, sample: all(SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{logmodule}.log", logmodule) for logmodule in self.sampleclass.workflowdependencies()))
+      kwargs["slideidfilters"].append(lambda self, sample: all(dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs) for dependency in self.sampleclass.workflowdependencies()))
     if parsed_args_dict["print_errors"]:
       kwargs["uselogfiles"] = False
     return kwargs

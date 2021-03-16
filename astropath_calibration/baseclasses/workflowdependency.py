@@ -57,7 +57,14 @@ class WorkflowDependency(ThingWithRoots):
 
   @classmethod
   def getrunstatus(cls, SlideID, **workflowkwargs):
-    return SampleRunStatus.fromlog(cls.getsamplelog(SlideID, **workflowkwargs), cls.logmodule(), cls.getmissingoutputfiles(SlideID, **workflowkwargs))
+    return SampleRunStatus.fromlog(samplelog=cls.getsamplelog(SlideID, **workflowkwargs), module=cls.logmodule(), missingfiles=cls.getmissingoutputfiles(SlideID, **workflowkwargs), startregex=cls.logstartregex(), endregex=cls.logendregex())
+
+  @classmethod
+  @abc.abstractmethod
+  def logstartregex(cls): pass
+  @classmethod
+  @abc.abstractmethod
+  def logendregex(cls): pass
 
   @property
   def runstatus(self):
@@ -107,7 +114,7 @@ class SampleRunStatus:
     return self.previousrun.nruns + 1
 
   @classmethod
-  def fromlog(cls, samplelog, module, missingfiles=[]):
+  def fromlog(cls, *, samplelog, module, missingfiles, startregex, endregex):
     """
     Create a SampleRunStatus object by reading the log file.
     samplelog: from CohortFolder/SlideID/logfiles/SlideID-module.log
@@ -124,7 +131,7 @@ class SampleRunStatus:
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
-          if re.match(cls.startregex(module), row["message"]):
+          if re.match(startregex, row["message"]):
             started = True
             error = None
             ended = False
@@ -136,23 +143,12 @@ class SampleRunStatus:
               error = "".join(eval(error))
             else:
               error = row["message"]
-          elif re.match(cls.endregex(module), row["message"]):
+          elif re.match(endregex, row["message"]):
             ended = True
             result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
     if result is None:
       result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
     return result
-
-  @classmethod
-  def startregex(cls, module):
-    if module == "shredxml":
-      return rf"{module} started"
-    return rf"{module} v[0-9a-f.devgd+]+"
-  @classmethod
-  def endregex(cls, module):
-    if module == "shredxml":
-      return rf"{module} finished"
-    return rf"end {module}"
 
   def __str__(self):
     if self: return "ran successfully"
