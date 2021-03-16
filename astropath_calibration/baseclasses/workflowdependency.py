@@ -1,36 +1,59 @@
 import abc, contextlib, csv, more_itertools, re
 
-class WorkflowDependency(abc.ABC):
+class ThingWithRoots(abc.ABC):
   @property
+  def rootnames(self):
+    return set()
+  @property
+  def rootkwargs(self):
+    return {name: getattr(self, name) for name in self.rootnames}
+
+class WorkflowDependency(abc.ABC):
+  @classmethod
   @abc.abstractmethod
-  def outputfiles(self):
+  def getoutputfiles(cls, SlideID, **rootkwargs):
     """
     Output files that this step is supposed to produce
     """
     return []
+
+  @classmethod
+  def getmissingoutputfiles(cls, SlideID, **rootkwargs):
+    """
+    Output files that were supposed to be produced but are missing
+    """
+    return [_ for _ in cls.getoutputfiles(SlideID, **rootkwargs) if not _.exists()]
+
+  @property
+  def outputfiles(self):
+    """
+    Output files that this step is supposed to produce
+    """
+    return self.getoutputfiles(self.SlideID, **self.rootkwargs)
 
   @property
   def missingoutputfiles(self):
     """
     Output files that were supposed to be produced but are missing
     """
-    return [_ for _ in self.outputfiles if not _.exists()]
+    return self.getmissingoutputfiles(self.SlideID, **self.rootkwargs)
 
   @classmethod
   @abc.abstractmethod
-  def logmodule(self): pass
+  def logmodule(cls): pass
 
-  @property
-  @abc.abstractmethod
-  def root(self): pass
 
   @property
   @abc.abstractmethod
   def SlideID(self): pass
 
-  @property
-  @abc.abstractmethod
-  def samplelog(self): pass
+  @classmethod
+  def getsamplelog(cls, SlideID, *, logroot, **otherrootkwargs):
+    return logroot/SlideID/"logfiles"/f"{SlideID}-{cls.logmodule()}.log"
+
+  @classmethod
+  def getrunstatus(cls, SlideID, **rootkwargs):
+    return SampleRunStatus.fromlog(cls.getsamplelog(SlideID, **rootkwargs), cls.logmodule(), cls.getmissingoutputfiles(SlideID, **rootkwargs))
 
   @property
   def runstatus(self):
@@ -39,7 +62,16 @@ class WorkflowDependency(abc.ABC):
     the sample ran successfully or not, and information about
     the failure, if any.
     """
-    return SampleRunStatus.fromlog(self.samplelog, self.logmodule(), self.missingoutputfiles)
+    return self.getrunstatus(self.SlideID, **self.rootkwargs)
+
+  @property
+  def rootnames(self):
+    return {"logroot", *super().rootnames()}
+
+  @property
+  @abc.abstractmethod
+  def logroot(self):
+    pass
 
 class SampleRunStatus:
   """

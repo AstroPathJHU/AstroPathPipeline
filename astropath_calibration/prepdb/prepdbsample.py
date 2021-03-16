@@ -437,19 +437,20 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
       self.scanfolder/"MSI",
     ]
 
-  @property
-  def outputfiles(self):
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+    dbload = dbloadroot/SlideID/"dbload"
     return [
-      self.csv("annotations"),
-      self.csv("batch"),
-      self.csv("constants"),
-      self.csv("exposures"),
-      self.csv("overlap"),
-      self.csv("qptiff"),
-      self.csv("qptiff").with_suffix(".jpg"),
-      self.csv("rect"),
-      self.csv("regions"),
-      self.csv("vertices"),
+      dbload/f"{SlideID}_annotations.csv",
+      dbload/f"{SlideID}_batch.csv",
+      dbload/f"{SlideID}_constants.csv",
+      dbload/f"{SlideID}_exposures.csv",
+      dbload/f"{SlideID}_overlap.csv",
+      dbload/f"{SlideID}_qptiff.csv",
+      dbload/f"{SlideID}_qptiff.jpg",
+      dbload/f"{SlideID}_rect.csv",
+      dbload/f"{SlideID}_regions.csv",
+      dbload/f"{SlideID}_vertices.csv",
     ]
 
   @classmethod

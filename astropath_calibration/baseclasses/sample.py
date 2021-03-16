@@ -9,7 +9,7 @@ from .csvclasses import constantsdict, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
-from .workflowdependency import WorkflowDependency
+from .workflowdependency import ThingWithRoots, WorkflowDependency
 
 class SampleDef(MyDataClass):
   """
@@ -69,7 +69,7 @@ class SampleDef(MyDataClass):
   def __bool__(self):
     return bool(self.isGood)
 
-class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
+class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots):
   """
   Base class for all sample classes.
 
@@ -89,7 +89,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
-    self.logroot = pathlib.Path(logroot)
+    self.__logroot = pathlib.Path(logroot)
     self.logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
@@ -99,6 +99,12 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
 
   @property
   def root(self): return self.__root
+  @property
+  def logroot(self): return self.__logroot
+
+  @property
+  def rootnames(self):
+    return {"root", "logroot", *super().rootnames}
 
   @property
   def SampleID(self): return self.samp.SampleID
@@ -501,28 +507,27 @@ class DbloadSampleBase(SampleBase):
   If the dbload folder is initialized already, you should instead inherit
   from DbloadSample to get more functionality.
 
-  dbloadfolder: Folder to look for the csv files in (default: dbloadroot/SlideID/dbload)
   dbloadroot: A different root to use to find the dbload (default: same as root)
   """
-  def __init__(self, *args, dbloadroot=None, dbloadfolder=None, **kwargs):
+  def __init__(self, *args, dbloadroot=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if dbloadroot is not None and dbloadfolder is not None:
-      raise TypeError("Can't provide both dbloadroot and dbloadfolder")
     if dbloadroot is None:
       dbloadroot = self.mainfolder.parent
     else:
       dbloadroot = pathlib.Path(dbloadroot)
-    if dbloadfolder is None:
-      dbloadfolder = dbloadroot/self.SlideID/"dbload"
-    else:
-      dbloadfolder = pathlib.Path(dbloadfolder)
-    self.__dbloadfolder = dbloadfolder
+    self.__dbloadroot = dbloadroot
   @property
   def dbload(self):
     """
     The folder where the csv files live.
     """
-    return self.__dbloadfolder
+    return self.__dbloadroot/self.SlideID/"dbload"
+  @property
+  def dbloadroot(self): return self.__dbloadroot
+
+  @property
+  def rootnames(self):
+    return {"dbloadroot", *super().rootnames}
 
   def csv(self, csv):
     """
@@ -552,7 +557,6 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
   Base class for any sample that uses the csvs in the dbload folder
   after the folder has been set up.
 
-  dbloadfolder: Folder where the csv files live (default: dbloadroot/SlideID/dbload)
   dbloadroot: A different root to use to find the dbload (default: same as root)
   """
   def __getimageinfofromconstants(self):
@@ -625,6 +629,9 @@ class MaskSampleBase(SampleBase):
   def maskroot(self): return self.__maskroot
 
   @property
+  def rootnames(self): return {"maskroot", *super().rootnames}
+
+  @property
   def maskfolder(self):
     result = self.im3folder/"meanimage"
     if self.maskroot != self.root:
@@ -645,6 +652,9 @@ class Im3SampleBase(SampleBase):
   def root1(self): return self.root
 
   @property
+  def rootnames(self): return {"root2", *super().rootnames}
+
+  @property
   def possiblexmlfolders(self):
     return super().possiblexmlfolders + [self.root2/self.SlideID]
 
@@ -657,6 +667,8 @@ class ZoomFolderSampleBase(SampleBase):
   def __init__(self, *args, zoomroot, **kwargs):
     super().__init__(*args, **kwargs)
     self.__zoomroot = pathlib.Path(zoomroot)
+  @property
+  def rootnames(self): return {"zoomroot", *super().rootnames}
   @property
   def zoomroot(self): return self.__zoomroot
   @property
@@ -687,6 +699,8 @@ class DeepZoomSampleBase(SampleBase):
     super().__init__(*args, **kwargs)
     self.__deepzoomroot = pathlib.Path(deepzoomroot)
   @property
+  def rootnames(self): return {"deepzoomroot", *super().rootnames}
+  @property
   def deepzoomroot(self): return self.__deepzoomroot
   @property
   def deepzoomfolder(self): return self.deepzoomroot/self.SlideID
@@ -695,29 +709,20 @@ class GeomSampleBase(SampleBase):
   """
   Base class for any sample that uses the _cellgeomload.csv files
 
-  geomfolder: Folder where the _cellgeomload.csv files live (default: geomroot/SlideID/geom)
   geomroot: A different root to use to find the cellgeomload (default: same as root)
   """
-  def __init__(self, *args, geomroot=None, geomfolder=None, **kwargs):
-    if geomroot is not None and geomfolder is not None:
-      raise TypeError("Can't provide both geomroot and geomfolder")
-    self.__geomroot = geomroot
-    self.__geomfolder = geomfolder
+  def __init__(self, *args, geomroot=None, **kwargs):
     super().__init__(*args, **kwargs)
+    if geomroot is None: geomroot = self.root
+    self.__geomroot = pathlib.Path(geomroot)
 
-  @methodtools.lru_cache()
+  @property
+  def rootnames(self): return {"geomroot", *super().rootnames}
+  @property
+  def geomroot(self): return self.__geomroot
   @property
   def geomfolder(self):
-    geomroot = self.__geomroot
-    geomfolder = self.__geomfolder
-    if geomfolder is None:
-      if geomroot is None:
-        geomroot = self.mainfolder.parent
-      else:
-        geomroot = pathlib.Path(geomroot)
-      return geomroot/self.SlideID/"geom"
-    else:
-      return pathlib.Path(geomfolder)
+    return self.geomroot/self.SlideID/"geom"
 
 class SelectLayersSample(SampleBase):
   """
