@@ -805,10 +805,10 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
       dbload/f"{SlideID}_regions.csv",
     ]
 
-  @property
+  @classmethod
   def getmissingoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
     outputfiles = cls.getoutputfiles(SlideID, dbloadroot=dbloadroot, **otherrootkwargs)
-    result = super().getmissingoutputfiles(SlideID, dbloadroot, **otherrootkwargs)
+    result = super().getmissingoutputfiles(SlideID, dbloadroot=dbloadroot, **otherrootkwargs)
 
     verticescsv, = (_ for _ in outputfiles if _.name.endswith("vertices.csv"))
     regionscsv, = (_ for _ in outputfiles if _.name.endswith("regions.csv"))
@@ -819,7 +819,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
         if "wx" not in reader.fieldnames or "wy" not in reader.fieldnames:
           result.append(verticescsv)
     if regionscsv not in result:
-      constants = constantsdict(regions.parent/f"{SlideID}_constants.csv")
+      constants = constantsdict(regionscsv.parent/f"{SlideID}_constants.csv")
       regions = readtable(regionscsv, Region, extrakwargs={"apscale": constants["apscale"], "pscale": constants["pscale"]}, maxrows=1)
       if regions:
         region, = regions

@@ -41,24 +41,22 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     ]
 
   def testAlignment(self, SlideID="M206"):
-    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"annowarp_test_for_jenkins")
-    s.align()
-    s.writealignments()
+    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"annowarp_test_for_jenkins", logroot=thisfolder/"annowarp_test_for_jenkins", uselogfiles=True)
+
     alignmentfilename = s.alignmentcsv
     referencealignmentfilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
-
-    s.stitch()
     stitchfilename = s.stitchcsv
     referencestitchfilename = thisfolder/"reference"/"annowarp"/SlideID/s.stitchcsv.name
-    s.writestitchresult(filename=stitchfilename)
-
     verticesfilename = s.newverticescsv
     referenceverticesfilename = thisfolder/"reference"/"annowarp"/SlideID/s.newverticescsv.name
-    s.writevertices(filename=verticesfilename)
-
     regionsfilename = s.newregionscsv
     referenceregionsfilename = thisfolder/"reference"/"annowarp"/SlideID/s.newregionscsv.name
-    s.writeregions(filename=regionsfilename)
+
+    with s:
+      s.runannowarp()
+
+    if not s.runstatus:
+      raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus}")
 
     rows = readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
     targetrows = readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
