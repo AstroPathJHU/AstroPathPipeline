@@ -493,7 +493,7 @@ class WorkflowCohort(Cohort):
       **super().initkwargsfromargumentparser(parsed_args_dict),
     }
     if parsed_args_dict.pop("skip_finished"):
-      kwargs["slideidfilters"].append(lambda self, sample: self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs))
+      kwargs["slideidfilters"].append(lambda self, sample: not self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs))
     if parsed_args_dict.pop("dependencies"):
       kwargs["slideidfilters"].append(lambda self, sample: all(dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs) for dependency in self.sampleclass.workflowdependencies()))
     if parsed_args_dict["print_errors"]:
