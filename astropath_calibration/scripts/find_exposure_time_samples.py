@@ -21,7 +21,6 @@ samples_vectra = {
                            'M32_1','M34_1','M35_1','M36_1','M37_1','M38_1','M39_1','M41_1','M42_1','M43_1','M44_1',
                            'M45_1','M47_1','M48_1','M51_1','M52_1','M53_1','M54_1','M55_1','M57_1'],
            'layers':[1,10,19,26,33],
-           'nlayers':35,
            'working_dir':'exposure_times_all_vectra_samples',
           }
     }
@@ -31,35 +30,30 @@ samples_polaris = {
              'metadata_top_dir':r"P:\\",
              'sample_names':[f'PZ{i}' for i in range(1,30)],
              'layers':[1,10,12,18,21,30,37],
-             'nlayers':43,
              'working_dir':'exposure_times_all_polaris_samples',
           },
     'dat_5':{'rawfile_top_dir':r"S:\\",
              'metadata_top_dir':r"O:\\",
              'sample_names':[f'YY{i}' for i in range(1,36)],
              'layers':[1,10,12,18,21,30,37],
-             'nlayers':43,
              'working_dir':'exposure_times_all_polaris_samples',
           },
     'dat_6':{'rawfile_top_dir':r"R:\\",
              'metadata_top_dir':r"N:\\",
              'sample_names':[f'YX{i}' for i in range(1,36)],
              'layers':[1,10,12,18,21,30,37],
-             'nlayers':43,
              'working_dir':'exposure_times_all_polaris_samples',
           },
     'dat_7':{'rawfile_top_dir':r"Q:\\",
              'metadata_top_dir':r"M:\\",
              'sample_names':[f'ZW{i}' for i in range(1,26)],
              'layers':[1,10,12,18,21,30,37],
-             'nlayers':43,
              'working_dir':'exposure_times_all_polaris_samples',
           },
     'dat_8':{'rawfile_top_dir':r"V:\\",
              'metadata_top_dir':r"U:\\",
              'sample_names':[f'YZ{i}' for i in range(50,74)],
              'layers':[1,10,12,18,21,30,37],
-             'nlayers':43,
              'working_dir':'exposure_times_all_polaris_samples',
           },
     }
@@ -69,7 +63,7 @@ class SampleOverlapsWithDifferentExposureTimes :
     name : str
     n_overlaps_per_layer_group : List[int]
 
-def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,nlayers,layers,return_dict) :
+def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,layers,return_dict) :
     with cd(os.path.join(rtd,sn)) :
         all_rfps = [os.path.join(rtd,sn,fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
     exp_times = {}
@@ -78,7 +72,7 @@ def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,nlayers,layers,return_dict
             print(f'Getting exposure times for {sn} image {fi} of {len(all_rfps)}....')
         rfkey = os.path.basename(os.path.normpath(rfp)).rstrip(RAWFILE_EXT)
         exp_times[rfkey] = []
-        all_exp_times = getExposureTimesByLayer(rfp,nlayers,rtd)
+        all_exp_times = getExposureTimesByLayer(rfp,rtd)
         for ln in layers :
             exp_times[rfkey].append(all_exp_times[ln-1])
     n_overlaps = [0 for ln in layers]
@@ -112,7 +106,6 @@ def main() :
     #                       args=(samples['rawfile_top_dir'],
     #                             samples['metadata_top_dir'],
     #                             sn,
-    #                             samples['nlayers'],
     #                             samples['layers'],
     #                             rdict_vectra)
     #                       )
@@ -147,7 +140,6 @@ def main() :
                            args=(samples['rawfile_top_dir'],
                                  samples['metadata_top_dir'],
                                  sn,
-                                 samples['nlayers'],
                                  samples['layers'],
                                  rdict_polaris)
                            )

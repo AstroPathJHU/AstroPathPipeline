@@ -9,7 +9,8 @@ import os, glob, cv2, logging, time
 
 #global variables
 PARAMETER_XMLFILE_EXT = '.Parameters.xml'
-EXPOSURE_XML_EXT      = '.SpectralBasisInfo.Exposure.xml'
+EXPOSURE_XML_EXTS     = ['.SpectralBasisInfo.Exposure.xml','SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml']
+EXPOSURE_ELEMENT_NAME = 'Exposure'
 CORRECTED_EXPOSURE_XML_EXT = '.Corrected.Exposure.xml'
 XML_START_LINE_TEXT = '<IM3Fragment>'
 XML_END_LINE_TEXT = '</IM3Fragment>'
@@ -148,22 +149,29 @@ def findExposureTimeXMLFile(rfp,search_dir) :
   for i in range(1,len(fn_split)) :
     file_ext+=f'.{fn_split[i]}'
   slideID = os.path.basename(os.path.dirname(os.path.normpath(rfp)))
-  subdir_filepath_1 = os.path.join(search_dir,slideID,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXT))
-  if os.path.isfile(subdir_filepath_1) :
-    xmlfile_path = subdir_filepath_1
+  poss_path_1 = os.path.join(search_dir,slideID,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXTS[0]))
+  if os.path.isfile(poss_path_1) :
+    xmlfile_path = poss_path_1
   else :
-    subdir_filepath_2 = os.path.join(search_dir,slideID,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
-    if os.path.isfile(subdir_filepath_2) :
-      xmlfile_path = subdir_filepath_2
+    poss_path_2 = os.path.join(search_dir,slideID,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXTS[1]))
+    if os.path.isfile(poss_path_2) :
+      xmlfile_path = poss_path_2
     else :
-      other_path = os.path.join(search_dir,slideID,os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXT))
-      if os.path.isfile(other_path) :
-        xmlfile_path = other_path
+      poss_path_3 = os.path.join(search_dir,slideID,os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXTS[0]))
+      if os.path.isfile(poss_path_3) :
+        xmlfile_path = poss_path_3
       else :
-        xmlfile_path = os.path.join(search_dir,slideID,os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
+        poss_path_4 = os.path.join(search_dir,slideID,os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXTS[1]))
+        if os.path.isfile(poss_path_4) :
+          xmlfile_path = poss_path_4
+        else :
+          poss_path_5 = os.path.join(search_dir,slideID,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
+          if os.path.isfile(poss_path_5) :
+            xmlfile_path = poss_path_5    
+          else :
+            xmlfile_path = os.path.join(search_dir,slideID,os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
   if not os.path.isfile(xmlfile_path) :
     msg = f"ERROR: findExposureTimeXMLFile could not find a valid path for raw file {rfp} given directory {search_dir}!"
-    msg+= f' (None of {subdir_filepath_1}, {subdir_filepath_2}, {other_path}, and {xmlfile_path} exist!)'
     raise RuntimeError(msg)
   return xmlfile_path
 
@@ -251,7 +259,11 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logge
   #write out the new file
   all_new_lines = new_header_lines+new_xml_lines
   try :
-    outfile_name = os.path.basename(os.path.normpath(infile_path)).replace(EXPOSURE_XML_EXT,CORRECTED_EXPOSURE_XML_EXT)
+    old_filename = os.path.basename(os.path.normpath(infile_path))
+    if EXPOSURE_XML_EXTS[0] in old_filename :
+      outfile_name = old_filename.replace(EXPOSURE_XML_EXTS[0],CORRECTED_EXPOSURE_XML_EXT)
+    elif EXPOSURE_XML_EXTS[1] in old_filename :
+      outfile_name = old_filename.replace(EXPOSURE_XML_EXTS[1],CORRECTED_EXPOSURE_XML_EXT)
     with open(outfile_name,'w') as ofp :
       for il,line in enumerate(all_new_lines) :
         if il<len(all_new_lines)-1 :
@@ -272,9 +284,9 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logge
 #helper function to get a list of exposure times by each layer for a given raw image
 #fp can be a path to a raw file or to an exposure XML file 
 #but if it's a raw file the root dir must also be provided
-def getExposureTimesByLayer(fp,nlayers,root_dir=None) :
+def getExposureTimesByLayer(fp,root_dir=None) :
   layer_exposure_times_to_return = []
-  if (EXPOSURE_XML_EXT in fp) or (CORRECTED_EXPOSURE_XML_EXT in fp) :
+  if (EXPOSURE_XML_EXTS[0] in fp) or (EXPOSURE_XML_EXTS[1] in fp) or (CORRECTED_EXPOSURE_XML_EXT in fp) :
     xmlfile_path = fp
     if not os.path.isfile(xmlfile_path) :
       raise RuntimeError(f"ERROR: {xmlfile_path} searched in getExposureTimesByLayer not found!")
@@ -286,15 +298,12 @@ def getExposureTimesByLayer(fp,nlayers,root_dir=None) :
     root = (et.parse(xmlfile_path)).getroot()
   except Exception as e :
     raise RuntimeError(f'ERROR: could not parse xml file {xmlfile_path} in getExposureTimesByLayer! Exception: {e}')
-  nlg = 0
-  if nlayers==35 :
-    nlg = 5
-  elif nlayers==43 :
-    nlg = 7
-  else :
-    raise ValueError(f"ERROR: number of image layers ({nlayers}) passed to getExposureTimesByLayer is not a recognized option!")
-  for ilg in range(nlg) :
-      layer_exposure_times_to_return+=[float(v) for v in (root[ilg].text).split()]
+  et_elements = []
+  for ei in range(len(root)) :
+    if 'name' in root[ei].attrib.keys() and (root[ei].attrib)['name']==EXPOSURE_ELEMENT_NAME :
+      et_elements.append(root[ei])
+  for et_element in et_elements :
+      layer_exposure_times_to_return+=[float(v) for v in (et_element.text).split()]
   return layer_exposure_times_to_return
 
 #helper function to return a list of the median exposure times observed in each layer of a given slide
@@ -304,7 +313,9 @@ def getSlideMedianExposureTimesByLayer(root_dir,slideID,logger=None) :
   if not os.path.isdir(checkdir) :
     checkdir = os.path.join(root_dir,slideID)
   with cd(checkdir) :
-    all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
+    all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[0]}')]
+    if len(all_fps)==0 :
+      all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[1]}')]
   if len(all_fps)<1 :
     raise ValueError(f'ERROR: no exposure time xml files found in directory {checkdir}!')
   msg = f'Finding median exposure times for {slideID} ({len(all_fps)} images with {nlayers} layers each)....'
@@ -320,7 +331,7 @@ def getSlideMedianExposureTimesByLayer(root_dir,slideID,logger=None) :
   for li in range(nlayers) :
     all_exp_times_by_layer.append([])
   for fp in all_fps :
-    this_image_layer_exposure_times = getExposureTimesByLayer(fp,nlayers)
+    this_image_layer_exposure_times = getExposureTimesByLayer(fp)
     for li in range(nlayers) :
       all_exp_times_by_layer[li].append(this_image_layer_exposure_times[li])
   return np.median(np.array(all_exp_times_by_layer),1) #return the medians along the second axis
@@ -367,7 +378,9 @@ def getExposureTimeHistogramsByLayerGroupForSlide(root_dir,slideID,nbins=50,logg
   if not os.path.isdir(checkdir) :
     checkdir = os.path.join(root_dir,slideID)
   with cd(checkdir) :
-    all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXT}')]
+    all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[0]}')]
+    if len(all_fps)==0 :
+      all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[1]}')]
   if len(all_fps)<1 :
     raise ValueError(f'ERROR: no exposure time xml files found in directory {checkdir}!')
   msg = f'Getting exposure time histograms for {slideID} ({len(all_fps)} images with {nlayers} layers each)....'
@@ -383,7 +396,7 @@ def getExposureTimeHistogramsByLayerGroupForSlide(root_dir,slideID,nbins=50,logg
   for lgi in range(len(mask_layer_groups)) :
     all_exp_times.append([])
   for fp in all_fps :
-    this_image_layer_exposure_times = getExposureTimesByLayer(fp,nlayers)
+    this_image_layer_exposure_times = getExposureTimesByLayer(fp)
     for lgi,lgb in enumerate(mask_layer_groups) :
       all_exp_times[lgi].append(this_image_layer_exposure_times[lgb[0]-1])
   exp_time_hists = []

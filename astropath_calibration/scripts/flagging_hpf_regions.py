@@ -459,7 +459,7 @@ def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,xpos,ypos,pscal
     for i,im_array in enumerate(img_arrays) :
         msg = f'Masking {fris[i].rawfile_path} {fris[i].sequence_print}'
         logger.info(msg)
-        exp_times = getExposureTimesByLayer(fris[i].rawfile_path,im_array.shape[-1],root_dir)
+        exp_times = getExposureTimesByLayer(fris[i].rawfile_path,root_dir)
         key = (os.path.basename(fris[i].rawfile_path)).rstrip(RAWFILE_EXT)
         p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,exp_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list))
         procs.append(p)
@@ -524,7 +524,7 @@ def main(args=None) :
     for lgi in range(len(MASK_LAYER_GROUPS)) :
         all_exp_times.append([])
     for rfp in all_rfps :
-        etsbl = getExposureTimesByLayer(rfp,dims[-1],args.root_dir)
+        etsbl = getExposureTimesByLayer(rfp,args.root_dir)
         for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
             all_exp_times[lgi].append(etsbl[lgb[0]-1])
     exp_time_hists = []

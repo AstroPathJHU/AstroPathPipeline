@@ -25,7 +25,7 @@ def correctImageForExposureTime(raw_img,raw_fp,root_dir,med_exp_times,correction
     raise RuntimeError(f"""ERROR: the list of correction offsets (length {len(correction_offsets)}) and the raw img ({raw_fp}) with shape 
                            {raw_img.shape} passed to correctImageForExposureTime don't match!""")
   nlayers = raw_img.shape[-1]
-  exposure_times = getExposureTimesByLayer(raw_fp,nlayers,root_dir)
+  exposure_times = getExposureTimesByLayer(raw_fp,root_dir)
   corrected_img = raw_img.copy()
   for li in range(nlayers) :
     if exposure_times[li]!=med_exp_times[li] : #layer is only different if it isn't already at the median exposure time
