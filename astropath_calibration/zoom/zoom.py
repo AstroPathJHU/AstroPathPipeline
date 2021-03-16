@@ -390,14 +390,6 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
       for layer in layers
     ]
 
-  @property
-  def outputfiles(self):
-    return [
-      #not the big filenames, we don't know which ones are nonempty
-      #*(self.zoomfilename(layer, tilex, tiley) for layer in self.layers for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))),
-      *(self.wsifilename(layer) for layer in self.layers),
-    ]
-
   @classmethod
   def workflowdependencies(cls):
     return ["align"] + super().workflowdependencies()

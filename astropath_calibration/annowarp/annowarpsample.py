@@ -3,7 +3,7 @@ import abc, contextlib, csv, cvxpy as cp, itertools, methodtools, more_itertools
 from ..alignment.computeshift import computeshift
 from ..alignment.field import FieldReadComponentTiffMultiLayer
 from ..alignment.overlap import AlignmentComparison
-from ..baseclasses.csvclasses import Region, Vertex
+from ..baseclasses.csvclasses import constantsdict, Region, Vertex
 from ..baseclasses.polygon import Polygon
 from ..baseclasses.qptiff import QPTiff
 from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample, ZoomFolderSampleBase
@@ -810,14 +810,14 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     outputfiles = cls.getoutputfiles(SlideID, dbloadroot=dbloadroot, **otherrootkwargs)
     result = super().getmissingoutputfiles(SlideID, dbloadroot, **otherrootkwargs)
 
-    vertices, = (_ for _ in outputfiles if _.name.endswith("vertices.csv"))
-    regions, = (_ for _ in outputfiles if _.name.endswith("regions.csv"))
+    verticescsv, = (_ for _ in outputfiles if _.name.endswith("vertices.csv"))
+    regionscsv, = (_ for _ in outputfiles if _.name.endswith("regions.csv"))
 
-    if vertices not in result:
-      with open(vertices) as f:
+    if verticescsv not in result:
+      with open(verticescsv) as f:
         reader = csv.DictReader(f)
         if "wx" not in reader.fieldnames or "wy" not in reader.fieldnames:
-          result.append(vertices)
+          result.append(verticescsv)
     if regionscsv not in result:
       constants = constantsdict(regions.parent/f"{SlideID}_constants.csv")
       regions = readtable(regionscsv, Region, extrakwargs={"apscale": constants["apscale"], "pscale": constants["pscale"]}, maxrows=1)
