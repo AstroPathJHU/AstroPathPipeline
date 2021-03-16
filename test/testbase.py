@@ -104,6 +104,6 @@ class TestBaseCopyInput(abc.ABC, unittest.TestCase):
   @classmethod
   def tearDownClass(cls):
     super().tearDownClass()
-    if self.removecopiedinput():
+    if cls.removecopiedinput():
       for copyfrom, copytofolder in cls.filestocopy():
         (copytofolder/copyfrom.name).unlink()
