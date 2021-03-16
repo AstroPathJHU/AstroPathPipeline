@@ -454,7 +454,7 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
 
   @classmethod
   def workflowdependencies(cls):
-    return super().workflowdependencies()
+    return ["shredxml"] + super().workflowdependencies()
 
 def main(args=None):
   p = argparse.ArgumentParser()

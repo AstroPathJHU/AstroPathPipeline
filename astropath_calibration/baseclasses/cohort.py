@@ -495,10 +495,7 @@ class WorkflowCohort(Cohort):
           
       super().processsample(sample, **kwargs)
       status = sample.runstatus
-      #we don't care about ended, because it hasn't actually logged
-      #"end <module>" yet because we're still inside "with getlogger" in run()
-      #also we don't want to do anything if there's an error, because that
+      #we don't want to do anything if there's an error, because that
       #was already logged so no need to log it again and confuse the issue.
-      if status.missingfiles:
-        status.ended = True #so that the message is about the missing files
+      if (status.missingfiles or not status.ended) and status.error is None:
         raise RuntimeError(f"{sample.SlideID} {status}")

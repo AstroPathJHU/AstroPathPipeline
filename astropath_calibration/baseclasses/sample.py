@@ -1244,7 +1244,7 @@ class SampleRunStatus:
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
-          if re.match(rf"{module} v[0-9a-f.devgd+]+", row["message"]):
+          if re.match(cls.startregex(module), row["message"]):
             started = True
             error = None
             ended = False
@@ -1256,12 +1256,23 @@ class SampleRunStatus:
               error = "".join(eval(error))
             else:
               error = row["message"]
-          elif row["message"] == f"end {module}":
+          elif re.match(cls.endregex(module), row["message"]):
             ended = True
             result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
     if result is None:
       result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
     return result
+
+  @classmethod
+  def startregex(cls, module):
+    if module == "shredxml":
+      return rf"{module} started"
+    return rf"{module} v[0-9a-f.devgd+]+"
+  @classmethod
+  def endregex(cls, module):
+    if module == "shredxml":
+      return rf"{module} finished"
+    return rf"end {module}"
 
   def __str__(self):
     if self: return "ran successfully"
