@@ -3,6 +3,7 @@ import collections, functools, numpy as np, os, PIL, re
 from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.tableio import pathfield, readtable, writetable
+from ..zoom.zoom import Zoom
 
 class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample):
   """
@@ -268,7 +269,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
   @classmethod
   def workflowdependencies(cls):
-    return ["zoom"] + super().workflowdependencies()
+    return [Zoom] + super().workflowdependencies()
 
 @functools.total_ordering
 class DeepZoomFile(MyDataClass):

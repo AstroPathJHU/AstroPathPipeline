@@ -1,5 +1,6 @@
-import contextlib, cv2, itertools, methodtools, numpy as np, os, PIL, skimage
+import contextlib, cv2, itertools, jxmlease, methodtools, numpy as np, os, PIL, skimage
 
+from ..alignment.alignmentset import AlignmentSet
 from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
 from ..baseclasses.sample import ReadRectanglesBase, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ..utilities import units
@@ -384,7 +385,11 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
     return {"layers": self.layers, **super().workflowkwargs}
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, zoomroot, layers, **otherrootkwargs):
+  def getoutputfiles(cls, SlideID, *, root, zoomroot, layers, **otherrootkwargs):
+    if layers is None:
+      with open(root/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
+        for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+          layers = range(1, int(node.xml_attrs["dim"])+1)
     return [
       zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.zmax}-L{layer}-wsi.png"
       for layer in layers
@@ -392,4 +397,4 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
 
   @classmethod
   def workflowdependencies(cls):
-    return ["align"] + super().workflowdependencies()
+    return [AlignmentSet] + super().workflowdependencies()

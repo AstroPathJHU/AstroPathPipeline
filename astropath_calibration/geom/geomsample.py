@@ -1,4 +1,5 @@
 import cv2, methodtools, more_itertools, numpy as np
+from ..alignment.alignmentset import AlignmentSet
 from ..alignment.field import FieldReadComponentTiff
 from ..baseclasses.csvclasses import Vertex
 from ..baseclasses.polygon import DataClassWithPolygon, Polygon, polygonfield
@@ -82,7 +83,7 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
 
   @classmethod
   def workflowdependencies(cls):
-    return ["align"] + super().workflowdependencies()
+    return [AlignmentSet] + super().workflowdependencies()
 
 class Boundary(DataClassWithPolygon):
   n: int

@@ -7,8 +7,8 @@ from ..baseclasses.csvclasses import constantsdict, Region, Vertex
 from ..baseclasses.polygon import Polygon
 from ..baseclasses.qptiff import QPTiff
 from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample, ZoomFolderSampleBase
-from ..zoom.stitchmask import InformMaskSample, TissueMaskSample
-from ..zoom.zoom import ZoomSampleBase
+from ..zoom.stitchmask import InformMaskSample, TissueMaskSample, StitchInformMask
+from ..zoom.zoom import Zoom, ZoomSampleBase
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import covariance_matrix, floattoint
@@ -829,7 +829,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
 
   @classmethod
   def workflowdependencies(cls):
-    return ["zoom"] + super().workflowdependencies()
+    return [Zoom] + super().workflowdependencies()
 
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
   """
@@ -872,7 +872,7 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
 
   @classmethod
   def workflowdependencies(cls):
-    return ["stitchinformmask"] + super().workflowdependencies()
+    return [StitchInformMask] + super().workflowdependencies()
 
 class QPTiffCoordinateBase(abc.ABC):
   """

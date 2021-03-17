@@ -1,4 +1,5 @@
 import cv2, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
+from ..alignment.alignmentset import AlignmentSet
 from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
 from ..baseclasses.csvclasses import constantsdict
 from ..baseclasses.polygon import DataClassWithPolygon, polygonfield
@@ -125,7 +126,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
 
   @classmethod
   def workflowdependencies(cls):
-    return ["align"] + super().workflowdependencies()
+    return [AlignmentSet] + super().workflowdependencies()
 
 class CellGeomLoad(DataClassWithPolygon):
   pixelsormicrons = "pixels"

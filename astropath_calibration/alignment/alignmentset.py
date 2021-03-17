@@ -3,6 +3,7 @@
 import contextlib, numpy as np, traceback
 
 from ..baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
+from ..prepdb.prepdbsample import PrepdbSample
 from ..utilities.tableio import readtable, writetable
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
@@ -384,7 +385,7 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
 
   @classmethod
   def workflowdependencies(cls):
-    return ["prepdb"] + super().workflowdependencies()
+    return [PrepdbSample] + super().workflowdependencies()
 
 class AlignmentSetFromXMLBase(AlignmentSetBase, ReadRectanglesOverlapsFromXML):
   def __init__(self, *args, nclip, position=None, **kwargs):

@@ -28,6 +28,10 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomFolder
     }
     return kwargs
 
+  @property
+  def workflowkwargs(self):
+    return {"layers": self.layers, **super().workflowkwargs}
+
 def main(args=None):
   ZoomCohort.runfromargumentparser(args)
 
