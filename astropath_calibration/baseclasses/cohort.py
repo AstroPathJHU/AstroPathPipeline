@@ -59,7 +59,11 @@ class Cohort(ThingWithRoots):
     """
     for samp in readtable(self.root/"sampledef.csv", SampleDef):
       if not samp: continue
-      if not all(filter(self, samp) for filter in self.slideidfilters): continue
+      try:
+        if not all(filter(self, samp) for filter in self.slideidfilters): continue
+      except:
+        with self.getlogger(samp):
+          raise
       yield samp
 
   @abc.abstractmethod
@@ -470,6 +474,9 @@ class GeomFolderCohort(Cohort):
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "geomroot": parsed_args_dict.pop("geomroot"),
     }
+
+  @property
+  def rootnames(self): return {"geomroot", *super().rootnames}
 
 class WorkflowCohort(Cohort):
   """

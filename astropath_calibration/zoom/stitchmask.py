@@ -206,7 +206,7 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteM
   @property
   def inputfiles(self):
     return [
-      *(r.imagefilename for r in self.rectangles),
+      *(r.imagefile for r in self.rectangles),
       self.csv("fields"),
     ]
 

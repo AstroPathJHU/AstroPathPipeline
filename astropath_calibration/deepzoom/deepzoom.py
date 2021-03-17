@@ -1,4 +1,4 @@
-import collections, functools, numpy as np, os, PIL, re
+import collections, functools, jxmlease, numpy as np, os, PIL, re
 
 from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ..utilities.dataclasses import MyDataClass
@@ -256,8 +256,12 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     return {"layers": self.layers, **super().workflowkwargs}
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, deepzoomroot, layers, **otherworkflowkwargs):
+  def getoutputfiles(cls, SlideID, *, root, deepzoomroot, layers, **otherworkflowkwargs):
     zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
+    if layers is None:
+      with open(root/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp") as f:
+        for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+          layers = range(1, int(node.xml_attrs["dim"])+1)
     result = [
       zoomlist,
       *(deepzoomroot/SlideID/f"L{layer}.dzi" for layer in layers),
