@@ -3,7 +3,7 @@ from ..utilities import units
 from ..utilities.tableio import readtable
 from .logging import getlogger
 from .sample import SampleDef
-from .workflowdependency import SampleRunStatus, ThingWithRoots
+from .workflowdependency import ThingWithRoots
 
 class Cohort(ThingWithRoots):
   """
