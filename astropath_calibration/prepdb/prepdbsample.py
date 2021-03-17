@@ -79,8 +79,11 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
       for layer, (path, _, node) in zip(count, jxmlease.parse(f, generator="/Annotations/Annotation")):
         color = f"{int(node.get_xml_attr('LineColor')):06X}"
         color = color[4:6] + color[2:4] + color[0:2]
-        visible = node.get_xml_attr("Visible").lower() == "true"
-        name = node.get_xml_attr("Name").lower()
+        visible = {
+          "true": True,
+          "false": False,
+        }[node.get_xml_attr("Visible").lower().strip()]
+        name = node.get_xml_attr("Name").lower().strip()
         if name == "empty":
           count.prepend(layer)
           continue
@@ -118,6 +121,8 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
             apscale=self.apscale,
           )
         )
+        if not any(a.name == "good tissue" for a in annotations):
+          raise IOError("Didn't find a 'good tissue' annotation")
 
         if not node["Regions"]: continue
         regions = node["Regions"]["Region"]
