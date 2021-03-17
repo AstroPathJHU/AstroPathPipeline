@@ -1,10 +1,9 @@
 #imports
-from .image_mask import ImageMask
+from .image_mask import getImageMaskWorker
 from .utilities import flatfield_logger, FlatFieldError
-from .utilities import getImageTissueMask, getImageBlurMask, getImageSaturationMasks
 from .config import CONST 
-from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots, doMaskingPlotsForImage
-from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, im3writeraw, smoothImageWorker, smoothImageWithUncertaintyWorker, getExposureTimesByLayer
+from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots
+from ..utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker, smoothImageWithUncertaintyWorker
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd, cropAndOverwriteImage
 from ..utilities.config import CONST as UNIV_CONST
@@ -29,8 +28,6 @@ class MeanImage :
     @property
     def masking_plot_dirpath(self):
     	return os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)
-    
-    
     
     #################### CLASS CONSTANTS ####################
 
@@ -157,7 +154,6 @@ class MeanImage :
                 stacked_in_layers.append(list(range(1,self.nlayers+1)))
             return stacked_in_layers
         #otherwise produce the image masks, apply them to the raw images, and be sure to add them to the list in the same order as the images
-        masking_plot_dirpath = os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)
         manager = mp.Manager()
         return_dict = manager.dict()
         procs = []
@@ -170,8 +166,8 @@ class MeanImage :
                 flatfield_logger.info(msg)
             make_plots=i in masking_plot_indices
             p = mp.Process(target=getImageMaskWorker, 
-                           args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,min_pixel_frac,slide.exp_time_hists,
-                                 ets_for_normalization,make_plots,masking_plot_dirpath,stack_i,return_dict))
+                           args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,slide.exp_time_hists,
+                                 ets_for_normalization,make_plots,self.masking_plot_dirpath,stack_i,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
@@ -320,6 +316,12 @@ class MeanImage :
             with cd(os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)) :
                 writetable(self.LABELLED_MASK_REGIONS_CSV_FILE_NAME,self._labelled_mask_regions)
 
+    def addLMRs(self,lmrs_to_add) :
+        """
+        add a list of Labelled Mask Region objects to this mean image's list
+        """
+        self._labelled_mask_regions+=lmrs_to_add
+
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to create and return the mean image from the image (and mask, if applicable, stack)
@@ -448,42 +450,3 @@ class MeanImage :
                 fp.write(f'{self.n_images_stacked_by_layer[li]}\n')
         with open(CONST.N_IMAGES_READ_TEXT_FILE_NAME,'w') as fp :
             fp.write(f'{self.n_images_read}\n')
-
-#################### FILE-SCOPE HELPER FUNCTIONS ####################
-
-#helper function to create a layered binary image mask for a given image array
-#this can be run in parallel with a given index and return dict
-def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,min_pixel_frac,exp_time_hists,norm_ets,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
-    #need the exposure times for this image
-    exp_times = getExposureTimesByLayer(rfp,im_array.shape[-1],rawfile_top_dir)
-    #start by creating the tissue mask
-    tissue_mask = getImageTissueMask(im_array,bg_thresholds)
-    #next create the blur mask
-    blur_mask,blur_mask_plots = getImageBlurMask(im_array,exp_times,tissue_mask,exp_time_hists,make_plots)
-    #finally create masks for the saturated regions in each layer group
-    layer_group_saturation_masks = getImageSaturationMasks(im_array,norm_ets if norm_ets is not None else exp_times)
-    #make the image_mask object 
-    key = (os.path.basename(rfp)).rstrip(UNIV_CONST.RAW_EXT)
-    image_mask = ImageMask(key)
-    image_mask.addCreatedMasks(tissue_mask,blur_mask,layer_group_saturation_masks)
-    #make the plots for this image if requested
-    if make_plots :
-        flatfield_logger.info(f'Saving masking plots for image {i}')
-        doMaskingPlotsForImage(key,tissue_mask,blur_mask_plots,image_mask.compressed_mask,plotdir_path)
-    #if there is anything flagged in the final blur and saturation masks, write out the compressed mask
-    is_masked = np.min(blur_mask)<1
-    if not is_masked :
-        for lgsm in layer_group_saturation_masks :
-            if np.min(lgsm)<1 :
-                is_masked=True
-                break
-    if plotdir_path is not None :
-        with cd(plotdir_path) :
-            im3writeraw(f'{key}_tissue_mask.bin',image_mask.packed_tissue_mask)
-            if is_masked :
-                writeImageToFile(image_mask.compressed_mask,f'{key}_full_mask.bin',dtype=np.uint8)
-    #return the mask (either in the shared dict or just on its own)
-    if i is not None and return_dict is not None :
-        return_dict[i] = image_mask
-    else :
-        return image_mask

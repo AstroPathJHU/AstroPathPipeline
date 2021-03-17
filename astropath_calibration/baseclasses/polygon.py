@@ -74,6 +74,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     return str(self.gdalpolygon(round=True))
 
   def __eq__(self, other):
+    if other is None: return False
     assert self.pscale == other.pscale and self.apscale == other.apscale
     return self.gdalpolygon().Equals(other.gdalpolygon())
 

@@ -1,7 +1,7 @@
-from ..baseclasses.cohort import DbloadCohort, Im3Cohort, SelectRectanglesCohort
+from ..baseclasses.cohort import DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort
 from .alignmentset import AlignmentSet
 
-class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort):
+class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort):
   def __init__(self, *args, doalignment=True, dostitching=True, **kwargs):
     super().__init__(*args, **kwargs)
     self.__doalignment = doalignment
@@ -30,21 +30,15 @@ class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort):
     g = p.add_mutually_exclusive_group()
     g.add_argument("--dont-align", action="store_true")
     g.add_argument("--dont-stitch", action="store_true")
-    p.add_argument("--skip-aligned", action="store_true")
     return p
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    root = parsed_args_dict["root"]
-    dontstitch = parsed_args_dict["dont_stitch"]
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "doalignment": not parsed_args_dict.pop("dont_align"),
       "dostitching": not parsed_args_dict.pop("dont_stitch"),
     }
-    skipaligned = parsed_args_dict.pop("skip_aligned")
-    if skipaligned:
-      kwargs["filters"].append(lambda sample: not (root/sample.SlideID/"dbload"/f"{sample.SlideID}_{'fields' if not dontstitch else 'align'}.csv").exists())
     return kwargs
 
 def main(args=None):

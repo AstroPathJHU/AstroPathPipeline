@@ -425,10 +425,12 @@ def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
             blur_flagged = 1 if CONST.BLUR_FLAG_STRING in key_strings else 0
             saturation_flagged = 1 if CONST.SATURATION_FLAG_STRING in key_strings else 0
             flagged_int = 1*blur_flagged+2*saturation_flagged
-        elif rfp in rfps_added :
-            flagged_int = 0
         else :
-            flagged_int = 4
+            flagged_int = 0
+        #elif rfp in rfps_added :
+        #    flagged_int = 0
+        #else :
+        #    flagged_int = 4
         hpf_identifiers.append({'x':key_x,'y':key_y,'flagged':flagged_int})
     colors_by_flag_int = ['gray','royalblue','gold','limegreen','black']
     labels_by_flag_int = ['not flagged','blur flagged','saturation flagged','blur and saturation','not read/stacked']
@@ -450,7 +452,7 @@ def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
     ax.set_xlim(ax.get_xlim()[0]-0.05*w,ax.get_xlim()[1]+0.05*w)
     ax.set_ylim(ax.get_ylim()[0]-0.05*h,ax.get_ylim()[1]+0.05*h)
     ax.invert_yaxis()
-    title_text = f'{sid} HPF center locations, ({len(all_rfps)} in slide, {len(rfps_added)} read, {len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"] not in (0,4)])} flagged)'
+    title_text = f'{sid} HPF center locations, ({len(all_rfps)} in slide, {len(rfps_added)} stacked, {len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"] not in (0,4)])} flagged)'
     ax.set_title(title_text,fontsize=16)
     ax.legend(loc='best',fontsize=10)
     ax.set_xlabel('HPF local x position',fontsize=16)

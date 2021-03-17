@@ -1,7 +1,7 @@
-from ..baseclasses.cohort import DbloadCohort, MaskCohort, SelectRectanglesCohort
+from ..baseclasses.cohort import DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort
 from .stitchmask import StitchInformMask
 
-class StitchMaskCohortBase(DbloadCohort, MaskCohort, SelectRectanglesCohort):
+class StitchMaskCohortBase(DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort):
   def __init__(self, *args, filetype=None, **kwargs):
     self.__filetype = filetype
     super().__init__(*args, **kwargs)
