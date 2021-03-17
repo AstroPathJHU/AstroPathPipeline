@@ -2,8 +2,8 @@ import more_itertools, numpy as np, os, pathlib, PIL.Image, sys, unittest
 from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
 from astropath_calibration.baseclasses.overlap import Overlap
 from astropath_calibration.baseclasses.rectangle import Rectangle
-from astropath_calibration.prepdb.prepdbcohort import PrepdbCohort
-from astropath_calibration.prepdb.prepdbsample import PrepdbSample
+from astropath_calibration.prepdb.prepdbcohort import PrepDbCohort
+from astropath_calibration.prepdb.prepdbsample import PrepDbSample
 from astropath_calibration.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 
@@ -25,8 +25,8 @@ class TestPrepDb(unittest.TestCase):
         pass
 
     args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits"]
-    PrepdbCohort.runfromargumentparser(args)
-    sample = PrepdbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
+    PrepDbCohort.runfromargumentparser(args)
+    sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
 
     for filename, cls, extrakwargs in (
       (f"{SlideID}_annotations.csv", Annotation, {"pscale": sample.pscale, "apscale": sample.apscale}),

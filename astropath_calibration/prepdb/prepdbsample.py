@@ -6,7 +6,7 @@ from ..baseclasses.sample import DbloadSampleBase, WorkflowSample, XMLLayoutRead
 from ..baseclasses.workflowdependency import ShredXML
 from ..utilities import units
 
-class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
+class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, checkim3s=True, **kwargs)
 
@@ -371,7 +371,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
     ]
     return constants
 
-class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
+class PrepDbSample(PrepDbSampleBase, DbloadSampleBase):
   def writebatch(self):
     self.logger.info("write batch")
     self.writecsv("batch", self.getbatch())
@@ -471,7 +471,7 @@ def main(args=None):
   p.add_argument("--dbload-root")
   args = p.parse_args(args=args)
   kwargs = {"root": args.root, "samp": args.samp, "dbloadroot": args.dbload_root}
-  s = PrepdbSample(**kwargs)
+  s = PrepDbSample(**kwargs)
   s.writemetadata()
 
 if __name__ == "__main__":
