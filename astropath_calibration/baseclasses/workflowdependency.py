@@ -84,6 +84,33 @@ class WorkflowDependency(ThingWithRoots):
   def logroot(self):
     pass
 
+class ExternalDependency(WorkflowDependency):
+  def __init__(self, SlideID, logroot):
+    self.__SlideID = SlideID
+    self.__logroot = logroot
+  @property
+  def SlideID(self): return self.__SlideID
+  @property
+  def logroot(self): return self.__logroot
+  @classmethod
+  def getoutputfiles(cls, SlideID, **workflowkwargs): return super().getoutputfiles(SlideID, **workflowkwargs)
+
+def makeexternaldependency(name, startregex, endregex):
+  """
+  for dependencies that don't run through this package
+  """
+  class dependency(ExternalDependency):
+    @classmethod
+    def logmodule(cls): return name
+    @classmethod
+    def logstartregex(cls): return startregex
+    @classmethod
+    def logendregex(cls): return endregex
+  dependency.__name__ = name
+  return dependency
+
+ShredXML = makeexternaldependency("ShredXML", "shredxml started", "shredxml finished")
+
 class SampleRunStatus:
   """
   Stores information about if a sample ran successfully.

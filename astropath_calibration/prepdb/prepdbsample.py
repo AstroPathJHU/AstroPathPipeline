@@ -3,6 +3,7 @@ from ..baseclasses.csvclasses import Annotation, Constant, Batch, ExposureTime, 
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.qptiff import QPTiff
 from ..baseclasses.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
+from ..baseclasses.workflowdependency import ShredXML
 from ..utilities import units
 
 class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
@@ -455,7 +456,7 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
 
   @classmethod
   def workflowdependencies(cls):
-    return ["shredxml"] + super().workflowdependencies()
+    return [ShredXML] + super().workflowdependencies()
 
 def main(args=None):
   p = argparse.ArgumentParser()
