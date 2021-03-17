@@ -92,6 +92,9 @@ class Cohort(ThingWithRoots):
   def workflowkwargs(self):
     return self.rootkwargs
 
+  def getlogger(self, samp):
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug)
+
   def run(self, **kwargs):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
@@ -101,7 +104,7 @@ class Cohort(ThingWithRoots):
         sample = self.initiatesample(samp)
       except:
         #enter the logger here to log exceptions in __init__ of the sample
-        with getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):
+        with self.getlogger(samp):
           raise
       else:
         if not all(filter(self, sample) for filter in self.samplefilters):
@@ -517,13 +520,24 @@ class WorkflowCohort(Cohort):
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       print(f"{sample.SlideID} {status}")
     else:
-      missinginputs = [file for file in sample.inputfiles if not file.exists()]
-      if missinginputs:
-        raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
-          
+      try:
+        missinginputs = [file for file in sample.inputfiles if not file.exists()]
+        if missinginputs:
+          raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
+      except:
+        print("exception")
+        with self.getlogger(sample):
+          raise
+        return
+
       super().processsample(sample, **kwargs)
-      status = sample.runstatus
-      #we don't want to do anything if there's an error, because that
-      #was already logged so no need to log it again and confuse the issue.
-      if (status.missingfiles or not status.ended) and status.error is None:
-        raise RuntimeError(f"{sample.SlideID} {status}")
+
+      try:
+        status = sample.runstatus
+        #we don't want to do anything if there's an error, because that
+        #was already logged so no need to log it again and confuse the issue.
+        if (status.missingfiles or not status.ended) and status.error is None:
+          raise RuntimeError(f"{sample.SlideID} {status}")
+      except:
+        with self.getlogger(sample):
+          raise

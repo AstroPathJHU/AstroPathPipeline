@@ -122,7 +122,7 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
           )
         )
         if not any(a.name == "good tissue" for a in annotations):
-          raise IOError("Didn't find a 'good tissue' annotation")
+          raise ValueError(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations if _.name != 'empty')})")
 
         if not node["Regions"]: continue
         regions = node["Regions"]["Region"]

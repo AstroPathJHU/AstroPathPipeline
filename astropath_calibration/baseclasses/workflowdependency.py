@@ -150,6 +150,8 @@ class SampleRunStatus:
     """
     result = None
     started = False
+    ended = False
+    previousrun = None
     with contextlib.ExitStack() as stack:
       try:
         f = stack.enter_context(open(samplelog))
@@ -166,7 +168,7 @@ class SampleRunStatus:
             result = None
           elif row["message"].startswith("ERROR:"):
             error = reader.peek(default={"message": ""})["message"]
-            if error[0] == "[" and error[-1] == "]":
+            if error and error[0] == "[" and error[-1] == "]":
               error = "".join(eval(error))
             else:
               error = row["message"]
