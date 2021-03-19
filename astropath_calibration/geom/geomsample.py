@@ -2,7 +2,7 @@ import cv2, methodtools, more_itertools, numpy as np
 from ..alignment.alignmentset import AlignmentSet
 from ..alignment.field import FieldReadComponentTiff
 from ..baseclasses.csvclasses import Vertex
-from ..baseclasses.polygon import DataClassWithPolygon, Polygon, polygonfield
+from ..baseclasses.polygon import DataClassWithPolygon, SimplePolygon, polygonfield
 from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ..utilities import units
 from ..utilities.tableio import writetable
@@ -38,7 +38,7 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
       Px = mx1, mx2, mx2, mx1
       Py = my1, my1, my2, my2
       fieldvertices = [Vertex(regionid=None, vid=i, im3x=x, im3y=y, apscale=self.apscale, pscale=self.pscale) for i, (x, y) in enumerate(more_itertools.zip_equal(Px, Py))]
-      fieldpolygon = Polygon(vertices=[fieldvertices], pscale=self.pscale)
+      fieldpolygon = SimplePolygon(vertices=fieldvertices, pscale=self.pscale)
       boundaries.append(Boundary(n=n, k=1, poly=fieldpolygon, pscale=self.pscale, apscale=self.apscale))
     return boundaries
 

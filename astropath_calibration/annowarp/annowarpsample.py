@@ -4,7 +4,7 @@ from ..alignment.computeshift import computeshift
 from ..alignment.field import FieldReadComponentTiffMultiLayer
 from ..alignment.overlap import AlignmentComparison
 from ..baseclasses.csvclasses import constantsdict, Region, Vertex
-from ..baseclasses.polygon import Polygon
+from ..baseclasses.polygon import SimplePolygon
 from ..baseclasses.qptiff import QPTiff
 from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ..zoom.stitchmask import InformMaskSample, TissueMaskSample, StitchInformMask
@@ -746,7 +746,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
           nvert=region.nvert,
           pscale=region.pscale,
           apscale=region.apscale,
-          poly=Polygon(vertices=[newvertices], pscale=region.pscale, apscale=region.apscale)
+          poly=SimplePolygon(vertices=newvertices, pscale=region.pscale, apscale=region.apscale)
         ),
       )
     return result
