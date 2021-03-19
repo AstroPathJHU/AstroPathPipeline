@@ -446,7 +446,7 @@ def getImageSaturationMasks(image_arr,norm_ets) :
 #this can be run in parallel with a given index and return dict
 def getImageMaskWorker(im_array,rfp,rawfile_top_dir,bg_thresholds,exp_time_hists,norm_ets,make_plots=False,plotdir_path=None,i=None,return_dict=None) :
     #need the exposure times for this image
-    exp_times = getExposureTimesByLayer(rfp,im_array.shape[-1],rawfile_top_dir)
+    exp_times = getExposureTimesByLayer(rfp,rawfile_top_dir)
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(im_array,bg_thresholds)
     #next create the blur mask

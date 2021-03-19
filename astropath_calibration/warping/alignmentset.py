@@ -22,17 +22,17 @@ class ApplyFlatfield(RectangleTransformationBase):
         return correctImageLayerWithFlatfield(originalimage,self.__flatfield)
 
 class RectangleForWarping(AlignmentRectangle):
-    def __post_init__(self, *args, rtd, root_dir, slide_ID, number_of_layers, med_et, offset, flatfield, transformations=None, **kwargs):
+    def __post_init__(self, *args, rtd, root_dir, slide_ID, med_et, offset, flatfield, transformations=None, **kwargs):
         super().__post_init__(*args, transformations=None, **kwargs)
         exp_time = None
         if transformations is None: transformations = []
         if (med_et is not None) and (offset is not None) :
             rfp = os.path.join(rtd,slide_ID,self.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT))
             try :
-                exp_time = (getExposureTimesByLayer(rfp,number_of_layers,root_dir))[self.layer-1]
+                exp_time = (getExposureTimesByLayer(rfp,root_dir))[self.layer-1]
             except Exception :
                 try :
-                    exp_time = (getExposureTimesByLayer(rfp,number_of_layers,rtd))[self.layer-1]
+                    exp_time = (getExposureTimesByLayer(rfp,rtd))[self.layer-1]
                 except Exception as e :
                     raise ValueError(f'Could not find rectangle exposure time for raw file {rfp} in root dir {root_dir} or rawfile top dir {rtd}! \n Exception: {e}')
             transformations.append(CorrectForExposureTime(exp_time,med_et,offset))
@@ -57,7 +57,6 @@ class AlignmentSetForWarping(AlignmentSetFromXML):
             "rtd": self.root2,
             "root_dir": self.root,
             "slide_ID": self.samp.SlideID,
-            "number_of_layers": self.nlayers,
             "med_et": self.__med_et,
             "offset": self.__offset,
             "flatfield": self.__flatfield,

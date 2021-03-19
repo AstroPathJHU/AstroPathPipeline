@@ -42,7 +42,7 @@ def getExposureTimeDicts(samp_name,rtd,nlayers) :
         fps = [os.path.join(rtd,samp_name,fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
     for fp in fps :
         fstem = os.path.basename(os.path.normpath(fp)).rstrip(UNIV_CONST.RAW_EXT)
-        this_file_exp_times = getExposureTimesByLayer(fp,nlayers,rtd)
+        this_file_exp_times = getExposureTimesByLayer(fp,rtd)
         for li in range(nlayers) :
             return_list[li][fstem] = this_file_exp_times[li]
     return return_list
