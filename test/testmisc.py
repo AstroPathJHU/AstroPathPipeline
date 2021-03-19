@@ -58,11 +58,12 @@ class TestMisc(unittest.TestCase):
       self.testPolygonAreas()
 
   def testPolygonNumpyArray(self):
-    polystring = "POLYGON((1 1, 1 8.9999, 8.9999 8.9999, 8.9999 1, 1 1), (4 5.9999, 7.9999 5.9999, 7.9999 4, 4 4))"
+    polystring = "POLYGON((1.0001 1.0001, 1.0001 8.9999, 8.9999 8.9999, 8.9999 1.0001, 1.0001 1.0001), (4.0001 5.9999, 7.9999 5.9999, 7.9999 4.0001, 4.0001 4.0001))"
     poly = PolygonFromGdal(pixels=polystring, pscale=1, apscale=3)
     nparray = poly.numpyarray(shape=(10, 10), dtype=np.uint8)
     #doesn't work for arbitrary polygons unless you increase the tolerance, but works for a polygon with right angles
     assertAlmostEqual(poly.area / poly.onepixel**2, np.sum(nparray), rtol=1e-3)
+    print(poly.area, np.sum(nparray))
 
     poly2, = findcontoursaspolygons(nparray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=poly.pscale, apscale=poly.apscale)
     #does not equal poly1, some gets eaten away

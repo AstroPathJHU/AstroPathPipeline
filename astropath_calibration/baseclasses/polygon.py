@@ -74,7 +74,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     for poly in self.subtractpolygons:
       subtractpolys.append(poly.outerpolygon)
       for poly2 in poly.subtractpolygons:
-        result += poly2.gdalpolygons(**kwargs)
+        result += poly2.polygonsforgdal
     result.insert(0, Polygon(outerpoly, subtractpolys))
     return result
 
