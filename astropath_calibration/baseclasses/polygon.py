@@ -62,6 +62,22 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     """
     return np.sum(self.perimeters)
 
+  @property
+  def polygonsforgdal(self):
+    """
+    Returns a list of polygons, possibly with holes,
+    but without islands inside the holes.
+    """
+    result = []
+    outerpoly = self.outerpolygon
+    subtractpolys = []
+    for poly in self.subtractpolygons:
+      subtractpolys.append(poly.outerpolygon)
+      for poly2 in poly.subtractpolygons:
+        result += poly2.gdalpolygons(**kwargs)
+    result.insert(0, Polygon(outerpoly, subtractpolys))
+    return result
+
   def gdalpolygons(self, **kwargs):
     """
     An ogr.Geometry object corresponding to the polygon
@@ -70,15 +86,13 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
                 (default: pscale)
     round: round to the nearest pixel?
     """
-    result = []
-    outerpoly = ogr.Geometry(ogr.wkbPolygon)
-    outerpoly.AddGeometry(self.outerpolygon.gdallinearring(**kwargs))
-    result.append(outerpoly)
-    for poly in self.subtractpolygons:
-      outerpoly.AddGeometry(poly.outerpolygon.gdallinearring(**kwargs))
-      for poly2 in poly.subtractpolygons:
-        result += poly2.gdalpolygons(**kwargs)
-    return result
+    if not any(_.subtractpolygons for _ in self.subtractpolygons):
+      outerpoly = ogr.Geometry(ogr.wkbPolygon)
+      outerpoly.AddGeometry(self.outerpolygon.gdallinearring(**kwargs))
+      for poly in self.subtractpolygons:
+        outerpoly.AddGeometry(poly.outerpolygon.gdallinearring(**kwargs))
+      return [outerpoly]
+    return [p.gdalpolygon(**kwargs) for p in self.polygonsforgdal]
 
   def gdalpolygon(self, **kwargs):
     try:

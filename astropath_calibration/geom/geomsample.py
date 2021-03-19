@@ -50,7 +50,7 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
       with field.using_image() as im:
         zeros = im == 0
         if not np.any(zeros): continue
-        polygons = findcontoursaspolygons(zeros.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec))
+        polygons = findcontoursaspolygons(zeros.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=units.nominal_values(field.pxvec), forgdal=True)
         for k, polygon in enumerate(polygons, start=1):
           boundaries.append(Boundary(n=n, k=k, poly=polygon, pscale=self.pscale, apscale=self.pscale))
     return boundaries
