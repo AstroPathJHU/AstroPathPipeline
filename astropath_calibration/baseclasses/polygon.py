@@ -101,6 +101,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       raise ValueError("This polygon has multiple levels of nesting, so it can't be expressed as a single gdal polygon")
     return result
 
+  @property
   def __matplotlibpolygonvertices(self):
     vertices = list(self.outerpolygon.vertices)
     if vertices[0] != vertices[-1]: vertices.append(vertices[0])

@@ -61,6 +61,7 @@ class TestMisc(unittest.TestCase):
     polystring = "POLYGON((1.0001 1.0001, 1.0001 8.9999, 8.9999 8.9999, 8.9999 1.0001, 1.0001 1.0001), (4.0001 5.9999, 7.9999 5.9999, 7.9999 4.0001, 4.0001 4.0001))"
     poly = PolygonFromGdal(pixels=polystring, pscale=1, apscale=3)
     nparray = poly.numpyarray(shape=(10, 10), dtype=np.uint8)
+    print(nparray)
     #doesn't work for arbitrary polygons unless you increase the tolerance, but works for a polygon with right angles
     assertAlmostEqual(poly.area / poly.onepixel**2, np.sum(nparray), rtol=1e-3)
     print(poly.area, np.sum(nparray))
