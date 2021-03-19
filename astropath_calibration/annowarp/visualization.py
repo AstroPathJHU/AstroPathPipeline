@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt, numpy as np
-from ..baseclasses.polygon import Polygon
+from ..baseclasses.polygon import SimplePolygon
 from ..utilities import units
 
 def showannotation(image, regions, *, imagescale, vertices=None, xlim=(), ylim=(), figurekwargs={}, showplot=None, saveas=None, alpha=0.5):
@@ -25,7 +25,7 @@ def showannotation(image, regions, *, imagescale, vertices=None, xlim=(), ylim=(
     if vertices is None:
       poly = region.poly
     else:
-      poly = Polygon(vertices=[[v for v in vertices if v.regionid == region.regionid]], pscale=imagescale)
+      poly = SimplePolygon(vertices=[v for v in vertices if v.regionid == region.regionid], pscale=imagescale)
 
     polygon = poly.matplotlibpolygon(
       imagescale=imagescale,
