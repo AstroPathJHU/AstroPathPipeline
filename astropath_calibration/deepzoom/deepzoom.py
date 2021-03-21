@@ -259,7 +259,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
   def getoutputfiles(cls, SlideID, *, root, deepzoomroot, layers, **otherworkflowkwargs):
     zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
     if layers is None:
-      with open(root/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp") as f:
+      with open(root/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
         for path, _, node in jxmlease.parse(f, generator="AllComponents"):
           layers = range(1, int(node.xml_attrs["dim"])+1)
     result = [
@@ -268,7 +268,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     ]
     if zoomlist.exists():
       files = readtable(zoomlist, DeepZoomFile)
-    result += [file.name for file in files]
+      result += [file.name for file in files]
     return result
 
   @classmethod
