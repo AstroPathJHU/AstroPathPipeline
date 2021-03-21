@@ -1,4 +1,4 @@
-import cv2, hashlib, numpy as np, os, pathlib, unittest
+import cv2, hashlib, numpy as np, os, pathlib, skimage, unittest
 from astropath_calibration.baseclasses.csvclasses import Vertex
 from astropath_calibration.baseclasses.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath_calibration.baseclasses.overlap import rectangleoverlaplist_fromcsvs
@@ -58,13 +58,12 @@ class TestMisc(unittest.TestCase):
       self.testPolygonAreas()
 
   def testPolygonNumpyArray(self):
-    polystring = "POLYGON((1.0001 1.0001, 1.0001 8.9999, 8.9999 8.9999, 8.9999 1.0001, 1.0001 1.0001), (4.0001 5.9999, 7.9999 5.9999, 7.9999 4.0001, 4.0001 4.0001))"
+    fraction = .9999 if skimage.__version__ >= "0.18" else 0.0001
+    polystring = f"POLYGON((1.0001 1.0001, 1.0001 8{fraction}, 8{fraction} 8{fraction}, 8{fraction} 1.0001, 1.0001 1.0001), (4.0001 5{fraction}, 7{fraction} 5{fraction}, 7{fraction} 4.0001, 4.0001 4.0001))"
     poly = PolygonFromGdal(pixels=polystring, pscale=1, apscale=3)
     nparray = poly.numpyarray(shape=(10, 10), dtype=np.uint8)
-    print(nparray)
     #doesn't work for arbitrary polygons unless you increase the tolerance, but works for a polygon with right angles
     assertAlmostEqual(poly.area / poly.onepixel**2, np.sum(nparray), rtol=1e-3)
-    print(poly.area, np.sum(nparray))
 
     poly2, = findcontoursaspolygons(nparray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=poly.pscale, apscale=poly.apscale)
     #does not equal poly1, some gets eaten away
