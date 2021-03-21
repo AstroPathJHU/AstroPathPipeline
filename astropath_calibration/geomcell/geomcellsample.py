@@ -118,6 +118,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
     dbload = dbloadroot/SlideID/"dbload"
     fieldscsv = dbload/f"{SlideID}_fields.csv"
     constantscsv = dbload/f"{SlideID}_constants.csv"
+    if not fieldscsv.exists(): return [fieldscsv]
     constants = constantsdict(constantscsv)
     rectangles = readtable(fieldscsv, GeomLoadField, extrakwargs={"pscale": constants["pscale"], "geomfolder": geomroot/SlideID/"geom"})
     return [
@@ -349,37 +350,43 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       otherregions = (labeled != 0) & (labeled != label)
       distance1 = scipy.ndimage.distance_transform_edt(~thisregion)
       distance2 = scipy.ndimage.distance_transform_edt(~otherregions)
-      totaldistance = np.round((distance1+distance2)*2, 0)
 
-      path = np.where(totaldistance == np.min(totaldistance[~slicedmask]), True, False)
-      thinnedpath = skimage.morphology.thin(path)
+      maxmultiply = 4
+      for multiplytoround in range(1, maxmultiply+1):
+        totaldistance = np.round((distance1+distance2)*multiplytoround, 0)
 
-      partiallyconnected = slicedmask | thinnedpath
+        path = np.where(totaldistance == np.min(totaldistance[~slicedmask]), True, False)
+        thinnedpath = skimage.morphology.thin(path)
 
-      labeled2, nlabels2 = scipy.ndimage.label(partiallyconnected, structure=np.ones(shape=(3, 3)))
-      if not nlabels2 < nlabels:
-        if self._debugdrawonerror:
-          plt.imshow(slicedmask)
-          plt.show()
-          print(nlabels)
-          plt.imshow(thisregion)
-          plt.show()
-          plt.imshow(distance1)
-          plt.show()
-          plt.imshow(otherregions)
-          plt.show()
-          plt.imshow(distance2)
-          plt.show()
-          plt.imshow(totaldistance)
-          plt.show()
-          plt.imshow(path)
-          plt.show()
-          plt.imshow(thinnedpath)
-          plt.show()
-          plt.imshow(partiallyconnected)
-          plt.show()
-          print(nlabels2)
-        raise ValueError("Connecting regions didn't reduce the number of regions (?)")
+        partiallyconnected = slicedmask | thinnedpath
+
+        labeled2, nlabels2 = scipy.ndimage.label(partiallyconnected, structure=np.ones(shape=(3, 3)))
+        if nlabels2 < nlabels:
+          break
+        else:
+          if self._debugdrawonerror:
+            plt.imshow(slicedmask)
+            plt.show()
+            print(nlabels)
+            plt.imshow(thisregion)
+            plt.show()
+            plt.imshow(distance1)
+            plt.show()
+            plt.imshow(otherregions)
+            plt.show()
+            plt.imshow(distance2)
+            plt.show()
+            plt.imshow(totaldistance)
+            plt.show()
+            plt.imshow(path)
+            plt.show()
+            plt.imshow(thinnedpath)
+            plt.show()
+            plt.imshow(partiallyconnected)
+            plt.show()
+            print(nlabels2)
+          if multiplytoround == maxmultiply:
+            raise ValueError(f"Connecting regions didn't reduce the number of regions (?) {self.loginfo}")
 
       fullyconnected, nfilled, _ = self.__connectdisjointregions(partiallyconnected)
       nfilled += np.count_nonzero(thinnedpath)
@@ -401,7 +408,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     if not self._debugdraw: return
     plt.imshow(self.originalcellmask.astype(np.uint8) + self.cellmask)
     ax = plt.gca()
-    ax.add_patch(polygon.matplotlibpolygon(alpha=0.7, shiftby=-self.pxvec))
+    if polygon is not None: ax.add_patch(polygon.matplotlibpolygon(alpha=0.7, shiftby=-self.pxvec))
     top, left, bottom, right = self.adjustedbbox
     plt.xlim(left=left-1, right=right)
     plt.ylim(top=top-1, bottom=bottom)
