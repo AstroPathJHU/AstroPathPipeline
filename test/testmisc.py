@@ -58,7 +58,7 @@ class TestMisc(unittest.TestCase):
       self.testPolygonAreas()
 
   def testPolygonNumpyArray(self):
-    fraction = .9999 if skimage.__version__ >= "0.18" else 0.0001
+    fraction = ".9999" if skimage.__version__ >= "0.18" else ".0001"
     polystring = f"POLYGON((1.0001 1.0001, 1.0001 8{fraction}, 8{fraction} 8{fraction}, 8{fraction} 1.0001, 1.0001 1.0001), (4.0001 5{fraction}, 7{fraction} 5{fraction}, 7{fraction} 4.0001, 4.0001 4.0001))"
     poly = PolygonFromGdal(pixels=polystring, pscale=1, apscale=3)
     nparray = poly.numpyarray(shape=(10, 10), dtype=np.uint8)
