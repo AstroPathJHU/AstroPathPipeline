@@ -1,4 +1,4 @@
-import numba as nb, numpy as np, uncertainties as unc
+import numba as nb, uncertainties as unc
 
 __types = nb.int32, nb.int64, nb.float32, nb.float64
 __vectorizetypelist = [
