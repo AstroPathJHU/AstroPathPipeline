@@ -25,12 +25,12 @@ __vectorizetypelist = [
 
 def Distance(*, pscale, pixels=None, microns=None, centimeters=None, power=1, defaulttozero=False):
   if pixels is not None is microns is centimeters:
-    return pixels
+    return __pixelstomicrons(pixels, pscale, power)
   elif microns is not None is pixels is centimeters:
-    return __micronstopixels(microns, pscale, power)
+    return microns
   elif centimeters is not None is pixels is microns:
     microns = centimeters * (1e4**power if power and centimeters else 1)
-    return __micronstopixels(microns, pscale, power)
+    return microns
   else:
     raise TypeError("Have to provide exactly one of pixels, microns, or centimeters")
 
@@ -46,7 +46,8 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
   if covariance is None: return pixels
   return unc.correlated_values(pixels, covariance)
 
-def pixels(distance, *, pscale, power=1): return distance
+def pixels(distance, *, pscale, power=1):
+  return __micronstopixels(distance, pscale, power)
 def microns(distance, *, pscale, power=1):
-  return __pixelstomicrons(distance, pscale, power)
+  return distance
 def asdimensionless(distance): return distance
