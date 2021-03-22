@@ -2,8 +2,7 @@ import numba as nb, numpy as np, uncertainties as unc
 
 __types = nb.int32, nb.int64, nb.float32, nb.float64
 __vectorizetypelist = [
-  typ(typ, typ, typ)
-  for typ in __types
+  nb.float64(nb.float64, nb.float64, nb.float64),
 ]
 
 @nb.vectorize(__vectorizetypelist)
@@ -47,7 +46,7 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
   if covariance is None: return pixels
   return unc.correlated_values(pixels, covariance)
 
-def pixels(distance, *, pscale, power): return distance
-def microns(distance, *, pscale, power):
+def pixels(distance, *, pscale, power=1): return distance
+def microns(distance, *, pscale, power=1):
   return __pixelstomicrons(distance, pscale, power)
 def asdimensionless(distance): return distance
