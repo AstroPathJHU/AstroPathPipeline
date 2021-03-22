@@ -24,24 +24,14 @@ __vectorizetypelist = [
   nb.float64(nb.float64, nb.int32, nb.int64, nb.boolean),
 ]
 
-@nb.vectorize(__vectorizetypelist)
-def __Distance_pixels(pscale, pixels, power, defaulttozero):
-  return pixels
-@nb.vectorize(__vectorizetypelist)
-def __Distance_microns(pscale, microns, power, defaulttozero):
-  return __micronstopixels(microns, pscale, power)
-@nb.vectorize(__vectorizetypelist)
-def __Distance_centimeters(pscale, centimeters, power, defaulttozero):
-  microns = centimeters * (1e4**power if power and centimeters else 1)
-  return __Distance_microns(pscale, microns, power, defaulttozero)
-
 def Distance(*, pscale, pixels=None, microns=None, centimeters=None, power=1, defaulttozero=False):
   if pixels is not None is microns is centimeters:
-    return __Distance_pixels(pscale, pixels, power, defaulttozero)
+    return pixels
   elif microns is not None is pixels is centimeters:
-    return __Distance_microns(pscale, microns, power, defaulttozero)
+    return __micronstopixels(microns, pscale, power)
   elif centimeters is not None is pixels is microns:
-    return __Distance_centimeters(pscale, centimeters, power, defaulttozero)
+    microns = centimeters * (1e4**power if power and centimeters else 1)
+    return __micronstopixels(microns, pscale, power)
   else:
     raise TypeError("Have to provide exactly one of pixels, microns, or centimeters")
 
