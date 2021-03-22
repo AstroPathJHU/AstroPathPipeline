@@ -81,7 +81,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
             celllabel = cellproperties.label
             if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
             thiscell = imlayer==celllabel
-            polygon = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygon()
+            polygon = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygon()
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += units.nominal_values(field.pxvec)
@@ -155,7 +155,7 @@ class CellGeomLoad(DataClassWithPolygon):
 
 
 class PolygonFinder(ThingWithPscale, ThingWithApscale):
-  def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, _debugdraw=False, _debugdrawonerror=False, logger=dummylogger, loginfo=""):
+  def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, mxbox, _debugdraw=False, _debugdrawonerror=False, logger=dummylogger, loginfo=""):
     self.originalcellmask = self.cellmask = cellmask
     self.ismembrane = ismembrane
     self.__bbox = bbox
@@ -164,6 +164,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     self.__pscale = pscale
     self.__apscale = apscale
     self.pxvec = pxvec
+    self.mxbox = mxbox
     self._debugdraw = _debugdraw
     self._debugdrawonerror = _debugdrawonerror
     if self._debugdraw:
@@ -177,12 +178,15 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   def findpolygon(self):
     polygon = None
     try:
-      if self.ismembrane:
-        self.joinbrokenmembrane()
-      self.connectdisjointregions()
+      if self.isprimary:
+        if self.ismembrane:
+          self.joinbrokenmembrane()
+        self.connectdisjointregions()
+      else:
+        self.pickbiggestregion()
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
-      if self.ismembrane:
+      if self.isprimary and self.ismembrane:
         if self.istoothin(polygon):
           self.logger.warningglobal(f"Long, thin polygon (perimeter = {polygon.perimeter / self.onepixel} pixels, area = {polygon.area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {self.loginfo}")
     except:
@@ -215,7 +219,17 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       height, width = self.cellmask.shape
       if bottom == height - 1: bottom = height
       if right == width - 1: right = width
-    return top, left, bottom, right
+    return np.array([top, left, bottom, right])
+
+  @property
+  def isprimary(self):
+    top, left, bottom, right = self.adjustedbbox * self.onepixel
+    ptop, pleft, pbottom, pright = self.mxbox
+    pleft -= self.pxvec[0]
+    pright -= self.pxvec[0]
+    ptop -= self.pxvec[1]
+    pbottom -= self.pxvec[1]
+    return bottom >= ptop and pbottom >= top and right >= pleft and pright >= left
 
   @property
   def isonedge(self):
@@ -403,6 +417,16 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     if nfilled:
       self.logger.warningglobal(f"Broken cell: connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
       slicedmask[:] = connected
+
+  def pickbiggestregion(self):
+    slicedmask = self.slicedmask
+    labeled, nlabels = scipy.ndimage.label(slicedmask, structure=np.ones(shape=(3, 3)))
+    labels = range(1, nlabels+1)
+    if nlabels == 1:
+      return slicedmask
+    nlabeled = {label: np.sum(labeled == label) for label in labels}
+    biggest = max(nlabeled.items(), key=lambda kv: kv[1])[0]
+    slicedmask[labeled != biggest] = 0
 
   def debugdraw(self, polygon):
     if not self._debugdraw: return
