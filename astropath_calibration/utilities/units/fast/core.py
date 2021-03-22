@@ -1,33 +1,49 @@
 import numba as nb, numpy as np, uncertainties as unc
 
-def __vectorizetypelist(nargs):
-  return [
-    typ(*[typ]*nargs)
-    for typ in (nb.int32, nb.int64, nb.float32, nb.float64)
-  ]
+__types = nb.int32, nb.int64, nb.float32, nb.float64
+__vectorizetypelist = [
+  typ(typ, typ, typ)
+  for typ in __types
+]
 
-@nb.vectorize(__vectorizetypelist(3))
+@nb.vectorize(__vectorizetypelist)
 def __micronstopixels(microns, pscale, power):
   return microns * pscale**power
-@nb.vectorize(__vectorizetypelist(3))
+@nb.vectorize(__vectorizetypelist)
 def __pixelstomicrons(pixels, pscale, power):
   return pixels / pscale**power
 
-def __Distance(pscale, pixels, microns, centimeters, power, defaulttozero):
-  if not power or pixels == 0 or microns == 0 or centimeters == 0: pscale = None
-  if (pixels is not None) + (microns is not None) + (centimeters is not None) != 1:
-    raise TypeError("Have to provide exactly one of pixels, microns, or centimeters")
-  if centimeters is not None:
-    microns = centimeters * (1e4**power if power and centimeters else 1)
+__vectorizetypelist = [
+  *[
+    typ(typ, typ, typ, nb.boolean)
+    for typ in __types
+  ], *[
+    nb.float64(nb.float64, typ, typ, nb.boolean)
+    for typ in __types
+  ],
+  nb.float64(nb.float64, nb.int32, nb.int64, nb.boolean),
+]
 
-  if pixels is not None:
-    return pixels
-  if microns is not None:
-    if pscale is None or power is None or microns == 0: return microns
-    return __micronstopixels(microns, pscale, power)
+@nb.vectorize(__vectorizetypelist)
+def __Distance_pixels(pscale, pixels, power, defaulttozero):
+  return pixels
+@nb.vectorize(__vectorizetypelist)
+def __Distance_microns(pscale, microns, power, defaulttozero):
+  return __micronstopixels(microns, pscale, power)
+@nb.vectorize(__vectorizetypelist)
+def __Distance_centimeters(pscale, centimeters, power, defaulttozero):
+  microns = centimeters * (1e4**power if power and centimeters else 1)
+  return __Distance_microns(pscale, microns, power, defaulttozero)
 
 def Distance(*, pscale, pixels=None, microns=None, centimeters=None, power=1, defaulttozero=False):
-  return __Distance(pscale, pixels, microns, centimeters, power, defaulttozero)
+  if pixels is not None is microns is centimeters:
+    return __Distance_pixels(pscale, pixels, power, defaulttozero)
+  elif microns is not None is pixels is centimeters:
+    return __Distance_microns(pscale, microns, power, defaulttozero)
+  elif centimeters is not None is pixels is microns:
+    return __Distance_centimeters(pscale, centimeters, power, defaulttozero)
+  else:
+    raise TypeError("Have to provide exactly one of pixels, microns, or centimeters")
 
 distances = Distance
 
