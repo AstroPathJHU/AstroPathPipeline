@@ -126,11 +126,11 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
             #fill the big image with the HPF image
             bigimage[
               i,
-              floattoint(globaly1/onepixel):floattoint(globaly2/onepixel),
-              floattoint(globalx1/onepixel):floattoint(globalx2/onepixel),
+              floattoint(globaly1/onepixel, atol=1e-10):floattoint(globaly2/onepixel, atol=1e-10),
+              floattoint(globalx1/onepixel, atol=1e-10):floattoint(globalx2/onepixel, atol=1e-10),
             ] = shifted[
-              floattoint(newlocaly1/onepixel):floattoint(newlocaly2/onepixel),
-              floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
+              floattoint(newlocaly1/onepixel, atol=1e-10):floattoint(newlocaly2/onepixel, atol=1e-10),
+              floattoint(newlocalx1/onepixel, atol=1e-10):floattoint(newlocalx2/onepixel, atol=1e-10),
             ]
 
       self.zoomfolder.mkdir(parents=True, exist_ok=True)
@@ -320,8 +320,8 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
         #remove the buffer
         slc = tileimage[
           :,
-          floattoint(buffer[1]/self.onepixel):floattoint(-buffer[1]/self.onepixel),
-          floattoint(buffer[0]/self.onepixel):floattoint(-buffer[0]/self.onepixel),
+          floattoint(buffer[1]/self.onepixel, atol=1e-10):floattoint(-buffer[1]/self.onepixel, atol=1e-10),
+          floattoint(buffer[0]/self.onepixel, atol=1e-10):floattoint(-buffer[0]/self.onepixel, atol=1e-10),
         ]
         if not np.any(slc): continue
         #save the tile images
