@@ -128,7 +128,7 @@ def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
   #compatibility
   for constant in constants:
     if constant.name == "flayers" and constant.unit == "pixels":
-      dct["flayers"] = units.pixels(dct["flayers"], pscale=pscale)
+      dct["flayers"] = units.pixels(dct["flayers"], pscale=dct["pscale"])
 
   return dct
 
