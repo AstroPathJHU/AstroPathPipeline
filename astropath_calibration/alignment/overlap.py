@@ -142,15 +142,15 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     offsetimage2y1 = (overlapy1 - image2y1) // onepixel * onepixel
     offsetimage2y2 = (overlapy2 - image2y1) // onepixel * onepixel
 
-    cutimage1x1 = floattoint((offsetimage1x1 + self.nclip) / onepixel, atol=1e-10)
-    cutimage1x2 = floattoint((offsetimage1x2 - self.nclip) / onepixel, atol=1e-10)
-    cutimage1y1 = floattoint((offsetimage1y1 + self.nclip) / onepixel, atol=1e-10)
-    cutimage1y2 = floattoint((offsetimage1y2 - self.nclip) / onepixel, atol=1e-10)
+    cutimage1x1 = floattoint((offsetimage1x1 + self.nclip) / onepixel)
+    cutimage1x2 = floattoint((offsetimage1x2 - self.nclip) / onepixel)
+    cutimage1y1 = floattoint((offsetimage1y1 + self.nclip) / onepixel)
+    cutimage1y2 = floattoint((offsetimage1y2 - self.nclip) / onepixel)
 
-    cutimage2x1 = floattoint((offsetimage2x1 + self.nclip) / onepixel, atol=1e-10)
-    cutimage2x2 = floattoint((offsetimage2x2 - self.nclip) / onepixel, atol=1e-10)
-    cutimage2y1 = floattoint((offsetimage2y1 + self.nclip) / onepixel, atol=1e-10)
-    cutimage2y2 = floattoint((offsetimage2y2 - self.nclip) / onepixel, atol=1e-10)
+    cutimage2x1 = floattoint((offsetimage2x1 + self.nclip) / onepixel)
+    cutimage2x2 = floattoint((offsetimage2x2 - self.nclip) / onepixel)
+    cutimage2y1 = floattoint((offsetimage2y1 + self.nclip) / onepixel)
+    cutimage2y2 = floattoint((offsetimage2y2 - self.nclip) / onepixel)
 
     #make sure that even with floattoint() they're the same size
     deltax = min(cutimage1x2 - cutimage1x1, cutimage2x2 - cutimage2x1)

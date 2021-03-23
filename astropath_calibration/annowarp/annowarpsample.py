@@ -309,11 +309,11 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
       #because we already took care of that by slicing the
       #wsi and qptiff
       slc = slice(
-        floattoint(units.pixels(y, pscale=imscale), atol=1e-10),
-        floattoint(units.pixels(y+tilesize, pscale=imscale), atol=1e-10)
+        floattoint(units.pixels(y, pscale=imscale)),
+        floattoint(units.pixels(y+tilesize, pscale=imscale))
       ), slice(
-        floattoint(units.pixels(x, pscale=imscale), atol=1e-10),
-        floattoint(units.pixels(x+tilesize, pscale=imscale), atol=1e-10),
+        floattoint(units.pixels(x, pscale=imscale)),
+        floattoint(units.pixels(x+tilesize, pscale=imscale)),
       )
       wsitile = wsi[slc]
       #if this ends up with no pixels inside the wsi, continue
@@ -1090,7 +1090,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     the index of the tile in [x, y]
     """
-    return floattoint(self.xvec / self.tilesize, atol=1e-10)
+    return floattoint(self.xvec / self.tilesize)
 
   @property
   def unshifted(self):
