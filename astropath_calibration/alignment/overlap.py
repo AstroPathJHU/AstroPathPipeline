@@ -132,15 +132,15 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
 
     onepixel = self.onepixel
 
-    offsetimage1x1 = (overlapx1 - image1x1) // onepixel * onepixel
-    offsetimage1x2 = (overlapx2 - image1x1) // onepixel * onepixel
-    offsetimage1y1 = (overlapy1 - image1y1) // onepixel * onepixel
-    offsetimage1y2 = (overlapy2 - image1y1) // onepixel * onepixel
+    offsetimage1x1 = (overlapx1 - image1x1 + 1e-10*onepixel) // onepixel * onepixel
+    offsetimage1x2 = (overlapx2 - image1x1 + 1e-10*onepixel) // onepixel * onepixel
+    offsetimage1y1 = (overlapy1 - image1y1 + 1e-10*onepixel) // onepixel * onepixel
+    offsetimage1y2 = (overlapy2 - image1y1 + 1e-10*onepixel) // onepixel * onepixel
 
-    offsetimage2x1 = (overlapx1 - image2x1) // onepixel * onepixel
-    offsetimage2x2 = (overlapx2 - image2x1) // onepixel * onepixel
-    offsetimage2y1 = (overlapy1 - image2y1) // onepixel * onepixel
-    offsetimage2y2 = (overlapy2 - image2y1) // onepixel * onepixel
+    offsetimage2x1 = (overlapx1 - image2x1 + 1e-10*onepixel) // onepixel * onepixel
+    offsetimage2x2 = (overlapx2 - image2x1 + 1e-10*onepixel) // onepixel * onepixel
+    offsetimage2y1 = (overlapy1 - image2y1 + 1e-10*onepixel) // onepixel * onepixel
+    offsetimage2y2 = (overlapy2 - image2y1 + 1e-10*onepixel) // onepixel * onepixel
 
     cutimage1x1 = floattoint((offsetimage1x1 + self.nclip) / onepixel)
     cutimage1x2 = floattoint((offsetimage1x2 - self.nclip) / onepixel)
