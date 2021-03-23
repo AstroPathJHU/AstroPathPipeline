@@ -213,10 +213,11 @@ class SimplePolygon(Polygon):
     ring = ogr.Geometry(ogr.wkbLinearRing)
     for v in itertools.chain(self.vertices, [self.vertices[0]]):
       point = units.convertpscale(v.xvec, self.apscale, imagescale)
+      onepixel = units.onepixel(imagescale)
       if round:
-        point = point // units.onepixel(imagescale)
+        point = (point+1e-10*onepixel) // onepixel
       else:
-        point = point / units.onepixel(imagescale)
+        point = point / onepixel
       ring.AddPoint_2D(*point.astype(float))
     return ring
 
