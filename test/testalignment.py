@@ -186,8 +186,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     rtol = 1e-6
     atol = 1e-6
     for o1, o2 in zip(a1.overlaps, a2.overlaps):
-      x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale))
-      x2, y2 = units.nominal_values(units.pixels(o2.stitchresult, pscale=pscale))
+      x1, y1 = units.pixels(units.nominal_values(o1.stitchresult), pscale=pscale)
+      x2, y2 = units.pixels(units.nominal_values(o2.stitchresult), pscale=pscale)
       assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
       assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
 
@@ -278,8 +278,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     atol = 1e-7
 
     for o1, o2 in zip(a1.overlaps, a2.overlaps):
-      x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale1))
-      x2, y2 = units.nominal_values(units.pixels(o2.stitchresult, pscale=pscale2))
+      x1, y1 = units.pixels(units.nominal_values(o1.stitchresult), pscale=pscale1)
+      x2, y2 = units.pixels(units.nominal_values(o2.stitchresult), pscale=pscale2)
       assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
       assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
 
