@@ -309,11 +309,11 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
       #because we already took care of that by slicing the
       #wsi and qptiff
       slc = slice(
-        floattoint(units.pixels(y, pscale=imscale)),
-        floattoint(units.pixels(y+tilesize, pscale=imscale))
+        floattoint(units.pixels(y, pscale=imscale), atol=1e-10),
+        floattoint(units.pixels(y+tilesize, pscale=imscale), atol=1e-10)
       ), slice(
-        floattoint(units.pixels(x, pscale=imscale)),
-        floattoint(units.pixels(x+tilesize, pscale=imscale)),
+        floattoint(units.pixels(x, pscale=imscale), atol=1e-10),
+        floattoint(units.pixels(x+tilesize, pscale=imscale), atol=1e-10),
       )
       wsitile = wsi[slc]
       #if this ends up with no pixels inside the wsi, continue
@@ -1182,4 +1182,6 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
           keep[t.n] = False
         else:
           keep[t.n] = True
+    import pprint; pprint.pprint(keep)
+    pprint.pprint(list(nx.connected_components(g)))
     return type(self)(_ for _ in good if keep[_.n])

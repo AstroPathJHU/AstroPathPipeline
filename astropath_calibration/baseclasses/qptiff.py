@@ -70,7 +70,7 @@ class QPTiffZoomLevel(tuple, units.ThingWithQpscale):
     """
     kw = self.__resolutionunitdistancekeyword
     xresolution = fractions.Fraction(*self.tags["XResolution"])
-    return units.Distance(pixels=xresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
+    return units.Distance(pixels=float(xresolution), pscale=1) / units.Distance(**{kw: 1}, pscale=1)
 
   @methodtools.lru_cache()
   @property
@@ -80,7 +80,7 @@ class QPTiffZoomLevel(tuple, units.ThingWithQpscale):
     """
     kw = self.__resolutionunitdistancekeyword
     yresolution = fractions.Fraction(*self.tags["YResolution"])
-    return units.Distance(pixels=yresolution, pscale=1) / units.Distance(**{kw: 1}, pscale=1)
+    return units.Distance(pixels=float(yresolution), pscale=1) / units.Distance(**{kw: 1}, pscale=1)
 
   @methodtools.lru_cache()
   @property
