@@ -1,4 +1,4 @@
-import numba as nb, uncertainties as unc
+import numba as nb, numpy as np, uncertainties as unc
 
 __types = nb.int32, nb.int64, nb.float32, nb.float64
 __vectorizetypelist = [
@@ -36,15 +36,24 @@ def Distance(*, pscale, pixels=None, microns=None, centimeters=None, power=1, de
 
 distances = Distance
 
-def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=None, covariance=None, power=None):
-  if (pixels is not None) + (microns is not None) + (distances is not None) != 1:
+def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=None, covariance=None, power=1):
+  if distances is not None is pixels is microns:
+    distances = distances
+    one = 1
+  elif pixels is not None is distances is microns:
+    one = Distance(pscale=pscale, pixels=1)
+    distances = np.array(pixels)*one
+  elif microns is not None is distances is pixels:
+    one = Distance(pscale=pscale, microns=1)
+    distances = np.array(microns)*one
+  else:
     raise TypeError("Have to provide exactly one of pixels, microns, or distances")
 
-  if distances is not None: pixels = distances
-  if microns is not None: pixels = __micronstopixels(microns)
+  if covariance is None:
+    return distances
 
-  if covariance is None: return pixels
-  return unc.correlated_values(pixels, covariance)
+  covariance = covariance*one**2
+  return unc.correlated_values(distances, covariance)
 
 def pixels(distance, *, pscale, power=1):
   return __micronstopixels(distance, pscale, power)
