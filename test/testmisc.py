@@ -1,9 +1,12 @@
-import cv2, hashlib, numpy as np, os, pathlib, skimage, unittest
-from astropath_calibration.baseclasses.csvclasses import Vertex
+import cv2, hashlib, more_itertools, numpy as np, os, pathlib, skimage, unittest
+from astropath_calibration.baseclasses.annotationpolygonxmlreader import writeannotationcsvs
+from astropath_calibration.baseclasses.csvclasses import Annotation, Region, Vertex
 from astropath_calibration.baseclasses.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath_calibration.baseclasses.overlap import rectangleoverlaplist_fromcsvs
+from astropath_calibration.prepdb.prepdbsample import PrepDbSample
 from astropath_calibration.geom.contours import findcontoursaspolygons
 from astropath_calibration.utilities import units
+from astropath_calibration.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 
 thisfolder = pathlib.Path(__file__).parent
@@ -83,3 +86,24 @@ class TestMisc(unittest.TestCase):
   def testPolygonNumpyArrayFastUnits(self):
     with units.setup_context("fast_microns"):
       self.testPolygonNumpyArray()
+
+  def testStandaloneAnnotations(self, SlideID="M21_1"):
+    folder = thisfolder/"misc_test_for_jenkins"
+    s = PrepDbSample(thisfolder/"data", SlideID)
+    writeannotationcsvs(folder, s.annotationspolygonsxmlfile, s.pscale, s.apscale, csvprefix=SlideID)
+    for filename, cls, extrakwargs in (
+      (f"{SlideID}_annotations.csv", Annotation, {"pscale": s.pscale, "apscale": s.apscale}),
+      (f"{SlideID}_vertices.csv", Vertex, {"apscale": s.apscale}),
+      (f"{SlideID}_regions.csv", Region, {"apscale": s.apscale, "pscale": s.pscale}),
+    ):
+      try:
+        rows = readtable(folder/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        targetrows = readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
+          assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+      except:
+        raise ValueError("Error in "+filename)
+
+  def testStandaloneAnnotationsFastUnits(self, SlideID="M206"):
+    with units.setup_context("fast"):
+      self.testStandaloneAnnotations(SlideID=SlideID)
