@@ -69,6 +69,10 @@ class Field(Rectangle):
   def primaryregiony(self, primaryregiony):
     self.my1, self.my2 = primaryregiony
 
+  @property
+  def mxbox(self):
+    return np.array([self.my1, self.mx1, self.my2, self.mx2])
+
 class FieldOverlap(Overlap):
   __pixelsormicrons = "pixels"
   cov_x1_x2: distancefield(pixelsormicrons=__pixelsormicrons, power=2)

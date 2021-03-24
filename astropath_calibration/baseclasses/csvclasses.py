@@ -4,7 +4,7 @@ from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, distancefield, pscalefield
-from .polygon import DataClassWithPolygon, Polygon, polygonfield
+from .polygon import DataClassWithPolygon, polygonfield
 
 class ROIGlobals(DataClassWithPscale):
   """
@@ -128,7 +128,7 @@ def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
   #compatibility
   for constant in constants:
     if constant.name == "flayers" and constant.unit == "pixels":
-      dct["flayers"] = units.pixels(dct["flayers"], pscale=pscale)
+      dct["flayers"] = units.pixels(dct["flayers"], pscale=dct["pscale"])
 
   return dct
 
@@ -260,8 +260,6 @@ class Region(DataClassWithPolygon):
   poly: gdal polygon for the region
   """
 
-  pixelsormicrons = Polygon.pixelsormicrons
-
   regionid: int
   sampleid: int
   layer: int
@@ -270,3 +268,20 @@ class Region(DataClassWithPolygon):
   type: str
   nvert: int
   poly: polygonfield()
+
+class ExposureTime(DataClassWithPscale):
+  """
+  The exposure time for a layer of an HPF
+  n: the rectangle id
+  cx, cy: the coordinates of the HPF center, in integer pixels
+  layer: the index of the layer, starting from 1
+  exp: the exposure time
+  """
+
+  pixelsormicrons = "microns"
+
+  n: int
+  cx: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cy: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  layer: int
+  exp: float

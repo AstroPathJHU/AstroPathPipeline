@@ -1,5 +1,6 @@
-import contextlib, cv2, itertools, methodtools, numpy as np, os, PIL, skimage
+import contextlib, cv2, itertools, jxmlease, methodtools, numpy as np, os, PIL, skimage
 
+from ..alignment.alignmentset import AlignmentSet
 from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
 from ..baseclasses.sample import ReadRectanglesBase, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ..utilities import units
@@ -42,7 +43,7 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
   """
   rectangletype = FieldReadComponentTiffMultiLayer
 
-  @property
+  @classmethod
   def logmodule(self): return "zoom"
 
   def zoom_wsi_fast(self, fmax=50, usememmap=False):
@@ -380,13 +381,20 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
     ]
 
   @property
-  def outputfiles(self):
+  def workflowkwargs(self):
+    return {"layers": self.layers, **super().workflowkwargs}
+
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, root, zoomroot, layers, **otherrootkwargs):
+    if layers is None:
+      with open(root/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
+        for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+          layers = range(1, int(node.xml_attrs["dim"])+1)
     return [
-      #not the big filenames, we don't know which ones are nonempty
-      #*(self.zoomfilename(layer, tilex, tiley) for layer in self.layers for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))),
-      *(self.wsifilename(layer) for layer in self.layers),
+      zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.zmax}-L{layer}-wsi.png"
+      for layer in layers
     ]
 
   @classmethod
   def workflowdependencies(cls):
-    return ["align"] + super().workflowdependencies()
+    return [AlignmentSet] + super().workflowdependencies()

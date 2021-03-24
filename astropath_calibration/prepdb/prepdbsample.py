@@ -1,15 +1,16 @@
 import argparse, collections, itertools, jxmlease, methodtools, more_itertools, numpy as np, PIL, skimage
-from ..baseclasses.csvclasses import Annotation, Constant, Batch, QPTiffCsv, Region, Vertex
+from ..baseclasses.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
 from ..baseclasses.overlap import RectangleOverlapCollection
 from ..baseclasses.qptiff import QPTiff
 from ..baseclasses.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
+from ..baseclasses.workflowdependency import ShredXML
 from ..utilities import units
 
-class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
+class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, checkim3s=True, **kwargs)
 
-  @property
+  @classmethod
   def logmodule(self): return "prepdb"
 
   @property
@@ -29,6 +30,21 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
 
   @property
   def rectangles(self): return self.getrectanglelayout()
+
+  @property
+  def exposuretimes(self):
+    return [
+      ExposureTime(
+        n=r.n,
+        cx=r.cx,
+        cy=r.cy,
+        layer=layer,
+        exp=exposuretime,
+        pscale=self.pscale,
+      )
+      for r in self.rectangles
+      for layer, exposuretime in enumerate(r.allexposuretimes, start=1)
+    ]
 
   @property
   def globals(self): return self.getXMLplan()[1]
@@ -63,8 +79,11 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
       for layer, (path, _, node) in zip(count, jxmlease.parse(f, generator="/Annotations/Annotation")):
         color = f"{int(node.get_xml_attr('LineColor')):06X}"
         color = color[4:6] + color[2:4] + color[0:2]
-        visible = node.get_xml_attr("Visible").lower() == "true"
-        name = node.get_xml_attr("Name").lower()
+        visible = {
+          "true": True,
+          "false": False,
+        }[node.get_xml_attr("Visible").lower().strip()]
+        name = node.get_xml_attr("Name").lower().strip()
         if name == "empty":
           count.prepend(layer)
           continue
@@ -102,6 +121,8 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
             apscale=self.apscale,
           )
         )
+        if not any(a.name == "good tissue" for a in annotations):
+          raise ValueError(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations if _.name != 'empty')})")
 
         if not node["Regions"]: continue
         regions = node["Regions"]["Region"]
@@ -350,61 +371,66 @@ class PrepdbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
     ]
     return constants
 
-class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
+class PrepDbSample(PrepDbSampleBase, DbloadSampleBase):
   def writebatch(self):
-    self.logger.info("writebatch")
+    self.logger.info("write batch")
     self.writecsv("batch", self.getbatch())
 
   def writerectangles(self):
-    self.logger.info("writerectangles")
+    self.logger.info("write rectangles")
     self.writecsv("rect", self.rectangles)
 
   def writeglobals(self):
     if not self.globals: return
-    self.logger.info("writeglobals")
+    self.logger.info("write globals")
     self.writecsv("globals", self.globals)
 
   def writeannotations(self):
-    self.logger.info("writeannotations")
+    self.logger.info("write annotations")
     self.writecsv("annotations", self.annotations, rowclass=Annotation)
 
+  def writeexposures(self):
+    self.logger.info("write exposure times")
+    self.writecsv("exposures", self.exposuretimes, rowclass=ExposureTime)
+
   def writeregions(self):
-    self.logger.info("writeregions")
+    self.logger.info("write regions")
     self.writecsv("regions", self.regions, rowclass=Region)
 
   def writevertices(self):
-    self.logger.info("writevertices")
+    self.logger.info("write vertices")
     self.writecsv("vertices", self.vertices, rowclass=Vertex)
 
   def writeqptiffcsv(self):
-    self.logger.info("writeqptiffcsv")
+    self.logger.info("write qptiff csv")
     self.writecsv("qptiff", self.getqptiffcsv())
 
   def writeqptiffjpg(self):
-    self.logger.info("writeqptiffjpg")
+    self.logger.info("write qptiff jpg")
     img = self.getqptiffimage()
     img.save(self.jpgfilename)
 
   def writeoverlaps(self):
-    self.logger.info("writeoverlaps")
+    self.logger.info("write overlaps")
     self.writecsv("overlap", self.overlaps)
 
   def writeconstants(self):
-    self.logger.info("writeconstants")
+    self.logger.info("write constants")
     self.writecsv("constants", self.getconstants())
 
   def writemetadata(self):
     self.dbload.mkdir(parents=True, exist_ok=True)
+    self.writerectangles()
+    self.writeexposures()
+    self.writeoverlaps()
     self.writeannotations()
     self.writebatch()
     self.writeconstants()
     self.writeglobals()
-    self.writeoverlaps()
     self.writeqptiffcsv()
     self.writeqptiffjpg()
-    self.writerectangles()
-    self.writeregions()
     self.writevertices()
+    self.writeregions()
 
   @property
   def inputfiles(self):
@@ -417,23 +443,25 @@ class PrepdbSample(PrepdbSampleBase, DbloadSampleBase):
       self.scanfolder/"MSI",
     ]
 
-  @property
-  def outputfiles(self):
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+    dbload = dbloadroot/SlideID/"dbload"
     return [
-      self.csv("annotations"),
-      self.csv("batch"),
-      self.csv("constants"),
-      self.csv("overlap"),
-      self.csv("qptiff"),
-      self.csv("qptiff").with_suffix(".jpg"),
-      self.csv("rect"),
-      self.csv("regions"),
-      self.csv("vertices"),
+      dbload/f"{SlideID}_annotations.csv",
+      dbload/f"{SlideID}_batch.csv",
+      dbload/f"{SlideID}_constants.csv",
+      dbload/f"{SlideID}_exposures.csv",
+      dbload/f"{SlideID}_overlap.csv",
+      dbload/f"{SlideID}_qptiff.csv",
+      dbload/f"{SlideID}_qptiff.jpg",
+      dbload/f"{SlideID}_rect.csv",
+      dbload/f"{SlideID}_regions.csv",
+      dbload/f"{SlideID}_vertices.csv",
     ]
 
   @classmethod
   def workflowdependencies(cls):
-    return super().workflowdependencies()
+    return [ShredXML] + super().workflowdependencies()
 
 def main(args=None):
   p = argparse.ArgumentParser()
@@ -443,7 +471,7 @@ def main(args=None):
   p.add_argument("--dbload-root")
   args = p.parse_args(args=args)
   kwargs = {"root": args.root, "samp": args.samp, "dbloadroot": args.dbload_root}
-  s = PrepdbSample(**kwargs)
+  s = PrepDbSample(**kwargs)
   s.writemetadata()
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import abc, contextlib, numpy as np, pathlib
+from ..alignment.alignmentset import AlignmentSet
 from ..alignment.field import FieldReadComponentTiff
 from ..baseclasses.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ..utilities.misc import floattoint
@@ -12,29 +13,26 @@ class MaskSample(MaskSampleBase):
     super().__init__(*args, **kwargs)
     self.__using_mask_count = 0
 
-  @property
+  @classmethod
   @abc.abstractmethod
-  def maskfilestem(self):
+  def maskfilestem(cls):
     """
     The file stem of the mask file (without the folder or the suffix)
     """
+  @classmethod
+  def maskfilesuffix(cls):
+    return ".npz"
 
-  def maskfilename(self, *, folder=None, filename=None, filetype=".npz"):
+  def maskfilename(self):
     """
     Get the mask filename
     """
-    if filename is filetype is None:
-      raise ValueError("Have to give either a filename or a filetype")
-
-    if filename is None:
-      stem = pathlib.Path(self.maskfilestem)
-      if stem.suffix or stem.parent != pathlib.Path("."):
-        raise ValueError(f"maskfilestem {self.maskfilestem} shouldn't have '.' or '/' in it")
-      filename = stem.with_suffix("."+filetype.lstrip("."))
-      if folder is None: folder = self.maskfolder
-    else:
-      if folder is None: folder = pathlib.Path(".")
-
+    filetype = self.maskfilesuffix()
+    stem = pathlib.Path(self.maskfilestem())
+    if stem.suffix or stem.parent != pathlib.Path("."):
+      raise ValueError(f"maskfilestem {self.maskfilestem()} shouldn't have '.' or '/' in it")
+    filename = stem.with_suffix("."+filetype.lstrip("."))
+    folder = self.maskfolder
     return folder/filename
 
   def readmask(self, **filekwargs):
@@ -117,10 +115,10 @@ class WriteMaskSampleBase(MaskSample, WorkflowSample):
   @abc.abstractmethod
   def createmask(self): "create the mask"
 
-  @property
-  def outputfiles(self):
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, maskroot, **otherrootkwargs):
     return [
-      self.maskfilename(),
+      maskroot/SlideID/"im3"/"meanimage"/(cls.maskfilestem()+"."+cls.maskfilesuffix().lstrip("."))
     ]
 
 class InformMaskSample(TissueMaskSample):
@@ -130,8 +128,8 @@ class InformMaskSample(TissueMaskSample):
   0 is tumor, 1 is healthy tissue, 2 is background.
   The tissue mask is a bool mask that has True for 0 and 1, False for 2
   """
-  @property
-  def maskfilestem(self): return "informmask"
+  @classmethod
+  def maskfilestem(cls): return "informmask"
   @classmethod
   def tissuemask(cls, mask):
     return mask != 2
@@ -146,7 +144,7 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteM
   def __init__(self, *args, **kwargs):
     super().__init__(*args, layer=9, with_seg=True, **kwargs)
 
-  @property
+  @classmethod
   def logmodule(self): return "stitchinformmask"
 
   multilayer = False
@@ -208,10 +206,10 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteM
   @property
   def inputfiles(self):
     return [
-      *(r.imagefilename for r in self.rectangles),
+      *(r.imagefile for r in self.rectangles),
       self.csv("fields"),
     ]
 
   @classmethod
   def workflowdependencies(cls):
-    return ["align"] + super().workflowdependencies()
+    return [AlignmentSet] + super().workflowdependencies()

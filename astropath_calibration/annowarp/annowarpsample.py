@@ -3,12 +3,12 @@ import abc, contextlib, csv, cvxpy as cp, itertools, methodtools, more_itertools
 from ..alignment.computeshift import computeshift
 from ..alignment.field import FieldReadComponentTiffMultiLayer
 from ..alignment.overlap import AlignmentComparison
-from ..baseclasses.csvclasses import Region, Vertex
-from ..baseclasses.polygon import Polygon
+from ..baseclasses.csvclasses import constantsdict, Region, Vertex
+from ..baseclasses.polygon import SimplePolygon
 from ..baseclasses.qptiff import QPTiff
 from ..baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample, ZoomFolderSampleBase
-from ..zoom.stitchmask import InformMaskSample, TissueMaskSample
-from ..zoom.zoom import ZoomSampleBase
+from ..zoom.stitchmask import InformMaskSample, TissueMaskSample, StitchInformMask
+from ..zoom.zoom import Zoom, ZoomSampleBase
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import covariance_matrix, floattoint
@@ -415,7 +415,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     results = self.__alignmentresults = AnnoWarpAlignmentResults(readtable(filename, AnnoWarpAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize, "bigtilesize": self.bigtilesize, "bigtileoffset": self.bigtileoffset, "imageshandle": self.getimages}))
     return results
 
-  @property
+  @classmethod
   def logmodule(self):
     """
     The name of this module for logging purposes
@@ -746,7 +746,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
           nvert=region.nvert,
           pscale=region.pscale,
           apscale=region.apscale,
-          poly=Polygon(vertices=[newvertices], pscale=region.pscale, apscale=region.apscale)
+          poly=SimplePolygon(vertices=newvertices, pscale=region.pscale, apscale=region.apscale)
         ),
       )
     return result
@@ -795,34 +795,41 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
       self.oldregionscsv,
     ]
 
-  @property
-  def outputfiles(self):
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+    dbload = dbloadroot/SlideID/"dbload"
     return [
-      self.alignmentcsv,
-      self.stitchcsv,
-      self.newverticescsv,
-      self.newregionscsv,
+      dbload/f"{SlideID}_annowarp.csv",
+      dbload/f"{SlideID}_annowarp-stitch.csv",
+      dbload/f"{SlideID}_vertices.csv",
+      dbload/f"{SlideID}_regions.csv",
     ]
 
-  @property
-  def missingoutputfiles(self):
-    result = super().missingoutputfiles
-    if self.newverticescsv not in result:
-      with open(self.newverticescsv) as f:
+  @classmethod
+  def getmissingoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+    outputfiles = cls.getoutputfiles(SlideID, dbloadroot=dbloadroot, **otherrootkwargs)
+    result = super().getmissingoutputfiles(SlideID, dbloadroot=dbloadroot, **otherrootkwargs)
+
+    verticescsv, = (_ for _ in outputfiles if _.name.endswith("vertices.csv"))
+    regionscsv, = (_ for _ in outputfiles if _.name.endswith("regions.csv"))
+
+    if verticescsv not in result:
+      with open(verticescsv) as f:
         reader = csv.DictReader(f)
         if "wx" not in reader.fieldnames or "wy" not in reader.fieldnames:
-          result.append(self.newverticescsv)
-    if self.newregionscsv not in result:
-      regions = readtable(self.newregionscsv, Region, extrakwargs={"apscale": self.apscale, "pscale": self.pscale}, maxrows=1)
+          result.append(verticescsv)
+    if regionscsv not in result:
+      constants = constantsdict(regionscsv.parent/f"{SlideID}_constants.csv")
+      regions = readtable(regionscsv, Region, extrakwargs={"apscale": constants["apscale"], "pscale": constants["pscale"]}, maxrows=1)
       if regions:
         region, = regions
         if region.poly is None:
-          result.append(self.newregionscsv)
+          result.append(regionscsv)
     return result
 
   @classmethod
   def workflowdependencies(cls):
-    return ["zoom"] + super().workflowdependencies()
+    return [Zoom] + super().workflowdependencies()
 
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
   """
@@ -865,7 +872,7 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
 
   @classmethod
   def workflowdependencies(cls):
-    return ["stitchinformmask"] + super().workflowdependencies()
+    return [StitchInformMask] + super().workflowdependencies()
 
 class QPTiffCoordinateBase(abc.ABC):
   """
@@ -1083,7 +1090,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     the index of the tile in [x, y]
     """
-    return self.xvec // self.tilesize
+    return floattoint(self.xvec / self.tilesize)
 
   @property
   def unshifted(self):
@@ -1132,7 +1139,7 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
     (by edges, not corners)
     """
     g = nx.Graph()
-    dct = {tuple(_.tileindex): _ for _ in self}
+    dct = {tuple(tile.tileindex): tile for tile in self}
 
     for (ix, iy), tile in dct.items():
       g.add_node(tile.n, alignmentresult=tile, idx=(ix, iy))

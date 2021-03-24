@@ -2,9 +2,10 @@ import abc, argparse, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable
 from .logging import getlogger
-from .sample import SampleDef, SampleRunStatus
+from .sample import SampleDef
+from .workflowdependency import ThingWithRoots
 
-class Cohort(abc.ABC):
+class Cohort(ThingWithRoots):
   """
   Base class for a cohort - a bunch of samples that can be run in a loop
 
@@ -16,7 +17,7 @@ class Cohort(abc.ABC):
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, xmlfolders=[]):
+  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, xmlfolders=[], version_requirement=None):
     super().__init__()
     self.root = pathlib.Path(root)
     if logroot is None: logroot = root
@@ -27,6 +28,29 @@ class Cohort(abc.ABC):
     self.uselogfiles = uselogfiles
     self.xmlfolders = xmlfolders
 
+    if version_requirement is None:
+      version_requirement = "commit" if self.uselogfiles else "any"
+
+    if version_requirement == "any":
+      checkdate = checktag = False
+    elif version_requirement == "commit":
+      checkdate = True
+      checktag = False
+    elif version_requirement == "tag":
+      checkdate = checktag = True
+    else:
+      assert False, version_requirement
+
+    from ..utilities.version import astropathversionmatch, env_var_no_git
+    if checkdate:
+      if env_var_no_git:
+        raise RuntimeError("Cannot run if environment variable _ASTROPATH_VERSION_NO_GIT is set unless you set --allow-local-edits")
+      if astropathversionmatch.group("date"):
+        raise ValueError("Cannot run with local edits to git unless you set --allow-local-edits")
+    if checktag:
+      if astropathversionmatch.group("dev"):
+        raise ValueError("Specified --no-dev-version, but the current version is a dev version")
+
   def __iter__(self):
     """
     Iterate over the sample's sampledef.csv file.
@@ -35,7 +59,11 @@ class Cohort(abc.ABC):
     """
     for samp in readtable(self.root/"sampledef.csv", SampleDef):
       if not samp: continue
-      if not all(filter(self, samp) for filter in self.slideidfilters): continue
+      try:
+        if not all(filter(self, samp) for filter in self.slideidfilters): continue
+      except:
+        with self.getlogger(samp):
+          raise
       yield samp
 
   @abc.abstractmethod
@@ -56,10 +84,20 @@ class Cohort(abc.ABC):
     "Keyword arguments to pass to the sample class"
     return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "xmlfolders": self.xmlfolders}
 
-  @property
-  @abc.abstractmethod
-  def logmodule(self):
+  @classmethod
+  def logmodule(cls):
     "name of the log files for this class (e.g. align)"
+    return cls.sampleclass.logmodule()
+
+  @property
+  def rootnames(self):
+    return {*super().rootnames, "root", "logroot"}
+  @property
+  def workflowkwargs(self):
+    return self.rootkwargs
+
+  def getlogger(self, samp):
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug)
 
   def run(self, **kwargs):
     """
@@ -70,13 +108,13 @@ class Cohort(abc.ABC):
         sample = self.initiatesample(samp)
       except:
         #enter the logger here to log exceptions in __init__ of the sample
-        with getlogger(module=self.logmodule, root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug):
+        with self.getlogger(samp):
           raise
       else:
         if not all(filter(self, sample) for filter in self.samplefilters):
           continue
-        if sample.logmodule != self.logmodule:
-          raise ValueError(f"Wrong logmodule: {self.logmodule} != {sample.logmodule}")
+        if sample.logmodule() != self.logmodule():
+          raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
         self.processsample(sample, **kwargs)
 
   def processsample(self, sample, **kwargs):
@@ -98,6 +136,10 @@ class Cohort(abc.ABC):
     return cls.__doc__
 
   @classmethod
+  def defaultunits(cls):
+    return "fast_pixels"
+
+  @classmethod
   def makeargumentparser(cls):
     """
     Create an argument parser to run this cohort on the command line
@@ -106,12 +148,16 @@ class Cohort(abc.ABC):
     p.add_argument("root", type=pathlib.Path, help="The Clinical_Specimen folder where sample data is stored")
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
-    p.add_argument("--units", choices=("safe", "fast"), default="fast", help="unit implementation (default: fast; safe is only needed for debugging code)")
+    p.add_argument("--units", choices=("safe", "fast", "fast_pixels", "fast_microns"), default=cls.defaultunits(), help=f"unit implementation (default: {cls.defaultunits()}; safe is only needed for debugging code)")
     p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--logroot", type=pathlib.Path, help="root location where the log files are stored (default: same as root)")
     g.add_argument("--no-log", action="store_true", help="do not write to log files")
     p.add_argument("--xmlfolder", type=pathlib.Path, action="append", help="additional folders to look for xml metadata", default=[], dest="xmlfolders")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--no-dev-version", help="refuse to run unless the package version is tagged", action="store_const", const="tag", dest="version_requirement")
+    g.add_argument("--allow-dev-version", help="ok to run even if the package is at a dev version (default if using a log file)", action="store_const", const="commit", dest="version_requirement")
+    g.add_argument("--allow-local-edits", help="ok to run even if there are local edits on top of the git commit (default if not writing to a log file)", action="store_const", const="any", dest="version_requirement")
     return p
 
   @classmethod
@@ -127,6 +173,7 @@ class Cohort(abc.ABC):
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
       "xmlfolders": dct.pop("xmlfolders"),
+      "version_requirement": dct.pop("version_requirement"),
       "slideidfilters": [],
       "samplefilters": [],
     }
@@ -179,6 +226,10 @@ class Im3Cohort(Cohort):
   def root1(self): return self.root
 
   @property
+  def rootnames(self):
+    return {*super().rootnames, "root2"}
+
+  @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "root2": self.root2}
 
@@ -208,6 +259,10 @@ class DbloadCohort(Cohort):
     self.dbloadroot = pathlib.Path(dbloadroot)
 
   @property
+  def rootnames(self):
+    return {*super().rootnames, "dbloadroot"}
+
+  @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
 
@@ -224,7 +279,7 @@ class DbloadCohort(Cohort):
       "dbloadroot": parsed_args_dict.pop("dbloadroot"),
     }
 
-class ZoomCohort(Cohort):
+class ZoomFolderCohort(Cohort):
   """
   Base class for any cohort that uses zoom files
   zoomroot: root for the zoom files
@@ -232,6 +287,10 @@ class ZoomCohort(Cohort):
   def __init__(self, *args, zoomroot, **kwargs):
     super().__init__(*args, **kwargs)
     self.zoomroot = pathlib.Path(zoomroot)
+
+  @property
+  def rootnames(self):
+    return {*super().rootnames, "zoomroot"}
 
   @property
   def initiatesamplekwargs(self):
@@ -260,6 +319,10 @@ class DeepZoomCohort(Cohort):
     self.deepzoomroot = pathlib.Path(deepzoomroot)
 
   @property
+  def rootnames(self):
+    return {*super().rootnames, "deepzoomroot"}
+
+  @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "deepzoomroot": self.deepzoomroot}
 
@@ -286,6 +349,10 @@ class MaskCohort(Cohort):
     super().__init__(*args, **kwargs)
     if maskroot is None: maskroot = self.root
     self.maskroot = pathlib.Path(maskroot)
+
+  @property
+  def rootnames(self):
+    return {*super().rootnames, "maskroot"}
 
   @property
   def initiatesamplekwargs(self):
@@ -383,6 +450,38 @@ class TempDirCohort(Cohort):
       "temproot": parsed_args_dict.pop("temproot"),
     }
 
+class GeomFolderCohort(Cohort):
+  """
+  Base class for a cohort that uses the _cellgeomload.csv files
+  geomroot: an alternate root to use for the geom folder instead of root
+              (mostly useful for testing)
+              (default: same as root)
+  """
+  def __init__(self, *args, geomroot=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if geomroot is None: geomroot = self.root
+    self.geomroot = pathlib.Path(geomroot)
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "geomroot": self.geomroot}
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--geomroot", type=pathlib.Path, help="root location of geom folder (default: same as root)")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "geomroot": parsed_args_dict.pop("geomroot"),
+    }
+
+  @property
+  def rootnames(self): return {"geomroot", *super().rootnames}
+
 class WorkflowCohort(Cohort):
   """
   Base class for a cohort that runs as a workflow:
@@ -408,9 +507,9 @@ class WorkflowCohort(Cohort):
       **super().initkwargsfromargumentparser(parsed_args_dict),
     }
     if parsed_args_dict.pop("skip_finished"):
-      kwargs["slideidfilters"].append(lambda self, sample: not SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{self.logmodule}.log", self.logmodule))
+      kwargs["slideidfilters"].append(lambda self, sample: not self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs))
     if parsed_args_dict.pop("dependencies"):
-      kwargs["slideidfilters"].append(lambda self, sample: all(SampleRunStatus.fromlog(kwargs["logroot"]/sample.SlideID/"logfiles"/f"{sample.SlideID}-{logmodule}.log", logmodule) for logmodule in self.sampleclass.workflowdependencies()))
+      kwargs["slideidfilters"].append(lambda self, sample: all(dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs) for dependency in self.sampleclass.workflowdependencies()))
     if parsed_args_dict["print_errors"]:
       kwargs["uselogfiles"] = False
     return kwargs
@@ -432,16 +531,24 @@ class WorkflowCohort(Cohort):
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       print(f"{sample.SlideID} {status}")
     else:
-      missinginputs = [file for file in sample.inputfiles if not file.exists()]
-      if missinginputs:
-        raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
-          
+      try:
+        missinginputs = [file for file in sample.inputfiles if not file.exists()]
+        if missinginputs:
+          raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
+      except:
+        print("exception")
+        with self.getlogger(sample):
+          raise
+        return
+
       super().processsample(sample, **kwargs)
-      status = sample.runstatus
-      #we don't care about ended, because it hasn't actually logged
-      #"end <module>" yet because we're still inside "with getlogger" in run()
-      #also we don't want to do anything if there's an error, because that
-      #was already logged so no need to log it again and confuse the issue.
-      if status.missingfiles:
-        status.ended = True #so that the message is about the missing files
-        raise RuntimeError(f"{sample.SlideID} {status}")
+
+      try:
+        status = sample.runstatus
+        #we don't want to do anything if there's an error, because that
+        #was already logged so no need to log it again and confuse the issue.
+        if (status.missingfiles or not status.ended) and status.error is None:
+          raise RuntimeError(f"{sample.SlideID} {status}")
+      except:
+        with self.getlogger(sample):
+          raise

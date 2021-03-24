@@ -1,9 +1,9 @@
-import more_itertools, numpy as np, os, pathlib, PIL.Image, sys, unittest
-from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, QPTiffCsv, Region, ROIGlobals, Vertex
+import more_itertools, numpy as np, os, pathlib, PIL.Image, unittest
+from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
 from astropath_calibration.baseclasses.overlap import Overlap
 from astropath_calibration.baseclasses.rectangle import Rectangle
-from astropath_calibration.prepdb.prepdbcohort import PrepdbCohort
-from astropath_calibration.prepdb.prepdbsample import PrepdbSample
+from astropath_calibration.prepdb.prepdbcohort import PrepDbCohort
+from astropath_calibration.prepdb.prepdbsample import PrepDbSample
 from astropath_calibration.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 
@@ -24,14 +24,15 @@ class TestPrepDb(unittest.TestCase):
       except FileNotFoundError:
         pass
 
-    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID)]
-    PrepdbCohort.runfromargumentparser(args)
-    sample = PrepdbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits"]
+    PrepDbCohort.runfromargumentparser(args)
+    sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
 
     for filename, cls, extrakwargs in (
       (f"{SlideID}_annotations.csv", Annotation, {"pscale": sample.pscale, "apscale": sample.apscale}),
       (f"{SlideID}_batch.csv", Batch, {}),
-      (f"{SlideID}_constants.csv", Constant, {"pscale": sample.pscale, "apscale": sample.apscale, "qpscale": sample.qpscale, "readingfromfile": True}),
+      (f"{SlideID}_constants.csv", Constant, {"pscale": sample.pscale, "apscale": sample.apscale, "qpscale": sample.qpscale}),
+      (f"{SlideID}_exposures.csv", ExposureTime, {"pscale": sample.pscale}),
       (f"{SlideID}_globals.csv", ROIGlobals, {"pscale": sample.pscale}),
       (f"{SlideID}_overlap.csv", Overlap, {"pscale": sample.pscale, "nclip": sample.nclip, "rectangles": sample.rectangles}),
       (f"{SlideID}_qptiff.csv", QPTiffCsv, {"pscale": sample.pscale}),
@@ -49,7 +50,7 @@ class TestPrepDb(unittest.TestCase):
         raise ValueError("Error in "+filename)
 
     with PIL.Image.open(thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img, \
-         PIL.Image.open(thisfolder/"reference"/"prepdb"/SlideID/(f"{SlideID}_qptiff_windows.jpg" if sys.platform == "win32" else f"{SlideID}_qptiff.jpg")) as targetimg:
+         PIL.Image.open(thisfolder/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff.jpg") as targetimg:
       np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
 
   def testPrepDbFastUnits(self, SlideID="M21_1"):
@@ -62,9 +63,9 @@ class TestPrepDb(unittest.TestCase):
     self.testPrepDb(SlideID="YZ71")
   @unittest.expectedFailure
   def testPrepDbPolarisFastUnits(self):
-    self.testPrepDbFastUnits(SlideID="YZ71")
+    self.testPrepDb(SlideID="YZ71", units="fast")
 
   def testPrepDbM206FastUnits(self):
     from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
     assembleqptiff()
-    self.testPrepDbFastUnits(SlideID="M206")
+    self.testPrepDb(SlideID="M206", units="fast_microns")

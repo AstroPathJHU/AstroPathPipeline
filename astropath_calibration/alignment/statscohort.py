@@ -28,9 +28,6 @@ class StatsCohort(DbloadCohort, Im3Cohort):
       self.__f.write("{:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n".format("SlideID", "nfields", "mean x", "mean y", "RMS x", "RMS y", "min x", "min y", "max x", "max y"))
       super().run(*args, **kwargs)
 
-  @property
-  def logmodule(self): return "align"
-
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()

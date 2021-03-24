@@ -1,7 +1,7 @@
-from ..baseclasses.cohort import DbloadCohort, DeepZoomCohort, SelectLayersCohort, WorkflowCohort, ZoomCohort
+from ..baseclasses.cohort import DbloadCohort, DeepZoomCohort, SelectLayersCohort, WorkflowCohort, ZoomFolderCohort
 from .deepzoom import DeepZoomSample
 
-class DeepZoomCohort(DbloadCohort, ZoomCohort, DeepZoomCohort, SelectLayersCohort, WorkflowCohort):
+class DeepZoomCohort(DbloadCohort, ZoomFolderCohort, DeepZoomCohort, SelectLayersCohort, WorkflowCohort):
   sampleclass = DeepZoomSample
   __doc__ = sampleclass.__doc__
 
@@ -12,7 +12,8 @@ class DeepZoomCohort(DbloadCohort, ZoomCohort, DeepZoomCohort, SelectLayersCohor
     return sample.deepzoom()
 
   @property
-  def logmodule(self): return "deepzoom"
+  def workflowkwargs(self):
+    return {"layers": self.layers, **super().workflowkwargs}
 
 def main(args=None):
   DeepZoomCohort.runfromargumentparser(args)

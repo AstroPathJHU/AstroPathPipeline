@@ -9,8 +9,8 @@ class Mx1My1Sample(ReadRectanglesDbloadIm3):
   @property
   def rectanglecsv(self): return "fields"
   rectangletype = FieldReadIm3
-  @property
-  def logmodule(self): return "readmx1my1"
+  @classmethod
+  def logmodule(cls): return "readmx1my1"
   def checkprint(self):
     rminmx1 = min(self.rectangles, key=lambda f: f.mx1)
     rminmy1 = min(self.rectangles, key=lambda f: f.my1)
@@ -22,8 +22,6 @@ class Mx1My1Cohort(DbloadCohort, Im3Cohort):
     super().__init__(*args, uselogfiles=False, **kwargs)
 
   sampleclass = Mx1My1Sample
-  @property
-  def logmodule(self): return "readmx1my1"
 
   def runsample(self, sample):
     sample.checkprint()

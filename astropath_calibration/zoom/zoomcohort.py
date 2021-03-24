@@ -1,7 +1,7 @@
-from ..baseclasses.cohort import DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomCohort
+from ..baseclasses.cohort import DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort
 from .zoom import Zoom
 
-class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort, SelectLayersCohort, WorkflowCohort):
+class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomFolderCohort, SelectLayersCohort, WorkflowCohort):
   __doc__ = Zoom.__doc__
 
   def __init__(self, *args, mode="vips", **kwargs):
@@ -13,9 +13,6 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort
   def runsample(self, sample):
     #sample.logger.info(f"{sample.ntiles} {len(sample.rectangles)}")
     return sample.zoom_wsi(mode=self.__mode)
-
-  @property
-  def logmodule(self): return "zoom"
 
   @classmethod
   def makeargumentparser(cls):
@@ -30,6 +27,10 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomCohort
       "mode": parsed_args_dict.pop("mode"),
     }
     return kwargs
+
+  @property
+  def workflowkwargs(self):
+    return {"layers": self.layers, **super().workflowkwargs}
 
 def main(args=None):
   ZoomCohort.runfromargumentparser(args)

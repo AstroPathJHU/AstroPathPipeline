@@ -1,4 +1,4 @@
-import abc, contextlib, csv, cv2, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, more_itertools, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
@@ -9,6 +9,7 @@ from .csvclasses import constantsdict, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
+from .workflowdependency import ThingWithRoots, WorkflowDependency
 
 class SampleDef(MyDataClass):
   """
@@ -68,7 +69,7 @@ class SampleDef(MyDataClass):
   def __bool__(self):
     return bool(self.isGood)
 
-class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
+class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots):
   """
   Base class for all sample classes.
 
@@ -83,18 +84,27 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     logroot, by default, is the same as root
   """
   def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None):
-    self.root = pathlib.Path(root)
+    self.__root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
-    self.logroot = pathlib.Path(logroot)
-    self.logger = getlogger(module=self.logmodule, root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog)
+    self.__logroot = pathlib.Path(logroot)
+    self.logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__logonenter = []
     self.__entered = False
     super().__init__()
+
+  @property
+  def root(self): return self.__root
+  @property
+  def logroot(self): return self.__logroot
+
+  @property
+  def rootnames(self):
+    return {"root", "logroot", *super().rootnames}
 
   @property
   def SampleID(self): return self.samp.SampleID
@@ -390,6 +400,19 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     self.__logonenter.append((warnfunction, warning))
 
   @property
+  def samplelog(self):
+    """
+    The sample log file, which contains detailed logging info
+    """
+    return self.logger.samplelog
+  @property
+  def mainlog(self):
+    """
+    The cohort log file, which contains basic logging info
+    """
+    return self.logger.mainlog
+
+  @property
   def pscale(self):
     """
     Pixels per micron of the im3 image.
@@ -424,7 +447,11 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
     computer that processed the image).
     """
     xmlfile = self.annotationsxmlfile
-    reader = AnnotationXMLReader(xmlfile, pscale=self.pscale)
+    try:
+      xmlfolder = self.xmlfolder
+    except FileNotFoundError:
+      xmlfolder = None
+    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale)
     return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
 
   @property
@@ -446,43 +473,37 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale):
   #    raise ValueError(f"Have to use {self} in a with statement if you want to enter_context")
   #  return super().enter_context(*args, **kwargs)
 
-  @property
+  @classmethod
   @abc.abstractmethod
-  def logmodule(self):
+  def logmodule(cls):
     "name of the log files for this class (e.g. align)"
 
-class WorkflowSample(SampleBase):
+  @classmethod
+  def logstartregex(cls): return rf"{cls.logmodule()} v[0-9a-f.devgd+]+$"
+  @classmethod
+  def logendregex(cls): return rf"end {cls.logmodule()}"
+
+class WorkflowSample(SampleBase, WorkflowDependency):
   """
   Base class for a sample that will be used in a workflow,
   i.e. it takes in input files and creates output files.
   It contains functions to assess the status of the run.
   """
-  @property
-  def runstatus(self):
-    """
-    returns a SampleRunStatus object that indicates whether
-    the sample ran successfully or not, and information about
-    the failure, if any.
-    """
-    return SampleRunStatus.fromlog(self.logger.samplelog, self.logmodule, self.missingoutputfiles)
 
   @property
   @abc.abstractmethod
   def inputfiles(self):
+    """
+    Required files that have to be present for this step to run
+    """
     return []
-
-  @property
-  @abc.abstractmethod
-  def outputfiles(self):
-    return []
-
-  @property
-  def missingoutputfiles(self):
-    return [_ for _ in self.outputfiles if not _.exists()]
 
   @classmethod
   @abc.abstractmethod
   def workflowdependencies(cls):
+    """
+    Previous steps that this step depends on
+    """
     return []
 
 class DbloadSampleBase(SampleBase):
@@ -491,28 +512,27 @@ class DbloadSampleBase(SampleBase):
   If the dbload folder is initialized already, you should instead inherit
   from DbloadSample to get more functionality.
 
-  dbloadfolder: Folder to look for the csv files in (default: dbloadroot/SlideID/dbload)
   dbloadroot: A different root to use to find the dbload (default: same as root)
   """
-  def __init__(self, *args, dbloadroot=None, dbloadfolder=None, **kwargs):
+  def __init__(self, *args, dbloadroot=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if dbloadroot is not None and dbloadfolder is not None:
-      raise TypeError("Can't provide both dbloadroot and dbloadfolder")
     if dbloadroot is None:
       dbloadroot = self.mainfolder.parent
     else:
       dbloadroot = pathlib.Path(dbloadroot)
-    if dbloadfolder is None:
-      dbloadfolder = dbloadroot/self.SlideID/"dbload"
-    else:
-      dbloadfolder = pathlib.Path(dbloadfolder)
-    self.__dbloadfolder = dbloadfolder
+    self.__dbloadroot = dbloadroot
   @property
   def dbload(self):
     """
     The folder where the csv files live.
     """
-    return self.__dbloadfolder
+    return self.__dbloadroot/self.SlideID/"dbload"
+  @property
+  def dbloadroot(self): return self.__dbloadroot
+
+  @property
+  def rootnames(self):
+    return {"dbloadroot", *super().rootnames}
 
   def csv(self, csv):
     """
@@ -542,7 +562,6 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
   Base class for any sample that uses the csvs in the dbload folder
   after the folder has been set up.
 
-  dbloadfolder: Folder where the csv files live (default: dbloadroot/SlideID/dbload)
   dbloadroot: A different root to use to find the dbload (default: same as root)
   """
   def __getimageinfofromconstants(self):
@@ -615,6 +634,9 @@ class MaskSampleBase(SampleBase):
   def maskroot(self): return self.__maskroot
 
   @property
+  def rootnames(self): return {"maskroot", *super().rootnames}
+
+  @property
   def maskfolder(self):
     result = self.im3folder/"meanimage"
     if self.maskroot != self.root:
@@ -635,6 +657,9 @@ class Im3SampleBase(SampleBase):
   def root1(self): return self.root
 
   @property
+  def rootnames(self): return {"root2", *super().rootnames}
+
+  @property
   def possiblexmlfolders(self):
     return super().possiblexmlfolders + [self.root2/self.SlideID]
 
@@ -648,14 +673,16 @@ class ZoomFolderSampleBase(SampleBase):
     super().__init__(*args, **kwargs)
     self.__zoomroot = pathlib.Path(zoomroot)
   @property
+  def rootnames(self): return {"zoomroot", *super().rootnames}
+  @property
   def zoomroot(self): return self.__zoomroot
   @property
   def zoomfolder(self): return self.zoomroot/self.SlideID/"big"
   @property
   def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
 
-  @property
-  def zmax(self): return 9
+  zmax = 9
+
   def zoomfilename(self, layer, tilex, tiley):
     """
     Zoom filename for a given layer and tile.
@@ -677,6 +704,8 @@ class DeepZoomSampleBase(SampleBase):
     super().__init__(*args, **kwargs)
     self.__deepzoomroot = pathlib.Path(deepzoomroot)
   @property
+  def rootnames(self): return {"deepzoomroot", *super().rootnames}
+  @property
   def deepzoomroot(self): return self.__deepzoomroot
   @property
   def deepzoomfolder(self): return self.deepzoomroot/self.SlideID
@@ -685,29 +714,20 @@ class GeomSampleBase(SampleBase):
   """
   Base class for any sample that uses the _cellgeomload.csv files
 
-  geomfolder: Folder where the _cellgeomload.csv files live (default: geomroot/SlideID/geom)
   geomroot: A different root to use to find the cellgeomload (default: same as root)
   """
-  def __init__(self, *args, geomroot=None, geomfolder=None, **kwargs):
-    if geomroot is not None and geomfolder is not None:
-      raise TypeError("Can't provide both geomroot and geomfolder")
-    self.__geomroot = geomroot
-    self.__geomfolder = geomfolder
+  def __init__(self, *args, geomroot=None, **kwargs):
     super().__init__(*args, **kwargs)
+    if geomroot is None: geomroot = self.root
+    self.__geomroot = pathlib.Path(geomroot)
 
-  @methodtools.lru_cache()
+  @property
+  def rootnames(self): return {"geomroot", *super().rootnames}
+  @property
+  def geomroot(self): return self.__geomroot
   @property
   def geomfolder(self):
-    geomroot = self.__geomroot
-    geomfolder = self.__geomfolder
-    if geomfolder is None:
-      if geomroot is None:
-        geomroot = self.mainfolder.parent
-      else:
-        geomroot = pathlib.Path(geomroot)
-      return geomroot/self.SlideID/"geom"
-    else:
-      return pathlib.Path(geomfolder)
+    return self.geomroot/self.SlideID/"geom"
 
 class SelectLayersSample(SampleBase):
   """
@@ -784,6 +804,12 @@ class ReadRectanglesBase(RectangleCollection, SampleBase):
     kwargs = {
       "pscale": self.pscale,
     }
+    try:
+      kwargs.update({
+        "xmlfolder": self.xmlfolder,
+      })
+    except FileNotFoundError:
+      pass
     return kwargs
 
   @property
@@ -859,12 +885,6 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase, SelectLayer
       "width": self.fwidth,
       "height": self.fheight,
     }
-    try:
-      kwargs.update({
-        "xmlfolder": self.xmlfolder,
-      })
-    except FileNotFoundError:
-      pass
     if self.multilayer:
       pass
     else:
@@ -1017,7 +1037,7 @@ class XMLLayoutReader(SampleBase):
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        cx, cy = floattoint(r.cxvec / self.onemicron, atol=1e-10)
+        cx, cy = floattoint(r.cxvec / self.onemicron)
         errormessage = f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist"
         if self.__checkim3s:
           raise FileNotFoundError(errormessage)
@@ -1055,7 +1075,7 @@ class XMLLayoutReader(SampleBase):
     Fix rectangle filenames if the coordinates are messed up
     """
     for r in rectangles:
-      expected = self.SlideID+f"_[{floattoint(r.cx/r.onemicron, atol=1e-10):d},{floattoint(r.cy/r.onemicron, atol=1e-10):d}].im3"
+      expected = self.SlideID+f"_[{floattoint(r.cx/r.onemicron, atol=1e-10):d},{floattoint(r.cy/r.onemicron):d}].im3"
       actual = r.file
       if expected != actual:
         self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
@@ -1192,81 +1212,3 @@ class TempDirSample(SampleBase):
 
   def tempfile(self, *args, **kwargs):
     return self.enter_context(tempfile.NamedTemporaryFile(*args, dir=self.tempfolder, **kwargs))
-
-class SampleRunStatus:
-  """
-  Stores information about if a sample ran successfully.
-  started: did it start running?
-  ended: did it finish running?
-  error: error traceback as a string, if any
-  previousrun: SampleRunStatus for the previous run of this sample, if any
-  missingfiles: files that are supposed to be in the output, but are missing
-  """
-  def __init__(self, started, ended, error=None, previousrun=None, missingfiles=()):
-    self.started = started
-    self.ended = ended
-    self.error = error
-    self.previousrun = previousrun
-    self.missingfiles = missingfiles
-  def __bool__(self):
-    """
-    True if the sample started and ended with no error and all output files are present
-    """
-    return self.started and self.ended and self.error is None and not self.missingfiles
-  @property
-  def nruns(self):
-    """
-    How many times has this sample been run?
-    """
-    if self.previousrun is None:
-      return 1 if self.started else 0
-    return self.previousrun.nruns + 1
-
-  @classmethod
-  def fromlog(cls, samplelog, module, missingfiles=[]):
-    """
-    Create a SampleRunStatus object by reading the log file.
-    samplelog: from CohortFolder/SlideID/logfiles/SlideID-module.log
-               (not CohortFolder/logfiles/module.log)
-    module: the module being run
-    """
-    result = None
-    started = False
-    with contextlib.ExitStack() as stack:
-      try:
-        f = stack.enter_context(open(samplelog))
-      except IOError:
-        return cls(started=False, ended=False, missingfiles=missingfiles)
-      else:
-        reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
-        for row in reader:
-          if re.match(rf"{module} v[0-9a-f.devgd+]+", row["message"]):
-            started = True
-            error = None
-            ended = False
-            previousrun = result
-            result = None
-          elif row["message"].startswith("ERROR:"):
-            error = reader.peek(default={"message": ""})["message"]
-            if error[0] == "[" and error[-1] == "]":
-              error = "".join(eval(error))
-            else:
-              error = row["message"]
-          elif row["message"] == f"end {module}":
-            ended = True
-            result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
-    if result is None:
-      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
-    return result
-
-  def __str__(self):
-    if self: return "ran successfully"
-    if not self.started:
-      return "did not run"
-    elif self.error is not None:
-      return "gave an error:\n\n"+self.error
-    elif not self.ended:
-      return "started, but did not end"
-    elif self.missingfiles:
-      return "ran successfully but some output files are missing: " + ", ".join(str(_) for _ in self.missingfiles)
-    assert False, self

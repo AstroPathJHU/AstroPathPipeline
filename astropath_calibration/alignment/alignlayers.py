@@ -148,6 +148,14 @@ class AlignLayers(AlignLayersBase, AlignmentSet):
     return result
   def getDAPI(self, *args, writeimstat=False, **kwargs):
     return super().getDAPI(*args, writeimstat=writeimstat, **kwargs)
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+    dbload = dbloadroot/SlideID/"dbload"
+    return [
+      dbload/f"{SlideID}_alignlayers.csv",
+      dbload/f"{SlideID}_layerpositions.csv",
+      dbload/f"{SlideID}_layerpositioncovariances.csv",
+    ]
 
 class AlignLayersForBroadbandFilterBase(AlignLayersBase):
   def __init__(self, *args, inputrectangles, inputoverlaps, broadbandfilter, selectoverlaps=None, **kwargs):
@@ -245,6 +253,6 @@ class AlignLayersByBroadbandFilter(SampleWithLayerOverlaps, ReadRectanglesOverla
   def readstep2stitchresult(self, *args, **kwargs):
     self.__step2.readstitchresult(*args, **kwargs)
 
-  @property
-  def logmodule(self):
+  @classmethod
+  def logmodule(cls):
     return "alignlayers"

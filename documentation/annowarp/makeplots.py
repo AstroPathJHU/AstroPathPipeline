@@ -14,8 +14,8 @@ samp = "M206"
 def makeplots():
   from ...test.testzoom import gunzipreference
   gunzipreference(samp)
-  A = AnnoWarpSampleInformTissueMask(data, samp, zoomroot=zoomroot)
-  warpedregions = readtable(annowarproot/samp/A.newregionscsv.name, Region, extrakwargs={"apscale": A.apscale, "pscale": A.pscale})
+  A = AnnoWarpSampleInformTissueMask(data, samp, zoomroot=zoomroot, dbloadroot=annowarproot)
+  warpedregions = readtable(A.newregionscsv, Region, extrakwargs={"apscale": A.apscale, "pscale": A.pscale})
 
   with A.using_images() as (wsi, fqptiff):
     zoomlevel = fqptiff.zoomlevels[0]

@@ -1,18 +1,15 @@
 from ..baseclasses.cohort import DbloadCohort, WorkflowCohort
-from .prepdbsample import PrepdbSample
+from .prepdbsample import PrepDbSample
 
-class PrepdbCohort(DbloadCohort, WorkflowCohort):
-  sampleclass = PrepdbSample
+class PrepDbCohort(DbloadCohort, WorkflowCohort):
+  sampleclass = PrepDbSample
   __doc__ = sampleclass.__doc__
 
   def runsample(self, sample):
     return sample.writemetadata()
 
-  @property
-  def logmodule(self): return "prepdb"
-
 def main(args=None):
-  PrepdbCohort.runfromargumentparser(args)
+  PrepDbCohort.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

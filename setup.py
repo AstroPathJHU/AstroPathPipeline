@@ -16,6 +16,8 @@ setupkwargs = dict(
       "extractlayer=astropath_calibration.extractlayer.extractlayer:main",
       "find_exposure_time_samples=astropath_calibration.scripts.find_exposure_time_samples:main",
       "find_slide_overexposed_hpfs=astropath_calibration.overexposed_hpfs.find_slide_overexposed_hpfs:main",
+      "geomcohort=astropath_calibration.geom.geomcohort:main",
+      "geomcellcohort=astropath_calibration.geomcell.geomcellcohort:main",
       "prepdbcohort=astropath_calibration.prepdb.prepdbcohort:main",
       "prepdbsample=astropath_calibration.prepdb.prepdbsample:main",
       "run_exposure_time_fits=astropath_calibration.exposuretime.run_exposure_time_fits:main",
@@ -44,7 +46,7 @@ setupkwargs = dict(
     "pyopencl",
     "reikna",
     "seaborn",
-    "scikit-image",
+    "scikit-image>=0.17,<0.18", #see test/testmisc.py - we want polygon.numpyarray to return reproducible results, and skimage.draw.polygon's behavior changes between 0.17 and 0.18.  Want to support python 3.6 for now so we need to stick to 0.17.
     "scikit-learn>=0.17",
     "scipy>=0.12",
     "setuptools-scm",

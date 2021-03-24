@@ -1,14 +1,25 @@
-import more_itertools, pathlib
+import more_itertools, os, pathlib
 
+from astropath_calibration.geom.geomcohort import GeomCohort
 from astropath_calibration.geom.geomsample import Boundary, GeomSample
-from astropath_calibration.utilities import units
 from astropath_calibration.utilities.tableio import readtable
 
-from .testbase import assertAlmostEqual, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
-class TestGeom(TestBaseSaveOutput):
+class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
+  @classmethod
+  def filestocopy(cls):
+    for SlideID in "M206", "M148":
+      olddbload = thisfolder/"data"/SlideID/"dbload"
+      newdbload = thisfolder/"geom_test_for_jenkins"/SlideID/"dbload"
+      for csv in (
+        "constants",
+        "fields",
+      ):
+        yield olddbload/f"{SlideID}_{csv}.csv", newdbload
+
   @property
   def outputfilenames(self):
     return [
@@ -17,14 +28,18 @@ class TestGeom(TestBaseSaveOutput):
       for SlideID in ("M206", "M148")
     ]
 
-  def testGeom(self, SlideID="M206", **kwargs):
-    s = GeomSample(root=thisfolder/"data", samp=SlideID, **kwargs)
-    testfolder = thisfolder/"geom_test_for_jenkins"/SlideID
-    testfolder.mkdir(parents=True, exist_ok=True)
-    tumorfilename = testfolder/f"{SlideID}_tumorGeometry.csv"
-    fieldfilename = testfolder/f"{SlideID}_fieldGeometry.csv"
-    s.writeboundaries(tumorfilename=tumorfilename, fieldfilename=fieldfilename)
+  def testGeom(self, SlideID="M206", units="safe", selectrectangles=None):
+    root = thisfolder/"data"
+    dbloadroot = thisfolder/"geom_test_for_jenkins"
+    args = [os.fspath(root), "--dbloadroot", os.fspath(dbloadroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
+    if selectrectangles is not None:
+      args.append("--selectrectangles")
+      for rid in selectrectangles: args.append(str(rid))
+    GeomCohort.runfromargumentparser(args=args)
 
+    s = GeomSample(root=thisfolder/"data", dbloadroot=dbloadroot, samp=SlideID)
+    tumorfilename = s.csv("tumorGeometry")
+    fieldfilename = s.csv("fieldGeometry")
     reffolder = thisfolder/"reference"/"geom"/SlideID
     tumorreference = reffolder/tumorfilename.name
     fieldreference = reffolder/fieldfilename.name
@@ -48,12 +63,10 @@ class TestGeom(TestBaseSaveOutput):
       self.removeoutput()
 
   def testGeomFastUnits(self, SlideID="M206", **kwargs):
-    with units.setup_context("fast"):
-      self.testGeom(SlideID=SlideID, **kwargs)
+    self.testGeom(SlideID=SlideID, units="fast", **kwargs)
 
-  def testWithHoles(self):
-    self.testGeom(SlideID="M148", selectrectangles=[15, 16])
+  def testWithHoles(self, **kwargs):
+    self.testGeom(SlideID="M148", selectrectangles=[15, 16], **kwargs)
 
-  def testWithHolesFastUnits(self):
-    with units.setup_context("fast"):
-      self.testWithHoles()
+  def testWithHolesFastUnits(self, **kwargs):
+    self.testWithHoles(units="fast_microns", **kwargs)

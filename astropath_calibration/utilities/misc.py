@@ -29,7 +29,7 @@ def cd(dir):
     os.chdir(cdminus)
 
 @np.vectorize
-def floattoint(flt, *, atol=0, rtol=0):
+def floattoint(flt, *, atol=0, rtol=1e-10):
   result = int(flt)
   flt = float(flt)
   for thing in result, result+1, result-1:

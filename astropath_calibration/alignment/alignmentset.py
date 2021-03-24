@@ -3,6 +3,7 @@
 import contextlib, numpy as np, traceback
 
 from ..baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
+from ..prepdb.prepdbsample import PrepDbSample
 from ..utilities.tableio import readtable, writetable
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
@@ -40,8 +41,8 @@ class AlignmentSetBase(SampleBase):
     for r in self.rectangles:
       r.setrectanglelist(self.rectangles)
 
-  @property
-  def logmodule(self): return "align"
+  @classmethod
+  def logmodule(cls): return "align"
 
   def inverseoverlapsdictkey(self, overlap):
     return overlap.p2, overlap.p1
@@ -363,11 +364,14 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
       self.writealignments()
     return result
 
-  @property
-  def outputfiles(self):
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+    dbload = dbloadroot/SlideID/"dbload"
     return [
-      self.alignmentsfilename,
-      *self.stitchfilenames,
+      dbload/f"{SlideID}_align.csv",
+      dbload/f"{SlideID}_affine.csv",
+      dbload/f"{SlideID}_fields.csv",
+      dbload/f"{SlideID}_fieldoverlaps.csv",
     ]
 
   @property
@@ -381,7 +385,7 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
 
   @classmethod
   def workflowdependencies(cls):
-    return ["prepdb"] + super().workflowdependencies()
+    return [PrepDbSample] + super().workflowdependencies()
 
 class AlignmentSetFromXMLBase(AlignmentSetBase, ReadRectanglesOverlapsFromXML):
   def __init__(self, *args, nclip, position=None, **kwargs):

@@ -21,9 +21,6 @@ class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowC
     if self.__dostitching:
       sample.stitch()
 
-  @property
-  def logmodule(self): return "align"
-
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()

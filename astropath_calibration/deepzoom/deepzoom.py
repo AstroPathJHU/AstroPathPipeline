@@ -1,8 +1,9 @@
-import collections, functools, numpy as np, os, PIL, re
+import collections, functools, jxmlease, numpy as np, os, PIL, re
 
 from ..baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.tableio import pathfield, readtable, writetable
+from ..zoom.zoom import Zoom
 
 class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample):
   """
@@ -19,7 +20,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
   multilayer = True
 
-  @property
+  @classmethod
   def logmodule(self): return "deepzoom"
 
   @property
@@ -251,20 +252,28 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     ]
 
   @property
-  def outputfiles(self):
-    zoomlist = self.deepzoomfolder/"zoomlist.csv"
+  def workflowkwargs(self):
+    return {"layers": self.layers, **super().workflowkwargs}
+
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, root, deepzoomroot, layers, **otherworkflowkwargs):
+    zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
+    if layers is None:
+      with open(root/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
+        for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+          layers = range(1, int(node.xml_attrs["dim"])+1)
     result = [
       zoomlist,
-      *(self.deepzoomfolder/f"L{layer}.dzi" for layer in self.layers),
+      *(deepzoomroot/SlideID/f"L{layer}.dzi" for layer in layers),
     ]
     if zoomlist.exists():
       files = readtable(zoomlist, DeepZoomFile)
-    result += [file.name for file in files]
+      result += [file.name for file in files]
     return result
 
   @classmethod
   def workflowdependencies(cls):
-    return ["zoom"] + super().workflowdependencies()
+    return [Zoom] + super().workflowdependencies()
 
 @functools.total_ordering
 class DeepZoomFile(MyDataClass):

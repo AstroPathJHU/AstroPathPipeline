@@ -142,7 +142,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       assertAlmostEqual(row, target, rtol=1e-5)
 
   def testReadAlignmentFastUnits(self, SlideID="M21_1"):
-    with units.setup_context("fast"):
+    with units.setup_context("fast", "microns"):
       self.testReadAlignment(SlideID=SlideID)
 
   def testStitchReadingWriting(self, SlideID="M21_1"):
@@ -186,8 +186,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     rtol = 1e-6
     atol = 1e-6
     for o1, o2 in zip(a1.overlaps, a2.overlaps):
-      x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale))
-      x2, y2 = units.nominal_values(units.pixels(o2.stitchresult, pscale=pscale))
+      x1, y1 = units.pixels(units.nominal_values(o1.stitchresult), pscale=pscale)
+      x2, y2 = units.pixels(units.nominal_values(o2.stitchresult), pscale=pscale)
       assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
       assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
 
@@ -278,8 +278,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     atol = 1e-7
 
     for o1, o2 in zip(a1.overlaps, a2.overlaps):
-      x1, y1 = units.nominal_values(units.pixels(o1.stitchresult, pscale=pscale1))
-      x2, y2 = units.nominal_values(units.pixels(o2.stitchresult, pscale=pscale2))
+      x1, y1 = units.pixels(units.nominal_values(o1.stitchresult), pscale=pscale1)
+      x2, y2 = units.pixels(units.nominal_values(o2.stitchresult), pscale=pscale2)
       assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
       assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
 
@@ -292,15 +292,14 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testCohort(self, units="safe"):
     SlideID = "M21_1"
-    args = [str(thisfolder/"data"), str(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", str(thisfolder/"alignment_test_for_jenkins"), "--logroot", str(thisfolder/"alignment_test_for_jenkins"), "--sampleregex", SlideID, "--units", units]
+    args = [str(thisfolder/"data"), str(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", str(thisfolder/"alignment_test_for_jenkins"), "--logroot", str(thisfolder/"alignment_test_for_jenkins"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits"]
     AlignmentCohort.runfromargumentparser(args)
 
     a = AlignmentSet(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
     self.compareoutput(a)
 
   def testCohortFastUnits(self):
-    with units.setup_context("fast"):
-      self.testCohort(units="fast")
+    self.testCohort(units="fast_microns")
 
   def testMissingFolders(self, SlideID="M21_1"):
     with temporarilyremove(thisfolder/"data"/SlideID/"im3"), temporarilyremove(thisfolder/"data"/SlideID/"inform_data"), units.setup_context("fast"):
@@ -366,7 +365,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     self.testAlignment(SlideID="YZ71", xmlfolders=[thisfolder/"data"/"raw"])
 
   def testPolarisFastUnits(self):
-    with units.setup_context("fast"):
+    with units.setup_context("fast_microns"):
       self.testAlignment(SlideID="YZ71", xmlfolders=[thisfolder/"data"/"raw"])
 
   def testPolarisFromXMLFastUnits(self):

@@ -1,19 +1,24 @@
 import cv2, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
-from ..alignment.field import FieldReadComponentTiffMultiLayer
+from ..alignment.alignmentset import AlignmentSet
+from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
+from ..baseclasses.csvclasses import constantsdict
 from ..baseclasses.polygon import DataClassWithPolygon, polygonfield
-from ..baseclasses.rectangle import GeomLoadRectangle
-from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff
+from ..baseclasses.rectangle import GeomLoadRectangle, rectanglefilter
+from ..baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ..geom.contours import findcontoursaspolygons
 from ..utilities import units
 from ..utilities.misc import dict_product, dummylogger
-from ..utilities.tableio import writetable
+from ..utilities.tableio import readtable, writetable
 from ..utilities.units import ThingWithApscale, ThingWithPscale
 from ..utilities.units.dataclasses import distancefield
+
+class GeomLoadField(Field, GeomLoadRectangle):
+  pass
 
 class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
-class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample):
+class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, WorkflowSample):
   MEMBRANE_TUMOR = 13
   MEMBRANE_IMMUNE = 12
   NUCLEUS_TUMOR = 11
@@ -53,7 +58,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       "geomfolder": self.geomfolder,
     }
 
-  @property
+  @classmethod
   def logmodule(self):
     return "geomcell"
 
@@ -76,7 +81,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
             celllabel = cellproperties.label
             if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
             thiscell = imlayer==celllabel
-            polygon = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygon()
+            polygon = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygon()
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += units.nominal_values(field.pxvec)
@@ -95,6 +100,34 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
             )
 
       writetable(field.geomloadcsv, geomload)
+
+  @property
+  def inputfiles(self):
+    return [
+      self.csv("constants"),
+      self.csv("fields"),
+      *(r.imagefile for r in self.rectangles),
+    ]
+
+  @property
+  def workflowkwargs(self):
+    return {"selectrectangles": rectanglefilter([r.n for r in self.rectangles]), **super().workflowkwargs}
+
+  @classmethod
+  def getoutputfiles(cls, SlideID, *, dbloadroot, geomroot, selectrectangles=lambda r: True, **otherworkflowkwargs):
+    dbload = dbloadroot/SlideID/"dbload"
+    fieldscsv = dbload/f"{SlideID}_fields.csv"
+    constantscsv = dbload/f"{SlideID}_constants.csv"
+    if not fieldscsv.exists(): return [fieldscsv]
+    constants = constantsdict(constantscsv)
+    rectangles = readtable(fieldscsv, GeomLoadField, extrakwargs={"pscale": constants["pscale"], "geomfolder": geomroot/SlideID/"geom"})
+    return [
+      *(r.geomloadcsv for r in rectangles if selectrectangles(r)),
+    ]
+
+  @classmethod
+  def workflowdependencies(cls):
+    return [AlignmentSet] + super().workflowdependencies()
 
 class CellGeomLoad(DataClassWithPolygon):
   pixelsormicrons = "pixels"
@@ -122,7 +155,7 @@ class CellGeomLoad(DataClassWithPolygon):
 
 
 class PolygonFinder(ThingWithPscale, ThingWithApscale):
-  def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, _debugdraw=False, _debugdrawonerror=False, logger=dummylogger, loginfo=""):
+  def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, mxbox, _debugdraw=False, _debugdrawonerror=False, logger=dummylogger, loginfo=""):
     self.originalcellmask = self.cellmask = cellmask
     self.ismembrane = ismembrane
     self.__bbox = bbox
@@ -131,6 +164,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     self.__pscale = pscale
     self.__apscale = apscale
     self.pxvec = pxvec
+    self.mxbox = mxbox
     self._debugdraw = _debugdraw
     self._debugdrawonerror = _debugdrawonerror
     if self._debugdraw:
@@ -144,12 +178,15 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   def findpolygon(self):
     polygon = None
     try:
-      if self.ismembrane:
-        self.joinbrokenmembrane()
-      self.connectdisjointregions()
+      if self.isprimary:
+        if self.ismembrane:
+          self.joinbrokenmembrane()
+        self.connectdisjointregions()
+      else:
+        self.pickbiggestregion()
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
-      if self.ismembrane:
+      if self.isprimary and self.ismembrane:
         if self.istoothin(polygon):
           self.logger.warningglobal(f"Long, thin polygon (perimeter = {polygon.perimeter / self.onepixel} pixels, area = {polygon.area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {self.loginfo}")
     except:
@@ -182,7 +219,17 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       height, width = self.cellmask.shape
       if bottom == height - 1: bottom = height
       if right == width - 1: right = width
-    return top, left, bottom, right
+    return np.array([top, left, bottom, right])
+
+  @property
+  def isprimary(self):
+    top, left, bottom, right = self.adjustedbbox * self.onepixel
+    ptop, pleft, pbottom, pright = self.mxbox
+    pleft -= self.pxvec[0]
+    pright -= self.pxvec[0]
+    ptop -= self.pxvec[1]
+    pbottom -= self.pxvec[1]
+    return bottom >= ptop and pbottom >= top and right >= pleft and pright >= left
 
   @property
   def isonedge(self):
@@ -317,37 +364,43 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       otherregions = (labeled != 0) & (labeled != label)
       distance1 = scipy.ndimage.distance_transform_edt(~thisregion)
       distance2 = scipy.ndimage.distance_transform_edt(~otherregions)
-      totaldistance = np.round((distance1+distance2)*2, 0)
 
-      path = np.where(totaldistance == np.min(totaldistance[~slicedmask]), True, False)
-      thinnedpath = skimage.morphology.thin(path)
+      maxmultiply = 4
+      for multiplytoround in range(1, maxmultiply+1):
+        totaldistance = np.round((distance1+distance2)*multiplytoround, 0)
 
-      partiallyconnected = slicedmask | thinnedpath
+        path = np.where(totaldistance == np.min(totaldistance[~slicedmask]), True, False)
+        thinnedpath = skimage.morphology.thin(path)
 
-      labeled2, nlabels2 = scipy.ndimage.label(partiallyconnected, structure=np.ones(shape=(3, 3)))
-      if not nlabels2 < nlabels:
-        if self._debugdrawonerror:
-          plt.imshow(slicedmask)
-          plt.show()
-          print(nlabels)
-          plt.imshow(thisregion)
-          plt.show()
-          plt.imshow(distance1)
-          plt.show()
-          plt.imshow(otherregions)
-          plt.show()
-          plt.imshow(distance2)
-          plt.show()
-          plt.imshow(totaldistance)
-          plt.show()
-          plt.imshow(path)
-          plt.show()
-          plt.imshow(thinnedpath)
-          plt.show()
-          plt.imshow(partiallyconnected)
-          plt.show()
-          print(nlabels2)
-        raise ValueError("Connecting regions didn't reduce the number of regions (?)")
+        partiallyconnected = slicedmask | thinnedpath
+
+        labeled2, nlabels2 = scipy.ndimage.label(partiallyconnected, structure=np.ones(shape=(3, 3)))
+        if nlabels2 < nlabels:
+          break
+        else:
+          if self._debugdrawonerror:
+            plt.imshow(slicedmask)
+            plt.show()
+            print(nlabels)
+            plt.imshow(thisregion)
+            plt.show()
+            plt.imshow(distance1)
+            plt.show()
+            plt.imshow(otherregions)
+            plt.show()
+            plt.imshow(distance2)
+            plt.show()
+            plt.imshow(totaldistance)
+            plt.show()
+            plt.imshow(path)
+            plt.show()
+            plt.imshow(thinnedpath)
+            plt.show()
+            plt.imshow(partiallyconnected)
+            plt.show()
+            print(nlabels2)
+          if multiplytoround == maxmultiply:
+            raise ValueError(f"Connecting regions didn't reduce the number of regions (?) {self.loginfo}")
 
       fullyconnected, nfilled, _ = self.__connectdisjointregions(partiallyconnected)
       nfilled += np.count_nonzero(thinnedpath)
@@ -365,11 +418,21 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       self.logger.warningglobal(f"Broken cell: connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
       slicedmask[:] = connected
 
+  def pickbiggestregion(self):
+    slicedmask = self.slicedmask
+    labeled, nlabels = scipy.ndimage.label(slicedmask, structure=np.ones(shape=(3, 3)))
+    labels = range(1, nlabels+1)
+    if nlabels == 1:
+      return slicedmask
+    nlabeled = {label: np.sum(labeled == label) for label in labels}
+    biggest = max(nlabeled.items(), key=lambda kv: kv[1])[0]
+    slicedmask[labeled != biggest] = 0
+
   def debugdraw(self, polygon):
     if not self._debugdraw: return
     plt.imshow(self.originalcellmask.astype(np.uint8) + self.cellmask)
     ax = plt.gca()
-    ax.add_patch(polygon.matplotlibpolygon(alpha=0.7, shiftby=-self.pxvec))
+    if polygon is not None: ax.add_patch(polygon.matplotlibpolygon(alpha=0.7, shiftby=-self.pxvec))
     top, left, bottom, right = self.adjustedbbox
     plt.xlim(left=left-1, right=right)
     plt.ylim(top=top-1, bottom=bottom)

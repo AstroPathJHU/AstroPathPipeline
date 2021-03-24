@@ -1,10 +1,10 @@
 import contextlib, dataclassy, datetime, more_itertools, numbers, numpy as np, pathlib, tempfile
-from ..baseclasses.csvclasses import Annotation, Batch, Constant, ROIGlobals, QPTiffCsv, Vertex, Region
+from ..baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, ROIGlobals, QPTiffCsv, Vertex, Region
 from ..baseclasses.overlap import Overlap
 from ..baseclasses.rectangle import Rectangle
 from ..utilities import units
 from ..utilities.tableio import readtable
-from .prepdbcohort import PrepdbCohort
+from .prepdbcohort import PrepDbCohort
 
 def assertAlmostEqual(a, b, **kwargs):
   if isinstance(a, np.ndarray) and not a.shape: a = a[()]
@@ -23,7 +23,7 @@ def assertAlmostEqual(a, b, **kwargs):
   else:
     return np.testing.assert_equal(a, b)
 
-class ComparePrepdbCohort(PrepdbCohort):
+class ComparePrepDbCohort(PrepDbCohort):
   def runsample(self, sample, **kwargs):
     super().runsample(sample, **kwargs)
     for csv, cls, extrakwargs in (
@@ -31,6 +31,7 @@ class ComparePrepdbCohort(PrepdbCohort):
       ("batch", Batch, {}),
       ("constants", Constant, {"pscale": sample.pscale, "apscale": sample.apscale, "qpscale": sample.qpscale, "readingfromfile": True}),
       ("globals", ROIGlobals, {"pscale": sample.pscale}),
+      ("exposures", ExposureTime, {"pscale": sample.pscale}),
       ("rect", Rectangle, {"pscale": sample.pscale}),
       ("overlap", Overlap, {"pscale": sample.pscale, "nclip": sample.nclip, "rectangles": sample.rectangles}),
       ("qptiff", QPTiffCsv, {"pscale": sample.pscale}),
@@ -84,7 +85,7 @@ class ComparePrepdbCohort(PrepdbCohort):
         raise ValueError(f"Error in {filename}")
 
 def main(args=None):
-  ComparePrepdbCohort.runfromargumentparser(args)
+  ComparePrepDbCohort.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

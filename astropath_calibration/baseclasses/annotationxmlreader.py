@@ -8,9 +8,10 @@ class AnnotationXMLReader(units.ThingWithPscale):
   """
   Class to read the annotations from an xml file
   """
-  def __init__(self, filename, *, pscale):
+  def __init__(self, filename, *, pscale, xmlfolder=None):
     self.__filename = filename
     self.__pscale = pscale
+    self.__xmlfolder = xmlfolder
 
   @property
   def pscale(self): return self.__pscale
@@ -64,6 +65,7 @@ class AnnotationXMLReader(units.ThingWithPscale):
               file=field.im3path.name,
               pscale=self.pscale,
               readingfromfile=False,
+              xmlfolder=self.__xmlfolder,
             )
           )
           if microscopename is None:

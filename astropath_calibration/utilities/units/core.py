@@ -6,7 +6,7 @@ class UnitsError(Exception): pass
 
 @np.vectorize
 def convertpscale(distance, oldpscale, newpscale, power=1):
-  from . import Distance, microns
+  from . import microns
   return Distance(microns=microns(distance, pscale=oldpscale, power=power), pscale=newpscale, power=power)
 
 class Distance:
@@ -73,4 +73,3 @@ class ThingWithImscale(abc.ABC):
   def oneimpixel(self): return onepixel(pscale=self.imscale)
   @property
   def oneimmicron(self): return onemicron(pscale=self.imscale)
-
