@@ -20,6 +20,7 @@ setupkwargs = dict(
       "geomcellcohort=astropath_calibration.geomcell.geomcellcohort:main",
       "prepdbcohort=astropath_calibration.prepdb.prepdbcohort:main",
       "prepdbsample=astropath_calibration.prepdb.prepdbsample:main",
+      "read_annotation_xml=astropath_calibration.baseclasses.annotationpolygonxmlreader:main",
       "run_exposure_time_fits=astropath_calibration.exposuretime.run_exposure_time_fits:main",
       "run_flatfield=astropath_calibration.flatfield.run_flatfield:main",
       "run_image_correction=astropath_calibration.image_correction.run_image_correction:main",
