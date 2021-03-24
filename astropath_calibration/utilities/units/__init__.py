@@ -12,9 +12,6 @@ def setup(mode, baseunit=None):
   global currentmode, unitdtype
   global np, scipy
 
-  for _ in dataclasses,:
-    _.__setup(mode)
-
   try:
     if mode == "safe":
       if baseunit is not None: raise ValueError("Provided baseunit for safe units")
@@ -40,6 +37,9 @@ def setup(mode, baseunit=None):
   else:
     currentmode = mode
     currentbaseunit = baseunit
+
+  for _ in dataclasses,:
+    _.__setup(mode)
 
 setup("safe")
 
