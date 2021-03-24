@@ -1,4 +1,4 @@
-import numba as nb, uncertainties as unc
+import numba as nb
 
 __vectorizetypelist = [
   nb.float64(nb.float64, nb.float64, nb.float64),
