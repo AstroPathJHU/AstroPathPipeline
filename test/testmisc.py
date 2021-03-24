@@ -90,11 +90,11 @@ class TestMisc(unittest.TestCase):
   def testStandaloneAnnotations(self, SlideID="M21_1"):
     folder = thisfolder/"misc_test_for_jenkins"
     s = PrepDbSample(thisfolder/"data", SlideID)
-    writeannotationcsvs(folder, s.annotationspolygonsxmlfile, s.pscale, s.apscale, csvprefix=SlideID)
+    writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID)
     for filename, cls, extrakwargs in (
-      (f"{SlideID}_annotations.csv", Annotation, {"pscale": s.pscale, "apscale": s.apscale}),
-      (f"{SlideID}_vertices.csv", Vertex, {"apscale": s.apscale}),
-      (f"{SlideID}_regions.csv", Region, {"apscale": s.apscale, "pscale": s.pscale}),
+      (f"{SlideID}_annotations.csv", Annotation, {"pscale": 1, "apscale": 1}),
+      (f"{SlideID}_vertices.csv", Vertex, {"apscale": 1}),
+      (f"{SlideID}_regions.csv", Region, {"apscale": 1, "pscale": 1}),
     ):
       try:
         rows = readtable(folder/filename, cls, extrakwargs=extrakwargs, checkorder=True)

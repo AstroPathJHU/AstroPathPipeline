@@ -7,7 +7,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, xmlfile, pscale, apscale):
+  def __init__(self, xmlfile, pscale=1, apscale=1):
     self.xmlfile = pathlib.Path(xmlfile)
     self.__pscale = pscale
     self.__apscale = apscale
@@ -133,10 +133,10 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
     return annotations, allregions, allvertices
 
-def writeannotationcsvs(dbloadfolder, xmlfile, pscale, apscale, csvprefix=None):
+def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None):
   dbloadfolder = pathlib.Path(dbloadfolder)
   dbloadfolder.mkdir(parents=True, exist_ok=True)
-  annotations, regions, vertices = XMLPolygonAnnotationReader(xmlfile, pscale, apscale).getXMLpolygonannotations()
+  annotations, regions, vertices = XMLPolygonAnnotationReader(xmlfile).getXMLpolygonannotations()
   if csvprefix is None:
     csvprefix = ""
   elif csvprefix.endswith("_"):
@@ -151,8 +151,6 @@ def main(args=None):
   p = argparse.ArgumentParser(description="read an annotations.polygons.xml file and write out csv files for the annotations, regions, and vertices")
   p.add_argument("dbloadfolder", type=pathlib.Path, help="folder to write the output csv files in")
   p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
-  p.add_argument("pscale", type=float, help="ratio of pixels to microns in the im3 images")
-  p.add_argument("apscale", type=float, help="ratio of pixels to microns in the qptiff image")
   p.add_argument("--csvprefix", help="prefix to put in front of the csv file names")
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
