@@ -136,6 +136,10 @@ class Cohort(ThingWithRoots):
     return cls.__doc__
 
   @classmethod
+  def defaultunits(cls):
+    return "fast_pixels"
+
+  @classmethod
   def makeargumentparser(cls):
     """
     Create an argument parser to run this cohort on the command line
@@ -144,7 +148,7 @@ class Cohort(ThingWithRoots):
     p.add_argument("root", type=pathlib.Path, help="The Clinical_Specimen folder where sample data is stored")
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
-    p.add_argument("--units", choices=("safe", "fast"), default="fast", help="unit implementation (default: fast; safe is only needed for debugging code)")
+    p.add_argument("--units", choices=("safe", "fast", "fast_pixels", "fast_microns"), default=cls.defaultunits(), help=f"unit implementation (default: {cls.defaultunits()}; safe is only needed for debugging code)")
     p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--logroot", type=pathlib.Path, help="root location where the log files are stored (default: same as root)")

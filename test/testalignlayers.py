@@ -66,6 +66,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
     units.np.testing.assert_allclose(units.nominal_values(result1.x()), units.nominal_values(result2.x()), rtol=1e-7, atol=1e-7)
     units.np.testing.assert_allclose(units.covariance_matrix(np.ravel(result1.x())), units.covariance_matrix(np.ravel(result2.x())), rtol=1e-7, atol=1e-7)
 
+  @units.setup_context("fast", "microns")
   def testStitchCvxpy(self, SlideID="M21_1"):
     a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"alignlayers_test_for_jenkins", logroot=thisfolder/"alignlayers_test_for_jenkins")
     a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")

@@ -81,5 +81,5 @@ class TestMisc(unittest.TestCase):
     assertAlmostEqual(poly.perimeter, 72*poly.onepixel)
 
   def testPolygonNumpyArrayFastUnits(self):
-    with units.setup_context("fast"):
+    with units.setup_context("fast_microns"):
       self.testPolygonNumpyArray()

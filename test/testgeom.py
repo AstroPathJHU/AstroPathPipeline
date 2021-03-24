@@ -69,4 +69,4 @@ class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
     self.testGeom(SlideID="M148", selectrectangles=[15, 16], **kwargs)
 
   def testWithHolesFastUnits(self, **kwargs):
-    self.testWithHoles(units="fast", **kwargs)
+    self.testWithHoles(units="fast_microns", **kwargs)

@@ -11,6 +11,10 @@ class GeomCellCohort(DbloadCohort, GeomFolderCohort, SelectRectanglesCohort, Wor
   def runsample(self, sample):
     return sample.rungeomcell()
 
+  @classmethod
+  def defaultunits(cls):
+    return "fast_microns"
+
 def main(args=None):
   GeomCellCohort.runfromargumentparser(args)
 

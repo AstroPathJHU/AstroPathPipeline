@@ -63,9 +63,9 @@ class TestPrepDb(unittest.TestCase):
     self.testPrepDb(SlideID="YZ71")
   @unittest.expectedFailure
   def testPrepDbPolarisFastUnits(self):
-    self.testPrepDbFastUnits(SlideID="YZ71")
+    self.testPrepDb(SlideID="YZ71", units="fast")
 
   def testPrepDbM206FastUnits(self):
     from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
     assembleqptiff()
-    self.testPrepDbFastUnits(SlideID="M206")
+    self.testPrepDb(SlideID="M206", units="fast_microns")

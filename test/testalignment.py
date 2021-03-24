@@ -142,7 +142,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       assertAlmostEqual(row, target, rtol=1e-5)
 
   def testReadAlignmentFastUnits(self, SlideID="M21_1"):
-    with units.setup_context("fast"):
+    with units.setup_context("fast", "microns"):
       self.testReadAlignment(SlideID=SlideID)
 
   def testStitchReadingWriting(self, SlideID="M21_1"):
@@ -299,8 +299,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     self.compareoutput(a)
 
   def testCohortFastUnits(self):
-    with units.setup_context("fast"):
-      self.testCohort(units="fast")
+    self.testCohort(units="fast_microns")
 
   def testMissingFolders(self, SlideID="M21_1"):
     with temporarilyremove(thisfolder/"data"/SlideID/"im3"), temporarilyremove(thisfolder/"data"/SlideID/"inform_data"), units.setup_context("fast"):
@@ -366,7 +365,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     self.testAlignment(SlideID="YZ71", xmlfolders=[thisfolder/"data"/"raw"])
 
   def testPolarisFastUnits(self):
-    with units.setup_context("fast"):
+    with units.setup_context("fast_microns"):
       self.testAlignment(SlideID="YZ71", xmlfolders=[thisfolder/"data"/"raw"])
 
   def testPolarisFromXMLFastUnits(self):
