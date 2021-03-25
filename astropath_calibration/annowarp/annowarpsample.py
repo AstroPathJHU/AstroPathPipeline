@@ -1090,7 +1090,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     the index of the tile in [x, y]
     """
-    return floattoint(self.xvec / self.tilesize)
+    return floattoint(float(self.xvec / self.tilesize))
 
   @property
   def unshifted(self):

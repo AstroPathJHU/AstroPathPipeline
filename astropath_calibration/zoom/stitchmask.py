@@ -195,11 +195,11 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteM
           localx1 -= globalx1
           globalx1 -= globalx1
         mask[
-          floattoint(globaly1/onepixel):floattoint(globaly2/onepixel),
-          floattoint(globalx1/onepixel):floattoint(globalx2/onepixel),
+          floattoint(float(globaly1/onepixel)):floattoint(float(globaly2/onepixel)),
+          floattoint(float(globalx1/onepixel)):floattoint(float(globalx2/onepixel)),
         ] = im[
-          floattoint(localy1/onepixel):floattoint(localy2/onepixel),
-          floattoint(localx1/onepixel):floattoint(localx2/onepixel),
+          floattoint(float(localy1/onepixel)):floattoint(float(localy2/onepixel)),
+          floattoint(float(localx1/onepixel)):floattoint(float(localx2/onepixel)),
         ]
     return mask
 

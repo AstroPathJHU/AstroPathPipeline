@@ -1037,7 +1037,7 @@ class XMLLayoutReader(SampleBase):
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        cx, cy = floattoint(r.cxvec / self.onemicron)
+        cx, cy = floattoint(float(r.cxvec / self.onemicron))
         errormessage = f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist"
         if self.__checkim3s:
           raise FileNotFoundError(errormessage)
@@ -1075,7 +1075,7 @@ class XMLLayoutReader(SampleBase):
     Fix rectangle filenames if the coordinates are messed up
     """
     for r in rectangles:
-      expected = self.SlideID+f"_[{floattoint(r.cx/r.onemicron, atol=1e-10):d},{floattoint(r.cy/r.onemicron):d}].im3"
+      expected = self.SlideID+f"_[{floattoint(float(r.cx/r.onemicron)):d},{floattoint(float(r.cy/r.onemicron)):d}].im3"
       actual = r.file
       if expected != actual:
         self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")

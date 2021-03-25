@@ -21,7 +21,7 @@ class LayerExtractorBase(Im3SampleBase, collections.abc.Sized):
 
   @property
   def shape(self):
-    return (self.__getnlayers(), floattoint(self.fwidth/self.onepixel), floattoint(self.fheight/self.onepixel))
+    return (self.__getnlayers(), floattoint(float(self.fwidth/self.onepixel)), floattoint(float(self.fheight/self.onepixel)))
 
   def extractlayers(self, *, layers={1}, alreadyexistsstrategy="error"):
     (self.root2/self.SlideID).mkdir(parents=True, exist_ok=True)
