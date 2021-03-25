@@ -104,7 +104,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   @property
   def __matplotlibpolygonvertices(self):
     vertices = list(self.outerpolygon.vertexarray)
-    if vertices[0] != vertices[-1]: vertices.append(vertices[0])
+    if not np.all(vertices[0] == vertices[-1]): vertices.append(vertices[0])
     for poly in self.subtractpolygons:
       vertices += list(poly.__matplotlibpolygonvertices())
     return vertices
