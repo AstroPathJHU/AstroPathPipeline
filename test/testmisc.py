@@ -55,6 +55,11 @@ class TestMisc(unittest.TestCase):
           p.perimeter,
           p.gdalpolygon().Boundary().Length() * p.onepixel,
         )
+        self.maxDiff = None
+        self.assertEqual(
+          str(p),
+          str(p.gdalpolygon(round=True)),
+        )
     except:
       print(xysx2)
       raise
@@ -115,8 +120,8 @@ class TestMisc(unittest.TestCase):
     polystring = "POLYGON ((1 1,2 1,2 2,1 2,1 1))"
     p = PolygonFromGdal(pixels=polystring, pscale=5, apscale=3)
     p2 = SimplePolygon(vertices=p.outerpolygon.vertices)
-    np.testing.assert_equal(str(p), polystring)
-    np.testing.assert_equal(str(p2), polystring)
+    self.assertEqual(str(p), polystring)
+    self.assertEqual(str(p2), polystring)
     assertAlmostEqual(p.outerpolygon.vertices, p2.vertices)
     assertAlmostEqual(p.outerpolygon.vertexarray, p2.vertexarray)
 

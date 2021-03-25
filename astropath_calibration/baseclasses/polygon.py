@@ -1,5 +1,6 @@
 import dataclassy, itertools, matplotlib.patches, methodtools, more_itertools, numbers, numpy as np, skimage.draw
 from ..utilities import units
+from ..utilities.misc import floattoint
 from ..utilities.dataclasses import MetaDataAnnotation
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithPscale
 
@@ -149,14 +150,25 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     assert self.pscale == other.pscale and self.apscale == other.apscale
     return self.outerpolygon == other.outerpolygon and self.subtractpolygons == other.subtractpolygons
 
-  def __str__(self):
-    try:
-      return str(self.gdalpolygon(round=True))
-    except ValueError:
-      return repr(self)
+  def __str__(self, *, round=True):
+    if any(p.subtractpolygons for p in self.subtractpolygons):
+      return self.__repr__(round=round)
+    else:
+      onepixel = self.onepixel
+      result = "POLYGON ("
+      for i, p in enumerate([self.outerpolygon] + self.subtractpolygons):
+        if i != 0: result += ","
+        result += "("
+        vertices = units.convertpscale(p.vertexarray, self.apscale, self.pscale)
+        if round: vertices = floattoint((vertices+1e-10*onepixel)//onepixel)
+        vertices = itertools.chain(vertices, [vertices[0]])
+        result += ",".join("{} {}".format(*v) for v in vertices)
+        result += ")"
+      result += ")"
+      return result
 
-  def __repr__(self):
-    return f"{type(self).__name__}({self.outerpolygon!r}, [{', '.join(repr(_) for _ in self.subtractpolygons)}])"
+  def __repr__(self, *, round=True):
+    return f"{type(self).__name__}({self.outerpolygon!r}, [{', '.join(_.__repr__(round=round) for _ in self.subtractpolygons)}])"
 
 class SimplePolygon(Polygon):
   """
@@ -276,8 +288,8 @@ class SimplePolygon(Polygon):
       self.pscale,
     )
 
-  def __repr__(self):
-    return f"PolygonFromGdal(pixels={str(self.gdalpolygon())!r}, pscale={self.pscale}, apscale={self.apscale})"
+  def __repr__(self, *, round=True):
+    return f"PolygonFromGdal(pixels={str(self.gdalpolygon(round=round))!r}, pscale={self.pscale}, apscale={self.apscale})"
 
 def PolygonFromGdal(*, pixels, pscale, apscale):
   if isinstance(pixels, ogr.Geometry):
