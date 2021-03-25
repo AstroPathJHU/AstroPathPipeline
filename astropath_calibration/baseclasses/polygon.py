@@ -342,7 +342,7 @@ def polygonfield(**metadata):
   """
   def polywritefunction(poly):
     if poly is None: return "poly"
-    return str(poly.gdalpolygon(round=True))
+    return str(poly)
   metadata = {
     "writefunction": polywritefunction,
     "readfunction": str,
