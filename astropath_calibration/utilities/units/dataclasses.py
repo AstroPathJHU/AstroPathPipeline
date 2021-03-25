@@ -1,4 +1,4 @@
-import dataclassy, functools, numbers, numpy as np
+import dataclassy, functools, methodtools, numbers, numpy as np
 from ..dataclasses import MetaDataAnnotation, MyDataClass
 from ..misc import floattoint
 from .core import Distance, ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
@@ -59,10 +59,12 @@ def pscalefield(typ=float, **metadata):
   return MetaDataAnnotation(typ, **metadata)
 
 class DataClassWithDistances(MyDataClass):
+  @methodtools.lru_cache()
   @classmethod
   def distancefields(cls):
     return [field for field in dataclassy.fields(cls) if cls.metadata(field).get("isdistancefield", False)]
 
+  @methodtools.lru_cache()
   @classmethod
   def pscalefields(cls):
     return [field for field in dataclassy.fields(cls) if cls.metadata(field).get("ispscalefield", False)]
