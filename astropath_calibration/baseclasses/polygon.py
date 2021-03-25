@@ -1,4 +1,4 @@
-import dataclassy, itertools, matplotlib.patches, more_itertools, numbers, numpy as np, skimage.draw
+import dataclassy, itertools, matplotlib.patches, methodtools, more_itertools, numbers, numpy as np, skimage.draw
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithPscale
@@ -103,7 +103,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
 
   @property
   def __matplotlibpolygonvertices(self):
-    vertices = list(self.outerpolygon.vertices)
+    vertices = list(self.outerpolygon.vertexarray)
     if vertices[0] != vertices[-1]: vertices.append(vertices[0])
     for poly in self.subtractpolygons:
       vertices += list(poly.__matplotlibpolygonvertices())
@@ -119,10 +119,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
              (default: 0)
     """
     if imagescale is None: imagescale = self.pscale
-    vertices = [[v.x, v.y] for v in self.__matplotlibpolygonvertices]
     return matplotlib.patches.Polygon(
       (units.convertpscale(
-        vertices,
+        self.__matplotlibpolygonvertices,
         self.apscale,
         imagescale,
       ) + shiftby) / units.onepixel(imagescale),
@@ -132,7 +131,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   def numpyarray(self, *, shape, dtype, imagescale=None, shiftby=0):
     if imagescale is None: imagescale = self.pscale
     array = np.zeros(shape, dtype)
-    vv = np.array([v.xvec for v in self.outerpolygon.vertices])
+    vv = self.outerpolygon.vertexarray
     vv = (units.convertpscale(vv, self.apscale, imagescale) + shiftby) // units.onepixel(imagescale)
     coordinates = skimage.draw.polygon(r=vv[:, 1], c=vv[:, 0], shape=shape)
     array[coordinates] = 1
@@ -170,27 +169,46 @@ class SimplePolygon(Polygon):
 
   pixelsormicrons = "pixels"
 
-  def __init__(self, *, vertices=None, pscale=None, apscale=None, power=1):
+  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, apscale=None, power=1):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
 
-    self.__vertices = [v for v in vertices]
+    apscale = {apscale}
+    pscale = {pscale}
 
-    apscale = {apscale, *(v.apscale for v in self.__vertices)}
+    if vertexarray is not None is vertices:
+      vertexarray = np.array(vertexarray)
+    elif vertices is not None is vertexarray:
+      vertices = list(vertices)
+      vertexarray = np.array([v.xvec for v in vertices])
+      apscale |= {v.apscale for v in vertices}
+      pscale |= {v.pscale for v in vertices}
+    else:
+      raise TypeError("Have to provide exactly one of vertices or vertexarray")
+
     apscale.discard(None)
-    if len(apscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
+    if len(apscale) > 1: raise ValueError(f"Inconsistent apscales {apscale}")
+    elif not apscale: raise ValueError("No apscale provided")
     self.__apscale, = apscale
 
-    pscale = {pscale, *(v.pscale for v in self.__vertices)}
     pscale.discard(None)
     if len(pscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
+    elif not pscale: raise ValueError("No pscale provided")
     self.__pscale, = pscale
+
+    self.__vertices = vertices
+    self.__vertexarray = vertexarray
 
     super().__init__(self, [])
 
-    if len(self.__vertices) > 1 and np.all(self.__vertices[0].xvec == self.__vertices[-1].xvec): del self.__vertices[-1]
+    if len(self.__vertexarray) > 1 and np.all(self.__vertexarray[0] == self.__vertexarray[-1]):
+      self.__vertexarray = self.__vertexarray[:-1]
+      if self.__vertices is not None:
+        self.__vertices = self.__vertices[:-1]
     if self.area < 0:
-      self.__vertices[:] = [self.__vertices[0]] + self.__vertices[:0:-1]
+      self.__vertexarray[1:] = self.__vertexarray[1:][::-1]
+      if self.__vertices is not None:
+        self.__vertices = [self.__vertices[0]] + self.__vertices[:0:-1]
 
   @property
   def pscale(self):
@@ -200,19 +218,26 @@ class SimplePolygon(Polygon):
     return self.__apscale
 
   @property
-  def vertices(self): return self.__vertices
+  def vertexarray(self): return self.__vertexarray
   @property
-  def vxvecs(self): return np.array([v.xvec for v in self.vertices])
+  def vertices(self):
+    if self.__vertices is None:
+      from .csvclasses import Vertex
+      self.__vertices = [
+        Vertex(x=x, y=y, vid=i, regionid=None, apscale=self.apscale, pscale=self.pscale)
+        for i, (x, y) in enumerate(self.vertexarray)
+      ]
+    return self.__vertices
 
   def __eq__(self, other):
     if other is None: return False
-    return np.all(self.vxvecs == other.vxvecs)
+    return np.all(self.vertexarray == other.vertexarray)
 
   def gdallinearring(self, *, imagescale=None, round=False):
     if imagescale is None: imagescale = self.pscale
     ring = ogr.Geometry(ogr.wkbLinearRing)
-    for v in itertools.chain(self.vertices, [self.vertices[0]]):
-      point = units.convertpscale(v.xvec, self.apscale, imagescale)
+    for v in itertools.chain(self.vertexarray, [self.vertexarray[0]]):
+      point = units.convertpscale(v, self.apscale, imagescale)
       onepixel = units.onepixel(imagescale)
       if round:
         point = (point+1e-10*onepixel) // onepixel
@@ -229,8 +254,8 @@ class SimplePolygon(Polygon):
   def area(self):
     return units.convertpscale(
       1/2 * sum(
-        v1.x*v2.y - v2.x*v1.y
-        for v1, v2 in more_itertools.pairwise(itertools.chain(self.vertices, [self.vertices[0]]))
+        x1*y2 - x2*y1
+        for (x1, y1), (x2, y2) in more_itertools.pairwise(itertools.chain(self.vertexarray, [self.vertexarray[0]]))
       ),
       self.apscale,
       self.pscale,
@@ -244,8 +269,8 @@ class SimplePolygon(Polygon):
   def perimeter(self):
     return units.convertpscale(
       sum(
-        np.sum((v1.xvec - v2.xvec)**2)**.5
-        for v1, v2 in more_itertools.pairwise(itertools.chain(self.vertices, [self.vertices[0]]))
+        np.sum((v1 - v2)**2)**.5
+        for v1, v2 in more_itertools.pairwise(itertools.chain(self.vertexarray, [self.vertexarray[0]]))
       ),
       self.apscale,
       self.pscale,
@@ -255,7 +280,6 @@ class SimplePolygon(Polygon):
     return f"PolygonFromGdal(pixels={str(self.gdalpolygon())!r}, pscale={self.pscale}, apscale={self.apscale})"
 
 def PolygonFromGdal(*, pixels, pscale, apscale):
-  from .csvclasses import Vertex
   if isinstance(pixels, ogr.Geometry):
     gdalpolygon = pixels
   else:
@@ -268,14 +292,15 @@ def PolygonFromGdal(*, pixels, pscale, apscale):
   for polygon in gdalpolygon:
     polyvertices = []
     intvertices = polygon.GetPoints()
-    for j, (x, y) in enumerate(intvertices, start=1):
+    for x, y in intvertices:
       x *= units.onepixel(pscale)
       y *= units.onepixel(pscale)
-      polyvertices.append(Vertex(im3x=x, im3y=y, vid=j, regionid=None, apscale=apscale, pscale=pscale))
+      polyvertices.append([x, y])
+    polyvertices = units.convertpscale(polyvertices, pscale, apscale)
     vertices.append(polyvertices)
 
-  outerpolygon = SimplePolygon(vertices=vertices[0])
-  subtractpolygons = [SimplePolygon(vertices=v) for v in vertices[1:]]
+  outerpolygon = SimplePolygon(vertexarray=vertices[0], pscale=pscale, apscale=apscale)
+  subtractpolygons = [SimplePolygon(vertexarray=vertices[1], pscale=pscale, apscale=apscale) for v in vertices[1:]]
 
   return Polygon(outerpolygon, subtractpolygons)
 
@@ -289,6 +314,7 @@ class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
   ihaveatriangle = HasPolygon(poly="POLYGON((0 0, 1 1, 1 0))", pscale=2, apscale=1)
   """
 
+  @methodtools.lru_cache()
   @classmethod
   def polygonfields(cls):
     return [field for field in dataclassy.fields(cls) if cls.metadata(field).get("ispolygonfield", False)]
