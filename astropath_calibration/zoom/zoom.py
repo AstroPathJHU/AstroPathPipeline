@@ -256,7 +256,7 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
               if othertile.overlapsrectangle(globalx1=globalx1, globalx2=globalx2, globaly1=globaly1, globaly2=globaly2):
                 othertile.enter_context(field.using_image())
 
-            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.zoomtilesize + 2*floattoint(float(buffer/onepixel)))[::-1]), dtype=np.uint8)
+            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.zoomtilesize + 2*floattoint((buffer/onepixel).astype(float)))[::-1]), dtype=np.uint8)
 
             with field.using_image() as image:
               image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
@@ -308,12 +308,12 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
               kw = {"atol": 1e-7}
               tileimage[
                 :,
-                floattoint(float(tiley1/onepixel, **kw)):floattoint(float(tiley2/onepixel, **kw)),
-                floattoint(float(tilex1/onepixel, **kw)):floattoint(float(tilex2/onepixel, **kw)),
+                floattoint(float(tiley1/onepixel), **kw):floattoint(float(tiley2/onepixel), **kw),
+                floattoint(float(tilex1/onepixel), **kw):floattoint(float(tilex2/onepixel), **kw),
               ] = shifted[
                 :,
-                floattoint(float(newlocaly1/onepixel, **kw)):floattoint(float(newlocaly2/onepixel, **kw)),
-                floattoint(float(newlocalx1/onepixel, **kw)):floattoint(float(newlocalx2/onepixel, **kw)),
+                floattoint(float(newlocaly1/onepixel), **kw):floattoint(float(newlocaly2/onepixel), **kw),
+                floattoint(float(newlocalx1/onepixel), **kw):floattoint(float(newlocalx2/onepixel), **kw),
               ]
 
         if tileimage is None: continue
