@@ -1,4 +1,3 @@
-import uncertainties.unumpy as unp
 from ..common import micronstopixels, pixelstomicrons
 
 def Distance(*, pscale, pixels=None, microns=None, centimeters=None, power=1, defaulttozero=False):
@@ -6,8 +5,7 @@ def Distance(*, pscale, pixels=None, microns=None, centimeters=None, power=1, de
     try:
       return pixelstomicrons(pixels, pscale, power)
     except TypeError:
-      nominal = unp.nominal_values(pixels)
-      return pixels * Distance(pixels=nominal, pscale=pscale, power=power) / nominal
+      return pixels * Distance(pixels=1, pscale=pscale, power=power)
   elif microns is not None is pixels is centimeters:
     return microns
   elif centimeters is not None is pixels is microns:
@@ -20,8 +18,7 @@ def pixels(distance, *, pscale, power=1):
   try:
     return micronstopixels(distance, pscale, power)
   except TypeError:
-    nominal = unp.nominal_values(distance)
-    return distance * pixels(nominal, pscale=pscale, power=power) / nominal
+    return distance * pixels(1, pscale=pscale, power=power)
 def microns(distance, *, pscale, power=1):
   return distance
 def convertpscale(distance, oldpscale, newpscale, power=1):
