@@ -160,7 +160,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
         if i != 0: result += ","
         result += "("
         vertices = units.convertpscale(p.vertexarray, self.apscale, self.pscale)
-        if round: vertices = floattoint((vertices+1e-10*onepixel)//onepixel)
+        if round: vertices = floattoint(((vertices+1e-10*onepixel)//onepixel).astype(float))
         vertices = itertools.chain(vertices, [vertices[0]])
         result += ",".join("{} {}".format(*v) for v in vertices)
         result += ")"
