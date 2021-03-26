@@ -70,6 +70,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): continue
       self.logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
       geomload = []
+      pxvec = units.nominal_values(field.pxvec)
       with field.using_image() as im:
         im = im.astype(np.uint32)
         for celltype, (imlayernumber, imlayer) in enumerate(more_itertools.zip_equal(self.layers, im)):
@@ -81,10 +82,10 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
             celllabel = cellproperties.label
             if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
             thiscell = imlayer==celllabel
-            polygon = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=units.nominal_values(field.pxvec), mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygon()
+            polygon = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygon()
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
-            box += units.nominal_values(field.pxvec)
+            box += pxvec
             box = box // self.onepixel * self.onepixel
 
             geomload.append(
