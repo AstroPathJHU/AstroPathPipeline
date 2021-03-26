@@ -1,4 +1,4 @@
-import abc, methodtools, numpy as np
+import abc, methodtools
 
 currentmodule = None
 
