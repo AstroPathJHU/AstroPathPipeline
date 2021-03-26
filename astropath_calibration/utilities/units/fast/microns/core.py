@@ -1,12 +1,13 @@
+import uncertainties.unumpy as unp
 from ..common import micronstopixels, pixelstomicrons
-from uncertainties.core import AffineScalarFunc
 
 def Distance(*, pscale, pixels=None, microns=None, centimeters=None, power=1, defaulttozero=False):
   if pixels is not None is microns is centimeters:
-    if isinstance(pixels, AffineScalarFunc):
-      nominal = pixels.n
+    try:
+      return pixelstomicrons(pixels, pscale, power)
+    except TypeError:
+      nominal = unp.nominal_values(pixels)
       return pixels * Distance(pixels=nominal, pscale=pscale, power=power) / nominal
-    return pixelstomicrons(pixels, pscale, power)
   elif microns is not None is pixels is centimeters:
     return microns
   elif centimeters is not None is pixels is microns:
@@ -16,10 +17,11 @@ def Distance(*, pscale, pixels=None, microns=None, centimeters=None, power=1, de
     raise TypeError("Have to provide exactly one of pixels, microns, or centimeters")
 
 def pixels(distance, *, pscale, power=1):
-  if isinstance(distance, AffineScalarFunc):
-    nominal = distance.n
+  try:
+    return micronstopixels(distance, pscale, power)
+  except TypeError:
+    nominal = unp.nominal_values(distance)
     return distance * pixels(nominal, pscale=pscale, power=power) / nominal
-  return micronstopixels(distance, pscale, power)
 def microns(distance, *, pscale, power=1):
   return distance
 def convertpscale(distance, oldpscale, newpscale, power=1):
