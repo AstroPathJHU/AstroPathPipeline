@@ -17,7 +17,7 @@ class LayerExtractorBase(Im3SampleBase, collections.abc.Sized):
     filename = next(self.fwfiles)
     with memmapcontext(filename, dtype=np.uint16, mode="r") as memmap:
       nlayers = len(memmap) * self.onepixel**2 / (self.fwidth * self.fheight)
-    return floattoint(nlayers)
+    return floattoint(float(nlayers))
 
   @property
   def shape(self):
