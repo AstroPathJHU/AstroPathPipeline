@@ -22,3 +22,5 @@ def pixels(distance, *, pscale, power=1):
   return micronstopixels(distance, pscale, power)
 def microns(distance, *, pscale, power=1):
   return distance
+def convertpscale(distance, oldpscale, newpscale, power=1):
+  return distance

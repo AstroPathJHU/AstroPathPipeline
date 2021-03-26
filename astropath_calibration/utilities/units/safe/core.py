@@ -260,3 +260,8 @@ def covariance_matrix(distances):
   covpowers = [[a + b for b in distpowers] for a in distpowers]
 
   return __distances(pixels=covpixels, pscale=pscale, power=covpowers)
+
+@np.vectorize
+def convertpscale(distance, oldpscale, newpscale, power=1):
+  from . import microns
+  return Distance(microns=microns(distance, pscale=oldpscale, power=power), pscale=newpscale, power=power)

@@ -1,3 +1,4 @@
+import numba as nb
 from uncertainties.core import AffineScalarFunc
 from ..common import micronstopixels, pixelstomicrons
 
@@ -22,3 +23,9 @@ def microns(distance, *, pscale, power=1):
     nominal = distance.n
     return distance * microns(nominal, pscale=pscale, power=power) / nominal
   return pixelstomicrons(distance, pscale, power)
+
+@nb.vectorize([nb.float64(nb.float64, nb.float64, nb.float64, nb.float64)])
+def __convertpscale(distance, oldpscale, newpscale, power):
+  return micronstopixels(pixelstomicrons(distance, oldpscale, power), newpscale, power)
+def convertpscale(distance, oldpscale, newpscale, power=1):
+  return __convertpscale(distance, oldpscale, newpscale, power)
