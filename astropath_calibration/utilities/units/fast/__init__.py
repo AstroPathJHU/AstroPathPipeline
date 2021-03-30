@@ -3,12 +3,12 @@ from uncertainties import correlated_values, covariance_matrix, nominal_value, s
 from uncertainties.unumpy import nominal_values, std_devs
 
 def setup(baseunit):
-  global Distance, distances, pixels, microns
+  global convertpscale, Distance, distances, pixels, microns
 
   if baseunit == "pixels":
-    from .pixels import Distance, microns, pixels
+    from .pixels import convertpscale, Distance, microns, pixels
   elif baseunit == "microns":
-    from .microns import Distance, microns, pixels
+    from .microns import convertpscale, Distance, microns, pixels
   else:
     raise ValueError(f"Unknown baseunit: {baseunit}")
 
@@ -38,6 +38,6 @@ def correlated_distances(*, pscale=None, pixels=None, microns=None, distances=No
 def asdimensionless(distance): return distance
 
 __all__ = [
-  "correlated_distances", "Distance", "distances",
+  "convertpscale", "correlated_distances", "Distance", "distances",
   "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs",
 ]

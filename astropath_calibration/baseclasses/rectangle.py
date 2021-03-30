@@ -299,8 +299,8 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   def imageshape(self):
     return [
       len(self.__layers),
-      floattoint(self.__height / self.onepixel),
-      floattoint(self.__width / self.onepixel),
+      floattoint(float(self.__height / self.onepixel)),
+      floattoint(float(self.__width / self.onepixel)),
     ]
 
   @property
@@ -321,7 +321,7 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
 
   @property
   def imageshapeininput(self):
-    return self.__nlayers, floattoint(self.__width / self.onepixel), floattoint(self.__height / self.onepixel)
+    return self.__nlayers, floattoint(float(self.__width / self.onepixel)), floattoint(float(self.__height / self.onepixel))
   @property
   def imagetransposefrominput(self):
     #it's saved as (layers, width, height), we want (layers, height, width)

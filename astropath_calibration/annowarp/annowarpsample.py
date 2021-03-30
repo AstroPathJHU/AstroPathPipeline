@@ -283,10 +283,10 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     my2 = min(my2, units.Distance(pixels=wsi.shape[0], pscale=imscale) - tilesize)
 
     #find the area we need to align in coordinates of tile index
-    n1 = floattoint(my1//tilesize)-1
-    n2 = floattoint(my2//tilesize)+1
-    m1 = floattoint(mx1//tilesize)-1
-    m2 = floattoint(mx2//tilesize)+1
+    n1 = floattoint(float(my1//tilesize))-1
+    n2 = floattoint(float(my2//tilesize))+1
+    m1 = floattoint(float(mx1//tilesize))-1
+    m2 = floattoint(float(mx2//tilesize))+1
 
     #tweak the y position by -900 for the microsocope glitches
     #sometimes the y position is < 0 but reported by the microscope
@@ -1090,7 +1090,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     the index of the tile in [x, y]
     """
-    return floattoint(self.xvec / self.tilesize)
+    return floattoint((self.xvec / self.tilesize).astype(float))
 
   @property
   def unshifted(self):

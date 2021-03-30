@@ -1,5 +1,5 @@
-from .core import Distance, microns, pixels
+from .core import convertpscale, Distance, microns, pixels
 
 __all__ = [
-  "Distance", "microns", "pixels",
+  "convertpscale", "Distance", "microns", "pixels",
 ]

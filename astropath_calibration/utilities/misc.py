@@ -1,4 +1,4 @@
-import collections, contextlib, cv2, itertools, logging, matplotlib.pyplot as plt, more_itertools, numpy as np, os, PIL.Image, re, scipy.stats, uncertainties as unc
+import collections, contextlib, cv2, itertools, logging, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, PIL.Image, re, scipy.stats, uncertainties as unc
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -28,13 +28,19 @@ def cd(dir):
   finally:
     os.chdir(cdminus)
 
-@np.vectorize
-def floattoint(flt, *, atol=0, rtol=1e-10):
+@nb.vectorize([nb.int64(nb.float64, nb.float64, nb.float64)])
+def __floattoint(flt, atol, rtol):
   result = int(flt)
   flt = float(flt)
   for thing in result, result+1, result-1:
-    if np.isclose(thing, flt, atol=atol, rtol=rtol): return thing
-  raise ValueError(f"{flt} is not an int")
+    #this version needs https://github.com/numba/numba/pull/6074 or https://github.com/numba/numba/pull/4610
+    #if np.isclose(thing, flt, atol=atol, rtol=rtol):
+    if np.abs(thing-flt) <= atol + rtol * np.abs(flt):
+      return thing
+  raise ValueError("not an int")
+
+def floattoint(flt, *, atol=0, rtol=1e-10):
+  return __floattoint(flt, atol, rtol)
 
 from . import units
 

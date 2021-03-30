@@ -225,13 +225,13 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
   deltaxvec = deltax, deltay
   x0vec = np.min([[f.x, f.y] for f in fields], axis=0)
   f = fields[0]
-  shape = tuple(reversed(floattoint(np.max([(f.xvec - x0vec) / deltaxvec for f in fields], axis=0)) + 1))
+  shape = tuple(reversed(floattoint(np.max([(f.xvec - x0vec) / deltaxvec for f in fields], axis=0).astype(float)) + 1))
   xyarray = np.full(shape=(2,)+shape, fill_value=-999.*onepixel)
 
   extent = np.array([x0vec[0], shape[1] * deltaxvec[0] + x0vec[0], shape[0] * deltaxvec[1] + x0vec[1], x0vec[1]])
 
   for f in fields:
-    idx = (slice(None),) + tuple(reversed(floattoint((f.xvec - x0vec) / deltaxvec)))
+    idx = (slice(None),) + tuple(reversed(floattoint(((f.xvec - x0vec) / deltaxvec).astype(float))))
     xyarray[idx] = units.nominal_values(f.pxvec - alignmentset.T@(f.xvec-alignmentset.position))
 
   xyarraypixels = (xyarray / onepixel).astype(float)

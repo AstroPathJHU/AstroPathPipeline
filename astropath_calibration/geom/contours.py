@@ -1,5 +1,4 @@
 import cv2, more_itertools
-from ..baseclasses.csvclasses import Vertex
 from ..baseclasses.polygon import SimplePolygon
 from ..utilities import units
 
@@ -11,11 +10,15 @@ def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, fill=False, forgda
   onepixel = units.onepixel(pscale)
   for i, (contour, (next, previous, child, parent)) in reversed(list(enumerate(more_itertools.zip_equal(contours, hierarchy)))):
     assert contour.shape[1:] == (1, 2), contour.shape
-    vertices = [
-      Vertex(im3x=x, im3y=y, vid=i, regionid=None, apscale=apscale, pscale=pscale)
-      for i, ((x, y),) in enumerate(contour*onepixel+shiftby, start=1)
-    ]
-    polygon = SimplePolygon(vertices=vertices)
+    vertices = units.convertpscale(
+      [
+        [x, y]
+        for ((x, y),) in contour*onepixel+shiftby
+      ],
+      pscale,
+      apscale,
+    )
+    polygon = SimplePolygon(vertexarray=vertices, pscale=pscale, apscale=apscale)
     for p in innerpolygons[i]:
       polygon -= p
     polygons[i] = polygon

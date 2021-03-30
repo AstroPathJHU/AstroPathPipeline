@@ -37,10 +37,13 @@ class TestMisc(unittest.TestCase):
       except KeyError:
         pass
     rng = np.random.default_rng(seed)
-    xysx2 = units.distances(pixels=rng.integers(-10, 11, (2, 100, 2)), pscale=3)
     try:
-      vertices = [[Vertex(regionid=None, vid=i, x=x, y=y, pscale=5, apscale=3) for i, (x, y) in enumerate(xys) if x or y] for xys in xysx2]
-      p1, p2 = [SimplePolygon(vertices=vv) for vv in vertices]
+      areas = 0
+      while np.any(areas == 0):
+        xysx2 = units.distances(pixels=rng.integers(-10, 11, (2, 100, 2)), pscale=3)
+        vertices = [[Vertex(regionid=None, vid=i, x=x, y=y, pscale=5, apscale=3) for i, (x, y) in enumerate(xys) if x or y] for xys in xysx2]
+        p1, p2 = [SimplePolygon(vertices=vv) for vv in vertices]
+        areas = np.array([p1.area, p2.area, (p1-p2).area])
       assertAlmostEqual(p1.area-p2.area, (p1-p2).area)
       assertAlmostEqual((p1-p1).area, 0)
       for p in p1, p2, p1-p2:
@@ -51,6 +54,11 @@ class TestMisc(unittest.TestCase):
         assertAlmostEqual(
           p.perimeter,
           p.gdalpolygon().Boundary().Length() * p.onepixel,
+        )
+        self.maxDiff = None
+        self.assertEqual(
+          str(p),
+          str(p.gdalpolygon(round=True)),
         )
     except:
       print(xysx2)
@@ -107,3 +115,16 @@ class TestMisc(unittest.TestCase):
   def testStandaloneAnnotationsFastUnits(self, SlideID="M206"):
     with units.setup_context("fast"):
       self.testStandaloneAnnotations(SlideID=SlideID)
+
+  def testPolygonVertices(self):
+    polystring = "POLYGON ((1 1,2 1,2 2,1 2,1 1))"
+    p = PolygonFromGdal(pixels=polystring, pscale=5, apscale=3)
+    p2 = SimplePolygon(vertices=p.outerpolygon.vertices)
+    self.assertEqual(str(p), polystring)
+    self.assertEqual(str(p2), polystring)
+    assertAlmostEqual(p.outerpolygon.vertices, p2.vertices)
+    assertAlmostEqual(p.outerpolygon.vertexarray, p2.vertexarray)
+
+  def testPolygonVerticesFastUnits(self):
+    with units.setup_context("fast_microns"):
+      self.testPolygonVertices()

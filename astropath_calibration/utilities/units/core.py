@@ -1,13 +1,8 @@
-import abc, methodtools, numpy as np
+import abc, methodtools
 
 currentmodule = None
 
 class UnitsError(Exception): pass
-
-@np.vectorize
-def convertpscale(distance, oldpscale, newpscale, power=1):
-  from . import microns
-  return Distance(microns=microns(distance, pscale=oldpscale, power=power), pscale=newpscale, power=power)
 
 class Distance:
   def __new__(self, *args, **kwargs):

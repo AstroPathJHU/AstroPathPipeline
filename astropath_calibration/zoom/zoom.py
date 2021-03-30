@@ -23,7 +23,7 @@ class ZoomSampleBase(ReadRectanglesBase):
   @property
   def ntiles(self):
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
-    return floattoint(-((-maxxy) // (self.zoomtilesize*self.onepixel)))
+    return floattoint(-((-maxxy) // (self.zoomtilesize*self.onepixel)).astype(float))
   def PILmaximagepixels(self):
     return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
 
@@ -126,11 +126,11 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
             #fill the big image with the HPF image
             bigimage[
               i,
-              floattoint(globaly1/onepixel):floattoint(globaly2/onepixel),
-              floattoint(globalx1/onepixel):floattoint(globalx2/onepixel),
+              floattoint(float(globaly1/onepixel)):floattoint(float(globaly2/onepixel)),
+              floattoint(float(globalx1/onepixel)):floattoint(float(globalx2/onepixel)),
             ] = shifted[
-              floattoint(newlocaly1/onepixel):floattoint(newlocaly2/onepixel),
-              floattoint(newlocalx1/onepixel):floattoint(newlocalx2/onepixel),
+              floattoint(float(newlocaly1/onepixel)):floattoint(float(newlocaly2/onepixel)),
+              floattoint(float(newlocalx1/onepixel)):floattoint(float(newlocalx2/onepixel)),
             ]
 
       self.zoomfolder.mkdir(parents=True, exist_ok=True)
@@ -256,7 +256,7 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
               if othertile.overlapsrectangle(globalx1=globalx1, globalx2=globalx2, globaly1=globaly1, globaly2=globaly2):
                 othertile.enter_context(field.using_image())
 
-            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.zoomtilesize + 2*floattoint(buffer/onepixel))[::-1]), dtype=np.uint8)
+            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.zoomtilesize + 2*floattoint((buffer/onepixel).astype(float)))[::-1]), dtype=np.uint8)
 
             with field.using_image() as image:
               image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
@@ -308,20 +308,20 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
               kw = {"atol": 1e-7}
               tileimage[
                 :,
-                floattoint(tiley1/onepixel, **kw):floattoint(tiley2/onepixel, **kw),
-                floattoint(tilex1/onepixel, **kw):floattoint(tilex2/onepixel, **kw),
+                floattoint(float(tiley1/onepixel), **kw):floattoint(float(tiley2/onepixel), **kw),
+                floattoint(float(tilex1/onepixel), **kw):floattoint(float(tilex2/onepixel), **kw),
               ] = shifted[
                 :,
-                floattoint(newlocaly1/onepixel, **kw):floattoint(newlocaly2/onepixel, **kw),
-                floattoint(newlocalx1/onepixel, **kw):floattoint(newlocalx2/onepixel, **kw),
+                floattoint(float(newlocaly1/onepixel), **kw):floattoint(float(newlocaly2/onepixel), **kw),
+                floattoint(float(newlocalx1/onepixel), **kw):floattoint(float(newlocalx2/onepixel), **kw),
               ]
 
         if tileimage is None: continue
         #remove the buffer
         slc = tileimage[
           :,
-          floattoint(buffer[1]/self.onepixel):floattoint(-buffer[1]/self.onepixel),
-          floattoint(buffer[0]/self.onepixel):floattoint(-buffer[0]/self.onepixel),
+          floattoint(float(buffer[1]/self.onepixel)):floattoint(float(-buffer[1]/self.onepixel)),
+          floattoint(float(buffer[0]/self.onepixel)):floattoint(float(-buffer[0]/self.onepixel)),
         ]
         if not np.any(slc): continue
         #save the tile images

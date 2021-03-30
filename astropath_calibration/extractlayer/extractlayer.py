@@ -17,11 +17,11 @@ class LayerExtractorBase(Im3SampleBase, collections.abc.Sized):
     filename = next(self.fwfiles)
     with memmapcontext(filename, dtype=np.uint16, mode="r") as memmap:
       nlayers = len(memmap) * self.onepixel**2 / (self.fwidth * self.fheight)
-    return floattoint(nlayers)
+    return floattoint(float(nlayers))
 
   @property
   def shape(self):
-    return (self.__getnlayers(), floattoint(self.fwidth/self.onepixel), floattoint(self.fheight/self.onepixel))
+    return (self.__getnlayers(), floattoint(float(self.fwidth/self.onepixel)), floattoint(float(self.fheight/self.onepixel)))
 
   def extractlayers(self, *, layers={1}, alreadyexistsstrategy="error"):
     (self.root2/self.SlideID).mkdir(parents=True, exist_ok=True)
