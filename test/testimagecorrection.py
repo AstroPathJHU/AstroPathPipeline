@@ -1,5 +1,5 @@
 #imports
-from astropath.image_correction.run_image_correction import main
+from astropath.hpfs.image_correction.run_image_correction import main
 from astropath.utilities.img_file_io import getRawAsHWL, getRawAsHW
 from astropath.utilities.misc import cd
 import numpy as np

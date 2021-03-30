@@ -1,8 +1,8 @@
 # A script to run a quick example of the warpfitter
 
 #imports
-from astropath.warping.run_warp_fitter import main
-from astropath.warping.utilities import WarpFitResult
+from astropath.hpfs.warping.run_warp_fitter import main
+from astropath.hpfs.warping.utilities import WarpFitResult
 from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 from argparse import Namespace

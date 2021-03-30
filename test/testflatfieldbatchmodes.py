@@ -1,8 +1,8 @@
 # A script to run tests of the flatfield batch modes
 
 #imports
-from astropath.flatfield.run_flatfield import main
-from astropath.flatfield.utilities import flatfield_logger, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath
+from astropath.hpfs.flatfield.run_flatfield import main
+from astropath.hpfs.flatfield.utilities import flatfield_logger, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath
 from argparse import Namespace
 import pathlib, os, shutil
 

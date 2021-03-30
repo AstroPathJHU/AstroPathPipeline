@@ -1,9 +1,9 @@
 import more_itertools, numpy as np, pathlib, re
 
-from astropath.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
-from astropath.annowarp.annowarpcohort import AnnoWarpCohort
-from astropath.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath.baseclasses.csvclasses import Region
+from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
+from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohort
+from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable
 

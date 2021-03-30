@@ -3,8 +3,8 @@ from astropath.baseclasses.annotationpolygonxmlreader import writeannotationcsvs
 from astropath.baseclasses.csvclasses import Annotation, Region, Vertex
 from astropath.baseclasses.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.baseclasses.overlap import rectangleoverlaplist_fromcsvs
-from astropath.prepdb.prepdbsample import PrepDbSample
-from astropath.geom.contours import findcontoursaspolygons
+from astropath.slides.geom.contours import findcontoursaspolygons
+from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual

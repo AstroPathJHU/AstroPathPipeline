@@ -1,7 +1,7 @@
 import more_itertools, os, pathlib
 
-from astropath.geomcell.geomcellcohort import GeomCellCohort
-from astropath.geomcell.geomcellsample import CellGeomLoad, GeomCellSample
+from astropath.slides.geomcell.geomcellcohort import GeomCellCohort
+from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSample
 from astropath.utilities.tableio import readtable
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput

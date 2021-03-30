@@ -1,7 +1,7 @@
 import more_itertools, os, pathlib
 
-from astropath.geom.geomcohort import GeomCohort
-from astropath.geom.geomsample import Boundary, GeomSample
+from astropath.slides.geom.geomcohort import GeomCohort
+from astropath.slides.geom.geomsample import Boundary, GeomSample
 from astropath.utilities.tableio import readtable
 
 from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput

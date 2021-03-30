@@ -1,6 +1,6 @@
 import gzip, numpy as np, pathlib, PIL.Image
-from astropath.zoom.zoom import Zoom
-from astropath.zoom.zoomcohort import ZoomCohort
+from astropath.slides.zoom.zoom import Zoom
+from astropath.slides.zoom.zoomcohort import ZoomCohort
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent

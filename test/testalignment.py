@@ -1,10 +1,10 @@
 import contextlib2, logging, more_itertools, numpy as np, os, pathlib, re
-from astropath.alignment.alignmentcohort import AlignmentCohort
-from astropath.alignment.alignmentset import AlignmentSet, AlignmentSetComponentTiff, AlignmentSetFromXML, ImageStats
-from astropath.alignment.overlap import AlignmentResult
-from astropath.alignment.field import Field, FieldOverlap
-from astropath.alignment.stitch import AffineEntry
 from astropath.baseclasses.sample import SampleDef
+from astropath.slides.alignment.alignmentcohort import AlignmentCohort
+from astropath.slides.alignment.alignmentset import AlignmentSet, AlignmentSetComponentTiff, AlignmentSetFromXML, ImageStats
+from astropath.slides.alignment.overlap import AlignmentResult
+from astropath.slides.alignment.field import Field, FieldOverlap
+from astropath.slides.alignment.stitch import AffineEntry
 from astropath.utilities import units
 from astropath.utilities.misc import re_subs
 from astropath.utilities.tableio import readtable

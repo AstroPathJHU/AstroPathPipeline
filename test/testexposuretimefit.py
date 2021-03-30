@@ -1,7 +1,7 @@
 # A script to run exposure time fit tests
 
 #imports
-from astropath.exposuretime.run_exposure_time_fits import main
+from astropath.hpfs.exposuretime.run_exposure_time_fits import main
 from astropath.utilities.img_file_io import LayerOffset
 from astropath.utilities.tableio import readtable
 from argparse import Namespace

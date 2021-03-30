@@ -1,8 +1,8 @@
 import abc, dateutil, jxmlease, methodtools, numpy as np, pathlib
-from ..baseclasses.csvclasses import ROIGlobals, ROIPerimeter
-from ..baseclasses.rectangle import Rectangle
 from ..utilities import units
 from ..utilities.misc import floattoint
+from .csvclasses import ROIGlobals, ROIPerimeter
+from .rectangle import Rectangle
 
 class AnnotationXMLReader(units.ThingWithPscale):
   """
