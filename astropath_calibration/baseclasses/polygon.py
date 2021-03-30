@@ -44,6 +44,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     Area of the outer ring and negative areas of the inner rings
     """
     return [*self.outerpolygon.areas, *(-a for p in self.subtractpolygons for a in p.areas)]
+  @methodtools.lru_cache()
   @property
   def area(self):
     """
