@@ -279,10 +279,7 @@ class SimplePolygon(Polygon):
   @property
   def perimeter(self):
     return units.convertpscale(
-      sum(
-        np.sum((v1 - v2)**2)**.5
-        for v1, v2 in more_itertools.pairwise(itertools.chain(self.vertexarray, [self.vertexarray[0]]))
-      ),
+      polygonperimeter(self.vertexarray),
       self.apscale,
       self.pscale,
     )
@@ -404,3 +401,33 @@ def __polygonarea_fast(vertexarray):
     return polygonarea(vertexarray)
 
 polygonarea = __polygonarea_safe
+
+def __polygonperimeter(vertexarray):
+  size = len(vertexarray)
+  sizeminusone = size-1
+  perimeter = 0
+  for i in range(size):
+    v1 = vertexarray[i]
+    if i == sizeminusone:
+      v2 = vertexarray[0]
+    else:
+      v2 = vertexarray[i+1]
+    perimeter += np.sum((v1 - v2)**2)**.5
+  return perimeter
+__polygonperimeter_njit = nb.njit(__polygonperimeter)
+
+def __polygonperimeter_safe(vertexarray):
+  global polygonperimeter
+  if units.currentmode == "fast":
+    polygonperimeter = __polygonperimeter_fast
+    return polygonperimeter(vertexarray)
+  return __polygonperimeter(vertexarray)
+def __polygonperimeter_fast(vertexarray):
+  try:
+    return __polygonperimeter_njit(vertexarray)
+  except TypingError:
+    assert units.currentmode == "safe"
+    polygonperimeter = __polygonperimeter_safe
+    return polygonperimeter(vertexarray)
+
+polygonperimeter = __polygonperimeter_safe
