@@ -1,8 +1,8 @@
 #imports
-from microscopealignment.alignment.alignmentset import AlignmentSetFromXML
-from microscopealignment.utilities.img_file_io import getExposureTimesByLayer
-from microscopealignment.utilities.tableio import writetable
-from microscopealignment.utilities.misc import cd
+from ..slides.alignment.alignmentset import AlignmentSetFromXML
+from ..utilities.img_file_io import getExposureTimesByLayer
+from ..utilities.tableio import writetable
+from ..utilities.misc import cd
 from typing import List
 import multiprocessing as mp
 import os, glob, dataclassy

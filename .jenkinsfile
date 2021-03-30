@@ -46,6 +46,12 @@ pipeline {
     }
     stage('run tests') {
       parallel {
+        stage('console scripts') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testconsolescripts'
+          }
+        }
+
         stage('miscellaneous framework tests') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
