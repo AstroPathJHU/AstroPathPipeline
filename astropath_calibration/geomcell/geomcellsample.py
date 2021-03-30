@@ -62,7 +62,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
   def logmodule(self):
     return "geomcell"
 
-  def rungeomcell(self, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False):
+  def rungeomcell(self, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
     if not _debugdraw: _onlydebug = False
     nfields = len(self.rectangles)
@@ -81,7 +81,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
               continue
             celllabel = cellproperties.label
             if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
-            polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygon()
+            polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += pxvec
@@ -155,7 +155,7 @@ class CellGeomLoad(DataClassWithPolygon):
 
 
 class PolygonFinder(ThingWithPscale, ThingWithApscale):
-  def __init__(self, image, celllabel, *, ismembrane, bbox, pscale, apscale, pxvec, mxbox, _debugdraw=False, _debugdrawonerror=False, logger=dummylogger, loginfo=""):
+  def __init__(self, image, celllabel, *, ismembrane, bbox, pscale, apscale, pxvec, mxbox, _debugdraw=False, _debugdrawonerror=False, repair=True, logger=dummylogger, loginfo=""):
     self.image = image
     self.celllabel = celllabel
     self.ismembrane = ismembrane
@@ -168,6 +168,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     self.mxbox = mxbox
     self._debugdraw = _debugdraw
     self._debugdrawonerror = _debugdrawonerror
+    self.repair = repair
 
   @property
   def pscale(self): return self.__pscale
@@ -177,7 +178,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   def findpolygon(self):
     polygon = None
     try:
-      if self.isprimary:
+      if self.isprimary and self.repair:
         if self.ismembrane:
           self.joinbrokenmembrane()
         self.connectdisjointregions()
