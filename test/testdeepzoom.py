@@ -1,7 +1,7 @@
 import more_itertools, numpy as np, pathlib, PIL.Image
-from astropath_calibration.deepzoom.deepzoom import DeepZoomFile, DeepZoomSample
-from astropath_calibration.deepzoom.deepzoomcohort import DeepZoomCohort
-from astropath_calibration.utilities.tableio import readtable
+from astropath.deepzoom.deepzoom import DeepZoomFile, DeepZoomSample
+from astropath.deepzoom.deepzoomcohort import DeepZoomCohort
+from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent

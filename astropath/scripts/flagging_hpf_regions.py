@@ -1,15 +1,15 @@
 #imports
-from astropath_calibration.flatfield.utilities import chunkListOfFilepaths, readImagesMT, getSizeFilteredMask, getImageTissueMask 
-from astropath_calibration.flatfield.utilities import getExclusiveMask, getMorphedAndFilteredMask, getImageLayerLocalVarianceOfNormalizedLaplacian
-from astropath_calibration.flatfield.config import CONST
-from astropath_calibration.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset
-from astropath_calibration.utilities.img_file_io import smoothImageWorker, getExposureTimesByLayer
-#from astropath_calibration.utilities.img_file_io import writeImageToFile
-from astropath_calibration.utilities.tableio import readtable, writetable
-from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser, cropAndOverwriteImage
-from astropath_calibration.utilities import units
-from astropath_calibration.baseclasses.csvclasses import constantsdict
-from astropath_calibration.utilities.dataclasses import MyDataClass
+from astropath.flatfield.utilities import chunkListOfFilepaths, readImagesMT, getSizeFilteredMask, getImageTissueMask 
+from astropath.flatfield.utilities import getExclusiveMask, getMorphedAndFilteredMask, getImageLayerLocalVarianceOfNormalizedLaplacian
+from astropath.flatfield.config import CONST
+from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset
+from astropath.utilities.img_file_io import smoothImageWorker, getExposureTimesByLayer
+#from astropath.utilities.img_file_io import writeImageToFile
+from astropath.utilities.tableio import readtable, writetable
+from astropath.utilities.misc import cd, addCommonArgumentsToParser, cropAndOverwriteImage
+from astropath.utilities import units
+from astropath.baseclasses.csvclasses import constantsdict
+from astropath.utilities.dataclasses import MyDataClass
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import logging, os, glob, cv2

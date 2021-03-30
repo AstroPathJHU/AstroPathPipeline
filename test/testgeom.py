@@ -1,8 +1,8 @@
 import more_itertools, os, pathlib
 
-from astropath_calibration.geom.geomcohort import GeomCohort
-from astropath_calibration.geom.geomsample import Boundary, GeomSample
-from astropath_calibration.utilities.tableio import readtable
+from astropath.geom.geomcohort import GeomCohort
+from astropath.geom.geomsample import Boundary, GeomSample
+from astropath.utilities.tableio import readtable
 
 from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 

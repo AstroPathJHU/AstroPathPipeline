@@ -1,10 +1,10 @@
 #imports
-from astropath_calibration.alignment.alignmentset import AlignmentSetComponentTiffFromXML
-from astropath_calibration.utilities.tableio import writetable
-from astropath_calibration.utilities import units
-from astropath_calibration.utilities.dataclasses import MyDataClass
-from astropath_calibration.utilities.misc import cd, cropAndOverwriteImage
-from astropath_calibration.utilities.config import CONST as UNIV_CONST
+from astropath.alignment.alignmentset import AlignmentSetComponentTiffFromXML
+from astropath.utilities.tableio import writetable
+from astropath.utilities import units
+from astropath.utilities.dataclasses import MyDataClass
+from astropath.utilities.misc import cd, cropAndOverwriteImage
+from astropath.utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt
 import logging, os

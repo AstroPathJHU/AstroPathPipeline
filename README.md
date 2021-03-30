@@ -15,7 +15,7 @@ pip install --editable .
 
 Once the code is installed using either of those lines, you can run
 ```python
-import astropath_calibration
+import astropath
 ```
 from any directory.
 
@@ -63,7 +63,7 @@ where:
 - `[slide_ID]` is the name of the slide whose meanimage should be created (i.e. "`M21_1`")
 - `[rawfile_directory]` is the path to a directory containing a `[slide_ID]` subdirectory with the slide's ".Data.dat" files (i.e. ``\\bki07\dat``)
 - `[root_directory]` is the path to the usual "Clinical_Specimen" directory containing a `[slide_ID]` subdirectory (i.e. `\\bki02\E\Clinical_Specimen`)
-- `[path_to_exposure_time_offset_file]` is the path to a .csv file holding the exposure time correction "dark current" offsets as a ["LayerOffset" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath_calibration/utilities/img_file_io.py#L28-L34) (i.e. the file [here](https://github.com/AstropathJHU/alignmentjenkinsdata/blob/master/corrections/best_exposure_time_offsets_Vectra_9_8_2020.csv)), which is output by the code that does the exposure time correction fits
+- `[path_to_exposure_time_offset_file]` is the path to a .csv file holding the exposure time correction "dark current" offsets as a ["LayerOffset" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath/utilities/img_file_io.py#L28-L34) (i.e. the file [here](https://github.com/AstropathJHU/alignmentjenkinsdata/blob/master/corrections/best_exposure_time_offsets_Vectra_9_8_2020.csv)), which is output by the code that does the exposure time correction fits
 - `[n_threads]` is the integer number of threads to use in the portions of the code that are parallelized, namely, reading the raw HPF images to get their histograms for finding background thresholds or to stack them, and finding the image masks for each HPF. Neither of those processes is particularly CPU-intensive (and determining the image masks explicitly occurs on the GPU, also) so many threads can be used at once. I have run this code with up to 64 threads on BKI06 without taxing CPU or memory hardly at all; you may want to find a number that works well to balance the overhead of copying the data back from the subprocesses. The default is 10.
 
 Running the above command will produce:
@@ -72,11 +72,11 @@ Running the above command will produce:
     - **a `[slideID]-std_error_of_mean_image.bin` file** that is the standard error on the mean counts/ms in all of the selected HPFs' tissue regions, stored as 64-bit floats
     - **a `[slideID]-mask_stack.bin` file** that is the stack of the binary image masks from every selected HPF, stored as 64-bit unsigned integers
     - **a very detailed "global" log file** called "`global-slide_mean_image.log`"
-    - **a list of every field used** in finding the background thresholds and in making the mean image, called "`fields_used_meanimage.csv`", stored as a ["FieldLog" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath_calibration/flatfield/utilities.py#L22-L29)
-    - **a list of every slide used** in stacking images, including date ranges, called "`metadata_summary_stacked_images_meanimage.csv`" and stored as a ["MetadataSummary" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath_calibration/utilities/misc.py#L141-L149)
+    - **a list of every field used** in finding the background thresholds and in making the mean image, called "`fields_used_meanimage.csv`", stored as a ["FieldLog" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath/flatfield/utilities.py#L22-L29)
+    - **a list of every slide used** in stacking images, including date ranges, called "`metadata_summary_stacked_images_meanimage.csv`" and stored as a ["MetadataSummary" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath/utilities/misc.py#L141-L149)
     - **a "`thresholding_info`" subdirectory** containing plots/details about how the background thresholding proceeded
     - **a "`postrun_info`" subdirectory** containing information about how many HPFs were stacked in each layer of the meanimage, how many raw HPFs were read, and .png images of the individual mean image and mask stack layers
-    - **a "`image_masking`" subdirectory** containing some example plots of the image masks that were produced, multilayer "`[image_key]_mask.bin`" mask files for any stacked images that had blur or saturation flagged in them, a "`labelled_mask_regions.csv`" file listing every region masked due to blur or saturation as ["LabelledMaskRegion" objects](https://github.com/AstropathJHU/microscopealignment/blob/flagging_HPF_regions/astropath_calibration/flatfield/utilities.py#L38-L44), and a plot of where the HPFs that were read and flagged are located within the slide.
+    - **a "`image_masking`" subdirectory** containing some example plots of the image masks that were produced, multilayer "`[image_key]_mask.bin`" mask files for any stacked images that had blur or saturation flagged in them, a "`labelled_mask_regions.csv`" file listing every region masked due to blur or saturation as ["LabelledMaskRegion" objects](https://github.com/AstropathJHU/microscopealignment/blob/flagging_HPF_regions/astropath/flatfield/utilities.py#L38-L44), and a plot of where the HPFs that were read and flagged are located within the slide.
 2. **a main log file** called "`slide_mean_image.log`" in `[root_directory]\logfiles` with just a single line showing that slide_mean_image was run
 3. **a more detailed sample log file** called "`[slideID]-slide_mean_image.log`" in `[root_directory]\[slide_ID]\logfiles`
 
@@ -117,7 +117,7 @@ where:
 - `[root_directory]` is the path to the usual "Clinical_Specimen" directory containing a `[slide_ID]` subdirectory (i.e. `\\bki02\E\Clinical_Specimen`)
 - `[working_directory]` is the path to the directory in which the corrected ".fw" files should be written out (it will be created if it doesn't already exist, and it can be anywhere)
 - `[path_to_flatfield_bin_file]` is the path to the ".bin" file specifying the flatfield corrections to apply (i.e. `\\bki02\E\Clinical_Specimen\Flatfield\flatfield.bin`, or one of the files created by the python version of the flatfielding code)
-- `[path_to_warp_csv_file]` is the path to a .csv file detailing the warping model parameters as a ["WarpingSummary" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath_calibration/warping/utilities.py#L130-L149) (i.e. the file [here](https://github.com/AstropathJHU/alignmentjenkinsdata/blob/master/corrections/TEST_WARPING_weighted_average_warp.csv), which was output by the python version of the warping code)
+- `[path_to_warp_csv_file]` is the path to a .csv file detailing the warping model parameters as a ["WarpingSummary" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath/warping/utilities.py#L130-L149) (i.e. the file [here](https://github.com/AstropathJHU/alignmentjenkinsdata/blob/master/corrections/TEST_WARPING_weighted_average_warp.csv), which was output by the python version of the warping code)
 
 Running the above command will produce:
 1. **corrected ".fw" files** in the `[working_directory]`
@@ -131,7 +131,7 @@ Other options for how the correction should be done include:
 2. Skipping the warping corrections: run with the `--skip_warping` flag instead of the `--warp_def` argument (exactly one of them must be given)
 3. Using only one image layer instead of all image layers at once: add the `--layer [n]` argument where `[n]` is the integer layer number to use (starting from 1). In this case, the output files are named ".fwxx" where "xx" is the two-digit layer number (i.e. ".fw01"). (The default `--layer` argument is `-1`, which runs all the image layers at once.)
 4. Shifting the principal point of the warping pattern, in one of two ways:
-    - Shifting the pattern by a different amount for each image layer: add the `--warp_shift_file [path_to_warp_shift_csv_file]` argument where `[path_to_warp_shift_csv_file]` is the path to a .csv file detailing a ["WarpShift" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath_calibration/warping/utilities.py#L123-L128) like the example file [here](https://github.com/AstropathJHU/alignmentjenkinsdata/blob/master/corrections/random_warp_shifts_for_testing.csv), which can be made either by hand or using [this "writetable" function](hhttps://github.com/AstropathJHU/microscopealignment/blob/master/astropath_calibration/utilities/tableio.py#L84-L132)
+    - Shifting the pattern by a different amount for each image layer: add the `--warp_shift_file [path_to_warp_shift_csv_file]` argument where `[path_to_warp_shift_csv_file]` is the path to a .csv file detailing a ["WarpShift" object](https://github.com/AstropathJHU/microscopealignment/blob/master/astropath/warping/utilities.py#L123-L128) like the example file [here](https://github.com/AstropathJHU/alignmentjenkinsdata/blob/master/corrections/random_warp_shifts_for_testing.csv), which can be made either by hand or using [this "writetable" function](hhttps://github.com/AstropathJHU/microscopealignment/blob/master/astropath/utilities/tableio.py#L84-L132)
     - Shifting the pattern by the same amount for every layer: add the `--warp_shift [cx_shift,cy_shift]` argument where `[cx_shift,cy_shift]` is something like "5.2,-3.6" (i.e. parseable as a tuple of floats)
 In both cases the `cx_shift` and `cy_shift` fields are how far to move the principal point of the pattern in pixel units (floats are accepted)
 5. Scaling the strength of the warping model by a single factor: add the `--warping_scalefactor [wsf]` argument where `[wsf]` is the scalefactor to multiply the relevant parameters by (the default argument is 1.0)

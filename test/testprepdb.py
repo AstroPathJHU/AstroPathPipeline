@@ -1,10 +1,10 @@
 import more_itertools, numpy as np, os, pathlib, PIL.Image, unittest
-from astropath_calibration.baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
-from astropath_calibration.baseclasses.overlap import Overlap
-from astropath_calibration.baseclasses.rectangle import Rectangle
-from astropath_calibration.prepdb.prepdbcohort import PrepDbCohort
-from astropath_calibration.prepdb.prepdbsample import PrepDbSample
-from astropath_calibration.utilities.tableio import readtable
+from astropath.baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
+from astropath.baseclasses.overlap import Overlap
+from astropath.baseclasses.rectangle import Rectangle
+from astropath.prepdb.prepdbcohort import PrepDbCohort
+from astropath.prepdb.prepdbsample import PrepDbSample
+from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 
 thisfolder = pathlib.Path(__file__).parent

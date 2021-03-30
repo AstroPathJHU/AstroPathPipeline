@@ -1,8 +1,8 @@
 # A script to do a test run of a flatfield
 
 #imports
-from astropath_calibration.flatfield.run_flatfield import main
-from astropath_calibration.flatfield.utilities import flatfield_logger
+from astropath.flatfield.run_flatfield import main
+from astropath.flatfield.utilities import flatfield_logger
 from argparse import Namespace
 import pathlib, os, shutil
 

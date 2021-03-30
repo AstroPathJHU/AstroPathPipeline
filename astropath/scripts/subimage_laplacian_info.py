@@ -1,8 +1,8 @@
 #imports
-from astropath_calibration.flatfield.utilities import chunkListOfFilepaths, readImagesMT
-from astropath_calibration.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset
-from astropath_calibration.utilities.tableio import readtable, writetable
-from astropath_calibration.utilities.misc import cd, addCommonArgumentsToParser
+from astropath.flatfield.utilities import chunkListOfFilepaths, readImagesMT
+from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset
+from astropath.utilities.tableio import readtable, writetable
+from astropath.utilities.misc import cd, addCommonArgumentsToParser
 from argparse import ArgumentParser
 from scipy.ndimage.filters import convolve
 import numpy as np, multiprocessing as mp

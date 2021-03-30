@@ -1,9 +1,9 @@
 # A script to run exposure time fit tests
 
 #imports
-from astropath_calibration.exposuretime.run_exposure_time_fits import main
-from astropath_calibration.utilities.img_file_io import LayerOffset
-from astropath_calibration.utilities.tableio import readtable
+from astropath.exposuretime.run_exposure_time_fits import main
+from astropath.utilities.img_file_io import LayerOffset
+from astropath.utilities.tableio import readtable
 from argparse import Namespace
 from .testbase import assertAlmostEqual
 import pathlib, shutil
