@@ -94,7 +94,7 @@ def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,layers,return_dict) :
 
 def main() :
     p = argparse.ArgumentParser()
-    args = p.parse_args()
+    p.parse_args()
 
     mp.freeze_support()
 
