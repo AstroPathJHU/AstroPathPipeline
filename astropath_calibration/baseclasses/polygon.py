@@ -1,4 +1,5 @@
-import dataclassy, itertools, matplotlib.patches, methodtools, more_itertools, numbers, numpy as np, skimage.draw
+import dataclassy, itertools, matplotlib.patches, methodtools, more_itertools, numba as nb, numbers, numpy as np, skimage.draw
+from numba.core.errors import TypingError
 from ..utilities import units
 from ..utilities.misc import floattoint
 from ..utilities.dataclasses import MetaDataAnnotation
@@ -266,10 +267,7 @@ class SimplePolygon(Polygon):
   @property
   def area(self):
     return units.convertpscale(
-      1/2 * sum(
-        x1*y2 - x2*y1
-        for (x1, y1), (x2, y2) in more_itertools.pairwise(itertools.chain(self.vertexarray, [self.vertexarray[0]]))
-      ),
+      polygonarea(self.vertexarray),
       self.apscale,
       self.pscale,
       power=2,
@@ -376,3 +374,33 @@ class _OgrImport:
       return getattr(ogr, attr)
 
 ogr = _OgrImport()
+
+def __polygonarea(vertexarray):
+  size = len(vertexarray)
+  sizeminusone = size-1
+  doublearea = 0
+  for i in range(size):
+    x1, y1 = vertexarray[i]
+    if i == sizeminusone:
+      x2, y2 = vertexarray[0]
+    else:
+      x2, y2 = vertexarray[i+1]
+    doublearea += x1*y2 - x2*y1
+  return doublearea / 2
+__polygonarea_njit = nb.njit(__polygonarea)
+
+def __polygonarea_safe(vertexarray):
+  global polygonarea
+  if units.currentmode == "fast":
+    polygonarea = __polygonarea_fast
+    return polygonarea(vertexarray)
+  return __polygonarea(vertexarray)
+def __polygonarea_fast(vertexarray):
+  try:
+    return __polygonarea_njit(vertexarray)
+  except TypingError:
+    assert units.currentmode == "safe"
+    polygonarea = __polygonarea_safe
+    return polygonarea(vertexarray)
+
+polygonarea = __polygonarea_safe
