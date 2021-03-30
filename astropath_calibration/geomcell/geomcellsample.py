@@ -1,4 +1,4 @@
-import cv2, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
+import cv2, itertools, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ..alignment.alignmentset import AlignmentSet
 from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
 from ..baseclasses.csvclasses import constantsdict
@@ -81,8 +81,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
               continue
             celllabel = cellproperties.label
             if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
-            thiscell = imlayer==celllabel
-            polygon = PolygonFinder(thiscell, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygon()
+            polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror).findpolygon()
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += pxvec
@@ -156,8 +155,9 @@ class CellGeomLoad(DataClassWithPolygon):
 
 
 class PolygonFinder(ThingWithPscale, ThingWithApscale):
-  def __init__(self, cellmask, *, ismembrane, bbox, pscale, apscale, pxvec, mxbox, _debugdraw=False, _debugdrawonerror=False, logger=dummylogger, loginfo=""):
-    self.originalcellmask = self.cellmask = cellmask
+  def __init__(self, image, celllabel, *, ismembrane, bbox, pscale, apscale, pxvec, mxbox, _debugdraw=False, _debugdrawonerror=False, logger=dummylogger, loginfo=""):
+    self.image = image
+    self.celllabel = celllabel
     self.ismembrane = ismembrane
     self.__bbox = bbox
     self.logger = logger
@@ -168,8 +168,6 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     self.mxbox = mxbox
     self._debugdraw = _debugdraw
     self._debugdrawonerror = _debugdrawonerror
-    if self._debugdraw:
-      self.originalcellmask = self.cellmask.copy()
 
   @property
   def pscale(self): return self.__pscale
@@ -217,7 +215,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     if self.ismembrane:
       if top == 1: top = 0
       if left == 1: left = 0
-      height, width = self.cellmask.shape
+      height, width = self.image.shape
       if bottom == height - 1: bottom = height
       if right == width - 1: right = width
     return np.array([top, left, bottom, right])
@@ -236,7 +234,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   def isonedge(self):
     result = [0, 0]
     top, left, bottom, right = self.adjustedbbox
-    height, width = self.cellmask.shape
+    height, width = self.image.shape
     if top == 0: result[0] = -1
     if bottom == height: result[0] = 1
     if left == 0: result[1] = -1
@@ -249,8 +247,15 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     return slice(top, bottom+1), slice(left, right+1)
 
   @property
+  def slicedimage(self):
+    return self.image[self.bboxslice]
+  @methodtools.lru_cache()
+  @property
   def slicedmask(self):
-    return self.cellmask[self.bboxslice]
+    return self.slicedimage == self.celllabel
+  @property
+  def originalslicedmask(self):
+    return self.slicedimage == self.celllabel
 
   def joinbrokenmembrane(self):
     slicedmask = self.slicedmask.astype(np.uint8)
@@ -431,7 +436,10 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
   def debugdraw(self, polygon):
     if not self._debugdraw: return
-    plt.imshow(self.originalcellmask.astype(np.uint8) + self.cellmask)
+    im = np.zeros_like(self.image, dtype=np.uint8)
+    im[self.bboxslice] += self.originalslicedmask
+    im[self.bboxslice] += self.slicedmask
+    plt.imshow(im)
     ax = plt.gca()
     if polygon is not None: ax.add_patch(polygon.matplotlibpolygon(alpha=0.7, shiftby=-self.pxvec))
     top, left, bottom, right = self.adjustedbbox
