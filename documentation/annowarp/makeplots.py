@@ -1,6 +1,6 @@
 import argparse, numpy as np, pathlib, PIL
-from astropath.annowarp.annowarpsample import AnnoWarpSampleInformTissueMask
-from astropath.annowarp.visualization import showannotation
+from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleInformTissueMask
+from astropath.slides.annowarp.visualization import showannotation
 from astropath.baseclasses.csvclasses import Region
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable

@@ -1,7 +1,7 @@
 import argparse, matplotlib.pyplot as plt, numpy as np, pathlib, pickle, sklearn.decomposition
 
-from microscopealignment.baseclasses.sample import ReadRectanglesOverlapsDbloadIm3
-from microscopealignment.utilities import units
+from astropath.baseclasses.sample import ReadRectanglesOverlapsDbloadIm3
+from astropath.utilities import units
 
 here = pathlib.Path(__file__).parent
 

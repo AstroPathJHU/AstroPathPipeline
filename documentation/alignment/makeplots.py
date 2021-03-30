@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
-from astropath.alignment.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
-from astropath.alignment.isotropy import isotropy, stitchingisotropy
-from astropath.alignment.alignmentset import AlignmentSet
+from astropath.slides.alignment.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
+from astropath.slides.alignment.isotropy import isotropy, stitchingisotropy
+from astropath.slides.alignment.alignmentset import AlignmentSet
 from astropath.utilities import units
 
 here = pathlib.Path(__file__).parent
