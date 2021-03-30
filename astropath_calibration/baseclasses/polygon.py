@@ -1,4 +1,4 @@
-import dataclassy, itertools, matplotlib.patches, methodtools, more_itertools, numba as nb, numbers, numpy as np, skimage.draw
+import dataclassy, itertools, matplotlib.patches, methodtools, numba as nb, numbers, numpy as np, skimage.draw
 from numba.core.errors import TypingError
 from ..utilities import units
 from ..utilities.misc import floattoint
