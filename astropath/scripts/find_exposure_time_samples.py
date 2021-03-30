@@ -5,7 +5,7 @@ from ..utilities.tableio import writetable
 from ..utilities.misc import cd
 from typing import List
 import multiprocessing as mp
-import os, glob, dataclassy
+import argparse, os, glob, dataclassy
 
 #constants
 RAWFILE_EXT = '.Data.dat'
@@ -93,6 +93,9 @@ def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,layers,return_dict) :
     return_dict[sn]=n_overlaps
 
 def main() :
+    p = argparse.ArgumentParser()
+    args = p.parse_args()
+
     mp.freeze_support()
 
     #n_diff_olaps_vectra = {}
