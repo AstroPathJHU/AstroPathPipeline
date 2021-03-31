@@ -10,22 +10,22 @@ The Astropath pipeline was designed to automate the processing of whole slide mu
 ## ***Contents***
 1. [Description](#description "Title")
 2. [Contents](#contents "Title")
-3. [Setting Up, Organization, and Scanning](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/readme.md#section-3-setting-up-organization-and-scanning "Title")
-   - [3.1 Description](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/readme.md#section-31-description "Title")
-   - [3.2 AstroPathProcessing Directory and Initializing Projects](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/readme.md#section-32-astropathprocessing-directory-and-initializing-projects "Title")
-   - [3.3 Scanning, Verifying Complete, and Adding BatchIDs](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/readme.md#section-33-scanning-verifying-complete-and-adding-batchids "Title")
-4. [HPF Processing](#section-4-hpf-processing "Title")
-   - [4.1 Description](#section-41-description "Title")
-   - [4.2 Transfer](#section-42-transfer "Title")
-   - [4.3 Flatfield](#section-43-flatfield "Title")
-   - [4.4 Segmentation \ Classification](#section-44-segmentation-classification "Title")
-5. [Slide_Processing](#section-5-slide-processing "Title")
-   - [5.1 Description](#section-51-description "Title")
+3. [Setting Up, Organization, and Scanning](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/#section-3-setting-up-organization-and-scanning "Title")
+   - [3.1 Description](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/#section-31-description "Title")
+   - [3.2 AstroPathProcessing Directory and Initializing Projects](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/#section-32-astropathprocessing-directory-and-initializing-projects "Title")
+   - [3.3 Scanning, Verifying Complete, and Adding BatchIDs](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/#section-33-scanning-verifying-complete-and-adding-batchids "Title")
+4. [HPF Processing]
+   - [4.1 Description]
+   - [4.2 Transfer]
+   - [4.3 Flatfield]
+   - [4.4 Segmentation \ Classification]
+5. [Slide_Processing]
+   - [5.1 Description]
    - [5.2 Align]
    - [5.3 Annotations]
    - [5.4 Cell Geometries]
-6. [Sample_Processing](#section-6-sample-processing "Title")
-   - [6.1 Description](#section-61-description "Title")
+6. [Sample_Processing]
+   - [6.1 Description]
    - [6.2 Control TMAs]
    - [6.3 Calibration]
    - [6.4 Upload to Database]
