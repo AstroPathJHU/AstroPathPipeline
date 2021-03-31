@@ -1,15 +1,15 @@
 # Section 3: Setting Up, Organization, and Scanning
 ## Section 3.1: Description
-The AstroPath Pipeline requires that a number of experimental protocols are understood and followed for the code to work. These protocols include methods for slide scanning, slide naming, regent tracking, and directory organization. This section of the documentation describes these protocols and provides important definitions for terms used throughout the AstroPath Pipeline documentations. Additionally, there is a main directory, refered to as the ```<Mpath>```, which contains a set of csv files. These files contain pertinent information which drive processing such as directory locations, machine names, slide names, and project identifiers. These csv files are defined in [Section 3.3](#section-33-astropathprocessing-directory-and-initializing-projects "Title")
+The AstroPath Pipeline requires that a number of experimental protocols are understood and followed for the code to work. These protocols include methods for slide scanning, slide naming, regent tracking, and directory organization. This section of the documentation describes these protocols and provides important definitions for terms used throughout the AstroPath Pipeline documentations. Additionally, there is a main directory, refered to as the ```<Mpath>```, which contains a set of csv files. These files contain pertinent information which drive processing such as directory locations, machine names, slide names, and project identifiers. These csv files are defined in [Section 3.4](#section-34-astropathprocessing-directory-and-initializing-projects "Title")
 
 ## Section 3.2 Definitions
 ### Section 3.2.1: Identification Definitions
 1. ```Project[int]```: Each project is defined with a separate unique numeric ```ProjectID```. These ids are defined at the start of processing and used throughout the code to identify that project. All data for a specified project should be placed in a single folder. 
 2. ```Cohort[int]```: A unique numeric identifier for a set of patient samples. Multiple cohorts can belong to one project.
-3. ```Batch[int]```: The unique numeric value for a batch of slides stained together. For each unique ```ProjectID```, each set of ```BatchID```s are separate and usually starts over at 1. Additional details on ```BatchID```s can be found below in [Section 3.4](#section-34-scanning-verifying-complete-and-adding-batchids "Title").
+3. ```Batch[int]```: The unique numeric value for a batch of slides stained together. For each unique ```Project```, each set of ```BatchID```s are separate and usually starts over at 1. Additional details on ```BatchID```s can be found below in [Section 3.3](#section-33-scanning-verifying-complete-and-adding-batchids "Title").
 4. ```SampleName[string]```s: The ```SampleName```s are the names defined during the scanning process, these will be replaced and standarized as part of the pipeline. 
    - The code detects these from the *SpecimenTable.xlsx* files contained in each cohort scanning folder. 
-   - A description of the *SpecimenTable.xlsx* file is in [Section 3.4](#section-34-scanning-verifying-complete-and-adding-batchids "Title") repository.
+   - A description of the *SpecimenTable.xlsx* file is in [Section 3.3](#section-33-scanning-verifying-complete-and-adding-batchids "Title") repository.
 5. ```SlideID[string]```s: The names for the specimens in the astropath processing pipeline and replace the ```SampleName```s on all corresponding files and inside the scanning plan, annotations.xml, files generated during the scanning process.
    - using these names allows us to avoid outside the organization changes to naming conventions
    - The IDs have the format; ```APpppXXXX```
@@ -23,7 +23,7 @@ The AstroPath Pipeline requires that a number of experimental protocols are unde
 The file path structures have been standarized and are described below.
 - ```<Mpath>```: The main path for all the astropath processing *.csv* configuration files.
   - The current location of this path is ```\\bki04\astropath_processing```.
-  - A description of each file is located below in [Section 3.3](#section-33-astropathprocessing-directory-and-initializing-projects "Title")
+  - A description of each file is located below in [Section 3.4](#section-34-astropathprocessing-directory-and-initializing-projects "Title")
 - ```<Dpath>```: The data or destination path up to the server folder.
   - this is the path to the project's data on the bki servers but does not include the ```<Dname>```
 - ```<Dname>```: The data name or the name of the clinical specimen folder. All data for a project should be located inside this folder. Usually this folder is shared over the network. This is only the folder name such that the full path to the data is ```\\<Dname>\<Dpath>```
@@ -38,17 +38,29 @@ The file path structures have been standarized and are described below.
 
 *NOTE:* the ```<path>``` variables do not contain the ```<Dname>```
 
-## Section 3.3: AstroPath_Processing Directory and Initializing Projects
-The code is driven by the files located in this folder, named the ```<Mpath>```. These files include the following:
-- *AstropathCohortsProgress.csv*: This file contains information on the project's analysis status and important experimental variables. The file has the following columns:
+## Section 3.3: Scanning, Verifying Complete, and Adding BatchIDs
+
+## Section 3.4: AstroPath_Processing Directory and Initializing Projects
+The code is driven by the files located in a main processing folder, named the ```<Mpath>```. These files are described below followed by descriptions of the respectve columns. For columns without definitions provided, please check [Section 3.2](#section-32.definitions "Title") above. After a description of the directory and files included, instructions for intializing projects into the pipeline are provided.
+
+### Section 3.4.1 AstroPath_Processing Directory
+- *AstropathCohortsProgress.csv*: This file contains information on the project's analysis status and important experimental variables. This table is manually updated. The file has the following columns:
   ```
   Project, Cohort, Dpath, Dname, Machine, Method, Panel, Tissue, StainConfig, Stain, Scan, Inform, Merged, QC, Annotations, ReadyForDB, DBLoad
   ```
-  - 
+  - ```Method[String]```: This is the staining method. It is usually indicated as either *Manual* or *Automatic* for manually stained or stained by an automatic stainer (E.g. *Lecia Bond Rx*)
+  - ```Panel[String]```: For each unique set of antibodies we have provided an idenitifying name. (E.g. PD1\PDL1 Axis). 
+  - ```Tissue[String]```: The tissue the panel was stained on, for more than one type of tissue in a panel include a colon inbetween
+  - ```StainConfig[int]```: The stain configuration is a unique numeric value for a ```Machine, Method, Panel``` pairing. 
+  - ```Stain[string]```: The staining status of the panel. Should be indicated as blank (not started), *Started*, or *Done*.
+  - ```Inform[string]```: The status of the inform algorithm for classification and segmentation. Should be indicated as blank (not started), *Started*, or *Done*.
+  - ```Merged[string]```: The status of the inform processing and merge. Should be indicated as blank (not started), *Started*, or *Done*.
+  - ```QC[string]```: The status of the quality control assessment of samples. Should be indicated as blank (not started), *Started*, or *Done*.
+  - ```Annotations[string]```: Whether or not the slide annotations have been created for a panel. ***Annotation directions can be found in***. Should be indicated as blank (not started), *Started*, or *Done*.
+  - ```ReadyForDB[string]```: Indicates whether final checks for the manual interaction steps with the data have been complete. ***A full checklist is still in progress.***. Should be indicated as blank (not started), *Started*, or *Done*.
+  - ```DBLoad```: The current status of the database load. Should be indicated as blank (not started), *Started*, or *Done*.
 - *AstropathConfig.csv*
 - *AstropathControldef.csv*
 - *AstropathPaths.csv*
 - *AstropathSampledef.csv*
 - *AstropathAPIDdef.csv*
-
-## Section 3.4: Scanning, Verifying Complete, and Adding BatchIDs
