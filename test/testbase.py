@@ -1,6 +1,6 @@
 import abc, contextlib, dataclassy, numbers, numpy as np, pathlib, shutil, tempfile, unittest
 
-from astropath_calibration.utilities import units
+from astropath.utilities import units
 
 def assertAlmostEqual(a, b, **kwargs):
   if isinstance(a, np.ndarray) and not a.shape: a = a[()]

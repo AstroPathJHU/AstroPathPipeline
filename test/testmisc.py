@@ -1,12 +1,12 @@
 import cv2, hashlib, more_itertools, numpy as np, os, pathlib, skimage, unittest
-from astropath_calibration.baseclasses.annotationpolygonxmlreader import writeannotationcsvs
-from astropath_calibration.baseclasses.csvclasses import Annotation, Region, Vertex
-from astropath_calibration.baseclasses.polygon import Polygon, PolygonFromGdal, SimplePolygon
-from astropath_calibration.baseclasses.overlap import rectangleoverlaplist_fromcsvs
-from astropath_calibration.prepdb.prepdbsample import PrepDbSample
-from astropath_calibration.geom.contours import findcontoursaspolygons
-from astropath_calibration.utilities import units
-from astropath_calibration.utilities.tableio import readtable
+from astropath.baseclasses.annotationpolygonxmlreader import writeannotationcsvs
+from astropath.baseclasses.csvclasses import Annotation, Region, Vertex
+from astropath.baseclasses.polygon import Polygon, PolygonFromGdal, SimplePolygon
+from astropath.baseclasses.overlap import rectangleoverlaplist_fromcsvs
+from astropath.slides.geom.contours import findcontoursaspolygons
+from astropath.slides.prepdb.prepdbsample import PrepDbSample
+from astropath.utilities import units
+from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 
 thisfolder = pathlib.Path(__file__).parent

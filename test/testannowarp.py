@@ -1,11 +1,11 @@
 import more_itertools, numpy as np, pathlib, re
 
-from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
-from astropath_calibration.annowarp.annowarpcohort import AnnoWarpCohort
-from astropath_calibration.annowarp.stitch import AnnoWarpStitchResultEntry
-from astropath_calibration.baseclasses.csvclasses import Region
-from astropath_calibration.utilities import units
-from astropath_calibration.utilities.tableio import readtable
+from astropath.baseclasses.csvclasses import Region
+from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
+from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohort
+from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
+from astropath.utilities import units
+from astropath.utilities.tableio import readtable
 
 from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 

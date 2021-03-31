@@ -1,9 +1,9 @@
 import argparse, numpy as np, pathlib, PIL
-from astropath_calibration.annowarp.annowarpsample import AnnoWarpSampleInformTissueMask
-from astropath_calibration.annowarp.visualization import showannotation
-from astropath_calibration.baseclasses.csvclasses import Region
-from astropath_calibration.utilities import units
-from astropath_calibration.utilities.tableio import readtable
+from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleInformTissueMask
+from astropath.slides.annowarp.visualization import showannotation
+from astropath.baseclasses.csvclasses import Region
+from astropath.utilities import units
+from astropath.utilities.tableio import readtable
 
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"

@@ -1,13 +1,13 @@
 import contextlib2, logging, more_itertools, numpy as np, os, pathlib, re
-from astropath_calibration.alignment.alignmentcohort import AlignmentCohort
-from astropath_calibration.alignment.alignmentset import AlignmentSet, AlignmentSetComponentTiff, AlignmentSetFromXML, ImageStats
-from astropath_calibration.alignment.overlap import AlignmentResult
-from astropath_calibration.alignment.field import Field, FieldOverlap
-from astropath_calibration.alignment.stitch import AffineEntry
-from astropath_calibration.baseclasses.sample import SampleDef
-from astropath_calibration.utilities import units
-from astropath_calibration.utilities.misc import re_subs
-from astropath_calibration.utilities.tableio import readtable
+from astropath.baseclasses.sample import SampleDef
+from astropath.slides.alignment.alignmentcohort import AlignmentCohort
+from astropath.slides.alignment.alignmentset import AlignmentSet, AlignmentSetComponentTiff, AlignmentSetFromXML, ImageStats
+from astropath.slides.alignment.overlap import AlignmentResult
+from astropath.slides.alignment.field import Field, FieldOverlap
+from astropath.slides.alignment.stitch import AffineEntry
+from astropath.utilities import units
+from astropath.utilities.misc import re_subs
+from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -104,7 +104,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       ref = reffolder/SlideID/log.name
       with open(ref) as fref, open(log) as fnew:
         subs = (";[^;]*$", ""), (r"(WARNING: (component tiff|xml files|constants\.csv)).*$", r"\1")
-        from astropath_calibration.utilities.version import astropathversion
+        from astropath.utilities.version import astropathversion
         refsubs = *subs, (r"(align )v[\w+.]+", rf"\1{astropathversion}")
         newsubs = *subs,
         refcontents = os.linesep.join([re_subs(line, *refsubs, flags=re.MULTILINE) for line in fref.read().splitlines()])+os.linesep

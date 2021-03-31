@@ -25,8 +25,8 @@ pipeline {
       steps {
         sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags "$url"'
         sh 'pip install .[all]'
-        sh '''echo "import re; from astropath_calibration.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
-        sh '''cd ..; echo "import re; from astropath_calibration.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
+        sh '''echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
+        sh '''cd ..; echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
       }
     }
 
@@ -46,6 +46,12 @@ pipeline {
     }
     stage('run tests') {
       parallel {
+        stage('console scripts') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testconsolescripts'
+          }
+        }
+
         stage('miscellaneous framework tests') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
