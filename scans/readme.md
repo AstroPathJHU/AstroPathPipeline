@@ -58,12 +58,14 @@ The file path structures have been standarized and are described below.
    - E.g. “bki03\flatw_7”
    - ***Additional details on these files can be found in the flatw workflow description***
 
-*NOTE:* the ```<path>``` variables do not contain the ```<Dname>```
+*NOTE*: the ```<path>``` variables do not contain the ```<Dname>```
 
 ## Section 3.3: Scanning, Verifying Complete, and Adding BatchIDs
 Before scanning it is important to set up the ```<spath>```. This folder is created on the scanning computer where slides are scanned into. The folders are usually labeled *Clinical_Specimen_N*, where the *N* indicates a numeric value or unique lettering. Examples of these scanning folders incude *Clinical_Specimen_2* and *CLinical_Specimen_BMS_01*. In the JHU processing pipeline, this folder is backed up every night to a network server with significant storage capacity (~80TB) using commercially available software. In this way once slide scans are completed they can be deleted from the computer in such a way that the computers never run in storage issues. *NOTE*: The fully qualified path for this scanning folder on the server is designated as the ```<spath>```. 
 
-After new slides are stained, they should be added to a *Specimen_Table_N.xlsx* file located in each ```<spath>```, described in detail below in [Section 3.3.1](#section-331-specimentable “Title”). As part of adding slides to this table, the slides will be given a unique de identified name for scanning. Tips on these names are included in [Section 3.3.2](#section-332-samplenames-m-numbers “Title”). The most important aspect of this convention is to avoid the use of spaces and special characters. Once added to the *SpecimenTable.xlsx*, slides can be scanned with 20% overlap according to the protocol laid out in [Section 3.3.3](#section-333-whole-slide-scanning “Title”). In order for successful processing of the slides, it is very important that this procedure is adhered to correctly. After slides are scanned, the user should manually verify that all images were scanned completed properly and add a *BatchID.txt* file to the successful ```Scan``` directory. This initiates the slide transfer process in the pipeline, additional details on this step are defined in [Section 3.3.4](#section-334-batchids “Title”). It is also important to create the *Batch_BB.csv* and *MergeConfig_BB.csv* files for processing to continue successfully. Each staining batch defined should have a separate set of these tables. Information on these files can be found in [Section 3.3.5](#section-335-batch-tables “Title”) and [Section 3.3.6](#section-336-mergeconfig-tables “Title”), respectively. 
+After a new batch of slides are stained, they should be added to a *Specimen_Table_N.xlsx* file located in each ```<spath>```, described in detail below in [Section 3.3.1](#section-331-specimen_table “Title”). As part of adding slides to this table, the slides will be given a unique de identified name for scanning. Tips on these names are included in [Section 3.3.2](#section-332-samplenames-patient--or-m-numbers “Title”). The most important aspect of this convention is to avoid the use of spaces and special characters. For each batch, a control tma should also be stained and scanned. The scanning and naming of this slide is also very important for pipeline ingestion and is defined below in [Section 3.3.3](#section-333-control-tma-conventions “Title”). *Note*: The control tmas do not go into the *Specimen_Table_N* and are found based on their **naming**.
+
+Once added to the *SpecimenTable.xlsx*, slides can be scanned with 20% overlap according to the protocol laid out in [Section 3.3.4](#section-334-whole-slide-scanning “Title”). In order for successful processing of the slides, it is very important that this procedure is adhered to correctly. After slides are scanned, the user should manually verify that all images were scanned completed properly and add a *BatchID.txt* file to the successful ```Scan``` directory. This initiates the slide transfer process in the pipeline, additional details on this step are defined in [Section 3.3.5](#section-335-batchids “Title”). It is also important to create the *Batch_BB.csv* and *MergeConfig_BB.csv* files for processing to continue successfully. Each staining batch defined should have a separate set of these tables. Information on these files can be found in [Section 3.3.6](#section-336-batch-tables “Title”) and [Section 3.3.7](#section-337-mergeconfig-tables “Title”), respectively. 
 
 ### Section 3.3.1 Specimen_Table
 The specimen table is used to intialize the slides and servers as the link between the de identified slide ids and the clinical specimen ids. The specimen table should be labeled *Specimen_Table_N.xlsx*, where *N* stands for the same unique specifier on the *Clinical_Specimen_N* folder. This file should always be contained on a HIPAA complinant location. The file has the following columns:
@@ -79,7 +81,146 @@ Patient #, Specimen #, Cut Data, Level, Batch ID, Stain Date, Scan Date
 - ```Scan Date```: the date the slide started HPF scanning
 
 ### Section 3.3.2 SampleNames (Patient # or M Numbers)
+In order for the slide to be processed through the pipeline, it must be given its own de-identified number. These are the so called ```SampleName``` (in past versions ‘M’ numbers or ```Patient #```s). For these ```SampleName```'s each cohort will receive its own alphabetical key. Currently we are using:
+-	*M* for melanoma
+-	*L* for Lung
+-	*MA* for melanoma stain 2
 
+Within a cohort every slide stained will receive a new numeric value attached to the ```SampleName```s, the order of these do not matter. Examples for the first four slides stained of a cohort may be:
+- *M1*, *M2*, *M3*, *M4*
+- *M9*, *M100*, *M42*, *M35_3*
+
+If a Batch fails these slides should still receive a ```SampleName``` and show up in the *Speciment_Table_N.xlsx*. 
+
+### Section 3.3.3 Control TMA Conventions
+Each staining batch should be stained with a control TMA. The control TMAs are used to:
+- assess the quality of staining performed on a given staining run
+- normalize the data as part of the database upload
+When scanning the slides should be named *Control_TMA_XXXX_ZZ_MM.DD.YYYY*
+- XXXX is the TMA ID
+-	ZZ is the TMA cut number
+-	MM.DD.YYYY is the month, day, and year of staining
+*NOTE*: The ‘Control’ designation is provided so that we can appropriately select and handle the control tissues automatically
+
+### Section 3.3.4 Whole Slide Scanning
+The first time 20% overlap scanning is performed the following steps must be taken: 
+1.	Be sure that Phenochart is shut down
+2.	Go to *C:\ProgramData\PerkinElmer\Phenochart\* (Please note that ProgramData is usually a hidden folder)
+3.	Copy and paste the *Phenochart.config* file with one that does 20% overlap (a version of this is located in this folder)
+4.	Check ‘ROIs with overlap’ as on under the settings in Phenochart
+
+Next scan the *Control TMA*
+1. Take references for the microscope
+2. When a batch is finished staining we first check that the slides are designated in the Specimen_Table (indicated above):
+   - If the slide is designated in the *Specimen_Table_N*; check that the ‘M’ numbers are written on the slides and that they are the correct numbers
+   - If the slide is not designated in the *Specimen_Table_N* insert the required information and give the slides ```SampleName```s corresponding to the next available number (again numbers should not be repeated even if a batch fails)
+3. Set up the scanning exposures (the ‘Protocol’) for the TMA in the proper *\Clinical_Specimen folder
+   - Name the protocol and the task list-> Control_TMA_XXXX_YYY 
+     - XXXX -> the TMA ID (ie. 1372)
+     - YYY -> the TMA cut number (ie. 126)
+     - Old scanning protocols will be located in any Clinical_Specimen folder under Protocols 
+4. Name the control TMA slide -> *Control_TMA_XXXX_ZZ_MM.DD.YYYY*
+   - XXXX is the TMA ID
+   - ZZ is the TMA cut number
+   - MM.DD.YYYY is the month, day, and year of when staining finished
+5. Scan the whole slide overview
+6. Create an annotation scanning plan in Phenochart
+   - Open the TMA in  Phenochart
+   - Click ‘Login’ at the upper left-hand corner
+     - Type your name or initials
+    - Click ‘TMA’ in the upper middle of the screen
+      - Change the plan so that the bottom right TMA is [1,1]
+    - Change ‘core size’ to 1.5 mm
+    - Change the ‘Imaging Size’ to ‘3x3’ Image
+    - Draw the rectangle around all cores for Phenochart to locate the cores
+    - To do this click and hold near one of the corners and drag across to the opposite corner (a search box should be displayed by Phenochart)
+    - If a core is missing right click the location of the core and select ‘Add missing core’ then select the proper core
+    - If the cores are mislabeled you will have to start over and draw a new box (select ‘clear grid’ at the top to start over)
+    - Center the squares around the expected center of the Cores
+      - To center the cores click and hold ‘Ctrl’ 
+      - With the mouse click the center of one of the cores and move it
+      - If much of the core is missing, still center around what would be the expected center
+        - Because we do not correct for image distortion effects in the TMAs, if one core is missing half its tissue we still want to image the other half in the same way we would regularly
+      - Once you are satisfied click ‘Accept Grid’ and close Phenochart
+      - Now switch to the ‘Scan’ tab in the Vectra 3.0 software and select the ‘Acquire MSI fields’ task for the TMA
+7. Do the quality control of the TMA
+   - Open three cores from a previous Control TMA in inForm
+     - Be sure that the TMA cores came from the same cohort and from a Batch that worked 
+     - Example Cores for methods would include:
+   - Open the same three cores from the current TMA in inForm
+     - The ‘Core’ coordinates should be the same between batches
+   - Open an Algorithm with a current library
+   - Prepare all images with the library 
+   - Compare the counts and the stain quality between the old and the new TMA
+     - Click on the icon with the box next to a mouse pointer to compare the counts between the old and new  TMAs
+     - It is easiest to write down the Opal and its respective counts range on a sheet of paper to refer to when switching between old and new versions
+     - The colors are always as follows
+       - Opal520 – Green
+       - Opal540 – Yellow
+       - Opal570 – Red
+       - Opal620 – Orange
+       - Opal650 – Cyan
+       - Opal690 – Magenta 
+     - Look to see if general patterns are the same and if intensities vary
+     - It is usually easy to see differences visually and use counts as a sanity check for your eyes
+     - Because the of the similarities in the cores and stains within a cohort the variation between slides should be minimal
+8. Give the TMA a BatchID.txt file and give it the next corresponding Batch ID
+9. Fill in the Batch ID on the Specimen_Table if it is not already present
+
+If everything checks out scan the specimens as follows:
+1. Take exposures (create a protocol) for the actual multiplex slides 
+    - The rest of the slides will all receive the same protocol
+    - The name of the protocol should be *Multiplex_MMDDYYYY* 
+    - and should be saved to the corresponding *\Clinical_Specimen_* folder
+2.	Create a task list (.csv format) for the scanning
+    - To do this open one of the older task lists in the *\Clinical_Specimen_*\Protocols folder
+      - It should be named Multiplex_MMDDYYYY.csv
+    - Change the Slide ID to correspond to the new Patient #s
+    - Change the Protocols to the protocol that was just created
+    - Change to Tasks to ‘Scan Whole Slide’
+3.	Load the slide carrier with the slides
+    - Clean the slides using a Kimwipe to remove dust and excess mounting medium
+    - Load the carrier from bottom to top so that the first slide corresponds to Slot 1 on the Task list
+4.	Scan the slides: 
+    - Further description of 10 -13 is located in the ‘Vectra 3.0 Scanning –IF’ Protocol in \\halo1\Taubelab\Protocols
+5.	Create the annotation file for the Whole Slide Overlap imagery 
+6.	Acquire HPFs
+7.	Wait for data to backup using Allway Sync
+8.	Manually check that the image files are in both the local and backup locations
+    - Open two windows explorers, one for the local and one for the backup location
+    - Check that the same number of im3s exist in both locations 
+    - Sort by ‘Size’ in the windows explorer to be sure that all of the images are the same size
+      - If there is a file with 0 bytes, check for an M2 duplicate file. This is the only time variation in field size is allowed, see ‘Notes’ section below for details on how to handle M2 files.
+    - Check that the annotation.xml modified data are the same
+    - If something does not look right rescan or contact someone for help, never manually modify the data
+9.	Delete the local copy of the data
+10.	Add the BatchID.txt, described above, to the proper ‘Scan’ folder
+
+Whole Slide Scanning:
+1.	Take lower power overview scan as normal
+2.	Open Phenochart and select ROI
+3.	Circle the entire tissue, click OK on dialog box that appears
+4.	Delete empty fields around and inside tissue boundaries
+
+Notes: 
+1.	To scan multiple pieces of tissue:
+    - if they are close enough that there is asymmetric overlap between tissues include them in the same ROI drawing
+    - If there is no overlap between fields; circle the ROIs separately 
+2. Include the entire tissue: folds, necrosis, etc. 
+3. If a large number of HPFs fail in slide scanning, rescan the QPtiff to create a Scan2 (or next Scan number) folder, draw a new ROI, and start the scan over (do not delete Scan1 folder)
+   - This is a way to track for errors, remove human interaction with the data, and reduce issues that may come up due to multiple scans
+   - It is possible to manually create a Scan2 folder and copy the QPtiff from Scan1 (renaming all files to Scan2), if you do this be sure to delete the annotations.xml file in Scan2 before drawing a new ROI
+   - Much of our codes look to the .xml files to determine the expected number of .im3 files
+4.	If only a few HPFs fail do not rescan them
+5.	If it is a core biopsy and two cuts have been placed on the same slide; only select HPF annotation for one
+6.	Some files may end up with an ‘_M2.im3’ designation at the end of the file name. This means that the HPF was scanned twice. The duplicate is labeled with the ‘M2’ designation, but the initial scan has no designation and has 0 bytes. Do not delete either file. This is issue is dealt with in the automated pipeline.
+
+### Section 3.3.5 BatchIDs
+In the successful ‘ScanN’ folder there should be a text file named ‘BatchID.txt’. This file will indicate the folder that will be transferred and used in the data pipeline all other Scan folders generated by the Vectra scanning softwares are ignored. This file should only be added once all HPFs have been confirmed as successfully scanned. This text file should contain the numeric value of that BatchID. It is best to use a two-digit integer, (for values less than 10 use the ‘01’ format).
+
+### Section 3.3.6 Batch Tables
+
+### Section 3.3.7 MergeConfig Tables
 
 ## Section 3.4: AstroPath_Processing Directory and Initializing Projects
 The code is driven by the files located in a main processing folder, named the ```<Mpath>```. These files are described below followed by descriptions of the respectve columns. For columns without definitions provided, please check [Section 3.2](#section-32.definitions "Title") above. After a description of the directory and files included, instructions for intializing projects into the pipeline are provided.
