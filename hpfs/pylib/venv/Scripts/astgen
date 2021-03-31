@@ -1,0 +1,75 @@
+#!C:\Users\ssotodi1\Documents\ASTgen\venv\Scripts\python.exe
+
+import os, sys
+from astgen import astgen, utils
+from optparse import OptionParser
+
+DEFAULT_LAYOUT = "astgen.layouts.TwoFilesLayout"
+DEFAULT_PLATFORM = "astgen.platforms.CPlusPlus"
+
+def parse_options():
+    parser = OptionParser()
+    parser.add_option("-o", "--outputdir", dest = "outputdir", metavar = "OUTPUTDIR", default = "",
+                      help = "The output folder in which all generted files are written to.")
+    parser.add_option("-l", "--layout_backend", dest = "layout_backend", metavar = "LAYOUT_BACKEND", default = DEFAULT_LAYOUT,
+                      help = "The backend to decide the package layout of the code being generated, eg single file, multiple files etc")
+    parser.add_option("-p", "--platform_backend", dest = "platform_backend", metavar = "PLATFORM_BACKEND", default = DEFAULT_PLATFORM,
+                      help = "The backend to help with the platform to target code genration for, eg java, python, stl, C etc")
+    parser.add_option("-c", "--data", dest = "backend_config", metavar = "BACKEND_CONFIG", 
+                      help = "Data required any custom data that can be used/passed to the platform or layout backends.")
+    parser.add_option("-m", "--modelfile", dest = "model_file", metavar = "MODEL_FILE", 
+                      help = "Input model file containing AST definitions for which AST code is to be generated.")
+    (options, args) = parser.parse_args()
+    options.outputdir = options.outputdir.strip()
+    if options.outputdir and options.outputdir not in [".", "..", "./", "../"]:
+        if not os.path.isdir(options.outputdir):
+            os.makedirs(options.outputdir)
+    if not options.model_file:
+        parser.error("Model file parameter is mandatory.")
+    if not options.backend_config:
+        parser.error("Backend config file parameter is mandatory.")
+    if not options.layout_backend:
+        parser.error("""
+        Backend parameter is mandatory.  Built in options are (you can provide your own):
+
+        astgen.layouts.OneFileLayout
+        astgen.layouts.TwoFilesLayout
+        astgen.layouts.OneFilePerNodeLayout
+        astgen.layouts.TwoFilesPerNodeLayout
+        """)
+    if not options.platform_backend:
+        parser.error("""
+        Backend parameter is mandatory.  Built in options are (you can provide your own):
+
+        astgen.platforms.CPlusPlus
+        astgen.platforms.Java
+        astgen.platforms.Python
+        """)
+    print("Layout Backend: ", options.layout_backend)
+    print("Platform Backend: ", options.platform_backend)
+    return options, args
+
+if __name__ == "__main__":
+    options, args = parse_options()
+
+    nodes = utils.load_nodes_from_file(options.model_file)
+
+    backend_config = {}
+    if options.backend_config:
+        backend_config = utils.import_file(options.backend_config)
+        bd_keys = filter(lambda x: not x.startswith("__"), dir(backend_config))
+        backend_config = dict([(key, getattr(backend_config, key)) for key in bd_keys])
+        options.layout_backend = backend_config.get("LAYOUT_BACKEND", None) or options.layout_backend
+        options.platform_backend = backend_config.get("PLATFORM_BACKEND", None) or options.platform_backend
+
+    platform_backend = options.platform_backend.split(".")
+    platformBackendClass = getattr(utils.import_module(".".join(platform_backend[:-1])), platform_backend[-1])
+    platformBackend = platformBackendClass(backendConfig = backend_config)
+
+    layout_backend = options.layout_backend.split(".")
+    layoutBackendClass = getattr(utils.import_module(".".join(layout_backend[:-1])), layout_backend[-1])
+    layoutBackend = layoutBackendClass(platformBackend,
+                                       backendConfig = backend_config,
+                                       outdir = options.outputdir)
+    layoutBackend.generateCode(nodes)
+
