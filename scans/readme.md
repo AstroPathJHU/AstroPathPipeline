@@ -61,6 +61,25 @@ The file path structures have been standarized and are described below.
 *NOTE:* the ```<path>``` variables do not contain the ```<Dname>```
 
 ## Section 3.3: Scanning, Verifying Complete, and Adding BatchIDs
+Before scanning it is important to set up the ```<spath>```. This folder is created on the scanning computer where slides are scanned into. The folders are usually labeled *Clinical_Specimen_N*, where the *N* indicates a numeric value or unique lettering. Examples of these scanning folders incude *Clinical_Specimen_2* and *CLinical_Specimen_BMS_01*. In the JHU processing pipeline, this folder is backed up every night to a network server with significant storage capacity (~80TB) using commercially available software. In this way once slide scans are completed they can be deleted from the computer in such a way that the computers never run in storage issues. *NOTE*: The fully qualified path for this scanning folder on the server is designated as the ```<spath>```. 
+
+After new slides are stained, they should be added to a *Specimen_Table_N.xlsx* file located in each ```<spath>```, described in detail below in [Section 3.3.1](#section-331-specimentable “Title”). As part of adding slides to this table, the slides will be given a unique de identified name for scanning. Tips on these names are included in [Section 3.3.2](#section-332-samplenames-m-numbers “Title”). The most important aspect of this convention is to avoid the use of spaces and special characters. Once added to the *SpecimenTable.xlsx*, slides can be scanned with 20% overlap according to the protocol laid out in [Section 3.3.3](#section-333-whole-slide-scanning “Title”). In order for successful processing of the slides, it is very important that this procedure is adhered to correctly. After slides are scanned, the user should manually verify that all images were scanned completed properly and add a *BatchID.txt* file to the successful ```Scan``` directory. This initiates the slide transfer process in the pipeline, additional details on this step are defined in [Section 3.3.4](#section-334-batchids “Title”). It is also important to create the *Batch_BB.csv* and *MergeConfig_BB.csv* files for processing to continue successfully. Each staining batch defined should have a separate set of these tables. Information on these files can be found in [Section 3.3.5](#section-335-batch-tables “Title”) and [Section 3.3.6](#section-336-mergeconfig-tables “Title”), respectively. 
+
+### Section 3.3.1 Specimen_Table
+The specimen table is used to intialize the slides and servers as the link between the de identified slide ids and the clinical specimen ids. The specimen table should be labeled *Specimen_Table_N.xlsx*, where *N* stands for the same unique specifier on the *Clinical_Specimen_N* folder. This file should always be contained on a HIPAA complinant location. The file has the following columns:
+```
+Patient #, Specimen #, Cut Data, Level, Batch ID, Stain Date, Scan Date
+```
+- ```Patient #```: this is the ```SampleName``` defined in [Section 3.2.1](#section-321-identification-definitions "Title")
+- ```Specimen #```: this the specimen number that is used to identify the patient clinical information
+- ```Cut Date```: the date that the slide was cut from the tissue block
+- ```Level```: the cut number from the sections cut on that date
+- ```Batch ID```: the staining batch the slides was stained with, more details below in [Section 3.3.4](#section-334-batchids “Title”).
+- ```Stain Date```: the date the slide was stained on 
+- ```Scan Date```: the date the slide started HPF scanning
+
+### Section 3.3.2 SampleNames (Patient # or M Numbers)
+
 
 ## Section 3.4: AstroPath_Processing Directory and Initializing Projects
 The code is driven by the files located in a main processing folder, named the ```<Mpath>```. These files are described below followed by descriptions of the respectve columns. For columns without definitions provided, please check [Section 3.2](#section-32.definitions "Title") above. After a description of the directory and files included, instructions for intializing projects into the pipeline are provided.
