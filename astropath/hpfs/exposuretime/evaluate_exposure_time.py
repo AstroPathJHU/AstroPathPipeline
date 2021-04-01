@@ -1,5 +1,5 @@
 #imports
-from .alignmentset import AlignmentSetForExposureTime
+from .alignsample import AlignSampleForExposureTime
 from .utilities import getFirstLayerInGroup, getOverlapsWithExposureTimeDifferences
 from ..flatfield.utilities import FlatfieldSlideInfo
 from ...utilities.img_file_io import LayerOffset, getExposureTimesByLayer, getImageHWLFromXMLFile, getRawAsHWL, getSlideMedianExposureTimesByLayer
@@ -138,10 +138,10 @@ def writeResultsForSlide(slide,offsets,ff_file,workingdir,smoothsigma,allow_edge
             continue
         #start the list of results
         these_results = []
-        #make an AlignmentSet for just those overlaps and align it
+        #make an AlignSample for just those overlaps and align it
         logger.info(f'Getting {len(olaps_with_et_diffs)} overlaps with different exposure times for {slide.name} layer {li+1}')
         use_GPU = platform.system()!='Darwin'
-        a = AlignmentSetForExposureTime(slide.metadata_top_dir,slide.rawfile_top_dir,slide.name,
+        a = AlignSampleForExposureTime(slide.metadata_top_dir,slide.rawfile_top_dir,slide.name,
                                         selectoverlaps=olaps_with_et_diffs,onlyrectanglesinoverlaps=True,
                                         nclip=UNIV_CONST.N_CLIP,useGPU=use_GPU,readlayerfile=False,layer=li+1,filetype='raw',
                                         smoothsigma=smoothsigma,flatfield=flatfield[:,:,li])

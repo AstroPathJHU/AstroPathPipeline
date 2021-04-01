@@ -122,7 +122,7 @@ class MetadataSummary(MyDataClass):
   maxdate         : str
 
 #helper function to return a list of rectangle ns for all rectangles on the edge of the tissue for this slide
-def getAlignmentSetTissueEdgeRectNs(aset) :
+def getAlignSampleTissueEdgeRectNs(aset) :
   #get the list of sets of rectangle IDs by island
   slide_islands = aset.islands()
   edge_rect_ns = []

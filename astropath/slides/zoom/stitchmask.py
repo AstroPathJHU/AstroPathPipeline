@@ -1,8 +1,8 @@
 import abc, contextlib, numpy as np, pathlib
 from ...baseclasses.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities.misc import floattoint
-from ..alignment.alignmentset import AlignmentSet
-from ..alignment.field import FieldReadComponentTiff
+from ..align.alignsample import AlignSample
+from ..align.field import FieldReadComponentTiff
 from ..zoom.zoom import ZoomSampleBase
 
 class MaskSample(MaskSampleBase):
@@ -212,4 +212,4 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteM
 
   @classmethod
   def workflowdependencies(cls):
-    return [AlignmentSet] + super().workflowdependencies()
+    return [AlignSample] + super().workflowdependencies()

@@ -2,11 +2,11 @@
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds, FieldLog
 from .config import CONST
 from .plotting import plotFlaggedHPFLocations
-from ...slides.alignment.alignmentset import AlignmentSetFromXML
+from ...slides.align.alignsample import AlignSampleFromXML
 from ...utilities import units
 from ...utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, getExposureTimeHistogramsByLayerGroupForSlide
 from ...utilities.tableio import writetable
-from ...utilities.misc import cd, MetadataSummary, getAlignmentSetTissueEdgeRectNs, cropAndOverwriteImage
+from ...utilities.misc import cd, MetadataSummary, getAlignSampleTissueEdgeRectNs, cropAndOverwriteImage
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
 import os, glob
@@ -222,10 +222,10 @@ class FlatfieldSlide() :
         rawfile_paths    = The list of filepaths that will be searched for those on the edge of the tissue
         plotdir_path     = Add a valid directory to this argument to save a plot of where the edge HPFs are next to the reference qptiff
         """
-        #make an AlignmentSet to use in getting the islands
+        #make an AlignSample to use in getting the islands
         rawfile_top_dir = os.path.dirname(os.path.dirname(rawfile_paths[0]))
-        a = AlignmentSetFromXML(self._root_dir,rawfile_top_dir,self._name,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=1)
-        edge_rect_ns = getAlignmentSetTissueEdgeRectNs(a)
+        a = AlignSampleFromXML(self._root_dir,rawfile_top_dir,self._name,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=1)
+        edge_rect_ns = getAlignSampleTissueEdgeRectNs(a)
         #use this to return the list of tissue edge filepaths
         edge_rect_filenames = [r.file.split('.')[0] for r in a.rectangles if r.n in edge_rect_ns] 
         #use these to make the plot of the rectangle locations

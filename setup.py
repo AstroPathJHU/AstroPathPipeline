@@ -7,7 +7,8 @@ setupkwargs = dict(
   packages = setuptools.find_packages(include=["astropath*"]),
   entry_points = {
     "console_scripts": [
-      "alignmentcohort=astropath.slides.alignment.alignmentcohort:main",
+      "aligncohort=astropath.slides.align.aligncohort:main",
+      "alignsample=astropath.slides.align.alignsample:main",
       "annowarpcohort=astropath.slides.annowarp.annowarpcohort:main",
       "annowarpfailedfitswithconstraint=astropath.slides.annowarp.annowarpfailedfitswithconstraint:main",
       "compareprepdbcohort=astropath.slides.prepdb.compareprepdbcohort:main",
