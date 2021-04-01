@@ -13,7 +13,6 @@ import csv
 import sys
 import numpy
 import time
-import traceback
 import pandas
 import argparse
 from operator import itemgetter
@@ -88,7 +87,6 @@ def extract_specimens(dname, spath, mpath):
     if not os.path.exists(specimen_path)\
             or not os.path.exists(cohort_path):
         return [], [], []
-    err = 1
     attempts = 0
     try:
         #
