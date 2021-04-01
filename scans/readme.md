@@ -60,7 +60,7 @@ The file path structures have been standarized and are described below.
    - ***Additional details on these files can be found in the flatw workflow description***
 
 *NOTE*: the ```<path>``` variables do not contain the ```<Dname>```
-
+``` ```
 ## 3.3. Scanning, Verifying Complete, and Adding BatchIDs
 Before scanning it is important to set up the ```<spath>```. This folder is created on the scanning computer where slides are scanned into. The folders are usually labeled *Clinical_Specimen_N*, where the *N* indicates a numeric value or unique lettering. Examples of these scanning folders incude *Clinical_Specimen_2* and *CLinical_Specimen_BMS_01*. In the JHU processing pipeline, this folder is backed up every night to a network server with significant storage capacity (~80TB) using commercially available software. In this way once slide scans are completed they can be deleted from the computer in such a way that the computers never run in storage issues. *NOTE*: The fully qualified path for this scanning folder on the server is designated as the ```<spath>```. 
 
