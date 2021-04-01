@@ -1,9 +1,9 @@
 import argparse, numpy as np
 from astropath.utilities import units
-from .makeplots import alignmentset
+from .makeplots import alignsample
 
 def printmatrix(**kwargs):
-  A = alignmentset(**kwargs)
+  A = alignsample(**kwargs)
   T = A.T
 
   print()

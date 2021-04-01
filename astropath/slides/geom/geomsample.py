@@ -4,8 +4,8 @@ from ...baseclasses.polygon import DataClassWithPolygon, SimplePolygon, polygonf
 from ...baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
 from ...utilities.tableio import writetable
-from ..alignment.alignmentset import AlignmentSet
-from ..alignment.field import FieldReadComponentTiff
+from ..align.alignsample import AlignSample
+from ..align.field import FieldReadComponentTiff
 from .contours import findcontoursaspolygons
 
 class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
@@ -83,7 +83,7 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
 
   @classmethod
   def workflowdependencies(cls):
-    return [AlignmentSet] + super().workflowdependencies()
+    return [AlignSample] + super().workflowdependencies()
 
 class Boundary(DataClassWithPolygon):
   n: int

@@ -11,7 +11,7 @@ from .overlap import AlignmentResult, AlignmentOverlap
 from .rectangle import AlignmentRectangle, AlignmentRectangleBase, AlignmentRectangleComponentTiff, AlignmentRectangleProvideImage
 from .stitch import ReadStitchResult, stitch
 
-class AlignmentSetBase(SampleBase):
+class AlignSampleBase(SampleBase):
   """
   Main class for aligning the HPFs in a slide
   """
@@ -65,7 +65,7 @@ class AlignmentSetBase(SampleBase):
     Other keyword arguments are passed to overlap.align()
     """
     #load the images for all HPFs and keep them in memory as long as
-    #the AlignmentSet is active
+    #the AlignSample is active
     self.getDAPI()
     self.logger.info("starting alignment")
 
@@ -117,7 +117,7 @@ class AlignmentSetBase(SampleBase):
     #load the images
     if self.__images is None or keeprawimages:
       #create a context manager for the image loading
-      #it is in self.enter_context(), so it will exit when the AlignmentSet does
+      #it is in self.enter_context(), so it will exit when the AlignSample does
       #and the memory will be freed
       if self.__images is None: self.__images = self.enter_context(contextlib.ExitStack())
       with contextlib.ExitStack() as stack:
@@ -288,7 +288,7 @@ class AlignmentSetBase(SampleBase):
   def stitchresult(self, stitchresult):
     self.__stitchresult = stitchresult
 
-class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
+class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
   """
   An alignment set that runs from the dbload folder and can write results
   to the dbload folder
@@ -452,7 +452,7 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
   def workflowdependencies(cls):
     return [PrepDbSample] + super().workflowdependencies()
 
-class AlignmentSetFromXMLBase(AlignmentSetBase, ReadRectanglesOverlapsFromXML):
+class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML):
   """
   An alignment set that does not rely on the dbload folder and cannot write the output.
   It is a little slower to initialize than an alignment set that does have dbload.
@@ -467,7 +467,7 @@ class AlignmentSetFromXMLBase(AlignmentSetBase, ReadRectanglesOverlapsFromXML):
   @property
   def position(self): return self.__position
 
-class AlignmentSetIm3Base(AlignmentSetBase, ReadRectanglesOverlapsIm3Base):
+class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base):
   """
   An alignment set that uses im3 images
   """
@@ -475,35 +475,35 @@ class AlignmentSetIm3Base(AlignmentSetBase, ReadRectanglesOverlapsIm3Base):
   def __init__(self, *args, filetype="flatWarp", **kwargs):
     super().__init__(*args, filetype=filetype, **kwargs)
 
-class AlignmentSetComponentTiffBase(AlignmentSetBase, ReadRectanglesOverlapsComponentTiffBase):
+class AlignSampleComponentTiffBase(AlignSampleBase, ReadRectanglesOverlapsComponentTiffBase):
   """
   An alignment set that uses component tiffs
   """
   rectangletype = AlignmentRectangleComponentTiff
 
-class AlignmentSet(AlignmentSetIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignmentSetDbloadBase):
+class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSampleDbloadBase):
   """
   An alignment set that runs on im3 images and can write results to the dbload folder.
-  This is the primary AlignmentSet class that is used for calibration.
+  This is the primary AlignSample class that is used for calibration.
 
   The alignment step of the pipeline finds the relative shift between adjacent HPFs.
   It then stitches the results together using a spring model.  For more information,
   see the LaTeX document on alignment in the documentation folder.
   """
 
-class AlignmentSetFromXML(AlignmentSetIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignmentSetFromXMLBase):
+class AlignSampleFromXML(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase):
   """
   An alignment set that runs on im3 images and does not rely on the dbload folder.
   This class is used for calibrating the warping.
   """
 
-class AlignmentSetComponentTiff(AlignmentSetComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignmentSetDbloadBase):
+class AlignSampleComponentTiff(AlignSampleComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignSampleDbloadBase):
   """
   An alignment set that runs on im3 images and can write results to the dbload folder.
   This class is not currently used but is here for completeness.
   """
 
-class AlignmentSetComponentTiffFromXML(AlignmentSetComponentTiffBase, AlignmentSetFromXMLBase, ReadRectanglesOverlapsComponentTiffFromXML):
+class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleFromXMLBase, ReadRectanglesOverlapsComponentTiffFromXML):
   """
   An alignment set that runs on im3 images and does not rely on the dbload folder.
   This class is used for identifying overexposed HPFs.
@@ -516,7 +516,7 @@ def main(args=None):
   p.add_argument("SlideID")
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
-    A = AlignmentSet(root=args.root, root2=args.root2, samp=args.SlideID)
+    A = AlignSample(root=args.root, root2=args.root2, samp=args.SlideID)
     A.align()
     A.stitch()
 

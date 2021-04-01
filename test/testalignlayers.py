@@ -1,7 +1,7 @@
 import more_itertools, numpy as np, pathlib
-from astropath.slides.alignment.alignlayers import AlignLayers
-from astropath.slides.alignment.overlap import LayerAlignmentResult
-from astropath.slides.alignment.stitchlayers import LayerPosition, LayerPositionCovariance
+from astropath.slides.align.alignlayers import AlignLayers
+from astropath.slides.align.overlap import LayerAlignmentResult
+from astropath.slides.align.stitchlayers import LayerPosition, LayerPositionCovariance
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput

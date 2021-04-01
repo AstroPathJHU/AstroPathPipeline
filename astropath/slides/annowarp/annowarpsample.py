@@ -9,9 +9,9 @@ from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint
 from ...utilities.tableio import readtable, writetable
 from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
-from ..alignment.computeshift import computeshift
-from ..alignment.field import FieldReadComponentTiffMultiLayer
-from ..alignment.overlap import AlignmentComparison
+from ..align.computeshift import computeshift
+from ..align.field import FieldReadComponentTiffMultiLayer
+from ..align.overlap import AlignmentComparison
 from ..zoom.stitchmask import InformMaskSample, TissueMaskSample, StitchInformMask
 from ..zoom.zoom import Zoom, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
@@ -290,7 +290,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
 
     #tweak the y position by -900 for the microsocope glitches
     #sometimes the y position is < 0 but reported by the microscope
-    #as 0.  we exclude the fields at negative y from alignment.
+    #as 0.  we exclude the fields at negative y from align.
     qshifty = 0
     if self.yposition == 0: qshifty = units.Distance(pixels=900, pscale=imscale)
 

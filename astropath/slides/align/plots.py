@@ -6,33 +6,33 @@ from ...utilities.misc import floattoint, pullhist
 
 logger = logging.getLogger("alignmentplots")
 
-def rectanglelayout(alignmentset, *, xrange=None, yrange=None, primaryarea=True, figurekwargs={}, showplot=None, saveas=None):
+def rectanglelayout(alignsample, *, xrange=None, yrange=None, primaryarea=True, figurekwargs={}, showplot=None, saveas=None):
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
-  onepixel = alignmentset.onepixel
-  shape = alignmentset.fields[0].shape/onepixel
+  onepixel = alignsample.onepixel
+  shape = alignsample.fields[0].shape/onepixel
   if primaryarea:
     if xrange is None:
       xrange = (
-        np.min([r.mx1 for r in alignmentset.fields]) / onepixel,
-        np.max([r.mx2 for r in alignmentset.fields]) / onepixel,
+        np.min([r.mx1 for r in alignsample.fields]) / onepixel,
+        np.max([r.mx2 for r in alignsample.fields]) / onepixel,
       )
     if yrange is None:
       yrange = (
-        np.max([r.my2 for r in alignmentset.fields]) / onepixel,
-        np.min([r.my1 for r in alignmentset.fields]) / onepixel,
+        np.max([r.my2 for r in alignsample.fields]) / onepixel,
+        np.min([r.my1 for r in alignsample.fields]) / onepixel,
       )
   else:
-    xmin, ymin = np.min([r.xvec for r in alignmentset.fields], axis=0) / onepixel
-    xmax, ymax = np.max([r.xvec+r.shape for r in alignmentset.fields], axis=0) / onepixel
+    xmin, ymin = np.min([r.xvec for r in alignsample.fields], axis=0) / onepixel
+    xmax, ymax = np.max([r.xvec+r.shape for r in alignsample.fields], axis=0) / onepixel
     if xrange is None: xrange = xmin, xmax
     if yrange is None: yrange = ymax, ymin
   ax.set_xlim(*xrange)
   ax.set_ylim(*yrange)
-  xparity = {x: i for i, x in enumerate(sorted({r.x for r in alignmentset.fields}))}
-  yparity = {y: i for i, y in enumerate(sorted({r.y for r in alignmentset.fields}))}
+  xparity = {x: i for i, x in enumerate(sorted({r.x for r in alignsample.fields}))}
+  yparity = {y: i for i, y in enumerate(sorted({r.y for r in alignsample.fields}))}
   colors = ["red", "blue", "green", "yellow", "purple", "orange", "magenta"]
-  for r in alignmentset.fields:
+  for r in alignsample.fields:
     parity = xparity[r.x] + 3*yparity[r.y]
     color = colors[parity % len(colors)]
     if primaryarea:
@@ -50,7 +50,7 @@ def rectanglelayout(alignmentset, *, xrange=None, yrange=None, primaryarea=True,
     )
     ax.add_patch(box)
     plt.text(*xvec+shape/2, str(r.n), horizontalalignment="center", verticalalignment="center")
-  for o in alignmentset.overlaps:
+  for o in alignsample.overlaps:
     r1, r2 = o.rectangles
     center = (r1.xvec+r1.shape/2 + r2.xvec+r2.shape/2) / 2
     boxsize = r1.shape/10
@@ -70,14 +70,14 @@ def rectanglelayout(alignmentset, *, xrange=None, yrange=None, primaryarea=True,
   if not showplot:
     plt.close()
 
-def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, showplot=None, figurekwargs={}, pull=False, pixelsormicrons=None, pullkwargs={}, pullbinning=None):
-  logger.debug(alignmentset.samp)
+def plotpairwisealignments(alignsample, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, showplot=None, figurekwargs={}, pull=False, pixelsormicrons=None, pullkwargs={}, pullbinning=None):
+  logger.debug(alignsample.samp)
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
   vectors = np.array([
     o.result.dxvec - (o.stitchresult if stitched else 0)
-    for o in alignmentset.overlaps
+    for o in alignsample.overlaps
     if not o.result.exit
     and o.tag in tags
   ])
@@ -105,7 +105,7 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
       raise ValueError("Can't provide pull kwargs for a scatter plot")
     if pixelsormicrons is None:
       raise ValueError("Have to provide pixelsormicrons for a scatterplot")
-    divideby = {"pixels": alignmentset.onepixel, "microns": alignmentset.onemicron}[pixelsormicrons]
+    divideby = {"pixels": alignsample.onepixel, "microns": alignsample.onemicron}[pixelsormicrons]
     kwargs = dict(
       x=(units.nominal_values(vectors[:,0]) / divideby).astype(float),
       y=(units.nominal_values(vectors[:,1]) / divideby).astype(float),
@@ -138,8 +138,8 @@ def plotpairwisealignments(alignmentset, *, stitched=False, tags=[1, 2, 3, 4, 6,
   logger.debug("done")
   return vectors
 
-def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
-  logger.debug(alignmentset.samp)
+def closedlooppulls(alignsample, *, tagsequence, binning=np.linspace(-5, 5, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
+  logger.debug(alignsample.samp)
   dct = {
     1: (-1, -1),
     2: ( 0, -1),
@@ -154,8 +154,8 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
   if np.any(totaloffset):
     raise ValueError(f"please check your tag sequence - it ends with an offset of {tuple(totaloffset)}")
 
-  overlaps = alignmentset.overlaps
-  g = alignmentset.overlapgraph()
+  overlaps = alignsample.overlaps
+  g = alignsample.overlapgraph()
   xresiduals, yresiduals = [], []
   overlapdict = nx.get_edge_attributes(g, "overlap")
 
@@ -214,12 +214,12 @@ def closedlooppulls(alignmentset, *, tagsequence, binning=np.linspace(-5, 5, 51)
   logger.debug("done")
   return xresiduals, yresiduals
 
-def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax, cbar, xory: None, island=None, showplot=None):
-  logger.debug(alignmentset.samp)
-  fields = alignmentset.fields
-  onepixel = alignmentset.onepixel
+def shiftplot2D(alignsample, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax, cbar, xory: None, island=None, showplot=None):
+  logger.debug(alignsample.samp)
+  fields = alignsample.fields
+  onepixel = alignsample.onepixel
   if island is not None:
-    fields = [field for field in fields if field.n in alignmentset.islands()[island]]
+    fields = [field for field in fields if field.n in alignsample.islands()[island]]
   deltax = min(abs(a.x-b.x) for a, b in more_itertools.pairwise(fields) if a.x != b.x)
   deltay = min(abs(a.y-b.y) for a, b in more_itertools.pairwise(fields) if a.y != b.y)
   deltaxvec = deltax, deltay
@@ -232,7 +232,7 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
 
   for f in fields:
     idx = (slice(None),) + tuple(reversed(floattoint(((f.xvec - x0vec) / deltaxvec).astype(float))))
-    xyarray[idx] = units.nominal_values(f.pxvec - alignmentset.T@(f.xvec-alignmentset.position))
+    xyarray[idx] = units.nominal_values(f.pxvec - alignsample.T@(f.xvec-alignsample.position))
 
   xyarraypixels = (xyarray / onepixel).astype(float)
 
@@ -264,12 +264,12 @@ def shiftplot2D(alignmentset, *, saveasx=None, saveasy=None, figurekwargs={}, pl
   return xyarray, extent
 
 
-def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax, deltaxory, vsxory: None, drawfourier=False, guessparameters=None, plotsine=True, sinetext=True, **kwargs):
-  onepixel = alignmentset.onepixel
+def shiftplotprofile(alignsample, *, deltaxory, vsxory, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax, deltaxory, vsxory: None, drawfourier=False, guessparameters=None, plotsine=True, sinetext=True, **kwargs):
+  onepixel = alignsample.onepixel
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
-  xyarray, extent = shiftplot2D(alignmentset, showplot=False, **kwargs)
+  xyarray, extent = shiftplot2D(alignsample, showplot=False, **kwargs)
 
   if deltaxory == "x":
     array2D = xyarray[0]
@@ -414,8 +414,8 @@ def shiftplotprofile(alignmentset, *, deltaxory, vsxory, saveas=None, figurekwar
   print("Average:")
   print(f"  {mean}")
   try:
-    o = alignmentset.overlaps[0]
-    expected = ((alignmentset.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]
+    o = alignsample.overlaps[0]
+    expected = ((alignsample.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]
   except AttributeError:
     pass
   else:

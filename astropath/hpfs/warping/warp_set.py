@@ -49,7 +49,7 @@ class WarpSet :
         Loads files in rawfiles list into a dictionary indexed by filename and layer number to cut down on I/O for repeatedly warping a set of images
         rawfiles             = list of raw, unwarped image filenames (optional, will use value from init if None)
         overlaps             = list of overlaps for this particular fit (optional, only used to mask out images that appear in corner overlaps exclusively)
-        rectangles           = list of rectangles for this particular fit (optional, used to streamline updating an AlignmentSet's rectangle images)
+        rectangles           = list of rectangles for this particular fit (optional, used to streamline updating an AlignSample's rectangle images)
         root_dir             = path to Clinical_Specimen directory
         flatfield_file       = path to flatfield file to apply when reading in raw images
         med_exp_time         = the median exposure time for images in this layer of this slide (None if no correction should be applied)

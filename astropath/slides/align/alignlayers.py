@@ -4,7 +4,7 @@ Aligning layers with respect to each other is not fully implemented yet.
 
 import cv2, itertools, methodtools, numpy as np
 from ...baseclasses.sample import ReadRectanglesOverlapsBase, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base
-from .alignmentset import AlignmentSet, AlignmentSetBase
+from .alignsample import AlignSample, AlignSampleBase
 from .rectangle import AlignmentRectangleMultiLayer, RectanglePCAByBroadbandFilter
 from .overlap import AlignmentOverlap, LayerAlignmentResult
 from .stitchlayers import stitchlayers
@@ -132,7 +132,7 @@ class SampleWithLayerOverlaps(ReadRectanglesOverlapsBase):
       ], start=1)
     ]
 
-class AlignLayersBase(SampleWithLayerOverlaps, AlignmentSetBase, ReadRectanglesOverlapsIm3Base):
+class AlignLayersBase(SampleWithLayerOverlaps, AlignSampleBase, ReadRectanglesOverlapsIm3Base):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.logger.warningglobal("Layer alignment is not fully implemented.  Results are not necessarily going to be accurate.")
@@ -142,7 +142,7 @@ class AlignLayersBase(SampleWithLayerOverlaps, AlignmentSetBase, ReadRectanglesO
     result.applytooverlaps()
     self.stitchresult = result
 
-class AlignLayers(AlignLayersBase, AlignmentSet):
+class AlignLayers(AlignLayersBase, AlignSample):
   @property
   def alignmentsfilename(self): return self.csv("alignlayers")
   @property

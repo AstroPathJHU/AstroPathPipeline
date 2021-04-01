@@ -277,7 +277,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
   rectangles: the HPFs
   overlaps: the overlaps
   origin: the origin for defining the pxvec coordinate system
-  logger: the AlignmentSet's logger
+  logger: the AlignSample's logger
   """
   def __init__(self, *, rectangles, overlaps, origin, logger=dummylogger):
     self.__rectangles = rectangles

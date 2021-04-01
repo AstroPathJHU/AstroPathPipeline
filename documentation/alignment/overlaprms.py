@@ -1,9 +1,9 @@
 import argparse, numpy as np
 from astropath.utilities import units
-from .makeplots import alignmentset
+from .makeplots import alignsample
 
 def printrms(**kwargs):
-  A = alignmentset(**kwargs)
+  A = alignsample(**kwargs)
   T = A.T
   dT = T - np.identity(2)
   rd = A.rectangledict

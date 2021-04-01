@@ -1,8 +1,8 @@
 from ...baseclasses.cohort import DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort
-from .alignmentset import AlignmentSet
+from .alignsample import AlignSample
 
-class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort):
-  __doc__ = AlignmentSet.__doc__
+class AlignCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort):
+  __doc__ = AlignSample.__doc__
 
   def __init__(self, *args, doalignment=True, dostitching=True, **kwargs):
     super().__init__(*args, **kwargs)
@@ -11,7 +11,7 @@ class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowC
     if not doalignment and not dostitching:
       raise ValueError("If you do neither alignment nor stitching, there's nothing to do")
 
-  sampleclass = AlignmentSet
+  sampleclass = AlignSample
 
   def runsample(self, sample):
     if self.__doalignment:
@@ -41,7 +41,7 @@ class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowC
     return kwargs
 
 def main(args=None):
-  AlignmentCohort.runfromargumentparser(args)
+  AlignCohort.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

@@ -1,8 +1,8 @@
 #imports
 import os
 from ...baseclasses.rectangle import RectangleTransformationBase
-from ...slides.alignment.alignmentset import AlignmentSetFromXML
-from ...slides.alignment.rectangle import AlignmentRectangle
+from ...slides.align.alignsample import AlignSampleFromXML
+from ...slides.align.rectangle import AlignmentRectangle
 from ...utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield
 from ...utilities.img_file_io import getExposureTimesByLayer
 from ...utilities.config import CONST as UNIV_CONST
@@ -41,7 +41,7 @@ class RectangleForWarping(AlignmentRectangle):
         super().__post_init__(*args, transformations=transformations, **kwargs)
         
 
-class AlignmentSetForWarping(AlignmentSetFromXML):
+class AlignSampleForWarping(AlignSampleFromXML):
     def __init__(self, *args, med_et, offset, flatfield, **kwargs):
         self.__med_et = med_et
         self.__offset = offset

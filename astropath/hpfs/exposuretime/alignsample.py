@@ -1,7 +1,7 @@
 #imports
 from ...baseclasses.rectangle import RectangleTransformationBase
-from ...slides.alignment.alignmentset import AlignmentSetFromXML
-from ...slides.alignment.rectangle import AlignmentRectangle
+from ...slides.align.alignsample import AlignSampleFromXML
+from ...slides.align.rectangle import AlignmentRectangle
 from ...utilities.img_file_io import smoothImageWorker
 from ...utilities.img_correction import correctImageLayerWithFlatfield
 
@@ -26,7 +26,7 @@ class RectangleForExposureTime(AlignmentRectangle):
             transformations.append(SmoothImage(smoothsigma))
         super().__post_init__(*args, transformations=transformations, **kwargs)
 
-class AlignmentSetForExposureTime(AlignmentSetFromXML):
+class AlignSampleForExposureTime(AlignSampleFromXML):
     def __init__(self, *args, flatfield, smoothsigma, **kwargs):
         self.__flatfield = flatfield
         self.__smoothsigma = smoothsigma

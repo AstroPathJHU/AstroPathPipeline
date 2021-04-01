@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
-from astropath.slides.alignment.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
-from astropath.slides.alignment.isotropy import isotropy, stitchingisotropy
-from astropath.slides.alignment.alignmentset import AlignmentSet
+from astropath.slides.align.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
+from astropath.slides.align.isotropy import isotropy, stitchingisotropy
+from astropath.slides.align.alignsample import AlignSample
 from astropath.utilities import units
 
 here = pathlib.Path(__file__).parent
@@ -18,14 +18,14 @@ rc = {
 }
 
 @functools.lru_cache()
-def __alignmentset(root1, root2, samp, dapi, **kwargs):
+def __alignsample(root1, root2, samp, dapi, **kwargs):
   if dapi:
-    A = alignmentset(root1=root1, root2=root2, samp=samp, **kwargs)
+    A = alignsample(root1=root1, root2=root2, samp=samp, **kwargs)
     A.getDAPI()
     return A
 
   if root1 is root2 is samp is None:
-    return alignmentset(samp="M21_1", **kwargs)
+    return alignsample(samp="M21_1", **kwargs)
 
   if root1 is root2 is None:
     if samp == "M21_1": root1, root2 = data, data/"flatw"
@@ -36,26 +36,26 @@ def __alignmentset(root1, root2, samp, dapi, **kwargs):
     elif samp == "ML1603474_BMS069_5_21" or samp == "ML1603480_BMS078_5_22": root1, root2 = r"\\bki03\Clinical_Specimen_BMS_01", r"\\bki02\g\heshy\Clinical_Specimen_BMS_01"
     elif samp == "M115": root1, root2 = r"\\bki07\Clinical_Specimen_11", r"\\bki07\flatw_11"
     else: raise ValueError(samp)
-    return alignmentset(root1=root1, root2=root2, samp=samp, **kwargs)
+    return alignsample(root1=root1, root2=root2, samp=samp, **kwargs)
 
-  A = AlignmentSet(root1, root2, samp, interactive=interactive, **kwargs)
+  A = AlignSample(root1, root2, samp, interactive=interactive, **kwargs)
 
   A.readalignments()
   A.readstitchresult()
   return A
 
-def alignmentset(*, root1=None, root2=None, samp=None, dapi=False, **kwargs):
-  return __alignmentset(root1=root1, root2=root2, samp=samp, dapi=dapi, **kwargs)
+def alignsample(*, root1=None, root2=None, samp=None, dapi=False, **kwargs):
+  return __alignsample(root1=root1, root2=root2, samp=samp, dapi=dapi, **kwargs)
 
 def overlap():
-  A = alignmentset(dapi=True)
+  A = alignsample(dapi=True)
   o = A.overlaps[140]
   with plt.rc_context(rc=rc):
     o.showimages(shifted=False, normalize=1000, ticks=True, saveas=here/"overlap-notshifted.pdf")
     o.showimages(shifted=True, normalize=1000, ticks=True, saveas=here/"overlap-shifted.pdf")
 
 def xcorrelation():
-  A = alignmentset(dapi=True)
+  A = alignsample(dapi=True)
   o = A.overlaps[140]
   with plt.rc_context(rc=rc):
     o.align(savebigimage=here/"overlap-xcorrelation.pdf", alreadyalignedstrategy="overwrite", debug=True)
@@ -135,7 +135,7 @@ def maximize1D():
     plt.close(fig)
 
 def islands():
-  A = alignmentset()
+  A = alignsample()
   with plt.rc_context(rc=rc):
     plt.imshow(A.qptiffjpgimage())
     plt.xticks([])
@@ -169,7 +169,7 @@ def alignmentresults(*, bki, remake):
       for tag in 1, 2, 3, 4:
         filename1, filename2 = here/f"alignment-result-{name}-{tag}.pdf", here/f"stitch-result-{name}-{tag}.pdf"
         if samp != "M21_1" and filename1.exists() and filename2.exists() and not remake: continue
-        A = alignmentset(samp=samp)
+        A = alignsample(samp=samp)
         errorbars = samp == "M21_1"
         plotpairwisealignments(A, tags=[tag], saveas=filename1, errorbars=errorbars, **kwargs)
         plotpairwisealignments(A, tags=[tag], stitched=True, saveas=filename2, errorbars=errorbars, **kwargs)
@@ -256,11 +256,11 @@ def squarepulls(*, bki, testing, remake):
         plotid = samp[1] if samp else "_test"
         saveas = here/("squarepull"+plotid+".pdf")
         if remake or not os.path.exists(saveas):
-          A = alignmentset(samp=samp)
+          A = alignsample(samp=samp)
           closedlooppulls(A, tagsequence=[4, 2, 6, 8], saveas=saveas, plotstyling=functools.partial(plotstyling, squareordiamond="square"), **kwargs)
         saveas = here/("diamondpull"+plotid+".pdf")
         if remake or not os.path.exists(saveas):
-          A = alignmentset(samp=samp)
+          A = alignsample(samp=samp)
           closedlooppulls(A, tagsequence=[1, 3, 9, 7], saveas=here/("diamondpull"+plotid+".pdf"), plotstyling=functools.partial(plotstyling, squareordiamond="diamond"), **kwargs)
 
 def stitchpulls(*, bki, testing, remake):
@@ -279,7 +279,7 @@ def stitchpulls(*, bki, testing, remake):
         for tag in 1, 2, 3, 4:
           saveas=os.path.join(here, f"stitch-pull-{tag}-{plotid}.pdf")
           if os.path.exists(saveas) and not remake: continue
-          A = alignmentset(samp=samp)
+          A = alignsample(samp=samp)
           plotpairwisealignments(
             A,
             tags=[tag],
@@ -317,15 +317,15 @@ def sinewaves(*, bki, testing, remake):
       ]
 
       for samp, name, plotsine, sinetext, guessparameters in samples:
-        alignmentsetkwargs = {"samp": samp}
-        alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
+        alignsamplekwargs = {"samp": samp}
+        alignsamplekwargs = {k: v for k, v in alignsamplekwargs.items() if v is not None}
         kwargs = {}
         for kwargs["deltaxory"] in "xy":
           for kwargs["vsxory"] in "xy":
             if kwargs["deltaxory"] != kwargs["vsxory"]: continue
             saveas = os.path.join(here, f"sine-wave-{kwargs['deltaxory']}{kwargs['vsxory']}-{name}.pdf")
             if os.path.exists(saveas) and not remake: continue
-            A = alignmentset(**alignmentsetkwargs)
+            A = alignsample(**alignsamplekwargs)
             shiftplotprofile(
               A,
               plotsine=plotsine(**kwargs),
@@ -361,11 +361,11 @@ def plots2D(*, bki, testing, remake):
       ]
 
       for samp, name, figurekwargs, subplotkwargs in samples:
-        alignmentsetkwargs = {"samp": samp}
-        alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
+        alignsamplekwargs = {"samp": samp}
+        alignsamplekwargs = {k: v for k, v in alignsamplekwargs.items() if v is not None}
         saveasx, saveasy = (here/f"2D-shifts-{name}-{xy}.pdf" for xy in "xy")
         if saveasx.exists() and saveasy.exists() and not remake: continue
-        A = alignmentset(**alignmentsetkwargs)
+        A = alignsample(**alignsamplekwargs)
         shiftplot2D(
           A,
           figurekwargs=figurekwargs,
@@ -403,11 +403,11 @@ def isotropyhist(*, bki, testing, remake):
           currentstitchresultisfor = "all"
           for overlaps in "all", "edges", "corners", "bestRMS":
             for tag in 1, 2, 3, 4:
-              alignmentsetkwargs = {"samp": samp}
-              alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
+              alignsamplekwargs = {"samp": samp}
+              alignsamplekwargs = {k: v for k, v in alignsamplekwargs.items() if v is not None}
               saveas = here/f"isotropy-histogram-{name}-{tag}-{overlaps}.pdf"
               if saveas.exists() and not remake: continue
-              A = alignmentset(**alignmentsetkwargs)
+              A = alignsample(**alignsamplekwargs)
               A.logger.info("%s %s", tag, overlaps)
               if currentstitchresultisfor != overlaps:
                 if currentstitchresultisfor == "all": oldstitchresult = A.stitchresult
@@ -460,8 +460,8 @@ def isotropyscatter(*, bki, testing, remake):
       figurekwargs = {"figsize": (6, 6)}
 
       for samp, name in samples:
-        alignmentsetkwargs = {"samp": samp}
-        alignmentsetkwargs = {k: v for k, v in alignmentsetkwargs.items() if v is not None}
+        alignsamplekwargs = {"samp": samp}
+        alignsamplekwargs = {k: v for k, v in alignsamplekwargs.items() if v is not None}
         saveas = here/f"stitching-{{isotropyorRMS}}-{name}-{{tag}}.pdf"
         if not remake and all(
           pathlib.Path(str(saveas).format(isotropyorRMS=thing, tag=tag)).exists()
@@ -469,7 +469,7 @@ def isotropyscatter(*, bki, testing, remake):
           for thing in ("isotropy", "rms")
           if not (thing == "isotropy" and tag == "all")
         ): continue
-        A = alignmentset(**alignmentsetkwargs)
+        A = alignsample(**alignsamplekwargs)
         oldstitchresult = A.stitchresult
         try:
           stitchingisotropy(

@@ -5,15 +5,15 @@ explanation, see [this document](README.pdf).
 
 To run alignment on single slide, run:
 ```
-alignmentset root/path/of/samples root/path/of/images SlideID
+alignsample root/path/of/samples root/path/of/images SlideID
 ```
 
 To run alignment on a whole cohort of slides, run:
 ```
-alignmentcohort root/path/of/samples root/path/of/images
+aligncohort root/path/of/samples root/path/of/images
 ```
 
-To see more command line arguments, run `alignmentset --help` or `alignmentcohort --help`.
+To see more command line arguments, run `alignsample --help` or `aligncohort --help`.
 
 The outputs will be in `root/path/of/samples/SlideID/dbload/`.  The following files will
 be created:

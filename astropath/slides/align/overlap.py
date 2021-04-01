@@ -93,7 +93,7 @@ class AlignmentComparison(abc.ABC):
 
 class AlignmentOverlap(AlignmentComparison, Overlap):
   """
-  Overlap to be used for alignment.
+  Overlap to be used for align.
 
   layer1: layer to use for the first HPF
   layer2: layer to use for the second HPF
