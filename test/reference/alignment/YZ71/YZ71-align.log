@@ -1,0 +1,11 @@
+0;0;YZ71;align v0.1.dev1903+g041b334.d20201106;2020-11-06 10:04:35
+0;0;YZ71;WARNING: Found inconsistent image infos from different sources:;2020-11-06 10:04:35
+0;0;YZ71;WARNING: source                         pscale                         field width                    field height                  ;2020-11-06 10:04:35
+0;0;YZ71;WARNING: component tiff                 2.0122597896364316             1872                           1404                          ;2020-11-06 10:04:35
+0;0;YZ71;WARNING: xml files                      2.012246532396163              1872                           1404                          ;2020-11-06 10:04:35
+0;0;YZ71;WARNING: constants.csv                  2.0122597896364316             1872                           1404                          ;2020-11-06 10:04:35
+0;0;YZ71;meanimage;2020-11-06 10:04:36
+0;0;YZ71;starting alignment;2020-11-06 10:04:41
+0;0;YZ71;finished align loop for YZ71;2020-11-06 10:05:00
+0;0;YZ71;stitch;2020-11-06 10:05:00
+0;0;YZ71;end align;2020-11-06 10:05:00

@@ -1,0 +1,17 @@
+name,value,unit,description
+fwidth,1344,pixels,field width
+fheight,1004,pixels,field height
+flayers,35,,field depth
+locx,44757.54446911181,microns,xlocation
+locy,13002.689729828602,microns,ylocation
+locz,-41.7707331053862,microns,zlocation
+xposition,44141.349820197196,microns,slide x offset
+yposition,11187.735796644612,microns,slide y offset
+qpscale,0.24927681864639628,pixels/micron,scale of the QPTIFF image
+apscale,0.9971090107303211,pixels/micron,scale of the QPTIFF image used for annotation
+pscale,2.0050728342707047,pixels/micron,scale of the HPF images
+nclip,8,pixels,pixels to clip off the edge after warping
+resolutionbits,12,,number of significant bits in the im3 files
+gainfactor,3,,the gain of the A/D amplifier for the im3 files
+binningx,1,pixels,the number of adjacent pixels coadded
+binningy,1,pixels,the number of adjacent pixels coadded

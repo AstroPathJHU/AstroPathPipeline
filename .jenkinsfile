@@ -1,0 +1,108 @@
+def GITHUB_TOKEN
+
+node {
+  withCredentials([string(credentialsId: 'astropath-github', variable: 'SECRET')]) {
+    GITHUB_TOKEN = "${SECRET}"
+  }
+}
+
+pipeline {
+  agent {
+    dockerfile {
+      dir '.docker'
+      additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'"'
+    }
+  }
+
+  environment {
+    JENKINS_NO_GPU = "1"
+    HOME = "/home/circleci"
+    GITHUB_TOKEN = credentials('astropath-github')
+  }
+
+  stages {
+    stage('pip install') {
+      steps {
+        sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags "$url"'
+        sh 'pip install .[all]'
+        sh '''echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
+        sh '''cd ..; echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
+      }
+    }
+
+    stage('setup') {
+      parallel {
+        stage('setup dbload folder') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
+          }
+        }
+        stage('extract flatw layer') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; extractlayer ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
+          }
+        }
+      }
+    }
+    stage('run tests') {
+      parallel {
+        stage('console scripts') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testconsolescripts'
+          }
+        }
+
+        stage('miscellaneous framework tests') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
+          }
+        }
+
+        stage('alignment') {
+          stages {
+            stage('test alignment') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
+              }
+            }
+          }
+        }
+        stage('alignment documentation') {
+          stages {
+            stage('align') {
+              steps {
+                sh 'aligncohort test/data test/data/flatw --sampleregex M21_1 --debug'
+              }
+            }
+            stage('alignment documentation') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.alignment.makeplots --testing'
+                sh 'cd documentation/alignment; pdflatex alignment.tex; pdflatex alignment.tex; pdflatex alignment.tex'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documentation.checklog ${folder}/documentation/alignment/alignment.log'
+              }
+            }
+          }
+        }
+
+        stage('code checks') {
+          steps {
+            sh 'python -m pyflakes .'
+          }
+        }
+      }
+    }
+    stage('check that the repo is clean') {
+      steps {
+        //make sure normal execution doesn't make files that aren't ignored by .gitignore
+        sh 'if ! [ -z "$(git status --porcelain)" ]; then echo "tests created uncommitted changes"; git status; git diff; git submodule foreach bash -c "git status; git diff"; exit 1; fi'
+        sh 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)'
+        sh '''git submodule foreach bash -c 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)\''''
+      }
+    }
+  }
+  post {
+    always {
+      archiveArtifacts artifacts: 'documentation/alignment/alignment.pdf', fingerprint: true
+    }
+  }
+}
