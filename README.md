@@ -63,8 +63,8 @@ from any directory.
  - [4. HPF Processing]
    - [4.1 Description]
    - [4.2 Transfer]
-   - [4.3 Flatfield](astropath/hpfs/flatfielding/)
-   - [4.4 Image correction](astropath/hpfs/image_correction/)
+   - [4.3 Flatfield](astropath/hpfs/flatfield/#flatfielding)
+   - [4.4 Image correction](astropath/hpfs/image_correction/#image-correction)
    - [4.4 Segmentation \ Classification]
  - [5. Slide_Processing]
    - [5.1 Description]
