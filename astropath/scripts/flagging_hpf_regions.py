@@ -1,7 +1,8 @@
 #imports
-from astropath.flatfield.utilities import chunkListOfFilepaths, readImagesMT, getSizeFilteredMask, getImageTissueMask 
-from astropath.flatfield.image_mask import getExclusiveMask, getMorphedAndFilteredMask, getImageLayerLocalVarianceOfNormalizedLaplacian
-from astropath.flatfield.config import CONST
+from astropath.hpfs.flatfield.utilities import chunkListOfFilepaths, readImagesMT
+from astropath.hpfs.flatfield.image_mask import getSizeFilteredMask, getImageTissueMask, getExclusiveMask
+from astropath.hpfs.flatfield.image_mask import getMorphedAndFilteredMask, getImageLayerLocalVarianceOfNormalizedLaplacian
+from astropath.hpfs.flatfield.config import CONST
 from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset
 from astropath.utilities.img_file_io import smoothImageWorker, getExposureTimesByLayer
 #from astropath.utilities.img_file_io import writeImageToFile
@@ -23,7 +24,7 @@ WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45)
 SMALLER_WINDOW_EL          = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(15,15))
 SMALLER_WINDOW_N_PIXELS    = np.sum(SMALLER_WINDOW_EL)
 #MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
-MAS_LAYER_GROUPS           = [(1,9),(10,11),(12,17),(18,20),(21,29),(30,36),(37,43)]
+MASK_LAYER_GROUPS           = [(1,9),(10,11),(12,17),(18,20),(21,29),(30,36),(37,43)]
 #BRIGHTEST_LAYERS           = [5,11,21,29,34]
 BRIGHTEST_LAYERS           = [5,10,16,19,22,31,41]
 DAPI_LAYER_GROUP_INDEX     = 0
@@ -352,7 +353,8 @@ def getEnumeratedMask(layer_mask,start_i) :
     return return_mask
 
 #helper function to calculate and add the subimage infos for a single image to a shared dictionary (run in parallel)
-def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list) :
+#def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list) :
+def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,workingdir,exp_time_hists,return_list) :
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next get the tissue fold mask and its associated plots
@@ -399,8 +401,10 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
         #figure out where the image is in cellview
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
-        cvx = pscale*key_x-xpos
-        cvy = pscale*key_y-ypos
+        #cvx = pscale*key_x-xpos
+        #cvy = pscale*key_y-ypos
+        cvx = key_x
+        cvy = key_y
         #the mask starts as all ones (0=background, 1=good tissue, >=2 is a flagged region)
         output_mask = np.ones(img_array.shape,dtype=np.uint8)
         #add in the tissue fold mask, starting with index 2
@@ -458,7 +462,8 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
         #    writeImageToFile(output_mask,f'{key}_mask.png',dtype=np.uint8)
 
 #helper function to get a list of all the labelled mask regions for a chunk of files
-def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,xpos,ypos,pscale,workingdir,root_dir,exp_time_hists) :
+#def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,xpos,ypos,pscale,workingdir,root_dir,exp_time_hists) :
+def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,workingdir,root_dir,exp_time_hists) :
     #get the image arrays
     img_arrays = readImagesMT(fris,med_exposure_times_by_layer=metsbl,et_corr_offsets_by_layer=etcobl)
     #get all of the labelled mask region objects as the images are masked
@@ -470,7 +475,8 @@ def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,xpos,ypos,pscal
         logger.info(msg)
         exp_times = getExposureTimesByLayer(fris[i].rawfile_path,root_dir)
         key = (os.path.basename(fris[i].rawfile_path)).rstrip(RAWFILE_EXT)
-        p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,exp_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list))
+        #p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,exp_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list))
+        p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,exp_times,key,thresholds,workingdir,exp_time_hists,return_list))
         procs.append(p)
         p.start()
     for proc in procs:
@@ -547,10 +553,10 @@ def main(args=None) :
     if len(bgtbl)!=dims[-1] :
         raise RuntimeError(f'ERROR: found {len(bgtbl)} background thresholds but images have {dims[-1]} layers!')
     thresholds = [bgtbl[li] for li in range(dims[-1])]
-    slide_constants_dict = constantsdict(os.path.join(args.root_dir,args.slideID,'dbload',f'{args.slideID}_constants.csv'))
-    xpos = float(units.pixels(slide_constants_dict['xposition']))
-    ypos = float(units.pixels(slide_constants_dict['yposition']))
-    pscale = slide_constants_dict['pscale']
+    #slide_constants_dict = constantsdict(os.path.join(args.root_dir,args.slideID,'dbload',f'{args.slideID}_constants.csv'))
+    #xpos = float(units.pixels(slide_constants_dict['xposition']))
+    #ypos = float(units.pixels(slide_constants_dict['yposition']))
+    #pscale = slide_constants_dict['pscale']
     #chunk up the rawfile read information 
     if args.max_files!=-1 :
         all_rfps = all_rfps[:args.max_files]
@@ -559,7 +565,8 @@ def main(args=None) :
     truncated=False
     all_lmrs = []
     for fri_chunk in fri_chunks :
-        new_lmrs = getLabelledMaskRegionsForChunk(fri_chunk,metsbl,etcobl,thresholds,xpos,ypos,pscale,args.workingdir,args.root_dir,exp_time_hists)
+        #new_lmrs = getLabelledMaskRegionsForChunk(fri_chunk,metsbl,etcobl,thresholds,xpos,ypos,pscale,args.workingdir,args.root_dir,exp_time_hists)
+        new_lmrs = getLabelledMaskRegionsForChunk(fri_chunk,metsbl,etcobl,thresholds,args.workingdir,args.root_dir,exp_time_hists)
         all_lmrs+=new_lmrs
         if args.max_masks!=-1 and len(set(lmr.image_key for lmr in all_lmrs))>=args.max_masks :
             truncated=True
