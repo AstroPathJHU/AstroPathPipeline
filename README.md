@@ -68,7 +68,7 @@ from any directory.
    - [4.4 Segmentation \ Classification]
  - [5. Slide_Processing]
    - [5.1 Description]
-   - [5.2 Align]
+   - [5.2 Align](astropath/slides/alignment/README.pdf)
    - [5.3 Annotations]
    - [5.4 Cell Geometries]
  - [6. Sample_Processing]
