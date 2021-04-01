@@ -1,8 +1,12 @@
-# Section 3: Setting Up, Organization, and Scanning
+# Section 3 Setting Up, Organization, and Scanning
+- [3.1 Description](#section-3-1-Description "Title")
+- [3.2 Definitions](#section-3-2-Definitions "Title")
+  - [3.2.1 Identification Definitions
+
 ## Section 3.1: Description
 The AstroPath Pipeline requires that a number of experimental protocols are understood and followed for the code to work. These protocols include methods for slide scanning, slide naming, regent tracking, and directory organization. This section of the documentation describes these protocols and provides important definitions for terms used throughout the AstroPath Pipeline documentations. Additionally, there is a main directory, refered to as the ```<Mpath>```, which contains a set of csv files. These files contain pertinent information which drive processing such as directory locations, machine names, slide names, and project identifiers. These csv files are defined in [Section 3.4](#section-34-astropathprocessing-directory-and-initializing-projects "Title")
 
-## Section 3.2 Definitions
+## Section 3.2: Definitions
 ### Section 3.2.1: Identification Definitions
 - ```Method[String]```: This is the staining method. Either:
   - *Manual*: manually stained
@@ -103,19 +107,23 @@ When scanning the slides should be named *Control_TMA_XXXX_ZZ_MM.DD.YYYY*
 *NOTE*: The ‘Control’ designation is provided so that we can appropriately select and handle the control tissues automatically
 
 ### Section 3.3.4 Whole Slide Scanning
-The first time 20% overlap scanning is performed the following steps must be taken: 
-1.	Be sure that Phenochart is shut down
-2.	Go to *C:\ProgramData\PerkinElmer\Phenochart\* (Please note that ProgramData is usually a hidden folder)
-3.	Copy and paste the *Phenochart.config* file with one that does 20% overlap (a version of this is located in this folder)
-4.	Check ‘ROIs with overlap’ as on under the settings in Phenochart
+This section describes the methods for whole slide scanning. The directions here assume that the user has some working knowledge of how the Akoya multiplex microscopes function. While a skilled user of the Akoya platform would be able to easily acquire whole slide imagery, the directions here provide nuances that must be adhered to for successful slide processing in the AstroPath Platform. Failure to adhere to these guidelines may crash the pipeline and render whole slide imagery incompatible with the AstroPath Platform. This section is started with directions for configuring the [20% field overlap](#section-3341-preparing-20--overlap "Title"). This is followed up with steps taken to scan\ evaluate the [control tmas](#section-3342-scan-the--control-tma- "Title") and [whole slide samples](#section-3343-scan-the-whole-slide-specimens "Title"). Again these instructions assume that the user has working knowledge of the Akoya platform and should not be used in lieu of proper microscope training. Next, a brief description on how to create a [whole slide scanning plan](#section-3344-creating-a-whole-slide-scanning-plan "Title") is provided. Finally, [key notes and specifications](#section-3345-important-scanning-notes "Title") are provided for scanning. These notes are particularly important and should be reviewed carefully.
 
-Next scan the *Control TMA*
+#### Section 3.3.4.1 Preparing 20% overlap
+As part of the AstroPath Pipeline, slides must be scanned with fields that overlap by 20%. We use this overlap to measure and/ or correct for errors in imagery, including warping, illumination, segmentation, and positioning. This is step should be performed on each computer that will be used to create scanning plans in *Phenochart(C)*. The changes made are permant and should only need to be performed once for a computer.
+1. Install the lastest version of *Phenochart(C)*
+2. Be sure that *Phenochart(C)* is shut down
+3. Go to *C:\ProgramData\PerkinElmer\Phenochart\* (Please note that ProgramData is usually a hidden folder)
+4. Copy and paste the *Phenochart.config* file with one that does 20% overlap (a version of this is located in this folder)
+5. Check ‘ROIs with overlap’ as on under the settings in *Phenochart(C)*
+
+#### Section 3.3.4.2 Scan the *Control TMA*
 1. Take references for the microscope
-2. When a batch is finished staining we first check that the slides are designated in the Specimen_Table (indicated above):
+2. When a batch is finished staining we first check that the slides are designated in the *Specimen_Table_N* ([Section 3.3.1](#section-331-specimen_table “Title”)).
    - If the slide is designated in the *Specimen_Table_N*; check that the ‘M’ numbers are written on the slides and that they are the correct numbers
-   - If the slide is not designated in the *Specimen_Table_N* insert the required information and give the slides ```SampleName```s corresponding to the next available number (again numbers should not be repeated even if a batch fails)
-3. Set up the scanning exposures (the ‘Protocol’) for the TMA in the proper *\Clinical_Specimen folder
-   - Name the protocol and the task list-> Control_TMA_XXXX_YYY 
+   - If the slide is not designated in the *Specimen_Table_N* insert the required information and give the slides ```SampleName```s corresponding to the next available number (again values should not be repeated even if a batch fails)
+3. Set up the scanning exposures (the ‘Protocol’) for the TMA in the proper ```<spath>``` folder
+   - Name the protocol and the task list-> *Control_TMA_XXXX_YYY*
      - XXXX -> the TMA ID (ie. 1372)
      - YYY -> the TMA cut number (ie. 126)
      - Old scanning protocols will be located in any Clinical_Specimen folder under Protocols 
@@ -123,7 +131,7 @@ Next scan the *Control TMA*
    - XXXX is the TMA ID
    - ZZ is the TMA cut number
    - MM.DD.YYYY is the month, day, and year of when staining finished
-5. Scan the whole slide overview
+5. Scan the whole slide overview on the microscope
 6. Create an annotation scanning plan in Phenochart
    - Open the TMA in  Phenochart
    - Click ‘Login’ at the upper left-hand corner
@@ -142,8 +150,8 @@ Next scan the *Control TMA*
       - If much of the core is missing, still center around what would be the expected center
         - Because we do not correct for image distortion effects in the TMAs, if one core is missing half its tissue we still want to image the other half in the same way we would regularly
       - Once you are satisfied click ‘Accept Grid’ and close Phenochart
-      - Now switch to the ‘Scan’ tab in the Vectra 3.0 software and select the ‘Acquire MSI fields’ task for the TMA
-7. Do the quality control of the TMA
+7. Select the ‘Acquire MSI fields’ task for the TMA on the microscope and scan the slide
+8. Do the quality control of the TMA
    - Open three cores from a previous Control TMA in inForm
      - Be sure that the TMA cores came from the same cohort and from a Batch that worked 
      - Example Cores for methods would include:
@@ -164,45 +172,47 @@ Next scan the *Control TMA*
      - Look to see if general patterns are the same and if intensities vary
      - It is usually easy to see differences visually and use counts as a sanity check for your eyes
      - Because the of the similarities in the cores and stains within a cohort the variation between slides should be minimal
-8. Give the TMA a BatchID.txt file and give it the next corresponding Batch ID
-9. Fill in the Batch ID on the Specimen_Table if it is not already present
+9. Give the TMA a *BatchID.txt* file and give it the next corresponding ```BatchID```
+10. Fill in the ```BatchID``` on the *Specimen_Table_N.xlsx* if it is not already present
 
+#### Section 3.3.4.3 Scan the Whole Slide Specimens
 If everything checks out scan the specimens as follows:
-1. Take exposures (create a protocol) for the actual multiplex slides 
-    - The rest of the slides will all receive the same protocol
+1. Take exposures (create a single protocol) for all of the specimen multiplex slides 
     - The name of the protocol should be *Multiplex_MMDDYYYY* 
-    - and should be saved to the corresponding *\Clinical_Specimen_* folder
+    - and should be saved to the corresponding ```<spath>``` folder
 2.	Create a task list (.csv format) for the scanning
-    - To do this open one of the older task lists in the *\Clinical_Specimen_*\Protocols folder
-      - It should be named Multiplex_MMDDYYYY.csv
-    - Change the Slide ID to correspond to the new Patient #s
-    - Change the Protocols to the protocol that was just created
-    - Change to Tasks to ‘Scan Whole Slide’
+    - It should be named Multiplex_MMDDYYYY.csv
 3.	Load the slide carrier with the slides
     - Clean the slides using a Kimwipe to remove dust and excess mounting medium
     - Load the carrier from bottom to top so that the first slide corresponds to Slot 1 on the Task list
-4.	Scan the slides: 
-    - Further description of 10 -13 is located in the ‘Vectra 3.0 Scanning –IF’ Protocol in \\halo1\Taubelab\Protocols
-5.	Create the annotation file for the Whole Slide Overlap imagery 
-6.	Acquire HPFs
-7.	Wait for data to backup using Allway Sync
-8.	Manually check that the image files are in both the local and backup locations
-    - Open two windows explorers, one for the local and one for the backup location
-    - Check that the same number of im3s exist in both locations 
-    - Sort by ‘Size’ in the windows explorer to be sure that all of the images are the same size
-      - If there is a file with 0 bytes, check for an M2 duplicate file. This is the only time variation in field size is allowed, see ‘Notes’ section below for details on how to handle M2 files.
-    - Check that the annotation.xml modified data are the same
-    - If something does not look right rescan or contact someone for help, never manually modify the data
-9.	Delete the local copy of the data
-10.	Add the BatchID.txt, described above, to the proper ‘Scan’ folder
+4.	Scan the whole slide overview on the microscope
+5.	Create the annotation file for the [Whole Slide Overlap imagery](#section-3344-creating-a-whole-slide-scanning-plan "Title")
+6.	Acquire HPFs on the microscope
+7.	If using a network storage server, wait for data to backup
+    - Manually check that the image files are in both the local and backup locations
+      - Open two windows explorers, one for the local and one for the backup location
+      - Check that the same number of im3s exist in both locations 
+      - Sort by ‘Size’ in the windows explorer to be sure that all of the images are the same size
+        - If there is a file with 0 bytes, check for M# duplicate file. This is the only time variation in field size is allowed, see ‘Notes’ section below for details on how to handle M# files.
+      - Check that the annotation.xml modified data are the same
+8. Check that the data scanned properly
+   - Open the overview scans in *Phenochart(C)* and check that at least 95% of the fields correctly scanned
+      - Never retake single HPFs, if more than 5% of fields failed restart the entire HPF set. 
+      - By making the image files 'extra large icons' a quick visual inspection can be performed of the slides. Here check for two things:
+        - sometimes the microscope gets mixed up and scans the wrong part of the tissue, usually this creates a number of empty fields but can be hard to catch 
+          - the AstroPath Pipeline code has been modfied to handle such cases so this is not a breaking issue but does cause a loss of data.
+        - sometimes the microscope will automatic focus will fail and fields will be blurry
+        - In both cases rescan the HPFs
+9. If using a network server for microscope backup, delete the local copy of the data 
+10.	Add the *BatchID.txt*, described above, to the proper ‘Scan’ folder
 
-Whole Slide Scanning:
+#### Section 3.3.4.4 Creating a Whole Slide Scanning Plan
 1.	Take lower power overview scan as normal
 2.	Open Phenochart and select ROI
 3.	Circle the entire tissue, click OK on dialog box that appears
 4.	Delete empty fields around and inside tissue boundaries
 
-Notes: 
+#### Section 3.3.4.5 Important Scanning Notes
 1.	To scan multiple pieces of tissue:
     - if they are close enough that there is asymmetric overlap between tissues include them in the same ROI drawing
     - If there is no overlap between fields; circle the ROIs separately 
@@ -213,12 +223,15 @@ Notes:
    - Much of our codes look to the .xml files to determine the expected number of .im3 files
 4.	If only a few HPFs fail do not rescan them
 5.	If it is a core biopsy and two cuts have been placed on the same slide; only select HPF annotation for one
-6.	Some files may end up with an ‘_M2.im3’ designation at the end of the file name. This means that the HPF was scanned twice. The duplicate is labeled with the ‘M2’ designation, but the initial scan has no designation and has 0 bytes. Do not delete either file. This is issue is dealt with in the automated pipeline.
+6.	Some files may end up with an ‘_M#.im3’ designation at the end of the file name. This means that the HPF was scanned twice. The duplicate is labeled with the ‘M2’ designation, but the initial scan has no designation and has 0 bytes. Do not delete either file. This is issue is dealt with in the automated pipeline.
 
 ### Section 3.3.5 BatchIDs
-In the successful ‘ScanN’ folder there should be a text file named ‘BatchID.txt’. This file will indicate the folder that will be transferred and used in the data pipeline all other Scan folders generated by the Vectra scanning softwares are ignored. This file should only be added once all HPFs have been confirmed as successfully scanned. This text file should contain the numeric value of that BatchID. It is best to use a two-digit integer, (for values less than 10 use the ‘01’ format).
+For some cohorts not all slides can be stained at the same time. A ```BatchID``` specifies a group of slides that were stained together. We use this information in the pipeline both for batch to batch normalization and to create an illumination correction for each batch. We correct for illumination for each batch because the light patterns for a given microscope should be the most consistent during the scanning of a single batch. In this way we can also make sure microscope maintaince never has an effect on scanning by doing any such maintaince between batches. The ```BatchID```s are project dependent such that numbers may be reused for different projects. When specifiying a ```BatchID``` it is usually best to use a two-digit integer (for values less than 10 use 01).
+
+After a scan is completed, it should be manually verfied as complete. There are a few ways to do this, see  In the successful ‘ScanN’ folder there should be a text file named ‘BatchID.txt’. This file will indicate the folder that will be transferred and used in the data pipeline all other Scan folders generated by the Vectra scanning softwares are ignored. This file should only be added once all HPFs have been confirmed as successfully scanned. This text file should contain the numeric value of that ```BatchID```.
 
 ### Section 3.3.6 Batch Tables
+For each BatchID a batch table should be created, this file records the staining information for that batch including lot numbers and antibody-opal pairs. These tables should be added to a *Batch* folder in the ```<Dpath>\<Dname>``` folder. 
 
 ### Section 3.3.7 MergeConfig Tables
 
@@ -236,7 +249,7 @@ The code is driven by the files located in a main processing folder, named the `
   - ```QC[string]```: The status of the quality control assessment of samples. Should be indicated as blank (not started), *Started*, or *Done*.
   - ```Annotations[string]```: Whether or not the slide annotations have been created for a panel. ***Annotation directions can be found in***. Should be indicated as blank (not started), *Started*, or *Done*.
   - ```ReadyForDB[string]```: Indicates whether final checks for the manual interaction steps with the data have been complete. ***A full checklist is still in progress.***. Should be indicated as blank (not started), *Started*, or *Done*.
-  - ```DBLoad```: The current status of the database load. Should be indicated as blank (not started), *Started*, or *Done*.
+  - ```DBLoad[string]```: The current status of the database load. Should be indicated as blank (not started), *Started*, or *Done*.
 - *AstropathConfig.csv*
 - *AstropathControldef.csv*
 - *AstropathPaths.csv*
