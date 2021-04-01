@@ -123,8 +123,8 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
 
 #return the tissue fold mask for an image combining information from all layer groups
 def getImageTissueFoldMask(img_array,exp_times,tissue_mask,exp_t_hists,return_plots=False) :
-    #smooth the image EXTREMELY gently
-    img_array = smoothImageWorker(img_array,1)
+    ##smooth the image EXTREMELY gently
+    #img_array = smoothImageWorker(img_array,1)
     #get the fold masks for each layer group
     fold_masks_by_layer_group = []; fold_mask_plots_by_layer_group = []
     for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
