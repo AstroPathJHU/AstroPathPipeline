@@ -8,9 +8,9 @@
 The Astropath pipeline was designed to automate the processing of whole slide multiplex immunoflourecence histopathology image data, taken by Akoya’s Vectra imaging platform, from the microscope to database. The automated process begins after whole slide scans have been captured by the microscope and manually verified complete. Code is divided into three main stages; defined as ```hpf```, ```slide```, and ```sample``` level processing. In the ```hpf``` (or high powered field) processing stage, images are reorganized, corrected for camera\ imaging effects, and segmented\ phenotyped. Here images are mainly processed individually. In the next processing stage, aptly named ```slide``` the data is stiched together into a whole slide and the slides are annotated by a pathologist. Next, slides across a cohort are corrected for batch to batch and loaded into a database. Here the image, cell, and annotation data of each whole slide image is linked its clinical information thus providing a completed sample. Code for each stage is organized into its own folder, with each folder containing a particular set of modules. Each module is organized separately in subfolders and described in this documnetation. An overview of the current pipeline can be seen [here](https://github.com/AstropathJHU/AstroPathPipeline/blob/main/AstroPathPipeline.pdf).
 
 ## ***Contents***
-[1. Description](#description "Title")
-[2. Contents](#contents "Title")
-[3. Setting Up, Organization, and Scanning](scans/#3-setting-up-organization-and-scanning "Title")
+1. [Description](#description "Title")
+2. [Contents](#contents "Title")
+3. [Setting Up, Organization, and Scanning](scans/#3-setting-up-organization-and-scanning "Title")
    - [3.1. Description](scans/#31-description "Title")
    - [3.2. Definitions](scans/#32-definitions "Title")
      - [3.2.1. Identification Definitions](scans/#321-identification-definitions "Title")
