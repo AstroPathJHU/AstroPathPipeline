@@ -361,7 +361,8 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,working
     tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,exposure_times,tissue_mask,exp_time_hists,return_plots=True)
     #tissue_fold_mask,tissue_fold_plots_by_layer_group = np.ones(img_array.shape,dtype=np.uint8),None
     #get masks for the blurriest areas of the DAPI layer group
-    sm_img_array = smoothImageWorker(img_array,1)
+    #sm_img_array = smoothImageWorker(img_array,1)
+    sm_img_array = img_array
     dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
                                                                 exposure_times,
                                                                 MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX],
