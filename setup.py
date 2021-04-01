@@ -8,6 +8,7 @@ setupkwargs = dict(
   entry_points = {
     "console_scripts": [
       "alignmentcohort=astropath.slides.alignment.alignmentcohort:main",
+      "alignmentset=astropath.slides.alignment.alignmentset:main",
       "annowarpcohort=astropath.slides.annowarp.annowarpcohort:main",
       "annowarpfailedfitswithconstraint=astropath.slides.annowarp.annowarpfailedfitswithconstraint:main",
       "compareprepdbcohort=astropath.slides.prepdb.compareprepdbcohort:main",

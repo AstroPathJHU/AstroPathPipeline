@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-import contextlib, numpy as np, traceback
+import argparse, contextlib, numpy as np, pathlib, traceback
 
 from ...baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
+from ...utilities import units
 from ...utilities.tableio import readtable, writetable
 from ..prepdb.prepdbsample import PrepDbSample
 from .imagestats import ImageStats
@@ -507,3 +508,17 @@ class AlignmentSetComponentTiffFromXML(AlignmentSetComponentTiffBase, AlignmentS
   An alignment set that runs on im3 images and does not rely on the dbload folder.
   This class is used for identifying overexposed HPFs.
   """
+
+def main(args=None):
+  p = argparse.ArgumentParser()
+  p.add_argument("root", type=pathlib.Path)
+  p.add_argument("root2", type=pathlib.Path)
+  p.add_argument("SlideID")
+  args = p.parse_args(args=args)
+  with units.setup_context("fast"):
+    A = AlignmentSet(root=args.root, root2=args.root2, samp=args.SlideID)
+    A.align()
+    A.stitch()
+
+if __name__ == "__main__":
+  main()
