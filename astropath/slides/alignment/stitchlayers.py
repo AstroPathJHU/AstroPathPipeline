@@ -1,3 +1,7 @@
+"""
+Aligning layers with respect to each other is not fully implemented yet.
+"""
+
 import itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 
 from ...baseclasses.overlap import OverlapCollection

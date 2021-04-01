@@ -2,13 +2,35 @@ import cv2, matplotlib.pyplot as plt, numba as nb, numpy as np, scipy.interpolat
 
 def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4, staterrorimages=None, usemaxmovementcut=True):
   """
-  https://www.scirp.org/html/8-2660057_43054.htm
+  Compute the relative shift between two images by maximizing the cross correlation.
+  The cross correlation is computed using the FFT.
+
+  International Journal of Medical Physics, Clinical Engineering and Radiation Oncology
+  Vol.3 No.1(2014), Paper ID 43054, 7 pages
+  DOI:10.4236/ijmpcero.2014.31008
+
+  gputhread, gpufftdict: a gpu thread and dict of compiled FFT functions, if using the GPU (default: None)
+  windowsize: window around the maximum to use for fitting to compute subpixel shifts (default: 10)
+  smoothsigma: width to use for gaussian smearing (default: None)
+  window: window to apply to the image after smearing (default: None)
+  errorfactor: scale the computed error by this factor (default: 1/4; see the LaTeX document in the documentation folder)
+  staterrorimages: precomputed statistical error on the images (default: None; the statistical error is computed as difference between the two images after alignment)
+  usemaxmovementcut: report the alignment as failed if the shift is more than 10% of the image size
+
+  #the remaining arguments are for debugging
+  showsmallimage: show the zoomed cross correlation image
+  savesmallimage: filename to save the zoomed cross correlation image
+  showbigimage: show the cross correlation image
+  savebigimage: filename to save the cross correlation image
   """
+  #smooth the images
   if smoothsigma is not None:
     images = tuple(skimage.filters.gaussian(image, sigma=smoothsigma, mode = 'nearest') for image in images)
+  #apply a window to the images
   if window is not None:
     images = tuple(window(image) for image in images)
 
+  #calculate the cross correlation between the images
   use_gpu = gputhread is not None and gpufftdict is not None
   if use_gpu :
     images_gpu = tuple(image.astype(np.csingle) for image in images)
@@ -32,8 +54,10 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   x[x > x.shape[1]/2] -= x.shape[1]
   y[y > y.shape[0]/2] -= y.shape[0]
 
+  #find the maximum integer value of the cross correlation
   maxidx = np.unravel_index(np.argmax(np.abs(z)), z.shape)
 
+  #zoom into around the maximum
   slc = (
     slice(maxidx[0]-windowsize, maxidx[0]+windowsize+1),
     slice(maxidx[1]-windowsize, maxidx[1]+windowsize+1),
@@ -67,6 +91,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   yy = doravel(yy)
   zz = doravel(zz)
 
+  #fit to a spline and maximize the subpixel shift
   knotsx = ()
   knotsy = ()
   spline = scipy.interpolate.LSQBivariateSpline(xx, yy, zz, knotsx, knotsy)
@@ -80,6 +105,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     method="TNC",
   )
 
+  #calculate the error on the shift from the 2nd derivative of the spline
   hessian = -np.array([
     [f(*r.x, dx=2, dy=0), f(*r.x, dx=1, dy=1)],
     [f(*r.x, dx=1, dy=1), f(*r.x, dx=0, dy=2)],
@@ -103,6 +129,8 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     covariance
   )
 
+  #various error codes:
+  #  if there are other significant peaks in the cross correlation
   otherbigindices = skimage.feature.corner_peaks(z, min_distance=windowsize, threshold_abs=z[maxidx] - 3*error_crosscorrelation, threshold_rel=0)
   for idx in otherbigindices:
     if np.all(idx == maxidx): continue
@@ -111,11 +139,13 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     exit = 1
     break
 
+  #  if the covariance matrix is not positive definite
   if not np.all(np.linalg.eig(covariance)[0] > 0):
     dx = unc.ufloat(0, 9999.)
     dy = unc.ufloat(0, 9999.)
     exit = 2
 
+  #  if the shift is more than 10% of the size of the overlap
   if usemaxmovementcut and np.sqrt(np.sum(r.x**2) >= np.sqrt(np.sum(np.array(x.shape)**2))) / 10:
     dx = unc.ufloat(0, 9999.)
     dy = unc.ufloat(0, 9999.)
@@ -129,6 +159,9 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   )
 
 def crosscorrelation_gpu(images,thread,fftc):
+  """
+  Calculate the cross correlation using the GPU
+  """
   image_devs = tuple(thread.to_device(image) for image in images)
   res_devs   = tuple(thread.empty_like(image_dev) for image_dev in image_devs)
   for resd,imd in zip(res_devs,image_devs) :
@@ -139,6 +172,9 @@ def crosscorrelation_gpu(images,thread,fftc):
   return np.real(cp_dev.get())
 
 def crosscorrelation(images):
+  """
+  Calculate the cross correlation without the GPU
+  """
   fourier = tuple(np.fft.fft2(image) for image in images)
   crosspower = getcrosspower(fourier)
   invfourier = np.fft.ifft2(crosspower)
@@ -192,6 +228,10 @@ def shiftimg(images, dx, dy, *, clip=True, use_gpu=False):
   return np.array([a[clipslice], b[clipslice]])
 
 class OptimizeResult(scipy.optimize.OptimizeResult):
+  """
+  Like a scipy OptimizeResult, but if one of the values is another OptimizeResult,
+  it will format it nicely
+  """
   def __formatvforrepr(self, v, m):
     if isinstance(v, OptimizeResult):
       return "\n" + textwrap.indent(repr(v), ' '*m)

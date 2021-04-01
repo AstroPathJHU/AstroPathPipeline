@@ -10,6 +10,9 @@ from .computeshift import computeshift, mse, shiftimg
 import abc
 
 class AlignmentComparison(abc.ABC):
+  """
+  Base class for a pair of images that have been aligned with respect to each other
+  """
   @property
   def use_gpu(self) :
     try:
@@ -23,22 +26,41 @@ class AlignmentComparison(abc.ABC):
 
   @property
   @abc.abstractmethod
-  def dxvec(self): pass
+  def dxvec(self):
+    """
+    The relative shift of the two images
+    """
 
   @property
   @abc.abstractmethod
-  def unshifted(self): pass
+  def unshifted(self):
+    """
+    The unshifted images
+    """
   @property
   def shifted(self):
+    """
+    The images shifted by dxvec
+    """
     return shiftimg(self.unshifted, *units.nominal_values(self.result.dxvec/self.onepixel),use_gpu=self.use_gpu)
   @property
   def scaleratio(self):
+    """
+    Ratio needed to scale the images to the same mse
+    """
     b1, b2 = self.shifted
     mse1 = mse(b1)
     mse2 = mse(b2)
     return (mse1 / mse2) ** 0.5
 
-  def getimage(self,normalize=100.,shifted=True,scale=False) :
+  def getimage(self, normalize=100., shifted=True, scale=False):
+    """
+    Get an image that can be plotted to illustrate the alignment
+
+    normalize: scale the images by 1/normalize before plotting (default: 100)
+    shifted: use the shifted images instead of unshifted (default: True)
+    scale: scale the images to each other (default: False)
+    """
     if shifted:
       red, green = self.shifted
       if scale:
@@ -52,6 +74,9 @@ class AlignmentComparison(abc.ABC):
     return img
 
   def showimages(self, normalize=100., shifted=True, scale=False, saveas=None, ticks=False, **savekwargs):
+    """
+    Plot the image from getimage() to illustrate the alignment
+    """
     img=self.getimage(normalize=normalize, shifted=shifted, scale=scale)
     plt.imshow(img)
     if ticks:
@@ -67,6 +92,12 @@ class AlignmentComparison(abc.ABC):
       plt.close()
 
 class AlignmentOverlap(AlignmentComparison, Overlap):
+  """
+  Overlap to be used for alignment.
+
+  layer1: layer to use for the first HPF
+  layer2: layer to use for the second HPF
+  """
   def __post_init__(self, *args, layer1=None, layer2=None, **kwargs):
     super().__post_init__(*args, **kwargs)
     if layer1 is None:
@@ -100,6 +131,9 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
 
   @property
   def images(self):
+    """
+    The images for the two HPFs
+    """
     images = [None, None]
     with self.rectangles[0].using_image() as images[0], self.rectangles[1].using_image() as images[1]:
       result = tuple(image[:, :] if layer is None else image[r.layers.index(layer), :, :] for r, image, layer in more_itertools.zip_equal(self.rectangles, images, self.layers))
@@ -109,6 +143,9 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
   @methodtools.lru_cache()
   @property
   def cutimageslices(self):
+    """
+    The slices for the two images that should return the same area of the image (+/- microscope error)
+    """
     image1, image2 = self.images
 
     hh, ww = image1.shape
@@ -170,6 +207,9 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
 
   @property
   def cutimages(self):
+    """
+    The images for the two HPFs, cropped to show the same area
+    """
     image1, image2 = self.images
     slice1, slice2 = self.cutimageslices
     return (
@@ -180,6 +220,16 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
   unshifted = cutimages
 
   def align(self, *, debug=False, alreadyalignedstrategy="error", mseonly=False, **computeshiftkwargs):
+    """
+    Align this overlap, returning an AlignmentResult object which is also stored in self.result
+
+    debug: raise errors instead of silently returning an AlignmentResult with exit code 255
+    alreadyalignedstrategy: what to do if the overlap was already aligned
+                            choices: error (default), skip, overwrite, shift_only (used for warping calibration)
+    mseonly: if True, do not align the overlap (can be used to just get mse1 and mse2 from the alignment result)
+
+    Other keyword arguments are passed to computeshift
+    """
     if self.result is None:
       alreadyalignedstrategy = None
     else:
@@ -197,9 +247,11 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     try:
       if mseonly: raise Exception("Not aligning this overlap because you specified mseonly")
       if alreadyalignedstrategy != "shift_only":
+        #do the alignment
         kwargs1 = self.__computeshift(**computeshiftkwargs)
         if "gputhread" in computeshiftkwargs.keys() and "gpufftdict" in computeshiftkwargs.keys() :
           self.use_gpu = computeshiftkwargs["gputhread"] is not None and computeshiftkwargs["gpufftdict"] is not None
+      #get the shifted images
       kwargs2 = self.__shiftclip(dxvec=kwargs1["dxvec"])
       self.result = self.alignmentresulttype(
         **self.alignmentresultkwargs,
@@ -226,15 +278,26 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
 
   @methodtools.lru_cache()
   @property
-  def mse1(self): return mse(self.cutimages[0].astype(float))
+  def mse1(self):
+    """
+    mean squared flux of the first image
+    """
+    return mse(self.cutimages[0].astype(float))
 
   @methodtools.lru_cache()
   @property
-  def mse2(self): return mse(self.cutimages[1].astype(float))
+  def mse2(self):
+    """
+    mean squared flux of the second image
+    """
+    return mse(self.cutimages[1].astype(float))
 
   @methodtools.lru_cache()
   @property
   def sc(self):
+    """
+    ratio to scale the second image by in order to get the mean squared fluxes to match
+    """
     mse1 = self.mse1
     mse2 = self.mse2
     if mse2 == 0: return 1
@@ -242,6 +305,9 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
 
   @property
   def alignmentresultkwargs(self):
+    """
+    arguments to the AlignmentResult constructor that don't depend on the alignment
+    """
     result = {
       "n": self.n,
       "p1": self.p1,
@@ -264,9 +330,15 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     return result
 
   def isinverseof(self, inverse):
+    """
+    is this overlap between (p1, p2) the inverse of another overlap (p2, p1)?
+    """
     return (inverse.p1, inverse.p2) == (self.p2, self.p1) and inverse.layers == tuple(reversed(self.layers))
 
   def getinversealignment(self, inverse):
+    """
+    create an alignment result from the inverse alignment result
+    """
     assert self.isinverseof(inverse)
     self.result = AlignmentResult(
       exit = inverse.result.exit,
@@ -313,6 +385,9 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
   def dxvec(self): return self.result.dxvec
 
 class AlignmentResultBase(DataClassWithPscale):
+  """
+  Base class for alignment results
+  """
   @classmethod
   def transforminitargs(cls, *args, dxvec=None, covariance=None, mse=None, **kwargs):
     if dxvec is not None:
@@ -337,10 +412,16 @@ class AlignmentResultBase(DataClassWithPscale):
 
   @property
   def covariance(self):
+    """
+    The covariance matrix
+    """
     return np.array([[self.covxx, self.covxy], [self.covxy, self.covyy]])
 
   @property
   def dxvec(self):
+    """
+    The relative shift, including its error
+    """
     return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
 
   @property
@@ -356,6 +437,24 @@ class AlignmentResultBase(DataClassWithPscale):
     return self.tag == 5
 
 class AlignmentResult(AlignmentResultBase):
+  """
+  Alignment result class for alignment of HPFs
+
+  n: id of the overlap
+  p1, p2: ids of the two HPFs
+  code: gives the relative location of the HPFs:
+    1 2 3
+    4 5 6
+    7 8 9
+  layer: the layer used for alignment
+  exit: the exit code of the alignment (0 for success)
+  dx, dy: the measured relative shift of the HPFs
+  sc: scale factor for the second HPF to get the same MSE for both
+  mse1, mse2: the mean squared flux of the two HPFs
+  mse3: the mean squared error after aligning and subtracting the two HPFs
+  covxx, covxy, covyy: the covariance matrix on (dx, dy)
+  exception: the exception object if the exit code is 255
+  """
   pixelsormicrons = "pixels"
 
   n: int
@@ -376,6 +475,24 @@ class AlignmentResult(AlignmentResultBase):
   exception: MetaDataAnnotation(typing.Optional[Exception], includeintable=False) = None
 
 class LayerAlignmentResult(AlignmentResultBase):
+  """
+  Alignment result class for alignment of layers
+
+  n: id of the overlap
+  p1, p2: ids of the two HPFs (can be the same if layers are different)
+  code: gives the relative location of the HPFs:
+    1 2 3
+    4 5 6
+    7 8 9
+  layer1, layer2: the layers of the two HPFs
+  exit: the exit code of the alignment (0 for success)
+  dx, dy: the measured relative shift of the HPFs
+  sc: scale factor for the second HPF to get the same MSE for both
+  mse1, mse2: the mean squared flux of the two HPFs
+  mse3: the mean squared error after aligning and subtracting the two HPFs
+  covxx, covxy, covyy: the covariance matrix on (dx, dy)
+  exception: the exception object if the exit code is 255
+  """
   pixelsormicrons = "pixels"
 
   n: int

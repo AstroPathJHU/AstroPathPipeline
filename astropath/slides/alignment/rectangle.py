@@ -6,6 +6,10 @@ from ...utilities.misc import dummylogger
 from .flatfield import meanimage
 
 class ApplyMeanImage(RectangleTransformationBase):
+  """
+  Rectangle transformation that divides the rectangle images by the
+  mean image over all of the rectangles in the set.
+  """
   def __init__(self, mean_image=None, logger=dummylogger):
     self.__meanimage = mean_image
     self.__allrectangles = None
@@ -44,6 +48,10 @@ class ApplyMeanImage(RectangleTransformationBase):
       self.__meanimage = mean_image
 
 class AlignmentRectangleBase(RectangleWithImageBase):
+  """
+  Rectangle that divides the image by the
+  mean image over all of the rectangles in the set.
+  """
   def __post_init__(self, *args, mean_image=None, use_mean_image=True, logger=dummylogger, transformations=None, **kwargs):
     if transformations is None: transformations = []
     if use_mean_image:
@@ -89,6 +97,9 @@ class AlignmentRectangleComponentTiffMultiLayer(AlignmentRectangleBase, Rectangl
   pass
 
 class AlignmentRectangleProvideImage(AlignmentRectangleBase, RectangleProvideImage):
+  """
+  Alignment rectangle that can be provided with an image (used for warping)
+  """
   def __post_init__(self, *args, layer, **kwargs):
     self.__layer = layer
     super().__post_init__(*args, **kwargs)
@@ -97,6 +108,11 @@ class AlignmentRectangleProvideImage(AlignmentRectangleBase, RectangleProvideIma
     return self.__layer
 
 class ConsolidateBroadbandFilters(RectangleTransformationBase):
+  """
+  Rectangle transformation that turns a multilayer rectangle image
+  into one with fewer layers, one for each broadband filter.  Each
+  layer is extracted from a PCA over all the layers within that filter.
+  """
   def __init__(self, layershifts, broadbandfilters=None):
     self.__layershifts = layershifts
     self.__broadbandfilters = broadbandfilters
@@ -139,6 +155,11 @@ class ConsolidateBroadbandFilters(RectangleTransformationBase):
     return np.array(list(pcas.values()))
 
 class RectanglePCAByBroadbandFilter(RectangleFromOtherRectangle):
+  """
+  Rectangle that turns its multilayer image
+  into one with fewer layers, one for each broadband filter.  Each
+  layer is extracted from a PCA over all the layers within that filter.
+  """
   def __post_init__(self, *args, layershifts, transformations=None, **kwargs):
     if transformations is None: transformations = []
     self.__pcabroadbandtransformation = ConsolidateBroadbandFilters(layershifts=layershifts)

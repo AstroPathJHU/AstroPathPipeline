@@ -12,26 +12,20 @@ from .stitch import ReadStitchResult, stitch
 
 class AlignmentSetBase(SampleBase):
   """
-  Main class for aligning a set of images
+  Main class for aligning the HPFs in a slide
   """
   def __init__(self, *args, interactive=False, useGPU=False, forceGPU=False, use_mean_image=True, **kwargs):
     """
-    Directory structure should be
-    root/
-      samp/
-        dbload/
-          samp_*.csv
-    root2/
-      samp/
-        samp_*.(fw01/camWarp_layer01) (if using DAPI; could also be 02 etc. to align with other markers)
-
-    interactive: if this is true, then the script might try to prompt
-                 you for input if things go wrong
+    useGPU: use GPU for alignment if available
+    forceGPU: use GPU for alignment, and raise an exception if it's not available
+    use_mean_image: apply an additional flatfielding to the HPFs, derived from the
+                    mean of all HPF images
     """
     self.__use_mean_image = use_mean_image
     self.interactive = interactive
     super().__init__(*args, **kwargs)
 
+    if forceGPU: useGPU = True
     self.gpufftdict = None
     self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
     self.__images = None
@@ -47,7 +41,30 @@ class AlignmentSetBase(SampleBase):
   def inverseoverlapsdictkey(self, overlap):
     return overlap.p2, overlap.p1
 
-  def align(self,*,skip_corners=False,return_on_invalid_result=False,warpwarnings=False,**kwargs):
+  def align(self, *, skip_corners=False, return_on_invalid_result=False, warpwarnings=False, **kwargs):
+    """
+    Do the alignment over all HPF overlaps in the sample.
+    The individual alignment results can be accessed from the overlaps as
+    overlap.result.
+
+    The function returns the weighted average, over all overlaps, of the
+    mean squared difference in pixel fluxes.  This can be used as a quality
+    check on previous stages of image processing (such as warping and flatfielding)
+
+    skip_corners: only align edge overlaps (default: False)
+
+    These keyword arguments are used in the warping calibration.  For just alignment,
+    you should not touch them.  Note that a failed alignment is not necessarily bad,
+    it just means that there were not enough cells in the overlap area to obtain
+    a result.  But you don't want to use that result to calibrate the warping model.
+
+    return_on_invalid_result: end the alignment loop early if an overlap alignment fails
+    warpwarnings: print warnings for failed alignments
+
+    Other keyword arguments are passed to overlap.align()
+    """
+    #load the images for all HPFs and keep them in memory as long as
+    #the AlignmentSet is active
     self.getDAPI()
     self.logger.info("starting alignment")
 
@@ -60,14 +77,20 @@ class AlignmentSetBase(SampleBase):
         continue
       self.logger.debug(f"aligning overlap {overlap.n} ({i}/{len(self.overlaps)})")
       result = None
-      if self.overlapsdictkey(overlap) in done:
+      #check if the inverse overlap has already been aligned
+      #(e.g. if the current overlap is between (1, 2), check the overlap between (2, 1))
+      #if so, we don't have to align again
+      if self.inverseoverlapsdictkey(overlap) in done:
         inverseoverlap = self.overlapsdict[self.inverseoverlapsdictkey(overlap)]
         if hasattr(inverseoverlap, "result"):
           result = overlap.getinversealignment(inverseoverlap)
+      #do the alignment
       if result is None:
         result = overlap.align(gputhread=self.gputhread, gpufftdict=self.gpufftdict, **kwargs)
       done.add(self.overlapsdictkey(overlap))
 
+      #contribution of the mean squared difference after alignment
+      #to the weighted sum
       if result is not None and result.exit == 0: 
         w = (overlap.cutimages[0].shape[0]*overlap.cutimages[0].shape[1])
         weighted_sum_mse+=w*result.mse[2]
@@ -90,13 +113,20 @@ class AlignmentSetBase(SampleBase):
     return weighted_sum_mse/sum_weights
 
   def getDAPI(self, keeprawimages=False, mean_image=None):
+    #load the images
     if self.__images is None or keeprawimages:
+      #create a context manager for the image loading
+      #it is in self.enter_context(), so it will exit when the AlignmentSet does
+      #and the memory will be freed
       if self.__images is None: self.__images = self.enter_context(contextlib.ExitStack())
       with contextlib.ExitStack() as stack:
+        #load all the raw images, which are used for computing the flatfield
         for r in self.rectangles:
           stack.enter_context(r.using_image_before_flatfield())
           if keeprawimages:
             self.__images.enter_context(r.using_image_before_flatfield())
+        #load all the actual images (calculated by dividing by the mean
+        #of the raw images), while the raw images are still in memory
         for r in self.rectangles:
           self.__images.enter_context(r.using_image())
 
@@ -106,13 +136,13 @@ class AlignmentSetBase(SampleBase):
       #set up an FFT for images of each unique size in the set of overlaps
       self.gpufftdict = {}
       for olap in self.overlaps :
-          cutimages_shapes = tuple(im.shape for im in olap.cutimages)
-          assert cutimages_shapes[0] == cutimages_shapes[1]
-          if cutimages_shapes[0] not in self.gpufftdict.keys() :
-              gpu_im = np.ndarray(cutimages_shapes[0],dtype=np.csingle)
-              new_fft = FFT(gpu_im)
-              new_fftc = new_fft.compile(self.gputhread)
-              self.gpufftdict[cutimages_shapes[0]] = new_fftc
+        cutimages_shapes = tuple(im.shape for im in olap.cutimages)
+        assert cutimages_shapes[0] == cutimages_shapes[1]
+        if cutimages_shapes[0] not in self.gpufftdict.keys() :
+          gpu_im = np.ndarray(cutimages_shapes[0],dtype=np.csingle)
+          new_fft = FFT(gpu_im)
+          new_fftc = new_fft.compile(self.gputhread)
+          self.gpufftdict[cutimages_shapes[0]] = new_fftc
 
   def updateRectangleImages(self,imgs,usewarpedimages=True,correct_with_meanimage=False,recalculate_meanimage=False) :
     """
@@ -120,6 +150,7 @@ class AlignmentSetBase(SampleBase):
     imgs            = list of WarpImages to use for update
     usewarpedimages = if True, warped rather than raw images will be read
     """
+    #close the images context manager to free memory
     if self.__images is not None:
       self.__images.close()
       self.__images = None
@@ -199,6 +230,9 @@ class AlignmentSetBase(SampleBase):
     return {**super().rectangleextrakwargs, "logger": self.logger, "use_mean_image": self.__use_mean_image}
 
   def stitch(self, saveresult=True, **kwargs):
+    """
+    Stitch the alignments together using a spring model
+    """
     result = self.dostitching(**kwargs)
     if saveresult: self.applystitchresult(result)
     return result
@@ -214,6 +248,9 @@ class AlignmentSetBase(SampleBase):
 
   @property
   def T(self):
+    """
+    The affine matrix from the stitching
+    """
     try:
       return self.__T
     except AttributeError:
@@ -221,6 +258,9 @@ class AlignmentSetBase(SampleBase):
 
   @property
   def fields(self):
+    """
+    The rectangles with additional information about their stitched positions
+    """
     try:
       return self.__fields
     except AttributeError:
@@ -228,10 +268,16 @@ class AlignmentSetBase(SampleBase):
 
   @property
   def fielddict(self):
+    """
+    A dictionary that allows accessing the fields from their index
+    """
     return self.fields.rectangledict
 
   @property
   def stitchresult(self):
+    """
+    The stitch result object
+    """
     try:
       return self.__stitchresult
     except AttributeError:
@@ -242,14 +288,24 @@ class AlignmentSetBase(SampleBase):
     self.__stitchresult = stitchresult
 
 class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
+  """
+  An alignment set that runs from the dbload folder and can write results
+  to the dbload folder
+  """
   @property
   def alignmentsfilename(self): return self.csv("align")
 
   def writealignments(self, *, filename=None):
+    """
+    Write the alignment results to align.csv
+    """
     if filename is None: filename = self.alignmentsfilename
     writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive, logger=self.logger)
 
   def readalignments(self, *, filename=None, interactive=True):
+    """
+    Read the alignment results from align.csv
+    """
     interactive = interactive and self.interactive and filename is None
     if filename is None: filename = self.alignmentsfilename
     self.logger.info("reading alignments from "+str(filename))
@@ -309,6 +365,11 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
     )
 
   def writestitchresult(self, result, *, filenames=None, check=False):
+    """
+    Write the stitch results to affine.csv (the affine matrix), fields.csv (the
+    stitched positions), and fieldoverlaps.csv (selected components of the covariance
+    matrix - sufficient to get the error in the relative position between two fields)
+    """
     if filenames is None: filenames = self.stitchfilenames
     result.writetable(
       *filenames,
@@ -319,6 +380,9 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
     )
 
   def readstitchresult(self, *, filenames=None, saveresult=True, interactive=True):
+    """
+    Read the stitch results from the stitched csvs
+    """
     self.logger.info("reading stitch results")
     interactive = interactive and self.interactive and saveresult and filenames is None
     if filenames is None: filenames = self.stitchfilenames
@@ -388,6 +452,10 @@ class AlignmentSetDbloadBase(AlignmentSetBase, DbloadSample, WorkflowSample):
     return [PrepDbSample] + super().workflowdependencies()
 
 class AlignmentSetFromXMLBase(AlignmentSetBase, ReadRectanglesOverlapsFromXML):
+  """
+  An alignment set that does not rely on the dbload folder and cannot write the output.
+  It is a little slower to initialize than an alignment set that does have dbload.
+  """
   def __init__(self, *args, nclip, position=None, **kwargs):
     self.__nclip = nclip
     super().__init__(*args, **kwargs)
@@ -399,21 +467,43 @@ class AlignmentSetFromXMLBase(AlignmentSetBase, ReadRectanglesOverlapsFromXML):
   def position(self): return self.__position
 
 class AlignmentSetIm3Base(AlignmentSetBase, ReadRectanglesOverlapsIm3Base):
+  """
+  An alignment set that uses im3 images
+  """
   rectangletype = AlignmentRectangle
   def __init__(self, *args, filetype="flatWarp", **kwargs):
     super().__init__(*args, filetype=filetype, **kwargs)
 
 class AlignmentSetComponentTiffBase(AlignmentSetBase, ReadRectanglesOverlapsComponentTiffBase):
+  """
+  An alignment set that uses component tiffs
+  """
   rectangletype = AlignmentRectangleComponentTiff
 
 class AlignmentSet(AlignmentSetIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignmentSetDbloadBase):
-  pass
+  """
+  An alignment set that runs on im3 images and can write results to the dbload folder.
+  This is the primary AlignmentSet class that is used for calibration.
+
+  The alignment step of the pipeline finds the relative shift between adjacent HPFs.
+  It then stitches the results together using a spring model.  For more information,
+  see the LaTeX document on alignment in the documentation folder.
+  """
 
 class AlignmentSetFromXML(AlignmentSetIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignmentSetFromXMLBase):
-  pass
+  """
+  An alignment set that runs on im3 images and does not rely on the dbload folder.
+  This class is used for calibrating the warping.
+  """
 
 class AlignmentSetComponentTiff(AlignmentSetComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignmentSetDbloadBase):
-  pass
+  """
+  An alignment set that runs on im3 images and can write results to the dbload folder.
+  This class is not currently used but is here for completeness.
+  """
 
 class AlignmentSetComponentTiffFromXML(AlignmentSetComponentTiffBase, AlignmentSetFromXMLBase, ReadRectanglesOverlapsComponentTiffFromXML):
-  pass
+  """
+  An alignment set that runs on im3 images and does not rely on the dbload folder.
+  This class is used for identifying overexposed HPFs.
+  """

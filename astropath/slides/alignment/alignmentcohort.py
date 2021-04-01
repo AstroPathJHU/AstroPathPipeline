@@ -2,6 +2,8 @@ from ...baseclasses.cohort import DbloadCohort, Im3Cohort, SelectRectanglesCohor
 from .alignmentset import AlignmentSet
 
 class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort):
+  __doc__ = AlignmentSet.__doc__
+
   def __init__(self, *args, doalignment=True, dostitching=True, **kwargs):
     super().__init__(*args, **kwargs)
     self.__doalignment = doalignment
@@ -25,8 +27,8 @@ class AlignmentCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowC
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     g = p.add_mutually_exclusive_group()
-    g.add_argument("--dont-align", action="store_true")
-    g.add_argument("--dont-stitch", action="store_true")
+    g.add_argument("--dont-align", action="store_true", help="read the alignments from the preexisting align.csv and just do stitching")
+    g.add_argument("--dont-stitch", action="store_true", help="skip the stitching step and just do alignment")
     return p
 
   @classmethod

@@ -5,6 +5,23 @@ from ...utilities import units
 from ...utilities.units.dataclasses import distancefield
 
 class Field(Rectangle):
+  """
+  A Rectangle with additional information about its stitched position
+  ix, iy: (x, y) in integer pixels
+  gc: id of the island this field is in
+      islands are defined by contiguous HPFs that can be successfully aligned
+  px, py: stitched position of the HPF
+  cov_x_x, cov_x_y, cov_y_y: covariance matrix of (px, py)
+                             note that the absolute error is likely to be large
+                             if you want the error on the relative location of two
+                             adjacent HPFs, use these values in conjunction with
+                             fieldoverlaps.csv
+  mx1, mx2, my1, my2: boundaries of the primary region of this field,
+                      calculated by an average over the positions of fields in
+                      the island in the same row and column
+  gx, gy: index of the row and column within the island
+  """
+
   __pixelsormicrons = "pixels"
   ix: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
   iy: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
@@ -74,6 +91,12 @@ class Field(Rectangle):
     return np.array([self.my1, self.mx1, self.my2, self.mx2])
 
 class FieldOverlap(Overlap):
+  """
+  An Overlap with additional information about the stitching.
+  It contains the covariance matrix components describing the correlation
+  in the positions of the two HPFs described by the overlap.
+  """
+
   __pixelsormicrons = "pixels"
   cov_x1_x2: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
   cov_x1_y2: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
@@ -100,13 +123,21 @@ class FieldOverlap(Overlap):
     )
 
 class FieldReadComponentTiff(Field, RectangleReadComponentTiff):
-  pass
+  """
+  A Field that can read a single layer of the component tiff
+  """
 
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
-  pass
+  """
+  A Field that can read multiple layers of the component tiff
+  """
 
 class FieldReadIm3(Field, RectangleReadIm3):
-  pass
+  """
+  A Field that can read a single layer of the im3
+  """
 
 class FieldReadIm3MultiLayer(Field, RectangleReadIm3MultiLayer):
-  pass
+  """
+  A Field that can read multiple layers of the im3
+  """

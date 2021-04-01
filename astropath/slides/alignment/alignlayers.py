@@ -1,3 +1,7 @@
+"""
+Aligning layers with respect to each other is not fully implemented yet.
+"""
+
 import cv2, itertools, methodtools, numpy as np
 from ...baseclasses.sample import ReadRectanglesOverlapsBase, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base
 from .alignmentset import AlignmentSet, AlignmentSetBase
@@ -6,6 +10,9 @@ from .overlap import AlignmentOverlap, LayerAlignmentResult
 from .stitchlayers import stitchlayers
 
 class OverlapForLayerAlignment(AlignmentOverlap):
+  """
+  Overlap class for aligning layers
+  """
   @classmethod
   def transforminitargs(cls, *, p1, p2, x1, y1, x2, y2, layer1, layer2, tag, **kwargs):
     return (), {

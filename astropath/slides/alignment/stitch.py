@@ -10,8 +10,20 @@ from .field import Field, FieldOverlap
 def stitch(*, usecvxpy=False, **kwargs):
   return (__stitch_cvxpy if usecvxpy else __stitch)(**kwargs)
 
-def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverlaperror=1, scaleedges=1, scalecorners=1, fixpoint="origin", origin=np.array([0, 0]), logger=dummylogger):
+def __stitch(*, rectangles, overlaps, scalejittererror=1, scaleoverlaperror=1, scaleedges=1, scalecorners=1, fixpoint="origin", origin=np.array([0, 0]), logger=dummylogger):
   """
+  stitch the alignment results together
+
+  rectangles: all HPF objects in the slide
+  overlaps: all aligned overlaps
+  scalejittererror: scale factor for the error on the positions of HPFs \sigma (contributes mainly to the relative positions of islands)
+  scaleoverlaperror: scale factor for the error on the overlap alignments \sqrt{\mathbf{cov}}
+  scaleedges: weight for the edge overlaps
+  scalecorners: weight for the corner overlaps
+  fixpoint: the point that is fixed by the fitted affine transformation.  choices: origin (default), center, or an array
+  origin: the origin of the coordinate system (used if fixpoint == "origin" and also in defining the aligned coordinate system pxvec)
+  logger: the alignment set's logger
+
   \begin{align}
   -2 \ln L =&
     1/2 \sum_\text{overlaps}
@@ -63,6 +75,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   }
 
   for o in overlaps:
+    #get the indices of the coordinates of the two overlaps to index into A and b
     ix = 2*rd[o.p1]
     iy = 2*rd[o.p1]+1
     jx = 2*rd[o.p2]
@@ -72,31 +85,34 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     assert jx >= 0, jx
     assert jy < 2*len(rectangles), jy
 
+    #contribution of the overlap to A
     ii = np.ix_((ix,iy), (ix,iy))
     ij = np.ix_((ix,iy), (jx,jy))
     ji = np.ix_((jx,jy), (ix,iy))
     jj = np.ix_((jx,jy), (jx,jy))
-    inversecovariance = units.np.linalg.inv(o.result.covariance) * scaleby**2 / scaleoverlaperror**2
+    inversecovariance = units.np.linalg.inv(o.result.covariance) / scaleoverlaperror**2
 
     A[ii] += inversecovariance * scaleoverlap[o.tag]
     A[ij] -= inversecovariance * scaleoverlap[o.tag]
     A[ji] -= inversecovariance * scaleoverlap[o.tag]
     A[jj] += inversecovariance * scaleoverlap[o.tag]
 
+    #contribution of the overlap to b
     i = np.ix_((ix, iy))
     j = np.ix_((jx, jy))
 
-    constpiece = (-units.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec) / scaleby
+    constpiece = (-units.nominal_values(o.result.dxvec) - o.x1vec + o.x2vec)
 
     b[i] += 2 * inversecovariance @ constpiece * scaleoverlap[o.tag]
     b[j] -= 2 * inversecovariance @ constpiece * scaleoverlap[o.tag]
 
+    #contribution of the overlap to c
     c += constpiece @ inversecovariance @ constpiece * scaleoverlap[o.tag]
 
   dxs, dys = zip(*(o.result.dxvec for o in overlaps))
 
-  sigmax = weightedstd(dxs, subtractaverage=False) / scaleby * scalejittererror
-  sigmay = weightedstd(dys, subtractaverage=False) / scaleby * scalejittererror
+  sigmax = weightedstd(dxs, subtractaverage=False) * scalejittererror
+  sigmay = weightedstd(dys, subtractaverage=False) * scalejittererror
 
   if fixpoint == "origin":
     x0vec = origin
@@ -111,9 +127,10 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     ix = 2*rd[r.n]
     iy = 2*rd[r.n]+1
 
-    x = r.x / scaleby
-    y = r.y / scaleby
+    x = r.x
+    y = r.y
 
+    #contribution of the HPF to A
     A[ix,ix] += 1 / sigmax**2
     A[iy,iy] += 1 / sigmay**2
     A[(ix, Txx), (Txx, ix)] -= (x - x0) / sigmax**2
@@ -129,6 +146,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     A[(Tyx, Tyy), (Tyy, Tyx)] += (x - x0)*(y - y0) / sigmay**2
     A[Tyy, Tyy]               += (y - y0)**2       / sigmay**2
 
+    #contribution of the HPF to b
     b[ix] -= 2 * x0 / sigmax**2
     b[iy] -= 2 * y0 / sigmay**2
 
@@ -137,6 +155,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
     b[Tyx] += 2 * y0 * (x - x0) / sigmay**2
     b[Tyy] += 2 * y0 * (y - y0) / sigmay**2
 
+    #contribution of the HPF to c
     c += x0**2 / sigmax**2
     c += y0**2 / sigmay**2
 
@@ -152,7 +171,7 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
   logger.debug("got covariance matrix")
   result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
-  x = result[:-4].reshape(len(rectangles), 2) * scaleby
+  x = result[:-4].reshape(len(rectangles), 2)
   T = result[-4:].reshape(2, 2)
 
   logger.debug("done")
@@ -161,6 +180,10 @@ def __stitch(*, rectangles, overlaps, scaleby=1, scalejittererror=1, scaleoverla
 
 def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([0, 0]), logger=dummylogger):
   """
+  Run the stitching using cvxpy as a cross check.
+  Arguments are the same as __stitch, with some limitations.
+  Most notably, the error on the results will not be available.
+
   \begin{align}
   -2 \ln L =&
     1/2 \sum_\text{overlaps}
@@ -201,6 +224,7 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([
       overlaps.remove(o)
 
   for o in overlaps:
+    #contribution to the quadratic from the overlap
     x1 = rectanglex[o.p1]
     x2 = rectanglex[o.p2]
     twonll += cp.quad_form(
@@ -232,6 +256,7 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([
     x0vec = fixpoint
 
   for r in rectangles:
+    #contribution to the quadratic from the HPF
     twonll += cp.norm(
       (
         (rectanglex[r.n] - x0vec / r.onepixel)
@@ -246,6 +271,14 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([
   return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale, origin=origin, logger=logger)
 
 class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
+  """
+  Base class for a stitching result.
+
+  rectangles: the HPFs
+  overlaps: the overlaps
+  origin: the origin for defining the pxvec coordinate system
+  logger: the AlignmentSet's logger
+  """
   def __init__(self, *, rectangles, overlaps, origin, logger=dummylogger):
     self.__rectangles = rectangles
     self.__overlaps = overlaps
@@ -255,9 +288,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
   @methodtools.lru_cache()
   @property
   def pscale(self):
-    pscale = {_.pscale for _ in itertools.chain(self.rectangles, self.overlaps)}
-    if len(pscale) != 1: raise ValueError("?????? this should never happen")
-    return pscale.pop()
+    pscale, = {_.pscale for _ in itertools.chain(self.rectangles, self.overlaps)}
+    return pscale
 
   @property
   def overlaps(self): return self.__overlaps
@@ -267,22 +299,42 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
   def origin(self): return self.__origin
 
   @abc.abstractmethod
-  def x(self, rectangle_or_id=None): pass
+  def x(self, rectangle_or_id=None):
+    """
+    The stitched position of the HPF
+    """
   @abc.abstractmethod
-  def dx(self, overlap): pass
+  def dx(self, overlap):
+    """
+    The stitched relative position of the two HPFs of the overlap.
+    Not necessarily the same as x(i1) - x(i2).  The nominal value will be
+    but the error may not if the full covariance matrix is not stored.
+    """
   @property
   @abc.abstractmethod
-  def T(self): pass
+  def T(self):
+    """
+    The affine matrix
+    """
   @property
   @abc.abstractmethod
-  def fieldoverlaps(self): pass
+  def fieldoverlaps(self):
+    """
+    the field overlaps with the covariance entries
+    """
 
   def applytooverlaps(self):
+    """
+    Give all the overlaps a stitchresult vector
+    """
     for o in self.overlaps:
       o.stitchresult = self.dx(o)
 
   @methodtools.lru_cache()
   def __fields(self):
+    """
+    Create the field objects from the rectangles and stitch result
+    """
     result = RectangleList()
     islands = list(self.islands(useexitstatus=True))
     onepixel = self.onepixel
@@ -300,15 +352,20 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       rectangles = [self.rectangles[self.rectangledict[n]] for n in island]
 
       for i, (primaryregions, gdict) in enumerate(zip((primaryregionsx, primaryregionsy), (gxdict, gydict))):
+        #find the gx and gy that correspond to cx and cy
         average = []
         cs = sorted({r.cxvec[i] for r in rectangles})
         for g, c in enumerate(cs, start=1):
           gdict[gc][c] = g
           theserectangles = [r for r in rectangles if r.cxvec[i] == c]
           average.append(np.mean(units.nominal_values([self.x(r)[i] for r in theserectangles])))
+
+        #find mx1, my1, mx2, my2
+        #the middle ones come from the average positions of the HPFs on either side
         primaryregions[gc] = [(x1+shape[i] + x2)/2 for x1, x2 in more_itertools.pairwise(average)]
 
         if len(primaryregions[gc]) >= 2:
+          #the outer ones come from fitting a line to the middle ones
           m, b = units.np.polyfit(
             x=range(1, len(average)),
             y=primaryregions[gc],
@@ -317,6 +374,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           primaryregions[gc].insert(0, m*0+b)
           primaryregions[gc].append(m*len(average)+b)
         else:
+          #can't fit a line because there are only at most 2 rows/columns, so do an approximation
           allcs = sorted({r.cxvec[i] for r in self.rectangles})
           mindiff = min(np.diff(allcs))
           divideby = 1
@@ -327,7 +385,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           if len(primaryregions[gc]) == 1:
             primaryregions[gc].insert(0, primaryregions[gc][0] - mindiff)
             primaryregions[gc].append(primaryregions[gc][1] + mindiff)
-          else: #len(primaryregions) == 0
+          else: #len(primaryregions[gc]) == 0
             primaryregions[gc].append(average[0] + (shape[i] - mindiff) / 2)
             primaryregions[gc].append(average[0] + (shape[i] + mindiff) / 2)
 
@@ -336,6 +394,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     my1 = {}
     my2 = {}
 
+    #set gx, gy, mx1, my1, mx2, my2 for the HPFs
     for i, island in enumerate(islands, start=1):
       for rid in island:
         r = self.rectangles[self.rectangledict[rid]]
@@ -348,9 +407,11 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         my1[rid] = primaryregionsy[i][gy-1]
         my2[rid] = primaryregionsy[i][gy]
 
+    #see if the primary regions of any HPFs in different islands overlap
     for (i1, island1), (i2, island2) in itertools.combinations(enumerate(islands, start=1), r=2):
       if len(island1) == 1 or len(island2) == 1: continue #orphans are excluded
 
+      #first see if the islands overlap
       x11 = min(primaryregionsx[i1])
       x21 = max(primaryregionsx[i1])
       x12 = min(primaryregionsx[i2])
@@ -361,6 +422,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       y12 = min(primaryregionsy[i2])
       y22 = max(primaryregionsy[i2])
 
+      #if a box around the islands overlaps in both x and y
       if (
         max(x21, x22) - min(x11, x12) + 1e-5*x11 < (x21 - x11) + (x22 - x12)
         and max(y21, y22) - min(y11, y12) + 1e-5*x11 < (y21 - y11) + (y22 - y12)
@@ -371,7 +433,6 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         yoverlapstoadjust = collections.defaultdict(list)
         cornerstoadjust = collections.defaultdict(list)
 
-        #if a box around the islands overlaps in both x and y
         for rid1, rid2 in itertools.product(island1, island2):
           xx11 = mx1[rid1]
           xx21 = mx2[rid1]
@@ -466,6 +527,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           ):
             raise ValueError(f"Primary regions for fields {rid1} and {rid2} still overlap")
 
+    #if there are any HPFs that are in the wrong quadrant (negative px or py), adjust the whole slide
     minpxvec = [np.inf * onepixel, np.inf * onepixel]
     for rectangle in self.rectangles:
       for gc, island in enumerate(islands, start=1):
@@ -507,6 +569,16 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     return self.__fields()
 
   def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
+    """
+    Write the affine, fields, and fieldoverlaps csvs
+
+    check: cross check that reading the csvs back gives the same result
+           this is nontrivial because we lose part of the covariance matrix
+           (cross talk between non-adjacent HPFs and between HPFs and the affine
+           matrix) in this procedure
+    rtol, atol: tolerance for the cross check
+    """
+
     affinefilename, fieldsfilename, fieldoverlapfilename = filenames
 
     fields = self.fields
@@ -552,6 +624,9 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       self.__logger.debug("done")
 
 class StitchResultFullCovariance(StitchResultBase):
+  """
+  Base class for a stitch result that has the full covariance matrix
+  """
   def __init__(self, *, x, T, covariancematrix, **kwargs):
     self.__x = x
     self.__T = T
@@ -602,6 +677,10 @@ class StitchResultFullCovariance(StitchResultBase):
     return fieldoverlaps
 
 class StitchResultOverlapCovariances(StitchResultBase):
+  """
+  Base class for a stitch result that only keeps the covariance entries
+  for adjacent HPFs
+  """
   def __init__(self, *, x, T, fieldoverlaps, **kwargs):
     self.__x = x
     self.__T = T
@@ -692,16 +771,25 @@ class StitchResultOverlapCovariances(StitchResultBase):
     self.__T = np.array(unc.correlated_values(Tnominal, Tcovariance)).reshape((2, 2))
 
 class ReadStitchResult(StitchResultOverlapCovariances):
+  """
+  Stitch result that reads from csvs
+  """
   def __init__(self, *args, rectangles, overlaps, origin, logger=dummylogger, **kwargs):
     super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, fieldoverlaps=None, origin=origin, logger=logger)
     self.readtable(*args, **kwargs)
 
 class CalculatedStitchResult(StitchResultFullCovariance):
+  """
+  Stitch result that is calculated using the stitching algorithm
+  """
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.sanitycheck()
 
 class StitchResult(CalculatedStitchResult):
+  """
+  Stitch result using the standalone stitching algorithm with A, b, and c
+  """
   def __init__(self, *, A, b, c, **kwargs):
     super().__init__(**kwargs)
     self.A = A
@@ -709,6 +797,9 @@ class StitchResult(CalculatedStitchResult):
     self.c = c
 
 class StitchResultCvxpy(CalculatedStitchResult):
+  """
+  Stitch result using cvxpy
+  """
   def __init__(self, *, x, T, problem, pscale, **kwargs):
     onepixel = units.onepixel(pscale=pscale)
     super().__init__(
@@ -722,11 +813,21 @@ class StitchResultCvxpy(CalculatedStitchResult):
     self.Tvar = T
 
 class AffineEntry(MyDataClass):
+  """
+  Entry in the affine matrix or in its covariance matrix
+
+  n: index of the entry
+  value: value of the entry
+  description: description of the entry
+  """
   n: int
   value: MetaDataAnnotation(float, writefunction=float)
   description: str
 
 class AffineNominalEntry(AffineEntry):
+  """
+  Entry in the affine matrix
+  """
   matrixentry: MetaDataAnnotation(unc.ufloat, includeintable=False)
 
   @classmethod
@@ -734,6 +835,9 @@ class AffineNominalEntry(AffineEntry):
     return super().transforminitargs(value=matrixentry.n, matrixentry=matrixentry, **kwargs)
 
 class AffineCovarianceEntry(AffineEntry):
+  """
+  Entry in the covariance matrix of the affine matrix
+  """
   entry1: MetaDataAnnotation(unc.ufloat, includeintable=False)
   entry2: MetaDataAnnotation(unc.ufloat, includeintable=False)
 
