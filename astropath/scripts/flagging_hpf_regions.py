@@ -33,18 +33,18 @@ RBC_LAYER_GROUP_INDEX      = 2
 FOLD_MIN_PIXELS            = 30000
 FOLD_MIN_SIZE              = 5000
 #FOLD_NLV_CUT               = 0.0035
-FOLD_NLV_CUT               = 0.035
+FOLD_NLV_CUT               = 0.05
 #FOLD_MAX_MEAN              = 0.0030
-FOLD_MAX_MEAN              = 0.030
+FOLD_MAX_MEAN              = 0.0425
 #FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
 FOLD_MASK_FLAG_CUTS        = [3,0,3,0,1,1,1]
 FOLD_FLAG_STRING           = 'tissue fold or bright dust'
 DUST_MIN_PIXELS            = 30000
 DUST_MIN_SIZE              = 20000
 #DUST_NLV_CUT               = 0.00085
-DUST_NLV_CUT               = 0.0085
+DUST_NLV_CUT               = 0.01
 #DUST_MAX_MEAN              = 0.00065
-DUST_MAX_MEAN              = 0.0065
+DUST_MAX_MEAN              = 0.0075
 DUST_STRING                = 'likely dust'
 SATURATION_MIN_PIXELS      = 4500
 SATURATION_MIN_SIZE        = 1000
@@ -289,15 +289,18 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
             plt.savefig(fn); plt.close(); cropAndOverwriteImage(fn)
 
 #helper function to plot all of the hpf locations for a slide with their reasons for being flagged
-def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,workingdir) :
+#def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,workingdir) :
+def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,truncated,workingdir) :
     all_flagged_hpf_keys = [lmr.image_key for lmr in all_lmrs]
     hpf_identifiers = []
     for rfp in all_rfps :
         key = (os.path.basename(rfp)).rstrip(RAWFILE_EXT)
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
-        cvx = pscale*key_x-xpos
-        cvy = pscale*key_y-ypos
+        #cvx = pscale*key_x-xpos
+        #cvy = pscale*key_y-ypos
+        cvx = key_x
+        cvy = key_y
         if key in all_flagged_hpf_keys :
             key_strings = set([lmr.reason_flagged for lmr in all_lmrs if lmr.image_key==key])
             fold_flagged = 1 if FOLD_FLAG_STRING in key_strings else 0
@@ -592,7 +595,8 @@ def main(args=None) :
         with cd(args.workingdir) :
             writetable(fn,sorted(all_lmrs,key=lambda x: f'{x.image_key}_{x.region_index}'))
     #make the plot of all the HPF locations and whether they have something masked/flagged
-    plotFlaggedHPFLocations(args.slideID,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,args.workingdir)
+    #plotFlaggedHPFLocations(args.slideID,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,args.workingdir)
+    plotFlaggedHPFLocations(args.slideID,all_rfps,all_lmrs,truncated,args.workingdir)
 
 if __name__=='__main__' :
     main()
