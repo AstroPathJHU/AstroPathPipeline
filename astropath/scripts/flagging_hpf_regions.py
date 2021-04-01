@@ -547,7 +547,21 @@ def main(args=None) :
         newhist,newbins = np.histogram(all_exp_times[lgi],bins=100)
         exp_time_hists.append((newhist,newbins))
     metsbl = getSlideMedianExposureTimesByLayer(args.root_dir,args.slideID)
-    etcobl = [lo.offset for lo in readtable(args.exposure_time_offset_file,LayerOffset)]
+    etcobl = []
+    for li in range(dims[-1]) :
+        etcobl.append(None)
+    layer_offsets_from_file = readtable(args.exposure_time_offset_file,LayerOffset)
+    for ln in range(1,len(etcobl)+1) :
+        this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
+        if len(this_layer_offset)==1 :
+            etcobl[ln-1]=this_layer_offset[0]
+        elif len(this_layer_offset)==0 :
+            msg = f'WARNING: LayerOffset file {args.exposure_time_offset_file} does not have an entry for layer {ln}'
+            msg+=  ', so that offset will be set to zero!'
+            logger.warning(msg)
+            etcobl[ln-1]=0.
+        else :
+            raise RuntimeError(f'ERROR: more than one entry found in LayerOffset file {args.exposure_time_offset_file} for layer {ln}!')
     with open(os.path.join(args.threshold_file_dir,f'{args.slideID}_background_thresholds.txt')) as fp :
         bgtbl = [int(v) for v in fp.readlines() if v!='']
     if len(bgtbl)!=dims[-1] :
