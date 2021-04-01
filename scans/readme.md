@@ -12,7 +12,8 @@ The AstroPath Pipeline requires that a number of experimental protocols are unde
 - ```Tissue[String]```: The tissue the panel was stained on
 - ```Machine[string]```: The user defined name of the microscope the machine was scanned on. 
    - This specifier is used to find particular files needed for processing a of specified microscope, particularly the image warping parameters. 
-   - Traditionally the microscopes are named with a three letter location specifier, followed by the machine type (Polaris, Vectra3), then underscore and a numeric value. (E.g. JHUVectra3_1).
+   - Traditionally the microscopes are named with a three letter location specifier, followed by the machine type (Polaris, Vectra3), then underscore and a numeric value. 
+   - E.g. *JHUVectra3_1*
 - ```StainConfig[int]```: The stain configuration is a unique numeric value for a ```Machine, Method, Panel``` pairing. 
 - ```Cohort[int]```: A unique numeric identifier for a set of patient samples. 
    - Cohorts can belong in multiple ```Projects``` if stained with different ```StainConfig```s.
