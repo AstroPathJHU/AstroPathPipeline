@@ -1,6 +1,6 @@
 #imports
 from astropath.flatfield.utilities import chunkListOfFilepaths, readImagesMT, getSizeFilteredMask, getImageTissueMask 
-from astropath.flatfield.utilities import getExclusiveMask, getMorphedAndFilteredMask, getImageLayerLocalVarianceOfNormalizedLaplacian
+from astropath.flatfield.image_mask import getExclusiveMask, getMorphedAndFilteredMask, getImageLayerLocalVarianceOfNormalizedLaplacian
 from astropath.flatfield.config import CONST
 from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset
 from astropath.utilities.img_file_io import smoothImageWorker, getExposureTimesByLayer
@@ -22,24 +22,33 @@ LOCAL_MEAN_KERNEL          = np.array([[0.0,0.2,0.0],
 WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45))
 SMALLER_WINDOW_EL          = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(15,15))
 SMALLER_WINDOW_N_PIXELS    = np.sum(SMALLER_WINDOW_EL)
-MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
-BRIGHTEST_LAYERS           = [5,11,21,29,34]
+#MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
+MAS_LAYER_GROUPS           = [(1,9),(10,11),(12,17),(18,20),(21,29),(30,36),(37,43)]
+#BRIGHTEST_LAYERS           = [5,11,21,29,34]
+BRIGHTEST_LAYERS           = [5,10,16,19,22,31,41]
 DAPI_LAYER_GROUP_INDEX     = 0
-RBC_LAYER_GROUP_INDEX      = 1
+#RBC_LAYER_GROUP_INDEX      = 1
+RBC_LAYER_GROUP_INDEX      = 2
 FOLD_MIN_PIXELS            = 30000
 FOLD_MIN_SIZE              = 5000
-FOLD_NLV_CUT               = 0.0035
-FOLD_MAX_MEAN              = 0.0030
-FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
+#FOLD_NLV_CUT               = 0.0035
+FOLD_NLV_CUT               = 0.035
+#FOLD_MAX_MEAN              = 0.0030
+FOLD_MAX_MEAN              = 0.030
+#FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
+FOLD_MASK_FLAG_CUTS        = [3,0,3,0,1,1,1]
 FOLD_FLAG_STRING           = 'tissue fold or bright dust'
 DUST_MIN_PIXELS            = 30000
 DUST_MIN_SIZE              = 20000
-DUST_NLV_CUT               = 0.00085
-DUST_MAX_MEAN              = 0.00065
+#DUST_NLV_CUT               = 0.00085
+DUST_NLV_CUT               = 0.0085
+#DUST_MAX_MEAN              = 0.00065
+DUST_MAX_MEAN              = 0.0065
 DUST_STRING                = 'likely dust'
 SATURATION_MIN_PIXELS      = 4500
 SATURATION_MIN_SIZE        = 1000
-SATURATION_INTENSITY_CUTS  = [100,100,250,400,150]
+#SATURATION_INTENSITY_CUTS  = [100,100,250,400,150]
+SATURATION_INTENSITY_CUTS  = [75,50,40,200,100,100,50]
 SATURATION_FLAG_STRING     = 'saturated likely skin red blood cells or stain'
 
 #logger
@@ -101,7 +110,7 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
                  {'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (clipped)'},
                  #{'image':overlay_gs,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (grayscale)'},
                  {'bar':ethistandbins[0],'bins':ethistandbins[1],'xlabel':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} exposure times (ms)','line_at':exp_times[layer_group_bounds[0]-1]},
-                 #{'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'},
+                 {'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'},
                  {'hist':brightest_layer_nlv.flatten(),'xlabel':'variance of normalized laplacian','line_at':nlv_cut},
                  {'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
                  #{'image':group_blur_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask','vmin':0,'vmax':1},
