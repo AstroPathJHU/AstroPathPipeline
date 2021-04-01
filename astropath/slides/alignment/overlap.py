@@ -340,7 +340,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     create an alignment result from the inverse alignment result
     """
     assert self.isinverseof(inverse)
-    self.result = AlignmentResult(
+    self.result = self.alignmentresulttype(
       exit = inverse.result.exit,
       dxvec = -inverse.result.dxvec,
       mse3 = inverse.result.mse3 / inverse.result.sc**2,
