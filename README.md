@@ -10,8 +10,8 @@ The Astropath pipeline was designed to automate the processing of whole slide mu
 ## ***Contents***
 1. [Description](#description "Title")
 2. [Contents](#contents "Title")
-3. [Setting Up, Organization, and Scanning](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/#section-3-setting-up-organization-and-scanning "Title")
-   - [3.1 Description](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/#section-31-description "Title")
+3. [Setting Up, Organization, and Scanning](scans/#3-setting-up-organization-and-scanning "Title")
+   - [3.1 Description](scans/#31-description "Title")
    - [3.2 AstroPathProcessing Directory and Initializing Projects](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/#section-32-astropathprocessing-directory-and-initializing-projects "Title")
    - [3.3 Scanning, Verifying Complete, and Adding BatchIDs](https://github.com/AstroPathJHU/AstroPathPipeline/blob/main/scans/#section-33-scanning-verifying-complete-and-adding-batchids "Title")
 4. [HPF Processing]
