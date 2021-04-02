@@ -46,9 +46,10 @@ pipeline {
     }
     stage('run tests') {
       parallel {
-        stage('console scripts') {
+        stage('console scripts and documentation') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testconsolescripts'
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmarkdownlinks'
           }
         }
 
