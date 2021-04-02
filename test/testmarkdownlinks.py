@@ -32,7 +32,7 @@ def linksandanchors(filename):
     anchors = sum((soup.findAll(f"h{i}", attrs={"id": re.compile(".*")}) for i in range(1, 7)), [])
     #import pprint; pprint.pprint(anchors); input()
     return links, anchors
-  except Exception as e:
+  except Exception:
     raise LinkError(f"Error when reading {filename}")
 
 class TestMarkdownLinks(unittest.TestCase):
