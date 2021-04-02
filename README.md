@@ -20,7 +20,7 @@ The Astropath pipeline was designed to automate the processing of whole slide mu
 - [1. Description](#1-description "Title")
 - [2. Instructions](#2-instructions "Title")
 - [3. Contents](#3-contents "Title")
-- [4. Scans](scans/#4-scans "Title")
+- [4. Scans](astropath/scans/#4-scans "Title")
    - [4.1. Description](scans/#41-description "Title")
    - [4.2. Definitions](scans/#42-definitions "Title")
      - [4.2.1. Identification Definitions](scans/#421-identification-definitions "Title")
