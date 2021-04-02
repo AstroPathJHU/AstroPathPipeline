@@ -40,7 +40,7 @@ The AstroPath Pipeline requires that a number of experimental protocols are unde
 The file pathes have been standarized and are described below. Additional examples and directions for intialization of these paths can be found in [4.4](#44-astropath_processing-directory-and-initializing-projects "Title"). **A full file tree layout can be found in**.
 - ```<Mpath>```: The main path for all the astropath processing *.csv* configuration files.
   - The current location of this path is ```\\bki04\astropath_processing```.
-  - A description of each file is located below in [3.4](#34-astropath_processing-directory-and-initializing-projects "Title")
+  - A description of each file is located below in [4.4](#44-astropath_processing-directory-and-initializing-projects "Title")
 - ```<Dname>```: The data folder name or the name of the clinical specimen folder. 
    - E.g. “Clinical_Specimen_7” 
 - ```<Dpath>```: The data or destination path up to but not including the ```<Dname>```
