@@ -9,7 +9,6 @@ setupkwargs = dict(
     "console_scripts": [
       "aligncohort=astropath.slides.align.aligncohort:main",
       "alignsample=astropath.slides.align.alignsample:main",
-      "extractlayer=astropath.hpfs.extractlayer.extractlayer:main",
       "prepdbcohort=astropath.slides.prepdb.prepdbcohort:main",
       "prepdbsample=astropath.slides.prepdb.prepdbsample:main",
     ],

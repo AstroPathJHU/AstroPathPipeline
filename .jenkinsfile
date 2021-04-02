@@ -30,20 +30,12 @@ pipeline {
       }
     }
 
-    stage('setup') {
-      parallel {
-        stage('setup dbload folder') {
-          steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
-          }
-        }
-        stage('extract flatw layer') {
-          steps {
-            sh 'folder=$(basename $(pwd)); cd ..; extractlayer ${folder}/test/data/ ${folder}/test/data/flatw M21_1 --layer 1'
-          }
-        }
+    stage('setup dbload folder') {
+      steps {
+        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
       }
     }
+
     stage('run tests') {
       parallel {
         stage('console scripts and documentation') {
