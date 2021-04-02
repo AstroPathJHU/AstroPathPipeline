@@ -38,7 +38,7 @@ The Astropath pipeline was designed to automate the processing of whole slide mu
      - [4.3.5. BatchIDs](astropath/scans/#435-batchids "Title")
      - [4.3.6. Batch Tables](astropath/scans/#436-batch-tables "Title")
      - [4.3.7. MergeConfig Tables](astropath/scans/#437-mergeconfig-tables "Title") 
-   - [4.4. AstroPathProcessing Directory and Initializing Projects](astropath/scans/#44-astropath_processing-directory-and-initializing-projects "Title")
+   - [4.4. AstroPath_Processing Directory and Initializing Projects](astropath/scans/#44-astropath_processing-directory-and-initializing-projects "Title")
      - [4.4.1. AstroPath_Processing Directory](astropath/scans/#441-astropath_processing-directory "Title")
      - [4.4.2. Initializing Projects](astropath/scans/#442-initializing-projects "Title")
    - [4.5. Directory Organization](astropath/scans/#45-directory-organization "Title")
