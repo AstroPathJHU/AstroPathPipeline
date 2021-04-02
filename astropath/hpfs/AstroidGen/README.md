@@ -38,7 +38,7 @@ The code also intializes the necessary [processing folders](#533-workflow "Title
    
    *NOTE:* the ```<path>``` variables do not contain the ```<Dname>```
    
-## 4.3.3. Workflow
+## 5.3.3. Workflow
 We begin by opening the *AstropathCohortsProgress.csv* file from the ```<Mpath>```. We process each available cohort from this file sequentially. We first check that data folder for the cohort on the bki servers (```<Dpath>\<Dname>```) and the source folder for the cohort (```<Spath>\<Dname>```) exist. Then, we either intialize or ensure that the following folders are intialized in the ```<Dpath>\<Dname>``` for processing. 
 1.	```upkeep_and_progress```
     - For any upkeep and progress tracking files
@@ -50,7 +50,7 @@ We begin by opening the *AstropathCohortsProgress.csv* file from the ```<Mpath>`
     - Project level log files for the astropath pipeline 
 4.	```Batch```
     - The batch and merge tables
-    - These tables are described in further documentation located [here](https://github.com/AstroPathJHU/AstroPathPipeline/tree/main/scans#336-batch-tables "Title")
+    - These tables are described in further documentation located [here](../../scans#436-batch-tables "Title")
 5.	```Clinical```
     - Location of the clinical table
     - These tables should be labeled as *Clinical_Table_Specimen_CSID_MMDDYYYY.csv*, where the ```CSID``` indicates the number on the ```<Dname>``` folder. 
@@ -64,7 +64,7 @@ We begin by opening the *AstropathCohortsProgress.csv* file from the ```<Mpath>`
 9.	```reject```
     - Location of the rejected slides
 
-Information on these folders is also located in documentation located [here](https://github.com/AstroPathJHU/AstroPathPipeline/tree/main/scans#35-directory-organization "Title") repository.
+Information on these folders is also located in documentation located [here](../../scans#45-directory-organization "Title") repository.
 
 Finally, we compile the *AstropathAPIDdef.csv* as follows:
 1.	Check that *Specimen_Table.xlsx* exists. 
