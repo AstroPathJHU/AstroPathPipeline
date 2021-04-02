@@ -5,7 +5,7 @@ This code is used to transfer and reorganize the whole slide clinical specimen s
 
 ## 5.4.2. Important Definitions
 
-1. We use path specifiers to shorten descriptions, further description of these paths can be found in the additional documentation [here](..\..\scans#422-path-definitions "Title"):
+1. We use path specifiers to shorten descriptions, further description of these paths can be found in the additional documentation [here](../../scans#422-path-definitions "Title"):
    - ```<Mpath>```: the main path for all the astropath processing ***.csv*** configuration files; the current location of this path is ```\\bki04\astropath_processing```
    - ```<Dname>```: the data name or the name of the clinical specimen folder
    - ```<Dpath>```: the data or destination path
@@ -20,7 +20,7 @@ Usage is:
 ```TransferDaemon.py <Mpath> <email_on_error> [<source_file_handling>] [<logical_compression>] [<quiet>]```
 
 - ```<Mpath>```: should contain the ***AstropathCohortsProgress.csv***, ***AstropathPaths.csv***, and the ***AstropathCohorts.csv*** files
-  - description of these files can be found [here](..\..\scans#441-astropath_processing-directory "Title")
+  - description of these files can be found [here](../../scans#441-astropath_processing-directory "Title")
 - ```<email_on_error>```: a valid email address to send error information to
 - ```[<source_file_handling>]```: Optional argument; should be one of three options:
   - ```HYBRID```: Default; Follow CSV protocol but leave folders with DoNotDelete.txt file
