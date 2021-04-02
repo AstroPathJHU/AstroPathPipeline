@@ -13,6 +13,7 @@ def linksandanchors(filename):
     soup = bs4.BeautifulSoup(html)
     links = soup.findAll("a", attrs={"href": re.compile(".*")})
     anchors = sum((soup.findAll(f"h{i}", attrs={"id": re.compile(".*")}) for i in range(1, 7)), [])
+    #import pprint; pprint.pprint(anchors); input()
     return links, anchors
   except Exception as e:
     raise LinkError(f"Error when reading {filename}")
@@ -48,12 +49,12 @@ class TestMarkdownLinks(unittest.TestCase):
                 fulldestpath = fulldestpath/"README.md"
                 if not fulldestpath.exists():
                   raise LinkError(f"link to directory and anchor, but no README.md in the directory: {dest} (resolves to {fulldestpath})")
-                try:
-                  _, anchors = linksandanchors(fulldestpath)
-                except LinkError:
-                  raise LinkError(f"link to {dest}, but couldn't parse {fulldestpath}")
-                if not any(a.get("id") == anchor for a in anchors):
-                  raise LinkError(f"link to nonexistent anchor: {dest} (resolves to {fulldestpath}, couldn't find {anchor})")
+              try:
+                _, anchors = linksandanchors(fulldestpath)
+              except LinkError:
+                raise LinkError(f"link to {dest}, but couldn't parse {fulldestpath}")
+              if not any(a.get("id") == anchor for a in anchors):
+                raise LinkError(f"link to nonexistent anchor: {dest} (resolves to {fulldestpath}, couldn't find {anchor})")
           except LinkError as e:
             errors.append(e)
 
