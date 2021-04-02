@@ -49,7 +49,7 @@ The Astropath pipeline was designed to automate the processing of whole slide mu
    - [4.4 Segmentation \ Classification]
  - [6. Slide_Processing]
    - [5.1 Description]
-   - [5.2 Align]
+   - [5.2 Align](astropath/slides/align/#alignment)
    - [5.3 Annotations]
    - [5.4 Cell Geometries]
  - [7. Sample_Processing]

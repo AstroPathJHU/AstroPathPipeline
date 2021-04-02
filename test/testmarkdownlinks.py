@@ -1,4 +1,21 @@
-import bs4, functools, marko.ext.gfm, pathlib, re, unittest
+import bs4, functools, marko.ext.toc, pathlib, re, slugify, unittest
+
+class GithubTocRendererMixin(marko.ext.toc.TocRendererMixin):
+  def render_heading(self, element):
+    children = self.render_children(element)
+    slug = re.sub(r"<.+?>", "", children)
+    slug = re.sub(r"(?<=[0-9])[.](?=[0-9])", r"", slug)
+    slug = slug.replace("_", "UNDERSCOREUNDERSCORE")
+    slug = slug.replace("#", "HASHTAGHASHTAG")
+    slug = slugify.slugify(slug)
+    slug = slug.replace("underscoreunderscore", "_")
+    slug = slug.replace("hashtaghashtag", "")
+    self.headings.append((int(element.level), slug, children))
+    return '<h{0} id="{1}">{2}</h{0}>\n'.format(element.level, slug, children)
+
+class GithubToc:
+  def __init__(self):
+    self.renderer_mixins = [GithubTocRendererMixin]
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -9,8 +26,8 @@ def linksandanchors(filename):
   try:
     with open(filename) as f:
       markdown = f.read()
-    html = marko.Markdown(extensions=["toc"])(markdown)
-    soup = bs4.BeautifulSoup(html)
+    html = marko.Markdown(extensions=[GithubToc()])(markdown)
+    soup = bs4.BeautifulSoup(html, features="lxml")
     links = soup.findAll("a", attrs={"href": re.compile(".*")})
     anchors = sum((soup.findAll(f"h{i}", attrs={"id": re.compile(".*")}) for i in range(1, 7)), [])
     #import pprint; pprint.pprint(anchors); input()
