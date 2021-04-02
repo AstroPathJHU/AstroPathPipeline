@@ -37,7 +37,7 @@ setupkwargs = dict(
     "uncertainties",
   ],
   extras_require = {
-    "test": ["flake8", "pyflakes", "texoutparse"],
+    "test": ["beautifulsoup4", "flake8", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
     "gdal": ["gdal>=3.2.1"],
     "vips": ["pyvips"],
   }
