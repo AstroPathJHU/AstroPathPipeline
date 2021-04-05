@@ -1,7 +1,7 @@
-# Alignment
+# 6.3. Align
 
-This document describes how to technically run alignment.  For a more detailed mathematical
-explanation, see [this document](README.pdf).
+This document describes how to technically run the align stage of the pipeline.
+For a more detailed mathematical explanation, see [this document](README.pdf).
 
 To run alignment on single slide, run:
 ```

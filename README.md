@@ -63,9 +63,10 @@ The Astropath pipeline was designed to automate the processing of whole slide mu
    - [5.6 Segmentation \ Classification]
  - [6. Slide_Processing]
    - [6.1 Description]
-   - [6.2 Align]
-   - [6.3 Annotations]
-   - [6.4 Cell Geometries]
+   - [6.2 Prepdb](astropath/slides/prepdb/#62-prepdb)
+   - [6.3 Align](astropath/slides/align/#63-align)
+   - [6.4 Annotations]
+   - [6.5 Cell Geometries]
  - [7. Sample_Processing]
    - [7.1 Description]
    - [7.2 Control TMAs]
