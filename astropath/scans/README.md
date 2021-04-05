@@ -52,8 +52,8 @@ The file pathes have been standarized and are described below. Additional exampl
 - ```<Cpath>```: The compression path of the data up to but not including the ```<Dname>```
   - such that the full compression path of the data is ```\\<Cpath>\<Dname>```
   - Here the compressed backup the im3 image files and final Tables\ component data tiffs are stored after the pipeline has finished processing. 
-  -	E.g. “bki03\Compressed_Clinical_Specimens”
-  -	E.g. “bki03\Compressed_Clinical_Specimens_2”
+  - E.g. “bki03\Compressed_Clinical_Specimens”
+  - E.g. “bki03\Compressed_Clinical_Specimens_2”
 - ```<FWpath>```: This is the full path for the single column flat field and warping image (.fw) as well as the exposure time data for each image (.SpectralBasisInfo.xml). 
    - This path should preferably located on a different drive from the main path to improve pipeline performance. 
    - E.g. “bki03\flatw_7”
@@ -67,7 +67,7 @@ Before scanning it is important to set up the ```<spath>```. This folder is crea
 
 After a new batch of slides are stained, they should be added to a *Specimen_Table_N.xlsx* file located in each ```<spath>```, described in detail below in [4.3.1](#431-specimen_table "Title"). As part of adding slides to this table, the slides will be given a unique de identified name for scanning. Tips on these names are included in [4.3.2](#432-samplenames-patient--or-m-numbers "Title"). The most important aspect of this convention is to avoid the use of spaces and special characters. For each batch, a control tma should also be stained and scanned. The scanning and naming of this slide is also very important for pipeline ingestion and is defined below in [4.3.3](#433-control-tma-conventions "Title"). *Note*: The control tmas do not go into the *Specimen_Table_N* and are found based on their **naming**.
 
-Once added to the *SpecimenTable.xlsx*, slides can be scanned with 20% overlap according to the protocol laid out in [4.3.4](434-whole-slide-scanning "Title"). In order for successful processing of the slides, it is very important that this procedure is adhered to correctly. After slides are scanned, the user should manually verify that all images were scanned completed properly and add a *BatchID.txt* file to the successful ```Scan``` directory. This initiates the slide transfer process in the pipeline, additional details on this step are defined in [4.3.5](#435-batchids "Title"). It is also important to create the *Batch_BB.csv* and *MergeConfig_BB.csv* files for processing to continue successfully. Each staining batch defined should have a separate set of these tables. Information on these files can be found in [4.3.6](#436-batch-tables "Title") and [4.3.7](#437-mergeconfig-tables "Title"), respectively. 
+Once added to the *SpecimenTable.xlsx*, slides can be scanned with 20% overlap according to the protocol laid out in [4.3.4](#434-whole-slide-scanning "Title"). In order for successful processing of the slides, it is very important that this procedure is adhered to correctly. After slides are scanned, the user should manually verify that all images were scanned completed properly and add a *BatchID.txt* file to the successful ```Scan``` directory. This initiates the slide transfer process in the pipeline, additional details on this step are defined in [4.3.5](#435-batchids "Title"). It is also important to create the *Batch_BB.csv* and *MergeConfig_BB.csv* files for processing to continue successfully. Each staining batch defined should have a separate set of these tables. Information on these files can be found in [4.3.6](#436-batch-tables "Title") and [4.3.7](#437-mergeconfig-tables "Title"), respectively. 
 
 ### 4.3.1. Specimen_Table
 The specimen table is used to intialize the slides and servers as the link between the de identified slide ids and the clinical specimen ids. The specimen table should be labeled *Specimen_Table_N.xlsx*, where *N* stands for the same unique specifier on the *Clinical_Specimen_N* folder. This file should always be contained on a HIPAA complinant location. The file has the following columns:
@@ -355,3 +355,4 @@ The following folders should exist in the ```<Dpath>\<Dname>``` for processing. 
     - Location of the inform data output and inform algorithms used. **Additional information on this folder is provided in the hpf processing documentation.**
 9.	```reject```
     - Location of the rejected slides
+
