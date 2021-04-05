@@ -6,13 +6,11 @@ import re
 import sys
 import hashlib
 import shutil
-import smtplib
 import pathlib
 import traceback
 import subprocess
 import pandas
 import argparse
-import numpy as np
 import shared_tools.shared_tools as st
 import lxml.etree as et
 from pathlib import Path
