@@ -8,8 +8,8 @@ from ...utilities.misc import dict_product, dummylogger
 from ...utilities.tableio import readtable, writetable
 from ...utilities.units import ThingWithApscale, ThingWithPscale
 from ...utilities.units.dataclasses import distancefield
-from ..alignment.alignmentset import AlignmentSet
-from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
+from ..align.alignsample import AlignSample
+from ..align.field import Field, FieldReadComponentTiffMultiLayer
 from ..geom.contours import findcontoursaspolygons
 
 class GeomLoadField(Field, GeomLoadRectangle):
@@ -127,7 +127,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
 
   @classmethod
   def workflowdependencies(cls):
-    return [AlignmentSet] + super().workflowdependencies()
+    return [AlignSample] + super().workflowdependencies()
 
 class CellGeomLoad(DataClassWithPolygon):
   pixelsormicrons = "pixels"

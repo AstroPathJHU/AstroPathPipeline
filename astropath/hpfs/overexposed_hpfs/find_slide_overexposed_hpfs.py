@@ -1,5 +1,5 @@
 #imports
-from astropath.slides.alignment.alignmentset import AlignmentSetComponentTiffFromXML
+from astropath.slides.align.alignsample import AlignSampleComponentTiffFromXML
 from astropath.utilities.tableio import writetable
 from astropath.utilities import units
 from astropath.utilities.dataclasses import MyDataClass
@@ -119,7 +119,7 @@ def getOverlapMSEComparisons(rd,sid) :
     #get overlap mse information from the slide's component .tiff images in the DAPI and autofluorescence layers
     for lgi,ln in enumerate((UNIV_CONST.COMP_TIFF_DAPI_LAYER,UNIV_CONST.COMP_TIFF_AF_LAYER)) :
         logger.info(f'Getting overlap mses for component .tiff image layer {ln}....')
-        a = AlignmentSetComponentTiffFromXML(rd,sid,
+        a = AlignSampleComponentTiffFromXML(rd,sid,
                                              nclip=UNIV_CONST.N_CLIP,
                                              layer=ln)
         a.logger.setLevel(logging.WARN)

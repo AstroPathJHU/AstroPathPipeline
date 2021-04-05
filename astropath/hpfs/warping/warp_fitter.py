@@ -5,7 +5,7 @@ from .utilities import warp_logger, WarpingError, WarpFitResult, FieldLog
 from .plotting import OctetComparisonVisualization
 from .config import CONST
 from ...baseclasses.rectangle import rectangleoroverlapfilter
-from ...slides.alignment.alignmentset import AlignmentSetFromXML
+from ...slides.align.alignsample import AlignSampleFromXML
 from ...utilities.img_file_io import getImageHWLFromXMLFile, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
 from ...utilities.tableio import writetable
 from ...utilities import units
@@ -60,10 +60,10 @@ class WarpFitter :
         m, n, nlayers = getImageHWLFromXMLFile(self.root_dir,slideID)
         if layer<1 or layer>nlayers :
             raise WarpingError(f'ERROR: Choice of layer ({layer}) is not valid for images with {nlayers} layers!')
-        #make the alignmentset object to use
+        #make the alignsample object to use
         self.bkp_units_mode = units.currentmode
         units.setup("fast") #be sure to use fast units
-        self.alignset = self.__initializeAlignmentSet(overlaps=overlaps,layer=layer)
+        self.alignset = self.__initializeAlignSample(overlaps=overlaps,layer=layer)
         #save the metadata summary and field logs for this alignment set
         ms = MetadataSummary(self.slideID,self.alignset.Project,self.alignset.Cohort,self.alignset.microscopename,
                              str(min([r.t for r in self.alignset.rectangles])),str(max([r.t for r in self.alignset.rectangles])))
@@ -144,7 +144,7 @@ class WarpFitter :
         self.costs=[]
         self.max_radial_warps=[]
         self.max_tangential_warps=[]
-        #silence the AlignmentSet logger
+        #silence the AlignSample logger
         self.alignset.logger.setLevel(logging.WARN)
         #set the variable describing how often to print progress
         self.print_every = print_every
@@ -200,7 +200,7 @@ class WarpFitter :
     # !!!!!! For the time being, these functions don't correctly describe dependence on k4, k5, or k6 !!!!!!
 
     #The function whose return value is minimized by the fitting
-    def _evalCamWarpOnAlignmentSet(self,pars) :
+    def _evalCamWarpOnAlignSample(self,pars) :
         self.minfunc_calls+=1
         #first fix the parameter list so the warp functions always see vectors of the same length
         warp_pars = self.fitpars.warpParsFromFitPars(pars)
@@ -272,7 +272,7 @@ class WarpFitter :
         with cd(self.working_dir) :
             try :
                 result=scipy.optimize.differential_evolution(
-                    func=self._evalCamWarpOnAlignmentSet,
+                    func=self._evalCamWarpOnAlignSample,
                     bounds=parameter_bounds,
                     strategy='best1bin',
                     maxiter=int(maxiter/self._de_population_size)+1,
@@ -299,7 +299,7 @@ class WarpFitter :
         with cd(self.working_dir) :
             try :
                 result=scipy.optimize.minimize(
-                    fun=self._evalCamWarpOnAlignmentSet,
+                    fun=self._evalCamWarpOnAlignSample,
                     x0=init_pars,
                     method='trust-constr',
                     bounds=parameter_bounds,
@@ -545,10 +545,10 @@ class WarpFitter :
     #################### OTHER PRIVATE HELPER FUNCTIONS ####################
 
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
-    def __initializeAlignmentSet(self, *, overlaps, layer) :
+    def __initializeAlignSample(self, *, overlaps, layer) :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
-        a = AlignmentSetFromXML(self.root_dir,self.working_dir,self.slideID,nclip=UNIV_CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
+        a = AlignSampleFromXML(self.root_dir,self.working_dir,self.slideID,nclip=UNIV_CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
                                 selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True,
                                 filetype="camWarp",readlayerfile=True,layer=layer)
         return a

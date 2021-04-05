@@ -3,8 +3,8 @@ import contextlib, cv2, itertools, jxmlease, methodtools, numpy as np, os, PIL, 
 from ...baseclasses.sample import ReadRectanglesBase, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels
-from ..alignment.alignmentset import AlignmentSet
-from ..alignment.field import Field, FieldReadComponentTiffMultiLayer
+from ..align.alignsample import AlignSample
+from ..align.field import Field, FieldReadComponentTiffMultiLayer
 
 class ZoomSampleBase(ReadRectanglesBase):
   """
@@ -397,4 +397,4 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
 
   @classmethod
   def workflowdependencies(cls):
-    return [AlignmentSet] + super().workflowdependencies()
+    return [AlignSample] + super().workflowdependencies()

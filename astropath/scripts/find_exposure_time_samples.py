@@ -1,5 +1,5 @@
 #imports
-from ..slides.alignment.alignmentset import AlignmentSetFromXML
+from ..slides.align.alignsample import AlignSampleFromXML
 from ..utilities.img_file_io import getExposureTimesByLayer
 from ..utilities.tableio import writetable
 from ..utilities.misc import cd
@@ -77,8 +77,8 @@ def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,layers,return_dict) :
             exp_times[rfkey].append(all_exp_times[ln-1])
     n_overlaps = [0 for ln in layers]
     for li,ln in enumerate(layers) :
-        print(f'Making AlignmentSet for {sn} layer {ln}....')
-        a = AlignmentSetFromXML(mtd,rtd,sn,nclip=8,readlayerfile=False,layer=ln)
+        print(f'Making AlignSample for {sn} layer {ln}....')
+        a = AlignSampleFromXML(mtd,rtd,sn,nclip=8,readlayerfile=False,layer=ln)
         print(f'Finding overlaps for {sn} layer {ln}....')
         rfkeys_by_rect_n = {}
         for r in a.rectangles :
