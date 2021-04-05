@@ -33,18 +33,18 @@ RBC_LAYER_GROUP_INDEX      = 2
 FOLD_MIN_PIXELS            = 30000
 FOLD_MIN_SIZE              = 5000
 #FOLD_NLV_CUT               = 0.0035
-FOLD_NLV_CUT               = 0.1
+FOLD_NLV_CUT               = 0.06
 #FOLD_MAX_MEAN              = 0.0030
-FOLD_MAX_MEAN              = 0.085
+FOLD_MAX_MEAN              = 0.051
 #FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
 FOLD_MASK_FLAG_CUTS        = [3,0,3,0,1,1,1]
 FOLD_FLAG_STRING           = 'tissue fold or bright dust'
 DUST_MIN_PIXELS            = 30000
 DUST_MIN_SIZE              = 20000
 #DUST_NLV_CUT               = 0.00085
-DUST_NLV_CUT               = 0.02
+DUST_NLV_CUT               = 0.012
 #DUST_MAX_MEAN              = 0.00065
-DUST_MAX_MEAN              = 0.015
+DUST_MAX_MEAN              = 0.009
 DUST_STRING                = 'likely dust'
 SATURATION_MIN_PIXELS      = 4500
 SATURATION_MIN_SIZE        = 1000
@@ -535,8 +535,6 @@ def main(args=None) :
     #get all the rawfile paths
     with cd(os.path.join(args.rawfile_top_dir,args.slideID)) :
         all_rfps = [os.path.join(args.rawfile_top_dir,args.slideID,fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
-    if args.max_files>0 :
-        all_rfps=all_rfps[:args.max_files]
     #get the correction details and other slide information stuff
     dims   = getImageHWLFromXMLFile(args.root_dir,args.slideID)
     all_exp_times = []
