@@ -347,6 +347,18 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase):
   def workflowdependencies(cls):
     return [ShredXML] + super().workflowdependencies()
 
+  @classmethod
+  def logstartregex(cls):
+    old = super().logstartregex()
+    new = "prepSample started"
+    return rf"(?:{old}|{new})"
+
+  @classmethod
+  def logendregex(cls):
+    old = super().logendregex()
+    new = "prepSample end"
+    return rf"(?:{old}|{new})"
+
 def main(args=None):
   p = argparse.ArgumentParser()
   p.add_argument("root")
