@@ -44,9 +44,9 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
           raise
       yield samp
 
-  @abc.abstractmethod
   def runsample(self, sample, **kwargs):
     "actually run whatever is supposed to be run on the sample"
+    sample.run(**kwargs)
 
   @property
   @abc.abstractmethod
@@ -172,8 +172,7 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
   @classmethod
   def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
     """
-    Main function to run the cohort from command line arguments.
-    This function can be called in __main__
+    Run the cohort from command line arguments.
     """
     with units.setup_context(misckwargs.pop("units")):
       dryrun = misckwargs.pop("dry_run")

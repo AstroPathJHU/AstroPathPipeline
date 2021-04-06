@@ -4,15 +4,7 @@ from .zoom import Zoom
 class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomFolderCohort, SelectLayersCohort, WorkflowCohort):
   __doc__ = Zoom.__doc__
 
-  def __init__(self, *args, mode="vips", **kwargs):
-    self.__mode = mode
-    super().__init__(*args, **kwargs)
-
   sampleclass = Zoom
-
-  def runsample(self, sample):
-    #sample.logger.info(f"{sample.ntiles} {len(sample.rectangles)}")
-    return sample.zoom_wsi(mode=self.__mode)
 
   @classmethod
   def makeargumentparser(cls):
@@ -21,9 +13,9 @@ class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomFolder
     return p
 
   @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
     kwargs = {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
+      **super().runkwargsfromargumentparser(parsed_args_dict),
       "mode": parsed_args_dict.pop("mode"),
     }
     return kwargs

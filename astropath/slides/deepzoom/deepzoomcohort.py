@@ -8,9 +8,6 @@ class DeepZoomCohort(DbloadCohort, ZoomFolderCohort, DeepZoomCohort, SelectLayer
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
-  def runsample(self, sample):
-    return sample.deepzoom()
-
   @property
   def workflowkwargs(self):
     return {"layers": self.layers, **super().workflowkwargs}

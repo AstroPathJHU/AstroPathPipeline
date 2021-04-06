@@ -62,6 +62,10 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
   def logmodule(self):
     return "geomcell"
 
+  @classmethod
+  def defaultunits(cls):
+    return "fast_microns"
+
   def rungeomcell(self, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
     if not _debugdraw: _onlydebug = False
@@ -100,6 +104,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
             )
 
       writetable(field.geomloadcsv, geomload)
+
+  run = rungeomcell
 
   @property
   def inputfiles(self):
@@ -448,3 +454,9 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     plt.ylim(top=top-1, bottom=bottom)
     plt.show()
     self.logger.debug(f"{polygon}: {self.loginfo}")
+
+def main(args=None):
+  GeomCellSample.runfromargumentparser(args)
+
+if __name__ == "__main__":
+  main()

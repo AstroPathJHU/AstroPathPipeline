@@ -785,6 +785,8 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     self.writevertices()
     self.writeregions()
 
+  run = runannowarp
+
   @property
   def inputfiles(self):
     return [
@@ -1183,3 +1185,9 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
         else:
           keep[t.n] = True
     return type(self)(_ for _ in good if keep[_.n])
+
+def main(args=None):
+  AnnoWarpSample.runfromargumentparser(args)
+
+if __name__ == "__main__":
+  main()

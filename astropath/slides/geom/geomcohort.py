@@ -5,12 +5,6 @@ class GeomCohort(DbloadCohort, SelectRectanglesCohort, WorkflowCohort):
   sampleclass = GeomSample
   __doc__ = sampleclass.__doc__
 
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-
-  def runsample(self, sample):
-    return sample.writeboundaries()
-
 def main(args=None):
   GeomCohort.runfromargumentparser(args)
 

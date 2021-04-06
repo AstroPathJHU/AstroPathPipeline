@@ -2,12 +2,11 @@ from ...baseclasses.cohort import DbloadCohort, MaskCohort, SelectRectanglesCoho
 from .stitchmask import StitchInformMask
 
 class StitchMaskCohortBase(DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort):
-  def runsample(self, sample):
-    return sample.writemask()
+  pass
 
 class StitchInformMaskCohort(StitchMaskCohortBase):
-  __doc__ = StitchInformMask.__doc__
   sampleclass = StitchInformMask
+  __doc__ = sampleclass.__doc__
 
 def main(args=None):
   StitchInformMaskCohort.runfromargumentparser(args)

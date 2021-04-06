@@ -245,6 +245,8 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
       self.patchfolderstructure(layer)
     self.writezoomlist()
 
+  run = deepzoom
+
   @property
   def inputfiles(self):
     return [
@@ -299,3 +301,9 @@ class DeepZoomFile(MyDataClass):
     This is used to sort for the csv file.
     """
     return (self.sample, self.zoom, self.marker, self.x, self.y) < (other.sample, other.zoom, other.marker, other.x, other.y)
+
+def main(args=None):
+  DeepZoomSample.runfromargumentparser(args)
+
+if __name__ == "__main__":
+  main()

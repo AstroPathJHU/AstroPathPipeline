@@ -97,6 +97,10 @@ class RunFromArgumentParser(abc.ABC):
 
   @classmethod
   def runfromargumentparser(cls, args=None):
+    """
+    Main function to run from command line arguments.
+    This function can be called in __main__
+    """
     p = cls.makeargumentparser()
     args = p.parse_args(args=args)
     argsdict = args.__dict__.copy()

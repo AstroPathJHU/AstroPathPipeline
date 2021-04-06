@@ -373,6 +373,8 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
     else:
       raise ValueError(f"Bad mode {mode}")
 
+  run = zoom_wsi
+
   @property
   def inputfiles(self):
     return [
@@ -398,3 +400,9 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
   @classmethod
   def workflowdependencies(cls):
     return [AlignSample] + super().workflowdependencies()
+
+def main(args=None):
+  Zoom.runfromargumentparser(args)
+
+if __name__ == "__main__":
+  main()

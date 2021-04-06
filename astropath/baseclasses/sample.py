@@ -5,6 +5,7 @@ from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import constantsdict, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
@@ -69,7 +70,7 @@ class SampleDef(MyDataClass):
   def __bool__(self):
     return bool(self.isGood)
 
-class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots):
+class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots, RunFromArgumentParser):
   """
   Base class for all sample classes.
 
@@ -483,6 +484,32 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots):
   @classmethod
   def logendregex(cls): return rf"end {cls.logmodule()}"
 
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("SlideID", help="The SlideID of the sample to run")
+    return p
+
+  @classmethod
+  def defaultunits(cls):
+    return "fast_pixels"
+
+  @classmethod
+  def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
+    """
+    Run the sample from command line arguments.
+    """
+    with units.setup_context(misckwargs.pop("units")):
+      if misckwargs:
+        raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
+      sample = cls(**initkwargs)
+      sample.run(**runkwargs)
+      return sample
+
+  @abc.abstractmethod
+  def run(self, **kwargs):
+    "actually run whatever is supposed to be run on the sample"
+
 class WorkflowSample(SampleBase, WorkflowDependency):
   """
   Base class for a sample that will be used in a workflow,
@@ -506,7 +533,7 @@ class WorkflowSample(SampleBase, WorkflowDependency):
     """
     return []
 
-class DbloadSampleBase(SampleBase):
+class DbloadSampleBase(SampleBase, DbloadArgumentParser):
   """
   Base class for any sample that uses the csvs in the dbload folder.
   If the dbload folder is initialized already, you should instead inherit
@@ -620,7 +647,7 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
     """
     return self.constantsdict["apscale"]
 
-class MaskSampleBase(SampleBase):
+class MaskSampleBase(SampleBase, MaskArgumentParser):
   """
   Base class for any sample that uses the masks in im3/meanimage
 
@@ -643,7 +670,7 @@ class MaskSampleBase(SampleBase):
       result = self.maskroot/result.relative_to(self.root)
     return result
 
-class Im3SampleBase(SampleBase):
+class Im3SampleBase(SampleBase, Im3ArgumentParser):
   """
   Base class for any sample that uses sharded im3 images.
   root2: Root location of the im3 images.
@@ -663,7 +690,7 @@ class Im3SampleBase(SampleBase):
   def possiblexmlfolders(self):
     return super().possiblexmlfolders + [self.root2/self.SlideID]
 
-class ZoomFolderSampleBase(SampleBase):
+class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   """
   Base class for any sample that uses the zoomed "big" or "wsi" images.
   zoomroot: Root location of the zoomed images.
@@ -694,7 +721,7 @@ class ZoomFolderSampleBase(SampleBase):
     """
     return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
 
-class DeepZoomSampleBase(SampleBase):
+class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
   """
   Base class for any sample that uses the deepzoomed images.
   deepzoomroot: Root location of the deepzoomed images.
@@ -710,7 +737,7 @@ class DeepZoomSampleBase(SampleBase):
   @property
   def deepzoomfolder(self): return self.deepzoomroot/self.SlideID
 
-class GeomSampleBase(SampleBase):
+class GeomSampleBase(SampleBase, GeomFolderArgumentParser):
   """
   Base class for any sample that uses the _cellgeomload.csv files
 
@@ -729,7 +756,7 @@ class GeomSampleBase(SampleBase):
   def geomfolder(self):
     return self.geomroot/self.SlideID/"geom"
 
-class SelectLayersSample(SampleBase):
+class SelectLayersSample(SampleBase, SelectLayersArgumentParser):
   """
   Base class for any sample that needs a layer selection.
   """
@@ -774,7 +801,7 @@ class SelectLayersComponentTiff(SelectLayersSample):
   @property
   def nlayers(self): return self.nlayersunmixed
 
-class ReadRectanglesBase(RectangleCollection, SampleBase):
+class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgumentParser):
   """
   Base class for any sample that reads HPF info from any source.
   selectrectangles: filter for selecting rectangles (a list of ids or a function)
@@ -1195,7 +1222,7 @@ class ReadRectanglesOverlapsComponentTiffFromXML(ReadRectanglesOverlapsComponent
   and loads the rectangle images from component tiff files.
   """
 
-class TempDirSample(SampleBase):
+class TempDirSample(SampleBase, TempDirArgumentParser):
   """
   Base class for any sample that wants to use a temp folder
   temproot: main folder to make the tmpdir in (default is whatever the system uses)

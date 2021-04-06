@@ -49,9 +49,6 @@ class AnnoWarpCohort(AnnoWarpCohortBase):
     super().__init__(*args, **kwargs)
     self.readalignments = readalignments
 
-  def runsample(self, sample):
-    return sample.runannowarp(readalignments=self.readalignments)
-
   @classmethod
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
@@ -63,9 +60,9 @@ class AnnoWarpCohort(AnnoWarpCohortBase):
     return p
 
   @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
     kwargs = {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
+      **super().runkwargsfromargumentparser(parsed_args_dict),
       "readalignments": parsed_args_dict.pop("dont_align"),
     }
     return kwargs
