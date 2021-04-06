@@ -33,23 +33,23 @@ RBC_LAYER_GROUP_INDEX      = 2
 FOLD_MIN_PIXELS            = 30000
 FOLD_MIN_SIZE              = 5000
 #FOLD_NLV_CUT               = 0.0035
-FOLD_NLV_CUT               = 0.06
+FOLD_NLV_CUT               = 0.08
 #FOLD_MAX_MEAN              = 0.0030
-FOLD_MAX_MEAN              = 0.051
+FOLD_MAX_MEAN              = 0.07
 #FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
 FOLD_MASK_FLAG_CUTS        = [3,0,3,0,1,1,1]
 FOLD_FLAG_STRING           = 'tissue fold or bright dust'
 DUST_MIN_PIXELS            = 30000
 DUST_MIN_SIZE              = 20000
 #DUST_NLV_CUT               = 0.00085
-DUST_NLV_CUT               = 0.012
+DUST_NLV_CUT               = 0.03
 #DUST_MAX_MEAN              = 0.00065
-DUST_MAX_MEAN              = 0.009
+DUST_MAX_MEAN              = 0.0225
 DUST_STRING                = 'likely dust'
 SATURATION_MIN_PIXELS      = 4500
 SATURATION_MIN_SIZE        = 1000
 #SATURATION_INTENSITY_CUTS  = [100,100,250,400,150]
-SATURATION_INTENSITY_CUTS  = [75,50,50,200,100,100,50]
+SATURATION_INTENSITY_CUTS  = [100,50,75,250,150,100,50]
 SATURATION_FLAG_STRING     = 'saturated likely skin red blood cells or stain'
 
 #logger
@@ -184,11 +184,11 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
         norm = 255./(pil_max-pil_min)
         im_c = (np.clip(norm*(plot_img_layer-pil_min),0,255)).astype(np.uint8)
         overlay_c = np.array([im_c,im_c*group_mask,im_c*group_mask]).transpose(1,2,0)
-        plots = [{'image':plot_img_layer,'title':f'smoothed normalized IMAGE layer {brightest_layer_n}'},
-                 {'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask overlay (clipped)'},
+        plots = [#{'image':plot_img_layer,'title':f'smoothed normalized IMAGE layer {brightest_layer_n}'},
+                 #{'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask overlay (clipped)'},
                  {'hist':sm_n_img_array[:,:,brightest_layer_n-1].flatten(),'xlabel':'pixel intensity (counts/ms)','line_at':intensity_cut,'log_scale':True},
-                 {'bar':ethistandbins[0],'bins':ethistandbins[1],'xlabel':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} exposure times (ms)','line_at':exp_times[layer_group_bounds[0]-1]},
-                 {'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
+                 #{'bar':ethistandbins[0],'bins':ethistandbins[1],'xlabel':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} exposure times (ms)','line_at':exp_times[layer_group_bounds[0]-1]},
+                 #{'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
                  #{'image':group_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask','vmin':0,'vmax':1},
                 ]
     else :
@@ -390,7 +390,7 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,working
                                                                       (MASK_LAYER_GROUPS[lgi][1]-MASK_LAYER_GROUPS[lgi][0]),
                                                                       BRIGHTEST_LAYERS[lgi],
                                                                       exp_time_hists[lgi],
-                                                                      return_plots=False)
+                                                                      return_plots=True)
         #lgsm,saturation_mask_plots = np.ones(img_array.shape,dtype=np.uint8), None
         layer_group_saturation_masks.append(lgsm)
         layer_group_saturation_mask_plots.append(saturation_mask_plots)
@@ -453,13 +453,17 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,working
         all_plot_dict_lists = []
         if tissue_fold_plots_by_layer_group is not None :
             all_plot_dict_lists += tissue_fold_plots_by_layer_group
-        if dapi_dust_plots is not None :
-            all_plot_dict_lists += [dapi_dust_plots]
-        sat_plots = []
         for saturation_mask_plot_dicts in layer_group_saturation_mask_plots :
             if saturation_mask_plot_dicts is not None :
-                sat_plots.append(saturation_mask_plot_dicts)
-        all_plot_dict_lists += sat_plots
+            	for lgi,smpd in enumerate(saturation_mask_plot_dicts) :
+            		all_plot_dict_lists[lgi].append(smpd)
+        if dapi_dust_plots is not None :
+            all_plot_dict_lists += [dapi_dust_plots]
+        #sat_plots = []
+        #for saturation_mask_plot_dicts in layer_group_saturation_mask_plots :
+        #    if saturation_mask_plot_dicts is not None :
+        #        sat_plots.append(saturation_mask_plot_dicts)
+        #all_plot_dict_lists += sat_plots
         doMaskingPlotsForImage(key,tissue_mask,all_plot_dict_lists,output_mask,workingdir)
         ##write out the mask in the working directory
         #with cd(workingdir) :
