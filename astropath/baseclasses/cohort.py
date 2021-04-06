@@ -1,11 +1,12 @@
-import abc, argparse, pathlib, re
+import abc, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
 from .sample import SampleDef
 from .workflowdependency import ThingWithRoots
 
-class Cohort(ThingWithRoots):
+class Cohort(ThingWithRoots, RunFromArgumentParser):
   """
   Base class for a cohort - a bunch of samples that can be run in a loop
 
@@ -28,29 +29,6 @@ class Cohort(ThingWithRoots):
     self.uselogfiles = uselogfiles
     self.xmlfolders = xmlfolders
 
-    if version_requirement is None:
-      version_requirement = "commit" if self.uselogfiles else "any"
-
-    if version_requirement == "any":
-      checkdate = checktag = False
-    elif version_requirement == "commit":
-      checkdate = True
-      checktag = False
-    elif version_requirement == "tag":
-      checkdate = checktag = True
-    else:
-      assert False, version_requirement
-
-    from ..utilities.version import astropathversionmatch, env_var_no_git
-    if checkdate:
-      if env_var_no_git:
-        raise RuntimeError("Cannot run if environment variable _ASTROPATH_VERSION_NO_GIT is set unless you set --allow-local-edits")
-      if astropathversionmatch.group("date"):
-        raise ValueError("Cannot run with local edits to git unless you set --allow-local-edits")
-    if checktag:
-      if astropathversionmatch.group("dev"):
-        raise ValueError("Specified --no-dev-version, but the current version is a dev version")
-
   def __iter__(self):
     """
     Iterate over the sample's sampledef.csv file.
@@ -72,7 +50,7 @@ class Cohort(ThingWithRoots):
 
   @property
   @abc.abstractmethod
-  def sampleclass(self):
+  def sampleclass(cls):
     "What type of samples to create"
 
   def initiatesample(self, samp):
@@ -132,32 +110,18 @@ class Cohort(ThingWithRoots):
     for samp in self: print(samp)
 
   @classmethod
-  def argumentparserhelpmessage(cls):
-    return cls.__doc__
-
-  @classmethod
   def defaultunits(cls):
-    return "fast_pixels"
+    return cls.sampleclass.defaultunits()
 
   @classmethod
   def makeargumentparser(cls):
     """
     Create an argument parser to run this cohort on the command line
     """
-    p = argparse.ArgumentParser(description=cls.argumentparserhelpmessage())
-    p.add_argument("root", type=pathlib.Path, help="The Clinical_Specimen folder where sample data is stored")
+    p = super().makeargumentparser()
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
-    p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
-    p.add_argument("--units", choices=("safe", "fast", "fast_pixels", "fast_microns"), default=cls.defaultunits(), help=f"unit implementation (default: {cls.defaultunits()}; safe is only needed for debugging code)")
     p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
-    g = p.add_mutually_exclusive_group()
-    g.add_argument("--logroot", type=pathlib.Path, help="root location where the log files are stored (default: same as root)")
-    g.add_argument("--no-log", action="store_true", help="do not write to log files")
-    p.add_argument("--xmlfolder", type=pathlib.Path, action="append", help="additional folders to look for xml metadata", default=[], dest="xmlfolders")
-    g = p.add_mutually_exclusive_group()
-    g.add_argument("--no-dev-version", help="refuse to run unless the package version is tagged", action="store_const", const="tag", dest="version_requirement")
-    g.add_argument("--allow-dev-version", help="ok to run even if the package is at a dev version (default if using a log file)", action="store_const", const="commit", dest="version_requirement")
-    g.add_argument("--allow-local-edits", help="ok to run even if there are local edits on top of the git commit (default if not writing to a log file)", action="store_const", const="any", dest="version_requirement")
+    p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
     return p
 
   @classmethod
@@ -168,16 +132,11 @@ class Cohort(ThingWithRoots):
     """
     dct = parsed_args_dict
     kwargs = {
-      "root": dct.pop("root"),
+      **super().initkwargsfromargumentparser(parsed_args_dict),
       "debug": dct.pop("debug"),
-      "logroot": dct.pop("logroot"),
-      "uselogfiles": not dct.pop("no_log"),
-      "xmlfolders": dct.pop("xmlfolders"),
-      "version_requirement": dct.pop("version_requirement"),
       "slideidfilters": [],
       "samplefilters": [],
     }
-    if kwargs["logroot"] is None: kwargs["logroot"] = kwargs["root"]
     regex = dct.pop("sampleregex")
     if regex is not None:
       kwargs["slideidfilters"].append(lambda self, sample: regex.match(sample.SlideID))
@@ -192,20 +151,34 @@ class Cohort(ThingWithRoots):
     return kwargs
 
   @classmethod
-  def runfromargumentparser(cls, args=None):
+  def misckwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().misckwargsfromargumentparser(parsed_args_dict),
+      "dry_run": parsed_args_dict.pop("dry_run"),
+    }
+    return kwargs
+
+  @classmethod
+  def argsdictsfromargumentparser(cls, parsed_args_dict):
+    """
+    Get the kwargs dicts needed to run from the argparse dict
+    from the parsed arguments
+    """
+    return {
+      **super().argsdictsfromargumentparser(parsed_args_dict),
+      "runkwargs": cls.runkwargsfromargumentparser(parsed_args_dict),
+    }
+
+  @classmethod
+  def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
     """
     Main function to run the cohort from command line arguments.
     This function can be called in __main__
     """
-    p = cls.makeargumentparser()
-    args = p.parse_args(args=args)
-    argsdict = args.__dict__.copy()
-    with units.setup_context(argsdict.pop("units")):
-      dryrun = argsdict.pop("dry_run")
-      initkwargs = cls.initkwargsfromargumentparser(argsdict)
-      runkwargs = cls.runkwargsfromargumentparser(argsdict)
-      if argsdict:
-        raise TypeError(f"Some command line arguments were not processed:\n{argsdict}")
+    with units.setup_context(misckwargs.pop("units")):
+      dryrun = misckwargs.pop("dry_run")
+      if misckwargs:
+        raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
       cohort = cls(**initkwargs)
       if dryrun:
         cohort.dryrun(**runkwargs)
@@ -213,7 +186,7 @@ class Cohort(ThingWithRoots):
         cohort.run(**runkwargs)
       return cohort
 
-class Im3Cohort(Cohort):
+class Im3Cohort(Cohort, Im3ArgumentParser):
   """
   Base class for any cohort that uses im3 files
   root2: the location of the sharded im3s
@@ -233,20 +206,7 @@ class Im3Cohort(Cohort):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "root2": self.root2}
 
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("root2", type=pathlib.Path, help="root location of sharded im3 files")
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "root2": parsed_args_dict.pop("root2"),
-    }
-
-class DbloadCohort(Cohort):
+class DbloadCohort(Cohort, DbloadArgumentParser):
   """
   Base class for any cohort that uses the dbload folder
   dbloadroot: an alternate root to use for the dbload folder instead of root
@@ -266,20 +226,7 @@ class DbloadCohort(Cohort):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
 
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("--dbloadroot", type=pathlib.Path, help="root location of dbload folder (default: same as root)")
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "dbloadroot": parsed_args_dict.pop("dbloadroot"),
-    }
-
-class ZoomFolderCohort(Cohort):
+class ZoomFolderCohort(Cohort, ZoomFolderArgumentParser):
   """
   Base class for any cohort that uses zoom files
   zoomroot: root for the zoom files
@@ -296,20 +243,7 @@ class ZoomFolderCohort(Cohort):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "zoomroot": self.zoomroot}
 
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("--zoomroot", type=pathlib.Path, required=True, help="root location of stitched wsi images")
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "zoomroot": parsed_args_dict.pop("zoomroot"),
-    }
-
-class DeepZoomCohort(Cohort):
+class DeepZoomCohort(Cohort, DeepZoomArgumentParser):
   """
   Base class for any cohort that uses deepzoom files
   deepzoomroot: root for the deepzoom files
@@ -326,20 +260,7 @@ class DeepZoomCohort(Cohort):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "deepzoomroot": self.deepzoomroot}
 
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("--deepzoomroot", type=pathlib.Path, required=True, help="root location of deepzoom images")
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "deepzoomroot": parsed_args_dict.pop("deepzoomroot"),
-    }
-
-class MaskCohort(Cohort):
+class MaskCohort(Cohort, MaskArgumentParser):
   """
   Base class for any cohort that uses the mask folder
   maskroot: an alternate root to use for the mask folder instead of root
@@ -358,20 +279,7 @@ class MaskCohort(Cohort):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "maskroot": self.maskroot}
 
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("--maskroot", type=pathlib.Path, help="root location of mask folder (default: same as root)")
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "maskroot": parsed_args_dict.pop("maskroot"),
-    }
-
-class SelectRectanglesCohort(Cohort):
+class SelectRectanglesCohort(Cohort, SelectRectanglesArgumentParser):
   """
   Base class for any cohort that allows the user to select rectangles
   selectrectangles: the rectangle filter (on the command line, a list of ids)
@@ -384,20 +292,7 @@ class SelectRectanglesCohort(Cohort):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "selectrectangles": self.selectrectangles}
 
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("--selectrectangles", type=int, nargs="*", metavar="HPFID", help="select only certain HPF IDs to run on")
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "selectrectangles": parsed_args_dict.pop("selectrectangles"),
-    }
-
-class SelectLayersCohort(Cohort):
+class SelectLayersCohort(Cohort, SelectLayersArgumentParser):
   """
   Base class for any cohort that allows the user to select layers
   layers: the layers to use
@@ -410,20 +305,7 @@ class SelectLayersCohort(Cohort):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "layers": self.layers}
 
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("--layers", type=int, nargs="*", metavar="LAYER", help="select only certain layers to run on")
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "layers": parsed_args_dict.pop("layers"),
-    }
-
-class TempDirCohort(Cohort):
+class TempDirCohort(Cohort, TempDirArgumentParser):
   """
   Base class for any cohort that wants to use a temporary directory
   temproot: the location where the temporary directories should be created
@@ -437,20 +319,7 @@ class TempDirCohort(Cohort):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "temproot": self.temproot}
 
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("--temproot", type=pathlib.Path, help="root folder to save temp files in")
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "temproot": parsed_args_dict.pop("temproot"),
-    }
-
-class GeomFolderCohort(Cohort):
+class GeomFolderCohort(Cohort, GeomFolderArgumentParser):
   """
   Base class for a cohort that uses the _cellgeomload.csv files
   geomroot: an alternate root to use for the geom folder instead of root
@@ -465,19 +334,6 @@ class GeomFolderCohort(Cohort):
   @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "geomroot": self.geomroot}
-
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("--geomroot", type=pathlib.Path, help="root location of geom folder (default: same as root)")
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "geomroot": parsed_args_dict.pop("geomroot"),
-    }
 
   @property
   def rootnames(self): return {"geomroot", *super().rootnames}
