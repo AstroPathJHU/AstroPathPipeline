@@ -453,10 +453,9 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,working
         all_plot_dict_lists = []
         if tissue_fold_plots_by_layer_group is not None :
             all_plot_dict_lists += tissue_fold_plots_by_layer_group
-        for saturation_mask_plot_dicts in layer_group_saturation_mask_plots :
+        for lgi,saturation_mask_plot_dicts in enumerate(layer_group_saturation_mask_plots) :
             if saturation_mask_plot_dicts is not None :
-            	for lgi,smpd in enumerate(saturation_mask_plot_dicts) :
-            		all_plot_dict_lists[lgi].append(smpd)
+        		all_plot_dict_lists[lgi].append(smpd[0])
         if dapi_dust_plots is not None :
             all_plot_dict_lists += [dapi_dust_plots]
         #sat_plots = []
