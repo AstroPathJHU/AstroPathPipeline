@@ -25,7 +25,7 @@ ECHO .
 ECHO extractLayer %flatw% %sample% %layer%
 ECHO   %time% 
 ::
-matlab -minimize -nosplash -nodesktop -sd %mcode%\mtools -r "extractLayer('%flatw%','%sample%',%layer%);quit(0);" -wait -logfile %log%
+matlab -minimize -nosplash -nodesktop -sd %mcode%\mtools -r "extractLayer('%flatw%','%sample%','%layer%');quit(0);" -wait -logfile %log%
 :: CALL %mcode%\Im3Tools\matlabEcho %log%
 ::
 IF EXIST "%log%" DEL /Q %log% 

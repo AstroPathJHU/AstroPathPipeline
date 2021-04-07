@@ -3,24 +3,23 @@
 %% Created by: Benjamin Green - Johns Hopkins - 05/14/2019
 %% --------------------------------------------------------------
 %% Description:
-%%% for a give specimen in a directory; check if the status of the
-%%% flatwarping .bin image if it is not already created make it
+%%% for a batch of specimens in a directory; check the status of the
+%%% flatwarping .bin image. if it is not already created, make it
 %% --------------------------------------------------------------
 %%
-function process_flt2bin(main,tn)
+function process_flt2bin(main)
 %
-tbl = readtable([main, '\Paths',tn,'.csv'], 'Delimiter' , ',',...
+tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
     'ReadVariableNames', true);
 %
 for i1 = 1:height(tbl)
     %
     % Clinical_Specimen folder
     %
-    wd = tbl(i1,'Main_Path');
-    wd = table2array(wd);
-    wd = wd{1};
+    wd = tbl(i1,:);
+    wd = ['\\', wd.Dpath{1},'\', wd.Dname{1}];
     %
-    samplenames = getSpecimens(wd);
+    samplenames = find_specimens(wd);
     %
     % get scan path and batchID of each sample
     %
@@ -32,8 +31,8 @@ for i1 = 1:height(tbl)
     %
     Batches = unique(tbl2.BatchID);
     %
-    if ~exist([wd,'\Flatfield'],'dir')
-        mkdir([wd,'\Flatfield'])
+    if ~exist([wd,'\flatfield'],'dir')
+        mkdir([wd,'\flatfield'])
     end
     %
     for i2 = 1:length(Batches)
@@ -41,7 +40,7 @@ for i1 = 1:height(tbl)
         %
         % check if the final .flt file exists for the batch
         %
-        p1 = [wd,'\Flatfield\flatfield_BatchID_',B1,'.bin'];
+        p1 = [wd,'\flatfield\flatfield_BatchID_',B1,'.bin'];
         if exist(p1,'file')
             continue
         end
@@ -62,28 +61,24 @@ end
 %
 end
 %
-function samplenames = getSpecimens(wd)
-%%
-% get specimen names for the CS
-%
-%%
-%
-fn = dir(wd);
-fd = fn(3:end);
-ii = [fd.isdir];
-fd = fd(ii);
-samplenames = {fd(:).name};
-%
-% filter for only Clinical_Specimen folders
-%
-ii = (contains(samplenames, 'Batch')...
-    |contains(samplenames, 'tmp_inform_data')|...
-    contains(samplenames, 'reject')|...
-    contains(samplenames, 'Control')|...
-    strcmp(samplenames, 'Clinical')|...
-    strcmp(samplenames, 'Upkeep and Progress')|...
-    strcmp(samplenames, 'Flatfield'));
-samplenames = samplenames(~ii);
+function sn = find_specimens(wd)
+sp = dir(wd);
+sp = sp(3:end);
+ii = [sp.isdir];
+sp = sp(ii);
+sn = {sp(:).name};
+ii = (contains(sn, 'Batch')|...
+    strcmp(sn, 'Clinical')|...
+    contains(sn, 'Control')|...
+    strcmpi(sn, 'Ctrl')|...
+    strcmpi(sn, 'dbload')|...
+    strcmpi(sn, 'Flatfield')|...
+    strcmpi(sn, 'logfiles')|...
+    strcmpi(sn, 'reject')|...
+    contains(sn, 'tmp_inform_data')|...
+    strcmp(sn, 'Upkeep and Progress')|...
+    strcmpi(sn, 'upkeep_and_progress'));
+sn(ii) = [];
 end
 %
 function tbl2 = getSampleTable(wd, samplenames)
@@ -203,15 +198,13 @@ function fltOneBatch(tbl3, p1, fnms)
 %%
 onms = p1;
 %
-p = [tbl3.Scanpath{1},'MSI\*im3'];
-f = dir(p);
-f = fullfile(f(1).folder,f(1).name);
+f1 = fullfile(fnms{1}.folder,fnms{1}.name);
+f2 = replace(f1,'.flt','.csv');
+nn  = csvread(f2);
+k = nn(2);
+h = nn(4);
+w = nn(3);
 %
-im = bfopen(f);
-%
-im = im{1};
-[k,~] = size(im);
-[h,w] = size(im{1});
 try
     mean2flat(onms,[fnms{:}],100,k, h, w);
 catch
@@ -250,9 +243,9 @@ for i=1:numel(d)
     f2 = replace(f1,'.flt','.csv');
     %
     nn  = csvread(f2);
-    if nn >= 300
+    if nn(1) >= 300
         %fprintf('%s : %d\n', d(i).name, nn);
-        A = A + (readflat(f1, m, n, k) .* nn);
+        A = A + (readflat(f1, m, n, k) .* nn(1));
         N = N + nn;
     end
     %

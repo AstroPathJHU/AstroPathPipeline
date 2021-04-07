@@ -15,6 +15,7 @@ IF "|%2|"=="||" ECHO Usage: cleanPath flatw sample && ENDLOCAL && EXIT /B;
 ::
 SET flatw=%1
 SET sample=%2
+SET root=%3\%sample%\im3\xml\
 SET dest=%flatw%\%sample%
 ::
 ECHO .
@@ -24,8 +25,9 @@ ECHO   dest %dest%
 ::
 :: clean up the .imm and .raw files
 ::
-DEL /Q %dest%\*.imm
-DEL /Q %dest%\*.raw
+DEL /Q %dest%\*.dat
+XCOPY /Q /Y /Z %dest%\*.xml %root% 
+DEL /Q %dest%\*.xml
 ::
 ECHO   %time% 
 ::

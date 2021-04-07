@@ -1,4 +1,4 @@
-function d = extractLayer(path,sample,layer)
+function d = extractLayer(path, sample, layer)
 %%------------------------------------------------------
 %% Take a directory of flatfielded and warped images in the raw
 %% format, and extract a particular layer. Save it as a binary
@@ -7,19 +7,21 @@ function d = extractLayer(path,sample,layer)
 %% for the DAPI layer.
 %%
 %% Alex Szalay, Baltimore, 2018-07-29
+%% Last Edit: Benjamin Green, Baltimore, 2021-04-06
 %%
 %% Usage: extractLayer('F:\dapi','M41_1',layer);
 %%    or: extractLayer('F:\dapi','*',layer);
 %%------------------------------------------------------
     %
-    tic;    
+    tic;  
+    %
+    % get the shape parameters
+    %
+    [ll, ww, hh] = get_shape([path,'\',sample], sample);
     %
     % get the image names
     %
-    ww = 1344;
-    hh = 1004;
-    %
-    layer = str2num(layer);
+    layer = str2double(layer);
     %
     if (strcmp(sample,'*'))
         p1 = path;
@@ -44,7 +46,7 @@ function d = extractLayer(path,sample,layer)
     end
     %
     parfor i=1:numel(d)
-        extractCore(d(i),layer, ww, hh);
+        extractCore(d(i),layer, ll, ww, hh);
     end
     %
     dt = toc;
@@ -61,10 +63,11 @@ function d = extractLayer(path,sample,layer)
 end
 
 
-function extractCore(dd, layer, width, height)
+function extractCore(dd, layer, ll, width, height)
 %%----------------------------------------------
 %% inner core of the parallel loop
 %% Alex Szalay, Baltimore, 2018-07-29
+%% Last Edit: Benjamin Green, Baltimore, 2021-04-06
 %%----------------------------------------------
     ext = sprintf('.fw%02d',uint16(layer));
     f1 = [dd.folder '\' dd.name];
@@ -76,7 +79,7 @@ function extractCore(dd, layer, width, height)
     %
     img = [];
     try
-        r = permute(reshape(r,35,width,height),[3,2,1]);   
+        r = permute(reshape(r,ll, width, height),[3,2,1]);   
         img = r(:,:,layer);
     catch
         f1
@@ -89,4 +92,18 @@ function extractCore(dd, layer, width, height)
     %
 end
 
-
+function [ll, ww, hh] = get_shape(path, sample)
+%%------------------------------------------------------
+%% get the shape parameters from the parameters.xml file found at
+%% [path/sample.Parameters.xml]
+%% Last Edit: Benjamin Green, Baltimore, 2021-04-06
+%%
+%% Usage: get_shape('F:\new3\M27_1\im3\xml', 'M27_1');
+%%------------------------------------------------------
+    p1 = fullfile(path, [sample,'.Parameters.xml']);
+    mlStruct = parseXML(p1);
+    params = strsplit(mlStruct(5).Children(2).Children.Data);
+    ww = str2double(params{1});
+    hh = str2double(params{2});
+    ll = str2double(params{3});
+end

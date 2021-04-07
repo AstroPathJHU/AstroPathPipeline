@@ -1,0 +1,1 @@
+PowerShell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command "& {Start-Process PowerShell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File ""C:\Program Files\BatchProcessing\RunVMBatch.ps1""' -Verb RunAs}"

@@ -27,9 +27,9 @@ ECHO flatwPath %flatw% %sample%
 ECHO   %time%
 ECHO   fw path "%flatw%\%sample%"
 
-CALL %mcode%\flatw\runflatw\application\runFlatw.exe %1 %2 %3
+:: CALL %mcode%\flatw\runflatw\application\runFlatw.exe %1 %2 %3
 
-CALL matlab -nodisplay -nosplash -nodesktop -minimize -sd %mcode%\mtools -r "; runFlatw('%1','%2','%3');exit(0);" -wait -logfile %log%
+matlab -nosplash -nodesktop -minimize -sd %mcode%\mtools -r ";runFlatw('%1','%2','%3');exit(0);" -wait -logfile %log%
 :: CALL %mcode%\Im3Tools\matlabEcho %log%
 ::
 IF EXIST "%log%" DEL /Q %log%

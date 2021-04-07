@@ -4,7 +4,7 @@ function d=runFlatw(path, fpath, sample)
 %% write the flatfielded and warped images back to the same
 %% place, in raw format, with .fw extension
 %% Alex Szalay, Baltimore, 2018-05-38
-%%
+%% Last Edits: Benjamin Green, Baltimore, 2021-04-06
 %% Usage: runFWloop('F:\new3\M27_1');
 %%------------------------------------------------------
     %
@@ -12,20 +12,22 @@ function d=runFlatw(path, fpath, sample)
     %
     [~, ~, BatchID] = getscan(path, sample);
     %
-    p1 = [path,'\',sample];
+    % get the shape parameters
+    %
+    [ll, ww, hh] = get_shape([fpath,'\',sample], sample);
     %
     % load flat and warp. flat is in raw ordering
     %
-    fd = fopen([path,'\Flatfield\flatfield_BatchID_',BatchID,'.bin'],'r');
+    fd = fopen([path,'\flatfield\flatfield_BatchID_',BatchID,'.bin'],'r');
     flat = fread(fd,'double');
     fclose(fd);
     %
-    warp = mkwarp();
+    warp = mkwarp(ll, hh, ww);
     %
     % get the image names
     %
     p1 = [fpath,'\',sample];
-    p = [p1,'\**\*.raw'];
+    p = [p1,'\**\*.dat'];
     d = dir(p);
     %
     % run the parallel loop
@@ -40,7 +42,7 @@ function d=runFlatw(path, fpath, sample)
     end
     %
     parfor i=1:numel(d)
-        doflatwarpcore(flat,warp,d(i));
+        doflatwarpcore(flat,warp,d(i), ll, hh, ww);
     end
     %
     dt = toc;
@@ -51,13 +53,16 @@ function d=runFlatw(path, fpath, sample)
     %T = evalc('delete(poolobj)');
     %
 end
-function doflatwarpcore(flat,warp,dd)
+
+function doflatwarpcore(flat,warp,dd, ll, hh, ww)
 %%----------------------------------------------
 %% inner core of the parallel loop
 %% Alex Szalay, Baltimore, 2018-06-10
+%% Last Edits: Benjamin Green, Baltimore, 2021-04-06
+%% ll = 35; ww = 1344; hh = 1004;
 %%----------------------------------------------
     f1 = fullfile(dd.folder,dd.name);
-    f2 = replace(f1,'.raw','.fw');
+    f2 = replace(f1,'.Data.dat','.fw');
     %
     r = double(im3readraw(f1));
     %
@@ -67,22 +72,32 @@ function doflatwarpcore(flat,warp,dd)
     end
     %
     r = (r./flat);
-    r = permute(reshape(r,35,1344,1004),[3,2,1]);
-    r = imwarp(r,warp);
-    r = permute(r,[3,2,1]);
+    r = reshape(r,ll,ww,hh);
+    if ll == 35 && ww == 1344 && hh == 1004
+        r = permute(r,[3,2,1]);
+        r = imwarp(r,warp);
+        r = permute(r,[3,2,1]);
+    end
     %
     im3writeraw(f2,uint16(r(:)));
     %
 end
 
-function d = mkwarp()
+function d = mkwarp(ll, hh, ww)
 %%-------------------------------------------------------
 %% create the warp field with the built-in parameters
 %% Alex Szalay, Baltimore, 2018-06-10
+%% Last Edits: Benjamin Green, Baltimore, 2021-04-06
+%% ww = 1344; hh = 1004;
 %%-------------------------------------------------------
     %
-    n = 1344;
-    m = 1004;
+    n = ww;
+    m = hh;
+    %
+    if ll ~= 35 || ww ~= 1344 || hh ~= 1004
+        d = zeros(m,n,2);
+        return
+    end
     %
     xc = 584;
     yc = 600;
@@ -152,6 +167,8 @@ function aa = im3readraw(fname)
     fclose(fd);
     %
 end
+
+function [Scanpath, ScanNum, BatchID] = getscan(wd, sname)
 %% getscan
 %% --------------------------------------------------------------
 %% Created by: Benjamin Green - Johns Hopkins - 02/25/2019
@@ -161,7 +178,6 @@ end
 %%% name
 %% --------------------------------------------------------------
 %%
-function [Scanpath, ScanNum, BatchID] = getscan(wd, sname)
 %
 % get highest scan for a sample
 %
@@ -193,4 +209,20 @@ if ~isempty(BatchID) && length(BatchID) == 1
     BatchID = ['0',BatchID];
 end
 Scanpath = [Scanpath,'\'];
+end
+
+function [ll, ww, hh] = get_shape(path, sample)
+%%------------------------------------------------------
+%% get the shape parameters from the parameters.xml file found at
+%% [path/sample.Parameters.xml]
+%% Benjamin Green, Baltimore, 2021-04-06
+%%
+%% Usage: get_shape('F:\new3\M27_1\im3\xml', 'M27_1');
+%%------------------------------------------------------
+    p1 = fullfile(path, [sample,'.Parameters.xml']);
+    mlStruct = parseXML(p1);
+    params = strsplit(mlStruct(5).Children(2).Children.Data);
+    ww = str2double(params{1});
+    hh = str2double(params{2});
+    ll = str2double(params{3});
 end

@@ -11,7 +11,7 @@
 %%% Layer 12-13: Membrane -- immune; then alternative segmentations
 %% --------------------------------------------------------------
 %%
-function [] = GetaSeg(wd,sname, MergeConfig)
+function [] = GetaSeg(wd, sname, MergeConfig)
 
 %
 tim = cell(4,1);

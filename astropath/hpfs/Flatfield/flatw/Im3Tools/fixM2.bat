@@ -28,7 +28,7 @@ ECHO .
 ECHO fixM2 %root% %sample%
 ECHO   %time%
 ::
-CALL matlab -nodisplay -nosplash -nodesktop -minimize -sd %mcode%\mtools -r "; fixM2('%root%','%sample%');exit(0);" -wait
+matlab -nosplash -nodesktop -minimize -sd %mcode%\mtools -r "; fixM2('%root%','%sample%');exit(0);" -wait -logfile %log%
 :: CALL %mcode%\Im3Tools\matlabEcho %log%
 ::
 IF EXIST "%log%" DEL /Q %log%

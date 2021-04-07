@@ -1,4 +1,4 @@
-%% processseg
+%% launch_processseg
 %% --------------------------------------------------------------
 %% Created by: Benjamin Green - Johns Hopkins - 02/25/2019
 %% --------------------------------------------------------------
@@ -6,14 +6,14 @@
 %%% 
 %% --------------------------------------------------------------
 %%
-function processseg(main)
+function launch_processseg(main)
 %
 try
-    tbl = readtable([main, '\Paths.csv'], 'Delimiter' , ',',...
+    tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
         'ReadVariableNames', true);
 catch
     pause(10)
-    tbl = readtable([main, '\Paths.csv'], 'Delimiter' , ',',...
+    tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
         'ReadVariableNames', true);
 end
 %
@@ -21,28 +21,12 @@ for i1 = 1:height(tbl)
     %
     % Clinical_Specimen folder
     %
-    wd = tbl(i1,'Main_Path');
-    wd = table2array(wd);
-    wd = wd{1};
+    td = tbl(i1,:);
+    wd = ['\\', td.Dpath{1},'\', td.Dname{1}];
     %
     % get specimen names for the CS
     %
-    fn = dir(wd);
-    fd = fn(3:end);
-    ii = [fd.isdir];
-    fd = fd(ii);
-    samplenames = {fd(:).name};
-    %
-    % filter for only Clinical_Specimen folders
-    %
-    ii = (contains(samplenames, 'Batch')...
-        |contains(samplenames, 'tmp_inform_data')|...
-        contains(samplenames, 'reject')|...
-        contains(samplenames, 'Control')|...
-        strcmp(samplenames, 'Clinical')|...
-        strcmp(samplenames, 'Upkeep and Progress')|...
-        strcmp(samplenames, 'Flatfield'));
-    samplenames = samplenames(~ii);
+    samplenames = find_specimens(wd);
     %
     % cycle through and create flatws
     % 

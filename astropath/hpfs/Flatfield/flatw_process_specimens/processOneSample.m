@@ -193,8 +193,8 @@ copyfile(sor,des);
 %
 % copy flat field
 %
-sor = [wd,'\Flatfield\flatfield_BatchID_',BatchID,'.bin'];
-des = [dd,'\Processing_Specimens\Specimen\Flatfield'];
+sor = [wd,'\flatfield\flatfield_BatchID_',BatchID,'.bin'];
+des = [dd,'\Processing_Specimens\Specimen\flatfield'];
 if ~exist(des,'dir')
     mkdir(des)
 end
@@ -307,11 +307,18 @@ function [p, flatwfiles,actualim3num]...
 %
 wd = [dd,'\Processing_Specimens\Specimen'];
 fwpath = [dd,'\Processing_Specimens\Specimen\flatw'];
-codep = [dd,'\Processing_Specimens\flatwCodes\',machinename];
 %
 % get number of actual im3 files
 %
 actualim3num = str2double(pqt.actual_im3{idx});
+v = dir();
+flatwcode = fullfile(v(2).folder, v(2).name, 'flatw');
+if ~exist(flatwcode, 'dir')
+    disp('ERROR: raw2mean_loop worker not set up')
+    flatwfiles = 0;
+    p = 0;
+    return
+end
 %
 flatwpath = [wd, '\', sid, '\im3\flatw'];
 try
@@ -455,7 +462,7 @@ try
 catch
 end
 %
-sor = [dd,'\Processing_Specimens\Specimen\Flatfield'];
+sor = [dd,'\Processing_Specimens\Specimen\flatfield'];
 try
     rmdir(sor,'s')
 catch

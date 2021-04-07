@@ -20,11 +20,11 @@ ECHO doOneSample %root% %flatw% %samp%
 ECHO   %date% %time%
 ::
 CALL %mcode%\Im3Tools\fixM2 %root% %sample% %mcode%
-CALL %mcode%\Im3Tools\shredPath  %root% %flatw% %sample% %mcode%
+PowerShell -NoProfile -ExecutionPolicy Bypass -Command "& '%mcode%\Im3Tools\ConvertIm3Path.ps1' '%root%' '%flatw%' '%sample%'" -s
 CALL %mcode%\Im3Tools\flatwPath  %root% %flatw% %sample% %mcode%
-CALL %mcode%\Im3Tools\injectPath %root% %flatw% %sample% %mcode%
+PowerShell -NoProfile -ExecutionPolicy Bypass -Command "& '%mcode%\Im3Tools\ConvertIm3Path.ps1' '%root%' '%flatw%' '%sample%'" -i
 CALL %mcode%\Im3Tools\extractLayer %flatw% %sample% 1 %mcode%
-CALL %mcode%\Im3Tools\cleanPath %flatw% %sample% %mcode%
+CALL %mcode%\Im3Tools\cleanPath %flatw% %sample% %root%
 :: 
 ENDLOCAL
 ::

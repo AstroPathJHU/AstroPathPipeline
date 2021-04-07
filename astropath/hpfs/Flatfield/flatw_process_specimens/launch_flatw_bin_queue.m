@@ -1,4 +1,4 @@
-function process_flatw_bin_queue()
+function launch_flatw_bin_queue()
 %
 i1 = 1;
 %
@@ -7,7 +7,7 @@ main = '\\bki05\Processing_Specimens';
 while i1 == 1
     %
     try
-        process_flt2bin(main,'')
+        process_flt2bin(main)
         process_flatw_queue(main,'')
         Send_process(main)
     catch
