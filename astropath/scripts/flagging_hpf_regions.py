@@ -30,6 +30,7 @@ BRIGHTEST_LAYERS           = [5,10,16,19,22,31,41]
 DAPI_LAYER_GROUP_INDEX     = 0
 #RBC_LAYER_GROUP_INDEX      = 1
 RBC_LAYER_GROUP_INDEX      = 4
+IGNORE_LAYER_GROUP_INDEX   = 1
 FOLD_MIN_PIXELS            = 30000
 FOLD_MIN_SIZE              = 5000
 #FOLD_NLV_CUT               = 0.0035
@@ -142,7 +143,12 @@ def getImageTissueFoldMask(img_array,exp_times,tissue_mask,exp_t_hists,return_pl
     #combine the layer group blur masks to get the final mask for all layers
     stacked_fold_masks = np.zeros_like(fold_masks_by_layer_group[0])
     for lgi,layer_group_fold_mask in enumerate(fold_masks_by_layer_group) :
-        stacked_fold_masks[layer_group_fold_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
+    	to_add = 1
+    	if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) :
+    		to_add = 10
+    	elif lgi==IGNORE_LAYER_GROUP_INDEX :
+    		to_add = 0
+        stacked_fold_masks[layer_group_fold_mask==0]+=to_add
     overall_fold_mask = (np.where(stacked_fold_masks>12,0,1)).astype(np.uint8)
     #morph and filter the mask using the common operations
     overall_fold_mask = getMorphedAndFilteredMask(overall_fold_mask,tissue_mask,FOLD_MIN_PIXELS,FOLD_MIN_SIZE)
