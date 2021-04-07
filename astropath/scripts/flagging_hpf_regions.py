@@ -104,7 +104,10 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
         #im_gs = (plot_img_layer*group_blur_mask).astype(np.float32); im_gs /= np.max(im_gs)
         #overlay_gs = np.array([im_gs,im_gs,0.15*group_blur_mask]).transpose(1,2,0)
         sorted_pil = np.sort(plot_img_layer[group_blur_mask==1].flatten())
-        pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
+        if len(sorted_pil)>0 :
+            pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
+        else :
+            pil_max=255; pil_min=0
         norm = 255./(pil_max-pil_min)
         im_c = (np.clip(norm*(plot_img_layer-pil_min),0,255)).astype(np.uint8)
         overlay_c = np.array([im_c,im_c*group_blur_mask,im_c*group_blur_mask]).transpose(1,2,0)
