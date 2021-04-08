@@ -30,22 +30,21 @@ BRIGHTEST_LAYERS           = [5,10,16,19,22,31,41]
 DAPI_LAYER_GROUP_INDEX     = 0
 #RBC_LAYER_GROUP_INDEX      = 1
 RBC_LAYER_GROUP_INDEX      = 4
-IGNORE_LAYER_GROUP_INDEX   = 1
 FOLD_MIN_PIXELS            = 30000
 FOLD_MIN_SIZE              = 5000
 #FOLD_NLV_CUT               = 0.0035
-FOLD_NLV_CUT               = 0.11
+FOLD_NLV_CUTS_BY_LAYER_GROUP = [0.12,0.0,0.07,0.07,0.12,0.12,0.12]
 #FOLD_MAX_MEAN              = 0.0030
-FOLD_MAX_MEAN              = 0.10
+FOLD_MAX_MEANS_BY_LAYER_GROUP = [0.10,0.0,0.06,0.06,0.10,0.10,0.10]
 #FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
 FOLD_MASK_FLAG_CUTS        = [3,0,3,0,1,1,1]
 FOLD_FLAG_STRING           = 'tissue fold or bright dust'
 DUST_MIN_PIXELS            = 30000
 DUST_MIN_SIZE              = 20000
 #DUST_NLV_CUT               = 0.00085
-DUST_NLV_CUT               = 0.06
+DUST_NLV_CUT               = 0.07
 #DUST_MAX_MEAN              = 0.00065
-DUST_MAX_MEAN              = 0.045
+DUST_MAX_MEAN              = 0.0525
 DUST_STRING                = 'likely dust'
 SATURATION_MIN_PIXELS      = 4500
 SATURATION_MIN_SIZE        = 1000
@@ -135,9 +134,9 @@ def getImageTissueFoldMask(img_array,exp_times,tissue_mask,exp_t_hists,return_pl
         lgtfm, lgtfmps = getImageLayerGroupBlurMask(img_array,
                                                     exp_times,
                                                     lgb,
-                                                    FOLD_NLV_CUT,
+                                                    FOLD_NLV_CUTS_BY_LAYER_GROUP[lgi],
                                                     FOLD_MASK_FLAG_CUTS[lgi],
-                                                    FOLD_MAX_MEAN,
+                                                    FOLD_MAX_MEANS_BY_LAYER_GROUP[lgi],
                                                     BRIGHTEST_LAYERS[lgi],
                                                     exp_t_hists[lgi],
                                                     return_plots)
@@ -149,8 +148,6 @@ def getImageTissueFoldMask(img_array,exp_times,tissue_mask,exp_t_hists,return_pl
         to_add = 1
         if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) :
             to_add = 10
-        elif lgi==IGNORE_LAYER_GROUP_INDEX :
-            to_add = 0
         stacked_fold_masks[layer_group_fold_mask==0]+=to_add
     overall_fold_mask = (np.where(stacked_fold_masks>12,0,1)).astype(np.uint8)
     #morph and filter the mask using the common operations
