@@ -61,7 +61,7 @@ class Cohort(ThingWithRoots):
       if not samp: continue
       try:
         if not all(filter(self, samp) for filter in self.slideidfilters): continue
-      except:
+      except Exception: #don't log KeyboardInterrupt here
         with self.getlogger(samp):
           raise
       yield samp
@@ -106,8 +106,9 @@ class Cohort(ThingWithRoots):
     for samp in self:
       try:
         sample = self.initiatesample(samp)
-      except:
+      except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
+        #but not KeyboardInterrupt
         with self.getlogger(samp):
           raise
       else:
@@ -544,8 +545,7 @@ class WorkflowCohort(Cohort):
         missinginputs = [file for file in sample.inputfiles if not file.exists()]
         if missinginputs:
           raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
-      except:
-        print("exception")
+      except Exception: #don't log KeyboardInterrupt here
         with self.getlogger(sample):
           raise
         return
@@ -558,6 +558,6 @@ class WorkflowCohort(Cohort):
         #was already logged so no need to log it again and confuse the issue.
         if (status.missingfiles or not status.ended) and status.error is None:
           raise RuntimeError(f"{sample.SlideID} {status}")
-      except:
+      except Exception: #don't log KeyboardInterrupt here
         with self.getlogger(sample):
           raise
