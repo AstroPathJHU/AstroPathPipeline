@@ -25,8 +25,6 @@ tbl2 = readtable([main, '\AstropathConfig.csv'], 'Delimiter' , ',',...
 tbl3 = readtable([main, '\AstropathCohortsProgress.csv'], 'Delimiter' , ',',...
     'ReadVariableNames', true);
 %
-addpath("MaSS", "progresstrack")
-%
 for i1 = 1:height(tbl)
     %
     % Clinical_Specimen folder
@@ -70,7 +68,5 @@ for i1 = 1:height(tbl)
     catch
     end
 end
-%
-rmpath("MaSS", "progresstrack")
 %
 end

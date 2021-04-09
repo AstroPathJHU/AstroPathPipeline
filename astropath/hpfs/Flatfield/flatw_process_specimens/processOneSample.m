@@ -311,8 +311,8 @@ fwpath = [dd,'\Processing_Specimens\Specimen\flatw'];
 % get number of actual im3 files
 %
 actualim3num = str2double(pqt.actual_im3{idx});
-v = dir();
-flatwcode = fullfile(v(2).folder, v(2).name, 'flatw');
+filepath = fileparts(mfilename('fullpath'));
+flatwcode = [filepath, '\..\flatw'];
 if ~exist(flatwcode, 'dir')
     disp('ERROR: raw2mean_loop worker not set up')
     flatwfiles = 0;

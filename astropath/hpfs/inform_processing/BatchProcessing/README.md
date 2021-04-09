@@ -1,4 +1,4 @@
-# InForm Batch Processing
+# InForm Worker Processing
 ## Description
 This code was designed to launch batch processing of all images in a directory through Akoya's InForm software automatically. The code uses a queued based system for processing and is set up to run continously. For each job, the code launches a script that starts inForm, creates directories, and simulates mouse clicks on its way to automatically starting a batch process. The code requires that the image data is reformatted into the AstroPath directory structure and that the algorithms are located in a set location adjacent to the images. Both locations are described below in *Important Definitions* and in more detail [here](../../../scans#45-directory-organization "Title"). Algorithm or project export settings should be set up before saving the file. 
 

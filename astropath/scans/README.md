@@ -1,6 +1,6 @@
 # 4. Scans
 ## 4.1. Description
-The AstroPath Pipeline requires that a number of experimental protocols are understood and followed for the code to work. These protocols include methods for slide scanning, slide naming, regent tracking, and directory organization. This section of the documentation describes these protocols and provides important definitions for terms used throughout the AstroPath Pipeline documentations. Additionally, there is a main directory, refered to as the ```<Mpath>```, which contains a set of csv files. These files contain pertinent information which drive processing such as directory locations, machine names, slide names, and project identifiers. These csv files and methods for adding projects to the pipeline are defined here [4.4](#44-astropath_processing-directory-and-initializing-projects "Title").
+The AstroPath Pipeline requires that a number of experimental protocols are understood and followed for the code to work. These protocols include methods for slide scanning, slide naming, reagent tracking, and directory organization. This section of the documentation describes these protocols and provides important definitions for terms used throughout the AstroPath Pipeline documentations. Additionally, there is a main directory, referred to as the ```<Mpath>```, which contains a set of csv files. These files contain pertinent information that drives processing such as directory locations, machine names, slide names, and project identifiers. The csv files and methods for adding projects to the pipeline are defined here [4.4](#44-astropath_processing-directory-and-initializing-projects "Title").
 
 ## 4.2. Definitions
 ### 4.2.1. Identification Definitions
@@ -22,11 +22,14 @@ The AstroPath Pipeline requires that a number of experimental protocols are unde
    - All data for a specified project should be placed in a single folder. 
 - ```Batch[int]```: The unique numeric value for a batch of slides stained together. 
    - For each unique ```Project```, each set of ```BatchID```s are separate and usually starts over at 1. 
-   - Additional details on ```BatchID```s can be found below in [4.3](#43-scanning-verifying-complete-and-adding-batchids "Title").
+   - Additional details on ```BatchID```s can be found below in [4.3.5](#435-batchids "Title").
+- ```Specimen #[string]```s: These are the names defined on the physical slide. 
+   - Usually this name is a medical identifier than could be consider PPI. In order to keep HIPAA compliance the slides are renamed as soon as they are scanned. 
+   - See [4.3.1](#431-specimen_table "Title") and [4.3.2](#432-samplenames-patient--or-m-numbers "Title") for more details
 - ```SampleName[string]```s: The ```SampleName```s are the names defined during the scanning process
    - These names are replaced and standarized as part of the pipeline. 
    - The code detects these from the *SpecimenTable.xlsx* files contained in each cohort scanning folder. 
-   - A description of the *SpecimenTable.xlsx* file is in [4.3](#43-scanning-verifying-complete-and-adding-batchids "Title") repository.
+   - A description of the *SpecimenTable.xlsx* file is in [4.3.1](#431-specimen_table "Title").
 - ```SlideID[string]```s: The names for the specimens in the astropath processing pipeline 
    - These names replace the ```SampleName```s on all corresponding files and inside the scanning plan, annotations.xml, files generated during the scanning process.
    - Using these names allows us to avoid outside the organization changes to naming conventions.
@@ -62,15 +65,15 @@ The file pathes have been standarized and are described below. Additional exampl
 
 *NOTE*: the ```<path>``` variables do not contain the ```<Dname>```
 
-## 4.3. Scanning, Verifying Complete, and Adding BatchIDs
-Before scanning it is important to set up the ```<spath>```. This folder is created on the scanning computer where slides are scanned into. The folders are usually labeled *Clinical_Specimen_N*, where the *N* indicates a numeric value or unique lettering. Examples of these scanning folders incude *Clinical_Specimen_2* and *CLinical_Specimen_BMS_01*. In the JHU processing pipeline, this folder is backed up every night to a network server with significant storage capacity (~80TB) using commercially available software. In this way once slide scans are completed they can be deleted from the computer in such a way that the computers never run in storage issues. *NOTE*: The fully qualified path for this scanning folder on the server is designated as the ```<spath>```. 
+## 4.3. Instructions
+Before scanning it is important to set up the ```<Spath>```. This folder is created on the scanning computer where the slides are scanned into. The folders are usually labeled *Clinical_Specimen_N*, where the *N* indicates a numeric value or unique lettering. Examples of these scanning folders incude *Clinical_Specimen_2* and *CLinical_Specimen_BMS_01*. In the JHU processing pipeline, this folder is backed up every night, using commercially available software, to a network server with significant storage capacity (~80TB). Once slide scans are completed they can be deleted from the local computer, the rest of the processing takes place on the network server location. In this way, the local computers never run in storage issues. *NOTE*: The fully qualified path for this scanning folder on the network server is designated as the ```<Spath>```. 
 
-After a new batch of slides are stained, they should be added to a *Specimen_Table_N.xlsx* file located in each ```<spath>```, described in detail below in [4.3.1](#431-specimen_table "Title"). As part of adding slides to this table, the slides will be given a unique de identified name for scanning. Tips on these names are included in [4.3.2](#432-samplenames-patient--or-m-numbers "Title"). The most important aspect of this convention is to avoid the use of spaces and special characters. For each batch, a control tma should also be stained and scanned. The scanning and naming of this slide is also very important for pipeline ingestion and is defined below in [4.3.3](#433-control-tma-conventions "Title"). *Note*: The control tmas do not go into the *Specimen_Table_N* and are found based on their **naming**.
+After a new batch of slides are stained, they should be added to a *Specimen_Table_N.xlsx* file located in each ```<Spath>```, described in detail below in [4.3.1](#431-specimen_table "Title"). As part of adding slides to this table, the slides will be given a unique de-identified name for scanning, the ```SampleName```. Tips on these names are included in [4.3.2](#432-samplenames-patient--or-m-numbers "Title"). The most important aspect of this convention is to avoid the use of spaces and special characters. For each batch, a control tma should also be stained and scanned. The scanning and naming of this slide is also very important for pipeline ingestion and is defined below in [4.3.3](#433-control-tma-conventions "Title"). *Note*: The control tmas do not go into the *Specimen_Table_N* and are found based on their **naming**.
 
 Once added to the *SpecimenTable.xlsx*, slides can be scanned with 20% overlap according to the protocol laid out in [4.3.4](#434-whole-slide-scanning "Title"). In order for successful processing of the slides, it is very important that this procedure is adhered to correctly. After slides are scanned, the user should manually verify that all images were scanned completed properly and add a *BatchID.txt* file to the successful ```Scan``` directory. This initiates the slide transfer process in the pipeline, additional details on this step are defined in [4.3.5](#435-batchids "Title"). It is also important to create the *Batch_BB.csv* and *MergeConfig_BB.csv* files for processing to continue successfully. Each staining batch defined should have a separate set of these tables. Information on these files can be found in [4.3.6](#436-batch-tables "Title") and [4.3.7](#437-mergeconfig-tables "Title"), respectively. 
 
 ### 4.3.1. Specimen_Table
-The specimen table is used to intialize the slides and servers as the link between the de identified slide ids and the clinical specimen ids. The specimen table should be labeled *Specimen_Table_N.xlsx*, where *N* stands for the same unique specifier on the *Clinical_Specimen_N* folder. This file should always be contained on a HIPAA complinant location. The file has the following columns:
+The specimen table is used to intialize the slides into the pipeline. This table also serves as the link between the names on the slides, the ```Specimen #```s, and the de-identified ```SampleNames```s (refer to [4.4.1](#441-identification-definitions "Title") for a description of the variable names). The specimen table should be labeled *Specimen_Table_N.xlsx*, where *N* indicates the same unique specifier on the *Clinical_Specimen_N* folder. This file should always be contained in the ```<Spath>``` location with the original slide scans. If the ```Specimen #```s on the slides are pathology numbers or other medical identifiers, as is the case at Johns Hopkins, this location should be HIPAA compliant. The file has the following columns:
 ```
 Patient #, Specimen #, Cut Data, Level, Batch ID, Stain Date, Scan Date
 ```
@@ -78,12 +81,14 @@ Patient #, Specimen #, Cut Data, Level, Batch ID, Stain Date, Scan Date
 - ```Specimen #```: this the specimen number that is used to identify the patient clinical information
 - ```Cut Date```: the date that the slide was cut from the tissue block
 - ```Level```: the cut number from the sections cut on that date
-- ```Batch ID```: the staining batch the slides was stained with, more details below in [4.3.4](#434-batchids “Title”).
+- ```Batch ID```: the staining batch the slides was stained with, more details below in [4.3.5](#435-batchids “Title”).
 - ```Stain Date```: the date the slide was stained on 
 - ```Scan Date```: the date the slide started HPF scanning
 
 ### 4.3.2. SampleNames (Patient # or M Numbers)
-In order for the slide to be processed through the pipeline, it must be given its own de-identified number. These are the so called ```SampleName``` (in past versions ‘M’ numbers or ```Patient #```s). For these ```SampleName```'s each cohort will receive its own alphabetical key. Currently we are using:
+When slides are cut, they may be labeled with a patients medical record number (MRN) or other unique patient number. In order for the slide to be processed through the pipeline, it must be given a de-identified number. These are the so called ```SampleName``` (in past versions ‘M’ numbers or ```Patient #```s). Because slide naming conventions maybe different across groups or institutions, consistence in these ```SampleName```s  can be difficult to keep up. To avoid any issues in processing the ```SampleName```s are converted to the ```SlideID```s as part of the intial steps in the AstroPathPipeline.
+
+For these ```SampleName```'s, each cohort receives its own alphabetical key at JHU. Currently we are using:
 -	*M* for melanoma
 -	*L* for Lung
 -	*MA* for melanoma stain 2
@@ -226,7 +231,7 @@ If everything checks out scan the specimens as follows:
 ### 4.3.5. BatchIDs
 For some cohorts not all slides can be stained at the same time. A ```BatchID``` specifies a group of slides that were stained together. We use this information in the pipeline both for batch to batch normalization and to create an illumination correction for each batch. We correct for illumination for each batch because the light patterns for a given microscope should be the most consistent during the scanning of a single batch. In this way we can also make sure microscope maintaince never has an effect on scanning by doing any such maintaince between batches. The ```BatchID```s are project dependent such that numbers may be reused for different projects. When specifiying a ```BatchID``` it is usually best to use a two-digit integer (for values less than 10 use 01).
 
-After a scan is completed, it should be manually verfied as complete. There are a few ways to do this, see [4.3.4.3 Part 8](#4342-scan-the-control-tma "Title"). In the successful ‘ScanN’ folder there should be a text file named *BatchID.txt*. This file will indicate the folder that will be transferred and used in the data pipeline all other Scan folders generated by the Vectra scanning softwares are ignored. This file should only be added once all HPFs have been confirmed as successfully scanned. This text file should contain the numeric value of that ```BatchID```.
+After a scan is completed, it should be manually verfied as complete. There are a few ways to do this, see [4.3.4.3 Part 8](#4342-scan-the-control-tma "Title"). In the successful ‘ScanN’ folder there should be a text file named *BatchID.txt*. This file will indicate the folder that will be transferred and used in the data pipeline all other Scan folders generated by the Vectra scanning softwares are ignored. This file should only be added once all HPFs have been confirmed as successfully scanned. This text file should only contain the numeric value of that ```BatchID```.
 
 ### 4.3.6. Batch Tables
 For each ```BatchID``` a *batch table* should be created, this file records the staining\ reagent information for that batch including lot numbers and antibody-opal pairs. These tables should be added to a *Batch* folder in the ```<Dpath>\<Dname>``` folder The full directory structure for the ```<Dname>``` folder can be found in [4.5](#45-directory-organization "Title"). Typically the person who performs the slide staining for a batch has the best access to this information. As such they should fill out this document and add it to the appropriate location as possible after staining to avoid delays. 

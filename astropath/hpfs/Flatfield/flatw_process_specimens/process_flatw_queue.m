@@ -76,6 +76,10 @@ colheads = {'Machine','Main_Path','Sample','Batch',...
 %
 % if processing_queue does not exist create it
 %
+if ~exist([main,'\across_project_queues'],'dir')
+    mkdir([main,'\across_project_queues'])
+end
+
 if ~exist([main,'\across_project_queues\process_flatw_queue.csv'], 'file')
     disp(['Processing_queue.csv not found on ', main,'\across_project_queues']);
     disp('Creating ...');

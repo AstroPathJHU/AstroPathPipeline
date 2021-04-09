@@ -1,4 +1,4 @@
-function launch_flatw_worker(loc)
+function flatw_worker(loc)
 %
 %loc = '\\bki08\e$';
 i1 = 1;

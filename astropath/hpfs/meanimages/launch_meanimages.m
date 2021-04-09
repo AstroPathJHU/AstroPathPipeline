@@ -1,4 +1,4 @@
-%% launch_raw2mean
+%% launch_meanimages
 %% Created by: Benjamin Green - Johns Hopkins 2020-04-06
 %% ----------------------------------------------------------
 % using the paths table in <main>, loop through each project.
@@ -13,7 +13,7 @@
 % raw2mean_loop('\\bki04\astropath_processing','\\bki08\e$')
 %% -------------------------------------------------------------
 %
-function [] = launch_raw2mean(main, dd)
+function [] = launch_meanimages(main, dd)
 % wd = '\\bki04\k$\Clinical_Specimen_4';
 % flatw = '\\bki04\m$\flatwtest_4\raw';
 tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
@@ -21,8 +21,8 @@ tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
 %
 % set up worker
 %
-v = dir();
-flatwcode = fullfile(v(2).folder, v(2).name, 'flatw');
+filepath = fileparts(mfilename('fullpath'));
+flatwcode = [filepath, '\..\Flatfield\flatw'];
 if ~exist(flatwcode, 'dir')
     disp('ERROR: raw2mean_loop worker not set up')
     return
