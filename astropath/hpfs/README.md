@@ -64,7 +64,7 @@ Also note that the modules are expected to be running simultaneously such that t
   - [5.7.2. Important Definitions](meanimages#572-important-definitions "Title")
   - [5.7.3. Instructions](meanimages#573-instructions "Title")
   - [5.7.4. Workflow](meanimages#574-workflow "Title")
-    - [5.7.4.1. Checking for Tasks](meanimeages#5741-checking-for-tasks "Title")
+    - [5.7.4.1. Checking for Tasks](meanimages#5741-checking-for-tasks "Title")
 	- [5.7.4.2. Shred Im3s](meanimages#5742-shred-im3s "Title")
 	- [5.7.4.3. raw2mean](meanimages#5743-raw2mean "Title")
 - [5.8. flatfield](Flatfield#58-flatfield "Title")
