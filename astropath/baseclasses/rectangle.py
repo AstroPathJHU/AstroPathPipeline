@@ -468,7 +468,7 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
     self.__with_seg = with_seg
     self.__nsegmentations = nsegmentations
     if with_seg and nsegmentations is None:
-      raise ValueError("To use segmented component tiffs, you have to provide nsegmentation")
+      raise ValueError("To use segmented component tiffs, you have to provide nsegmentations")
 
   @property
   def imagefile(self):
