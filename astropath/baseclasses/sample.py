@@ -5,7 +5,7 @@ from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
-from .csvclasses import constantsdict, RectangleFile
+from .csvclasses import constantsdict, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
@@ -391,6 +391,16 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots):
       raise FileNotFoundError("Didn't find any of the possible ways of finding image info: "+", ".join(results))
 
     return result
+
+  @property
+  def mergeconfigcsv(self):
+    return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.csv"
+  @property
+  def mergeconfig(self):
+    return readtable(self.mergeconfigcsv, MergeConfig)
+  @property
+  def nsegmentations(self):
+    return len({layer.SegmentationStatus for layer in self.mergeconfig if layer.SegmentationStatus != 0})
 
   def _logonenter(self, warning, warnfunction):
     """
@@ -924,6 +934,10 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
       "imagefolder": self.componenttiffsfolder,
       "with_seg": self.__with_seg,
     }
+    if self.__with_seg:
+      kwargs.update({
+        "nsegmentations": self.nsegmentations
+      })
     return kwargs
 
 class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection, OverlapCollection, SampleBase):
