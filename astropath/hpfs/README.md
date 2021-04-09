@@ -1,4 +1,4 @@
-# 5. HPFs
+# 5. HPF Processing (HPFs)
 ## 5.1. Description
 This section of the documentation and code picks up after the slides have been added to the *Specimen_Table_N.xlsx*, a description of that file is located [here](../scans/#431-specimen_table "Title"). All code assumes slides and file structure format in [4] have been adhered to, additional definitions can also found there. 
 
