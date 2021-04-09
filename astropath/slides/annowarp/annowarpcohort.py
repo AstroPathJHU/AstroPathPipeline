@@ -70,6 +70,10 @@ class AnnoWarpCohort(AnnoWarpCohortBase):
     }
     return kwargs
 
+  @property
+  def workflowkwargs(self):
+    return {"layers": [1], **super().workflowkwargs}
+
 def main(args=None):
   AnnoWarpCohort.runfromargumentparser(args)
 
