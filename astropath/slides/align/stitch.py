@@ -492,12 +492,12 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
             yoverlapstoadjust[ys] += [(riday, ridby) for ridax, ridbx, riday, ridby in rids]
 
         for ((oldmx1, oldmx2), (oldmy1, oldmy2)), rids in cornerstoadjust.items():
-          if xs in xoverlapstoadjust or ys in yoverlapstoadjust:
+          if (oldmx1, oldmx2) in xoverlapstoadjust or (oldmy1, oldmy2) in yoverlapstoadjust:
             pass
           elif oldmx1 - oldmx2 < oldmy1 - oldmy2:
-            xoverlapstoadjust[oldmx1, oldmx2] += rids
+            xoverlapstoadjust[oldmx1, oldmx2] += [(ridax, ridbx) for ridax, ridbx, riday, ridby in rids]
           else:
-            yoverlapstoadjust[oldmy1, oldmy2] += rids
+            yoverlapstoadjust[oldmy1, oldmy2] += [(riday, ridby) for ridax, ridbx, riday, ridby in rids]
 
         for (oldmx1, oldmx2), rids in xoverlapstoadjust.items():
           for rid1, rid2 in rids:
