@@ -352,7 +352,7 @@ COPY --from=gdal  /build_gdal_python/usr/ /usr/
 COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
-ENV ASTROPATH_DEPENDENCY_COMMIT 32969ca4b135b5062da8d053d3578ef12b90689f
+ENV ASTROPATH_DEPENDENCY_COMMIT 3423b20d26e9a33a83c95db264f1f855d90a2ba7
 ARG GITHUB_TOKEN
 
 #add python packages
