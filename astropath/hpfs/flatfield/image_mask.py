@@ -370,15 +370,17 @@ def getImageBlurMask(img_array,exp_times,tissue_mask,exp_time_hists,return_plots
         brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_35
         dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35
         rbc_layer_group_index=UNIV_CONST.RBC_LAYER_GROUP_INDEX_35
+        #smooth the image array for both the tissue fold and DAPI layer blur detection
+        sm_img_array = smoothImageWorker(img_array,CONST.BLUR_MASK_SMOOTHING_SIGMA)
     elif img_array.shape[-1]==43 :
         mask_layer_groups=UNIV_CONST.LAYER_GROUPS_43
         brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_43
         dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_43
         rbc_layer_group_index=UNIV_CONST.RBC_LAYER_GROUP_INDEX_43
+        #don't smooth the image array before blur detection
+        sm_img_array = img_array
     else :
         raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {img_array.shape[-1]} layers!')
-    #smooth the image array for both the tissue fold and DAPI layer blur detection
-    sm_img_array = smoothImageWorker(img_array,CONST.BLUR_MASK_SMOOTHING_SIGMA)
     #get the tissue fold mask and its associated plots
     tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(sm_img_array,exp_times,tissue_mask,exp_time_hists,mask_layer_groups,
                                                                                brightest_layers,dapi_layer_group_index,rbc_layer_group_index,return_plots)
