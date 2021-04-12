@@ -326,10 +326,10 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
     return group_blur_mask, plots
 
 #return the tissue fold mask for an image combining information from all layer groups
-def getImageTissueFoldMask(sm_img_array,exp_times,tissue_mask,exp_t_hists,mask_layer_groups,brightest_layers,dapi_lgi,rbc_lgi,return_plots=False) :
+def getImageTissueFoldMask(sm_img_array,exp_times,tissue_mask,exp_t_hists,layer_groups,brightest_layers,dapi_lgi,rbc_lgi,nlv_cuts,nlv_max_means,return_plots=False) :
     #make the list of flag cuts (how many layers can miss being flagged to include the region in the layer group mask)
     fold_flag_cuts = []
-    for lgi,lgb in enumerate(mask_layer_groups) :
+    for lgi,lgb in enumerate(layer_groups) :
         if lgi==dapi_lgi or lgi==rbc_lgi :
             fold_flag_cuts.append(3)
         elif lgb[1]-lgb[0]<3 :
@@ -338,13 +338,13 @@ def getImageTissueFoldMask(sm_img_array,exp_times,tissue_mask,exp_t_hists,mask_l
             fold_flag_cuts.append(1)
     #get the fold masks for each layer group
     fold_masks_by_layer_group = []; fold_mask_plots_by_layer_group = []
-    for lgi,lgb in enumerate(mask_layer_groups) :
+    for lgi,lgb in enumerate(layer_groups) :
         lgtfm, lgtfmps = getImageLayerGroupBlurMask(sm_img_array,
                                                     exp_times,
                                                     lgb,
-                                                    CONST.FOLD_NLV_CUT,
+                                                    nlv_cuts[lgi],
                                                     fold_flag_cuts[lgi],
-                                                    CONST.FOLD_MAX_MEAN,
+                                                    nlv_max_means[lgi],
                                                     brightest_layers[lgi],
                                                     exp_t_hists[lgi],
                                                     return_plots)
@@ -370,6 +370,10 @@ def getImageBlurMask(img_array,exp_times,tissue_mask,exp_time_hists,return_plots
         brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_35
         dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35
         rbc_layer_group_index=UNIV_CONST.RBC_LAYER_GROUP_INDEX_35
+        nlv_cuts_by_layer_group=CONST.FOLD_NLV_CUTS_BY_LAYER_GROUP_35
+        nlv_max_means_by_layer_group=CONST.FOLD_MAX_MEANS_BY_LAYER_GROUP_35
+        dust_nlv_cut=CONST.DUST_NLV_CUT_35
+        dust_max_mean=CONST.DUST_MAX_MEAN_35
         #smooth the image array for both the tissue fold and DAPI layer blur detection
         sm_img_array = smoothImageWorker(img_array,CONST.BLUR_MASK_SMOOTHING_SIGMA)
     elif img_array.shape[-1]==43 :
@@ -377,20 +381,25 @@ def getImageBlurMask(img_array,exp_times,tissue_mask,exp_time_hists,return_plots
         brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_43
         dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_43
         rbc_layer_group_index=UNIV_CONST.RBC_LAYER_GROUP_INDEX_43
+        nlv_cuts_by_layer_group=CONST.FOLD_NLV_CUTS_BY_LAYER_GROUP_43
+        nlv_max_means_by_layer_group=CONST.FOLD_MAX_MEANS_BY_LAYER_GROUP_43
+        dust_nlv_cut=CONST.DUST_NLV_CUT_43
+        dust_max_mean=CONST.DUST_MAX_MEAN_43
         #don't smooth the image array before blur detection
         sm_img_array = img_array
     else :
         raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {img_array.shape[-1]} layers!')
     #get the tissue fold mask and its associated plots
     tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(sm_img_array,exp_times,tissue_mask,exp_time_hists,mask_layer_groups,
-                                                                               brightest_layers,dapi_layer_group_index,rbc_layer_group_index,return_plots)
+                                                                               brightest_layers,dapi_layer_group_index,rbc_layer_group_index,
+                                                                               nlv_cuts_by_layer_group,nlv_max_means_by_layer_group,return_plots)
     #get masks for the blurriest areas of the DAPI layer group
     dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
                                                                 exp_times,
                                                                 mask_layer_groups[dapi_layer_group_index],
-                                                                CONST.DUST_NLV_CUT,
+                                                                dust_nlv_cut,
                                                                 0.5*(mask_layer_groups[dapi_layer_group_index][1]-mask_layer_groups[dapi_layer_group_index][0]+1),
-                                                                CONST.DUST_MAX_MEAN,
+                                                                dust_max_mean,
                                                                 brightest_layers[dapi_layer_group_index],
                                                                 exp_time_hists[dapi_layer_group_index],
                                                                 False)
