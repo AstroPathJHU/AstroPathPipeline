@@ -705,7 +705,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     read in the original regions from regions.csv
     """
     if filename is None: filename = self.oldregionscsv
-    return readtable(filename, Region, extrakwargs={"apscale": apscale, "pscale": self.pscale})
+    return readtable(filename, Region, extrakwargs={"apscale": apscale, "pscale": self.pscale}, fieldsizelimit=int(1e6))
 
   @property
   def regions(self):
