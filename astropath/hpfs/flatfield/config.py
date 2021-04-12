@@ -122,7 +122,7 @@ class Const :
         return [100,100,250,400,150] #intensity in counts/ms required to flag saturation in each layer group for 35-layer images
     @property
     def SATURATION_INTENSITY_CUTS_43(self) :
-        return [75,50,40,200,100,100,50] #intensity in counts/ms required to flag saturation in each layer group for 43-layer images
+        return [100,50,150,250,150,100,50] #intensity in counts/ms required to flag saturation in each layer group for 43-layer images
     @property
     def SATURATION_FLAG_STRING(self) :
         return 'saturated likely skin or red blood cells or stain' #descriptive string to use for saturated areas in the labelled mask regions file
