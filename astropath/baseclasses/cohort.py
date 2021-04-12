@@ -541,23 +541,25 @@ class WorkflowCohort(Cohort):
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       print(f"{sample.SlideID} {status}")
     else:
-      try:
-        missinginputs = [file for file in sample.inputfiles if not file.exists()]
-        if missinginputs:
-          raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
-      except Exception: #don't log KeyboardInterrupt here
-        with self.getlogger(sample):
-          raise
-        return
+      with sample.job_lock() as lock:
+        if not lock: return
+        try:
+          missinginputs = [file for file in sample.inputfiles if not file.exists()]
+          if missinginputs:
+            raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
+        except Exception: #don't log KeyboardInterrupt here
+          with self.getlogger(sample):
+            raise
+          return
 
-      super().processsample(sample, **kwargs)
+        super().processsample(sample, **kwargs)
 
-      try:
-        status = sample.runstatus
-        #we don't want to do anything if there's an error, because that
-        #was already logged so no need to log it again and confuse the issue.
-        if (status.missingfiles or not status.ended) and status.error is None:
-          raise RuntimeError(f"{sample.SlideID} {status}")
-      except Exception: #don't log KeyboardInterrupt here
-        with self.getlogger(sample):
-          raise
+        try:
+          status = sample.runstatus
+          #we don't want to do anything if there's an error, because that
+          #was already logged so no need to log it again and confuse the issue.
+          if (status.missingfiles or not status.ended) and status.error is None:
+            raise RuntimeError(f"{sample.SlideID} {status}")
+        except Exception: #don't log KeyboardInterrupt here
+          with self.getlogger(sample):
+            raise

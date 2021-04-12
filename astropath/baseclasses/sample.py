@@ -1,4 +1,4 @@
-import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
@@ -515,6 +515,10 @@ class WorkflowSample(SampleBase, WorkflowDependency):
     Previous steps that this step depends on
     """
     return []
+
+  @property
+  def job_lock(self):
+    return job_lock.JobLock(self.samplelog.with_suffix(".lock"))
 
 class DbloadSampleBase(SampleBase):
   """
