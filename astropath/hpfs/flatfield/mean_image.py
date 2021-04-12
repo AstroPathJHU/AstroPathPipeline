@@ -231,7 +231,8 @@ class MeanImage :
             if np.min(self.smoothed_mean_image[:,:,layer_i])==0 and np.max(self.smoothed_mean_image[:,:,layer_i])==0 :
                 self.flatfield_image[:,:,layer_i]=1.0
             else :
-                weights = (1./((sm_mean_img_err[:,:,layer_i])**2))
+                weights = np.zeros_like(sm_mean_img_err[:,:,layer_i])
+                weights[sm_mean_img_err[:,:,layer_i]>0.] = (1./((sm_mean_img_err[:,:,layer_i])**2))[sm_mean_img_err[:,:,layer_i]>0.]
                 layermean = np.average(self.smoothed_mean_image[:,:,layer_i],weights=weights)
                 self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
 
