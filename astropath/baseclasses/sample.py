@@ -516,7 +516,6 @@ class WorkflowSample(SampleBase, WorkflowDependency):
     """
     return []
 
-  @property
   def job_lock(self):
     return job_lock.JobLock(self.samplelog.with_suffix(".lock"))
 
