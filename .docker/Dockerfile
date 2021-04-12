@@ -359,9 +359,9 @@ ARG GITHUB_TOKEN
 RUN sudo pip install --upgrade pip
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
-  sudo pip install "astropath-calibration[all] @ git+https://github.com/AstropathJHU/microscopealignment@${ASTROPATH_DEPENDENCY_COMMIT}" && \
+  sudo pip install "astropath[all] @ git+https://github.com/AstropathJHU/microscopealignment@${ASTROPATH_DEPENDENCY_COMMIT}" && \
   sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
-RUN sudo pip uninstall -y astropath-calibration
+RUN sudo pip uninstall -y astropath
 
 from base as final
 
