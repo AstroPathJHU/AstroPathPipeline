@@ -1055,7 +1055,7 @@ class XMLLayoutReader(SampleBase):
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        cx, cy = floattoint(float(r.cxvec / self.onemicron))
+        cx, cy = floattoint((r.cxvec / self.onemicron).astype(float))
         errormessage = f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist"
         if self.__checkim3s:
           raise FileNotFoundError(errormessage)
