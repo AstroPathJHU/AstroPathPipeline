@@ -32,7 +32,7 @@ class ImageMask() :
         return (np.where(uncompressed_full_mask==1,1,0)).astype(np.uint8)
     @property
     def uncompressed_full_mask(self): #the uncompressed mask with the real number of image layers
-        if self._compressed_mask or self._layer_groups is None :
+        if self._compressed_mask is None or self._layer_groups==[] :
             raise RuntimeError('ERROR: uncompressed_full_mask called without first creating a mask!')
         uncompressed_mask = np.ones((*self._compressed_mask.shape[:-1],self._layer_groups[-1][1]),dtype=np.uint8)
         for lgi,lgb in enumerate(self._layer_groups) :
@@ -73,7 +73,7 @@ class ImageMask() :
         else :
             exp_times = None
         #create the blur mask (and get the plots)
-        self._blur_mask,blur_mask_plots = getImageBlurMask(im_array,exp_times,self._tissue_mask,exp_time_hists,make_plots)
+        self._blur_mask,blur_mask_plots = getImageBlurMask(im_array,self._tissue_mask,exp_time_hists,exp_times,make_plots)
         #create the saturation masks (one for each layer group)
         self._saturation_masks = getImageSaturationMasks(im_array,norm_ets if norm_ets is not None else exp_times)
         #make the compressed mask and the list of labelled mask regions
@@ -100,7 +100,7 @@ class ImageMask() :
         class method to create and return an ImageMask for a given image array
         can be run in parallel with a given index and return dictionary (in this case the mask will not be returned but rather added to the dictionary)
 
-        [see __init__ docstring above for other arguments]
+        (see __init__ docstring above for other arguments)
         i              = an index to file this image mask under in the return dictionary (used for running in parallel)
         return_dict    = the multiprocessing.Manager.dict object to put this mask under with the given index (used for running in parallel)
         """

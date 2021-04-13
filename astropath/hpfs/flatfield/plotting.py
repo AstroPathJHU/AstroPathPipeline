@@ -1,5 +1,6 @@
 #imports
 from .config import CONST
+from ..image_masking.config import CONST as MASKING_CONST
 from ...utilities.misc import cd, cropAndOverwriteImage
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt
@@ -343,8 +344,8 @@ def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
         key_y = float(key.split(',')[1].split(']')[0])
         if key in all_flagged_hpf_keys :
             key_strings = set([lmr.reason_flagged for lmr in lmrs if lmr.image_key==key])
-            blur_flagged = 1 if CONST.BLUR_FLAG_STRING in key_strings else 0
-            saturation_flagged = 1 if CONST.SATURATION_FLAG_STRING in key_strings else 0
+            blur_flagged = 1 if MASKING_CONST.BLUR_FLAG_STRING in key_strings else 0
+            saturation_flagged = 1 if MASKING_CONST.SATURATION_FLAG_STRING in key_strings else 0
             flagged_int = 1*blur_flagged+2*saturation_flagged
         else :
             flagged_int = 0
@@ -373,7 +374,8 @@ def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
     ax.set_xlim(ax.get_xlim()[0]-0.05*w,ax.get_xlim()[1]+0.05*w)
     ax.set_ylim(ax.get_ylim()[0]-0.05*h,ax.get_ylim()[1]+0.05*h)
     ax.invert_yaxis()
-    title_text = f'{sid} HPF center locations, ({len(all_rfps)} in slide, {len(rfps_added)} stacked, {len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"] not in (0,4)])} flagged)'
+    title_text = f'{sid} HPF center locations, ({len(all_rfps)} in slide, {len(rfps_added)} stacked, '
+    title_text+=f'{len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"] not in (0,4)])} flagged)'
     ax.set_title(title_text,fontsize=16)
     ax.legend(loc='best',fontsize=10)
     ax.set_xlabel('HPF local x position',fontsize=16)
