@@ -231,10 +231,18 @@ class MeanImage :
             if np.min(self.smoothed_mean_image[:,:,layer_i])==0 and np.max(self.smoothed_mean_image[:,:,layer_i])==0 :
                 self.flatfield_image[:,:,layer_i]=1.0
             else :
-                weights = np.zeros_like(sm_mean_img_err[:,:,layer_i])
-                weights[sm_mean_img_err[:,:,layer_i]>0.] = (1./((sm_mean_img_err[:,:,layer_i])**2))[sm_mean_img_err[:,:,layer_i]>0.]
-                layermean = np.average(self.smoothed_mean_image[:,:,layer_i],weights=weights)
-                self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
+                weights = np.divide(np.ones_like(sm_mean_img_err[:,:,layer_i]),(sm_mean_img_err[:,:,layer_i])**2,
+                                    out=np.zeros_like(sm_mean_img_err[:,:,layer_i]),where=sm_mean_img_err[:,:,layer_i]>0.)
+                if np.sum(weights)<=0 :
+                    msg = f'WARNING: sum of weights in layer {layer_i+1} is {np.sum(weights)}, this layer of the flatfield is all ones!'
+                    if logger is not None :
+                        logger.warningglobal(msg)
+                    else :
+                        flatfield_logger.warn(msg)    
+                    self.flatfield_image[:,:,layer_i]=1.0
+                else :
+                    layermean = np.average(self.smoothed_mean_image[:,:,layer_i],weights=weights)
+                    self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
 
     def makeCorrectedMeanImage(self,flatfield_file_path) :
         """
