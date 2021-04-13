@@ -42,6 +42,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
         self.NUCLEUS_TUMOR,
         self.NUCLEUS_IMMUNE,
       ],
+      with_seg=True,
       **kwargs
     )
 
@@ -54,7 +55,6 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
   def rectangleextrakwargs(self):
     return {
       **super().rectangleextrakwargs,
-      "with_seg": True,
       "geomfolder": self.geomfolder,
     }
 

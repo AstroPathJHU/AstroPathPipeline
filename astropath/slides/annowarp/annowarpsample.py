@@ -705,7 +705,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     read in the original regions from regions.csv
     """
     if filename is None: filename = self.oldregionscsv
-    return readtable(filename, Region, extrakwargs={"apscale": apscale, "pscale": self.pscale})
+    return readtable(filename, Region, extrakwargs={"apscale": apscale, "pscale": self.pscale}, fieldsizelimit=int(1e6))
 
   @property
   def regions(self):
@@ -820,7 +820,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
           result.append(verticescsv)
     if regionscsv not in result:
       constants = constantsdict(regionscsv.parent/f"{SlideID}_constants.csv")
-      regions = readtable(regionscsv, Region, extrakwargs={"apscale": constants["apscale"], "pscale": constants["pscale"]}, maxrows=1)
+      regions = readtable(regionscsv, Region, extrakwargs={"apscale": constants["apscale"], "pscale": constants["pscale"]}, maxrows=1, fieldsizelimit=int(1e6))
       if regions:
         region, = regions
         if region.poly is None:

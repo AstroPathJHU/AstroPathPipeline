@@ -460,12 +460,15 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
   with_seg: indicates if you want to use the _w_seg.tif which contains some segmentation info from inform
   """
 
-  def __post_init__(self, *args, imagefolder, layers, nlayers=None, with_seg=False, **kwargs):
+  def __post_init__(self, *args, imagefolder, layers, nlayers=None, with_seg=False, nsegmentations=None, **kwargs):
     super().__post_init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__layers = layers
     self.__nlayers = nlayers
     self.__with_seg = with_seg
+    self.__nsegmentations = nsegmentations
+    if with_seg and nsegmentations is None:
+      raise ValueError("To use segmented component tiffs, you have to provide nsegmentations")
 
   @property
   def imagefile(self):
@@ -494,7 +497,7 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
             raise ValueError(f"Found pages with different dtypes in the component tiff {dtype} {page.dtype}")
       expectpages = self.__nlayers
       if expectpages is not None:
-        if self.__with_seg: expectpages += 5
+        if self.__with_seg: expectpages += 1 + 2*self.__nsegmentations
         if len(pages) != expectpages:
           raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
 
