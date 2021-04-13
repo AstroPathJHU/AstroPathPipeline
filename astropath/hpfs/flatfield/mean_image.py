@@ -1,8 +1,8 @@
 #imports
-from .image_mask import getImageMaskWorker
 from .utilities import flatfield_logger, FlatFieldError
 from .config import CONST 
 from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots
+from ..image_masking.image_mask import ImageMask
 from ...utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker, smoothImageWithUncertaintyWorker
 from ...utilities.tableio import writetable
 from ...utilities.misc import cd, cropAndOverwriteImage
@@ -165,9 +165,9 @@ class MeanImage :
             else :
                 flatfield_logger.info(msg)
             make_plots=i in masking_plot_indices
-            p = mp.Process(target=getImageMaskWorker, 
-                           args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,slide.exp_time_hists,
-                                 ets_for_normalization,make_plots,self.masking_plot_dirpath,stack_i,return_dict))
+            p = mp.Process(target=ImageMask.create_mp,
+                           args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,
+                                 ets_for_normalization,slide.exp_time_hists,make_plots,self.masking_plot_dirpath,stack_i,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:

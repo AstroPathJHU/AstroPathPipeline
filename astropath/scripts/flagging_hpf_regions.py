@@ -8,8 +8,8 @@ from astropath.utilities.img_file_io import smoothImageWorker, getExposureTimesB
 #from astropath.utilities.img_file_io import writeImageToFile
 from astropath.utilities.tableio import readtable, writetable
 from astropath.utilities.misc import cd, addCommonArgumentsToParser, cropAndOverwriteImage
-from astropath.utilities import units
-from astropath.baseclasses.csvclasses import constantsdict
+#from astropath.utilities import units
+#from astropath.baseclasses.csvclasses import constantsdict
 from astropath.utilities.dataclasses import MyDataClass
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
@@ -184,12 +184,12 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
         group_mask = np.ones_like(group_mask)
     #set up the plots to return
     if return_plots :
-        plot_img_layer = sm_n_img_array[:,:,brightest_layer_n-1]
-        sorted_pil = np.sort(plot_img_layer[group_mask==1].flatten())
-        pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
-        norm = 255./(pil_max-pil_min)
-        im_c = (np.clip(norm*(plot_img_layer-pil_min),0,255)).astype(np.uint8)
-        overlay_c = np.array([im_c,im_c*group_mask,im_c*group_mask]).transpose(1,2,0)
+        #plot_img_layer = sm_n_img_array[:,:,brightest_layer_n-1]
+        #sorted_pil = np.sort(plot_img_layer[group_mask==1].flatten())
+        #pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
+        #norm = 255./(pil_max-pil_min)
+        #im_c = (np.clip(norm*(plot_img_layer-pil_min),0,255)).astype(np.uint8)
+        #overlay_c = np.array([im_c,im_c*group_mask,im_c*group_mask]).transpose(1,2,0)
         plots = [#{'image':plot_img_layer,'title':f'smoothed normalized IMAGE layer {brightest_layer_n}'},
                  #{'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask overlay (clipped)'},
                  {'hist':sm_n_img_array[:,:,brightest_layer_n-1].flatten(),'xlabel':'pixel intensity (counts/ms)','line_at':intensity_cut,'log_scale':True},
