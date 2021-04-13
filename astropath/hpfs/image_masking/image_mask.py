@@ -116,6 +116,8 @@ class ImageMask() :
 
     #helper function to combine all the created masks into a compressed mask and also make the list of labelled mask region objects
     def _make_compressed_mask_and_list_of_mask_regions(self) :
+        #start the list of labelled mask regions
+        self._labelled_mask_regions = []
         #make the compressed mask, which has (# of layer groups)+1 layers total
         #the first layer holds just the tissue and blur masks; the other layers have the tissue and blur masks plus the saturation mask for each layer group
         self._compressed_mask = np.ones((*self._tissue_mask.shape,len(self._layer_groups)+1),dtype=np.uint8)

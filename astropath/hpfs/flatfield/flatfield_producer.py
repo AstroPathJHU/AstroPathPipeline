@@ -1,11 +1,11 @@
 #imports
 from .flatfield_slide import FlatfieldSlide 
 from .mean_image import MeanImage
-from .image_mask import getImageMaskWorker
 from .latex_summary import LatexSummary
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, slideNameFromFilepath, FieldLog
 from .utilities import getSlideMeanImageFilepath, getSlideImageSquaredFilepath, getSlideMaskStackFilepath
 from .config import CONST
+from ..image_masking.image_mask import ImageMask
 from ...slides.align.alignsample import AlignSampleFromXML
 from ...utilities.img_file_io import LayerOffset
 from ...utilities.tableio import readtable, writetable
@@ -185,10 +185,10 @@ class FlatfieldProducer :
                     chunk_lmrs = []
                     procs = []
                     for i,(im_array,rfp) in enumerate(zip(im_arrays,[fri.rawfile_path for fri in fr_chunk])) :
-                        p = mp.Process(target=getImageMaskWorker, 
-                                       args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,slide.exp_time_hists,
+                        p = mp.Process(target=ImageMask.create_mp, 
+                                       args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,
                                              slide.med_exp_times_by_layer if (not self.mean_image.skip_et_correction) else None,
-                                             False,self.mean_image.masking_plot_dirpath,i,return_dict))
+                                             slide.exp_time_hists,False,self.mean_image.masking_plot_dirpath,i,return_dict))
                         procs.append(p)
                         p.start()
                     for proc in procs:
