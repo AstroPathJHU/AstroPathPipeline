@@ -517,6 +517,7 @@ class WorkflowSample(SampleBase, WorkflowDependency):
     return []
 
   def job_lock(self):
+    self.samplelog.parent.mkdir(exist_ok=True, parents=True)
     return job_lock.JobLock(self.samplelog.with_suffix(".lock"))
 
 class DbloadSampleBase(SampleBase):
