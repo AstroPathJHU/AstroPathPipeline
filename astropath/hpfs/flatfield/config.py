@@ -99,10 +99,10 @@ class Const :
                                                     #multilayer blur
     @property
     def FOLD_NLV_CUTS_BY_LAYER_GROUP_43(self) :
-        return [0.1200,0.0000,0.0500,0.0700,0.1200,0.1000,0.1000] 
+        return [0.120,0.0000,0.0700,0.0700,0.1200,0.1000,0.1000] 
     @property
     def FOLD_MAX_MEANS_BY_LAYER_GROUP_43(self) :
-        return [0.1000,0.0000,0.0425,0.0600,0.1000,0.0850,0.0850] 
+        return [0.100,0.0000,0.0600,0.0600,0.1000,0.0850,0.0850] 
     @property
     def DUST_MIN_PIXELS(self) :
         return 30000 #minimum number of pixels required to flag DAPI layer blur in images
@@ -135,7 +135,7 @@ class Const :
         return [100,100,250,400,150] #intensity in counts/ms required to flag saturation in each layer group for 35-layer images
     @property
     def SATURATION_INTENSITY_CUTS_43(self) :
-        return [100,50,150,250,150,100,50] #intensity in counts/ms required to flag saturation in each layer group for 43-layer images
+        return [100,50,250,250,150,100,50] #intensity in counts/ms required to flag saturation in each layer group for 43-layer images
     @property
     def SATURATION_FLAG_STRING(self) :
         return 'saturated likely skin or red blood cells or stain' #descriptive string to use for saturated areas in the labelled mask regions file
