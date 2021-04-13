@@ -1,11 +1,11 @@
-import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
-from .csvclasses import constantsdict, RectangleFile
+from .csvclasses import constantsdict, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
@@ -392,6 +392,16 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots):
 
     return result
 
+  @property
+  def mergeconfigcsv(self):
+    return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.csv"
+  @property
+  def mergeconfig(self):
+    return readtable(self.mergeconfigcsv, MergeConfig)
+  @property
+  def nsegmentations(self):
+    return len({layer.SegmentationStatus for layer in self.mergeconfig if layer.SegmentationStatus != 0})
+
   def _logonenter(self, warning, warnfunction):
     """
     Puts the function and warning into a queue to be logged
@@ -505,6 +515,10 @@ class WorkflowSample(SampleBase, WorkflowDependency):
     Previous steps that this step depends on
     """
     return []
+
+  def job_lock(self):
+    self.samplelog.parent.mkdir(exist_ok=True, parents=True)
+    return job_lock.JobLock(self.samplelog.with_suffix(".lock"))
 
 class DbloadSampleBase(SampleBase):
   """
@@ -924,6 +938,10 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
       "imagefolder": self.componenttiffsfolder,
       "with_seg": self.__with_seg,
     }
+    if self.__with_seg:
+      kwargs.update({
+        "nsegmentations": self.nsegmentations
+      })
     return kwargs
 
 class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection, OverlapCollection, SampleBase):
@@ -1037,7 +1055,7 @@ class XMLLayoutReader(SampleBase):
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        cx, cy = floattoint(float(r.cxvec / self.onemicron))
+        cx, cy = floattoint((r.cxvec / self.onemicron).astype(float))
         errormessage = f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist"
         if self.__checkim3s:
           raise FileNotFoundError(errormessage)

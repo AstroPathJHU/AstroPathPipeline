@@ -160,7 +160,9 @@ class SampleRunStatus:
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
-          if re.match(startregex, row["message"]):
+          if not row["message"]:
+            continue
+          elif re.match(startregex, row["message"]):
             started = True
             error = None
             ended = False
