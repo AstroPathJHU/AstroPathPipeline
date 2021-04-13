@@ -285,3 +285,30 @@ class ExposureTime(DataClassWithPscale):
   cy: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   layer: int
   exp: float
+
+class MergeConfig(MyDataClass):
+  """
+  Each MergeConfig object represents a row of the mergeconfig.csv file,
+  which describes the stains in the slide and how they map to layers
+  of the component tiff.
+  """
+  @classmethod
+  def transforminitargs(cls, *args, **kwargs):
+    #compatibility
+    if "SegmentationHierarchy " in kwargs:
+      kwargs["SegmentationHierarchy"] = kwargs.pop("SegmentationHierarchy ")
+    return super().transforminitargs(*args, **kwargs)
+
+  Project: int = None
+  Cohort: int = None
+  BatchID: int
+  layer: int = None
+  Opal: str
+  Target: str
+  Compartment: str
+  TargetType: str
+  CoexpressionStatus: str
+  SegmentationStatus: int
+  SegmentationHierarchy: int
+  NumberofSegmentations: int
+  ImageQA: str
