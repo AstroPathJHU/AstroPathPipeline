@@ -70,7 +70,7 @@ def getInitialPatternFitCmd(wdn,args) :
     for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
         cmd+=f' {argvars[ppan]} '
     #add the working directory argument
-    this_job_dir_path = (pathlib.Path(args.workingdir / wdn)).absolute()
+    this_job_dir_path = (pathlib.Path(f'{args.workingdir}/{wdn}')).absolute()
     cmd+=f'{this_job_dir_path} '
     #add the number of jobs positional argument
     cmd+=f'{args.initial_pattern_octets} '
@@ -101,7 +101,7 @@ def getPrincipalPointFitCmd(wdn,args,k1,k2,k3) :
     for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
         cmd+=f' {argvars[ppan]} '
     #add the working directory argument
-    this_job_dir_path = (pathlib.Path(args.workingdir / wdn)).absolute()
+    this_job_dir_path = (pathlib.Path(f'{args.workingdir}/{wdn}')).absolute()
     cmd+=f'{this_job_dir_path} '
     #add the number of jobs positional argument
     cmd+=f'{args.principal_point_octets} '
@@ -134,7 +134,7 @@ def getFinalPatternFitCmd(wdn,args,k1,k2,k3,cx,cx_err,cy,cy_err) :
     for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
         cmd+=f' {argvars[ppan]} '
     #add the working directory argument
-    this_job_dir_path = (pathlib.Path(args.workingdir / wdn)).absolute()
+    this_job_dir_path = (pathlib.Path(f'{args.workingdir}/{wdn}')).absolute()
     cmd+=f'{this_job_dir_path} '
     #add the number of jobs positional argument
     cmd+=f'{args.final_pattern_octets} '
@@ -194,7 +194,7 @@ def main(args=None) :
     dirname_1, dirname_2, dirname_3 = setUpFitDirectories(args)
     if args.mode!='find_octets' :
         #start up the file that will have the commands written into it
-        cmd_file_path = (pathlib.Path(args.workingdir / 'fit_group_commands.txt')).absolute()
+        cmd_file_path = (pathlib.Path(f'{args.workingdir}/fit_group_commands.txt')).absolute()
         #get the command for the initial pattern fits and run it
         cmd_1 = getInitialPatternFitCmd(dirname_1,args)
         with open(cmd_file_path,'w') as fp :
@@ -202,7 +202,7 @@ def main(args=None) :
         subprocess.call(cmd_1)
     if args.mode=='fit' :
         #figure out the radial warping parameters to use when finding the principal point
-        path = (pathlib.Path(args.workingdir / dirname_1 / f'{dirname_1}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}')).absolute()
+        path = (pathlib.Path(f'{args.workingdir}/{dirname_1}/{dirname_1}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}')).absolute()
         w_avg_res_1 = (readtable(path,WarpingSummary))[0]
         init_k1 = w_avg_res_1.k1; init_k2 = w_avg_res_1.k2; init_k3 = w_avg_res_1.k3
         #get the command for the central principal point fits and run it
@@ -211,7 +211,7 @@ def main(args=None) :
             fp.write(f'{cmd_2}\n\n')
         subprocess.call(cmd_2)
         #find the weighted mean of the principal point and its error from the previous run results 
-        all_results_2 = readtable((pathlib.Path(args.workingdir / dirname_2 / f'all_results_{dirname_2}.csv')).absolute(),WarpFitResult)
+        all_results_2 = readtable((pathlib.Path(f'{args.workingdir}/{dirname_2}/all_results_{dirname_2}.csv')).absolute(),WarpFitResult)
         w_cx = 0.; w_cy = 0.; sw = 0.; sw2 = 0.
         for r in all_results_2 :
             w = r.cost_reduction
@@ -228,16 +228,16 @@ def main(args=None) :
         subprocess.call(cmd_3)
         warp_logger.info(f'All fits for {args.slideID} warping pattern completed')
         #move and rename the final warping field and weighted average result files from the last fit
-        old_w_avg_fit_result_fp = (pathlib.Path(args.workingdir,dirname_3 / f'{dirname_3}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}')).absolute()
+        old_w_avg_fit_result_fp = (pathlib.Path(f'{args.workingdir,dirname_3}/{dirname_3}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}')).absolute()
         fn = f'{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}'
-        new_w_avg_fit_result_fp = (pathlib.Path(args.workingdir / fn)).absolute()
+        new_w_avg_fit_result_fp = (pathlib.Path(f'{args.workingdir}/{fn}')).absolute()
         shutil.move(old_w_avg_fit_result_fp,new_w_avg_fit_result_fp)
-        old_w_avg_dx_wf_fp = (pathlib.Path(args.workingdir / dirname_3 / f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{dirname_3}.bin')).absolute()
-        old_w_avg_dy_wf_fp = (pathlib.Path(args.workingdir / dirname_3 / f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{dirname_3}.bin')).absolute()
+        old_w_avg_dx_wf_fp = (pathlib.Path(f'{args.workingdir}/{dirname_3}/{UNIV_CONST.X_WARP_BIN_FILENAME}_{dirname_3}.bin')).absolute()
+        old_w_avg_dy_wf_fp = (pathlib.Path(f'{args.workingdir}/{dirname_3}/{UNIV_CONST.Y_WARP_BIN_FILENAME}_{dirname_3}.bin')).absolute()
         fn = f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.bin'
-        new_w_avg_dx_wf_fp = (pathlib.Path(args.workingdir / fn)).absolute()
+        new_w_avg_dx_wf_fp = (pathlib.Path(f'{args.workingdir}/{fn}')).absolute()
         fn = f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.bin'
-        new_w_avg_dy_wf_fp = (pathlib.Path(args.workingdir / fn)).absolute()
+        new_w_avg_dy_wf_fp = (pathlib.Path(f'{args.workingdir}/{fn}')).absolute()
         shutil.move(old_w_avg_dx_wf_fp,new_w_avg_dx_wf_fp)
         shutil.move(old_w_avg_dy_wf_fp,new_w_avg_dy_wf_fp)
     warp_logger.info('Done')

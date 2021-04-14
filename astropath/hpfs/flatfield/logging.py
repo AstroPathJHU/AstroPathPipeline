@@ -31,7 +31,7 @@ class RunLogger(ExitStack) :
     def __enter__(self) :
         super().__enter__()
         #add the imageinfo-level file in the working directory
-        self._global_logger_filepath = pathlib.Path(self._workingdir_path / f'global-{self._module}.log')
+        self._global_logger_filepath = pathlib.Path(f'{self._workingdir_path}/global-{self._module}.log')
         filehandler = logging.FileHandler(self._global_logger_filepath)
         filehandler.setFormatter(self.formatter)
         filehandler.setLevel(logging.INFO-1)
@@ -82,8 +82,8 @@ class RunLogger(ExitStack) :
     #helper function to add a new single slide logger to the global logger's dictionary
     def _addSlideLogger(self,slideid,root_dir) :
         samp = SampleDef(SlideID=slideid,root=root_dir)
-        mainlog = pathlib.Path(self._workingdir_path / f'{self._module}.log') if not self._batch_mode else None
-        samplelog = pathlib.Path(self._workingdir_path / f'{slideid}-{self._module}.log') if not self._batch_mode else None
+        mainlog = pathlib.Path(f'{self._workingdir_path}/{self._module}.log') if not self._batch_mode else None
+        samplelog = pathlib.Path(f'{self._workingdir_path}/{slideid}-{self._module}.log') if not self._batch_mode else None
         newlogger = getlogger(module=self._module,root=root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,
                               imagelog=self._global_logger_filepath,reraiseexceptions=(not self._batch_mode))
         self.enter_context(newlogger)

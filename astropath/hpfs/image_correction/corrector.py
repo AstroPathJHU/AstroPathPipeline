@@ -74,9 +74,9 @@ class RawfileCorrector :
         and write out the corrected file layers to the working directory
         """
         #first get the list of filepaths to run
-        with cd(pathlib.Path(self._rawfile_top_dir / self._slide_ID)) :
-            all_rawfile_paths = [pathlib.Path(self._rawfile_top_dir / self._slide_ID / fn) for fn in glob.glob(f'*{self._infile_ext}')]
-        self.__writeLog(f'Found {len(all_rawfile_paths)} total raw files in {pathlib.Path(self._rawfile_top_dir / self._slide_ID)}')
+        with cd(pathlib.Path(f'{self._rawfile_top_dir}/{self._slide_ID}')) :
+            all_rawfile_paths = [pathlib.Path(f'{self._rawfile_top_dir}/{self._slide_ID}/{fn}') for fn in glob.glob(f'*{self._infile_ext}')]
+        self.__writeLog(f'Found {len(all_rawfile_paths)} total raw files in {pathlib.Path(f"{self._rawfile_top_dir}/{self._slide_ID}")}')
         if self._max_files!=-1 :
             if self._max_files>len(all_rawfile_paths) :
                 msg = f'only {len(all_rawfile_paths)} were found for {self._slide_ID}, but {self._max_files} were requested,'
@@ -250,7 +250,7 @@ class RawfileCorrector :
             if self._layer!=-1 :
                 warp_shifts = [ws for ws in warp_shifts if ws.layer_n==self._layer]
             if len(warp_shifts)>0 :
-                with cd(pathlib.Path(self._working_dir_path / APPLIED_CORRECTION_PLOT_DIR_NAME)) :
+                with cd(pathlib.Path(f'{self._working_dir_path}/{APPLIED_CORRECTION_PLOT_DIR_NAME}')) :
                     writetable('applied_warp_shifts.csv',warp_shifts)
             self._warps = {}
             for ln in layers_to_run :
@@ -262,7 +262,7 @@ class RawfileCorrector :
                                              wfr.fx,wfr.fy,w_sf*wfr.k1,w_sf*wfr.k2,w_sf*wfr.k3,w_sf*wfr.p1,w_sf*wfr.p2)
                 try :
                     fs = f'applied_warping_correction_layer_{ln}'
-                    with cd(pathlib.Path(self._working_dir_path / APPLIED_CORRECTION_PLOT_DIR_NAME)) :
+                    with cd(pathlib.Path(f'{self._working_dir_path}/{APPLIED_CORRECTION_PLOT_DIR_NAME}')) :
                         self._warps[ln].writeOutWarpFields(fs,save_fields=False)
                 except Exception as e :
                     self.__writeLog(f'applied warp field plots could not be saved. Exception: {e}',level='warning')
@@ -278,7 +278,7 @@ class RawfileCorrector :
             msg+=f'{dx_warp_field_path} and {dy_warp_field_path}'
             try :
                 r_warp_field = np.sqrt((self._dx_warp_field**2)+(self._dy_warp_field**2))
-                with cd(pathlib.Path(self._working_dir_path / APPLIED_CORRECTION_PLOT_DIR_NAME)) :
+                with cd(pathlib.Path(f'{self._working_dir_path}/{APPLIED_CORRECTION_PLOT_DIR_NAME}')) :
                     f,ax = plt.subplots(1,3,figsize=(3*6.4,(self._img_dims[0]/self._img_dims[1])*6.4))
                     pos = ax[0].imshow(r_warp_field)
                     ax[0].set_title('total warp correction')
@@ -372,7 +372,7 @@ class RawfileCorrector :
         with cd(self._working_dir_path) :
             writeImageToFile(unwarped,outfile_name)
         #double check that it's there
-        new_image_path = pathlib.Path(self._working_dir_path / outfile_name)
+        new_image_path = pathlib.Path(f'{self._working_dir_path}/{outfile_name}')
         if pathlib.Path.is_file(new_image_path) :
             msg+=f'written as {new_image_path}'
         #log the message

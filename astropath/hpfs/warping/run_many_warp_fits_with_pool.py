@@ -53,7 +53,7 @@ def getListOfJobCommands(args) :
             this_octet_number = (all_octets.pop(index)).p1_rect_n
             thisjobdirname+=f'_{this_octet_number}'
             thisjoboctetstring+=f'{this_octet_number},'
-        thisjobworkingdir = pathlib.Path(args.workingdir / thisjobdirname)
+        thisjobworkingdir = pathlib.Path(f'{args.workingdir}/{thisjobdirname}')
         workingdir_names.append(thisjobworkingdir)
         octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else thisjobworkingdir
         thisjobcmdstring = f'{cmd_base} {thisjobworkingdir} --octet_run_dir {octet_run_dir} --octets {thisjoboctetstring[:-1]} '
@@ -104,18 +104,18 @@ def main(args=None) :
         #write out a list of all the individual results
         results = []; metadata_summaries = []
         for dirname in dirnames :
-            result_fp = pathlib.Path(dirname / CONST.FIT_RESULT_CSV_FILE_NAME)
+            result_fp = pathlib.Path(f'{dirname}/{CONST.FIT_RESULT_CSV_FILE_NAME}')
             if pathlib.Path.is_file(result_fp) :
                 results.append((readtable(result_fp,WarpFitResult))[0])
                 fn = f'metadata_summary_{(pathlib.Path.resolve(pathlib.Path(dirname))).name}.csv'
-                metadata_summaries.append((readtable(pathlib.Path(dirname / fn),MetadataSummary))[0])
+                metadata_summaries.append((readtable(pathlib.Path(f'{dirname}/{fn}'),MetadataSummary))[0])
             else :
                 warp_logger.warn(f'WARNING: Expected fit result file {result_fp} does not exist, continuing without it!')
         with cd(args.workingdir) :
             writetable(f'all_results_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.csv',results)
-        if pathlib.Path.is_file(pathlib.Path(args.workingdir / f'all_results_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.csv')) :
+        if pathlib.Path.is_file(pathlib.Path(f'{args.workingdir}/all_results_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.csv')) :
             for dirname in dirnames :
-                result_fp = pathlib.Path(dirname / CONST.FIT_RESULT_CSV_FILE_NAME)
+                result_fp = pathlib.Path(f'{dirname}/{CONST.FIT_RESULT_CSV_FILE_NAME}')
                 if pathlib.Path.is_file(result_fp) :
                     pathlib.Path(result_fp).unlink()
         #write out some plots
@@ -184,7 +184,7 @@ def main(args=None) :
         #aggregate the different field log files into one
         all_field_logs = []
         for dirname in dirnames :
-            field_log_path = pathlib.Path(dirname / f'field_log_{(pathlib.Path.resolve(pathlib.Path(dirname))).name}.csv')
+            field_log_path = pathlib.Path(f'{dirname}/field_log_{(pathlib.Path.resolve(pathlib.Path(dirname))).name}.csv')
             if pathlib.Path.is_file(field_log_path) :
                 all_field_logs+=((readtable(field_log_path,FieldLog)))
         with cd(args.workingdir) :

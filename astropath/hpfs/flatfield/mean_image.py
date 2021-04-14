@@ -27,7 +27,7 @@ class MeanImage :
     	return self._labelled_mask_regions #the list of labelled mask regions
     @property
     def masking_plot_dirpath(self):
-    	return pathlib.Path(self._workingdir_path / self.MASKING_SUBDIR_NAME)
+    	return pathlib.Path(f'{self._workingdir_path}/{self.MASKING_SUBDIR_NAME}')
     
     #################### CLASS CONSTANTS ####################
 
@@ -322,7 +322,7 @@ class MeanImage :
                 self.__plotAndWriteNImagesStackedPerLayer()
         #save the table of labelled mask regions (if applicable)
         if len(self._labelled_mask_regions)>0 :
-            with cd(pathlib.Path(self._workingdir_path / self.MASKING_SUBDIR_NAME)) :
+            with cd(pathlib.Path(f'{self._workingdir_path}/{self.MASKING_SUBDIR_NAME}')) :
                 writetable(self.LABELLED_MASK_REGIONS_CSV_FILE_NAME,self._labelled_mask_regions)
 
     def addLMRs(self,lmrs_to_add) :

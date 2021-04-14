@@ -38,8 +38,8 @@ def getExposureTimeDicts(samp_name,rtd,nlayers) :
     return_list = []
     for li in range(nlayers) :
         return_list.append({})
-    with cd(pathlib.Path(rtd / samp_name)) :
-        fps = [pathlib.Path(rtd / samp_name / fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
+    with cd(pathlib.Path(f'{rtd}/{samp_name}')) :
+        fps = [pathlib.Path(f'{rtd}/{samp_name}/{fn}') for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
     for fp in fps :
         fstem = ((pathlib.Path.resolve(fp)).name).rstrip(UNIV_CONST.RAW_EXT)
         this_file_exp_times = getExposureTimesByLayer(fp,rtd)
@@ -68,7 +68,7 @@ def getOverlapResult(sid,layer,overlap,exp_times,med_exp_time,offset,fss_by_rect
 #helper function to get a list of correction results for a single slide
 def writeResultsForSlide(slide,offsets,ff_file,workingdir,smoothsigma,allow_edges) :
     #make a logger
-    logfile_path = pathlib.Path(workingdir / f'{slide.name}_{LOGFILE_STEM}')
+    logfile_path = pathlib.Path(f'{workingdir}/{slide.name}_{LOGFILE_STEM}')
     logger = logging.getLogger(f'evaluate_exposure_time_{slide.name}')
     logger.setLevel(logging.DEBUG)
     logformat = logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S")
@@ -102,7 +102,7 @@ def writeResultsForSlide(slide,offsets,ff_file,workingdir,smoothsigma,allow_edge
     for li in range(nlayers) :
         #see if this layer has already been done
         output_fn = f'{slide.name}_layer_{li+1}_{RESULT_FILE_STEM}'
-        if pathlib.Path.is_file(pathlib.Path(workingdir / output_fn)) :
+        if pathlib.Path.is_file(pathlib.Path(f'{workingdir}/{output_fn}')) :
             logger.info(f'Skipping {slide.name} layer {li+1}; results file already exists.')
             continue
         skip = False

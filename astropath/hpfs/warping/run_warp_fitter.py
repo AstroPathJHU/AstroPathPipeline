@@ -38,7 +38,7 @@ def checkArgs(args) :
     if args.threshold_file_dir is not None :
         if not pathlib.Path.is_dir(pathlib.Path(args.threshold_file_dir)) :
             raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
-        tfp = pathlib.Path(args.threshold_file_dir / f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
+        tfp = pathlib.Path(f'{args.threshold_file_dir}/{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         if not pathlib.Path.is_file(tfp) :
             raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this slide ({tfp})!')
     #The user must specify either an octet run dir or a threshold file dir if they're not giving overlaps
@@ -54,7 +54,7 @@ def getOverlaps(args) :
     if args.threshold_file_dir is not None :
         if not pathlib.Path.is_dir(pathlib.Path(args.threshold_file_dir)) :
             raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
-        tfp = pathlib.Path(args.threshold_file_dir / f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
+        tfp = pathlib.Path(f'{args.threshold_file_dir}/{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         if not pathlib.Path.is_file(tfp) :
             raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this slide ({tfp})!')
     #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate

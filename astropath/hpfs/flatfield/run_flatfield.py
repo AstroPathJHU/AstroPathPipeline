@@ -81,9 +81,9 @@ def checkArgs(a) :
         if len(prior_run_ff_filename)!=1 :
             raise ValueError(f'ERROR: {len(prior_run_ff_filename)} flatfield files to apply found in {a.prior_run_dir}')
         prior_run_ff_filename = prior_run_ff_filename[0]
-        if not pathlib.Path.is_file(pathlib.Path(a.prior_run_dir / prior_run_ff_filename)) :
+        if not pathlib.Path.is_file(pathlib.Path(f'{a.prior_run_dir}/{prior_run_ff_filename}')) :
             raise ValueError(f'ERROR: flatfield image {prior_run_ff_filename} does not exist in prior run directory {a.prior_run_dir}!')
-        if not pathlib.Path.is_file(pathlib.Path(a.prior_run_dir / f'{FILEPATH_TEXT_FILE_NAME}')) :
+        if not pathlib.Path.is_file(pathlib.Path(f'{a.prior_run_dir}/{FILEPATH_TEXT_FILE_NAME}')) :
             raise ValueError(f'ERROR: rawfile log {FILEPATH_TEXT_FILE_NAME} does not exist in prior run directory {a.prior_run_dir}!')
     #figure out and read in the slides' information
     slides = None
@@ -108,10 +108,10 @@ def checkArgs(a) :
                              did not result in a valid list of slides!""")
     #make sure all of the slides' necessary directories exist
     for slide in slides :
-        rfd = pathlib.Path(slide.rawfile_top_dir / slide.name)
+        rfd = pathlib.Path(f'{slide.rawfile_top_dir}/{slide.name}')
         if not pathlib.Path.is_dir(rfd) :
             raise ValueError(f'ERROR: rawfile directory {rfd} does not exist!')
-        mfd = pathlib.Path(slide.root_dir / slide.name)
+        mfd = pathlib.Path(f'{slide.root_dir}/{slide.name}')
         if not pathlib.Path.is_dir(mfd) :
             raise ValueError(f'ERROR: slide root directory {mfd} does not exist!')
         if a.mode=='batch_flatfield' :
@@ -130,7 +130,7 @@ def checkArgs(a) :
             raise ValueError(f'ERROR: Threshold file directory {a.threshold_file_dir} does not exist!')
         for sn in [s.name for s in slides] :
             tfn = f'{sn}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
-            tfp = pathlib.Path(a.threshold_file_dir / tfn)
+            tfp = pathlib.Path(f'{a.threshold_file_dir}/{tfn}')
             if not pathlib.Path.is_file(tfp) :
                 raise FileNotFoundError(f'ERROR: background threshold file {tfp} does not exist!')
     #make sure the selected pixel fraction is a valid number
@@ -139,7 +139,7 @@ def checkArgs(a) :
     #if the user wants to exclude other directories as well, their filepath logs all have to exist
     if a.other_runs_to_exclude!=[''] :
         for prd in a.other_runs_to_exclude :
-            if not pathlib.Path.is_file(pathlib.Path(prd / f'{FILEPATH_TEXT_FILE_NAME}')) :
+            if not pathlib.Path.is_file(pathlib.Path(f'{prd}/{FILEPATH_TEXT_FILE_NAME}')) :
                 raise ValueError(f'ERROR: raw file path log {FILEPATH_TEXT_FILE_NAME} does not exist in additional prior run directory {prd}!')
 
 #helper function to get the list of filepaths and associated slide names to run on based on the selection method and number of images requested
@@ -158,14 +158,14 @@ def getFilepathsAndSlidesToRun(a,logger=None) :
     if a.other_runs_to_exclude!=[''] :
         filepaths_to_exclude=[]
         for prd in a.other_runs_to_exclude :
-            this_rawfile_log_path = pathlib.Path(prd / FILEPATH_TEXT_FILE_NAME)
+            this_rawfile_log_path = pathlib.Path(f'{prd}/{FILEPATH_TEXT_FILE_NAME}')
             with open(this_rawfile_log_path,'r') as f:
                 these_filepaths_to_exclude=[l.rstrip() for l in f.readlines() if l.rstrip()!='']
                 logger.info(f'Will exclude {len(these_filepaths_to_exclude)} files listed in previous run at {prd}')
                 filepaths_to_exclude+=these_filepaths_to_exclude
     #If a prior run is specified, read the filepaths from there (either to run them again or exclude them)
     if a.prior_run_dir is not None :
-        rawfile_log_path = pathlib.Path(a.prior_run_dir / FILEPATH_TEXT_FILE_NAME)
+        rawfile_log_path = pathlib.Path(f'{a.prior_run_dir}/{FILEPATH_TEXT_FILE_NAME}')
         with open(rawfile_log_path,'r') as f:
             previously_run_filepaths = [l.rstrip() for l in f.readlines() if l.rstrip()!='']
         #if those filepaths will be excluded, note that
@@ -190,8 +190,8 @@ def getFilepathsAndSlidesToRun(a,logger=None) :
     #get the sorted list of all rawfile paths in the slides that will be run
     all_slide_filepaths=[]
     for s in slides_to_run :
-        with cd(pathlib.Path(s.rawfile_top_dir / s.name)) :
-            all_slide_filepaths+=[pathlib.Path(s.rawfile_top_dir / s.name / fn) for fn in glob.glob(f'{s.name}_[[]*,*[]]{UNIV_CONST.RAW_EXT}')]
+        with cd(pathlib.Path(f'{s.rawfile_top_dir}/{s.name}')) :
+            all_slide_filepaths+=[pathlib.Path(f'{s.rawfile_top_dir}/{s.name}/{fn}') for fn in glob.glob(f'{s.name}_[[]*,*[]]{UNIV_CONST.RAW_EXT}')]
     all_slide_filepaths.sort()
     #if the rawfiles haven't already been selected, figure that out
     if filepaths_to_run is None :
@@ -284,8 +284,8 @@ def doRun(args,workingdir_path,logger=None) :
         ff_producer.writeOutInfo(args.batchID)
         fffn = f'{CONST.FLATFIELD_FILE_NAME_STEM}_BatchID_{args.batchID:02d}{CONST.FILE_EXT}'
         ff_producer.makeBatchFlatfieldSummaryPDF(args.root_dir,args.batchID)
-        if pathlib.Path.is_file(pathlib.Path(workingdir_path / fffn)) :
-            shutil.move(pathlib.Path(workingdir_path / fffn),pathlib.Path((pathlib.Path(workingdir_path)).parent / fffn))
+        if pathlib.Path.is_file(pathlib.Path(f'{workingdir_path}/{fffn}')) :
+            shutil.move(pathlib.Path(f'{workingdir_path}/{fffn}'),pathlib.Path((pathlib.Path(workingdir_path)).parent / fffn))
         return
     #see if the code is running in batch mode (i.e. minimal output in automatic locations) and figure out the working directory path if so
     batch_mode = args.mode in ('slide_mean_image','batch_flatfield')
@@ -314,7 +314,7 @@ def doRun(args,workingdir_path,logger=None) :
             #apply the flatfield to the image stack
             with cd(args.prior_run_dir) :
                 prior_run_ff_filename = (glob.glob(f'*{CONST.FLATFIELD_FILE_NAME_STEM}*{CONST.FILE_EXT}'))[0]
-            ff_producer.applyFlatField(pathlib.Path(args.prior_run_dir / prior_run_ff_filename))
+            ff_producer.applyFlatField(pathlib.Path(f'{args.prior_run_dir}/{prior_run_ff_filename}'))
         #save the plots, etc.
         ff_producer.writeOutInfo()
 

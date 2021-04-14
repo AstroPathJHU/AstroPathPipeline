@@ -186,7 +186,7 @@ def addCommonWarpingArgumentsToParser(parser,fit=True,fitpars=True,job_organizat
 #helper function to check directory command-line arguments
 def checkDirArgs(args) :
     #rawfile_top_dir/[slideID] must exist
-    rawfile_dir = pathlib.Path(args.rawfile_top_dir / args.slideID)
+    rawfile_dir = pathlib.Path(f'{args.rawfile_top_dir}/{args.slideID}')
     if not pathlib.Path.is_dir(rawfile_dir) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
     #root dir must exist
@@ -266,7 +266,7 @@ def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,med_et,offset,overlaps,re
 # Helper function to read previously-saved octet definitions from a file
 def readOctetsFromFile(octet_run_dir,rawfile_top_dir,root_dir,slide_ID,layer) :
     #get the .csv file holding the octet p1s and overlaps ns
-    octet_filepath = pathlib.Path(octet_run_dir / f'{slide_ID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
+    octet_filepath = pathlib.Path(f'{octet_run_dir}/{slide_ID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
     warp_logger.info(f'Reading octet overlaps numbers from file {octet_filepath}...')
     #read the overlap ns from the file
     octets = readtable(octet_filepath,OverlapOctet)
@@ -358,14 +358,14 @@ def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,worki
 #helper function to return the octets for a slide given just the command line arguments
 def getOctetsFromArguments(args) :
     octet_run_dir = pathlib.Path(args.octet_run_dir).absolute() if args.octet_run_dir is not None else pathlib.Path(args.workingdir).absolute()
-    if pathlib.Path.is_file(pathlib.Path(octet_run_dir / f'{args.slideID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
+    if pathlib.Path.is_file(pathlib.Path(f'{octet_run_dir}/{args.slideID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
         if args.threshold_file_dir is not None :
             msg = 'ERROR: an octet file exists in the working directory, but a threshold file directory was also given!'
             msg+= ' Get rid of the threshold file dir argument to use the octet file that already exists, or remove the octet file to recreate it.'
             raise WarpingError(msg)
         all_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.root_dir,args.slideID,args.layer)
     elif args.threshold_file_dir is not None :
-        threshold_file_path=pathlib.Path(args.threshold_file_dir / f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
+        threshold_file_path=pathlib.Path(f'{args.threshold_file_dir}/{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         all_octets = findSlideOctets(args.rawfile_top_dir,args.root_dir,threshold_file_path,args.req_pixel_frac,args.slideID,
                                       args.workingdir,args.layer,args.flatfield_file,args.exposure_time_offset_file)
     else :

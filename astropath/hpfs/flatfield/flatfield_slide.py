@@ -99,7 +99,7 @@ class FlatfieldSlide() :
             with cd((pathlib.Path(top_plotdir_path)).name) :
                 pathlib.Path.mkdir(pathlib.Path(pathlib.path(top_plotdir_path).name))
         this_slide_threshold_plotdir_name = f'{self._name}_{self.THRESHOLD_PLOT_DIR_STEM}'
-        plotdir_path = pathlib.Path(top_plotdir_path / this_slide_threshold_plotdir_name)
+        plotdir_path = pathlib.Path(f'{top_plotdir_path}/{this_slide_threshold_plotdir_name}')
         if not pathlib.Path.is_dir(plotdir_path) :
             with cd(top_plotdir_path) :
                 pathlib.Path.mkdir(pathlib.Path(this_slide_threshold_plotdir_name))
@@ -243,7 +243,7 @@ class FlatfieldSlide() :
         bulk_rect_ys = [r.y for r in a.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
         if plotdir_path is not None :
             with cd(plotdir_path) :
-                has_qptiff = pathlib.Path.is_file(pathlib.Path(self._root_dir / self._name / 'dbload' / f'{self._name}_qptiff.jpg'))
+                has_qptiff = pathlib.Path.is_file(pathlib.Path(f'{self._root_dir}/{self._name}/dbload/{self._name}_qptiff.jpg'))
                 if has_qptiff :
                     f,(ax1,ax2) = plt.subplots(1,2,figsize=(25.6,9.6))
                 else :
@@ -256,7 +256,7 @@ class FlatfieldSlide() :
                 ax1.set_xlabel('x position',fontsize=18)
                 ax1.set_ylabel('y position',fontsize=18)
                 if has_qptiff :
-                    ax2.imshow(mpimg.imread(pathlib.Path(self._root_dir / self._name / 'dbload' / f'{self._name}_qptiff.jpg')))
+                    ax2.imshow(mpimg.imread(pathlib.Path(f'{self._root_dir}/{self._name}/dbload/{self._name}_qptiff.jpg')))
                     ax2.set_title('reference qptiff',fontsize=18)
                 fn = f'{self._name}_{self.RECTANGLE_LOCATION_PLOT_STEM}.png'
                 plt.savefig(fn)
@@ -273,8 +273,8 @@ class FlatfieldSlide() :
 		masking_plot_dirpath  = path to where the labelled mask region plot should be saved
     	"""
     	#first get the list of all the rawfile paths for this slide
-    	with cd(pathlib.Path(self._rawfile_top_dir / self._name)) :
-    		all_rfps = [pathlib.Path(self._rawfile_top_dir / self._name / fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
+    	with cd(pathlib.Path(f'{self._rawfile_top_dir}/{self._name}')) :
+    		all_rfps = [pathlib.Path(f'{self._rawfile_top_dir}/{self._name}/{fn}') for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
     	#run the plotting function for this slide
     	plotFlaggedHPFLocations(self._name,all_rfps,rfps_added,labelled_mask_regions,masking_plot_dirpath)
 

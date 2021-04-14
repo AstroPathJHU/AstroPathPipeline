@@ -184,8 +184,8 @@ class ExposureTimeOffsetFitGroup :
     #helper function to get the dictionary of all the image exposure times keyed by the stem of the file name and the list of median times by layer
     def __getExposureTimes(self) :
         et_fit_logger.info('Getting all image exposure times....')
-        with cd(pathlib.Path(self.rawfile_top_dir / self.slideID)) :
-            all_rfps = [pathlib.Path(self.rawfile_top_dir / self.slideID / fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
+        with cd(pathlib.Path(f'{self.rawfile_top_dir}/{self.slideID}')) :
+            all_rfps = [pathlib.Path(f'{self.rawfile_top_dir}/{self.slideID}/{fn}') for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
         #get the dictionary of exposure times keyed by raw file stem
         exp_times = {}
         for rfp in all_rfps :

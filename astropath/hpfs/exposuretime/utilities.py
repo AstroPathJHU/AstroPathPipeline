@@ -16,14 +16,14 @@ et_fit_logger.addHandler(handler)
 #helper function to make sure necessary directories exist and that other arguments are valid
 def checkArgs(args) :
     #rawfile_top_dir/[slideID] must exist
-    rawfile_dir = pathlib.Path(args.rawfile_top_dir / args.slideID)
+    rawfile_dir = pathlib.Path(f'{args.rawfile_top_dir}/{args.slideID}')
     if not pathlib.Path.is_dir(rawfile_dir) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
     #root dir must exist
     if not pathlib.Path.is_dir(pathlib.Path(args.root_dir)) :
         raise ValueError(f'ERROR: root_dir argument ({args.root_dir}) does not point to a valid directory!')
     #root dir/[slideID] must exist
-    slide_root_dir = pathlib.Path(args.root_dir / args.slideID)
+    slide_root_dir = pathlib.Path(f'{args.root_dir}/{args.slideID}')
     if not pathlib.Path.is_dir(slide_root_dir) :
         raise ValueError(f'ERROR: root_dir ({args.root_dir}) does not contain a "[slideID]" subdirectory!')
     #make sure the flatfield file exists (if necessary)

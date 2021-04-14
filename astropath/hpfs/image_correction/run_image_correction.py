@@ -18,11 +18,11 @@ def checkArgs(args) :
         if not pathlib.Path.is_dir(pathlib.Path(dirpath)) :
             raise ValueError(f'ERROR: directory {dirpath} does not exist!')
     #make sure the rawfile directory for this slide exists
-    rawfile_dirpath = pathlib.Path(args.rawfile_top_dir / args.slideID)
+    rawfile_dirpath = pathlib.Path(f'{args.rawfile_top_dir}/{args.slideID}')
     if not pathlib.Path.is_dir(rawfile_dirpath) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dirpath} for slide {args.slideID} does not exist!')
     #make sure the root directory for this slide exists
-    root_dirpath = pathlib.Path(args.root_dir / args.slideID)
+    root_dirpath = pathlib.Path(f'{args.root_dir}/{args.slideID}')
     if not pathlib.Path.is_dir(root_dirpath) :
         raise ValueError(f'ERROR: root directory {root_dirpath} for slide {args.slideID} does not exist!')
     #make sure the image dimensions work with the layer argument
@@ -89,9 +89,9 @@ def main(args=None) :
         pathlib.Path.mkdir(pathlib.Path(args.workingdir))
     #set up the logger information and enter its context
     module='image_correction'
-    #mainlog = pathlib.Path(args.workingdir / f'{module}.log')
-    #samplelog = pathlib.Path(args.workingdir / f'{args.slideID}-{module}.log')
-    imagelog = pathlib.Path(args.workingdir / f'{args.slideID}_images-{module}.log')
+    #mainlog = pathlib.Path(f'{args.workingdir}/{module}.log')
+    #samplelog = pathlib.Path(f'{args.workingdir}/{args.slideID}-{module}.log')
+    imagelog = pathlib.Path(f'{args.workingdir}/{args.slideID}_images-{module}.log')
     samp = SampleDef(SlideID=args.slideID,root=args.root_dir)
     #with getlogger(module=module,root=args.root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,imagelog=imagelog,reraiseexceptions=False) as logger :
     with getlogger(module=module,root=args.root_dir,samp=samp,uselogfiles=True,imagelog=imagelog,reraiseexceptions=False) as logger :

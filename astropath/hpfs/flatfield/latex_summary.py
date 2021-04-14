@@ -180,7 +180,7 @@ class LatexSummary :
         lines.append('\\centering\n')
         imgpath = f'{CONST.POSTRUN_PLOT_DIRECTORY_NAME}/{CONST.N_IMAGES_STACKED_PER_LAYER_PLOT_NAME}'
         lines.append(f'\\includegraphics[width=0.98\\textwidth]{{{imgpath}}}\n')
-        nirfp = pathlib.Path(self.workingdir_path / CONST.POSTRUN_PLOT_DIRECTORY_NAME / CONST.N_IMAGES_READ_TEXT_FILE_NAME)
+        nirfp = pathlib.Path(f'{self.workingdir_path}/{CONST.POSTRUN_PLOT_DIRECTORY_NAME}/{CONST.N_IMAGES_READ_TEXT_FILE_NAME}')
         with open(nirfp,'r') as fp :
             nir = [int(l.rstrip()) for l in fp.readlines() if l.rstrip()!='']
         assert len(nir)==1 

@@ -130,7 +130,7 @@ class FlatfieldProducer :
         #read each slide's list of background thresholds by layer
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
             threshold_file_name = f'{sn}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
-            threshold_file_path = pathlib.Path(threshold_file_dir / threshold_file_name)
+            threshold_file_path = pathlib.Path(f'{threshold_file_dir}/{threshold_file_name}')
             self.__writeLog(f'Copying background thresholds from file {threshold_file_path} for slide {sn}...','info',sn,slide.root_dir)
             slide.readInBackgroundThresholds(threshold_file_path)
 
@@ -148,7 +148,7 @@ class FlatfieldProducer :
             new_field_logs = slide.findBackgroundThresholds([rfp for rfp in all_slide_rawfile_paths if slideNameFromFilepath(rfp)==sn],
                                                            n_threads,
                                                            self.exposure_time_correction_offsets,
-                                                           pathlib.Path(self.mean_image.workingdir_path / CONST.THRESHOLDING_PLOT_DIR_NAME),
+                                                           pathlib.Path(f'{self.mean_image.workingdir_path}/{CONST.THRESHOLDING_PLOT_DIR_NAME}'),
                                                            threshold_file_name,
                                                            self._logger
                                                         )

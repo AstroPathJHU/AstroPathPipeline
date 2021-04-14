@@ -62,22 +62,22 @@ def getBatchFlatfieldWorkingDirPath(rootdir,batchID) :
 
 #helper function to return the automatic path to a given slide's mean image file
 def getSlideMeanImageFilepath(slide) :
-    p = pathlib.Path(slide.root_dir / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME / f'{slide.name}-{CONST.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    p = pathlib.Path(f'{slide.root_dir}/{slide.name}/im3/{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}/{slide.name}-{CONST.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
     return p
 
 #helper function to return the automatic path to a given slide's sum of images squared file
 def getSlideImageSquaredFilepath(slide) :
-    p = pathlib.Path(slide.root_dir / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME / f'{slide.name}-{CONST.SUM_IMAGES_SQUARED_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    p = pathlib.Path(f'{slide.root_dir}/{slide.name}/im3/{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}/{slide.name}-{CONST.SUM_IMAGES_SQUARED_FILE_NAME_STEM}{CONST.FILE_EXT}')
     return p
 
 #helper function to return the automatic path to a given slide's standard error of the mean image file
 def getSlideStdErrMeanImageFilepath(slide) :
-    p = pathlib.Path(slide.root_dir / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME / f'{slide.name}-{CONST.STD_ERR_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    p = pathlib.Path(f'{slide.root_dir}/{slide.name}/im3/{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}/{slide.name}-{CONST.STD_ERR_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
     return p
 
 #helper function to return the automatic path to a given slide's mean image file
 def getSlideMaskStackFilepath(slide) :
-    p = pathlib.Path(slide.root_dir / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME / f'{slide.name}-{CONST.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    p = pathlib.Path(f'{slide.root_dir}/{slide.name}/im3/{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}/{slide.name}-{CONST.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}')
     return p
 
 #helper function to convert an image array into a flattened pixel histogram

@@ -74,7 +74,7 @@ class WarpFitter :
             writetable(f'metadata_summary_{(pathlib.Path.resolve(pathlib.Path(self.working_dir))).name}.csv',[ms])
             writetable(f'field_log_{(pathlib.Path.resolve(pathlib.Path(self.working_dir))).name}.csv',field_logs)
         #get the list of raw file paths
-        self.rawfile_paths = [pathlib.Path(self.rawfile_top_dir / self.slideID / fn.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)) 
+        self.rawfile_paths = [pathlib.Path(f'{self.rawfile_top_dir}/{self.slideID}/{fn.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)}') 
                               for fn in [r.file for r in self.alignset.rectangles]]
         
         #make the warpset object to use
@@ -88,7 +88,7 @@ class WarpFitter :
         """
         Remove the placeholder files when the object is being deleted
         """
-        if pathlib.Path.is_dir(pathlib.Path(self.working_dir / self.slideID)) :
+        if pathlib.Path.is_dir(pathlib.Path(f'{self.working_dir}/{self.slideID}')) :
             warp_logger.info('Removing copied raw layer files....')
             with cd(self.working_dir) :
                 shutil.rmtree(self.slideID)
@@ -118,7 +118,7 @@ class WarpFitter :
         with cd(self.working_dir) :
             if not pathlib.Path.is_dir(pathlib.Path(self.slideID)) :
                 pathlib.Path.mkdir(pathlib.Path(self.slideID))
-        self.warpset.writeOutWarpedImages(pathlib.Path(self.working_dir / self.slideID))
+        self.warpset.writeOutWarpedImages(pathlib.Path(f'{self.working_dir}/{self.slideID}'))
         self.alignset.getDAPI()
 
     def doFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
@@ -447,7 +447,7 @@ class WarpFitter :
                 failed_p1s_and_codes = oci.stackOverlays()
                 for fp1,fc in failed_p1s_and_codes :
                     addl_singlet_p1s_and_codes.add((fp1,fc))
-                with cd(pathlib.Path(self.working_dir / self.OVERLAP_COMPARISON_DIR_NAME)) :
+                with cd(pathlib.Path(f'{self.working_dir}/{self.OVERLAP_COMPARISON_DIR_NAME}')) :
                     oci.writeOutFigure()
         #next warp and align the images with the best fit warp and do the same thing
         self.warpset.warpLoadedImages()
@@ -465,7 +465,7 @@ class WarpFitter :
                 failed_p1s_and_codes = oci.stackOverlays()
                 for fp1,fc in failed_p1s_and_codes :
                     addl_singlet_p1s_and_codes.add((fp1,fc))
-                with cd(pathlib.Path(self.working_dir / self.OVERLAP_COMPARISON_DIR_NAME)) :
+                with cd(pathlib.Path(f'{self.working_dir}/{self.OVERLAP_COMPARISON_DIR_NAME}')) :
                     oci.writeOutFigure()
         #plot the singlet overlap comparisons
         for overlap_identifier in raw_olap_comps.keys() :
@@ -502,7 +502,7 @@ class WarpFitter :
             order[2].set_title('warped overlap images')
             order[3].imshow(warped_olap_comps[overlap_identifier][1])
             order[3].set_title('warped overlap images aligned')
-            with cd(pathlib.Path(self.working_dir / self.OVERLAP_COMPARISON_DIR_NAME)) :
+            with cd(pathlib.Path(f'{self.working_dir}/{self.OVERLAP_COMPARISON_DIR_NAME}')) :
                 plt.savefig(fn)
                 plt.close()
                 cropAndOverwriteImage(fn)

@@ -64,8 +64,8 @@ class SampleOverlapsWithDifferentExposureTimes :
     n_overlaps_per_layer_group : List[int]
 
 def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,layers,return_dict) :
-    with cd(pathlib.Path(rtd / sn)) :
-        all_rfps = [pathlib.Path(rtd / sn / fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
+    with cd(pathlib.Path(f'{rtd}/{sn}')) :
+        all_rfps = [pathlib.Path(f'{rtd}/{sn}/{fn}') for fn in glob.glob(f'*{RAWFILE_EXT}')]
     exp_times = {}
     for fi,rfp in enumerate(all_rfps,start=1) :
         if fi%100==0 :

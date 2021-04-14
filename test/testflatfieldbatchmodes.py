@@ -36,7 +36,7 @@ main(args)
 #check the logfile for error messages
 slide = FlatfieldSlideInfo(slide_ID,str(folder/'data'/'raw'),str(folder/'data'))
 slide_mean_image_working_dir = getSlideMeanImageWorkingDirPath(slide)
-with open(pathlib.Path(slide_mean_image_working_dir / 'global-slide_mean_image.log'),'r') as fp :
+with open(pathlib.Path(f'{slide_mean_image_working_dir}/global-slide_mean_image.log'),'r') as fp :
     for l in fp.readlines() :
         if 'ERROR' in l :
             raise RuntimeError('ERROR: there were errors during the slide_mean_image test; check the log files for what went wrong!')
@@ -69,7 +69,7 @@ args = Namespace(
 main(args)
 #check the logfile for error messages
 batch_flatfield_working_dir = getBatchFlatfieldWorkingDirPath(folder/'data',1)
-with open(pathlib.Path(batch_flatfield_working_dir / 'global-batch_flatfield.log'),'r') as fp :
+with open(pathlib.Path(f'{batch_flatfield_working_dir}/global-batch_flatfield.log'),'r') as fp :
     for l in fp.readlines() :
         if 'ERROR' in l :
             raise RuntimeError('ERROR: there were errors during the batch_flatfield test; check the log files for what went wrong!')
@@ -77,10 +77,10 @@ with open(pathlib.Path(batch_flatfield_working_dir / 'global-batch_flatfield.log
 #remove the working directory and the logs that were created
 flatfield_logger.info('Removing working directories and logfiles....')
 shutil.rmtree(slide_mean_image_working_dir,ignore_errors=True)
-pathlib.Path(folder/'data'/'logfiles'/'slide_mean_image.log').unlink()
-pathlib.Path(folder/'data'/f'{slide_ID}'/'logfiles'/f'{slide_ID}-slide_mean_image.log').unlink()
+(folder/'data'/'logfiles'/'slide_mean_image.log').unlink()
+(folder/'data'/f'{slide_ID}'/'logfiles'/f'{slide_ID}-slide_mean_image.log').unlink()
 shutil.rmtree(batch_flatfield_working_dir,ignore_errors=True)
-pathlib.Path(folder/'data'/'logfiles'/'batch_flatfield.log').unlink()
-pathlib.Path(folder/'data'/f'{slide_ID}'/'logfiles'/f'{slide_ID}-batch_flatfield.log').unlink()
+(folder/'data'/'logfiles'/'batch_flatfield.log').unlink()
+(folder/'data'/f'{slide_ID}'/'logfiles'/f'{slide_ID}-batch_flatfield.log').unlink()
 shutil.rmtree(ff_dirpath)
 flatfield_logger.info('All Done!')

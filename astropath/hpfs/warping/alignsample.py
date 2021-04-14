@@ -27,7 +27,7 @@ class RectangleForWarping(AlignmentRectangle):
         exp_time = None
         if transformations is None: transformations = []
         if (med_et is not None) and (offset is not None) :
-            rfp = pathlib.Path(rtd / slide_ID / self.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT))
+            rfp = pathlib.Path(f'{rtd}/{slide_ID}/{self.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)}')
             try :
                 exp_time = (getExposureTimesByLayer(rfp,root_dir))[self.layer-1]
             except Exception :

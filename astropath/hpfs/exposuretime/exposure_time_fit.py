@@ -52,7 +52,7 @@ class SingleLayerExposureTimeFit :
         with cd(top_plot_dir) :
             if not pathlib.Path.is_dir(pathlib.Path(plotdirname)) :
                 pathlib.Path.mkdir(pathlib.Path(plotdirname))
-        self.plotdirpath = pathlib.Path(top_plot_dir / plotdirname)
+        self.plotdirpath = pathlib.Path(f'{top_plot_dir}/{plotdirname}')
         #make an alignsample from the raw files, smoothed and corrected with the flatfield
         et_fit_logger.info(f'Making an AlignSample for just the overlaps with different exposure times in layer {self.layer}....')
         use_GPU = platform.system()!='Darwin'
