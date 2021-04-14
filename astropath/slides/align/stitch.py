@@ -407,6 +407,34 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         my1[rid] = primaryregionsy[i][gy-1]
         my2[rid] = primaryregionsy[i][gy]
 
+        pxvec = units.nominal_values(self.x(r))
+
+        if mx1[rid] < pxvec[0]:
+          if gx == 1:
+            self.__logger.warning(f"{rid}: px = {pxvec[0]}, mx1 = {mx1[rid]}, adjusting mx1")
+            mx1[rid] = pxvec[0]
+          else:
+            raise ValueError(f"{rid}: px = {pxvec[0]}, mx1 = {mx1[rid]}")
+        if mx2[rid] > pxvec[0]+r.w:
+          if gx == max(gxdict[i].values()):
+            self.__logger.warning(f"{rid}: px+w = {pxvec[0]+r.w}, mx2 = {mx2[rid]}, adjusting mx2")
+            mx2[rid] = pxvec[0]+r.w
+          else:
+            raise ValueError(f"{rid}: px+w = {pxvec[0]+r.w}, mx2 = {mx2[rid]}")
+
+        if my1[rid] < pxvec[1]:
+          if gy == 1:
+            self.__logger.warning(f"{rid}: py = {pxvec[1]}, my1 = {my1[rid]}, adjusting my1")
+            my1[rid] = pxvec[1]
+          else:
+            raise ValueError(f"{rid}: py = {pxvec[1]}, my1 = {my1[rid]}")
+        if my2[rid] > pxvec[1]+r.h:
+          if gy == max(gydict[i].values()):
+            self.__logger.warning(f"{rid}: py+h = {pxvec[1]+r.h}, my2 = {my2[rid]}, adjusting my2")
+            my2[rid] = pxvec[1]+r.h
+          else:
+            raise ValueError(f"{rid}: py+h = {pxvec[1]+r.h}, my2 = {my2[rid]}")
+
     #see if the primary regions of any HPFs in different islands overlap
     for (i1, island1), (i2, island2) in itertools.combinations(enumerate(islands, start=1), r=2):
       if len(island1) == 1 or len(island2) == 1: continue #orphans are excluded
