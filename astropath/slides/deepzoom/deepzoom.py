@@ -251,7 +251,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
               (folder/f"Z{i}").rmtree()
           (folder/"runningflag").unlink()
         elif all((folder/f"Z{i}").exists() for i in range(10)):
-          logger.info(f"layer {layer} has already been deepzoomed")
+          self.logger.info(f"layer {layer} has already been deepzoomed")
           continue
 
       self.deepzoom_vips(layer)
