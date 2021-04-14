@@ -239,10 +239,28 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     Run the full deepzoom pipeline
     """
     for layer in self.layers:
+      folder = self.layerfolder(layer)
+      if folder.exists():
+        i = 0
+        while (folder/f"{i}").exists():
+          (folder/f"{i}").rmtree()
+          i += 1
+        if (folder/"runningflag").exists():
+          for i in range(10):
+            if ("folder"/f"Z{i}").exists():
+              ("folder"/f"Z{i}").rmtree()
+          (folder/"runningflag").unlink()
+        elif all(("folder"/f"Z{i}").exists() for i in range(10)):
+          logger.info(f"layer {layer} has already been deepzoomed")
+          continue
+
       self.deepzoom_vips(layer)
+      (folder/"runningflag").touch()
       self.prunezoom(layer)
       self.patchsmallimages(layer)
       self.patchfolderstructure(layer)
+      (folder/"runningflag").unlink()
+
     self.writezoomlist()
 
   @property
