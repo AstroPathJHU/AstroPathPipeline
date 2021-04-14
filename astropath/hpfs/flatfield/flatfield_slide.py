@@ -1,6 +1,5 @@
 #imports
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds, FieldLog
-from .config import CONST
 from .plotting import plotFlaggedHPFLocations
 from ..image_masking.config import CONST as MASKING_CONST
 from ...slides.align.alignsample import AlignSampleFromXML
