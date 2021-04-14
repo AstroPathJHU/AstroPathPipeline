@@ -5,13 +5,13 @@ import subprocess, time
 #constants
 N_PROCS = 4
 #ET_OFFSET_FILE = '\\\\bki08/maggie/best_exposure_time_offsets_Vectra_9_8_2020.csv'
-ET_OFFSET_FILE = '\\\\bki08/maggie/best_exposure_time_offsets_Polaris_9_8_2020.csv'
+ET_OFFSET_FILE = r'//bki08/maggie/best_exposure_time_offsets_Polaris_9_8_2020.csv'
 #RAWFILE_TOP_DIR = '\\\\bki07/dat'
 #ROOT_DIR = '\\\\bki02/e/Clinical_Specimen'
 #RAWFILE_TOP_DIR = '\\\\bki07/dat_2'
 #ROOT_DIR = '\\\\bki04/Clinical_Specimen_2'
-RAWFILE_TOP_DIR = '\\\\bki07/dat_7'
-ROOT_DIR = '\\\\bki04/Clinical_Specimen_7'
+RAWFILE_TOP_DIR = r'//bki07/dat_7'
+ROOT_DIR = r'//bki04/Clinical_Specimen_7'
 CMD_BASE = f'run_flatfield slide_mean_image --exposure_time_offset_file {ET_OFFSET_FILE} --rawfile_top_dir {RAWFILE_TOP_DIR}'
 CMD_BASE+= f' --root_dir {ROOT_DIR} --n_threads {int(40/N_PROCS)}'
 SLIDE_IDS = [

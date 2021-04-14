@@ -1,6 +1,6 @@
 #imports
 from contextlib import ExitStack
-import os, logging, traceback
+import os, pathlib, logging, traceback
 from ...baseclasses.sample import SampleDef
 from ...baseclasses.logging import getlogger
 
@@ -82,8 +82,8 @@ class RunLogger(ExitStack) :
     #helper function to add a new single slide logger to the global logger's dictionary
     def _addSlideLogger(self,slideid,root_dir) :
         samp = SampleDef(SlideID=slideid,root=root_dir)
-        mainlog = os.path.join(self._workingdir_path,f'{self._module}.log') if not self._batch_mode else None
-        samplelog = os.path.join(self._workingdir_path,f'{slideid}-{self._module}.log') if not self._batch_mode else None
+        mainlog = pathlib.Path(self._workingdir_path / f'{self._module}.log') if not self._batch_mode else None
+        samplelog = pathlib.Path(self._workingdir_path / f'{slideid}-{self._module}.log') if not self._batch_mode else None
         newlogger = getlogger(module=self._module,root=root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,
                               imagelog=self._global_logger_filepath,reraiseexceptions=(not self._batch_mode))
         self.enter_context(newlogger)
