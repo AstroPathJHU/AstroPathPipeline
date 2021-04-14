@@ -1,14 +1,15 @@
 #imports
-from astropath.flatfield.utilities import chunkListOfFilepaths, readImagesMT, getSizeFilteredMask, getImageTissueMask 
-from astropath.flatfield.utilities import getExclusiveMask, getMorphedAndFilteredMask, getImageLayerLocalVarianceOfNormalizedLaplacian
-from astropath.flatfield.config import CONST
+from astropath.hpfs.flatfield.utilities import chunkListOfFilepaths, readImagesMT
+from astropath.hpfs.flatfield.image_mask import getSizeFilteredMask, getImageTissueMask, getExclusiveMask
+from astropath.hpfs.flatfield.image_mask import getMorphedAndFilteredMask, getImageLayerLocalVarianceOfNormalizedLaplacian
+from astropath.hpfs.flatfield.config import CONST
 from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset
 from astropath.utilities.img_file_io import smoothImageWorker, getExposureTimesByLayer
 #from astropath.utilities.img_file_io import writeImageToFile
 from astropath.utilities.tableio import readtable, writetable
 from astropath.utilities.misc import cd, addCommonArgumentsToParser, cropAndOverwriteImage
-from astropath.utilities import units
-from astropath.baseclasses.csvclasses import constantsdict
+#from astropath.utilities import units
+#from astropath.baseclasses.csvclasses import constantsdict
 from astropath.utilities.dataclasses import MyDataClass
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
@@ -22,24 +23,33 @@ LOCAL_MEAN_KERNEL          = np.array([[0.0,0.2,0.0],
 WINDOW_EL                  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(45,45))
 SMALLER_WINDOW_EL          = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(15,15))
 SMALLER_WINDOW_N_PIXELS    = np.sum(SMALLER_WINDOW_EL)
-MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
-BRIGHTEST_LAYERS           = [5,11,21,29,34]
+#MASK_LAYER_GROUPS          = [(1,9),(10,18),(19,25),(26,32),(33,35)]
+MASK_LAYER_GROUPS           = [(1,9),(10,11),(12,17),(18,20),(21,29),(30,36),(37,43)]
+#BRIGHTEST_LAYERS           = [5,11,21,29,34]
+BRIGHTEST_LAYERS           = [5,10,16,19,22,31,41]
 DAPI_LAYER_GROUP_INDEX     = 0
-RBC_LAYER_GROUP_INDEX      = 1
+#RBC_LAYER_GROUP_INDEX      = 1
+RBC_LAYER_GROUP_INDEX      = 4
 FOLD_MIN_PIXELS            = 30000
 FOLD_MIN_SIZE              = 5000
-FOLD_NLV_CUT               = 0.0035
-FOLD_MAX_MEAN              = 0.0030
-FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
+#FOLD_NLV_CUT               = 0.0035
+FOLD_NLV_CUTS_BY_LAYER_GROUP  = [0.12, 0.0, 0.07, 0.07, 0.12, 0.10,  0.10]
+#FOLD_MAX_MEAN              = 0.0030
+FOLD_MAX_MEANS_BY_LAYER_GROUP = [0.10, 0.0, 0.06, 0.06, 0.10, 0.085, 0.085]
+#FOLD_MASK_FLAG_CUTS        = [3,3,1,1,0]
+FOLD_MASK_FLAG_CUTS        = [3,0,1,0,3,1,1]
 FOLD_FLAG_STRING           = 'tissue fold or bright dust'
 DUST_MIN_PIXELS            = 30000
 DUST_MIN_SIZE              = 20000
-DUST_NLV_CUT               = 0.00085
-DUST_MAX_MEAN              = 0.00065
+#DUST_NLV_CUT               = 0.00085
+DUST_NLV_CUT               = 0.07
+#DUST_MAX_MEAN              = 0.00065
+DUST_MAX_MEAN              = 0.0525
 DUST_STRING                = 'likely dust'
 SATURATION_MIN_PIXELS      = 4500
 SATURATION_MIN_SIZE        = 1000
-SATURATION_INTENSITY_CUTS  = [100,100,250,400,150]
+#SATURATION_INTENSITY_CUTS  = [100,100,250,400,150]
+SATURATION_INTENSITY_CUTS  = [100,50,250,250,150,100,50]
 SATURATION_FLAG_STRING     = 'saturated likely skin red blood cells or stain'
 
 #logger
@@ -93,7 +103,10 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
         #im_gs = (plot_img_layer*group_blur_mask).astype(np.float32); im_gs /= np.max(im_gs)
         #overlay_gs = np.array([im_gs,im_gs,0.15*group_blur_mask]).transpose(1,2,0)
         sorted_pil = np.sort(plot_img_layer[group_blur_mask==1].flatten())
-        pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
+        if len(sorted_pil)>0 :
+            pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
+        else :
+            pil_max=255; pil_min=0
         norm = 255./(pil_max-pil_min)
         im_c = (np.clip(norm*(plot_img_layer-pil_min),0,255)).astype(np.uint8)
         overlay_c = np.array([im_c,im_c*group_blur_mask,im_c*group_blur_mask]).transpose(1,2,0)
@@ -101,7 +114,7 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
                  {'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (clipped)'},
                  #{'image':overlay_gs,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (grayscale)'},
                  {'bar':ethistandbins[0],'bins':ethistandbins[1],'xlabel':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} exposure times (ms)','line_at':exp_times[layer_group_bounds[0]-1]},
-                 #{'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'},
+                 {'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'},
                  {'hist':brightest_layer_nlv.flatten(),'xlabel':'variance of normalized laplacian','line_at':nlv_cut},
                  {'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
                  #{'image':group_blur_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask','vmin':0,'vmax':1},
@@ -113,17 +126,17 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
 
 #return the tissue fold mask for an image combining information from all layer groups
 def getImageTissueFoldMask(img_array,exp_times,tissue_mask,exp_t_hists,return_plots=False) :
-    #smooth the image EXTREMELY gently
-    img_array = smoothImageWorker(img_array,1)
+    ##smooth the image EXTREMELY gently
+    #img_array = smoothImageWorker(img_array,1)
     #get the fold masks for each layer group
     fold_masks_by_layer_group = []; fold_mask_plots_by_layer_group = []
     for lgi,lgb in enumerate(MASK_LAYER_GROUPS) :
         lgtfm, lgtfmps = getImageLayerGroupBlurMask(img_array,
                                                     exp_times,
                                                     lgb,
-                                                    FOLD_NLV_CUT,
+                                                    FOLD_NLV_CUTS_BY_LAYER_GROUP[lgi],
                                                     FOLD_MASK_FLAG_CUTS[lgi],
-                                                    FOLD_MAX_MEAN,
+                                                    FOLD_MAX_MEANS_BY_LAYER_GROUP[lgi],
                                                     BRIGHTEST_LAYERS[lgi],
                                                     exp_t_hists[lgi],
                                                     return_plots)
@@ -132,7 +145,10 @@ def getImageTissueFoldMask(img_array,exp_times,tissue_mask,exp_t_hists,return_pl
     #combine the layer group blur masks to get the final mask for all layers
     stacked_fold_masks = np.zeros_like(fold_masks_by_layer_group[0])
     for lgi,layer_group_fold_mask in enumerate(fold_masks_by_layer_group) :
-        stacked_fold_masks[layer_group_fold_mask==0]+=10 if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) else 1
+        to_add = 1
+        if lgi in (DAPI_LAYER_GROUP_INDEX,RBC_LAYER_GROUP_INDEX) :
+            to_add = 10
+        stacked_fold_masks[layer_group_fold_mask==0]+=to_add
     overall_fold_mask = (np.where(stacked_fold_masks>11,0,1)).astype(np.uint8)
     #morph and filter the mask using the common operations
     overall_fold_mask = getMorphedAndFilteredMask(overall_fold_mask,tissue_mask,FOLD_MIN_PIXELS,FOLD_MIN_SIZE)
@@ -168,17 +184,17 @@ def getImageLayerGroupSaturationMask(img_array,exp_times,layer_group_bounds,inte
         group_mask = np.ones_like(group_mask)
     #set up the plots to return
     if return_plots :
-        plot_img_layer = sm_n_img_array[:,:,brightest_layer_n-1]
-        sorted_pil = np.sort(plot_img_layer[group_mask==1].flatten())
-        pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
-        norm = 255./(pil_max-pil_min)
-        im_c = (np.clip(norm*(plot_img_layer-pil_min),0,255)).astype(np.uint8)
-        overlay_c = np.array([im_c,im_c*group_mask,im_c*group_mask]).transpose(1,2,0)
-        plots = [{'image':plot_img_layer,'title':f'smoothed normalized IMAGE layer {brightest_layer_n}'},
-                 {'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask overlay (clipped)'},
+        #plot_img_layer = sm_n_img_array[:,:,brightest_layer_n-1]
+        #sorted_pil = np.sort(plot_img_layer[group_mask==1].flatten())
+        #pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
+        #norm = 255./(pil_max-pil_min)
+        #im_c = (np.clip(norm*(plot_img_layer-pil_min),0,255)).astype(np.uint8)
+        #overlay_c = np.array([im_c,im_c*group_mask,im_c*group_mask]).transpose(1,2,0)
+        plots = [#{'image':plot_img_layer,'title':f'smoothed normalized IMAGE layer {brightest_layer_n}'},
+                 #{'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask overlay (clipped)'},
                  {'hist':sm_n_img_array[:,:,brightest_layer_n-1].flatten(),'xlabel':'pixel intensity (counts/ms)','line_at':intensity_cut,'log_scale':True},
-                 {'bar':ethistandbins[0],'bins':ethistandbins[1],'xlabel':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} exposure times (ms)','line_at':exp_times[layer_group_bounds[0]-1]},
-                 {'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
+                 #{'bar':ethistandbins[0],'bins':ethistandbins[1],'xlabel':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} exposure times (ms)','line_at':exp_times[layer_group_bounds[0]-1]},
+                 #{'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar','vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1},
                  #{'image':group_mask,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} saturation mask','vmin':0,'vmax':1},
                 ]
     else :
@@ -279,15 +295,18 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
             plt.savefig(fn); plt.close(); cropAndOverwriteImage(fn)
 
 #helper function to plot all of the hpf locations for a slide with their reasons for being flagged
-def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,workingdir) :
+#def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,workingdir) :
+def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,truncated,workingdir) :
     all_flagged_hpf_keys = [lmr.image_key for lmr in all_lmrs]
     hpf_identifiers = []
     for rfp in all_rfps :
         key = (os.path.basename(rfp)).rstrip(RAWFILE_EXT)
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
-        cvx = pscale*key_x-xpos
-        cvy = pscale*key_y-ypos
+        #cvx = pscale*key_x-xpos
+        #cvy = pscale*key_y-ypos
+        cvx = key_x
+        cvy = key_y
         if key in all_flagged_hpf_keys :
             key_strings = set([lmr.reason_flagged for lmr in all_lmrs if lmr.image_key==key])
             fold_flagged = 1 if FOLD_FLAG_STRING in key_strings else 0
@@ -343,14 +362,16 @@ def getEnumeratedMask(layer_mask,start_i) :
     return return_mask
 
 #helper function to calculate and add the subimage infos for a single image to a shared dictionary (run in parallel)
-def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list) :
+#def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list) :
+def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,workingdir,exp_time_hists,return_list) :
     #start by creating the tissue mask
     tissue_mask = getImageTissueMask(img_array,thresholds)
     #next get the tissue fold mask and its associated plots
     tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(img_array,exposure_times,tissue_mask,exp_time_hists,return_plots=True)
     #tissue_fold_mask,tissue_fold_plots_by_layer_group = np.ones(img_array.shape,dtype=np.uint8),None
     #get masks for the blurriest areas of the DAPI layer group
-    sm_img_array = smoothImageWorker(img_array,1)
+    #sm_img_array = smoothImageWorker(img_array,1)
+    sm_img_array = img_array
     dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
                                                                 exposure_times,
                                                                 MASK_LAYER_GROUPS[DAPI_LAYER_GROUP_INDEX],
@@ -375,7 +396,7 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
                                                                       (MASK_LAYER_GROUPS[lgi][1]-MASK_LAYER_GROUPS[lgi][0]),
                                                                       BRIGHTEST_LAYERS[lgi],
                                                                       exp_time_hists[lgi],
-                                                                      return_plots=False)
+                                                                      return_plots=True)
         #lgsm,saturation_mask_plots = np.ones(img_array.shape,dtype=np.uint8), None
         layer_group_saturation_masks.append(lgsm)
         layer_group_saturation_mask_plots.append(saturation_mask_plots)
@@ -390,8 +411,10 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
         #figure out where the image is in cellview
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
-        cvx = pscale*key_x-xpos
-        cvy = pscale*key_y-ypos
+        #cvx = pscale*key_x-xpos
+        #cvy = pscale*key_y-ypos
+        cvx = key_x
+        cvy = key_y
         #the mask starts as all ones (0=background, 1=good tissue, >=2 is a flagged region)
         output_mask = np.ones(img_array.shape,dtype=np.uint8)
         #add in the tissue fold mask, starting with index 2
@@ -436,20 +459,24 @@ def getLabelledMaskRegionsWorker(img_array,exposure_times,key,thresholds,xpos,yp
         all_plot_dict_lists = []
         if tissue_fold_plots_by_layer_group is not None :
             all_plot_dict_lists += tissue_fold_plots_by_layer_group
+        for lgi,saturation_mask_plot_dicts in enumerate(layer_group_saturation_mask_plots) :
+            if saturation_mask_plot_dicts is not None :
+                all_plot_dict_lists[lgi].append(saturation_mask_plot_dicts[0])
         if dapi_dust_plots is not None :
             all_plot_dict_lists += [dapi_dust_plots]
-        sat_plots = []
-        for saturation_mask_plot_dicts in layer_group_saturation_mask_plots :
-            if saturation_mask_plot_dicts is not None :
-                sat_plots.append(saturation_mask_plot_dicts)
-        all_plot_dict_lists += sat_plots
+        #sat_plots = []
+        #for saturation_mask_plot_dicts in layer_group_saturation_mask_plots :
+        #    if saturation_mask_plot_dicts is not None :
+        #        sat_plots.append(saturation_mask_plot_dicts)
+        #all_plot_dict_lists += sat_plots
         doMaskingPlotsForImage(key,tissue_mask,all_plot_dict_lists,output_mask,workingdir)
         ##write out the mask in the working directory
         #with cd(workingdir) :
         #    writeImageToFile(output_mask,f'{key}_mask.png',dtype=np.uint8)
 
 #helper function to get a list of all the labelled mask regions for a chunk of files
-def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,xpos,ypos,pscale,workingdir,root_dir,exp_time_hists) :
+#def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,xpos,ypos,pscale,workingdir,root_dir,exp_time_hists) :
+def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,workingdir,root_dir,exp_time_hists) :
     #get the image arrays
     img_arrays = readImagesMT(fris,med_exposure_times_by_layer=metsbl,et_corr_offsets_by_layer=etcobl)
     #get all of the labelled mask region objects as the images are masked
@@ -461,7 +488,8 @@ def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,xpos,ypos,pscal
         logger.info(msg)
         exp_times = getExposureTimesByLayer(fris[i].rawfile_path,root_dir)
         key = (os.path.basename(fris[i].rawfile_path)).rstrip(RAWFILE_EXT)
-        p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,exp_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list))
+        #p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,exp_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list))
+        p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,exp_times,key,thresholds,workingdir,exp_time_hists,return_list))
         procs.append(p)
         p.start()
     for proc in procs:
@@ -516,8 +544,6 @@ def main(args=None) :
     #get all the rawfile paths
     with cd(os.path.join(args.rawfile_top_dir,args.slideID)) :
         all_rfps = [os.path.join(args.rawfile_top_dir,args.slideID,fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
-    if args.max_files>0 :
-        all_rfps=all_rfps[:args.max_files]
     #get the correction details and other slide information stuff
     dims   = getImageHWLFromXMLFile(args.root_dir,args.slideID)
     all_exp_times = []
@@ -532,16 +558,30 @@ def main(args=None) :
         newhist,newbins = np.histogram(all_exp_times[lgi],bins=100)
         exp_time_hists.append((newhist,newbins))
     metsbl = getSlideMedianExposureTimesByLayer(args.root_dir,args.slideID)
-    etcobl = [lo.offset for lo in readtable(args.exposure_time_offset_file,LayerOffset)]
+    etcobl = []
+    for li in range(dims[-1]) :
+        etcobl.append(None)
+    layer_offsets_from_file = readtable(args.exposure_time_offset_file,LayerOffset)
+    for ln in range(1,len(etcobl)+1) :
+        this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
+        if len(this_layer_offset)==1 :
+            etcobl[ln-1]=this_layer_offset[0]
+        elif len(this_layer_offset)==0 :
+            msg = f'WARNING: LayerOffset file {args.exposure_time_offset_file} does not have an entry for layer {ln}'
+            msg+=  ', so that offset will be set to zero!'
+            logger.warning(msg)
+            etcobl[ln-1]=0.
+        else :
+            raise RuntimeError(f'ERROR: more than one entry found in LayerOffset file {args.exposure_time_offset_file} for layer {ln}!')
     with open(os.path.join(args.threshold_file_dir,f'{args.slideID}_background_thresholds.txt')) as fp :
         bgtbl = [int(v) for v in fp.readlines() if v!='']
     if len(bgtbl)!=dims[-1] :
         raise RuntimeError(f'ERROR: found {len(bgtbl)} background thresholds but images have {dims[-1]} layers!')
     thresholds = [bgtbl[li] for li in range(dims[-1])]
-    slide_constants_dict = constantsdict(os.path.join(args.root_dir,args.slideID,'dbload',f'{args.slideID}_constants.csv'))
-    xpos = float(units.pixels(slide_constants_dict['xposition']))
-    ypos = float(units.pixels(slide_constants_dict['yposition']))
-    pscale = slide_constants_dict['pscale']
+    #slide_constants_dict = constantsdict(os.path.join(args.root_dir,args.slideID,'dbload',f'{args.slideID}_constants.csv'))
+    #xpos = float(units.pixels(slide_constants_dict['xposition']))
+    #ypos = float(units.pixels(slide_constants_dict['yposition']))
+    #pscale = slide_constants_dict['pscale']
     #chunk up the rawfile read information 
     if args.max_files!=-1 :
         all_rfps = all_rfps[:args.max_files]
@@ -550,7 +590,8 @@ def main(args=None) :
     truncated=False
     all_lmrs = []
     for fri_chunk in fri_chunks :
-        new_lmrs = getLabelledMaskRegionsForChunk(fri_chunk,metsbl,etcobl,thresholds,xpos,ypos,pscale,args.workingdir,args.root_dir,exp_time_hists)
+        #new_lmrs = getLabelledMaskRegionsForChunk(fri_chunk,metsbl,etcobl,thresholds,xpos,ypos,pscale,args.workingdir,args.root_dir,exp_time_hists)
+        new_lmrs = getLabelledMaskRegionsForChunk(fri_chunk,metsbl,etcobl,thresholds,args.workingdir,args.root_dir,exp_time_hists)
         all_lmrs+=new_lmrs
         if args.max_masks!=-1 and len(set(lmr.image_key for lmr in all_lmrs))>=args.max_masks :
             truncated=True
@@ -561,7 +602,8 @@ def main(args=None) :
         with cd(args.workingdir) :
             writetable(fn,sorted(all_lmrs,key=lambda x: f'{x.image_key}_{x.region_index}'))
     #make the plot of all the HPF locations and whether they have something masked/flagged
-    plotFlaggedHPFLocations(args.slideID,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,args.workingdir)
+    #plotFlaggedHPFLocations(args.slideID,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,args.workingdir)
+    plotFlaggedHPFLocations(args.slideID,all_rfps,all_lmrs,truncated,args.workingdir)
 
 if __name__=='__main__' :
     main()

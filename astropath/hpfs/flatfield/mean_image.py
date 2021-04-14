@@ -1,8 +1,8 @@
 #imports
-from .image_mask import getImageMaskWorker
 from .utilities import flatfield_logger, FlatFieldError
 from .config import CONST 
 from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots
+from ..image_masking.image_mask import ImageMask
 from ...utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker, smoothImageWithUncertaintyWorker
 from ...utilities.tableio import writetable
 from ...utilities.misc import cd, cropAndOverwriteImage
@@ -165,9 +165,9 @@ class MeanImage :
             else :
                 flatfield_logger.info(msg)
             make_plots=i in masking_plot_indices
-            p = mp.Process(target=getImageMaskWorker, 
-                           args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,slide.exp_time_hists,
-                                 ets_for_normalization,make_plots,self.masking_plot_dirpath,stack_i,return_dict))
+            p = mp.Process(target=ImageMask.create_mp,
+                           args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,
+                                 ets_for_normalization,slide.exp_time_hists,make_plots,self.masking_plot_dirpath,stack_i,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
@@ -231,9 +231,18 @@ class MeanImage :
             if np.min(self.smoothed_mean_image[:,:,layer_i])==0 and np.max(self.smoothed_mean_image[:,:,layer_i])==0 :
                 self.flatfield_image[:,:,layer_i]=1.0
             else :
-                weights = (1./((sm_mean_img_err[:,:,layer_i])**2))
-                layermean = np.average(self.smoothed_mean_image[:,:,layer_i],weights=weights)
-                self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
+                weights = np.divide(np.ones_like(sm_mean_img_err[:,:,layer_i]),(sm_mean_img_err[:,:,layer_i])**2,
+                                    out=np.zeros_like(sm_mean_img_err[:,:,layer_i]),where=sm_mean_img_err[:,:,layer_i]>0.)
+                if np.sum(weights)<=0 :
+                    msg = f'WARNING: sum of weights in layer {layer_i+1} is {np.sum(weights)}, this layer of the flatfield is all ones!'
+                    if logger is not None :
+                        logger.warningglobal(msg)
+                    else :
+                        flatfield_logger.warn(msg)    
+                    self.flatfield_image[:,:,layer_i]=1.0
+                else :
+                    layermean = np.average(self.smoothed_mean_image[:,:,layer_i],weights=weights)
+                    self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
 
     def makeCorrectedMeanImage(self,flatfield_file_path) :
         """
