@@ -289,7 +289,7 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logge
 #but if it's a raw file the root dir must also be provided
 def getExposureTimesByLayer(fp,root_dir=None) :
   layer_exposure_times_to_return = []
-  if (EXPOSURE_XML_EXTS[0] in fp) or (EXPOSURE_XML_EXTS[1] in fp) or (CORRECTED_EXPOSURE_XML_EXT in fp) :
+  if (EXPOSURE_XML_EXTS[0] in str(fp)) or (EXPOSURE_XML_EXTS[1] in str(fp)) or (CORRECTED_EXPOSURE_XML_EXT in str(fp)) :
     xmlfile_path = fp
     if not pathlib.Path.is_file(pathlib.Path(xmlfile_path)) :
       raise RuntimeError(f"ERROR: {xmlfile_path} searched in getExposureTimesByLayer not found!")
