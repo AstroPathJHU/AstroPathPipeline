@@ -2,6 +2,7 @@
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, getImageLayerHistsMT, findLayerThresholds, FieldLog
 from .config import CONST
 from .plotting import plotFlaggedHPFLocations
+from ..image_masking.config import CONST as MASKING_CONST
 from ...slides.align.alignsample import AlignSampleFromXML
 from ...utilities import units
 from ...utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, getExposureTimeHistogramsByLayerGroupForSlide
@@ -120,7 +121,7 @@ class FlatfieldSlide() :
                 continue
             #get the smoothed image layer histograms for this chunk 
             new_img_layer_hists = getImageLayerHistsMT(fr_chunk,
-                                                       smooth_sigma=CONST.TISSUE_MASK_SMOOTHING_SIGMA,
+                                                       smooth_sigma=MASKING_CONST.TISSUE_MASK_SMOOTHING_SIGMA,
                                                        med_exposure_times_by_layer=self._med_exp_times_by_layer if et_correction_offsets[0]!=-1. else None,
                                                        et_corr_offsets_by_layer=et_correction_offsets)
             #add the new histograms to the total layer histograms
