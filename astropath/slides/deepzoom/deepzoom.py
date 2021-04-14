@@ -1,4 +1,4 @@
-import collections, functools, jxmlease, numpy as np, os, PIL, re
+import collections, functools, jxmlease, numpy as np, os, PIL, re, shutil
 
 from ...baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.dataclasses import MyDataClass
