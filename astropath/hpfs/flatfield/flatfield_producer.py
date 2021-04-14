@@ -279,11 +279,13 @@ class FlatfieldProducer :
         batchID = the integer batch ID to append to the outputted file names
         """
         #write out the metadata summaries
-        with cd(self.mean_image.workingdir_path) :
-            writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._metadata_summaries)
+        if len(self._metadata_summaries)>0 :
+            with cd(self.mean_image.workingdir_path) :
+                writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._metadata_summaries)
         #write out the field logs
-        with cd(self.mean_image.workingdir_path) :
-            writetable(f'{self.FIELDS_USED_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._field_logs)
+        if len(self._field_logs)>0 :
+            with cd(self.mean_image.workingdir_path) :
+                writetable(f'{self.FIELDS_USED_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._field_logs)
         #figure out what to append to the filenames
         batch_or_slide_ID = None
         if batchID is not None :
