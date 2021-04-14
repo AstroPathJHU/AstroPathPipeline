@@ -96,7 +96,7 @@ class FlatfieldSlide() :
         """
         #make sure the plot directory exists
         if not pathlib.Path.is_dir(pathlib.Path(top_plotdir_path)) :
-            with cd((pathlib.Path(top_plotdir_path)).name) :
+            with cd((pathlib.Path(top_plotdir_path)).parent) :
                 pathlib.Path.mkdir(pathlib.Path(pathlib.path(top_plotdir_path).name))
         this_slide_threshold_plotdir_name = f'{self._name}_{self.THRESHOLD_PLOT_DIR_STEM}'
         plotdir_path = pathlib.Path(f'{top_plotdir_path}/{this_slide_threshold_plotdir_name}')
