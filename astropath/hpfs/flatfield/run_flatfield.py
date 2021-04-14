@@ -8,7 +8,7 @@ from ...utilities.tableio import readtable
 from ...utilities.misc import cd, split_csv_to_list
 from ...utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
-import os, glob, random, shutil
+import pathlib, glob, random, shutil
 
 #################### FILE-SCOPE CONSTANTS ####################
 
@@ -68,22 +68,22 @@ def checkArgs(a) :
             raise ValueError('ERROR: must either skip exposure time correction or give an offset file in every run mode except for batch_flatfield')
         #if exposure time corrections are being done, make sure the file actually exists
         elif not a.skip_exposure_time_correction :
-            if not os.path.isfile(a.exposure_time_offset_file) :
+            if not pathlib.Path.is_file(pathlib.Path(a.exposure_time_offset_file)) :
                 raise ValueError(f'ERROR: exposure time offset file {a.exposure_time_offset_file} does not exist!')
     #if the user wants to apply a previously-calculated flatfield, the flatfield itself and rawfile log both have to exist in the prior run dir
     if a.mode=='apply_flatfield' :  
         if a.prior_run_dir is None :
             raise RuntimeError('ERROR: apply_flatfield mode requires a specified prior_run_dir!')
-        if not os.path.isdir(a.prior_run_dir) :
+        if not pathlib.Path.is_dir(pathlib.Path(a.prior_run_dir)) :
             raise ValueError(f'ERROR: prior run directory {a.prior_run_dir} does not exist!')
         with cd(a.prior_run_dir) :
             prior_run_ff_filename = glob.glob(f'*{CONST.FLATFIELD_FILE_NAME_STEM}*{CONST.FILE_EXT}')
         if len(prior_run_ff_filename)!=1 :
             raise ValueError(f'ERROR: {len(prior_run_ff_filename)} flatfield files to apply found in {a.prior_run_dir}')
         prior_run_ff_filename = prior_run_ff_filename[0]
-        if not os.path.isfile(os.path.join(a.prior_run_dir,prior_run_ff_filename)) :
+        if not pathlib.Path.is_file(pathlib.Path(a.prior_run_dir / prior_run_ff_filename)) :
             raise ValueError(f'ERROR: flatfield image {prior_run_ff_filename} does not exist in prior run directory {a.prior_run_dir}!')
-        if not os.path.isfile(os.path.join(a.prior_run_dir,f'{FILEPATH_TEXT_FILE_NAME}')) :
+        if not pathlib.Path.is_file(pathlib.Path(a.prior_run_dir / f'{FILEPATH_TEXT_FILE_NAME}')) :
             raise ValueError(f'ERROR: rawfile log {FILEPATH_TEXT_FILE_NAME} does not exist in prior run directory {a.prior_run_dir}!')
     #figure out and read in the slides' information
     slides = None
@@ -93,7 +93,7 @@ def checkArgs(a) :
         if (a.rawfile_top_dir is not None) or (a.root_dir is not None) :
             raise ValueError(f'ERROR: slides argument {a.slides} is a file, so rawfile/root_dir arguments are ambiguous!')
         try:
-            if os.path.isfile(a.slides) :
+            if pathlib.Path.is_file(pathlib.Path(a.slides)) :
                 slides = readtable(a.slides,FlatfieldSlideInfo)
         except FileNotFoundError :
             raise ValueError(f'Slides file {a.slides} does not exist!')
@@ -108,30 +108,30 @@ def checkArgs(a) :
                              did not result in a valid list of slides!""")
     #make sure all of the slides' necessary directories exist
     for slide in slides :
-        rfd = os.path.join(slide.rawfile_top_dir,slide.name)
-        if not os.path.isdir(rfd) :
+        rfd = pathlib.Path(slide.rawfile_top_dir / slide.name)
+        if not pathlib.Path.is_dir(rfd) :
             raise ValueError(f'ERROR: rawfile directory {rfd} does not exist!')
-        mfd = os.path.join(slide.root_dir,slide.name)
-        if not os.path.isdir(rfd) :
+        mfd = pathlib.Path(slide.root_dir / slide.name)
+        if not pathlib.Path.is_dir(mfd) :
             raise ValueError(f'ERROR: slide root directory {mfd} does not exist!')
         if a.mode=='batch_flatfield' :
             mi = getSlideMeanImageFilepath(slide)
-            if not os.path.isfile(mi) :
+            if not pathlib.Path.is_file(mi) :
                 raise FileNotFoundError(f'ERROR: Required mean image file {mi} does not exist!')
             ms = getSlideMaskStackFilepath(slide)
-            if not os.path.isfile(ms) :
+            if not pathlib.Path.is_file(ms) :
                 raise FileNotFoundError(f'ERROR: Required mask stack file {ms} does not exist!')
     #if the user wants to save example masking plots, they can't be skipping masking
     if a.skip_masking and a.n_masking_images_per_slide!=0 :
         raise RuntimeError("ERROR: can't save masking images if masking is being skipped!")
     #make sure the threshold file directory exists if it's specified, with the requisite sample background threshold files
     if a.threshold_file_dir is not None :
-        if not os.path.isdir(a.threshold_file_dir) :
+        if not pathlib.Path.is_dir(pathlib.Path(a.threshold_file_dir)) :
             raise ValueError(f'ERROR: Threshold file directory {a.threshold_file_dir} does not exist!')
         for sn in [s.name for s in slides] :
             tfn = f'{sn}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
-            tfp = os.path.join(a.threshold_file_dir,tfn)
-            if not os.path.isfile(tfp) :
+            tfp = pathlib.Path(a.threshold_file_dir / tfn)
+            if not pathlib.Path.is_file(tfp) :
                 raise FileNotFoundError(f'ERROR: background threshold file {tfp} does not exist!')
     #make sure the selected pixel fraction is a valid number
     if a.selected_pixel_cut<0.0 or a.selected_pixel_cut>1.0 :
@@ -139,7 +139,7 @@ def checkArgs(a) :
     #if the user wants to exclude other directories as well, their filepath logs all have to exist
     if a.other_runs_to_exclude!=[''] :
         for prd in a.other_runs_to_exclude :
-            if not os.path.isfile(os.path.join(prd,f'{FILEPATH_TEXT_FILE_NAME}')) :
+            if not pathlib.Path.is_file(pathlib.Path(prd / f'{FILEPATH_TEXT_FILE_NAME}')) :
                 raise ValueError(f'ERROR: raw file path log {FILEPATH_TEXT_FILE_NAME} does not exist in additional prior run directory {prd}!')
 
 #helper function to get the list of filepaths and associated slide names to run on based on the selection method and number of images requested
@@ -158,14 +158,14 @@ def getFilepathsAndSlidesToRun(a,logger=None) :
     if a.other_runs_to_exclude!=[''] :
         filepaths_to_exclude=[]
         for prd in a.other_runs_to_exclude :
-            this_rawfile_log_path = os.path.join(prd,FILEPATH_TEXT_FILE_NAME)
+            this_rawfile_log_path = pathlib.Path(prd / FILEPATH_TEXT_FILE_NAME)
             with open(this_rawfile_log_path,'r') as f:
                 these_filepaths_to_exclude=[l.rstrip() for l in f.readlines() if l.rstrip()!='']
                 logger.info(f'Will exclude {len(these_filepaths_to_exclude)} files listed in previous run at {prd}')
                 filepaths_to_exclude+=these_filepaths_to_exclude
     #If a prior run is specified, read the filepaths from there (either to run them again or exclude them)
     if a.prior_run_dir is not None :
-        rawfile_log_path = os.path.join(a.prior_run_dir,FILEPATH_TEXT_FILE_NAME)
+        rawfile_log_path = pathlib.Path(a.prior_run_dir / FILEPATH_TEXT_FILE_NAME)
         with open(rawfile_log_path,'r') as f:
             previously_run_filepaths = [l.rstrip() for l in f.readlines() if l.rstrip()!='']
         #if those filepaths will be excluded, note that
@@ -190,8 +190,8 @@ def getFilepathsAndSlidesToRun(a,logger=None) :
     #get the sorted list of all rawfile paths in the slides that will be run
     all_slide_filepaths=[]
     for s in slides_to_run :
-        with cd(os.path.join(s.rawfile_top_dir,s.name)) :
-            all_slide_filepaths+=[os.path.join(s.rawfile_top_dir,s.name,fn) for fn in glob.glob(f'{s.name}_[[]*,*[]]{UNIV_CONST.RAW_EXT}')]
+        with cd(pathlib.Path(s.rawfile_top_dir / s.name)) :
+            all_slide_filepaths+=[pathlib.Path(s.rawfile_top_dir / s.name / fn) for fn in glob.glob(f'{s.name}_[[]*,*[]]{UNIV_CONST.RAW_EXT}')]
     all_slide_filepaths.sort()
     #if the rawfiles haven't already been selected, figure that out
     if filepaths_to_run is None :
@@ -284,8 +284,8 @@ def doRun(args,workingdir_path,logger=None) :
         ff_producer.writeOutInfo(args.batchID)
         fffn = f'{CONST.FLATFIELD_FILE_NAME_STEM}_BatchID_{args.batchID:02d}{CONST.FILE_EXT}'
         ff_producer.makeBatchFlatfieldSummaryPDF(args.root_dir,args.batchID)
-        if os.path.isfile(os.path.join(workingdir_path,fffn)) :
-            shutil.move(os.path.join(workingdir_path,fffn),os.path.join(os.path.dirname(workingdir_path),fffn))
+        if pathlib.Path.is_file(pathlib.Path(workingdir_path / fffn)) :
+            shutil.move(pathlib.Path(workingdir_path / fffn),pathlib.Path((pathlib.Path(workingdir_path)).parent / fffn))
         return
     #see if the code is running in batch mode (i.e. minimal output in automatic locations) and figure out the working directory path if so
     batch_mode = args.mode in ('slide_mean_image','batch_flatfield')
@@ -314,7 +314,7 @@ def doRun(args,workingdir_path,logger=None) :
             #apply the flatfield to the image stack
             with cd(args.prior_run_dir) :
                 prior_run_ff_filename = (glob.glob(f'*{CONST.FLATFIELD_FILE_NAME_STEM}*{CONST.FILE_EXT}'))[0]
-            ff_producer.applyFlatField(os.path.join(args.prior_run_dir,prior_run_ff_filename))
+            ff_producer.applyFlatField(pathlib.Path(args.prior_run_dir / prior_run_ff_filename))
         #save the plots, etc.
         ff_producer.writeOutInfo()
 
@@ -387,9 +387,9 @@ def main(args=None) :
     elif args.mode=='batch_flatfield' :
         workingdir_path = getBatchFlatfieldWorkingDirPath(args.root_dir,args.batchID)
     else :
-        workingdir_path = os.path.abspath(os.path.normpath(args.workingdir))
-    if not os.path.isdir(workingdir_path) :
-        os.mkdir(workingdir_path)
+        workingdir_path = (pathlib.Path.resolve(pathlib.Path(args.workingdir))).absolute()
+    if not pathlib.Path.is_dir(workingdir_path) :
+        pathlib.Path.mkdir(workingdir_path)
     with RunLogger(args.mode,workingdir_path) as logger :
         #make sure the command line arguments make sense
         checkArgs(args)

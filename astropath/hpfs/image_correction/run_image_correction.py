@@ -6,24 +6,24 @@ from ...baseclasses.logging import getlogger
 from ...utilities.img_file_io import getImageHWLFromXMLFile
 from ...utilities.misc import addCommonArgumentsToParser
 from argparse import ArgumentParser
-import os
+import pathlib
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
 def checkArgs(args) :
     #make sure the directories all exist
-    workingdir_location = os.path.dirname(os.path.abspath(os.path.normpath(args.workingdir)))
+    workingdir_location = (pathlib.Path.resolve(pathlib.Path(args.workingdir))).parent
     dirs_to_check = [args.rawfile_top_dir,args.root_dir,workingdir_location]
     for dirpath in dirs_to_check :
-        if not os.path.isdir(dirpath) :
+        if not pathlib.Path.is_dir(pathlib.Path(dirpath)) :
             raise ValueError(f'ERROR: directory {dirpath} does not exist!')
     #make sure the rawfile directory for this slide exists
-    rawfile_dirpath = os.path.join(args.rawfile_top_dir,args.slideID)
-    if not os.path.isdir(rawfile_dirpath) :
+    rawfile_dirpath = pathlib.Path(args.rawfile_top_dir / args.slideID)
+    if not pathlib.Path.is_dir(rawfile_dirpath) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dirpath} for slide {args.slideID} does not exist!')
     #make sure the root directory for this slide exists
-    root_dirpath = os.path.join(args.root_dir,args.slideID)
-    if not os.path.isdir(root_dirpath) :
+    root_dirpath = pathlib.Path(args.root_dir / args.slideID)
+    if not pathlib.Path.is_dir(root_dirpath) :
         raise ValueError(f'ERROR: root directory {root_dirpath} for slide {args.slideID} does not exist!')
     #make sure the image dimensions work with the layer argument
     img_dims = getImageHWLFromXMLFile(args.root_dir,args.slideID)
@@ -31,29 +31,29 @@ def checkArgs(args) :
         raise ValueError(f'ERROR: requested copying layer {args.layer} but raw files have dimensions {img_dims}!')
     ##make sure the exposure time correction file exists if necessary
     #if not args.skip_exposure_time_correction :
-    #    if not os.path.isfile(args.exposure_time_offset_file) :
+    #    if not pathlib.Path.is_file(pathlib.Path(args.exposure_time_offset_file)) :
     #        raise FileNotFoundError(f'ERROR: exposure time offset file {args.exposure_time_offset_file} does not exist!')
     ##make sure the flatfield file exists if necessary
     #if not args.skip_flatfielding :
-    #    if not os.path.isfile(args.flatfield_file) :
+    #    if not pathlibe.Path.is_file(pathlib.Path(args.flatfield_file)) :
     #        raise FileNotFoundError(f'ERROR: flatfield file {args.flatfield_file} does not exist!')
     #check some arguments related to the warping
     if args.skip_warping and ((args.warp_shift_file is not None) or (args.warp_shift is not None) or (args.warping_scalefactor!=1.0)) :
         raise RuntimeError('ERROR: warping is being skipped, so the requested shifts/rescaling are irrelevant!')
     if not args.skip_warping :
         if args.warp_def.endswith('.csv') :
-            if not os.path.isfile(args.warp_def) :
+            if not pathlib.Path.is_file(pathlib.Path(args.warp_def)) :
                 raise FileNotFoundError(f'ERROR: warp fit result file {args.warp_def} does not exist!')
             if args.warp_shift_file is not None :
-                if not os.path.isfile(args.warp_shift_file) :
+                if not pathlib.Path.is_file(pathlib.Path(args.warp_shift_file)) :
                     raise FileNotFoundError(f'ERROR: warp shift file {args.warp_shift_file} doe not exist!')
         else :
             if (args.warp_shift_file is not None) or (args.warp_shift is not None) :
                 raise ValueError(f"ERROR: warp_def argument {args.warp_def} is not a warping parameter fit result file, so its pattern can't be shifted!")
             dx_warp_field_path, dy_warp_field_path = getWarpFieldPathsFromWarpDef(args.warp_def)
-            if not os.path.isfile(dx_warp_field_path) :
+            if not pathlib.Path.is_file(pathlib.Path(dx_warp_field_path)) :
                 raise FileNotFoundError(f'ERROR: dx warp field {dx_warp_field_path} does not exist!')
-            if not os.path.isfile(dy_warp_field_path) :
+            if not pathlib.Path.is_file(pathlib.Path(dy_warp_field_path)) :
                 raise FileNotFoundError(f'ERROR: dy warp field {dy_warp_field_path} does not exist!')
 
 #################### MAIN SCRIPT ####################
@@ -85,13 +85,13 @@ def main(args=None) :
                                       help='Maximum number of files to use (default = -1 runs all files for the requested slide)')
         args = parser.parse_args(args=args)
     #make the working directory
-    if not os.path.isdir(args.workingdir) :
-        os.mkdir(args.workingdir)
+    if not pathlib.Path.is_dir(pathlib.Path(args.workingdir)) :
+        pathlib.Path.mkdir(pathlib.Path(args.workingdir))
     #set up the logger information and enter its context
     module='image_correction'
-    #mainlog = os.path.join(args.workingdir,f'{module}.log')
-    #samplelog = os.path.join(args.workingdir,f'{args.slideID}-{module}.log')
-    imagelog = os.path.join(args.workingdir,f'{args.slideID}_images-{module}.log')
+    #mainlog = pathlib.Path(args.workingdir / f'{module}.log')
+    #samplelog = pathlib.Path(args.workingdir / f'{args.slideID}-{module}.log')
+    imagelog = pathlib.Path(args.workingdir / f'{args.slideID}_images-{module}.log')
     samp = SampleDef(SlideID=args.slideID,root=args.root_dir)
     #with getlogger(module=module,root=args.root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,imagelog=imagelog,reraiseexceptions=False) as logger :
     with getlogger(module=module,root=args.root_dir,samp=samp,uselogfiles=True,imagelog=imagelog,reraiseexceptions=False) as logger :

@@ -5,7 +5,7 @@ from ...utilities.img_correction import correctImageForExposureTime
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
 import numpy as np
-import os, logging, math, more_itertools
+import pathlib, logging, math, more_itertools
 
 #################### GENERAL USEFUL OBJECTS ####################
 
@@ -38,46 +38,46 @@ class FlatfieldSlideInfo(MyDataClass) :
 
 #helper function to return the slide name from a whole filepath
 def slideNameFromFilepath(fp) :
-    return os.path.basename(os.path.dirname(os.path.normpath(fp)))
+    return ((pathlib.Path.resolve(pathlib.Path(fp))).parent).name
 
 #helper function to make the automatic directory path for a single slide's mean image (and associated info)
 def getSlideMeanImageWorkingDirPath(slide) :
-    #path = os.path.join(os.path.abspath(os.getcwd()),CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
-    path = os.path.join(os.path.abspath(os.path.normpath(slide.root_dir)),slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
-    if not os.path.isdir(os.path.dirname(path)) :
-        raise FlatFieldError(f'ERROR: working directory location {os.path.dirname(path)} does not exist!')
-    if not os.path.isdir(path) :
-        os.mkdir(path)
+    #path = pathlib.Path(pathlib.Path.cwd() / CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
+    path = pathlib.Path(pathlib.Path.resolve(pathlib.Path(slide.root_dir)) / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
+    if not pathlib.Path.is_dir((path).parent) :
+        raise FlatFieldError(f'ERROR: working directory location {(path).parent} does not exist!')
+    if not pathlib.Path.is_dir(path) :
+        pathlib.Path.mkdir(path)
     return path
 
 #helper function to make the automatic directory path for running the flatfield for a batch of slides
 def getBatchFlatfieldWorkingDirPath(rootdir,batchID) :
-    #path = os.path.join(os.path.abspath(os.getcwd()),f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
-    path = os.path.join(os.path.abspath(os.path.normpath(rootdir)),'Flatfield',f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
-    if not os.path.isdir(os.path.dirname(path)) :
-        raise FlatFieldError(f'ERROR: working directory location {os.path.dirname(path)} does not exist!')
-    if not os.path.isdir(path) :
-        os.mkdir(path)
+    #path = pathlib.Path(pathlib.Path.cwd() / f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
+    path = pathlib.Path(pathlib.Path.resolve(pathlib.Path(rootdir)) / 'Flatfield' / f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
+    if not pathlib.Path.is_dir((path).parent) :
+        raise FlatFieldError(f'ERROR: working directory location {(path).parent} does not exist!')
+    if not pathlib.Path.is_dir(path) :
+        pathlib.Path.mkdir(path)
     return path
 
 #helper function to return the automatic path to a given slide's mean image file
 def getSlideMeanImageFilepath(slide) :
-    p = os.path.join(slide.root_dir,slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME,f'{slide.name}-{CONST.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    p = pathlib.Path(slide.root_dir / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME / f'{slide.name}-{CONST.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
     return p
 
 #helper function to return the automatic path to a given slide's sum of images squared file
 def getSlideImageSquaredFilepath(slide) :
-    p = os.path.join(slide.root_dir,slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME,f'{slide.name}-{CONST.SUM_IMAGES_SQUARED_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    p = pathlib.Path(slide.root_dir / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME / f'{slide.name}-{CONST.SUM_IMAGES_SQUARED_FILE_NAME_STEM}{CONST.FILE_EXT}')
     return p
 
 #helper function to return the automatic path to a given slide's standard error of the mean image file
 def getSlideStdErrMeanImageFilepath(slide) :
-    p = os.path.join(slide.root_dir,slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME,f'{slide.name}-{CONST.STD_ERR_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    p = pathlib.Path(slide.root_dir / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME / f'{slide.name}-{CONST.STD_ERR_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
     return p
 
 #helper function to return the automatic path to a given slide's mean image file
 def getSlideMaskStackFilepath(slide) :
-    p = os.path.join(slide.root_dir,slide.name,'im3',CONST.AUTOMATIC_MEANIMAGE_DIRNAME,f'{slide.name}-{CONST.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}')
+    p = pathlib.Path(slide.root_dir / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME / f'{slide.name}-{CONST.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}')
     return p
 
 #helper function to convert an image array into a flattened pixel histogram
@@ -225,7 +225,7 @@ def getImageArray(fri) :
         try :
             img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,fri.root_dir,fri.med_exp_times,fri.corr_offsets)
         except (ValueError, RuntimeError) :
-            rtd = os.path.dirname(os.path.dirname(os.path.normpath(fri.rawfile_path)))+os.sep
+            rtd = ((pathlib.Path.resolve(pathlib.Path(fri.rawfile_path))).parent).parent
             img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,rtd,fri.med_exp_times,fri.corr_offsets)
     if fri.smooth_sigma !=-1 :
         img_arr = smoothImageWorker(img_arr,fri.smooth_sigma)

@@ -2,7 +2,7 @@
 from .utilities import getBatchFlatfieldWorkingDirPath
 from .config import CONST
 from ...utilities.misc import cd
-import os, subprocess
+import pathlib, subprocess
 
 #################### FILE-SCOPE CONSTANTS ####################
 
@@ -69,12 +69,12 @@ class LatexSummary :
                 subprocess.check_call(cmd)
             except Exception :
                 return 1
-            if os.path.isfile(f'{self.tex_file_namestem}.pdf') :
+            if pathlib.Path.is_file(pathlib.Path(f'{self.tex_file_namestem}.pdf')) :
                 exts_to_rm = ('.log','.aux','.tex')
                 for ext in exts_to_rm :
-                    fn = f'{self.tex_file_namestem}{ext}'
-                    if os.path.isfile(fn) :
-                        os.remove(fn)
+                    fn = pathlib.Path(f'{self.tex_file_namestem}{ext}')
+                    if pathlib.Path.is_file(fn) :
+                        fn.unlink()
         return 0
 
     #################### PRIVATE HELPER FUNCTIONS ####################
@@ -180,7 +180,7 @@ class LatexSummary :
         lines.append('\\centering\n')
         imgpath = f'{CONST.POSTRUN_PLOT_DIRECTORY_NAME}/{CONST.N_IMAGES_STACKED_PER_LAYER_PLOT_NAME}'
         lines.append(f'\\includegraphics[width=0.98\\textwidth]{{{imgpath}}}\n')
-        nirfp = os.path.join(self.workingdir_path,CONST.POSTRUN_PLOT_DIRECTORY_NAME,CONST.N_IMAGES_READ_TEXT_FILE_NAME)
+        nirfp = pathlib.Path(self.workingdir_path / CONST.POSTRUN_PLOT_DIRECTORY_NAME / CONST.N_IMAGES_READ_TEXT_FILE_NAME)
         with open(nirfp,'r') as fp :
             nir = [int(l.rstrip()) for l in fp.readlines() if l.rstrip()!='']
         assert len(nir)==1 

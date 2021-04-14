@@ -9,7 +9,7 @@ from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
 import numpy as np, multiprocessing as mp
-import os, time, logging, glob, dataclassy, platform
+import pathlib, time, logging, glob, dataclassy, platform
 
 #################### CONSTANTS ####################
 
@@ -38,10 +38,10 @@ def getExposureTimeDicts(samp_name,rtd,nlayers) :
     return_list = []
     for li in range(nlayers) :
         return_list.append({})
-    with cd(os.path.join(rtd,samp_name)) :
-        fps = [os.path.join(rtd,samp_name,fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
+    with cd(pathlib.Path(rtd / samp_name)) :
+        fps = [pathlib.Path(rtd / samp_name / fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
     for fp in fps :
-        fstem = os.path.basename(os.path.normpath(fp)).rstrip(UNIV_CONST.RAW_EXT)
+        fstem = ((pathlib.Path.resolve(fp)).name).rstrip(UNIV_CONST.RAW_EXT)
         this_file_exp_times = getExposureTimesByLayer(fp,rtd)
         for li in range(nlayers) :
             return_list[li][fstem] = this_file_exp_times[li]
@@ -68,7 +68,7 @@ def getOverlapResult(sid,layer,overlap,exp_times,med_exp_time,offset,fss_by_rect
 #helper function to get a list of correction results for a single slide
 def writeResultsForSlide(slide,offsets,ff_file,workingdir,smoothsigma,allow_edges) :
     #make a logger
-    logfile_path = os.path.join(workingdir,f'{slide.name}_{LOGFILE_STEM}')
+    logfile_path = pathlib.Path(workingdir / f'{slide.name}_{LOGFILE_STEM}')
     logger = logging.getLogger(f'evaluate_exposure_time_{slide.name}')
     logger.setLevel(logging.DEBUG)
     logformat = logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S")
@@ -77,7 +77,7 @@ def writeResultsForSlide(slide,offsets,ff_file,workingdir,smoothsigma,allow_edge
     #check to see if this slide is already done
     skip = False
     done_msg = f'Done evaluating exposure time results for {slide.name}'
-    if os.path.isfile(logfile_path) :
+    if pathlib.Path.is_file(logfile_path) :
         with open(logfile_path,'r') as fp :
             for line in fp.readlines() :
                 if done_msg in line :
@@ -102,7 +102,7 @@ def writeResultsForSlide(slide,offsets,ff_file,workingdir,smoothsigma,allow_edge
     for li in range(nlayers) :
         #see if this layer has already been done
         output_fn = f'{slide.name}_layer_{li+1}_{RESULT_FILE_STEM}'
-        if os.path.isfile(os.path.join(workingdir,output_fn)) :
+        if pathlib.Path.is_file(pathlib.Path(workingdir / output_fn)) :
             logger.info(f'Skipping {slide.name} layer {li+1}; results file already exists.')
             continue
         skip = False
@@ -191,8 +191,8 @@ def main(args=None) :
     slides = readtable(args.slides,FlatfieldSlideInfo)
     offsets = readtable(args.exposure_time_offset_file,LayerOffset)
     #make the working directory
-    if not os.path.isdir(args.workingdir_name) :
-        os.mkdir(args.workingdir_name)
+    if not pathlib.Path.is_dir(pathlib.Path(args.workingdir_name)) :
+        pathlib.Path.mkdir(pathlib.Path(args.workingdir_name))
     #process each slide
     if args.n_threads<=1 :
         for slide in slides :

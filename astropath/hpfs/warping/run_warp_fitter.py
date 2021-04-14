@@ -6,8 +6,7 @@ from ...utilities.misc import split_csv_to_list, split_csv_to_list_of_ints, spli
 from ...utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
 import multiprocessing as mp
-import os, gc
-import cProfile
+import pathlib, gc, cProfile
 
 #################### FILE-SCOPE CONSTANTS ####################
 
@@ -37,10 +36,10 @@ def checkArgs(args) :
         raise ValueError(f'Must specify exactly ONE of overlaps or octets! (overlaps={args.overlaps}, octets={args.octets})')
     #the threshold file must exist if it's to be used
     if args.threshold_file_dir is not None :
-        if not os.path.isdir(args.threshold_file_dir) :
+        if not pathlib.Path.is_dir(pathlib.Path(args.threshold_file_dir)) :
             raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
-        tfp = os.path.join(args.threshold_file_dir,f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
-        if not os.path.isfile(tfp) :
+        tfp = pathlib.Path(args.threshold_file_dir / f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
+        if not pathlib.Path.is_file(tfp) :
             raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this slide ({tfp})!')
     #The user must specify either an octet run dir or a threshold file dir if they're not giving overlaps
     if args.overlaps==split_csv_to_list_of_ints(DEFAULT_OVERLAPS) and args.threshold_file_dir is None and args.octet_run_dir is None :
@@ -53,10 +52,10 @@ def checkArgs(args) :
 def getOverlaps(args) :
     #the threshold file must exist if it's to be used
     if args.threshold_file_dir is not None :
-        if not os.path.isdir(args.threshold_file_dir) :
+        if not pathlib.Path.is_dir(pathlib.Path(args.threshold_file_dir)) :
             raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
-        tfp = os.path.join(args.threshold_file_dir,f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
-        if not os.path.isfile(tfp) :
+        tfp = pathlib.Path(args.threshold_file_dir / f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
+        if not pathlib.Path.is_file(tfp) :
             raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this slide ({tfp})!')
     #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate
     if args.threshold_file_dir is not None and args.octet_run_dir is not None :

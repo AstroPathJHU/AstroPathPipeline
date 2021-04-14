@@ -8,7 +8,7 @@ from ...utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 from ...utilities.tableio import readtable, writetable
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
-import cv2, os, logging, copy, platform
+import cv2, pathlib, logging, copy, platform
 
 #set up the logger
 warp_logger = logging.getLogger("warpfitter")
@@ -186,26 +186,26 @@ def addCommonWarpingArgumentsToParser(parser,fit=True,fitpars=True,job_organizat
 #helper function to check directory command-line arguments
 def checkDirArgs(args) :
     #rawfile_top_dir/[slideID] must exist
-    rawfile_dir = os.path.join(args.rawfile_top_dir,args.slideID)
-    if not os.path.isdir(rawfile_dir) :
+    rawfile_dir = pathlib.Path(args.rawfile_top_dir / args.slideID)
+    if not pathlib.Path.is_dir(rawfile_dir) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
     #root dir must exist
-    if not os.path.isdir(args.root_dir) :
+    if not pathlib.Path.is_dir(pathlib.Path(args.root_dir)) :
         raise ValueError(f'ERROR: root_dir argument ({args.root_dir}) does not point to a valid directory!')
     #if images are to be corrected for exposure time, exposure time correction file must exist
     if (not args.skip_exposure_time_correction) :   
-        if not os.path.isfile(args.exposure_time_offset_file) :
+        if not pathlib.Path.is_file(pathlib.Path(args.exposure_time_offset_file)) :
             raise ValueError(f'ERROR: exposure_time_offset_file {args.exposure_time_offset_file} does not exist!')
     #make sure the flatfield file exists
     if (not args.skip_flatfielding) :
-        if not os.path.isfile(args.flatfield_file) :
+        if not pathlib.Path.is_file(pathlib.Path(args.flatfield_file)) :
             raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
     #the octet run workingdir must exist if it's to be used
-    if args.octet_run_dir is not None and not os.path.isdir(args.octet_run_dir) :
+    if args.octet_run_dir is not None and not pathlib.Path.is_dir(pathlib.Path(args.octet_run_dir)) :
         raise ValueError(f'ERROR: octet_run_dir ({args.octet_run_dir}) does not exist!')
     #create the working directory if it doesn't already exist
-    if not os.path.isdir(args.workingdir) :
-        os.mkdir(args.workingdir)
+    if not pathlib.Path.is_dir(pathlib.Path(args.workingdir)) :
+        pathlib.Path.mkdir(pathlib.Path(args.workingdir))
 
 #helper function to check the ``fixed'' command line argument
 def checkFixedArg(args,parse=False) :
@@ -238,7 +238,7 @@ def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,med_et,offset,overlaps,re
     #correct the raw image with the flatfield   
     if flatfield is not None :
         rawimage = correctImageLayerWithFlatfield(rawimage,flatfield)
-    rfkey = os.path.basename(os.path.normpath(rfp)).split('.')[0]
+    rfkey = (((pathlib.Path.resolve(pathlib.Path(rfp)))).name).split('.')[0]
     #find out if this image should be masked when skipping the corner overlaps
     if overlaps is not None and rectangles is not None :
         is_corner_only=True
@@ -266,7 +266,7 @@ def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,med_et,offset,overlaps,re
 # Helper function to read previously-saved octet definitions from a file
 def readOctetsFromFile(octet_run_dir,rawfile_top_dir,root_dir,slide_ID,layer) :
     #get the .csv file holding the octet p1s and overlaps ns
-    octet_filepath = os.path.join(octet_run_dir,f'{slide_ID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
+    octet_filepath = pathlib.Path(octet_run_dir / f'{slide_ID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
     warp_logger.info(f'Reading octet overlaps numbers from file {octet_filepath}...')
     #read the overlap ns from the file
     octets = readtable(octet_filepath,OverlapOctet)
@@ -357,15 +357,15 @@ def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,worki
 
 #helper function to return the octets for a slide given just the command line arguments
 def getOctetsFromArguments(args) :
-    octet_run_dir = os.path.abspath(args.octet_run_dir) if args.octet_run_dir is not None else args.workingdir
-    if os.path.isfile(os.path.join(octet_run_dir,f'{args.slideID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
+    octet_run_dir = pathlib.Path(args.octet_run_dir).absolute() if args.octet_run_dir is not None else pathlib.Path(args.workingdir).absolute()
+    if pathlib.Path.is_file(pathlib.Path(octet_run_dir / f'{args.slideID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
         if args.threshold_file_dir is not None :
             msg = 'ERROR: an octet file exists in the working directory, but a threshold file directory was also given!'
             msg+= ' Get rid of the threshold file dir argument to use the octet file that already exists, or remove the octet file to recreate it.'
             raise WarpingError(msg)
         all_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.root_dir,args.slideID,args.layer)
     elif args.threshold_file_dir is not None :
-        threshold_file_path=os.path.join(args.threshold_file_dir,f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
+        threshold_file_path=pathlib.Path(args.threshold_file_dir / f'{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         all_octets = findSlideOctets(args.rawfile_top_dir,args.root_dir,threshold_file_path,args.req_pixel_frac,args.slideID,
                                       args.workingdir,args.layer,args.flatfield_file,args.exposure_time_offset_file)
     else :

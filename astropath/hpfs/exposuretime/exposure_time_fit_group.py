@@ -6,7 +6,7 @@ from ...utilities.tableio import writetable
 from ...utilities.misc import cd, cropAndOverwriteImage
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import os, glob
+import pathlib, glob
 
 #helper function to create a fit for a single layer
 #can be run in parallel if given a return dictionary
@@ -111,7 +111,7 @@ class ExposureTimeOffsetFitGroup :
         #write out all the results
         with cd(self.workingdir_name) :
             all_results_fn = f'{self.slideID}_layers_{self.layers[0]}-{self.layers[-1]}_'
-            all_results_fn+= f'{UNIV_CONST.LAYER_ET_OFFSET_FILE_NAME_STEM}_{os.path.basename(os.path.normpath(self.workingdir_name))}.csv'
+            all_results_fn+= f'{UNIV_CONST.LAYER_ET_OFFSET_FILE_NAME_STEM}_{(pathlib.Path.resolve(pathlib.Path(self.workingdir_name))).name}.csv'
             writetable(all_results_fn,offsets)
         #save the plot of the offsets by layer
         plt.plot([o.layer_n for o in offsets],[o.offset for o in offsets],marker='*')
@@ -184,12 +184,12 @@ class ExposureTimeOffsetFitGroup :
     #helper function to get the dictionary of all the image exposure times keyed by the stem of the file name and the list of median times by layer
     def __getExposureTimes(self) :
         et_fit_logger.info('Getting all image exposure times....')
-        with cd(os.path.join(self.rawfile_top_dir,self.slideID)) :
-            all_rfps = [os.path.join(self.rawfile_top_dir,self.slideID,fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
+        with cd(pathlib.Path(self.rawfile_top_dir / self.slideID)) :
+            all_rfps = [pathlib.Path(self.rawfile_top_dir / self.slideID / fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
         #get the dictionary of exposure times keyed by raw file stem
         exp_times = {}
         for rfp in all_rfps :
-            rfs = os.path.basename(rfp).rstrip(UNIV_CONST.RAW_EXT)
+            rfs = ((pathlib.Path(rfp)).name).rstrip(UNIV_CONST.RAW_EXT)
             exp_times[rfs] = []
             all_layer_exposure_times = getExposureTimesByLayer(rfp,self.rawfile_top_dir)
             for li,ln in enumerate(self.layers) :

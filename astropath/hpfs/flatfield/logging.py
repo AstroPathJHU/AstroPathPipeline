@@ -1,6 +1,6 @@
 #imports
 from contextlib import ExitStack
-import os, pathlib, logging, traceback
+import pathlib, logging, traceback
 from ...baseclasses.sample import SampleDef
 from ...baseclasses.logging import getlogger
 
@@ -31,7 +31,7 @@ class RunLogger(ExitStack) :
     def __enter__(self) :
         super().__enter__()
         #add the imageinfo-level file in the working directory
-        self._global_logger_filepath = os.path.join(self._workingdir_path,f'global-{self._module}.log')
+        self._global_logger_filepath = pathlib.Path(self._workingdir_path / f'global-{self._module}.log')
         filehandler = logging.FileHandler(self._global_logger_filepath)
         filehandler.setFormatter(self.formatter)
         filehandler.setLevel(logging.INFO-1)

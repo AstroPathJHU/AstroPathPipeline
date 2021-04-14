@@ -5,7 +5,7 @@ from ..utilities.tableio import writetable
 from ..utilities.misc import cd
 from typing import List
 import multiprocessing as mp
-import argparse, os, glob, dataclassy
+import argparse, pathlib, glob, dataclassy
 
 #constants
 RAWFILE_EXT = '.Data.dat'
@@ -64,13 +64,13 @@ class SampleOverlapsWithDifferentExposureTimes :
     n_overlaps_per_layer_group : List[int]
 
 def getNOverlapsWithDifferentExposureTimes(rtd,mtd,sn,layers,return_dict) :
-    with cd(os.path.join(rtd,sn)) :
-        all_rfps = [os.path.join(rtd,sn,fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
+    with cd(pathlib.Path(rtd / sn)) :
+        all_rfps = [pathlib.Path(rtd / sn / fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
     exp_times = {}
     for fi,rfp in enumerate(all_rfps,start=1) :
         if fi%100==0 :
             print(f'Getting exposure times for {sn} image {fi} of {len(all_rfps)}....')
-        rfkey = os.path.basename(os.path.normpath(rfp)).rstrip(RAWFILE_EXT)
+        rfkey = ((pathlib.Path.resolve(rfp)).name).rstrip(RAWFILE_EXT)
         exp_times[rfkey] = []
         all_exp_times = getExposureTimesByLayer(rfp,rtd)
         for ln in layers :

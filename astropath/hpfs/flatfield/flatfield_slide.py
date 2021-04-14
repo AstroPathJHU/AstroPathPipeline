@@ -9,7 +9,7 @@ from ...utilities.tableio import writetable
 from ...utilities.misc import cd, MetadataSummary, getAlignSampleTissueEdgeRectNs, cropAndOverwriteImage
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, matplotlib.image as mpimg, multiprocessing as mp
-import os, glob
+import pathlib, glob
 
 units.setup('fast')
 
@@ -95,14 +95,14 @@ class FlatfieldSlide() :
         logger                = a RunLogger object whose context is entered, if None the default log will be used
         """
         #make sure the plot directory exists
-        if not os.path.isdir(top_plotdir_path) :
-            with cd(os.path.dirname(top_plotdir_path)) :
-                os.mkdir(os.path.basename(top_plotdir_path))
+        if not pathlib.Path.is_dir(pathlib.Path(top_plotdir_path)) :
+            with cd((pathlib.Path(top_plotdir_path)).name) :
+                pathlib.Path.mkdir(pathlib.Path(pathlib.path(top_plotdir_path).name))
         this_slide_threshold_plotdir_name = f'{self._name}_{self.THRESHOLD_PLOT_DIR_STEM}'
-        plotdir_path = os.path.join(top_plotdir_path,this_slide_threshold_plotdir_name)
-        if not os.path.isdir(plotdir_path) :
+        plotdir_path = pathlib.Path(top_plotdir_path / this_slide_threshold_plotdir_name)
+        if not pathlib.Path.is_dir(plotdir_path) :
             with cd(top_plotdir_path) :
-                os.mkdir(this_slide_threshold_plotdir_name)
+                pathlib.Path.mkdir(pathlib.Path(this_slide_threshold_plotdir_name))
         #first find the filepaths corresponding to the edges of the tissue in the slides
         self.__writeLogInfo(logger,f'Finding tissue edge HPFs for slide {self._name}')
         tissue_edge_filepaths = self.findTissueEdgeFilepaths(rawfile_paths,plotdir_path)
@@ -223,7 +223,7 @@ class FlatfieldSlide() :
         plotdir_path     = Add a valid directory to this argument to save a plot of where the edge HPFs are next to the reference qptiff
         """
         #make an AlignSample to use in getting the islands
-        rawfile_top_dir = os.path.dirname(os.path.dirname(rawfile_paths[0]))
+        rawfile_top_dir = ((pathlib.Path(rawfile_paths[0])).parent).parent
         a = AlignSampleFromXML(self._root_dir,rawfile_top_dir,self._name,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=1)
         edge_rect_ns = getAlignSampleTissueEdgeRectNs(a)
         #use this to return the list of tissue edge filepaths
@@ -243,7 +243,7 @@ class FlatfieldSlide() :
         bulk_rect_ys = [r.y for r in a.rectangles if r.file.split('.')[0] not in edge_rect_filenames]
         if plotdir_path is not None :
             with cd(plotdir_path) :
-                has_qptiff = os.path.isfile(os.path.join(self._root_dir,self._name,'dbload',f'{self._name}_qptiff.jpg'))
+                has_qptiff = pathlib.Path.is_file(pathlib.Path(self._root_dir / self._name / 'dbload' / f'{self._name}_qptiff.jpg'))
                 if has_qptiff :
                     f,(ax1,ax2) = plt.subplots(1,2,figsize=(25.6,9.6))
                 else :
@@ -256,14 +256,14 @@ class FlatfieldSlide() :
                 ax1.set_xlabel('x position',fontsize=18)
                 ax1.set_ylabel('y position',fontsize=18)
                 if has_qptiff :
-                    ax2.imshow(mpimg.imread(os.path.join(self._root_dir,self._name,'dbload',f'{self._name}_qptiff.jpg')))
+                    ax2.imshow(mpimg.imread(pathlib.Path(self._root_dir / self._name / 'dbload' / f'{self._name}_qptiff.jpg')))
                     ax2.set_title('reference qptiff',fontsize=18)
                 fn = f'{self._name}_{self.RECTANGLE_LOCATION_PLOT_STEM}.png'
                 plt.savefig(fn)
                 plt.close()
                 cropAndOverwriteImage(fn)
         #return the list of the filepaths whose rectangles are on the edge of the tissue
-        return [rfp for rfp in rawfile_paths if rfp.split(os.sep)[-1].split('.')[0] in edge_rect_filenames]
+        return [rfp for rfp in rawfile_paths if ((pathlib.Path(rfp)).name).split('.')[0] in edge_rect_filenames]
 
     def plotLabelledMaskRegions(self,labelled_mask_regions,rfps_added,masking_plot_dirpath) :
     	"""
@@ -273,8 +273,8 @@ class FlatfieldSlide() :
 		masking_plot_dirpath  = path to where the labelled mask region plot should be saved
     	"""
     	#first get the list of all the rawfile paths for this slide
-    	with cd(os.path.join(self._rawfile_top_dir,self._name)) :
-    		all_rfps = [os.path.join(self._rawfile_top_dir,self._name,fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
+    	with cd(pathlib.Path(self._rawfile_top_dir / self._name)) :
+    		all_rfps = [pathlib.Path(self._rawfile_top_dir / self._name / fn) for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
     	#run the plotting function for this slide
     	plotFlaggedHPFLocations(self._name,all_rfps,rfps_added,labelled_mask_regions,masking_plot_dirpath)
 

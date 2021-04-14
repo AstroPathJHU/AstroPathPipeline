@@ -5,7 +5,7 @@ from .misc import cd
 from .config import CONST
 import numpy as np
 import xml.etree.ElementTree as et
-import os, glob, cv2, logging, time
+import pathlib, glob, cv2, logging, time
 
 #global variables
 PARAMETER_XMLFILE_EXT = '.Parameters.xml'
@@ -131,11 +131,11 @@ def smoothImageWithUncertaintyWorker(im_array,im_unc_array,smoothsigma,return_li
 
 #helper function to get an image dimension tuple from the slide's XML file
 def getImageHWLFromXMLFile(root_dir,slideID) :
-  subdir_filepath = os.path.join(root_dir,slideID,'im3','xml',f'{slideID}{PARAMETER_XMLFILE_EXT}')
-  if os.path.isfile(subdir_filepath) :
+  subdir_filepath = pathlib.Path(root_dir / slideID / 'im3' / 'xml' / f'{slideID}{PARAMETER_XMLFILE_EXT}')
+  if pathlib.Path.is_file(subdir_filepath) :
     xmlfile_path = subdir_filepath
   else :
-    xmlfile_path = os.path.join(root_dir,slideID,f'{slideID}{PARAMETER_XMLFILE_EXT}')
+    xmlfile_path = pathlib.Path(root_dir / slideID / f'{slideID}{PARAMETER_XMLFILE_EXT}')
   try :
     tree = et.parse(xmlfile_path)
   except Exception as e :
@@ -148,39 +148,39 @@ def getImageHWLFromXMLFile(root_dir,slideID) :
 #helper function to figure out where a raw file's exposure time xml file is given the raw file path and the root directory
 def findExposureTimeXMLFile(rfp,search_dir) :
   file_ext = ''
-  fn_split = (os.path.basename(os.path.normpath(rfp))).split(".")
+  fn_split = ((pathlib.Path.resolve(pathlib.Path(rfp))).name).split(".")
   for i in range(1,len(fn_split)) :
     file_ext+=f'.{fn_split[i]}'
-  slideID = os.path.basename(os.path.dirname(os.path.normpath(rfp)))
-  poss_path_1 = os.path.join(search_dir,slideID,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXTS[0]))
-  if os.path.isfile(poss_path_1) :
+  slideID = ((pathlib.Path.resolve(pathlib.Path(rfp))).parent).name
+  poss_path_1 = pathlib.Path(search_dir / slideID / 'im3' / 'xml' / ((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,EXPOSURE_XML_EXTS[0]))
+  if pathlib.Path.is_file(poss_path_1) :
     xmlfile_path = poss_path_1
   else :
-    poss_path_2 = os.path.join(search_dir,slideID,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXTS[1]))
-    if os.path.isfile(poss_path_2) :
+    poss_path_2 = pathlib.Path(search_dir / slideID / 'im3' / 'xml' / ((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,EXPOSURE_XML_EXTS[1]))
+    if pathlib.Path.is_file(poss_path_2) :
       xmlfile_path = poss_path_2
     else :
-      poss_path_3 = os.path.join(search_dir,slideID,os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXTS[0]))
-      if os.path.isfile(poss_path_3) :
+      poss_path_3 = pathlib.Path(search_dir / slideID / ((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,EXPOSURE_XML_EXTS[0]))
+      if pathlib.Path.is_file(poss_path_3) :
         xmlfile_path = poss_path_3
       else :
-        poss_path_4 = os.path.join(search_dir,slideID,os.path.basename(os.path.normpath(rfp)).replace(file_ext,EXPOSURE_XML_EXTS[1]))
-        if os.path.isfile(poss_path_4) :
+        poss_path_4 = pathlib.Path(search_dir / slideID / ((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,EXPOSURE_XML_EXTS[1]))
+        if pathlib.Path.is_file(poss_path_4) :
           xmlfile_path = poss_path_4
         else :
-          poss_path_5 = os.path.join(search_dir,slideID,'im3','xml',os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
-          if os.path.isfile(poss_path_5) :
+          poss_path_5 = pathlib.Path(search_dir / slideID / 'im3' / 'xml' / ((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
+          if pathlib.Path.is_file(poss_path_5) :
             xmlfile_path = poss_path_5    
           else :
-            xmlfile_path = os.path.join(search_dir,slideID,os.path.basename(os.path.normpath(rfp)).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
-  if not os.path.isfile(xmlfile_path) :
+            xmlfile_path = pathlib.Path(search_dir / slideID / ((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,CORRECTED_EXPOSURE_XML_EXT))
+  if not pathlib.Path.is_file(xmlfile_path) :
     msg = f"ERROR: findExposureTimeXMLFile could not find a valid path for raw file {rfp} given directory {search_dir}!"
     raise RuntimeError(msg)
   return xmlfile_path
 
 #helper function to write out a new exposure time xml file with the layer exposure times replaced
 def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logger=None) :
-  if not os.path.isfile(infile_path) :
+  if not pathlib.Path.is_file(pathlib.Path(infile_path)) :
     raise FileNotFoundError(f'ERROR: original exposure time .xml file path {infile_path} does not exist!')
   #get all the lines from the original file
   try :
@@ -204,7 +204,7 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logge
         new_header_lines.append(line)
         to_replace = ((((line.split(FILE_LINE_TEXT))[-1]).lstrip()).rstrip(HEADER_LINE_END)).rstrip()
         orig_xml_file_line = line.replace(FILE_LINE_TEXT,ORIGINAL_XML_FILE_LINE_TEXT)
-        orig_xml_file_line = orig_xml_file_line.replace(to_replace,os.path.abspath(infile_path))
+        orig_xml_file_line = orig_xml_file_line.replace(to_replace,pathlib.Path(infile_path).absolute())
         new_header_lines.append(orig_xml_file_line)
       else :
         new_header_lines.append(line)
@@ -262,7 +262,7 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logge
   #write out the new file
   all_new_lines = new_header_lines+new_xml_lines
   try :
-    old_filename = os.path.basename(os.path.normpath(infile_path))
+    old_filename = (pathlib.Path.resolve(pathlib.Path(infile_path))).name
     if EXPOSURE_XML_EXTS[0] in old_filename :
       outfile_name = old_filename.replace(EXPOSURE_XML_EXTS[0],CORRECTED_EXPOSURE_XML_EXT)
     elif EXPOSURE_XML_EXTS[1] in old_filename :
@@ -291,7 +291,7 @@ def getExposureTimesByLayer(fp,root_dir=None) :
   layer_exposure_times_to_return = []
   if (EXPOSURE_XML_EXTS[0] in fp) or (EXPOSURE_XML_EXTS[1] in fp) or (CORRECTED_EXPOSURE_XML_EXT in fp) :
     xmlfile_path = fp
-    if not os.path.isfile(xmlfile_path) :
+    if not pathlib.Path.is_file(pathlib.Path(xmlfile_path)) :
       raise RuntimeError(f"ERROR: {xmlfile_path} searched in getExposureTimesByLayer not found!")
   else :
     if root_dir is None :
@@ -312,13 +312,13 @@ def getExposureTimesByLayer(fp,root_dir=None) :
 #helper function to return a list of the median exposure times observed in each layer of a given slide
 def getSlideMedianExposureTimesByLayer(root_dir,slideID,logger=None) :
   _,_,nlayers = getImageHWLFromXMLFile(root_dir,slideID)
-  checkdir = os.path.join(root_dir,slideID,'im3','xml')
-  if not os.path.isdir(checkdir) :
-    checkdir = os.path.join(root_dir,slideID)
+  checkdir = pathlib.Path(root_dir / slideID / 'im3' / 'xml')
+  if not pathlib.Path.is_dir(checkdir) :
+    checkdir = pathlib.Path(root_dir / slideID)
   with cd(checkdir) :
-    all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[0]}')]
+    all_fps = [pathlib.Path(checkdir / fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[0]}')]
     if len(all_fps)==0 :
-      all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[1]}')]
+      all_fps = [pathlib.Path(checkdir / fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[1]}')]
   if len(all_fps)<1 :
     raise ValueError(f'ERROR: no exposure time xml files found in directory {checkdir}!')
   msg = f'Finding median exposure times for {slideID} ({len(all_fps)} images with {nlayers} layers each)....'
@@ -341,7 +341,7 @@ def getSlideMedianExposureTimesByLayer(root_dir,slideID,logger=None) :
 
 #helper function to return lists of the median exposure times and the exposure time correction offsets for all layers of a slide
 def getMedianExposureTimesAndCorrectionOffsetsForSlide(root_dir,slideID,et_correction_offset_file) :
-  if not os.path.isfile(et_correction_offset_file) :
+  if not pathlib.Path.is_file(pathlib.Path(et_correction_offset_file)) :
     raise FileNotFoundError(f'ERROR: Exposure time correction info cannot be determined from et_correction_offset_file = {et_correction_offset_file}!')
   utility_logger.info("Loading info for exposure time correction...")
   median_exp_times = getSlideMedianExposureTimesByLayer(root_dir,slideID)
@@ -377,13 +377,13 @@ def getExposureTimeHistogramsByLayerGroupForSlide(root_dir,slideID,nbins=50,logg
     mask_layer_groups=CONST.LAYER_GROUPS_43
   else :
     raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {nlayers} layers!')
-  checkdir = os.path.join(root_dir,slideID,'im3','xml')
-  if not os.path.isdir(checkdir) :
-    checkdir = os.path.join(root_dir,slideID)
+  checkdir = pathlib.Path(root_dir / slideID / 'im3' / 'xml')
+  if not pathlib.Path.is_dir(checkdir) :
+    checkdir = pathlib.Path(root_dir / slideID)
   with cd(checkdir) :
-    all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[0]}')]
+    all_fps = [pathlib.Path(checkdir / fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[0]}')]
     if len(all_fps)==0 :
-      all_fps = [os.path.join(checkdir,fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[1]}')]
+      all_fps = [pathlib.Path(checkdir / fn) for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[1]}')]
   if len(all_fps)<1 :
     raise ValueError(f'ERROR: no exposure time xml files found in directory {checkdir}!')
   msg = f'Getting exposure time histograms for {slideID} ({len(all_fps)} images with {nlayers} layers each)....'

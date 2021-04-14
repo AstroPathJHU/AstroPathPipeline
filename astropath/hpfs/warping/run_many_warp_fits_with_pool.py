@@ -6,7 +6,7 @@ from .config import CONST
 from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd, MetadataSummary
 from argparse import ArgumentParser
-import os, random, subprocess, datetime, multiprocessing as mp
+import pathlib, random, subprocess, datetime, multiprocessing as mp
 
 #################### FILE-SCOPE CONSTANTS ####################
 
@@ -53,7 +53,7 @@ def getListOfJobCommands(args) :
             this_octet_number = (all_octets.pop(index)).p1_rect_n
             thisjobdirname+=f'_{this_octet_number}'
             thisjoboctetstring+=f'{this_octet_number},'
-        thisjobworkingdir = os.path.join(args.workingdir,thisjobdirname)
+        thisjobworkingdir = pathlib.Path(args.workingdir / thisjobdirname)
         workingdir_names.append(thisjobworkingdir)
         octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else thisjobworkingdir
         thisjobcmdstring = f'{cmd_base} {thisjobworkingdir} --octet_run_dir {octet_run_dir} --octets {thisjoboctetstring[:-1]} '
@@ -104,25 +104,26 @@ def main(args=None) :
         #write out a list of all the individual results
         results = []; metadata_summaries = []
         for dirname in dirnames :
-            result_fp = os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME)
-            if os.path.isfile(result_fp) :
+            result_fp = pathlib.Path(dirname / CONST.FIT_RESULT_CSV_FILE_NAME)
+            if pathlib.Path.is_file(result_fp) :
                 results.append((readtable(result_fp,WarpFitResult))[0])
-                metadata_summaries.append((readtable(os.path.join(dirname,f'metadata_summary_{os.path.basename(os.path.normpath(dirname))}.csv'),MetadataSummary))[0])
+                fn = f'metadata_summary_{(pathlib.Path.resolve(pathlib.Path(dirname))).name}.csv'
+                metadata_summaries.append((readtable(pathlib.Path(dirname / fn),MetadataSummary))[0])
             else :
                 warp_logger.warn(f'WARNING: Expected fit result file {result_fp} does not exist, continuing without it!')
         with cd(args.workingdir) :
-            writetable(f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv',results)
-        if os.path.isfile(os.path.join(args.workingdir,f'all_results_{os.path.basename(os.path.normpath(args.workingdir))}.csv')) :
+            writetable(f'all_results_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.csv',results)
+        if pathlib.Path.is_file(pathlib.Path(args.workingdir / f'all_results_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.csv')) :
             for dirname in dirnames :
-                result_fp = os.path.join(dirname,CONST.FIT_RESULT_CSV_FILE_NAME)
-                if os.path.isfile(result_fp) :
-                    os.remove(result_fp)
+                result_fp = pathlib.Path(dirname / CONST.FIT_RESULT_CSV_FILE_NAME)
+                if pathlib.Path.is_file(result_fp) :
+                    pathlib.Path(result_fp).unlink()
         #write out some plots
-        plot_name_stem = f'{os.path.basename(os.path.normpath(args.workingdir))}'
+        plot_name_stem = f'{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}'
         with cd(args.workingdir) :
             plotdirname = 'batch_plots'
-            if not os.path.isdir(plotdirname) :
-                os.mkdir(plotdirname)
+            if not pathlib.Path.is_dir(pathlib.Path(plotdirname)) :
+                pathlib.Path.mkdir(pathlib.Path(plotdirname))
             with cd(plotdirname) :
                 principalPointPlot(results,save_stem=plot_name_stem)
                 radWarpAmtPlots(results,save_stem=plot_name_stem)
@@ -178,16 +179,16 @@ def main(args=None) :
                 w_avg_warp.p2
             )
         with cd(args.workingdir) :
-            writetable(f'{os.path.basename(os.path.normpath(args.workingdir))}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}',[w_avg_warp_summary])
-            w_avg_warp.writeOutWarpFields(os.path.basename(os.path.normpath(args.workingdir)))
+            writetable(f'{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}',[w_avg_warp_summary])
+            w_avg_warp.writeOutWarpFields((pathlib.Path.resolve(pathlib.Path(args.workingdir))).name)
         #aggregate the different field log files into one
         all_field_logs = []
         for dirname in dirnames :
-            field_log_path = os.path.join(dirname,f'field_log_{os.path.basename(os.path.normpath(dirname))}.csv')
-            if os.path.isfile(field_log_path) :
+            field_log_path = pathlib.Path(dirname / f'field_log_{(pathlib.Path.resolve(pathlib.Path(dirname))).name}.csv')
+            if pathlib.Path.is_file(field_log_path) :
                 all_field_logs+=((readtable(field_log_path,FieldLog)))
         with cd(args.workingdir) :
-            writetable(f'field_log_{os.path.basename(os.path.normpath(args.workingdir))}.csv',all_field_logs)
+            writetable(f'field_log_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.csv',all_field_logs)
     warp_logger.info('Done.')
 
 if __name__=='__main__' :
