@@ -366,13 +366,35 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
         if len(primaryregions[gc]) >= 2:
           #the outer ones come from fitting a line to the middle ones
-          m, b = units.np.polyfit(
-            x=range(1, len(average)),
-            y=primaryregions[gc],
-            deg=1,
-          )
-          primaryregions[gc].insert(0, m*0+b)
-          primaryregions[gc].append(m*len(average)+b)
+          #however sometimes there's a jump in the microscope at some point
+          #and we want to only use the ones on the correct side of the jump
+          diffs = np.diff(primaryregions[gc])
+          averagediff = np.mean(diffs)
+          stddiff = np.std(diffs)
+          m = np.mean(diffs[abs(diffs-averagediff)<=stddiff])
+
+          bs_left = []
+          for i, primaryregionboundary in enumerate(primaryregions[gc], start=1):
+            b = primaryregionboundary - m*i
+            if len(bs_left) >= 2:
+              b_residual = (b - np.mean(bs_left))
+              if abs(b_residual / (np.std(bs_left) / np.sqrt(len(bs_left)))) > 100:
+                break
+            bs_left.append(b)
+          b_left = np.mean(bs_left)
+
+          bs_right = []
+          for i, primaryregionboundary in reversed(list(enumerate(primaryregions[gc], start=1))):
+            b = primaryregionboundary - m*i
+            if len(bs_right) >= 2:
+              b_residual = (b - np.mean(bs_right))
+              if abs(b_residual / (np.std(bs_right) / np.sqrt(len(bs_right)))) > 100:
+                break
+            bs_right.append(b)
+          b_right = np.mean(bs_right)
+
+          primaryregions[gc].insert(0, m*0+b_left)
+          primaryregions[gc].append(m*len(average)+b_right)
         else:
           #can't fit a line because there are only at most 2 rows/columns, so do an approximation
           allcs = sorted({r.cxvec[i] for r in self.rectangles})
