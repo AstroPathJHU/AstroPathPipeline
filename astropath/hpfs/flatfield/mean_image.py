@@ -1,14 +1,14 @@
 #imports
-from .image_mask import getImageMaskWorker
 from .utilities import flatfield_logger, FlatFieldError
 from .config import CONST 
 from .plotting import flatfieldImagePixelIntensityPlot, correctedMeanImagePIandIVplots
+from ..image_masking.image_mask import ImageMask
 from ...utilities.img_file_io import getRawAsHWL, writeImageToFile, smoothImageWorker, smoothImageWithUncertaintyWorker
 from ...utilities.tableio import writetable
 from ...utilities.misc import cd, cropAndOverwriteImage
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import os
+import pathlib
 
 class MeanImage :
     """
@@ -27,7 +27,7 @@ class MeanImage :
     	return self._labelled_mask_regions #the list of labelled mask regions
     @property
     def masking_plot_dirpath(self):
-    	return os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)
+    	return pathlib.Path(f'{self._workingdir_path}/{self.MASKING_SUBDIR_NAME}')
     
     #################### CLASS CONSTANTS ####################
 
@@ -71,8 +71,8 @@ class MeanImage :
             raise FlatFieldError(f'ERROR: no defined list of broadband filter breaks for images with {self.nlayers} layers!')
         self._workingdir_path = workingdir_name
         with cd(self._workingdir_path) :
-            if not os.path.isdir(self.MASKING_SUBDIR_NAME) :
-                os.mkdir(self.MASKING_SUBDIR_NAME)
+            if not pathlib.Path.is_dir(pathlib.Path(self.MASKING_SUBDIR_NAME)) :
+                pathlib.Path.mkdir(pathlib.Path(self.MASKING_SUBDIR_NAME))
         self.skip_et_correction = skip_et_correction
         self.skip_masking = skip_masking
         self.final_smooth_sigma = smoothsigma
@@ -104,7 +104,7 @@ class MeanImage :
         self.image_stack+=thismaskstack*thismeanimage
         self.image_squared_stack+=thisimagesquaredstack
         #aggregate some of the metadata also
-        nisblfp = os.path.join(os.path.dirname(mean_image_fp),CONST.POSTRUN_PLOT_DIRECTORY_NAME,self.N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME)
+        nisblfp = pathlib.Path((pathlib.Path(mean_image_fp)).parent / CONST.POSTRUN_PLOT_DIRECTORY_NAME / self.N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME)
         with open(nisblfp,'r') as fp :
             nisbl = np.array([int(l.rstrip()) for l in fp.readlines() if l.rstrip()!=''],dtype=CONST.MASK_STACK_DTYPE_OUT)
         if len(nisbl)!=self._dims[-1] :
@@ -112,7 +112,7 @@ class MeanImage :
             msg+= f' but there are {self._dims[-1]} image layers!'
             raise FlatFieldError(msg)
         self.n_images_stacked_by_layer+=nisbl
-        nirfp = os.path.join(os.path.dirname(mean_image_fp),CONST.POSTRUN_PLOT_DIRECTORY_NAME,CONST.N_IMAGES_READ_TEXT_FILE_NAME)
+        nirfp = pathlib.Path((pathlib.Path(mean_image_fp)).parent / CONST.POSTRUN_PLOT_DIRECTORY_NAME / CONST.N_IMAGES_READ_TEXT_FILE_NAME)
         with open(nirfp,'r') as fp :
             nir = [int(l.rstrip()) for l in fp.readlines() if l.rstrip()!='']
         if len(nir)!=1 :
@@ -165,9 +165,9 @@ class MeanImage :
             else :
                 flatfield_logger.info(msg)
             make_plots=i in masking_plot_indices
-            p = mp.Process(target=getImageMaskWorker, 
-                           args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,slide.exp_time_hists,
-                                 ets_for_normalization,make_plots,self.masking_plot_dirpath,stack_i,return_dict))
+            p = mp.Process(target=ImageMask.create_mp,
+                           args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,
+                                 ets_for_normalization,slide.exp_time_hists,make_plots,self.masking_plot_dirpath,stack_i,return_dict))
             procs.append(p)
             p.start()
         for proc in procs:
@@ -231,9 +231,18 @@ class MeanImage :
             if np.min(self.smoothed_mean_image[:,:,layer_i])==0 and np.max(self.smoothed_mean_image[:,:,layer_i])==0 :
                 self.flatfield_image[:,:,layer_i]=1.0
             else :
-                weights = (1./((sm_mean_img_err[:,:,layer_i])**2))
-                layermean = np.average(self.smoothed_mean_image[:,:,layer_i],weights=weights)
-                self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
+                weights = np.divide(np.ones_like(sm_mean_img_err[:,:,layer_i]),(sm_mean_img_err[:,:,layer_i])**2,
+                                    out=np.zeros_like(sm_mean_img_err[:,:,layer_i]),where=sm_mean_img_err[:,:,layer_i]>0.)
+                if np.sum(weights)<=0 :
+                    msg = f'WARNING: sum of weights in layer {layer_i+1} is {np.sum(weights)}, this layer of the flatfield is all ones!'
+                    if logger is not None :
+                        logger.warningglobal(msg)
+                    else :
+                        flatfield_logger.warn(msg)    
+                    self.flatfield_image[:,:,layer_i]=1.0
+                else :
+                    layermean = np.average(self.smoothed_mean_image[:,:,layer_i],weights=weights)
+                    self.flatfield_image[:,:,layer_i]=self.smoothed_mean_image[:,:,layer_i]/layermean
 
     def makeCorrectedMeanImage(self,flatfield_file_path) :
         """
@@ -294,8 +303,8 @@ class MeanImage :
         """
         with cd(self._workingdir_path) :
             #make the plot directory if its not already created
-            if not os.path.isdir(CONST.POSTRUN_PLOT_DIRECTORY_NAME) :
-                os.mkdir(CONST.POSTRUN_PLOT_DIRECTORY_NAME)
+            if not pathlib.Path.is_dir(pathlib.Path(CONST.POSTRUN_PLOT_DIRECTORY_NAME)) :
+                pathlib.Path.mkdir(pathlib.Path(CONST.POSTRUN_PLOT_DIRECTORY_NAME))
             with cd(CONST.POSTRUN_PLOT_DIRECTORY_NAME) :
                 #.pngs of the mean image, flatfield, and mask stack layers
                 self.__saveImageLayerPlots()
@@ -313,7 +322,7 @@ class MeanImage :
                 self.__plotAndWriteNImagesStackedPerLayer()
         #save the table of labelled mask regions (if applicable)
         if len(self._labelled_mask_regions)>0 :
-            with cd(os.path.join(self._workingdir_path,self.MASKING_SUBDIR_NAME)) :
+            with cd(pathlib.Path(f'{self._workingdir_path}/{self.MASKING_SUBDIR_NAME}')) :
                 writetable(self.LABELLED_MASK_REGIONS_CSV_FILE_NAME,self._labelled_mask_regions)
 
     def addLMRs(self,lmrs_to_add) :
@@ -360,8 +369,8 @@ class MeanImage :
     def __saveImageLayerPlots(self) :
         if self.mean_image is None :
             self.makeMeanImage()
-        if not os.path.isdir(CONST.IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
-            os.mkdir(CONST.IMAGE_LAYER_PLOT_DIRECTORY_NAME)
+        if not pathlib.Path.is_dir(pathlib.Path(CONST.IMAGE_LAYER_PLOT_DIRECTORY_NAME)) :
+            pathlib.Path.mkdir(pathlib.Path(CONST.IMAGE_LAYER_PLOT_DIRECTORY_NAME))
         with cd(CONST.IMAGE_LAYER_PLOT_DIRECTORY_NAME) :
             #figure out the size of the figures to save
             fig_size=(self.IMG_LAYER_FIG_WIDTH,self.IMG_LAYER_FIG_WIDTH*(self.mean_image.shape[0]/self.mean_image.shape[1]))

@@ -6,7 +6,7 @@ from ...utilities.img_correction import correctImageLayerWithWarpFields
 from ...utilities.misc import cropAndOverwriteImage
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, seaborn as sns
-import os, math, cv2, functools, methodtools
+import pathlib, math, cv2, functools, methodtools
 
 #################### SOME CACHED FILE-SCOPE HELPER FUNCTIONS ####################
 
@@ -291,7 +291,7 @@ class PolyFieldWarp(Warp) :
 
     #helper function to convert a raw file name and a layer into a fieldwarped single layer filename
     def __getWarpedLayerFilename(self,rawname,layer) :
-        return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".fieldWarp_layer{(layer):02d}"
+        return (str((((pathlib.Path(rawname)).absolute()).parts)[-1])).split(".")[0]+f".fieldWarp_layer{(layer):02d}"
 
 class CameraWarp(Warp) :
     """
@@ -618,4 +618,4 @@ class CameraWarp(Warp) :
 
     #helper function to convert a raw file name and a layer into a camwarped single layer filename
     def __getWarpedLayerFilename(self,rawname,layer) :
-        return (rawname.split(os.path.sep)[-1]).split(".")[0]+f".camWarp_layer{(layer):02d}"
+        return (str(((pathlib.Path(rawname).absolute()).parts)[-1])).split(".")[0]+f".camWarp_layer{(layer):02d}"
