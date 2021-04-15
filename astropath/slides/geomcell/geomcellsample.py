@@ -19,31 +19,19 @@ class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer,
   pass
 
 class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, WorkflowSample):
-  MEMBRANE_TUMOR = 13
-  MEMBRANE_IMMUNE = 12
-  NUCLEUS_TUMOR = 11
-  NUCLEUS_IMMUNE = 10
-
-  @classmethod
-  def ismembrane(cls, layer):
-    return {
-      cls.MEMBRANE_TUMOR: True,
-      cls.MEMBRANE_IMMUNE: True,
-      cls.NUCLEUS_TUMOR: False,
-      cls.NUCLEUS_IMMUNE: False,
-    }[layer]
-
   def __init__(self, *args, **kwargs):
     super().__init__(
       *args,
-      layers=[
-        self.MEMBRANE_TUMOR,
-        self.MEMBRANE_IMMUNE,
-        self.NUCLEUS_TUMOR,
-        self.NUCLEUS_IMMUNE,
-      ],
       with_seg=True,
       **kwargs
+    )
+    self.setlayers(
+      layers=[
+        self.segmentationmembranelayer("Tumor"),
+        self.segmentationmembranelayer("Immune"),
+        self.segmentationnucleuslayer("Tumor"),
+        self.segmentationnucleuslayer("Immune"),
+      ],
     )
 
   multilayer = True
@@ -81,7 +69,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
               continue
             celllabel = cellproperties.label
             if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
-            polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
+            polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembranelayer(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
 
             box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
             box += pxvec
