@@ -1,4 +1,4 @@
-import collections, functools, jxmlease, numpy as np, os, PIL, re
+import collections, functools, jxmlease, numpy as np, os, PIL, re, shutil
 
 from ...baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.dataclasses import MyDataClass
@@ -123,7 +123,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
       return int(match.group(1)), int(match.group(2))
     def tilex(filename): return tilexy(filename)[0]
     def tiley(filename): return tilexy(filename)[1]
-    for folder in sorted(destfolder.iterdir(), key=lambda x: int(x.name)):
+    for folder in sorted((_ for _ in destfolder.iterdir() if _.name != "runningflag"), key=lambda x: int(x.name)):
       #find the images that have the max x or the max y
       filenames = list(folder.glob("*.png"))
       maxx = tilex(max(filenames, key=tilex))
@@ -179,7 +179,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     #rename the folders
     self.logger.info("relabeling zooms for layer %d", layer)
     destfolder = self.layerfolder(layer)
-    folders = sorted(destfolder.iterdir(), key=lambda x: int(x.name))
+    folders = sorted((_ for _ in destfolder.iterdir() if _.name != "runningflag"), key=lambda x: int(x.name))
     maxfolder = int(folders[-1].name)
     if maxfolder > 9:
       raise ValueError(f"Need more zoom levels than 0-9 (max from vips is {maxfolder})")
@@ -239,10 +239,27 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     Run the full deepzoom pipeline
     """
     for layer in self.layers:
+      folder = self.layerfolder(layer)
+      if folder.exists():
+        for i in range(10):
+          if (folder/f"{i}").exists():
+            shutil.rmtree(folder/f"{i}")
+        if (folder/"runningflag").exists():
+          for i in range(10):
+            if (folder/f"Z{i}").exists():
+              shutil.rmtree(folder/f"Z{i}")
+          (folder/"runningflag").unlink()
+        elif all((folder/f"Z{i}").exists() for i in range(10)):
+          self.logger.info(f"layer {layer} has already been deepzoomed")
+          continue
+
       self.deepzoom_vips(layer)
+      (folder/"runningflag").touch()
       self.prunezoom(layer)
       self.patchsmallimages(layer)
       self.patchfolderstructure(layer)
+      (folder/"runningflag").unlink()
+
     self.writezoomlist()
 
   @property
@@ -256,7 +273,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     return {"layers": self.layers, **super().workflowkwargs}
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, root, deepzoomroot, layers, **otherworkflowkwargs):
+  def getoutputfiles(cls, SlideID, *, root, deepzoomroot, layers, checkimages=False, **otherworkflowkwargs):
     zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
     if layers is None:
       with open(root/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
@@ -266,7 +283,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
       zoomlist,
       *(deepzoomroot/SlideID/f"L{layer}.dzi" for layer in layers),
     ]
-    if zoomlist.exists():
+    if checkimages and zoomlist.exists():
       files = readtable(zoomlist, DeepZoomFile)
       result += [file.name for file in files]
     return result
