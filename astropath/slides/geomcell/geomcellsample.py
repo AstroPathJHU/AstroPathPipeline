@@ -21,6 +21,16 @@ class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer,
 class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, WorkflowSample):
   segmentationorder = ["Tumor", "Immune"]
   ignoresegmentations = []
+  def celltype(self, layer):
+    segid = self.segmentationidfromlayer(layer)
+    membrane = self.ismembranelayer(layer)
+    nucleus = self.isnucleuslayer(layer)
+    assert membrane ^ nucleus
+    if membrane and segid == "Tumor": return 0
+    if membrane and segid == "Immune": return 1
+    if nucleus and segid == "Tumor": return 2
+    if nucleus and segid == "Immune": return 3
+    assert False, (membrane, nucleus, segid)
 
   def __init__(self, *args, **kwargs):
     super().__init__(
@@ -67,7 +77,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       pxvec = units.nominal_values(field.pxvec)
       with field.using_image() as im:
         im = im.astype(np.uint32)
-        for celltype, (imlayernumber, imlayer) in enumerate(more_itertools.zip_equal(self.layers, im)):
+        for imlayernumber, imlayer in more_itertools.zip_equal(self.layers, im):
+          celltype = self.celltype(imlayernumber)
           properties = skimage.measure.regionprops(imlayer)
           for cellproperties in properties:
             if not np.any(cellproperties.image):

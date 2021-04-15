@@ -964,9 +964,18 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
     return self.nlayersunmixed + 2 + self.nsegmentations + self.segmentationids.index(segid)
 
   def isnucleuslayer(self, layer):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
     return self.nlayersunmixed + 1 < layer <= self.nlayersunmixed + 1 + self.nsegmentations
   def ismembranelayer(self, layer):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
     return self.nlayersunmixed + 1 + self.nsegmentations < layer <= self.nlayersunmixed + 1 + 2*self.nsegmentations
+  def segmentationidfromlayer(self, layer):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    if layer <= self.masklayer: raise ValueError(f"{layer} is not a segmentation layer")
+    idx = layer - self.masklayer
+    if self.ismembranelayer(layer):
+      idx -= self.nsegmentations
+    return self.segmentationids[idx-1]
 
   @property
   def rectangletype(self):
