@@ -105,7 +105,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
               )
             )
 
-      writetable(field.geomloadcsv, geomload)
+      writetable(field.geomloadcsv, geomload, rowclass=CellGeomLoad)
 
   @property
   def inputfiles(self):
