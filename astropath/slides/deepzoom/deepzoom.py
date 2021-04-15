@@ -123,7 +123,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
       return int(match.group(1)), int(match.group(2))
     def tilex(filename): return tilexy(filename)[0]
     def tiley(filename): return tilexy(filename)[1]
-    for folder in sorted(destfolder.iterdir(), key=lambda x: int(x.name)):
+    for folder in sorted((_ for _ in destfolder.iterdir() if _.name != "runningflag"), key=lambda x: int(x.name)):
       #find the images that have the max x or the max y
       filenames = list(folder.glob("*.png"))
       maxx = tilex(max(filenames, key=tilex))
@@ -179,7 +179,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     #rename the folders
     self.logger.info("relabeling zooms for layer %d", layer)
     destfolder = self.layerfolder(layer)
-    folders = sorted(destfolder.iterdir(), key=lambda x: int(x.name))
+    folders = sorted((_ for _ in destfolder.iterdir() if _.name != "runningflag"), key=lambda x: int(x.name))
     maxfolder = int(folders[-1].name)
     if maxfolder > 9:
       raise ValueError(f"Need more zoom levels than 0-9 (max from vips is {maxfolder})")
