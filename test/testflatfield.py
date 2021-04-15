@@ -4,7 +4,7 @@
 from astropath.hpfs.flatfield.run_flatfield import main
 from astropath.hpfs.flatfield.utilities import flatfield_logger
 from argparse import Namespace
-import pathlib, os, shutil
+import pathlib, shutil
 
 #some constants
 folder = pathlib.Path(__file__).parent
@@ -24,7 +24,7 @@ args = Namespace(
         slides=f'{slide_ID}',
         rawfile_top_dir=str(folder/'data'/'raw'),
         root_dir=str(folder/'data'),
-        threshold_file_dir=str(folder/'data'/'corrections'),
+        threshold_file_dir=None,#str(folder/'data'/'corrections'),
         skip_masking=False,
         prior_run_dir=None,
         max_images=-1,
@@ -38,7 +38,7 @@ args = Namespace(
 main(args)
 #overwrite the file log so that applying the flatfield doesn't crash because it's using the same files
 flp = make_flatfield_working_dir/'filepath_log.txt'
-os.remove(flp)
+flp.unlink()
 with open(flp,'w') as fp :
     fp.write('hello : )\n')
 

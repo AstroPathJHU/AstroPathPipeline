@@ -4,7 +4,7 @@ from ..image_masking.config import CONST as MASKING_CONST
 from ...utilities.misc import cd, cropAndOverwriteImage
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt
-import os, glob, statistics
+import pathlib, glob, statistics
 
 #helper function to plot the max/min, 5th/95th %ile, and std. dev. of a flatfield image's correction factors by layer 
 def flatfieldImagePixelIntensityPlot(flatfield_image,savename=None) :
@@ -190,7 +190,7 @@ def slideBackgroundThresholdsPlot(flatfield_top_dir,nlayers,savename=None) :
     #get all the background thresholds for every slide by layer
     all_bgts_by_layer = [[] for _ in range(nlayers)]
     slide_names = []
-    with cd(os.path.join(flatfield_top_dir,CONST.THRESHOLDING_PLOT_DIR_NAME)) :
+    with cd(pathlib.Path(f'{flatfield_top_dir}/{CONST.THRESHOLDING_PLOT_DIR_NAME}')) :
         all_threshold_fns = glob.glob(f'*_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         for tfn in all_threshold_fns :
             sn = tfn.split('_')[0]
@@ -339,7 +339,7 @@ def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
     all_flagged_hpf_keys = [lmr.image_key for lmr in lmrs]
     hpf_identifiers = []
     for rfp in all_rfps :
-        key = (os.path.basename(rfp)).rstrip(UNIV_CONST.RAW_EXT)
+        key = ((pathlib.Path(rfp)).name).rstrip(UNIV_CONST.RAW_EXT)
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
         if key in all_flagged_hpf_keys :

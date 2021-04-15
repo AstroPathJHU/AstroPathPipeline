@@ -2,7 +2,7 @@
 from .config import CONST
 from ...utilities.dataclasses import MyDataClass
 import numpy as np
-import os, cv2
+import pathlib, cv2
 
 #mask region information helper class
 class LabelledMaskRegion(MyDataClass) :
@@ -14,7 +14,7 @@ class LabelledMaskRegion(MyDataClass) :
 
 #helper function to unpack, reshape, and return a tissue mask from the packed mask file
 def unpackTissueMask(filepath,dimensions) :
-    if not os.path.isfile(filepath) :
+    if not pathlib.Path.is_file(pathlib.Path(filepath)) :
         raise ValueError(f'ERROR: tissue mask file {filepath} does not exist!')
     packed_mask = np.memmap(filepath,dtype=np.uint8,mode='r')
     return (np.unpackbits(packed_mask)).reshape(dimensions)

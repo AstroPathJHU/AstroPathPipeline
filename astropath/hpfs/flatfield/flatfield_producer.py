@@ -12,7 +12,7 @@ from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd, MetadataSummary
 from ...utilities.config import CONST as UNIV_CONST
 import multiprocessing as mp
-import os, random, methodtools
+import pathlib, random, methodtools
 
 #main class
 class FlatfieldProducer :
@@ -78,9 +78,9 @@ class FlatfieldProducer :
             self.__writeLog(f'Reading and adding slide {sn} mean image for flatfield model with BatchID = {batchID:02d}','info',sn,slide.root_dir)
             self.mean_image.addSlideMeanImageAndMaskStack(mifp,semifp,msfp)
             #aggregate the slide's metadata as well
-            mds = readtable(os.path.join(os.path.dirname(mifp),f'{self.IMAGE_STACK_MDS_FN_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),MetadataSummary)
+            mds = readtable(pathlib.Path((pathlib.Path(mifp)).parent / f'{self.IMAGE_STACK_MDS_FN_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),MetadataSummary)
             self._metadata_summaries+=mds
-            fl = readtable(os.path.join(os.path.dirname(mifp),f'{self.FIELDS_USED_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),FieldLog)
+            fl = readtable(pathlib.Path((pathlib.Path(mifp)).parent / f'{self.FIELDS_USED_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),FieldLog)
             self._field_logs+=fl
         #make the meanimage
         self.makeMeanImage()
@@ -130,7 +130,7 @@ class FlatfieldProducer :
         #read each slide's list of background thresholds by layer
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
             threshold_file_name = f'{sn}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
-            threshold_file_path = os.path.join(threshold_file_dir,threshold_file_name)
+            threshold_file_path = pathlib.Path(f'{threshold_file_dir}/{threshold_file_name}')
             self.__writeLog(f'Copying background thresholds from file {threshold_file_path} for slide {sn}...','info',sn,slide.root_dir)
             slide.readInBackgroundThresholds(threshold_file_path)
 
@@ -148,7 +148,7 @@ class FlatfieldProducer :
             new_field_logs = slide.findBackgroundThresholds([rfp for rfp in all_slide_rawfile_paths if slideNameFromFilepath(rfp)==sn],
                                                            n_threads,
                                                            self.exposure_time_correction_offsets,
-                                                           os.path.join(self.mean_image.workingdir_path,CONST.THRESHOLDING_PLOT_DIR_NAME),
+                                                           pathlib.Path(f'{self.mean_image.workingdir_path}/{CONST.THRESHOLDING_PLOT_DIR_NAME}'),
                                                            threshold_file_name,
                                                            self._logger
                                                         )
@@ -204,8 +204,13 @@ class FlatfieldProducer :
                 self.__writeLog(f'WARNING: slide {sn} does not have any images to be stacked!','warningglobal',sn,slide.root_dir)
                 continue
             #otherwise add the metadata summary for this slide to the producer's list
-            a = AlignSampleFromXML(slide.root_dir,os.path.dirname(os.path.dirname(this_slide_fps_to_run[0])),sn,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=1)
-            this_slide_rect_fn_stems = [os.path.basename(os.path.normpath(fp)).split('.')[0] for fp in this_slide_fps_to_run]
+            a = AlignSampleFromXML(slide.root_dir,
+                                   ((pathlib.Path(this_slide_fps_to_run[0])).parent).parent,
+                                   sn,
+                                   nclip=UNIV_CONST.N_CLIP,
+                                   readlayerfile=False,
+                                   layer=1)
+            this_slide_rect_fn_stems = [((pathlib.Path.resolve(pathlib.Path(fp))).name).split('.')[0] for fp in this_slide_fps_to_run]
             rect_ts = [r.t for r in a.rectangles if r.file.replace(UNIV_CONST.IM3_EXT,'') in this_slide_rect_fn_stems]
             self._metadata_summaries.append(MetadataSummary(sn,a.Project,a.Cohort,a.microscopename,str(min(rect_ts)),str(max(rect_ts))))
             #choose which of them will have their masking images saved
@@ -265,8 +270,8 @@ class FlatfieldProducer :
         filename = name of the file to write to
         """
         self.__writeLog('Writing filepath text file','imageinfo')
-        if not os.path.isdir(self.mean_image.workingdir_path) :
-            os.mkdir(self.mean_image.workingdir_path)
+        if not pathlib.Path.is_dir(pathlib.Path(self.mean_image.workingdir_path)) :
+            pathlib.Path.mkdir(pathlib.Path(self.mean_image.workingdir_path))
         with cd(self.mean_image.workingdir_path) :
             with open(filename,'w') as fp :
                 for sn,slide in sorted(self.flatfield_slide_dict.items()) :
@@ -279,11 +284,15 @@ class FlatfieldProducer :
         batchID = the integer batch ID to append to the outputted file names
         """
         #write out the metadata summaries
-        with cd(self.mean_image.workingdir_path) :
-            writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._metadata_summaries)
+        if len(self._metadata_summaries)>0 :
+            with cd(self.mean_image.workingdir_path) :
+                writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{(pathlib.Path.resolve(pathlib.Path(self.mean_image.workingdir_path))).name}.csv',
+                           self._metadata_summaries)
         #write out the field logs
-        with cd(self.mean_image.workingdir_path) :
-            writetable(f'{self.FIELDS_USED_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._field_logs)
+        if len(self._field_logs)>0 :
+            with cd(self.mean_image.workingdir_path) :
+                writetable(f'{self.FIELDS_USED_STEM}_{(pathlib.Path.resolve(pathlib.Path(self.mean_image.workingdir_path))).name}.csv',
+                           self._field_logs)
         #figure out what to append to the filenames
         batch_or_slide_ID = None
         if batchID is not None :

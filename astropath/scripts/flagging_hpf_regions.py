@@ -13,7 +13,7 @@ from astropath.utilities.misc import cd, addCommonArgumentsToParser, cropAndOver
 from astropath.utilities.dataclasses import MyDataClass
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
-import logging, os, glob, cv2
+import logging, pathlib, glob, cv2
 
 #constants
 RAWFILE_EXT                = '.Data.dat'
@@ -300,7 +300,7 @@ def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,truncated,workingdir) :
     all_flagged_hpf_keys = [lmr.image_key for lmr in all_lmrs]
     hpf_identifiers = []
     for rfp in all_rfps :
-        key = (os.path.basename(rfp)).rstrip(RAWFILE_EXT)
+        key = ((pathlib.Path(rfp)).name).rstrip(RAWFILE_EXT)
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
         #cvx = pscale*key_x-xpos
@@ -487,7 +487,7 @@ def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,workingdir,root
         msg = f'Masking {fris[i].rawfile_path} {fris[i].sequence_print}'
         logger.info(msg)
         exp_times = getExposureTimesByLayer(fris[i].rawfile_path,root_dir)
-        key = (os.path.basename(fris[i].rawfile_path)).rstrip(RAWFILE_EXT)
+        key = ((pathlib.Path(fris[i].rawfile_path)).name).rstrip(RAWFILE_EXT)
         #p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,exp_times,key,thresholds,xpos,ypos,pscale,workingdir,exp_time_hists,return_list))
         p = mp.Process(target=getLabelledMaskRegionsWorker,args=(im_array,exp_times,key,thresholds,workingdir,exp_time_hists,return_list))
         procs.append(p)
@@ -500,26 +500,26 @@ def getLabelledMaskRegionsForChunk(fris,metsbl,etcobl,thresholds,workingdir,root
 #helper function to make sure all the necessary information is available from the command line arguments
 def checkArgs(args) :
     #rawfile_top_dir/[slideID] must exist
-    rawfile_dir = os.path.join(args.rawfile_top_dir,args.slideID)
-    if not os.path.isdir(rawfile_dir) :
+    rawfile_dir = pathlib.Path(f'{args.rawfile_top_dir}/{args.slideID}')
+    if not pathlib.Path.is_dir(rawfile_dir) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
     #root dir must exist
-    if not os.path.isdir(args.root_dir) :
+    if not pathlib.Path.is_dir(pathlib.Path(args.root_dir)) :
         raise ValueError(f'ERROR: root_dir argument ({args.root_dir}) does not point to a valid directory!')
     #images must be corrected for exposure time, and exposure time correction file must exist
     if (args.skip_exposure_time_correction) :   
         raise ValueError('ERROR: exposure time offset file must be provided.')
-    if not os.path.isfile(args.exposure_time_offset_file) :
+    if not pathlib.Path.is_file(pathlib.Path(args.exposure_time_offset_file)) :
         raise ValueError(f'ERROR: exposure_time_offset_file {args.exposure_time_offset_file} does not exist!')
     #need the threshold file
     if args.threshold_file_dir is None :
         raise ValueError('ERROR: must provide a threshold file dir.')
-    tfp = os.path.join(args.threshold_file_dir,f'{args.slideID}_background_thresholds.txt')
-    if not os.path.isfile(tfp) :
+    tfp = pathlib.Path(f'{args.threshold_file_dir}/{args.slideID}_background_thresholds.txt')
+    if not pathlib.Path.is_file(tfp) :
         raise ValueError(f'ERROR: threshold file path {tfp} does not exist!')
     #create the working directory if it doesn't already exist
-    if not os.path.isdir(args.workingdir) :
-        os.mkdir(args.workingdir)
+    if not pathlib.Path.is_dir(pathlib.Path(args.workingdir)) :
+        pathlib.Path.mkdir(pathlib.Path(args.workingdir))
 
 #################### MAIN SCRIPT ####################
 
@@ -542,8 +542,8 @@ def main(args=None) :
     #check the arguments
     checkArgs(args)
     #get all the rawfile paths
-    with cd(os.path.join(args.rawfile_top_dir,args.slideID)) :
-        all_rfps = [os.path.join(args.rawfile_top_dir,args.slideID,fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
+    with cd(pathlib.Path(f'{args.rawfile_top_dir}/{args.slideID}')) :
+        all_rfps = [pathlib.Path(f'{args.rawfile_top_dir}/{args.slideID}/{fn}') for fn in glob.glob(f'*{RAWFILE_EXT}')]
     #get the correction details and other slide information stuff
     dims   = getImageHWLFromXMLFile(args.root_dir,args.slideID)
     all_exp_times = []
@@ -573,12 +573,12 @@ def main(args=None) :
             etcobl[ln-1]=0.
         else :
             raise RuntimeError(f'ERROR: more than one entry found in LayerOffset file {args.exposure_time_offset_file} for layer {ln}!')
-    with open(os.path.join(args.threshold_file_dir,f'{args.slideID}_background_thresholds.txt')) as fp :
+    with open(pathlib.Path(f'{args.threshold_file_dir}/{args.slideID}_background_thresholds.txt')) as fp :
         bgtbl = [int(v) for v in fp.readlines() if v!='']
     if len(bgtbl)!=dims[-1] :
         raise RuntimeError(f'ERROR: found {len(bgtbl)} background thresholds but images have {dims[-1]} layers!')
     thresholds = [bgtbl[li] for li in range(dims[-1])]
-    #slide_constants_dict = constantsdict(os.path.join(args.root_dir,args.slideID,'dbload',f'{args.slideID}_constants.csv'))
+    #slide_constants_dict = constantsdict(pathlib.Path(f'{args.root_dir}/{args.slideID}/dbload/{args.slideID}_constants.csv'))
     #xpos = float(units.pixels(slide_constants_dict['xposition']))
     #ypos = float(units.pixels(slide_constants_dict['yposition']))
     #pscale = slide_constants_dict['pscale']

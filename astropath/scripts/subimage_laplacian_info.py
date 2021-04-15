@@ -6,7 +6,7 @@ from astropath.utilities.misc import cd, addCommonArgumentsToParser
 from argparse import ArgumentParser
 from scipy.ndimage.filters import convolve
 import numpy as np, multiprocessing as mp
-import logging, os, glob, cv2, dataclasses
+import logging, pathlib, glob, cv2, dataclasses
 
 #constants
 RAWFILE_EXT        = '.Data.dat'
@@ -41,26 +41,26 @@ class SubImageInfo :
 #helper function to make sure all the necessary information is available from the command line arguments
 def checkArgs(args) :
     #rawfile_top_dir/[slideID] must exist
-    rawfile_dir = os.path.join(args.rawfile_top_dir,args.slideID)
-    if not os.path.isdir(rawfile_dir) :
+    rawfile_dir = pathlib.Path(f'{args.rawfile_top_dir}/{args.slideID}')
+    if not pathlib.Path.is_dir(rawfile_dir) :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
     #root dir must exist
-    if not os.path.isdir(args.root_dir) :
+    if not pathlib.Path.is_dir(pathlib.Path(args.root_dir)) :
         raise ValueError(f'ERROR: root_dir argument ({args.root_dir}) does not point to a valid directory!')
     #images must be corrected for exposure time, and exposure time correction file must exist
     if (args.skip_exposure_time_correction) :   
         raise ValueError('ERROR: exposure time offset file must be provided.')
-    if not os.path.isfile(args.exposure_time_offset_file) :
+    if not pathlib.Path.is_file(pathlib.Path(args.exposure_time_offset_file)) :
         raise ValueError(f'ERROR: exposure_time_offset_file {args.exposure_time_offset_file} does not exist!')
     #need the threshold file
     if args.threshold_file_dir is None :
         raise ValueError('ERROR: must provide a threshold file dir.')
-    tfp = os.path.join(args.threshold_file_dir,f'{args.slideID}_background_thresholds.txt')
-    if not os.path.isfile(tfp) :
+    tfp = pathlib.Path(f'{args.threshold_file_dir}/{args.slideID}_background_thresholds.txt')
+    if not pathlib.Path.is_file(tfp) :
         raise ValueError(f'ERROR: threshold file path {tfp} does not exist!')
     #create the working directory if it doesn't already exist
-    if not os.path.isdir(args.workingdir) :
-        os.mkdir(args.workingdir)
+    if not pathlib.Path.is_dir(pathlib.Path(args.workingdir)) :
+        pathlib.Path.mkdir(pathlib.Path(args.workingdir))
 
 #helper function to calculate and add the subimage infos for a single image to a shared dictionary (run in parallel)
 def getSubImageInfosWorker(img_layers,dims,key,thresholds,return_lists) :
@@ -102,7 +102,7 @@ def getSubImageInfosForChunk(fris,dims,metsbl,etcobl,thresholds) :
     for i,im_array in enumerate(img_arrays) :
         msg = f'Getting subimage information for {fris[i].rawfile_path}'
         logger.info(msg)
-        key = (os.path.basename(fris[i].rawfile_path)).rstrip(RAWFILE_EXT)
+        key = ((fris[i].rawfile_path).name).rstrip(RAWFILE_EXT)
         img_layers = [im_array[:,:,ln-1] for ln in LAYERS]
         p = mp.Process(target=getSubImageInfosWorker,args=(img_layers,dims,key,thresholds,return_lists))
         procs.append(p)
@@ -134,8 +134,8 @@ def main(args=None) :
     #check the arguments
     checkArgs(args)
     #get all the rawfile paths
-    with cd(os.path.join(args.rawfile_top_dir,args.slideID)) :
-        all_rfps = [os.path.join(args.rawfile_top_dir,args.slideID,fn) for fn in glob.glob(f'*{RAWFILE_EXT}')]
+    with cd(pathlib.Path(f'{args.rawfile_top_dir}/{args.slideID}')) :
+        all_rfps = [pathlib.Path(f'{args.rawfile_top_dir}/{args.slideID}/{fn}') for fn in glob.glob(f'*{RAWFILE_EXT}')]
     if args.max_files>0 :
         all_rfps=all_rfps[:args.max_files]
     #get the correction information stuff
@@ -145,7 +145,7 @@ def main(args=None) :
             raise RuntimeError(f'ERROR: images have dimensions {dims} but layers {LAYERS} are needed.')
     metsbl = getSlideMedianExposureTimesByLayer(args.root_dir,args.slideID)
     etcobl = [lo.offset for lo in readtable(args.exposure_time_offset_file,LayerOffset)]
-    with open(os.path.join(args.threshold_file_dir,f'{args.slideID}_background_thresholds.txt')) as fp :
+    with open(pathlib.Path(f'{args.threshold_file_dir}/{args.slideID}_background_thresholds.txt')) as fp :
         bgtbl = [int(v) for v in fp.readlines() if v!='']
     if len(bgtbl)!=dims[-1] :
         raise RuntimeError(f'ERROR: found {len(bgtbl)} background thresholds but images have {dims[-1]} layers!')

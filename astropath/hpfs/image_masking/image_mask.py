@@ -7,7 +7,7 @@ from ...utilities.img_file_io import smoothImageWorker, getExposureTimesByLayer,
 from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
-import os, cv2
+import pathlib, cv2
 
 class ImageMask() :
     """
@@ -57,7 +57,7 @@ class ImageMask() :
         savedir        = path to the directory where the tissue mask file and sheet of plots should be saved
         """
         #get the key of the given image
-        self._image_key = (os.path.basename(rfp)).rstrip(UNIV_CONST.RAW_EXT)
+        self._image_key = ((pathlib.Path(rfp)).name).rstrip(UNIV_CONST.RAW_EXT)
         #set the layer groups for the image
         if im_array.shape[-1]==35 :
             self._layer_groups=UNIV_CONST.LAYER_GROUPS_35

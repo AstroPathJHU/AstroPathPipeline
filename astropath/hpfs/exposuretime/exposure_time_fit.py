@@ -7,7 +7,7 @@ from ...utilities.misc import cd, MetadataSummary, cropAndOverwriteImage
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt
 from matplotlib import colors
-import os, random, scipy, platform
+import pathlib, random, scipy, platform
 
 #helper class to do the fit in one image layer only
 class SingleLayerExposureTimeFit :
@@ -50,9 +50,9 @@ class SingleLayerExposureTimeFit :
         #make this fit's plot directory name/path
         plotdirname = f'{self.slideID}_layer_{self.layer}_info'
         with cd(top_plot_dir) :
-            if not os.path.isdir(plotdirname) :
-                os.mkdir(plotdirname)
-        self.plotdirpath = os.path.join(top_plot_dir,plotdirname)
+            if not pathlib.Path.is_dir(pathlib.Path(plotdirname)) :
+                pathlib.Path.mkdir(pathlib.Path(plotdirname))
+        self.plotdirpath = pathlib.Path(f'{top_plot_dir}/{plotdirname}')
         #make an alignsample from the raw files, smoothed and corrected with the flatfield
         et_fit_logger.info(f'Making an AlignSample for just the overlaps with different exposure times in layer {self.layer}....')
         use_GPU = platform.system()!='Darwin'
