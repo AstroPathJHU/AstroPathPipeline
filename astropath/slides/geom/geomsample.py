@@ -10,7 +10,7 @@ from .contours import findcontoursaspolygons
 
 class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
   def __init__(self, *args, **kwargs):
-    super().__init__(*args, with_seg=True, **kwargs)
+    super().__init__(*args, with_seg=True, layer="setlater", **kwargs)
     self.setlayers(layer=self.masklayer)
 
   @classmethod

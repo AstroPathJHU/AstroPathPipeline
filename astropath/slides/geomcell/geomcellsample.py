@@ -36,6 +36,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
     super().__init__(
       *args,
       with_seg=True,
+      layers="setlater",
       **kwargs
     )
     self.usesegmentations = [seg for seg in self.segmentationorder if seg in self.segmentationids]

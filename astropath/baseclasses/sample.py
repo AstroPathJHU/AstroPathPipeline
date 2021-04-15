@@ -769,7 +769,7 @@ class SelectLayersSample(SampleBase):
   Base class for any sample that needs a layer selection.
   """
   def __init__(self, *args, layer=None, layers=None, **kwargs):
-    if layer is not None or layers is not None:
+    if layer != "setlater" != layers:
       self.setlayers(layer=layer, layers=layers)
     super().__init__(*args, **kwargs)
 
