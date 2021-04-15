@@ -428,7 +428,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     slicedmask = self.slicedmask
     connected, nfilled, nlabels = self.__connectdisjointregions(slicedmask)
     if nfilled:
-      self.logger.warningglobal(f"Broken cell: connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
+      self.logger.warning(f"Broken cell: connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
       slicedmask[:] = connected
 
   def pickbiggestregion(self):
