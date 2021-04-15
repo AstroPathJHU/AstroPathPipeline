@@ -19,18 +19,24 @@ class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer,
   pass
 
 class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, WorkflowSample):
+  segmentationorder = ["Tumor", "Immune"]
+  ignoresegmentations = []
+
   def __init__(self, *args, **kwargs):
     super().__init__(
       *args,
       with_seg=True,
       **kwargs
     )
+    self.usesegmentations = [seg for seg in self.segmentationorder if seg in self.segmentationids]
+    unknownsegmentations = [seg for seg in self.segmentationids if seg not in self.segmentationorder and seg not in self.ignoresegmentations]
+    if unknownsegmentations:
+      raise ValueError("Unknown segmentations: {unknownsegmentations}")
     self.setlayers(
       layers=[
-        self.segmentationmembranelayer("Tumor"),
-        self.segmentationmembranelayer("Immune"),
-        self.segmentationnucleuslayer("Tumor"),
-        self.segmentationnucleuslayer("Immune"),
+        self.segmentationmembranelayer(seg) for seg in self.usesegmentations
+      ] + [
+        self.segmentationnucleuslayer(seg) for seg in self.usesegmentations
       ],
     )
 
