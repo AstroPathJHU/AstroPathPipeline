@@ -241,10 +241,9 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     for layer in self.layers:
       folder = self.layerfolder(layer)
       if folder.exists():
-        i = 0
-        while (folder/f"{i}").exists():
-          shutil.rmtree(folder/f"{i}")
-          i += 1
+        for i in range(10):
+          if (folder/f"{i}").exists():
+            shutil.rmtree(folder/f"{i}")
         if (folder/"runningflag").exists():
           for i in range(10):
             if (folder/f"Z{i}").exists():
