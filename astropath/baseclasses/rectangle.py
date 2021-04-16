@@ -483,6 +483,7 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
       pages = []
       shape = None
       dtype = None
+      segmentationisblank = False
       #make sure the tiff is self consistent in shape and dtype
       for page in f.pages:
         if len(page.shape) == 2:
@@ -499,7 +500,12 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
       if expectpages is not None:
         if self.__with_seg: expectpages += 1 + 2*self.__nsegmentations
         if len(pages) != expectpages:
-          raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
+          #compatibility with inform errors, the segmentation is all blank and sometimes the wrong number of layers
+          if self.__with_seg and len(pages) > self.__nlayers:
+            if all(not np.any(page.asarray()) for page in pages[self.__nlayers:]):
+              segmentationisblank = True
+          if not segmentationisblank:
+            raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
 
       #make the destination array
       image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)

@@ -366,13 +366,35 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
         if len(primaryregions[gc]) >= 2:
           #the outer ones come from fitting a line to the middle ones
-          m, b = units.np.polyfit(
-            x=range(1, len(average)),
-            y=primaryregions[gc],
-            deg=1,
-          )
-          primaryregions[gc].insert(0, m*0+b)
-          primaryregions[gc].append(m*len(average)+b)
+          #however sometimes there's a jump in the microscope at some point
+          #and we want to only use the ones on the correct side of the jump
+          diffs = np.diff(primaryregions[gc])
+          averagediff = np.mean(diffs)
+          stddiff = np.std(diffs)
+          m = np.mean(diffs[abs(diffs-averagediff)<=stddiff])
+
+          bs_left = []
+          for i, primaryregionboundary in enumerate(primaryregions[gc], start=1):
+            b = primaryregionboundary - m*i
+            if len(bs_left) >= 2:
+              b_residual = (b - np.mean(bs_left))
+              if abs(b_residual / (np.std(bs_left) / np.sqrt(len(bs_left)))) > 100:
+                break
+            bs_left.append(b)
+          b_left = np.mean(bs_left)
+
+          bs_right = []
+          for i, primaryregionboundary in reversed(list(enumerate(primaryregions[gc], start=1))):
+            b = primaryregionboundary - m*i
+            if len(bs_right) >= 2:
+              b_residual = (b - np.mean(bs_right))
+              if abs(b_residual / (np.std(bs_right) / np.sqrt(len(bs_right)))) > 100:
+                break
+            bs_right.append(b)
+          b_right = np.mean(bs_right)
+
+          primaryregions[gc].insert(0, m*0+b_left)
+          primaryregions[gc].append(m*len(average)+b_right)
         else:
           #can't fit a line because there are only at most 2 rows/columns, so do an approximation
           allcs = sorted({r.cxvec[i] for r in self.rectangles})
@@ -406,6 +428,34 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         mx2[rid] = primaryregionsx[i][gx]
         my1[rid] = primaryregionsy[i][gy-1]
         my2[rid] = primaryregionsy[i][gy]
+
+        pxvec = units.nominal_values(self.x(r))
+
+        if mx1[rid] < pxvec[0]:
+          if gx == 1:
+            self.__logger.warning(f"{rid}: px = {pxvec[0]}, mx1 = {mx1[rid]}, adjusting mx1")
+            mx1[rid] = pxvec[0]
+          else:
+            raise ValueError(f"{rid}: px = {pxvec[0]}, mx1 = {mx1[rid]}")
+        if mx2[rid] > pxvec[0]+r.w:
+          if gx == max(gxdict[i].values()):
+            self.__logger.warning(f"{rid}: px+w = {pxvec[0]+r.w}, mx2 = {mx2[rid]}, adjusting mx2")
+            mx2[rid] = pxvec[0]+r.w
+          else:
+            raise ValueError(f"{rid}: px+w = {pxvec[0]+r.w}, mx2 = {mx2[rid]}")
+
+        if my1[rid] < pxvec[1]:
+          if gy == 1:
+            self.__logger.warning(f"{rid}: py = {pxvec[1]}, my1 = {my1[rid]}, adjusting my1")
+            my1[rid] = pxvec[1]
+          else:
+            raise ValueError(f"{rid}: py = {pxvec[1]}, my1 = {my1[rid]}")
+        if my2[rid] > pxvec[1]+r.h:
+          if gy == max(gydict[i].values()):
+            self.__logger.warning(f"{rid}: py+h = {pxvec[1]+r.h}, my2 = {my2[rid]}, adjusting my2")
+            my2[rid] = pxvec[1]+r.h
+          else:
+            raise ValueError(f"{rid}: py+h = {pxvec[1]+r.h}, my2 = {my2[rid]}")
 
     #see if the primary regions of any HPFs in different islands overlap
     for (i1, island1), (i2, island2) in itertools.combinations(enumerate(islands, start=1), r=2):
