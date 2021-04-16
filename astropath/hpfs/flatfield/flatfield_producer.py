@@ -309,7 +309,7 @@ class FlatfieldProducer :
         if len(self.mean_image.labelled_mask_regions)>0 :
             for sn,slide in sorted(self.flatfield_slide_dict.items()) :
                 self.__writeLog(f'Plotting labelled mask regions for slide {sn}','info',sn,slide.root_dir)
-                this_slide_rfps_added = [rfp for rfp in self.filepaths_added if sn in rfp]
+                this_slide_rfps_added = [rfp for rfp in self.filepaths_added if sn in str(rfp)]
                 this_slide_regions = [lmr for lmr in self.mean_image.labelled_mask_regions if sn in lmr.image_key]
                 slide.plotLabelledMaskRegions(this_slide_regions,this_slide_rfps_added,self.mean_image.masking_plot_dirpath)
 
