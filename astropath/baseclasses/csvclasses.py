@@ -305,7 +305,7 @@ class MergeConfig(MyDataClass):
   layer: int = None
   Opal: str
   Target: str
-  Compartment: str
+  Compartment: str = None
   TargetType: str
   CoexpressionStatus: str
   SegmentationStatus: int
