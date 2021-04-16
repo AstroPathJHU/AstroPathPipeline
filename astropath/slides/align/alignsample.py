@@ -482,13 +482,12 @@ class AlignSampleComponentTiffBase(AlignSampleBase, ReadRectanglesOverlapsCompon
   rectangletype = AlignmentRectangleComponentTiff
 
 class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSampleDbloadBase):
+  #An alignment set that runs on im3 images and can write results to the dbload folder.
+  #This is the primary AlignSample class that is used for calibration.
   """
-  An alignment set that runs on im3 images and can write results to the dbload folder.
-  This is the primary AlignSample class that is used for calibration.
-
   The alignment step of the pipeline finds the relative shift between adjacent HPFs.
   It then stitches the results together using a spring model.  For more information,
-  see the LaTeX document on alignment in the documentation folder.
+  see README.md and README.pdf in this folder.
   """
 
 class AlignSampleFromXML(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase):
