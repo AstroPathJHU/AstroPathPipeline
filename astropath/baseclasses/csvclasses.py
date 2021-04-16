@@ -297,6 +297,8 @@ class MergeConfig(MyDataClass):
     #compatibility
     if "SegmentationHierarchy " in kwargs:
       kwargs["SegmentationHierarchy"] = kwargs.pop("SegmentationHierarchy ")
+    if "Compartment " in kwargs:
+      kwargs["Compartment"] = kwargs.pop("Compartment ")
     return super().transforminitargs(*args, **kwargs)
 
   Project: int = None
@@ -305,7 +307,7 @@ class MergeConfig(MyDataClass):
   layer: int = None
   Opal: str
   Target: str
-  Compartment: str = None
+  Compartment: str
   TargetType: str
   CoexpressionStatus: str
   SegmentationStatus: int
