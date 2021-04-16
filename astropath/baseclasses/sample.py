@@ -5,7 +5,7 @@ from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
-from .csvclasses import constantsdict, MergeConfig, RectangleFile
+from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
@@ -1044,6 +1044,19 @@ class ReadRectanglesDbload(ReadRectanglesBase, DbloadSample):
   """
   Base class for any sample that reads rectangles from the dbload folder.
   """
+  @property
+  def rectangleextrakwargs(self):
+    result = {
+      **super().rectangleextrakwargs,
+    }
+    try:
+      result.update({
+        "allexposures": self.readcsv("exposures", ExposureTime, extrakwargs={"pscale": self.pscale})
+      })
+    except FileNotFoundError:
+      pass
+    return result
+
   @property
   def rectanglecsv(self): return "rect"
   def readallrectangles(self, **extrakwargs):
