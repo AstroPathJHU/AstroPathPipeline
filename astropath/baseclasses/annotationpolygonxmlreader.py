@@ -155,3 +155,10 @@ def main(args=None):
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
     writeannotationcsvs(**args.__dict__)
+
+def checkannotations(args=None):
+  p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")
+  p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
+  args = p.parse_args(args=args)
+  XMLPolygonAnnotationReader(args.xmlfile).getXMLpolygonannotations()
+  print(f"{args.xmlfile} looks good!")
