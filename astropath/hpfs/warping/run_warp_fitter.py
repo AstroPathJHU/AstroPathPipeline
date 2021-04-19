@@ -117,7 +117,7 @@ def main(args=None) :
         warp_logger.info(f'Will run fit using {len(overlaps)} total overlaps.')
         #make the WarpFitter Objects
         warp_logger.info('Initializing WarpFitter')
-        fitter = WarpFitter(args.slideID,args.rawfile_top_dir,args.root_dir,args.workingdir,overlaps,args.layer)
+        fitter = WarpFitter(args.slideID,args.rawfile_top_dir,args.root_dir,args.workingdir,overlaps,args.layer,args.dbloadroot)
         #check the run if that's what's being asked
         if args.mode in ('check_run') :
             fitter.checkFit(fixed=args.fixed,normalize=args.normalize,init_pars=args.init_pars,init_bounds=args.init_bounds,

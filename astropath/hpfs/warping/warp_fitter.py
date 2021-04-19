@@ -41,7 +41,7 @@ class WarpFitter :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,slideID,rawfile_top_dir,root_dir,working_dir,overlaps=-1,layer=1) :
+    def __init__(self,slideID,rawfile_top_dir,root_dir,working_dir,overlaps=-1,layer=1,dbloadroot=None) :
         """
         slideID       = name of the slide to use ("M21_1" or equivalent)
         rawfile_top_dir  = path to directory containing [slideID] directory with multilayered ".Data.dat" files in it
@@ -50,6 +50,7 @@ class WarpFitter :
         overlaps         = list of (or two-element tuple of first/last) #s (n) of overlaps to use for evaluating quality of alignment 
                            (default=-1 will use all overlaps)
         layer            = image layer number (indexed starting at 1) to consider in the warping/alignment (default=1)
+        dbloadroot       = optional argument redefining where the [slideID]/dbload subdirectories can be found
         """
         #store the directory paths
         self.slideID = slideID
@@ -63,7 +64,7 @@ class WarpFitter :
         #make the alignsample object to use
         self.bkp_units_mode = units.currentmode
         units.setup("fast") #be sure to use fast units
-        self.alignset = self.__initializeAlignSample(overlaps=overlaps,layer=layer)
+        self.alignset = self.__initializeAlignSample(overlaps=overlaps,layer=layer,dbloadroot=dbloadroot)
         #save the metadata summary and field logs for this alignment set
         ms = MetadataSummary(self.slideID,self.alignset.Project,self.alignset.Cohort,self.alignset.microscopename,
                              str(min([r.t for r in self.alignset.rectangles])),str(max([r.t for r in self.alignset.rectangles])))
@@ -545,12 +546,12 @@ class WarpFitter :
     #################### OTHER PRIVATE HELPER FUNCTIONS ####################
 
     # helper function to create and return a new alignmentSet object that's set up to run on the identified set of images/overlaps
-    def __initializeAlignSample(self, *, overlaps, layer) :
+    def __initializeAlignSample(self, *, overlaps, layer, dbloadroot) :
         #If this is running on my Mac I want to be asked which GPU device to use because it doesn't default to the AMD compute unit....
         customGPUdevice = True if platform.system()=='Darwin' else False
         a = AlignSampleFromXML(self.root_dir,self.working_dir,self.slideID,nclip=UNIV_CONST.N_CLIP,interactive=customGPUdevice,useGPU=True,
                                 selectoverlaps=rectangleoroverlapfilter(overlaps, compatibility=True),onlyrectanglesinoverlaps=True,
-                                filetype="camWarp",readlayerfile=True,layer=layer)
+                                filetype="camWarp",readlayerfile=True,layer=layer,dbloadroot=dbloadroot)
         return a
 
     #helper function to return the parameter bounds, constraints, and initial population for the global minimization

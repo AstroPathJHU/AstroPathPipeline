@@ -182,29 +182,37 @@ def addCommonWarpingArgumentsToParser(parser,fit=True,fitpars=True,job_organizat
     run_option_group = parser.add_argument_group('run options', 'other options for this run')
     run_option_group.add_argument('--layer', default=1, type=int,         
                                   help='Image layer to use (indexed from 1)')
+    run_option_group.add_argument('--dbloadroot',
+                                  help='Alternate location for the root directory containing [slide_ID]/dbload subdirectories')
 
 #helper function to check directory command-line arguments
 def checkDirArgs(args) :
     #rawfile_top_dir/[slideID] must exist
     rawfile_dir = pathlib.Path(f'{args.rawfile_top_dir}/{args.slideID}')
-    if not pathlib.Path.is_dir(rawfile_dir) :
+    if not rawfile_dir.is_dir() :
         raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
     #root dir must exist
-    if not pathlib.Path.is_dir(pathlib.Path(args.root_dir)) :
+    if not (pathlib.Path(args.root_dir)).is_dir() :
         raise ValueError(f'ERROR: root_dir argument ({args.root_dir}) does not point to a valid directory!')
+    #alternate dbloadroot directory must exist if provided
+    if args.dbloadroot is not None :
+        if not (pathlib.Path(args.dbloadroot)).is_dir() :
+            raise ValueError(f'ERROR: dbloadroot argument ({args.dbloadroot}) does not point to a valid directory!')
+        if not (pathlib.Path(args.dbloadroot) / args.slideID / 'dbload').is_dir() :
+            raise ValueError(f'ERROR: dbloadroot argument ({args.dbloadroot}) does not contain a {args.slideID}/dbload subdirectory!')
     #if images are to be corrected for exposure time, exposure time correction file must exist
     if (not args.skip_exposure_time_correction) :   
-        if not pathlib.Path.is_file(pathlib.Path(args.exposure_time_offset_file)) :
+        if not (pathlib.Path(args.exposure_time_offset_file)).is_file() :
             raise ValueError(f'ERROR: exposure_time_offset_file {args.exposure_time_offset_file} does not exist!')
     #make sure the flatfield file exists
     if (not args.skip_flatfielding) :
-        if not pathlib.Path.is_file(pathlib.Path(args.flatfield_file)) :
+        if not (pathlib.Path(args.flatfield_file)).is_file() :
             raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
     #the octet run workingdir must exist if it's to be used
-    if args.octet_run_dir is not None and not pathlib.Path.is_dir(pathlib.Path(args.octet_run_dir)) :
+    if args.octet_run_dir is not None and not (pathlib.Path(args.octet_run_dir)).is_dir() :
         raise ValueError(f'ERROR: octet_run_dir ({args.octet_run_dir}) does not exist!')
     #create the working directory if it doesn't already exist
-    if not pathlib.Path.is_dir(pathlib.Path(args.workingdir)) :
+    if not (pathlib.Path(args.workingdir)).is_dir() :
         pathlib.Path.mkdir(pathlib.Path(args.workingdir))
 
 #helper function to check the ``fixed'' command line argument
@@ -295,7 +303,7 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,root_dir,slide_ID,layer) :
     return octets
 
 # Helper function to get the list of octets
-def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,working_dir,layer,flatfield_file,et_offset_file) :
+def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,working_dir,layer,flatfield_file,et_offset_file,dbloadroot) :
     #start by getting the threshold of this slide layer from the the inputted file
     with open(threshold_file_path) as tfp :
         vals = [int(l.rstrip()) for l in tfp.readlines() if l.rstrip()!='']
@@ -307,7 +315,7 @@ def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,worki
     med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSlideLayer(rootdir,slideID,et_offset_file,layer) if et_offset_file is not None else None
     use_GPU = platform.system()!='Darwin'
     a = AlignSampleForWarping(rootdir,rtd,slideID,med_et=med_et,offset=offset,flatfield=flatfield,nclip=UNIV_CONST.N_CLIP,
-                               readlayerfile=False,layer=layer,filetype='raw',useGPU=use_GPU)
+                               readlayerfile=False,layer=layer,filetype='raw',useGPU=use_GPU,dbloadroot=dbloadroot)
     a.getDAPI()
     a.align()
     #get the list of overlaps
@@ -367,7 +375,7 @@ def getOctetsFromArguments(args) :
     elif args.threshold_file_dir is not None :
         threshold_file_path=pathlib.Path(f'{args.threshold_file_dir}/{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         all_octets = findSlideOctets(args.rawfile_top_dir,args.root_dir,threshold_file_path,args.req_pixel_frac,args.slideID,
-                                      args.workingdir,args.layer,args.flatfield_file,args.exposure_time_offset_file)
+                                      args.workingdir,args.layer,args.flatfield_file,args.exposure_time_offset_file,args.dbloadroot)
     else :
         raise WarpingError('ERROR: either an octet_run_dir or a threshold_file_dir must be supplied to define octets to run on!')
     warp_logger.info(f'Found a total set of {len(all_octets)} valid octets for {args.slideID}')
