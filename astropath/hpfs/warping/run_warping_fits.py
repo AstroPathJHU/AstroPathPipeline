@@ -1,6 +1,8 @@
 #imports
-from .utilities import warp_logger, WarpingError, WarpFitResult, WarpingSummary, addCommonWarpingArgumentsToParser, checkDirArgs, getOctetsFromArguments
+from .utilities import WarpingError, WarpFitResult, WarpingSummary, addCommonWarpingArgumentsToParser, checkDirArgs, getOctetsFromArguments
 from .config import CONST
+from ...baseclasses.sample import SampleDef
+from ...baseclasses.logging import getlogger
 from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST
@@ -20,23 +22,24 @@ PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding']
 #################### HELPER FUNCTIONS ####################
 
 #helper function to make sure the command line arguments are alright
-def checkArgs(args) :
+def checkArgs(args,logger) :
     #check to make sure the directories exist and the 'fixed' argument is okay
     checkDirArgs(args)
     #tell the user what's going to happen based on the mode/octet splitting arguments
     if args.mode=='fit' :
-        warp_logger.info(f'Three groups of fits will be performed, using {args.workers} CPUs (max) each, to find the warping pattern for {args.slideID}:')
-        warp_logger.info(f'{args.initial_pattern_octets} octets will be used to find the initial general pattern')
-        warp_logger.info(f'{args.principal_point_octets} octets will be used to define the center principal point location')
-        warp_logger.info(f'{args.final_pattern_octets} octets will be used to find the overall best pattern')
+        logger.info(f'Three groups of fits will be performed, using {args.workers} CPUs (max) each, to find the warping pattern for {args.slideID}:')
+        logger.info(f'{args.initial_pattern_octets} octets will be used to find the initial general pattern')
+        logger.info(f'{args.principal_point_octets} octets will be used to define the center principal point location')
+        logger.info(f'{args.final_pattern_octets} octets will be used to find the overall best pattern')
     elif args.mode=='find_octets' :
-        warp_logger.info(f'The set of valid octets to use will be found for {args.slideID}')
+        logger.info(f'The set of valid octets to use will be found for {args.slideID}')
     elif args.mode=='check_run' :
-        warp_logger.info(f'Octets for {args.slideID} will be found/split, and a test command will be run for the first group of fits.')
+        logger.info(f'Octets for {args.slideID} will be found/split, and a test command will be run for the first group of fits.')
 
 #helper function to set up the three fit group working directories
-def setUpFitDirectories(args) :
+def setUpFitDirectories(args,logger) :
     #find the octets for the slide
+    logger.info('Finding octets to use for warp fitting....')
     octets = getOctetsFromArguments(args)
     #randomize and split the octets into groups for the three fits
     if len(octets) < args.initial_pattern_octets+args.principal_point_octets+args.final_pattern_octets :
@@ -48,6 +51,7 @@ def setUpFitDirectories(args) :
     octets_2 = octets[start:start+args.principal_point_octets]; start+= args.principal_point_octets
     octets_3 = octets[start:start+args.final_pattern_octets]
     #create the working directories for the three fit groups and copy the subsets of the octets files
+    logger.info('Creating working directories for three-stage fits....')
     wdn_1 = f'{INITIAL_PATTERN_DIR_STEM}_{args.slideID}_{len(octets_1)}_octets'
     wdn_2 = f'{PRINCIPAL_POINT_DIR_STEM}_{args.slideID}_{len(octets_2)}_octets'
     wdn_3 = f'{FINAL_PATTERN_DIR_STEM}_{args.slideID}_{len(octets_3)}_octets'
@@ -188,59 +192,70 @@ def main(args=None) :
     max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=1000,
                                        help='Max # of iterations to run in the final pattern fits')
     args = parser.parse_args(args=args)
-    #make sure the arguments are alright
-    checkArgs(args)
-    #set up the three directories with their octet groupings
-    dirname_1, dirname_2, dirname_3 = setUpFitDirectories(args)
-    if args.mode!='find_octets' :
-        #start up the file that will have the commands written into it
-        cmd_file_path = (pathlib.Path(f'{args.workingdir}/fit_group_commands.txt')).absolute()
-        #get the command for the initial pattern fits and run it
-        cmd_1 = getInitialPatternFitCmd(dirname_1,args)
-        with open(cmd_file_path,'w') as fp :
-            fp.write(f'{cmd_1}\n\n')
-        subprocess.call(cmd_1)
-    if args.mode=='fit' :
-        #figure out the radial warping parameters to use when finding the principal point
-        path = (pathlib.Path(f'{args.workingdir}/{dirname_1}/{dirname_1}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}')).absolute()
-        w_avg_res_1 = (readtable(path,WarpingSummary))[0]
-        init_k1 = w_avg_res_1.k1; init_k2 = w_avg_res_1.k2; init_k3 = w_avg_res_1.k3
-        #get the command for the central principal point fits and run it
-        cmd_2 = getPrincipalPointFitCmd(dirname_2,args,init_k1,init_k2,init_k3)
-        with open(cmd_file_path,'a') as fp :
-            fp.write(f'{cmd_2}\n\n')
-        subprocess.call(cmd_2)
-        #find the weighted mean of the principal point and its error from the previous run results 
-        all_results_2 = readtable((pathlib.Path(f'{args.workingdir}/{dirname_2}/all_results_{dirname_2}.csv')).absolute(),WarpFitResult)
-        w_cx = 0.; w_cy = 0.; sw = 0.; sw2 = 0.
-        for r in all_results_2 :
-            w = r.cost_reduction
-            if w<0 :
-                continue
-            w_cx+=(w*r.cx); w_cy+=(w*r.cy); sw+=w; sw2+=w**2
-        w_cx/=sw; w_cy/=sw
-        w_cx_e = np.sqrt(((np.std([r.cx for r in all_results_2 if r.cost_reduction>0])**2)*sw2)/(sw**2))
-        w_cy_e = np.sqrt(((np.std([r.cx for r in all_results_2 if r.cost_reduction>0])**2)*sw2)/(sw**2))
-        #get the command for the final pattern fits and run it
-        cmd_3 = getFinalPatternFitCmd(dirname_3,args,init_k1,init_k2,init_k3,w_cx,w_cx_e,w_cy,w_cy_e)
-        with open(cmd_file_path,'a') as fp :
-            fp.write(f'{cmd_3}\n')
-        subprocess.call(cmd_3)
-        warp_logger.info(f'All fits for {args.slideID} warping pattern completed')
-        #move and rename the final warping field and weighted average result files from the last fit
-        old_w_avg_fit_result_fp = (pathlib.Path(f'{args.workingdir,dirname_3}/{dirname_3}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}')).absolute()
-        fn = f'{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}'
-        new_w_avg_fit_result_fp = (pathlib.Path(f'{args.workingdir}/{fn}')).absolute()
-        shutil.move(old_w_avg_fit_result_fp,new_w_avg_fit_result_fp)
-        old_w_avg_dx_wf_fp = (pathlib.Path(f'{args.workingdir}/{dirname_3}/{UNIV_CONST.X_WARP_BIN_FILENAME}_{dirname_3}.bin')).absolute()
-        old_w_avg_dy_wf_fp = (pathlib.Path(f'{args.workingdir}/{dirname_3}/{UNIV_CONST.Y_WARP_BIN_FILENAME}_{dirname_3}.bin')).absolute()
-        fn = f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.bin'
-        new_w_avg_dx_wf_fp = (pathlib.Path(f'{args.workingdir}/{fn}')).absolute()
-        fn = f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.bin'
-        new_w_avg_dy_wf_fp = (pathlib.Path(f'{args.workingdir}/{fn}')).absolute()
-        shutil.move(old_w_avg_dx_wf_fp,new_w_avg_dx_wf_fp)
-        shutil.move(old_w_avg_dy_wf_fp,new_w_avg_dy_wf_fp)
-    warp_logger.info('Done')
+    #start the logger
+    samp = SampleDef(SlideID=args.slideID,root=args.root_dir)
+    logger = getlogger(module=f'warping_fits_layer_{args.layer}',root=root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,
+                          imagelog=pathlib.Path(f'{args.workingdir}/global-warping_fits_layer_{args.layer}.log'),reraiseexceptions=False)
+    with logger :
+        #make sure the arguments are alright
+        checkArgs(args,logger)
+        #set up the three directories with their octet groupings
+        dirname_1, dirname_2, dirname_3 = setUpFitDirectories(args,logger)
+        if args.mode!='find_octets' :
+            #start up the file that will have the commands written into it
+            cmd_file_path = (pathlib.Path(f'{args.workingdir}/fit_group_commands.txt')).absolute()
+            #get the command for the initial pattern fits and run it
+            cmd_1 = getInitialPatternFitCmd(dirname_1,args)
+            with open(cmd_file_path,'w') as fp :
+                fp.write(f'{cmd_1}\n\n')
+            logger.info('Beginning first group of fits for general pattern')
+            logger.info(f'Command: {cmd_1}')
+            subprocess.call(cmd_1)
+        if args.mode=='fit' :
+            #figure out the radial warping parameters to use when finding the principal point
+            path = (pathlib.Path(f'{args.workingdir}/{dirname_1}/{dirname_1}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}')).absolute()
+            w_avg_res_1 = (readtable(path,WarpingSummary))[0]
+            init_k1 = w_avg_res_1.k1; init_k2 = w_avg_res_1.k2; init_k3 = w_avg_res_1.k3
+            #get the command for the central principal point fits and run it
+            cmd_2 = getPrincipalPointFitCmd(dirname_2,args,init_k1,init_k2,init_k3)
+            with open(cmd_file_path,'a') as fp :
+                fp.write(f'{cmd_2}\n\n')
+            logger.info('Beginning second group of fits for principal point location')
+            logger.info(f'Command: {cmd_2}')
+            subprocess.call(cmd_2)
+            #find the weighted mean of the principal point and its error from the previous run results 
+            all_results_2 = readtable((pathlib.Path(f'{args.workingdir}/{dirname_2}/all_results_{dirname_2}.csv')).absolute(),WarpFitResult)
+            w_cx = 0.; w_cy = 0.; sw = 0.; sw2 = 0.
+            for r in all_results_2 :
+                w = r.cost_reduction
+                if w<0 :
+                    continue
+                w_cx+=(w*r.cx); w_cy+=(w*r.cy); sw+=w; sw2+=w**2
+            w_cx/=sw; w_cy/=sw
+            w_cx_e = np.sqrt(((np.std([r.cx for r in all_results_2 if r.cost_reduction>0])**2)*sw2)/(sw**2))
+            w_cy_e = np.sqrt(((np.std([r.cx for r in all_results_2 if r.cost_reduction>0])**2)*sw2)/(sw**2))
+            #get the command for the final pattern fits and run it
+            cmd_3 = getFinalPatternFitCmd(dirname_3,args,init_k1,init_k2,init_k3,w_cx,w_cx_e,w_cy,w_cy_e)
+            with open(cmd_file_path,'a') as fp :
+                fp.write(f'{cmd_3}\n')
+            logger.info('Beginning third group of fits for final overall pattern')
+            logger.info(f'Command: {cmd_3}')
+            subprocess.call(cmd_3)
+            logger.info(f'All fits for {args.slideID} warping pattern completed')
+            #move and rename the final warping field and weighted average result files from the last fit
+            old_w_avg_fit_result_fp = (pathlib.Path(f'{args.workingdir,dirname_3}/{dirname_3}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}')).absolute()
+            fn = f'{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}'
+            new_w_avg_fit_result_fp = (pathlib.Path(f'{args.workingdir}/{fn}')).absolute()
+            shutil.move(old_w_avg_fit_result_fp,new_w_avg_fit_result_fp)
+            old_w_avg_dx_wf_fp = (pathlib.Path(f'{args.workingdir}/{dirname_3}/{UNIV_CONST.X_WARP_BIN_FILENAME}_{dirname_3}.bin')).absolute()
+            old_w_avg_dy_wf_fp = (pathlib.Path(f'{args.workingdir}/{dirname_3}/{UNIV_CONST.Y_WARP_BIN_FILENAME}_{dirname_3}.bin')).absolute()
+            fn = f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.bin'
+            new_w_avg_dx_wf_fp = (pathlib.Path(f'{args.workingdir}/{fn}')).absolute()
+            fn = f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}.bin'
+            new_w_avg_dy_wf_fp = (pathlib.Path(f'{args.workingdir}/{fn}')).absolute()
+            shutil.move(old_w_avg_dx_wf_fp,new_w_avg_dx_wf_fp)
+            shutil.move(old_w_avg_dy_wf_fp,new_w_avg_dy_wf_fp)
+        logger.info('Done')
 
 if __name__=='__main__' :
     main()
