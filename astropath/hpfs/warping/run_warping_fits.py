@@ -156,7 +156,7 @@ def getFinalPatternFitCmd(wdn,args,k1,k2,k3,cx,cx_err,cy,cy_err) :
     #add the initial radial warping parameters from the weighted avg. of the last group of fits
     cmd+=f'--init_pars cx={cx},cy={cy},k1={k1},k2={k2},k3={k3} '
     #add the bounds on the center point
-    cmd+=f'--init_bounds cx={cx-cx_err}:{cx+cx_err},cy={cy-cy_err}:{cy+cy_err}'
+    cmd+=f'--init_bounds cx={cx-2.5*cx_err}:{cx+2.5*cx_err},cy={cy-2.5*cy_err}:{cy+2.5*cy_err}'
     #return the command
     return cmd
 
@@ -181,11 +181,11 @@ def main(args=None) :
                                        help='Number of octets to use in the final pattern fits')
     #arguments for how many iterations to run at maximum in the groups of fits
     max_iters_group = parser.add_argument_group('max iterations', 'how many iterations to run at max for minimization in each of the three fit groups')
-    max_iters_group.add_argument('--initial_pattern_max_iters', type=int, default=3000,
+    max_iters_group.add_argument('--initial_pattern_max_iters', type=int, default=200,
                                        help='Max # of iterations to run in the initial pattern fits')
-    max_iters_group.add_argument('--principal_point_max_iters', type=int, default=8000,
+    max_iters_group.add_argument('--principal_point_max_iters', type=int, default=500,
                                        help='Max # of iterations to run in the principal point location fits')
-    max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=10000,
+    max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=1000,
                                        help='Max # of iterations to run in the final pattern fits')
     args = parser.parse_args(args=args)
     #make sure the arguments are alright
