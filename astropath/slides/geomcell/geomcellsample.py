@@ -368,7 +368,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     if nlabels == 1:
       return slicedmask, 0, 1
 
-    best = None
+    best = slicedmask
     bestnfilled = float("inf")
 
     for label in labels:
@@ -392,47 +392,49 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
         labeled2, nlabels2 = scipy.ndimage.label(partiallyconnected, structure=np.ones(shape=(3, 3)))
         if nlabels2 < nlabels:
+          fullyconnected, nfilled, nlabels2 = self.__connectdisjointregions(partiallyconnected)
+          nfilled += np.count_nonzero(thinnedpath)
           break
-        else:
-          if multiplytoround == maxmultiply:
-            if self._debugdrawonerror:
-              plt.imshow(slicedmask)
-              plt.show()
-              print(nlabels)
-              plt.imshow(thisregion)
-              plt.show()
-              plt.imshow(distance1)
-              plt.show()
-              plt.imshow(otherregions)
-              plt.show()
-              plt.imshow(distance2)
-              plt.show()
-              plt.imshow(totaldistance)
-              plt.show()
-              plt.imshow(path)
-              plt.show()
-              plt.imshow(thinnedpath)
-              plt.show()
-              plt.imshow(partiallyconnected)
-              plt.show()
-              print(nlabels2)
-            raise ValueError(f"Connecting regions didn't reduce the number of regions (?) {self.loginfo}")
-
-      fullyconnected, nfilled, _ = self.__connectdisjointregions(partiallyconnected)
-      nfilled += np.count_nonzero(thinnedpath)
+      else:
+        nfilled = float("inf")
+        if self._debugdraw:
+          plt.imshow(slicedmask)
+          plt.show()
+          print(nlabels)
+          plt.imshow(thisregion)
+          plt.show()
+          plt.imshow(distance1)
+          plt.show()
+          plt.imshow(otherregions)
+          plt.show()
+          plt.imshow(distance2)
+          plt.show()
+          plt.imshow(totaldistance)
+          plt.show()
+          plt.imshow(path)
+          plt.show()
+          plt.imshow(thinnedpath)
+          plt.show()
+          plt.imshow(partiallyconnected)
+          plt.show()
+          print(nlabels2)
 
       if nfilled < bestnfilled:
         bestnfilled = nfilled
         best = fullyconnected
 
-    return best, bestnfilled, nlabels
+    return best, bestnfilled, nlabels2
 
   def connectdisjointregions(self):
     slicedmask = self.slicedmask
     connected, nfilled, nlabels = self.__connectdisjointregions(slicedmask)
     if nfilled:
-      self.logger.warning(f"Broken cell: connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
       slicedmask[:] = connected
+      if nlabels == 1:
+        self.logger.warning(f"Broken cell: connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
+    if nlabels > 1:
+      self.logger.warningglobal(f"Couldn't connect all the disjoint regions with the same label, picking the biggest {self.loginfo}")
+      return self.pickbiggestregion()
 
   def pickbiggestregion(self):
     slicedmask = self.slicedmask
