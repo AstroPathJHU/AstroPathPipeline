@@ -194,7 +194,7 @@ def main(args=None) :
     args = parser.parse_args(args=args)
     #start the logger
     samp = SampleDef(SlideID=args.slideID,root=args.root_dir)
-    logger = getlogger(module=f'warping_fits_layer_{args.layer}',root=root_dir,samp=samp,uselogfiles=True,mainlog=mainlog,samplelog=samplelog,
+    logger = getlogger(module=f'warping_fits_layer_{args.layer}',root=args.root_dir,samp=samp,uselogfiles=True,
                           imagelog=pathlib.Path(f'{args.workingdir}/global-warping_fits_layer_{args.layer}.log'),reraiseexceptions=False)
     with logger :
         #make sure the arguments are alright
