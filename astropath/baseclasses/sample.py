@@ -398,9 +398,30 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots):
   @property
   def mergeconfig(self):
     return readtable(self.mergeconfigcsv, MergeConfig)
+  @methodtools.lru_cache()
+  @property
+  def segmentationids(self):
+    dct = {}
+    for layer in self.mergeconfig:
+      segstatus = layer.SegmentationStatus
+      if segstatus != 0:
+        segid = layer.ImageQA
+        if segstatus not in dct:
+          dct[segstatus] = segid
+        elif segid != "NA":
+          if segid != dct[segstatus] != "NA":
+            raise ValueError(f"Multiple different non-NA ImageQAs for SegmentationStatus {segstatus} ({self.mergeconfigcsv})")
+          else:
+            dct[segstatus] = segid
+    if "NA" in dct.values():
+      raise ValueError("No non-NA ImageQA for SegmentationStatus {', '.join(str(k) for k, v in dct.items() if v == 'NA')} ({self.mergeconfigcsv})")
+    if sorted(dct.keys()) != list(range(1, len(dct)+1)):
+      raise ValueError("Non-sequential SegmentationStatuses {sorted(dct.keys()}} ({self.mergeconfigcsv})")
+    return [dct[k] for k in range(1, len(dct)+1)]
+
   @property
   def nsegmentations(self):
-    return len({layer.SegmentationStatus for layer in self.mergeconfig if layer.SegmentationStatus != 0})
+    return len(self.segmentationids)
 
   def _logonenter(self, warning, warnfunction):
     """
@@ -748,6 +769,17 @@ class SelectLayersSample(SampleBase):
   Base class for any sample that needs a layer selection.
   """
   def __init__(self, *args, layer=None, layers=None, **kwargs):
+    if layer != "setlater" != layers:
+      self.setlayers(layer=layer, layers=layers)
+    super().__init__(*args, **kwargs)
+
+  def setlayers(self, layer=None, layers=None):
+    try:
+      self.__layers
+    except AttributeError:
+      pass
+    else:
+      raise AttributeError("Already called setlayers for this sample")
     if self.multilayer:
       if layer is not None:
         raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
@@ -760,8 +792,6 @@ class SelectLayersSample(SampleBase):
       layers = layer,
 
     self.__layers = layers
-
-    super().__init__(*args, **kwargs)
 
   @property
   def layers(self):
@@ -923,8 +953,30 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
     super().__init__(*args, **kwargs)
 
   @property
-  def nlayers(self):
-    return self.nlayersunmixed
+  def masklayer(self):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    return self.nlayersunmixed + 1
+  def segmentationnucleuslayer(self, segid):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    return self.nlayersunmixed + 2 + self.segmentationids.index(segid)
+  def segmentationmembranelayer(self, segid):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    return self.nlayersunmixed + 2 + self.nsegmentations + self.segmentationids.index(segid)
+
+  def isnucleuslayer(self, layer):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    return self.nlayersunmixed + 1 < layer <= self.nlayersunmixed + 1 + self.nsegmentations
+  def ismembranelayer(self, layer):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    return self.nlayersunmixed + 1 + self.nsegmentations < layer <= self.nlayersunmixed + 1 + 2*self.nsegmentations
+  def segmentationidfromlayer(self, layer):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    if layer <= self.masklayer: raise ValueError(f"{layer} is not a segmentation layer")
+    idx = layer - self.masklayer
+    if self.ismembranelayer(layer):
+      idx -= self.nsegmentations
+    return self.segmentationids[idx-1]
+
   @property
   def rectangletype(self):
     if self.multilayer:

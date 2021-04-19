@@ -142,7 +142,8 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteM
   because the mask is discrete)
   """
   def __init__(self, *args, **kwargs):
-    super().__init__(*args, layer=9, with_seg=True, **kwargs)
+    super().__init__(*args, with_seg=True, layer="setlater", **kwargs)
+    self.setlayers(layer=self.masklayer)
 
   @classmethod
   def logmodule(self): return "stitchinformmask"

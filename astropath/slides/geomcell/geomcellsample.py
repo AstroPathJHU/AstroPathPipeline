@@ -1,4 +1,4 @@
-import cv2, itertools, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
+import cv2, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...baseclasses.csvclasses import constantsdict
 from ...baseclasses.polygon import DataClassWithPolygon, polygonfield
 from ...baseclasses.rectangle import GeomLoadRectangle, rectanglefilter
@@ -19,31 +19,36 @@ class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer,
   pass
 
 class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, WorkflowSample):
-  MEMBRANE_TUMOR = 13
-  MEMBRANE_IMMUNE = 12
-  NUCLEUS_TUMOR = 11
-  NUCLEUS_IMMUNE = 10
-
-  @classmethod
-  def ismembrane(cls, layer):
-    return {
-      cls.MEMBRANE_TUMOR: True,
-      cls.MEMBRANE_IMMUNE: True,
-      cls.NUCLEUS_TUMOR: False,
-      cls.NUCLEUS_IMMUNE: False,
-    }[layer]
+  segmentationorder = ["Tumor", "Immune"]
+  ignoresegmentations = []
+  def celltype(self, layer):
+    segid = self.segmentationidfromlayer(layer)
+    membrane = self.ismembranelayer(layer)
+    nucleus = self.isnucleuslayer(layer)
+    assert membrane ^ nucleus
+    if membrane and segid == "Tumor": return 0
+    if membrane and segid == "Immune": return 1
+    if nucleus and segid == "Tumor": return 2
+    if nucleus and segid == "Immune": return 3
+    assert False, (membrane, nucleus, segid)
 
   def __init__(self, *args, **kwargs):
     super().__init__(
       *args,
-      layers=[
-        self.MEMBRANE_TUMOR,
-        self.MEMBRANE_IMMUNE,
-        self.NUCLEUS_TUMOR,
-        self.NUCLEUS_IMMUNE,
-      ],
       with_seg=True,
+      layers="setlater",
       **kwargs
+    )
+    self.usesegmentations = [seg for seg in self.segmentationorder if seg in self.segmentationids]
+    unknownsegmentations = [seg for seg in self.segmentationids if seg not in self.segmentationorder and seg not in self.ignoresegmentations]
+    if unknownsegmentations:
+      raise ValueError("Unknown segmentations: {unknownsegmentations}")
+    self.setlayers(
+      layers=[
+        self.segmentationmembranelayer(seg) for seg in self.usesegmentations
+      ] + [
+        self.segmentationnucleuslayer(seg) for seg in self.usesegmentations
+      ],
     )
 
   multilayer = True
@@ -67,39 +72,43 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
     if not _debugdraw: _onlydebug = False
     nfields = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
-      if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): continue
-      self.logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
-      geomload = []
-      pxvec = units.nominal_values(field.pxvec)
-      with field.using_image() as im:
-        im = im.astype(np.uint32)
-        for celltype, (imlayernumber, imlayer) in enumerate(more_itertools.zip_equal(self.layers, im)):
-          properties = skimage.measure.regionprops(imlayer)
-          for cellproperties in properties:
-            if not np.any(cellproperties.image):
-              assert False
-              continue
-            celllabel = cellproperties.label
-            if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
-            polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembrane(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
+      with job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), outputfiles=[field.geomloadcsv]) as lock:
+        if not lock: continue
+        if field.geomloadcsv.exists(): continue
+        if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): continue
+        self.logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
+        geomload = []
+        pxvec = units.nominal_values(field.pxvec)
+        with field.using_image() as im:
+          im = im.astype(np.uint32)
+          for imlayernumber, imlayer in more_itertools.zip_equal(self.layers, im):
+            celltype = self.celltype(imlayernumber)
+            properties = skimage.measure.regionprops(imlayer)
+            for cellproperties in properties:
+              if not np.any(cellproperties.image):
+                assert False
+                continue
+              celllabel = cellproperties.label
+              if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
+              polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembranelayer(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
 
-            box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
-            box += pxvec
-            box = box // self.onepixel * self.onepixel
+              box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
+              box += pxvec
+              box = box // self.onepixel * self.onepixel
 
-            geomload.append(
-              CellGeomLoad(
-                field=field.n,
-                ctype=celltype,
-                n=celllabel,
-                box=box,
-                poly=polygon,
-                pscale=self.pscale,
-                apscale=self.apscale,
+              geomload.append(
+                CellGeomLoad(
+                  field=field.n,
+                  ctype=celltype,
+                  n=celllabel,
+                  box=box,
+                  poly=polygon,
+                  pscale=self.pscale,
+                  apscale=self.apscale,
+                )
               )
-            )
 
-      writetable(field.geomloadcsv, geomload)
+        writetable(field.geomloadcsv, geomload, rowclass=CellGeomLoad)
 
   @property
   def inputfiles(self):
@@ -111,7 +120,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
 
   @property
   def workflowkwargs(self):
-    return {"selectrectangles": rectanglefilter([r.n for r in self.rectangles]), **super().workflowkwargs}
+    return {"selectrectangles": rectanglefilter(lambda r: r.n in {r.n for r in self.rectangles}), **super().workflowkwargs}
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, geomroot, selectrectangles=lambda r: True, **otherworkflowkwargs):
@@ -296,7 +305,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     for label in labels:
       if labelsinglepixels[label]:
         labelendpoints[label] += labelsinglepixels[label]*2
-  
+
     possibleendpointorder = {label: itertools.permutations(labelendpoints[label], 2) for label in labels}
 
     possiblepointstoconnect = []
@@ -309,13 +318,13 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
           endpoint1 = endpointorder[label1][1]
           endpoint2 = endpointorder[label2][0]
           pointstoconnect.append((endpoint1, endpoint2))
-  
+
     def totaldistance(pointstoconnect):
       return sum(
         np.sum((point1-point2)**2)**.5
         for point1, point2 in pointstoconnect
       )
-  
+
     while possiblepointstoconnect:
       distances = np.array([totaldistance(pointstoconnect) for pointstoconnect in possiblepointstoconnect])
       bestidx = np.argmin(distances)
@@ -359,7 +368,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     if nlabels == 1:
       return slicedmask, 0, 1
 
-    best = None
+    best = slicedmask
     bestnfilled = float("inf")
 
     for label in labels:
@@ -383,47 +392,49 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
         labeled2, nlabels2 = scipy.ndimage.label(partiallyconnected, structure=np.ones(shape=(3, 3)))
         if nlabels2 < nlabels:
+          fullyconnected, nfilled, nlabels2 = self.__connectdisjointregions(partiallyconnected)
+          nfilled += np.count_nonzero(thinnedpath)
           break
-        else:
-          if multiplytoround == maxmultiply:
-            if self._debugdrawonerror:
-              plt.imshow(slicedmask)
-              plt.show()
-              print(nlabels)
-              plt.imshow(thisregion)
-              plt.show()
-              plt.imshow(distance1)
-              plt.show()
-              plt.imshow(otherregions)
-              plt.show()
-              plt.imshow(distance2)
-              plt.show()
-              plt.imshow(totaldistance)
-              plt.show()
-              plt.imshow(path)
-              plt.show()
-              plt.imshow(thinnedpath)
-              plt.show()
-              plt.imshow(partiallyconnected)
-              plt.show()
-              print(nlabels2)
-            raise ValueError(f"Connecting regions didn't reduce the number of regions (?) {self.loginfo}")
-
-      fullyconnected, nfilled, _ = self.__connectdisjointregions(partiallyconnected)
-      nfilled += np.count_nonzero(thinnedpath)
+      else:
+        nfilled = float("inf")
+        if self._debugdraw:
+          plt.imshow(slicedmask)
+          plt.show()
+          print(nlabels)
+          plt.imshow(thisregion)
+          plt.show()
+          plt.imshow(distance1)
+          plt.show()
+          plt.imshow(otherregions)
+          plt.show()
+          plt.imshow(distance2)
+          plt.show()
+          plt.imshow(totaldistance)
+          plt.show()
+          plt.imshow(path)
+          plt.show()
+          plt.imshow(thinnedpath)
+          plt.show()
+          plt.imshow(partiallyconnected)
+          plt.show()
+          print(nlabels2)
 
       if nfilled < bestnfilled:
         bestnfilled = nfilled
         best = fullyconnected
 
-    return best, bestnfilled, nlabels
+    return best, bestnfilled, nlabels2
 
   def connectdisjointregions(self):
     slicedmask = self.slicedmask
     connected, nfilled, nlabels = self.__connectdisjointregions(slicedmask)
     if nfilled:
-      self.logger.warningglobal(f"Broken cell: connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
       slicedmask[:] = connected
+      if nlabels == 1:
+        self.logger.warning(f"Broken cell: connecting {nlabels} disjoint regions by filling {nfilled} pixels: {self.loginfo}")
+    if nlabels > 1:
+      self.logger.warningglobal(f"Couldn't connect all the disjoint regions with the same label, picking the biggest {self.loginfo}")
+      return self.pickbiggestregion()
 
   def pickbiggestregion(self):
     slicedmask = self.slicedmask

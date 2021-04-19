@@ -84,8 +84,6 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             apscale=self.apscale,
           )
         )
-        if not any(a.name == "good tissue" for a in annotations):
-          raise ValueError(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations if _.name != 'empty')})")
 
         if not node["Regions"]: continue
         regions = node["Regions"]["Region"]
@@ -130,6 +128,9 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
               pscale=self.pscale,
             )
           )
+
+    if not any(a.name == "good tissue" for a in annotations):
+      raise ValueError(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations if _.name != 'empty')})")
 
     return annotations, allregions, allvertices
 
