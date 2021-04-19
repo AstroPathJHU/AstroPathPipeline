@@ -14,7 +14,7 @@ RUN_WARPFITTER_PREFIX = 'run_warp_fitter' #part of the command referencing how t
 JOB_DIR_STEM = 'warpfitter_batch'
 POSITIONAL_PASSTHROUGH_ARG_NAMES = ['slideID','rawfile_top_dir','root_dir']
 PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','max_iter','fixed','normalize','init_pars','init_bounds','max_radial_warp']
-PASSTHROUGH_ARG_NAMES+= ['max_tangential_warp','p1p2_polish_lasso_lambda','print_every','layer','dbloadroot']
+PASSTHROUGH_ARG_NAMES+= ['max_tangential_warp','p1p2_polish_lasso_lambda','print_every','layer']
 PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding','float_p1p2_to_polish']
 
 #################### HELPER FUNCTIONS ####################
