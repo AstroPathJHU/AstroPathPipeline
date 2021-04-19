@@ -79,7 +79,7 @@ class FlatfieldProducer :
             self.mean_image.addSlideMeanImageAndMaskStack(mifp,semifp,msfp)
             #aggregate the slide's metadata as well
             mdsfp = (pathlib.Path(mifp)).parent / f'{self.IMAGE_STACK_MDS_FN_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'
-            if mdsfp.is_file :
+            if mdsfp.is_file() :
                 mds = readtable(mdsfp,MetadataSummary)
                 self._metadata_summaries+=mds
             else :
