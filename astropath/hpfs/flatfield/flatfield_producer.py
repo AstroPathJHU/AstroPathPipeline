@@ -47,7 +47,7 @@ class FlatfieldProducer :
         #make a dictionary to hold all of the separate slides we'll be considering (keyed by name)
         self.flatfield_slide_dict = {}
         for s in slides :
-            self.flatfield_slide_dict[s.name]=FlatfieldSlide(s)
+            self.flatfield_slide_dict[s.name]=FlatfieldSlide(s,all_slide_rawfile_paths_to_run is None)
         img_dims = None
         for ff_slide in self.flatfield_slide_dict.values() :
             if img_dims is None :
@@ -78,8 +78,12 @@ class FlatfieldProducer :
             self.__writeLog(f'Reading and adding slide {sn} mean image for flatfield model with BatchID = {batchID:02d}','info',sn,slide.root_dir)
             self.mean_image.addSlideMeanImageAndMaskStack(mifp,semifp,msfp)
             #aggregate the slide's metadata as well
-            mds = readtable(pathlib.Path((pathlib.Path(mifp)).parent / f'{self.IMAGE_STACK_MDS_FN_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),MetadataSummary)
-            self._metadata_summaries+=mds
+            mdsfp = (pathlib.Path(mifp)).parent / f'{self.IMAGE_STACK_MDS_FN_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'
+            if mdsfp.is_file :
+                mds = readtable(mdsfp,MetadataSummary)
+                self._metadata_summaries+=mds
+            else :
+                self.__writeLog(f'WARNING: MetadataSummary file {mdsfp} does not exist for slide {sn}, likely because no images were stacked.')
             fl = readtable(pathlib.Path((pathlib.Path(mifp)).parent / f'{self.FIELDS_USED_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),FieldLog)
             self._field_logs+=fl
         #make the meanimage
