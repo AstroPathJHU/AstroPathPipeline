@@ -8,6 +8,12 @@ from ...baseclasses.workflowdependency import ShredXML
 from ...utilities import units
 
 class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
+  """
+  The prepdb stage of the pipeline extracts metadata for a sample from the `.xml` files
+  and writes it out to `.csv` files.
+  For more information, see README.md in this folder.
+  """
+
   def __init__(self, *args, **kwargs):
     super().__init__(*args, checkim3s=True, **kwargs)
 
@@ -92,6 +98,7 @@ class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
         )
       ]
 
+      #build a jpg colored thumbnail from the qptiff, to illustrate the slide
       mix = np.array([
         [0.0, 0.0, 1.0, 1.0, 1.0],
         [0.0, 1.0, 1.0, 0.5, 0.0],

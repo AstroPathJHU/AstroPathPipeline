@@ -16,8 +16,9 @@ class Rectangle(DataClassWithPscale):
   t: what time the HPF image was recorded
   file: the filename of the im3 for the HPF
 
-  xmlfolder: the folder where the xml file with metadata for the HPF lives
-             (optional, but if you provide it then you can get the exposure time)
+  One of the following two arguments is required if you want to get the exposure times:
+    xmlfolder: the folder where the xml file with metadata for the HPF lives
+    allexposures: the list of exposures from the exposures csv
   """
 
   pixelsormicrons = "microns"
@@ -32,8 +33,9 @@ class Rectangle(DataClassWithPscale):
   t: MetaDataAnnotation(datetime.datetime, readfunction=lambda x: datetime.datetime.fromtimestamp(int(x)), writefunction=lambda x: int(datetime.datetime.timestamp(x)))
   file: str
 
-  def __post_init__(self, *args, xmlfolder=None, **kwargs):
+  def __post_init__(self, *args, xmlfolder=None, allexposures=None, **kwargs):
     self.__xmlfolder = xmlfolder
+    self.__allexposures = allexposures
     super().__post_init__(*args, **kwargs)
 
   @classmethod
@@ -99,13 +101,25 @@ class Rectangle(DataClassWithPscale):
             result.append((exposuretime, broadbandfilter))
     return result
 
+  @methodtools.lru_cache()
   @property
   def allexposuretimes(self):
     """
     The exposure times for the HPF layers
     """
-    return [exposuretimeandbroadbandfilter[0] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
+    exposures1 = exposures2 = None
+    if self.__allexposures is not None:
+      exposures = [_ for _ in self.__allexposures if _.n == self.n]
+      exposures1 = [e.exp for e in exposures]
+    if self.__xmlfolder is not None:
+      exposures2 = [exposuretimeandbroadbandfilter[0] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
+    if exposures1 is exposures2 is None:
+      raise ValueError("Can't get the exposure times unless you provide the xml folder or exposures csv")
+    if None is not exposures1 != exposures2 is not None:
+      raise ValueError(f"Found inconsistent exposure times from exposures.csv and from xml file:\n{exposures1}\n{exposures2}")
+    return exposures1 if exposures1 is not None else exposures2
 
+  @methodtools.lru_cache()
   @property
   def allbroadbandfilters(self):
     """
