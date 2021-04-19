@@ -83,7 +83,7 @@ class FlatfieldProducer :
                 mds = readtable(mdsfp,MetadataSummary)
                 self._metadata_summaries+=mds
             else :
-                self.__writeLog(f'WARNING: MetadataSummary file {mdsfp} does not exist for slide {sn}, likely because no images were stacked.')
+                self.__writeLog(f'WARNING: MetadataSummary file {mdsfp} does not exist for slide {sn}, likely because no images were stacked.','warning')
             fl = readtable(pathlib.Path((pathlib.Path(mifp)).parent / f'{self.FIELDS_USED_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),FieldLog)
             self._field_logs+=fl
         #make the meanimage
