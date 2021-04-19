@@ -117,7 +117,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
 
   @property
   def workflowkwargs(self):
-    return {"selectrectangles": rectanglefilter([r.n for r in self.rectangles]), **super().workflowkwargs}
+    return {"selectrectangles": rectanglefilter(lambda r: r.n in {r.n for r in self.rectangles}), **super().workflowkwargs}
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, geomroot, selectrectangles=lambda r: True, **otherworkflowkwargs):
