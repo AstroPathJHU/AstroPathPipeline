@@ -177,7 +177,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     self.mxbox = mxbox
     self._debugdraw = _debugdraw
     self._debugdrawonerror = _debugdrawonerror
-    self.repair = repair
+    self.repair = repair and image.size <= 200*200
 
   @property
   def pscale(self): return self.__pscale
