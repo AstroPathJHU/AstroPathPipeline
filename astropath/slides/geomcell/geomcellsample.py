@@ -362,11 +362,12 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
           self.slicedmask[:] = testmask
           break
 
-  def __connectdisjointregions(self, slicedmask):
+  def __connectdisjointregions(self, slicedmask, *, shortcut=False):
     labeled, nlabels = scipy.ndimage.label(slicedmask, structure=np.ones(shape=(3, 3)))
-    labels = range(1, nlabels+1)
     if nlabels == 1:
       return slicedmask, 0, 1
+    labels = range(1, nlabels+1)
+    shortcut = shortcut or nlabels > 6
 
     best = slicedmask
     bestnfilled = float("inf")
@@ -392,7 +393,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
         labeled2, nlabels2 = scipy.ndimage.label(partiallyconnected, structure=np.ones(shape=(3, 3)))
         if nlabels2 < nlabels:
-          fullyconnected, nfilled, nlabels2 = self.__connectdisjointregions(partiallyconnected)
+          fullyconnected, nfilled, nlabels2 = self.__connectdisjointregions(partiallyconnected, shortcut=shortcut)
           nfilled += np.count_nonzero(thinnedpath)
           break
       else:
@@ -422,6 +423,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       if nfilled < bestnfilled:
         bestnfilled = nfilled
         best = fullyconnected
+        if shortcut: break
 
     return best, bestnfilled, nlabels2
 
