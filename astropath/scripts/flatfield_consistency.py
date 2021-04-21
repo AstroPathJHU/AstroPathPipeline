@@ -149,7 +149,7 @@ def consistency_check_grid_plot(slide_ids,root_dir,workingdir,all_or_brightest) 
     average_values = np.zeros_like(dos_std_dev_plot_values[:,:,0])
     for i in range(len(slide_ids)) :
         for j in range(len(slide_ids)) :
-            num = 0, den = 0
+            num = 0; den = 0
             for li in range(dims[-1]) :
                 if dos_std_dev_plot_values[i,j,li]!=0. :
                     num+=dos_std_dev_plot_values[i,j,li]
