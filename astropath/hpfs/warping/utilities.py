@@ -203,6 +203,9 @@ def checkDirArgs(args) :
     #the octet run workingdir must exist if it's to be used
     if args.octet_run_dir is not None and not (pathlib.Path(args.octet_run_dir)).is_dir() :
         raise ValueError(f'ERROR: octet_run_dir ({args.octet_run_dir}) does not exist!')
+    #the threshold file dir must exist if it's to be used
+    if args.threshold_file_dir is not None and not (pathlib.Path(args.threshold_file_dir)).is_dir() :
+        raise ValueError(f'ERROR: threshold_file_dir ({args.threshold_file_dir}) does not exist!')
     #create the working directory if it doesn't already exist
     if not (pathlib.Path(args.workingdir)).is_dir() :
         pathlib.Path.mkdir(pathlib.Path(args.workingdir))
@@ -295,13 +298,17 @@ def readOctetsFromFile(octet_run_dir,rawfile_top_dir,root_dir,slide_ID,layer) :
     return octets
 
 # Helper function to get the list of octets
-def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,working_dir,layer,flatfield_file,et_offset_file) :
+def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,working_dir,layer,flatfield_file,et_offset_file,logger=None) :
     #start by getting the threshold of this slide layer from the the inputted file
     with open(threshold_file_path) as tfp :
         vals = [int(l.rstrip()) for l in tfp.readlines() if l.rstrip()!='']
     threshold_value = vals[layer-1]
     #create the alignment set, correct its files, and run its alignment
-    warp_logger.info("Performing an initial alignment to find this slide's valid octets...")
+    msg = f'Performing an initial alignment to find valid octets for {slideID}'
+    if logger is not None :
+        logger.info(msg,slideID,rootdir)
+    else :
+        warp_logger.info(msg)
     img_dims = getImageHWLFromXMLFile(rootdir,slideID)
     flatfield = (getRawAsHWL(flatfield_file,*(img_dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE))[:,:,layer-1] if flatfield_file is not None else None
     med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSlideLayer(rootdir,slideID,et_offset_file,layer) if et_offset_file is not None else None
@@ -331,7 +338,11 @@ def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,worki
             rejected_overlaps.append((overlap,p1frac,p2frac))
             continue
         good_overlaps.append((overlap,p1frac,p2frac))
-    warp_logger.info(f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)}')
+    msg = f'Found a total of {len(good_overlaps)} good overlaps from an original set of {len(overlaps)} for {slideID}'
+    if logger is not None :
+        logger.info(msg,slideID,rootdir)
+    else :
+        warp_logger.info(msg)
     #find the overlaps that form full octets
     octets = []
     #begin by getting the set of all p1s
@@ -344,33 +355,46 @@ def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,worki
             ons = [o[0].n for o in overlapswiththisp1]
             op1pfs = [o[1] for o in overlapswiththisp1]
             op2pfs = [o[2] for o in overlapswiththisp1]
-            warp_logger.info(f'octet found with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
+            warp_logger.info(f'octet found for {slideID} with p1={p1} (overlaps #{min(ons)}-{max(ons)}).')
             octets.append(OverlapOctet(rootdir,rtd,slideID,UNIV_CONST.N_CLIP,layer,threshold_value,p1,*(ons),*(op1pfs),*(op2pfs)))
     octets.sort(key=lambda x: x.p1_rect_n)
     #save the file of which overlaps are in each valid octet
-    with cd(working_dir) :
-        writetable(f'{slideID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',octets)
+    if len(octets)>0 :
+        with cd(working_dir) :
+            writetable(f'{slideID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',octets)
     #print how many octets there are 
-    warp_logger.info(f'{len(octets)} total octets found.')
+    msg = f'{len(octets)} total good octets found for {slideID}'
+    if logger is not None :
+        logger.info(msg,slideID,rootdir)
+    else :
+        warp_logger.info(msg)
     #return the list of octets
     return octets
 
 #helper function to return the octets for a slide given just the command line arguments
-def getOctetsFromArguments(args) :
+def getOctetsFromArguments(args,logger=None) :
     octet_run_dir = pathlib.Path(args.octet_run_dir).absolute() if args.octet_run_dir is not None else pathlib.Path(args.workingdir).absolute()
-    if pathlib.Path.is_file(pathlib.Path(f'{octet_run_dir}/{args.slideID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')) :
-        if args.threshold_file_dir is not None :
-            msg = 'ERROR: an octet file exists in the working directory, but a threshold file directory was also given!'
-            msg+= ' Get rid of the threshold file dir argument to use the octet file that already exists, or remove the octet file to recreate it.'
-            raise WarpingError(msg)
-        all_octets = readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.root_dir,args.slideID,args.layer)
-    elif args.threshold_file_dir is not None :
-        threshold_file_path=pathlib.Path(f'{args.threshold_file_dir}/{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
-        all_octets = findSlideOctets(args.rawfile_top_dir,args.root_dir,threshold_file_path,args.req_pixel_frac,args.slideID,
-                                      args.workingdir,args.layer,args.flatfield_file,args.exposure_time_offset_file)
+    all_octets = []
+    for slideID in args.slideIDs :
+        octet_filepath = pathlib.Path(f'{octet_run_dir}/{slideID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
+        if octet_filepath.is_file() :
+            msg = f'Copying octets for {slideID} from {octet_filepath}'
+            if logger is not None :
+                logger.info(msg,slideID,args.root_dir)
+            else :
+                warp_logger.info(msg)
+            all_octets += readOctetsFromFile(octet_run_dir,args.rawfile_top_dir,args.root_dir,slideID,args.layer,logger)
+        elif args.threshold_file_dir is not None :
+            threshold_file_path=pathlib.Path(f'{args.threshold_file_dir}/{slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
+            all_octets += findSlideOctets(args.rawfile_top_dir,args.root_dir,threshold_file_path,args.req_pixel_frac,args.slideID,
+                                          args.workingdir,args.layer,args.flatfield_file,args.exposure_time_offset_file)
+        else :
+            raise WarpingError('ERROR: either an octet_run_dir or a threshold_file_dir must be supplied to define octets to run on!')
+    msg = f'Found a total set of {len(all_octets)} valid octets for slides {args.slideIDs}'
+    if logger is not None :
+        logger.info(msg)
     else :
-        raise WarpingError('ERROR: either an octet_run_dir or a threshold_file_dir must be supplied to define octets to run on!')
-    warp_logger.info(f'Found a total set of {len(all_octets)} valid octets for {args.slideID}')
+        warp_logger.info()
     return all_octets
 
 #helper function to find the limit on a parameter that produces the maximum warp

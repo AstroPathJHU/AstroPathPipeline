@@ -73,7 +73,7 @@ def main(args=None) :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #add the positional mode argument
-    parser.add_argument('mode', help='What to do', choices=['fit','check_run'])
+    parser.add_argument('mode', help='What to do', choices=['warp_fit','check_run'])
     #add the common arguments
     addCommonWarpingArgumentsToParser(parser)
     #additional positional arguments

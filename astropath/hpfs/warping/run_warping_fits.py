@@ -41,11 +41,11 @@ def checkArgs(args,logger) :
 def setUpFitDirectories(args,logger) :
     #find the octets for the slide
     logger.info('Finding octets to use for warp fitting....')
-    octets = getOctetsFromArguments(args)
+    octets_by_slide_ID = getOctetsFromArguments(args)
     #randomize and split the octets into groups for the three fits
     if len(octets) < args.initial_pattern_octets+args.principal_point_octets+args.final_pattern_octets :
-        msg = f'ERROR: There are {len(octets)} valid octets for {args.slideID} but you requested using {args.initial_pattern_octets}, then {args.principal_point_octets},'
-        msg+= f' and then {args.final_pattern_octets} in the fit groups, respectively!'
+        msg = f'ERROR: There are {len(octets)} valid octets for slides {args.slideIDs} but you requested using {args.initial_pattern_octets}, '
+        msg+= f'then {args.principal_point_octets}, and then {args.final_pattern_octets} in the fit groups, respectively!'
         raise WarpingError(msg)
     random.shuffle(octets)
     octets_1 = octets[:args.initial_pattern_octets];            start = args.initial_pattern_octets
@@ -53,16 +53,17 @@ def setUpFitDirectories(args,logger) :
     octets_3 = octets[start:start+args.final_pattern_octets]
     #create the working directories for the three fit groups and copy the subsets of the octets files
     logger.info('Creating working directories for three-stage fits....')
-    wdn_1 = f'{INITIAL_PATTERN_DIR_STEM}_{args.slideID}_{len(octets_1)}_octets'
-    wdn_2 = f'{PRINCIPAL_POINT_DIR_STEM}_{args.slideID}_{len(octets_2)}_octets'
-    wdn_3 = f'{FINAL_PATTERN_DIR_STEM}_{args.slideID}_{len(octets_3)}_octets'
+    wdn_1 = f'{INITIAL_PATTERN_DIR_STEM}_{len(octets_1)}_octets'
+    wdn_2 = f'{PRINCIPAL_POINT_DIR_STEM}_{len(octets_2)}_octets'
+    wdn_3 = f'{FINAL_PATTERN_DIR_STEM}_{len(octets_3)}_octets'
     wdns = [wdn_1,wdn_2,wdn_3]
     ols = [octets_1,octets_2,octets_3]
+    dirstems = [INITIAL_PATTERN_DIR_STEM,PRINCIPAL_POINT_DIR_STEM,FINAL_PATTERN_DIR_STEM]
     with cd(args.workingdir) :
-        for wdn,o in zip(wdns,ols) :
+        for wdn,o,ds in zip(wdns,ols,dirstems) :
             pathlib.Path.mkdir(pathlib.Path(wdn),exist_ok=True)
             with cd(wdn) :
-                writetable(f'{args.slideID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',o)
+                writetable(f'{ds}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',o)
     #return the names of the created directories
     return tuple(wdns)
 
@@ -197,7 +198,7 @@ def main(args=None) :
                                        help='Max # of iterations to run in the final pattern fits')
     args = parser.parse_args(args=args)
     #do the main run
-    with RunLogger(args.mode,args.workingdir) as logger :
+    with RunLogger(f'{args.mode}_layer_{args.layer}',args.workingdir) as logger :
         #make sure the arguments are alright
         checkArgs(args,logger)
         #set up the three directories with their octet groupings

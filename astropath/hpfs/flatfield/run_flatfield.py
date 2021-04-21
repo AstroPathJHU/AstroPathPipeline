@@ -285,7 +285,7 @@ def doRun(args,workingdir_path,logger=None) :
         fffn = f'{CONST.FLATFIELD_FILE_NAME_STEM}_BatchID_{args.batchID:02d}{CONST.FILE_EXT}'
         ff_producer.makeBatchFlatfieldSummaryPDF(args.root_dir,args.batchID)
         if pathlib.Path.is_file(pathlib.Path(f'{workingdir_path}/{fffn}')) :
-            shutil.move(pathlib.Path(f'{workingdir_path}/{fffn}'),pathlib.Path((pathlib.Path(workingdir_path)).parent / fffn))
+            shutil.move(pathlib.Path(f'{workingdir_path}/{fffn}'),(pathlib.Path(workingdir_path)).parent / fffn)
         return
     #see if the code is running in batch mode (i.e. minimal output in automatic locations) and figure out the working directory path if so
     batch_mode = args.mode in ('slide_mean_image','batch_flatfield')
