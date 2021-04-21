@@ -4,7 +4,7 @@ from .plotting import principalPointPlot, radWarpAmtPlots, radWarpParPlots, radW
 from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments, WarpFitResult, FieldLog, WarpingSummary
 from .config import CONST
 from ...utilities.tableio import readtable, writetable
-from ...utilities.misc import cd, MetadataSummary
+from ...utilities.misc import cd, MetadataSummary, split_csv_to_list
 from argparse import ArgumentParser
 import pathlib, random, subprocess, datetime, multiprocessing as mp
 
@@ -69,7 +69,7 @@ def getListOfJobCommands(args) :
         thisjobworkingdir = pathlib.Path(f'{args.workingdir}/{thisjobdirname}')
         workingdir_names.append(thisjobworkingdir) 
         if args.octet_file is not None :
-            thisjobcmdstring += f'--octet_file {octet_run_dir} '
+            thisjobcmdstring += f'--octet_file {args.octet_file} '
         else :
             octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else thisjobworkingdir
             thisjobcmdstring+=f'--octet_run_dir {octet_run_dir} '

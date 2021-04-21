@@ -1,8 +1,6 @@
 #imports
-from .utilities import WarpingError, WarpFitResult, WarpingSummary, addCommonWarpingArgumentsToParser, checkDirArgs, getOctetsFromArguments
+from .utilities import WarpingError, OverlapOctet, WarpFitResult, WarpingSummary, addCommonWarpingArgumentsToParser, checkDirArgs, getOctetsFromArguments
 from .config import CONST
-from ...baseclasses.sample import SampleDef
-from ...baseclasses.logging import getlogger
 from ...utilities.tableio import readtable, writetable
 from ...utilities.runlogger import RunLogger
 from ...utilities.misc import cd, split_csv_to_list

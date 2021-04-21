@@ -168,7 +168,7 @@ def addCommonWarpingArgumentsToParser(parser,fit=True,fitpars=True,job_organizat
     octet_finding_group.add_argument('--octet_run_dir', 
                                      help=f'Path to a previously-created workingdir that contains a [slideID]_{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM} file')
     octet_finding_group.add_argument('--octet_file',
-                                     help=f'Path to a previously-created file of octets to use')
+                                     help='Path to a previously-created file of octets to use')
     octet_finding_group.add_argument('--threshold_file_dir',
                                      help='Path to the directory holding the background threshold file created for the slide in question')
     octet_finding_group.add_argument('--req_pixel_frac', default=0.85, type=float,
