@@ -16,7 +16,7 @@ INITIAL_PATTERN_DIR_STEM = 'warping_initial_pattern'
 PRINCIPAL_POINT_DIR_STEM = 'warping_center_principal_point'
 FINAL_PATTERN_DIR_STEM   = 'warping_final_pattern'
 RUN_MANY_FITS_CMD_BASE = 'run_many_warp_fits_with_pool'
-POSITIONAL_PASSTHROUGH_ARG_NAMES = ['mode','rawfile_top_dir','root_dir']
+POSITIONAL_PASSTHROUGH_ARG_NAMES = ['rawfile_top_dir','root_dir']
 PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','layer','workers']
 PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding']
 
@@ -41,7 +41,7 @@ def checkArgs(args,logger) :
 def setUpFitDirectories(args,logger) :
     #find the octets for the slide
     logger.info('Finding octets to use for warp fitting....')
-    octets_by_slide_ID = getOctetsFromArguments(args)
+    octets = getOctetsFromArguments(args)
     #randomize and split the octets into groups for the three fits
     if len(octets) < args.initial_pattern_octets+args.principal_point_octets+args.final_pattern_octets :
         msg = f'ERROR: There are {len(octets)} valid octets for slides {args.slideIDs} but you requested using {args.initial_pattern_octets}, '
@@ -69,14 +69,20 @@ def setUpFitDirectories(args,logger) :
 
 #helper function to make the command to run for the initial pattern fit group
 def getInitialPatternFitCmd(wdn,args) :
+    #get the path to the working directory
+    this_job_dir_path = (pathlib.Path(f'{args.workingdir}/{wdn}')).absolute()
     #start with the call to run_many_fits_with_pool
     cmd = RUN_MANY_FITS_CMD_BASE
     #add the positional arguments
+    cmd+=f' {args.mode}'
+    slide_ID_str = ''
+    for sid in set([o.slide_ID for o in readtable(this_job_dir_path/f'{INITIAL_PATTERN_DIR_STEM}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',OverlapOctet)]) :
+        slide_ID_str+=f'{sid},'
+    cmd+=f' {slide_ID_str[:-1]}'
     argvars = vars(args)
     for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
         cmd+=f' {argvars[ppan]} '
     #add the working directory argument
-    this_job_dir_path = (pathlib.Path(f'{args.workingdir}/{wdn}')).absolute()
     cmd+=f'{this_job_dir_path} '
     #add the number of jobs positional argument
     cmd+=f'{args.initial_pattern_octets} '
@@ -89,8 +95,8 @@ def getInitialPatternFitCmd(wdn,args) :
             cmd+=f'--{pfn} '
     #add the number of iterations to run
     cmd+=f'--max_iter {args.initial_pattern_max_iters} '
-    #the octets are in the working directory
-    cmd+=f'--octet_run_dir {this_job_dir_path} '
+    #give the octet file
+    cmd+=f"--octet_file {this_job_dir_path/f'{INITIAL_PATTERN_DIR_STEM}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}'} "
     #select the first single octet for every job since we've already split up the octets for the slide
     cmd+='--octet_selection first_1 '
     #fix the focal lengths and tangential warping parameters
@@ -100,14 +106,20 @@ def getInitialPatternFitCmd(wdn,args) :
 
 #helper function to make the command to run for the principal point fit group
 def getPrincipalPointFitCmd(wdn,args,k1,k2,k3) :
+    #get the path to the working directory
+    this_job_dir_path = (pathlib.Path(f'{args.workingdir}/{wdn}')).absolute()
     #start with the call to run_many_fits_with_pool
     cmd = RUN_MANY_FITS_CMD_BASE
     #add the positional arguments
+    cmd+=f' {args.mode}'
+    slide_ID_str = ''
+    for sid in set([o.slide_ID for o in readtable(this_job_dir_path/f'{PRINCIPAL_POINT_DIR_STEM}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',OverlapOctet)]) :
+        slide_ID_str+=f'{sid},'
+    cmd+=f' {slide_ID_str[:-1]}'
     argvars = vars(args)
     for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
         cmd+=f' {argvars[ppan]} '
     #add the working directory argument
-    this_job_dir_path = (pathlib.Path(f'{args.workingdir}/{wdn}')).absolute()
     cmd+=f'{this_job_dir_path} '
     #add the number of jobs positional argument
     cmd+=f'{args.principal_point_octets} '
@@ -120,8 +132,8 @@ def getPrincipalPointFitCmd(wdn,args,k1,k2,k3) :
             cmd+=f'--{pfn} '
     #add the number of iterations to run
     cmd+=f'--max_iter {args.principal_point_max_iters} '
-    #the octets are in the working directory
-    cmd+=f'--octet_run_dir {this_job_dir_path} '
+    #give the octet file
+    cmd+=f"--octet_file {this_job_dir_path/f'{PRINCIPAL_POINT_DIR_STEM}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}'} "
     #select the first single octet for every job since we've already split up the octets for the slide
     cmd+='--octet_selection first_1 '
     #fix the focal lengths and warping parameters
@@ -133,14 +145,20 @@ def getPrincipalPointFitCmd(wdn,args,k1,k2,k3) :
 
 #helper function to make the command to run for the final pattern fit group
 def getFinalPatternFitCmd(wdn,args,k1,k2,k3,cx,cx_err,cy,cy_err) :
+    #get the path to the working directory
+    this_job_dir_path = (pathlib.Path(f'{args.workingdir}/{wdn}')).absolute()
     #start with the call to run_many_fits_with_pool
     cmd = RUN_MANY_FITS_CMD_BASE
     #add the positional arguments
+    cmd+=f' {args.mode}'
+    slide_ID_str = ''
+    for sid in set([o.slide_ID for o in readtable(this_job_dir_path/f'{FINAL_PATTERN_DIR_STEM}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',OverlapOctet)]) :
+        slide_ID_str+=f'{sid},'
+    cmd+=f' {slide_ID_str[:-1]}'
     argvars = vars(args)
     for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
         cmd+=f' {argvars[ppan]} '
     #add the working directory argument
-    this_job_dir_path = (pathlib.Path(f'{args.workingdir}/{wdn}')).absolute()
     cmd+=f'{this_job_dir_path} '
     #add the number of jobs positional argument
     cmd+=f'{args.final_pattern_octets} '
@@ -153,8 +171,8 @@ def getFinalPatternFitCmd(wdn,args,k1,k2,k3,cx,cx_err,cy,cy_err) :
             cmd+=f'--{pfn} '
     #add the number of iterations to run
     cmd+=f'--max_iter {args.final_pattern_max_iters} '
-    #the octets are in the working directory
-    cmd+=f'--octet_run_dir {this_job_dir_path} '
+    #give the octet file
+    cmd+=f"--octet_file {this_job_dir_path/f'{FINAL_PATTERN_DIR_STEM}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}'} "
     #select the first single octet for every job since we've already split up the octets for the slide
     cmd+='--octet_selection first_1 '
     #fix the focal lengths and tangential warping parameters
@@ -213,7 +231,7 @@ def main(args=None) :
             logger.info('Beginning first group of fits for general pattern')
             logger.info(f'Command: {cmd_1}')
             subprocess.call(cmd_1)
-        if args.mode=='fit' :
+        if args.mode=='warp_fit' :
             #figure out the radial warping parameters to use when finding the principal point
             path = (pathlib.Path(f'{args.workingdir}/{dirname_1}/{dirname_1}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}')).absolute()
             w_avg_res_1 = (readtable(path,WarpingSummary))[0]
@@ -230,7 +248,7 @@ def main(args=None) :
             w_cx = 0.; w_cy = 0.; sw = 0.; sw2 = 0.
             for r in all_results_2 :
                 w = r.cost_reduction
-                if w<0 :
+                if w<=0. :
                     continue
                 w_cx+=(w*r.cx); w_cy+=(w*r.cy); sw+=w; sw2+=w**2
             w_cx/=sw; w_cy/=sw

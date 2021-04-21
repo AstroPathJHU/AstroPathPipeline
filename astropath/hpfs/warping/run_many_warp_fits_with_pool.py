@@ -74,6 +74,8 @@ def main(args=None) :
     parser = ArgumentParser()
     #add the positional mode argument
     parser.add_argument('mode', help='What to do', choices=['warp_fit','check_run'])
+    parser.add_argument('slideIDs', type=split_csv_to_list, 
+                        help='Comma-separated list of names of slides to use')
     #add the common arguments
     addCommonWarpingArgumentsToParser(parser)
     #additional positional arguments
