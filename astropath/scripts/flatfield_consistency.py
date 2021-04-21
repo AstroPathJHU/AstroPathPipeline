@@ -1,10 +1,19 @@
 #imports
 from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, smoothImageWithUncertaintyWorker
+from astropath.utilities.dataclasses import MyDataClass
+from astropath.utilities.tableio import writetable
 from astropath.utilities.misc import cd, split_csv_to_list, cropAndOverwriteImage
 from astropath.utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt
-import pathlib, math, glob
+import pathlib
+
+#little helper dataclass to organize numerical entries
+class TableEntry(MyDataClass) :
+    slide_ID_1               : str
+    slide_ID_2               : str
+    layer_n                  : int
+    delta_over_sigma_std_dev : float
 
 #helper function to check the arguments
 def checkArgs(args) :
@@ -18,7 +27,11 @@ def checkArgs(args) :
 #helper function to normalize an image layer by its weighted mean 
 def normalizeImageLayer(mil,semil) :
     weights = 1./(semil**2)
-    mil_mean = np.sum(weights*mil)/np.sum(weights)
+    weighted_mil = weights*mil
+    sum_weighted_mil = np.sum(weighted_mil)
+    sum_weights = np.sum(weights)
+    mil_mean = sum_weighted_mil/sum_weights
+    #mil_mean = np.average(mil,weights=weights)
     return mil/mil_mean, semil/mil_mean
 
 #helper function to get the standard deviation of the delta/sigma distribution for every layer of two meanimages compared to one another
@@ -32,7 +45,10 @@ def get_delta_over_sigma_std_devs_by_layer(dims,mi1,semi1,mi2,semi2) :
         print(f'\tDoing layer {ln}...')
         mil1 = mi1[:,:,ln-1]; semil1 = semi1[:,:,ln-1]
         mil2 = mi2[:,:,ln-1]; semil2 = semi2[:,:,ln-1]
-        if np.max(mil1)==np.min(mil1) or np.max(mil2)==np.min(mil2) or np.min(semil1)==0. or np.min(semil2)==0. :
+        mil1max=np.max(mil1); mil1min=np.min(mil1)
+        mil2max=np.max(mil2); mil2min=np.min(mil2)
+        semil1min = np.min(semil1); semil2min = np.min(semil2)
+        if mil1max==mil1min or mil2max==mil2min or semil1min==0. or semil2min==0. :
             delta_over_sigma_std_devs.append(0.)
             continue
         #normalize the image layers by the mean of the mean image layer
@@ -48,8 +64,10 @@ def get_delta_over_sigma_std_devs_by_layer(dims,mi1,semi1,mi2,semi2) :
 def consistency_check_grid_plot(slide_ids,root_dir,workingdir) :
     #get the dimensions of the images
     dims = getImageHWLFromXMLFile(root_dir,slide_ids[0])
-    #start up an array to hold all of the necessary values
-    dos_std_dev_plot_values = np.empty((len(slide_ids),len(slide_ids),dims[-1]),dtype=np.float64)
+    #start up an array to hold all of the necessary values and a list of table entries
+    layers = UNIV_CONST.BRIGHTEST_LAYERS_35 if dims[-1]==35 else UNIV_CONST.BRIGHTEST_LAYERS_43
+    table_entries = []
+    dos_std_dev_plot_values = np.zeros((len(slide_ids),len(slide_ids),dims[-1]))
     #for each possible pair of slide ids, find the standard deviation in each image layer of the delta/sigma
     pairs_done = set()
     for is1,sid1 in enumerate(slide_ids) :
@@ -59,20 +77,25 @@ def consistency_check_grid_plot(slide_ids,root_dir,workingdir) :
                             *(dims),np.float64)
         for is2,sid2 in enumerate(slide_ids) :
             if sid2==sid1 :
-                dos_std_dev_plot_values[is2,is1,:] = 0.
+                dos_std_dev_plot_values[is1,is2,:] = 0.
                 continue 
             elif (sid2,sid1) in pairs_done :
-                dos_std_dev_plot_values[is2,is1,:] = dos_std_dev_plot_values[is1,is2,:]
+                for li in range(dims[-1]) :
+                    dos_std_dev_plot_values[is1,is2,li] = dos_std_dev_plot_values[is2,is1,li]
                 continue
             print(f'Finding std. devs. of delta/sigma for {sid1} vs. {sid2}...')
             mi2   = getRawAsHWL((pathlib.Path(root_dir) / sid2 / 'im3' / 'meanimage' / f'{sid2}-mean_image.bin'),
                                 *(dims),np.float64)
             semi2 = getRawAsHWL((pathlib.Path(root_dir) / sid2 / 'im3' / 'meanimage' / f'{sid2}-std_error_of_mean_image.bin'),
                                 *(dims),np.float64)
-            dos_std_dev_plot_values[is1,is2,:] = get_delta_over_sigma_std_devs_by_layer(dims,mi1,semi1,mi2,semi2)
+            dossd_list = get_delta_over_sigma_std_devs_by_layer(dims,mi1,semi1,mi2,semi2)
+            dos_std_dev_plot_values[is1,is2,:] = dossd_list
+            for ln in layers :
+                table_entries.append(TableEntry(sid1,sid2,ln,dos_std_dev_plot_values[is1,is2,ln-1]))
             pairs_done.add((sid1,sid2))
+    with cd(workingdir) :
+        writetable('meanimage_comparison_table.csv',table_entries)
     #for each image layer, plot a grid of the delta/sigma comparisons
-    layers = UNIV_CONST.BRIGHTEST_LAYERS_35 if dims[-1]==35 else UNIV_CONST.BRIGHTEST_LAYERS_43
     for ln in layers : 
         print(f'Saving plot for layer {ln}...')
         fig,ax = plt.subplots(figsize=(1.5*len(slide_ids),1.5*len(slide_ids)))
