@@ -51,7 +51,7 @@ def normalizeImageLayer(mil,semil) :
     return mil/mil_mean, semil/mil_mean
 
 #helper function to get the standard deviation of the delta/sigma distribution for every layer of two meanimages compared to one another
-def get_delta_over_sigma_std_devs_by_layer(dims,layers,layers,mi1,semi1,mi2,semi2) :
+def get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2) :
     delta_over_sigma_std_devs = []
     for ln in range(1,dims[-1]+1) :
         if ln not in layers :
