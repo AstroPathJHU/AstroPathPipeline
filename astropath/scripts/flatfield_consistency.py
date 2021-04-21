@@ -124,8 +124,8 @@ def consistency_check_grid_plot(slide_ids,root_dir,workingdir) :
         for i in range(len(slide_ids)):
             for j in range(len(slide_ids)):
                 v = dos_std_dev_plot_values[i,j,ln-1]
-                if v!=0.0
-                text = ax.text(j, i, f'{v:.03f}',ha="center", va="center", color="b")
+                if v!=0.0 :
+                    text = ax.text(j, i, f'{v:.03f}',ha="center", va="center", color="b")
         ax.set_title(f'mean image delta/sigma std. devs. in layer {ln}')
         fig.colorbar(pos,ax=ax)
         fig.tight_layout()
