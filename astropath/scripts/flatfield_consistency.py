@@ -23,12 +23,12 @@ def checkArgs(args) :
         raise ValueError(f'ERROR: root directory {args.root_dir} does not exist!')
     #meanimages and standard errors must exist for all slides
     for sid in args.slides :
-        mifp = pathlib.Path(root_dir) / sid1 / 'im3' / 'meanimage' / f'{sid}-mean_image.bin'
+        mifp = pathlib.Path(args.root_dir) / sid / 'im3' / 'meanimage' / f'{sid}-mean_image.bin'
         if not mifp.is_file() :
             print(f'WARNING: Mean image file does not exist for slide {sid}, will skip this slide!')
             args.slides.remove(sid)
             continue
-        semifp = pathlib.Path(root_dir) / sid1 / 'im3' / 'meanimage' / f'{sid1}-std_error_of_mean_image.bin'
+        semifp = pathlib.Path(args.root_dir) / sid / 'im3' / 'meanimage' / f'{sid}-std_error_of_mean_image.bin'
         if not mifp.is_file() :
             print(f'WARNING: Mean image file does not exist for slide {sid}, will skip this slide!')
             args.slides.remove(sid)
