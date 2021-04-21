@@ -104,7 +104,10 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
       #delete the images with this file size
       self.logger.info("removing %d empty files with file size %d", len(files), size)
       for nbad, filename in enumerate(files, start=nbad+1):
-        filename.unlink()
+        try:
+          filename.unlink()
+        except OSError:
+          filename.unlink() #retry in case of network errors
 
     ngood = nfiles - nbad
     self.logger.info("there are %d remaining non-empty files", ngood)
