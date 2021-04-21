@@ -1,10 +1,10 @@
 #imports
 from .flatfield_producer import FlatfieldProducer
-from .logging import RunLogger
 from .utilities import flatfield_logger, slideNameFromFilepath, FlatfieldSlideInfo
 from .utilities import getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath, getSlideMeanImageFilepath, getSlideMaskStackFilepath
 from .config import CONST 
 from ...utilities.tableio import readtable
+from ...utilities.runlogger import RunLogger
 from ...utilities.misc import cd, split_csv_to_list
 from ...utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser

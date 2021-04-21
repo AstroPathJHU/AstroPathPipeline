@@ -23,7 +23,7 @@ class RunLogger(ExitStack) :
         """
         super().__init__()
         self._module = mode
-        self._batch_mode = self._module in ('slide_mean_image','batch_flatfield')
+        self._batch_mode = self._module in ('slide_mean_image','batch_flatfield','warp_fit')
         self._workingdir_path = workingdir_path
         self._global_logger = self._getGlobalLogger()
         self._slide_loggers = {}

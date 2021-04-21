@@ -4,6 +4,7 @@ from .config import CONST
 from ...baseclasses.sample import SampleDef
 from ...baseclasses.logging import getlogger
 from ...utilities.tableio import readtable, writetable
+from ...utilities.runlogger import RunLogger
 from ...utilities.misc import cd, split_csv_to_list
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
@@ -27,14 +28,14 @@ def checkArgs(args,logger) :
     checkDirArgs(args)
     #tell the user what's going to happen based on the mode/octet splitting arguments
     if args.mode=='fit' :
-        logger.info(f'Three groups of fits will be performed, using {args.workers} CPUs (max) each, to find the warping pattern for {args.slideID}:')
+        logger.info(f'Three groups of fits will be performed, using {args.workers} CPUs (max) each, to find the warping pattern for slides {args.slideIDs}:')
         logger.info(f'{args.initial_pattern_octets} octets will be used to find the initial general pattern')
         logger.info(f'{args.principal_point_octets} octets will be used to define the center principal point location')
         logger.info(f'{args.final_pattern_octets} octets will be used to find the overall best pattern')
     elif args.mode=='find_octets' :
-        logger.info(f'The set of valid octets to use will be found for {args.slideID}')
+        logger.info(f'The set of valid octets to use will be found for slides {args.slideIDs}')
     elif args.mode=='check_run' :
-        logger.info(f'Octets for {args.slideID} will be found/split, and a test command will be run for the first group of fits.')
+        logger.info(f'Octets for slides {args.slideIDs} will be found/split, and a test command will be run for the first group of fits.')
 
 #helper function to set up the three fit group working directories
 def setUpFitDirectories(args,logger) :
@@ -170,10 +171,10 @@ def main(args=None) :
     #define and get the command-line arguments
     parser = ArgumentParser()
     #add the positional mode and slideID arguments
-    parser.add_argument('mode', choices=['fit','find_octets','check_run'], 
+    parser.add_argument('mode', choices=['warp_fit','find_octets','check_run'], 
                         help='What to do',)
     parser.add_argument('slideIDs', type=split_csv_to_list, 
-                        help='Name of the slide to use')
+                        help='Comma-separated list of names of slides to use')
     #add only a few of the common arguments
     addCommonWarpingArgumentsToParser(parser,fit=False,fitpars=False,job_organization=False)
     #add the positional number of workers argument
@@ -195,11 +196,8 @@ def main(args=None) :
     max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=1000,
                                        help='Max # of iterations to run in the final pattern fits')
     args = parser.parse_args(args=args)
-    #start the logger
-    samp = SampleDef(SlideID=args.slideID,root=args.root_dir)
-    logger = getlogger(module=f'warping_fits_layer_{args.layer}',root=args.root_dir,samp=samp,uselogfiles=True,
-                          imagelog=pathlib.Path(f'{args.workingdir}/global-warping_fits_layer_{args.layer}.log'),reraiseexceptions=False)
-    with logger :
+    #do the main run
+    with RunLogger(args.mode,args.workingdir) as logger :
         #make sure the arguments are alright
         checkArgs(args,logger)
         #set up the three directories with their octet groupings
