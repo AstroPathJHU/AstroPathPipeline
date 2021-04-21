@@ -212,6 +212,9 @@ def checkDirArgs(args) :
     if (not args.skip_flatfielding) :
         if not (pathlib.Path(args.flatfield_file)).is_file() :
             raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
+    #the octet file must exist if it's to be used
+    if args.octet_file is not None and not (pathlib.Path(args.octet_file)).is_file() :
+        raise FileNotFoundError(f'ERROR: octet file {args.octet_file} does not exist!')
     #the octet run directory must exist if it's to be used
     if args.octet_run_dir is not None and not (pathlib.Path(args.octet_run_dir)).is_dir() :
         raise ValueError(f'ERROR: octet_run_dir ({args.octet_run_dir}) does not exist!')
