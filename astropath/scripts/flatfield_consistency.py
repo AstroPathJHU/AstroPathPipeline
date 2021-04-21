@@ -121,6 +121,11 @@ def consistency_check_grid_plot(slide_ids,root_dir,workingdir) :
         ax.set_xticklabels(slide_ids)
         ax.set_yticklabels(slide_ids)
         plt.setp(ax.get_xticklabels(), rotation=45, ha="right",rotation_mode="anchor")
+        for i in range(len(slide_ids)):
+            for j in range(len(slide_ids)):
+                v = dos_std_dev_plot_values[i,j,ln-1]
+                if v!=0.0
+                text = ax.text(j, i, f'{v:.03f}',ha="center", va="center", color="b")
         ax.set_title(f'mean image delta/sigma std. devs. in layer {ln}')
         fig.colorbar(pos,ax=ax)
         fig.tight_layout()
