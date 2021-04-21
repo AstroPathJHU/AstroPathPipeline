@@ -33,30 +33,47 @@ def getListOfJobCommands(args) :
         n_octets_per_job = int(args.octet_selection.split('_')[1])
     except ValueError :
         raise ValueError(f'ERROR: octet_selection argument ({args.octet_selection}) is not valid! Use "first_n" or "random_n".')
-    #find the valid octets in the slides and order them by the # of their center rectangle
+    #find the valid octets
     all_octets = getOctetsFromArguments(args)
     #make sure that the number of octets per job and the number of jobs will work for this slide
     if args.njobs*n_octets_per_job<1 or args.njobs*n_octets_per_job>len(all_octets) :
-        raise ValueError(f"""ERROR: Slide {args.slideID} has {len(all_octets)} total valid octets, but you asked for {args.njobs} jobs 
+        raise ValueError(f"""ERROR: There are {len(all_octets)} total valid octets, but you asked for {args.njobs} jobs 
                              with {n_octets_per_job} octets per job!""")
     #build the list of commands
     job_cmds = []; workingdir_names = []
     argvars = vars(args)
-    cmd_base=f'{RUN_WARPFITTER_PREFIX} fit '
-    for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
-        cmd_base+=f'{argvars[ppan]} '
+    cmd_base=f'{RUN_WARPFITTER_PREFIX} warp_fit '
     for i in range(args.njobs) :
         thisjobdirname = JOB_DIR_STEM+'_octets'
         thisjoboctetstring = ''
+        chosen_slide_id = None
         for j in range(n_octets_per_job) :
-            index = 0 if octet_select_method=='first' else random.randint(0,len(all_octets)-1)
-            this_octet_number = (all_octets.pop(index)).p1_rect_n
+            if chosen_slide_id is not None :
+                octets_to_use = [o for o in all_octets if o.slide_ID==chosen_slide_id]
+            else :
+                octets_to_use=all_octets
+            if len(octets_to_use)<1 :
+                raise RuntimeError(f'ERROR: ran out of octets to use from slide {chosen_slide_id} for job #{i}!')
+            index = 0 if octet_select_method=='first' else random.randint(0,len(octets_to_use)-1)
+            thisoctet = octets_to_use.pop(index)
+            this_octet_number = thisoctet.p1_rect_n
+            this_octet_slide  = thisoctet.slide_ID
+            if chosen_slide_id is None :
+                chosen_slide_id=this_octet_slide
+                thisjobdirname+=f'_{this_octet_slide}'    
             thisjobdirname+=f'_{this_octet_number}'
             thisjoboctetstring+=f'{this_octet_number},'
+        thisjobcmdstring=f'{cmd_base} {chosen_slide_id} '
+        for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
+            thisjobcmdstring+=f'{argvars[ppan]} '
         thisjobworkingdir = pathlib.Path(f'{args.workingdir}/{thisjobdirname}')
-        workingdir_names.append(thisjobworkingdir)
-        octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else thisjobworkingdir
-        thisjobcmdstring = f'{cmd_base} {thisjobworkingdir} --octet_run_dir {octet_run_dir} --octets {thisjoboctetstring[:-1]} '
+        workingdir_names.append(thisjobworkingdir) 
+        if args.octet_file is not None :
+            thisjobcmdstring += f'--octet_file {octet_run_dir} '
+        else :
+            octet_run_dir = args.octet_run_dir if args.octet_run_dir is not None else thisjobworkingdir
+            thisjobcmdstring+=f'--octet_run_dir {octet_run_dir} '
+        thisjobcmdstring+=f'--octets {thisjoboctetstring[:-1]} '    
         for pan in PASSTHROUGH_ARG_NAMES :
             if argvars[pan] is not None :
                 thisjobcmdstring+=f'--{pan} {argvars[pan]} '
@@ -161,11 +178,23 @@ def main(args=None) :
                     overall_max_time = thismaxtime
         #make a warp from these w average parameters and write out its info
         w_avg_warp = CameraWarp(results[0].n,results[0].m,w_cx,w_cy,w_fx,w_fy,w_k1,w_k2,w_k3,w_p1,w_p2)
+        slide_id_string  = ''
+        for sid in set([mds.slideID for mds in metadata_summaries]) :
+            slide_id_string+=f'{sid},'
+        project_string = ''
+        for p in set([mds.project for mds in metadata_summaries]) :
+            project_string+=f'{p},'
+        cohort_string = ''
+        for c in set([mds.cohort for mds in metadata_summaries]) :
+            cohort_string+=f'{c},'
+        microscope_name_string = ''
+        for mn in set([mds.microscope_name for mds in metadata_summaries]) :
+            microscope_name_string+=f'{mn},'
         w_avg_warp_summary = WarpingSummary(
-                metadata_summaries[0].slideID,
-                metadata_summaries[0].project,
-                metadata_summaries[0].cohort,
-                metadata_summaries[0].microscope_name,
+                slide_id_string[:-1],
+                project_string[:-1],
+                cohort_string[:-1],
+                microscope_name_string[:-1],
                 str(overall_min_time),
                 str(overall_max_time),
                 results[0].n,
