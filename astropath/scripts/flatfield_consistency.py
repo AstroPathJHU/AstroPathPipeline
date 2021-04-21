@@ -92,10 +92,12 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
                 text = ax.text(j, i, f'{v:.02f}',ha="center", va="center", color="b")
                 text.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor='white'))
     ax.set_title(plot_title,fontsize=1.1*scaled_font_size)
-    fig.colorbar(pos,ax=ax)
+    cbar = fig.colorbar(pos,ax=ax)
+    cbar.ax.tick_params(labelsize=scaled_font_size)
     fig.tight_layout()
     with cd(workingdir) :
         plt.savefig(figname)
+        plt.close()
         cropAndOverwriteImage(figname)
 
 #helper function to make the consistency check grid plot
