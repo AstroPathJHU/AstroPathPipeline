@@ -93,7 +93,8 @@ def main(args=None) :
         #define and get the command-line arguments
         parser = ArgumentParser()
         #positional arguments
-        parser.add_argument('mode', help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
+        parser.add_argument('mode',    help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
+        parser.add_argument('slideID', help='Name of the slide to use')
         #add the common arguments
         addCommonWarpingArgumentsToParser(parser,job_organization=False)
         #additional group for how to figure out which overlaps will be used

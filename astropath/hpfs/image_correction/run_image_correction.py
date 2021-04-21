@@ -3,7 +3,9 @@ from .corrector import RawfileCorrector
 from .utilities import getWarpFieldPathsFromWarpDef
 from ...baseclasses.sample import SampleDef
 from ...baseclasses.logging import getlogger
-from ...utilities.img_file_io import getImageHWLFromXMLFile
+#add the slideID as the first positional argument
+parser.add_argument('slideID', help='Name of the slide to use')from ...utilities.img_file_io 
+import getImageHWLFromXMLFile
 from ...utilities.misc import addCommonArgumentsToParser
 from argparse import ArgumentParser
 import pathlib
@@ -62,6 +64,8 @@ def main(args=None) :
     if args is None :
         #define and get the command-line arguments
         parser = ArgumentParser()
+        #add the slideID as the first positional argument
+        parser.add_argument('slideID', help='Name of the slide to use')
         #add the common options to the parser
         addCommonArgumentsToParser(parser,et_correction=False)
         #add the arguments for shifting the warp pattern

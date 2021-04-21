@@ -4,7 +4,7 @@ from .config import CONST
 from ...baseclasses.sample import SampleDef
 from ...baseclasses.logging import getlogger
 from ...utilities.tableio import readtable, writetable
-from ...utilities.misc import cd
+from ...utilities.misc import cd, split_csv_to_list
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
 from argparse import ArgumentParser
@@ -15,7 +15,7 @@ INITIAL_PATTERN_DIR_STEM = 'warping_initial_pattern'
 PRINCIPAL_POINT_DIR_STEM = 'warping_center_principal_point'
 FINAL_PATTERN_DIR_STEM   = 'warping_final_pattern'
 RUN_MANY_FITS_CMD_BASE = 'run_many_warp_fits_with_pool'
-POSITIONAL_PASSTHROUGH_ARG_NAMES = ['mode','slideID','rawfile_top_dir','root_dir']
+POSITIONAL_PASSTHROUGH_ARG_NAMES = ['mode','rawfile_top_dir','root_dir']
 PASSTHROUGH_ARG_NAMES = ['exposure_time_offset_file','flatfield_file','layer','workers']
 PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding']
 
@@ -169,8 +169,11 @@ def getFinalPatternFitCmd(wdn,args,k1,k2,k3,cx,cx_err,cy,cy_err) :
 def main(args=None) :
     #define and get the command-line arguments
     parser = ArgumentParser()
-    #add the positional mode argument
-    parser.add_argument('mode', help='What to do', choices=['fit','find_octets','check_run'])
+    #add the positional mode and slideID arguments
+    parser.add_argument('mode', choices=['fit','find_octets','check_run'], 
+                        help='What to do',)
+    parser.add_argument('slideIDs', type=split_csv_to_list, 
+                        help='Name of the slide to use')
     #add only a few of the common arguments
     addCommonWarpingArgumentsToParser(parser,fit=False,fitpars=False,job_organization=False)
     #add the positional number of workers argument

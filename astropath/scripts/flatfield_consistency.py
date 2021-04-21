@@ -17,9 +17,25 @@ class TableEntry(MyDataClass) :
 
 #helper function to check the arguments
 def checkArgs(args) :
+    #root dir must exist
     rdp = pathlib.Path(args.root_dir)
     if not rdp.is_dir() :
         raise ValueError(f'ERROR: root directory {args.root_dir} does not exist!')
+    #meanimages and standard errors must exist for all slides
+    for sid in args.slides :
+        mifp = pathlib.Path(root_dir) / sid1 / 'im3' / 'meanimage' / f'{sid}-mean_image.bin'
+        if not mifp.is_file() :
+            print(f'WARNING: Mean image file does not exist for slide {sid}, will skip this slide!')
+            args.slides.remove(sid)
+            continue
+        semifp = pathlib.Path(root_dir) / sid1 / 'im3' / 'meanimage' / f'{sid1}-std_error_of_mean_image.bin'
+        if not mifp.is_file() :
+            print(f'WARNING: Mean image file does not exist for slide {sid}, will skip this slide!')
+            args.slides.remove(sid)
+            continue
+    if len(args.slides)<1 :
+        print(f'ERROR: no valid slides remain!')
+    #create the working directory if it doesn't already exist
     wdp = pathlib.Path(args.workingdir)
     if not wdp.is_dir() :
         pathlib.Path.mkdir(wdp)
@@ -98,7 +114,7 @@ def consistency_check_grid_plot(slide_ids,root_dir,workingdir) :
     #for each image layer, plot a grid of the delta/sigma comparisons
     for ln in layers : 
         print(f'Saving plot for layer {ln}...')
-        fig,ax = plt.subplots(figsize=(1.5*len(slide_ids),1.5*len(slide_ids)))
+        fig,ax = plt.subplots(figsize=(1.*len(slide_ids),1.*len(slide_ids)))
         pos = ax.imshow(dos_std_dev_plot_values[:,:,ln-1])
         ax.set_xticks(np.arange(len(slide_ids)))
         ax.set_yticks(np.arange(len(slide_ids)))
