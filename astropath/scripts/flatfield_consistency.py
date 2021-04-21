@@ -144,12 +144,24 @@ def consistency_check_grid_plot(slide_ids,root_dir,workingdir,all_or_brightest) 
                                   f'mean image delta/sigma std. devs. in layer {ln}',
                                   f'meanimage_comparison_layer_{ln}.png',
                                   workingdir)
-    #save a plot of the sums over all layers
-    print(f'Saving plot of values summed over {all_or_brightest} layers...')
+    #save a plot of the average over all considered layers
+    print(f'Saving plot of values averaged over {all_or_brightest} layers...')
+    average_values = np.zeros_like(dos_std_dev_plot_values[:,:,0])
+    for i in range(len(slide_ids)) :
+        for j in range(len(slide_ids)) :
+            num = 0, den = 0
+            for li in range(dims[-1]) :
+                if dos_std_dev_plot_values[i,j,li]!=0. :
+                    num+=dos_std_dev_plot_values[i,j,li]
+                    den+=1
+            if den==0 :
+                average_values[i,j]=0.
+            else :
+                average_values[i,j]=num/den
     make_and_save_single_plot(slide_ids,
-                              np.sum(dos_std_dev_plot_values,axis=2),
-                              f'mean image delta/sigma std. devs. in summed over {all_or_brightest} layers',
-                              f'meanimage_comparison_sum_over_{all_or_brightest}_layers.png',
+                              average_values,
+                              f'avg. mean image delta/sigma std. devs. in {all_or_brightest} layers',
+                              f'meanimage_comparison_average_over_{all_or_brightest}_layers.png',
                               workingdir)
 
 #################### MAIN SCRIPT ####################
