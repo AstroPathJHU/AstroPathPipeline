@@ -14,9 +14,6 @@ class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
   For more information, see README.md in this folder.
   """
 
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, checkim3s=True, **kwargs)
-
   @classmethod
   def logmodule(self): return "prepdb"
 
@@ -58,7 +55,7 @@ class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, self.pscale, self.apscale).getXMLpolygonannotations()
+    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, self.pscale, self.apscale, logger=self.logger).getXMLpolygonannotations()
 
   @property
   def annotations(self): return self.getXMLpolygonannotations()[0]
