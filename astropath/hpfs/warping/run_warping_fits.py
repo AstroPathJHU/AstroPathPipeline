@@ -43,6 +43,8 @@ def setUpFitDirectories(args,logger) :
     #find the octets for the slide
     logger.info('Finding octets to use for warp fitting....')
     octets = getOctetsFromArguments(args)
+    with cd(args.workingdir) :
+        writetable(f'{args.workingdir}_all{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',octets)
     #randomize and split the octets into groups for the three fits
     if len(octets) < args.initial_pattern_octets+args.principal_point_octets+args.final_pattern_octets :
         msg = f'ERROR: There are {len(octets)} valid octets for slides {args.slideIDs} but you requested using {args.initial_pattern_octets}, '
