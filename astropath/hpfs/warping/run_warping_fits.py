@@ -213,6 +213,9 @@ def main(args=None) :
     max_iters_group.add_argument('--final_pattern_max_iters',   type=int, default=1000,
                                        help='Max # of iterations to run in the final pattern fits')
     args = parser.parse_args(args=args)
+    #create the working directory so the logger has somewhere to write to
+    if not pathlib.Path(args.workingdir).is_dir() :
+        pathlib.Path.mkdir(pathlib.Path(args.workingdir))
     #do the main run
     with RunLogger(f'{args.mode}_layer_{args.layer}',args.workingdir) as logger :
         #make sure the arguments are alright

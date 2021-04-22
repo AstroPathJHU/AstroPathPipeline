@@ -202,7 +202,7 @@ def checkDirArgs(args) :
     if not (pathlib.Path(args.root_dir)).is_dir() :
         raise ValueError(f'ERROR: root_dir argument ({args.root_dir}) does not point to a valid directory!')
     for sid in ids_to_check :
-        if not (pathlib.Path(args.rootdir)/sid).is_dir() :
+        if not (pathlib.Path(args.root_dir)/sid).is_dir() :
             raise ValueError(f'ERROR: root directory has no subdirectory for slide {sid}!')
     #if images are to be corrected for exposure time, exposure time correction file must exist
     if (not args.skip_exposure_time_correction) :   
@@ -416,7 +416,7 @@ def getOctetsFromArguments(args,logger=None) :
                 all_octets += readSlideOctetsFromOctetRunDir(octet_run_dir,args.rawfile_top_dir,args.root_dir,slideID,args.layer,logger)
             elif args.threshold_file_dir is not None :
                 threshold_file_path=pathlib.Path(f'{args.threshold_file_dir}/{slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
-                all_octets += findSlideOctets(args.rawfile_top_dir,args.root_dir,threshold_file_path,args.req_pixel_frac,args.slideID,
+                all_octets += findSlideOctets(args.rawfile_top_dir,args.root_dir,threshold_file_path,args.req_pixel_frac,slideID,
                                               args.workingdir,args.layer,args.flatfield_file,args.exposure_time_offset_file)
             else :
                 raise WarpingError('ERROR: either an octet_run_dir or a threshold_file_dir must be supplied to define octets to run on!')
