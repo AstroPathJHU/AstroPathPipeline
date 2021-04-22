@@ -1,5 +1,6 @@
-import argparse, collections, itertools, jxmlease, more_itertools, pathlib
+import argparse, collections, itertools, jxmlease, more_itertools, numpy as np, pathlib
 from ..utilities import units
+from ..utilities.misc import dummylogger, printlogger
 from ..utilities.tableio import writetable
 from .csvclasses import Annotation, Region, Vertex
 
@@ -7,10 +8,11 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, xmlfile, pscale=1, apscale=1):
+  def __init__(self, xmlfile, pscale=1, apscale=1, logger=dummylogger):
     self.xmlfile = pathlib.Path(xmlfile)
     self.__pscale = pscale
     self.__apscale = apscale
+    self.__logger = logger
   @property
   def pscale(self): return self.__pscale
   @property
@@ -109,10 +111,18 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           allvertices += regionvertices
 
           isNeg = bool(int(region.get_xml_attr("NegativeROA")))
-          if isNeg: regionvertices.reverse()
-          polygonvertices = []
-          for vertex in regionvertices:
-            polygonvertices.append(vertex)
+
+          perimeter = 0
+          maxlength = 0
+          longestidx = None
+          for nlines, (v1, v2) in enumerate(more_itertools.pairwise(regionvertices+[regionvertices[0]]), start=1):
+            length = np.sum((v1.xvec-v2.xvec)**2)**.5
+            if not length: continue
+            maxlength, longestidx = max((maxlength, longestidx), (length, nlines))
+            perimeter += length
+
+          if (longestidx == 1 or longestidx == len(regionvertices)) and maxlength / (perimeter/nlines) > 30:
+            self.__logger.warningglobal(f"annotation polygon might not be closed: region id {regionid}")
 
           allregions.append(
             Region(
@@ -137,7 +147,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None):
   dbloadfolder = pathlib.Path(dbloadfolder)
   dbloadfolder.mkdir(parents=True, exist_ok=True)
-  annotations, regions, vertices = XMLPolygonAnnotationReader(xmlfile).getXMLpolygonannotations()
+  annotations, regions, vertices = XMLPolygonAnnotationReader(xmlfile, logger=printlogger).getXMLpolygonannotations()
   if csvprefix is None:
     csvprefix = ""
   elif csvprefix.endswith("_"):
@@ -161,5 +171,6 @@ def checkannotations(args=None):
   p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")
   p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
   args = p.parse_args(args=args)
-  XMLPolygonAnnotationReader(args.xmlfile).getXMLpolygonannotations()
+  with units.setup_context("fast"):
+    XMLPolygonAnnotationReader(args.xmlfile, pscale=2.0050728342707047, apscale=0.9971090107303211, logger=printlogger).getXMLpolygonannotations()
   print(f"{args.xmlfile} looks good!")
