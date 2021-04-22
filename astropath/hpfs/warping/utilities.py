@@ -7,7 +7,7 @@ from ...utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExp
 from ...utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 from ...utilities.tableio import readtable, writetable
 from ...utilities.config import CONST as UNIV_CONST
-import numpy as np
+import numpy as np, multiprocessing as mp
 import cv2, pathlib, logging, copy, platform
 
 #set up the logger
@@ -313,7 +313,8 @@ def readSlideOctetsFromOctetRunDir(octet_run_dir,rawfile_top_dir,root_dir,slide_
     return octets
 
 # Helper function to get the list of octets
-def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,working_dir,layer,flatfield_file,et_offset_file,logger=None) :
+#can be run in parallel by passing in a return list
+def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,working_dir,layer,flatfield_file,et_offset_file,logger=None,return_list=None) :
     #start by getting the threshold of this slide layer from the the inputted file
     with open(threshold_file_path) as tfp :
         vals = [int(l.rstrip()) for l in tfp.readlines() if l.rstrip()!='']
@@ -384,7 +385,11 @@ def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,worki
     else :
         warp_logger.info(msg)
     #return the list of octets
-    return octets
+    if return_list is not None :
+        for o in octets:
+            return_list.append(o)
+    else :
+        return octets
 
 #helper function to return the octets for a slide given just the command line arguments
 def getOctetsFromArguments(args,logger=None) :
@@ -405,6 +410,10 @@ def getOctetsFromArguments(args,logger=None) :
             slide_ids_to_check=args.slideIDs
         else :
             raise ValueError('ERROR: neither slideID nor slideIDs are in arguments passed to getOctetsFromArguments!')
+        if args.workers>1 :
+            procs = []
+            manager = mp.Manager()
+            return_list = manager.list()
         for slideID in slide_ids_to_check :
             octet_filepath = pathlib.Path(f'{octet_run_dir}/{slideID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
             if octet_filepath.is_file() :
@@ -416,10 +425,28 @@ def getOctetsFromArguments(args,logger=None) :
                 all_octets += readSlideOctetsFromOctetRunDir(octet_run_dir,args.rawfile_top_dir,args.root_dir,slideID,args.layer,logger)
             elif args.threshold_file_dir is not None :
                 threshold_file_path=pathlib.Path(f'{args.threshold_file_dir}/{slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
-                all_octets += findSlideOctets(args.rawfile_top_dir,args.root_dir,threshold_file_path,args.req_pixel_frac,slideID,
-                                              args.workingdir,args.layer,args.flatfield_file,args.exposure_time_offset_file)
+                if args.workers>1 :
+                    p = mp.Process(target=findSlideOctets,args=(args.rawfile_top_dir,args.root_dir,threshold_file_path,
+                                                                args.req_pixel_frac,slideID,args.workingdir,args.layer,
+                                                                args.flatfield_file,args.exposure_time_offset_file,logger,return_list))
+                    p.start()
+                    procs.append(p)
+                    while len(procs)>=args.workers :
+                        for proc in procs :
+                            if not proc.is_alive() :
+                                proc.join()
+                                procs.remove(proc)
+                                break
+                else :
+                    all_octets += findSlideOctets(args.rawfile_top_dir,args.root_dir,threshold_file_path,args.req_pixel_frac,slideID,
+                                                  args.workingdir,args.layer,args.flatfield_file,args.exposure_time_offset_file,logger)
             else :
                 raise WarpingError('ERROR: either an octet_run_dir or a threshold_file_dir must be supplied to define octets to run on!')
+        if args.workers>1 :
+            for proc in procs :
+                proc.join()
+            for o in return_list :
+                all_octets.append(o)
     msg = f'Found a total set of {len(all_octets)} valid octets'
     if hasattr(args,'slideID') :
         msg+=f' for slide {args.slideID}'

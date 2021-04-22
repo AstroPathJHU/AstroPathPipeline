@@ -5,7 +5,7 @@ from ...utilities.tableio import readtable, writetable
 from ...utilities.runlogger import RunLogger
 from ...utilities.misc import cd, split_csv_to_list
 from ...utilities.config import CONST as UNIV_CONST
-import numpy as np
+import numpy as np, multiprocessing as mp
 from argparse import ArgumentParser
 import pathlib, subprocess, random, shutil
 
@@ -22,8 +22,11 @@ PASSTHROUGH_FLAG_NAMES = ['skip_exposure_time_correction','skip_flatfielding']
 
 #helper function to make sure the command line arguments are alright
 def checkArgs(args,logger) :
-    #check to make sure the directories exist and the 'fixed' argument is okay
+    #check to make sure the directories exist
     checkDirArgs(args)
+    #adjust the number of workers if necessary
+    if args.workers is None :
+        args.workers = min(mp.cpu_count())
     #tell the user what's going to happen based on the mode/octet splitting arguments
     if args.mode=='fit' :
         logger.info(f'Three groups of fits will be performed, using {args.workers} CPUs (max) each, to find the warping pattern for slides {args.slideIDs}:')
