@@ -42,7 +42,7 @@ def checkArgs(args,logger) :
 def setUpFitDirectories(args,logger) :
     #find the octets for the slide
     logger.info('Finding octets to use for warp fitting....')
-    octets = getOctetsFromArguments(args)
+    octets = getOctetsFromArguments(args,logger)
     with cd(args.workingdir) :
         writetable(f'{args.workingdir}_all{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}',octets)
     #randomize and split the octets into groups for the three fits

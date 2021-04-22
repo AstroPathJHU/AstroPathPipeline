@@ -455,7 +455,7 @@ def getOctetsFromArguments(args,logger=None) :
     if logger is not None :
         logger.info(msg)
     else :
-        warp_logger.info()
+        warp_logger.info(msg)
     return all_octets
 
 #helper function to find the limit on a parameter that produces the maximum warp
