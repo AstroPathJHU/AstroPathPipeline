@@ -1055,7 +1055,7 @@ class XMLLayoutReader(SampleBase):
         if self.__checkim3s:
           raise FileNotFoundError(errormessage)
         else:
-          self.logger.warning(errormessage)
+          self.logger.warningglobal(errormessage)
       else:
         rf = rfs.pop()
         maxtimediff = max(maxtimediff, abs(rf.t-r.t))
