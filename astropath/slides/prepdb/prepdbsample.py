@@ -58,7 +58,7 @@ class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, self.pscale, self.apscale).getXMLpolygonannotations()
+    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, self.pscale, self.apscale, logger=self.logger).getXMLpolygonannotations()
 
   @property
   def annotations(self): return self.getXMLpolygonannotations()[0]
