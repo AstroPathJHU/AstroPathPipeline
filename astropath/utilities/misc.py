@@ -256,3 +256,7 @@ def dict_product(dct):
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
 dummylogger.warningglobal = dummylogger.warning
+
+printlogger = logging.getLogger("print")
+printlogger.addHandler(logging.StreamHandler())
+printlogger.warningglobal = printlogger.warning

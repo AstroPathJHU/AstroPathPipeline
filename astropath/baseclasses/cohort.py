@@ -203,6 +203,8 @@ class Cohort(ThingWithRoots):
     argsdict = args.__dict__.copy()
     with units.setup_context(argsdict.pop("units")):
       dryrun = argsdict.pop("dry_run")
+      if dryrun:
+        argsdict["no_log"] = True
       initkwargs = cls.initkwargsfromargumentparser(argsdict)
       runkwargs = cls.runkwargsfromargumentparser(argsdict)
       if argsdict:
