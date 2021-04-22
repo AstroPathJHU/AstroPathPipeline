@@ -265,7 +265,7 @@ def main(args=None) :
             logger.info('Beginning third group of fits for final overall pattern')
             logger.info(f'Command: {cmd_3}')
             subprocess.call(cmd_3)
-            logger.info(f'All fits for {args.slideID} warping pattern completed')
+            logger.info(f'All fits completed')
             #move and rename the final warping field and weighted average result files from the last fit
             old_w_avg_fit_result_fp = (pathlib.Path(f'{args.workingdir}/{dirname_3}/{dirname_3}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}')).absolute()
             fn = f'{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}_weighted_average_{CONST.WARPING_SUMMARY_CSV_FILE_NAME}'
