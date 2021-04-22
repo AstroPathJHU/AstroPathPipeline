@@ -195,7 +195,7 @@ def checkDirArgs(args) :
     else :
         raise ValueError('ERROR: neither slideID nor slideIDs are in arguments!')
     for sid in ids_to_check :
-        rawfile_dir = pathlib.Path(f'{args.rawfile_top_dir}/{sid}')
+        rawfile_dir = pathlib.Path(args.rawfile_top_dir).absolute() / sid
         if not rawfile_dir.is_dir() :
             raise ValueError(f'ERROR: rawfile directory {rawfile_dir} does not exist!')
     #root dir must exist, with subdirectories for each slide
@@ -282,7 +282,7 @@ def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,med_et,offset,overlaps,re
         return return_item
 
 # Helper function to read previously-saved octet definitions from a file
-def readSlideOctetsFromOctetRunDir(octet_run_dir,rawfile_top_dir,root_dir,slide_ID,layer) :
+def readSlideOctetsFromOctetRunDir(octet_run_dir,rawfile_top_dir,root_dir,slide_ID,layer,logger=None) :
     #get the .csv file holding the octet p1s and overlaps ns
     octet_filepath = pathlib.Path(f'{octet_run_dir}/{slide_ID}{CONST.OCTET_OVERLAP_CSV_FILE_NAMESTEM}')
     warp_logger.info(f'Reading overlap octets from file {octet_filepath}...')
@@ -400,7 +400,7 @@ def getOctetsFromArguments(args,logger=None) :
         warp_logger.info(f'Reading overlap octets from file {octet_file_path}...')
         all_octets = readtable(octet_file_path,OverlapOctet)
         if hasattr(args,'slideID') :
-            all_octets = [o for o in all_octets if o.slideID==args.slide_ID]
+            all_octets = [o for o in all_octets if o.slide_ID==args.slideID]
     else :
         octet_run_dir = pathlib.Path(args.octet_run_dir).absolute() if args.octet_run_dir is not None else pathlib.Path(args.workingdir).absolute()
         all_octets = []

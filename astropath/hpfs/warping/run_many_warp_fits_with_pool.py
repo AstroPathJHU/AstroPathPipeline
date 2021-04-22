@@ -67,6 +67,7 @@ def getListOfJobCommands(args) :
         for ppan in POSITIONAL_PASSTHROUGH_ARG_NAMES :
             thisjobcmdstring+=f'{argvars[ppan]} '
         thisjobworkingdir = pathlib.Path(f'{args.workingdir}/{thisjobdirname}')
+        thisjobcmdstring+=f'{thisjobworkingdir} '
         workingdir_names.append(thisjobworkingdir) 
         if args.octet_file is not None :
             thisjobcmdstring += f'--octet_file {args.octet_file} '
@@ -104,11 +105,11 @@ def main(args=None) :
     job_cmds, dirnames = getListOfJobCommands(args)
     #run the first command in check_run mode to make sure that things will work when they do get going
     warp_logger.info('TESTING first command in the list...')
-    test_run_command = f'{RUN_WARPFITTER_PREFIX} check_run {(job_cmds[0])[(len(RUN_WARPFITTER_PREFIX)+len(" fit ")):]}'
+    test_run_command = f'{RUN_WARPFITTER_PREFIX} check_run {(job_cmds[0])[(len(RUN_WARPFITTER_PREFIX)+len(" warp_fit ")):]}'
     print(test_run_command)
     subprocess.call(test_run_command)
     warp_logger.info('TESTING done')
-    if args.mode=='fit' :
+    if args.mode=='warp_fit' :
         #run all the job commands on a pool of workers
         nworkers = min(mp.cpu_count(),args.njobs) if args.workers is None else min(args.workers,args.njobs,mp.cpu_count())
         warp_logger.info(f'WILL RUN {args.njobs} COMMANDS ON A POOL OF {nworkers} WORKERS:')
