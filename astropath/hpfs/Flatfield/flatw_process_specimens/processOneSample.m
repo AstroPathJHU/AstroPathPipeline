@@ -351,8 +351,8 @@ while p == 0 && lc < 10
                 rmdir(p2,'s')
             end
         end
-        command = [codep,'\Im3Tools\doOneSample ',...
-            wd,' ',fwpath,' ',sid,' ',codep];
+        command = [flatwcode,'\Im3Tools\doOneSample ',...
+            wd,' ',fwpath,' ',sid,' ',flatwcode];
         % status = system(command); -->> could be used to track errors
         try
             system(command);

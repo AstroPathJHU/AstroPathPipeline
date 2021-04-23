@@ -7,7 +7,7 @@
 %% take the path for an xmlfile corresponding to a qptiff. 
 %% and produce the number of expected im3's from the annoatations
 %%------------------------------------------------------
-function [expectim3num] = getAnnotations(root,scan,smp)
+function [expectim3num] = getAnnotations(root, scan, smp)
 filepath = [root,smp,...
     '_', scan '_annotations.xml'];
 %

@@ -25,11 +25,17 @@ $VMs = (Get-VM | where {$_.State -eq 'RUNNING'}).Name
 #
 # remove any of the "Taube Lab Workstations" from usable VMs (VMs 2)
 #
-[System.Collections.ArrayList]$TLWS = "VM_inForm_21","VM_inForm_22","VM_inForm_2"
+[System.Collections.ArrayList]$TLWS = "VM_inForm_21","VM_inForm_22"
 FOREACH ($WS in $TLWS){
     $CC = $WS + "$"
    $VMs = $VMs | Select-String $CC -notmatch
 }
+#
+Write-Host "." -ForegroundColor Yellow
+Write-Host "Starting Inform-Task-Distribution" -ForegroundColor Yellow
+write-host " Current Computers for Processing:" -ForegroundColor Yellow
+write-host " " $VMs -ForegroundColor Yellow
+Write-Host "  ." -ForegroundColor Yellow
 #
 # While a VM is part of the code run 
 #
@@ -40,6 +46,8 @@ While($VMs){
     $cVM = $VMs | Select-Object -first 1
     $CC = "$cVM" + "$"
     $VMs = $VMs | Select-String $CC -notmatch
+    #
+    Write-Host "  Checking:" $cVM -ForegroundColor Yellow
     #
     # get the next inForm image set in the queue that needs to be processed
     #
@@ -169,6 +177,10 @@ While($VMs){
     }
 
 }
+#
+Write-Host "  ." -ForegroundColor Yellow
+Write-Host "  All Computers Checked. Waiting 10 minutes..." -ForegroundColor Yellow
+Write-Host "." -ForegroundColor Yellow
 #
 # rerun the script in 10 mins to check if any new inForms need to be processed
 #

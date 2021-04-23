@@ -145,6 +145,9 @@ if exist(fd, 'dir') && exist(wd1,'dir')
         wd1 = [wd,'\',sname,'\inform_data\Phenotyped'];
         GetaSeg(wd1, sname, MergeConfig);
         %
+        wd1 = [wd,'\',sname,'\inform_data'];
+        GetnoSeg(wd1, sname, MergeConfig)
+        %
     end
 end
 %

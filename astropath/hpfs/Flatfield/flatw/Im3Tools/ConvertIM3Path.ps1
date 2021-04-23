@@ -131,6 +131,11 @@ function Im3ConvertPath{
             #return 
         }
         #
+        $dest = "$root1\$sample\im3\flatw"
+        if (!(test-path $dest)) {
+            new-item $dest -itemtype directory | Out-Null
+        }
+        #
         Run-IM3Convert $images "$root1\$sample\im3\flatw" -i -IM3 $IM3 -flatw $flatw
         # 
     } 

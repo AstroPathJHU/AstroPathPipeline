@@ -6,7 +6,7 @@
 ::
 :: Benjamin Green, JHU 01/31/2020
 ::
-:: Usage: TransferAnno F:\Clinical_Specimen F:\flatw M27_1
+:: Usage: TransferAnno "F:\Clinical_Specimen\blah\halo annotations" F:\Clinical_Specimen
 ::-----------------------------------------------------------------
 @ECHO OFF
 SETLOCAL
@@ -15,7 +15,7 @@ IF "|%2|"=="||" ECHO Usage: TransferAnno root dest && ENDLOCAL && EXIT /B;
 ::
 SET root=%1
 SET dest=%2
-SET sdirs=\\bki08\astropath_code\TransferAnno
+SET sdirs=%~dp0
 SET log=%sdirs%\TransferAnno.log
 ::
 ECHO TransferAnno %root% %dest%
