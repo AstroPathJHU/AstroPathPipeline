@@ -228,6 +228,7 @@ class WarpFitter :
             cost = aligncost+lasso_cost
         #otherwise just leave the cost as the error value
         else :
+            lasso_cost = 0.
             cost=aligncost
         #add to the lists to plot
         self.costs.append(cost if cost<1e10 else -0.1)

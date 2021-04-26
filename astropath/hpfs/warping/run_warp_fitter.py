@@ -41,12 +41,9 @@ def checkArgs(args) :
         tfp = pathlib.Path(f'{args.threshold_file_dir}/{args.slideID}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
         if not pathlib.Path.is_file(tfp) :
             raise ValueError(f'ERROR: threshold_file_dir does not contain a threshold file for this slide ({tfp})!')
-    #The user must specify either an octet run dir or a threshold file dir if they're not giving overlaps
-    if args.overlaps==split_csv_to_list_of_ints(DEFAULT_OVERLAPS) and args.threshold_file_dir is None and args.octet_run_dir is None :
-        raise ValueError('ERROR: must specify either an octet_run_dir or a threshold_file_dir!')
-    #if the thresholding file dir and the octet dir are both provided the user needs to disambiguate
-    if args.threshold_file_dir is not None and args.octet_run_dir is not None :
-        raise ValueError('ERROR: cannot specify both an octet_run_dir and a threshold_file_dir!')
+    #The user must specify octets somehow if they're not giving overlaps
+    if args.overlaps==split_csv_to_list_of_ints(DEFAULT_OVERLAPS) and args.octet_file is None and args.threshold_file_dir is None and args.octet_run_dir is None :
+        raise ValueError('ERROR: must specify an octet_file, octet_run_dir, or threshold_file_dir!')
 
 # Helper function to determine the list of overlaps
 def getOverlaps(args) :
@@ -73,7 +70,7 @@ def getOverlaps(args) :
     #otherwise overlaps will have to be set after finding the octets
     else :
         valid_octets = getOctetsFromArguments(args)
-        if args.mode in ('fit', 'check_run', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
+        if args.mode in ('warp_fit', 'check_run', 'cProfile') and args.octets!=split_csv_to_list_of_ints(DEFAULT_OCTETS):
             for octet in valid_octets :
                 if octet.p1_rect_n in args.octets or args.octets==[-1]:
                     warp_logger.info(f'Adding overlaps in octet surrounding rectangle {octet.p1_rect_n}...')
@@ -93,7 +90,8 @@ def main(args=None) :
         #define and get the command-line arguments
         parser = ArgumentParser()
         #positional arguments
-        parser.add_argument('mode', help='Operation to perform', choices=['fit','find_octets','check_run','cProfile'])
+        parser.add_argument('mode',    help='Operation to perform', choices=['warp_fit','find_octets','check_run','cProfile'])
+        parser.add_argument('slideID', help='Name of the slide to use')
         #add the common arguments
         addCommonWarpingArgumentsToParser(parser,job_organization=False)
         #additional group for how to figure out which overlaps will be used
@@ -112,7 +110,7 @@ def main(args=None) :
     overlaps=getOverlaps(args)
     gc.collect()
     #setup and run
-    if args.mode in ('fit', 'check_run', 'cProfile') :
+    if args.mode in ('warp_fit', 'check_run', 'cProfile') :
         #how many overlaps will be used
         warp_logger.info(f'Will run fit using {len(overlaps)} total overlaps.')
         #make the WarpFitter Objects
@@ -125,13 +123,13 @@ def main(args=None) :
                             max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,
                             p1p2_polish_lasso_lambda=args.p1p2_polish_lasso_lambda,polish=True,save_fields=args.save_warp_fields)
         #otherwise actually run it
-        elif args.mode in ('fit', 'cProfile') :
+        elif args.mode in ('warp_fit', 'cProfile') :
             #load the raw files
             warp_logger.info('Loading raw files')
             fitter.loadRawFiles(args.flatfield_file,args.exposure_time_offset_file)
              #fit the model to the data
             warp_logger.info('Running doFit')
-            if args.mode == 'fit' :
+            if args.mode == 'warp_fit' :
                 fitter.doFit(fixed=args.fixed,normalize=args.normalize,init_pars=args.init_pars,init_bounds=args.init_bounds,
                              float_p1p2_in_polish_fit=args.float_p1p2_to_polish,
                              max_radial_warp=args.max_radial_warp,max_tangential_warp=args.max_tangential_warp,

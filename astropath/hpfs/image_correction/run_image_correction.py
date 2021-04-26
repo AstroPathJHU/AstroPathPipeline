@@ -62,6 +62,8 @@ def main(args=None) :
     if args is None :
         #define and get the command-line arguments
         parser = ArgumentParser()
+        #add the slideID as the first positional argument
+        parser.add_argument('slideID', help='Name of the slide to use')
         #add the common options to the parser
         addCommonArgumentsToParser(parser,et_correction=False)
         #add the arguments for shifting the warp pattern
