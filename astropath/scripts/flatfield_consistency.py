@@ -29,9 +29,9 @@ class TableEntry(MyDataClass) :
 #helper function to get a dictionary with keys=root directory paths, values = lists of slide IDs in that root directory
 def get_slide_ids_by_root_dir(root_dirs,skip_slides) :
     slide_ids_by_rootdir = {}
-    for root_dir in args.root_dirs :
+    for root_dir in root_dirs :
         samps = readtable(pathlib.Path(root_dir)/'sampledef.csv',SampleDef)
-        slide_ids_by_rootdir[pathlib.Path(root_dir)] = [s.SlideID for s in samps if ((s.isGood==1) and (s.SlideID not in args.skip_slides))]
+        slide_ids_by_rootdir[pathlib.Path(root_dir)] = [s.SlideID for s in samps if ((s.isGood==1) and (s.SlideID not in skip_slides))]
     return slide_ids_by_rootdir
 
 #helper function to check the arguments
@@ -91,7 +91,6 @@ def get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2) :
         if ln not in layers :
             delta_over_sigma_std_devs.append(0.)
             continue
-        logger.info(f'\tDoing layer {ln}...')
         mil1 = mi1[:,:,ln-1]; semil1 = semi1[:,:,ln-1]
         mil2 = mi2[:,:,ln-1]; semil2 = semi2[:,:,ln-1]
         mil1max=np.max(mil1); mil1min=np.min(mil1)
@@ -137,7 +136,7 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
 #helper function to make the consistency check grid plot
 def consistency_check_grid_plot(root_dirs,skip_slide_ids,workingdir,all_or_brightest) :
     #make the dict of slide IDs by root dir
-    slide_ids_by_rootdir = get_slide_ids_by_root_dir(args.root_dirs,args.skip_slides)
+    slide_ids_by_rootdir = get_slide_ids_by_root_dir(root_dirs,skip_slide_ids)
     #get the dimensions of the images (and make sure they all match)
     dims = None 
     for root_dir,slide_ids in slide_ids_by_rootdir.items() :
@@ -148,9 +147,13 @@ def consistency_check_grid_plot(root_dirs,skip_slide_ids,workingdir,all_or_brigh
             if this_slide_dims!=dims :
                 raise RuntimeError(f'ERROR: dimensions of all slides used must match!')
     #make a list of all the slide IDs, removing any slides with meaningless meanimages/standard errors
+    logger.info('Finding slides to use...')
     slide_ids = []
     for root_dir,sids in slide_ids_by_rootdir.items() :
-        for sid in sids :
+        si = 0
+        while si in range(len(sids)) :
+            sid=sids[si]
+            logger.info(f'\tChecking {sid}...')
             mi   = getRawAsHWL((root_dir / sid / 'im3' / 'meanimage' / f'{sid}-mean_image.bin'),*(dims),np.float64)
             semi = getRawAsHWL((pathlib.Path(root_dir) / sid / 'im3' / 'meanimage' / f'{sid}-std_error_of_mean_image.bin'),*(dims),np.float64)
             if np.min(mi)==np.max(mi) or np.max(semi)==0. :
@@ -158,6 +161,7 @@ def consistency_check_grid_plot(root_dirs,skip_slide_ids,workingdir,all_or_brigh
                 slide_ids_by_rootdir[root_dir].remove(sid)
             else :
                 slide_ids.append(sid)
+                si+=1
     #start up an array to hold all of the necessary values and a list of table entries
     if all_or_brightest=='all' :
         layers = list(range(1,dims[-1]+1))
