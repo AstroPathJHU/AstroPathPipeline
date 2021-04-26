@@ -32,6 +32,7 @@ args = Namespace(
         init_bounds='cx=529.3:663.7,cy=551.0:651.4',
         float_p1p2_to_polish=True,
         p1p2_polish_lasso_lambda=1.0,
+        octet_file=None,
         octet_run_dir=None,
         threshold_file_dir=None,
         req_pixel_frac=0.85,
