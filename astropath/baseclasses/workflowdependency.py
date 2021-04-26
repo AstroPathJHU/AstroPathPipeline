@@ -152,6 +152,7 @@ class SampleRunStatus:
     started = False
     ended = False
     previousrun = None
+    error = None
     with contextlib.ExitStack() as stack:
       try:
         f = stack.enter_context(open(samplelog))
