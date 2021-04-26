@@ -1,22 +1,37 @@
-import argparse, collections, itertools, jxmlease, more_itertools, numpy as np, pathlib
+import argparse, collections, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, more_itertools, numpy as np, pathlib
 from ..utilities import units
-from ..utilities.misc import dummylogger, printlogger
+from ..utilities.misc import dummylogger, floattoint, printlogger
 from ..utilities.tableio import writetable
 from .csvclasses import Annotation, Region, Vertex
+from .polygon import SimplePolygon
+from .qptiff import QPTiff
 
 class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, xmlfile, pscale=1, apscale=1, logger=dummylogger):
+  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, badpolygonimagefolder=None, badpolygonimagefiletype="pdf"):
     self.xmlfile = pathlib.Path(xmlfile)
+    self.__logger = logger
+    if badpolygonimagefolder is not None: badpolygonimagefolder = pathlib.Path(badpolygonimagefolder)
+    self.__badpolygonimagefolder = badpolygonimagefolder
+    if pscale is None: pscale = 1
+    if apscale is None:
+      if self.__badpolygonimagefolder is not None:
+        with QPTiff(self.qptifffilename) as fqptiff:
+          apscale = fqptiff.apscale
+      else:
+        apscale = 1
+    self.__badpolygonimagefiletype = badpolygonimagefiletype
     self.__pscale = pscale
     self.__apscale = apscale
-    self.__logger = logger
   @property
   def pscale(self): return self.__pscale
   @property
   def apscale(self): return self.__apscale
+  @property
+  def qptifffilename(self):
+    return self.xmlfile.with_suffix("").with_suffix("").with_suffix(".qptiff")
 
   def getXMLpolygonannotations(self):
     annotations = []
@@ -123,6 +138,36 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
           if (longestidx == 1 or longestidx == len(regionvertices)) and maxlength / (perimeter/nlines) > 30:
             self.__logger.warningglobal(f"annotation polygon might not be closed: region id {regionid}")
+            if self.__badpolygonimagefolder is not None:
+              poly = SimplePolygon(vertices=regionvertices)
+              with QPTiff(self.qptifffilename) as fqptiff:
+                zoomlevel = fqptiff.zoomlevels[0]
+                qptiff = zoomlevel[0].asarray()
+                pixel = self.oneappixel
+                xymin = np.min(poly.vertexarray, axis=0).astype(units.unitdtype)
+                xymax = np.max(poly.vertexarray, axis=0).astype(units.unitdtype)
+                xybuffer = (xymax - xymin) / 20
+                xymin -= xybuffer
+                xymax += xybuffer
+                (xmin, ymin), (xmax, ymax) = xymin, xymax
+                fig, ax = plt.subplots(1, 1)
+                plt.imshow(
+                  qptiff[
+                    floattoint(float(ymin//pixel)):floattoint(float(ymax//pixel)),
+                    floattoint(float(xmin//pixel)):floattoint(float(xmax//pixel)),
+                  ],
+                  extent=[float(xmin//pixel), float(xmax//pixel), float(ymax//pixel), float(ymin//pixel)],
+                )
+                ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=self.apscale))
+
+                openvertex1 = poly.vertexarray[0]
+                openvertex2 = poly.vertexarray[{1: 1, len(regionvertices): -1}[longestidx]]
+                boxxmin, boxymin = np.min([openvertex1, openvertex2], axis=0) - xybuffer/2
+                boxxmax, boxymax = np.max([openvertex1, openvertex2], axis=0) + xybuffer/2
+                ax.add_patch(matplotlib.patches.Rectangle((boxxmin//pixel, boxymin//pixel), (boxxmax-boxxmin)//pixel, (boxymax-boxymin)//pixel, color="violet", fill=False))
+
+                fig.savefig(self.__badpolygonimagefolder/self.xmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__badpolygonimagefiletype}").name)
+                plt.close(fig)
 
           allregions.append(
             Region(
@@ -170,7 +215,11 @@ def main(args=None):
 def checkannotations(args=None):
   p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")
   p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
+  g = p.add_mutually_exclusive_group()
+  g.add_argument("--save-bad-polygon-images", action="store_const", dest="badpolygonimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
+  g.add_argument("--save-bad-polygon-images-folder", dest="badpolygonimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
+  p.add_argument("--save-bad-polygon-images-filetype", default="pdf", choices=("pdf", "png"), help="image format to save debug images")
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
-    XMLPolygonAnnotationReader(args.xmlfile, pscale=2.0050728342707047, apscale=0.9971090107303211, logger=printlogger).getXMLpolygonannotations()
+    XMLPolygonAnnotationReader(args.xmlfile, badpolygonimagefolder=args.badpolygonimagefolder, badpolygonimagefiletype=args.save_bad_polygon_images_filetype, logger=printlogger).getXMLpolygonannotations()
   print(f"{args.xmlfile} looks good!")
