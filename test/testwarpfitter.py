@@ -13,7 +13,7 @@ folder = pathlib.Path(__file__).parent
 working_dir = folder/'warpfitter_test_for_jenkins'
 
 args = Namespace(
-        mode='fit',
+        mode='warp_fit',
         slideID='M21_1',
         rawfile_top_dir=str(folder/'data'/'raw'),
         root_dir=str(folder/'data'),
