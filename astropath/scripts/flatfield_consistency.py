@@ -144,7 +144,7 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
         cropAndOverwriteImage(figname)
 
 #helper function to make the consistency check grid plot
-def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,all_or_brightest) :
+def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,all_or_brightest,save_all_layers) :
     #make the dict of slide IDs by root dir
     if input_file is not None :
         slide_ids_by_rootdir = {}
@@ -154,7 +154,8 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,a
                 continue
             if te.root_dir_1 not in slide_ids_by_rootdir.keys() :
                 slide_ids_by_rootdir[te.root_dir_1] = []
-            slide_ids_by_rootdir[te.root_dir_1].append(te.slide_ID_1)
+            if te.slide_ID_1 not in slide_ids_by_rootdir[te.root_dir_1] :
+                slide_ids_by_rootdir[te.root_dir_1].append(te.slide_ID_1)
     else :
         slide_ids_by_rootdir = get_slide_ids_by_root_dir(root_dirs,skip_slide_ids)
     #get the dimensions of the images (and make sure they all match)
@@ -196,11 +197,14 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,a
     if input_file is not None :
         for is1,sid1 in enumerate(slide_ids) :
             for is2,sid2 in enumerate(slide_ids) :
+                if sid1==sid2 :
+                    continue
+                logger.info(f'Doing {sid1} vs. {sid2}...')
                 for te in table_entries :
                     if te.slide_ID_1==sid1 and te.slide_ID_2==sid2 :
                         dos_std_dev_plot_values[is1,is2,te.layer_n-1] = te.delta_over_sigma_std_dev
                     elif te.slide_ID_1==sid2 and te.slide_ID_2==sid1 :
-                        dos_std_dev_plot_values[is2,is1,te.layer_n-1] = te.delta_over_sigma_std_dev
+                        dos_std_dev_plot_values[is1,is2,te.layer_n-1] = te.delta_over_sigma_std_dev
     else :
         #for each possible pair of slide ids, find the standard deviation in each image layer of the delta/sigma
         output_table_entries = []
@@ -233,13 +237,14 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,a
         with cd(workingdir) :
             writetable('meanimage_comparison_table.csv',output_table_entries)
     #for each image layer, plot a grid of the delta/sigma comparisons
-    for ln in layers : 
-        logger.info(f'Saving plot for layer {ln}...')
-        make_and_save_single_plot(slide_ids,
-                                  dos_std_dev_plot_values[:,:,ln-1],
-                                  f'mean image delta/sigma std. devs. in layer {ln}',
-                                  f'meanimage_comparison_layer_{ln}.png',
-                                  workingdir)
+    if save_all_layers :
+        for ln in layers : 
+            logger.info(f'Saving plot for layer {ln}...')
+            make_and_save_single_plot(slide_ids,
+                                      dos_std_dev_plot_values[:,:,ln-1],
+                                      f'mean image delta/sigma std. devs. in layer {ln}',
+                                      f'meanimage_comparison_layer_{ln}.png',
+                                      workingdir)
     #save a plot of the average over all considered layers
     logger.info(f'Saving plot of values averaged over {all_or_brightest} layers...')
     average_values = np.zeros_like(dos_std_dev_plot_values[:,:,0])
@@ -277,11 +282,13 @@ def main(args=None) :
                         help='Path to the working directory where results will be saved')
     parser.add_argument('--all_or_brightest', choices=['all','brightest'], default='all',
                         help='Whether to make plots and sum values over all image layers or just the brightest')
+    parser.add_argument('--save_all_layers', action='store_true',
+                        help='Add this flag to save the plots of the individual layers, not just the average over all of them')
     args = parser.parse_args(args=args)
     #check the arguments
     checkArgs(args)
     #run the main workhorse function
-    consistency_check_grid_plot(args.input_file,args.root_dirs,args.skip_slides,args.workingdir,args.all_or_brightest)
+    consistency_check_grid_plot(args.input_file,args.root_dirs,args.skip_slides,args.workingdir,args.all_or_brightest,args.save_all_layers)
     logger.info('Done : )')
 
 if __name__=='__main__' :
