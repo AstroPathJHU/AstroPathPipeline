@@ -54,6 +54,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
         raise ValueError(f"Unknown annotation {typ} {nameornumber}")
       return result
 
+    errors = []
+
     with open(self.xmlfile, "rb") as f:
       count = more_itertools.peekable(itertools.count(1))
       for layer, (path, _, node) in zip(count, jxmlease.parse(f, generator="/Annotations/Annotation")):
@@ -67,28 +69,33 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
         if name == "empty":
           count.prepend(layer)
           continue
-        targetannotation = allowedannotation(name)
+        try:
+          targetannotation = allowedannotation(name)
+        except ValueError as e:
+          errors.append(str(e))
+          continue
         targetlayer = targetannotation.layer
         targetcolor = targetannotation.color
         if layer > targetlayer:
-          raise ValueError(f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in allowedannotations)}, but {name} is after {annotations[-1].name}")
-        if color != targetcolor:
-          raise ValueError(f"Annotation {name} has the wrong color {color}, expected {targetcolor}")
-        while layer < targetlayer:
-          emptycolor = allowedannotation(layer).color
-          annotations.append(
-            Annotation(
-              color=emptycolor,
-              visible=False,
-              name="empty",
-              sampleid=0,
-              layer=layer,
-              poly="poly",
-              pscale=self.pscale,
-              apscale=self.apscale,
+          errors.append(f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in allowedannotations)}, but {name} is after {annotations[-1].name}")
+        else:
+          while layer < targetlayer:
+            emptycolor = allowedannotation(layer).color
+            annotations.append(
+              Annotation(
+                color=emptycolor,
+                visible=False,
+                name="empty",
+                sampleid=0,
+                layer=layer,
+                poly="poly",
+                pscale=self.pscale,
+                apscale=self.apscale,
+              )
             )
-          )
-          layer = next(count)
+            layer = next(count)
+        if color != targetcolor:
+          errors.append(f"Annotation {name} has the wrong color {color}, expected {targetcolor}")
         annotations.append(
           Annotation(
             color=color,
@@ -185,7 +192,10 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           )
 
     if not any(a.name == "good tissue" for a in annotations):
-      raise ValueError(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations if _.name != 'empty')})")
+      errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations if _.name != 'empty')})")
+
+    if errors:
+      raise ValueError("\n".join(errors))
 
     return annotations, allregions, allvertices
 
