@@ -178,7 +178,7 @@ def main(args=None) :
                 if thismaxtime>overall_max_time :
                     overall_max_time = thismaxtime
         #make a warp from these w average parameters and write out its info
-        w_avg_warp = CameraWarp(results[0].n,results[0].m,w_cx,w_cy,w_fx,w_fy,w_k1,w_k2,w_k3,w_p1,w_p2)
+        w_avg_warp = CameraWarp(n=results[0].n,m=results[0].m,cx=w_cx,cy=w_cy,fx=w_fx,fy=w_fy,k1=w_k1,k2=w_k2,k3=w_k3,p1=w_p1,p2=w_p2)
         slide_id_string  = ''
         for sid in set([mds.slideID for mds in metadata_summaries]) :
             slide_id_string+=f'{sid},'
