@@ -1116,7 +1116,7 @@ class XMLLayoutReader(SampleBase):
     self.fixduplicaterectangles(rectangles)
     rectanglefiles = self.getdir()
     maxtimediff = datetime.timedelta(0)
-    for r in rectangles:
+    for r in rectangles[:]:
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
@@ -1126,6 +1126,7 @@ class XMLLayoutReader(SampleBase):
           raise FileNotFoundError(errormessage)
         else:
           self.logger.warningglobal(errormessage)
+        rectangles.remove(r)
       else:
         rf = rfs.pop()
         maxtimediff = max(maxtimediff, abs(rf.t-r.t))
