@@ -43,10 +43,10 @@ where:
 - `[batch_ID]` is the integer identifier of which batch the group of slides represents (i.e. "14"). Currently only IDs between 0 and 99 are supported, since the IDs are written out as zero-padded two-digit numbers in several output contexts.
 
 Running the above command will produce:
-1. **a flatfield correction model .bin file** called `flatfield_BatchID_[batch_ID].bin` in `[root_directory]\Flatfield`
+1. **a flatfield correction model .bin file** called `flatfield_BatchID_[batch_ID].bin` in `[root_directory]\flatfield`
 2. **a main log file** called "`batch_flatfield.log`" in `[root_directory]\logfiles` with just a single line showing that batch_flatfield was run 
 3. **more detailed sample log files** called "`[slide_ID]-batch_flatfield.log`" in `[root_directory]\[slide_ID]\logfiles` for each `[slide_ID]` in `[comma_separated_list_of_slide_IDs]`
-4. **a `flatfield_BatchID_[batch_ID]` subdirectory** in `[root_directory]\Flatfield` that contains the following:
+4. **a `flatfield_BatchID_[batch_ID]` subdirectory** in `[root_directory]\flatfield` that contains the following:
     - **a summary PDF file** called `flatfield_BatchID_[batch_ID]_summary.pdf` that shows the layers of the flatfield image, the relative spread in the correction factors in each layer, how many images were stacked from all slides in each layer, and the layers of the combined mask stack all in one quick little document for reference
     - **a very detailed "global" log file** called "`global-batch_flatfield.log`"
     - **field log** and **metadata summary** files like in the above run mode, combined for every slide in the batch
