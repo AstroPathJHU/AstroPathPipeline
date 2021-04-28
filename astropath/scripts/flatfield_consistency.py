@@ -160,7 +160,7 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
     scaled_label_font_size = 10.*(1.+math.log10(len(slide_ids)/5.)) if len(slide_ids)>5 else 10.
     scaled_title_font_size = 10.*(1.+math.log2(len(slide_ids)/6.)) if len(slide_ids)>5 else 10.
     #add the grid to the plot
-    pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1],cmap='plasma')
+    pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1])
     #add other patches
     patches = []
     #black out any zero values in the plot
@@ -174,8 +174,8 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
             if sid not in slide_ids :
                 raise RuntimeError(f'ERROR: requested to add a separator after slide {sid} but this slide will not be on the plot!')
             sindex = slide_ids.index(sid)
-            patches.append(Rectangle((sindex+0.41,-0.5),0.18,len(slide_ids)+1,edgecolor='r',facecolor='r',fill=True))
-            patches.append(Rectangle((-0.5,sindex+0.41),len(slide_ids)+1,0.18,edgecolor='r',facecolor='r',fill=True))
+            patches.append(Rectangle((sindex+0.375,-0.5),0.25,len(slide_ids)+1,edgecolor='r',facecolor='r',fill=True))
+            patches.append(Rectangle((-0.5,sindex+0.375),len(slide_ids)+1,0.25,edgecolor='r',facecolor='r',fill=True))
     for patch in patches :
         ax.add_patch(patch)
     #adjust some stuff on the plots
