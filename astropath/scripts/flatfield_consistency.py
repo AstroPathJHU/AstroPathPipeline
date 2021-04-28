@@ -3,10 +3,11 @@ from astropath.baseclasses.sample import SampleDef
 from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL
 from astropath.utilities.dataclasses import MyDataClass
 from astropath.utilities.tableio import readtable,writetable
-from astropath.utilities.misc import cd, split_csv_to_list, cropAndOverwriteImage
+from astropath.utilities.misc import cd, split_csv_to_list, split_csv_to_list_of_floats, cropAndOverwriteImage
 from astropath.utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import pathlib, math, logging
 
 #logger
@@ -75,6 +76,9 @@ def checkArgs(args) :
                 args.root_dirs.remove(root_dir)
         if len(args.root_dirs)<1 :
             raise RuntimeError('ERROR: no valid slides to run on!')
+    #bounds have to be coherent
+    if len(args.bounds)!=2 or args.bounds[0]>=args.bounds[1] :
+        raise ValueError(f'ERROR: bounds argument was given as {args.bounds} but expected lower_bound,upper_bound!')
     #create the working directory if it doesn't already exist
     wdp = pathlib.Path(args.workingdir)
     if not wdp.is_dir() :
@@ -119,10 +123,17 @@ def get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2) :
     return delta_over_sigma_std_devs
 
 #helper function to make a single comparison plot of some type
-def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workingdir) :
+def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workingdir,bounds) :
     fig,ax = plt.subplots(figsize=(1.*len(slide_ids),1.*len(slide_ids)))
     scaled_font_size = 10.*(1.+math.log10(len(slide_ids)/5.)) if len(slide_ids)>5 else 10.
-    pos = ax.imshow(values_to_plot)
+    pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1])
+    patches = []
+    for iy in range(values_to_plot.shape[0]) :
+        for ix in range(values_to_plot.shape[1]) :
+            if values_to_plot[iy,ix]==0. :
+                patches.append(Rectangle((ix,iy),1,1,edgecolor='b',facecolor='b'))
+    for patch in patches :
+        ax.add_patch(patch)
     ax.set_xticks(np.arange(len(slide_ids)))
     ax.set_yticks(np.arange(len(slide_ids)))
     ax.set_xticklabels(slide_ids,fontsize=scaled_font_size)
@@ -144,7 +155,7 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
         cropAndOverwriteImage(figname)
 
 #helper function to make the consistency check grid plot
-def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,all_or_brightest,save_all_layers) :
+def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,bounds,all_or_brightest,save_all_layers) :
     #make the dict of slide IDs by root dir
     if input_file is not None :
         slide_ids_by_rootdir = {}
@@ -244,7 +255,8 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,a
                                       dos_std_dev_plot_values[:,:,ln-1],
                                       f'mean image delta/sigma std. devs. in layer {ln}',
                                       f'meanimage_comparison_layer_{ln}.png',
-                                      workingdir)
+                                      workingdir,
+                                      bounds)
     #save a plot of the average over all considered layers
     logger.info(f'Saving plot of values averaged over {all_or_brightest} layers...')
     average_values = np.zeros_like(dos_std_dev_plot_values[:,:,0])
@@ -263,7 +275,8 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,a
                               average_values,
                               f'avg. mean image delta/sigma std. devs. in {all_or_brightest} layers',
                               f'meanimage_comparison_average_over_{all_or_brightest}_layers.png',
-                              workingdir)
+                              workingdir,
+                              bounds)
 
 #################### MAIN SCRIPT ####################
 
@@ -280,6 +293,8 @@ def main(args=None) :
                         help='Comma-separated list of slides to skip')
     parser.add_argument('--workingdir', 
                         help='Path to the working directory where results will be saved')
+    parser.add_argument('--bounds', type=split_csv_to_list_of_floats, default='0.9,1.2',
+                        help='Hard limits to the imshow scale for the plot (given as lower_bound,upper_bound')
     parser.add_argument('--all_or_brightest', choices=['all','brightest'], default='all',
                         help='Whether to make plots and sum values over all image layers or just the brightest')
     parser.add_argument('--save_all_layers', action='store_true',
@@ -288,7 +303,7 @@ def main(args=None) :
     #check the arguments
     checkArgs(args)
     #run the main workhorse function
-    consistency_check_grid_plot(args.input_file,args.root_dirs,args.skip_slides,args.workingdir,args.all_or_brightest,args.save_all_layers)
+    consistency_check_grid_plot(args.input_file,args.root_dirs,args.skip_slides,args.workingdir,args.bounds,args.all_or_brightest,args.save_all_layers)
     logger.info('Done : )')
 
 if __name__=='__main__' :
