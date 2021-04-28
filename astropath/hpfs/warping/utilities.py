@@ -105,7 +105,7 @@ class FieldLog(MyDataClass) :
     file   : str
     rect_n : int
 
-#little utilitiy class for logging x and y principal point shifts
+#little utility class for logging x and y principal point shifts
 class WarpShift(MyDataClass) :
     layer_n  : int
     cx_shift : float
