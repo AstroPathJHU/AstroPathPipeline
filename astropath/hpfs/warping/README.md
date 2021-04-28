@@ -18,8 +18,32 @@ where:
 -`[layer_number]` is the image layer to find the patterns for (indexed starting at 1)
 
 Under these conditions, the following things will happen:
-1. The set of valid overlap octets to use will be found for each slide in `[slide_IDs]`. Octets are "valid" if, after correction for exposure time and flatfielding, every overlap shows at least 85% tissue (as opposed to background) determined by a simple thresholding at the value in the corresponding `[slideID]_background_thresholds.txt` file.
+1. The set of valid overlap octets to use will be found for each slide in `[slide_IDs]`. Octets are considered valid if every overlap in the octet shows at least 85% tissue as determined by a simple thresholding at the value in the corresponding `[slideID]_background_thresholds.txt` file (after correction for exposure time and flatfielding).
 1. The full set of all valid octets will be randomly divided into three subsets of 50, 50, and 100 octets each
 1. 50 independent fits to the first subset of octets will be performed to find an initial warping model to use as a starting point for subsequent fits.
-1. 50 more independent fits to the second subset of octets will be performed with the radial distortion parameters fixed to the average of the previous set of fit results, weighted by their fractional reduction in alignment cost.
- 
+1. 50 additional independent fits to the second subset of octets will be performed with the radial distortion parameters fixed to the weighted average of the previous set of fit results.
+1. 100 additional independent fits to the third subset of octets will be performed with all parameters floating, but with the center principal point location constrained to within 2.5 sigma of the weighted average of the previous set of fit results. The final model is the weighted average of this last set of fit results.
+This multistep procedure is used to prevent tunneling into local minima around inaccurate center point locations, without imposing any external constraints on where the actual center point location is. 
+
+More concretely, running the above command will produce a directory at `[working_directory]` containing:
+1. **a weighted average fit result file** called `[working_directory_name]_weighted_average_warp.csv`. This file contains the weighted average warping parameters and metadata details about the slides used. It is stored as a [`WarpingSummary` object](./utilities.py#L114-L142).
+1. **weighted average warp field .bin files** called `dx_warp_field_[working_directory_name].bin` and `dy_warp_field_[working_directory_name].bin`. These are the main output of the entire routine, and they can be used to apply image corrections for warping in subsequent processing steps.
+1. **subdirectories for each of the three fit groups** called `warping_initial_pattern_50_octets`, `warping_center_principal_point_50_octets`, and `warping_final_pattern_100_octets`. Each of these subdirectories contains:
+    -**a list of all the individual fit results** called `all_results_[subdirectory_name].csv` stored as [`WarpFitResult` objects](./utilities.py#L75-L100).
+    -**a list of all the HPFs used** in the fits called `field_log_[subdirectory_name].csv` stored as [`FieldLog` objects](./utilities.py#L102-L106).
+    -**a list of the octets used** in the fits called `[subdirectory_name]_overlap_octets.csv` stored as [`OverlapOctet` objects](./utilities.py#L38-L73).
+    -**a visualization of the weighted average warping model** at this step called `warp_fields_[subdirectory_name].png`
+    -**a subdirectory of plots** and text files called `batch_plots` containing several visualizations and details of the individual results in the group (plots of radial warping distortion parameters, fractional cost reductions, center principal point locations, etc.). These plots can all be remade if necessary using the `all_results_*.csv` file.
+    -**subdirectories for each individual fit** in the group called `warping_batch_octets_[slide_ID]_[octet_center_rectangle_n]` which in turn contain:
+        1. a field log file that is a portion of the consolidated `field_log_*.csv` file
+        1. a metadata summary file called `metadata_summary_[dirname].csv` listing information about the HPFs used as [`MetadataSummary` objects](../../utilities/misc.py#L115-L122).
+        1. several more visualizations of the individual fit result, the fit progression, and comparisons of the warped/unwarped raw/aligned octet overlays
+    -For the "`initial_pattern`" and "`center_principal_point`" subdirectories, **weighted average fit result and warp field .bin** files like those detailed above, just at these intermediate steps.
+1. **a .txt file of the commands run** for each of the three sets of fits, called `fit_group_commands.txt` (helpful in restarting a stalled run)
+1. **lists of all valid octets found** for every slide, called `[slide_ID]_overlap_octets.csv`, stored as [`OverlapOctet` objects](./utilities.py#L38-L73).
+1. **a main log file** in `[root_directory]/logfiles` called `warp_fit_layer_[layer_n].log` showing that the code was run
+1. **more detailed sample log files** for every slide used in `[root_directory]/[slide_ID]/logfiles` called `[slide_ID]-warp_fit_layer_[layer_n].log` 
+1. **an even more detailed "global" log file** called `global-warp_fit_layer_[layer_n].log` 
+
+The background fraction allowed in valid overlaps, the numbers of octets used in each stage of the fitting procedure, and the maximum number of minimization iterations allowed at each stage of the fitting procedure are all user-configurable, but the default values have been found to produce consistent results. The user can also use command line options to specify which distortion parameters are fixed or floating in the fits, but the chosen model with fixed focal lengths and no tangential warping has again been found to produce consistent results.
+

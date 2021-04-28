@@ -16,8 +16,6 @@ where:
 - `[n_threads]` is the integer number of threads to use in the portions of the code that are parallelized, namely, reading the raw HPF images to get their histograms for finding background thresholds or to stack them, and finding the image masks for each HPF. Neither of those processes is particularly CPU-intensive (and determining the image masks explicitly occurs on the GPU, also) so many threads can be used at once. I have run this code with up to 64 threads on BKI06 without taxing CPU or memory hardly at all; you may want to find a number that works well to balance the overhead of copying the data back from the subprocesses. The default is 10.
 
 Running the above command will produce:
-1. **a main log file** called "`slide_mean_image.log`" in `[root_directory]\logfiles` with just a single line showing that slide_mean_image was run
-1. **a more detailed sample log file** called "`[slideID]-slide_mean_image.log`" in `[root_directory]\[slide_ID]\logfiles`
 1. **a "`meanimage`" directory** in `[root_directory]\[slide_ID]\im3` that contains the following:
     - **a `[slideID]-mean_image.bin` file** that is the mean of the counts/ms in all of the selected HPFs' tissue regions, stored as 64-bit floats
     - **a `[slideID]-std_error_of_mean_image.bin` file** that is the standard error on the mean counts/ms in all of the selected HPFs' tissue regions, stored as 64-bit floats
@@ -32,6 +30,8 @@ Running the above command will produce:
         1. multilayer "`[image_key]_full_mask.bin`" mask files for any stacked images that had blur or saturation flagged in them. The first layer of these files contains a mask where 0=background, 1=good tissue, and anything >1 is flagged due to blur. The other images layers contain the same mask as in the first layer, except potentially with additional regions >1 showing where saturation is flagged in each layer group. The blur masks are the same for every image layer, but saturation is flagged independently for each layer group.
         1. a "`labelled_mask_regions.csv`" file listing every region masked due to blur or saturation as ["LabelledMaskRegion" objects](https://github.com/AstroPathJHU/AstroPathPipeline/blob/flagging_HPF_regions/astropath/flatfield/utilities.py#L38-L44). This file can be used to understand the contents of the `*_full_mask.bin` files: any region with any index >1 in a `*_full_mask.bin` file has a corresponding line in the `labelled_mask_regions.csv` file stating which layers it should be flagged in, the size of the region, why it was flagged, etc.
         1. a useful plot called `"[slideID]_flagged_HPF_locations.png"` showing which HPFs within the slide were flagged for blur, saturation, or both, and where those HPFs are located spatially within the slide.
+1. **a main log file** called "`slide_mean_image.log`" in `[root_directory]\logfiles` with just a single line showing that slide_mean_image was run
+1. **a more detailed sample log file** called "`[slideID]-slide_mean_image.log`" in `[root_directory]\[slide_ID]\logfiles`
 
 The number of threads is currently the ONLY option the user can change, in order to ensure consistency between mean images created for different slides.
 
