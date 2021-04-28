@@ -62,7 +62,7 @@ def sort_slide_ids(slide_ids,slide_ids_by_rootdir,sort_by) :
                     for sd in sampledefs :
                         if sd.Project==p and sd.Cohort==c and sd.BatchID==b :
                             ordered_sids.append(sd.SlideID)
-        return ordered_sids, lines_after
+        return ordered_sids, lines_after[:-1]
     raise RuntimeError(f'ERROR: sort option {sort_by} is not recognized!')
 
 #helper function to check the arguments
@@ -160,7 +160,7 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
     scaled_label_font_size = 10.*(1.+math.log10(len(slide_ids)/5.)) if len(slide_ids)>5 else 10.
     scaled_title_font_size = 10.*(1.+math.log2(len(slide_ids)/6.)) if len(slide_ids)>5 else 10.
     #add the grid to the plot
-    pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1])
+    pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1],cmap='plasma')
     #add other patches
     patches = []
     #black out any zero values in the plot
@@ -174,8 +174,8 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
             if sid not in slide_ids :
                 raise RuntimeError(f'ERROR: requested to add a separator after slide {sid} but this slide will not be on the plot!')
             sindex = slide_ids.index(sid)
-            patches.append(Rectangle((sindex+0.425,-0.5),0.15,len(slide_ids)+1,edgecolor='r',facecolor='r',fill=True))
-            patches.append(Rectangle((-0.5,sindex+0.425),len(slide_ids)+1,0.15,edgecolor='r',facecolor='r',fill=True))
+            patches.append(Rectangle((sindex+0.41,-0.5),0.18,len(slide_ids)+1,edgecolor='r',facecolor='r',fill=True))
+            patches.append(Rectangle((-0.5,sindex+0.41),len(slide_ids)+1,0.18,edgecolor='r',facecolor='r',fill=True))
     for patch in patches :
         ax.add_patch(patch)
     #adjust some stuff on the plots
@@ -352,7 +352,7 @@ def main(args=None) :
     parser.add_argument('--lines_after', type=split_csv_to_list, default='',
                         help="""Comma-separated list of slides to put separating lines after on the plot 
                                 (default is project/cohort/batch transitions, adding this argument will overwrite those automatic options)""")
-    parser.add_argument('--bounds', type=split_csv_to_list_of_floats, default='0.9,1.1',
+    parser.add_argument('--bounds', type=split_csv_to_list_of_floats, default='0.85,1.15',
                         help='Hard limits to the imshow scale for the plot (given as lower_bound,upper_bound')
     parser.add_argument('--all_or_brightest', choices=['all','brightest'], default='all',
                         help='Whether to make plots and sum values over all image layers or just the brightest')
