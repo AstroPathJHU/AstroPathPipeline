@@ -35,6 +35,18 @@ def get_slide_ids_by_root_dir(root_dirs,skip_slides) :
         slide_ids_by_rootdir[pathlib.Path(root_dir)] = [s.SlideID for s in samps if ((s.isGood==1) and (s.SlideID not in skip_slides))]
     return slide_ids_by_rootdir
 
+#helper function to return the list of slide IDs ordered according to some convention
+def sort_slide_ids(slide_ids,slide_ids_by_rootdir,sort_by) :
+    sampledefs = []
+    for rd,sids in slide_ids_by_rootdir.items() :
+        for sid in sids :
+            if sid not in slide_ids :
+                continue
+            sampledefs.append(SampleDef(SlideID=sid,root=rd))
+    if sort_by=='batch' :
+        pass
+    raise RuntimeError(f'ERROR: sort option {sort_by} is not recognized!')
+
 #helper function to check the arguments
 def checkArgs(args) :
     #if a prior run file is given, just make sure it exists and can be read as TableEntry objects
@@ -156,7 +168,7 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
         cropAndOverwriteImage(figname)
 
 #helper function to make the consistency check grid plot
-def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,bounds,all_or_brightest,save_all_layers) :
+def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,sort_by,bounds,all_or_brightest,save_all_layers) :
     #make the dict of slide IDs by root dir
     if input_file is not None :
         slide_ids_by_rootdir = {}
@@ -200,6 +212,10 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,b
                 else :
                     slide_ids.append(sid)
                     si+=1
+    #if requested, sort the list of slide IDs
+    if sort_by!='order' :
+        logger.info(f'Sorting slide IDs by {sort_by}...')
+        slide_ids = sort_slide_ids(slide_ids,slide_ids_by_rootdir,sort_by)
     #start up an array to hold all of the necessary values and a list of table entries
     if all_or_brightest=='all' :
         layers = list(range(1,dims[-1]+1))
@@ -292,6 +308,8 @@ def main(args=None) :
                         help='Comma-separated list of slides to skip')
     parser.add_argument('--workingdir', 
                         help='Path to the working directory where results will be saved')
+    parser.add_argument('--sort_by', choices=['order','batch'], default='order',
+                        help='how to sort the order of the slide IDs')
     parser.add_argument('--bounds', type=split_csv_to_list_of_floats, default='0.9,1.2',
                         help='Hard limits to the imshow scale for the plot (given as lower_bound,upper_bound')
     parser.add_argument('--all_or_brightest', choices=['all','brightest'], default='all',
@@ -302,7 +320,7 @@ def main(args=None) :
     #check the arguments
     checkArgs(args)
     #run the main workhorse function
-    consistency_check_grid_plot(args.input_file,args.root_dirs,args.skip_slides,args.workingdir,args.bounds,args.all_or_brightest,args.save_all_layers)
+    consistency_check_grid_plot(args.input_file,args.root_dirs,args.skip_slides,args.workingdir,args.sort_by,args.bounds,args.all_or_brightest,args.save_all_layers)
     logger.info('Done : )')
 
 if __name__=='__main__' :
