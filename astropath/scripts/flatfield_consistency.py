@@ -35,7 +35,7 @@ def get_slide_ids_by_root_dir(root_dirs,skip_slides) :
         slide_ids_by_rootdir[pathlib.Path(root_dir)] = [s.SlideID for s in samps if ((s.isGood==1) and (s.SlideID not in skip_slides))]
     return slide_ids_by_rootdir
 
-#helper function to return the list of slide IDs ordered according to some convention
+#helper function to return the list of slide IDs ordered according to some convention, and a list of slides to put lines after in the plot
 def sort_slide_ids(slide_ids,slide_ids_by_rootdir,sort_by) :
     sampledefs = []
     for rd,sids in slide_ids_by_rootdir.items() :
@@ -43,8 +43,26 @@ def sort_slide_ids(slide_ids,slide_ids_by_rootdir,sort_by) :
             if sid not in slide_ids :
                 continue
             sampledefs.append(SampleDef(SlideID=sid,root=rd))
-    if sort_by=='batch' :
-        pass
+    if sort_by=='project_cohort_batch' :
+        projects = list(set([sd.Project for sd in sampledefs]))
+        cohorts = list(set([sd.Cohort for sd in sampledefs]))
+        batches = list(set([sd.BatchID for sd in sampledefs]))
+        projects.sort(); cohorts.sort(); batches.sort()
+        ordered_sids = []
+        lines_after = []
+        for p in projects :
+            if len(ordered_sids)>0 and ordered_sids[-1] not in lines_after :
+                lines_after.append(ordered_sids[-1])
+            for c in cohorts :
+                if len(ordered_sids)>0 and ordered_sids[-1] not in lines_after :
+                    lines_after.append(ordered_sids[-1])
+                for b in batches :
+                    if len(ordered_sids)>0 and ordered_sids[-1] not in lines_after :
+                        lines_after.append(ordered_sids[-1])
+                    for sd in sampledefs :
+                        if sd.Project==p and sd.Cohort==c and sd.BatchID==b :
+                            ordered_sids.append(sd.SlideID)
+        return ordered_sids, lines_after
     raise RuntimeError(f'ERROR: sort option {sort_by} is not recognized!')
 
 #helper function to check the arguments
@@ -135,40 +153,57 @@ def get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2) :
     return delta_over_sigma_std_devs
 
 #helper function to make a single comparison plot of some type
-def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workingdir,bounds) :
+def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workingdir,lines_after,bounds) :
+    #make the figure
     fig,ax = plt.subplots(figsize=(1.*len(slide_ids),1.*len(slide_ids)))
+    #figure out the scaled font sizes
     scaled_label_font_size = 10.*(1.+math.log10(len(slide_ids)/5.)) if len(slide_ids)>5 else 10.
     scaled_title_font_size = 10.*(1.+math.log2(len(slide_ids)/6.)) if len(slide_ids)>5 else 10.
+    #add the grid to the plot
     pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1])
+    #add other patches
     patches = []
+    #black out any zero values in the plot
     for iy in range(values_to_plot.shape[0]) :
         for ix in range(values_to_plot.shape[1]) :
             if values_to_plot[iy,ix]==0. :
                 patches.append(Rectangle((ix-0.5,iy-0.5),1,1,edgecolor='k',facecolor='k',fill=True))
+    #add lines after certain slides
+    if lines_after!=[''] and len(lines_after)>0 :
+        for sid in lines_after :
+            if sid not in slide_ids :
+                raise RuntimeError(f'ERROR: requested to add a separator after slide {sid} but this slide will not be on the plot!')
+            sindex = slide_ids.index(sid)
+            patches.append(Rectangle((sindex+0.425,-0.5),0.15,len(slide_ids)+1,edgecolor='r',facecolor='r',fill=True))
+            patches.append(Rectangle((-0.5,sindex+0.425),len(slide_ids)+1,0.15,edgecolor='r',facecolor='r',fill=True))
     for patch in patches :
         ax.add_patch(patch)
+    #adjust some stuff on the plots
     ax.set_xticks(np.arange(len(slide_ids)))
     ax.set_yticks(np.arange(len(slide_ids)))
     ax.set_xticklabels(slide_ids,fontsize=scaled_label_font_size)
     ax.set_yticklabels(slide_ids,fontsize=scaled_label_font_size)
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right",rotation_mode="anchor")
+    #add the exact numerical values inside each box
     for i in range(len(slide_ids)):
         for j in range(len(slide_ids)):
             v = values_to_plot[i,j]
             if v!=0. :
                 text = ax.text(j, i, f'{v:.02f}',ha="center", va="center", color="b")
                 text.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor='white'))
+    #set the title, add the colorbar, etc.
     ax.set_title(plot_title,fontsize=1.1*scaled_title_font_size)
     cax = fig.add_axes([ax.get_position().x1+0.01,ax.get_position().y0,0.02,ax.get_position().height])
     cbar = fig.colorbar(pos,cax=cax)
     cbar.ax.tick_params(labelsize=scaled_title_font_size)
+    #save the plot
     with cd(workingdir) :
         plt.savefig(figname)
         plt.close()
         cropAndOverwriteImage(figname)
 
 #helper function to make the consistency check grid plot
-def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,sort_by,bounds,all_or_brightest,save_all_layers) :
+def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,sort_by,lines_after,bounds,all_or_brightest,save_all_layers) :
     #make the dict of slide IDs by root dir
     if input_file is not None :
         slide_ids_by_rootdir = {}
@@ -215,7 +250,9 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
     #if requested, sort the list of slide IDs
     if sort_by!='order' :
         logger.info(f'Sorting slide IDs by {sort_by}...')
-        slide_ids = sort_slide_ids(slide_ids,slide_ids_by_rootdir,sort_by)
+        slide_ids, new_lines_after = sort_slide_ids(slide_ids,slide_ids_by_rootdir,sort_by)
+        if lines_after==[''] :
+            lines_after=new_lines_after
     #start up an array to hold all of the necessary values and a list of table entries
     if all_or_brightest=='all' :
         layers = list(range(1,dims[-1]+1))
@@ -271,6 +308,7 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
                                       f'mean image delta/sigma std. devs. in layer {ln}',
                                       f'meanimage_comparison_layer_{ln}.png',
                                       workingdir,
+                                      lines_after,
                                       bounds)
     #save a plot of the average over all considered layers
     logger.info(f'Saving plot of values averaged over {all_or_brightest} layers...')
@@ -291,6 +329,7 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
                               f'avg. mean image delta/sigma std. devs. in {all_or_brightest} layers',
                               f'meanimage_comparison_average_over_{all_or_brightest}_layers.png',
                               workingdir,
+                              lines_after,
                               bounds)
 
 #################### MAIN SCRIPT ####################
@@ -308,9 +347,12 @@ def main(args=None) :
                         help='Comma-separated list of slides to skip')
     parser.add_argument('--workingdir', 
                         help='Path to the working directory where results will be saved')
-    parser.add_argument('--sort_by', choices=['order','batch'], default='order',
+    parser.add_argument('--sort_by', choices=['order','project_cohort_batch'], default='project_cohort_batch',
                         help='how to sort the order of the slide IDs')
-    parser.add_argument('--bounds', type=split_csv_to_list_of_floats, default='0.9,1.2',
+    parser.add_argument('--lines_after', type=split_csv_to_list, default='',
+                        help="""Comma-separated list of slides to put separating lines after on the plot 
+                                (default is project/cohort/batch transitions, adding this argument will overwrite those automatic options)""")
+    parser.add_argument('--bounds', type=split_csv_to_list_of_floats, default='0.9,1.1',
                         help='Hard limits to the imshow scale for the plot (given as lower_bound,upper_bound')
     parser.add_argument('--all_or_brightest', choices=['all','brightest'], default='all',
                         help='Whether to make plots and sum values over all image layers or just the brightest')
@@ -320,7 +362,8 @@ def main(args=None) :
     #check the arguments
     checkArgs(args)
     #run the main workhorse function
-    consistency_check_grid_plot(args.input_file,args.root_dirs,args.skip_slides,args.workingdir,args.sort_by,args.bounds,args.all_or_brightest,args.save_all_layers)
+    consistency_check_grid_plot(args.input_file,args.root_dirs,args.skip_slides,args.workingdir,
+                                args.sort_by,args.lines_after,args.bounds,args.all_or_brightest,args.save_all_layers)
     logger.info('Done : )')
 
 if __name__=='__main__' :
