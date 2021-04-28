@@ -12,7 +12,7 @@ where:
 -`[root_directory]` is the path to the usual "Clinical_Specimen" directory containing a `[slide_ID]` subdirectory for each `[slide_ID]` in `[slide_IDs]` (i.e. `\\bki02\E\Clinical_Specimen`)
 -`[working_directory]` is the path to the directory that should contain all of the output of the run (it will be created if it doesn't exist).
 -`[n_threads]` is the maximum number of CPUs to use simultaneously in running the groups of fits (the independent fits for each octet are handled by a multiprocessing pool; this is the number of workers allowed in that pool). This should be adjusted depending on running conditions, GPU availability, etc., but on BKI06 a single invocation of the above command can usually be run with 10 threads.
--`[path_to_exposure_time_offset_file]` is the path to a .csv file holding the exposure time correction "dark current" offsets as a list of ["LayerOffset" objects](https://github.com/AstroPathJHU/AstroPathPipeline/blob/master/astropath/utilities/img_file_io.py#L28-L34) (i.e. the file [here](https://github.com/AstroPathJHU/alignmentjenkinsdata/blob/master/corrections/best_exposure_time_offsets_Vectra_9_8_2020.csv)), which is output by the code that does the exposure time correction fits
+-`[path_to_exposure_time_offset_file]` is the path to a .csv file holding the exposure time correction "dark current" offsets as a list of [`LayerOffset` objects](../../utilities.img_file_io.py#L31-L36), which is output by the code that does the exposure time correction fits
 -`[path_to_flatfield_file]` is the path to a `flatfield_BatchID_[batch_ID].bin` file containing the flatfield correction factors to apply to each slide in `[slide_IDs]` 
 -`[path_to_threshold_file_directory]` is the path to a directory containing `[slideID]_background_thresholds.txt` files for each `[slide_ID]` in `[slide_IDs]`
 -`[layer_number]` is the image layer to find the patterns for (indexed starting at 1)
@@ -26,8 +26,8 @@ Under these conditions, the following things will happen:
 This multistep procedure is used to prevent tunneling into local minima around inaccurate center point locations, without imposing any external constraints on where the actual center point location is. 
 
 More concretely, running the above command will produce a directory at `[working_directory]` containing:
-1. **a weighted average fit result file** called `[working_directory_name]_weighted_average_warp.csv`. This file contains the weighted average warping parameters and metadata details about the slides used. It is stored as a [`WarpingSummary` object](./utilities.py#L114-L142).
-1. **weighted average warp field .bin files** called `dx_warp_field_[working_directory_name].bin` and `dy_warp_field_[working_directory_name].bin`. These are the main output of the entire routine, and they can be used to apply image corrections for warping in subsequent processing steps.
+1. **a weighted average fit result file** called `[working_directory_name]_weighted_average_warp.csv`. This file contains the weighted average warping parameters and metadata details about the slides used. It is stored as a [`WarpingSummary` object](./utilities.py#L114-L142). This is the main output of the entire routine, and it can be used to apply corrections for warping in subsequent processing steps.
+1. **weighted average warp field .bin files** called `dx_warp_field_[working_directory_name].bin` and `dy_warp_field_[working_directory_name].bin`.
 1. **subdirectories for each of the three fit groups** called `warping_initial_pattern_50_octets`, `warping_center_principal_point_50_octets`, and `warping_final_pattern_100_octets`. Each of these subdirectories contains:
     -**a list of all the individual fit results** called `all_results_[subdirectory_name].csv` stored as [`WarpFitResult` objects](./utilities.py#L75-L100).
     -**a list of all the HPFs used** in the fits called `field_log_[subdirectory_name].csv` stored as [`FieldLog` objects](./utilities.py#L102-L106).
