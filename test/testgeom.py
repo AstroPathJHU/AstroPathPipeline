@@ -2,7 +2,6 @@ import more_itertools, os, pathlib
 
 from astropath.slides.geom.geomcohort import GeomCohort
 from astropath.slides.geom.geomsample import Boundary, GeomSample
-from astropath.utilities.tableio import readtable
 
 from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 
@@ -45,14 +44,14 @@ class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
     fieldreference = reffolder/fieldfilename.name
 
     try:
-      rows = readtable(fieldfilename, Boundary, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
-      targetrows = readtable(fieldreference, Boundary, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
+      rows = s.readtable(fieldfilename, Boundary)
+      targetrows = s.readtable(fieldreference, Boundary)
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5)
         self.assertGreater(row.poly.area, 0)
 
-      rows = readtable(tumorfilename, Boundary, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
-      targetrows = readtable(tumorreference, Boundary, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
+      rows = s.readtable(tumorfilename, Boundary)
+      targetrows = s.readtable(tumorreference, Boundary)
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5)
         self.assertGreater(row.poly.area, 0)

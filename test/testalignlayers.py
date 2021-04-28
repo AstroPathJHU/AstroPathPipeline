@@ -3,7 +3,6 @@ from astropath.slides.align.alignlayers import AlignLayers
 from astropath.slides.align.overlap import LayerAlignmentResult
 from astropath.slides.align.stitchlayers import LayerPosition, LayerPositionCovariance
 from astropath.utilities import units
-from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 thisfolder = pathlib.Path(__file__).parent
 
@@ -41,13 +40,13 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
     a.stitch(eliminatelayer=1)
 
     try:
-      for filename, cls, extrakwargs in (
-        (f"{SlideID}_alignlayers.csv", LayerAlignmentResult, {"pscale": a.pscale}),
-        (f"{SlideID}_layerpositions.csv", LayerPosition, {"pscale": a.pscale}),
-        (f"{SlideID}_layerpositioncovariances.csv", LayerPositionCovariance, {"pscale": a.pscale}),
+      for filename, cls in (
+        (f"{SlideID}_alignlayers.csv", LayerAlignmentResult),
+        (f"{SlideID}_layerpositions.csv", LayerPosition),
+        (f"{SlideID}_layerpositioncovariances.csv", LayerPositionCovariance),
       ):
-        rows = readtable(thisfolder/"alignlayers_test_for_jenkins"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        targetrows = readtable(thisfolder/"reference"/"alignlayers"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        rows = a.readtable(thisfolder/"alignlayers_test_for_jenkins"/SlideID/"dbload"/filename, cls, checkorder=True)
+        targetrows = a.readtable(thisfolder/"reference"/"alignlayers"/SlideID/filename, cls, checkorder=True)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           if cls == LayerAlignmentResult and row.exit != 0 and target.exit != 0: continue
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
@@ -90,8 +89,8 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
 
     a.readalignments(filename=readfilename)
     a.writealignments(filename=writefilename)
-    rows = readtable(writefilename, LayerAlignmentResult, extrakwargs={"pscale": a.pscale})
-    targetrows = readtable(readfilename, LayerAlignmentResult, extrakwargs={"pscale": a.pscale})
+    rows = a.readtable(writefilename, LayerAlignmentResult)
+    targetrows = a.readtable(readfilename, LayerAlignmentResult)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 

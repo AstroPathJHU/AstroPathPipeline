@@ -42,8 +42,6 @@ def __floattoint(flt, atol, rtol):
 def floattoint(flt, *, atol=0, rtol=1e-10):
   return __floattoint(flt, atol, rtol)
 
-from . import units
-
 def weightedaverage(a, *args, **kwargs):
   return np.average(units.nominal_values(a), weights=1/units.std_devs(a)**2, *args, **kwargs)
 
@@ -260,3 +258,5 @@ dummylogger.warningglobal = dummylogger.warning
 printlogger = logging.getLogger("print")
 printlogger.addHandler(logging.StreamHandler())
 printlogger.warningglobal = printlogger.warning
+
+from . import units

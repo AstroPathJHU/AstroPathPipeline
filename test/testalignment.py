@@ -80,11 +80,11 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
   def compareoutput(self, alignsample, SlideID="M21_1", componenttiff=False):
     a = alignsample
     for filename, cls, extrakwargs in (
-      (f"{SlideID}_imstat.csv", ImageStats, {"pscale": a.pscale}),
-      (f"{SlideID}_align.csv", AlignmentResult, {"pscale": a.pscale}),
-      (f"{SlideID}_fields.csv", Field, {"pscale": a.pscale}),
+      (f"{SlideID}_imstat.csv", ImageStats, {}),
+      (f"{SlideID}_align.csv", AlignmentResult, {}),
+      (f"{SlideID}_fields.csv", Field, {}),
       (f"{SlideID}_affine.csv", AffineEntry, {}),
-      (f"{SlideID}_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "nclip": a.nclip}),
+      (f"{SlideID}_fieldoverlaps.csv", FieldOverlap, {"rectangles": a.rectangles, "nclip": a.nclip}),
     ):
       testfolder = thisfolder/"alignment_test_for_jenkins"/("" if not componenttiff else "component_tiff")
       reffolder = thisfolder/"reference"/"alignment"/("" if not componenttiff else "component_tiff")
@@ -136,8 +136,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
     a.readalignments(filename=readfilename)
     a.writealignments(filename=writefilename)
-    rows = readtable(writefilename, AlignmentResult, extrakwargs={"pscale": a.pscale})
-    targetrows = readtable(readfilename, AlignmentResult, extrakwargs={"pscale": a.pscale})
+    rows = readtable(writefilename, AlignmentResult)
+    targetrows = readtable(readfilename, AlignmentResult)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
@@ -159,7 +159,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     for filename, cls, extrakwargs in more_itertools.zip_equal(
       a.stitchfilenames,
       (AffineEntry, Field, FieldOverlap),
-      ({}, {"pscale": a.pscale}, {"pscale": a.pscale, "nclip": a.nclip, "rectangles": a.rectangles}),
+      ({}, {}, {"nclip": a.nclip, "rectangles": a.rectangles}),
     ):
       rows = readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
       targetrows = readtable(referencefilename(filename), cls, extrakwargs=extrakwargs)

@@ -2,7 +2,6 @@ import more_itertools, os, pathlib
 
 from astropath.slides.geomcell.geomcellcohort import GeomCellCohort
 from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSample
-from astropath.utilities.tableio import readtable
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
@@ -32,8 +31,8 @@ class TestGeomCell(TestBaseSaveOutput):
       ):
         self.assertEqual(filename.name, reffilename.name)
   
-        rows = readtable(filename, CellGeomLoad, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
-        targetrows = readtable(reffilename, CellGeomLoad, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
+        rows = s.readtable(filename, CellGeomLoad)
+        targetrows = s.readtable(reffilename, CellGeomLoad)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           assertAlmostEqual(row, target)
           try:

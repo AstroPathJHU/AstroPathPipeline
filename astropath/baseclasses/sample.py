@@ -397,7 +397,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots):
     return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.csv"
   @property
   def mergeconfig(self):
-    return readtable(self.mergeconfigcsv, MergeConfig)
+    return self.readtable(self.mergeconfigcsv, MergeConfig)
   @methodtools.lru_cache()
   @property
   def segmentationids(self):
@@ -578,7 +578,7 @@ class DbloadSampleBase(SampleBase):
     """
     Read the csv file using readtable.
     """
-    return readtable(self.csv(csv), *args, **kwargs)
+    return self.readtable(self.csv(csv), *args, **kwargs)
   def writecsv(self, csv, *args, **kwargs):
     """
     Write the csv file using writetable.
@@ -1051,7 +1051,7 @@ class ReadRectanglesDbload(ReadRectanglesBase, DbloadSample):
     }
     try:
       result.update({
-        "allexposures": self.readcsv("exposures", ExposureTime, extrakwargs={"pscale": self.pscale})
+        "allexposures": self.readcsv("exposures", ExposureTime)
       })
     except FileNotFoundError:
       pass

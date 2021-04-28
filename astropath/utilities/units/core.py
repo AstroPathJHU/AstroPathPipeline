@@ -1,4 +1,5 @@
 import abc, methodtools
+from ..tableio import TableReader
 
 currentmodule = None
 
@@ -13,7 +14,7 @@ def onepixel(pscale):
 def onemicron(pscale):
   return Distance(microns=1, pscale=pscale)
 
-class ThingWithPscale(abc.ABC):
+class ThingWithPscale(abc.ABC, TableReader):
   @property
   @abc.abstractmethod
   def pscale(self): return self.__pscale
@@ -28,7 +29,13 @@ class ThingWithPscale(abc.ABC):
   def onemicron(self):
     return onemicron(pscale=self.pscale)
 
-class ThingWithQpscale(abc.ABC):
+  def readtable(self, filename, rownameorclass, *, extrakwargs=None, **kwargs):
+    if extrakwargs is None: extrakwargs = {}
+    if "pscale" not in extrakwargs and isinstance(rownameorclass, type) and issubclass(rownameorclass, ThingWithPscale):
+      extrakwargs["pscale"] = self.pscale
+    return super().readtable(filename=filename, rownameorclass=rownameorclass, extrakwargs=extrakwargs, **kwargs)
+
+class ThingWithQpscale(abc.ABC, TableReader):
   @property
   @abc.abstractmethod
   def qpscale(self): return self.__qpscale
@@ -43,7 +50,13 @@ class ThingWithQpscale(abc.ABC):
   def oneqpmicron(self):
     return onemicron(pscale=self.qpscale)
 
-class ThingWithApscale(abc.ABC):
+  def readtable(self, filename, rownameorclass, *, extrakwargs=None, **kwargs):
+    if extrakwargs is None: extrakwargs = {}
+    if "qpscale" not in extrakwargs and isinstance(rownameorclass, type) and issubclass(rownameorclass, ThingWithQpscale):
+      extrakwargs["qpscale"] = self.qpscale
+    return super().readtable(filename=filename, rownameorclass=rownameorclass, extrakwargs=extrakwargs, **kwargs)
+
+class ThingWithApscale(abc.ABC, TableReader):
   @property
   @abc.abstractmethod
   def apscale(self): return self.__apscale
@@ -58,7 +71,13 @@ class ThingWithApscale(abc.ABC):
   def oneapmicron(self):
     return onemicron(pscale=self.apscale)
 
-class ThingWithImscale(abc.ABC):
+  def readtable(self, filename, rownameorclass, *, extrakwargs=None, **kwargs):
+    if extrakwargs is None: extrakwargs = {}
+    if "apscale" not in extrakwargs and isinstance(rownameorclass, type) and issubclass(rownameorclass, ThingWithApscale):
+      extrakwargs["apscale"] = self.apscale
+    return super().readtable(filename=filename, rownameorclass=rownameorclass, extrakwargs=extrakwargs, **kwargs)
+
+class ThingWithImscale(abc.ABC, TableReader):
   @property
   @abc.abstractmethod
   def imscale(self): pass
@@ -68,3 +87,9 @@ class ThingWithImscale(abc.ABC):
   def oneimpixel(self): return onepixel(pscale=self.imscale)
   @property
   def oneimmicron(self): return onemicron(pscale=self.imscale)
+
+  def readtable(self, filename, rownameorclass, *, extrakwargs=None, **kwargs):
+    if extrakwargs is None: extrakwargs = {}
+    if "imscale" not in extrakwargs and isinstance(rownameorclass, type) and issubclass(rownameorclass, ThingWithImscale):
+      extrakwargs["imscale"] = self.imscale
+    return super().readtable(filename=filename, rownameorclass=rownameorclass, extrakwargs=extrakwargs, **kwargs)
