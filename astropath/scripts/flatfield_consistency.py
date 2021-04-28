@@ -125,7 +125,8 @@ def get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2) :
 #helper function to make a single comparison plot of some type
 def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workingdir,bounds) :
     fig,ax = plt.subplots(figsize=(1.*len(slide_ids),1.*len(slide_ids)))
-    scaled_font_size = 10.*(1.+math.log10(len(slide_ids)/5.)) if len(slide_ids)>5 else 10.
+    scaled_label_font_size = 10.*(1.+math.log10(len(slide_ids)/5.)) if len(slide_ids)>5 else 10.
+    scaled_title_font_size = 10.*(1.+math.log2(len(slide_ids)/6.)) if len(slide_ids)>5 else 10.
     pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1])
     patches = []
     for iy in range(values_to_plot.shape[0]) :
@@ -136,8 +137,8 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
         ax.add_patch(patch)
     ax.set_xticks(np.arange(len(slide_ids)))
     ax.set_yticks(np.arange(len(slide_ids)))
-    ax.set_xticklabels(slide_ids,fontsize=scaled_font_size)
-    ax.set_yticklabels(slide_ids,fontsize=scaled_font_size)
+    ax.set_xticklabels(slide_ids,fontsize=scaled_label_font_size)
+    ax.set_yticklabels(slide_ids,fontsize=scaled_label_font_size)
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right",rotation_mode="anchor")
     for i in range(len(slide_ids)):
         for j in range(len(slide_ids)):
@@ -145,9 +146,9 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
             if v!=0. :
                 text = ax.text(j, i, f'{v:.02f}',ha="center", va="center", color="b")
                 text.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor='white'))
-    ax.set_title(plot_title,fontsize=1.1*scaled_font_size)
+    ax.set_title(plot_title,fontsize=1.1*scaled_title_font_size)
     cbar = fig.colorbar(pos,ax=ax)
-    cbar.ax.tick_params(labelsize=scaled_font_size)
+    cbar.ax.tick_params(labelsize=scaled_title_font_size)
     fig.tight_layout()
     with cd(workingdir) :
         plt.savefig(figname)
