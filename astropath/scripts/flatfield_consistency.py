@@ -147,9 +147,9 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
                 text = ax.text(j, i, f'{v:.02f}',ha="center", va="center", color="b")
                 text.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor='white'))
     ax.set_title(plot_title,fontsize=1.1*scaled_title_font_size)
-    cbar = fig.colorbar(pos,ax=ax)
+    cax = fig.add_axes([ax.get_position().x1+0.01,ax.get_position().y0,0.02,ax.get_position().height])
+    cbar = fig.colorbar(pos,cax=cax)
     cbar.ax.tick_params(labelsize=scaled_title_font_size)
-    fig.tight_layout()
     with cd(workingdir) :
         plt.savefig(figname)
         plt.close()
