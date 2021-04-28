@@ -27,22 +27,22 @@ class TestPrepDb(unittest.TestCase):
     PrepDbCohort.runfromargumentparser(args)
     sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
 
-    for filename, cls in (
-      (f"{SlideID}_annotations.csv", Annotation),
-      (f"{SlideID}_batch.csv", Batch),
-      (f"{SlideID}_constants.csv", Constant),
-      (f"{SlideID}_exposures.csv", ExposureTime),
-      (f"{SlideID}_globals.csv", ROIGlobals),
-      (f"{SlideID}_overlap.csv", Overlap),
-      (f"{SlideID}_qptiff.csv", QPTiffCsv),
-      (f"{SlideID}_rect.csv", Rectangle),
-      (f"{SlideID}_vertices.csv", Vertex),
-      (f"{SlideID}_regions.csv", Region),
+    for filename, cls, extrakwargs in (
+      (f"{SlideID}_annotations.csv", Annotation, {}),
+      (f"{SlideID}_batch.csv", Batch, {}),
+      (f"{SlideID}_constants.csv", Constant, {}),
+      (f"{SlideID}_exposures.csv", ExposureTime, {}),
+      (f"{SlideID}_globals.csv", ROIGlobals, {}),
+      (f"{SlideID}_overlap.csv", Overlap, {"nclip": sample.nclip, "rectangles": sample.rectangles}),
+      (f"{SlideID}_qptiff.csv", QPTiffCsv, {}),
+      (f"{SlideID}_rect.csv", Rectangle, {}),
+      (f"{SlideID}_vertices.csv", Vertex, {}),
+      (f"{SlideID}_regions.csv", Region, {}),
     ):
       if filename == "M21_1_globals.csv": continue
       try:
-        rows = sample.readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, checkorder=True)
-        targetrows = sample.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True)
+        rows = sample.readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, checkorder=True, extrakwargs=extrakwargs)
+        targetrows = sample.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, extrakwargs=extrakwargs)
         for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
       except:

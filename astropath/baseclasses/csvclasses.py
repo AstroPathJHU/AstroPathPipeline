@@ -71,7 +71,7 @@ class QPTiffCsv(DataClassWithPscale):
   fname: str
   img: str
 
-class Constant(DataClassWithDistances):
+class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithApscale, units.ThingWithQpscale):
   """
   An entry in the constants.csv spreadsheet.
   This is a little complicated because there are distances with different powers
