@@ -131,7 +131,7 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
     for iy in range(values_to_plot.shape[0]) :
         for ix in range(values_to_plot.shape[1]) :
             if values_to_plot[iy,ix]==0. :
-                patches.append(Rectangle((ix,iy),1,1,edgecolor='b',facecolor='b'))
+                patches.append(Rectangle((ix-0.5,iy-0.5),1,1,edgecolor='k',facecolor='k',fill=True))
     for patch in patches :
         ax.add_patch(patch)
     ax.set_xticks(np.arange(len(slide_ids)))
@@ -206,16 +206,14 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,b
         layers = UNIV_CONST.BRIGHTEST_LAYERS_35 if dims[-1]==35 else UNIV_CONST.BRIGHTEST_LAYERS_43
     dos_std_dev_plot_values = np.zeros((len(slide_ids),len(slide_ids),dims[-1]))
     if input_file is not None :
-        for is1,sid1 in enumerate(slide_ids) :
-            for is2,sid2 in enumerate(slide_ids) :
-                if sid1==sid2 :
-                    continue
-                logger.info(f'Doing {sid1} vs. {sid2}...')
-                for te in table_entries :
-                    if te.slide_ID_1==sid1 and te.slide_ID_2==sid2 :
-                        dos_std_dev_plot_values[is1,is2,te.layer_n-1] = te.delta_over_sigma_std_dev
-                    elif te.slide_ID_1==sid2 and te.slide_ID_2==sid1 :
-                        dos_std_dev_plot_values[is1,is2,te.layer_n-1] = te.delta_over_sigma_std_dev
+        logger.info(f'Getting plot values from input file...')
+        for te in table_entries :
+            if (te.slide_ID_1 not in slide_ids) or (te.slide_ID_2 not in slide_ids) or (te.layer_n not in layers) :
+                continue
+            is1 = slide_ids.index(te.slide_ID_1)
+            is2 = slide_ids.index(te.slide_ID_2)
+            dos_std_dev_plot_values[is1,is2,te.layer_n-1] = te.delta_over_sigma_std_dev
+            dos_std_dev_plot_values[is2,is1,te.layer_n-1] = te.delta_over_sigma_std_dev
     else :
         #for each possible pair of slide ids, find the standard deviation in each image layer of the delta/sigma
         output_table_entries = []
