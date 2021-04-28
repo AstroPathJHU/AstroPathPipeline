@@ -24,7 +24,7 @@ class LinkError(Exception): pass
 @functools.lru_cache()
 def linksandanchors(filename):
   try:
-    with open(filename) as f:
+    with open(filename, encoding="utf-8") as f:
       markdown = f.read()
     html = marko.Markdown(extensions=[GithubToc()])(markdown)
     soup = bs4.BeautifulSoup(html, features="lxml")
