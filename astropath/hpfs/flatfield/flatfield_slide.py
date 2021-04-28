@@ -51,7 +51,7 @@ class FlatfieldSlide() :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,slide) :
+    def __init__(self,slide,skip_loading_extra_info=False) :
         """
         slide = FlatfieldSlideInfo object for this slide
         """
@@ -62,8 +62,12 @@ class FlatfieldSlide() :
             self._img_dims = getImageHWLFromXMLFile(slide.rawfile_top_dir,slide.name)
         except FileNotFoundError :
             self._img_dims = getImageHWLFromXMLFile(slide.root_dir,slide.name)
-        self._exp_time_hists = getExposureTimeHistogramsByLayerGroupForSlide(self._rawfile_top_dir,self._name)
-        self._med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
+        if skip_loading_extra_info :
+            self._exp_time_hists = None
+            self._med_exp_times_by_layer = None
+        else :
+            self._exp_time_hists = getExposureTimeHistogramsByLayerGroupForSlide(self._rawfile_top_dir,self._name)
+            self._med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
         self._background_thresholds_for_masking = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :

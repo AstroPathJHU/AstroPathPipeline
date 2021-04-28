@@ -1,10 +1,10 @@
 #imports
 from .flatfield_producer import FlatfieldProducer
-from .logging import RunLogger
 from .utilities import flatfield_logger, slideNameFromFilepath, FlatfieldSlideInfo
 from .utilities import getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath, getSlideMeanImageFilepath, getSlideMaskStackFilepath
 from .config import CONST 
 from ...utilities.tableio import readtable
+from ...utilities.runlogger import RunLogger
 from ...utilities.misc import cd, split_csv_to_list
 from ...utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
@@ -285,7 +285,7 @@ def doRun(args,workingdir_path,logger=None) :
         fffn = f'{CONST.FLATFIELD_FILE_NAME_STEM}_BatchID_{args.batchID:02d}{CONST.FILE_EXT}'
         ff_producer.makeBatchFlatfieldSummaryPDF(args.root_dir,args.batchID)
         if pathlib.Path.is_file(pathlib.Path(f'{workingdir_path}/{fffn}')) :
-            shutil.move(pathlib.Path(f'{workingdir_path}/{fffn}'),pathlib.Path((pathlib.Path(workingdir_path)).parent / fffn))
+            shutil.move(pathlib.Path(f'{workingdir_path}/{fffn}'),(pathlib.Path(workingdir_path)).parent / fffn)
         return
     #see if the code is running in batch mode (i.e. minimal output in automatic locations) and figure out the working directory path if so
     batch_mode = args.mode in ('slide_mean_image','batch_flatfield')

@@ -1,8 +1,8 @@
 #imports
 from contextlib import ExitStack
 import pathlib, logging, traceback
-from ...baseclasses.sample import SampleDef
-from ...baseclasses.logging import getlogger
+from ..baseclasses.sample import SampleDef
+from ..baseclasses.logging import getlogger
 
 class RunLogger(ExitStack) :
     """
@@ -23,7 +23,7 @@ class RunLogger(ExitStack) :
         """
         super().__init__()
         self._module = mode
-        self._batch_mode = self._module in ('slide_mean_image','batch_flatfield')
+        self._batch_mode = self._module in ('slide_mean_image','batch_flatfield') or self._module.startswith('warp_fit')
         self._workingdir_path = workingdir_path
         self._global_logger = self._getGlobalLogger()
         self._slide_loggers = {}
@@ -36,7 +36,7 @@ class RunLogger(ExitStack) :
         filehandler.setFormatter(self.formatter)
         filehandler.setLevel(logging.INFO-1)
         self._global_logger.addHandler(filehandler)
-        from ...utilities.version import astropathversion
+        from .version import astropathversion
         self._global_logger.info(f'{self._module} {astropathversion}')
         return self
 

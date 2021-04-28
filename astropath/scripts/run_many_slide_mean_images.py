@@ -13,7 +13,7 @@ ET_OFFSET_FILE = r'//bki08/maggie/best_exposure_time_offsets_Polaris_9_8_2020.cs
 RAWFILE_TOP_DIR = r'//bki07/dat_7'
 ROOT_DIR = r'//bki04/Clinical_Specimen_7'
 CMD_BASE = f'run_flatfield slide_mean_image --exposure_time_offset_file {ET_OFFSET_FILE} --rawfile_top_dir {RAWFILE_TOP_DIR}'
-CMD_BASE+= f' --root_dir {ROOT_DIR} --n_threads {int(40/N_PROCS)}'
+CMD_BASE+= f' --root_dir {ROOT_DIR} --n_threads {int(20/N_PROCS)}'
 SLIDE_IDS = [
 #'M1_1',
 #'M2_3',

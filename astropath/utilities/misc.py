@@ -164,7 +164,6 @@ def getAlignSampleTissueEdgeRectNs(aset) :
 def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,flatfielding=True,warping=True) :
   #positional arguments
   if positional_args :
-    parser.add_argument('slideID',          help='Name of the slide to use')
     parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[slideID]/*.Data.dat" files')
     parser.add_argument('root_dir',         help='Path to the Clinical_Specimen directory with info for the given slide')
     parser.add_argument('workingdir',       help='Path to the working directory (will be created if necessary)')
