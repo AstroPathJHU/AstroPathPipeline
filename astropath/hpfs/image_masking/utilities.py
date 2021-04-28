@@ -12,7 +12,7 @@ class LabelledMaskRegion(MyDataClass) :
     n_pixels           : int
     reason_flagged     : str
 
-#helper function to unpack, reshape, and return a tissue mask from the packed mask file
+#helper function to unpack, reshape, and return a tissue mask from its packed mask file
 def unpackTissueMask(filepath,dimensions) :
     if not pathlib.Path.is_file(pathlib.Path(filepath)) :
         raise ValueError(f'ERROR: tissue mask file {filepath} does not exist!')
