@@ -326,7 +326,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
         n=n,
         x=x+qptiffx1,
         y=y+qptiffy1,
-        pscale=imscale,
+        imscale=imscale,
         tilesize=tilesize,
         bigtilesize=bigtilesize,
         bigtileoffset=bigtileoffset,
@@ -1019,13 +1019,13 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   __fmt = "{:.6g}"
   pixelsormicrons = "pixels"
   n: int
-  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format)
-  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format)
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
+  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="imscale")
+  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="imscale")
+  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename="imscale")
+  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename="imscale")
+  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename="imscale")
+  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename="imscale")
+  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename="imscale")
   exit: int
   del __fmt
 
@@ -1151,7 +1151,7 @@ class AnnoWarpAlignmentResults(list, units.ThingWithImscale):
     """
     all results with 0 exit code that are in large enough islands
     """
-    onepixel = self.onepixel
+    onepixel = self.oneimpixel
     good = self.goodresults
     g = good.adjacencygraph
     tiledict = {tile.n: tile for tile in self}
