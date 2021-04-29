@@ -1,6 +1,6 @@
 import itertools, re
 
-from ...baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
+from ...baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals, Vertex
 from ...baseclasses.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
 from ...baseclasses.overlap import Overlap
 from ...baseclasses.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
