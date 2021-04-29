@@ -24,7 +24,7 @@ class LinkError(Exception): pass
 @functools.lru_cache()
 def linksandanchors(filename):
   try:
-    with open(filename) as f:
+    with open(filename, encoding="utf-8") as f:
       markdown = f.read()
     html = marko.Markdown(extensions=[GithubToc()])(markdown)
     soup = bs4.BeautifulSoup(html, features="lxml")
@@ -66,12 +66,30 @@ class TestMarkdownLinks(unittest.TestCase):
                 fulldestpath = fulldestpath/"README.md"
                 if not fulldestpath.exists():
                   raise LinkError(f"link to directory and anchor, but no README.md in the directory: {dest} (resolves to {fulldestpath})")
-              try:
-                _, anchors = linksandanchors(fulldestpath)
-              except LinkError:
-                raise LinkError(f"link to {dest}, but couldn't parse {fulldestpath}")
-              if not any(a.get("id") == anchor for a in anchors):
-                raise LinkError(f"link to nonexistent anchor: {dest} (resolves to {fulldestpath}, couldn't find {anchor})")
+
+              if fulldestpath.suffix == ".md":
+                try:
+                  _, anchors = linksandanchors(fulldestpath)
+                except LinkError:
+                  raise LinkError(f"link to {dest}, but couldn't parse {fulldestpath}")
+                if not any(a.get("id") == anchor for a in anchors):
+                  raise LinkError(f"link to nonexistent anchor: {dest} (resolves to {fulldestpath}, couldn't find {anchor})")
+
+              elif fulldestpath.suffix == ".py":
+                match = re.match("L([0-9]+)(?:-L([0-9]+))?$", anchor)
+                if not match:
+                  raise LinkError(f"link to code file {dest} with anchor {anchor}, expected the anchor to be a github line link e.g. L3 or L5-L7")
+                firstline = int(match.group(1))
+                lastline = int(match.group(2))
+                with open(fulldestpath) as f:
+                  nlines = 0
+                  for nlines, line in enumerate(f, start=1):
+                    pass
+                if firstline > nlines or lastline is not None and lastline > nlines:
+                  raise LinkError(f"link to code file {dest} with anchor {anchor}, but that file only has {nlines} lines")
+              else:
+                raise LinkError(f"link to {dest} with an anchor, don't know how to check if an anchor is valid for that file type.")
+
           except LinkError as e:
             errors.append(e)
 
