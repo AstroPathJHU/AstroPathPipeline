@@ -645,6 +645,8 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     """
     if filename is None: filename = self.oldverticescsv
     extrakwargs={
+     "apscale": apscale,
+     "pscale": pscale,
      "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, apscale),
      "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, apscale)
     }
