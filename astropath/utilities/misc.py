@@ -43,9 +43,11 @@ def floattoint(flt, *, atol=0, rtol=1e-10):
   return __floattoint(flt, atol, rtol)
 
 def weightedaverage(a, *args, **kwargs):
+  from . import units
   return np.average(units.nominal_values(a), weights=1/units.std_devs(a)**2, *args, **kwargs)
 
 def weightedvariance(a, *, subtractaverage=True):
+  from . import units
   if subtractaverage:
     average = weightedaverage(a)
     if not isinstance(a, np.ndarray): a = np.array(a)
@@ -258,5 +260,3 @@ dummylogger.warningglobal = dummylogger.warning
 printlogger = logging.getLogger("print")
 printlogger.addHandler(logging.StreamHandler())
 printlogger.warningglobal = printlogger.warning
-
-from . import units
