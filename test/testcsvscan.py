@@ -10,12 +10,25 @@ thisfolder = pathlib.Path(__file__).parent
 class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
   @classmethod
   def filestocopy(cls):
-    for SlideID in "M206",:
-      newdbload = thisfolder/"csvscan_test_for_jenkins"/SlideID/"dbload"
+    testroot = thisfolder/"csvscan_test_for_jenkins"
+    yield thisfolder/"data"/"sampledef.csv", testroot
 
-      for olddbload in thisfolder/"data"/SlideID/"dbload",:
+    for SlideID in "M206",:
+      newdbload = testroot/SlideID/"dbload"
+      newdbload.mkdir(parents=True, exist_ok=True)
+      newtables = testroot/SlideID/"inform_data"/"Phenotyped"/"Results"/"Tables"
+      newtables.mkdir(parents=True, exist_ok=True)
+
+      for olddbload in thisfolder/"data"/SlideID/"dbload", thisfolder/"reference"/"geom"/SlideID, thisfolder/"reference"/"annowarp"/SlideID:
         for csv in olddbload.glob("*.csv"):
+          if csv == thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_vertices.csv": continue
+          if csv == thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_regions.csv": continue
           yield csv, newdbload
+
+      oldtables = thisfolder/"data"/SlideID/"inform_data"/"Phenotyped"/"Results"/"Tables"
+      for csv in oldtables.glob("*.csv"):
+        yield csv, newtables
+      
 
   @property
   def outputfilenames(self):
@@ -25,10 +38,10 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       for SlideID in ("M206",)
     ]
 
-  def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=None):
-    root = thisfolder/"data"
-    dbloadroot = thisfolder/"csvscan_test_for_jenkins"
-    args = [os.fspath(root), "--dbloadroot", os.fspath(dbloadroot), "--geomroot", os.fspath(dbloadroot), "--phenotyperoot", os.fspath(dbloadroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
+  def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1]):
+    root = thisfolder/"csvscan_test_for_jenkins"
+    geomroot = thisfolder/"reference"/"geomcell"
+    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
     if selectrectangles is not None:
       args.append("--selectrectangles")
       for rid in selectrectangles: args.append(str(rid))
