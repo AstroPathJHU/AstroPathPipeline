@@ -190,6 +190,8 @@ def pathfield(**metadata):
         return pathlib.WindowsPath(path)
       except NotImplementedError:
         return pathlib.PureWindowsPath(path)
+    else:
+      assert False, path
 
   metadata = {
     "readfunction": guesspathtype,

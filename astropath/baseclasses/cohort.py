@@ -485,6 +485,38 @@ class GeomFolderCohort(Cohort):
   @property
   def rootnames(self): return {"geomroot", *super().rootnames}
 
+class PhenotypeFolderCohort(Cohort):
+  """
+  Base class for a cohort that uses the _cleaned_phenotype_table.csv files
+  phenotyperoot: an alternate root to use for the phenotype folder instead of root
+              (mostly useful for testing)
+              (default: same as root)
+  """
+  def __init__(self, *args, phenotyperoot=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if phenotyperoot is None: phenotyperoot = self.root
+    self.phenotyperoot = pathlib.Path(phenotyperoot)
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "phenotyperoot": self.phenotyperoot}
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--phenotyperoot", type=pathlib.Path, help="root location of phenotype folder (default: same as root)")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "phenotyperoot": parsed_args_dict.pop("phenotyperoot"),
+    }
+
+  @property
+  def rootnames(self): return {"phenotyperoot", *super().rootnames}
+
 class WorkflowCohort(Cohort):
   """
   Base class for a cohort that runs as a workflow:

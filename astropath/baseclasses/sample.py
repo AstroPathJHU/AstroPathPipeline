@@ -764,6 +764,28 @@ class GeomSampleBase(SampleBase):
   def geomfolder(self):
     return self.geomroot/self.SlideID/"geom"
 
+class CellPhenotypeSampleBase(SampleBase):
+  """
+  Base class for any sample that uses the _cleaned_phenotype_table.csv files
+
+  phenotyperoot: A different root to use to find the Phenotyped folder (default: same as root)
+  """
+  def __init__(self, *args, phenotyperoot=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if phenotyperoot is None: phenotyperoot = self.root
+    self.__phenotyperoot = pathlib.Path(phenotyperoot)
+
+  @property
+  def rootnames(self): return {"phenotyperoot", *super().rootnames}
+  @property
+  def phenotyperoot(self): return self.__phenotyperoot
+  @property
+  def phenotypefolder(self):
+    return self.phenotyperoot/self.SlideID/"inform_data"/"Phenotyped"
+  @property
+  def phenotypetablesfolder(self):
+    return self.phenotypefolder/"Results"/"Tables"
+
 class SelectLayersSample(SampleBase):
   """
   Base class for any sample that needs a layer selection.
