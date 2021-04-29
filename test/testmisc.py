@@ -6,7 +6,6 @@ from astropath.baseclasses.overlap import rectangleoverlaplist_fromcsvs
 from astropath.slides.geom.contours import findcontoursaspolygons
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.utilities import units
-from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 
 thisfolder = pathlib.Path(__file__).parent
@@ -99,14 +98,14 @@ class TestMisc(unittest.TestCase):
     folder = thisfolder/"misc_test_for_jenkins"
     s = PrepDbSample(thisfolder/"data", SlideID)
     writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID)
-    for filename, cls, extrakwargs in (
-      (f"{SlideID}_annotations.csv", Annotation, {"pscale": 1, "apscale": 1}),
-      (f"{SlideID}_vertices.csv", Vertex, {"apscale": 1}),
-      (f"{SlideID}_regions.csv", Region, {"apscale": 1, "pscale": 1}),
+    for filename, cls in (
+      (f"{SlideID}_annotations.csv", Annotation),
+      (f"{SlideID}_vertices.csv", Vertex),
+      (f"{SlideID}_regions.csv", Region),
     ):
       try:
-        rows = readtable(folder/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        targetrows = readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        rows = s.readtable(folder/filename, cls, checkorder=True)
+        targetrows = s.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True)
         for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
       except:

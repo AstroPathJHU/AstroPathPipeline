@@ -4,7 +4,7 @@ from ...baseclasses.rectangle import Rectangle, rectangledict, RectangleList
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ...utilities.misc import dummylogger, floattoint, weightedstd
-from ...utilities.tableio import readtable, writetable
+from ...utilities.tableio import writetable
 from .field import Field, FieldOverlap
 
 def stitch(*, usecvxpy=False, **kwargs):
@@ -780,14 +780,14 @@ class StitchResultOverlapCovariances(StitchResultBase):
   def fieldoverlap(self, overlap):
     return self.__fieldoverlapdict()[frozenset((overlap.p1, overlap.p2))]
 
-  def readtable(self, *filenames, adjustoverlaps=True):
+  def readtables(self, *filenames, adjustoverlaps=True):
     affinefilename, fieldsfilename, fieldoverlapfilename = filenames
 
     layer, = {_.layer for _ in self.rectangles}
-    fields = readtable(fieldsfilename, Field, extrakwargs={"pscale": self.pscale})
-    affines = readtable(affinefilename, AffineEntry)
+    fields = self.readtable(fieldsfilename, Field)
+    affines = self.readtable(affinefilename, AffineEntry)
     nclip, = {_.nclip for _ in self.overlaps}
-    fieldoverlaps = readtable(fieldoverlapfilename, FieldOverlap, extrakwargs={"pscale": self.pscale, "rectangles": self.rectangles, "nclip": nclip})
+    fieldoverlaps = self.readtable(fieldoverlapfilename, FieldOverlap, extrakwargs={"rectangles": self.rectangles, "nclip": nclip})
 
     self.__x = np.array([field.pxvec+self.origin for field in fields])
     self.__fieldoverlaps = fieldoverlaps
@@ -826,7 +826,7 @@ class ReadStitchResult(StitchResultOverlapCovariances):
   """
   def __init__(self, *args, rectangles, overlaps, origin, logger=dummylogger, **kwargs):
     super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, fieldoverlaps=None, origin=origin, logger=logger)
-    self.readtable(*args, **kwargs)
+    self.readtables(*args, **kwargs)
 
 class CalculatedStitchResult(StitchResultFullCovariance):
   """

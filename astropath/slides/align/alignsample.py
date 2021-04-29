@@ -4,7 +4,7 @@ import argparse, contextlib, numpy as np, pathlib, traceback
 
 from ...baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
 from ...utilities import units
-from ...utilities.tableio import readtable, writetable
+from ...utilities.tableio import writetable
 from ..prepdb.prepdbsample import PrepDbSample
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
@@ -312,7 +312,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
     self.logger.info("reading alignments from "+str(filename))
 
     try:
-      alignmentresults = {o.n: o for o in readtable(filename, self.alignmentresulttype, extrakwargs={"pscale": self.pscale})}
+      alignmentresults = {o.n: o for o in self.readtable(filename, self.alignmentresulttype)}
     except Exception:
       if interactive:
         print()

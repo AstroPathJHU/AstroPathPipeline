@@ -276,7 +276,7 @@ class AnnoWarpStitchResultCvxpyBase(AnnoWarpStitchResultBase):
     """
     Get the residual for the alignmentresult as a function of the variables
     """
-    return units.nominal_values(alignmentresult.dxvec)/alignmentresult.onepixel - cls.cvxpydxvec(alignmentresult, **cvxpyvariables)
+    return units.nominal_values(alignmentresult.dxvec)/alignmentresult.oneimpixel - cls.cvxpydxvec(alignmentresult, **cvxpyvariables)
 
   @classmethod
   def constraintquadforms(cls, cvxpyvariables, mus, sigmas, *, imscale):
@@ -546,7 +546,7 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
   @classmethod
   def cvxpydxvec(cls, alignmentresult, *, coeffrelativetobigtile, bigtileindexcoeff, constant):
     return (
-      coeffrelativetobigtile @ (alignmentresult.coordinaterelativetobigtile / alignmentresult.onepixel)
+      coeffrelativetobigtile @ (alignmentresult.coordinaterelativetobigtile / alignmentresult.oneimpixel)
       + bigtileindexcoeff @ alignmentresult.bigtileindex
       + constant
     )

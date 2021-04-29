@@ -2,7 +2,6 @@ import contextlib, csv, dataclasses, dataclassy, pathlib
 
 from .dataclasses import MetaDataAnnotation, MyDataClass
 from .misc import dummylogger
-from .units.dataclasses import DataClassWithDistances
 
 def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, maxrows=float("inf"), **columntypes):
   """
@@ -72,7 +71,7 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
         else:
           columntypes[field] = typ
 
-    if issubclass(Row, DataClassWithDistances) and "readingfromfile" not in extrakwargs:
+    if "readingfromfile" not in extrakwargs:
       extrakwargs["readingfromfile"] = True
 
     for i, row in enumerate(reader):
@@ -138,6 +137,14 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
       raise
   if printevery is not None:
     logger.info("finished!")
+
+class TableReader:
+  """
+  Base class that has a readtable function
+  so that you can override it and call super()
+  """
+  def readtable(self, *args, **kwargs):
+    return readtable(*args, **kwargs)
 
 def asrow(obj, *, dict_factory=dict):
   """
