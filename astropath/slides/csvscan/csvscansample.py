@@ -78,35 +78,44 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
 
       if csv.parent == self.dbload:
         match = re.match(f"{self.SlideID}_(.*)[.]csv$", csv.name)
-        csvclass = {
-          "affine": AffineEntry,
-          "align": AlignmentResult,
-          "annotations": Annotation,
-          "annowarp": AnnoWarpAlignmentResult,
-          "annowarp-stitch": AnnoWarpStitchResultEntry,
-          "batch": Batch,
-          "constants": Constant,
-          "exposures": ExposureTime,
-          "fieldoverlaps": FieldOverlap,
-          "fieldGeometry": Boundary,
-          "fields": Field,
-          "globals": ROIGlobals,
-          "imstat": ImageStats,
-          "overlap": Overlap,
-          "qptiff": QPTiffCsv,
-          "rect": Rectangle,
-          "regions": Region,
-          "tumorGeometry": Boundary,
-          "vertices": Vertex,
+        csvclass, tablename = {
+          "affine": (AffineEntry, "Affine"),
+          "align": (AlignmentResult, "Align"),
+          "annotations": (Annotation, "Annotations"),
+          "annowarp": (AnnoWarpAlignmentResult, "AnnoWarp"),
+          "annowarp-stitch": (AnnoWarpStitchResultEntry, "AnnoWarpStitch"),
+          "batch": (Batch, "Batch"),
+          "constants": (Constant, "Constants"),
+          "exposures": (ExposureTime, "Exposures"),
+          "fieldoverlaps": (FieldOverlap, "FieldOverlaps"),
+          "fieldGeometry": (Boundary, "FieldGeometry"),
+          "fields": (Field, "Fields"),
+          "globals": (ROIGlobals, "Globals"),
+          "imstat": (ImageStats, "Imstat"),
+          "overlap": (Overlap, "Overlap"),
+          "qptiff": (QPTiffCsv, "Qptiff"),
+          "rect": (Rectangle, "Rect"),
+          "regions": (Region, "Regions"),
+          "tumorGeometry": (Boundary, "TumorGeometry"),
+          "vertices": (Vertex, "Vertices"),
         }[match.group(1)]
+        extrakwargs = {
+          #"annowarp": {"tilesize": 100*self.oneimpixel, "bigtilesize": np.array([1400, 2100])*self.oneimpixel, "bigtileoffset": }
+          "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0, "imscale": 1},
+          "fieldoverlaps": {"nclip": 8, "rectangles": self.rectangles},
+        }.get(match.group(1), {})
       elif csv.parent == self.geomfolder:
         csvclass = CellGeomLoad
+        tablename = "CellGeom"
+        extrakwargs = {}
       elif csv.parent == self.phenotypetablesfolder:
         csvclass = PhenotypedCell
+        tablename = "Cell"
+        extrakwargs = {}
       else:
         assert False
 
-      toload.append((csv, csvclass))
+      toload.append((csv, csvclass, tablename, extrakwargs))
 
     if expectcsvs or unknowncsvs:
       errors = []
@@ -116,20 +125,20 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         errors.append("Unknown csvs: "+", ".join(str(_) for _ in sorted(unknowncsvs)))
       raise ValueError("\n".join(errors))
 
-    loadfiles = [self.processcsv(csv, csvclass) for csv, csvclass in toload]
+    loadfiles = [self.processcsv(*args) for args in toload]
 
     self.writecsv("loadfiles", loadfiles)
 
-  def processcsv(self, csv, csvclass):
+  def processcsv(self, csv, csvclass, tablename, extrakwargs={}):
     self.logger.debug(f"Processing {csv}")
     #read the csv, to check that it's valid
-    rows = self.readtable(csv, csvclass)
+    rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs)
     nrows = len(rows)
     return LoadFile(
       fileid="",
       SlideID=self.SlideID,
       filename=csv,
-      classname=csvclass.csvscanname,
+      tablename=tablename,
       nrows=nrows,
       nrowsloaded=0,
     )
@@ -154,6 +163,6 @@ class LoadFile(MyDataClass):
   fileid: str
   SlideID: str
   filename: pathfield()
-  classname: str
+  tablename: str
   nrows: int
   nrowsloaded: int

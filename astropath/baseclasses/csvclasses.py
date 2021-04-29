@@ -315,7 +315,7 @@ class MergeConfig(MyDataClass):
   NumberofSegmentations: int
   ImageQA: str
 
-class PhenotypedCell(CsvClass):
+class PhenotypedCell(MyDataClass):
   CellID: int
   SlideID: str
   fx: int
