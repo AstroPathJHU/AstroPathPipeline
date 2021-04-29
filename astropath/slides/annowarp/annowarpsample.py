@@ -1018,14 +1018,15 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   """
   __fmt = "{:.6g}"
   pixelsormicrons = "pixels"
+  pscalename = "imscale"
   n: int
-  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="imscale")
-  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename="imscale")
-  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename="imscale")
-  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename="imscale")
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename="imscale")
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename="imscale")
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename="imscale")
+  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
+  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
+  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename=pscalename)
+  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename=pscalename)
+  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
+  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
+  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
   exit: int
   del __fmt
 
