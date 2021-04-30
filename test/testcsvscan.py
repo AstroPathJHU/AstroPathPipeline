@@ -59,10 +59,10 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
         folder = s.mainfolder
         if row.tablename == "CellGeom":
           folder = s.geomroot/s.SlideID
-        row.filename = row.filename.relative_to(folder)
+        row.filename = row.filename.relative_to(folder).as_posix()
       targetcommonroot = commonroot(*(row.filename for row in targetrows))
       for row in targetrows:
-        row.filename = row.filename.relative_to(targetcommonroot)
+        row.filename = row.filename.relative_to(targetcommonroot).as_posix()
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target)
     except:
