@@ -47,7 +47,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       for rid in selectrectangles: args.append(str(rid))
     CsvScanCohort.runfromargumentparser(args=args)
 
-    s = CsvScanSample(root=thisfolder/"data", dbloadroot=dbloadroot, samp=SlideID)
+    s = CsvScanSample(root=root, geomroot=geomroot, samp=SlideID)
     filename = s.csv("loadfiles")
     reffolder = thisfolder/"reference"/"csvscan"/SlideID
     reference = reffolder/filename.name

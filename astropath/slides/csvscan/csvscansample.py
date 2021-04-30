@@ -1,6 +1,6 @@
 import itertools, re
 
-from ...baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals, Vertex
+from ...baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...baseclasses.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
 from ...baseclasses.overlap import Overlap
 from ...baseclasses.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
@@ -10,7 +10,7 @@ from ..align.field import Field, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
 from ..align.stitch import AffineEntry
-from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask
+from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
 from ..geom.geomsample import Boundary, GeomSample
 from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSample
@@ -97,12 +97,14 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
           "rect": (Rectangle, "Rect"),
           "regions": (Region, "Regions"),
           "tumorGeometry": (Boundary, "TumorGeometry"),
-          "vertices": (Vertex, "Vertices"),
+          "vertices": (WarpedVertex, "Vertices"),
         }[match.group(1)]
+        allrectangles = self.readcsv("rect", Rectangle)
         extrakwargs = {
-          #"annowarp": {"tilesize": 100*self.oneimpixel, "bigtilesize": np.array([1400, 2100])*self.oneimpixel, "bigtileoffset": }
           "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0, "imscale": 1},
-          "fieldoverlaps": {"nclip": 8, "rectangles": self.rectangles},
+          "fieldoverlaps": {"nclip": 8, "rectangles": allrectangles},
+          "overlap": {"nclip": 8, "rectangles": allrectangles},
+          "vertices": {"bigtilesize": 0, "bigtileoffset": 0}
         }.get(match.group(1), {})
       elif csv.parent == self.geomfolder:
         csvclass = CellGeomLoad
@@ -146,7 +148,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **otherworkflowkwargs):
     dbload = dbloadroot/SlideID/"dbload"
-    return dbload/f"{SlideID}_loadfiles.csv"
+    return [dbload/f"{SlideID}_loadfiles.csv"]
 
   @property
   def inputfiles(self): return []
