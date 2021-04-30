@@ -124,13 +124,14 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
               newlocalx1 -= globalx1
               globalx1 -= globalx1
             #fill the big image with the HPF image
+            kw = {"atol": 1e-7}
             bigimage[
               i,
-              floattoint(float(globaly1/onepixel)):floattoint(float(globaly2/onepixel)),
-              floattoint(float(globalx1/onepixel)):floattoint(float(globalx2/onepixel)),
+              floattoint(float(globaly1/onepixel), **kw):floattoint(float(globaly2/onepixel), **kw),
+              floattoint(float(globalx1/onepixel), **kw):floattoint(float(globalx2/onepixel), **kw),
             ] = shifted[
-              floattoint(float(newlocaly1/onepixel)):floattoint(float(newlocaly2/onepixel)),
-              floattoint(float(newlocalx1/onepixel)):floattoint(float(newlocalx2/onepixel)),
+              floattoint(float(newlocaly1/onepixel), **kw):floattoint(float(newlocaly2/onepixel), **kw),
+              floattoint(float(newlocalx1/onepixel), **kw):floattoint(float(newlocalx2/onepixel), **kw),
             ]
 
       self.zoomfolder.mkdir(parents=True, exist_ok=True)
