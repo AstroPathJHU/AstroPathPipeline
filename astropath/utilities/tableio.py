@@ -49,7 +49,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
       if fieldnames != columnnames:
         raise ValueError(f"Column names and dataclass field names are not in the same order\n{columnnames}\n{fieldnames}")
     for field, fieldtype in dataclassy.fields(Row).items():
-      if not rowclass.metadata(field).get("includeintable", True):
+      if field not in reader.fieldnames:
         continue
       typ = Row.metadata(field).get("readfunction", fieldtype)
       if field in columntypes:

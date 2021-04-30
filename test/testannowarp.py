@@ -1,4 +1,4 @@
-import more_itertools, numpy as np, pathlib, re
+import more_itertools, numpy as np, os, pathlib, re
 
 from astropath.baseclasses.csvclasses import Region
 from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
@@ -37,10 +37,12 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
 
   @property
   def outputfilenames(self):
-    return [
-      thisfolder/"annowarp_test_for_jenkins"/SlideID/"warp_100.csv"
-      for SlideID in ("M206",)
-    ]
+    return sum(([
+      thisfolder/"annowarp_test_for_jenkins"/SlideID/"annowarp.csv",
+      thisfolder/"annowarp_test_for_jenkins"/SlideID/"annowarp-stitch.csv",
+      thisfolder/"annowarp_test_for_jenkins"/SlideID/"regions.csv",
+      thisfolder/"annowarp_test_for_jenkins"/SlideID/"vertices.csv",
+    ] for SlideID in ("M206",)), [])
 
   def testAlignment(self, SlideID="M206"):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"annowarp_test_for_jenkins", logroot=thisfolder/"annowarp_test_for_jenkins", uselogfiles=True)
@@ -82,7 +84,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       self.assertGreater(row.poly.area, 0)
 
   def testReadingWritingAlignments(self, SlideID="M206"):
-    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask")
+    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"annowarp_test_for_jenkins")
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     testfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/"testreadannowarpalignments.csv"
     testfilename.parent.mkdir(parents=True, exist_ok=True)
@@ -95,7 +97,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     testfilename.unlink()
 
   def testStitchCvxpy(self, SlideID="M206"):
-    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask")
+    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"annowarp_test_for_jenkins")
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)
     result1 = s.stitch(residualpullcutoff=None)
@@ -117,11 +119,11 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     zoomroot = thisfolder/"reference"/"zoom"
     logroot = thisfolder/"annowarp_test_for_jenkins"
     maskroot = thisfolder/"reference"/"stitchmask"
-    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(logroot), "--maskroot", str(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits"]
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot)]
     AnnoWarpCohort.runfromargumentparser(args)
 
   def testConstraint(self, SlideID="M206"):
-    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask")
+    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"annowarp_test_for_jenkins")
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)
     result1 = s.stitch(residualpullcutoff=None)
