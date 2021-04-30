@@ -2,6 +2,7 @@ import more_itertools, os, pathlib
 
 from astropath.slides.csvscan.csvscancohort import CsvScanCohort
 from astropath.slides.csvscan.csvscansample import LoadFile, CsvScanSample
+from astropath.utilities.misc import commonroot
 
 from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 
@@ -28,7 +29,6 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       oldtables = thisfolder/"data"/SlideID/"inform_data"/"Phenotyped"/"Results"/"Tables"
       for csv in oldtables.glob("*.csv"):
         yield csv, newtables
-      
 
   @property
   def outputfilenames(self):
@@ -55,6 +55,14 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
     try:
       rows = s.readtable(filename, LoadFile, header=False)
       targetrows = s.readtable(reference, LoadFile, header=False)
+      for row in rows:
+        folder = s.mainfolder
+        if row.tablename == "CellGeom":
+          folder = s.geomroot/s.SlideID
+        row.filename = row.filename.relative_to(folder)
+      targetcommonroot = commonroot(*(row.filename for row in targetrows))
+      for row in targetrows:
+        row.filename = row.filename.relative_to(targetcommonroot)
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target)
     except:

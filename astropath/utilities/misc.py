@@ -1,4 +1,4 @@
-import collections, contextlib, cv2, itertools, logging, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, PIL.Image, re, scipy.stats, uncertainties as unc
+import collections, contextlib, cv2, itertools, logging, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, PIL.Image, re, scipy.stats, sys, uncertainties as unc
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -252,6 +252,26 @@ def dict_product(dct):
   valuelists = dct.values()
   for values in itertools.product(*valuelists):
     yield {k: v for k, v in more_itertools.zip_equal(keys, values)}
+
+def is_relative_to(path1, path2):
+  if sys.version_info >= (3, 9):
+    return path1.is_relative_to(path2)
+    try:
+      path1.relative_to(*path2)
+      return True
+    except ValueError:
+      return False
+
+def commonroot(*paths, __niter=0):
+  assert __niter <= 100*len(paths)
+  path1, *others = paths
+  if not others: return path1
+  path2, *others = others
+  if len({path1.is_absolute(), path2.is_absolute()}) > 1:
+    raise ValueError("Can't call commonroot with some absolute and some relative paths")
+  if path1 == path2: return commonroot(path1, *others)
+  path1, path2 = sorted((path1, path2), key=lambda x: len(x.parts))
+  return commonroot(path1, path2.parent, *others, __niter=__niter+1)
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())

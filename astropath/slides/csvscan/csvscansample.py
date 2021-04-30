@@ -119,6 +119,8 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
 
       toload.append((csv, csvclass, tablename, extrakwargs))
 
+    toload.sort(key=lambda x: ((x[1]==CellGeomLoad), (x[1]==PhenotypedCell), x[0]))
+
     if expectcsvs or unknowncsvs:
       errors = []
       if expectcsvs:
