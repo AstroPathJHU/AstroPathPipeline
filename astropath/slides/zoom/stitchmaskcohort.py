@@ -1,5 +1,5 @@
 from ...baseclasses.cohort import DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort
-from .stitchmask import StitchInformMask
+from .stitchmasksample import StitchInformMask
 
 class StitchMaskCohortBase(DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort):
   pass

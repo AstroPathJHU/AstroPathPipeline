@@ -1,10 +1,10 @@
 from ...baseclasses.cohort import DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort
-from .zoom import Zoom
+from .zoomsample import ZoomSample
 
 class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomFolderCohort, SelectLayersCohort, WorkflowCohort):
-  __doc__ = Zoom.__doc__
+  __doc__ = ZoomSample.__doc__
 
-  sampleclass = Zoom
+  sampleclass = ZoomSample
 
   @classmethod
   def makeargumentparser(cls):

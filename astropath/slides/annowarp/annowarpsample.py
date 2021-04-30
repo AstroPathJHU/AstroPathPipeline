@@ -12,8 +12,8 @@ from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
 from ..align.computeshift import computeshift
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..align.overlap import AlignmentComparison
-from ..zoom.stitchmask import InformMaskSample, TissueMaskSample, StitchInformMask
-from ..zoom.zoom import Zoom, ZoomSampleBase
+from ..zoom.stitchmasksample import InformMaskSample, TissueMaskSample, StitchInformMask
+from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample, units.ThingWithImscale):
@@ -831,7 +831,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
 
   @classmethod
   def workflowdependencies(cls):
-    return [Zoom] + super().workflowdependencies()
+    return [ZoomSample] + super().workflowdependencies()
 
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
   """
@@ -1187,7 +1187,7 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
     return type(self)(_ for _ in good if keep[_.n])
 
 def main(args=None):
-  AnnoWarpSample.runfromargumentparser(args)
+  AnnoWarpSampleInformTissueMask.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

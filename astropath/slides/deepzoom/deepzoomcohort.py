@@ -1,5 +1,5 @@
 from ...baseclasses.cohort import DbloadCohort, DeepZoomCohort, SelectLayersCohort, WorkflowCohort, ZoomFolderCohort
-from .deepzoom import DeepZoomSample
+from .deepzoomsample import DeepZoomSample
 
 class DeepZoomCohort(DbloadCohort, ZoomFolderCohort, DeepZoomCohort, SelectLayersCohort, WorkflowCohort):
   sampleclass = DeepZoomSample

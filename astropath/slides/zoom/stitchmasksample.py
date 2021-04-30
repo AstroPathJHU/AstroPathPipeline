@@ -3,7 +3,7 @@ from ...baseclasses.sample import MaskSampleBase, ReadRectanglesDbloadComponentT
 from ...utilities.misc import floattoint
 from ..align.alignsample import AlignSample
 from ..align.field import FieldReadComponentTiff
-from ..zoom.zoom import ZoomSampleBase
+from ..zoom.zoomsample import ZoomSampleBase
 
 class MaskSample(MaskSampleBase):
   """

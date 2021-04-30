@@ -1,5 +1,5 @@
 import more_itertools, numpy as np, pathlib, PIL.Image
-from astropath.slides.deepzoom.deepzoom import DeepZoomFile, DeepZoomSample
+from astropath.slides.deepzoom.deepzoomsample import DeepZoomFile, DeepZoomSample
 from astropath.slides.deepzoom.deepzoomcohort import DeepZoomCohort
 from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
