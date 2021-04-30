@@ -1,9 +1,8 @@
 import more_itertools, numpy as np, pathlib
-from astropath_calibration.alignment.alignlayers import AlignLayers
-from astropath_calibration.alignment.overlap import LayerAlignmentResult
-from astropath_calibration.alignment.stitchlayers import LayerPosition, LayerPositionCovariance
-from astropath_calibration.utilities import units
-from astropath_calibration.utilities.tableio import readtable
+from astropath.slides.align.alignlayers import AlignLayers
+from astropath.slides.align.overlap import LayerAlignmentResult
+from astropath.slides.align.stitchlayers import LayerPosition, LayerPositionCovariance
+from astropath.utilities import units
 from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 thisfolder = pathlib.Path(__file__).parent
 
@@ -41,13 +40,13 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
     a.stitch(eliminatelayer=1)
 
     try:
-      for filename, cls, extrakwargs in (
-        (f"{SlideID}_alignlayers.csv", LayerAlignmentResult, {"pscale": a.pscale}),
-        (f"{SlideID}_layerpositions.csv", LayerPosition, {"pscale": a.pscale}),
-        (f"{SlideID}_layerpositioncovariances.csv", LayerPositionCovariance, {"pscale": a.pscale}),
+      for filename, cls in (
+        (f"{SlideID}_alignlayers.csv", LayerAlignmentResult),
+        (f"{SlideID}_layerpositions.csv", LayerPosition),
+        (f"{SlideID}_layerpositioncovariances.csv", LayerPositionCovariance),
       ):
-        rows = readtable(thisfolder/"alignlayers_test_for_jenkins"/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        targetrows = readtable(thisfolder/"reference"/"alignlayers"/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        rows = a.readtable(thisfolder/"alignlayers_test_for_jenkins"/SlideID/"dbload"/filename, cls, checkorder=True)
+        targetrows = a.readtable(thisfolder/"reference"/"alignlayers"/SlideID/filename, cls, checkorder=True)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           if cls == LayerAlignmentResult and row.exit != 0 and target.exit != 0: continue
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
@@ -66,6 +65,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
     units.np.testing.assert_allclose(units.nominal_values(result1.x()), units.nominal_values(result2.x()), rtol=1e-7, atol=1e-7)
     units.np.testing.assert_allclose(units.covariance_matrix(np.ravel(result1.x())), units.covariance_matrix(np.ravel(result2.x())), rtol=1e-7, atol=1e-7)
 
+  @units.setup_context("fast", "microns")
   def testStitchCvxpy(self, SlideID="M21_1"):
     a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"alignlayers_test_for_jenkins", logroot=thisfolder/"alignlayers_test_for_jenkins")
     a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
@@ -89,8 +89,8 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
 
     a.readalignments(filename=readfilename)
     a.writealignments(filename=writefilename)
-    rows = readtable(writefilename, LayerAlignmentResult, extrakwargs={"pscale": a.pscale})
-    targetrows = readtable(readfilename, LayerAlignmentResult, extrakwargs={"pscale": a.pscale})
+    rows = a.readtable(writefilename, LayerAlignmentResult)
+    targetrows = a.readtable(readfilename, LayerAlignmentResult)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 

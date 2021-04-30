@@ -1,17 +1,32 @@
-import more_itertools, numpy as np, pathlib, re
+import more_itertools, numpy as np, os, pathlib, re
 
-from astropath_calibration.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
-from astropath_calibration.annowarp.annowarpcohort import AnnoWarpCohort
-from astropath_calibration.annowarp.stitch import AnnoWarpStitchResultEntry
-from astropath_calibration.baseclasses.csvclasses import Region
-from astropath_calibration.utilities import units
-from astropath_calibration.utilities.tableio import readtable
+from astropath.baseclasses.csvclasses import Region
+from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
+from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohort
+from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
+from astropath.utilities import units
 
-from .testbase import assertAlmostEqual, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
-class TestAnnoWarp(TestBaseSaveOutput):
+class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
+  @classmethod
+  def filestocopy(cls):
+    for SlideID in "M206",:
+      olddbload = thisfolder/"data"/SlideID/"dbload"
+      newdbload = thisfolder/"annowarp_test_for_jenkins"/SlideID/"dbload"
+      for csv in (
+        "constants",
+        "vertices",
+        "regions",
+        "fields",
+      ):
+        yield olddbload/f"{SlideID}_{csv}.csv", newdbload
+
+  @classmethod
+  def removecopiedinput(cls): return False
+
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
@@ -22,68 +37,67 @@ class TestAnnoWarp(TestBaseSaveOutput):
 
   @property
   def outputfilenames(self):
-    return [
-      thisfolder/"annowarp_test_for_jenkins"/SlideID/"warp_100.csv"
-      for SlideID in ("M206",)
-    ]
+    return sum(([
+      thisfolder/"annowarp_test_for_jenkins"/SlideID/"annowarp.csv",
+      thisfolder/"annowarp_test_for_jenkins"/SlideID/"annowarp-stitch.csv",
+      thisfolder/"annowarp_test_for_jenkins"/SlideID/"regions.csv",
+      thisfolder/"annowarp_test_for_jenkins"/SlideID/"vertices.csv",
+    ] for SlideID in ("M206",)), [])
 
   def testAlignment(self, SlideID="M206"):
-    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask")
-    s.align()
-    alignmentfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.alignmentcsv.name
-    alignmentfilename.parent.mkdir(parents=True, exist_ok=True)
+    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"annowarp_test_for_jenkins", logroot=thisfolder/"annowarp_test_for_jenkins", uselogfiles=True)
+
+    alignmentfilename = s.alignmentcsv
     referencealignmentfilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
-    s.writealignments(filename=alignmentfilename)
-
-    s.stitch()
-    stitchfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.stitchcsv.name
+    stitchfilename = s.stitchcsv
     referencestitchfilename = thisfolder/"reference"/"annowarp"/SlideID/s.stitchcsv.name
-    s.writestitchresult(filename=stitchfilename)
-
-    verticesfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.newverticescsv.name
+    verticesfilename = s.newverticescsv
     referenceverticesfilename = thisfolder/"reference"/"annowarp"/SlideID/s.newverticescsv.name
-    s.writevertices(filename=verticesfilename)
-
-    regionsfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/s.newregionscsv.name
+    regionsfilename = s.newregionscsv
     referenceregionsfilename = thisfolder/"reference"/"annowarp"/SlideID/s.newregionscsv.name
-    s.writeregions(filename=regionsfilename)
 
-    rows = readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
-    targetrows = readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
+    with s:
+      s.runannowarp()
+
+    if not s.runstatus:
+      raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus}")
+
+    rows = s.readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
+    targetrows = s.readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
-    rows = readtable(stitchfilename, AnnoWarpStitchResultEntry, extrakwargs={"pscale": s.pscale})
-    targetrows = readtable(referencestitchfilename, AnnoWarpStitchResultEntry, extrakwargs={"pscale": s.pscale})
+    rows = s.readtable(stitchfilename, AnnoWarpStitchResultEntry)
+    targetrows = s.readtable(referencestitchfilename, AnnoWarpStitchResultEntry)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    rows = readtable(verticesfilename, WarpedVertex, extrakwargs={"apscale": s.apscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
-    targetrows = readtable(referenceverticesfilename, WarpedVertex, extrakwargs={"apscale": s.apscale, "pscale": s.pscale, "bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    rows = s.readtable(verticesfilename, WarpedVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    targetrows = s.readtable(referenceverticesfilename, WarpedVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    rows = readtable(regionsfilename, Region, extrakwargs={"apscale": s.apscale, "pscale": s.pscale})
-    targetrows = readtable(referenceregionsfilename, Region, extrakwargs={"apscale": s.apscale, "pscale": s.pscale})
+    rows = s.readtable(regionsfilename, Region)
+    targetrows = s.readtable(referenceregionsfilename, Region)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
       self.assertGreater(row.poly.area, 0)
 
   def testReadingWritingAlignments(self, SlideID="M206"):
-    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask")
+    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"annowarp_test_for_jenkins")
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     testfilename = thisfolder/"annowarp_test_for_jenkins"/SlideID/"testreadannowarpalignments.csv"
     testfilename.parent.mkdir(parents=True, exist_ok=True)
     s.readalignments(filename=referencefilename)
     s.writealignments(filename=testfilename)
-    rows = readtable(testfilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
-    targetrows = readtable(referencefilename, AnnoWarpAlignmentResult, extrakwargs={"pscale": s.pscale, "tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
+    rows = s.readtable(testfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
+    targetrows = s.readtable(referencefilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
     testfilename.unlink()
 
   def testStitchCvxpy(self, SlideID="M206"):
-    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask")
+    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"annowarp_test_for_jenkins")
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)
     result1 = s.stitch(residualpullcutoff=None)
@@ -105,11 +119,11 @@ class TestAnnoWarp(TestBaseSaveOutput):
     zoomroot = thisfolder/"reference"/"zoom"
     logroot = thisfolder/"annowarp_test_for_jenkins"
     maskroot = thisfolder/"reference"/"stitchmask"
-    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(logroot), "--maskroot", str(maskroot), "--sampleregex", SlideID, "--debug", "--units", units]
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot)]
     AnnoWarpCohort.runfromargumentparser(args)
 
   def testConstraint(self, SlideID="M206"):
-    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask")
+    s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"annowarp_test_for_jenkins")
     referencefilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)
     result1 = s.stitch(residualpullcutoff=None)

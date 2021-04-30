@@ -1,6 +1,6 @@
 import abc, contextlib, dataclassy, numbers, numpy as np, pathlib, shutil, tempfile, unittest
 
-from astropath_calibration.utilities import units
+from astropath.utilities import units
 
 def assertAlmostEqual(a, b, **kwargs):
   if isinstance(a, np.ndarray) and not a.shape: a = a[()]
@@ -88,6 +88,9 @@ class TestBaseSaveOutput(abc.ABC, unittest.TestCase):
 
 class TestBaseCopyInput(abc.ABC, unittest.TestCase):
   @classmethod
+  def removecopiedinput(cls): return True
+
+  @classmethod
   @abc.abstractmethod
   def filestocopy(cls): pass
 
@@ -101,5 +104,6 @@ class TestBaseCopyInput(abc.ABC, unittest.TestCase):
   @classmethod
   def tearDownClass(cls):
     super().tearDownClass()
-    for copyfrom, copytofolder in cls.filestocopy():
-      (copytofolder/copyfrom.name).unlink()
+    if cls.removecopiedinput():
+      for copyfrom, copytofolder in cls.filestocopy():
+        (copytofolder/copyfrom.name).unlink()

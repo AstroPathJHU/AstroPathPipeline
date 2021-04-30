@@ -1,10 +1,10 @@
 # A script to run tests of the flatfield batch modes
 
 #imports
-from astropath_calibration.flatfield.run_flatfield import main
-from astropath_calibration.flatfield.utilities import flatfield_logger, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath
+from astropath.hpfs.flatfield.run_flatfield import main
+from astropath.hpfs.flatfield.utilities import flatfield_logger, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath
 from argparse import Namespace
-import pathlib, os, shutil
+import pathlib, shutil
 
 #some constants
 folder = pathlib.Path(__file__).parent
@@ -36,7 +36,7 @@ main(args)
 #check the logfile for error messages
 slide = FlatfieldSlideInfo(slide_ID,str(folder/'data'/'raw'),str(folder/'data'))
 slide_mean_image_working_dir = getSlideMeanImageWorkingDirPath(slide)
-with open(os.path.join(slide_mean_image_working_dir,'global-slide_mean_image.log'),'r') as fp :
+with open(pathlib.Path(f'{slide_mean_image_working_dir}/global-slide_mean_image.log'),'r') as fp :
     for l in fp.readlines() :
         if 'ERROR' in l :
             raise RuntimeError('ERROR: there were errors during the slide_mean_image test; check the log files for what went wrong!')
@@ -44,8 +44,8 @@ with open(os.path.join(slide_mean_image_working_dir,'global-slide_mean_image.log
 #Run the batch_flatfield test
 flatfield_logger.info('TESTING batch_flatfield')
 ff_dirpath = folder/'data'/'Flatfield'
-if not os.path.isdir(ff_dirpath) :
-    os.mkdir(ff_dirpath)
+if not pathlib.Path.is_dir(ff_dirpath) :
+    pathlib.Path.mkdir(ff_dirpath)
 args = Namespace(
         mode='batch_flatfield',
         exposure_time_offset_file=None,
@@ -69,7 +69,7 @@ args = Namespace(
 main(args)
 #check the logfile for error messages
 batch_flatfield_working_dir = getBatchFlatfieldWorkingDirPath(folder/'data',1)
-with open(os.path.join(batch_flatfield_working_dir,'global-batch_flatfield.log'),'r') as fp :
+with open(pathlib.Path(f'{batch_flatfield_working_dir}/global-batch_flatfield.log'),'r') as fp :
     for l in fp.readlines() :
         if 'ERROR' in l :
             raise RuntimeError('ERROR: there were errors during the batch_flatfield test; check the log files for what went wrong!')
@@ -77,10 +77,10 @@ with open(os.path.join(batch_flatfield_working_dir,'global-batch_flatfield.log')
 #remove the working directory and the logs that were created
 flatfield_logger.info('Removing working directories and logfiles....')
 shutil.rmtree(slide_mean_image_working_dir,ignore_errors=True)
-os.remove(folder/'data'/'logfiles'/'slide_mean_image.log')
-os.remove(folder/'data'/f'{slide_ID}'/'logfiles'/f'{slide_ID}-slide_mean_image.log')
+(folder/'data'/'logfiles'/'slide_mean_image.log').unlink()
+(folder/'data'/f'{slide_ID}'/'logfiles'/f'{slide_ID}-slide_mean_image.log').unlink()
 shutil.rmtree(batch_flatfield_working_dir,ignore_errors=True)
-os.remove(folder/'data'/'logfiles'/'batch_flatfield.log')
-os.remove(folder/'data'/f'{slide_ID}'/'logfiles'/f'{slide_ID}-batch_flatfield.log')
+(folder/'data'/'logfiles'/'batch_flatfield.log').unlink()
+(folder/'data'/f'{slide_ID}'/'logfiles'/f'{slide_ID}-batch_flatfield.log').unlink()
 shutil.rmtree(ff_dirpath)
 flatfield_logger.info('All Done!')

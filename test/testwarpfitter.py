@@ -1,9 +1,9 @@
 # A script to run a quick example of the warpfitter
 
 #imports
-from astropath_calibration.warping.run_warp_fitter import main
-from astropath_calibration.warping.utilities import WarpFitResult
-from astropath_calibration.utilities.tableio import readtable
+from astropath.hpfs.warping.run_warp_fitter import main
+from astropath.hpfs.warping.utilities import WarpFitResult
+from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 from argparse import Namespace
 import pathlib, shutil
@@ -13,7 +13,7 @@ folder = pathlib.Path(__file__).parent
 working_dir = folder/'warpfitter_test_for_jenkins'
 
 args = Namespace(
-        mode='fit',
+        mode='warp_fit',
         slideID='M21_1',
         rawfile_top_dir=str(folder/'data'/'raw'),
         root_dir=str(folder/'data'),
@@ -32,6 +32,7 @@ args = Namespace(
         init_bounds='cx=529.3:663.7,cy=551.0:651.4',
         float_p1p2_to_polish=True,
         p1p2_polish_lasso_lambda=1.0,
+        octet_file=None,
         octet_run_dir=None,
         threshold_file_dir=None,
         req_pixel_frac=0.85,

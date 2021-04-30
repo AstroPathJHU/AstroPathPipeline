@@ -38,3 +38,7 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# MS Office backups #
+#####################
+~$*.pptx

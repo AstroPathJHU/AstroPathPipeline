@@ -1,7 +1,7 @@
 import more_itertools, numpy as np, pathlib, PIL.Image
-from astropath_calibration.deepzoom.deepzoom import DeepZoomFile, DeepZoomSample
-from astropath_calibration.deepzoom.deepzoomcohort import DeepZoomCohort
-from astropath_calibration.utilities.tableio import readtable
+from astropath.slides.deepzoom.deepzoom import DeepZoomFile, DeepZoomSample
+from astropath.slides.deepzoom.deepzoomcohort import DeepZoomCohort
+from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -17,7 +17,7 @@ class TestDeepZoom(TestBaseSaveOutput):
     root = thisfolder/"data"
     zoomroot = thisfolder/"reference"/"zoom"
     deepzoomroot = thisfolder/"deepzoom_test_for_jenkins"
-    args = [str(root), "--zoomroot", str(zoomroot), "--deepzoomroot", str(deepzoomroot), "--logroot", str(deepzoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--layers", "1"]
+    args = [str(root), "--zoomroot", str(zoomroot), "--deepzoomroot", str(deepzoomroot), "--logroot", str(deepzoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--layers", "1", "--allow-local-edits"]
     DeepZoomCohort.runfromargumentparser(args)
 
     sample = DeepZoomSample(root, SlideID, zoomroot=zoomroot, deepzoomroot=deepzoomroot, logroot=deepzoomroot)
