@@ -3,15 +3,14 @@ import contextlib, csv, dataclasses, dataclassy, pathlib
 from .dataclasses import MetaDataAnnotation, MyDataClass
 from .misc import dummylogger
 
-def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, maxrows=float("inf"), **columntypes):
+def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, maxrows=float("inf"), header=True, **columntypes):
   """
   Read a csv table into a list of named tuples
 
   filename:       csv file to read from
-  rownameorclass: class that will represent each row, to be called
+  rowclass:       class that will represent each row, to be called
                   with **kwargs with the keywords based on the column
-                  headers.  Alternatively you can give a name, and a
-                  dataclass will be automatically created with that name.
+                  headers.
   extrakwargs:    will be passed to the the class that creates each row
   columntypes:    type (or function) to be called on each element in
                   that column.  Default is it's just left as a string.
@@ -36,40 +35,32 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
 
   result = []
   with field_size_limit_context(fieldsizelimit), open(filename) as f:
-    reader = csv.DictReader(f)
-    if isinstance(rownameorclass, str):
-      Row = dataclassy.make_dataclass(
-        rownameorclass,
-        [
-          (fieldname, columntypes.get(fieldname, str))
-          for fieldname in reader.fieldnames
-        ]
-      )
+    if header:
+      fieldnames = None
     else:
-      Row = rownameorclass
-      if not issubclass(Row, MyDataClass):
-        raise TypeError(f"{Row} should inherit from {MyDataClass}")
-      if checkorder:
-        columnnames = list(reader.fieldnames)
-        fieldnames = [field for field in dataclassy.fields(Row) if field in columnnames]
-        if fieldnames != columnnames:
-          raise ValueError(f"Column names and dataclass field names are not in the same order\n{columnnames}\n{fieldnames}")
-      for field, fieldtype in dataclassy.fields(Row).items():
-        if field not in reader.fieldnames:
-          continue
-          #hopefully it has a default value!
-          #otherwise we will get an error when
-          #reading the first row
-        typ = Row.metadata(field).get("readfunction", fieldtype)
-        if field in columntypes:
-          if columntypes[field] != typ:
-            raise TypeError(
-              f"The type for {field} in your dataclass {Row.__name__} "
-              f"and the type provided in readtable are inconsistent "
-              f"({typ} != {columntypes[field]})"
-            )
-        else:
-          columntypes[field] = typ
+      fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
+    reader = csv.DictReader(f, fieldnames=fieldnames)
+    Row = rowclass
+    if not issubclass(Row, MyDataClass):
+      raise TypeError(f"{Row} should inherit from {MyDataClass}")
+    if checkorder:
+      columnnames = list(reader.fieldnames)
+      fieldnames = [field for field in dataclassy.fields(Row) if field in columnnames]
+      if fieldnames != columnnames:
+        raise ValueError(f"Column names and dataclass field names are not in the same order\n{columnnames}\n{fieldnames}")
+    for field, fieldtype in dataclassy.fields(Row).items():
+      if field not in reader.fieldnames:
+        continue
+      typ = Row.metadata(field).get("readfunction", fieldtype)
+      if field in columntypes:
+        if columntypes[field] != typ:
+          raise TypeError(
+            f"The type for {field} in your dataclass {Row.__name__} "
+            f"and the type provided in readtable are inconsistent "
+            f"({typ} != {columntypes[field]})"
+          )
+      else:
+        columntypes[field] = typ
 
     if "readingfromfile" not in extrakwargs:
       extrakwargs["readingfromfile"] = True
@@ -85,7 +76,7 @@ def readtable(filename, rownameorclass, *, extrakwargs={}, fieldsizelimit=None, 
 
   return result
 
-def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("inf"), logger=dummylogger):
+def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("inf"), logger=dummylogger, header=True):
   """
   Write a csv table into filename based on the rows.
   The rows should all be the same dataclass type.
@@ -119,7 +110,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
   try:
     with open(filename, "w") as f:
       writer = csv.DictWriter(f, fieldnames, lineterminator='\n')
-      writer.writeheader()
+      if header: writer.writeheader()
       for i, row in enumerate(rows, start=1):
         if printevery is not None and not i % printevery:
           logger.debug(f"{i} / {size}")
@@ -190,6 +181,8 @@ def pathfield(**metadata):
         return pathlib.WindowsPath(path)
       except NotImplementedError:
         return pathlib.PureWindowsPath(path)
+    else:
+      assert False, path
 
   metadata = {
     "readfunction": guesspathtype,

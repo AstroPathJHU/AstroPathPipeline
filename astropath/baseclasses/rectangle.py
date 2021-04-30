@@ -654,4 +654,19 @@ class GeomLoadRectangle(Rectangle):
   def geomloadcsv(self):
     return self.__geomfolder/self.file.replace(".im3", "_cellGeomLoad.csv")
 
+class PhenotypedRectangle(Rectangle):
+  """
+  Rectangle that has a _cleaned_phenotype_table.csv
+  You have to provide the folder where that csv lives.
+  """
+  def __post_init__(self, *args, phenotypefolder, **kwargs):
+    self.__phenotypefolder = pathlib.Path(phenotypefolder)
+    super().__post_init__(*args, **kwargs)
+  @property
+  def __phenotypetablesfolder(self):
+    return self.__phenotypefolder/"Results"/"Tables"
+  @property
+  def phenotypetablescsv(self):
+    return self.__phenotypetablesfolder/self.file.replace(".im3", "_cleaned_phenotype_table.csv")
+
 rectanglefilter = rectangleoroverlapfilter
