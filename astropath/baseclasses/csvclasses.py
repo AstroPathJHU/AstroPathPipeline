@@ -71,7 +71,7 @@ class QPTiffCsv(DataClassWithPscale):
   fname: str
   img: str
 
-class Constant(DataClassWithDistances):
+class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithApscale, units.ThingWithQpscale):
   """
   An entry in the constants.csv spreadsheet.
   This is a little complicated because there are distances with different powers
@@ -285,3 +285,116 @@ class ExposureTime(DataClassWithPscale):
   cy: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
   layer: int
   exp: float
+
+class MergeConfig(MyDataClass):
+  """
+  Each MergeConfig object represents a row of the mergeconfig.csv file,
+  which describes the stains in the slide and how they map to layers
+  of the component tiff.
+  """
+  @classmethod
+  def transforminitargs(cls, *args, **kwargs):
+    #compatibility
+    if "SegmentationHierarchy " in kwargs:
+      kwargs["SegmentationHierarchy"] = kwargs.pop("SegmentationHierarchy ")
+    if "Compartment " in kwargs:
+      kwargs["Compartment"] = kwargs.pop("Compartment ")
+    return super().transforminitargs(*args, **kwargs)
+
+  Project: int = None
+  Cohort: int = None
+  BatchID: int
+  layer: int = None
+  Opal: str
+  Target: str
+  Compartment: str
+  TargetType: str
+  CoexpressionStatus: str
+  SegmentationStatus: int
+  SegmentationHierarchy: int
+  NumberofSegmentations: int
+  ImageQA: str
+
+class PhenotypedCell(MyDataClass):
+  CellID: int
+  SlideID: str
+  fx: int
+  fy: int
+  CellNum: int
+  Phenotype: str
+  CellXPos: int
+  CellYPos: int
+  EntireCellArea: int
+  MeanNucleusDAPI: float
+  MeanNucleus480: float
+  MeanNucleus520: float
+  MeanNucleus540: float
+  MeanNucleus570: float
+  MeanNucleus620: float
+  MeanNucleus650: float
+  MeanNucleus690: float
+  MeanNucleus780: float
+  MeanMembraneDAPI: float
+  MeanMembrane480: float
+  MeanMembrane520: float
+  MeanMembrane540: float
+  MeanMembrane570: float
+  MeanMembrane620: float
+  MeanMembrane650: float
+  MeanMembrane690: float
+  MeanMembrane780: float
+  MeanEntireCellDAPI: float
+  MeanEntireCell480: float
+  MeanEntireCell520: float
+  MeanEntireCell540: float
+  MeanEntireCell570: float
+  MeanEntireCell620: float
+  MeanEntireCell650: float
+  MeanEntireCell690: float
+  MeanEntireCell780: float
+  MeanCytoplasmDAPI: float
+  MeanCytoplasm480: float
+  MeanCytoplasm520: float
+  MeanCytoplasm540: float
+  MeanCytoplasm570: float
+  MeanCytoplasm620: float
+  MeanCytoplasm650: float
+  MeanCytoplasm690: float
+  MeanCytoplasm780: float
+  TotalNucleusDAPI: float
+  TotalNucleus480: float
+  TotalNucleus520: float
+  TotalNucleus540: float
+  TotalNucleus570: float
+  TotalNucleus620: float
+  TotalNucleus650: float
+  TotalNucleus690: float
+  TotalNucleus780: float
+  TotalMembraneDAPI: float
+  TotalMembrane480: float
+  TotalMembrane520: float
+  TotalMembrane540: float
+  TotalMembrane570: float
+  TotalMembrane620: float
+  TotalMembrane650: float
+  TotalMembrane690: float
+  TotalMembrane780: float
+  TotalEntireCellDAPI: float
+  TotalEntireCell480: float
+  TotalEntireCell520: float
+  TotalEntireCell540: float
+  TotalEntireCell570: float
+  TotalEntireCell620: float
+  TotalEntireCell650: float
+  TotalEntireCell690: float
+  TotalEntireCell780: float
+  TotalCytoplasmDAPI: float
+  TotalCytoplasm480: float
+  TotalCytoplasm520: float
+  TotalCytoplasm540: float
+  TotalCytoplasm570: float
+  TotalCytoplasm620: float
+  TotalCytoplasm650: float
+  TotalCytoplasm690: float
+  TotalCytoplasm780: float
+  ExprPhenotype: int

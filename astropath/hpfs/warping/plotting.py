@@ -77,7 +77,7 @@ def principalPointPlot(all_results,save_stem=None) :
 #and the principal points locations shaded by max amount of radial warping
 def radWarpAmtPlots(all_results,save_stem=None) :
     vs = np.array([r.max_rad_warp for r in all_results])
-    weighted_mean = np.sum([r.max_rad_warp*r.cost_reduction for r in all_results])/np.sum([r.cost_reduction for r in all_results])
+    weighted_mean = np.sum([r.max_rad_warp*r.cost_reduction for r in all_results if r.cost_reduction>0])/np.sum([r.cost_reduction for r in all_results if r.cost_reduction>0])
     txt_lines = []
     txt_lines.append(f'Mean at {np.mean(vs)}')
     txt_lines.append(f'Weighted mean at {weighted_mean}')
@@ -169,9 +169,9 @@ def radWarpParPlots(all_results,save_stem=None) :
 #plots the radial warping parameters in standardized units and the first and second PCA components thereof
 def radWarpPCAPlots(all_results,weighted=False,save_stem=None) :
     #plot the standardized radial warping parameters
-    sk1s, k1m, k1std = standardizeValues(np.array([r.k1 for r in all_results]),np.array([r.cost_reduction for r in all_results]) if weighted else None,False)
-    sk2s, k2m, k2std = standardizeValues(np.array([r.k2 for r in all_results]),np.array([r.cost_reduction for r in all_results]) if weighted else None,False)
-    sk3s, k3m, k3std = standardizeValues(np.array([r.k3 for r in all_results]),np.array([r.cost_reduction for r in all_results]) if weighted else None,False)
+    sk1s, k1m, k1std = standardizeValues(np.array([r.k1 for r in all_results if r.cost_reduction>0]),np.array([r.cost_reduction for r in all_results if r.cost_reduction>0]) if weighted else None,False)
+    sk2s, k2m, k2std = standardizeValues(np.array([r.k2 for r in all_results if r.cost_reduction>0]),np.array([r.cost_reduction for r in all_results if r.cost_reduction>0]) if weighted else None,False)
+    sk3s, k3m, k3std = standardizeValues(np.array([r.k3 for r in all_results if r.cost_reduction>0]),np.array([r.cost_reduction for r in all_results if r.cost_reduction>0]) if weighted else None,False)
     txt_lines = []
     txt_lines.append(f'k1 {"weighted " if weighted else ""}mean = {k1m} ; {"weighted " if weighted else ""}std. dev. = {k1std}')
     txt_lines.append(f'k2 {"weighted " if weighted else ""}mean = {k2m} ; {"weighted " if weighted else ""}std. dev. = {k2std}')
@@ -223,7 +223,7 @@ def getListsOfWarpFields(all_results) :
     all_results = [r for r in all_results if r.cost_reduction>0.]
     all_warps = []
     for r in all_results :
-        all_warps.append(CameraWarp(cx=r.cx, cy=r.cy, k1=r.k1, k2=r.k2, k3=r.k3))
+        all_warps.append(CameraWarp(n=r.n, m=r.m, cx=r.cx, cy=r.cy, fx=r.fx, fy=r.fy, k1=r.k1, k2=r.k2, k3=r.k3, p1=r.p1, p2=r.p2))
     all_drs = []; all_dxs = []; all_dys= []
     for w in all_warps :
         dr, dx, dy = w.getWarpFields()
@@ -340,7 +340,7 @@ def compareWithAlexWarp(all_results) :
 
 ###################################################################################################################################
 
-#file-scope dict of the oppostie overlap correspondences
+#file-scope dict of the opposite overlap correspondences
 OPPOSITE_OVERLAP_TAGS = {1:9,2:8,3:7,4:6,6:4,7:3,8:2,9:1}
 
 #little utility class to help with making the octet overlap comparison images

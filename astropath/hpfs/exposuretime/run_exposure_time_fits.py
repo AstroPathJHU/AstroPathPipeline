@@ -12,6 +12,8 @@ def main(args=None) :
     if args is None :
         #define and get the command-line arguments
         parser = ArgumentParser()
+        #add the slideID as the first positional argument
+        parser.add_argument('slideID',help='Name of the slide to use')
         #add the common arguments, just the positional and flatfielding ones
         addCommonArgumentsToParser(parser,et_correction=False,warping=False)
         #group for options of how the images whould be processed

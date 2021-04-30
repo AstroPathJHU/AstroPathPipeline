@@ -3,7 +3,7 @@
 import contextlib, numpy as np, traceback
 
 from ...baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
-from ...utilities.tableio import readtable, writetable
+from ...utilities.tableio import writetable
 from ..prepdb.prepdbsample import PrepDbSample
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
@@ -321,7 +321,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
     self.logger.info("reading alignments from "+str(filename))
 
     try:
-      alignmentresults = {o.n: o for o in readtable(filename, self.alignmentresulttype, extrakwargs={"pscale": self.pscale})}
+      alignmentresults = {o.n: o for o in self.readtable(filename, self.alignmentresulttype)}
     except Exception:
       if interactive:
         print()
@@ -491,13 +491,12 @@ class AlignSampleComponentTiffBase(AlignSampleBase, ReadRectanglesOverlapsCompon
   rectangletype = AlignmentRectangleComponentTiff
 
 class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSampleDbloadBase):
+  #An alignment set that runs on im3 images and can write results to the dbload folder.
+  #This is the primary AlignSample class that is used for calibration.
   """
-  An alignment set that runs on im3 images and can write results to the dbload folder.
-  This is the primary AlignSample class that is used for calibration.
-
   The alignment step of the pipeline finds the relative shift between adjacent HPFs.
   It then stitches the results together using a spring model.  For more information,
-  see the LaTeX document on alignment in the documentation folder.
+  see README.md and README.pdf in this folder.
   """
 
 class AlignSampleFromXML(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase):

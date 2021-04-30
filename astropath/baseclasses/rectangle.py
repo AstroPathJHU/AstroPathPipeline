@@ -16,8 +16,9 @@ class Rectangle(DataClassWithPscale):
   t: what time the HPF image was recorded
   file: the filename of the im3 for the HPF
 
-  xmlfolder: the folder where the xml file with metadata for the HPF lives
-             (optional, but if you provide it then you can get the exposure time)
+  One of the following two arguments is required if you want to get the exposure times:
+    xmlfolder: the folder where the xml file with metadata for the HPF lives
+    allexposures: the list of exposures from the exposures csv
   """
 
   pixelsormicrons = "microns"
@@ -32,8 +33,9 @@ class Rectangle(DataClassWithPscale):
   t: MetaDataAnnotation(datetime.datetime, readfunction=lambda x: datetime.datetime.fromtimestamp(int(x)), writefunction=lambda x: int(datetime.datetime.timestamp(x)))
   file: str
 
-  def __post_init__(self, *args, xmlfolder=None, **kwargs):
+  def __post_init__(self, *args, xmlfolder=None, allexposures=None, **kwargs):
     self.__xmlfolder = xmlfolder
+    self.__allexposures = allexposures
     super().__post_init__(*args, **kwargs)
 
   @classmethod
@@ -99,13 +101,25 @@ class Rectangle(DataClassWithPscale):
             result.append((exposuretime, broadbandfilter))
     return result
 
+  @methodtools.lru_cache()
   @property
   def allexposuretimes(self):
     """
     The exposure times for the HPF layers
     """
-    return [exposuretimeandbroadbandfilter[0] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
+    exposures1 = exposures2 = None
+    if self.__allexposures is not None:
+      exposures = [_ for _ in self.__allexposures if _.n == self.n]
+      exposures1 = [e.exp for e in exposures]
+    if self.__xmlfolder is not None:
+      exposures2 = [exposuretimeandbroadbandfilter[0] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
+    if exposures1 is exposures2 is None:
+      raise ValueError("Can't get the exposure times unless you provide the xml folder or exposures csv")
+    if None is not exposures1 != exposures2 is not None:
+      raise ValueError(f"Found inconsistent exposure times from exposures.csv and from xml file:\n{exposures1}\n{exposures2}")
+    return exposures1 if exposures1 is not None else exposures2
 
+  @methodtools.lru_cache()
   @property
   def allbroadbandfilters(self):
     """
@@ -460,12 +474,15 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
   with_seg: indicates if you want to use the _w_seg.tif which contains some segmentation info from inform
   """
 
-  def __post_init__(self, *args, imagefolder, layers, nlayers=None, with_seg=False, **kwargs):
+  def __post_init__(self, *args, imagefolder, layers, nlayers=None, with_seg=False, nsegmentations=None, **kwargs):
     super().__post_init__(*args, **kwargs)
     self.__imagefolder = pathlib.Path(imagefolder)
     self.__layers = layers
     self.__nlayers = nlayers
     self.__with_seg = with_seg
+    self.__nsegmentations = nsegmentations
+    if with_seg and nsegmentations is None:
+      raise ValueError("To use segmented component tiffs, you have to provide nsegmentations")
 
   @property
   def imagefile(self):
@@ -480,6 +497,7 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
       pages = []
       shape = None
       dtype = None
+      segmentationisblank = False
       #make sure the tiff is self consistent in shape and dtype
       for page in f.pages:
         if len(page.shape) == 2:
@@ -494,9 +512,14 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
             raise ValueError(f"Found pages with different dtypes in the component tiff {dtype} {page.dtype}")
       expectpages = self.__nlayers
       if expectpages is not None:
-        if self.__with_seg: expectpages += 5
+        if self.__with_seg: expectpages += 1 + 2*self.__nsegmentations
         if len(pages) != expectpages:
-          raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
+          #compatibility with inform errors, the segmentation is all blank and sometimes the wrong number of layers
+          if self.__with_seg and len(pages) > self.__nlayers:
+            if all(not np.any(page.asarray()) for page in pages[self.__nlayers:]):
+              segmentationisblank = True
+          if not segmentationisblank:
+            raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
 
       #make the destination array
       image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)
@@ -630,5 +653,20 @@ class GeomLoadRectangle(Rectangle):
   @property
   def geomloadcsv(self):
     return self.__geomfolder/self.file.replace(".im3", "_cellGeomLoad.csv")
+
+class PhenotypedRectangle(Rectangle):
+  """
+  Rectangle that has a _cleaned_phenotype_table.csv
+  You have to provide the folder where that csv lives.
+  """
+  def __post_init__(self, *args, phenotypefolder, **kwargs):
+    self.__phenotypefolder = pathlib.Path(phenotypefolder)
+    super().__post_init__(*args, **kwargs)
+  @property
+  def __phenotypetablesfolder(self):
+    return self.__phenotypefolder/"Results"/"Tables"
+  @property
+  def phenotypetablescsv(self):
+    return self.__phenotypetablesfolder/self.file.replace(".im3", "_cleaned_phenotype_table.csv")
 
 rectanglefilter = rectangleoroverlapfilter

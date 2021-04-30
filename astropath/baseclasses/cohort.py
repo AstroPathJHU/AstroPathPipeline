@@ -39,7 +39,7 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
       if not samp: continue
       try:
         if not all(filter(self, samp) for filter in self.slideidfilters): continue
-      except:
+      except Exception: #don't log KeyboardInterrupt here
         with self.getlogger(samp):
           raise
       yield samp
@@ -84,8 +84,9 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
     for samp in self:
       try:
         sample = self.initiatesample(samp)
-      except:
+      except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
+        #but not KeyboardInterrupt
         with self.getlogger(samp):
           raise
       else:
@@ -178,6 +179,8 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
       dryrun = misckwargs.pop("dry_run")
       if misckwargs:
         raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
+      if dryrun:
+        initkwargs["uselogfiles"] = False
       cohort = cls(**initkwargs)
       if dryrun:
         cohort.dryrun(**runkwargs)
@@ -337,6 +340,38 @@ class GeomFolderCohort(Cohort, GeomFolderArgumentParser):
   @property
   def rootnames(self): return {"geomroot", *super().rootnames}
 
+class PhenotypeFolderCohort(Cohort):
+  """
+  Base class for a cohort that uses the _cleaned_phenotype_table.csv files
+  phenotyperoot: an alternate root to use for the phenotype folder instead of root
+              (mostly useful for testing)
+              (default: same as root)
+  """
+  def __init__(self, *args, phenotyperoot=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if phenotyperoot is None: phenotyperoot = self.root
+    self.phenotyperoot = pathlib.Path(phenotyperoot)
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "phenotyperoot": self.phenotyperoot}
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--phenotyperoot", type=pathlib.Path, help="root location of phenotype folder (default: same as root)")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "phenotyperoot": parsed_args_dict.pop("phenotyperoot"),
+    }
+
+  @property
+  def rootnames(self): return {"phenotyperoot", *super().rootnames}
+
 class WorkflowCohort(Cohort):
   """
   Base class for a cohort that runs as a workflow:
@@ -386,24 +421,25 @@ class WorkflowCohort(Cohort):
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       print(f"{sample.SlideID} {status}")
     else:
-      try:
-        missinginputs = [file for file in sample.inputfiles if not file.exists()]
-        if missinginputs:
-          raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
-      except:
-        print("exception")
-        with self.getlogger(sample):
-          raise
-        return
+      with sample.job_lock() as lock:
+        if not lock: return
+        try:
+          missinginputs = [file for file in sample.inputfiles if not file.exists()]
+          if missinginputs:
+            raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
+        except Exception: #don't log KeyboardInterrupt here
+          with self.getlogger(sample):
+            raise
+          return
 
-      super().processsample(sample, **kwargs)
+        super().processsample(sample, **kwargs)
 
-      try:
-        status = sample.runstatus
-        #we don't want to do anything if there's an error, because that
-        #was already logged so no need to log it again and confuse the issue.
-        if (status.missingfiles or not status.ended) and status.error is None:
-          raise RuntimeError(f"{sample.SlideID} {status}")
-      except:
-        with self.getlogger(sample):
-          raise
+        try:
+          status = sample.runstatus
+          #we don't want to do anything if there's an error, because that
+          #was already logged so no need to log it again and confuse the issue.
+          if (status.missingfiles or not status.ended) and status.error is None:
+            raise RuntimeError(f"{sample.SlideID} {status}")
+        except Exception: #don't log KeyboardInterrupt here
+          with self.getlogger(sample):
+            raise

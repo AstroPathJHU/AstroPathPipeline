@@ -152,6 +152,7 @@ class SampleRunStatus:
     started = False
     ended = False
     previousrun = None
+    error = None
     with contextlib.ExitStack() as stack:
       try:
         f = stack.enter_context(open(samplelog))
@@ -160,7 +161,9 @@ class SampleRunStatus:
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
-          if re.match(startregex, row["message"]):
+          if not row["message"]:
+            continue
+          elif re.match(startregex, row["message"]):
             started = True
             error = None
             ended = False

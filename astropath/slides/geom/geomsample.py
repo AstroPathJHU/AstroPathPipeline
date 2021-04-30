@@ -10,7 +10,8 @@ from .contours import findcontoursaspolygons
 
 class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
   def __init__(self, *args, **kwargs):
-    super().__init__(*args, layer=9, with_seg=True, **kwargs)
+    super().__init__(*args, with_seg=True, layer="setlater", **kwargs)
+    self.setlayers(layer=self.masklayer)
 
   @classmethod
   def logmodule(self): return "geom"
@@ -70,11 +71,16 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
 
   @property
   def inputfiles(self):
-    return [
+    result = [
       self.csv("constants"),
       self.csv("fields"),
+    ]
+    if not all(_.exists() for _ in result): return result
+    result += [
       *(r.imagefile for r in self.rectangles),
     ]
+    return result
+
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **otherworkflowkwargs):
     dbload = dbloadroot/SlideID/"dbload"

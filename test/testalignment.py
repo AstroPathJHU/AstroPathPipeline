@@ -7,7 +7,6 @@ from astropath.slides.align.field import Field, FieldOverlap
 from astropath.slides.align.stitch import AffineEntry
 from astropath.utilities import units
 from astropath.utilities.misc import re_subs
-from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -80,17 +79,17 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
   def compareoutput(self, alignsample, SlideID="M21_1", componenttiff=False):
     a = alignsample
     for filename, cls, extrakwargs in (
-      (f"{SlideID}_imstat.csv", ImageStats, {"pscale": a.pscale}),
-      (f"{SlideID}_align.csv", AlignmentResult, {"pscale": a.pscale}),
-      (f"{SlideID}_fields.csv", Field, {"pscale": a.pscale}),
+      (f"{SlideID}_imstat.csv", ImageStats, {}),
+      (f"{SlideID}_align.csv", AlignmentResult, {}),
+      (f"{SlideID}_fields.csv", Field, {}),
       (f"{SlideID}_affine.csv", AffineEntry, {}),
-      (f"{SlideID}_fieldoverlaps.csv", FieldOverlap, {"pscale": a.pscale, "rectangles": a.rectangles, "nclip": a.nclip}),
+      (f"{SlideID}_fieldoverlaps.csv", FieldOverlap, {"rectangles": a.rectangles, "nclip": a.nclip}),
     ):
       testfolder = thisfolder/"alignment_test_for_jenkins"/("" if not componenttiff else "component_tiff")
       reffolder = thisfolder/"reference"/"alignment"/("" if not componenttiff else "component_tiff")
       try:
-        rows = readtable(testfolder/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        targetrows = readtable(reffolder/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        rows = a.readtable(testfolder/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        targetrows = a.readtable(reffolder/SlideID/filename, cls, extrakwargs=extrakwargs, checkorder=True)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           if cls == AlignmentResult and row.exit != 0 and target.exit != 0: continue
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
@@ -136,8 +135,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
     a.readalignments(filename=readfilename)
     a.writealignments(filename=writefilename)
-    rows = readtable(writefilename, AlignmentResult, extrakwargs={"pscale": a.pscale})
-    targetrows = readtable(readfilename, AlignmentResult, extrakwargs={"pscale": a.pscale})
+    rows = a.readtable(writefilename, AlignmentResult)
+    targetrows = a.readtable(readfilename, AlignmentResult)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
@@ -159,10 +158,10 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     for filename, cls, extrakwargs in more_itertools.zip_equal(
       a.stitchfilenames,
       (AffineEntry, Field, FieldOverlap),
-      ({}, {"pscale": a.pscale}, {"pscale": a.pscale, "nclip": a.nclip, "rectangles": a.rectangles}),
+      ({}, {}, {"nclip": a.nclip, "rectangles": a.rectangles}),
     ):
-      rows = readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
-      targetrows = readtable(referencefilename(filename), cls, extrakwargs=extrakwargs)
+      rows = a.readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
+      targetrows = a.readtable(referencefilename(filename), cls, extrakwargs=extrakwargs)
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
 

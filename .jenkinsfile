@@ -48,6 +48,7 @@ pipeline {
         stage('miscellaneous framework tests') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
+            sh 'checkannotations test/data/M21_1/im3/Scan1/M21_1_Scan1.annotations.polygons.xml'
           }
         }
 
@@ -135,6 +136,12 @@ pipeline {
         stage('stitch mask') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.teststitchmask'
+          }
+        }
+
+        stage('csvscan') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcsvscan'
           }
         }
 

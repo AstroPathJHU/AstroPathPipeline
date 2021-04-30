@@ -137,7 +137,7 @@ class DataClassWithDistances(MyDataClass):
       for fieldname in self.distancefields():
         setattr(self, fieldname, types[fieldname](power=powers[fieldname], pscale=pscales[fieldname], **{self.metadata(fieldname)["pixelsormicrons"](self): getattr(self, fieldname)}))
 
-    super().__post_init__(*args, **kwargs)
+    super().__post_init__(*args, readingfromfile=readingfromfile, **kwargs)
 
 class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
   pscale: pscalefield(float)

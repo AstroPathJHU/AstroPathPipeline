@@ -1,18 +1,18 @@
 #imports
 from .flatfield_slide import FlatfieldSlide 
 from .mean_image import MeanImage
-from .image_mask import getImageMaskWorker
 from .latex_summary import LatexSummary
 from .utilities import flatfield_logger, FlatFieldError, chunkListOfFilepaths, readImagesMT, slideNameFromFilepath, FieldLog
 from .utilities import getSlideMeanImageFilepath, getSlideImageSquaredFilepath, getSlideMaskStackFilepath
 from .config import CONST
+from ..image_masking.image_mask import ImageMask
 from ...slides.align.alignsample import AlignSampleFromXML
 from ...utilities.img_file_io import LayerOffset
 from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd, MetadataSummary
 from ...utilities.config import CONST as UNIV_CONST
 import multiprocessing as mp
-import os, random, methodtools
+import pathlib, random, methodtools
 
 #main class
 class FlatfieldProducer :
@@ -47,7 +47,7 @@ class FlatfieldProducer :
         #make a dictionary to hold all of the separate slides we'll be considering (keyed by name)
         self.flatfield_slide_dict = {}
         for s in slides :
-            self.flatfield_slide_dict[s.name]=FlatfieldSlide(s)
+            self.flatfield_slide_dict[s.name]=FlatfieldSlide(s,all_slide_rawfile_paths_to_run is None)
         img_dims = None
         for ff_slide in self.flatfield_slide_dict.values() :
             if img_dims is None :
@@ -78,9 +78,13 @@ class FlatfieldProducer :
             self.__writeLog(f'Reading and adding slide {sn} mean image for flatfield model with BatchID = {batchID:02d}','info',sn,slide.root_dir)
             self.mean_image.addSlideMeanImageAndMaskStack(mifp,semifp,msfp)
             #aggregate the slide's metadata as well
-            mds = readtable(os.path.join(os.path.dirname(mifp),f'{self.IMAGE_STACK_MDS_FN_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),MetadataSummary)
-            self._metadata_summaries+=mds
-            fl = readtable(os.path.join(os.path.dirname(mifp),f'{self.FIELDS_USED_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),FieldLog)
+            mdsfp = (pathlib.Path(mifp)).parent / f'{self.IMAGE_STACK_MDS_FN_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'
+            if mdsfp.is_file() :
+                mds = readtable(mdsfp,MetadataSummary)
+                self._metadata_summaries+=mds
+            else :
+                self.__writeLog(f'WARNING: MetadataSummary file {mdsfp} does not exist for slide {sn}, likely because no images were stacked.','warning')
+            fl = readtable(pathlib.Path((pathlib.Path(mifp)).parent / f'{self.FIELDS_USED_STEM}_{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}.csv'),FieldLog)
             self._field_logs+=fl
         #make the meanimage
         self.makeMeanImage()
@@ -130,7 +134,7 @@ class FlatfieldProducer :
         #read each slide's list of background thresholds by layer
         for sn,slide in sorted(self.flatfield_slide_dict.items()) :
             threshold_file_name = f'{sn}_{UNIV_CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
-            threshold_file_path = os.path.join(threshold_file_dir,threshold_file_name)
+            threshold_file_path = pathlib.Path(f'{threshold_file_dir}/{threshold_file_name}')
             self.__writeLog(f'Copying background thresholds from file {threshold_file_path} for slide {sn}...','info',sn,slide.root_dir)
             slide.readInBackgroundThresholds(threshold_file_path)
 
@@ -148,7 +152,7 @@ class FlatfieldProducer :
             new_field_logs = slide.findBackgroundThresholds([rfp for rfp in all_slide_rawfile_paths if slideNameFromFilepath(rfp)==sn],
                                                            n_threads,
                                                            self.exposure_time_correction_offsets,
-                                                           os.path.join(self.mean_image.workingdir_path,CONST.THRESHOLDING_PLOT_DIR_NAME),
+                                                           pathlib.Path(f'{self.mean_image.workingdir_path}/{CONST.THRESHOLDING_PLOT_DIR_NAME}'),
                                                            threshold_file_name,
                                                            self._logger
                                                         )
@@ -185,10 +189,10 @@ class FlatfieldProducer :
                     chunk_lmrs = []
                     procs = []
                     for i,(im_array,rfp) in enumerate(zip(im_arrays,[fri.rawfile_path for fri in fr_chunk])) :
-                        p = mp.Process(target=getImageMaskWorker, 
-                                       args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,slide.exp_time_hists,
+                        p = mp.Process(target=ImageMask.create_mp, 
+                                       args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,
                                              slide.med_exp_times_by_layer if (not self.mean_image.skip_et_correction) else None,
-                                             False,self.mean_image.masking_plot_dirpath,i,return_dict))
+                                             slide.exp_time_hists,False,self.mean_image.masking_plot_dirpath,i,return_dict))
                         procs.append(p)
                         p.start()
                     for proc in procs:
@@ -204,8 +208,13 @@ class FlatfieldProducer :
                 self.__writeLog(f'WARNING: slide {sn} does not have any images to be stacked!','warningglobal',sn,slide.root_dir)
                 continue
             #otherwise add the metadata summary for this slide to the producer's list
-            a = AlignSampleFromXML(slide.root_dir,os.path.dirname(os.path.dirname(this_slide_fps_to_run[0])),sn,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=1)
-            this_slide_rect_fn_stems = [os.path.basename(os.path.normpath(fp)).split('.')[0] for fp in this_slide_fps_to_run]
+            a = AlignSampleFromXML(slide.root_dir,
+                                   ((pathlib.Path(this_slide_fps_to_run[0])).parent).parent,
+                                   sn,
+                                   nclip=UNIV_CONST.N_CLIP,
+                                   readlayerfile=False,
+                                   layer=1)
+            this_slide_rect_fn_stems = [((pathlib.Path.resolve(pathlib.Path(fp))).name).split('.')[0] for fp in this_slide_fps_to_run]
             rect_ts = [r.t for r in a.rectangles if r.file.replace(UNIV_CONST.IM3_EXT,'') in this_slide_rect_fn_stems]
             self._metadata_summaries.append(MetadataSummary(sn,a.Project,a.Cohort,a.microscopename,str(min(rect_ts)),str(max(rect_ts))))
             #choose which of them will have their masking images saved
@@ -265,8 +274,8 @@ class FlatfieldProducer :
         filename = name of the file to write to
         """
         self.__writeLog('Writing filepath text file','imageinfo')
-        if not os.path.isdir(self.mean_image.workingdir_path) :
-            os.mkdir(self.mean_image.workingdir_path)
+        if not pathlib.Path.is_dir(pathlib.Path(self.mean_image.workingdir_path)) :
+            pathlib.Path.mkdir(pathlib.Path(self.mean_image.workingdir_path))
         with cd(self.mean_image.workingdir_path) :
             with open(filename,'w') as fp :
                 for sn,slide in sorted(self.flatfield_slide_dict.items()) :
@@ -279,11 +288,15 @@ class FlatfieldProducer :
         batchID = the integer batch ID to append to the outputted file names
         """
         #write out the metadata summaries
-        with cd(self.mean_image.workingdir_path) :
-            writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._metadata_summaries)
+        if len(self._metadata_summaries)>0 :
+            with cd(self.mean_image.workingdir_path) :
+                writetable(f'{self.IMAGE_STACK_MDS_FN_STEM}_{(pathlib.Path.resolve(pathlib.Path(self.mean_image.workingdir_path))).name}.csv',
+                           self._metadata_summaries)
         #write out the field logs
-        with cd(self.mean_image.workingdir_path) :
-            writetable(f'{self.FIELDS_USED_STEM}_{os.path.basename(os.path.normpath(self.mean_image.workingdir_path))}.csv',self._field_logs)
+        if len(self._field_logs)>0 :
+            with cd(self.mean_image.workingdir_path) :
+                writetable(f'{self.FIELDS_USED_STEM}_{(pathlib.Path.resolve(pathlib.Path(self.mean_image.workingdir_path))).name}.csv',
+                           self._field_logs)
         #figure out what to append to the filenames
         batch_or_slide_ID = None
         if batchID is not None :
@@ -300,7 +313,7 @@ class FlatfieldProducer :
         if len(self.mean_image.labelled_mask_regions)>0 :
             for sn,slide in sorted(self.flatfield_slide_dict.items()) :
                 self.__writeLog(f'Plotting labelled mask regions for slide {sn}','info',sn,slide.root_dir)
-                this_slide_rfps_added = [rfp for rfp in self.filepaths_added if sn in rfp]
+                this_slide_rfps_added = [rfp for rfp in self.filepaths_added if sn in str(rfp)]
                 this_slide_regions = [lmr for lmr in self.mean_image.labelled_mask_regions if sn in lmr.image_key]
                 slide.plotLabelledMaskRegions(this_slide_regions,this_slide_rfps_added,self.mean_image.masking_plot_dirpath)
 

@@ -1,4 +1,4 @@
-import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClass
@@ -6,7 +6,7 @@ from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
-from .csvclasses import constantsdict, RectangleFile
+from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
@@ -393,6 +393,37 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots, Ru
 
     return result
 
+  @property
+  def mergeconfigcsv(self):
+    return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.csv"
+  @property
+  def mergeconfig(self):
+    return self.readtable(self.mergeconfigcsv, MergeConfig)
+  @methodtools.lru_cache()
+  @property
+  def segmentationids(self):
+    dct = {}
+    for layer in self.mergeconfig:
+      segstatus = layer.SegmentationStatus
+      if segstatus != 0:
+        segid = layer.ImageQA
+        if segstatus not in dct:
+          dct[segstatus] = segid
+        elif segid != "NA":
+          if segid != dct[segstatus] != "NA":
+            raise ValueError(f"Multiple different non-NA ImageQAs for SegmentationStatus {segstatus} ({self.mergeconfigcsv})")
+          else:
+            dct[segstatus] = segid
+    if "NA" in dct.values():
+      raise ValueError("No non-NA ImageQA for SegmentationStatus {', '.join(str(k) for k, v in dct.items() if v == 'NA')} ({self.mergeconfigcsv})")
+    if sorted(dct.keys()) != list(range(1, len(dct)+1)):
+      raise ValueError("Non-sequential SegmentationStatuses {sorted(dct.keys()}} ({self.mergeconfigcsv})")
+    return [dct[k] for k in range(1, len(dct)+1)]
+
+  @property
+  def nsegmentations(self):
+    return len(self.segmentationids)
+
   def _logonenter(self, warning, warnfunction):
     """
     Puts the function and warning into a queue to be logged
@@ -533,6 +564,10 @@ class WorkflowSample(SampleBase, WorkflowDependency):
     """
     return []
 
+  def job_lock(self):
+    self.samplelog.parent.mkdir(exist_ok=True, parents=True)
+    return job_lock.JobLock(self.samplelog.with_suffix(".lock"))
+
 class DbloadSampleBase(SampleBase, DbloadArgumentParser):
   """
   Base class for any sample that uses the csvs in the dbload folder.
@@ -570,7 +605,7 @@ class DbloadSampleBase(SampleBase, DbloadArgumentParser):
     """
     Read the csv file using readtable.
     """
-    return readtable(self.csv(csv), *args, **kwargs)
+    return self.readtable(self.csv(csv), *args, **kwargs)
   def writecsv(self, csv, *args, **kwargs):
     """
     Write the csv file using writetable.
@@ -756,11 +791,44 @@ class GeomSampleBase(SampleBase, GeomFolderArgumentParser):
   def geomfolder(self):
     return self.geomroot/self.SlideID/"geom"
 
+class CellPhenotypeSampleBase(SampleBase):
+  """
+  Base class for any sample that uses the _cleaned_phenotype_table.csv files
+
+  phenotyperoot: A different root to use to find the Phenotyped folder (default: same as root)
+  """
+  def __init__(self, *args, phenotyperoot=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if phenotyperoot is None: phenotyperoot = self.root
+    self.__phenotyperoot = pathlib.Path(phenotyperoot)
+
+  @property
+  def rootnames(self): return {"phenotyperoot", *super().rootnames}
+  @property
+  def phenotyperoot(self): return self.__phenotyperoot
+  @property
+  def phenotypefolder(self):
+    return self.phenotyperoot/self.SlideID/"inform_data"/"Phenotyped"
+  @property
+  def phenotypetablesfolder(self):
+    return self.phenotypefolder/"Results"/"Tables"
+
 class SelectLayersSample(SampleBase, SelectLayersArgumentParser):
   """
   Base class for any sample that needs a layer selection.
   """
   def __init__(self, *args, layer=None, layers=None, **kwargs):
+    if layer != "setlater" != layers:
+      self.setlayers(layer=layer, layers=layers)
+    super().__init__(*args, **kwargs)
+
+  def setlayers(self, layer=None, layers=None):
+    try:
+      self.__layers
+    except AttributeError:
+      pass
+    else:
+      raise AttributeError("Already called setlayers for this sample")
     if self.multilayer:
       if layer is not None:
         raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
@@ -773,8 +841,6 @@ class SelectLayersSample(SampleBase, SelectLayersArgumentParser):
       layers = layer,
 
     self.__layers = layers
-
-    super().__init__(*args, **kwargs)
 
   @property
   def layers(self):
@@ -936,8 +1002,30 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
     super().__init__(*args, **kwargs)
 
   @property
-  def nlayers(self):
-    return self.nlayersunmixed
+  def masklayer(self):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    return self.nlayersunmixed + 1
+  def segmentationnucleuslayer(self, segid):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    return self.nlayersunmixed + 2 + self.segmentationids.index(segid)
+  def segmentationmembranelayer(self, segid):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    return self.nlayersunmixed + 2 + self.nsegmentations + self.segmentationids.index(segid)
+
+  def isnucleuslayer(self, layer):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    return self.nlayersunmixed + 1 < layer <= self.nlayersunmixed + 1 + self.nsegmentations
+  def ismembranelayer(self, layer):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    return self.nlayersunmixed + 1 + self.nsegmentations < layer <= self.nlayersunmixed + 1 + 2*self.nsegmentations
+  def segmentationidfromlayer(self, layer):
+    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
+    if layer <= self.masklayer: raise ValueError(f"{layer} is not a segmentation layer")
+    idx = layer - self.masklayer
+    if self.ismembranelayer(layer):
+      idx -= self.nsegmentations
+    return self.segmentationids[idx-1]
+
   @property
   def rectangletype(self):
     if self.multilayer:
@@ -951,6 +1039,10 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
       "imagefolder": self.componenttiffsfolder,
       "with_seg": self.__with_seg,
     }
+    if self.__with_seg:
+      kwargs.update({
+        "nsegmentations": self.nsegmentations
+      })
     return kwargs
 
 class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection, OverlapCollection, SampleBase):
@@ -1001,6 +1093,19 @@ class ReadRectanglesDbload(ReadRectanglesBase, DbloadSample):
   """
   Base class for any sample that reads rectangles from the dbload folder.
   """
+  @property
+  def rectangleextrakwargs(self):
+    result = {
+      **super().rectangleextrakwargs,
+    }
+    try:
+      result.update({
+        "allexposures": self.readcsv("exposures", ExposureTime)
+      })
+    except FileNotFoundError:
+      pass
+    return result
+
   @property
   def rectanglecsv(self): return "rect"
   def readallrectangles(self, **extrakwargs):
@@ -1060,16 +1165,17 @@ class XMLLayoutReader(SampleBase):
     self.fixduplicaterectangles(rectangles)
     rectanglefiles = self.getdir()
     maxtimediff = datetime.timedelta(0)
-    for r in rectangles:
+    for r in rectangles[:]:
       rfs = {rf for rf in rectanglefiles if np.all(rf.cxvec == r.cxvec)}
       assert len(rfs) <= 1
       if not rfs:
-        cx, cy = floattoint(float(r.cxvec / self.onemicron))
+        cx, cy = floattoint((r.cxvec / self.onemicron).astype(float))
         errormessage = f"File {self.SlideID}_[{cx},{cy}].im3 (expected from annotations) does not exist"
         if self.__checkim3s:
           raise FileNotFoundError(errormessage)
         else:
-          self.logger.warning(errormessage)
+          self.logger.warningglobal(errormessage)
+        rectangles.remove(r)
       else:
         rf = rfs.pop()
         maxtimediff = max(maxtimediff, abs(rf.t-r.t))

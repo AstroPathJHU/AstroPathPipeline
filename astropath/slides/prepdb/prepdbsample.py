@@ -8,8 +8,11 @@ from ...baseclasses.workflowdependency import ShredXML
 from ...utilities import units
 
 class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, checkim3s=True, **kwargs)
+  """
+  The prepdb stage of the pipeline extracts metadata for a sample from the `.xml` files
+  and writes it out to `.csv` files.
+  For more information, see README.md in this folder.
+  """
 
   @classmethod
   def logmodule(self): return "prepdb"
@@ -52,7 +55,7 @@ class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self):
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, self.pscale, self.apscale).getXMLpolygonannotations()
+    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=self.pscale, apscale=self.apscale, logger=self.logger).getXMLpolygonannotations()
 
   @property
   def annotations(self): return self.getXMLpolygonannotations()[0]
@@ -92,6 +95,7 @@ class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
         )
       ]
 
+      #build a jpg colored thumbnail from the qptiff, to illustrate the slide
       mix = np.array([
         [0.0, 0.0, 1.0, 1.0, 1.0],
         [0.0, 1.0, 1.0, 0.5, 0.0],
@@ -348,6 +352,18 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase):
   @classmethod
   def workflowdependencies(cls):
     return [ShredXML] + super().workflowdependencies()
+
+  @classmethod
+  def logstartregex(cls):
+    old = super().logstartregex()
+    new = "prepSample started"
+    return rf"(?:{old}|{new})"
+
+  @classmethod
+  def logendregex(cls):
+    old = super().logendregex()
+    new = "prepSample end"
+    return rf"(?:{old}|{new})"
 
 def main(args=None):
   PrepDbSample.runfromargumentparser(args)

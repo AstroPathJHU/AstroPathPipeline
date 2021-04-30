@@ -12,6 +12,8 @@ setupkwargs = dict(
       "annowarpcohort=astropath.slides.annowarp.annowarpcohort:main",
       "annowarpsample=astropath.slides.annowarp.annowarpsample:main",
       "annowarpfailedfitswithconstraint=astropath.slides.annowarp.annowarpfailedfitswithconstraint:main",
+      "checkannotations=astropath.baseclasses.annotationpolygonxmlreader:checkannotations",
+      "csvscancohort=astropath.slides.csvscan.csvscancohort:main",
       "deepzoomcohort=astropath.slides.deepzoom.deepzoomcohort:main",
       "deepzoomsample=astropath.slides.deepzoom.deepzoomsample:main",
       "evaluate_exposure_time=astropath.hpfs.exposuretime.evaluate_exposure_time:main",
@@ -57,6 +59,7 @@ setupkwargs = dict(
     "scikit-learn>=0.17",
     "scipy>=0.12",
     "setuptools-scm",
+    "slurm-python-utils>=1.1.3",
     "uncertainties",
   ],
   extras_require = {
