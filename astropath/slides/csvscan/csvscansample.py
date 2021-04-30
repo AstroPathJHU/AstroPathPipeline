@@ -129,7 +129,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
 
     loadfiles = [self.processcsv(*args) for args in toload]
 
-    self.writecsv("loadfiles", loadfiles)
+    self.writecsv("loadfiles", loadfiles, header=False)
 
   def processcsv(self, csv, csvclass, tablename, extrakwargs={}):
     self.logger.debug(f"Processing {csv}")

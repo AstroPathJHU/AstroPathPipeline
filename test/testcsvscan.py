@@ -53,8 +53,8 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
     reference = reffolder/filename.name
 
     try:
-      rows = s.readtable(filename, LoadFile)
-      targetrows = s.readtable(reference, LoadFile)
+      rows = s.readtable(filename, LoadFile, header=False)
+      targetrows = s.readtable(reference, LoadFile, header=False)
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target)
     except:
