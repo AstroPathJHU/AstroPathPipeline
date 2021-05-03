@@ -53,7 +53,7 @@ def getSlideMeanImageWorkingDirPath(slide) :
 #helper function to make the automatic directory path for running the flatfield for a batch of slides
 def getBatchFlatfieldWorkingDirPath(rootdir,batchID) :
     #path = pathlib.Path(pathlib.Path.cwd() / f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
-    path = pathlib.Path(pathlib.Path.resolve(pathlib.Path(rootdir)) / 'Flatfield' / f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
+    path = pathlib.Path(pathlib.Path.resolve(pathlib.Path(rootdir)) / 'flatfield' / f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
     if not pathlib.Path.is_dir((path).parent) :
         raise FlatFieldError(f'ERROR: working directory location {(path).parent} does not exist!')
     if not pathlib.Path.is_dir(path) :
