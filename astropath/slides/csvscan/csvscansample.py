@@ -162,6 +162,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
   def workflowdependencies(cls):
     return [AnnoWarpSampleInformTissueMask, GeomCellSample, GeomSample] + super().workflowdependencies()
 
+  run = runcsvscan
 
 class LoadFile(MyDataClass):
   fileid: str
@@ -170,3 +171,9 @@ class LoadFile(MyDataClass):
   tablename: str
   nrows: int
   nrowsloaded: int
+
+def main(args=None):
+  GeomCellSample.runfromargumentparser(args)
+
+if __name__ == "__main__":
+  main()

@@ -14,6 +14,7 @@ setupkwargs = dict(
       "annowarpfailedfitswithconstraint=astropath.slides.annowarp.annowarpfailedfitswithconstraint:main",
       "checkannotations=astropath.baseclasses.annotationpolygonxmlreader:checkannotations",
       "csvscancohort=astropath.slides.csvscan.csvscancohort:main",
+      "csvscansample=astropath.slides.csvscan.csvscansample:main",
       "deepzoomcohort=astropath.slides.deepzoom.deepzoomcohort:main",
       "deepzoomsample=astropath.slides.deepzoom.deepzoomsample:main",
       "evaluate_exposure_time=astropath.hpfs.exposuretime.evaluate_exposure_time:main",
