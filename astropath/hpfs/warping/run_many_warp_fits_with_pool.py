@@ -139,19 +139,22 @@ def main(args=None) :
                 if pathlib.Path.is_file(result_fp) :
                     pathlib.Path(result_fp).unlink()
         #write out some plots
-        plot_name_stem = f'{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}'
-        with cd(args.workingdir) :
-            plotdirname = 'batch_plots'
-            if not pathlib.Path.is_dir(pathlib.Path(plotdirname)) :
-                pathlib.Path.mkdir(pathlib.Path(plotdirname))
-            with cd(plotdirname) :
-                principalPointPlot(results,save_stem=plot_name_stem)
-                radWarpAmtPlots(results,save_stem=plot_name_stem)
-                radWarpParPlots(results,save_stem=plot_name_stem)
-                if not ('k1' in args.fixed and 'k2' in args.fixed and 'k3' in args.fixed) :
-                    radWarpPCAPlots(results,weighted=False,save_stem=plot_name_stem)
-                    radWarpPCAPlots(results,weighted=True,save_stem=plot_name_stem)
-                warpFieldVariationPlots(results,save_stem=plot_name_stem)
+        try :
+            plot_name_stem = f'{(pathlib.Path.resolve(pathlib.Path(args.workingdir))).name}'
+            with cd(args.workingdir) :
+                plotdirname = 'batch_plots'
+                if not pathlib.Path.is_dir(pathlib.Path(plotdirname)) :
+                    pathlib.Path.mkdir(pathlib.Path(plotdirname))
+                with cd(plotdirname) :
+                    principalPointPlot(results,save_stem=plot_name_stem)
+                    radWarpAmtPlots(results,save_stem=plot_name_stem)
+                    radWarpParPlots(results,save_stem=plot_name_stem)
+                    if not ('k1' in args.fixed and 'k2' in args.fixed and 'k3' in args.fixed) :
+                        radWarpPCAPlots(results,weighted=False,save_stem=plot_name_stem)
+                        radWarpPCAPlots(results,weighted=True,save_stem=plot_name_stem)
+                    warpFieldVariationPlots(results,save_stem=plot_name_stem)
+        except Exception as e :
+            warp_logger.warning(f'WARNING: failed to create plots for group of results. Exception: {e}')
         #get the weighted average parameters over all the results that reduced the cost
         warp_logger.info('Writing out info for weighted average warp....')
         w_cx = 0.; w_cy = 0.; w_fx = 0.; w_fy = 0.

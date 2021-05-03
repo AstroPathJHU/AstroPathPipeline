@@ -38,26 +38,32 @@ class FlatfieldSlideInfo(MyDataClass) :
 
 #helper function to return the slide name from a whole filepath
 def slideNameFromFilepath(fp) :
-    return ((pathlib.Path.resolve(pathlib.Path(fp))).parent).name
+    return (((pathlib.Path(fp)).resolve()).parent).name
 
 #helper function to make the automatic directory path for a single slide's mean image (and associated info)
 def getSlideMeanImageWorkingDirPath(slide) :
     #path = pathlib.Path(pathlib.Path.cwd() / CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
-    path = pathlib.Path(pathlib.Path.resolve(pathlib.Path(slide.root_dir)) / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
-    if not pathlib.Path.is_dir((path).parent) :
-        raise FlatFieldError(f'ERROR: working directory location {(path).parent} does not exist!')
-    if not pathlib.Path.is_dir(path) :
-        pathlib.Path.mkdir(path)
+    path = (pathlib.Path(slide.root_dir)).resolve() / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME
+    if not (path.parent).is_dir() :
+        try :
+            (path.parent).mkdir()
+        except Exception as e :
+            raise FlatFieldError(f'ERROR: working directory location {path.parent} does not exist and could not be created! Exception: {e}')
+    if not path.is_dir() :
+        path.mkdir()
     return path
 
 #helper function to make the automatic directory path for running the flatfield for a batch of slides
 def getBatchFlatfieldWorkingDirPath(rootdir,batchID) :
     #path = pathlib.Path(pathlib.Path.cwd() / f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
-    path = pathlib.Path(pathlib.Path.resolve(pathlib.Path(rootdir)) / 'Flatfield' / f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
-    if not pathlib.Path.is_dir((path).parent) :
-        raise FlatFieldError(f'ERROR: working directory location {(path).parent} does not exist!')
-    if not pathlib.Path.is_dir(path) :
-        pathlib.Path.mkdir(path)
+    path = (pathlib.Path(rootdir)).resolve() / 'flatfield' / f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}'
+    if not (path.parent).is_dir() :
+        try :
+            (path.parent).mkdir()
+        except Exception as e :
+            raise FlatFieldError(f'ERROR: working directory location {(path).parent} does not exist and could not be created! Exception: {e}')
+    if not path.is_dir() :
+        path.mkdir()
     return path
 
 #helper function to return the automatic path to a given slide's mean image file

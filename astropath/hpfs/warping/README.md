@@ -7,15 +7,15 @@ To run the code in the most common use case, enter the following command and arg
 `run_warping_fits warp_fit [slide_IDs] [rawfile_directory] [root_directory] [working_directory] [n_threads] --exposure_time_offset_file [path_to_exposure_time_offset_file] --flatfield_file [path_to_flatfield_file] --threshold_file_dir [path_to_threshold_file_directory] --layer [layer_number]`
 
 where:
--`[slide_IDs]` is a comma-separated list of slide IDs to use (i.e., "`ZW1,ZW2,ZW3,ZW4,ZW5,ZW6,ZW7,ZW8,ZW9,ZW10`")
--`[rawfile_directory]` is the path to a directory containing a `[slide_ID]` subdirectory for each `[slide_ID]` in `[slide_IDs]` containing the slide's ".Data.dat" files (i.e. ``\\bki07\dat``)
--`[root_directory]` is the path to the usual "Clinical_Specimen" directory containing a `[slide_ID]` subdirectory for each `[slide_ID]` in `[slide_IDs]` (i.e. `\\bki02\E\Clinical_Specimen`)
--`[working_directory]` is the path to the directory that should contain all of the output of the run (it will be created if it doesn't exist).
--`[n_threads]` is the maximum number of CPUs to use simultaneously in running the groups of fits (the independent fits for each octet are handled by a multiprocessing pool; this is the number of workers allowed in that pool). This should be adjusted depending on running conditions, GPU availability, etc., but on BKI06 a single invocation of the above command can usually be run with 10 threads.
--`[path_to_exposure_time_offset_file]` is the path to a .csv file holding the exposure time correction "dark current" offsets as a list of [`LayerOffset` objects](../../utilities/img_file_io.py#L31-L36), which is output by the code that does the exposure time correction fits
--`[path_to_flatfield_file]` is the path to a `flatfield_BatchID_[batch_ID].bin` file containing the flatfield correction factors to apply to each slide in `[slide_IDs]` 
--`[path_to_threshold_file_directory]` is the path to a directory containing `[slideID]_background_thresholds.txt` files for each `[slide_ID]` in `[slide_IDs]`
--`[layer_number]` is the image layer to find the patterns for (indexed starting at 1)
+- `[slide_IDs]` is a comma-separated list of slide IDs to use (i.e., "`ZW1,ZW2,ZW3,ZW4,ZW5,ZW6,ZW7,ZW8,ZW9,ZW10`")
+- `[rawfile_directory]` is the path to a directory containing a `[slide_ID]` subdirectory for each `[slide_ID]` in `[slide_IDs]` containing the slide's ".Data.dat" files (i.e. ``\\bki07\dat``)
+- `[root_directory]` is the path to the usual "Clinical_Specimen" directory containing a `[slide_ID]` subdirectory for each `[slide_ID]` in `[slide_IDs]` (i.e. `\\bki02\E\Clinical_Specimen`)
+- `[working_directory]` is the path to the directory that should contain all of the output of the run (it will be created if it doesn't exist).
+- `[n_threads]` is the maximum number of CPUs to use simultaneously in running the groups of fits (the independent fits for each octet are handled by a multiprocessing pool; this is the number of workers allowed in that pool). This should be adjusted depending on running conditions, GPU availability, etc., but on BKI06 a single invocation of the above command can usually be run with 10 threads.
+- `[path_to_exposure_time_offset_file]` is the path to a .csv file holding the exposure time correction "dark current" offsets as a list of [`LayerOffset` objects](../../utilities/img_file_io.py#L31-L36), which is output by the code that does the exposure time correction fits
+- `[path_to_flatfield_file]` is the path to a `flatfield_BatchID_[batch_ID].bin` file containing the flatfield correction factors to apply to each slide in `[slide_IDs]` 
+- `[path_to_threshold_file_directory]` is the path to a directory containing `[slideID]_background_thresholds.txt` files for each `[slide_ID]` in `[slide_IDs]`
+- `[layer_number]` is the image layer to find the patterns for (indexed starting at 1)
 
 Under these conditions, the following things will happen:
 1. The set of valid overlap octets to use will be found for each slide in `[slide_IDs]`. Octets are considered valid if every overlap in the octet shows at least 85% tissue as determined by a simple thresholding at the value in the corresponding `[slideID]_background_thresholds.txt` file (after correction for exposure time and flatfielding).
