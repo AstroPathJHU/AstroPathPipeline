@@ -3,7 +3,7 @@ import abc, contextlib, csv, cvxpy as cp, itertools, methodtools, more_itertools
 from ...baseclasses.csvclasses import constantsdict, Region, Vertex
 from ...baseclasses.polygon import SimplePolygon
 from ...baseclasses.qptiff import QPTiff
-from ...baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample, ZoomFolderSampleBase
+from ...baseclasses.sample import ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint
@@ -16,86 +16,34 @@ from ..zoom.stitchmasksample import InformMaskSample, TissueMaskSample, StitchIn
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
-class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample, units.ThingWithImscale):
-  r"""
-  The annowarp module aligns the wsi image created by zoom to the qptiff.
-  It rewrites the annotations, which were drawn in qptiff coordinates,
-  in im3 coordinates.
-
-  The qptiff is scanned and stitched by the inform software in tiles of
-  1400 x 2100 pixels, with an offset of 1000 pixels in the y direction.
-  We divide the qptiff and wsi into tiles of 100x100 pixels and align
-  them with respect to each other, then fit to a model where \Delta\vec{x}
-  is linear in \vec{x} within the tile as well as the index \vec{i} of the
-  tile, with a possible constant piece.
-  """
-
-  rectangletype = FieldReadComponentTiffMultiLayer
-
-  defaulttilepixels = 100
-  __bigtilepixels = np.array([1400, 2100])
-  __bigtileoffsetpixels = np.array([0, 1000])
-
-  def __init__(self, *args, tilepixels=defaulttilepixels, **kwargs):
-    """
-    tilepixels: we divide the wsi and qptiff into tiles of this size
-                in order to align (default: 100)
-    """
+class QPTiffSample(SampleBase, units.ThingWithImscale):
+  def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    self.wsilayer = 1
-    self.qptifflayer = 1
-    self.__tilepixels = tilepixels
-    if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
-      raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
 
     self.__nentered = 0
-    self.__using_images_context = self.enter_context(contextlib.ExitStack())
-
-    self.__images = None
+    self.__using_qptiff_context = self.enter_context(contextlib.ExitStack())
+    self.__qptiff = None
 
   @contextlib.contextmanager
-  def using_images(self):
+  def using_qptiff(self):
     """
-    Context manager for opening the wsi and qptiff images
+    Context manager for opening the qptiff
     """
     if self.__nentered == 0:
       #if they're not currently open
-      #disable PIL's warning when opening big images
-      self.__using_images_context.enter_context(self.PILmaximagepixels())
-      #open the images
-      self.__wsi = self.__using_images_context.enter_context(PIL.Image.open(self.wsifilename(layer=self.wsilayer)))
-      self.__qptiff = self.__using_images_context.enter_context(QPTiff(self.qptifffilename))
+      self.__qptiff = self.__using_qptiff_context.enter_context(QPTiff(self.qptifffilename))
     self.__nentered += 1
     try:
       if self.__nentered == 1:
         self.__imageinfo #access it now to make sure it's cached
-      yield self.__wsi, self.__qptiff
+      yield self.__qptiff
     finally:
       self.__nentered -= 1
       if self.__nentered == 0:
         #if we don't have any other copies of this context manager going,
-        #close the images and free the memory
-        self.__wsi = self.__qptiff = None
-        self.__using_images_context.close()
-
-  @property
-  def tilesize(self):
-    """
-    The tile size as a Distance
-    """
-    return units.Distance(pixels=self.__tilepixels, pscale=self.imscale)
-  @property
-  def bigtilesize(self):
-    """
-    The big tile size (1400, 2100) as a distance
-    """
-    return units.distances(pixels=self.__bigtilepixels, pscale=self.imscale)
-  @property
-  def bigtileoffset(self):
-    """
-    The big tile size (0, 1000) as a distance
-    """
-    return units.distances(pixels=self.__bigtileoffsetpixels, pscale=self.imscale)
+        #close the qptiff and free the memory
+        self.__qptiff = None
+        self.__using_qptiff_context.close()
 
   @methodtools.lru_cache()
   @property
@@ -104,7 +52,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     Get the image info from the wsi and qptiff
     (various scales and the x and y position)
     """
-    with self.using_images() as (wsi, fqptiff):
+    with self.using_qptiff() as fqptiff:
       zoomlevel = fqptiff.zoomlevels[0]
       apscale = zoomlevel.qpscale
       ipscale = self.pscale / apscale
@@ -170,6 +118,84 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     y position of the qptiff image
     """
     return self.__imageinfo["yposition"]
+
+class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample):
+  r"""
+  The annowarp module aligns the wsi image created by zoom to the qptiff.
+  It rewrites the annotations, which were drawn in qptiff coordinates,
+  in im3 coordinates.
+
+  The qptiff is scanned and stitched by the inform software in tiles of
+  1400 x 2100 pixels, with an offset of 1000 pixels in the y direction.
+  We divide the qptiff and wsi into tiles of 100x100 pixels and align
+  them with respect to each other, then fit to a model where \Delta\vec{x}
+  is linear in \vec{x} within the tile as well as the index \vec{i} of the
+  tile, with a possible constant piece.
+  """
+
+  rectangletype = FieldReadComponentTiffMultiLayer
+
+  defaulttilepixels = 100
+  __bigtilepixels = np.array([1400, 2100])
+  __bigtileoffsetpixels = np.array([0, 1000])
+
+  def __init__(self, *args, tilepixels=defaulttilepixels, **kwargs):
+    """
+    tilepixels: we divide the wsi and qptiff into tiles of this size
+                in order to align (default: 100)
+    """
+    super().__init__(*args, **kwargs)
+    self.wsilayer = 1
+    self.qptifflayer = 1
+    self.__tilepixels = tilepixels
+    if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
+      raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
+
+    self.__nentered = 0
+    self.__using_images_context = self.enter_context(contextlib.ExitStack())
+    self.__images = None
+
+  @contextlib.contextmanager
+  def using_images(self):
+    """
+    Context manager for opening the wsi and qptiff images
+    """
+    if self.__nentered == 0:
+      #if they're not currently open
+      #disable PIL's warning when opening big images
+      self.__using_images_context.enter_context(self.PILmaximagepixels())
+      #open the images
+      self.__wsi = self.__using_images_context.enter_context(PIL.Image.open(self.wsifilename(layer=self.wsilayer)))
+      self.__qptiff = self.__using_images_context.enter_context(self.using_qptiff())
+    self.__nentered += 1
+    try:
+      yield self.__wsi, self.__qptiff
+    finally:
+      self.__nentered -= 1
+      if self.__nentered == 0:
+        #if we don't have any other copies of this context manager going,
+        #close the images and free the memory
+        self.__wsi = self.__qptiff = None
+        self.__using_images_context.close()
+
+  @property
+  def tilesize(self):
+    """
+    The tile size as a Distance
+    """
+    return units.Distance(pixels=self.__tilepixels, pscale=self.imscale)
+  @property
+  def bigtilesize(self):
+    """
+    The big tile size (1400, 2100) as a distance
+    """
+    return units.distances(pixels=self.__bigtilepixels, pscale=self.imscale)
+  @property
+  def bigtileoffset(self):
+    """
+    The big tile size (0, 1000) as a distance
+    """
+    return units.distances(pixels=self.__bigtileoffsetpixels, pscale=self.imscale)
 
   def getimages(self, *, keep=False):
     """
