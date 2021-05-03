@@ -13,16 +13,6 @@ class AlignCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohor
 
   sampleclass = AlignSample
 
-  def runsample(self, sample):
-    if self.__doalignment:
-      sample.getDAPI()
-      sample.align()
-    else:
-      sample.readalignments()
-
-    if self.__dostitching:
-      sample.stitch()
-
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
@@ -32,9 +22,9 @@ class AlignCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohor
     return p
 
   @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
     kwargs = {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
+      **super().runkwargsfromargumentparser(parsed_args_dict),
       "doalignment": not parsed_args_dict.pop("dont_align"),
       "dostitching": not parsed_args_dict.pop("dont_stitch"),
     }

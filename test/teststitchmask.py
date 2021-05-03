@@ -1,6 +1,6 @@
 import numpy as np, pathlib
 from astropath.utilities import units
-from astropath.slides.zoom.stitchmask import StitchInformMask
+from astropath.slides.zoom.stitchmasksample import StitchInformMask
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent

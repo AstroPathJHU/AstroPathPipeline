@@ -5,16 +5,6 @@ class GeomCellCohort(DbloadCohort, GeomFolderCohort, SelectRectanglesCohort, Wor
   sampleclass = GeomCellSample
   __doc__ = sampleclass.__doc__
 
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-
-  def runsample(self, sample):
-    return sample.rungeomcell()
-
-  @classmethod
-  def defaultunits(cls):
-    return "fast_microns"
-
 def main(args=None):
   GeomCellCohort.runfromargumentparser(args)
 

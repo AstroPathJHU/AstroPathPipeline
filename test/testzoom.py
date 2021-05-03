@@ -1,5 +1,5 @@
 import gzip, numpy as np, pathlib, PIL.Image
-from astropath.slides.zoom.zoom import Zoom
+from astropath.slides.zoom.zoomsample import ZoomSample
 from astropath.slides.zoom.zoomcohort import ZoomCohort
 from .testbase import TestBaseSaveOutput
 
@@ -55,7 +55,7 @@ class TestZoom(TestBaseSaveOutput):
     if self.layers(SlideID) is not None:
       args += ["--layers", *(str(_) for _ in self.layers(SlideID))]
     ZoomCohort.runfromargumentparser(args)
-    sample = Zoom(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=self.selectrectangles(SlideID), layers=self.layers(SlideID))
+    sample = ZoomSample(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=self.selectrectangles(SlideID), layers=self.layers(SlideID))
 
     try:
       for i in self.layers(SlideID):

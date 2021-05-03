@@ -3,7 +3,7 @@ import collections, functools, jxmlease, numpy as np, os, PIL, re, shutil
 from ...baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield, readtable, writetable
-from ..zoom.zoom import Zoom
+from ..zoom.zoomsample import ZoomSample
 
 class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample):
   """
@@ -265,6 +265,8 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
     self.writezoomlist()
 
+  run = deepzoom
+
   @property
   def inputfiles(self):
     return [
@@ -293,7 +295,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
   @classmethod
   def workflowdependencies(cls):
-    return [Zoom] + super().workflowdependencies()
+    return [ZoomSample] + super().workflowdependencies()
 
 @functools.total_ordering
 class DeepZoomFile(MyDataClass):
@@ -319,3 +321,9 @@ class DeepZoomFile(MyDataClass):
     This is used to sort for the csv file.
     """
     return (self.sample, self.zoom, self.marker, self.x, self.y) < (other.sample, other.zoom, other.marker, other.x, other.y)
+
+def main(args=None):
+  DeepZoomSample.runfromargumentparser(args)
+
+if __name__ == "__main__":
+  main()

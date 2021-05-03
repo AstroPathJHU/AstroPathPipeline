@@ -3,7 +3,7 @@ from ...baseclasses.sample import MaskSampleBase, ReadRectanglesDbloadComponentT
 from ...utilities.misc import floattoint
 from ..align.alignsample import AlignSample
 from ..align.field import FieldReadComponentTiff
-from ..zoom.zoom import ZoomSampleBase
+from ..zoom.zoomsample import ZoomSampleBase
 
 class MaskSample(MaskSampleBase):
   """
@@ -112,6 +112,8 @@ class WriteMaskSampleBase(MaskSample, WorkflowSample):
     else:
       raise ValueError("Don't know how to deal with mask file type {filetype}")
 
+  run = writemask
+
   @abc.abstractmethod
   def createmask(self): "create the mask"
 
@@ -214,3 +216,9 @@ class StitchInformMask(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteM
   @classmethod
   def workflowdependencies(cls):
     return [AlignSample] + super().workflowdependencies()
+
+def main(args=None):
+  StitchInformMask.runfromargumentparser(args)
+
+if __name__ == "__main__":
+  main()

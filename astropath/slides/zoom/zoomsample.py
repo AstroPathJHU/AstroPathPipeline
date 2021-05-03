@@ -27,7 +27,7 @@ class ZoomSampleBase(ReadRectanglesBase):
   def PILmaximagepixels(self):
     return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
 
-class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample):
+class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample):
   """
   Run the zoom step of the pipeline:
   create big images of 16384x16384 pixels by merging the fields
@@ -374,6 +374,8 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
     else:
       raise ValueError(f"Bad mode {mode}")
 
+  run = zoom_wsi
+
   @property
   def inputfiles(self):
     return [
@@ -399,3 +401,9 @@ class Zoom(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDb
   @classmethod
   def workflowdependencies(cls):
     return [AlignSample] + super().workflowdependencies()
+
+def main(args=None):
+  ZoomSample.runfromargumentparser(args)
+
+if __name__ == "__main__":
+  main()

@@ -1,4 +1,4 @@
-import argparse, methodtools, numpy as np, PIL, skimage
+import methodtools, numpy as np, PIL, skimage
 from ...baseclasses.annotationpolygonxmlreader import XMLPolygonAnnotationReader
 from ...baseclasses.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
 from ...baseclasses.overlap import RectangleOverlapCollection
@@ -320,6 +320,8 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase):
     self.writevertices()
     self.writeregions()
 
+  run = writemetadata
+
   @property
   def inputfiles(self):
     return [
@@ -364,15 +366,7 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase):
     return rf"(?:{old}|{new})"
 
 def main(args=None):
-  p = argparse.ArgumentParser()
-  p.add_argument("root")
-  p.add_argument("samp")
-  p.add_argument("--units", type=units.setup)
-  p.add_argument("--dbload-root")
-  args = p.parse_args(args=args)
-  kwargs = {"root": args.root, "samp": args.samp, "dbloadroot": args.dbload_root}
-  s = PrepDbSample(**kwargs)
-  s.writemetadata()
+  PrepDbSample.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()
