@@ -2,7 +2,6 @@ import more_itertools, os, pathlib
 
 from astropath.slides.geomcell.geomcellcohort import GeomCellCohort
 from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSample
-from astropath.utilities.tableio import readtable
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
@@ -14,7 +13,7 @@ class TestGeomCell(TestBaseSaveOutput):
     return [
       thisfolder/"geomcell_test_for_jenkins"/SlideID/"geom"/filename.name
       for SlideID in ("M206",)
-      for filename in (thisfolder/"reference"/"geomcell"/SlideID).iterdir()
+      for filename in (thisfolder/"reference"/"geomcell"/SlideID/"geom").iterdir()
     ]
 
   def testGeomCell(self, SlideID="M206", units="safe"):
@@ -28,12 +27,12 @@ class TestGeomCell(TestBaseSaveOutput):
     try:
       for filename, reffilename in more_itertools.zip_equal(
         sorted(s.geomfolder.iterdir()),
-        sorted((thisfolder/"reference"/"geomcell"/SlideID).iterdir()),
+        sorted((thisfolder/"reference"/"geomcell"/SlideID/"geom").iterdir()),
       ):
         self.assertEqual(filename.name, reffilename.name)
   
-        rows = readtable(filename, CellGeomLoad, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
-        targetrows = readtable(reffilename, CellGeomLoad, extrakwargs={"pscale": s.pscale, "apscale": s.apscale})
+        rows = s.readtable(filename, CellGeomLoad)
+        targetrows = s.readtable(reffilename, CellGeomLoad)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           assertAlmostEqual(row, target)
           try:

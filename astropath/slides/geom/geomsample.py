@@ -67,6 +67,8 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
     writetable(fieldfilename, self.getfieldboundaries())
     writetable(tumorfilename, self.gettumorboundaries())
 
+  run = writeboundaries
+
   @property
   def inputfiles(self):
     result = [
@@ -95,3 +97,9 @@ class Boundary(DataClassWithPolygon):
   n: int
   k: int
   poly: polygonfield()
+
+def main(args=None):
+  GeomSample.runfromargumentparser(args)
+
+if __name__ == "__main__":
+  main()

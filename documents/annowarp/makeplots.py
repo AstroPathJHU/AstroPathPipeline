@@ -3,7 +3,6 @@ from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleInformTissueM
 from astropath.slides.annowarp.visualization import showannotation
 from astropath.baseclasses.csvclasses import Region
 from astropath.utilities import units
-from astropath.utilities.tableio import readtable
 
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"
@@ -15,7 +14,7 @@ def makeplots():
   from ...test.testzoom import gunzipreference
   gunzipreference(samp)
   A = AnnoWarpSampleInformTissueMask(data, samp, zoomroot=zoomroot, dbloadroot=annowarproot)
-  warpedregions = readtable(A.newregionscsv, Region, extrakwargs={"apscale": A.apscale, "pscale": A.pscale})
+  warpedregions = A.readtable(A.newregionscsv, Region)
 
   with A.using_images() as (wsi, fqptiff):
     zoomlevel = fqptiff.zoomlevels[0]

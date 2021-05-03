@@ -139,6 +139,12 @@ pipeline {
           }
         }
 
+        stage('csvscan') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcsvscan'
+          }
+        }
+
         stage('warping') {
           stages {
             stage('test warping') {

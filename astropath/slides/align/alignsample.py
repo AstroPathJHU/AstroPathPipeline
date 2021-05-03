@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
-import argparse, contextlib, numpy as np, pathlib, traceback
+import contextlib, numpy as np, traceback
 
 from ...baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
-from ...utilities import units
-from ...utilities.tableio import readtable, writetable
+from ...utilities.tableio import writetable
 from ..prepdb.prepdbsample import PrepDbSample
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
@@ -288,6 +287,16 @@ class AlignSampleBase(SampleBase):
   def stitchresult(self, stitchresult):
     self.__stitchresult = stitchresult
 
+  def run(self, *, doalignment=True, dostitching=True):
+    if doalignment:
+      self.getDAPI()
+      self.align()
+    else:
+      self.readalignments()
+
+    if dostitching:
+      self.stitch()
+
 class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
   """
   An alignment set that runs from the dbload folder and can write results
@@ -312,7 +321,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
     self.logger.info("reading alignments from "+str(filename))
 
     try:
-      alignmentresults = {o.n: o for o in readtable(filename, self.alignmentresulttype, extrakwargs={"pscale": self.pscale})}
+      alignmentresults = {o.n: o for o in self.readtable(filename, self.alignmentresulttype)}
     except Exception:
       if interactive:
         print()
@@ -509,15 +518,7 @@ class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleF
   """
 
 def main(args=None):
-  p = argparse.ArgumentParser()
-  p.add_argument("root", type=pathlib.Path)
-  p.add_argument("root2", type=pathlib.Path)
-  p.add_argument("SlideID")
-  args = p.parse_args(args=args)
-  with units.setup_context("fast"):
-    A = AlignSample(root=args.root, root2=args.root2, samp=args.SlideID)
-    A.align()
-    A.stitch()
+  AlignSample.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

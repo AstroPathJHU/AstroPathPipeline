@@ -1,7 +1,6 @@
 import collections, methodtools, numpy as np
 from ...baseclasses.cohort import WorkflowCohort
 from ...utilities.dataclasses import MyDataClass
-from ...utilities.tableio import readtable
 from .annowarpcohort import AnnoWarpCohortBase
 from .stitch import AnnoWarpStitchResultEntry
 
@@ -40,7 +39,7 @@ class GatherStatsCohort(AnnoWarpCohortBase):
 
   def runsample(self, sample):
     #read the stitch results from the sample and save the fitted parameter values and covariances
-    stitchresults = readtable(sample.stitchcsv, AnnoWarpStitchResultEntry, extrakwargs={"pscale": sample.pscale})
+    stitchresults = self.readtable(sample.stitchcsv, AnnoWarpStitchResultEntry)
     for sr in stitchresults:
       self.__parametervalues[sr.description].append(sr.value)
 

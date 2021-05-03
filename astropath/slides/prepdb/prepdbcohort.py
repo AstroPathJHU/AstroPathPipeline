@@ -5,9 +5,6 @@ class PrepDbCohort(DbloadCohort, WorkflowCohort):
   sampleclass = PrepDbSample
   __doc__ = sampleclass.__doc__
 
-  def runsample(self, sample):
-    return sample.writemetadata()
-
 def main(args=None):
   PrepDbCohort.runfromargumentparser(args)
 

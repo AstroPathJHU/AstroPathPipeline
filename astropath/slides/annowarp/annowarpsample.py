@@ -8,12 +8,12 @@ from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint
 from ...utilities.tableio import readtable, writetable
-from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
+from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..align.overlap import AlignmentComparison
-from ..zoom.stitchmask import InformMaskSample, TissueMaskSample, StitchInformMask
-from ..zoom.zoom import Zoom, ZoomSampleBase
+from ..zoom.stitchmasksample import InformMaskSample, TissueMaskSample, StitchInformMask
+from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample, units.ThingWithImscale):
@@ -326,7 +326,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
         n=n,
         x=x+qptiffx1,
         y=y+qptiffy1,
-        pscale=imscale,
+        imscale=imscale,
         tilesize=tilesize,
         bigtilesize=bigtilesize,
         bigtileoffset=bigtileoffset,
@@ -412,7 +412,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     read the alignments from a csv file
     """
     if filename is None: filename = self.alignmentcsv
-    results = self.__alignmentresults = AnnoWarpAlignmentResults(readtable(filename, AnnoWarpAlignmentResult, extrakwargs={"pscale": self.imscale, "tilesize": self.tilesize, "bigtilesize": self.bigtilesize, "bigtileoffset": self.bigtileoffset, "imageshandle": self.getimages}))
+    results = self.__alignmentresults = AnnoWarpAlignmentResults(self.readtable(filename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": self.tilesize, "bigtilesize": self.bigtilesize, "bigtileoffset": self.bigtileoffset, "imageshandle": self.getimages}))
     return results
 
   @classmethod
@@ -658,7 +658,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
         typ = WarpedVertex
       else:
         typ = QPTiffVertex
-    vertices = readtable(filename, typ, extrakwargs=extrakwargs)
+    vertices = self.readtable(filename, typ, extrakwargs=extrakwargs)
     if typ == WarpedVertex:
       vertices = [v.originalvertex for v in vertices]
     return vertices
@@ -705,7 +705,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     read in the original regions from regions.csv
     """
     if filename is None: filename = self.oldregionscsv
-    return readtable(filename, Region, extrakwargs={"apscale": apscale, "pscale": self.pscale}, fieldsizelimit=int(1e6))
+    return self.readtable(filename, Region, fieldsizelimit=int(1e6))
 
   @property
   def regions(self):
@@ -785,6 +785,8 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
     self.writevertices()
     self.writeregions()
 
+  run = runannowarp
+
   @property
   def inputfiles(self):
     return [
@@ -829,7 +831,7 @@ class AnnoWarpSampleBase(ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbl
 
   @classmethod
   def workflowdependencies(cls):
-    return [Zoom] + super().workflowdependencies()
+    return [ZoomSample] + super().workflowdependencies()
 
 class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
   """
@@ -1008,7 +1010,7 @@ class WarpedVertex(QPTiffVertex):
       pscale=self.pscale,
     )
 
-class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataClassWithPscale):
+class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataClassWithImscale):
   """
   A result from the alignment of one tile of the annowarp
 
@@ -1020,14 +1022,15 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   """
   __fmt = "{:.6g}"
   pixelsormicrons = "pixels"
+  pscalename = "imscale"
   n: int
-  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format)
-  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format)
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format)
+  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
+  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
+  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename=pscalename)
+  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename=pscalename)
+  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
+  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
+  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
   exit: int
   del __fmt
 
@@ -1099,19 +1102,19 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     wsi, qptiff = self.imageshandle()
     wsitile = wsi[
-      units.pixels(self.y, pscale=self.pscale):units.pixels(self.y+self.tilesize, pscale=self.pscale),
-      units.pixels(self.x, pscale=self.pscale):units.pixels(self.x+self.tilesize, pscale=self.pscale),
+      units.pixels(self.y, pscale=self.imscale):units.pixels(self.y+self.tilesize, pscale=self.imscale),
+      units.pixels(self.x, pscale=self.imscale):units.pixels(self.x+self.tilesize, pscale=self.imscale),
     ]
     qptifftile = qptiff[
-      units.pixels(self.y, pscale=self.pscale):units.pixels(self.y+self.tilesize, pscale=self.pscale),
-      units.pixels(self.x, pscale=self.pscale):units.pixels(self.x+self.tilesize, pscale=self.pscale),
+      units.pixels(self.y, pscale=self.imscale):units.pixels(self.y+self.tilesize, pscale=self.imscale),
+      units.pixels(self.x, pscale=self.imscale):units.pixels(self.x+self.tilesize, pscale=self.imscale),
     ]
     return wsitile, qptifftile
 
   def __bool__(self):
     return not self.exit
 
-class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
+class AnnoWarpAlignmentResults(list, units.ThingWithImscale):
   """
   A list of alignment results with some extra methods
   """
@@ -1128,8 +1131,8 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
     return result
   @methodtools.lru_cache()
   @property
-  def pscale(self):
-    result, = {_.pscale for _ in self}
+  def imscale(self):
+    result, = {_.imscale for _ in self}
     return result
   @methodtools.lru_cache()
   @property
@@ -1153,7 +1156,7 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
     """
     all results with 0 exit code that are in large enough islands
     """
-    onepixel = self.onepixel
+    onepixel = self.oneimpixel
     good = self.goodresults
     g = good.adjacencygraph
     tiledict = {tile.n: tile for tile in self}
@@ -1183,3 +1186,9 @@ class AnnoWarpAlignmentResults(list, units.ThingWithPscale):
         else:
           keep[t.n] = True
     return type(self)(_ for _ in good if keep[_.n])
+
+def main(args=None):
+  AnnoWarpSampleInformTissueMask.runfromargumentparser(args)
+
+if __name__ == "__main__":
+  main()
