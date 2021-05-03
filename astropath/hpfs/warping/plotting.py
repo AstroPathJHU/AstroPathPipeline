@@ -107,7 +107,7 @@ def radWarpAmtPlots(all_results,save_stem=None) :
     weighted_mean_cx = 0.; weighted_mean_cy = 0.; sw = 0.; sw2 = 0.
     for r in all_results :
         w = r.cost_reduction
-        if w<0. :
+        if w<=0. :
             continue
         weighted_mean_cx+=w*r.cx
         weighted_mean_cy+=w*r.cy
@@ -168,10 +168,12 @@ def radWarpParPlots(all_results,save_stem=None) :
 
 #plots the radial warping parameters in standardized units and the first and second PCA components thereof
 def radWarpPCAPlots(all_results,weighted=False,save_stem=None) :
+	#get rid of any results with no reduction in cost
+	all_results = [r for r in all_results if r.cost_reduction>0]
     #plot the standardized radial warping parameters
-    sk1s, k1m, k1std = standardizeValues(np.array([r.k1 for r in all_results if r.cost_reduction>0]),np.array([r.cost_reduction for r in all_results if r.cost_reduction>0]) if weighted else None,False)
-    sk2s, k2m, k2std = standardizeValues(np.array([r.k2 for r in all_results if r.cost_reduction>0]),np.array([r.cost_reduction for r in all_results if r.cost_reduction>0]) if weighted else None,False)
-    sk3s, k3m, k3std = standardizeValues(np.array([r.k3 for r in all_results if r.cost_reduction>0]),np.array([r.cost_reduction for r in all_results if r.cost_reduction>0]) if weighted else None,False)
+    sk1s, k1m, k1std = standardizeValues(np.array([r.k1 for r in all_results]),np.array([r.cost_reduction for r in all_results]) if weighted else None,False)
+    sk2s, k2m, k2std = standardizeValues(np.array([r.k2 for r in all_results]),np.array([r.cost_reduction for r in all_results]) if weighted else None,False)
+    sk3s, k3m, k3std = standardizeValues(np.array([r.k3 for r in all_results]),np.array([r.cost_reduction for r in all_results]) if weighted else None,False)
     txt_lines = []
     txt_lines.append(f'k1 {"weighted " if weighted else ""}mean = {k1m} ; {"weighted " if weighted else ""}std. dev. = {k1std}')
     txt_lines.append(f'k2 {"weighted " if weighted else ""}mean = {k2m} ; {"weighted " if weighted else ""}std. dev. = {k2std}')
