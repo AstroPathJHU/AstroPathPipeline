@@ -168,8 +168,8 @@ def radWarpParPlots(all_results,save_stem=None) :
 
 #plots the radial warping parameters in standardized units and the first and second PCA components thereof
 def radWarpPCAPlots(all_results,weighted=False,save_stem=None) :
-	#get rid of any results with no reduction in cost
-	all_results = [r for r in all_results if r.cost_reduction>0]
+    #get rid of any results with no reduction in cost
+    all_results = [r for r in all_results if r.cost_reduction>0]
     #plot the standardized radial warping parameters
     sk1s, k1m, k1std = standardizeValues(np.array([r.k1 for r in all_results]),np.array([r.cost_reduction for r in all_results]) if weighted else None,False)
     sk2s, k2m, k2std = standardizeValues(np.array([r.k2 for r in all_results]),np.array([r.cost_reduction for r in all_results]) if weighted else None,False)

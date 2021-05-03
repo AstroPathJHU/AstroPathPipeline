@@ -74,6 +74,7 @@ def checkArgs(args) :
             raise ValueError(f'ERROR: input file {args.input_file} does not exist!')
         try :
             table_entries = readtable(ifp,TableEntry)
+            table_entries = table_entries #pyflakes doesn't like me just making sure the table can be read
         except Exception as e :
             raise ValueError(f'ERROR: input file {args.input_file} could not be read as a list of table entries. Exception: {e}')
     else :
@@ -225,7 +226,7 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
             if dims is None :
                 dims = this_slide_dims
             if this_slide_dims!=dims :
-                raise RuntimeError(f'ERROR: dimensions of all slides used must match!')
+                raise RuntimeError('ERROR: dimensions of all slides used must match!')
     #make a list of all the slide IDs, removing any slides with meaningless meanimages/standard errors
     logger.info('Finding slides to use...')
     slide_ids = []
@@ -260,7 +261,7 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
         layers = UNIV_CONST.BRIGHTEST_LAYERS_35 if dims[-1]==35 else UNIV_CONST.BRIGHTEST_LAYERS_43
     dos_std_dev_plot_values = np.zeros((len(slide_ids),len(slide_ids),dims[-1]))
     if input_file is not None :
-        logger.info(f'Getting plot values from input file...')
+        logger.info('Getting plot values from input file...')
         for te in table_entries :
             if (te.slide_ID_1 not in slide_ids) or (te.slide_ID_2 not in slide_ids) or (te.layer_n not in layers) :
                 continue
