@@ -73,7 +73,7 @@ A simple set of batch files have been written to assist in dissemination of the 
 3. Open a command prompt
    - For Windows in the *Start Menu Search Bar* type *cmd* and it should be the first option
 4. Enter: 
-``` */AstroPathPipeline/astropath/hpfs/transferanno/transferanno "<source>" "<destination>" ```
+``` */AstroPathPipeline/astropath/hpfs/transferanno/TransferAnno "<source>" "<destination>" ```
    - ```*/```: The path to where the repo was downloaded
      - An example of the full command where the repo was downloaded to the desktop would be: *c:\users\username\Desktop\AstroPathPipeline/astropath/hpfs/transferanno/TransferAnno*
    - ```<source>```: the path recorded in step 1
