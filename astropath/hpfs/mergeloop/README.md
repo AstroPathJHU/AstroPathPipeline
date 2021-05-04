@@ -16,6 +16,10 @@ This module servers to track processing, interact with the inform processing que
    - it is also recommended that backup copies of the main queue are manually maintained
 - ```<tmp_inform_data>```: this is subfolder under the ```<Dpath>\<Dname>```, it contains processing subfolders for each antibody in addition to the ```<Project_Development>``` folder 
 - ```<Project_Development>```: this is a sub folder of ```<tmp_inform_data>```. Algorithms to be processed by the inForm processing code should be placed here. The code will not find algorithms placed elsewhere or in subfolders.
+- *samples_summary.xlsx*: this spreadsheet records and maintains useful information for processing of each slide
+- Inform data sample level file formatting:
+- **aaaaaaaaaaaaaaaaaaaaaa**
+
 
 *Note*: Additional directory information can be found *here*
 
@@ -27,3 +31,23 @@ The code should be launched through matlab. To start download the repository to 
 
 *Note:* For the code to process successfully be sure to create the merge configuration files *link*.
 
+
+## 5.9.4. Workflow
+This code starts by extracting the cohorts from the *AstropathCohortProgress.xlsx* spreadsheet. Each cohort is then looped over with the following steps:
+- We check the space available on the ```<Dpath>\<Dname>``` processing drive and write this into the *AstropathConfig.csv* file
+- Check the ```<Process_Merge>``` variable in the *AstropathConfig.csv* file, if *Yes* continue processing otherwise skip to the next cohort
+- Using the *MergeConfig_NN.xlsx* files, extract the antibodies stained on the slides
+  - check or create folders for processing of different inform antibody\ sample tasks under the ```<tmp_inform_data>``` folder
+  - Be sure that the folders are intialized with at least one extra folder to ensure smooth processing with the *inform_processing* module
+- Initialize the samples spreadsheet & variables
+- Next we loop through each sample extracting specified information
+  - Information extracted includes: ```<Scan>, <BatchID>, <ScanDate>, <Im3files>, <expected Im3 files>, <flatw_im3s>``` etc. 
+  - Integral in this step is when we process the merge files, here we check the ```<tmp_inform_data>``` antibody folders (defined in previous steps) for folders with completed *inForm* processing tasks. 
+    - These tasks are denoted finished when inForm adds the *Batch.txt* which occurs only after slides are finished. 
+    - If the folders contain both this *Batch.txt* file and inForm output for a specified slide (denoted by the file names) the files are transferred to the specimen folder under : ```<base>\<SlideID>\<inform_data>```
+    - Files are organized according to the format in the [Important Definitions](#592-important-definitions) section
+    - Once files *for each antibody* are processed the code merges all output to a ```<base>\<SlideID>\<inform_data>\<Phenotyped>\<Results>\<Tables>``` folder additional details on how to export files for different antibodies and their settings can be found in the *inform_processing* module
+  - Once files are merged the QA\QC files are generated here  ```<base>\<SlideID>\<inform_data>\<Phenotyped>\<Results>\<QAQC>```
+    - additional details on these files can be found in the *MaSS* documentation
+- After all specimens are looped through the code builds the *samples_summary.xlsx* spreadsheet and exports it
+- Finially the code checks the *inForm_queue.csv* at the project level, compares it to the *inForm_queue.csv* in the ```<Mpath>``` directory. New tasks are added to the *main* *inForm_queue.csv* and completed tasks are added to the project level *inForm_queue.csv*. A copy of the *main* *inForm_queue.csv* is added to the project level and labeled *Main_inForm_queue.csv* for referencing.
