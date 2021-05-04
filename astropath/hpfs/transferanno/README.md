@@ -72,9 +72,9 @@ A simple set of batch files have been written to assist in dissemination of the 
 2. Download the github *AstroPathJHU\AstroPathPipeline* repo
 3. Open a command prompt
    - For Windows in the *Start Menu Search Bar* type *cmd* and it should be the first option
-4. Enter 
+4. Enter: 
 ``` */AstroPathPipeline/astropath/hpfs/transferanno/transferanno "<source>" "<destination>" ```
-   - ```*/``` The path to where the repo was downloaded
+   - ```*/```: The path to where the repo was downloaded
      - An example of the full command where the repo was downloaded to the desktop would be: *c:\users\username\Desktop\AstroPathPipeline/astropath/hpfs/transferanno/transferanno*
    - ```<source>```: the path recorded in step 1
      - E.g. *\\HALO1\user\Halo archive 2021-04-20 12-22 - v3.1.1076*
