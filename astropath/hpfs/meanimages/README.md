@@ -16,7 +16,7 @@ The module is used to build a mean image for each slide after it is transferred.
    
 
 ## 5.7.3. Instructions
-The code should be launched through matlab. To start download the repository to a working location. Next, open a new session of matlab and add the ```AstroPipline``` to the matlab path. Then use the following to launch:
+The code should be launched through matlab. To start download the repository to a working location. Next, open a new session of matlab and add the ```AstroPathPipline``` to the matlab path. Then use the following to launch:
    ``` meanimages(<Mpath>, <drive>) ``` 
    - ```<Mpath>[string]```: the full path to the directory containing the ***AstropathCohortsProgress.csv*** file
       - description of this file can be found [here](../../scans#441-astropath_processing-directory "Title")
