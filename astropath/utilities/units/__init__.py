@@ -1,6 +1,6 @@
 import contextlib
 from . import core, dataclasses, drawing
-from .core import Distance, onemicron, onepixel, ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, ThingWithZoomedscale, UnitsError
+from .core import Distance, onemicron, onepixel, ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
 
 def setup(mode, baseunit=None):
   if "_" in mode and baseunit is None:
@@ -52,7 +52,7 @@ def setup_context(mode, baseunit="pixels"):
     setup(*bkp)
 
 __all__ = [
-  "convertpscale", "correlated_distances", "Distance", "distances", "onemicron", "onepixel", "ThingWithApscale", "ThingWithImscale", "ThingWithPscale", "ThingWithQpscale", "ThingWithZoomedscale", "UnitsError",
+  "convertpscale", "correlated_distances", "Distance", "distances", "onemicron", "onepixel", "ThingWithApscale", "ThingWithImscale", "ThingWithPscale", "ThingWithQpscale", "UnitsError",
   "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs",
   "dataclasses", "drawing", "fft", "linalg", "testing",
   "setup", "setup_context",

@@ -1,4 +1,4 @@
-import abc, methodtools
+import abc, collections, methodtools
 from ..tableio import TableReader
 
 currentmodule = None
@@ -14,99 +14,68 @@ def onepixel(pscale):
 def onemicron(pscale):
   return Distance(microns=1, pscale=pscale)
 
-class ThingWithPscale(abc.ABC, TableReader):
+class PScale(collections.namedtuple("PScale", ["scalename"])):
+  scalename: str
+  def __init__(self, scalename):
+    super().__init__()
+    assert self.scalename.endswith("scale"), self.scalename
   @property
-  @abc.abstractmethod
-  def pscale(self): return self.__pscale
-  @pscale.setter
-  def pscale(self, pscale): object.__setattr__(self, "_ThingWithPscale__pscale", pscale)
-  @methodtools.lru_cache()
+  def onepixelname(self):
+    if self.scalename == "pscale": return "onepixel"
+    return "one"+self.scalename.replace("scale", "pixel")
   @property
-  def onepixel(self):
-    return onepixel(pscale=self.pscale)
-  @methodtools.lru_cache()
-  @property
-  def onemicron(self):
-    return onemicron(pscale=self.pscale)
+  def onemicronname(self):
+    if self.scalename == "pscale": return "onemicron"
+    return "one"+self.scalename.replace("scale", "micron")
+
+pscale = PScale("pscale")
+qpscale = PScale("qpscale")
+apscale = PScale("apscale")
+imscale = PScale("imscale")
+
+class ThingWithScale(abc.ABC, TableReader):
+  __scales = set()
+  def __init_subclass__(cls, *, scale=None, scales=None, **kwargs):
+    super().__init_subclass__(**kwargs)
+    if scales is None: scales = []
+    if scale is not None: scales.append(scale)
+    cls.__scales = set.union(*(subcls.__scales for subcls in cls.__mro__ if issubclass(subcls, ThingWithScale)))
+    for scale in scales:
+      if isinstance(scale, str): scale = PScale(scale)
+
+      if scale in cls.__scales: continue
+      cls.__scales.add(scale)
+
+      scalename = scale.scalename
+      onepixelname = scale.onepixelname
+      onemicronname = scale.onemicronname
+
+      @abc.abstractmethod
+      def scalegetter(self): return getattr(self, f"_ThingWithScale__{scalename}")
+      def scalesetter(self, scale): return object.__setattr__(self, f"_ThingWithScale__{scalename}", scale)
+      scalegetter.__name__ = scalesetter.__name__ = scalename
+      scaleproperty = getattr(cls, scalename, property())
+      if scaleproperty.fget is None: scaleproperty = scaleproperty.getter(scalegetter)
+      if scaleproperty.fset is None: scaleproperty = scaleproperty.setter(scalesetter)
+      setattr(cls, scalename, scaleproperty)
+
+      def onescalepixel(self): return onepixel(pscale=getattr(self, scalename))
+      onescalepixel.__name__ = onepixelname
+      setattr(cls, onepixelname, methodtools.lru_cache()(property(onescalepixel)))
+
+      def onescalemicron(self): return onemicron(pscale=getattr(self, scalename))
+      onescalemicron.__name__ = onemicronname
+      setattr(cls, onemicronname, methodtools.lru_cache()(property(onescalemicron)))
 
   def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
     if extrakwargs is None: extrakwargs = {}
-    if "pscale" not in extrakwargs and issubclass(rowclass, ThingWithPscale):
-      extrakwargs["pscale"] = self.pscale
+    if issubclass(rowclass, ThingWithScale):
+      for scale in self.__scales & rowclass.__scales:
+        if scale not in extrakwargs:
+          extrakwargs[scale.scalename] = getattr(self, scale.scalename)
     return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
 
-class ThingWithQpscale(abc.ABC, TableReader):
-  @property
-  @abc.abstractmethod
-  def qpscale(self): return self.__qpscale
-  @qpscale.setter
-  def qpscale(self, qpscale): object.__setattr__(self, "_ThingWithQpscale__qpscale", qpscale)
-  @methodtools.lru_cache()
-  @property
-  def oneqppixel(self):
-    return onepixel(pscale=self.qpscale)
-  @methodtools.lru_cache()
-  @property
-  def oneqpmicron(self):
-    return onemicron(pscale=self.qpscale)
-
-  def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
-    if extrakwargs is None: extrakwargs = {}
-    if "qpscale" not in extrakwargs and issubclass(rowclass, ThingWithQpscale):
-      extrakwargs["qpscale"] = self.qpscale
-    return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
-
-class ThingWithApscale(abc.ABC, TableReader):
-  @property
-  @abc.abstractmethod
-  def apscale(self): return self.__apscale
-  @apscale.setter
-  def apscale(self, apscale): object.__setattr__(self, "_ThingWithApscale__apscale", apscale)
-  @methodtools.lru_cache()
-  @property
-  def oneappixel(self):
-    return onepixel(pscale=self.apscale)
-  @methodtools.lru_cache()
-  @property
-  def oneapmicron(self):
-    return onemicron(pscale=self.apscale)
-
-  def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
-    if extrakwargs is None: extrakwargs = {}
-    if "apscale" not in extrakwargs and issubclass(rowclass, ThingWithApscale):
-      extrakwargs["apscale"] = self.apscale
-    return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
-
-class ThingWithImscale(abc.ABC, TableReader):
-  @property
-  @abc.abstractmethod
-  def imscale(self): pass
-  @imscale.setter
-  def imscale(self, imscale): object.__setattr__(self, "_ThingWithImscale__imscale", imscale)
-  @property
-  def oneimpixel(self): return onepixel(pscale=self.imscale)
-  @property
-  def oneimmicron(self): return onemicron(pscale=self.imscale)
-
-  def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
-    if extrakwargs is None: extrakwargs = {}
-    if "imscale" not in extrakwargs and issubclass(rowclass, ThingWithImscale):
-      extrakwargs["imscale"] = self.imscale
-    return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
-
-class ThingWithZoomedscale(abc.ABC, TableReader):
-  @property
-  @abc.abstractmethod
-  def zoomedscale(self): pass
-  @zoomedscale.setter
-  def zoomedscale(self, zoomedscale): object.__setattr__(self, "_ThingWithZoomedscale__imscale", zoomedscale)
-  @property
-  def onezoomedpixel(self): return onepixel(pscale=self.zoomedscale)
-  @property
-  def onezoomedmicron(self): return onemicron(pscale=self.zoomedscale)
-
-  def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
-    if extrakwargs is None: extrakwargs = {}
-    if "zoomedscale" not in extrakwargs and issubclass(rowclass, ThingWithImscale):
-      extrakwargs["zoomedscale"] = self.zoomedscale
-    return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
+class ThingWithPscale(ThingWithScale, scale="pscale"): pass
+class ThingWithQpscale(ThingWithScale, scale="qpscale"): pass
+class ThingWithApscale(ThingWithScale, scale="apscale"): pass
+class ThingWithImscale(ThingWithScale, scale="imscale"): pass

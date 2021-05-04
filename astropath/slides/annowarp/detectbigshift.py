@@ -5,7 +5,7 @@ from ...utilities.misc import floattoint
 from ..align.computeshift import computeshift
 from .annowarpsample import QPTiffSample
 
-class DetectBigShiftSample(ReadRectanglesDbloadIm3, QPTiffSample, units.ThingWithZoomedscale):
+class DetectBigShiftSample(ReadRectanglesDbloadIm3, QPTiffSample, scale="zoomedscale"):
   def __init__(self, *args, shiftthresholdmicrons=100, filetype="flatWarp", **kwargs):
     self.qptifflayer = 1
     self.im3layer = 1
