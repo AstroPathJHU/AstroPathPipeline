@@ -93,3 +93,20 @@ class ThingWithImscale(abc.ABC, TableReader):
     if "imscale" not in extrakwargs and issubclass(rowclass, ThingWithImscale):
       extrakwargs["imscale"] = self.imscale
     return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
+
+class ThingWithZoomedscale(abc.ABC, TableReader):
+  @property
+  @abc.abstractmethod
+  def zoomedscale(self): pass
+  @zoomedscale.setter
+  def zoomedscale(self, zoomedscale): object.__setattr__(self, "_ThingWithZoomedscale__imscale", zoomedscale)
+  @property
+  def onezoomedpixel(self): return onepixel(pscale=self.zoomedscale)
+  @property
+  def onezoomedmicron(self): return onemicron(pscale=self.zoomedscale)
+
+  def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
+    if extrakwargs is None: extrakwargs = {}
+    if "zoomedscale" not in extrakwargs and issubclass(rowclass, ThingWithImscale):
+      extrakwargs["zoomedscale"] = self.zoomedscale
+    return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)

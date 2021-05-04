@@ -153,6 +153,8 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
 
     self.__nentered = 0
     self.__using_images_context = self.enter_context(contextlib.ExitStack())
+    self.__wsi = self.__qptiff = None
+
     self.__images = None
 
   @contextlib.contextmanager
@@ -206,6 +208,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     """
     if self.__images is not None: return self.__images
     with self.using_images() as (wsi, fqptiff):
+      print(wsi.mode)
       #load the images
       zoomlevel = fqptiff.zoomlevels[0]
       qptiff = PIL.Image.fromarray(zoomlevel[self.qptifflayer-1].asarray())
