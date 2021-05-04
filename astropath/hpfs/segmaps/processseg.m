@@ -1,4 +1,4 @@
-%% launch_processseg
+%% processseg
 %% --------------------------------------------------------------
 %% Created by: Benjamin Green - Johns Hopkins - 02/25/2019
 %% --------------------------------------------------------------
@@ -6,7 +6,7 @@
 %%% 
 %% --------------------------------------------------------------
 %%
-function launch_processseg(main)
+function processseg(main)
 %
 try
     tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
