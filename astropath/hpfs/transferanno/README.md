@@ -75,7 +75,7 @@ A simple set of batch files have been written to assist in dissemination of the 
 4. Enter: 
 ``` */AstroPathPipeline/astropath/hpfs/transferanno/transferanno "<source>" "<destination>" ```
    - ```*/```: The path to where the repo was downloaded
-     - An example of the full command where the repo was downloaded to the desktop would be: *c:\users\username\Desktop\AstroPathPipeline/astropath/hpfs/transferanno/transferanno*
+     - An example of the full command where the repo was downloaded to the desktop would be: *c:\users\username\Desktop\AstroPathPipeline/astropath/hpfs/transferanno/TransferAnno*
    - ```<source>```: the path recorded in step 1
      - E.g. *\\HALO1\user\Halo archive 2021-04-20 12-22 - v3.1.1076*
    - ```<destination>```: the project directory (referred to as ```<Dpath>\<Dname>``` in the *AstroPathPipeline* documentation
