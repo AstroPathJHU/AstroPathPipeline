@@ -55,7 +55,7 @@ The Im3Tools are located in the [*astropath\hpfs\Flatfield\flatw\Im3Tools* folde
 ```
 
 ## 5.8.3.4. ConvertIm3
-The ConvertIM3 application reads and writes Perkin Elmer IM3 ("image cube") files.
+The ConvertIM3 application reads and writes AKOYA IM3 ("image cube") files.
 
 ConvertIM3 uses a simple set of C# classes to represent the contents of an IM3 file. Unfortunately, the IM3 format is undocumented. There are no software tools available that manage IM3 files directly.  It is more practical to transform IM3 into a well-known format that can be handled by generally-available software.  Since the IM3 format is essentially a hierarchy of self-described groups of data, a straightforward way to work with IM3 is to convert it to and from XML.
 
