@@ -12,19 +12,18 @@ SETLOCAL
 SET root=%1
 SET flatw=%2
 SET sample=%3
-::
-SET mcode=%4
+SET mcode=%~dp0
 ::
 ECHO . 
 ECHO doOneSample %root% %flatw% %samp%
 ECHO   %date% %time%
 ::
-CALL %mcode%\Im3Tools\fixM2 %root% %sample% %mcode%
-PowerShell -NoProfile -ExecutionPolicy Bypass -Command "& '%mcode%\Im3Tools\ConvertIm3Path.ps1' '%root%' '%flatw%' '%sample%'" -s
-CALL %mcode%\Im3Tools\flatwPath  %root% %flatw% %sample% %mcode%
-PowerShell -NoProfile -ExecutionPolicy Bypass -Command "& '%mcode%\Im3Tools\ConvertIm3Path.ps1' '%root%' '%flatw%' '%sample%'" -i
-CALL %mcode%\Im3Tools\extractLayer %flatw% %sample% 1 %mcode%
-CALL %mcode%\Im3Tools\cleanPath %flatw% %sample% %root%
+CALL %mcode%fixM2 %root% %sample%
+PowerShell -NoProfile -ExecutionPolicy Bypass -Command "& '%mcode%ConvertIm3Path.ps1' '%root%' '%flatw%' '%sample%'" -s
+CALL %mcode%flatwPath  %root% %flatw% %sample%
+PowerShell -NoProfile -ExecutionPolicy Bypass -Command "& '%mcode%ConvertIm3Path.ps1' '%root%' '%flatw%' '%sample%'" -i
+CALL %mcode%extractLayer %flatw% %sample% 1
+CALL %mcode%cleanPath %flatw% %sample% %root%
 :: 
 ENDLOCAL
 ::

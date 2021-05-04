@@ -5,7 +5,7 @@ i1 = 1;
 %
 while i1 == 1
     %
-    processOneSample(loc)
+    processOnefwSample(loc)
     pause(1*60)
     %
 end

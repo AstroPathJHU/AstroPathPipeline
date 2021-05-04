@@ -18,7 +18,7 @@ IF "|%3|"=="||" ECHO Usage: doOneSample root flatw sample && ENDLOCAL && EXIT /B
 SET root=%1
 SET flatw=%2
 SET sample=%3
-SET mcode=%4
+SET mcode=%~dp0
 ::
 ECHO doOneSample %root% %flatw% %sample%
 ::
@@ -26,8 +26,7 @@ IF NOT EXIST "%flatw%" mkdir "%flatw%"
 IF NOT EXIST "%flatw%\%sample%" mkdir "%flatw%\%sample%"
 ::
 SET log=%flatw%\%sample%\flatwlog.log
-::SET mcode=\\BKI05\E$\Processing_Specimens\AS_code
 ::
-CALL %mcode%\Im3Tools\doOneSampleCore %root% %flatw% %sample% %mcode% > %log%
+CALL %mcode%\doOneSampleCore %root% %flatw% %sample% > %log%
 :: 
 ENDLOCAL

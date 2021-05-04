@@ -4,7 +4,7 @@ This workflow serves to create a directory of flat field and warping corrected *
 
 ## 5.8.2. Important Definitions
 ### 5.8.2.1. Flatw Expected Directory Structure
-For this section of the pipeline we define the directory structure as follows: 
+Since this section of the pipeline can be used with standalone funcationality, we define the directory structure here. A more detailed directory structure for the whole AstroPath Pipeline can be found *here*: 
 ```
 <base>\<astroID>\<im3_path>\<filename>
 ```

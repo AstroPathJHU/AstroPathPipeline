@@ -22,14 +22,13 @@ IF "|%2|"=="||" ECHO Usage: fixM2 root sample && ENDLOCAL && EXIT /B;
 SET root=%1
 SET sample=%2
 SET log=%root%\%sample%\fixM2.log
-SET mcode=%3
+SET mcode=%~dp0..\mtools
 ::
 ECHO .
 ECHO fixM2 %root% %sample%
 ECHO   %time%
 ::
-matlab -nosplash -nodesktop -minimize -sd %mcode%\mtools -r "; fixM2('%root%','%sample%');exit(0);" -wait -logfile %log%
-:: CALL %mcode%\Im3Tools\matlabEcho %log%
+matlab -nosplash -nodesktop -minimize -sd %mcode% -r "; fixM2('%root%','%sample%');exit(0);" -wait -logfile %log%
 ::
 IF EXIST "%log%" DEL /Q %log%
 ECHO   %time%

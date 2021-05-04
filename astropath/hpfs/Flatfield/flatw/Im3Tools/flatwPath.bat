@@ -18,19 +18,15 @@ IF "|%2|"=="||" ECHO Usage: flatwPath flatw sample && ENDLOCAL && EXIT /B;
 ::
 SET flatw=%2
 SET sample=%3
-SET PP=%flatw%\%sample%
 SET log=%flatw%\%sample%\flatw.log
-SET mcode=%4
+SET mcode=%~dp0..\mtools
 ::
 ECHO .
 ECHO flatwPath %flatw% %sample%
 ECHO   %time%
 ECHO   fw path "%flatw%\%sample%"
-
-:: CALL %mcode%\flatw\runflatw\application\runFlatw.exe %1 %2 %3
-
-matlab -nosplash -nodesktop -minimize -sd %mcode%\mtools -r ";runFlatw('%1','%2','%3');exit(0);" -wait -logfile %log%
-:: CALL %mcode%\Im3Tools\matlabEcho %log%
+::
+matlab -nosplash -nodesktop -minimize -sd %mcode% -r ";runFlatw('%1','%2','%3');exit(0);" -wait -logfile %log%
 ::
 IF EXIST "%log%" DEL /Q %log%
 ECHO   %time%

@@ -17,7 +17,7 @@ IF "|%3|"=="||" ECHO Usage: extractLayer flatw sample layer && ENDLOCAL && EXIT 
 SET flatw=%1
 SET sample=%2
 SET layer=%3
-SET mcode=%4
+SET mcode=%~dp0..\mtools
 ::
 SET log=%flatw%\%sample%\layer%layer%.log
 ::
@@ -25,10 +25,10 @@ ECHO .
 ECHO extractLayer %flatw% %sample% %layer%
 ECHO   %time% 
 ::
-matlab -minimize -nosplash -nodesktop -sd %mcode%\mtools -r "extractLayer('%flatw%','%sample%','%layer%');quit(0);" -wait -logfile %log%
+matlab -minimize -nosplash -nodesktop -sd %mcode% -r "extractLayer('%flatw%','%sample%','%layer%');quit(0);" -wait -logfile %log%
 :: CALL %mcode%\Im3Tools\matlabEcho %log%
 ::
 IF EXIST "%log%" DEL /Q %log% 
-ECHO %time%
+ECHO   %time%
 ENDLOCAL
 ::

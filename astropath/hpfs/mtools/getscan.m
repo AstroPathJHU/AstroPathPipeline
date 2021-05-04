@@ -7,11 +7,20 @@
 %%% name
 %% --------------------------------------------------------------
 %%
+%%
 function [Scanpath, ScanNum, BatchID] = getscan(wd, sname)
 %
 % get highest scan for a sample
 %
 Scan = dir([wd,'\',sname,'\im3\Scan*']);
+%
+if isempty(Scan)
+    Scanpath = [];
+    ScanNum = [];
+    BatchID = [];
+    return
+end
+%
 sid = {Scan(:).name};
 sid = extractAfter(sid,'Scan');
 sid = cellfun(@(x)str2double(x),sid,'Uni',0);

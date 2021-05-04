@@ -37,8 +37,8 @@ if (
     !($PSBoundParameters.ContainsKey('sample')) -OR
     (!($i) -AND !($s))
     ) {
-    Write-Host "Usage: ConvertIm3Path dataroot dest sample -s [-a -d -xml]"
-    Write-Host "Usage: ConvertIm3Path dataroot dest sample -i"; return
+    Write-Host "Usage: ConvertIm3Path dataroot dest sample -s [-a -d -xml] `r"
+    Write-Host "Usage: ConvertIm3Path dataroot dest sample -i `r"; return
     }
 #
 function Im3ConvertPath{ 
@@ -61,11 +61,11 @@ function Im3ConvertPath{
     if ($i) {
         #
         if ($a) {
-            Write-Host "WARNING: '-a' not valid for inject. IGNORING"
+            Write-Host "WARNING: '-a' not valid for inject. IGNORING `r"
         } elseif ($d) {
-            Write-Host "WARNING: '-d' not valid for option inject. IGNORING"
+            Write-Host "WARNING: '-d' not valid for option inject. IGNORING `r"
         } elseif ($xml) {
-            Write-Host "WARNING: '-xml' not valid for option inject. IGNORING"
+            Write-Host "WARNING: '-xml' not valid for option inject. IGNORING `r"
         }
         #
     }
@@ -74,7 +74,7 @@ function Im3ConvertPath{
     #
     $IM3 = "$root1\$sample\im3"
     if (!(test-path $IM3)) { 
-        Write-Host "IM3 root path $IM3 not found"; return
+        Write-Host "IM3 root path $IM3 not found `r"; return
         }
     #
     $sub = gci $IM3 -Directory
@@ -88,7 +88,7 @@ function Im3ConvertPath{
     #
     $IM3 = "$scan\MSI"
     if (!(test-path $IM3)) { 
-        Write-Host "IM3 subpath $IM3 not found"; return
+        Write-Host "IM3 subpath $IM3 not found `r"; return
         }
     #
     # build flatw path, and create folders if they do not exist for shred
@@ -98,7 +98,7 @@ function Im3ConvertPath{
     if (!(test-path $flatw) -and !$i) {
         new-item $flatw -itemtype directory | Out-Null
     } elseif (!(test-path $flatw) -and $i){
-        Write-Host "flatw path $flatw not found"; return
+        Write-Host "flatw path $flatw not found `r"; return
     }
     #
     Write-To-Log -root1 $root1 -root2 $root2 -sample $sample `
@@ -125,9 +125,9 @@ function Im3ConvertPath{
         # for inject check for '.dat' files then inject
         # back to im3 into the flatw folder
         #
-        $dats = gci "$flatw\*" '*.fw'
+        $dats = gci "$flatw\*" '*.dat'
         if (!($dats.Count -eq $images.Count)) { 
-            Write-Host "$flatw\*.fw N File(s) and $IM3\*im3 N File(s) do not match"
+            Write-Host "$flatw\*.fw N File(s) and $IM3\*im3 N File(s) do not match `r"
             #return 
         }
         #
@@ -170,35 +170,35 @@ function Write-To-Log {
     #
     if ($Start) {
         #
-        Write-Host '.'
+        Write-Host '.' "`r"
         #
         if ($s) {
             #
-            Write-Host 'shredPath' $root1 $root2 $sample
+            Write-Host 'shredPath' $root1 $root2 $sample "`r"
             If (test-path "$root2\$sample\doShred.log") {
                  Remove-Item "$root2\$sample\doShred.log" -Force
                  }
             #
         } else {
             #
-            Write-Host 'injectPath' $root1 $root2 $sample
+            Write-Host 'injectPath' $root1 $root2 $sample "`r"
             If (test-path "$root1\$sample\im3\flatw\doInject.log") {
                  Remove-Item "$root1\$sample\im3\flatw\doInject.log" -Force
                  }
             #
         }
         #
-        Write-Host " " (get-date).ToString('T')
+        Write-Host " " (get-date).ToString('T') "`r"
         #
         if (!$s) {
-            Write-Host "  src path $root2\$sample"
-            $stats = gci "$root2\$sample\*" '*.fw' | Measure Length -s
-            Write-Host '     ' $stats.Count 'File(s)' $stats.Sum 'bytes'
+            Write-Host "  src path $root2\$sample" "`r"
+            $stats = gci "$root2\$sample\*" '*.dat' | Measure Length -s
+            Write-Host '     ' $stats.Count 'File(s)' $stats.Sum 'bytes' "`r"
         }
         #
-        Write-Host "  im3 path $IM3_fd"
+        Write-Host "  im3 path $IM3_fd" "`r"
         $stats = gci "$IM3_fd\*" '*.im3' | Measure Length -s
-        Write-Host '     ' $stats.Count 'File(s)' $stats.Sum 'bytes'
+        Write-Host '     ' $stats.Count 'File(s)' $stats.Sum 'bytes' "`r"
         #
     }
     #
@@ -209,28 +209,28 @@ function Write-To-Log {
         if ($s) { $dest = "$root2\$sample"
         } else { $dest = "$root1\$sample\im3\flatw" }
         #
-        Write-Host "  dst path $dest"
+        Write-Host "  dst path $dest `r"
         #
         if ($s) {
             #
             if($a -or $d) {
                 $stats = gci "$dest\*" '*.dat' | Measure Length -s
-                Write-Host '     ' $stats.Count 'File(s)' $stats.Sum 'bytes'
+                Write-Host '     ' $stats.Count 'File(s)' $stats.Sum 'bytes' "`r"
             }
             #
             if ($a -or $xml){
                 $stats = gci "$dest\*" '*.xml' | Measure Length -s
-                Write-Host '     ' $stats.Count 'File(s)' $stats.Sum 'bytes'
+                Write-Host '     ' $stats.Count 'File(s)' $stats.Sum 'bytes' "`r"
             }
             #
         } else {
             $stats = gci "$dest\*" '*.im3' | Measure Length -s
-            Write-Host '     ' $stats.Count 'File(s)' $stats.Sum 'bytes'
+            Write-Host '     ' $stats.Count 'File(s)' $stats.Sum 'bytes' "`r"
             #
         }
         #
-        Write-Host " " (get-date).ToString('T')
-        #
+        Write-Host " " (get-date).ToString('T') "`r"
+        # 
     }
     #
 }
@@ -323,10 +323,27 @@ function Run-IM3Convert {
             $in = $in.Replace('.im3', '.Data.dat')
             #
             & $code $_ IM3 -x $inject -i $in -o $dest 2>&1>> "$dest\doInject.log"
-            # 
+            #
+        }
+        #
+        $images | foreach-object {
+            #
+            # renamed injected.im3s to im3s
+            #    
             $f2 = $_.replace($IM3, $dest)
             $f = $f2.replace('.im3', '.injected.im3')
             $f2log = $f2.replace("$dest\", '') 
+            if (test-path -LiteralPath $f2) {Remove-Item -LiteralPath $f2 -Force}
+            Rename-Item -LiteralPath $f $f2 -Force
+            Add-Content "$dest\doInject.log" "$f Renamed to $f2log"
+            #
+            # renamed Data.dat to .fw
+            #    
+            $f2 = $_.replace($IM3, $flatw)
+            $f = $f2.replace('.im3', '.Data.dat')
+            $f2 = $f2.replace('.im3', '.fw')
+            #
+            $f2log = $f2.replace("$flatw\", '') 
             if (test-path -LiteralPath $f2) {Remove-Item -LiteralPath $f2 -Force}
             Rename-Item -LiteralPath $f $f2 -Force
             Add-Content "$dest\doInject.log" "$f Renamed to $f2log"

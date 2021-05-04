@@ -62,7 +62,7 @@ function doflatwarpcore(flat,warp,dd, ll, hh, ww)
 %% ll = 35; ww = 1344; hh = 1004;
 %%----------------------------------------------
     f1 = fullfile(dd.folder,dd.name);
-    f2 = replace(f1,'.Data.dat','.fw');
+    %f2 = replace(f1,'.Data.dat','.fw');
     %
     r = double(im3readraw(f1));
     %
@@ -79,7 +79,7 @@ function doflatwarpcore(flat,warp,dd, ll, hh, ww)
         r = permute(r,[3,2,1]);
     end
     %
-    im3writeraw(f2,uint16(r(:)));
+    im3writeraw(f1,uint16(r(:)));
     %
 end
 

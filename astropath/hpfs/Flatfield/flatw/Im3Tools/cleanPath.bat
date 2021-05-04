@@ -25,8 +25,7 @@ ECHO   dest %dest%
 ::
 :: clean up the .imm and .raw files
 ::
-DEL /Q %dest%\*.dat
-XCOPY /Q /Y /Z %dest%\*.xml %root% 
+XCOPY /Q /Y /Z %dest%\*.xml %root% > nul
 DEL /Q %dest%\*.xml
 ::
 ECHO   %time% 
