@@ -20,7 +20,7 @@ The code should be launched through matlab. To start download the repository to 
    ``` meanimages(<Mpath>, <drive>) ``` 
    - ```<Mpath>[string]```: the full path to the directory containing the ***AstropathCohortsProgress.csv*** file
       - description of this file can be found [here](../../scans#441-astropath_processing-directory "Title")
-   - ```<drive>```: the full path to a drive or folder where the code can read and write necessary temporary files to
+   - ```<drive>[string]```: the full path to a drive or folder where the code can read and write necessary temporary files to
    
 ## 5.7.4. Workflow
 ### 5.7.4.1. Checking for Tasks
