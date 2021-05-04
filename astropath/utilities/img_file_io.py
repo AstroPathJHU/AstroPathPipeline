@@ -143,6 +143,7 @@ def getImageHWLFromXMLFile(root_dir,slideID) :
   for child in tree.getroot() :
     if child.attrib['name']=='Shape' :
       img_width, img_height, img_nlayers = tuple([int(val) for val in (child.text).split()])
+      break
   return img_height, img_width, img_nlayers
 
 #helper function to figure out where a raw file's exposure time xml file is given the raw file path and the root directory

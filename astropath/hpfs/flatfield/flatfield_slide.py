@@ -175,19 +175,19 @@ class FlatfieldSlide() :
                     ax1.set_xlabel('pixel flux (counts)')
                     ax1.set_ylabel('n images')
                     ax1.legend(loc='best')
-                    ax2.bar(list(range(mean+1)),all_tissue_edge_layer_hists[:mean+1,li],width=1.0,label='background')
+                    ax2.bar(list(range(med+1)),all_tissue_edge_layer_hists[:med+1,li],width=1.0,label='background')
                     right_bin = len(all_tissue_edge_layer_hists[:,li])-1
                     while all_tissue_edge_layer_hists[right_bin,li]==0 :
                         right_bin-=1
-                    ax2.bar(list(range(mean+1,right_bin+1)),all_tissue_edge_layer_hists[mean+1:right_bin+1,li],width=1.0,label='signal')
+                    ax2.bar(list(range(med+1,right_bin+1)),all_tissue_edge_layer_hists[med+1:right_bin+1,li],width=1.0,label='signal')
                     ax2.set_yscale('log')
                     ax2.set_title('pixel histogram (summed over all images)')
                     ax2.set_xlabel('pixel flux (counts)')
                     ax2.set_ylabel('n image pixels')
                     ax2.legend(loc='best')
-                    ax3.bar(list(range(mean+1)),all_tissue_edge_layer_hists[:mean+1,li],width=1.0,label='background')
-                    right_plot_limit = min(max_threshold_found,int(1.5*mean))+100
-                    ax3.bar(list(range(mean+1,right_plot_limit)),all_tissue_edge_layer_hists[mean+1:right_plot_limit,li],width=1.0,label='signal')            
+                    ax3.bar(list(range(med+1)),all_tissue_edge_layer_hists[:med+1,li],width=1.0,label='background')
+                    right_plot_limit = min(max_threshold_found,int(1.5*med))+100
+                    ax3.bar(list(range(med+1,right_plot_limit)),all_tissue_edge_layer_hists[med+1:right_plot_limit,li],width=1.0,label='signal')            
                     ax3.plot([mean,mean],[0.8*y for y in ax3.get_ylim()],linewidth=2,color='m',label=f'mean={mean}')
                     ax3.plot([med,med],[0.8*y for y in ax3.get_ylim()],linewidth=2,color='r',label=f'median={med}')
                     ax3.set_title('partial pixel histogram')
