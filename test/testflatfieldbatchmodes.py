@@ -43,7 +43,7 @@ with open(pathlib.Path(f'{slide_mean_image_working_dir}/global-slide_mean_image.
 
 #Run the batch_flatfield test
 flatfield_logger.info('TESTING batch_flatfield')
-ff_dirpath = folder/'data'/'Flatfield'
+ff_dirpath = folder/'data'/'flatfield'
 if not pathlib.Path.is_dir(ff_dirpath) :
     pathlib.Path.mkdir(ff_dirpath)
 args = Namespace(

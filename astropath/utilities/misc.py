@@ -85,6 +85,13 @@ def split_csv_to_list_of_ints(value) :
   except ValueError :
       raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
 
+#parser callback function to split a string of comma-separated values into a list of floats
+def split_csv_to_list_of_floats(value) :
+  try :
+      return [float(v) for v in value.split(',')]
+  except ValueError :
+      raise ValueError(f'Option value {value} is expected to be a comma-separated list of floats!')
+
 #parser callback function to split a string of comma-separated name=value pairs into a dictionary
 def split_csv_to_dict_of_floats(value) :
   try :
