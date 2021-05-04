@@ -13,7 +13,7 @@ SETLOCAL
 ::
 IF "|%2|"=="||" ECHO Usage: TransferAnno root dest && ENDLOCAL && EXIT /B;
 ::
-SET root=%1
+SET root=%1\Images
 SET dest=%2
 SET sdirs=%~dp0
 SET log=%sdirs%\TransferAnno.log
