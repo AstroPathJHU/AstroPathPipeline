@@ -1,12 +1,12 @@
 # 5.8. Flatfield
 ## 5.8.1. Description
-This workflow serves to create a directory of flat field and warping corrected *.im3* images files for each slide. In addition, this workflow saves the full metadata for the first *.im3* (*.full.im3*) for a slide, the single column bitmap of each corrected *.im3* (*.fw* files) as well as relevant image metadata (*.SpectralBasisInfo.xml*) of each im3 image. We assume that the directory format of the input image files is in the ```AstroPathPipeline``` processing file stucture described **here** and below in [5.8.2.1.](#5821-flatw-expected-directory-structure "Title"). 
+This workflow serves to create a directory of flat field and warping corrected *.im3* images files for each slide. In addition, this workflow saves the full metadata for the first *.im3* (*.full.im3*) for a slide, the single column bitmap of each corrected *.im3* (*.fw* files) as well as relevant image metadata (*.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml*) of each im3 image. We assume that the directory format of the input image files is in the ```AstroPathPipeline``` processing file stucture described **here** and below in [5.8.2.1.](#5821-flatw-expected-directory-structure "Title"). 
 
 ## 5.8.2. Important Definitions
 ### 5.8.2.1. Flatw Expected Directory Structure
-Since this section of the pipeline can be used with standalone funcationality, we define the directory structure here. A more detailed directory structure for the whole AstroPath Pipeline can be found *here*: 
+Since this section of the pipeline can be used with standalone funcationality to apply corrections, we define the directory structure here. A more detailed directory structure for the whole AstroPath Pipeline can be found *here*: 
 ```
-<base>\<astroID>\<im3_path>\<filename>
+<base>\<SlideID>\<im3_path>\<filename>
 ```
 Example:  “\\bki04\Clinical_Specimen\ AST123456\ im3\Scan1\MSI\M41_1_[34888,4694].im3”
 - ```<base>```: “\\bki04\Clinical_Specimen”
@@ -21,9 +21,12 @@ Example:  “\\bki04\Clinical_Specimen\ AST123456\ im3\Scan1\MSI\M41_1_[34888,46
   - This file should be kept in a *```<base>```\flatfield* directory (A directory adjacent to the ```<SlideID>``` directory)
 
 ## 5.8.2.2. Output Formatting
-- For the output images we replace the ```<im3_path>``` with the ```<flatw_im3_path>```: “im3\flatw”, but nothing from the file name changes.
-- For the additional output data of each image (the single column bitmap and additional image metadata) we change the base path to an adjacent directory we call the “FWpath” directory. The data for each given <SlideID> will be contained in the respective <FWpath>\<SlideID> directory.
-- The full metadata for the first im3 image will be located at the “im3” level of the source path.
+- For the output images we replace the ```<im3_path>``` with the ```<flatw_im3_path>``` (“im3\flatw”),in the above directory structure but nothing from the file name changes.
+  - ```<base>\<SlideID>\<flatw_im3_path>\<filename>```
+- For the *.fw* and *.fw01* output data of each image (a single column bitmap for the whole image and just the first image plane) we change the base path to an adjacent directory we call the “FWpath” directory. The data for each given ```<SlideID>``` will be contained in the respective ```<FWpath>\<SlideID>``` directory.
+  - ```<FWpath>\<SlideID>\<fw_filename>```
+- The full metadata for the first *.im3* (*.full.im3*) for a slide, some shape parameters for the first *.im3* (*.Parameters.xml*), as well as relevant image metadata (*.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml*) of each im3 image are saved in a ```<xml_path>``` ("im3\xml"; replaces the ```<im3_path>``` in the base path)
+  - ```<base>\<SlideID>\<xml_path>\<filename>```
 
 ## 5.8.3. Instructions
 This workflow consists of two modules, the first ```flatw_queue``` builds the flatfield model, adds slides to the queue, and distributes jobs from the queue to pre-defined workers. The second ```flatw_worker```, launches and carries out the flatfield and image warping corrections on a set of images belonging to a slide. The predefined workers should be added to the *AstropathHPFsWlocs.csv* file located in the ```<Mpath>``` folder, documentation on that file is located **here**. Each worker location should have a copy of the repository and a *Processing_Specimens\flatw_qo.txt* file in the directory, the ```flatw_queue``` module will skip directories without this file. This file provides a simple method for scaling the number of workers in use. 
@@ -59,7 +62,7 @@ Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```
       - *```<SlideID>```.Parameters.xml*
     - Loop through all the *.im3* images and extract SpectralBasisInfo (*.SpectralBasisInfo.xml*)
       - Into ```<FW_path>\<SlideID>```
-      - <filename>.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml for each *.im3*
+      - *```<filename>```.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml* for each *.im3*
     - Loop through all the *.im3* images and extract the binary data (*.DATA.dat*)
       - into a ```<FW_path>\<SlideID>``` 
       - *```<filename>```.Data.dat* for each *.im3* image
@@ -79,4 +82,4 @@ Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```
   - Output: 
     - into ```<base>\<SlideID>\<flatw_im3_path>```
     - corrected *```<filename>```.im3* for each *.im3* image
-- Delete *.DATA.dat* files but keep *.fw* and *.SpectralBasisInfo.xml* and send them to a ```<base>\<SlideID>\<im3>\xml``` directory
+- Delete *.DATA.dat* files but keep *.fw* and *.SpectralBasisInfo.xml* and send them to a ```<base>\<SlideID>\<xml_path>``` directory
