@@ -174,6 +174,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       np.array({
         "M21_1": [4.276086656088661, 10.14277048484133],
       }[SlideID])*s.onepixel,
+      rtol=1e-6
     )
 
   def testDetectBigShiftFastUnits(self, SlideID="M21_1"):
