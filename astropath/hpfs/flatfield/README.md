@@ -67,7 +67,7 @@ Command-line syntax:
 
  ```
  ConvertIM3 <input_file_specification> IM3|XML|DAT
-            ```[/o <output_directory_path>]
+            [/o <output_directory_path>]
             [/t <max_XML_data_length>] 
             [/x <XPath_expression>]
             [/i <injected_data_file_specification>]
@@ -75,12 +75,12 @@ Command-line syntax:
 
 Extended directions can be found [here](flatw/Im3Tools/ConvertIM3Usage.txt).
 
-## 5.8.3.4. ConvertIm3Path & ConvertImeCohort
+## 5.8.3.4. ConvertIm3Path & ConvertIm3Cohort
 ConvertIm3Path & ConvertIm3Cohort are soft wrappers written in powershell for the executable to run *ConvertIm3* on the ```<SlideID>``` level for specific output desired by the *AstroPathPipeline*, with optional inputs and exports. Both codes are dependent on the images being in the aforementioned [directory structure](#5821 flatw-expected-directory-structure "Title"). ConvertIm3Cohort.ps1 is actually just a wrapper for ConvertIm3Path.ps1 which runs through all specimens in a directory, the cohort location is hard coded at present and should be modified in the code. 
  
 Usage: 
 - To "shred" a directory of im3s use:
-  - ```Im3ConvertPath -dataroot -fwpath -sample -s [-a -d -xml]```
+  - ```ConvertIm3Path -<base> -<FWpath> -<SlideID> -s [-a -d -xml]```
   - Optional arguements:
 	  - ```-d```: only extract the binary bitmap for each image into the output directory
 	  - ```-xml```: extract the xml information only for each image, xml information includes:
@@ -88,7 +88,7 @@ Usage:
 		  - one <sample>.Full.xml: the full xml of an im3 without the bitmap
 		  - a .SpectralBasisInfo.Exposure.xml for each image containing the exposure times of the image
 - To "inject" a directory of .dat binary blobs for each image back into the directory of im3s use:
-  - ```Im3ConvertPath -datapath -fwpath -sample -i```
+  - ```ConvertIm3Path -<base> -<FWpath> -<SlideID> -i```
   - Exports the new '.im3s' into the ```<flatw_im3_path>``` directory
 
 ## 5.8.4. Overview Workflow of Im3Tools
