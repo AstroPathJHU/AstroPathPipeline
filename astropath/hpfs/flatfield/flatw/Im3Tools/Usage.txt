@@ -1,0 +1,107 @@
+﻿
+ConvertIM3 Usage
+
+
+0.  Overview
+
+The ConvertIM3 application reads and writes Perkin Elmer IM3 ("image cube") files.
+
+ConvertIM3 uses a simple set of C# classes to represent the contents of an IM3 file.
+Unfortunately, the IM3 format is undocumented. There are no software tools available that
+manage IM3 files directly.  It is more practical to transform IM3 into a well-known format
+that can be handled by generally-available software.  Since the IM3 format is essentially
+a hierarchy of self-described groups of data, a straightforward way to work with IM3 is to
+convert it to and from XML.
+
+ConvertIM3 can carry out the following operations:
+
+- convert IM3 to XML
+- convert XML to IM3
+- extract one IM3 data field (that is, one XML element) from IM3-formatted data
+- replace the contents of one IM3 data field (that is, one XML element) in IM3-formatted data
+
+
+1. Command-line syntax
+
+   ConvertIM3 <input_file_specification> IM3|XML|DAT
+              [/o <output_directory_path>] 
+              [/t <max_XML_data_length>] 
+              [/x <XPath_expression>]
+              [/i <injected_data_file_specification>]
+
+1.1. Convert IM3 to XML
+
+ConvertIM3 <IM3_file_specification> XML [/o <output_directory_path>] [/t <max_XML_data_length>]
+
+- IM3_file_specification is a fully-qualified path and filename for an IM3-formatted file. The input
+  file's extension should be .im3.
+- XML indicates the output format.
+- /o [optional] specifies the path into which the XML file is written. 
+- /t [optional] limits the amount of data written in any single XML element. If the length in bytes of
+  the data in an XML element exceeds the value specified with the /t parameter, ConvertIM3 writes an
+  XML "placeholder" comment instead of the actual data.  (IM3 contains image bitmaps whose multi-
+  megabyte size makes it inconvenient to visualize the XML.  A reasonably-chosen value for /t excludes
+  these BLOBs from the XML without affecting other data.)
+
+The XML filename is the same as the input filename, but with a .xml extension.
+
+1.2. Convert XML to IM3
+
+ConvertIM3 <XML_file_specification> IM3 [/o <output_directory_path>]
+
+- XML_file_specification is a fully-qualified path and filename for an XML-formatted file.  The input
+  file's extension should be .xml.
+- IM3 indicates the output format.
+- /o [optional] specifies the path into which the IM3 file is written. The IM3 filename is the same as
+  the input filename, but with a .im3 extension.
+
+1.3. Extract a data field as XML or DAT (binary data) from an IM3 or XML file.
+
+ConvertIM3 <input_file_specification> XML|DAT /x <XPath_expression> [/o <output_directory_path>]
+
+- input_file_specification is a fully-qualified path and filename for an IM3- or XML-formatted file.
+- XML or DAT indicates the output format.
+- /o [optional] specifies the path into which the output file is written. The output filename is the
+  same as the input filename, but with an .xml or .dat extension.
+- /x limits output to the XML elements specified in an XPath expression. For example,
+    /x .//G[@name='TimeStamp'] writes the following XML to the output file:
+
+    <IM3Fragment>
+      <G name="TimeStamp">20170611T233655.022</G>
+    </IM3Fragment>
+
+  When you specify an XPath query that selects only data, the results of the query are emitted to
+  console output instead of the XML file.  For example, /x .//G[@name='TimeStamp']/text() generates
+  the following output
+    
+    ConvertIM3 v1.0.6714.27251
+    Copyright © 2018 Johns Hopkins University.  All rights reserved.
+    . . .
+    20170611T233655.022
+    ConvertIM3 ends
+
+  Finally, when you use an XPath query that selects only data, and you also specify DAT as the output
+  format, ConvertIM3 writes binary data to a .dat file:
+
+    Offset(d) 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+    00000000  32 30 31 37 30 36 31 31 54 32 33 33 36 35 35 2E  20170611T233655.
+    00000016  30 32 32                                         022
+
+  This may be the most convenient way to transfer data such as an image bitmap from IM3 to an application
+  that can read the binary data as it is formatted within IM3.
+
+1.4. Inject a data field as XML or DAT (binary data) into an XML file.
+
+ConvertIM3 <XML_file_specification> XML|IM3 /x <XPath_expression> /i <injected_data_file_specification> [/o <output_directory_path>]
+
+- input_file_specification is a fully-qualified path and filename for an XML-formatted file.
+- XML or IM3 indicates the output format.
+- /o [optional] specifies the path into which the output file is written. The output filename is the
+  same as the input filename, but with an .xml or .dat extension.
+- /x is an XPath expression that specifies the XML element whose data content is replaced by the content of
+  the specified data file.  The XPath expression must specify a unique data element in the XML file.  For example,
+    
+  Examples:
+    .//G[@name='TimeStamp']/text() uniquely specifies the XML data element that contains the "TimeStamp" string.
+    .//D[@name='Thumbnail']/text() uniquely specifies the "Thumbnail" image bitmap.
+    .//D[@name='Data']/text() uniquely specifies the main image bitmap.
