@@ -4,7 +4,7 @@ ConvertIM3 Usage
 
 0.  Overview
 
-The ConvertIM3 application reads and writes Perkin Elmer IM3 ("image cube") files.
+The ConvertIM3 application reads and writes AKOYA IM3 ("image cube") files.
 
 ConvertIM3 uses a simple set of C# classes to represent the contents of an IM3 file.
 Unfortunately, the IM3 format is undocumented. There are no software tools available that
