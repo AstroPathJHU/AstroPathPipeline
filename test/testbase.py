@@ -16,6 +16,8 @@ def assertAlmostEqual(a, b, **kwargs):
         assertAlmostEqual(getattr(a, field), getattr(b, field), **kwargs)
     except AssertionError:
       np.testing.assert_equal(a, b)
+  elif isinstance(a, np.ndarray):
+    units.np.testing.assert_allclose(a, b, **kwargs)
   else:
     return np.testing.assert_equal(a, b)
 
