@@ -1,6 +1,6 @@
 # 5.8. Flatfield
 ## 5.8.1. Description
-This workflow serves to create a directory of flat field and warping corrected *.im3* images files for each slide. In addition, this workflow saves the full metadata for the first *.im3* (*.full.im3*) for a slide, the single column bitmap of each corrected *.im3* (*.fw* files) as well as relevant image metadata (*.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml*) of each im3 image. We assume that the directory format of the input image files is in the ```AstroPathPipeline``` processing file stucture described **here** and below in [5.8.2.1.](#5821-flatw-expected-directory-structure "Title"). 
+This workflow serves to create a directory of flat field and warping corrected *.im3* images files for each slide. In addition, this workflow saves the full metadata for the first *.im3* (*.full.im3*) for a slide, the single column bitmap of each corrected *.im3* (*.fw* files), some shape parameters for the first *.im3* (*.Parameters.xml*), as well as relevant image metadata (*.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml*) of each im3 image. We assume that the directory format of the input image files is in the ```AstroPathPipeline``` processing file stucture described **here** and below in [5.8.2.1.](#5821-flatw-expected-directory-structure "Title"). 
 
 *NOTE*: The warping corrections are only applied in this version of the code to images with the same shape parameters (defined in the *Parameters.xml* extracted from the image metadata) as the JHU Vectra 3.0 machine. A warping model could be estimated and added to the *mkwarp* function in the *runflatw.m* file under *AstroPathPipelinePrivate\astropath\hpfs\Flatfield\flatw\mtools* for a different microscope. That functionality is not included in this processing. 
 
@@ -45,24 +45,32 @@ The code should be launched through matlab. To start download the repository to 
 - loc: The drive location for the worker to use when writing temporary files. All files will be cleaned up after successful processing.  
 
 ## 5.8.3.3. Im3tools
-This is the standalone processing tool for the flatfield and image warping applications on a directory of im3 slides. These commands can be used outside of the ```AstroPathPipeline``` as long as the slides are still in the aforementioned directory structure. The Im3Tools are located in the *astropath\hpfs\Flatfield\flatw\Im3Tools* folder. A single slide can be launched as follows from a command prompt:
+This is the standalone processing tool for the flatfield and image warping applications on a directory of im3 slides. These commands can be used outside of the ```AstroPathPipeline``` as long as the slides are still in the aforementioned [directory structure](#5821 flatw-expected-directory-structure "Title"). All output described [here](#5822-output-formatting "TItle") result from this tool the rest of the code included in *flatfield* simply allows bulk processing of slides.
+
+The Im3Tools are located in the [*astropath\hpfs\Flatfield\flatw\Im3Tools* folder](flatw). A single slide can be launched as follows from a command prompt:
 ```
 *\astropath\hpfs\Flatfield\flatw\Im3Tools\doOneSample <base> <FWpath> <SlideID>
 ```
 
 ## 5.8.4. Overview Workflow of Im3Tools
-The following is the overview workflow for the flatfield processing itself. This does not include the wrappers that go along with the code for the ```AstroPathPipeline```
+The following is the overview workflow for the flatfield processing itself (Im3Tools). This does not include the wrappers that go along with the code for the ```AstroPathPipeline```
 Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```
+- Make sure that the *_M2.im3* files are properly resolved. Remove the original, and rename the *_M2* 
+  - Input
+    - ```<base>```
+    -  ```<SlideID>```
 - Extract parameters from the Im3s
   - Input
-    - ```<base>```, ```<FW_path>```, ```<SlideID>```
+    - ```<base>```
+    - ```<FW_path>```
+    - ```<SlideID>```
   - Output
     - a full XML extraction of the first *.im3* file (*.full.im3*)
       - *```<SlideID>```.full.xml*
       - Into ```<FW_path>\<SlideID>``` 
     - Extract the ‘shape’ and ‘magnification’
       - *```<SlideID>```.Parameters.xml*
-    - Loop through all the *.im3* images and extract SpectralBasisInfo (*.SpectralBasisInfo.xml*)
+    - Loop through all the *.im3* images and extract SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml (*.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml*)
       - Into ```<FW_path>\<SlideID>```
       - *```<filename>```.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml* for each *.im3*
     - Loop through all the *.im3* images and extract the binary data (*.DATA.dat*)
@@ -84,4 +92,17 @@ Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```
   - Output: 
     - into ```<base>\<SlideID>\<flatw_im3_path>```
     - corrected *```<filename>```.im3* for each *.im3* image
-- Delete *.DATA.dat* files but keep *.fw* and *.SpectralBasisInfo.xml* and send them to a ```<base>\<SlideID>\<xml_path>``` directory
+- Extract the DAPI layer from *.fw* files. We extract the first layer with an *.fw01* extension
+  - Input
+    - ```<FW_path>```
+    - ```<SlideID>```
+  - Output
+    - in the ```<FW_path>\<SlideID>```
+    - *```<filename>```.fw01* for each *.im3* image
+      -  the bitmap image in single column format for the first layer (DAPI)
+- Clean up the path
+  - Input 
+    - ```<FW_path>```
+    - ```<SlideID>``` 
+  - Output
+    - Delete *.DATA.dat* files but keep *.fw*, *.fw01*, and *.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml* and send them to a ```<base>\<SlideID>\<xml_path>``` directory
