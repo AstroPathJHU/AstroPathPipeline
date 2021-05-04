@@ -1,6 +1,6 @@
 # 5.8. Flatfield
 ## 5.8.1. Description
-This workflow serves to create a directory of flat field and warping corrected *.im3* images files for each slide. In addition, this workflow saves the full metadata for the first *.im3* (*.full.im3*) for a slide, the single column bitmap of each corrected *.im3* (*.fw* files) as well as relevant image metadata (*.SpectralBasisInfo.xml*) of each im3 image. We assume that the directory format of the input image files is in the ```AstroPathPipeline``` processing file stucture described **here**. 
+This workflow serves to create a directory of flat field and warping corrected *.im3* images files for each slide. In addition, this workflow saves the full metadata for the first *.im3* (*.full.im3*) for a slide, the single column bitmap of each corrected *.im3* (*.fw* files) as well as relevant image metadata (*.SpectralBasisInfo.xml*) of each im3 image. We assume that the directory format of the input image files is in the ```AstroPathPipeline``` processing file stucture described **here** and below in [5.8.2.1.](#5821-flatw-expected-directory-structure "Title"). 
 
 ## 5.8.2. Important Definitions
 ### 5.8.2.1. Flatw Expected Directory Structure
@@ -33,16 +33,17 @@ The code should be launched through matlab. To start download the repository to 
 ``` flatw_queue(<Mpath>) ``` 
 - ```<Mpath>[string]```: the full path to the directory containing the ***AstropathCohortsProgress.csv*** file
    - description of this file can be found [here](../../scans#441-astropath_processing-directory "Title")
+  
 ## 5.8.3.2. flatw_worker   
 The code should be launched through matlab. To start download the repository to a working location. Next, open a new session of matlab and add the ```AstroPathPipline``` to the matlab path. Make sure to add the worker location to the *AstropathHPFsWlocs.csv* file located in the ```<Mpath>``` folder, documentation on that file is located **here**. Create a *Processing_Specimens\flatw_qo.txt* file in the directory that the slides should be processed in. Because the flatw workflow reads and writes a number of files, this directory should ideally be on a SSD with a significant (~500GB) amount of storage available. The code copies all files here before processing so that processing is not hindered by network performance so it is also advised that the worker location have a good access to the orginial data files. Then use the following to launch:
 ``` flatw_worker(loc) ``` 
 - loc: The drive location for the worker to use when writing temporary files. All files will be cleaned up after successful processing.  
+
 ## 5.8.3.3. Im3tools
 This is the standalone processing tool for the flatfield and image warping applications on a directory of im3 slides. These commands can be used outside of the ```AstroPathPipeline``` as long as the slides are still in the aforementioned directory structure. The Im3Tools are located in the *astropath\hpfs\Flatfield\flatw\Im3Tools* folder. A single slide can be launched as follows from a command prompt:
 ```
 *\astropath\hpfs\Flatfield\flatw\Im3Tools\doOneSample <base> <FWpath> <SlideID>
 ```
-
 
 ## 5.8.4. Overview Workflow of Im3Tools
 The following is the overview workflow for the flatfield processing itself. This does not include the wrappers that go along with the code for the ```AstroPathPipeline```
@@ -58,7 +59,7 @@ Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```
       - *```<SlideID>```.Parameters.xml*
     - Loop through all the *.im3* images and extract SpectralBasisInfo (*.SpectralBasisInfo.xml*)
       - Into ```<FW_path>\<SlideID>```
-      - <filename>.SpectralBasisInfo.xml for each *.im3*
+      - <filename>.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml for each *.im3*
     - Loop through all the *.im3* images and extract the binary data (*.DATA.dat*)
       - into a ```<FW_path>\<SlideID>``` 
       - *```<filename>```.Data.dat* for each *.im3* image
