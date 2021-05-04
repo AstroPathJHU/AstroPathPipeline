@@ -17,7 +17,8 @@ Example:  “\\bki04\Clinical_Specimen\ AST123456\ im3\Scan1\MSI\M41_1_[34888,46
 - ```<filename>```: “AST123456_[34888,4694]”
 - ```<extension>```:  “.im3” <br>
 
-*NOTE*: The Scan number directory would be the highest scan number in the <SlideID> folder, not always ‘1’ and may be multiple digits
+*NOTE*: 
+- The Scan number directory would be the highest scan number in the <SlideID> folder, not always ‘1’ and may be multiple digits
 - *BatchID.txt*: This file should contain the batch id that the slides were stained with. The code looks for the batch id as a specifier on the flatfield bin file.
 - *flatfield_BatchID_NN.bin*: This is the bitmap data of the average image for a batch. 
   - The code will use the specifier *NN* from the *BatchID.txt* to find the appropriate flatfield file to use. 
