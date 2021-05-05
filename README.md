@@ -1,5 +1,4 @@
 # <div align="center"> AstroPathPipeline </div>
-#### <div align="center">***v0.05.0000***</div>
 #### <div align="center"> The AstroPathPipeline was developed to process whole slide multiplex immunofluorescence data from microscope to database </div>
 #### <div align="center">Correspondence to: bgreen42@jhu.edu</div>
 
