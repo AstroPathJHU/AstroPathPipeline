@@ -91,7 +91,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots, Ru
       raise IOError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
     self.__logroot = pathlib.Path(logroot)
-    self.logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog)
+    self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__logonenter = []
@@ -102,6 +102,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots, Ru
   def root(self): return self.__root
   @property
   def logroot(self): return self.__logroot
+  @property
+  def logger(self): return self.__logger
 
   @property
   def rootnames(self):

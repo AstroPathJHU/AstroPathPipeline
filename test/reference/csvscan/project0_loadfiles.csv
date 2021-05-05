@@ -1,0 +1,10 @@
+,project0-1,"Batch\Batch_01.csv",Batch,7,0
+,project0-1,"Batch\Batch_08.csv",Batch,7,0
+,project0-1,"Batch\Batch_24.csv",Batch,7,0
+,project0-1,"Batch\MergeConfig_01.csv",MergeConfig,8,0
+,project0-1,"Batch\MergeConfig_08.csv",MergeConfig,8,0
+,project0-1,"Batch\MergeConfig_24.csv",MergeConfig,7,0
+,project0-2,"Clinical\Clinical_Table_Specimen_0_00000000.csv",Clinical,5,0
+,project0-3,"Ctrl\project0_ctrlcores.csv",Ctrlcores,45,0
+,project0-3,"Ctrl\project0_ctrlfluxes.csv",Ctrlfluxes,432,0
+,project0-3,"Ctrl\project0_ctrlsamples.csv",Ctrlsamples,1,0

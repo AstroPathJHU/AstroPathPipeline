@@ -1,4 +1,4 @@
-import itertools, re
+import abc, itertools, re
 
 from ...baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...baseclasses.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
@@ -14,11 +14,31 @@ from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInf
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
 from ..geom.geomsample import Boundary, GeomSample
 from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSample
+from ...utilities.tableio import TableReader
 
 class CsvScanRectangle(GeomLoadRectangle, PhenotypedRectangle):
   pass
 
-class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase):
+class CsvScanBase(TableReader):
+  @property
+  @abc.abstractmethod
+  def logger(self): pass
+
+  def processcsv(self, csv, csvclass, tablename, extrakwargs={}, *, SlideID):
+    self.logger.debug(f"Processing {csv}")
+    #read the csv, to check that it's valid
+    rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs)
+    nrows = len(rows)
+    return LoadFile(
+      fileid="",
+      SlideID=SlideID,
+      filename=csv,
+      tablename=tablename,
+      nrows=nrows,
+      nrowsloaded=0,
+    )
+
+class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase, CsvScanBase):
   rectangletype = CsvScanRectangle
   @property
   def rectangleextrakwargs(self):
@@ -27,6 +47,9 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
       "geomfolder": self.geomfolder,
       "phenotypefolder": self.phenotypefolder,
     }
+
+  def processcsv(self, *args, **kwargs):
+    return super().processcsv(*args, SlideID=self.SlideID, **kwargs)
 
   def runcsvscan(self):
     toload = []
@@ -115,11 +138,11 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         tablename = "Cell"
         extrakwargs = {}
       else:
-        assert False
+        assert False, csv
 
-      toload.append((csv, csvclass, tablename, extrakwargs))
+      toload.append({"csv": csv, "csvclass": csvclass, "tablename": tablename, "extrakwargs": extrakwargs})
 
-    toload.sort(key=lambda x: ((x[1]==CellGeomLoad), (x[1]==PhenotypedCell), x[0]))
+    toload.sort(key=lambda x: ((x["csvclass"]==CellGeomLoad), (x["csvclass"]==PhenotypedCell), x["csv"]))
 
     if expectcsvs or unknowncsvs:
       errors = []
@@ -129,23 +152,9 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         errors.append("Unknown csvs: "+", ".join(str(_) for _ in sorted(unknowncsvs)))
       raise ValueError("\n".join(errors))
 
-    loadfiles = [self.processcsv(*args) for args in toload]
+    loadfiles = [self.processcsv(**kwargs) for kwargs in toload]
 
     self.writecsv("loadfiles", loadfiles, header=False)
-
-  def processcsv(self, csv, csvclass, tablename, extrakwargs={}):
-    self.logger.debug(f"Processing {csv}")
-    #read the csv, to check that it's valid
-    rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs)
-    nrows = len(rows)
-    return LoadFile(
-      fileid="",
-      SlideID=self.SlideID,
-      filename=csv,
-      tablename=tablename,
-      nrows=nrows,
-      nrowsloaded=0,
-    )
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **otherworkflowkwargs):
