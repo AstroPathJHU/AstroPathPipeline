@@ -1,4 +1,4 @@
-import contextlib, csv, dataclasses, dataclassy, pathlib
+import contextlib, csv, dataclasses, dataclassy, datetime, pathlib
 
 from .dataclasses import MetaDataAnnotation, MyDataClass
 from .misc import dummylogger
@@ -190,3 +190,11 @@ def pathfield(**metadata):
   }
 
   return MetaDataAnnotation(pathlib.Path, **metadata)
+
+def datefield(dateformat, *, optional=False, **metadata):
+  metadata = {
+    "readfunction": lambda x: None if optional and not x else datetime.datetime.strptime(x, dateformat),
+    "writefunction": lambda x: "" if optional and x is None else x.strftime(format=dateformat),
+    **metadata,
+  }
+  return MetaDataAnnotation(datetime.datetime, **metadata)

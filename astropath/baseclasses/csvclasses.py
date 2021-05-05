@@ -2,7 +2,7 @@ import dataclassy, datetime, numbers, numpy as np
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import floattoint
-from ..utilities.tableio import readtable
+from ..utilities.tableio import datefield, readtable
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, distancefield, pscalefield
 from .polygon import DataClassWithPolygon, polygonfield
 
@@ -315,6 +315,19 @@ class MergeConfig(MyDataClass):
   NumberofSegmentations: int
   ImageQA: str
 
+class GlobalBatch(MyDataClass):
+  Project: int
+  Cohort: int
+  BatchID: int
+  OpalLot: str
+  Opal: str
+  OpalDilution: str
+  Target: str
+  Compartment: str
+  AbClone: str
+  AbLot: str
+  AbDilution: str
+
 class PhenotypedCell(MyDataClass):
   CellID: int
   SlideID: str
@@ -398,3 +411,69 @@ class PhenotypedCell(MyDataClass):
   TotalCytoplasm690: float
   TotalCytoplasm780: float
   ExprPhenotype: int
+
+class ClinicalInfo(MyDataClass):
+  __dateformat = "%m/%d/%Y"
+  REDCapID: int
+  SlideID: str
+  AgeAtCollection: int
+  Gender: str
+  Date_LastFollowUp: datefield(__dateformat)
+  Alive_Deceased: str
+  Date_Death: datefield(__dateformat, optional=True)
+  Date_PretxBx: datefield(__dateformat)
+  Tx1_Type: str
+  Tx1_Name: str
+  Tx1_Date: datefield(__dateformat)
+  Tx1_Response: str
+  Tx2_Type: str
+  Tx2_Date: datefield(__dateformat)
+  Tx3_Type: str
+  Tx3_Name: str
+  AdverseEvents: str
+  RecurrenceFree: str
+  Date_Collection: datefield(__dateformat)
+  Lesion_Type: str
+  Tumor_Type: str
+  TNM_cT: str
+  TNM_cN: str
+  TNM_cM: str
+  PreTx_AnatomicStage: str
+  TNM_ypT: str
+  TNM_ypN: str
+  TNM_ypM: str
+  PostTx_AnatomicStage: str
+  SmokingStatus: str
+  PackYears: int
+
+class ControlCore(MyDataClass):
+  ncore: int
+  project: int
+  cohort: int
+  TMA: int
+  cx: int
+  cy: int
+  Core: str
+  Tissue: str
+
+class ControlFlux(MyDataClass):
+  project: int
+  cohort: int
+  core: int
+  tma: int
+  batch: int
+  marker: int
+  m1: float
+  m2: float
+
+class ControlSample(MyDataClass):
+  __dateformat = "%m.%d.%Y"
+  Project: int
+  Cohort: int
+  CtrlID: int
+  TMA: int
+  Ctrl: int
+  Date: datefield(__dateformat)
+  BatchID: int
+  Scan: str
+  SlideID: str

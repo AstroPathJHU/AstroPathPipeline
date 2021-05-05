@@ -1,6 +1,7 @@
 import abc, pathlib, re
 from ..utilities import units
-from ..utilities.tableio import readtable
+from ..utilities.misc import printlogger
+from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
 from .sample import SampleDef
@@ -29,13 +30,26 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
     self.uselogfiles = uselogfiles
     self.xmlfolders = xmlfolders
 
+  @property
+  def sampledefs(self): return readtable(self.root/"sampledef.csv", SampleDef)
+  @property
+  def SlideIDs(self): return [_.SlideID for _ in self.sampledefs]
+  @property
+  def Project(self):
+    Project, = {_.Project for _ in self.sampledefs}
+    return Project
+  @property
+  def Cohort(self):
+    Cohort, = {_.Cohort for _ in self.sampledefs}
+    return Cohort
+
   def __iter__(self):
     """
     Iterate over the sample's sampledef.csv file.
     It yields all the good samples (as defined by the isGood column)
     that pass the filters.
     """
-    for samp in readtable(self.root/"sampledef.csv", SampleDef):
+    for samp in self.sampledefs:
       if not samp: continue
       try:
         if not all(filter(self, samp) for filter in self.slideidfilters): continue
@@ -227,6 +241,19 @@ class DbloadCohort(Cohort, DbloadArgumentParser):
   @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
+
+class GlobalDbloadCohort(DbloadCohort, TableReader):
+  @property
+  def logger(self): return printlogger
+  @property
+  def dbload(self):
+    return self.dbloadroot/"dbload"
+  def csv(self, csv):
+    return self.dbload/f"project{self.Project}_{csv}.csv"
+  def readcsv(self, csv, *args, **kwargs):
+    return self.readtable(self.csv(csv), *args, **kwargs)
+  def writecsv(self, csv, *args, **kwargs):
+    return writetable(self.csv(csv), *args, logger=self.logger, **kwargs)
 
 class ZoomFolderCohort(Cohort, ZoomFolderArgumentParser):
   """
