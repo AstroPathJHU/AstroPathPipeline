@@ -127,15 +127,16 @@ class TestMarkdownLinks(unittest.TestCase):
                   nlines = 0
                   for nlines, line in enumerate(f, start=1):
                     pass
-                if firstline > nlines or lastline is not None and lastline > nlines:
+                if lastline > nlines:
                   raise LinkError(f"link to code file {destpath} with anchor {anchor}, but that file only has {nlines} lines")
 
-                codemodified = lastmodified(fulldestpath.relative_to(mainfolder), range(firstline, lastline+1))
-                linklines = linklinenumbers(markdownfile, dest)
-                markdownmodified = lastmodified(markdownfile.relative_to(mainfolder), linklines)
-                for codecommit, markdowncommit in itertools.product(codemodified, markdownmodified):
-                  if not is_ancestor(codecommit, markdowncommit):
-                    raise LinkError(f"link to code file {destpath} with anchor {anchor} modified in commit {markdowncommit}, but those lines were edited later in {codecommit} - please check and, if it's still ok, modify that line in markdown by adding whitespace or a comment")
+                for commit in lastmodified(markdownfile.relative_to(mainfolder), linklinenumbers(markdownfile, dest)):
+                  for diff in repo().head.commit.diff(commit):
+                    if pathlib.Path(diff.b_path) == destpath:
+                      assert pathlib.Path(diff.a_path) == destpath
+                      for i, (line_a, line_b) in enumerate(more_itertools.zip_longest()):
+                        if firstline <= i <= lastline and line_a != line_b:
+                          raise LinkError(f"link to code file {destpath} with anchor {anchor} modified in commit {markdowncommit}, but those lines have changed since then - please check and, if it's still ok, modify that line in markdown by adding whitespace or a comment")
 
               else:
                 raise LinkError(f"link to {dest} with an anchor, don't know how to check if an anchor is valid for that file type.")
