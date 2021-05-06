@@ -1,4 +1,4 @@
-import bs4, functools, marko.ext.toc, pathlib, re, slugify, unittest
+import bs4, functools, git, itertools, marko.ext.toc, pathlib, re, slugify, unittest
 
 class GithubTocRendererMixin(marko.ext.toc.TocRendererMixin):
   def render_heading(self, element):
@@ -18,6 +18,7 @@ class GithubToc:
     self.renderer_mixins = [GithubTocRendererMixin]
 
 thisfolder = pathlib.Path(__file__).parent
+mainfolder = thisfolder.parent
 
 class LinkError(Exception): pass
 
@@ -30,14 +31,49 @@ def linksandanchors(filename):
     soup = bs4.BeautifulSoup(html, features="lxml")
     links = soup.findAll("a", attrs={"href": re.compile(".*")})
     anchors = sum((soup.findAll(f"h{i}", attrs={"id": re.compile(".*")}) for i in range(1, 7)), [])
-    #import pprint; pprint.pprint(anchors); input()
     return links, anchors
   except Exception:
     raise LinkError(f"Error when reading {filename}")
 
+@functools.lru_cache()
+def linklinenumbers(filename, link):
+  result = []
+  with open(filename, encoding="utf-8") as f:
+    for i, line in enumerate(f, start=1):
+      if link in line:
+        result.append(i)
+  assert result, (filename, link)
+  return result
+
+@functools.lru_cache()
+def repo():
+  return git.Repo(mainfolder.resolve(strict=True))
+@functools.lru_cache()
+def blame(filename):
+  return repo().blame("HEAD", filename)
+@functools.lru_cache()
+def is_ancestor(commit1, commit2):
+  return repo().is_ancestor(commit1, commit2)
+
+def lastmodified(filename, linenumbers):
+  commits = set()
+  linecounter = itertools.count(1)
+  for commit, lines in blame(filename):
+    for line, linenumber in zip(lines, linecounter):
+      if linenumber in linenumbers:
+        commits.add(commit)
+
+  lastlength = float("inf")
+  while len(commits) != lastlength:
+    lastlength = len(commits)
+    for commit1, commit2 in itertools.permutations(commits, 2):
+      if is_ancestor(commit1, commit2):
+        commits.remove(commit1)
+        break
+  return commits
+
 class TestMarkdownLinks(unittest.TestCase):
   def testmarkdownlinks(self):
-    mainfolder = (thisfolder/"..").resolve()
     for markdownfile in mainfolder.rglob("*.md"):
       markdownfolder = markdownfile.parent
       with self.subTest(markdownfile):
@@ -78,15 +114,26 @@ class TestMarkdownLinks(unittest.TestCase):
               elif fulldestpath.suffix == ".py":
                 match = re.match("L([0-9]+)(?:-L([0-9]+))?$", anchor)
                 if not match:
-                  raise LinkError(f"link to code file {dest} with anchor {anchor}, expected the anchor to be a github line link e.g. L3 or L5-L7")
+                  raise LinkError(f"link to code file {destpath} with anchor {anchor}, expected the anchor to be a github line link e.g. L3 or L5-L7")
                 firstline = int(match.group(1))
-                lastline = int(match.group(2))
+                if match.group(2) is not None:
+                  lastline = int(match.group(2))
+                else:
+                  lastline = firstline
                 with open(fulldestpath) as f:
                   nlines = 0
                   for nlines, line in enumerate(f, start=1):
                     pass
                 if firstline > nlines or lastline is not None and lastline > nlines:
-                  raise LinkError(f"link to code file {dest} with anchor {anchor}, but that file only has {nlines} lines")
+                  raise LinkError(f"link to code file {destpath} with anchor {anchor}, but that file only has {nlines} lines")
+
+                codemodified = lastmodified(fulldestpath.relative_to(mainfolder), range(firstline, lastline+1))
+                linklines = linklinenumbers(markdownfile, dest)
+                markdownmodified = lastmodified(markdownfile.relative_to(mainfolder), linklines)
+                for codecommit, markdowncommit in itertools.product(codemodified, markdownmodified):
+                  if not is_ancestor(codecommit, markdowncommit):
+                    raise LinkError(f"link to code file {destpath} with anchor {anchor} modified in commit {markdowncommit}, but those lines were edited later in {codecommit} - please check and, if it's still ok, modify that line in markdown by adding whitespace or a comment")
+
               else:
                 raise LinkError(f"link to {dest} with an anchor, don't know how to check if an anchor is valid for that file type.")
 
