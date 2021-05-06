@@ -132,11 +132,11 @@ class TestMarkdownLinks(unittest.TestCase):
 
                 for commit in lastmodified(markdownfile.relative_to(mainfolder), linklinenumbers(markdownfile, dest)):
                   for diff in repo().head.commit.diff(commit):
-                    if pathlib.Path(diff.b_path) == destpath:
-                      assert pathlib.Path(diff.a_path) == destpath
-                      for i, (line_a, line_b) in enumerate(more_itertools.zip_longest()):
+                    if mainfolder/diff.b_path == fulldestpath:
+                      assert mainfolder/diff.a_path == fulldestpath
+                      for i, (line_a, line_b) in enumerate(itertools.zip_longest(diff.a_blob.data_stream.read().decode().split("\n"), diff.b_blob.data_stream.read().decode().split("\n"))):
                         if firstline <= i <= lastline and line_a != line_b:
-                          raise LinkError(f"link to code file {destpath} with anchor {anchor} modified in commit {markdowncommit}, but those lines have changed since then - please check and, if it's still ok, modify that line in markdown by adding whitespace or a comment")
+                          raise LinkError(f"link to code file {destpath} with anchor {anchor} modified in commit {commit}, but those lines have changed since then - please check and, if it's still ok, modify that line in markdown by adding whitespace or a comment")
 
               else:
                 raise LinkError(f"link to {dest} with an anchor, don't know how to check if an anchor is valid for that file type.")
