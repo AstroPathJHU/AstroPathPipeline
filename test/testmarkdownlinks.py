@@ -82,7 +82,10 @@ class TestMarkdownLinks(unittest.TestCase):
         for link in links:
           try:
             dest = link.get("href")
-            if dest.startswith("https://"): continue
+            if dest.startswith("https://"):
+              if re.match(r"https://(?:www\.)?github\.com/astropathjhu/astropathpipeline(?:private)?/(?:blob|tree)", dest.lower()):
+                raise LinkError(f"Link to {dest}, use a relative link instead")
+              continue
             destpath, anchor = re.match("([^#]*)(?:#(.*))?", dest).groups()
             if not destpath:
               destpath = fulldestpath = markdownfile
