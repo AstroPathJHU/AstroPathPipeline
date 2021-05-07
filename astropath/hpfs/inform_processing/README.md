@@ -9,7 +9,7 @@ After the images are corrected by the ```flatw``` module and the ```flatw_path``
     - [5.10.3.2.1. Getting Started](docs/inFormCellAnalysisMultipassPhenotype.md#510321-getting-started "Title")
     - [5.10.3.2.2. Core Icons to Remember](docs/inFormCellAnalysisMultipassPhenotype.md#510322-core-icons-to-remember "Title")
     - [5.10.3.2.3. Segment Tissue](docs/inFormCellAnalysisMultipassPhenotype.md#510323-segment-tissue "Title")
-    - [5.10.3.2.4. Adaptive Cell Segmentation](docs/inFormCellAnalysisMultipassPhenotype.md#51034-adaptive-cell-segmentation "Title")
+    - [5.10.3.2.4. Adaptive Cell Segmentation](docs/inFormCellAnalysisMultipassPhenotype.md#510324-adaptive-cell-segmentation "Title")
     - [5.10.3.2.5. Phenotyping](docs/inFormCellAnalysisMultipassPhenotype.md#510325-phenotyping "Title")
     - [5.10.3.2.6. Export](docs/inFormCellAnalysisMultipassPhenotype.md#510326-export "Title")
 - [5.10.4. Saving Project for the inForm Cell Analysis® JHU Processing Farm](docs/SavingProjectsfortheinFormCellAnalysisJHUProcessingFarm.md#5104-saving-projects-for-the-inform-cell-analysis-jhu-processing-farm "Title")
