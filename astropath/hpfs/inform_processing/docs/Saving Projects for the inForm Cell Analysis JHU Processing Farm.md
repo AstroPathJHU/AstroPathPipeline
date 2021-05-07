@@ -1,8 +1,8 @@
-# Saving Projects for the inForm Cell Analysis JHU Processing Farm
-# Description 
+# 5.10.4. Saving Projects for the inForm Cell Analysis JHU Processing Farm
+# 5.10.4.1. Description 
 When the phenotype project is completed, we must apply the proper settings for export. This ensures that the data output contains all required information and is in the correct format. Failure to apply the proper settings results in having to rerun the algorithms and may cause unexpected behavior in the rest of the pipeline. 
 
-# Instructions
+# 5.10.4.2. Instructions
 **I. All markers require the cell segmentation data to be exported.**
    1. Go to the export tab <br>
       ![Figure 1 Image](www/Fig1.png)
