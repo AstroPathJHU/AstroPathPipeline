@@ -29,7 +29,7 @@ This is the protocol for defining cell segmentation and classification algorithm
       - use ‘DAPI’ for the name of DAPI and AF for auto fluorescence
 
 ### 5.10.3.2.2. Core Icons to remember 
-  [!Figure 12](www/Fig12.png)
+  ![Figure 12](www/Fig12.png)
   
 ### 5.10.3.2.3. Segment Tissue 
 Trainable Tissue Segmentation utilizes a computer learning algorithm over a batch of images. 
@@ -51,12 +51,12 @@ Trainable Tissue Segmentation utilizes a computer learning algorithm over a batc
    - Minimum Segment Size (pixels): this feature discards regions smaller than the number you input. I usually set this to 2000 pixels to filter out debris. 
    - Discard if touching image boarder: this feature will not attempt to analyze objects at the edge of the image.  I usually turn this feature off.
 8. Under Tissue Categories towards the top, select the category you would like to train on. This is denoted by a circle under Draw.
-9. Select [!Figure 9](www\Fig9.png)
+9. Select ![Figure 9](www\Fig9.png)
    - On the selected image, draw the region by holding down the left click of the mouse.  Release when you have finished your region.  
    - Drawing fewer larger regions usually works better than many small ones
-10. Select [!Figure 10](www\Fig10.png) to draw regions to exclude from the analysis.  
+10. Select ![Figure 10](www\Fig10.png) to draw regions to exclude from the analysis.  
    - Examples are folds, debris, dust, necrosis, etc…
-   - You may delete regions by selecting [!Figure 11](www\Fig11.png) and then clicking on the region to delete or by right clicking on the region and selecting ```Delete Region```
+   - You may delete regions by selecting ![Figure 11](www\Fig11.png) and then clicking on the region to delete or by right clicking on the region and selecting ```Delete Region```
 11. Repeat this for all Categories you have created
     - At least one training region is needed for each category
 12. Select ```Segment Image```
@@ -127,7 +127,7 @@ Phenotyping requires Adaptive Cell Segmentation/Cell Segmentation
      - The tumor marker, as indicated in column 14 (‘ImageQA\QC’) of that file, can be replaced with ‘Tumor’
 5. The second phenotype should be “Other” (we typically label this blue)
 6. Begin assigning phenotypes to the cells
-   - Select [!Figure 13](www\Fig13.png). 
+   - Select ![Figure 13](www\Fig13.png). 
    - Left click on a segmented cell; a list of phenotypes you created will be shown.
    - Select the correct phenotype for that cell
 7. Start by selecting 5 training cells per phenotype, then click ```Train Classifer```.
