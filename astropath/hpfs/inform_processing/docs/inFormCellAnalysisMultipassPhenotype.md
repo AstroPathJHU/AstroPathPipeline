@@ -143,7 +143,7 @@ Phenotyping requires Adaptive Cell Segmentation/Cell Segmentation
    - Focus on phenotypes that are next to each other. This will help delineate neighboring cell types 
    - Toggling on and off the channels and segmentation will also aide in decision making
    - Attempt to assess patterns in the algorithm that are wrong such as a large number of neighbors or undercalling
-9.	Once satisfied, select [Phenotype All]
+9.	Once satisfied, select ```Phenotype All```
 10. Quality check once more and add more training cells as needed using (6)
    - **It is always best to get a second opinion before saving**
 
