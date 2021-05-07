@@ -67,7 +67,7 @@ def lastmodified(filename, linenumbers):
     for commit, lines in blame(filename):
       for line, (linenumber, currentline) in zip(lines, enumerate_f):
         if linenumber in linenumbers:
-          oldblob = commit.tree[filename.as_posix()]
+          oldblob = repo().head.commit.tree[filename.as_posix()]
           oldline = oldblob.data_stream.read().decode("utf-8").split("\n")[linenumber-1]+"\n"
           if oldline != currentline:
             #the file was modified in the current working index
