@@ -28,7 +28,7 @@ This is the protocol for defining cell segmentation and classification algorithm
       - These names should correspond to the names defined in the ‘Target’ column of the BatchID file. The tumor marker, as indicated in column 14 (‘ImageQA\QC’) of that file, can be replaced with ‘Tumor’
       - use ‘DAPI’ for the name of DAPI and AF for auto fluorescence
 
-### 5.10.3.2.2. Core Icons to remember 
+### 5.10.3.2.2. Core Icons to Remember 
   ![Figure 12](www/Fig12.png)
   
 ### 5.10.3.2.3. Segment Tissue 
