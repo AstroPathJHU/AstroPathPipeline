@@ -29,7 +29,7 @@ This is the protocol for defining cell segmentation and classification algorithm
       - use ‘DAPI’ for the name of DAPI and AF for auto fluorescence
 
 ### 5.10.3.2.2. Core Icons to remember 
-  [!Figure 12](www\Fig12.png)
+  [!Figure 12](www/Fig12.png)
   
 ### 5.10.3.2.3. Segment Tissue 
 Trainable Tissue Segmentation utilizes a computer learning algorithm over a batch of images. 
