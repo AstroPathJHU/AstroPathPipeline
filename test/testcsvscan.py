@@ -12,21 +12,26 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
   @classmethod
   def filestocopy(cls):
     testroot = thisfolder/"csvscan_test_for_jenkins"
-    yield thisfolder/"data"/"sampledef.csv", testroot
+    dataroot = thisfolder/"data"
+    yield dataroot/"sampledef.csv", testroot
+
+    for foldername in "Batch", "Clinical", "Ctrl", pathlib.Path("Control_TMA_1372_111_06.19.2019")/"dbload":
+      old = dataroot/foldername
+      new = testroot/foldername
+      for csv in old.glob("*.csv"):
+        yield csv, new
 
     for SlideID in "M206",:
       newdbload = testroot/SlideID/"dbload"
-      newdbload.mkdir(parents=True, exist_ok=True)
       newtables = testroot/SlideID/"inform_data"/"Phenotyped"/"Results"/"Tables"
-      newtables.mkdir(parents=True, exist_ok=True)
 
-      for olddbload in thisfolder/"data"/SlideID/"dbload", thisfolder/"reference"/"geom"/SlideID, thisfolder/"reference"/"annowarp"/SlideID:
+      for olddbload in dataroot/SlideID/"dbload", thisfolder/"reference"/"geom"/SlideID, thisfolder/"reference"/"annowarp"/SlideID:
         for csv in olddbload.glob("*.csv"):
-          if csv == thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_vertices.csv": continue
-          if csv == thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_regions.csv": continue
+          if csv == dataroot/SlideID/"dbload"/f"{SlideID}_vertices.csv": continue
+          if csv == dataroot/SlideID/"dbload"/f"{SlideID}_regions.csv": continue
           yield csv, newdbload
 
-      oldtables = thisfolder/"data"/SlideID/"inform_data"/"Phenotyped"/"Results"/"Tables"
+      oldtables = dataroot/SlideID/"inform_data"/"Phenotyped"/"Results"/"Tables"
       for csv in oldtables.glob("*.csv"):
         yield csv, newtables
 
@@ -57,6 +62,21 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       targetrows = s.readtable(reference, LoadFile, header=False)
       for row in rows:
         folder = s.mainfolder
+        if row.tablename == "CellGeom":
+          folder = s.geomroot/s.SlideID
+        row.filename = row.filename.relative_to(folder).as_posix()
+      targetcommonroot = commonroot(*(row.filename for row in targetrows))
+      for row in targetrows:
+        row.filename = row.filename.relative_to(targetcommonroot).as_posix()
+      for row, target in more_itertools.zip_equal(rows, targetrows):
+        assertAlmostEqual(row, target)
+
+      filename = s.root/"dbload"/"project0_loadfiles.csv"
+      reference = thisfolder/"reference"/"csvscan"/filename.name
+      rows = s.readtable(filename, LoadFile, header=False)
+      targetrows = s.readtable(reference, LoadFile, header=False)
+      for row in rows:
+        folder = s.root
         if row.tablename == "CellGeom":
           folder = s.geomroot/s.SlideID
         row.filename = row.filename.relative_to(folder).as_posix()

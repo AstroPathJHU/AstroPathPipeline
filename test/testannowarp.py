@@ -2,6 +2,7 @@ import more_itertools, numpy as np, os, pathlib, re
 
 from astropath.baseclasses.csvclasses import Region
 from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
+from astropath.slides.annowarp.detectbigshift import DetectBigShiftSample
 from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohort
 from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath.utilities import units
@@ -165,3 +166,17 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     result6 = s.stitch(constraintmus=constraintmus, constraintsigmas=constraintsigmas, residualpullcutoff=None, floatedparams="constants")
     units.np.testing.assert_allclose(units.nominal_values(result6.coeffrelativetobigtile)[:8], constraintmus[:4].reshape(2, 2))
     units.np.testing.assert_allclose(units.nominal_values(result6.bigtileindexcoeff), constraintmus[4:8].reshape(2, 2))
+
+  def testDetectBigShift(self, SlideID="M21_1"):
+    s = DetectBigShiftSample(root=thisfolder/"data", root2=thisfolder/"data"/"flatw", samp=SlideID, logroot=thisfolder/"annowarp_test_for_jenkins", uselogfiles=False, selectrectangles=[1])
+    assertAlmostEqual(
+      units.convertpscale(s.run(), s.pscale/10, s.pscale),
+      np.array({
+        "M21_1": [4.276086656088661, 10.14277048484133],
+      }[SlideID])*s.onepixel,
+      rtol=1e-6
+    )
+
+  def testDetectBigShiftFastUnits(self, SlideID="M21_1"):
+    with units.setup_context("fast_microns"):
+      self.testDetectBigShift(SlideID=SlideID)
