@@ -3,7 +3,7 @@
 This is the protocol for defining cell segmentation and classification algorithms for the so-called 'multipass' method to mIF cell classification using the inForm® Cell Analysis (Akoya Biosciences®) phenotype module. In this approach, a user creates separate inForm Cell Analysis® algorithms for each anitbody in the panel. The base algorithm for unmixing and tissue segmentation should be the same but the cell segmentation and classification can be tailored to each antibody individually. We believe this method reduces the segmentation error caused by variation in cell size and decreases the complexity of classifying high plex panels where many different coexpressions can exist. After all images are processed by each antibody algorithm, image data can be merged into a single file using the [Merge a Single Sample (MaSS)]() utility. This utility defines coexpressions and merges the data into a single coordinate system. The algorithm satisfies the condition that only one cell is identified within 6 pixels of any other cell call, a distance that is measured between cell centers. In other words, cells identified within 6 pixels of each are in fact the same cell and the data should be merged in some way across the different antibody algorithm outputs. Details on the merge can be found in the associated code documentation (linked to again [here]()). Settings for the merge should be defined in a *MergeConfig_NN.xlsx* file ([documentation here]()).
 
 ## 5.10.3.2. Instructions
-## 5.10.3.2.1. Getting Started
+### 5.10.3.2.1. Getting Started
 1. Launch inForm Cell Analysis®
 2. Open correct library algorithm
    - Go to ```file```
@@ -28,10 +28,10 @@ This is the protocol for defining cell segmentation and classification algorithm
       - These names should correspond to the names defined in the ‘Target’ column of the BatchID file. The tumor marker, as indicated in column 14 (‘ImageQA\QC’) of that file, can be replaced with ‘Tumor’
       - use ‘DAPI’ for the name of DAPI and AF for auto fluorescence
 
-## 5.10.3.2.2. Core Icons to remember 
+### 5.10.3.2.2. Core Icons to remember 
   [!Figure 12](www\Fig12.png)
   
-## 5.10.3.2.3. Segment Tissue 
+### 5.10.3.2.3. Segment Tissue 
 Trainable Tissue Segmentation utilizes a computer learning algorithm over a batch of images. 
 1. In the Segment Tissue Module, select ```New``` in the Tissue Categories
 2. Click ```New``` for every category that you need. 
@@ -64,7 +64,7 @@ Trainable Tissue Segmentation utilizes a computer learning algorithm over a batc
 14.	Select ```Segment All```
 15. Review and Modify if needed
 
-## 5.10.3.2.4. Adaptive Cell Segmentation
+### 5.10.3.2.4. Adaptive Cell Segmentation
 1. Select ```Adaptive Cell Segmentation``` Module
 2. Select ```Add…``` under ```Components``` and select ```DAPI```
 3. Select ```…``` next to ```DAPI``` to go to the ```DAPI``` configuration
@@ -116,7 +116,7 @@ Trainable Tissue Segmentation utilizes a computer learning algorithm over a batc
 16. Save the project if this is the first antibody analyzed in this multiplex panel. 
     - This will allow you and other users to use the same tissue and cell segmentation for similarly sized cells
 
-## 5.10.3.2.5. Phenotyping
+### 5.10.3.2.5. Phenotyping
 Phenotyping requires Adaptive Cell Segmentation/Cell Segmentation
 1. Go to the ```Cell Segmenation``` Module and click ```Segment All```
 2. Select the ```Phenptype Cells``` Module
