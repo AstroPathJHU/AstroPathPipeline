@@ -50,6 +50,14 @@ class RunFromArgumentParser(abc.ABC):
     return misckwargs
 
   @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    """
+    Get the keyword arguments to be passed to cohort.run() from the parsed arguments
+    """
+    kwargs = {}
+    return kwargs
+
+  @classmethod
   def argsdictsfromargumentparser(cls, parsed_args_dict):
     """
     Get the kwargs dicts needed to run from the argparse dict
@@ -57,6 +65,7 @@ class RunFromArgumentParser(abc.ABC):
     """
     initkwargs = cls.initkwargsfromargumentparser(parsed_args_dict)
     misckwargs = cls.misckwargsfromargumentparser(parsed_args_dict)
+    runkwargs = cls.runkwargsfromargumentparser(parsed_args_dict)
 
     version_requirement = misckwargs.pop("version_requirement")
     if version_requirement is None:
@@ -66,6 +75,7 @@ class RunFromArgumentParser(abc.ABC):
     return {
       "initkwargs": initkwargs,
       "misckwargs": misckwargs,
+      "runkwargs": runkwargs,
     }
 
   @staticmethod

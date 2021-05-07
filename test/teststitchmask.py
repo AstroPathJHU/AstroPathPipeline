@@ -9,7 +9,7 @@ class TestStitchMask(TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"stitchmask_test_for_jenkins"/SlideID/"{SlideID}-tissuemask.npz"
+      thisfolder/"stitchmask_test_for_jenkins"/SlideID/"im3"/"meanimage"/"image_masking"/"informmask.npz"
       for SlideID in ("M206",)
     ]
 

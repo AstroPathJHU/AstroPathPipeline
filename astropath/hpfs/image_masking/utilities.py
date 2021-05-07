@@ -14,7 +14,7 @@ class LabelledMaskRegion(MyDataClass) :
 
 #helper function to unpack, reshape, and return a tissue mask from its packed mask file
 def unpackTissueMask(filepath,dimensions) :
-    if not pathlib.Path.is_file(pathlib.Path(filepath)) :
+    if not pathlib.Path(filepath).is_file() :
         raise ValueError(f'ERROR: tissue mask file {filepath} does not exist!')
     packed_mask = np.memmap(filepath,dtype=np.uint8,mode='r')
     return (np.unpackbits(packed_mask)).reshape(dimensions)

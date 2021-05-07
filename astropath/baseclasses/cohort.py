@@ -158,31 +158,12 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
     return kwargs
 
   @classmethod
-  def runkwargsfromargumentparser(cls, parsed_args_dict):
-    """
-    Get the keyword arguments to be passed to cohort.run() from the parsed arguments
-    """
-    kwargs = {}
-    return kwargs
-
-  @classmethod
   def misckwargsfromargumentparser(cls, parsed_args_dict):
     kwargs = {
       **super().misckwargsfromargumentparser(parsed_args_dict),
       "dry_run": parsed_args_dict.pop("dry_run"),
     }
     return kwargs
-
-  @classmethod
-  def argsdictsfromargumentparser(cls, parsed_args_dict):
-    """
-    Get the kwargs dicts needed to run from the argparse dict
-    from the parsed arguments
-    """
-    return {
-      **super().argsdictsfromargumentparser(parsed_args_dict),
-      "runkwargs": cls.runkwargsfromargumentparser(parsed_args_dict),
-    }
 
   @classmethod
   def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
