@@ -7,7 +7,7 @@ When the phenotype project is completed, we must apply the proper settings for e
    1. Go to the export tab <br>
       ![Figure 1 Image](www/Fig1.png)
    2.	Be sure that all the analysis annotation layers are turned on <br>
-      ![Figure 2 Image](www/Fig2.PNG)
+      ![Figure 2 Image](www/Fig2.png)
    3.	Under ‘Tables To Export’ select the checkbox next to ‘Cell Segmentation Data’ <br>
       ![Figure 3 Image](www/Fig3.png)
    4.	Under ‘Table Fields To Export’ select the eye to open the ‘View Editor’ <br>     
