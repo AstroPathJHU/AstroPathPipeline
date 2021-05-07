@@ -4,7 +4,7 @@ After the images are corrected by the ```flatw``` module and the ```flatw_path``
 
 ## 5.10.2. Contents
 - [5.10.3. inForm Cell Analysis® Multipass Phenotyping](docs "Title")
-- [5.10.4. Saving Project for the inForm Farm]()
+- [5.10.4. Saving Project for the inForm Cell Analysis® Farm]()
 - [5.10.5. Setting up the Virtual Machines for inForm]()
 - [5.10.6. Adding Slides to the inForm Queue]()
 - [5.10.7. inForm Processing Code]()
