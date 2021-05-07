@@ -53,15 +53,26 @@ def blame(filename):
   return repo().blame("HEAD", filename)
 @functools.lru_cache()
 def is_ancestor(commit1, commit2):
+  #convention: None means that the file was updated in the current index
+  #that means everything is an ancestor of None, and None isn't an ancestor
+  #of anything besides itself.
+  if commit2 is None: return True
+  if commit1 is None: return False
   return repo().is_ancestor(commit1, commit2)
 
 def lastmodified(filename, linenumbers):
   commits = set()
-  linecounter = itertools.count(1)
-  for commit, lines in blame(filename):
-    for line, linenumber in zip(lines, linecounter):
-      if linenumber in linenumbers:
-        commits.add(commit)
+  with open(mainfolder/filename) as f:
+    enumerate_f = enumerate(f, start=1)
+    for commit, lines in blame(filename):
+      for line, (linenumber, currentline) in zip(lines, enumerate_f):
+        if linenumber in linenumbers:
+          oldblob = commit.tree[filename.as_posix()]
+          oldline = oldblob.data_stream.read().decode("utf-8").split("\n")[linenumber-1]+"\n"
+          if oldline != currentline:
+            #the file was modified in the current working index
+            commit = None
+          commits.add(commit)
 
   lastlength = float("inf")
   while len(commits) != lastlength:
@@ -131,10 +142,17 @@ class TestMarkdownLinks(unittest.TestCase):
                   raise LinkError(f"link to code file {destpath} with anchor {anchor}, but that file only has {nlines} lines")
 
                 for commit in lastmodified(markdownfile.relative_to(mainfolder), linklinenumbers(markdownfile, dest)):
-                  for diff in repo().head.commit.diff(commit):
-                    if mainfolder/diff.b_path == fulldestpath:
-                      assert mainfolder/diff.a_path == fulldestpath
-                      for i, (line_a, line_b) in enumerate(itertools.zip_longest(diff.a_blob.data_stream.read().decode().split("\n"), diff.b_blob.data_stream.read().decode().split("\n"))):
+                  if commit is None: continue
+                  for diff in commit.diff(None):
+                    if mainfolder/diff.a_path == fulldestpath:
+                      assert mainfolder/diff.b_path == fulldestpath
+                      a_blob = diff.a_blob.data_stream.read().decode("utf-8")
+                      if diff.b_blob is None:
+                        with open(mainfolder/diff.b_path) as f:
+                          b_blob = f.read()
+                      else:
+                        b_blob = diff.b_blob.data_stream.read().decode("utf-8")
+                      for i, (line_a, line_b) in enumerate(itertools.zip_longest(a_blob.split("\n"), b_blob.split("\n"))):
                         if firstline <= i <= lastline and line_a != line_b:
                           raise LinkError(f"link to code file {destpath} with anchor {anchor} modified in commit {commit}, but those lines have changed since then - please check and, if it's still ok, modify that line in markdown by adding whitespace or a comment")
 
