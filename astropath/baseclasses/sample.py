@@ -539,6 +539,13 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots, Ru
       sample.run(**runkwargs)
       return sample
 
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "samp": parsed_args_dict.pop("SlideID"),
+    }
+
   @abc.abstractmethod
   def run(self, **kwargs):
     "actually run whatever is supposed to be run on the sample"
@@ -702,7 +709,7 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
 
   @property
   def maskfolder(self):
-    result = self.im3folder/"meanimage"
+    result = self.im3folder/"meanimage"/"image_masking"
     if self.maskroot != self.root:
       result = self.maskroot/result.relative_to(self.root)
     return result

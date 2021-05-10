@@ -12,7 +12,7 @@ from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..align.overlap import AlignmentComparison
-from ..zoom.stitchmasksample import InformMaskSample, TissueMaskSample, StitchInformMask
+from ..zoom.stitchmasksample import InformMaskSample, TissueMaskSample, StitchInformMaskSample
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
@@ -903,7 +903,7 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
 
   @classmethod
   def workflowdependencies(cls):
-    return [StitchInformMask] + super().workflowdependencies()
+    return [StitchInformMaskSample] + super().workflowdependencies()
 
 class QPTiffCoordinateBase(abc.ABC):
   """

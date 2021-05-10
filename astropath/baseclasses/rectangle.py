@@ -654,6 +654,21 @@ class GeomLoadRectangle(Rectangle):
   def geomloadcsv(self):
     return self.__geomfolder/self.file.replace(".im3", "_cellGeomLoad.csv")
 
+class MaskRectangle(Rectangle):
+  """
+  Rectangle that has mask files, e.g. _tissue_mask.bin
+  You have to provide the folder where those files live.
+  """
+  def __post_init__(self, *args, maskfolder, **kwargs):
+    self.__maskfolder = pathlib.Path(maskfolder)
+    super().__post_init__(*args, **kwargs)
+  @property
+  def tissuemaskfile(self):
+    return self.__maskfolder/self.file.replace(".im3", "_tissue_mask.bin")
+  @property
+  def fullmaskfile(self):
+    return self.__maskfolder/self.file.replace(".im3", "_full_mask.bin")
+
 class PhenotypedRectangle(Rectangle):
   """
   Rectangle that has a _cleaned_phenotype_table.csv

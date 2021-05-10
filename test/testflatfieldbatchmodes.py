@@ -3,8 +3,9 @@
 #imports
 from astropath.hpfs.flatfield.run_flatfield import main
 from astropath.hpfs.flatfield.utilities import flatfield_logger, FlatfieldSlideInfo, getSlideMeanImageWorkingDirPath, getBatchFlatfieldWorkingDirPath
+from astropath.utilities.misc import cd
 from argparse import Namespace
-import pathlib, shutil
+import pathlib, shutil, subprocess
 
 #some constants
 folder = pathlib.Path(__file__).parent
@@ -76,7 +77,9 @@ with open(pathlib.Path(f'{batch_flatfield_working_dir}/global-batch_flatfield.lo
 
 #remove the working directory and the logs that were created
 flatfield_logger.info('Removing working directories and logfiles....')
-shutil.rmtree(slide_mean_image_working_dir,ignore_errors=True)
+with cd(slide_mean_image_working_dir):
+  subprocess.run(["git", "clean", "-fd"])
+  subprocess.run(["git", "checkout", "--", "."])
 (folder/'data'/'logfiles'/'slide_mean_image.log').unlink()
 (folder/'data'/f'{slide_ID}'/'logfiles'/f'{slide_ID}-slide_mean_image.log').unlink()
 shutil.rmtree(batch_flatfield_working_dir,ignore_errors=True)

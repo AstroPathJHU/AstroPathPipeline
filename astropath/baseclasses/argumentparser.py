@@ -50,6 +50,14 @@ class RunFromArgumentParser(abc.ABC):
     return misckwargs
 
   @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    """
+    Get the keyword arguments to be passed to cohort.run() from the parsed arguments
+    """
+    kwargs = {}
+    return kwargs
+
+  @classmethod
   def argsdictsfromargumentparser(cls, parsed_args_dict):
     """
     Get the kwargs dicts needed to run from the argparse dict
@@ -57,6 +65,7 @@ class RunFromArgumentParser(abc.ABC):
     """
     initkwargs = cls.initkwargsfromargumentparser(parsed_args_dict)
     misckwargs = cls.misckwargsfromargumentparser(parsed_args_dict)
+    runkwargs = cls.runkwargsfromargumentparser(parsed_args_dict)
 
     version_requirement = misckwargs.pop("version_requirement")
     if version_requirement is None:
@@ -66,6 +75,7 @@ class RunFromArgumentParser(abc.ABC):
     return {
       "initkwargs": initkwargs,
       "misckwargs": misckwargs,
+      "runkwargs": runkwargs,
     }
 
   @staticmethod
@@ -166,10 +176,13 @@ class DeepZoomArgumentParser(RunFromArgumentParser):
     }
 
 class MaskArgumentParser(RunFromArgumentParser):
+  defaultmaskfilesuffix = ".npz"
+
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     p.add_argument("--maskroot", type=pathlib.Path, help="root location of mask folder (default: same as root)")
+    p.add_argument("--mask-file-suffix", choices=(".npz", ".bin"), default=cls.defaultmaskfilesuffix, help=f"format for the mask files for either reading or writing (default: {cls.defaultmaskfilesuffix})")
     return p
 
   @classmethod
@@ -177,6 +190,7 @@ class MaskArgumentParser(RunFromArgumentParser):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "maskroot": parsed_args_dict.pop("maskroot"),
+      "maskfilesuffix": parsed_args_dict.pop("mask_file_suffix"),
     }
 
 class SelectRectanglesArgumentParser(RunFromArgumentParser):
