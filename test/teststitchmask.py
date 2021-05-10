@@ -1,6 +1,6 @@
 import numpy as np, pathlib
 from astropath.utilities import units
-from astropath.slides.zoom.stitchmasksample import StitchInformMask
+from astropath.slides.zoom.stitchmasksample import StitchInformMaskSample
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -16,8 +16,8 @@ class TestStitchMask(TestBaseSaveOutput):
   def testStitchInformMask(self, SlideID="M206"):
     root = thisfolder/"data"
     maskroot = thisfolder/"stitchmask_test_for_jenkins"
-    sample = StitchInformMask(root, SlideID, maskroot=maskroot, logroot=maskroot)
-    refsample = StitchInformMask(root, SlideID, maskroot=thisfolder/"reference"/"stitchmask", logroot=maskroot)
+    sample = StitchInformMaskSample(root, SlideID, maskroot=maskroot, logroot=maskroot)
+    refsample = StitchInformMaskSample(root, SlideID, maskroot=thisfolder/"reference"/"stitchmask", logroot=maskroot)
     sample.writemask()
 
     try:
