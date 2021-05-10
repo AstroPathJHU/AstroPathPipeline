@@ -190,7 +190,7 @@ class MaskArgumentParser(RunFromArgumentParser):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "maskroot": parsed_args_dict.pop("maskroot"),
-      "maskfilesuffix": parsed_args_dict.pop("maskfilesuffix"),
+      "maskfilesuffix": parsed_args_dict.pop("mask_file_suffix"),
     }
 
 class SelectRectanglesArgumentParser(RunFromArgumentParser):
