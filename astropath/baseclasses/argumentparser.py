@@ -176,10 +176,13 @@ class DeepZoomArgumentParser(RunFromArgumentParser):
     }
 
 class MaskArgumentParser(RunFromArgumentParser):
+  defaultmaskfilesuffix = ".npz"
+
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     p.add_argument("--maskroot", type=pathlib.Path, help="root location of mask folder (default: same as root)")
+    p.add_argument("--mask-file-suffix", choices=(".npz", ".bin"), default=cls.defaultmaskfilesuffix, help=f"format for the mask files for either reading or writing (default: {defaultmaskfilesuffix})")
     return p
 
   @classmethod
@@ -187,6 +190,7 @@ class MaskArgumentParser(RunFromArgumentParser):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "maskroot": parsed_args_dict.pop("maskroot"),
+      "maskfilesuffix": parsed_args_dict.pop("maskfilesuffix"),
     }
 
 class SelectRectanglesArgumentParser(RunFromArgumentParser):

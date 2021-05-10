@@ -2,6 +2,7 @@ import abc, contextlib, numpy as np, pathlib
 from ...baseclasses.rectangle import MaskRectangle
 from ...baseclasses.sample import MaskSampleBase, ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...hpfs.image_masking.utilities import unpackTissueMask
+from ...utilities.img_file_io import im3writeraw
 from ...utilities.misc import floattoint
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiff
@@ -9,12 +10,14 @@ from ..zoom.zoomsample import ZoomSampleBase
 
 class MaskField(Field, MaskRectangle): pass
 
-class MaskSample(MaskSampleBase):
+class MaskSample(MaskSampleBase, ZoomSampleBase):
   """
   Base class for any sample that has a mask that can be loaded from a file.
   """
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, maskfilesuffix=None, **kwargs):
     super().__init__(*args, **kwargs)
+    if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
+    self.__maskfilesuffix = maskfilesuffix
     self.__using_mask_count = 0
 
   @classmethod
@@ -23,19 +26,15 @@ class MaskSample(MaskSampleBase):
     """
     The file stem of the mask file (without the folder or the suffix)
     """
-  @classmethod
-  def maskfilesuffix(cls):
-    return ".npz"
 
   def maskfilename(self):
     """
     Get the mask filename
     """
-    filetype = self.maskfilesuffix()
     stem = pathlib.Path(f"{self.SlideID}_{self.maskfilestem()}")
     if stem.suffix or stem.parent != pathlib.Path("."):
       raise ValueError(f"maskfilestem {self.maskfilestem()} shouldn't have '.' or '/' in it")
-    filename = stem.with_suffix("."+filetype.lstrip("."))
+    filename = stem.with_suffix(self.__maskfilesuffix)
     folder = self.maskfolder
     return folder/filename
 
@@ -49,6 +48,10 @@ class MaskSample(MaskSampleBase):
     if filetype == ".npz":
       dct = np.load(filename)
       return dct["mask"]
+    elif filetype == ".bin":
+      return unpackTissueMask(
+        filename, tuple((self.ntiles * self.zoomtilesize)[::-1])
+      )
     else:
       raise ValueError("Don't know how to deal with mask file type {filetype}")
 
@@ -113,6 +116,8 @@ class WriteMaskSampleBase(MaskSample, WorkflowSample):
     filetype = filename.suffix
     if filetype == ".npz":
       np.savez_compressed(filename, mask=mask)
+    elif filetype == ".bin":
+      im3writeraw(filename, np.packbits(mask))
     else:
       raise ValueError("Don't know how to deal with mask file type {filetype}")
 
@@ -122,9 +127,10 @@ class WriteMaskSampleBase(MaskSample, WorkflowSample):
   def createmask(self): "create the mask"
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, maskroot, **otherrootkwargs):
+  def getoutputfiles(cls, SlideID, *, maskroot, maskfilesuffix=None, **otherrootkwargs):
+    if maskfilesuffix is None: maskfilesuffix = cls.defaultmaskfilesuffix
     return [
-      maskroot/SlideID/"im3"/"meanimage"/pathlib.Path(f"{SlideID}_{cls.maskfilestem()}").with_suffix(cls.maskfilesuffix())
+      maskroot/SlideID/"im3"/"meanimage"/pathlib.Path(f"{SlideID}_{cls.maskfilestem()}").with_suffix(maskfilesuffix)
     ]
 
 class InformMaskSample(TissueMaskSample):
@@ -152,7 +158,7 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   def tissuemask(cls, mask):
     return mask
 
-class StitchMaskSample(ZoomSampleBase, ReadRectanglesDbload, WriteMaskSampleBase):
+class StitchMaskSample(ReadRectanglesDbload, WriteMaskSampleBase):
   """
   Base class for stitching the global mask together from the individual HPF masks
   """

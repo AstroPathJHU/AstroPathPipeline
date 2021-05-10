@@ -276,18 +276,26 @@ class MaskCohort(Cohort, MaskArgumentParser):
   maskroot: an alternate root to use for the mask folder instead of root
             (default: same as root)
   """
-  def __init__(self, *args, maskroot=None, **kwargs):
+  def __init__(self, *args, maskroot=None, maskfilesuffix=None, **kwargs):
     super().__init__(*args, **kwargs)
     if maskroot is None: maskroot = self.root
     self.maskroot = pathlib.Path(maskroot)
+    if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
+    self.maskfilesuffix = maskfilesuffix
 
   @property
   def rootnames(self):
     return {*super().rootnames, "maskroot"}
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "maskfilesuffix": self.maskfilesuffix,
+    }
 
   @property
   def initiatesamplekwargs(self):
-    return {**super().initiatesamplekwargs, "maskroot": self.maskroot}
+    return {**super().initiatesamplekwargs, "maskroot": self.maskroot, "maskfilesuffix": self.maskfilesuffix}
 
 class SelectRectanglesCohort(Cohort, SelectRectanglesArgumentParser):
   """
