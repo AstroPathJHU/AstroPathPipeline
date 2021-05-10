@@ -182,7 +182,7 @@ class MaskArgumentParser(RunFromArgumentParser):
   def makeargumentparser(cls):
     p = super().makeargumentparser()
     p.add_argument("--maskroot", type=pathlib.Path, help="root location of mask folder (default: same as root)")
-    p.add_argument("--mask-file-suffix", choices=(".npz", ".bin"), default=cls.defaultmaskfilesuffix, help=f"format for the mask files for either reading or writing (default: {defaultmaskfilesuffix})")
+    p.add_argument("--mask-file-suffix", choices=(".npz", ".bin"), default=cls.defaultmaskfilesuffix, help=f"format for the mask files for either reading or writing (default: {cls.defaultmaskfilesuffix})")
     return p
 
   @classmethod
