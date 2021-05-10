@@ -152,30 +152,26 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   def tissuemask(cls, mask):
     return mask
 
-class StitchInformMaskSample(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WriteMaskSampleBase, InformMaskSample):
+class StitchMaskSample(ZoomSampleBase, ReadRectanglesDbload, WriteMaskSampleBase):
   """
-  Stitch the inform mask together from layer 9 of the component tiffs.
-  The implementation is the same as zoom, and the mask will match the
-  wsi image to within a pixel (fractional pixel shifts are unavoidable
-  because the mask is discrete)
+  Base class for stitching the global mask together from the individual HPF masks
   """
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, with_seg=True, layer="setlater", **kwargs)
-    self.setlayers(layer=self.masklayer)
-
-  @classmethod
-  def logmodule(self): return "stitchinformmask"
-
-  multilayer = False
+  rectangletype = Field
   @property
   def rectanglecsv(self): return "fields"
-  rectangletype = FieldReadComponentTiff
+
   @property
-  def rectangleextrakwargs(self):
-    return {
-      **super().rectangleextrakwargs,
-      "with_seg": True,
-    }
+  @abc.abstractmethod
+  def backgroundvalue(self):
+    """
+    The number that should be filled in the mask for background pixels
+    """
+
+  @abc.abstractmethod
+  def getHPFmask(self, field):
+    """
+    Should return the mask from the individual HPF
+    """
 
   def createmask(self):
     """
@@ -185,96 +181,13 @@ class StitchInformMaskSample(ZoomSampleBase, ReadRectanglesDbloadComponentTiff, 
     #allocate memory for the mask array
     #the default value, which will remain for any pixels that aren't
     #in an HPF, is 2, which corresponds to background
-    mask = np.full(fill_value=2, shape=tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.uint8)
+    mask = np.full(fill_value=self.backgroundvalue, shape=tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.uint8)
     onepixel = self.onepixel
     nfields = len(self.rectangles)
     for n, field in enumerate(self.rectangles, start=1):
       self.logger.debug(f"putting in mask from field {field.n} ({n}/{nfields})")
-      with field.using_image() as im:
-        #these lines are copied from zoom.py
-        globalx1 = field.mx1 // onepixel * onepixel
-        globalx2 = field.mx2 // onepixel * onepixel
-        globaly1 = field.my1 // onepixel * onepixel
-        globaly2 = field.my2 // onepixel * onepixel
-        localx1 = field.mx1 - field.px
-        localx2 = localx1 + globalx2 - globalx1
-        localy1 = field.my1 - field.py
-        localy2 = localy1 + globaly2 - globaly1
-        #this part is different, because we can't shift a mask to
-        #account for the fractional pixel difference between global
-        #and local, so we do the best we can which is to round
-        localx1 = np.round(localx1 / onepixel) * onepixel
-        localx2 = np.round(localx2 / onepixel) * onepixel
-        localy1 = np.round(localy1 / onepixel) * onepixel
-        localy2 = np.round(localy2 / onepixel) * onepixel
-        if globaly1 < 0:
-          localy1 -= globaly1
-          globaly1 -= globaly1
-        if globalx1 < 0:
-          localx1 -= globalx1
-          globalx1 -= globalx1
-        mask[
-          floattoint(float(globaly1/onepixel)):floattoint(float(globaly2/onepixel)),
-          floattoint(float(globalx1/onepixel)):floattoint(float(globalx2/onepixel)),
-        ] = im[
-          floattoint(float(localy1/onepixel)):floattoint(float(localy2/onepixel)),
-          floattoint(float(localx1/onepixel)):floattoint(float(localx2/onepixel)),
-        ]
-    return mask
+      im = self.getHPFmask(field)
 
-  @property
-  def inputfiles(self):
-    result = [self.csv("fields")]
-    if result[0].exists():
-      result += [
-        r.imagefile for r in self.rectangles
-      ]
-    return result
-
-  @classmethod
-  def workflowdependencies(cls):
-    return [AlignSample] + super().workflowdependencies()
-
-class StitchAstroPathTissueMaskSample(ZoomSampleBase, ReadRectanglesDbload, WriteMaskSampleBase, AstroPathTissueMaskSample):
-  """
-  Stitch the inform mask together from layer 9 of the component tiffs.
-  The implementation is the same as zoom, and the mask will match the
-  wsi image to within a pixel (fractional pixel shifts are unavoidable
-  because the mask is discrete)
-  """
-  @classmethod
-  def logmodule(self): return "stitchtissuemask"
-
-  @property
-  def rectanglecsv(self): return "fields"
-  rectangletype = MaskField
-  @property
-  def rectangleextrakwargs(self):
-    return {
-      **super().rectangleextrakwargs,
-      "maskfolder": self.maskfolder,
-    }
-
-  def createmask(self):
-    """
-    Stitch the mask together from the component tiffs
-    """
-    self.logger.info("getting tissue mask")
-    #allocate memory for the mask array
-    #the default value, which will remain for any pixels that aren't
-    #in an HPF, is False, which corresponds to background
-    mask = np.zeros(shape=tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.bool)
-    onepixel = self.onepixel
-    nfields = len(self.rectangles)
-    for n, field in enumerate(self.rectangles, start=1):
-      self.logger.debug(f"putting in mask from field {field.n} ({n}/{nfields})")
-      tissuemask = unpackTissueMask(
-        field.tissuemaskfile,
-        (
-          floattoint(float(self.fheight)),
-          floattoint(float(self.fwidth)),
-        )
-      )
       #these lines are copied from zoom.py
       globalx1 = field.mx1 // onepixel * onepixel
       globalx2 = field.mx2 // onepixel * onepixel
@@ -300,11 +213,71 @@ class StitchAstroPathTissueMaskSample(ZoomSampleBase, ReadRectanglesDbload, Writ
       mask[
         floattoint(float(globaly1/onepixel)):floattoint(float(globaly2/onepixel)),
         floattoint(float(globalx1/onepixel)):floattoint(float(globalx2/onepixel)),
-      ] = tissuemask[
+      ] = im[
         floattoint(float(localy1/onepixel)):floattoint(float(localy2/onepixel)),
         floattoint(float(localx1/onepixel)):floattoint(float(localx2/onepixel)),
       ]
     return mask
+
+  @classmethod
+  def workflowdependencies(cls):
+    return [AlignSample] + super().workflowdependencies()
+
+class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadComponentTiff, InformMaskSample):
+  """
+  Stitch the inform mask together from layer 9 of the component tiffs.
+  The implementation is the same as zoom, and the mask will match the
+  wsi image to within a pixel (fractional pixel shifts are unavoidable
+  because the mask is discrete)
+  """
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, with_seg=True, layer="setlater", **kwargs)
+    self.setlayers(layer=self.masklayer)
+
+  @classmethod
+  def logmodule(self): return "stitchinformmask"
+
+  multilayer = False
+  rectangletype = FieldReadComponentTiff
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      **super().rectangleextrakwargs,
+      "with_seg": True,
+    }
+
+  @property
+  def inputfiles(self):
+    result = [self.csv("fields")]
+    if result[0].exists():
+      result += [
+        r.imagefile for r in self.rectangles
+      ]
+    return result
+
+  @property
+  def backgroundvalue(self): return 2
+  def getHPFmask(self, field):
+    with field.using_image() as im:
+      return im
+
+class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSample):
+  """
+  Stitch the AstroPath mask together from the bin files.
+  The implementation is the same as zoom, and the mask will match the
+  wsi image to within a pixel (fractional pixel shifts are unavoidable
+  because the mask is discrete)
+  """
+  @classmethod
+  def logmodule(self): return "stitchtissuemask"
+
+  rectangletype = MaskField
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      **super().rectangleextrakwargs,
+      "maskfolder": self.maskfolder,
+    }
 
   @property
   def inputfiles(self):
@@ -315,9 +288,16 @@ class StitchAstroPathTissueMaskSample(ZoomSampleBase, ReadRectanglesDbload, Writ
       ]
     return result
 
-  @classmethod
-  def workflowdependencies(cls):
-    return [AlignSample] + super().workflowdependencies()
+  @property
+  def backgroundvalue(self): return False
+  def getHPFmask(self, field):
+    return unpackTissueMask(
+        field.tissuemaskfile,
+        (
+          floattoint(float(self.fheight)),
+          floattoint(float(self.fwidth)),
+        )
+      )
 
 def astropathtissuemain(args=None):
   StitchAstroPathTissueMaskSample.runfromargumentparser(args=args)
