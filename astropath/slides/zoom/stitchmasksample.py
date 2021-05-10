@@ -268,7 +268,13 @@ class StitchAstroPathTissueMaskSample(ZoomSampleBase, ReadRectanglesDbload, Writ
     nfields = len(self.rectangles)
     for n, field in enumerate(self.rectangles, start=1):
       self.logger.debug(f"putting in mask from field {field.n} ({n}/{nfields})")
-      tissuemask = unpackTissueMask(field.tissuemaskfile, field.shape)
+      tissuemask = unpackTissueMask(
+        field.tissuemaskfile,
+        (
+          floattoint(float(self.fheight)),
+          floattoint(float(self.fwidth)),
+        )
+      )
       #these lines are copied from zoom.py
       globalx1 = field.mx1 // onepixel * onepixel
       globalx2 = field.mx2 // onepixel * onepixel
