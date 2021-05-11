@@ -1,6 +1,6 @@
 import abc, contextlib, numpy as np, pathlib
 from ...baseclasses.rectangle import MaskRectangle
-from ...baseclasses.sample import MaskSampleBase, ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, WorkflowSample
+from ...baseclasses.sample import MaskSampleBase, ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...hpfs.image_masking.utilities import unpackTissueMask
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.misc import floattoint
@@ -14,10 +14,8 @@ class MaskSample(MaskSampleBase, ZoomSampleBase):
   """
   Base class for any sample that has a mask that can be loaded from a file.
   """
-  def __init__(self, *args, maskfilesuffix=None, **kwargs):
+  def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
-    self.__maskfilesuffix = maskfilesuffix
     self.__using_mask_count = 0
 
   @classmethod
@@ -34,7 +32,7 @@ class MaskSample(MaskSampleBase, ZoomSampleBase):
     stem = pathlib.Path(f"{self.SlideID}_{self.maskfilestem()}")
     if stem.suffix or stem.parent != pathlib.Path("."):
       raise ValueError(f"maskfilestem {self.maskfilestem()} shouldn't have '.' or '/' in it")
-    filename = stem.with_suffix(self.__maskfilesuffix)
+    filename = stem.with_suffix(self.maskfilesuffix)
     folder = self.maskfolder
     return folder/filename
 
@@ -102,7 +100,7 @@ class TissueMaskSample(MaskSample):
       if self.__using_tissuemask_count == 0:
         del self.__tissuemask
 
-class WriteMaskSampleBase(MaskSample, WorkflowSample):
+class WriteMaskSampleBase(MaskSample, MaskWorkflowSampleBase):
   """
   Base class for a sample that creates and writes a mask to file
   """
@@ -130,7 +128,7 @@ class WriteMaskSampleBase(MaskSample, WorkflowSample):
   def getoutputfiles(cls, SlideID, *, maskroot, maskfilesuffix=None, **otherrootkwargs):
     if maskfilesuffix is None: maskfilesuffix = cls.defaultmaskfilesuffix
     return [
-      maskroot/SlideID/"im3"/"meanimage"/pathlib.Path(f"{SlideID}_{cls.maskfilestem()}").with_suffix(maskfilesuffix)
+      maskroot/SlideID/"im3"/"meanimage"/"image_masking"/pathlib.Path(f"{SlideID}_{cls.maskfilestem()}").with_suffix(maskfilesuffix)
     ]
 
 class InformMaskSample(TissueMaskSample):

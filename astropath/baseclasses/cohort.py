@@ -4,7 +4,7 @@ from ..utilities.misc import printlogger
 from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
-from .sample import SampleDef
+from .sample import SampleBase, SampleDef
 from .workflowdependency import ThingWithRoots
 
 class Cohort(ThingWithRoots, RunFromArgumentParser):
@@ -89,6 +89,7 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
     return self.rootkwargs
 
   def getlogger(self, samp):
+    if isinstance(samp, SampleBase): samp = samp.samp
     return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug)
 
   def run(self, **kwargs):
@@ -448,14 +449,12 @@ class WorkflowCohort(Cohort):
             raise
           return
 
-        super().processsample(sample, **kwargs)
+        with self.getlogger(sample):
+          super().processsample(sample, **kwargs)
 
-        try:
           status = sample.runstatus
           #we don't want to do anything if there's an error, because that
           #was already logged so no need to log it again and confuse the issue.
-          if (status.missingfiles or not status.ended) and status.error is None:
+          if status.missingfiles and status.error is None:
+            status.ended = True #to get the missing files in the __str__
             raise RuntimeError(f"{sample.SlideID} {status}")
-        except Exception: #don't log KeyboardInterrupt here
-          with self.getlogger(sample):
-            raise
