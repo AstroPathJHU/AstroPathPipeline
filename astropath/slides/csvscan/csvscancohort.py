@@ -13,7 +13,8 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
 
   def run(self, **kwargs):
     super().run(**kwargs)
-    self.makeglobalcsv()
+    with self.globallogger():
+      self.makeglobalcsv()
 
   @property
   def globalcsvs(self):

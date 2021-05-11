@@ -1,6 +1,5 @@
-import abc, pathlib, re
+import abc, os, pathlib, re
 from ..utilities import units
-from ..utilities.misc import printlogger
 from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
@@ -88,9 +87,13 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
   def workflowkwargs(self):
     return self.rootkwargs
 
-  def getlogger(self, samp):
+  def globallogger(self):
+    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
+    return self.getlogger(samp, samplelog=os.devnull)
+
+  def getlogger(self, samp, **kwargs):
     if isinstance(samp, SampleBase): samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug)
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug, **kwargs)
 
   def run(self, **kwargs):
     """
@@ -226,7 +229,7 @@ class DbloadCohort(Cohort, DbloadArgumentParser):
 
 class GlobalDbloadCohort(DbloadCohort, TableReader):
   @property
-  def logger(self): return printlogger
+  def logger(self): return self.globallogger()
   @property
   def dbload(self):
     return self.dbloadroot/"dbload"
