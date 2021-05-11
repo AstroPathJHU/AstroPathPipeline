@@ -21,4 +21,4 @@ Each of these steps (creating algorithms, setting up VMs, adding algorithms to t
   - [5.10.4.2. Instructions](docs/SavingProjectsfortheinFormCellAnalysisJHUProcessingFarm.md#51042-instructions "Title")
 - [5.10.5. Setting up the Virtual Machines for inForm](docs "Title")
 - [5.10.6. Adding Slides to the inForm Queue](docs "Title")
-- [5.10.7. inForm Processing Code](BatchProcessing "Title")
+- [5.10.7. Processing inForm Cell Analysis Tasks](BatchProcessing "Title")
