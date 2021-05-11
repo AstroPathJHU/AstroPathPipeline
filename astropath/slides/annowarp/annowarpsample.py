@@ -3,7 +3,7 @@ import abc, contextlib, csv, cvxpy as cp, itertools, methodtools, more_itertools
 from ...baseclasses.csvclasses import constantsdict, Region, Vertex
 from ...baseclasses.polygon import SimplePolygon
 from ...baseclasses.qptiff import QPTiff
-from ...baseclasses.sample import ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, ZoomFolderSampleBase
+from ...baseclasses.sample import MaskWorkflowSampleBase, ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint
@@ -862,7 +862,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
   def workflowdependencies(cls):
     return [ZoomSample] + super().workflowdependencies()
 
-class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
+class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample, MaskWorkflowSampleBase):
   """
   Use a tissue mask to determine which tiles to use for alignment
 
