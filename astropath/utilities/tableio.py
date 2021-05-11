@@ -166,7 +166,7 @@ def field_size_limit_context(limit):
   finally:
     csv.field_size_limit(oldlimit)
 
-def pathfield(**metadata):
+def pathfield(*args, **metadata):
   def guesspathtype(path):
     if isinstance(path, pathlib.PurePath):
       return path
@@ -189,12 +189,14 @@ def pathfield(**metadata):
     **metadata,
   }
 
-  return MetaDataAnnotation(pathlib.Path, **metadata)
+  return MetaDataAnnotation(*args, **metadata)
 
-def datefield(dateformat, *, optional=False, **metadata):
+__notgiven = object()
+def datefield(dateformat, *, defaultvalue=__notgiven, optional=False, **metadata):
   metadata = {
     "readfunction": lambda x: None if optional and not x else datetime.datetime.strptime(x, dateformat),
     "writefunction": lambda x: "" if optional and x is None else x.strftime(format=dateformat),
     **metadata,
   }
-  return MetaDataAnnotation(datetime.datetime, **metadata)
+  args = (defaultvalue,) if defaultvalue is not __notgiven else ()
+  return MetaDataAnnotation(*args, **metadata)

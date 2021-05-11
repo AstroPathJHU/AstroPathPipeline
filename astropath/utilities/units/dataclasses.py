@@ -16,7 +16,8 @@ def __setup(mode):
     raise ValueError(f"Invalid mode {mode}")
   currentmode = mode
 
-def distancefield(*, pixelsormicrons, typ=Distance, power=1, dtype=float, secondfunction=None, pscalename="pscale", **metadata):
+__notgiven = object()
+def distancefield(*defaultvalue, pixelsormicrons, power=1, dtype=float, secondfunction=None, pscalename="pscale", **metadata):
   if secondfunction is None:
     if issubclass(dtype, numbers.Integral):
       secondfunction = functools.partial(floattoint, atol=1e-9)
@@ -48,7 +49,7 @@ def distancefield(*, pixelsormicrons, typ=Distance, power=1, dtype=float, second
     "writefunctionkwargs": lambda object: {"pscale": getattr(object, pscalename(object)), "power": power(object), "pixelsormicrons": pixelsormicrons(object)},
     **metadata,
   }
-  return MetaDataAnnotation(typ, **metadata)
+  return MetaDataAnnotation(*defaultvalue, **metadata)
 
 def pscalefield(typ=float, **metadata):
   metadata = {
@@ -140,7 +141,7 @@ class DataClassWithDistances(MyDataClass):
     super().__post_init__(*args, readingfromfile=readingfromfile, **kwargs)
 
 class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
-  pscale: pscalefield(float)
+  pscale: float = pscalefield()
   @property
   def pscale(self): return self.__pscale
   @pscale.setter
@@ -148,7 +149,7 @@ class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
 DataClassWithPscale.__defaults__.pop("pscale")
 
 class DataClassWithQpscale(DataClassWithDistances, ThingWithQpscale):
-  qpscale: pscalefield(float)
+  qpscale: float = pscalefield()
   @property
   def qpscale(self): return self.__qpscale
   @qpscale.setter
@@ -156,7 +157,7 @@ class DataClassWithQpscale(DataClassWithDistances, ThingWithQpscale):
 DataClassWithQpscale.__defaults__.pop("qpscale")
 
 class DataClassWithApscale(DataClassWithDistances, ThingWithApscale):
-  apscale: pscalefield(float)
+  apscale: float = pscalefield()
   @property
   def apscale(self): return self.__apscale
   @apscale.setter
@@ -164,7 +165,7 @@ class DataClassWithApscale(DataClassWithDistances, ThingWithApscale):
 DataClassWithApscale.__defaults__.pop("apscale")
 
 class DataClassWithImscale(DataClassWithDistances, ThingWithImscale):
-  imscale: pscalefield(float)
+  imscale: float = pscalefield()
   @property
   def imscale(self): return self.__imscale
   @imscale.setter
