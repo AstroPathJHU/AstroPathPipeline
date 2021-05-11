@@ -1,4 +1,4 @@
-# Proccessing InForm Tasks 
+# Proccessing inForm Cell Analysis Tasks 
 ## Description
 This module was designed to launch batch processing for a set of images in a directory through Akoya's InForm Cell Analysis software automatically. The code uses a queued based system for processing and is designed to run continously. There are two module scripts. The first is a "master" script which opens an *inForm_queue.csv* spreadsheet and disseminates tasks to spreadsheets kept on worker computers. The second script runs on each of the worker locations, checking this worker spreadsheet for new batch tasks and launching those new batch algorithm tasks through inForm. 
 
