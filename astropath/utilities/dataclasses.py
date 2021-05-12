@@ -36,7 +36,7 @@ class DataClassWithMetaDataMeta(DataClassMeta):
           dict_[annoname] = typ.defaultvalue
         except AttributeError:
           del dict_[annoname]
-        __annotationmetadata__[annoname] = annovalue
+        __annotationmetadata__[annoname] = annovalue.metadata
 
     return super().__new__(mcs, name, bases, dict_, **kwargs)
 

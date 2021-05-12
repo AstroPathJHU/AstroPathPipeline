@@ -200,3 +200,12 @@ def datefield(dateformat, *, defaultvalue=__notgiven, optional=False, **metadata
   }
   args = (defaultvalue,) if defaultvalue is not __notgiven else ()
   return MetaDataAnnotation(*args, **metadata)
+
+def timestampfield(*, defaultvalue=__notgiven, optional=False, **metadata):
+  metadata = {
+    "readfunction": lambda x: None if optional and not x else datetime.datetime.fromtimestamp(int(x)),
+    "writefunction": lambda x: "" if optional and x is None else int(datetime.datetime.timestamp(x)),
+    **metadata,
+  }
+  args = (defaultvalue,) if defaultvalue is not __notgiven else ()
+  return MetaDataAnnotation(*args, **metadata)
