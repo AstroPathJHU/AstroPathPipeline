@@ -1,0 +1,6 @@
+name,layer,color,synonyms
+good tissue,1,FFFF00,
+tumor,2,00FF00,tumour
+lymph node,3,FF0000,
+regression,4,00FFFF,
+epithelial islands,5,FF00FF,

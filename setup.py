@@ -40,7 +40,10 @@ setupkwargs = dict(
     "test": ["beautifulsoup4", "flake8", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
     "gdal": ["gdal>=3.2.1"],
     "vips": ["pyvips"],
-  }
+  },
+  package_data = {
+    "astropath": ["baseclasses/master_annotation_list.csv"],
+  },
 )
 
 setupkwargs["extras_require"]["all"] = sum(setupkwargs["extras_require"].values(), [])
