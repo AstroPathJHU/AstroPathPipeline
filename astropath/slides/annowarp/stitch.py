@@ -559,7 +559,6 @@ class AnnoWarpStitchResultEntry(DataClassWithPscale):
   value: the value of the parameter or covariance entry
   description: description in words
   """
-  pixelsormicrons = "pixels"
   @classmethod
   def powerfordescription(cls, self_or_description):
     if isinstance(self_or_description, cls):
@@ -584,5 +583,5 @@ class AnnoWarpStitchResultEntry(DataClassWithPscale):
     else:
       return dct[description]
   n: int
-  value: distancefield(pixelsormicrons=pixelsormicrons, power=lambda self: self.powerfordescription(self))
+  value: units.Distance = distancefield(pixelsormicrons="pixels", power=lambda self: self.powerfordescription(self))
   description: str

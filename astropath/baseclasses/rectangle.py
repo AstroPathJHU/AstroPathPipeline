@@ -1,6 +1,5 @@
 import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
 from ..utilities import units
-from ..utilities.dataclasses import MetaDataAnnotation
 from ..utilities.misc import floattoint, memmapcontext
 from ..utilities.tableio import timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield

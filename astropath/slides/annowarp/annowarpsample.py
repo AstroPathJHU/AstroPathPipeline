@@ -208,7 +208,6 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     """
     if self.__images is not None: return self.__images
     with self.using_images() as (wsi, fqptiff):
-      print(wsi.mode)
       #load the images
       zoomlevel = fqptiff.zoomlevels[0]
       qptiff = PIL.Image.fromarray(zoomlevel[self.qptifflayer-1].asarray())
@@ -988,9 +987,8 @@ class WarpedVertex(QPTiffVertex):
   A warped vertex, which includes info about the original
   and warped positions
   """
-  __pixelsormicrons = "pixels"
-  wx: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
-  wy: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
+  wx: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  wy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
 
   @classmethod
   def transforminitargs(cls, *args, wxvec=None, **kwargs):
@@ -1049,19 +1047,15 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   covxx, covxy, covyy: the covariance matrix for dx and dy
   exit: the exit code of the alignment (0=success, nonzero=failure, 255=exception)
   """
-  __fmt = "{:.6g}"
-  pixelsormicrons = "pixels"
-  pscalename = "imscale"
   n: int
-  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
-  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
-  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename=pscalename)
-  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename=pscalename)
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
+  x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="imscale")
+  y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="imscale")
+  dx: units.Distance = distancefield(pixelsormicrons="pixels", secondfunction="{:.6g}".format, pscalename="imscale")
+  dy: units.Distance = distancefield(pixelsormicrons="pixels", secondfunction="{:.6g}".format, pscalename="imscale")
+  covxx: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format, pscalename="imscale")
+  covxy: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format, pscalename="imscale")
+  covyy: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format, pscalename="imscale")
   exit: int
-  del __fmt
 
   @classmethod
   def transforminitargs(cls, *args, **kwargs):

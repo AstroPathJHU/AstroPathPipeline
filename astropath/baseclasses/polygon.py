@@ -181,8 +181,6 @@ class SimplePolygon(Polygon):
   pixels: a string in GDAL format giving the corners of the polygon in pixels
   """
 
-  pixelsormicrons = "pixels"
-
   def __init__(self, *, vertexarray=None, vertices=None, pscale=None, apscale=None, power=1):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")

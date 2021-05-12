@@ -1,16 +1,16 @@
 import dataclassy, functools, methodtools, numbers, numpy as np
 from ..dataclasses import MetaDataAnnotation, MyDataClass
 from ..misc import floattoint
-from .core import Distance, ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
+from .core import ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
 
 def __setup(mode):
-  global currentmode, Distance, microns, pixels, _pscale, safe, UnitsError
+  global currentmode, microns, pixels, _pscale, safe, UnitsError
   from . import safe as safe
   if mode == "safe":
-    from .safe import Distance, microns, pixels
+    from .safe import microns, pixels
     from .safe.core import _pscale
   elif mode == "fast":
-    from .fast import Distance, microns, pixels
+    from .fast import microns, pixels
     def _pscale(distance): return None
   else:
     raise ValueError(f"Invalid mode {mode}")

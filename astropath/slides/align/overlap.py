@@ -455,24 +455,22 @@ class AlignmentResult(AlignmentResultBase):
   covxx, covxy, covyy: the covariance matrix on (dx, dy)
   exception: the exception object if the exit code is 255
   """
-  pixelsormicrons = "pixels"
-
   n: int
   p1: int
   p2: int
   code: int
   layer: int
   exit: int
-  dx: distancefield(pixelsormicrons=pixelsormicrons)
-  dy: distancefield(pixelsormicrons=pixelsormicrons)
+  dx: units.Distance = distancefield(pixelsormicrons="pixels")
+  dy: units.Distance = distancefield(pixelsormicrons="pixels")
   sc: float
   mse1: float
   mse2: float
   mse3: float
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  exception: MetaDataAnnotation(typing.Optional[Exception], includeintable=False) = None
+  covxx: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  covyy: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  covxy: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  exception: typing.Optional[Exception] = MetaDataAnnotation(None, includeintable=False)
 
 class LayerAlignmentResult(AlignmentResultBase):
   """
@@ -493,8 +491,6 @@ class LayerAlignmentResult(AlignmentResultBase):
   covxx, covxy, covyy: the covariance matrix on (dx, dy)
   exception: the exception object if the exit code is 255
   """
-  pixelsormicrons = "pixels"
-
   n: int
   p1: int
   p2: int
@@ -502,13 +498,13 @@ class LayerAlignmentResult(AlignmentResultBase):
   layer1: int
   layer2: int
   exit: int
-  dx: distancefield(pixelsormicrons=pixelsormicrons)
-  dy: distancefield(pixelsormicrons=pixelsormicrons)
+  dx: units.Distance = distancefield(pixelsormicrons="pixels")
+  dy: units.Distance = distancefield(pixelsormicrons="pixels")
   sc: float
   mse1: float
   mse2: float
   mse3: float
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  exception: MetaDataAnnotation(typing.Optional[Exception], includeintable=False) = None
+  covxx: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  covyy: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  covxy: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  exception: typing.Optional[Exception] = MetaDataAnnotation(None, includeintable=False)

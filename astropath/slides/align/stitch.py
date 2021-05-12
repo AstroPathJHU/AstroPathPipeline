@@ -871,14 +871,14 @@ class AffineEntry(MyDataClass):
   description: description of the entry
   """
   n: int
-  value: MetaDataAnnotation(float, writefunction=float)
+  value: float = MetaDataAnnotation(writefunction=float)
   description: str
 
 class AffineNominalEntry(AffineEntry):
   """
   Entry in the affine matrix
   """
-  matrixentry: MetaDataAnnotation(unc.ufloat, includeintable=False)
+  matrixentry: unc.ufloat = MetaDataAnnotation(includeintable=False)
 
   @classmethod
   def transforminitargs(cls, *, matrixentry, **kwargs):
@@ -888,8 +888,8 @@ class AffineCovarianceEntry(AffineEntry):
   """
   Entry in the covariance matrix of the affine matrix
   """
-  entry1: MetaDataAnnotation(unc.ufloat, includeintable=False)
-  entry2: MetaDataAnnotation(unc.ufloat, includeintable=False)
+  entry1: unc.ufloat = MetaDataAnnotation(includeintable=False)
+  entry2: unc.ufloat = MetaDataAnnotation(includeintable=False)
 
   @classmethod
   def transforminitargs(cls, *, entry1, entry2, **kwargs):
