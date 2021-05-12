@@ -1,5 +1,6 @@
 import abc, contextlib, csv, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
+from ...baseclasses.annotationpolygonxmlreader import XMLPolygonAnnotationReader
 from ...baseclasses.csvclasses import constantsdict, Region, Vertex
 from ...baseclasses.polygon import SimplePolygon
 from ...baseclasses.qptiff import QPTiff
@@ -641,62 +642,46 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     if filename is None: filename = self.stitchcsv
     self.__stitchresult.writestitchresult(filename=filename, logger=self.logger)
 
-  @property
-  def oldverticescsv(self):
+  @methodtools.lru_cache()
+  def __getXMLpolygonannotations(self, *, pscale=None, apscale=None):
     """
-    filename of the original vertices csv file
+    Read the annotations, vertices, and regions from the xml file
     """
-    return self.csv("vertices")
-  @property
-  def newverticescsv(self):
-    """
-    filename of the new vertices csv file
-    """
-    return self.csv("vertices")
-  @property
-  def oldregionscsv(self):
-    """
-    filename of the original regions csv file
-    """
-    return self.csv("regions")
-  @property
-  def newregionscsv(self):
-    """
-    filename of the new regions csv file
-    """
-    return self.csv("regions")
+    if pscale is None: return self.__getXMLpolygonannotations(pscale=self.pscale, apscale=apscale)
+    if apscale is None: return self.__getXMLpolygonannotations(pscale=pscale, apscale=self.apscale)
+    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=self.pscale, apscale=self.apscale, logger=self.logger).getXMLpolygonannotations()
 
   @methodtools.lru_cache()
-  def __getvertices(self, *, apscale, pscale, filename=None):
+  def __getannotations(self, **kwargs):
+    """
+    Read the annotations, vertices, and regions from the xml file
+    """
+    return self.__getXMLpolygonannotations(**kwargs)[0]
+
+  @property
+  def annotations(self):
+    return self.__getannotations()
+
+  @methodtools.lru_cache()
+  def __getvertices(self, **kwargs):
     """
     read in the original vertices from vertices.csv
     """
-    if filename is None: filename = self.oldverticescsv
-    extrakwargs={
-     "apscale": apscale,
-     "pscale": pscale,
-     "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, apscale),
-     "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, apscale)
-    }
-    with open(filename) as f:
-      reader = csv.DictReader(f)
-      #allow reading in a file that already has previous warped vertex positions
-      #(which will be overwritten) or one that only has original positions
-      if "wx" in reader.fieldnames and "wy" in reader.fieldnames:
-        typ = WarpedVertex
-      else:
-        typ = QPTiffVertex
-    vertices = self.readtable(filename, typ, extrakwargs=extrakwargs)
-    if typ == WarpedVertex:
-      vertices = [v.originalvertex for v in vertices]
-    return vertices
+    vertices = self.__getXMLpolygonannotations(**kwargs)[2]
+    return [
+      QPTiffVertex(
+        vertex=v,
+        bigtilesize=units.convertpscale(self.bigtilesize, self.imscale, v.apscale),
+        bigtileoffset=units.convertpscale(self.bigtileoffset, self.imscale, v.apscale),
+      ) for v in vertices
+    ]
 
   @property
   def vertices(self):
     """
     get the original vertices in im3 coordinates
     """
-    return self.__getvertices(apscale=self.apscale, pscale=self.pscale)
+    return self.__getvertices()
   @property
   def apvertices(self):
     """
@@ -728,19 +713,18 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     return self.__getwarpedvertices(apscale=self.apscale, pscale=self.pscale)
 
   @methodtools.lru_cache()
-  def __getregions(self, *, apscale, filename=None):
+  def __getregions(self, **kwargs):
     """
-    read in the original regions from regions.csv
+    read in the original regions from the xml
     """
-    if filename is None: filename = self.oldregionscsv
-    return self.readtable(filename, Region, fieldsizelimit=int(1e6))
+    return self.__getXMLpolygonannotations(**kwargs)[1]
 
   @property
   def regions(self):
     """
-    read in the original regions from regions.csv
+    read in the original regions from the xml
     """
-    return self.__getregions(apscale=self.apscale)
+    return self.__getregions()
 
   @methodtools.lru_cache()
   @property
@@ -779,12 +763,20 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
       )
     return result
 
+  def writeannotations(self, *, filename=None):
+    """
+    Write the annotations to the csv file
+    """
+    self.logger.info("writing annotations")
+    if filename is None: filename = self.csv("annotations")
+    writetable(filename, self.annotations)
+
   def writevertices(self, *, filename=None):
     """
     write the warped vertices to the csv file
     """
     self.logger.info("writing vertices")
-    if filename is None: filename = self.newverticescsv
+    if filename is None: filename = self.csv("vertices")
     writetable(filename, self.warpedvertices)
 
   def writeregions(self, *, filename=None):
@@ -792,7 +784,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     write the warped regions to the csv file
     """
     self.logger.info("writing regions")
-    if filename is None: filename = self.newregionscsv
+    if filename is None: filename = self.csv("regions")
     writetable(filename, self.warpedregions)
 
   def runannowarp(self, *, readalignments=False, **kwargs):
@@ -803,6 +795,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
                     otherwise actually do the alignment
     other kwargs are passed to stitch()
     """
+    self.writeannotations()
     if not readalignments:
       self.align()
       self.writealignments()
@@ -821,8 +814,6 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
       self.qptifffilename,
       self.wsifilename(layer=self.wsilayer),
       self.csv("fields"),
-      self.oldverticescsv,
-      self.oldregionscsv,
     ]
 
   @classmethod
@@ -834,28 +825,6 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
       dbload/f"{SlideID}_vertices.csv",
       dbload/f"{SlideID}_regions.csv",
     ]
-
-  @classmethod
-  def getmissingoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
-    outputfiles = cls.getoutputfiles(SlideID, dbloadroot=dbloadroot, **otherrootkwargs)
-    result = super().getmissingoutputfiles(SlideID, dbloadroot=dbloadroot, **otherrootkwargs)
-
-    verticescsv, = (_ for _ in outputfiles if _.name.endswith("vertices.csv"))
-    regionscsv, = (_ for _ in outputfiles if _.name.endswith("regions.csv"))
-
-    if verticescsv not in result:
-      with open(verticescsv) as f:
-        reader = csv.DictReader(f)
-        if "wx" not in reader.fieldnames or "wy" not in reader.fieldnames:
-          result.append(verticescsv)
-    if regionscsv not in result:
-      constants = constantsdict(regionscsv.parent/f"{SlideID}_constants.csv")
-      regions = readtable(regionscsv, Region, extrakwargs={"apscale": constants["apscale"], "pscale": constants["pscale"]}, maxrows=1, fieldsizelimit=int(1e6))
-      if regions:
-        region, = regions
-        if region.poly is None:
-          result.append(regionscsv)
-    return result
 
   @classmethod
   def workflowdependencies(cls):

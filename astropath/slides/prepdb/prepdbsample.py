@@ -1,11 +1,26 @@
 import methodtools, numpy as np, PIL, skimage
 from ...baseclasses.annotationpolygonxmlreader import XMLPolygonAnnotationReader
+from ...baseclasses.argumentparser import DbloadArgumentParser
 from ...baseclasses.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
 from ...baseclasses.overlap import RectangleOverlapCollection
 from ...baseclasses.qptiff import QPTiff
 from ...baseclasses.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
 from ...baseclasses.workflowdependency import ShredXML
 from ...utilities import units
+
+class PrepDbArgumentParser(DbloadArgumentParser):
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--skip-annotations", action="store_true", help="do not check the annotations for validity and do not write the annotations, vertices, and regions csvs (they will be written later, in the annowarp step)")
+    return p
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().runkwargsfromargumentparser(parsed_args_dict),
+      "skipannotations": parsed_args_dict.pop("skip_annotations"),
+    }
 
 class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
   """
@@ -259,7 +274,7 @@ class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
     ]
     return constants
 
-class PrepDbSample(PrepDbSampleBase, DbloadSampleBase):
+class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
   def writebatch(self):
     self.logger.info("write batch")
     self.writecsv("batch", self.getbatch())
@@ -306,19 +321,22 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase):
     self.logger.info("write constants")
     self.writecsv("constants", self.getconstants())
 
-  def writemetadata(self):
+  def writemetadata(self, *, skipannotations=False):
     self.dbload.mkdir(parents=True, exist_ok=True)
     self.writerectangles()
     self.writeexposures()
     self.writeoverlaps()
-    self.writeannotations()
     self.writebatch()
     self.writeconstants()
     self.writeglobals()
     self.writeqptiffcsv()
     self.writeqptiffjpg()
-    self.writevertices()
-    self.writeregions()
+    if skipannotations:
+      self.warningglobal("not checking annotations, as requested. the csv will be written in the annowarp step.")
+    else:
+      self.writeannotations()
+      self.writevertices()
+      self.writeregions()
 
   run = writemetadata
 
