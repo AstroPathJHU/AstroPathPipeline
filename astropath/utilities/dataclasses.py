@@ -33,7 +33,7 @@ class DataClassWithMetaDataMeta(DataClassMeta):
         raise TypeError(f"MetaDataAnnotation should be given as the default value for {annoname}, not the type")
       if isinstance(annovalue, MetaDataAnnotation):
         try:
-          dict_[annoname] = typ.defaultvalue
+          dict_[annoname] = annovalue.defaultvalue
         except AttributeError:
           del dict_[annoname]
         __annotationmetadata__[annoname] = annovalue.metadata

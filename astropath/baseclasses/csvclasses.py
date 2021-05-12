@@ -96,9 +96,9 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
   )
   unit: str
   description: str
-  pscale = pscalefield(None)
-  apscale = pscalefield(None)
-  qpscale = pscalefield(None)
+  pscale: float = pscalefield(None)
+  apscale: float = pscalefield(None)
+  qpscale: float = pscalefield(None)
 
 def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
   """
