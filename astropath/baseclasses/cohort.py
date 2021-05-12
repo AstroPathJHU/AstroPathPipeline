@@ -444,7 +444,7 @@ class WorkflowCohort(Cohort):
       with sample.job_lock() as lock:
         if not lock: return
         try:
-          missinginputs = [file for file in sample.inputfiles if not file.exists()]
+          missinginputs = [file for file in sample.inputfiles(**kwargs) if not file.exists()]
           if missinginputs:
             raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
         except Exception: #don't log KeyboardInterrupt here

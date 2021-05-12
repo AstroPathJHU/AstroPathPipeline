@@ -161,8 +161,8 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
     dbload = dbloadroot/SlideID/"dbload"
     return [dbload/f"{SlideID}_loadfiles.csv"]
 
-  @property
-  def inputfiles(self): return []
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs)
 
   @classmethod
   def logmodule(cls): return "csvscan"

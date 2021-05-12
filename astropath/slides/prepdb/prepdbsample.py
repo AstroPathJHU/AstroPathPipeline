@@ -332,7 +332,7 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
     self.writeqptiffcsv()
     self.writeqptiffjpg()
     if skipannotations:
-      self.warningglobal("not checking annotations, as requested. the csv will be written in the annowarp step.")
+      self.logger.warningglobal("as requested, not checking annotations. the csvs will be written in the annowarp step.")
     else:
       self.writeannotations()
       self.writevertices()
@@ -340,22 +340,24 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
 
   run = writemetadata
 
-  @property
-  def inputfiles(self):
-    return [
-      self.annotationspolygonsxmlfile,
+  def inputfiles(self, *, skipannotations=False, **kwargs):
+    result = super().inputfiles(**kwargs) + [
       self.annotationsxmlfile,
       self.fullxmlfile,
       self.parametersxmlfile,
       self.qptifffilename,
       self.scanfolder/"MSI",
     ]
+    if not skipannotations:
+      result += [
+        self.annotationspolygonsxmlfile,
+      ]
+    return result
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+  def getoutputfiles(cls, SlideID, *, dbloadroot, skipannotations=False, **otherkwargs):
     dbload = dbloadroot/SlideID/"dbload"
     return [
-      dbload/f"{SlideID}_annotations.csv",
       dbload/f"{SlideID}_batch.csv",
       dbload/f"{SlideID}_constants.csv",
       dbload/f"{SlideID}_exposures.csv",
@@ -363,9 +365,11 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
       dbload/f"{SlideID}_qptiff.csv",
       dbload/f"{SlideID}_qptiff.jpg",
       dbload/f"{SlideID}_rect.csv",
-      dbload/f"{SlideID}_regions.csv",
-      dbload/f"{SlideID}_vertices.csv",
     ]
+    #do not include annotations, regions, and vertices
+    #they get rewritten anyway in annowarp, the only reason
+    #to write them here is to check the annotation validity
+    #(which can be skipped)
 
   @classmethod
   def workflowdependencies(cls):

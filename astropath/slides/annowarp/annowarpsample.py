@@ -1,14 +1,14 @@
-import abc, contextlib, csv, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
+import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ...baseclasses.annotationpolygonxmlreader import XMLPolygonAnnotationReader
-from ...baseclasses.csvclasses import constantsdict, Region, Vertex
+from ...baseclasses.csvclasses import Region, Vertex
 from ...baseclasses.polygon import SimplePolygon
 from ...baseclasses.qptiff import QPTiff
 from ...baseclasses.sample import MaskWorkflowSampleBase, ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint
-from ...utilities.tableio import readtable, writetable
+from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift
 from ..align.field import FieldReadComponentTiffMultiLayer
@@ -808,9 +808,8 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
 
   run = runannowarp
 
-  @property
-  def inputfiles(self):
-    return [
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
       self.qptifffilename,
       self.wsifilename(layer=self.wsilayer),
       self.csv("fields"),

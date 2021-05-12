@@ -12,7 +12,7 @@ class TestPrepDb(unittest.TestCase):
   def setUp(self):
     self.maxDiff = None
 
-  def testPrepDb(self, SlideID="M21_1", units="safe"):
+  def testPrepDb(self, SlideID="M21_1", units="safe", skipannotations=False):
     logs = (
       thisfolder/"data"/"logfiles"/"prepdb.log",
       thisfolder/"data"/SlideID/"logfiles"/f"{SlideID}-prepdb.log",
@@ -24,6 +24,8 @@ class TestPrepDb(unittest.TestCase):
         pass
 
     args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits"]
+    if skipannotations:
+      args.append("--skip-annotations")
     PrepDbCohort.runfromargumentparser(args)
     sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
 
@@ -40,6 +42,9 @@ class TestPrepDb(unittest.TestCase):
       (f"{SlideID}_regions.csv", Region, {}),
     ):
       if filename == "M21_1_globals.csv": continue
+      if skipannotations and cls in (Annotation, Vertex, Region):
+        self.assertFalse((thisfolder/"data"/SlideID/"dbload"/filename).exists())
+        continue
       try:
         rows = sample.readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, checkorder=True, extrakwargs=extrakwargs)
         targetrows = sample.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, extrakwargs=extrakwargs)
@@ -55,14 +60,12 @@ class TestPrepDb(unittest.TestCase):
   def testPrepDbFastUnits(self, SlideID="M21_1"):
     self.testPrepDb(SlideID, units="fast")
 
-  @unittest.expectedFailure
-  def testPrepDbPolaris(self):
+  def testPrepDbPolaris(self, **kwargs):
     from .data.YZ71.im3.Scan3.assembleqptiff import assembleqptiff
     assembleqptiff()
-    self.testPrepDb(SlideID="YZ71")
-  @unittest.expectedFailure
+    self.testPrepDb(SlideID="YZ71", skipannotations=True, **kwargs)
   def testPrepDbPolarisFastUnits(self):
-    self.testPrepDb(SlideID="YZ71", units="fast")
+    self.testPrepDbPolaris(units="fast")
 
   def testPrepDbM206FastUnits(self):
     from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
