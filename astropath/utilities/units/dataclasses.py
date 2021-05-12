@@ -51,13 +51,13 @@ def distancefield(*defaultvalue, pixelsormicrons, power=1, dtype=float, secondfu
   }
   return MetaDataAnnotation(*defaultvalue, **metadata)
 
-def pscalefield(typ=float, **metadata):
+def pscalefield(*defaultvalue, **metadata):
   metadata = {
     "includeintable": False,
     "ispscalefield": True,
     **metadata,
   }
-  return MetaDataAnnotation(typ, **metadata)
+  return MetaDataAnnotation(*defaultvalue, **metadata)
 
 class DataClassWithDistances(MyDataClass):
   @methodtools.lru_cache()
@@ -141,33 +141,37 @@ class DataClassWithDistances(MyDataClass):
     super().__post_init__(*args, readingfromfile=readingfromfile, **kwargs)
 
 class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
-  pscale: float = pscalefield()
+  pscale: float
   @property
   def pscale(self): return self.__pscale
   @pscale.setter
   def pscale(self, pscale): self.__pscale = pscale
+  pscale = pscalefield(pscale)
 DataClassWithPscale.__defaults__.pop("pscale")
 
 class DataClassWithQpscale(DataClassWithDistances, ThingWithQpscale):
-  qpscale: float = pscalefield()
+  qpscale: float
   @property
   def qpscale(self): return self.__qpscale
   @qpscale.setter
   def qpscale(self, qpscale): self.__qpscale = qpscale
+  qpscale = pscalefield(qpscale)
 DataClassWithQpscale.__defaults__.pop("qpscale")
 
 class DataClassWithApscale(DataClassWithDistances, ThingWithApscale):
-  apscale: float = pscalefield()
+  apscale: float
   @property
   def apscale(self): return self.__apscale
   @apscale.setter
   def apscale(self, apscale): self.__apscale = apscale
+  apscale = pscalefield(apscale)
 DataClassWithApscale.__defaults__.pop("apscale")
 
 class DataClassWithImscale(DataClassWithDistances, ThingWithImscale):
-  imscale: float = pscalefield()
+  imscale: float
   @property
   def imscale(self): return self.__imscale
   @imscale.setter
   def imscale(self, imscale): self.__imscale = imscale
+  imscale = pscalefield(imscale)
 DataClassWithImscale.__defaults__.pop("imscale")
