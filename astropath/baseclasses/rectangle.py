@@ -1,7 +1,7 @@
 import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
 from ..utilities import units
-from ..utilities.dataclasses import MetaDataAnnotation
 from ..utilities.misc import floattoint, memmapcontext
+from ..utilities.tableio import timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
 class Rectangle(DataClassWithPscale):
@@ -21,16 +21,14 @@ class Rectangle(DataClassWithPscale):
     allexposures: the list of exposures from the exposures csv
   """
 
-  pixelsormicrons = "microns"
-
   n: int
-  x: distancefield(pixelsormicrons=pixelsormicrons)
-  y: distancefield(pixelsormicrons=pixelsormicrons)
-  w: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  h: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  cx: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  cy: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  t: MetaDataAnnotation(datetime.datetime, readfunction=lambda x: datetime.datetime.fromtimestamp(int(x)), writefunction=lambda x: int(datetime.datetime.timestamp(x)))
+  x: units.Distance = distancefield(pixelsormicrons="microns")
+  y: units.Distance = distancefield(pixelsormicrons="microns")
+  w: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
+  h: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
+  cx: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
+  cy: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
+  t: datetime.datetime = timestampfield()
   file: str
 
   def __post_init__(self, *args, xmlfolder=None, allexposures=None, **kwargs):

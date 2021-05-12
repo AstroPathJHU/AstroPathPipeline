@@ -1,5 +1,6 @@
 import abc, networkx as nx, numpy as np, pathlib
 
+from ..utilities import units
 from ..utilities.tableio import readtable
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .csvclasses import constantsdict
@@ -21,15 +22,13 @@ class Overlap(DataClassWithPscale):
               but can also include others if that's easier
   """
 
-  pixelsormicrons = "microns"
-
   n: int
   p1: int
   p2: int
-  x1: distancefield(pixelsormicrons=pixelsormicrons)
-  y1: distancefield(pixelsormicrons=pixelsormicrons)
-  x2: distancefield(pixelsormicrons=pixelsormicrons)
-  y2: distancefield(pixelsormicrons=pixelsormicrons)
+  x1: units.Distance = distancefield(pixelsormicrons="microns")
+  y1: units.Distance = distancefield(pixelsormicrons="microns")
+  x2: units.Distance = distancefield(pixelsormicrons="microns")
+  y2: units.Distance = distancefield(pixelsormicrons="microns")
   tag: int
 
   def __post_init__(self, *, nclip, rectangles, **kwargs):

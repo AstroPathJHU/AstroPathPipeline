@@ -1,4 +1,4 @@
-import collections, functools, jxmlease, numpy as np, os, PIL, re, shutil
+import collections, functools, jxmlease, numpy as np, os, pathlib, PIL, re, shutil
 
 from ...baseclasses.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.dataclasses import MyDataClass
@@ -313,7 +313,7 @@ class DeepZoomFile(MyDataClass):
   marker: int
   x: int
   y: int
-  name: pathfield()
+  name: pathlib.Path = pathfield()
 
   def __lt__(self, other):
     """

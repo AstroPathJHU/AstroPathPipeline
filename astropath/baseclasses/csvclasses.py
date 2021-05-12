@@ -4,30 +4,26 @@ from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import floattoint
 from ..utilities.tableio import datefield, readtable
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, distancefield, pscalefield
-from .polygon import DataClassWithPolygon, polygonfield
+from .polygon import DataClassWithPolygon, Polygon, polygonfield
 
 class ROIGlobals(DataClassWithPscale):
   """
   Global info about an ROI of the microscope scan
   """
-  pixelsormicrons = "microns"
-
-  x: distancefield(pixelsormicrons=pixelsormicrons)
-  y: distancefield(pixelsormicrons=pixelsormicrons)
-  Width: distancefield(pixelsormicrons=pixelsormicrons)
-  Height: distancefield(pixelsormicrons=pixelsormicrons)
+  x: units.Distance = distancefield(pixelsormicrons="microns")
+  y: units.Distance = distancefield(pixelsormicrons="microns")
+  Width: units.Distance = distancefield(pixelsormicrons="microns")
+  Height: units.Distance = distancefield(pixelsormicrons="microns")
   Unit: str
-  Tc: MetaDataAnnotation(datetime.datetime, readfunction=lambda x: datetime.datetime.fromtimestamp(int(x)), writefunction=lambda x: int(datetime.datetime.timestamp(x)))
+  Tc: datetime.datetime = MetaDataAnnotation(readfunction=lambda x: datetime.datetime.fromtimestamp(int(x)), writefunction=lambda x: int(datetime.datetime.timestamp(x)))
 
 class ROIPerimeter(DataClassWithPscale):
   """
   Perimeter of an ROI of the microscope scan
   """
-  pixelsormicrons = "microns"
-
   n: int
-  x: distancefield(pixelsormicrons=pixelsormicrons)
-  y: distancefield(pixelsormicrons=pixelsormicrons)
+  x: units.Distance = distancefield(pixelsormicrons="microns")
+  y: units.Distance = distancefield(pixelsormicrons="microns")
 
 class Batch(MyDataClass):
   """
@@ -57,13 +53,11 @@ class QPTiffCsv(DataClassWithPscale):
   fname: the filename of the image
   img: currently a dummy string
   """
-  pixelsormicrons = "microns"
-
   SampleID: int
   SlideID: str
   ResolutionUnit: str
-  XPosition: distancefield(pixelsormicrons=pixelsormicrons)
-  YPosition: distancefield(pixelsormicrons=pixelsormicrons)
+  XPosition: units.Distance = distancefield(pixelsormicrons="microns")
+  YPosition: units.Distance = distancefield(pixelsormicrons="microns")
   XResolution: float
   YResolution: float
   qpscale: float
@@ -89,7 +83,7 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
       assert False, (type(string), string)
 
   name: str
-  value: distancefield(
+  value: units.Distance = distancefield(
     secondfunction=__intorfloat,
     dtype=__intorfloat,
     power=lambda self: 1 if self.unit in ("pixels", "microns") else 0,
@@ -102,9 +96,9 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
   )
   unit: str
   description: str
-  pscale: pscalefield() = None
-  apscale: pscalefield() = None
-  qpscale: pscalefield() = None
+  pscale: float = pscalefield(None)
+  apscale: float = pscalefield(None)
+  qpscale: float = pscalefield(None)
 
 def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
   """
@@ -137,10 +131,8 @@ class RectangleFile(DataClassWithPscale):
   Info about a rectangle im3 file (used for sanity checking the
   HPF info in the annotations).
   """
-  pixelsormicrons = "microns"
-
-  cx: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  cy: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cx: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
+  cy: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
   t: datetime.datetime
 
   @property
@@ -162,8 +154,8 @@ class Annotation(DataClassWithPolygon):
   layer: int
   name: str
   color: str
-  visible: MetaDataAnnotation(bool, readfunction=lambda x: bool(int(x)), writefunction=lambda x: int(x))
-  poly: polygonfield()
+  visible: bool = MetaDataAnnotation(readfunction=lambda x: bool(int(x)), writefunction=lambda x: int(x))
+  poly: Polygon = polygonfield()
 
 class Vertex(DataClassWithPscale, DataClassWithApscale):
   """
@@ -179,14 +171,10 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
   coordinates.
   """
 
-  pixelsormicrons = "pixels"
-
   regionid: int
   vid: int
-  pscalename = "apscale"
-  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
-  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
-  del pscalename
+  x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="apscale")
+  y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="apscale")
   pscale = None
 
   @property
@@ -264,10 +252,10 @@ class Region(DataClassWithPolygon):
   sampleid: int
   layer: int
   rid: int
-  isNeg: MetaDataAnnotation(bool, readfunction=lambda x: bool(int(x)), writefunction=lambda x: int(x))
+  isNeg: bool = MetaDataAnnotation(readfunction=lambda x: bool(int(x)), writefunction=lambda x: int(x))
   type: str
   nvert: int
-  poly: polygonfield()
+  poly: Polygon = polygonfield()
 
 class ExposureTime(DataClassWithPscale):
   """
@@ -278,11 +266,9 @@ class ExposureTime(DataClassWithPscale):
   exp: the exposure time
   """
 
-  pixelsormicrons = "microns"
-
   n: int
-  cx: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
-  cy: distancefield(pixelsormicrons=pixelsormicrons, dtype=int)
+  cx: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
+  cy: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
   layer: int
   exp: float
 
@@ -418,21 +404,21 @@ class ClinicalInfo(MyDataClass):
   SlideID: str
   AgeAtCollection: int
   Gender: str
-  Date_LastFollowUp: datefield(__dateformat)
+  Date_LastFollowUp: datetime.datetime = datefield(__dateformat)
   Alive_Deceased: str
-  Date_Death: datefield(__dateformat, optional=True)
-  Date_PretxBx: datefield(__dateformat)
+  Date_Death: datetime.datetime = datefield(__dateformat, optional=True)
+  Date_PretxBx: datetime.datetime = datefield(__dateformat)
   Tx1_Type: str
   Tx1_Name: str
-  Tx1_Date: datefield(__dateformat)
+  Tx1_Date: datetime.datetime = datefield(__dateformat)
   Tx1_Response: str
   Tx2_Type: str
-  Tx2_Date: datefield(__dateformat)
+  Tx2_Date: datetime.datetime = datefield(__dateformat)
   Tx3_Type: str
   Tx3_Name: str
   AdverseEvents: str
   RecurrenceFree: str
-  Date_Collection: datefield(__dateformat)
+  Date_Collection: datetime.datetime = datefield(__dateformat)
   Lesion_Type: str
   Tumor_Type: str
   TNM_cT: str
@@ -473,7 +459,7 @@ class ControlSample(MyDataClass):
   CtrlID: int
   TMA: int
   Ctrl: int
-  Date: datefield(__dateformat)
+  Date: datetime.datetime = datefield(__dateformat)
   BatchID: int
   Scan: str
   SlideID: str
