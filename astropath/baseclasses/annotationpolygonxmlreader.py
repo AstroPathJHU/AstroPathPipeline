@@ -1,10 +1,19 @@
-import argparse, collections, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, more_itertools, numpy as np, pathlib
+import argparse, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, more_itertools, numpy as np, pathlib
 from ..utilities import units
+from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import dummylogger, floattoint, printlogger
-from ..utilities.tableio import writetable
+from ..utilities.tableio import readtable, writetable
 from .csvclasses import Annotation, Region, Vertex
 from .polygon import SimplePolygon
 from .qptiff import QPTiff
+
+class AllowedAnnotation(MyDataClass):
+  name: str
+  layer: int
+  color: str
+  synonyms: tuple = MetaDataAnnotation((), readfunction=lambda x: tuple(x.split(",")) if x else (), writefunction=",".join)
+
+allowedannotations = readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", AllowedAnnotation)
 
 class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
@@ -38,17 +47,9 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
     allregions = []
     allvertices = []
 
-    AllowedAnnotation = collections.namedtuple("AllowedAnnotation", "name layer color")
-    allowedannotations = [
-      AllowedAnnotation("good tissue", 1, "FFFF00"),
-      AllowedAnnotation("tumor", 2, "00FF00"),
-      AllowedAnnotation("lymph node", 3, "FF0000"),
-      AllowedAnnotation("regression", 4, "00FFFF"),
-      AllowedAnnotation("epithelial islands", 5, "FF00FF"),
-    ]
     def allowedannotation(nameornumber):
       try:
-        result, = {a for a in allowedannotations if nameornumber in (a.layer, a.name)}
+        result, = {a for a in allowedannotations if nameornumber in (a.layer, a.name) + a.synonyms}
       except ValueError:
         typ = 'number' if isinstance(nameornumber, int) else 'name'
         raise ValueError(f"Unknown annotation {typ} {nameornumber}")
