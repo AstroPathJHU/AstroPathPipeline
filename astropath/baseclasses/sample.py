@@ -557,9 +557,8 @@ class WorkflowSample(SampleBase, WorkflowDependency):
   It contains functions to assess the status of the run.
   """
 
-  @property
   @abc.abstractmethod
-  def inputfiles(self):
+  def inputfiles(self, **kwargs):
     """
     Required files that have to be present for this step to run
     """

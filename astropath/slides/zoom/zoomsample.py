@@ -376,9 +376,8 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
   run = zoom_wsi
 
-  @property
-  def inputfiles(self):
-    return [
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
       *(r.imagefile for r in self.rectangles),
       self.csv("fields"),
     ]

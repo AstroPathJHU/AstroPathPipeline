@@ -250,13 +250,13 @@ class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadComponentTiff
       "with_seg": True,
     }
 
-  @property
-  def inputfiles(self):
+  def inputfiles(self, **kwargs):
     result = [self.csv("fields")]
     if result[0].exists():
       result += [
         r.imagefile for r in self.rectangles
       ]
+    result += super().inputfiles(**kwargs)
     return result
 
   @property
@@ -283,8 +283,7 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
       "maskfolder": self.maskfolder,
     }
 
-  @property
-  def inputfiles(self):
+  def inputfiles(self, **kwargs):
     result = [self.csv("fields")]
     if result[0].exists():
       result += [

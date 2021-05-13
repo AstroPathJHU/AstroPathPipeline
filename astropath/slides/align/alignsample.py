@@ -448,9 +448,8 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
       dbload/f"{SlideID}_fieldoverlaps.csv",
     ]
 
-  @property
-  def inputfiles(self):
-    return [
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
       self.csv("constants"),
       self.csv("overlap"),
       self.csv("rect"),

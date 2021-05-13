@@ -116,9 +116,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
 
   run = rungeomcell
 
-  @property
-  def inputfiles(self):
-    return [
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
       self.csv("constants"),
       self.csv("fields"),
       *(r.imagefile for r in self.rectangles),

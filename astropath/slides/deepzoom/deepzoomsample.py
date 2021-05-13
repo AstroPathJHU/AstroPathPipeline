@@ -267,9 +267,8 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
   run = deepzoom
 
-  @property
-  def inputfiles(self):
-    return [
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
       *(self.wsifilename(layer) for layer in self.layers),
     ]
 

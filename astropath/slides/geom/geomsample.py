@@ -69,8 +69,7 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
 
   run = writeboundaries
 
-  @property
-  def inputfiles(self):
+  def inputfiles(self, **kwargs):
     result = [
       self.csv("constants"),
       self.csv("fields"),
@@ -79,6 +78,7 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
     result += [
       *(r.imagefile for r in self.rectangles),
     ]
+    result += super().inputfiles(**kwargs)
     return result
 
   @classmethod
