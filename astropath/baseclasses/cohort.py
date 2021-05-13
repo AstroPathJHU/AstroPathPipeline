@@ -1,10 +1,9 @@
-import abc, pathlib, re
+import abc, os, pathlib, re
 from ..utilities import units
-from ..utilities.misc import printlogger
 from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
-from .sample import SampleDef
+from .sample import SampleBase, SampleDef
 from .workflowdependency import ThingWithRoots
 
 class Cohort(ThingWithRoots, RunFromArgumentParser):
@@ -88,8 +87,13 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
   def workflowkwargs(self):
     return self.rootkwargs
 
-  def getlogger(self, samp):
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug)
+  def globallogger(self):
+    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
+    return self.getlogger(samp, samplelog=os.devnull)
+
+  def getlogger(self, samp, **kwargs):
+    if isinstance(samp, SampleBase): samp = samp.samp
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug, **kwargs)
 
   def run(self, **kwargs):
     """
@@ -158,31 +162,12 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
     return kwargs
 
   @classmethod
-  def runkwargsfromargumentparser(cls, parsed_args_dict):
-    """
-    Get the keyword arguments to be passed to cohort.run() from the parsed arguments
-    """
-    kwargs = {}
-    return kwargs
-
-  @classmethod
   def misckwargsfromargumentparser(cls, parsed_args_dict):
     kwargs = {
       **super().misckwargsfromargumentparser(parsed_args_dict),
       "dry_run": parsed_args_dict.pop("dry_run"),
     }
     return kwargs
-
-  @classmethod
-  def argsdictsfromargumentparser(cls, parsed_args_dict):
-    """
-    Get the kwargs dicts needed to run from the argparse dict
-    from the parsed arguments
-    """
-    return {
-      **super().argsdictsfromargumentparser(parsed_args_dict),
-      "runkwargs": cls.runkwargsfromargumentparser(parsed_args_dict),
-    }
 
   @classmethod
   def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
@@ -244,7 +229,7 @@ class DbloadCohort(Cohort, DbloadArgumentParser):
 
 class GlobalDbloadCohort(DbloadCohort, TableReader):
   @property
-  def logger(self): return printlogger
+  def logger(self): return self.globallogger()
   @property
   def dbload(self):
     return self.dbloadroot/"dbload"
@@ -295,18 +280,26 @@ class MaskCohort(Cohort, MaskArgumentParser):
   maskroot: an alternate root to use for the mask folder instead of root
             (default: same as root)
   """
-  def __init__(self, *args, maskroot=None, **kwargs):
+  def __init__(self, *args, maskroot=None, maskfilesuffix=None, **kwargs):
     super().__init__(*args, **kwargs)
     if maskroot is None: maskroot = self.root
     self.maskroot = pathlib.Path(maskroot)
+    if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
+    self.maskfilesuffix = maskfilesuffix
 
   @property
   def rootnames(self):
     return {*super().rootnames, "maskroot"}
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "maskfilesuffix": self.maskfilesuffix,
+    }
 
   @property
   def initiatesamplekwargs(self):
-    return {**super().initiatesamplekwargs, "maskroot": self.maskroot}
+    return {**super().initiatesamplekwargs, "maskroot": self.maskroot, "maskfilesuffix": self.maskfilesuffix}
 
 class SelectRectanglesCohort(Cohort, SelectRectanglesArgumentParser):
   """
@@ -451,7 +444,7 @@ class WorkflowCohort(Cohort):
       with sample.job_lock() as lock:
         if not lock: return
         try:
-          missinginputs = [file for file in sample.inputfiles if not file.exists()]
+          missinginputs = [file for file in sample.inputfiles(**kwargs) if not file.exists()]
           if missinginputs:
             raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
         except Exception: #don't log KeyboardInterrupt here
@@ -459,14 +452,12 @@ class WorkflowCohort(Cohort):
             raise
           return
 
-        super().processsample(sample, **kwargs)
+        with self.getlogger(sample):
+          super().processsample(sample, **kwargs)
 
-        try:
           status = sample.runstatus
           #we don't want to do anything if there's an error, because that
           #was already logged so no need to log it again and confuse the issue.
-          if (status.missingfiles or not status.ended) and status.error is None:
+          if status.missingfiles and status.error is None:
+            status.ended = True #to get the missing files in the __str__
             raise RuntimeError(f"{sample.SlideID} {status}")
-        except Exception: #don't log KeyboardInterrupt here
-          with self.getlogger(sample):
-            raise

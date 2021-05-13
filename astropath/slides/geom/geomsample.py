@@ -1,6 +1,6 @@
 import cv2, methodtools, more_itertools, numpy as np
 from ...baseclasses.csvclasses import Vertex
-from ...baseclasses.polygon import DataClassWithPolygon, SimplePolygon, polygonfield
+from ...baseclasses.polygon import DataClassWithPolygon, SimplePolygon, Polygon, polygonfield
 from ...baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
 from ...utilities.tableio import writetable
@@ -69,8 +69,7 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
 
   run = writeboundaries
 
-  @property
-  def inputfiles(self):
+  def inputfiles(self, **kwargs):
     result = [
       self.csv("constants"),
       self.csv("fields"),
@@ -79,6 +78,7 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
     result += [
       *(r.imagefile for r in self.rectangles),
     ]
+    result += super().inputfiles(**kwargs)
     return result
 
   @classmethod
@@ -96,7 +96,7 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
 class Boundary(DataClassWithPolygon):
   n: int
   k: int
-  poly: polygonfield()
+  poly: Polygon = polygonfield()
 
 def main(args=None):
   GeomSample.runfromargumentparser(args)

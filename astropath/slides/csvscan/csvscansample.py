@@ -1,4 +1,4 @@
-import abc, itertools, re
+import abc, itertools, pathlib, re
 
 from ...baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...baseclasses.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
@@ -161,8 +161,8 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
     dbload = dbloadroot/SlideID/"dbload"
     return [dbload/f"{SlideID}_loadfiles.csv"]
 
-  @property
-  def inputfiles(self): return []
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs)
 
   @classmethod
   def logmodule(cls): return "csvscan"
@@ -176,7 +176,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
 class LoadFile(MyDataClass):
   fileid: str
   SlideID: str
-  filename: pathfield()
+  filename: pathlib.Path = pathfield()
   tablename: str
   nrows: int
   nrowsloaded: int

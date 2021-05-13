@@ -12,10 +12,10 @@ class DataClassTransformArgs(metaclass=DataClassTransformArgsMeta):
     return args, kwargs
 
 class MetaDataAnnotation:
-  def __init__(self, typ, **kwargs):
-    if isinstance(typ, MetaDataAnnotation):
-      raise TypeError("You don't want nested MetaDataAnnotations")
-    self.type = typ
+  __notgiven = object()
+  def __init__(self, defaultvalue=__notgiven, **kwargs):
+    if defaultvalue is not self.__notgiven:
+      self.defaultvalue = defaultvalue
     self.metadata = kwargs
 
 class DataClassWithMetaDataMeta(DataClassMeta):
@@ -28,9 +28,15 @@ class DataClassWithMetaDataMeta(DataClassMeta):
 
     __annotations__ = dict_.setdefault("__annotations__", {})
     for annoname, typ in __annotations__.items():
+      annovalue = dict_.get(annoname, None)
       if isinstance(typ, MetaDataAnnotation):
-        __annotations__[annoname] = typ.type
-        __annotationmetadata__[annoname] = typ.metadata
+        raise TypeError(f"MetaDataAnnotation should be given as the default value for {annoname}, not the type")
+      if isinstance(annovalue, MetaDataAnnotation):
+        try:
+          dict_[annoname] = annovalue.defaultvalue
+        except AttributeError:
+          del dict_[annoname]
+        __annotationmetadata__[annoname] = annovalue.metadata
 
     return super().__new__(mcs, name, bases, dict_, **kwargs)
 

@@ -1,22 +1,23 @@
 import dataclassy, functools, methodtools, numbers, numpy as np
 from ..dataclasses import MetaDataAnnotation, MyDataClass
 from ..misc import floattoint
-from .core import Distance, ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
+from .core import ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
 
 def __setup(mode):
-  global currentmode, Distance, microns, pixels, _pscale, safe, UnitsError
+  global currentmode, microns, pixels, _pscale, safe, UnitsError
   from . import safe as safe
   if mode == "safe":
-    from .safe import Distance, microns, pixels
+    from .safe import microns, pixels
     from .safe.core import _pscale
   elif mode == "fast":
-    from .fast import Distance, microns, pixels
+    from .fast import microns, pixels
     def _pscale(distance): return None
   else:
     raise ValueError(f"Invalid mode {mode}")
   currentmode = mode
 
-def distancefield(*, pixelsormicrons, typ=Distance, power=1, dtype=float, secondfunction=None, pscalename="pscale", **metadata):
+__notgiven = object()
+def distancefield(*defaultvalue, pixelsormicrons, power=1, dtype=float, secondfunction=None, pscalename="pscale", **metadata):
   if secondfunction is None:
     if issubclass(dtype, numbers.Integral):
       secondfunction = functools.partial(floattoint, atol=1e-9)
@@ -48,15 +49,15 @@ def distancefield(*, pixelsormicrons, typ=Distance, power=1, dtype=float, second
     "writefunctionkwargs": lambda object: {"pscale": getattr(object, pscalename(object)), "power": power(object), "pixelsormicrons": pixelsormicrons(object)},
     **metadata,
   }
-  return MetaDataAnnotation(typ, **metadata)
+  return MetaDataAnnotation(*defaultvalue, **metadata)
 
-def pscalefield(typ=float, **metadata):
+def pscalefield(*defaultvalue, **metadata):
   metadata = {
     "includeintable": False,
     "ispscalefield": True,
     **metadata,
   }
-  return MetaDataAnnotation(typ, **metadata)
+  return MetaDataAnnotation(*defaultvalue, **metadata)
 
 class DataClassWithDistances(MyDataClass):
   @methodtools.lru_cache()
@@ -140,33 +141,37 @@ class DataClassWithDistances(MyDataClass):
     super().__post_init__(*args, readingfromfile=readingfromfile, **kwargs)
 
 class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
-  pscale: pscalefield(float)
+  pscale: float
   @property
   def pscale(self): return self.__pscale
   @pscale.setter
   def pscale(self, pscale): self.__pscale = pscale
+  pscale = pscalefield(pscale)
 DataClassWithPscale.__defaults__.pop("pscale")
 
 class DataClassWithQpscale(DataClassWithDistances, ThingWithQpscale):
-  qpscale: pscalefield(float)
+  qpscale: float
   @property
   def qpscale(self): return self.__qpscale
   @qpscale.setter
   def qpscale(self, qpscale): self.__qpscale = qpscale
+  qpscale = pscalefield(qpscale)
 DataClassWithQpscale.__defaults__.pop("qpscale")
 
 class DataClassWithApscale(DataClassWithDistances, ThingWithApscale):
-  apscale: pscalefield(float)
+  apscale: float
   @property
   def apscale(self): return self.__apscale
   @apscale.setter
   def apscale(self, apscale): self.__apscale = apscale
+  apscale = pscalefield(apscale)
 DataClassWithApscale.__defaults__.pop("apscale")
 
 class DataClassWithImscale(DataClassWithDistances, ThingWithImscale):
-  imscale: pscalefield(float)
+  imscale: float
   @property
   def imscale(self): return self.__imscale
   @imscale.setter
   def imscale(self, imscale): self.__imscale = imscale
+  imscale = pscalefield(imscale)
 DataClassWithImscale.__defaults__.pop("imscale")

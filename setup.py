@@ -34,8 +34,10 @@ setupkwargs = dict(
       "run_many_warp_fits_with_pool=astropath.hpfs.warping.run_many_warp_fits_with_pool:main",
       "run_warp_fitter=astropath.hpfs.warping.run_warp_fitter:main",
       "run_warping_fits=astropath.hpfs.warping.run_warping_fits:main",
-      "stitchmaskcohort=astropath.slides.zoom.stitchmaskcohort:main",
-      "stitchmasksample=astropath.slides.zoom.stitchmasksample:main",
+      "stitchastropathtissuemasksample=astropath.slides.zoom.stitchmasksample:astropathtissuemain",
+      "stitchinformmasksample=astropath.slides.zoom.stitchmasksample:informmain",
+      "stitchastropathtissuemaskcohort=astropath.slides.zoom.stitchmaskcohort:astropathtissuemain",
+      "stitchinformmaskcohort=astropath.slides.zoom.stitchmaskcohort:informmain",
       "zoomcohort=astropath.slides.zoom.zoomcohort:main",
       "zoomsample=astropath.slides.zoom.zoomsample:main",
     ],
@@ -60,14 +62,17 @@ setupkwargs = dict(
     "scikit-learn>=0.17",
     "scipy>=0.12",
     "setuptools-scm",
-    "slurm-python-utils>=1.1.3",
+    "slurm-python-utils>=1.1.6",
     "uncertainties",
   ],
   extras_require = {
-    "test": ["beautifulsoup4", "flake8", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
+    "test": ["beautifulsoup4", "flake8", "gitpython", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
     "gdal": ["gdal>=3.2.1"],
     "vips": ["pyvips"],
-  }
+  },
+  package_data = {
+    "astropath": ["baseclasses/master_annotation_list.csv"],
+  },
 )
 
 setupkwargs["extras_require"]["all"] = sum(setupkwargs["extras_require"].values(), [])

@@ -1,7 +1,7 @@
 from ...baseclasses.cohort import DbloadCohort, WorkflowCohort
-from .prepdbsample import PrepDbSample
+from .prepdbsample import PrepDbArgumentParser, PrepDbSample
 
-class PrepDbCohort(DbloadCohort, WorkflowCohort):
+class PrepDbCohort(DbloadCohort, WorkflowCohort, PrepDbArgumentParser):
   sampleclass = PrepDbSample
   __doc__ = sampleclass.__doc__
 

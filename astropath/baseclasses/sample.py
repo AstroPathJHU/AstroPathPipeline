@@ -539,6 +539,13 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots, Ru
       sample.run(**runkwargs)
       return sample
 
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "samp": parsed_args_dict.pop("SlideID"),
+    }
+
   @abc.abstractmethod
   def run(self, **kwargs):
     "actually run whatever is supposed to be run on the sample"
@@ -550,9 +557,8 @@ class WorkflowSample(SampleBase, WorkflowDependency):
   It contains functions to assess the status of the run.
   """
 
-  @property
   @abc.abstractmethod
-  def inputfiles(self):
+  def inputfiles(self, **kwargs):
     """
     Required files that have to be present for this step to run
     """
@@ -690,22 +696,34 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
 
   maskroot: A different root to use to find the masks (default: same as root)
   """
-  def __init__(self, *args, maskroot=None, **kwargs):
+  def __init__(self, *args, maskroot=None, maskfilesuffix=None, **kwargs):
     super().__init__(*args, **kwargs)
     if maskroot is None: maskroot = self.root
     self.__maskroot = pathlib.Path(maskroot)
+    if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
+    self.__maskfilesuffix = maskfilesuffix
   @property
   def maskroot(self): return self.__maskroot
+  @property
+  def maskfilesuffix(self): return self.__maskfilesuffix
 
   @property
   def rootnames(self): return {"maskroot", *super().rootnames}
 
   @property
   def maskfolder(self):
-    result = self.im3folder/"meanimage"
+    result = self.im3folder/"meanimage"/"image_masking"
     if self.maskroot != self.root:
       result = self.maskroot/result.relative_to(self.root)
     return result
+
+class MaskWorkflowSampleBase(MaskSampleBase, WorkflowSample):
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "maskfilesuffix": self.maskfilesuffix,
+    }
 
 class Im3SampleBase(SampleBase, Im3ArgumentParser):
   """

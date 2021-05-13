@@ -1,18 +1,19 @@
-import abc, contextlib, csv, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
+import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
-from ...baseclasses.csvclasses import constantsdict, Region, Vertex
+from ...baseclasses.annotationpolygonxmlreader import XMLPolygonAnnotationReader
+from ...baseclasses.csvclasses import Region, Vertex
 from ...baseclasses.polygon import SimplePolygon
 from ...baseclasses.qptiff import QPTiff
-from ...baseclasses.sample import ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, ZoomFolderSampleBase
+from ...baseclasses.sample import MaskWorkflowSampleBase, ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint
-from ...utilities.tableio import readtable, writetable
+from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..align.overlap import AlignmentComparison
-from ..zoom.stitchmasksample import InformMaskSample, TissueMaskSample, StitchInformMask
+from ..zoom.stitchmasksample import InformMaskSample, TissueMaskSample, StitchInformMaskSample
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
@@ -208,7 +209,6 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     """
     if self.__images is not None: return self.__images
     with self.using_images() as (wsi, fqptiff):
-      print(wsi.mode)
       #load the images
       zoomlevel = fqptiff.zoomlevels[0]
       qptiff = PIL.Image.fromarray(zoomlevel[self.qptifflayer-1].asarray())
@@ -642,62 +642,46 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     if filename is None: filename = self.stitchcsv
     self.__stitchresult.writestitchresult(filename=filename, logger=self.logger)
 
-  @property
-  def oldverticescsv(self):
+  @methodtools.lru_cache()
+  def __getXMLpolygonannotations(self, *, pscale=None, apscale=None):
     """
-    filename of the original vertices csv file
+    Read the annotations, vertices, and regions from the xml file
     """
-    return self.csv("vertices")
-  @property
-  def newverticescsv(self):
-    """
-    filename of the new vertices csv file
-    """
-    return self.csv("vertices")
-  @property
-  def oldregionscsv(self):
-    """
-    filename of the original regions csv file
-    """
-    return self.csv("regions")
-  @property
-  def newregionscsv(self):
-    """
-    filename of the new regions csv file
-    """
-    return self.csv("regions")
+    if pscale is None: return self.__getXMLpolygonannotations(pscale=self.pscale, apscale=apscale)
+    if apscale is None: return self.__getXMLpolygonannotations(pscale=pscale, apscale=self.apscale)
+    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger).getXMLpolygonannotations()
 
   @methodtools.lru_cache()
-  def __getvertices(self, *, apscale, pscale, filename=None):
+  def __getannotations(self, **kwargs):
+    """
+    Read the annotations, vertices, and regions from the xml file
+    """
+    return self.__getXMLpolygonannotations(**kwargs)[0]
+
+  @property
+  def annotations(self):
+    return self.__getannotations()
+
+  @methodtools.lru_cache()
+  def __getvertices(self, **kwargs):
     """
     read in the original vertices from vertices.csv
     """
-    if filename is None: filename = self.oldverticescsv
-    extrakwargs={
-     "apscale": apscale,
-     "pscale": pscale,
-     "bigtilesize": units.convertpscale(self.bigtilesize, self.imscale, apscale),
-     "bigtileoffset": units.convertpscale(self.bigtileoffset, self.imscale, apscale)
-    }
-    with open(filename) as f:
-      reader = csv.DictReader(f)
-      #allow reading in a file that already has previous warped vertex positions
-      #(which will be overwritten) or one that only has original positions
-      if "wx" in reader.fieldnames and "wy" in reader.fieldnames:
-        typ = WarpedVertex
-      else:
-        typ = QPTiffVertex
-    vertices = self.readtable(filename, typ, extrakwargs=extrakwargs)
-    if typ == WarpedVertex:
-      vertices = [v.originalvertex for v in vertices]
-    return vertices
+    vertices = self.__getXMLpolygonannotations(**kwargs)[2]
+    return [
+      QPTiffVertex(
+        vertex=v,
+        bigtilesize=units.convertpscale(self.bigtilesize, self.imscale, v.apscale),
+        bigtileoffset=units.convertpscale(self.bigtileoffset, self.imscale, v.apscale),
+      ) for v in vertices
+    ]
 
   @property
   def vertices(self):
     """
     get the original vertices in im3 coordinates
     """
-    return self.__getvertices(apscale=self.apscale, pscale=self.pscale)
+    return self.__getvertices()
   @property
   def apvertices(self):
     """
@@ -729,19 +713,18 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     return self.__getwarpedvertices(apscale=self.apscale, pscale=self.pscale)
 
   @methodtools.lru_cache()
-  def __getregions(self, *, apscale, filename=None):
+  def __getregions(self, **kwargs):
     """
-    read in the original regions from regions.csv
+    read in the original regions from the xml
     """
-    if filename is None: filename = self.oldregionscsv
-    return self.readtable(filename, Region, fieldsizelimit=int(1e6))
+    return self.__getXMLpolygonannotations(**kwargs)[1]
 
   @property
   def regions(self):
     """
-    read in the original regions from regions.csv
+    read in the original regions from the xml
     """
-    return self.__getregions(apscale=self.apscale)
+    return self.__getregions()
 
   @methodtools.lru_cache()
   @property
@@ -780,20 +763,49 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
       )
     return result
 
+  @property
+  def annotationscsv(self):
+    """
+    filename for the annotations csv file
+    """
+    return self.csv("annotations")
+
+  def writeannotations(self, *, filename=None):
+    """
+    Write the annotations to the csv file
+    """
+    self.logger.info("writing annotations")
+    if filename is None: filename = self.annotationscsv
+    writetable(filename, self.annotations)
+
+  @property
+  def verticescsv(self):
+    """
+    filename for the vertices csv file
+    """
+    return self.csv("vertices")
+
   def writevertices(self, *, filename=None):
     """
     write the warped vertices to the csv file
     """
     self.logger.info("writing vertices")
-    if filename is None: filename = self.newverticescsv
+    if filename is None: filename = self.verticescsv
     writetable(filename, self.warpedvertices)
+
+  @property
+  def regionscsv(self):
+    """
+    filename for the regions csv file
+    """
+    return self.csv("regions")
 
   def writeregions(self, *, filename=None):
     """
     write the warped regions to the csv file
     """
     self.logger.info("writing regions")
-    if filename is None: filename = self.newregionscsv
+    if filename is None: filename = self.regionscsv
     writetable(filename, self.warpedregions)
 
   def runannowarp(self, *, readalignments=False, **kwargs):
@@ -804,6 +816,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
                     otherwise actually do the alignment
     other kwargs are passed to stitch()
     """
+    self.writeannotations()
     if not readalignments:
       self.align()
       self.writealignments()
@@ -816,14 +829,11 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
 
   run = runannowarp
 
-  @property
-  def inputfiles(self):
-    return [
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
       self.qptifffilename,
       self.wsifilename(layer=self.wsilayer),
       self.csv("fields"),
-      self.oldverticescsv,
-      self.oldregionscsv,
     ]
 
   @classmethod
@@ -837,32 +847,10 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     ]
 
   @classmethod
-  def getmissingoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
-    outputfiles = cls.getoutputfiles(SlideID, dbloadroot=dbloadroot, **otherrootkwargs)
-    result = super().getmissingoutputfiles(SlideID, dbloadroot=dbloadroot, **otherrootkwargs)
-
-    verticescsv, = (_ for _ in outputfiles if _.name.endswith("vertices.csv"))
-    regionscsv, = (_ for _ in outputfiles if _.name.endswith("regions.csv"))
-
-    if verticescsv not in result:
-      with open(verticescsv) as f:
-        reader = csv.DictReader(f)
-        if "wx" not in reader.fieldnames or "wy" not in reader.fieldnames:
-          result.append(verticescsv)
-    if regionscsv not in result:
-      constants = constantsdict(regionscsv.parent/f"{SlideID}_constants.csv")
-      regions = readtable(regionscsv, Region, extrakwargs={"apscale": constants["apscale"], "pscale": constants["pscale"]}, maxrows=1, fieldsizelimit=int(1e6))
-      if regions:
-        region, = regions
-        if region.poly is None:
-          result.append(regionscsv)
-    return result
-
-  @classmethod
   def workflowdependencies(cls):
     return [ZoomSample] + super().workflowdependencies()
 
-class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample):
+class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample, MaskWorkflowSampleBase):
   """
   Use a tissue mask to determine which tiles to use for alignment
 
@@ -903,7 +891,7 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
 
   @classmethod
   def workflowdependencies(cls):
-    return [StitchInformMask] + super().workflowdependencies()
+    return [StitchInformMaskSample] + super().workflowdependencies()
 
 class QPTiffCoordinateBase(abc.ABC):
   """
@@ -988,9 +976,8 @@ class WarpedVertex(QPTiffVertex):
   A warped vertex, which includes info about the original
   and warped positions
   """
-  __pixelsormicrons = "pixels"
-  wx: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
-  wy: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
+  wx: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  wy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
 
   @classmethod
   def transforminitargs(cls, *args, wxvec=None, **kwargs):
@@ -1049,19 +1036,15 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   covxx, covxy, covyy: the covariance matrix for dx and dy
   exit: the exit code of the alignment (0=success, nonzero=failure, 255=exception)
   """
-  __fmt = "{:.6g}"
-  pixelsormicrons = "pixels"
-  pscalename = "imscale"
   n: int
-  x: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
-  y: distancefield(pixelsormicrons=pixelsormicrons, dtype=int, pscalename=pscalename)
-  dx: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename=pscalename)
-  dy: distancefield(pixelsormicrons=pixelsormicrons, secondfunction=__fmt.format, pscalename=pscalename)
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2, secondfunction=__fmt.format, pscalename=pscalename)
+  x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="imscale")
+  y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="imscale")
+  dx: units.Distance = distancefield(pixelsormicrons="pixels", secondfunction="{:.6g}".format, pscalename="imscale")
+  dy: units.Distance = distancefield(pixelsormicrons="pixels", secondfunction="{:.6g}".format, pscalename="imscale")
+  covxx: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format, pscalename="imscale")
+  covxy: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format, pscalename="imscale")
+  covyy: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format, pscalename="imscale")
   exit: int
-  del __fmt
 
   @classmethod
   def transforminitargs(cls, *args, **kwargs):

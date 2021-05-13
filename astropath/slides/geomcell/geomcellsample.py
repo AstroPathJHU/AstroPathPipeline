@@ -1,6 +1,6 @@
 import cv2, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...baseclasses.csvclasses import constantsdict
-from ...baseclasses.polygon import DataClassWithPolygon, polygonfield
+from ...baseclasses.polygon import DataClassWithPolygon, Polygon, polygonfield
 from ...baseclasses.rectangle import GeomLoadRectangle, rectanglefilter
 from ...baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
@@ -116,9 +116,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
 
   run = rungeomcell
 
-  @property
-  def inputfiles(self):
-    return [
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
       self.csv("constants"),
       self.csv("fields"),
       *(r.imagefile for r in self.rectangles),
@@ -145,15 +144,14 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
     return [AlignSample] + super().workflowdependencies()
 
 class CellGeomLoad(DataClassWithPolygon):
-  pixelsormicrons = "pixels"
   field: int
   ctype: int
   n: int
-  x: distancefield(pixelsormicrons=pixelsormicrons)
-  y: distancefield(pixelsormicrons=pixelsormicrons)
-  w: distancefield(pixelsormicrons=pixelsormicrons)
-  h: distancefield(pixelsormicrons=pixelsormicrons)
-  poly: polygonfield()
+  x: units.Distance = distancefield(pixelsormicrons="pixels")
+  y: units.Distance = distancefield(pixelsormicrons="pixels")
+  w: units.Distance = distancefield(pixelsormicrons="pixels")
+  h: units.Distance = distancefield(pixelsormicrons="pixels")
+  poly: Polygon = polygonfield()
 
   @classmethod
   def transforminitargs(cls, *args, box=None, **kwargs):
