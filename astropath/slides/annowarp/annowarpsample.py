@@ -763,28 +763,49 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
       )
     return result
 
+  @property
+  def annotationscsv(self):
+    """
+    filename for the annotations csv file
+    """
+    return self.csv("annotations")
+
   def writeannotations(self, *, filename=None):
     """
     Write the annotations to the csv file
     """
     self.logger.info("writing annotations")
-    if filename is None: filename = self.csv("annotations")
+    if filename is None: filename = self.annotationscsv
     writetable(filename, self.annotations)
+
+  @property
+  def verticescsv(self):
+    """
+    filename for the vertices csv file
+    """
+    return self.csv("vertices")
 
   def writevertices(self, *, filename=None):
     """
     write the warped vertices to the csv file
     """
     self.logger.info("writing vertices")
-    if filename is None: filename = self.csv("vertices")
+    if filename is None: filename = self.verticescsv
     writetable(filename, self.warpedvertices)
+
+  @property
+  def regionscsv(self):
+    """
+    filename for the regions csv file
+    """
+    return self.csv("regions")
 
   def writeregions(self, *, filename=None):
     """
     write the warped regions to the csv file
     """
     self.logger.info("writing regions")
-    if filename is None: filename = self.csv("regions")
+    if filename is None: filename = self.regionscsv
     writetable(filename, self.warpedregions)
 
   def runannowarp(self, *, readalignments=False, **kwargs):

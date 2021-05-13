@@ -283,8 +283,7 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
       "maskfolder": self.maskfolder,
     }
 
-  @property
-  def inputfiles(self):
+  def inputfiles(self, **kwargs):
     result = [self.csv("fields")]
     if result[0].exists():
       result += [

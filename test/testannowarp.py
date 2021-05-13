@@ -52,10 +52,10 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     referencealignmentfilename = thisfolder/"reference"/"annowarp"/SlideID/s.alignmentcsv.name
     stitchfilename = s.stitchcsv
     referencestitchfilename = thisfolder/"reference"/"annowarp"/SlideID/s.stitchcsv.name
-    verticesfilename = s.newverticescsv
-    referenceverticesfilename = thisfolder/"reference"/"annowarp"/SlideID/s.newverticescsv.name
-    regionsfilename = s.newregionscsv
-    referenceregionsfilename = thisfolder/"reference"/"annowarp"/SlideID/s.newregionscsv.name
+    verticesfilename = s.verticescsv
+    referenceverticesfilename = thisfolder/"reference"/"annowarp"/SlideID/s.verticescsv.name
+    regionsfilename = s.regionscsv
+    referenceregionsfilename = thisfolder/"reference"/"annowarp"/SlideID/s.regionscsv.name
 
     with s:
       s.runannowarp()
