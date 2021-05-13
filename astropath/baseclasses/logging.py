@@ -1,4 +1,4 @@
-import collections, functools, job_lock, logging, pathlib, traceback
+import collections, functools, job_lock, logging, os, pathlib, traceback
 
 class MyLogger:
   """
@@ -180,6 +180,7 @@ class MyFileHandler:
     return self.__level
 
   def handle(self, record):
+    if os.fspath(self.__filename) == os.fspath(os.devnull): return
     self.__handler.setFormatter(self.__formatter)
     self.__handler.setLevel(self.__level)
     self.__handler.filters = self.__filters
