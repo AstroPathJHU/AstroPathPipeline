@@ -649,7 +649,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     """
     if pscale is None: return self.__getXMLpolygonannotations(pscale=self.pscale, apscale=apscale)
     if apscale is None: return self.__getXMLpolygonannotations(pscale=pscale, apscale=self.apscale)
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=self.pscale, apscale=self.apscale, logger=self.logger).getXMLpolygonannotations()
+    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger).getXMLpolygonannotations()
 
   @methodtools.lru_cache()
   def __getannotations(self, **kwargs):
