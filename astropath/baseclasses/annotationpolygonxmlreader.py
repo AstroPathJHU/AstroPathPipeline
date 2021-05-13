@@ -1,4 +1,4 @@
-import argparse, collections, itertools, jxmlease, more_itertools, numpy as np, pathlib
+import argparse, itertools, jxmlease, more_itertools, numpy as np, pathlib
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import dummylogger, printlogger
@@ -9,7 +9,8 @@ class AllowedAnnotation(MyDataClass):
   name: str
   layer: int
   color: str
-  synonyms: MetaDataAnnotation(tuple, readfunction=lambda x: tuple(x.split(",")) if x else (), writefunction=",".join) = ()
+  __comma = ","
+  synonyms: MetaDataAnnotation(tuple, readfunction=lambda x: tuple(x.split(",")) if x else (), writefunction=__comma.join) = ()
 
 allowedannotations = readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", AllowedAnnotation)
 
