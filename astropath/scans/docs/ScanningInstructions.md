@@ -5,6 +5,6 @@ After a new batch of slides are stained, they should be added to a *Specimen_Tab
 
 Once added to the *SpecimenTable.xlsx*, slides can be scanned with 20% overlap according to the protocol laid out in [4.3.4](#434-whole-slide-scanning "Title"). In order for successful processing of the slides, it is very important that this procedure is adhered to correctly. After slides are scanned, the user should manually verify that all images were scanned completed properly and add a *BatchID.txt* file to the successful ```Scan``` directory. This initiates the slide transfer process in the pipeline, additional details on this step are defined in [4.3.5](#435-batchids "Title"). It is also important to create the *Batch_BB.csv* and *MergeConfig_BB.csv* files for processing to continue successfully. Each staining batch defined should have a separate set of these tables. Information on these files can be found in [4.3.6](#436-batch-tables "Title") and [4.3.7](#437-mergeconfig-tables "Title"), respectively. 
 
-Again due to length this documentation is written in sections and linked to here in a table of contents.
+Again due to length this documentation is written in sections and linked to here in a table of contents. Sections are added in sequence in which they should be completed and should be read as such.
 
 ## 4.4.1. Scanning Contents
