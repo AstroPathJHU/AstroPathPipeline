@@ -6,7 +6,9 @@ The *AstroPath Pipeline* requires that a number of experimental protocols are un
  - [4.3. Definitions](docs/Definitions)
    - [4.3.1. Indentification Definitions](docs/Definitions.md/#431-identification-definitions)
    - [4.3.2. Path Definitions](docs/Definitions.md/#432-path-definitions)
-
+ - [4.4. Scanning Instructions](docs/ScanningInstructions.md)
+   - [4.4.1. Scanning Contents](docs/ScanningInstructions.md/#441-scanning-contents)
+   - [4.4.2. Specimen_Table](docs/scanning/SpecimenTable.md)
 
 
 
