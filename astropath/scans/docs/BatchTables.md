@@ -21,4 +21,4 @@ New and ambigious columns\ variables are described below:
 
 There should be a row for each stain applied to the batch. The stains should start with DAPI then added in increasing opal order. An example table from the *Vectra 3.0* microscope is shown below:
 
-![Figure 1 Image](./www/Fig1.PNG)
+![Figure 1 Image](../www/Fig1.PNG)
