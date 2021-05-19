@@ -4,8 +4,8 @@ The *AstroPath Pipeline* requires that a number of experimental protocols are un
 
 ## 4.2. Contents
  - [4.3. Definitions](docs/Definitions)
-   - [4.3.1. Indentification Definitions](docs/Definitions/#431-identification-definitions)
-   - [4.3.2. Path Definitions](docs/Definitions/#432-path-definitions)
+   - [4.3.1. Indentification Definitions](docs/Definitions.md/#431-identification-definitions)
+   - [4.3.2. Path Definitions](docs/Definitions.md/#432-path-definitions)
 
 
 
