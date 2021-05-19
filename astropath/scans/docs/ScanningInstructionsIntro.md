@@ -8,3 +8,16 @@ Once added to the *SpecimenTable.xlsx*, slides can be scanned with 20% overlap a
 Again due to length this documentation is written in sections and linked to here in a table of contents. Sections are added in sequence in which they should be completed and should be read as such.
 
 ## 4.4.1. Contents
+   - [4.4.2. Specimen Table](docs/scanning/SpecimenTable.md)
+   - [4.4.3. SampleNames (Patient # or M Numbers)](docs/scanning/SampleNames.md)
+   - [4.4.4. Control TMA Conventions](docs/scanning/ControlTMAConventions.md)
+   - [4.4.5. Whole Slide Scanning Introduction](docs/scanning/WholeSlideScanning.md)
+     - [4.4.5.1. Contents](docs/scanning/WholeSlideScanning.md/#4451-contents)
+     - [4.4.5.2. Preparing 20% Overlap](docs/scanning/Preparing20Overlap.md)
+     - [4.4.5.3. Scan the *Control TMA*](docs/scanning/ScantheControlTMA.md)
+     - [4.4.5.4. Scan the Whole Slide Specimens](docs/scanning/ScantheWholeSlideSpecimens.md)
+     - [4.4.5.5. Creating a Whole Slide Scanning Plan](docs/scanning/CreatingaWholeSlideScanningPlan.md)
+     - [4.4.5.6. Important Scanning Notes](docs/scanning/ImportantScanningNotes.md)
+   - [4.4.6. BatchIDs](docs/scanning/BatchIDs.md)
+   - [4.4.7. Batch Tables](docs/scanning/BatchTables.md)
+   - [4.4.8. Merge Configuration Tables](docs/scanning/MergeConfigTables.md)
