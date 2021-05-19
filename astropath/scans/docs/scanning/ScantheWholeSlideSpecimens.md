@@ -9,7 +9,7 @@ If everything checks out scan the specimens as follows:
     - Clean the slides using a Kimwipe to remove dust and excess mounting medium
     - Load the carrier from bottom to top so that the first slide corresponds to Slot 1 on the Task list
 4.	Scan the whole slide overview on the microscope
-5.	Create the annotation file for the [Whole Slide Overlap imagery](#4344-creating-a-whole-slide-scanning-plan "Title")
+5.	Create the annotation file for the [Whole Slide Overlap imagery](CreatingaWholeSlideScanningPlan.md)
 6.	Acquire HPFs on the microscope
 7.	If using a network storage server, wait for data to backup
     - Manually check that the image files are in both the local and backup locations
