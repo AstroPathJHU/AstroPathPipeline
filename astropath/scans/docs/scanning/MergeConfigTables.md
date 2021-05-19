@@ -1,7 +1,7 @@
 # 4.4.8. MergeConfig Tables
 Merge Configuration file is a csv spreadsheet which indicates how the markers will be analyzed and merged to a single coordinate system where only one phenotype call exists for each cell. Columns are defined below, column names are case senstitive. Mark fields that do not have a designation as NA in character columns and 0s in numeric columns. ***Additional information on the merge can be found in the ```MaSS``` documentation.***
 
-![Figure 2 Image](../www/Fig2.PNG)
+![Figure 2 Image](../../www/Fig2.PNG)
 
 - ```BatchID[int]```: indicates which batch the slides were stained in. This variable is used a record keeping method and does not indicate settings in the merge code
 - ```Opal[int]```: should be the name of the Fluor which targets a given antibody
