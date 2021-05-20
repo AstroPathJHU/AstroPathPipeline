@@ -1,7 +1,7 @@
 # Documentation Conventions
 To make documentation consistent please use the following conventions.
 
-- Use italics for Path names
+- Use italics for Path names and file names
   - E.g. *\\\\bki04\astropath_processing*
 - Place holders for path names or variables should be in code formatting 
   - ```<Mpath>```
