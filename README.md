@@ -1,4 +1,4 @@
-# <div align="center"> AstroPathPipeline </div>
+# <div align="center"> AstroPath Pipeline </div>
 #### <div align="center"> The *AstroPath Pipeline* was developed to process whole slide multiplex immunofluorescence data from microscope to database </div>
 #### <div align="center">Correspondence to: bgreen42@jhu.edu</div>
 
