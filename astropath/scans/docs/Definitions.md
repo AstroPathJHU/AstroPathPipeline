@@ -37,7 +37,7 @@
 - ```ScanNN[string]```: The scan folder from the vectra mircoscopes. The scan folder is usually labeled ScanNN, where the NN stands for the scan try. This number is the scan that was successful and can be 1 or 2 digits. Further description can be found [here](scanning/BatchIDs.md).
 
 ## 4.3.2. Path Definitions
-The file pathes have been standarized and are described below. Additional examples and directions for intialization of these paths can be found in [4.4](). **A full file tree layout can be found in**.
+The file pathes have been standarized and are described below. Additional examples and directions for intialization of these paths can be found in [4.5.2.](AstroPathProcessingDirectoryandInitializingProjects.md#452-initializing-projects). A full file tree layout can be found in [4.6.2.](DirectoryOrganization.md#462-slideid-subfolders)
 - ```<Mpath>```: The main path for all the astropath processing *.csv* configuration files.
   - The current location of this path is *\\\\bki04\astropath_processing*.
   - A description of each file is located below in [4.5.1.](AstroPathProcessingDirectoryandInitializingProjects.md\#451-astropath-processing-directory)
@@ -58,7 +58,7 @@ The file pathes have been standarized and are described below. Additional exampl
    - This path should preferably located on a different drive from the main path to improve pipeline performance. 
    - E.g. “bki03\flatw_7”
    - Usually the specifier used on the ```<Dname>``` folder is also found as an extension on this folder
-   - ***Additional details on these files can be found in the flatw workflow description***
+   - Additional details on these files can be found in the flatw workflow description [5.8.3.2.](../../hpfs/flatw/docs/ImportantDefinitions.md#5832-output-formatting)
 - ```base[sting]```: This is sometimes used throughout the documentation to refer to the combination of ```<Dpath>\<Dname>``` (both defined above)
 - ```<im3_path>```: The path between the ```<SlideID>``` and where the original im3 are kept
   - E.g. *im3\\```<ScanN>```\\MSI* or *im3\\```<ScanNN>```\\MSI*
