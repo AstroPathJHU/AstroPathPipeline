@@ -1,21 +1,21 @@
 # 5.8. Flatfield
 ## 5.8.1. Description
-This workflow serves to create a directory of flat field and warping corrected *.im3* images files for each slide. In addition, this workflow saves the full metadata for the first *.im3* (*.full.im3*) for a slide, the single column bitmap of each corrected *.im3* (*.fw* files), some shape parameters for the first *.im3* (*.Parameters.xml*), as well as relevant image metadata (*.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml*) of each im3 image. We assume that the directory format of the input image files is in the ```AstroPathPipeline``` processing file stucture described **here** and below in [5.8.2.1.](#5821-flatw-expected-directory-structure "Title"). 
+This workflow serves to create a directory of flat field and warping corrected *.im3* images files for each slide. In addition, this workflow saves the full metadata for the first *.im3* (*.full.im3*) for a slide, the single column bitmap of each corrected *.im3* (*.fw* files), some shape parameters for the first *.im3* (*.Parameters.xml*), as well as relevant image metadata (*.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml*) of each im3 image. We assume that the directory format of the input image files is in the ```AstroPathPipeline``` processing file stucture described [here](../../scans/docs/DirectoryOrganization.md#46-directory-organization) and below in [5.8.2.1.](#5821-flatw-expected-directory-structure "Title"). 
 
-*NOTE*: The warping corrections are only applied in this version of the code to images with the same shape parameters (defined in the *Parameters.xml* extracted from the image metadata) as the JHU Vectra 3.0 machine. A warping model could be estimated and added to the *mkwarp* function in the *runflatw.m* file under *AstroPathPipelinePrivate\astropath\hpfs\Flatfield\flatw\mtools* for a different microscope. That functionality is not included in this processing. 
+*NOTE*: The warping corrections are only applied in this version of the code to images with the same shape parameters (defined in the *Parameters.xml* extracted from the image metadata) as the JHU Vectra 3.0 machine. A warping model could be estimated and added to the *mkwarp* function in the *runflatw.m* file [here](flatw_matlab/mtools) for a different microscope. That functionality is not included in this processing. 
 
 ## 5.8.2. Important Definitions
 ### 5.8.2.1. Flatw Expected Directory Structure
-Since this section of the pipeline can be used with standalone funcationality to apply corrections, we define the directory structure here. A more detailed directory structure for the whole AstroPath Pipeline can be found *here*: 
+Since this section of the pipeline can be used with standalone funcationality to apply corrections, we define the directory structure here. A more detailed directory structure for the whole AstroPath Pipeline can be found [here](../../scans/docs/DirectoryOrganization.md#46-directory-organization): 
 ```
 <base>\<SlideID>\<im3_path>\<filename>
 ```
-Example:  “\\bki04\Clinical_Specimen\ AST123456\ im3\Scan1\MSI\M41_1_[34888,4694].im3”
-- ```<base>```: “\\bki04\Clinical_Specimen”
-- ```<SlideID>```: “AST123456
-- ```<im3_path>```: “im3\ScanX\MSI or im3\ScanXX\MSI”
-- ```<filename>```: “AST123456_[34888,4694]”
-- ```<extension>```:  “.im3” <br>
+Example:  *\\\\bki04\\Clinical_Specimen\\AST123456\\im3\\Scan1\\MSI\\M41\_1\_\[34888,4694\].im3*
+- ```<base>```: *\\bki04\Clinical_Specimen* (also refered to as the ```<Dpath>\<Dname>```
+- ```<SlideID>```: *AST123456*
+- ```<im3_path>```: *im3\\ScanX\\MSI* or *im3\\ScanXX\\MSI*
+- ```<filename>```: *AST123456\_\[34888,4694\]*
+- ```<extension>```:  *.im3* <br>
 
 *NOTE*: 
 - The Scan number directory would be the highest scan number in the <SlideID> folder, not always ‘1’ and may be multiple digits
