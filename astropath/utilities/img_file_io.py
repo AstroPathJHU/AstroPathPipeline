@@ -136,6 +136,8 @@ def getImageHWLFromXMLFile(root_dir,slideID) :
     xmlfile_path = subdir_filepath
   else :
     xmlfile_path = pathlib.Path(f'{root_dir}/{slideID}/{slideID}{PARAMETER_XMLFILE_EXT}')
+  if not xmlfile_path.is_file() :
+    raise FileNotFoundError(f'ERROR: xml file {xmlfile_path} does not exist!')
   try :
     tree = et.parse(xmlfile_path)
   except Exception as e :

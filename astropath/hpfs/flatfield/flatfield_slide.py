@@ -66,8 +66,12 @@ class FlatfieldSlide() :
             self._exp_time_hists = None
             self._med_exp_times_by_layer = None
         else :
-            self._exp_time_hists = getExposureTimeHistogramsByLayerGroupForSlide(self._rawfile_top_dir,self._name)
-            self._med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
+            try :
+                self._exp_time_hists = getExposureTimeHistogramsByLayerGroupForSlide(self._rawfile_top_dir,self._name)
+                self._med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
+            except FileNotFoundError :
+                self._exp_time_hists = getExposureTimeHistogramsByLayerGroupForSlide(self._root_dir,self._name)
+                self._med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(self._root_dir,self._name)
         self._background_thresholds_for_masking = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :
