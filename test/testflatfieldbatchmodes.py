@@ -37,7 +37,7 @@ args = Namespace(
 main(args)
 #check the logfile for error messages
 slide = FlatfieldSlideInfo(slide_ID,str(folder/'data'/'raw'),str(folder/'data'))
-slide_mean_image_working_dir = getSlideMeanImageWorkingDirPath(slide)
+slide_mean_image_working_dir = getSlideMeanImageWorkingDirPath(slide,'raw')
 with open(pathlib.Path(f'{slide_mean_image_working_dir}/global-slide_mean_image.log'),'r') as fp :
     for l in fp.readlines() :
         if 'ERROR' in l :
