@@ -32,4 +32,4 @@ If a slide does not have a mean image the code immediately begins processing tha
 ### 5.7.4.3. raw2mean
 After the im3s are extracted by the ```ConvertIm3Path.ps1``` utility, the code checks the image sizing from the *.xml* files the utility creates. After this each image is read in and added together. Finally, the ```<meanimage-output-flt>``` and ```<meanimage-output-csv>``` files are produced. 
 
-Next, the code cleans up all files, transfers the output files back to the ``<Dpath>\<Dname>\<SlideID>\<im3>``` folder, and continues to the next slide.
+Next, the code cleans up all files, transfers the output files back to the ```<Dpath>\<Dname>\<SlideID>\<im3>``` folder, and continues to the next slide.
