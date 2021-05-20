@@ -4,12 +4,12 @@ The following is the directory structure for the *AstroPath Pipeline* in the ```
 *NOTE*: ```<>``` indicate variables, lines without brackets indicate full names
 
 +-- ```<Dname>\<Dpath>``` <br>
-| +-- ```<SlideID>``` <br>
-| | +-- im3 <br>
-| | | +-- ```<ScanNN>``` <br>
-| | | | +-- BatchID.txt <br>
-| | | | +-- CheckSums.txt <br>
-| | | | +-- ```<SlideID>```\_```<ScanNN>```.annotations.polygons.xml <br>
+|  +-- ```<SlideID>``` <br>
+|  |  +-- im3 <br>
+|  |  |  +-- ```<ScanNN>``` <br>
+|  |  |  | +-- BatchID.txt <br>
+|  |  |  | +-- CheckSums.txt <br>
+|  |  |  | +-- ```<SlideID>```\_```<ScanNN>```.annotations.polygons.xml <br>
 | | | | +-- ```<SlideID>```\_```<ScanNN>```\_annotations.xml <br>
 | | | | +-- ```<SlideID>```\_```<ScanNN>```\_annotations.xml.lock <br>
 | | | | +-- ```<SlideID>```\_```<ScanNN>```.qptiff <br>
