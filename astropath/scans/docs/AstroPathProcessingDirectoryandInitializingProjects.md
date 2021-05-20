@@ -52,6 +52,6 @@ The ```<Spath>``` folder is created on the scanning computer where the slides ar
 
 For the ```<Dpath>\<Dname>``` folder, usually ```<Dpath>``` is a server or drive name. The ```<Dname>``` is the *Clinical_Specimen_XX* folder name as described above. This folder is usually shared over the network. An example of one such combination is *\\bki04\Clinical_Specimen*. 
 
-The ```<Cpath>``` is a separate network folder, located on a different server than the ```<Dpath>```. Slides are saved under a folder with the ```<Dname>``` indicator. 
+The ```<Cpath>``` is a separate network folder, located on a different server than the ```<Dpath>```. Slides are saved under a folder with the ```<Dname>``` indicator, this folder will be created by the code and only the ```<Cpath>``` network folder needs to be created. Usually this path is named something like *Compressed_Clinical_Specimens*.
 
 
