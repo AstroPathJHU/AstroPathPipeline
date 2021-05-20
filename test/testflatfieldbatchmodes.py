@@ -15,6 +15,7 @@ slide_ID = 'M21_1'
 flatfield_logger.info('TESTING slide_mean_image')
 args = Namespace(
         mode='slide_mean_image',
+        filetype='raw',
         exposure_time_offset_file=str(folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'),
         skip_exposure_time_correction=False,
         workingdir=None,
@@ -49,6 +50,7 @@ if not pathlib.Path.is_dir(ff_dirpath) :
     pathlib.Path.mkdir(ff_dirpath)
 args = Namespace(
         mode='batch_flatfield',
+        filetype='raw',
         exposure_time_offset_file=None,
         skip_exposure_time_correction=False,
         workingdir=None,
