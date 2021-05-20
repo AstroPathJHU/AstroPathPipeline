@@ -3,7 +3,7 @@
 The *AstroPath Pipeline* requires that a number of experimental protocols are understood and followed for the code to work. These protocols include methods for slide scanning, slide naming, reagent tracking, and directory organization. This section of the documentation describes these protocols and provides important definitions for terms used throughout the *AstroPath Pipeline* documentations. Additionally, there is a main directory, referred to as the ```<Mpath>```, which contains a set of csv files. These files contain pertinent information that drives processing such as directory locations, machine names, slide names, and project identifiers. The csv files and methods for adding projects to the pipeline are defined here [4.4](#44-astropath_processing-directory-and-initializing-projects "Title"). To reduce the length of this page, documentation was written into different pages and linked here by a table of contents.
 
 ## 4.2. Contents
- - [4.3. Definitions](docs/Definitions)
+ - [4.3. Definitions](docs/Definitions.md#43-definitions)
    - [4.3.1. Indentification Definitions](docs/Definitions.md/#431-identification-definitions)
    - [4.3.2. Path Definitions](docs/Definitions.md/#432-path-definitions)
  - [4.4. Scanning Instructions Introduction](docs/ScanningInstructionsIntro.md)
