@@ -10,17 +10,17 @@ The following is the directory structure for the *AstroPath Pipeline* in the ```
 |  |  |  |  +-- BatchID.txt <br>
 |  |  |  |  +-- CheckSums.txt <br>
 |  |  |  |  +-- <SlideID>\_<ScanNN>.annotations.polygons.xml <br>
-| | | | +-- <SlideID>\_<ScanNN>\_annotations.xml <br>
-| | | | +-- <SlideID>\_<ScanNN>\_annotations.xml.lock <br>
-| | | | +-- <SlideID>\_<ScanNN>.qptiff <br>
-| | | | +-- MSI <br>
-| | | | | +-- \*.im3 files <br>
-| | | +-- flatw <br>
-| | | | +-- \*.im3 files <br>
-| | | +-- xml <br>
-| | | | +-- \*.xml files<br>
-| | | +-- <SlideID>-mean.csv <br>
-| | | +-- <SlideID>-mean.flt <br>
+|  |  |  |  +-- <SlideID>\_<ScanNN>\_annotations.xml <br>
+|  |  |  |  +-- <SlideID>\_<ScanNN>\_annotations.xml.lock <br>
+|  |  |  |  +-- <SlideID>\_<ScanNN>.qptiff <br>
+|  |  |  |  +-- MSI <br>
+|  |  |  |  |  +-- \*.im3 files <br>
+|  |  |  +-- flatw <br>
+|  |  |  |  +-- \*.im3 files <br>
+|  |  |  +-- xml <br>
+|  |  |  |  +-- \*.xml files<br>
+|  |  |  +-- <SlideID>-mean.csv <br>
+|  |  |  +-- <SlideID>-mean.flt <br>
 ```
 
 1.	```upkeep_and_progress```
