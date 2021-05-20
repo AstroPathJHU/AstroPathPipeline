@@ -12,7 +12,7 @@ The following folders are located in the ```<Dpath>\<Dname>``` folder and are in
     - Project level log files for the astropath pipeline 
 4.	```Batch```
     - The batch and merge tables
-    - These tables are described in further documentation located [here](#435-batchids "Title") repository
+    - These tables are described in further documentation located [here](scanning/BatchTables.md) and [here](scanning/MergeConfigTables.md) respectively
 5.	```Clinical```
     - Location of the clinical table
     - These tables should be labeled as *Clinical_Table_Specimen_CSID_MMDDYYYY.csv*, where the ```CSID``` indicates the number on the ```<Dname>``` folder. 
