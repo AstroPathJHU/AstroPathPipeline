@@ -1,4 +1,4 @@
-# 5.5. AstroID Generation <div align="center">***v.0.00.0001***</div>
+# 5.5. AstroID Generation ***v.0.00.0001***
 
 ## 5.5.1. Description
 This code is part of the astropath processing pipeline; it intializes a ```SlideID``` for each incoming specimen. These ```SlideID```s are used to standardize slide naming and replace the ```SampleName```s (names applied to the slides during the scanning process) on all subfiles for a specimen and in the scanning plan ('annotations.xml') files. The code prepares an *AstropathAPIDdef.csv* for each project to record the pairings of ```SlideID```s and ```SampleName```s. This file contains the following 5 columns ([described below](#552-important-definitions "Title")): 
