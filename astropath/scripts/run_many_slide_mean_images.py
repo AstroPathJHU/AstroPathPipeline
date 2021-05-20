@@ -19,7 +19,7 @@ ROOT_DIR = '\\\\bki02/e/Clinical_Specimen'
 #ROOT_DIR = r'//bki02/G/VectraPolaris_Data/WholeSlideScans/JHU_Polaris_Melanoma/JHUPolaris_1'
 CMD_BASE = f'run_flatfield slide_mean_image --rawfile_top_dir {RAWFILE_TOP_DIR} --root_dir {ROOT_DIR}'
 #CMD_BASE+= f' --exposure_time_offset_file {ET_OFFSET_FILE}'
-CMD_BASE+= ' --skip_masking --skip_exposure_time_correction'
+CMD_BASE+= ' --skip_masking --skip_exposure_time_correction --filetype flatw'
 CMD_BASE+= f' --n_threads {int(20/N_PROCS)}'
 SLIDE_IDS = [
 'M1_1',
