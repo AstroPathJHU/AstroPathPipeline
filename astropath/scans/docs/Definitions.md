@@ -39,7 +39,7 @@
 ## 4.3.2. Path Definitions
 The file pathes have been standarized and are described below. Additional examples and directions for intialization of these paths can be found in [4.4](). **A full file tree layout can be found in**.
 - ```<Mpath>```: The main path for all the astropath processing *.csv* configuration files.
-  - The current location of this path is *\\bki04\astropath_processing*.
+  - The current location of this path is *\\\\bki04\astropath_processing*.
   - A description of each file is located below in [4.5.1.](AstroPathProcessingDirectoryandInitializingProjects.md\#451-astropath-processing-directory)
 - ```<Dname>```: The data folder name or the name of the clinical specimen folder. 
    - E.g. “Clinical_Specimen_7” 
@@ -52,8 +52,8 @@ The file pathes have been standarized and are described below. Additional exampl
 - ```<Cpath>```: The compression path of the data up to but not including the ```<Dname>```
   - such that the full compression path of the data is ```\\<Cpath>\<Dname>```
   - Here the compressed backup the im3 image files and final Tables\ component data tiffs are stored after the pipeline has finished processing. 
-  - E.g. *bki03\Compressed_Clinical_Specimens*
-  - E.g. *bki03\Compressed_Clinical_Specimens_2*
+  - E.g. *\\\\bki03\Compressed_Clinical_Specimens*
+  - E.g. *\\\\bki03\Compressed_Clinical_Specimens_2*
 - ```<FWpath>```: This is the full path for the single column flat field and warping image (.fw) as well as the exposure time data for each image (.SpectralBasisInfo.xml). 
    - This path should preferably located on a different drive from the main path to improve pipeline performance. 
    - E.g. “bki03\flatw_7”
