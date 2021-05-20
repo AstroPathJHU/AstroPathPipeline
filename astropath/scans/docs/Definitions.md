@@ -60,6 +60,9 @@ The file pathes have been standarized and are described below. Additional exampl
    - Usually the specifier used on the ```<Dname>``` folder is also found as an extension on this folder
    - ***Additional details on these files can be found in the flatw workflow description***
 - ```base[sting]```: This is sometimes used throughout the documentation to refer to the combination of ```<Dpath>\<Dname>``` (both defined above)
-- ```<im3_path>```: *im3\\```<ScanN>```\\MSI* or *im3\\```<ScanNN>```\\MSI*
+- ```<im3_path>```: The path between the ```<SlideID>``` and where the original im3 are kept
+  - E.g. *im3\\```<ScanN>```\\MSI* or *im3\\```<ScanNN>```\\MSI*
+- ```<flatw_im3_path>```: The path after the ```<SlideID>``` where the image corrected im3s are kept
+  - E.g. (*im3\\flatw*)
 - 
 *NOTE*: the ```<path>``` variables do not contain the ```<Dname>``` 
