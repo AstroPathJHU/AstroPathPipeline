@@ -4,8 +4,8 @@ The following is the directory structure for the *AstroPath Pipeline* in the ```
 *NOTE*: ```<>``` indicate variables, lines without brackets indicate full names
 
 +-- ```<Dname>\<Dpath>``` <br>
-|  +-- ```<SlideID>``` <br>
-|  |  +-- im3 <br>
+|-+-- ```<SlideID>``` <br>
+|-|-+-- im3 <br>
 |  |  |  +-- ```<ScanNN>``` <br>
 |  |  |  | +-- BatchID.txt <br>
 |  |  |  | +-- CheckSums.txt <br>
