@@ -42,13 +42,13 @@ The file pathes have been standarized and are described below. Additional exampl
   - The current location of this path is *\\\\bki04\astropath_processing*.
   - A description of each file is located below in [4.5.1.](AstroPathProcessingDirectoryandInitializingProjects.md\#451-astropath-processing-directory)
 - ```<Dname>```: The data folder name or the name of the clinical specimen folder. 
-   - E.g. “Clinical_Specimen_7” 
+   - E.g. *Clinical_Specimen_7*
 - ```<Dpath>```: The data or destination path up to but not including the ```<Dname>```
   - such that the full path to the data is ```\\<Dname>\<Dpath>```
 - ```<Spath>```: The source path of the data up to but not including the  ```<Dname>```
   - such that the full source path of the data is ```\\<Spath>\<Dname>```
   - usually indicates a subdirectory on a server where the microscope is backed up to after scanning is complete.
-  -  E.g. “\\tme1\VectraPolaris\Vectra Polaris 1 Scanning” 
+  -  E.g. *\\\\tme1\VectraPolaris\Vectra Polaris 1 Scanning*
 - ```<Cpath>```: The compression path of the data up to but not including the ```<Dname>```
   - such that the full compression path of the data is ```\\<Cpath>\<Dname>```
   - Here the compressed backup the im3 image files and final Tables\ component data tiffs are stored after the pipeline has finished processing. 
