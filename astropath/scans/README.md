@@ -21,32 +21,8 @@ The *AstroPath Pipeline* requires that a number of experimental protocols are un
    - [4.4.6. BatchIDs](docs/scanning/BatchIDs.md)
    - [4.4.7. Batch Tables](docs/scanning/BatchTables.md)
    - [4.4.8. Merge Configuration Tables](docs/scanning/MergeConfigTables.md)
+- [4.5. AstroPath Processing Directory and Initalizing Projects](docs/AstroPathProcessingDirectoryandInitializingProjects.md)
+  - [4.5.1. AstroPath Processing Directory](docs/AstroPathProcessingDirectoryandInitializingProjects.md/#451-astropath-processing-directory)
+  - [4.5.2. Initializing Projects](docs/AstroPathProcessingDirectoryandInitializingProjects.md/#452-initializing-projects)
 
 
-
-#
-## 4.6. Directory Organization 
-The following folders should exist in the ```<Dpath>\<Dname>``` for processing. The code initializes these folders at the start of the pipeline.
-1.	```upkeep_and_progress```
-    - For any upkeep and progress tracking files
-    - Location of the *AstropathAPIDdef_PP.csv* files, where ```PP``` indicates the numeric project id
-2.	```flatfield```
-    - Location of the flatfield parameter files
-    - These files are named ```Flatfield_BatchID_BB.bin```, replacing the ```BB``` for the appropriate batch id.
-3.	```logfiles```
-    - Project level log files for the astropath pipeline 
-4.	```Batch```
-    - The batch and merge tables
-    - These tables are described in further documentation located [here](#435-batchids "Title") repository
-5.	```Clinical```
-    - Location of the clinical table
-    - These tables should be labeled as *Clinical_Table_Specimen_CSID_MMDDYYYY.csv*, where the ```CSID``` indicates the number on the ```<Dname>``` folder. 
-    - We always use the clinical table with the most recent date in the data upload
-6.	```Ctrl```
-    - Location of control TMA data output
-7.	```dbload```
-    - Location of the files used for the database upload
-8.	```tmp_inform_data```
-    - Location of the inform data output and inform algorithms used. **Additional information on this folder is provided in the hpf processing documentation.**
-9.	```reject```
-    - Location of the rejected slides
