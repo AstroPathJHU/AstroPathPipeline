@@ -24,5 +24,8 @@ The *AstroPath Pipeline* requires that a number of experimental protocols are un
 - [4.5. AstroPath Processing Directory and Initalizing Projects](docs/AstroPathProcessingDirectoryandInitializingProjects.md)
   - [4.5.1. AstroPath Processing Directory](docs/AstroPathProcessingDirectoryandInitializingProjects.md/#451-astropath-processing-directory)
   - [4.5.2. Initializing Projects](docs/AstroPathProcessingDirectoryandInitializingProjects.md/#452-initializing-projects)
+- [4.6. Directory Organization](docs/DirectoryOrganization.md)
+  - [4.6.1. Directory Subfolders](docs/DirectoryOrganization.md#461-directory-subfolders)
+  - [4.6.2. SlideID Subfolders](docs/DirectoryOrganization.md#462-slideid-subfolders)
 
 
