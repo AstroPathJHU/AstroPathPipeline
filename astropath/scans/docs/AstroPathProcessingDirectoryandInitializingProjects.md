@@ -1,5 +1,5 @@
 # 4.5. AstroPath Processing Directory and Initializing Projects
-The code is driven by the files located in a main processing folder, named the ```<Mpath>```. These files are described below followed by descriptions of the respectve columns. For columns without definitions provided, please check [4.3.](../Definitions.md). After a description of the directory and files included, instructions for intializing projects into the pipeline are provided. The JHU directory is located at *\\bki04\astropath_processing*
+The code is driven by the files located in a main processing folder, named the ```<Mpath>```. These files are described below followed by descriptions of the respectve columns. For columns without definitions provided, please check [4.3.](Definitions.md). After a description of the directory and files included, instructions for intializing projects into the pipeline are provided. The JHU directory is located at *\\bki04\astropath_processing*
 
 ## 4.5.1. AstroPath Processing Directory
 - *AstropathCohortsProgress.csv*: 
@@ -19,7 +19,7 @@ The code is driven by the files located in a main processing folder, named the `
 ```
 Project, Cohort, Dname, Delete, Space_TB, Process_Merge
 ```
- - ```Delete[string]```: An option of the ```transferdeamon``` module, input is either *yes* or *no* and is not case sensitive. Indicates whether or not to automatically delete data from the source directory after it is transferred to the ```<dpath>\<dname>```, compressed to the ```<Cpath>\<Dname>``` location, and verfied using *checksums*. ([Path name definitions](../Definitions.md/#432-path-definitions))
+ - ```Delete[string]```: An option of the ```transferdeamon``` module, input is either *yes* or *no* and is not case sensitive. Indicates whether or not to automatically delete data from the source directory after it is transferred to the ```<dpath>\<dname>```, compressed to the ```<Cpath>\<Dname>``` location, and verfied using *checksums*. ([Path name definitions](Definitions.md/#432-path-definitions))
  - ```Space_TB[float]```: updated by the ```mergeloop``` module to verify that there is enough space on the server for different processes, add a zero for intializing a project
  - ```Process_Merge[string]```: An option of the ```mergeloop``` module, input is either *yes* or *no* and is not case sensitive. Indicates whether or not to run the *mergeloop* module for that project. Once data is validated through QC ([documentation here]()) it is usually best to turn off the ```mergeloop``` processing for that ```Project```.
 - *AstropathControldef.csv*
@@ -46,7 +46,7 @@ Project, Cohort, Dname, Delete, Space_TB, Process_Merge
    SlideID, SampleName, Project, Cohort, BatchID
    ```
 ## 4.5.2. Initializing Projects
-To initialize ```Project```s; first create the ```<Spath>```, ```<Dpath>\<Dname>```, and ```<Cpath>```. Next, add the ```Project``` to the *AstropathCohortsProgress.csv* with all the pertient information and the next available ```Project``` number, afterward update the *AstropathConfig* and *AstropathPaths* file with the new ```Project```. Additional details on the paths is below, the code should begin processing the slides as long as slides have been added to the *Specimen_Table.xlsx* and the scanning protocols have been adhered to as defined in [4.4.](../ScanningInstructionsIntro.md).
+To initialize ```Project```s; first create the ```<Spath>```, ```<Dpath>\<Dname>```, and ```<Cpath>```. Next, add the ```Project``` to the *AstropathCohortsProgress.csv* with all the pertient information and the next available ```Project``` number, afterward update the *AstropathConfig* and *AstropathPaths* file with the new ```Project```. Additional details on the paths is below, the code should begin processing the slides as long as slides have been added to the *Specimen_Table.xlsx* and the scanning protocols have been adhered to as defined in [4.4.](ScanningInstructionsIntro.md).
 
 The ```<Spath>``` folder is created on the scanning computer where the slides are scanned into. The folders are usually labeled *Clinical_Specimen_XX*, where the *XX* indicates a numeric value or unique lettering. Examples of these scanning folders incude *Clinical_Specimen_2* and *CLinical_Specimen_BMS_01*. In the JHU processing pipeline, this folder is backed up every night, using commercially available software, to a network server with significant storage capacity (~80TB). Once slide scans are completed they can be deleted from the local computer, the rest of the processing takes place on the network server location. In this way, the local computers never run in storage issues. *NOTE*: The fully qualified path for this scanning folder on the network server is designated as the ```<Spath>```. 
 
