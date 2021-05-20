@@ -105,13 +105,13 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
   - [5.10. Inform_processing](inform_processing#510-inform_processing "Title")
   - [5.11. Segmaps](segmaps#511-segmaps "Title")
   - [5.12. Transferanno](transferanno#512-transferanno "Title")
- - [6. Slide_Processing]
-   - [6.1 Description]
+ - [6. Slide Processing](astropath/slides/#6-slide-processing)
+   - [6.1 Description](astropath/slides/#61-description)
    - [6.2 Prepdb](astropath/slides/prepdb/#62-prepdb)
    - [6.3 Align](astropath/slides/align/#63-align)
    - [6.4 Annotations]
    - [6.5 Cell Geometries]
- - [7. Sample_Processing]
+ - [7. Sample Processing]
    - [7.1 Description]
    - [7.2 Control TMAs]
    - [7.3 Calibration]
