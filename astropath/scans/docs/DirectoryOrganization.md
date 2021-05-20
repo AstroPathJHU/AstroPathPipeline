@@ -15,7 +15,7 @@ The following folders are located in the ```<Dpath>\<Dname>``` folder and are in
     - These tables are described in further documentation located [here](scanning/BatchTables.md) and [here](scanning/MergeConfigTables.md) respectively
 5.	```Clinical```
     - Location of the clinical table
-    - These tables should be labeled as *Clinical_Table_Specimen_CSID_MMDDYYYY.csv*, where the ```CSID``` indicates the number on the ```<Dname>``` folder. 
+    - These tables should be labeled as *Clinical_Table_Specimen_XX_MMDDYYYY.csv*, where the ```XX``` indicates the number on the ```<Dname>``` folder. 
     - We always use the clinical table with the most recent date in the data upload
 6.	```Ctrl```
     - Location of control TMA data output
