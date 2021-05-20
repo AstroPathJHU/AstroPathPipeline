@@ -15,7 +15,7 @@ This code is used to transfer and reorganize the whole slide clinical specimen s
    *NOTE*: the ```<path>``` variables do not contain the ```<Dname>```
 
 ## 5.6.3. Instructions
-Usage is:
+For python download the repository and install the transferdeamon. Then launch using:
 
 ```TransferDaemon.py <Mpath> <email_on_error> [<source_file_handling>] [<logical_compression>] [<quiet>]```
 
