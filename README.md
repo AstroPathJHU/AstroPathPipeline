@@ -29,7 +29,7 @@ import astropath
 from any directory.
 
 ### 2.2.2. MATLAB Instructions
-Check out\ download the github repository. In MATLAB add the entire *AstroPathPipeline* to the MATLAB path. The *AstroPathPipeline* commands should then be available in MATLAB. 
+Check out\ download the github repository. In MATLAB add the entire *AstroPath Pipeline* to the MATLAB path. The *AstroPath Pipeline* commands should then be available in MATLAB. 
 
 *NOTE*: For specific Python, MATLAB, cmd, or PowerShell commands of a particular module check the module or workflow instructions.
 
