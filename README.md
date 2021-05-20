@@ -13,6 +13,20 @@ The AstroPath pipeline was designed to automate the processing of whole slide mu
 
 ## 2.2. Instructions
 ### 2.2.1. Python Instructions
+To install the code, first check out the repository, enter its directory, and run
+```bash
+pip install .
+```
+If you want to continue developing the code after installing, run instead
+```bash
+pip install --editable .
+```
+
+Once the code is installed using either of those lines, you can run
+```python
+import astropath
+```
+from any directory.
 
 ### 2.2.2. MATLAB Instructions
 Check out\ download the github repository. In MATLAB add the entire *AstroPathPipeline* to the MATLAB path. The *AstroPathPipeline* commands should then be available in MATLAB. 
