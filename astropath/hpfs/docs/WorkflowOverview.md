@@ -25,4 +25,4 @@ As noted above, modules outside of ```segmaps``` and ```transferanno``` can be l
 - The following modules can be launched at the same time: ```TransferDeamon```, ```meanimages```, ```flatw_queue```, ```inform_queue```, ```mergeloop```. 
 - The following modules must be launched on their respective "worker" locations: ```flatw_worker``` and ```inform_worker```. 
 - Launching ```segmaps``` runs over the entire set of projects but is not a continous loop and must be restarted to reprocess
-- transferanno is a simple script that distributes and renames the halo annotations from a single folder to corresponding slide folders in a single project folder
+- ```transferanno``` is a simple script that distributes and renames the halo annotations from a single folder to corresponding slide folders in a single project folder
