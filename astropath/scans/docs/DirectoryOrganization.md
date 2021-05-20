@@ -2,7 +2,7 @@
 The following is the directory structure for the *AstroPath Pipeline* in the ```<Dpath>\<Dname>``` folder. The code initializes most of the folders if running the pipeline from the beginning and places data in the proper locations. 
 
 *NOTE*: ```<>``` indicate variables, lines without brackets indicate full names
-
+```
 +-- ```<Dname>\<Dpath>``` <br>
 |-+-- ```<SlideID>``` <br>
 |-|-+-- im3 <br>
@@ -21,7 +21,7 @@ The following is the directory structure for the *AstroPath Pipeline* in the ```
 | | | | +-- \*.xml files<br>
 | | | +-- ```<SlideID>```-mean.csv <br>
 | | | +-- ```<SlideID>```-mean.flt <br>
-
+```
 
 1.	```upkeep_and_progress```
     - For any upkeep and progress tracking files
