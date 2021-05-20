@@ -59,5 +59,7 @@ The file pathes have been standarized and are described below. Additional exampl
    - E.g. “bki03\flatw_7”
    - Usually the specifier used on the ```<Dname>``` folder is also found as an extension on this folder
    - ***Additional details on these files can be found in the flatw workflow description***
-
+- ```base[sting]```: This is sometimes used throughout the documentation to refer to the combination of ```<Dpath>\<Dname>``` (both defined above)
+- ```<im3_path>```: *im3\\```<ScanN>```\\MSI* or *im3\\```<ScanNN>```\\MSI*
+- 
 *NOTE*: the ```<path>``` variables do not contain the ```<Dname>``` 
