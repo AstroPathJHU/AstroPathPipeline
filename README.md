@@ -42,7 +42,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPathPi
    - [4.2. Contents](astropath/scans#42-contents "Title")
    - [4.3. Definitions](astropath/scans/docs/Definitions)
    - [4.3.1. Indentification Definitions](astropath/scans/docs/Definitions.md/#431-identification-definitions)
-   - [4.3.2. Path Definitions]astropath/scans/(docs/Definitions.md/#432-path-definitions)
+   - [4.3.2. Path Definitions](astropath/scans/docs/Definitions.md/#432-path-definitions)
  - [4.4. Scanning Instructions Introduction](astropath/scans/docs/ScanningInstructionsIntro.md)
    - [4.4.1. Contents](astropath/scans/docs/ScanningInstructionsIntro.md/#441-contents) 
    - [4.4.2. Specimen Table](astropath/scans/docs/scanning/SpecimenTable.md)
