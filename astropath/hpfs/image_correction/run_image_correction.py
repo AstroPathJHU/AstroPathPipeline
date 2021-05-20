@@ -5,6 +5,7 @@ from ...baseclasses.sample import SampleDef
 from ...baseclasses.logging import getlogger
 from ...utilities.img_file_io import getImageHWLFromXMLFile
 from ...utilities.misc import addCommonArgumentsToParser
+from ...utilities.config import UNIV_CONST
 from argparse import ArgumentParser
 import pathlib
 
@@ -80,9 +81,9 @@ def main(args=None) :
                                       help='Image layer to use (indexed from 1; default=-1 does all layers)')
         run_option_group.add_argument('--input_file_extension', default='.Data.dat',
                                       help='Extension for the raw files that will be read in (default = ".Data.dat")')
-        run_option_group.add_argument('--output_file_extension', default='.fw',
-                                      help="""Extension for the corrected files that will be written out 
-                                           (default = ".fw"; 2-digit layer code will be appended if layer != -1)""")
+        run_option_group.add_argument('--output_file_extension', default=f'{UNIV_CONST.FLATW_EXT}',
+                                      help=f"""Extension for the corrected files that will be written out 
+                                           (default = "{UNIV_CONST.FLATW_EXT}"; 2-digit layer code will be appended if layer != -1)""")
         run_option_group.add_argument('--max_files',             default=-1,    type=int,
                                       help='Maximum number of files to use (default = -1 runs all files for the requested slide)')
         args = parser.parse_args(args=args)

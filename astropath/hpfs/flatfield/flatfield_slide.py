@@ -269,18 +269,24 @@ class FlatfieldSlide() :
         #return the list of the filepaths whose rectangles are on the edge of the tissue
         return [rfp for rfp in rawfile_paths if ((pathlib.Path(rfp)).name).split('.')[0] in edge_rect_filenames]
 
-    def plotLabelledMaskRegions(self,labelled_mask_regions,rfps_added,masking_plot_dirpath) :
-    	"""
-		Plot the labelled mask region locations for this slide
-		labelled_mask_regions = list of labelled mask regions that were flagged for some reason for this slide
-		rfps_added            = list of rawfile paths that were read and stacked from this slide
-		masking_plot_dirpath  = path to where the labelled mask region plot should be saved
-    	"""
-    	#first get the list of all the rawfile paths for this slide
-    	with cd(pathlib.Path(f'{self._rawfile_top_dir}/{self._name}')) :
-    		all_rfps = [pathlib.Path(f'{self._rawfile_top_dir}/{self._name}/{fn}') for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
-    	#run the plotting function for this slide
-    	plotFlaggedHPFLocations(self._name,all_rfps,rfps_added,labelled_mask_regions,masking_plot_dirpath)
+    def plotLabelledMaskRegions(self,labelled_mask_regions,rfps_added,masking_plot_dirpath,filetype) :
+        """
+        Plot the labelled mask region locations for this slide
+        labelled_mask_regions = list of labelled mask regions that were flagged for some reason for this slide
+        rfps_added            = list of rawfile paths that were read and stacked from this slide
+        masking_plot_dirpath  = path to where the labelled mask region plot should be saved
+        filetype              = 'raw' or 'flatw' based on which type of base image file to use
+        """
+        #first get the list of all the rawfile paths for this slide
+        with cd(pathlib.Path(f'{self._rawfile_top_dir}/{self._name}')) :
+            file_ext = None
+            if filetype=='raw' :
+                file_ext = UNIV_CONST.RAW_EXT
+            elif filetype=='flatw' :
+                file_ext = UNIV_CONST.FLATW_EXT
+            all_rfps = [pathlib.Path(f'{self._rawfile_top_dir}/{self._name}/{fn}') for fn in glob.glob(f'*{file_ext}')]
+        #run the plotting function for this slide
+        plotFlaggedHPFLocations(self._name,all_rfps,rfps_added,labelled_mask_regions,masking_plot_dirpath)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

@@ -33,11 +33,12 @@ class FlatfieldProducer :
 
     #################### PUBLIC FUNCTIONS ####################
     
-    def __init__(self,slides,all_slide_rawfile_paths_to_run,workingdir_name,skip_et_correction=False,skip_masking=False,logger=None) :
+    def __init__(self,slides,all_slide_rawfile_paths_to_run,workingdir_name,filetype='raw',skip_et_correction=False,skip_masking=False,logger=None) :
         """
         slides                         = list of FlatfieldSlideInfo objects for this run
         all_slide_rawfile_paths_to_run = list of paths to raw files to stack for all slides that will be run (may be None in batch_flatfield mode)
         workingdir_name                = name of the directory to save everything in
+        filetype                       = 'raw' or 'flatw' based on which type of base image file to use
         skip_et_correction             = if True, image flux will NOT be corrected for exposure time differences in each layer
         skip_masking                   = if True, image layers won't be masked before being added to the stack
         logger                         = a RunLogger object whose context is entered, if None the default log will be used
@@ -54,6 +55,8 @@ class FlatfieldProducer :
                 img_dims=ff_slide.img_dims
             elif img_dims!=ff_slide.img_dims :
                 raise FlatFieldError('ERROR: slides do not all share the same dimensions!')
+        #Set the filetype
+        self.filetype = filetype
         #Start up a new mean image to use for making the actual flatfield
         self.mean_image = MeanImage(img_dims,workingdir_name,skip_et_correction,skip_masking)
         #Set up the exposure time correction offsets by layer
@@ -315,7 +318,7 @@ class FlatfieldProducer :
                 self.__writeLog(f'Plotting labelled mask regions for slide {sn}','info',sn,slide.root_dir)
                 this_slide_rfps_added = [rfp for rfp in self.filepaths_added if sn in str(rfp)]
                 this_slide_regions = [lmr for lmr in self.mean_image.labelled_mask_regions if sn in lmr.image_key]
-                slide.plotLabelledMaskRegions(this_slide_regions,this_slide_rfps_added,self.mean_image.masking_plot_dirpath)
+                slide.plotLabelledMaskRegions(this_slide_regions,this_slide_rfps_added,self.mean_image.masking_plot_dirpath,self.filetype)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

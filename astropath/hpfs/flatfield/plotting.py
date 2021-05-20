@@ -339,7 +339,7 @@ def plotFlaggedHPFLocations(sid,all_rfps,rfps_added,lmrs,plotdir_path=None) :
     all_flagged_hpf_keys = [lmr.image_key for lmr in lmrs]
     hpf_identifiers = []
     for rfp in all_rfps :
-        key = ((pathlib.Path(rfp)).name).rstrip(UNIV_CONST.RAW_EXT)
+        key=rfp.name
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
         if key in all_flagged_hpf_keys :

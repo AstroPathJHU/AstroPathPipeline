@@ -6,7 +6,10 @@ class Const :
     #file extensions
     @property
     def RAW_EXT(self) :
-        return '.Data.dat' # extension of completely raw image files
+        return '.Data.dat' # extension of completely raw image files shredded from .im3 files
+    @property
+    def FLATW_EXT(self) :
+        return '.fw' # extension of corrected "flatw" image files
     @property
     def IM3_EXT(self) :
         return '.im3' # extension of .im3 image files
