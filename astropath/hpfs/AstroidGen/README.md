@@ -1,9 +1,5 @@
 # 5.5. AstroID Generation
 #### <div align="center">***v.0.00.0001***</div>
-#### <div align="center">Created by: Sigfredo Soto-Diaz & Benjamin Green</div>
-#### <div align="center">Tumor Microenvironment Technology Development Center</div>
-#### <div align="center">The Johns Hopkins University Bloomberg~Kimmel Institute for Cancer Immunotherapy</div>
-#### <div align="center">Correspondence to: ssotodi@jh.edu</div>
 
 ## 5.5.1. Description
 This code is part of the astropath processing pipeline; it intializes a ```SlideID``` for each incoming specimen. These ```SlideID```s are used to standardize slide naming and replace the ```SampleName```s (names applied to the slides during the scanning process) on all subfiles for a specimen and in the scanning plan ('annotations.xml') files. The code prepares an *AstropathAPIDdef.csv* for each project to record the pairings of ```SlideID```s and ```SampleName```s. This file contains the following 5 columns ([described below](#552-important-definitions "Title")): 
@@ -83,3 +79,7 @@ Finally, we compile the *AstropathAPIDdef.csv* as follows:
 
 Once all cohorts have been checked the code will wait for 30 minutes, reload the *AstropathCohortsProgress.csv* file, then recheck all directories in such a way that the code is running in a continous loop.
 
+## Credits
+#### <div align="center">Created by: Sigfredo Soto-Diaz & Benjamin Green</div>
+#### <div align="center">Tumor Microenvironment Technology Development Center</div>
+#### <div align="center">The Johns Hopkins University Bloomberg~Kimmel Institute for Cancer Immunotherapy</div>
