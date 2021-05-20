@@ -1,6 +1,6 @@
 # 5.8.3. Important Definitions
 ## 5.8.3.1. Flatw Expected Directory Structure
-Since this section of the pipeline can be used with standalone funcationality to apply corrections, we define the directory structure here. A more detailed directory structure for the whole AstroPath Pipeline can be found [here](../../scans/docs/DirectoryOrganization.md#46-directory-organization): 
+Since this section of the pipeline can be used with standalone funcationality to apply corrections, we define the directory structure here. A more detailed directory structure for the whole AstroPath Pipeline can be found [here](../../../scans/docs/DirectoryOrganization.md#46-directory-organization): 
 ```
 <base>\<SlideID>\<im3_path>\<filename>
 ```
@@ -13,7 +13,7 @@ Example:  *\\\\bki04\\Clinical_Specimen\\AST123456\\im3\\Scan1\\MSI\\M41\_1\_\[3
 
 *NOTE*: 
 - The Scan number directory would be the highest scan number in the ```<SlideID>``` folder, not always ‘1’ and may be multiple digits
-- *BatchID.txt*: This file should contain the batch id that the slides were stained with. The code looks for the batch id as a specifier on the flatfield bin file, additional documentation found [here](../../scans/docs/scanning/BatchIDs.md#446-batchids)
+- *BatchID.txt*: This file should contain the batch id that the slides were stained with. The code looks for the batch id as a specifier on the flatfield bin file, additional documentation found [here](../../../scans/docs/scanning/BatchIDs.md#446-batchids)
 - *flatfield_BatchID_NN.bin*: This is the bitmap data of the average image for a batch. 
   - The code will use the specifier *NN* from the *BatchID.txt* to find the appropriate flatfield file to use. 
   - This file should be kept in a *```<base>```\\flatfield* directory (A directory adjacent to the ```<SlideID>``` directory) for proper coding processing
