@@ -136,6 +136,8 @@ def getImageHWLFromXMLFile(root_dir,slideID) :
     xmlfile_path = subdir_filepath
   else :
     xmlfile_path = pathlib.Path(f'{root_dir}/{slideID}/{slideID}{PARAMETER_XMLFILE_EXT}')
+  if not xmlfile_path.is_file() :
+    raise FileNotFoundError(f'ERROR: xml file {xmlfile_path} does not exist!')
   try :
     tree = et.parse(xmlfile_path)
   except Exception as e :
@@ -143,6 +145,7 @@ def getImageHWLFromXMLFile(root_dir,slideID) :
   for child in tree.getroot() :
     if child.attrib['name']=='Shape' :
       img_width, img_height, img_nlayers = tuple([int(val) for val in (child.text).split()])
+      break
   return img_height, img_width, img_nlayers
 
 #helper function to figure out where a raw file's exposure time xml file is given the raw file path and the root directory

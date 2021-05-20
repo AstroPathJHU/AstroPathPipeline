@@ -66,8 +66,12 @@ class FlatfieldSlide() :
             self._exp_time_hists = None
             self._med_exp_times_by_layer = None
         else :
-            self._exp_time_hists = getExposureTimeHistogramsByLayerGroupForSlide(self._rawfile_top_dir,self._name)
-            self._med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
+            try :
+                self._exp_time_hists = getExposureTimeHistogramsByLayerGroupForSlide(self._rawfile_top_dir,self._name)
+                self._med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(self._rawfile_top_dir,self._name)
+            except FileNotFoundError :
+                self._exp_time_hists = getExposureTimeHistogramsByLayerGroupForSlide(self._root_dir,self._name)
+                self._med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(self._root_dir,self._name)
         self._background_thresholds_for_masking = None
 
     def readInBackgroundThresholds(self,threshold_file_path) :
@@ -175,19 +179,19 @@ class FlatfieldSlide() :
                     ax1.set_xlabel('pixel flux (counts)')
                     ax1.set_ylabel('n images')
                     ax1.legend(loc='best')
-                    ax2.bar(list(range(mean+1)),all_tissue_edge_layer_hists[:mean+1,li],width=1.0,label='background')
+                    ax2.bar(list(range(med+1)),all_tissue_edge_layer_hists[:med+1,li],width=1.0,label='background')
                     right_bin = len(all_tissue_edge_layer_hists[:,li])-1
                     while all_tissue_edge_layer_hists[right_bin,li]==0 :
                         right_bin-=1
-                    ax2.bar(list(range(mean+1,right_bin+1)),all_tissue_edge_layer_hists[mean+1:right_bin+1,li],width=1.0,label='signal')
+                    ax2.bar(list(range(med+1,right_bin+1)),all_tissue_edge_layer_hists[med+1:right_bin+1,li],width=1.0,label='signal')
                     ax2.set_yscale('log')
                     ax2.set_title('pixel histogram (summed over all images)')
                     ax2.set_xlabel('pixel flux (counts)')
                     ax2.set_ylabel('n image pixels')
                     ax2.legend(loc='best')
-                    ax3.bar(list(range(mean+1)),all_tissue_edge_layer_hists[:mean+1,li],width=1.0,label='background')
-                    right_plot_limit = min(max_threshold_found,int(1.5*mean))+100
-                    ax3.bar(list(range(mean+1,right_plot_limit)),all_tissue_edge_layer_hists[mean+1:right_plot_limit,li],width=1.0,label='signal')            
+                    ax3.bar(list(range(med+1)),all_tissue_edge_layer_hists[:med+1,li],width=1.0,label='background')
+                    right_plot_limit = min(max_threshold_found,int(1.5*med))+100
+                    ax3.bar(list(range(med+1,right_plot_limit)),all_tissue_edge_layer_hists[med+1:right_plot_limit,li],width=1.0,label='signal')            
                     ax3.plot([mean,mean],[0.8*y for y in ax3.get_ylim()],linewidth=2,color='m',label=f'mean={mean}')
                     ax3.plot([med,med],[0.8*y for y in ax3.get_ylim()],linewidth=2,color='r',label=f'median={med}')
                     ax3.set_title('partial pixel histogram')
@@ -269,18 +273,24 @@ class FlatfieldSlide() :
         #return the list of the filepaths whose rectangles are on the edge of the tissue
         return [rfp for rfp in rawfile_paths if ((pathlib.Path(rfp)).name).split('.')[0] in edge_rect_filenames]
 
-    def plotLabelledMaskRegions(self,labelled_mask_regions,rfps_added,masking_plot_dirpath) :
-    	"""
-		Plot the labelled mask region locations for this slide
-		labelled_mask_regions = list of labelled mask regions that were flagged for some reason for this slide
-		rfps_added            = list of rawfile paths that were read and stacked from this slide
-		masking_plot_dirpath  = path to where the labelled mask region plot should be saved
-    	"""
-    	#first get the list of all the rawfile paths for this slide
-    	with cd(pathlib.Path(f'{self._rawfile_top_dir}/{self._name}')) :
-    		all_rfps = [pathlib.Path(f'{self._rawfile_top_dir}/{self._name}/{fn}') for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
-    	#run the plotting function for this slide
-    	plotFlaggedHPFLocations(self._name,all_rfps,rfps_added,labelled_mask_regions,masking_plot_dirpath)
+    def plotLabelledMaskRegions(self,labelled_mask_regions,rfps_added,masking_plot_dirpath,filetype) :
+        """
+        Plot the labelled mask region locations for this slide
+        labelled_mask_regions = list of labelled mask regions that were flagged for some reason for this slide
+        rfps_added            = list of rawfile paths that were read and stacked from this slide
+        masking_plot_dirpath  = path to where the labelled mask region plot should be saved
+        filetype              = 'raw' or 'flatw' based on which type of base image file to use
+        """
+        #first get the list of all the rawfile paths for this slide
+        with cd(pathlib.Path(f'{self._rawfile_top_dir}/{self._name}')) :
+            file_ext = None
+            if filetype=='raw' :
+                file_ext = UNIV_CONST.RAW_EXT
+            elif filetype=='flatw' :
+                file_ext = UNIV_CONST.FLATW_EXT
+            all_rfps = [pathlib.Path(f'{self._rawfile_top_dir}/{self._name}/{fn}') for fn in glob.glob(f'*{file_ext}')]
+        #run the plotting function for this slide
+        plotFlaggedHPFLocations(self._name,all_rfps,rfps_added,labelled_mask_regions,masking_plot_dirpath)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

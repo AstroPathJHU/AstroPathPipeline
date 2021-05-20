@@ -24,10 +24,10 @@ class MeanImage :
         return self._dims #dimensions of the stacked images/meanimage
     @property
     def labelled_mask_regions(self):
-    	return self._labelled_mask_regions #the list of labelled mask regions
+        return self._labelled_mask_regions #the list of labelled mask regions
     @property
     def masking_plot_dirpath(self):
-    	return pathlib.Path(f'{self._workingdir_path}/{self.MASKING_SUBDIR_NAME}')
+        return pathlib.Path(f'{self._workingdir_path}/{self.MASKING_SUBDIR_NAME}')
     
     #################### CLASS CONSTANTS ####################
 

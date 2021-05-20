@@ -31,8 +31,8 @@ def checkArgs(a) :
         if (a.prior_run_dir is not None) or (a.max_images!=-1) or (a.selection_mode!='random') or a.allow_edge_HPFs or a.other_runs_to_exclude!=[''] :
             raise ValueError(f'ERROR: file selection is done automatically in {a.mode} mode!')
         #only ever run using image masks
-        if a.skip_masking :
-            raise ValueError(f'ERROR: running in {a.mode} mode is not compatible with skipping masking! Remove the skip_masking flag!')
+        if a.skip_masking and a.filetype=='raw' :
+            raise ValueError(f'ERROR: running in {a.mode} mode with raw files is not compatible with skipping masking! Remove the skip_masking flag!')
         #can't save masking images
         if a.n_masking_images_per_slide!=0 :
             raise ValueError(f'ERROR: cannot save masking images when running in {a.mode} mode!')
@@ -41,8 +41,8 @@ def checkArgs(a) :
             raise ValueError(f'ERROR: when running in {a.mode} mode only the default selected pixel cut of {DEFAULT_SELECTED_PIXEL_CUT} is valid!')
         if a.mode=='slide_mean_image' :
             #need to apply exposure time corrections
-            if a.exposure_time_offset_file is None :
-                raise ValueError('ERROR: must give an exposure time offset file in slide_mean_image mode')
+            if a.exposure_time_offset_file is None and a.filetype=='raw' :
+                raise ValueError('ERROR: must give an exposure time offset file in slide_mean_image mode for raw files')
             #make sure it'll run on exactly one slide
             if len(split_csv_to_list(a.slides))!=1 :
                 raise ValueError(f'ERROR: running in slide_mean_image mode requires running one slide at a time, but slides argument = {a.slides}!')
@@ -191,7 +191,12 @@ def getFilepathsAndSlidesToRun(a,logger=None) :
     all_slide_filepaths=[]
     for s in slides_to_run :
         with cd(pathlib.Path(f'{s.rawfile_top_dir}/{s.name}')) :
-            all_slide_filepaths+=[pathlib.Path(f'{s.rawfile_top_dir}/{s.name}/{fn}') for fn in glob.glob(f'{s.name}_[[]*,*[]]{UNIV_CONST.RAW_EXT}')]
+            if a.filetype=='raw' :
+                all_slide_filepaths+=[pathlib.Path(f'{s.rawfile_top_dir}/{s.name}/{fn}') for fn in glob.glob(f'{s.name}_[[]*,*[]]{UNIV_CONST.RAW_EXT}')]
+            elif a.filetype=='flatw' :
+                all_slide_filepaths+=[pathlib.Path(f'{s.rawfile_top_dir}/{s.name}/{fn}') for fn in glob.glob(f'{s.name}_[[]*,*[]]{UNIV_CONST.FLATW_EXT}')]
+            else :
+                raise ValueError(f'ERROR: filetype {a.filetype} is not recognized!')
     all_slide_filepaths.sort()
     #if the rawfiles haven't already been selected, figure that out
     if filepaths_to_run is None :
@@ -277,7 +282,7 @@ def doRun(args,workingdir_path,logger=None) :
     if args.mode=='check_run' :
         return
     #start up a flatfield producer
-    ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,workingdir_path,args.skip_exposure_time_correction,args.skip_masking,logger)
+    ff_producer = FlatfieldProducer(slides_to_run,filepaths_to_run,workingdir_path,args.filetype,args.skip_exposure_time_correction,args.skip_masking,logger)
     #in batch_flatfield mode, just make the flatfield from all the files that already exist
     if args.mode=='batch_flatfield' :
         ff_producer.makeFlatfieldFromSlideMeanImages(args.batchID)
@@ -327,6 +332,9 @@ def main(args=None) :
         parser.add_argument('mode', 
                     choices=['slide_mean_image','batch_flatfield','make_flatfield','apply_flatfield','calculate_thresholds','check_run','choose_image_files'],                  
                             help='Which operation to perform')
+        #which filetype to use
+        parser.add_argument('--filetype',choices=['raw','flatw'],default='raw',
+                            help=f'Whether to use "raw" files (extension {UNIV_CONST.RAW_EXT}, default) or "flatw" files (extension {UNIV_CONST.FLATW_EXT})')
         #the name of the working directory (optional because it's automatic in batch mode)
         parser.add_argument('--workingdir', 
                             help='Name of working directory to save created files in (set automatically in slide_mean_image and batch_flatfield modes)')
@@ -347,7 +355,7 @@ def main(args=None) :
                                              help="""Path to .csv file listing FlatfieldSlideInfo objects (to use slides from multiple raw/root file paths),
                                                      or a comma-separated list of slide names to use with the common raw/root file paths""")
         slide_definition_group.add_argument('--rawfile_top_dir',
-                                             help=f'Path to directory containing [slidename] subdirectories with raw "{UNIV_CONST.RAW_EXT}" files for all slides')
+                                             help=f'Path to directory containing [slidename] subdirectories with raw "{UNIV_CONST.RAW_EXT} or {UNIV_CONST.FLATW_EXT}" files for all slides')
         slide_definition_group.add_argument('--root_dir',
                                              help='Path to Clinical_Specimen directory for all slides')
         #mutually exclusive group for how to handle the thresholding
@@ -383,7 +391,7 @@ def main(args=None) :
         args = parser.parse_args()
     #make the working directory and start up the logger
     if args.mode=='slide_mean_image' :
-        workingdir_path = getSlideMeanImageWorkingDirPath(FlatfieldSlideInfo((split_csv_to_list(args.slides))[0],args.rawfile_top_dir,args.root_dir))
+        workingdir_path = getSlideMeanImageWorkingDirPath(FlatfieldSlideInfo((split_csv_to_list(args.slides))[0],args.rawfile_top_dir,args.root_dir),args.filetype)
     elif args.mode=='batch_flatfield' :
         workingdir_path = getBatchFlatfieldWorkingDirPath(args.root_dir,args.batchID)
     else :

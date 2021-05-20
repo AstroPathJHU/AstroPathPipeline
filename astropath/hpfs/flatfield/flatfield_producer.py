@@ -33,11 +33,12 @@ class FlatfieldProducer :
 
     #################### PUBLIC FUNCTIONS ####################
     
-    def __init__(self,slides,all_slide_rawfile_paths_to_run,workingdir_name,skip_et_correction=False,skip_masking=False,logger=None) :
+    def __init__(self,slides,all_slide_rawfile_paths_to_run,workingdir_name,filetype='raw',skip_et_correction=False,skip_masking=False,logger=None) :
         """
         slides                         = list of FlatfieldSlideInfo objects for this run
         all_slide_rawfile_paths_to_run = list of paths to raw files to stack for all slides that will be run (may be None in batch_flatfield mode)
         workingdir_name                = name of the directory to save everything in
+        filetype                       = 'raw' or 'flatw' based on which type of base image file to use
         skip_et_correction             = if True, image flux will NOT be corrected for exposure time differences in each layer
         skip_masking                   = if True, image layers won't be masked before being added to the stack
         logger                         = a RunLogger object whose context is entered, if None the default log will be used
@@ -54,6 +55,8 @@ class FlatfieldProducer :
                 img_dims=ff_slide.img_dims
             elif img_dims!=ff_slide.img_dims :
                 raise FlatFieldError('ERROR: slides do not all share the same dimensions!')
+        #Set the filetype
+        self.filetype = filetype
         #Start up a new mean image to use for making the actual flatfield
         self.mean_image = MeanImage(img_dims,workingdir_name,skip_et_correction,skip_masking)
         #Set up the exposure time correction offsets by layer
@@ -176,31 +179,32 @@ class FlatfieldProducer :
             if not allow_edge_HPFs :
                 self.__writeLog(f'Neglecting {len(this_slide_edge_HPF_filepaths)} files on the edge of the tissue','info',sn,slide.root_dir)
                 #run just the masking for the tissue edge files
-                self.__writeLog('Running masking routines for tissue edge images','info',sn,slide.root_dir)
-                tissue_edge_fileread_chunks = chunkListOfFilepaths(this_slide_edge_HPF_filepaths,slide.img_dims,slide.root_dir,n_threads)
-                for fr_chunk in tissue_edge_fileread_chunks :
-                    if len(fr_chunk)<1 :
-                        continue
-                    im_arrays = readImagesMT(fr_chunk,
-                                             med_exposure_times_by_layer=slide.med_exp_times_by_layer if (not self.mean_image.skip_et_correction) else None,
-                                             et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
-                    manager = mp.Manager()
-                    return_dict = manager.dict()
-                    chunk_lmrs = []
-                    procs = []
-                    for i,(im_array,rfp) in enumerate(zip(im_arrays,[fri.rawfile_path for fri in fr_chunk])) :
-                        p = mp.Process(target=ImageMask.create_mp, 
-                                       args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,
-                                             slide.med_exp_times_by_layer if (not self.mean_image.skip_et_correction) else None,
-                                             slide.exp_time_hists,False,self.mean_image.masking_plot_dirpath,i,return_dict))
-                        procs.append(p)
-                        p.start()
-                    for proc in procs:
-                        proc.join()
-                    for i in range(len(im_arrays)) :
-                        this_image_mask_obj = return_dict[i]
-                        chunk_lmrs+=this_image_mask_obj.labelled_mask_regions
-                    self.mean_image.addLMRs(chunk_lmrs)
+                if not self.mean_image.skip_masking :
+                    self.__writeLog('Running masking routines for tissue edge images','info',sn,slide.root_dir)
+                    tissue_edge_fileread_chunks = chunkListOfFilepaths(this_slide_edge_HPF_filepaths,slide.img_dims,slide.root_dir,n_threads)
+                    for fr_chunk in tissue_edge_fileread_chunks :
+                        if len(fr_chunk)<1 :
+                            continue
+                        im_arrays = readImagesMT(fr_chunk,
+                                                 med_exposure_times_by_layer=slide.med_exp_times_by_layer if (not self.mean_image.skip_et_correction) else None,
+                                                 et_corr_offsets_by_layer=self.exposure_time_correction_offsets)
+                        manager = mp.Manager()
+                        return_dict = manager.dict()
+                        chunk_lmrs = []
+                        procs = []
+                        for i,(im_array,rfp) in enumerate(zip(im_arrays,[fri.rawfile_path for fri in fr_chunk])) :
+                            p = mp.Process(target=ImageMask.create_mp, 
+                                           args=(im_array,rfp,slide.rawfile_top_dir,slide.background_thresholds_for_masking,
+                                                 slide.med_exp_times_by_layer if (not self.mean_image.skip_et_correction) else None,
+                                                 slide.exp_time_hists,False,self.mean_image.masking_plot_dirpath,i,return_dict))
+                            procs.append(p)
+                            p.start()
+                        for proc in procs:
+                            proc.join()
+                        for i in range(len(im_arrays)) :
+                            this_image_mask_obj = return_dict[i]
+                            chunk_lmrs+=this_image_mask_obj.labelled_mask_regions
+                        self.mean_image.addLMRs(chunk_lmrs)
                 #remove the tissue edges from the files to run in general
                 this_slide_fps_to_run = [fp for fp in this_slide_fps_to_run if fp not in this_slide_edge_HPF_filepaths]
             #If this slide doesn't have any images to stack, warn the user and continue
@@ -315,7 +319,7 @@ class FlatfieldProducer :
                 self.__writeLog(f'Plotting labelled mask regions for slide {sn}','info',sn,slide.root_dir)
                 this_slide_rfps_added = [rfp for rfp in self.filepaths_added if sn in str(rfp)]
                 this_slide_regions = [lmr for lmr in self.mean_image.labelled_mask_regions if sn in lmr.image_key]
-                slide.plotLabelledMaskRegions(this_slide_regions,this_slide_rfps_added,self.mean_image.masking_plot_dirpath)
+                slide.plotLabelledMaskRegions(this_slide_regions,this_slide_rfps_added,self.mean_image.masking_plot_dirpath,self.filetype)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
