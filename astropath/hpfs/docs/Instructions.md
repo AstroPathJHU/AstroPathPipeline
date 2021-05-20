@@ -1,11 +1,11 @@
 # 5.3 Instructions
 ## 5.3.1. Typical User Instructions
-Usually the code is launched and monitored by one person. Most of the user interaction for those not running the code will be with the ```<upkeep_and_progress>``` subfolder in the ```<Dpath>\<Dname>``` directory, the ```<QA_QC>``` subfolders in the specimen directories, and the ```<Project_Development>``` folder [4.5.4.](). Instructions for running the code itself is below in *1*. Typical user interaction with the data occurs after the image corrections have been applied to the images and is where we pick up in this section. 
+Usually the code is launched and monitored by one person. Most of the user interaction for those not running the code will be with the ```<upkeep_and_progress>``` subfolder in the ```<Dpath>\<Dname>``` directory, the ```<QA_QC>``` subfolders in the specimen directories, and the ```<Project_Development>``` folder [4.5.4.](../../scans/docs/DirectoryOrganization.md#46-directory-organization). Instructions for running the code itself is below in *1*. Typical user interaction with the data occurs after the image corrections have been applied to the images and is where we pick up in this section. 
 
 1. Once slides have image corrections applied, the user should create inform phenotype projects in the multipass format. 
 2. Algorithms should have export settings applied according to the documentation then be saved into the ```<Project_Development>``` subfolder. 
    - If algorithms are placed anywhere else, including subfolders under the ```<Project_Development>``` folder, they will not be found for processing during the next steps (```<inform_processing>``` module).
-3. Check that the *MergeConfig_NN.xlsx* files have been created for the slide's batch and added to the appropriate location. 
+3. Check that the *MergeConfig_NN.xlsx* files have been created for the slide's batch and added to the appropriate location, according to the documentation [here](../../scans/docs/scanning/MergeConfigTables.md#448-mergeconfig-tables). 
 4. Add slides to the *inform_queue.csv* according to the protocol. 
    - When the code has verified that the slides are ready for inForm processing, it will preallocate initial rows for the slide. One row will be preallocated for each slide-antibody pair, with the antibodies defined in the *MergeConfig_NN.xlsx* file. 
      - If the slide-antibody pair does not pre-allocate or too many slide-antibody pairs pre-allocate, either check that the image corrections for the slide has completed or check the formatting of the *MergeConfig_NN.xlsx*.
