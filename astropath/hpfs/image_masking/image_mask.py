@@ -57,7 +57,10 @@ class ImageMask() :
         savedir        = path to the directory where the tissue mask file and sheet of plots should be saved
         """
         #get the key of the given image
-        self._image_key = ((pathlib.Path(rfp)).name).rstrip(UNIV_CONST.RAW_EXT)
+        if str(rfp).endswith(UNIV_CONST.RAW_EXT) :
+            self._image_key = ((pathlib.Path(rfp)).name).rstrip(UNIV_CONST.RAW_EXT)
+        elif str(rfp).endswith(UNIV_CONST.FLATW_EXT) :
+            self._image_key = ((pathlib.Path(rfp)).name).rstrip(UNIV_CONST.FLATW_EXT)
         #set the layer groups for the image
         if im_array.shape[-1]==35 :
             self._layer_groups=UNIV_CONST.LAYER_GROUPS_35
