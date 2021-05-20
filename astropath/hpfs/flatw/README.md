@@ -11,7 +11,7 @@ Since this section of the pipeline can be used with standalone funcationality to
 <base>\<SlideID>\<im3_path>\<filename>
 ```
 Example:  *\\\\bki04\\Clinical_Specimen\\AST123456\\im3\\Scan1\\MSI\\M41\_1\_\[34888,4694\].im3*
-- ```<base>```: *\\bki04\Clinical_Specimen* (also refered to as the ```<Dpath>\<Dname>```
+- ```<base>```: *\\\\bki04\\Clinical_Specimen* (also refered to as the ```<Dpath>\<Dname>```
 - ```<SlideID>```: *AST123456*
 - ```<im3_path>```: *im3\\ScanX\\MSI* or *im3\\ScanXX\\MSI*
 - ```<filename>```: *AST123456\_\[34888,4694\]*
