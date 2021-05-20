@@ -31,8 +31,8 @@ def checkArgs(a) :
         if (a.prior_run_dir is not None) or (a.max_images!=-1) or (a.selection_mode!='random') or a.allow_edge_HPFs or a.other_runs_to_exclude!=[''] :
             raise ValueError(f'ERROR: file selection is done automatically in {a.mode} mode!')
         #only ever run using image masks
-        if a.skip_masking :
-            raise ValueError(f'ERROR: running in {a.mode} mode is not compatible with skipping masking! Remove the skip_masking flag!')
+        if a.skip_masking and a.filetype=='raw' :
+            raise ValueError(f'ERROR: running in {a.mode} mode with raw files is not compatible with skipping masking! Remove the skip_masking flag!')
         #can't save masking images
         if a.n_masking_images_per_slide!=0 :
             raise ValueError(f'ERROR: cannot save masking images when running in {a.mode} mode!')
@@ -41,8 +41,8 @@ def checkArgs(a) :
             raise ValueError(f'ERROR: when running in {a.mode} mode only the default selected pixel cut of {DEFAULT_SELECTED_PIXEL_CUT} is valid!')
         if a.mode=='slide_mean_image' :
             #need to apply exposure time corrections
-            if a.exposure_time_offset_file is None :
-                raise ValueError('ERROR: must give an exposure time offset file in slide_mean_image mode')
+            if a.exposure_time_offset_file is None and a.filetype=='raw' :
+                raise ValueError('ERROR: must give an exposure time offset file in slide_mean_image mode for raw files')
             #make sure it'll run on exactly one slide
             if len(split_csv_to_list(a.slides))!=1 :
                 raise ValueError(f'ERROR: running in slide_mean_image mode requires running one slide at a time, but slides argument = {a.slides}!')
@@ -391,7 +391,7 @@ def main(args=None) :
         args = parser.parse_args()
     #make the working directory and start up the logger
     if args.mode=='slide_mean_image' :
-        workingdir_path = getSlideMeanImageWorkingDirPath(FlatfieldSlideInfo((split_csv_to_list(args.slides))[0],args.rawfile_top_dir,args.root_dir))
+        workingdir_path = getSlideMeanImageWorkingDirPath(FlatfieldSlideInfo((split_csv_to_list(args.slides))[0],args.rawfile_top_dir,args.root_dir),args.filetype)
     elif args.mode=='batch_flatfield' :
         workingdir_path = getBatchFlatfieldWorkingDirPath(args.root_dir,args.batchID)
     else :

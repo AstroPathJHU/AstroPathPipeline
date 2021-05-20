@@ -50,6 +50,9 @@ class Const :
     def AUTOMATIC_MEANIMAGE_DIRNAME(self) :
         return 'meanimage'
     @property
+    def AUTOMATIC_FLATW_FILE_MEANIMAGE_DIRNAME(self):
+        return 'meanimage_from_fw_files'
+    @property
     def BATCH_FF_DIRNAME_STEM(self) :
         return 'flatfield_BatchID'
     @property

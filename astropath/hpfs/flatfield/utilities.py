@@ -41,9 +41,14 @@ def slideNameFromFilepath(fp) :
     return (((pathlib.Path(fp)).resolve()).parent).name
 
 #helper function to make the automatic directory path for a single slide's mean image (and associated info)
-def getSlideMeanImageWorkingDirPath(slide) :
+def getSlideMeanImageWorkingDirPath(slide,filetype) :
     #path = pathlib.Path(pathlib.Path.cwd() / CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
-    path = (pathlib.Path(slide.root_dir)).resolve() / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME
+    if filetype=='raw' :
+        path = (pathlib.Path(slide.root_dir)).resolve() / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME
+    elif filetype=='flatw' :
+        path = (pathlib.Path(slide.root_dir)).resolve() / slide.name / 'im3' / CONST.AUTOMATIC_FLATW_FILE_MEANIMAGE_DIRNAME
+    else :
+        raise ValueError(f'ERROR: filetype {filetype} is not recognized!')
     if not (path.parent).is_dir() :
         try :
             (path.parent).mkdir()
