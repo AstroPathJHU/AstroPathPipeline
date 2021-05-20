@@ -43,8 +43,10 @@ Project, Cohort, Dname, Delete, Space_TB, Process_Merge
 - *AstropathAPIDdef.csv*
    - This file relates the ```SampleName```s defined for the scanning process and the ```SlideID```s defined during the transfer process, used for the remainder of the processing in the ```hpfs``` workflow. This file is updated by the ```AstroIDGen``` module and should not be manually modified. A copy of this file for the ```Project``` level is kept at the *upkeep_and_progress* folder. The columns are as follows:
    ```
-   SlideID, SampleName, Project, Cohort, BatchID
+   SlideID, SampleName, ProjectID, CohortID, BatchID
    ```
+   - ```ProjectID```: Is the ```Project``` label
+   - ```CohortID```: Is the ```Cohort``` label
 ## 4.5.2. Initializing Projects
 To initialize ```Project```s; first create the ```<Spath>```, ```<Dpath>\<Dname>```, and ```<Cpath>```. Next, add the ```Project``` to the *AstropathCohortsProgress.csv* with all the pertient information and the next available ```Project``` number, afterward update the *AstropathConfig* and *AstropathPaths* file with the new ```Project```. Additional details on the paths is below, the code should begin processing the slides as long as slides have been added to the *Specimen_Table.xlsx* and the scanning protocols have been adhered to as defined in [4.4.](ScanningInstructionsIntro.md).
 
