@@ -7,7 +7,7 @@ The AstroPath pipeline was designed to automate the processing of whole slide mu
 
 ## 2. Getting Started
 ## 2.1. Prerequisites
-- Windows10
+- [Windows 10](https://www.microsoft.com/en-us/software-download/windows10)
 - [Python 3.6/3.7](https://www.python.org/)
 - [MATLAB 2020a](https://www.mathworks.com/products/matlab.html)
 
