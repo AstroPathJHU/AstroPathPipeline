@@ -22,7 +22,7 @@ tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
 % set up worker
 %
 filepath = fileparts(mfilename('fullpath'));
-flatwcode = [filepath, '\..\Flatfield\flatw'];
+flatwcode = [filepath, '\..\flatw\flatw_matlab'];
 if ~exist(flatwcode, 'dir')
     disp('ERROR: raw2mean_loop worker not set up')
     return
