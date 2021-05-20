@@ -31,6 +31,8 @@ from any directory.
 ### 2.2.2. MATLAB Instructions
 Check out\ download the github repository. In MATLAB add the entire *AstroPathPipeline* to the MATLAB path. The *AstroPathPipeline* commands should then be available in MATLAB. 
 
+*NOTE*: For specific Python, MATLAB, cmd, or PowerShell commands of a particular module check the module or workflow instructions.
+
 ## 3. Contents
 - [1. Description](#1-description "Title")
 - [2. Instructions](#2-instructions "Title")
