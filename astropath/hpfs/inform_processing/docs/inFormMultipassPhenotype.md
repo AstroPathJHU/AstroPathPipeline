@@ -148,4 +148,4 @@ Phenotyping requires Adaptive Cell Segmentation/Cell Segmentation
    - **It is always best to get a second opinion before saving**
 
 ## 5.10.3.2.6. Export
-Apply the setting according to the protocol laid out in [5.10.4.](SavingProjectsfortheinFormJHUProcessingFarm.md#5104-saving-projects-for-the-inform-jhu-processing-farm "Title"). If using the *AstroPath Pipeline* for processing, save the **project AND algorithm*** to the ```\Clinical_Specimen_XX\tmp_inform_data\Projects_Development``` folder. If you do not save the project you will not be able to adjust the phenotyping.
+Apply the setting according to the protocol laid out in [5.10.4.](SavingProjectsfortheinFormJHUProcessingFarm.md#5104-saving-projects-for-the-inform-jhu-processing-farm "Title"). If using the *AstroPath Pipeline* for processing, save the **project AND algorithm*** to the *\\Clinical_Specimen_XX\\tmp_inform_data\\Projects_Development* folder. If you do not save the project you will not be able to adjust the phenotyping.
