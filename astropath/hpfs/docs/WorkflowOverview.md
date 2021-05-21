@@ -11,7 +11,7 @@ As noted above, modules outside of ```segmaps``` and ```transferanno``` can be l
 8. Launch the ```flatw_worker``` module on the assigned worker machine to process the flatfielding and image warping corrections on a particular slide's hpf image set
 9. Create the BatchID and MergeConfig files for the project according to documentation in scans
 10. Launch the ```mergeloop``` module to initialize necessary antibody processing folders, create the local inform_queue for a project, recieve inform results, merge the data and create qa qc images to evaluate the inform classification algorithms.
-11. Create phenotype algorithms in inForm according to the protocol established in [5.10.3.]../inform_processing/docs/inFormMultipassPhenotype.md#5103-inform-multipass-phenotype)
+11. Create phenotype algorithms in inForm according to the protocol established in [5.10.3.](../inform_processing/docs/inFormMultipassPhenotype.md#5103-inform-multipass-phenotype)
 12. Launch the ```inform_queue``` module to send jobs from the main inform queue to the queues on the inform worker machines.
 13. Launch the ```inform_worker``` module to process algorithms in inForm
 14. wait for QC images to process by the ```mergeloop``` module
