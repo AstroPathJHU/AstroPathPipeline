@@ -10,7 +10,7 @@ Typical user interaction with the data occurs after the image corrections have b
      - If the slide-antibody pair does not pre-allocate or too many slide-antibody pairs pre-allocate, either check that the image corrections for the slide has completed or check the formatting of the *MergeConfig_NN.xlsx*.
 5. Wait for the inform machines to process the queue and the code to pull data to the ```<SlideID>\<inform_data>``` folder (this processing is outlined here).
    - Processing information is updated in the *samples_summary.xlsx* spreadsheet, including the algorithms, date of processing, and number of files for each antibody
-   - Once all antibodies for a slide have been completed the code will merge the data and create the ```<QA_QC>``` folder of a ```<SlideID>``` directory. [details on the merge found here].
+   - Once all antibodies for a slide have been completed the code will merge the data and create the ```<QA_QC>``` folder of a ```<SlideID>``` directory. [details on the merge found here](../mergeloop/MaSS#merge-a-single-sample-mass).
    - For the quality control images to be generated the following must be present:
      - Data for each image indicated in the **export documentation** of each antibody must be present in the ```<SlideID>\<inform_data>\<Phenotyped>``` . 
 	 - The component data must also be present in the ```<SlideID>\<inform_data>\<Component_Tiffs>``` directory.
