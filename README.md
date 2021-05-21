@@ -137,7 +137,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
     - [5.11.1. Description](segmaps#5111-description)
     - [5.11.2. Instructions](segmaps#5112-instructions)
     - [5.11.3. Segmentation Map Structure Definition](segmaps#5113-segmenation-map-structure-definition)
-  - [5.12. Transferanno](astropath/hpfs/transferanno#512-transferanno "Title")
+  - [5.12. Create & Transfer Annotations](astropath/hpfs/transferanno#512-transferanno "Title")
     - [5.12.1. Description](astropath/hpfs/transferanno#5121-description)
     - [5.12.2. Create HALO Annoations for the *AstroPath Pipeline*](astropath/hpfs/transferanno/README.md#5122-creating-halo-annotations-for-the-astropath-pipeline)
       - [5.12.2.1. Prepare the HALO Project](astropath/hpfs/transferanno/README.md#51221-prepare-the-halo-project)
