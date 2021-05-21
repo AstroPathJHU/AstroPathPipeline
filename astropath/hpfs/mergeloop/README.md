@@ -1,11 +1,11 @@
 # 5.9. Mergeloop
 
 ## 5.9.1. Description
-This module servers to track processing, interact with the inform processing queues and subsequently merge\ generate quality control images for each slide. The module loops through each project in the *AstroPathCohortsProgresss.csv* file, tracking or updating all slides then continuing to the next project. Importantly, the code uses the *MergeConfig_NN.xlsx* files (defined in [4.4.8.](../../scans/docs/scanning/MergeConfigTables.md#448-mergeconfig-tables)) to intialize a project level inform queue as well as antibody specific processing folders in the tmp_inform_data folder. The code will not process a cohort without these files as its main function is serve as an interaction between the user and the inform processing tasks. Additional details on what the code tracks, location of different files and processing steps can be found in this documentation. A typical user instruction is included [here](../docs/TypicalUserInstructions.md#532-typical-user-instructions) for people who will not be monitoring the code but will be using the pipeline to process slides.
+This module servers to track processing, interact with the inForm® processing queues and subsequently merge\ generate quality control images for each slide. The module loops through each project in the *AstroPathCohortsProgresss.csv* file, tracking or updating all slides then continuing to the next project. Importantly, the code uses the *MergeConfig_NN.xlsx* files (defined in [4.4.8.](../../scans/docs/scanning/MergeConfigTables.md#448-mergeconfig-tables)) to intialize a project level inForm queue as well as antibody specific processing folders in the tmp_inform_data folder. The code will not process a cohort without these files as its main function is serve as an interaction between the user and the inform processing tasks. Additional details on what the code tracks, location of different files and processing steps can be found in this documentation. A typical user instruction is included [here](../docs/TypicalUserInstructions.md#532-typical-user-instructions) for people who will not be monitoring the code but will be using the pipeline to process slides.
 
 ## 5.9.2. Important Definitions
 
-- ```<upkeep_and_progress>```: This folder contains all the necessary project related documents for the inform or practical user of the pipeline. 
+- ```<upkeep_and_progress>```: This folder contains all the necessary project related documents for the inForm® or practical user of the pipeline. 
    - add all additional files outside of those maintained by the code to this folder. Adding files or new folders to the main ```<Dname>``` directory may crash the processing or cause unexpected results
 - *inform_queue.csv*: This file is the project level inform queue. 
    - The code transfers new tasks to the main inform queue and completed task infomation back to this queue.
@@ -17,9 +17,9 @@ This module servers to track processing, interact with the inform processing que
 - ```<tmp_inform_data>```: this is subfolder under the ```<Dpath>\<Dname>```, 
   - contains processing subfolders for each antibody. The tasks run in the ```inform_processing``` module are run an distributed into this folder then dessiminated to subfolders under the ```<SlideID>```. 
   - The ```<Project_Development>``` folder is also in the ```<tmp_inform_data>``` folder
-- ```<Project_Development>```: this is a sub folder of ```<tmp_inform_data>```. Algorithms to be processed by the inForm processing code should be placed here. The code will not find algorithms placed elsewhere or in subfolders.
+- ```<Project_Development>```: this is a sub folder of ```<tmp_inform_data>```. Algorithms to be processed by the inForm® processing code should be placed here. The code will not find algorithms placed elsewhere or in subfolders.
 - *samples_summary.xlsx*: this spreadsheet records and maintains useful information for processing of each slide
-- Inform data sample level file formatting:
+- inForm® data - sample level file formatting:
 ```
 +--	DIR\ inform_data <br>
 | +-- Component_Tiffs<br>
