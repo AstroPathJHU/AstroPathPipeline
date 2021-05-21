@@ -46,7 +46,7 @@ mergeloop(<Mpath>)
 
 ## 5.9.4. Workflow
 This code starts by extracting the cohorts from the *AstropathCohortProgress.xlsx* spreadsheet. Each cohort is then looped over with the following steps:
-- We check the space available on the ```<Dpath>\<Dname>``` processing drive and write this into the *AstropathConfig.csv* file
+- We check the space available on the ```<Dpath>\<Dname>``` processing drive and write this into the *AstropathConfig.csv* file (description found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath-processing-directory))
 - Check the ```<Process_Merge>``` variable in the *AstropathConfig.csv* file, if *Yes* continue processing otherwise skip to the next cohort
 - Using the *MergeConfig_NN.xlsx* files, extract the antibodies stained on the slides
   - check or create folders for processing of different inform antibody\ sample tasks under the ```<tmp_inform_data>``` folder
