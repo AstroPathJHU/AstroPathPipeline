@@ -22,7 +22,7 @@ The following folders are located in the ```<Dpath>\<Dname>``` folder and are in
 7.	```dbload```
     - Location of the files used for the database upload
 8.	```tmp_inform_data```
-    - Location of the inform data output and inform algorithms used. **Additional information on this folder is provided in the hpf processing documentation.**
+    - Location of the inform data output and inform algorithms used. Additional information on this folder is provided [here](../../hpfs/mergeloop#592-important-definitions)
 9.	```reject```
     - Location of the rejected slides
 
