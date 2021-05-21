@@ -1,5 +1,5 @@
 # 4.4.8. MergeConfig Tables
-Merge Configuration file is a csv spreadsheet which indicates how the markers will be analyzed and merged to a single coordinate system where only one phenotype call exists for each cell. Columns are defined below, column names are case senstitive. Mark fields that do not have a designation as NA in character columns and 0s in numeric columns. ***Additional information on the merge can be found in the ```MaSS``` documentation.***
+Merge Configuration file is a csv spreadsheet which indicates how the markers will be analyzed and merged to a single coordinate system where only one phenotype call exists for each cell. Columns are defined below, column names are case senstitive. Mark fields that do not have a designation as NA in character columns and 0s in numeric columns. Additional information on the merge can be found in the ```MaSS``` documentation [here](../../../hpfs/mergeloop/MaSS#merge-a-single-sample-mass)
 
 ![Figure 2 Image](../../www/Fig2.PNG)
 
