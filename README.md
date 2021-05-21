@@ -115,7 +115,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
     - [5.9.4. Workflow](astropath/hpfs/mergeloop#594-workflow)
     - [5.9.5. Merge a Single Sample (MaSS)](astropath/hpfs/mergeloop/MaSS#merge-a-single-sample-mass)
     - [5.9.6. Create Image QA QC utility](astropath/hpfs/mergeloop/MaSS#section-8create-image-qa-qc-utility)
-  - [5.10. Inform_processing](astropath/hpfs/inform_processing#510-inform_processing "Title")
+  - [5.10. Inform Processing](astropath/hpfs/inform_processing#510-inform_processing "Title")
     - [5.10.1. Description](astropath/hpfs/inform_processing/README.md#5101-description)
     - [5.10.2. Contents](astropath/hpfs/inform_processing/README.md#5102-contents)
     - [5.10.3. inForm® Multipass Phenotyping](astropath/hpfs/inform_processing/docs/inFormMultipassPhenotype.md#5103-inform-multipass-phenotype "Title")
