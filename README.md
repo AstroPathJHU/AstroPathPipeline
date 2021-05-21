@@ -71,7 +71,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
     - [5.3.1. Contents](astropath/hpfs/docs/Instructions.md#531-contents)
     - [5.3.2. Typical User Instructions](astropath/hpfs/docs/TypicalUserInstructions.md#532-typical-user-instructions)
     - [5.3.3 Launching Code Instructions](astropath/hpfs/docs/LaunchingCodeInstructions.md#533-launching-code-instructions)
-  - [5.4. Workflow Overview](astropath/hpfs/docs/WorkflowOverview)
+  - [5.4. Workflow Overview](astropath/hpfs/docs/WorkflowOverview.md)
   - [5.5. AstroIDGen](astropath/hpfs/AstroidGen#55-astroid-generation "Title")
     - [5.5.1. Description](astropath/hpfs/AstroidGen#551-description "Title")
     - [5.5.2. Important Definitions](astropath/hpfs/AstroidGen#552-important-definitions "Title")
