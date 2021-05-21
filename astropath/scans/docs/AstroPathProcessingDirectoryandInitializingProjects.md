@@ -1,5 +1,5 @@
 # 4.5. AstroPath Processing Directory and Initializing Projects
-The code is driven by the files located in a main processing folder, named the ```<Mpath>```. These files are described below followed by descriptions of the respectve columns. For columns without definitions provided, please check [4.3.](Definitions.md). After a description of the directory and files included, instructions for intializing projects into the pipeline are provided. The JHU directory is located at *\\bki04\astropath_processing*
+The code is driven by the files located in a main processing folder, named the ```<Mpath>```. These files are described below followed by descriptions of the respectve columns. For columns without definitions provided, please check [4.3.](Definitions.md). After a description of the directory and files included, instructions for intializing projects into the pipeline are provided. The JHU directory is located at *\\\\bki04\astropath_processing*
 
 ## 4.5.1. AstroPath Processing Directory
 - *AstropathCohortsProgress.csv*: 
@@ -11,7 +11,7 @@ The code is driven by the files located in a main processing folder, named the `
   - ```Inform[string]```: The status of the inform algorithm for classification and segmentation. Should be indicated as blank (not started), *Started*, or *Done*.
   - ```Merged[string]```: The status of the inform processing and merge. Should be indicated as blank (not started), *Started*, or *Done*.
   - ```QC[string]```: The status of the quality control assessment of samples. Should be indicated as blank (not started), *Started*, or *Done*.
-  - ```Annotations[string]```: Whether or not the slide annotations have been created for a panel. ***Annotation directions can be found in***. Should be indicated as blank (not started), *Started*, or *Done*.
+  - ```Annotations[string]```: Whether or not the slide annotations have been created for a panel. Annotation directions can be found in [5.12.](../../hpfs/transferanno#512-transfer-annotations). Should be indicated as blank (not started), *Started*, or *Done*.
   - ```ReadyForDB[string]```: Indicates whether final checks for the manual interaction steps with the data have been complete. ***A full checklist is still in progress.***. Should be indicated as blank (not started), *Started*, or *Done*.
   - ```DBLoad[string]```: The current status of the database load. Should be indicated as blank (not started), *Started*, or *Done*.
 - *AstropathConfig.csv*
