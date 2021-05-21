@@ -12,7 +12,7 @@ Typical user interaction with the data occurs after the image corrections have b
    - Processing information is updated in the *samples_summary.xlsx* spreadsheet, including the algorithms, date of processing, and number of files for each antibody
    - Once all antibodies for a slide have been completed the code will merge the data and create the ```<QA_QC>``` folder of a ```<SlideID>``` directory. [details on the merge found here](../mergeloop/MaSS#merge-a-single-sample-mass).
    - For the quality control images to be generated the following must be present:
-     - Data for each image indicated in the **export documentation** of each antibody must be present in the ```<SlideID>\<inform_data>\<Phenotyped>``` . 
+     - Data for each image indicated in the export documentation ([5.10.4.](../inform_processing/docs/SavingProjectsfortheinFormJHUProcessingFarm.md#5104-saving-projects-for-the-inform-jhu-processing-farm)) of each antibody must be present in the ```<SlideID>\<inform_data>\<Phenotyped>``` . 
 	 - The component data must also be present in the ```<SlideID>\<inform_data>\<Component_Tiffs>``` directory.
 6. Once QC images have been created, qc the slides according to the protocol.
 7. If an antibody for a slide fails qc, re-work the phenotype algorithm and resubmit algorithms according to the protocol. 
