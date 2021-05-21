@@ -230,6 +230,16 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
       for tilen, tile in enumerate(tiles, start=1):
         with tile:
+          for layer in self.layers:
+            filename = self.zoomfilename(layer, tile.tilex, tile.tiley)
+            with job_lock.JobLock(filename.with_suffix(".lock"), outputfiles=[filename]) as lock:
+              assert lock
+              if not filename.exists():
+                break
+          else:
+            self.logger.info(f"  {self.zoomfilename('*', tile.tilex, tile.tiley)} have already been zoomed")
+            continue
+
           #tileimage is initialized to None so that we don't have
           #to initialize the big array unless there are actually
           #nonzero pixels in the tile
@@ -328,9 +338,14 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         #save the tile images
         for layer in self.layers:
           filename = self.zoomfilename(layer, tile.tilex, tile.tiley)
-          self.logger.info(f"  saving {filename.name}")
-          image = PIL.Image.fromarray(slc[layer-1])
-          image.save(filename, "PNG")
+          with job_lock.JobLock(filename.with_suffix(".lock"), outputfiles=[filename]) as lock:
+            assert lock
+            if filename.exists():
+              self.logger.info(f"  {filename.name} was already created")
+              continue
+            self.logger.info(f"  saving {filename.name}")
+            image = PIL.Image.fromarray(slc[layer-1])
+            image.save(filename, "PNG")
 
   def wsi_vips(self):
     """
