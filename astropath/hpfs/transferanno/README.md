@@ -2,7 +2,7 @@
 ## 5.12.1. Description
 To improve analysis capability in the database slides should be hand annotated by a pathologist using the HALO software. In this section directions for creating the annotations, exporting them, and transferring them to the proper locations for database upload are included. Importantly the database upload includes using a specific set of layers, layer order, and names provided in a data dictionary below. Adding additional layers is possible but layer names must be consistent and submitted for approval prior to database upload. These requirements are in place to so that data checks and verfication can be performed allowing seemless database injestion and subsequent analyses.
 
-## 5.12.2. Creating HALO Annotations
+## 5.12.2. Creating HALO Annotations for the *AstroPath Pipeline*
 ### 5.12.2.1. Prepare the HALO Project
 1. Open the HALO application
 2. Create a new HALO project folder. 
