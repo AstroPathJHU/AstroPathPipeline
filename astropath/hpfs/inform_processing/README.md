@@ -21,6 +21,6 @@ processed through inForm® using the queued. This process is onerous for a few r
   - [5.10.4.1. Description](docs/SavingProjectsfortheinFormJHUProcessingFarm.md#51041-description "Title")
   - [5.10.4.2. Instructions](docs/SavingProjectsfortheinFormJHUProcessingFarm.md#51042-instructions "Title")
 - [5.10.5. Adding Slides to the inForm Queue](docs/AddingSlidestotheinFormQueue.md#5105-adding-slides-to-the-inform-queue)
-- [5.10.6. Evaluating inForm Phenotype QC Output for the *AstroPath Pipeline*]()
+- [5.10.6. Evaluating inForm® Phenotype QC Output for the *AstroPath Pipeline*]()
 - [5.10.7. Processing inForm® Tasks](docs/ProcessinginFormTasks.md#5107-proccessing-inform-tasks)
  - [5.10.7.1. Setting up the Virtual Machines for inForm®](docs "Title")
