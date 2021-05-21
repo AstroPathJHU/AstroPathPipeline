@@ -56,12 +56,7 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.9.3. Instructions](mergeloop#593-instructions)
   - [5.9.4. Workflow](mergeloop#594-workflow)
   - [5.9.5. Merge a Single Sample (MaSS)](mergeloop/MaSS#merge-a-single-sample-mass)
-    - [5.9.5.1. Contents](mergeloop/MaSS#section-1-contents)
-    - [5.9.5.2. Summary](mergeloop/MaSS#section-2-summary)
-    - [5.9.5.3. Workflow Description](mergeloop/MaSS#section-3-workflow-description)
-    - [5.9.5.4. Merge Configuration File Structure](mergeloop/MaSS#section-4-merge-configuration-file-structure)
-    - [5.9.5.5. Image and Table File Structure](mergeloop/MaSS#section-5-image-and-table-file-structure)
-    - 
+  - [5.9.6. Create Image QA QC utility](mergeloop/MaSS#section-8create-image-qa-qc-utility)
 - [5.10. Inform_processing](inform_processing#510-inform_processing "Title")
 - [5.11. Segmaps](segmaps#511-segmaps "Title")
 - [5.12. Transferanno](transferanno#512-transferanno "Title")
