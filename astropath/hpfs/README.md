@@ -2,7 +2,7 @@
 ## 5.1. Description
 This section of the documentation and code picks up after the slides have been added to the *Specimen_Table_N.xlsx*, a description of that file is located [here](../scans/docs/scanning/SpecimenTable.md). After the ```transferdeamon``` module, all code assumes slides and file structure format in [4.6.](../scans/docs/DirectoryOrganization.md) have been adhered to, namely that the ```<ScanNN>``` subfolder is now in an additional *im3* subfolder under each ```<SlideID>```. Additional definitions on naming should be reviewed before continuing, found [here](../scans/docs/Definitions).
 
-In this section the ```<Dpath>\<Dname>``` processing folders are intialized, a slide list is created, and slides are assigned new ```SlideID```s [5.5.](AstroidGen#55-astroid-generation "Title"). Next images are renamed, transferred and backed up ([5.6.](TransferDaemon#56-transfer-daemon "Title")). Images are then corrected for imaging warping and flatfield effects ([5.8.](flatw#58-flatw "Title")). After this, cells are segmented and classified in each image using the multipass phenotype method in inForm. Each of these steps are run by custom code that process on perpetual loops with limited user interaction. An important step of this process is the quality control images generated on the cell classification output, described **[here]**. After, images from all slides in a cohort pass the cell classification quality controll, cell segmenation maps are rebuilt to remove cells not defined by the final merged cell segmentation[**described here**]. Finally, slide macro regional annotations are applied to the images using the HALO software and distributed to the slides using a batch script[**]. 
+In this section the ```<Dpath>\<Dname>``` processing folders are intialized, a slide list is created, and slides are assigned new ```SlideID```s [5.5.](AstroidGen#55-astroid-generation "Title"). Next images are renamed, transferred and backed up ([5.6.](TransferDaemon#56-transfer-daemon "Title")). Images are then corrected for imaging warping and flatfield effects ([5.8.](flatw#58-flatw "Title")). After this, cells are segmented and classified in each image using the multipass phenotype method in inForm. Each of these steps are run by custom code that process on perpetual loops with limited user interaction. An important step of this process is to create and check the quality control images generated on the cell classification output (that process is described **[here]**). After, images from all slides in a cohort pass the cell classification quality controll, cell segmenation maps are rebuilt to remove cells not defined by the final merged cell segmentation[**described here**]. Finally, slide macro regional annotations are applied to the images using the HALO software and distributed to the slides using a batch script[**]. 
 
 A final checklist of things to verify and complete before loading into the database is added **here**. In this section there is also a ```cleanup``` module which checks for any missing files as well as additional upkeep instructions.
 
@@ -10,6 +10,9 @@ A final checklist of things to verify and complete before loading into the datab
 - [5.1. Description](#51-description "Title")
 - [5.2. Contents](#54-contents "Title")
 - [5.3. Instructions](docs/Instructions.md)
+  - [5.3.1. Contents](docs/Instructions.md#531-contents)
+  - [5.3.2. Typical User Instructions](docs/TypicalUserInstructions.md#532-typical-user-instructions)
+  - [5.3.3 Launching Code Instructions](docs/LaunchingCodeInstructions.md#533-launching-code-instructions)
 - [5.4. Workflow Overview](docs/WorkflowOverview)
 - [5.5. AstroIDGen](AstroidGen#55-astroid-generation "Title")
   - [5.5.1. Description](AstroidGen#551-description "Title")
@@ -31,8 +34,8 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.7.3. Instructions](meanimages#573-instructions "Title")
   - [5.7.4. Workflow](meanimages#574-workflow "Title")
     - [5.7.4.1. Checking for Tasks](meanimages#5741-checking-for-tasks "Title")
-	- [5.7.4.2. Shred Im3s](meanimages#5742-shred-im3s "Title")
-	- [5.7.4.3. raw2mean](meanimages#5743-raw2mean "Title")
+    - [5.7.4.2. Shred Im3s](meanimages#5742-shred-im3s "Title")
+    - [5.7.4.3. raw2mean](meanimages#5743-raw2mean "Title")
 - [5.8. Flatw](flatw#58-flatw "Title")
   - [5.8.1. Description](flatw#581-description "Title")
   - [5.8.2. Contents](flatw#582-contents "Title")
@@ -48,6 +51,17 @@ A final checklist of things to verify and complete before loading into the datab
     - [5.8.5.3. ConvertIm3Path & ConvertIm3Cohort](flatw/docs/AdditionalTools.md#5853-convertim3path--convertim3cohort)
   - [5.8.6. Overview Workflow of Im3Tools](flatw/docs/OverviewWorkflowofIm3Tools.md#586-overview-workflow-of-im3tools)
 - [5.9. Mergeloop](mergeloop#59-mergeloop "Title")
+  - [5.9.1. Description](mergeloop#591-description)
+  - [5.9.2. Important Definitions](mergeloop#592-important-definitions)
+  - [5.9.3. Instructions](mergeloop#593-instructions)
+  - [5.9.4. Workflow](mergeloop#594-workflow)
+  - [5.9.5. Merge a Single Sample (MaSS)](mergeloop/MaSS#merge-a-single-sample-mass)
+    - [5.9.5.1. Contents](mergeloop/MaSS#section-1-contents)
+    - [5.9.5.2. Summary](mergeloop/MaSS#section-2-summary)
+    - [5.9.5.3. Workflow Description](mergeloop/MaSS#section-3-workflow-description)
+    - [5.9.5.4. Merge Configuration File Structure](mergeloop/MaSS#section-4-merge-configuration-file-structure)
+    - [5.9.5.5. Image and Table File Structure](mergeloop/MaSS#section-5-image-and-table-file-structure)
+    - 
 - [5.10. Inform_processing](inform_processing#510-inform_processing "Title")
 - [5.11. Segmaps](segmaps#511-segmaps "Title")
 - [5.12. Transferanno](transferanno#512-transferanno "Title")
