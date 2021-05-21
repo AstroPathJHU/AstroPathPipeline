@@ -14,7 +14,7 @@ Typical user interaction with the data occurs after the image corrections have b
    - For the quality control images to be generated the following must be present:
      - Data for each image indicated in the export documentation ([5.10.4.](../inform_processing/docs/SavingProjectsfortheinFormJHUProcessingFarm.md#5104-saving-projects-for-the-inform-jhu-processing-farm)) of each antibody must be present in the ```<SlideID>\<inform_data>\<Phenotyped>``` . 
 	 - The component data must also be present in the ```<SlideID>\<inform_data>\<Component_Tiffs>``` directory.
-6. Once QC images have been created, qc the slides according to the protocol.
+6. Once QC images have been created, qc the slides according to the protocol in [5.10.6.](../inform_processing/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)
 7. If an antibody for a slide fails qc, re-work the phenotype algorithm and resubmit algorithms according to the protocol. 
    - Continue this process until all slide-antibody pairs pass quality control in a cohort.   
 
