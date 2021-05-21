@@ -43,7 +43,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
    - [4.3. Definitions](astropath/scans/docs/Definitions.md/#43-definitions)
      - [4.3.1. Indentification Definitions](astropath/scans/docs/Definitions.md/#431-identification-definitions)
      - [4.3.2. Path Definitions](astropath/scans/docs/Definitions.md/#432-path-definitions)
-   - [4.4. Scanning Instructions Introduction](astropath/scans/docs/ScanningInstructionsIntro.md)
+   - [4.4. Scanning Instructions](astropath/scans/docs/ScanningInstructionsIntro.md)
      - [4.4.1. Contents](astropath/scans/docs/ScanningInstructionsIntro.md/#441-contents) 
      - [4.4.2. Specimen Table](astropath/scans/docs/scanning/SpecimenTable.md)
      - [4.4.3. SampleNames (Patient # or M Numbers)](astropath/scans/docs/scanning/SampleNames.md)
