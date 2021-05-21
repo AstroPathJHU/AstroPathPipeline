@@ -21,7 +21,7 @@ Project, Cohort, Dname, Delete, Space_TB, Process_Merge
 ```
  - ```Delete[string]```: An option of the ```transferdeamon``` module, input is either *yes* or *no* and is not case sensitive. Indicates whether or not to automatically delete data from the source directory after it is transferred to the ```<dpath>\<dname>```, compressed to the ```<Cpath>\<Dname>``` location, and verfied using *checksums*. ([Path name definitions](Definitions.md/#432-path-definitions))
  - ```Space_TB[float]```: updated by the ```mergeloop``` module to verify that there is enough space on the server for different processes, add a zero for intializing a project
- - ```Process_Merge[string]```: An option of the ```mergeloop``` module, input is either *yes* or *no* and is not case sensitive. Indicates whether or not to run the *mergeloop* module for that project. Once data is validated through QC ([documentation here]()) it is usually best to turn off the ```mergeloop``` processing for that ```Project```.
+ - ```Process_Merge[string]```: An option of the ```mergeloop``` module, input is either *yes* or *no* and is not case sensitive. Indicates whether or not to run the *mergeloop* module for that project. Once data is validated through QC ([documentation here](../../hpfs/inform_processing/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)) it is usually best to turn off the ```mergeloop``` processing for that ```Project```.
 - *AstropathControldef.csv*
   - This file is updated by the code and records the control information. Users do not need to open, create, or modify this file. The columns are as follows:
   ```
