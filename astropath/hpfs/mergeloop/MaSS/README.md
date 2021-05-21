@@ -103,16 +103,17 @@ Merge Configuration file is a csv spreadsheet which indicates how the markers wi
 
 ## ***Section 5: Image and Table File Structure***
 The code relies on a data organization format detailed below:<br>
-+--	DIR\ inform_data <br>
-| +-- Component_Tiffs<br>
-| +-- Phenotyped:	add a folder for each  Antibody (ABx) in the panel<br>
-| | +-- ABX1 (e.g.	CD8)<br>
-| | +-- ABX2 (e.g.CD163)<br>
-| | +-- ABX3 (e.g.FoxP3)<br>
-| | +-- ABX4 (e.g.	Tumor)<br>
-| | +-- ABX5 (e.g.PD1)<br>
-| | +-- ABX6 (e.g.PDL1)<br>
-
+```
++--	DIR\ inform_data 
+| +-- Component_Tiffs
+| +-- Phenotyped:	add a folder for each  Antibody (ABx) in the panel
+| | +-- ABX1 (e.g.	CD8)
+| | +-- ABX2 (e.g.CD163)
+| | +-- ABX3 (e.g.FoxP3)
+| | +-- ABX4 (e.g.	Tumor)
+| | +-- ABX5 (e.g.PD1)
+| | +-- ABX6 (e.g.PDL1)
+```
 
 - The antibody names here should correspond to those names used in the merge configuration table. 
   - The only exception is the ‘Tumor’ marker which, if designated in the ImageQA column of the merge configuration table, should be label ‘Tumor’ here. 
