@@ -1,4 +1,4 @@
-import contextlib, cv2, itertools, jxmlease, methodtools, numpy as np, os, PIL, skimage
+import contextlib, cv2, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, skimage
 
 from ...baseclasses.sample import ReadRectanglesBase, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
