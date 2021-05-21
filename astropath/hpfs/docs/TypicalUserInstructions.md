@@ -1,8 +1,8 @@
 # 5.3.2. Typical User Instructions
 Typical user interaction with the data occurs after the image corrections have been applied to the images and is where we pick up in this section. 
 
-1. Once slides have image corrections applied, the user should create inform phenotype projects in the multipass format. (see [5.10.3.](../inform_processing/docs/inFormCellAnalysisMultipassPhenotype.md#5103-inform-cell-analysis-multipass-phenotype))
-2. Algorithms should have export settings applied according to the documentation in [5.10.4.](../inform_processing/docs/SavingProjectsfortheinFormCellAnalysisJHUProcessingFarm.md#5104-saving-projects-for-the-inform-cell-analysis-jhu-processing-farm)) then be saved into the ```<Project_Development>``` subfolder. 
+1. Once slides have image corrections applied, the user should create inform phenotype projects in the multipass format. (see [5.10.3.](../inform_processing/docs/inFormMultipassPhenotype.md#5103-inform-multipass-phenotype))
+2. Algorithms should have export settings applied according to the documentation in [5.10.4.](../inform_processing/docs/SavingProjectsfortheinFormJHUProcessingFarm.md#5104-saving-projects-for-the-inform-jhu-processing-farm)) then be saved into the ```<Project_Development>``` subfolder. 
    - If algorithms are placed anywhere else, including subfolders under the ```<Project_Development>``` folder, they will not be found for processing during the next steps (```<inform_processing>``` module).
 3. Check that the *MergeConfig_NN.xlsx* files have been created for the slide's batch and added to the appropriate location, according to the documentation [here](../../scans/docs/scanning/MergeConfigTables.md#448-mergeconfig-tables). 
 4. Add slides to the *inform_queue.csv* according to the protocol in [5.10.6.](../inform_processing/docs/AddingSlidestotheinFormQueue.md#5106-adding-slides-to-the-inform-queue)
