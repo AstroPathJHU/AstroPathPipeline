@@ -18,7 +18,7 @@ Typical user interaction with the data occurs after the image corrections have b
 7. If an antibody for a slide fails qc, re-work the phenotype algorithm and resubmit algorithms according to the protocol. 
    - Continue this process until all slide-antibody pairs pass quality control in a cohort.   
 
-Simulanteously with cell classification a pathologist should use HALO to annotate regions of interest in the QPTiff images then export them according to the *documentation outlied.* 
+Simulanteously with cell classification a pathologist should use HALO to annotate regions of interest in the QPTiff images then export them according to the documentation outlined in [5.12.](../transferanno#512-transfer-annotations).
  
 Once processing reaches this point the user should direct processing to the person maintaining the code. The modules ```<segmaps>```, ```<transferanno>```, and ```<cleanup>``` should each be launched. The ```<cleanup>``` module should be launched last. Afterward steps in the *clean up documentation* should be taken to extract missing files, export the control tma component tiffs and convert the batch\ merge tables to the corresponding acceptable csv format. 
  
