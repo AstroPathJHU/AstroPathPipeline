@@ -1,4 +1,4 @@
-# 5.3.1. Typical User Instructions
+# 5.3.2. Typical User Instructions
 Typical user interaction with the data occurs after the image corrections have been applied to the images and is where we pick up in this section. 
 
 1. Once slides have image corrections applied, the user should create inform phenotype projects in the multipass format. (see [5.10.3.](../inform_processing/docs/inFormCellAnalysisMultipassPhenotype.md#5103-inform-cell-analysis-multipass-phenotype))
