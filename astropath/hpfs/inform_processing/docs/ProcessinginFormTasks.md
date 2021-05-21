@@ -1,12 +1,12 @@
-# Proccessing inForm Cell Analysis Tasks 
-## Description
+# 5.10.7. Proccessing inForm Tasks 
+## 5.10.7.1. Description
 This module was designed to launch batch processing for a set of images in a directory through Akoya's InForm Cell Analysis software automatically. The code uses a queued based system for processing and is designed to run continously. There are two module scripts. The first is a ```queue``` script which opens an *inForm_queue.csv* spreadsheet and disseminates tasks to spreadsheets kept on worker computers. The second script runs on each of the worker locations, checking this worker spreadsheet for new batch tasks and launching those new batch algorithm tasks through inForm. 
 
 The worker module that runs inForm requires that the image data is reformatted into the AstroPath directory structure and that the algorithms are located in a set location adjacent to the images. Both locations are described below in *Important Definitions* and in more detail [here](../../../scans#45-directory-organization "Title"). Algorithm or project export settings should be set up before saving the file according to the protocol defined [here](). Since the code simulates mouse clicks and changes in the active window, it is best not to use the computer when running the worker module.
 
 *NOTE*: For use in the AstroPath pipeline or with the MaSS utility, export settings should be appied according to the documentation located **[here]**. Once batch processing is finished for an antibody, data files can be transferred to the proper MaSS-slide organization defined in the MaSS documentation **[here]** or in more depth with relation to the rest of the pipeline **[here]**. Data can either be transferred manually or with the progress track code located **[here]**. 
 
-## Important Definitions
+## 5.10.7.2. Important Definitions
 - The code requires that an active version of inForm is installed on the computer and that the version installed matches the version number coded in at the bottom of **BatchProcessing.ps1**.
 - The queue file: *VM_inForm_queue.csv*
   - This file should be located in the ```*\hpfs\RunInForm\BatchProcssing``` folder. 
@@ -40,13 +40,13 @@ The worker module that runs inForm requires that the image data is reformatted i
   | | | +-- ```<computer_name>``` <br>
   | | | | +-- *Results* <br>
   
-## Instructions
+## 5.10.7.3. Instructions
 1. Download the repository to a processing computer or location where inForm is installed
 2. Copy the 'BatchProcessing-Shortcut' to the desktop 
 3. Double click on the shortcut to launch processing
 4. Add a jobs to the queue as described [above](#important-definitions "Title")
 
-## Workflow
+## 5.10.7.4. Workflow
 The first step in processing is to test for the input version of inForm that will be used to run the software. The inForm version can be found at the bottom of **BatchProcessing.ps1**. Next the code attempts to injest the VM_inForm_queue.txt, described above in *important definitions*. This file should be located in the ```*\hpfs\RunInForm\BatchProcssing``` folder. The file consists of 
 The code searches along the path location where the script was launched for the queue file. After the file is launched
 
