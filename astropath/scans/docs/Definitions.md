@@ -40,7 +40,7 @@
 The file pathes have been standarized and are described below. Additional examples and directions for intialization of these paths can be found in [4.5.2.](AstroPathProcessingDirectoryandInitializingProjects.md#452-initializing-projects). A full file tree layout can be found in [4.6.2.](DirectoryOrganization.md#462-slideid-subfolders)
 - ```<Mpath>```: The main path for all the astropath processing *.csv* configuration files.
   - The current location of this path is *\\\\bki04\astropath_processing*.
-  - A description of each file is located in [4.5.1.](AstroPathProcessingDirectoryandInitializingProjects.md\#451-astropath-processing-directory)
+  - A description of each file is located in [4.5.1.](AstroPathProcessingDirectoryandInitializingProjects.md\#451-astropath_processing-directory)
 - ```<Dname>```: The data folder name or the name of the clinical specimen folder. 
    - E.g. *Clinical_Specimen_7*
 - ```<Dpath>```: The data or destination path up to but not including the ```<Dname>```

@@ -1,10 +1,10 @@
 # 5.7. meanimages
 
 ## 5.7.1. Description
-The module is used to build a mean image for each slide after it is transferred. The module searches through each slide under all projects defined in the *AstropathCohortsProgress.csv* file for the mean image in the designated location. If the mean image does not exist but the *.qptiff* has been generated the code begins building a mean image. The code uses the *.qptiff* file as an indicator for a successful transfer because this is the last file transferred by the ```TransferDeamon``` ([described here](../transferdaemon#56-transfer-daemon)). The input to the code is the directory where the *AstropathCohortsProgress.csv* file exists and a folder location for the code to read and write necessary files (see [4.5.](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#45-astropath-processing-directory-and-initializing-projects) for details on that file).
+The module is used to build a mean image for each slide after it is transferred. The module searches through each slide under all projects defined in the *AstropathCohortsProgress.csv* file for the mean image in the designated location. If the mean image does not exist but the *.qptiff* has been generated the code begins building a mean image. The code uses the *.qptiff* file as an indicator for a successful transfer because this is the last file transferred by the ```TransferDeamon``` ([described here](../transferdaemon#56-transfer-daemon)). The input to the code is the directory where the *AstropathCohortsProgress.csv* file exists and a folder location for the code to read and write necessary files (see [4.5.](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#45-astropath_processing-directory-and-initializing-projects) for details on that file).
 
 ## 5.7.2. Important Definitions
-   - ```<Mpath>```: the main path for all the astropath processing *.csv* configuration files; the current location of this path is ```\\bki04\astropath_processing``` for the JHU pipeline. Further description of all files is in [4.5.](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#45-astropath-processing-directory-and-initializing-projects)
+   - ```<Mpath>```: the main path for all the astropath processing *.csv* configuration files; the current location of this path is ```\\bki04\astropath_processing``` for the JHU pipeline. Further description of all files is in [4.5.](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#45-astropath_processing-directory-and-initializing-projects)
    - ```<Dname>```: the data name or the name of the clinical specimen folder
    - ```<Dpath>```: the data or destination path
    - ```<drive>```: the location where the code will read and write temporary files to during processing
@@ -19,7 +19,7 @@ The module is used to build a mean image for each slide after it is transferred.
 The code should be launched through matlab. To start download the repository to a working location. Next, open a new session of matlab and add the ```AstroPathPipline``` to the matlab path. Then use the following to launch:
    ``` meanimages(<Mpath>, <drive>) ``` 
    - ```<Mpath>[string]```: the full path to the directory containing the *AstropathCohortsProgress.csv* file
-      - description of this file can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#45-astropath-processing-directory-and-initializing-projects)
+      - description of this file can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#45-astropath_processing-directory-and-initializing-projects)
    - ```<drive>[string]```: the full path to a drive or folder where the code can read and write necessary temporary files to
    
 ## 5.7.4. Workflow

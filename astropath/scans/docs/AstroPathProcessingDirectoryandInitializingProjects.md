@@ -1,7 +1,7 @@
-# 4.5. AstroPath Processing Directory and Initializing Projects
+# 4.5. AstroPath_Processing Directory and Initializing Projects
 The code is driven by the files located in a main processing folder, named the ```<Mpath>```. These files are described below followed by descriptions of the respectve columns. For columns without definitions provided, please check [4.3.](Definitions.md). After a description of the directory and files included, instructions for intializing projects into the pipeline are provided. The JHU directory is located at *\\\\bki04\astropath_processing*
 
-## 4.5.1. AstroPath Processing Directory
+## 4.5.1. AstroPath_Processing Directory
 - *AstropathCohortsProgress.csv*: 
   - This file contains information on the project's analysis status and important experimental variables. This table is manually updated. The file has the following columns:
   ```

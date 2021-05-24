@@ -1,6 +1,6 @@
 # 4. Scans
 ## 4.1. Description
-The *AstroPath Pipeline* requires that a number of experimental protocols are understood and followed for the code to work. These protocols include methods for slide scanning, slide naming, reagent tracking, and directory organization. This section of the documentation describes these protocols and provides important definitions for terms used throughout the *AstroPath Pipeline* documentations. Additionally, there is a main directory, referred to as the ```<Mpath>```, which contains a set of csv files. These files contain pertinent information that drives processing such as directory locations, machine names, slide names, and project identifiers. The csv files and methods for adding projects to the pipeline are defined here [4.4](#44-astropath_processing-directory-and-initializing-projects "Title"). To reduce the length of this page, documentation was written into different pages and linked here by a table of contents.
+The *AstroPath Pipeline* requires that a number of experimental protocols are understood and followed for the code to work. These protocols include methods for slide scanning, slide naming, reagent tracking, and directory organization. This section of the documentation describes these protocols and provides important definitions for terms used throughout the *AstroPath Pipeline* documentations. Additionally, there is a main directory, referred to as the ```<Mpath>```, which contains a set of csv files. These files contain pertinent information that drives processing such as directory locations, machine names, slide names, and project identifiers. The csv files and methods for adding projects to the pipeline are defined here [4.5](docs/AstroPathProcessingDirectoryandInitializingProjects.md#45-astropath_processing-directory-and-initializing-projects "Title"). To reduce the length of this page, documentation was written into different pages and linked here by a table of contents.
 
 ## 4.2. Contents
  - [4.3. Definitions](docs/Definitions.md#43-definitions)
@@ -21,8 +21,8 @@ The *AstroPath Pipeline* requires that a number of experimental protocols are un
    - [4.4.6. BatchIDs](docs/scanning/BatchIDs.md)
    - [4.4.7. Batch Tables](docs/scanning/BatchTables.md)
    - [4.4.8. Merge Configuration Tables](docs/scanning/MergeConfigTables.md)
-- [4.5. AstroPath Processing Directory and Initalizing Projects](docs/AstroPathProcessingDirectoryandInitializingProjects.md)
-  - [4.5.1. AstroPath Processing Directory](docs/AstroPathProcessingDirectoryandInitializingProjects.md/#451-astropath-processing-directory)
+- [4.5. AstroPath_Processing Directory and Initalizing Projects](docs/AstroPathProcessingDirectoryandInitializingProjects.md#45-astropath_processing-directory-and-initializing-projects)
+  - [4.5.1. AstroPath_Processing Directory](docs/AstroPathProcessingDirectoryandInitializingProjects.md/#451-astropath_processing-directory)
   - [4.5.2. Initializing Projects](docs/AstroPathProcessingDirectoryandInitializingProjects.md/#452-initializing-projects)
 - [4.6. Directory Organization](docs/DirectoryOrganization.md)
   - [4.6.1. Directory Subfolders](docs/DirectoryOrganization.md#461-directory-subfolders)

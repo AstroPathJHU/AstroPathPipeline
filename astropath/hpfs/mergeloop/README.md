@@ -40,13 +40,13 @@ The code should be launched through MATLAB. To start download the repository to 
 mergeloop(<Mpath>)
 ```
 - ```<Mpath>[string]```: the full path to the directory containing the *AstropathCohortsProgress.csv* file
-   - description of this file can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath-processing-directory)
+   - description of this file can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath_processing-directory)
 
 *Note:* For the code to process successfully be sure to create the merge configuration files (see [4.4.8.](../../scans/docs/scanning/MergeConfigTables.md#448-mergeconfig-tables)).
 
 ## 5.9.4. Workflow
 This code starts by extracting the cohorts from the *AstropathCohortProgress.xlsx* spreadsheet. Each cohort is then looped over with the following steps:
-- We check the space available on the ```<Dpath>\<Dname>``` processing drive and write this into the *AstropathConfig.csv* file (description found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath-processing-directory))
+- We check the space available on the ```<Dpath>\<Dname>``` processing drive and write this into the *AstropathConfig.csv* file (description found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath_processing-directory))
 - Check the ```<Process_Merge>``` variable in the *AstropathConfig.csv* file, if *Yes* continue processing otherwise skip to the next cohort
 - Using the *MergeConfig_NN.xlsx* files, extract the antibodies stained on the slides
   - check or create folders for processing of different inform antibody\ sample tasks under the ```<tmp_inform_data>``` folder

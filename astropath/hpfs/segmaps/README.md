@@ -9,7 +9,7 @@ As part of the multipass segmentation and classification system, described in th
 The code should be launched through matlab. To start download the repository to a working location. Next, open a new session of matlab and add the ```AstroPathPipline``` to the matlab path. Then use the following to launch:   
 ``` segmaps(<Mpath>) ```
 - ```<Mpath>[string]```: the full path to the directory containing the ***AstropathCohortsProgress.csv*** file
-   - description of this file can be found [here](../../scans#441-astropath_processing-directory "Title")
+   - description of this file can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath_processing-directory "Title")
 
 ## 5.11.3. Segmenation Map Structure Definition
 The segmentation maps, *component_data_w_seg*, start with the component tiff layers from the *component_data* files, the number of layers correspond to the layers added for unmixing in inForm. For a standard 7-color slide unmixed by inForm this would be:

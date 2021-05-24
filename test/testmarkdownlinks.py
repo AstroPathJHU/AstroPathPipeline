@@ -7,9 +7,13 @@ class GithubTocRendererMixin(marko.ext.toc.TocRendererMixin):
     slug = re.sub(r"(?<=[0-9])[.](?=[0-9])", r"", slug)
     slug = slug.replace("_", "UNDERSCOREUNDERSCORE")
     slug = slug.replace("#", "HASHTAGHASHTAG")
+    slug = slug.replace("®", "ALLRIGHTSRESERVEDALLRIGHTSRESERVED")
+    slug = slug.replace("&amp;", "AMPERSANDAMPERSAND")
     slug = slugify.slugify(slug)
     slug = slug.replace("underscoreunderscore", "_")
     slug = slug.replace("hashtaghashtag", "")
+    slug = slug.replace("allrightsreservedallrightsreserved", "")
+    slug = slug.replace("ampersandampersand", "")
     self.headings.append((int(element.level), slug, children))
     return '<h{0} id="{1}">{2}</h{0}>\n'.format(element.level, slug, children)
 
