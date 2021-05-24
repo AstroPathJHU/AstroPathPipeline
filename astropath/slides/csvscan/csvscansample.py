@@ -182,7 +182,7 @@ class LoadFile(MyDataClass):
   nrowsloaded: int
 
 def main(args=None):
-  GeomCellSample.runfromargumentparser(args)
+  CsvScanSample.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()
