@@ -6,7 +6,7 @@ As noted above, modules outside of ```segmaps``` and ```transferanno``` can be l
 3. Scan the slides according to the documentation in [4.4.](../../scans/docs/ScanningInstructionsIntro.md#44-scanning-instructions-intro)
 4. Launch the ```AstroIDGen``` module to intialize the slides into the pipeline
 5. Launch the ```TransferDeamon``` module to start transferring completed slides from the ```<Spath>``` location to the ```<Dpath>\<Dname>```
-6. Launch the ```meanimages``` module to create mean images of each slide as it finishes transferring; these will be used to build the batch flatfields.
+6. Launch the ```meanimages``` module to create mean images of each slide as it finishes transferring; these will be used to build the batch flatfields. This is usually launched after all slides from a batch have been transferred as it only loops through the ```Project```s once then stops. Creating the *meanimage* for all slides in a batch is also the trigger for the next step, but the code does not yet have the ability to know beforehand how many slides are in each batch which may cause a false start of the next step.
 7. Launch the ```flatw_queue``` module to create the flatfields and assign new slides to the flatw_queue. Then the module distributes flatw jobs to the assigned workers.
 8. Launch the ```flatw_worker``` module on the assigned worker machine to process the flatfielding and image warping corrections on a particular slide's hpf image set
 9. Create the BatchID and MergeConfig files for the project according to documentation in scans
