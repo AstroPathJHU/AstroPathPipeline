@@ -1,0 +1,14 @@
+stepid,database,script
+3,merge,B1-Schema.sql
+4,merge,B2-SupportTables.sql
+5,merge,B3-SupportProcs.sql
+6,merge,B4-CtrlTables.sql
+7,merge,B5-CtrlStats.sql
+8,merge,B6-CtrlOutputs.sql
+9,merge,B7-MergeAll.sql
+10,merge,B8-CellTag.sql
+11,merge,B9-BuildZIndex.sql
+12,merge,B10-spZoomSupport.sql
+13,merge,B11-Clinical.sql
+
+

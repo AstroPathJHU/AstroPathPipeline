@@ -7,24 +7,26 @@
 %%% flatwarping of the im3 images
 %% --------------------------------------------------------------
 %%
-function process_flatw_queue(main,tn)
+function process_flatw_queue(main)
 %
 % read Paths table
 %
-tbl = readtable([main, '\Paths',tn,'.csv'], 'Delimiter' , ',',...
+tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
+    'ReadVariableNames', true);
+tbl2 = readtable([main, '\AstropathCohortsProgress.csv'], 'Delimiter' , ',',...
     'ReadVariableNames', true);
 %
 % check if process flatw queue table exists, if it doesn't create is then
 % read it in
 %
 colheads = CreateflatwQueue(main);
-pqt = readtable([main,'\process_flatw_queue.csv'],'Delimiter', ',',...
+pqt = readtable([main,'\across_project_queues\process_flatw_queue.csv'],'Delimiter', ',',...
         'ReadVariableNames',1,'format',repmat('%s ',1,16));
 %
 for i1 = 1:height(tbl)
     tic
     %
-    [wd, fwpath, machinename, samplenames] = getmyVars(tbl, i1);
+    [wd, fwpath, machinename, samplenames] = getmyVars(tbl, tbl2, i1);
     %
     % cycle through each sample track all relavant information 
     %
@@ -54,7 +56,7 @@ for i1 = 1:height(tbl)
     toc
     %
     try
-        writetable(pqt, [main,'\process_flatw_queue.csv']);
+        writetable(pqt, [main,'\across_project_queues\process_flatw_queue.csv']);
     catch
     end
     %
@@ -74,16 +76,20 @@ colheads = {'Machine','Main_Path','Sample','Batch',...
 %
 % if processing_queue does not exist create it
 %
-if ~exist([main,'\process_flatw_queue.csv'], 'file')
-    disp(['Processing_queue.csv not found on ', main]);
+if ~exist([main,'\across_project_queues'],'dir')
+    mkdir([main,'\across_project_queues'])
+end
+
+if ~exist([main,'\across_project_queues\process_flatw_queue.csv'], 'file')
+    disp(['Processing_queue.csv not found on ', main,'\across_project_queues']);
     disp('Creating ...');
     pqt = cell2table(cell(0,16), 'VariableNames', colheads);
-    writetable(pqt, [main,'\process_flatw_queue.csv']);
+    writetable(pqt, [main,'\across_project_queues\process_flatw_queue.csv']);
 end
 %
 end
 %%
-function [wd, fwpath, machinename, samplenames] = getmyVars(tbl, i1)
+function [wd, fwpath, machinename, sn] = getmyVars(tbl, tbl2,  i1)
 %%
 % get the variables for the current cohort, i1
 %
@@ -91,40 +97,36 @@ function [wd, fwpath, machinename, samplenames] = getmyVars(tbl, i1)
 %
 % Clinical_Specimen folder
 %
-wd = tbl(i1,'Main_Path');
-wd = table2array(wd);
-wd = wd{1};
+tb = tbl(i1,:);
+wd = ['\\', tb.Dpath{1},'\', tb.Dname{1}];
 %
 % flatw folder
 %
-fwpath = tbl(i1,'Flatw_Path');
-fwpath = table2array(fwpath);
-fwpath = fwpath{1};
+fwpath = ['\\', tb.FWpath{1}];
 %
-% flatwcode folder
-%
-machinename = tbl(i1,'Machine');
-machinename = table2array(machinename);
-machinename = machinename{1};
+project = tb.Project;
+tb2 = tbl2(tbl2.Project == project, :);
+machinename = tb2.Machine{1};
 %
 % get specimen names for the CS
 %
-fn = dir(wd);
-fd = fn(3:end);
-ii = [fd.isdir];
-fd = fd(ii);
-samplenames = {fd(:).name};
-%
-% filter for only Clinical_Specimen folders
-%
-ii = (contains(samplenames, 'Batch')...
-    |contains(samplenames, 'tmp_inform_data')|...
-    contains(samplenames, 'reject')|...
-    contains(samplenames, 'Control')|...
-    strcmp(samplenames, 'Clinical')|...
-    strcmp(samplenames, 'Upkeep and Progress')|...
-    strcmp(samplenames, 'Flatfield'));
-samplenames = samplenames(~ii);
+sp = dir(wd);
+sp = sp(3:end);
+ii = [sp.isdir];
+sp = sp(ii);
+sn = {sp(:).name};
+ii = (contains(sn, 'Batch')|...
+    strcmp(sn, 'Clinical')|...
+    contains(sn, 'Control')|...
+    strcmpi(sn, 'Ctrl')|...
+    strcmpi(sn, 'dbload')|...
+    strcmpi(sn, 'Flatfield')|...
+    strcmpi(sn, 'logfiles')|...
+    strcmpi(sn, 'reject')|...
+    contains(sn, 'tmp_inform_data')|...
+    strcmp(sn, 'Upkeep and Progress')|...
+    strcmpi(sn, 'upkeep_and_progress'));
+sn(ii) = [];
 %
 end
 %%
@@ -345,7 +347,7 @@ else
     pqt.actual_im3(ii) = {str.actual_im3};
 end
 %
-mbin = [wd, '\Flatfield\flatfield_BatchID_',BatchID,'.bin'];
+mbin = [wd, '\flatfield\flatfield_BatchID_',BatchID,'.bin'];
 %
 ii = strcmp(pqt.Sample,sname);
 pqt.flatfield_binfile_date{ii} = {''};
