@@ -19,7 +19,8 @@ As noted above, modules outside of ```segmaps``` and ```transferanno``` can be l
     -repeat 11-13 as needed
 15. Launch ```segmaps``` module after qc has been completed for the cell classification of slides in a project to build the final segmenation maps.
 16. Launch ```transferanno``` module after the slides have been successfully annotated in HALO and annotations have been exported to a desired location.
-17. complete the final checklist located **here**
+17. Launch ```cleanup``` and the associated script ```convert_batch``` from the ```cleanup``` module
+18. manually unmix the control tma component tiffs and place them in the *inform_data\Component_Tiffs* folder of each respective tma
 
 - ```AstroIDGen``` should be launched on the ```<Spath>``` location.  
 - The following modules can be launched at the same time: ```TransferDeamon```, ```meanimages```, ```flatw_queue```, ```inform_queue```, ```mergeloop```. 
