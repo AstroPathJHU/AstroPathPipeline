@@ -1,20 +1,20 @@
 # 5. HPF Processing (HPFs)
 ## 5.1. Description
-This section of the documentation and code picks up after the slides have been added to the *Specimen_Table_N.xlsx*, a description of that file is located [here](../scans/docs/scanning/SpecimenTable.md). After the ```transferdeamon``` module, all code assumes slides and file structure format in [4.6.](../scans/docs/DirectoryOrganization.md) have been adhered to, namely that the ```<ScanNN>``` subfolder is now in an additional *im3* subfolder under each ```<SlideID>```. Additional definitions on naming should be reviewed before continuing, found [here](../scans/docs/Definitions).
+This section of the documentation and code picks up after the slides have been added to the *Specimen_Table_N.xlsx*, a description of that file is located [here](../scans/docs/scanning/SpecimenTable.md). After the ```transferdeamon``` module, all code assumes slides and file structure format in [4.6.](../scans/docs/DirectoryOrganization.md) have been adhered to, namely that the ```<ScanNN>``` subfolder is now in an additional *im3* subfolder under each ```<SlideID>```. Additional definitions on naming should be reviewed before continuing, found [here](../scans/docs/Definitions.md#43-definitions).
 
-In this section the ```<Dpath>\<Dname>``` processing folders are intialized, a slide list is created, and slides are assigned new ```SlideID```s [5.5.](AstroidGen#55-astroid-generation "Title"). Next images are renamed, transferred and backed up ([5.6.](TransferDaemon#56-transfer-daemon "Title")). Images are then corrected for imaging warping and flatfield effects ([5.8.](flatw#58-flatw "Title")). After this, cells are segmented and classified in each image using the multipass phenotype method in inForm. Each of these steps are run by custom code that process on perpetual loops with limited user interaction. An important step of this process is to create and check the quality control images generated on the cell classification output (that process is described in [5.10.6.](inform_processing/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)) . After, images from all slides in a cohort pass the cell classification quality control, cell segmenation maps are rebuilt to remove cells not defined by the final merged cell segmentation ([described here]()). Finally, slide macro regional annotations are applied to the images using the HALO software and distributed to the slides using a batch script [5.12.4.](transferanno/README.md#5124-transfer-annotations-to-the-bki-server). 
+In this section the ```<Dpath>\<Dname>``` processing folders are intialized, a slide list is created, and slides are assigned new ```SlideID```s [5.5.](AstroidGen#55-astroid-generation-v0000001 "Title"). Next images are renamed, transferred and backed up ([5.6.](TransferDaemon#56-transfer-daemon "Title")). Images are then corrected for imaging warping and flatfield effects ([5.8.](flatw#58-flatw "Title")). After this, cells are segmented and classified in each image using the multipass phenotype method in inForm. Each of these steps are run by custom code that process on perpetual loops with limited user interaction. An important step of this process is to create and check the quality control images generated on the cell classification output (that process is described in [5.10.6.](inform_processing/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)) . After, images from all slides in a cohort pass the cell classification quality control, cell segmenation maps are rebuilt to remove cells not defined by the final merged cell segmentation ([described here]()). Finally, slide macro regional annotations are applied to the images using the HALO software and distributed to the slides using a batch script [5.12.4.](transferanno/README.md#5124-transfer-annotations-to-the-bki-server). 
 
 A final checklist of things to verify and complete before loading into the database is added [here](). In this section there is also a ```cleanup``` module which checks for any missing files as well as additional upkeep instructions.
 
 ## 5.2. Contents
 - [5.1. Description](#51-description "Title")
-- [5.2. Contents](#54-contents "Title")
+- [5.2. Contents](#52-contents "Title")
 - [5.3. Instructions](docs/Instructions.md)
   - [5.3.1. Contents](docs/Instructions.md#531-contents)
   - [5.3.2. Typical User Instructions](docs/TypicalUserInstructions.md#532-typical-user-instructions)
   - [5.3.3 Launching Code Instructions](docs/LaunchingCodeInstructions.md#533-launching-code-instructions)
-- [5.4. Workflow Overview](docs/WorkflowOverview)
-- [5.5. AstroIDGen](AstroidGen#55-astroid-generation "Title")
+- [5.4. Workflow Overview](docs/WorkflowOverview.md#54-workflow-overview)
+- [5.5. AstroIDGen](AstroidGen#55-astroid-generation-v0000001 "Title")
   - [5.5.1. Description](AstroidGen#551-description "Title")
   - [5.5.2. Important Definitions](AstroidGen#552-important-definitions "Title")
   - [5.5.3. Workflow](AstroidGen#553-workflow "Title")
@@ -56,8 +56,8 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.9.3. Instructions](mergeloop#593-instructions)
   - [5.9.4. Workflow](mergeloop#594-workflow)
   - [5.9.5. Merge a Single Sample (MaSS)](mergeloop/MaSS#merge-a-single-sample-mass)
-  - [5.9.6. Create Image QA QC utility](mergeloop/MaSS#section-8create-image-qa-qc-utility)
-- [5.10. Inform Processing](inform_processing#510-inform_processing "Title")
+  - [5.9.6. Create Image QA QC utility](mergeloop/MaSS#section-8-create-image-qa-qc-utility)
+- [5.10. Inform Processing](inform_processing#510-inform-processing "Title")
   - [5.10.1. Description](inform_processing/README.md#5101-description)
   - [5.10.2. Contents](inform_processing/README.md#5102-contents)
   - [5.10.3. inForm® Multipass Phenotyping](inform_processing/docs/inFormMultipassPhenotype.md#5103-inform-multipass-phenotype "Title")
@@ -75,11 +75,11 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.10.5. Adding Slides to the inForm Queue](inform_processing/docs/AddingSlidestotheinFormQueue.md#5105-adding-slides-to-the-inform-queue)
   - [5.10.6. Evaluating inForm® Phenotype QC Output for the *AstroPath Pipeline*](inform_processing/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)
   - [5.10.7. Processing inForm® Tasks](inform_processing/docs/ProcessinginFormTasks.md#5107-proccessing-inform-tasks)
-- [5.11. Segmaps](segmaps#511-segmaps "Title")
+- [5.11. Segmaps](segmaps#511-seg-maps "Title")
   - [5.11.1. Description](segmaps#5111-description)
   - [5.11.2. Instructions](segmaps#5112-instructions)
   - [5.11.3. Segmentation Map Structure Definition](segmaps#5113-segmenation-map-structure-definition)
-- [5.12. Create & Transfer Annotations](transferanno#512-transferanno "Title")
+- [5.12. Create & Transfer Annotations](transferanno#512-transfer-annotations "Title")
   - [5.12.1. Description](transferanno#5121-description)
   - [5.12.2. Create HALO Annoations for the *AstroPath Pipeline*](transferanno/README.md#5122-creating-halo-annotations-for-the-astropath-pipeline)
     - [5.12.2.1. Prepare the HALO Project](transferanno/README.md#51221-prepare-the-halo-project)

@@ -196,7 +196,7 @@ This table contains 62 columns:
       
 The code also produces a folder named ```*\Results\tmp_inform_data```, which contains .mat files for the images that meet the Image QA criteria, detailed below. These .mat files contain a copy of the ```*_cleaned_phenotype_table.csv``` in an easily accessible MATLAB format.
 
-## ***Section 8:	Create Image QA QC utility***
+## ***Section 8: Create Image QA QC utility***
 v.0.01.001
 ### Section 8.1 Description/ running instructions
 In order to assess the performance of the cell phenotype algorithms on a large quantity of images, an algorithm was developed to selectively sample images and create modified visual displays of those images. This algorithm is a secondary application which must be downloaded and installed separately, it is called CreateImageQAQC. This code must be run after the MaSS protocol as it relies on the tmp_inform_data directory the MaSS tool creates. The code is relatively simple to run from a cmd prompt using the following:

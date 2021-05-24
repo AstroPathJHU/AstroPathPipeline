@@ -3,7 +3,7 @@
 #### <div align="center">Correspondence to: bgreen42@jhu.edu</div>
 
 ## 1. Description
-The *AstroPath Pipeline* was designed to automate the processing of whole slide multiplex immunoflourecence histopathology image data, taken by Akoya Biosciences’ Vectra imaging platform, from the microscope to database. The automated process begins after whole slide scans have been captured by the microscope and manually verified complete. Code is divided into three main stages; defined as ```hpf```, ```slide```, and ```sample``` level processing. In the ```hpf``` (or high powered field) processing stage, images are reorganized, corrected for camera\ imaging effects, and segmented\ phenotyped. Here images are mainly processed individually. In the next processing stage, aptly named ```slide``` the data is stiched together into a whole slide and the slides are annotated by a pathologist. Finally, slides across a cohort are corrected for batch to batch variation and loaded into a database. Here the image, cell, and annotation data of each whole slide image is linked its clinical information thus providing a completed ```sample```. Code for each stage is organized into its own folder under ```astropath```, with each folder containing a particular set of modules. Each module is organized separately in subfolders and described with linked documenation. An overview of the current pipeline can be seen [here](https://github.com/AstropathJHU/AstroPathPipeline/blob/main/AstroPathPipeline.pdf).
+The *AstroPath Pipeline* was designed to automate the processing of whole slide multiplex immunoflourecence histopathology image data, taken by Akoya Biosciences’ Vectra imaging platform, from the microscope to database. The automated process begins after whole slide scans have been captured by the microscope and manually verified complete. Code is divided into three main stages; defined as ```hpf```, ```slide```, and ```sample``` level processing. In the ```hpf``` (or high powered field) processing stage, images are reorganized, corrected for camera\ imaging effects, and segmented\ phenotyped. Here images are mainly processed individually. In the next processing stage, aptly named ```slide``` the data is stiched together into a whole slide and the slides are annotated by a pathologist. Finally, slides across a cohort are corrected for batch to batch variation and loaded into a database. Here the image, cell, and annotation data of each whole slide image is linked its clinical information thus providing a completed ```sample```. Code for each stage is organized into its own folder under ```astropath```, with each folder containing a particular set of modules. Each module is organized separately in subfolders and described with linked documenation. An overview of the current pipeline can be seen [here](documents/AstroPathPipeline.pdf).
 
 ## 2. Getting Started
 ## 2.1. Prerequisites
@@ -35,7 +35,11 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
 
 ## 3. Contents
 - [1. Description](#1-description "Title")
-- [2. Instructions](#2-instructions "Title")
+- [2. Getting Started](#2-getting-started "Title")
+   - [2.1. Prerequisites](#21-prerequisites)
+   - [2.2. Instructions](#22-instructions)
+      - [2.2.1. Python Instructions](#221-python-instructions)
+      - [2.2.2. MATLAB Instructions](#222-matlab-instructions)
 - [3. Contents](#3-contents "Title")
 - [4. Scanning Slides (scans)](astropath/scans#4-scans "Title")
    - [4.1. Description](astropath/scans#41-description "Title")
@@ -49,14 +53,14 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
   - [5.2. Contents](astropath/hpfs#52-contents "Title")
   - [5.3. Instructions](astropath/hpfs/docs/Instructions.md)
   - [5.4. Workflow Overview](astropath/hpfs/docs/WorkflowOverview.md)
-  - [5.5. AstroIDGen](astropath/hpfs/AstroidGen#55-astroid-generation "Title")
+  - [5.5. AstroIDGen](astropath/hpfs/AstroidGen#55-astroid-generation-v0000001 "Title")
   - [5.6. Transfer Daemon](astropath/hpfs/TransferDaemon#56-transfer-daemon "Title")
   - [5.7. Meanimages](astropath/hpfs/meanimages#57-meanimages "Title")
   - [5.8. Flatw](astropath/hpfs/flatw#58-flatw "Title")
   - [5.9. Mergeloop](astropath/hpfs/mergeloop#59-mergeloop "Title")
-  - [5.10. Inform Processing](astropath/hpfs/inform_processing#510-inform_processing "Title")
-  - [5.11. Segmaps](astropath/hpfs/segmaps#511-segmaps "Title")
-  - [5.12. Create & Transfer Annotations](astropath/hpfs/transferanno#512-transferanno "Title")
+  - [5.10. Inform Processing](astropath/hpfs/inform_processing#510-inform-processing "Title")
+  - [5.11. Segmaps](astropath/hpfs/segmaps#511-seg-maps "Title")
+  - [5.12. Create & Transfer Annotations](astropath/hpfs/transferanno#512-transfer-annotations "Title")
  - [6. Slide Processing](astropath/slides/#6-slide-processing)
    - [6.1 Description](astropath/slides/#61-description)
    - [6.2 Prepdb](astropath/slides/prepdb/#62-prepdb)

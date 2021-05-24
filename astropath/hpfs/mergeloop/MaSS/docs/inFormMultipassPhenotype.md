@@ -22,8 +22,8 @@ This is the protocol for defining cell segmentation and classification algorithm
    - Select the following
      - Trainable Tissue Segmentation 
      - Adaptive Cell Segmentation
-     -	Phenotyping 
-     -	Export
+     - Phenotyping 
+     - Export
    - Name the Antibodies by selecting the  ‘Edit Markers and Colors‘ box on the ‘Prepare Images’ tab 
       - These names should correspond to the names defined in the ‘Target’ column of the BatchID file. The tumor marker, as indicated in column 14 (‘ImageQA\QC’) of that file, can be replaced with ‘Tumor’
       - use ‘DAPI’ for the name of DAPI and AF for auto fluorescence
@@ -41,9 +41,9 @@ Trainable Tissue Segmentation utilizes a computer learning algorithm over a batc
    - Choose their color from the drop down menu
    - ```Remove``` deletes one category and ```Clear``` deletes all categories 
 4. Go to “Components for Training” and select the Opal channels you want the computer to concentrate on
- 	 - Example: If my three categories in melanoma are Tumor, NonTumor, and Blank, then I only need to select the channels with DAPI (assists in the nuclear sizes) and Tumor (guide the computer to only look for this marker). This will allow for faster and more efficient training.
-5.	Pattern Scale tells the computer at what resolution should it analyze the image. If you are separating tumor vs nontumor, then larger scales works better. If you are trying to separate specific lymphocyte types or other small cells, then a smaller scales works better.
-6.	Recent Training tells you the pass few training attempts 
+   - Example: If my three categories in melanoma are Tumor, NonTumor, and Blank, then I only need to select the channels with DAPI (assists in the nuclear sizes) and Tumor (guide the computer to only look for this marker). This will allow for faster and more efficient training.
+5. Pattern Scale tells the computer at what resolution should it analyze the image. If you are separating tumor vs nontumor, then larger scales works better. If you are trying to separate specific lymphocyte types or other small cells, then a smaller scales works better.
+6. Recent Training tells you the pass few training attempts 
 7. Optimize Segmentation Options
    - Segmentation Resolution: affects how the edges of each region will be. It goes from Coarse to Fine.  Adjust how smooth you want the edges the tissue categories to be
    - Trim Edges by (pixels): this feature allows a certain Tissue Category to be cut.
@@ -60,8 +60,8 @@ Trainable Tissue Segmentation utilizes a computer learning algorithm over a batc
 11. Repeat this for all Categories you have created
     - At least one training region is needed for each category
 12. Select ```Segment Image```
-13.	Review and Modify the image
-14.	Select ```Segment All```
+13. Review and Modify the image
+14. Select ```Segment All```
 15. Review and Modify if needed
 
 ### 2.4. Adaptive Cell Segmentation
@@ -89,7 +89,7 @@ Trainable Tissue Segmentation utilizes a computer learning algorithm over a batc
    - This option setting is useful for big nuclear cells (e.g. melanoma). The unit is in pixels.
 8. Check ```Refine cells after segmentation``` 
 9. Under ```Segment```, check mark ```Cytoplasm``` and ```Membrane```
-10.	Select ```Add…``` 
+10. Select ```Add…``` 
     - Add your membrane stains from most abundant to least abundant.
     - Select ```…``` and choose ```Membrane``` under ```Use this signal to find```
     - Check mark ```Use this signal to assist in nuclear splitting```
@@ -102,15 +102,15 @@ Trainable Tissue Segmentation utilizes a computer learning algorithm over a batc
 12. Under ```Membrane``` and ```Cytoplasm``` Settings, adjust the ```Cytoplasm Thickness```.
     - We typically choose 4.0 if looking at t-cells and even larger for tumor cells. 
     - Increasing this value will create rounder cells 
-13.	Adjust ```Membrane Search Distance```.  
+13. Adjust ```Membrane Search Distance```.  
     - If you are only looking at small cells, then the value should be small. 
     - If looking at markers such as tumor or PDL1, the value should be higher.
 14. Select ```…``` next to ```Membrane Signal Threshold```
     - Under ```My membrane staining is```
       - select ```A mixture of quality```
-    -	Adjust the ```Membrane Signal Threshold```.  
-      -	Lower the value to increase sensitivity
-      -	Raise the value to decrease sensitivity.
+    - Adjust the ```Membrane Signal Threshold```.  
+      - Lower the value to increase sensitivity
+      - Raise the value to decrease sensitivity.
 15. Assess your algorithm across multiple images and refine your algorithm by tweaking the values of the options above.  
    - Look to balance the over segmenting and under-segmenting of cells
 16. Save the project if this is the first antibody analyzed in this multiplex panel. 
@@ -143,7 +143,7 @@ Phenotyping requires Adaptive Cell Segmentation/Cell Segmentation
    - Focus on phenotypes that are next to each other. This will help delineate neighboring cell types 
    - Toggling on and off the channels and segmentation will also aide in decision making
    - Attempt to assess patterns in the algorithm that are wrong such as a large number of neighbors or undercalling
-9.	Once satisfied, select ```Phenotype All```
+9. Once satisfied, select ```Phenotype All```
 10. Quality check once more and add more training cells as needed using (6)
    - **It is always best to get a second opinion before saving**
 

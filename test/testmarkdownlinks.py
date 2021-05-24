@@ -4,7 +4,7 @@ class GithubTocRendererMixin(marko.ext.toc.TocRendererMixin):
   def render_heading(self, element):
     children = self.render_children(element)
     slug = re.sub(r"<.+?>", "", children)
-    slug = re.sub(r"(?<=[0-9])[.](?=[0-9])", r"", slug)
+    slug = re.sub(r"(?<=[0-9a-zA-Z_])[.](?=[0-9])", r"", slug)
     slug = slug.replace("_", "UNDERSCOREUNDERSCORE")
     slug = slug.replace("#", "HASHTAGHASHTAG")
     slug = slug.replace("®", "ALLRIGHTSRESERVEDALLRIGHTSRESERVED")
