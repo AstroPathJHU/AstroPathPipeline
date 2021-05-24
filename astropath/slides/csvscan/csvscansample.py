@@ -1,5 +1,6 @@
 import abc, itertools, pathlib, re
 
+from ...baseclasses.argumentparser import RunFromArgumentParser
 from ...baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...baseclasses.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
 from ...baseclasses.overlap import Overlap
@@ -19,16 +20,21 @@ from ...utilities.tableio import TableReader
 class CsvScanRectangle(GeomLoadRectangle, PhenotypedRectangle):
   pass
 
-class CsvScanBase(TableReader):
+class CsvScanBase(RunFromArgumentParser, TableReader):
   @property
   @abc.abstractmethod
   def logger(self): pass
 
-  def processcsv(self, csv, csvclass, tablename, extrakwargs={}, *, SlideID):
+  def processcsv(self, csv, csvclass, tablename, extrakwargs={}, *, SlideID, checkcsv=True):
     self.logger.debug(f"Processing {csv}")
     #read the csv, to check that it's valid
-    rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs)
-    nrows = len(rows)
+    if checkcsv:
+      rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs)
+      nrows = len(rows)
+    else:
+      with open(csv) as f:
+        for nrows, line in enumerate(f):
+          pass
     return LoadFile(
       fileid="",
       SlideID=SlideID,
@@ -37,6 +43,20 @@ class CsvScanBase(TableReader):
       nrows=nrows,
       nrowsloaded=0,
     )
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
+    return p
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().runkwargsfromargumentparser(parsed_args_dict),
+      "checkcsvs": parsed_args_dict.pop("checkcsvs"),
+    }
+    return kwargs
 
 class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase, CsvScanBase):
   rectangletype = CsvScanRectangle
@@ -51,7 +71,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
   def processcsv(self, *args, **kwargs):
     return super().processcsv(*args, SlideID=self.SlideID, **kwargs)
 
-  def runcsvscan(self):
+  def runcsvscan(self, *, checkcsvs=True):
     toload = []
     expectcsvs = {
       self.csv(_) for _ in (
@@ -152,7 +172,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         errors.append("Unknown csvs: "+", ".join(str(_) for _ in sorted(unknowncsvs)))
       raise ValueError("\n".join(errors))
 
-    loadfiles = [self.processcsv(**kwargs) for kwargs in toload]
+    loadfiles = [self.processcsv(checkcsv=checkcsvs, **kwargs) for kwargs in toload]
 
     self.writecsv("loadfiles", loadfiles, header=False)
 

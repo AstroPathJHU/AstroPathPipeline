@@ -572,9 +572,9 @@ class WorkflowSample(SampleBase, WorkflowDependency):
     """
     return []
 
-  def job_lock(self):
+  def joblock(self, **kwargs):
     self.samplelog.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(self.samplelog.with_suffix(".lock"))
+    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), **kwargs)
 
 class DbloadSampleBase(SampleBase, DbloadArgumentParser):
   """

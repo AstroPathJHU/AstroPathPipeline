@@ -8,13 +8,16 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
   sampleclass = CsvScanSample
   __doc__ = sampleclass.__doc__
 
-  def runsample(self, sample):
-    return sample.runcsvscan()
+  def runsample(self, sample, **kwargs):
+    return sample.runcsvscan(**kwargs)
 
-  def run(self, **kwargs):
-    super().run(**kwargs)
-    with self.globallogger():
-      self.makeglobalcsv()
+  def run(self, *, checkcsvs=True, **kwargs):
+    super().run(checkcsvs=checkcsvs, **kwargs)
+    with self.globaljoblock(outputfiles=[self.csv("loadfiles")]) as lock:
+      if not lock: return
+      if self.csv("loadfiles").exists(): return
+      with self.globallogger():
+        self.makeglobalcsv(checkcsv=checkcsvs)
 
   @property
   def globalcsvs(self):
@@ -27,7 +30,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         if subfolder.name in slideids: continue
         yield from subfolder.rglob("*.csv")
 
-  def makeglobalcsv(self):
+  def makeglobalcsv(self, *, checkcsv=True):
     toload = []
     expectcsvs = {
       self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
@@ -105,7 +108,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         errors.append("Unknown csvs: "+", ".join(str(_) for _ in sorted(unknowncsvs)))
       raise ValueError("\n".join(errors))
 
-    loadfiles = [self.processcsv(**kwargs) for kwargs in toload]
+    loadfiles = [self.processcsv(checkcsv=checkcsv, **kwargs) for kwargs in toload]
 
     self.dbload.mkdir(exist_ok=True)
     self.writecsv("loadfiles", loadfiles, header=False)

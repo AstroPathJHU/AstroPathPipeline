@@ -1,4 +1,4 @@
-import abc, os, pathlib, re
+import abc, os, job_lock, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
@@ -90,6 +90,11 @@ class Cohort(ThingWithRoots, RunFromArgumentParser):
   def globallogger(self):
     samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
     return self.getlogger(samp, samplelog=os.devnull)
+
+  def globaljoblock(self, **kwargs):
+    lockfile = self.globallogger().mainlog.with_suffix(".lock")
+    lockfile.parent.mkdir(exist_ok=True, parents=True)
+    return job_lock.JobLock(lockfile, **kwargs)
 
   def getlogger(self, samp, **kwargs):
     if isinstance(samp, SampleBase): samp = samp.samp
@@ -441,7 +446,7 @@ class WorkflowCohort(Cohort):
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       print(f"{sample.SlideID} {status}")
     else:
-      with sample.job_lock() as lock:
+      with sample.joblock() as lock:
         if not lock: return
         try:
           missinginputs = [file for file in sample.inputfiles(**kwargs) if not file.exists()]
