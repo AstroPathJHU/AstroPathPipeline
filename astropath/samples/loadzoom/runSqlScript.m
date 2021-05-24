@@ -1,0 +1,2 @@
+function runSqlScript(samp)
+end

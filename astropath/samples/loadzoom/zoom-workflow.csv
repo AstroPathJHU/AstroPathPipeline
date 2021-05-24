@@ -1,0 +1,4 @@
+stepid,database,script
+1,sample,Z1-ZoomSchema.sql
+2,sample,Z2-spLoadZoom.sql
+3,sample,Z3-Zoomload.sql
