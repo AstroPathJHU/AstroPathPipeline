@@ -89,3 +89,6 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.12.4. Transfer Annotations to the BKI Server](transferanno/README.md#5124-transfer-annotations-to-the-bki-server)
     - [5.12.4.1. Description](transferanno/README.md#51241-description)
     - [5.12.4.2. Instructions](transferanno/README.md#51242-instructions)
+- [5.13. Cleanup](cleanup#513-clean-up)
+  - [5.13.1. Description](cleanup#5131-description)
+  - [5.13.2. Instructions](cleanup#5132-instructions)
