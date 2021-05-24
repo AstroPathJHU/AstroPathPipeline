@@ -94,11 +94,24 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         "tumorGeometry",
         "vertices",
       )
-    } | {
-      r.geomloadcsv for r in self.rectangles
-    } | {
-      r.phenotypetablescsv for r in self.rectangles
     }
+    expectcsvs |= {
+      r.geomloadcsv for r in self.rectangles
+    }
+
+    def hasanycells(rectangle):
+      try:
+        with open(rectangle.geomloadcsv) as f:
+          next(f)
+          next(f)
+      except (FileNotFoundError, StopIteration):
+        return False
+      else:
+        return True
+    expectcsvs |= {
+      r.phenotypetablescsv for r in self.rectangles if hasanycells(r)
+    }
+
     optionalcsvs = {
       self.csv(_) for _ in (
         "globals",
