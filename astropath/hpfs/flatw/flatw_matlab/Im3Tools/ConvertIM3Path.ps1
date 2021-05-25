@@ -256,8 +256,8 @@ function Run-IM3Convert {
     #
     $code = "$PSScriptRoot\ConvertIm3.exe"
     $dat = ".//D[@name='Data']/text()"
-    $exp = '"' + ".//G[@name='SpectralBasisInfo']//D[@name='Exposure'] | " + 
-            "(.//G[@name='Protocol']//G[@name='DarkCurrentSettings'])" + '"'
+    $exp = '"' + ".//G[@name='SpectralBasisInfo']//D[@name='Exposure'] " + '"' #| " + 
+            # "(.//G[@name='Protocol']//G[@name='DarkCurrentSettings'])" + '"'
     $glb_prms =  '"' + "//D[@name='Shape']  | " +
                  "//D[@name='SampleLocation'] | " +
                  "//D[@name='MillimetersPerPixel'] | " +
@@ -293,7 +293,8 @@ function Run-IM3Convert {
         $f2 = "$dest\$sample.Full.xml"
         if (test-path $f2) {Remove-Item $f2 -Force}
         Rename-Item "$dest\*].xml" $f2 -Force
-        Add-Content "$dest\doShred.log" "$f Renamed to $sample.Full.xml"
+        "$f Renamed to $sample.Full.xml" | Out-File "$dest\doShred.log" -Append
+        # Add-Content "$dest\doShred.log" "$f Renamed to $sample.Full.xml"
         #
     }
     #
@@ -309,7 +310,8 @@ function Run-IM3Convert {
         $f2 = "$dest\$sample.Parameters.xml"
         if (test-path $f2) {Remove-Item $f2 -Force}
         Rename-Item "$dest\*State.xml" $f2 -Force
-        Add-Content "$dest\doShred.log" "$f Renamed to $sample.Parameters.xml"
+        "$f Renamed to $sample.Parameters.xml" | Out-File "$dest\doShred.log" -Append
+        # Add-Content "$dest\doShred.log" "$f Renamed to $sample.Parameters.xml"
         #
     }
     #
@@ -335,7 +337,8 @@ function Run-IM3Convert {
             $f2log = $f2.replace("$dest\", '') 
             if (test-path -LiteralPath $f2) {Remove-Item -LiteralPath $f2 -Force}
             Rename-Item -LiteralPath $f $f2 -Force
-            Add-Content "$dest\doInject.log" "$f Renamed to $f2log"
+            "$f Renamed to $f2log" | Out-File "$dest\doInject.log" -Append
+            # Add-Content "$dest\doInject.log" "$f Renamed to $f2log"
             #
             # renamed Data.dat to .fw
             #    
@@ -346,7 +349,8 @@ function Run-IM3Convert {
             $f2log = $f2.replace("$flatw\", '') 
             if (test-path -LiteralPath $f2) {Remove-Item -LiteralPath $f2 -Force}
             Rename-Item -LiteralPath $f $f2 -Force
-            Add-Content "$dest\doInject.log" "$f Renamed to $f2log"
+            "$f Renamed to $f2log" | Out-File "$dest\doInject.log" -Append
+            # Add-Content "$dest\doInject.log" "$f Renamed to $f2log"
             #
         }
         #

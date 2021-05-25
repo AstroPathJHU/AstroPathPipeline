@@ -86,7 +86,7 @@ While($VMs){
         # check csv VM_inForm_queue
         #
         $vmn = $cVM -replace "VM_i","I"
-        $p2 =  "C:\Program Files\BatchProcessing\VM_inForm_queue.csv"
+        $p2 =  "$PSScriptRoot\VM_inForm_queue.csv"
         #
         # if file exists get content
         #
