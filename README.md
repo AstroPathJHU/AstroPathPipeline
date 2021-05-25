@@ -95,7 +95,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
    - [6.6 Warp annotations](astropath/slides/annowarp/)
    - [6.7 Tumor geometry](astropath/slides/geom/)
    - [6.8 Cell Geometries](astropath/slides/geomcell/)
-   - [6.9 CsvScan](astropath/slides/csvscan/)
+   - [6.9 Csv Scan](astropath/slides/csvscan/)
  - [7. Sample Processing](astropath/samples/)
    - [7.1 Description](astropath/samples/)
    - [7.2 Control TMAs](astropath/samples/ctrl/)
