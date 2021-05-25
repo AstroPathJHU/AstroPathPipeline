@@ -152,11 +152,12 @@ def get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2) :
             delta_over_sigma_std_devs.append(0.)
             continue
         #normalize the image layers by the mean of the mean image layer
-        mil1[(mil1!=0 & mil2!=0)],semil1[(mil1!=0 & mil2!=0)] = normalize_image_layer(mil1[(mil1!=0 & mil2!=0)],semil1[(mil1!=0 & mil2!=0)])
-        mil2[(mil1!=0 & mil2!=0)],semil2[(mil1!=0 & mil2!=0)] = normalize_image_layer(mil2[(mil1!=0 & mil2!=0)],semil2[(mil1!=0 & mil2!=0)])
+        mil1,semil1 = normalize_image_layer(mil1,semil1)
+        mil2,semil2 = normalize_image_layer(mil2,semil2)
         #make the delta/sigma image
-        delta_over_sigma[(mil1!=0 & mil2!=0)] = (mil1[(mil1!=0 & mil2!=0)]-mil2[(mil1!=0 & mil2!=0)])/(np.sqrt(semil1[(mil1!=0 & mil2!=0)]**2+semil2[(mil1!=0 & mil2!=0)]**2))
-        std_dev = np.std(delta_over_sigma[(mil1!=0 & mil2!=0)])
+        delta_over_sigma = np.zeros_like(mil1)
+        delta_over_sigma[(mil1!=0) & (mil2!=0)] = (mil1[(mil1!=0) & (mil2!=0)]-mil2[(mil1!=0) & (mil2!=0)])/(np.sqrt(semil1[(mil1!=0) & (mil2!=0)]**2+semil2[(mil1!=0) & (mil2!=0)]**2))
+        std_dev = np.std(delta_over_sigma[delta_over_sigma!=0])
         delta_over_sigma_std_devs.append(std_dev)
     return delta_over_sigma_std_devs
 
