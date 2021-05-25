@@ -4,7 +4,7 @@ Afer algorithms are created slides are processed through inForm®. This process 
 
 The code is designed to run continously. There are two module scripts. The first is a ```inform_queue``` script which opens an *inForm_queue.csv* spreadsheet and disseminates tasks to spreadsheets kept on worker virtual machines. The second script (```inform_worker```) runs on each of the worker locations, checking this worker spreadsheet for new batch tasks and launching those new batch algorithm tasks through inForm. 
 
-Note that the worker module that runs inForm requires that the image data is reformatted into the *AstroPath* directory structure and that the algorithms are located in a set location adjacent to the images. Both locations are described below in [*Important Definitions*](#51072-important-definitions) and in more detail [here](../../../scans/docs/DirectoryOrganization.md#46-directory-organization "Title"). Algorithm or project export settings should be set up before saving the file according to the protocol defined [here](SavingProjectsfortheinFormJHUProcessingFarm.md#5104-saving-projects-for-the-inform-jhu-processing-farm). Since the code simulates mouse clicks and changes in the active window, it is best not to use the computer when running the worker module.
+Note that the worker module that runs inForm requires that the image data is reformatted into the *AstroPath* directory structure and that the algorithms are located in a set location adjacent to the images. Both locations are described below in [Important Definitions](#51072-important-definitions) and in more detail [here](../../../scans/docs/DirectoryOrganization.md#46-directory-organization "Title"). Algorithm or project export settings should be set up before saving the file according to the protocol defined [here](SavingProjectsfortheinFormJHUProcessingFarm.md#5104-saving-projects-for-the-inform-jhu-processing-farm). Since the code simulates mouse clicks and changes in the active window, it is best not to use the computer when running the worker module.
 
 *NOTE*: For use in the AstroPath pipeline or with the MaSS utility, export settings should be appied according to the documentation located [here](SavingProjectsfortheinFormJHUProcessingFarm.md#5104-saving-projects-for-the-inform-jhu-processing-farm). Once batch processing is finished for an antibody, data files can be transferred to the proper MaSS-slide organization defined in the MaSS documentation [here](../../mergeloop/MaSS#merge-a-single-sample-mass) or in more depth with relation to the rest of the pipeline [here](../../../scans/docs/DirectoryOrganization.md#46-directory-organization). Data can either be transferred manually or with the ```mergeloop``` module located [here](../../mergeloop#59-mergeloop). 
 
@@ -12,18 +12,18 @@ Note that the worker module that runs inForm requires that the image data is ref
 - The code requires that an active version of inForm is installed on the computer and that the version installed matches the version number coded in at the bottom of **BatchProcessing.ps1**.
 - The main *inForm_queue.csv* ([described here](AddingSlidestotheinFormQueue.md#51053-instructions))
 - The virtual machine queue file: *VM_inForm_queue.csv*
-  - This file should be located in the ```*\hpfs\inform_processing\BatchProcssing``` folder. 
+  - This file should be located in the *\*\\astropath\\hpfs\\inform_processing\BatchProcessing* folder. 
   - This file consists of a five columns ```Path,Specimen,Antibody,Algorithm,Start,Finish```
     - ```Path```: The path up to but not including the specimen folder or ```\\<Dname>\<Dpath>``` ([described here](../../../scans/docs/Definitions.md/#432-path-definitions))
       - E.g. *\\bki04\Clinical_Specimen_2* 
     - ```Specimen```: The name of the specimen to be analyzed
-      - The image data to be processed should be located in an ```<Path>\<Specimen>\im3\flatw``` folder 
+      - The image data to be processed should be located in an *```<Path>```\\```<Specimen>```\im3\flatw* folder 
       - E.g. *M1_1*
     - ```Antibody```: The antibody name that will be processed.
-      - All data will be exported into a ```<Path>\tmp_inform_data\<Antibody>``` subfolder
+      - All data will be exported into a *```<Path>```\\tmp_inform_data\\```<Antibody>```* subfolder
       - E.g. *CD8*
     - ```Algorithm```: The name for the algorithm to do the processing **include the file extension**
-      - The algorithm should be location in a ```<Path>\tmp_inform_data\Project_Development``` folder for the code to be able to find it
+      - The algorithm should be location in a *```<Path>```\\tmp_inform_data\\Project_Development* folder for the code to be able to find it
       - Only the *Project_Development* folder will be search, the search is not recursive. Subfolders will not be searched for the algorithm
       - E.g. *CD8.ifp*
     - ```Start```: The time that the processing started, this is updated by the code and should be left blank
@@ -56,7 +56,7 @@ Once virtual machines are set up install and launch the processing code accordin
 1. Download the repository to a processing computer or location where inForm is installed
 2. Edit the username and password in line 78. 
    - JHU has created a local user account for each virtual machine. The workers run under that local account for processing. This script is designed to use the specified username and password dedicated to each virtual machine for processing on that machine.
-3. Navigate to *\*astropath\\hpfs\\launch* and double click on the ```inform_queue-Shortcut``` to launch processing
+3. Navigate to *\*\\astropath\\hpfs\\launch* and double click on the ```inform_queue-Shortcut``` to launch processing
 
 ## 5.10.7.3.3. Running the ```inform worker``` Module
 1. Download the repository to a processing computer or location where inForm is installed *under the "Program Files* folder*
@@ -66,13 +66,13 @@ Once virtual machines are set up install and launch the processing code accordin
    - Edit line 124
    - Go to 'tools' at the top of the page and compile (make sure the .exe is saved under the *BatchProcessing* folder)
 3. Make sure the the username used in [5.10.7.3.2](#510732-running-the-inform-queue-module) has full access to the *AstroPathPipeline* folder
-4. Copy the 'inform_worker-Shortcut' from *\*astropath\\hpfs\\launch* to the desktop of the virtual machine
+4. Copy the 'inform_worker-Shortcut' from *\*\\astropath\\hpfs\\launch* to the desktop of the virtual machine
 5. Double click on the shortcut to launch processing
 6. Add a jobs to the queue as described [above](#51072-important-definitions)
 
 *NOTE*: Because some of the workflow uses automatic scripts windows defender flags these files as Trojans. Usually we just turn off windows defender since our virtual machines cannot be accessed outside of the JHU network. 
 
 ## 5.10.7.4. Workflow
-The first step in processing is to test for the input version of inForm that will be used to run the software. The inForm version can be found at the bottom of **BatchProcessing.ps1**. Next the code attempts to injest the VM_inForm_queue.txt, described above in [Important Definitions](#51072-important-definitions). This file should be located in the *\*\hpfs\\inform_processing\\BatchProcssing* folder. The code searches along the path location where the script was launched for the queue file. 
+The first step in processing is to test for the input version of inForm that will be used to run the software. The inForm version can be found at the bottom of **BatchProcessing.ps1**. Next the code attempts to injest the VM_inForm_queue.txt, described above in [Important Definitions](#51072-important-definitions). This file should be located in the *\*\\astropath\\hpfs\\inform_processing\\BatchProcssing* folder. The code searches along the path location where the script was launched for the queue file. 
 
 After all jobs are marked complete, the code waits and rechecks the queue after a set period of time for new jobs. Jobs can be added to the queue either manually or by the code. The queue file should be located in 'BatchProcessing' folder. The queue string is simple and consists of a five part comma separated list. To add a new job to the queue The code requires that the image data is reformatted into the AstroPath directory structure and that the algorithms are located in a set location adjacent to the images. Algorithm export settings should be set up before saving.
