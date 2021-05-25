@@ -45,20 +45,20 @@ Note that the worker module that runs inForm requires that the image data is ref
   | | | | +-- *Results*
 ``` 
 ## 5.10.7.3. Instructions
-## 5.10.7.3.1. Create VMs for the Processing
+### 5.10.7.3.1. Create VMs for the Processing
 We have set up a server with multiple virtual machines each running it's own instance of InForm Cell Analysis. This set up is quite complex and Akoya Biosciences does not recommend installing the software on virtual machines. The *AstroPath* group has been given explicit permission to set up a processing system like this through a work agreement with Akoya Biosciences. The system set up only allows server administrators access to the virtual machines and virtual machines are not typically used as local workstations. Linking multiple computers on the same network with static licenses can be set-up to simulate a similar processing capacity, though this would be an even more complex system (particularly since using remote desktop with InForm will corrupt the license). Consult with Akoya Biosciences and your local IT professionals before attempting to set up a similar system.
 
 The *AstroPath* group uses Hyper-V with Windows to set up virtual machines. We use Hyper-V becuase of it's support in PowerShell where much of the code for processing was piloted and is maintained. An introduction to Hyper-V can be found [here](https://docs.microsoft.com/en-us/virtualization/hyper-v-on-windows/about/). Once virtual machines are created, a windows OS should be installed and network capabilities should be added. InForm can then be installed and activated as on a normal computer. Be sure that you only log into the virtual machine using the Hyper-V Manager or through a screen mirroring server like TightVNC or RealVNC (using the Hyper-V Manager method will yield the best results). **Never use a windows remote desktop session, this will corrupt the InForm license.** Logging in using these screen mirroring techniques allows us to use the virtual machines as normal computers and still only allows one InForm session to be active at a time. 
 
 Once virtual machines are set up install and launch the processing code according to the documentation found in [5.10.7.3.3.](#510733-running-the-inform-worker-module).
 
-## 5.10.7.3.2. Running the ```inform queue``` Module
+### 5.10.7.3.2. Running the ```inform queue``` Module
 1. Download the repository to a processing computer or location where inForm is installed
 2. Edit the username and password in line 78. 
    - JHU has created a local user account for each virtual machine. The workers run under that local account for processing. This script is designed to use the specified username and password dedicated to each virtual machine for processing on that machine.
 3. Navigate to *\*\\astropath\\hpfs\\launch* and double click on the ```inform_queue-Shortcut``` to launch processing
 
-## 5.10.7.3.3. Running the ```inform worker``` Module
+### 5.10.7.3.3. Running the ```inform worker``` Module
 1. Download the repository to a processing computer or location where inForm is installed *under the "Program Files* folder*
 2. Edit the username and password in ```RunFullBatch.au3```
    - Download and install [AutoIt](https://www.autoitscript.com/site/)
