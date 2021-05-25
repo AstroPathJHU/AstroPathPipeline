@@ -14,7 +14,7 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.3.2. Typical User Instructions](docs/TypicalUserInstructions.md#532-typical-user-instructions)
   - [5.3.3 Launching Code Instructions](docs/LaunchingCodeInstructions.md#533-launching-code-instructions)
 - [5.4. Workflow Overview](docs/WorkflowOverview.md#54-workflow-overview)
-- [5.5. AstroIDGen](astroidgen#55-astroid-generation "Title")
+- [5.5. AstroIDGen](astroidgen#55-astroid-generation-v0000001 "Title")
   - [5.5.1. Description](astroidgen#551-description "Title")
   - [5.5.2. Important Definitions](astroidgen#552-important-definitions "Title")
   - [5.5.3. Instructions](astroidgen#553-instructions "Title")
