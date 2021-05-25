@@ -27,7 +27,7 @@ function astroidgen{
       $env:Path += ";C:\Program Files (x86)\Python38-32";
       $env:PATHEXT += ";.py"; 
       #
-      $code_path = "$PSScriptRoot\..\AstroidGen\ASTgen.py"
+      $code_path = "$PSScriptRoot\..\astroidgen\ASTgen.py"
       #
       python $code_path $csv
 }
