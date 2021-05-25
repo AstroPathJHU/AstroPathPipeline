@@ -167,14 +167,19 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
           "overlap": {"nclip": 8, "rectangles": allrectangles},
           "vertices": {"bigtilesize": 0, "bigtileoffset": 0}
         }.get(match.group(1), {})
+        fieldsizelimit = {
+          "regions": 500000,
+        }.get(match.group(1), None)
       elif csv.parent == self.geomfolder:
         csvclass = CellGeomLoad
         tablename = "CellGeom"
         extrakwargs = {}
+        fieldsizelimit = None
       elif csv.parent == self.phenotypetablesfolder:
         csvclass = PhenotypedCell
         tablename = "Cell"
         extrakwargs = {}
+        fieldsizelimit = None
       elif csv.parent == self.phenotypeQAQCtablesfolder:
         continue
       elif csv == self.im3folder/f"{self.SlideID}-mean.csv":
@@ -182,7 +187,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
       else:
         assert False, csv
 
-      toload.append({"csv": csv, "csvclass": csvclass, "tablename": tablename, "extrakwargs": extrakwargs})
+      toload.append({"csv": csv, "csvclass": csvclass, "tablename": tablename, "extrakwargs": extrakwargs, "fieldsizelimit": fieldsizelimit})
 
     toload.sort(key=lambda x: ((x["csvclass"]==CellGeomLoad), (x["csvclass"]==PhenotypedCell), x["csv"]))
 
