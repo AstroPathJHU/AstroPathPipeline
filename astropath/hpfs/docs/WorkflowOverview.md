@@ -6,7 +6,7 @@ As noted above, modules outside of ```segmaps``` and ```transferanno``` can be l
 3. Scan the slides according to the documentation in [4.4.](../../scans/docs/ScanningInstructionsIntro.md#44-scanning-instructions-intro)
 4. Launch the ```AstroIDGen``` module to intialize the slides into the pipeline
 5. Launch the ```TransferDeamon``` module to start transferring completed slides from the ```<Spath>``` location to the ```<Dpath>\<Dname>```
-6. Launch the ```meanimages``` module to create mean images of each slide as it finishes transferring; these will be used to build the batch flatfields.
+6. Launch the ```meanimages``` module to create mean images of each slide as it finishes transferring; these will be used to build the batch flatfields. This is usually launched after all slides from a batch have been transferred as it only loops through the ```Project```s once then stops. Creating the *meanimage* for all slides in a batch is also the trigger for the next step, but the code does not yet have the ability to know beforehand how many slides are in each batch which may cause a false start of the next step.
 7. Launch the ```flatw_queue``` module to create the flatfields and assign new slides to the flatw_queue. Then the module distributes flatw jobs to the assigned workers.
 8. Launch the ```flatw_worker``` module on the assigned worker machine to process the flatfielding and image warping corrections on a particular slide's hpf image set
 9. Create the BatchID and MergeConfig files for the project according to documentation in scans
@@ -19,7 +19,8 @@ As noted above, modules outside of ```segmaps``` and ```transferanno``` can be l
     -repeat 11-13 as needed
 15. Launch ```segmaps``` module after qc has been completed for the cell classification of slides in a project to build the final segmenation maps.
 16. Launch ```transferanno``` module after the slides have been successfully annotated in HALO and annotations have been exported to a desired location.
-17. complete the final checklist located **here**
+17. Launch ```cleanup``` and the associated script ```convert_batch``` from the ```cleanup``` module
+18. manually unmix the control tma component tiffs and place them in the *inform_data\Component_Tiffs* folder of each respective tma
 
 - ```AstroIDGen``` should be launched on the ```<Spath>``` location.  
 - The following modules can be launched at the same time: ```TransferDeamon```, ```meanimages```, ```flatw_queue```, ```inform_queue```, ```mergeloop```. 

@@ -61,6 +61,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
   - [5.10. Inform Processing](astropath/hpfs/inform_processing#510-inform-processing "Title")
   - [5.11. Segmaps](astropath/hpfs/segmaps#511-seg-maps "Title")
   - [5.12. Create & Transfer Annotations](astropath/hpfs/transferanno#512-transfer-annotations "Title")
+  - [5.13. Cleanup](astropath/hpfs/cleanup#513-clean-up)
  - [6. Slide Processing](astropath/slides/#6-slide-processing)
    - [6.1 Description](astropath/slides/#61-description)
    - [6.2 Prepdb](astropath/slides/prepdb/#62-prepdb)
