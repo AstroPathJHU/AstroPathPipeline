@@ -11,13 +11,14 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
   def runsample(self, sample, **kwargs):
     return sample.runcsvscan(**kwargs)
 
-  def run(self, *, checkcsvs=True, **kwargs):
-    super().run(checkcsvs=checkcsvs, **kwargs)
-    with self.globaljoblock(outputfiles=[self.csv("loadfiles")]) as lock:
-      if not lock: return
-      if self.csv("loadfiles").exists(): return
-      with self.globallogger():
-        self.makeglobalcsv(checkcsv=checkcsvs)
+  def run(self, *, checkcsvs=True, print_errors=False, **kwargs):
+    super().run(checkcsvs=checkcsvs, print_errors=print_errors, **kwargs)
+    if not print_errors:
+      with self.globaljoblock(outputfiles=[self.csv("loadfiles")]) as lock:
+        if not lock: return
+        if self.csv("loadfiles").exists(): return
+        with self.globallogger():
+          self.makeglobalcsv(checkcsv=checkcsvs)
 
   @property
   def globalcsvs(self):
