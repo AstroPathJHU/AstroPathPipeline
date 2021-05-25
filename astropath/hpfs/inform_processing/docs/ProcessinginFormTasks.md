@@ -15,9 +15,9 @@ Note that the worker module that runs inForm requires that the image data is ref
   - This file should be located in the *\*\\astropath\\hpfs\\inform_processing\BatchProcessing* folder. 
   - This file consists of a five columns ```Path,Specimen,Antibody,Algorithm,Start,Finish```
     - ```Path```: The path up to but not including the specimen folder or ```\\<Dname>\<Dpath>``` ([described here](../../../scans/docs/Definitions.md/#432-path-definitions))
-      - E.g. *\\bki04\Clinical_Specimen_2* 
+      - E.g. *\\\\bki04\Clinical_Specimen_2* 
     - ```Specimen```: The name of the specimen to be analyzed
-      - The image data to be processed should be located in an *```<Path>```\\```<Specimen>```\im3\flatw* folder 
+      - The image data to be processed should be located in an *```<Path>```\\```<Specimen>```\\im3\\flatw* folder 
       - E.g. *M1_1*
     - ```Antibody```: The antibody name that will be processed.
       - All data will be exported into a *```<Path>```\\tmp_inform_data\\```<Antibody>```* subfolder
