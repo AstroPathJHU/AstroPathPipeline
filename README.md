@@ -8,11 +8,33 @@ The *AstroPath Pipeline* was designed to automate the processing of whole slide 
 ## 2. Getting Started
 ## 2.1. Prerequisites
 - [Windows 10](https://www.microsoft.com/en-us/software-download/windows10)
-- [Python 3.6/3.7](https://www.python.org/)
+- [Python 3.6 or higher](https://www.python.org/)
 - [MATLAB 2020a](https://www.mathworks.com/products/matlab.html)
 
 ## 2.2. Instructions
 ### 2.2.1. Python Instructions
+#### 2.2.1.1. Environment setup
+Especially on Windows,
+it is recommended to run python using an Anaconda distribution, which helps
+with installing dependencies.  While most of the dependencies can just be
+installed with pip, others have C++ requirements that are significantly easier
+to set up with Anaconda.
+
+Our recommendation is to download a [Miniconda distribution](https://docs.conda.io/en/latest/miniconda.html).
+Once you install it, open the Anaconda powershell prompt and create an environment
+```
+conda create --name astropath python=3.8
+conda activate astropath
+```
+
+At least the following dependencies should be installed through Anaconda.
+```
+conda install -c conda-forge pyopencl gdal cvxpy
+```
+Many of the other dependencies can also be installed through Anaconda if you want,
+but we have found that they work just as well when installing with pip.
+
+#### 2.2.1.2. Code installation
 To install the code, first check out the repository, enter its directory, and run
 ```bash
 pip install .
@@ -39,6 +61,8 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
    - [2.1. Prerequisites](#21-prerequisites)
    - [2.2. Instructions](#22-instructions)
       - [2.2.1. Python Instructions](#221-python-instructions)
+         - [2.2.1.1. Environment setup](#2211-environment-setup)
+         - [2.2.1.2. Code installation](#2212-code-installation)
       - [2.2.2. MATLAB Instructions](#222-matlab-instructions)
 - [3. Contents](#3-contents "Title")
 - [4. Scanning Slides (scans)](astropath/scans#4-scans "Title")
@@ -66,13 +90,21 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
    - [6.1 Description](astropath/slides/#61-description)
    - [6.2 Prepdb](astropath/slides/prepdb/#62-prepdb)
    - [6.3 Align](astropath/slides/align/#63-align)
-   - [6.4 Annotations]
-   - [6.5 Cell Geometries]
+   - [6.4 Zoom](astropath/slides/zoom/)
+   - [6.5 Deepzoom](astropath/slides/deepzoom/)
+   - [6.6 Warp annotations](astropath/slides/annowarp/)
+   - [6.7 Tumor geometry](astropath/slides/geom/)
+   - [6.8 Cell Geometries](astropath/slides/geomcell/)
+   - [6.9 CsvScan](astropath/slides/csvscan/)
  - [7. Sample Processing]
-   - [7.1 Description]
-   - [7.2 Control TMAs]
-   - [7.3 Calibration]
-   - [7.4 Upload to Database]
+   - [7.1 Description](astropath/samples/)
+   - [7.2 Control TMAs](astropath/samples/ctrl/)
+   - [7.3 Calibration](astropath/samples/)
+   - 7.4 Upload to Database
+      - [7.4.1 Load data](astropath/samples/loaddb/)
+      - [7.4.2 Load zoomed images](astropath/samples/loadzoom/)
+      - [7.4.3 Prepare the merge](astropath/samples/prepmerge/)
+      - [7.4.4 Merge the database](astropath/samples/mergedb/)
 
 ## Credits
 #### <div align="center">Created by: Benjamin Green<sup>1</sup>, Jeffrey S. Roskes<sup>4</sup>, Margaret Eminizer<sup>4</sup>, Richard Wilton<sup>4</sup>, Sigfredo Soto-Diaz<sup>2</sup>, Sneha Berry<sup>2</sup>, Elizabeth Engle<sup>2</sup>, Nicolas Giraldo<sup>3</sup>, Peter Nguyen<sup>2</sup>, Tricia Cottrell<sup>3</sup>, Janis Taube<sup>1,2,3</sup>, and Alex Szalay<sup>4</sup></div>
