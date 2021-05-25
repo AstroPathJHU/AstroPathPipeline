@@ -25,11 +25,11 @@ class CsvScanBase(RunFromArgumentParser, TableReader):
   @abc.abstractmethod
   def logger(self): pass
 
-  def processcsv(self, csv, csvclass, tablename, extrakwargs={}, *, SlideID, checkcsv=True):
+  def processcsv(self, csv, csvclass, tablename, extrakwargs={}, *, SlideID, checkcsv=True, fieldsizelimit=None):
     self.logger.debug(f"Processing {csv}")
     #read the csv, to check that it's valid
     if checkcsv:
-      rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs)
+      rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs, fieldsizelimit=fieldsizelimit)
       nrows = len(rows)
     else:
       with open(csv) as f:
