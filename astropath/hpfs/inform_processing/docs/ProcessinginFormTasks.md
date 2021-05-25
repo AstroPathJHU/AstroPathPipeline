@@ -31,7 +31,7 @@ Note that the worker module that runs inForm requires that the image data is ref
   - The column headers should always be the first line in the csv file.
   - The file can be updated either manually or by the ```inform_queue``` code. 
     - To manually update, add the following variables ```<Path>,<Specimen>,<CD8>``` to the next line in the csv file
-    - E.g. \\bki04\Clinical_Specimen_2,M1_1,CD8,CD8.ifp,
+    - E.g. \\\\bki04\Clinical_Specimen_2,M1_1,CD8,CD8.ifp,
 - Directory Structure: The code requires that the files are set up in the following format additional information on formatting can be found [here](../../../scans/docs/DirectoryOrganization.md#46-directory-organization "Title"): <br>
 ```
   +--<Path>
