@@ -832,6 +832,9 @@ class CellPhenotypeSampleBase(SampleBase):
   @property
   def phenotypetablesfolder(self):
     return self.phenotypefolder/"Results"/"Tables"
+  @property
+  def phenotypeQAQCtablesfolder(self):
+    return self.phenotypefolder/"Results"/"QA_QC"/"Tables_QA_QC"
 
 class SelectLayersSample(SampleBase, SelectLayersArgumentParser):
   """

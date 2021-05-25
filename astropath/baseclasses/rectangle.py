@@ -679,7 +679,13 @@ class PhenotypedRectangle(Rectangle):
   def __phenotypetablesfolder(self):
     return self.__phenotypefolder/"Results"/"Tables"
   @property
-  def phenotypetablescsv(self):
+  def phenotypecsv(self):
     return self.__phenotypetablesfolder/self.file.replace(".im3", "_cleaned_phenotype_table.csv")
+  @property
+  def __phenotypeQAQCtablesfolder(self):
+    return self.__phenotypefolder/"Results"/"QA_QC"/"Tables_QA_QC"
+  @property
+  def phenotypeQAQCcsv(self):
+    return self.__phenotypeQAQCtablesfolder/self.file.replace(".im3", "_cleaned_phenotype_table.csv")
 
 rectanglefilter = rectangleoroverlapfilter
