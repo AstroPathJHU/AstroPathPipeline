@@ -2,7 +2,7 @@ import dataclassy, datetime, numbers, numpy as np
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import floattoint
-from ..utilities.tableio import datefield, readtable
+from ..utilities.tableio import datefield, optionalfield, readtable
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, distancefield, pscalefield
 from .polygon import DataClassWithPolygon, Polygon, polygonfield
 
@@ -333,15 +333,15 @@ class PhenotypedCell(MyDataClass):
   MeanNucleus650: float
   MeanNucleus690: float
   MeanNucleus780: float
-  MeanMembraneDAPI: float
-  MeanMembrane480: float
-  MeanMembrane520: float
-  MeanMembrane540: float
-  MeanMembrane570: float
-  MeanMembrane620: float
-  MeanMembrane650: float
-  MeanMembrane690: float
-  MeanMembrane780: float
+  MeanMembraneDAPI: float = optionalfield(float)
+  MeanMembrane480: float = optionalfield(float)
+  MeanMembrane520: float = optionalfield(float)
+  MeanMembrane540: float = optionalfield(float)
+  MeanMembrane570: float = optionalfield(float)
+  MeanMembrane620: float = optionalfield(float)
+  MeanMembrane650: float = optionalfield(float)
+  MeanMembrane690: float = optionalfield(float)
+  MeanMembrane780: float = optionalfield(float)
   MeanEntireCellDAPI: float
   MeanEntireCell480: float
   MeanEntireCell520: float
@@ -351,15 +351,15 @@ class PhenotypedCell(MyDataClass):
   MeanEntireCell650: float
   MeanEntireCell690: float
   MeanEntireCell780: float
-  MeanCytoplasmDAPI: float
-  MeanCytoplasm480: float
-  MeanCytoplasm520: float
-  MeanCytoplasm540: float
-  MeanCytoplasm570: float
-  MeanCytoplasm620: float
-  MeanCytoplasm650: float
-  MeanCytoplasm690: float
-  MeanCytoplasm780: float
+  MeanCytoplasmDAPI: float = optionalfield(float)
+  MeanCytoplasm480: float = optionalfield(float)
+  MeanCytoplasm520: float = optionalfield(float)
+  MeanCytoplasm540: float = optionalfield(float)
+  MeanCytoplasm570: float = optionalfield(float)
+  MeanCytoplasm620: float = optionalfield(float)
+  MeanCytoplasm650: float = optionalfield(float)
+  MeanCytoplasm690: float = optionalfield(float)
+  MeanCytoplasm780: float = optionalfield(float)
   TotalNucleusDAPI: float
   TotalNucleus480: float
   TotalNucleus520: float
@@ -369,15 +369,15 @@ class PhenotypedCell(MyDataClass):
   TotalNucleus650: float
   TotalNucleus690: float
   TotalNucleus780: float
-  TotalMembraneDAPI: float
-  TotalMembrane480: float
-  TotalMembrane520: float
-  TotalMembrane540: float
-  TotalMembrane570: float
-  TotalMembrane620: float
-  TotalMembrane650: float
-  TotalMembrane690: float
-  TotalMembrane780: float
+  TotalMembraneDAPI: float = optionalfield(float)
+  TotalMembrane480: float = optionalfield(float)
+  TotalMembrane520: float = optionalfield(float)
+  TotalMembrane540: float = optionalfield(float)
+  TotalMembrane570: float = optionalfield(float)
+  TotalMembrane620: float = optionalfield(float)
+  TotalMembrane650: float = optionalfield(float)
+  TotalMembrane690: float = optionalfield(float)
+  TotalMembrane780: float = optionalfield(float)
   TotalEntireCellDAPI: float
   TotalEntireCell480: float
   TotalEntireCell520: float
@@ -387,15 +387,15 @@ class PhenotypedCell(MyDataClass):
   TotalEntireCell650: float
   TotalEntireCell690: float
   TotalEntireCell780: float
-  TotalCytoplasmDAPI: float
-  TotalCytoplasm480: float
-  TotalCytoplasm520: float
-  TotalCytoplasm540: float
-  TotalCytoplasm570: float
-  TotalCytoplasm620: float
-  TotalCytoplasm650: float
-  TotalCytoplasm690: float
-  TotalCytoplasm780: float
+  TotalCytoplasmDAPI: float = optionalfield(float)
+  TotalCytoplasm480: float = optionalfield(float)
+  TotalCytoplasm520: float = optionalfield(float)
+  TotalCytoplasm540: float = optionalfield(float)
+  TotalCytoplasm570: float = optionalfield(float)
+  TotalCytoplasm620: float = optionalfield(float)
+  TotalCytoplasm650: float = optionalfield(float)
+  TotalCytoplasm690: float = optionalfield(float)
+  TotalCytoplasm780: float = optionalfield(float)
   ExprPhenotype: int
 
 class ClinicalInfo(MyDataClass):
