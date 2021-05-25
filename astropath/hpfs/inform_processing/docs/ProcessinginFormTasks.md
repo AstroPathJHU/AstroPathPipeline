@@ -50,7 +50,7 @@ We have set up a server with multiple virtual machines each running it's own ins
 
 The *AstroPath* group uses Hyper-V with Windows to set up virtual machines. We use Hyper-V becuase of it's support in PowerShell where much of the code for processing was piloted and is maintained. An introduction to Hyper-V can be found [here](https://docs.microsoft.com/en-us/virtualization/hyper-v-on-windows/about/). Once virtual machines are created, a windows OS should be installed and network capabilities should be added. InForm can then be installed and activated as on a normal computer. Be sure that you only log into the virtual machine using the Hyper-V Manager or through a screen mirroring server like TightVNC or RealVNC (using the Hyper-V Manager method will yield the best results). **Never use a windows remote desktop session, this will corrupt the InForm license.** Logging in using these screen mirroring techniques allows us to use the virtual machines as normal computers and still only allows one InForm session to be active at a time. 
 
-Once virtual machines are set up install and launch the processing code according to the documentation found in [5.10.7.3.3.](#570733-running-the-inform-worker-module).
+Once virtual machines are set up install and launch the processing code according to the documentation found in [5.10.7.3.3.](#510733-running-the-inform-worker-module).
 
 ## 5.10.7.3.2. Running the ```inform queue``` Module
 1. Download the repository to a processing computer or location where inForm is installed
@@ -65,7 +65,7 @@ Once virtual machines are set up install and launch the processing code accordin
    - open the ```RunFullBatch.au3``` found in the *BatchProcessing* folder
    - Edit line 124
    - Go to 'tools' at the top of the page and compile (make sure the .exe is saved under the *BatchProcessing* folder)
-3. Make sure the the username used in [5.10.7.3.2](#570732-running-the-inform_queue-module) has full access to the *AstroPathPipeline* folder
+3. Make sure the the username used in [5.10.7.3.2](#510732-running-the-inform_queue-module) has full access to the *AstroPathPipeline* folder
 4. Copy the 'inform_worker-Shortcut' from *\*astropath\\hpfs\\launch* to the desktop of the virtual machine
 5. Double click on the shortcut to launch processing
 6. Add a jobs to the queue as described [above](#51072-important-definitions)
