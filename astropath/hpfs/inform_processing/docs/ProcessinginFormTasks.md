@@ -14,7 +14,7 @@ Note that the worker module that runs inForm requires that the image data is ref
 - The virtual machine queue file: *VM_inForm_queue.csv*
   - This file should be located in the ```*\hpfs\inform_processing\BatchProcssing``` folder. 
   - This file consists of a five columns ```Path,Specimen,Antibody,Algorithm,Start,Finish```
-    - ```Path```: The path up to but not including the specimen folder or ```\\<Dname>\<Dpath>``` ([desribed here](../../../scans/docs/Definitions.md/#432-path-definitions))
+    - ```Path```: The path up to but not including the specimen folder or ```\\<Dname>\<Dpath>``` ([described here](../../../scans/docs/Definitions.md/#432-path-definitions))
       - E.g. *\\bki04\Clinical_Specimen_2* 
     - ```Specimen```: The name of the specimen to be analyzed
       - The image data to be processed should be located in an ```<Path>\<Specimen>\im3\flatw``` folder 
