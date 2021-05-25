@@ -9,9 +9,11 @@ setupkwargs = dict(
     "console_scripts": [
       "aligncohort=astropath.slides.align.aligncohort:main",
       "alignsample=astropath.slides.align.alignsample:main",
+      "ast-gen=astropath.hpfs.astroidgen.ASTgen:start_gen",
       "checkannotations=astropath.baseclasses.annotationpolygonxmlreader:checkannotations",
       "prepdbcohort=astropath.slides.prepdb.prepdbcohort:main",
       "prepdbsample=astropath.slides.prepdb.prepdbsample:main",
+      "transfer-daemon=astropath.hpfs.transferdaemon.Daemon:launch_transfer"
     ],
   },
   install_requires = [
@@ -27,6 +29,7 @@ setupkwargs = dict(
     "numba",
     "numpy>=1.17.0",
     "opencv-python",
+    "openpyxl",
     "pyopencl",
     "reikna",
     "seaborn",

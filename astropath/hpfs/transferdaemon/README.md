@@ -1,7 +1,7 @@
-﻿# 5.6. Transfer Daemon
+# 5.6. Transfer Daemon
 
 ## 5.6.1. Description
-This code is used to transfer and reorganize the whole slide clinical specimen scans from the ```<Spath>``` server to the ```<Dpath>``` servers once they have been successfully acquired. The code also renames the slides from their ```SampleName```s, defined on the vectra microscope, to their unqiue ```SlideID```s defined in the *AstropathAPIDdef* file, created by and described in the documentation for the APID generator code. The transfer process for a specimen is initiated by the addition of a *BatchID.txt* file, created manually, to a successful ```<ScanNN>``` directory. These files should contain the numeric batch id, defined in the project *Specimen_Table.xlsx*. The code loops through each project defined in the *AstropathCohortsProgress.csv* and transfers new directories, the code can optionally delete the source files and can run with or without data compression. On error the code will send an email to a provided email address. Further description of the ```BatchID```s can be found [here](../../scans/docs/scanning/BatchIDs.md/#446-batchids), definitions for other variables can be found [here](../../scans/docs/Definitions.md/#43-definitions/#431-identification-definitions), and descriptions of various *AstroPath* files can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md/#451-astropath-processing-directory).
+This code is used to transfer and reorganize the whole slide clinical specimen scans from the ```<Spath>``` server to the ```<Dpath>``` servers once they have been successfully acquired. The code also renames the slides from their ```SampleName```s, defined on the vectra microscope, to their unqiue ```SlideID```s defined in the *AstropathAPIDdef* file, created by and described in the documentation for the APID generator code. The transfer process for a specimen is initiated by the addition of a *BatchID.txt* file, created manually, to a successful ```<ScanNN>``` directory. These files should contain the numeric batch id, defined in the project *Specimen_Table.xlsx*. The code loops through each project defined in the *AstropathCohortsProgress.csv* and transfers new directories, the code can optionally delete the source files and can run with or without data compression. On error the code will send an email to a provided email address. Further description of the ```BatchID```s can be found [here](../../scans/docs/scanning/BatchIDs.md/#446-batchids), definitions for other variables can be found [here](../../scans/docs/Definitions.md/#431-identification-definitions), and descriptions of various *AstroPath* files can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md/#451-astropath_processing-directory).
 
 ## 5.6.2. Important Definitions
 
@@ -20,7 +20,7 @@ For python download the repository and install the transferdeamon. Then launch u
 ```TransferDaemon.py <Mpath> <email_on_error> [<source_file_handling>] [<logical_compression>] [<quiet>]```
 
 - ```<Mpath>```: should contain the ***AstropathCohortsProgress.csv***, ***AstropathPaths.csv***, and the ***AstropathCohorts.csv*** files
-  - description of these files can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md/#451-astropath-processing-directory)
+  - description of these files can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md/#451-astropath_processing-directory)
 - ```<email_on_error>```: a valid email address to send error information to
 - ```[<source_file_handling>]```: Optional argument; should be one of three options:
   - ```HYBRID```: Default; Follow CSV protocol but leave folders with DoNotDelete.txt file
