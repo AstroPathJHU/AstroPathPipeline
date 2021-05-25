@@ -35,6 +35,8 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       for csv in oldtables.glob("*.csv"):
         yield csv, newtables
 
+      yield dataroot/SlideID/"im3"/f"{SlideID}-mean.csv", testroot/SlideID/"im3"
+
   @property
   def outputfilenames(self):
     return [

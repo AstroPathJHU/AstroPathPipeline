@@ -191,21 +191,26 @@ def pathfield(*args, **metadata):
 
   return MetaDataAnnotation(*args, **metadata)
 
-__notgiven = object()
-def datefield(dateformat, *, defaultvalue=__notgiven, optional=False, **metadata):
+def datefield(dateformat, *, optional=False, **metadata):
   metadata = {
-    "readfunction": lambda x: None if optional and not x else datetime.datetime.strptime(x, dateformat),
-    "writefunction": lambda x: "" if optional and x is None else x.strftime(format=dateformat),
+    "readfunction": lambda x: datetime.datetime.strptime(x, dateformat),
+    "writefunction": lambda x: x.strftime(format=dateformat),
     **metadata,
   }
-  args = (defaultvalue,) if defaultvalue is not __notgiven else ()
-  return MetaDataAnnotation(*args, **metadata)
+  return (optionalfield if optional else MetaDataAnnotation)(**metadata)
 
-def timestampfield(*, defaultvalue=__notgiven, optional=False, **metadata):
+def timestampfield(*, optional=False, **metadata):
   metadata = {
     "readfunction": lambda x: None if optional and not x else datetime.datetime.fromtimestamp(int(x)),
     "writefunction": lambda x: "" if optional and x is None else int(datetime.datetime.timestamp(x)),
     **metadata,
   }
-  args = (defaultvalue,) if defaultvalue is not __notgiven else ()
-  return MetaDataAnnotation(*args, **metadata)
+  return (optionalfield if optional else MetaDataAnnotation)(**metadata)
+
+def optionalfield(readfunction, *, writefunction=str, **metadata):
+  metadata = {
+    "readfunction": lambda x: None if not x else readfunction(x),
+    "writefunction": lambda x: "" if x is None else writefunction(x),
+    **metadata,
+  }
+  return MetaDataAnnotation(**metadata)
