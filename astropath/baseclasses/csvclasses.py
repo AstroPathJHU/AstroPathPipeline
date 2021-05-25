@@ -333,15 +333,15 @@ class PhenotypedCell(MyDataClass):
   MeanNucleus650: float
   MeanNucleus690: float
   MeanNucleus780: float
-  MeanMembraneDAPI: float
-  MeanMembrane480: float
-  MeanMembrane520: float
-  MeanMembrane540: float
-  MeanMembrane570: float
-  MeanMembrane620: float
-  MeanMembrane650: float
-  MeanMembrane690: float
-  MeanMembrane780: float
+  MeanMembraneDAPI: float = optionalfield(float)
+  MeanMembrane480: float = optionalfield(float)
+  MeanMembrane520: float = optionalfield(float)
+  MeanMembrane540: float = optionalfield(float)
+  MeanMembrane570: float = optionalfield(float)
+  MeanMembrane620: float = optionalfield(float)
+  MeanMembrane650: float = optionalfield(float)
+  MeanMembrane690: float = optionalfield(float)
+  MeanMembrane780: float = optionalfield(float)
   MeanEntireCellDAPI: float
   MeanEntireCell480: float
   MeanEntireCell520: float
@@ -369,15 +369,15 @@ class PhenotypedCell(MyDataClass):
   TotalNucleus650: float
   TotalNucleus690: float
   TotalNucleus780: float
-  TotalMembraneDAPI: float
-  TotalMembrane480: float
-  TotalMembrane520: float
-  TotalMembrane540: float
-  TotalMembrane570: float
-  TotalMembrane620: float
-  TotalMembrane650: float
-  TotalMembrane690: float
-  TotalMembrane780: float
+  TotalMembraneDAPI: float = optionalfield(float)
+  TotalMembrane480: float = optionalfield(float)
+  TotalMembrane520: float = optionalfield(float)
+  TotalMembrane540: float = optionalfield(float)
+  TotalMembrane570: float = optionalfield(float)
+  TotalMembrane620: float = optionalfield(float)
+  TotalMembrane650: float = optionalfield(float)
+  TotalMembrane690: float = optionalfield(float)
+  TotalMembrane780: float = optionalfield(float)
   TotalEntireCellDAPI: float
   TotalEntireCell480: float
   TotalEntireCell520: float
