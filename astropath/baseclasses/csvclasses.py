@@ -281,10 +281,10 @@ class MergeConfig(MyDataClass):
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
     #compatibility
-    if "SegmentationHierarchy " in kwargs:
-      kwargs["SegmentationHierarchy"] = kwargs.pop("SegmentationHierarchy ")
-    if "Compartment " in kwargs:
-      kwargs["Compartment"] = kwargs.pop("Compartment ")
+    for kw in kwargs.copy():
+      stripped = kw.strip()
+      if stripped not in kwargs:
+        kwargs[stripped] = kwargs.pop(kw)
     return super().transforminitargs(*args, **kwargs)
 
   Project: int = None
