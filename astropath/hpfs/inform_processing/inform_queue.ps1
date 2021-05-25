@@ -86,7 +86,9 @@ While($VMs){
         # check csv VM_inForm_queue
         #
         $vmn = $cVM -replace "VM_i","I"
-        $p2 =  "C:\Program Files\BatchProcessing\VM_inForm_queue.csv"
+        $p3 = $PSScriptRoot
+        $p3 = ($p3 -split 'AstroPathPipeline*')[1]
+        $p2 =  "c:\AstroPathPipeline$p3\BatchProcessing\VM_inForm_queue.csv"
         #
         # if file exists get content
         #

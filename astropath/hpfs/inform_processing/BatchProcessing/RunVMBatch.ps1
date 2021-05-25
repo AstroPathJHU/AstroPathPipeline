@@ -169,7 +169,7 @@ Function Run-InFormAuto {
     #
     # start the inForm Processing
     #
-    $c = "C:\Program Files\BatchProcessing\RunFullBatch.exe"
+    $c = "$PSScriptRoot\RunFullBatch.exe"
     $icount = 1
     #
     do {
@@ -209,7 +209,7 @@ Function Run-InFormAuto {
 while(1){
     #
     $vers = "2.4.8"
-    $p1 = "C:\Program Files\BatchProcessing\VM_inForm_queue.csv"
+    $p1 = "$PSScriptRoot\VM_inForm_queue.csv"
     #
     Run-VMBatch -vers $vers -p1 $p1
     #
