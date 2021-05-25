@@ -20,7 +20,7 @@ import pandas
 import argparse
 import openpyxl
 from operator import itemgetter
-import shared_tools.shared_tools as st
+from ...shared import shared_tools as st
 
 
 #

@@ -13,7 +13,7 @@ import subprocess
 import pandas
 import argparse
 import numpy as np
-import shared_tools.shared_tools as st
+from ...shared import shared_tools as st
 import lxml.etree as et
 from pathlib import Path
 from datetime import datetime
