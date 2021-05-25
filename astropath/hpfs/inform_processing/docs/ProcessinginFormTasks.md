@@ -14,7 +14,7 @@ Note that the worker module that runs inForm requires that the image data is ref
 - The virtual machine queue file: *VM_inForm_queue.csv*
   - This file should be located in the ```*\hpfs\inform_processing\BatchProcssing``` folder. 
   - This file consists of a five columns ```Path,Specimen,Antibody,Algorithm,Start,Finish```
-    - ```Path```: The path up to but not including the specimen folder or ```\\<Dname>\<Dpath>``` (**desribed here**)
+    - ```Path```: The path up to but not including the specimen folder or ```\\<Dname>\<Dpath>``` ([desribed here](../../../scans/docs/Definitions.md/#432-path-definitions))
       - E.g. *\\bki04\Clinical_Specimen_2* 
     - ```Specimen```: The name of the specimen to be analyzed
       - The image data to be processed should be located in an ```<Path>\<Specimen>\im3\flatw``` folder 
@@ -50,13 +50,13 @@ We have set up a server with multiple virtual machines each running it's own ins
 
 The *AstroPath* group uses Hyper-V with Windows to set up virtual machines. We use Hyper-V becuase of it's support in PowerShell where much of the code for processing was piloted and is maintained. An introduction to Hyper-V can be found [here](https://docs.microsoft.com/en-us/virtualization/hyper-v-on-windows/about/). Once virtual machines are created, a windows OS should be installed and network capabilities should be added. InForm can then be installed and activated as on a normal computer. Be sure that you only log into the virtual machine using the Hyper-V Manager or through a screen mirroring server like TightVNC or RealVNC (using the Hyper-V Manager method will yield the best results). **Never use a windows remote desktop session, this will corrupt the InForm license.** Logging in using these screen mirroring techniques allows us to use the virtual machines as normal computers and still only allows one InForm session to be active at a time. 
 
-Once virtual machines are set up install and launch the processing code according to the documentation found in [5.10.7.3.3.](#570733-running-the-inform_worker-module).
+Once virtual machines are set up install and launch the processing code according to the documentation found in [5.10.7.3.3.](#570733-running-the-inform-worker-module).
 
 ## 5.10.7.3.2. Running the ```inform queue``` Module
 1. Download the repository to a processing computer or location where inForm is installed
 2. Edit the username and password in line 78. 
    - JHU has created a local user account for each virtual machine. The workers run under that local account for processing. This script is designed to use the specified username and password dedicated to each virtual machine for processing on that machine.
-3. Navigate to */*astropath//hpfs//launch* and double click on the ```inform_queue-Shortcut``` to launch processing
+3. Navigate to *\*astropath\\hpfs\\launch* and double click on the ```inform_queue-Shortcut``` to launch processing
 
 ## 5.10.7.3.3. Running the ```inform worker``` Module
 1. Download the repository to a processing computer or location where inForm is installed *under the "Program Files* folder*
@@ -65,15 +65,14 @@ Once virtual machines are set up install and launch the processing code accordin
    - open the ```RunFullBatch.au3``` found in the *BatchProcessing* folder
    - Edit line 124
    - Go to 'tools' at the top of the page and compile (make sure the .exe is saved under the *BatchProcessing* folder)
-3. Make sure the the username used in [5.10.7.3.2](#570733-running-the-inform_queue-module) has full access to the *AstroPathPipeline* folder
-4. Copy the 'inform_worker-Shortcut' from */*astropath//hpfs//launch* to the desktop of the virtual machine
+3. Make sure the the username used in [5.10.7.3.2](#570732-running-the-inform_queue-module) has full access to the *AstroPathPipeline* folder
+4. Copy the 'inform_worker-Shortcut' from *\*astropath\\hpfs\\launch* to the desktop of the virtual machine
 5. Double click on the shortcut to launch processing
 6. Add a jobs to the queue as described [above](#51072-important-definitions)
 
 *NOTE*: Because some of the workflow uses automatic scripts windows defender flags these files as Trojans. Usually we just turn off windows defender since our virtual machines cannot be accessed outside of the JHU network. 
 
 ## 5.10.7.4. Workflow
-The first step in processing is to test for the input version of inForm that will be used to run the software. The inForm version can be found at the bottom of **BatchProcessing.ps1**. Next the code attempts to injest the VM_inForm_queue.txt, described above in [*Important Definitions*](#51072-important-definitions). This file should be located in the *\*\hpfs\inform_processing\BatchProcssing* folder. The file consists of 
-The code searches along the path location where the script was launched for the queue file. After the file is launched
+The first step in processing is to test for the input version of inForm that will be used to run the software. The inForm version can be found at the bottom of **BatchProcessing.ps1**. Next the code attempts to injest the VM_inForm_queue.txt, described above in [Important Definitions](#51072-important-definitions). This file should be located in the *\*\hpfs\\inform_processing\\BatchProcssing* folder. The code searches along the path location where the script was launched for the queue file. 
 
 After all jobs are marked complete, the code waits and rechecks the queue after a set period of time for new jobs. Jobs can be added to the queue either manually or by the code. The queue file should be located in 'BatchProcessing' folder. The queue string is simple and consists of a five part comma separated list. To add a new job to the queue The code requires that the image data is reformatted into the AstroPath directory structure and that the algorithms are located in a set location adjacent to the images. Algorithm export settings should be set up before saving.
