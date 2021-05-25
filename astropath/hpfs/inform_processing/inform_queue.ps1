@@ -86,9 +86,9 @@ While($VMs){
         # check csv VM_inForm_queue
         #
         $vmn = $cVM -replace "VM_i","I"
-        $p3 = $PSScriptRoot
-        $p3 = ($p3 -split 'AstroPathPipeline*')[1]
-        $p2 =  "c:\AstroPathPipeline$p3\BatchProcessing\VM_inForm_queue.csv"
+        $p3 = Get-ChildItem "C:\Program Files" | Where-Object {$_.PSIsContainer -eq $true -and $_.Name -match "AstroPathPipeline*"}
+        $p3 = "C:\Program Files\" + $p3+ "\astropath\hpfs\inform_processing\BatchProcessing"
+        $p2 = "$p3\VM_inForm_queue.csv"
         #
         # if file exists get content
         #
@@ -96,11 +96,19 @@ While($VMs){
         #
         if($Check){
             $Q2 = get-content -Path $p2
-            }else{
+        } else {
             #  or create file
-            $Q2 = ("Path,Specimen,Antibody,Algorithm,Start,Finish","$CI")
-            Set-Content -Path $p2 -Value $Q2
-            return $a = 1
+            $check_path = Test-Path $p3
+            if ($check_path){
+                $Q2 = ("Path,Specimen,Antibody,Algorithm,Start,Finish","$CI")
+                Set-Content -Path "$p2" -Value $Q2
+                return $a = 1
+            } else {
+                $a = 0
+                $ErrorMessage = "Worker not initialized properly"
+                Throw $ErrorMessage
+                #Write-Host $ErrorMessage -ForegroundColor Red
+            }
         }
         #
         # if all files have "Processing Specimen" filled in then add a new file to the queue
@@ -138,6 +146,7 @@ While($VMs){
             }
             #
             $a = 1
+            #
         }
         Return $a
       }
