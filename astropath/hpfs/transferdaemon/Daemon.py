@@ -6,11 +6,13 @@ import re
 import sys
 import hashlib
 import shutil
+import smtplib
 import pathlib
 import traceback
 import subprocess
 import pandas
 import argparse
+import numpy as np
 import shared_tools.shared_tools as st
 import lxml.etree as et
 from pathlib import Path
@@ -427,7 +429,7 @@ def error_check(action, main_des_string, arg, current_sor_string="", current_des
             if action == "TRANSFER":
                 transfer_directory(current_sor_string, main_des_string, current_des_string,
                                    astro, arg, log_base=log_base)
-                print_to_log(log_base + ";Transfer finished", main_des_string, astro, arg, "master")
+                st.print_to_log(log_base + ";Transfer finished", main_des_string, astro, arg, "master")
             elif action == "COMPUTE SOURCE MD5":
                 result, result2 = compute_md5(current_sor_string, main_des_string, "SOURCE", arg,
                                               log_base=log_base, slide_id=slide_id,
@@ -448,10 +450,10 @@ def error_check(action, main_des_string, arg, current_sor_string="", current_des
             if err > 0:
                 log_string = log_base + ";Warning: " + action.lower() + " passed with " + \
                              str(err) + " error(s)"
-                print_to_log(log_string, main_des_string, astro, arg, "master")
+                st.print_to_log(log_string, main_des_string, astro, arg, "master")
             if warning:
                 log_string = log_base + warning
-                print_to_log(log_string, main_des_string, astro, arg)
+                st.print_to_log(log_string, main_des_string, astro, arg)
             err = attempts
         except OSError:
             #
@@ -465,14 +467,14 @@ def error_check(action, main_des_string, arg, current_sor_string="", current_des
             descriptor = traceback.format_exc().splitlines()[-1].split(']')[-1]
             log_string = log_base + ";WARNING: attempt " + str(err) + " failed for " \
                          + action.lower()
-            print_to_log(log_string, main_des_string, astro, arg)
+            st.print_to_log(log_string, main_des_string, astro, arg)
             if err < attempts:
                 #
                 # if we have not met the allowed count wait <mins> minutes and try again
                 #
                 log_string = log_base + ";Attempting to " + action.lower() \
                              + " again after " + str(mins) + " minutes"
-                print_to_log(log_string, main_des_string, astro, arg)
+                st.print_to_log(log_string, main_des_string, astro, arg)
                 time.sleep(mins * 60)
                 continue
                 #
@@ -482,7 +484,7 @@ def error_check(action, main_des_string, arg, current_sor_string="", current_des
                 # Email, return positive err value
                 #
                 log_string = log_base + ";ERROR: " + error_msg + descriptor
-                print_to_log(log_string, main_des_string, astro, arg, "master")
+                st.print_to_log(log_string, main_des_string, astro, arg, "master")
                 error = traceback.format_exc()
                 st.send_email(arg.email, error, err=err, error_check_dec=True, debug=arg.d)
                 err = 1
@@ -494,7 +496,7 @@ def error_check(action, main_des_string, arg, current_sor_string="", current_des
             err = err + 1
             error_msg = traceback.format_exc().splitlines()[-1].split(':')[0]
             log_string = log_base + ";ERROR: " + error_msg + " - " + str(what)
-            print_to_log(log_string, main_des_string, astro, arg, "master")
+            st.print_to_log(log_string, main_des_string, astro, arg, "master")
             error = traceback.format_exc()
             st.send_email(arg.email, error, err=err, error_check_dec=True, debug=arg.d)
             return err, result, result2
@@ -511,9 +513,9 @@ def compute_md5(current_directory, main_des_string, location_string, arg, log_ba
     # print starting strings to log
     #
     log_string = log_base + ";MD5 computation started"
-    print_to_log(log_string, main_des_string, astro_id, arg)
+    st.print_to_log(log_string, main_des_string, astro_id, arg)
     log_string = log_base + ";Computing " + location_string.lower() + " MD5 check sums"
-    print_to_log(log_string, main_des_string, astro_id, arg)
+    st.print_to_log(log_string, main_des_string, astro_id, arg)
     #
     # create the md5 hash values in parallel for each file in the current directory
     # put the strings for the check sums file and the hash values into separate arrays
@@ -544,7 +546,7 @@ def compute_md5(current_directory, main_des_string, location_string, arg, log_ba
     end = time.time()
     log_string = log_base + ";Completed " + str(num) + " files in " \
                  + str(round(end - start, 2)) + " seconds"
-    print_to_log(log_string, main_des_string, astro_id, arg)
+    st.print_to_log(log_string, main_des_string, astro_id, arg)
     #
     return hash_array, sums_array
 
@@ -594,9 +596,9 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
             if "]_M" in f:
                 M_files.append(f)
     if M_files:
-        print_to_log(log_base + ";Duplicate files found", main_des_string, astro_id, arg)
+        st.print_to_log(log_base + ";Duplicate files found", main_des_string, astro_id, arg)
         st.M_file_handler(current_sor_string, all_files, M_files)
-        print_to_log(log_base + ";Duplicate files handled", main_des_string, astro_id, arg)
+        st.print_to_log(log_base + ";Duplicate files handled", main_des_string, astro_id, arg)
     #
     names = [""] * 2
     names[1] = astro_id
@@ -609,10 +611,10 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
         n_sor_files += len(files)
     #
     log_string = log_base + ";Transfer process started"
-    print_to_log(log_string, main_des_string, astro_id, arg, "master")
+    st.print_to_log(log_string, main_des_string, astro_id, arg, "master")
     log_string = (log_base + ";Source Contains " + str(n_sor_files) +
                   " File(s) " + str(n_sor_bytes) + " bytes")
-    print_to_log(log_string, main_des_string, astro_id, arg)
+    st.print_to_log(log_string, main_des_string, astro_id, arg)
     #
     pathlib.Path(current_des_string).mkdir(parents=True, exist_ok=True)
     #
@@ -637,7 +639,7 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
                     log_base=log_base)
     log_string = (log_base + ";Transferred " + str(n_des_files) +
                   " File(s) " + str(n_des_bytes) + " bytes")
-    print_to_log(log_string, main_des_string, astro_id, arg)
+    st.print_to_log(log_string, main_des_string, astro_id, arg)
 
 
 #
@@ -720,7 +722,7 @@ def compress_directory(current_sor_string, main_des_string, compress, astro_id, 
     n_sor_files = n_sor_files
     #
     log_string = log_base + ";Compression started"
-    print_to_log(log_string, main_des_string, astro_id, arg, "master")
+    st.print_to_log(log_string, main_des_string, astro_id, arg, "master")
     #
     # do the compression one file at a time
     #
@@ -747,10 +749,10 @@ def compress_directory(current_sor_string, main_des_string, compress, astro_id, 
     #
     log_string = (log_base + ";Compressing " + str(n_sor_files) +
                   " file(s) and " + str(n_sor_bytes) + " bytes from source")
-    print_to_log(log_string, main_des_string, astro_id, arg)
+    st.print_to_log(log_string, main_des_string, astro_id, arg)
     log_string = (log_base + ";Compressed " + str(n_des_files) +
                   " total file(s) " + str(n_des_bytes) + " total bytes")
-    print_to_log(log_string, main_des_string, astro_id, arg)
+    st.print_to_log(log_string, main_des_string, astro_id, arg)
 
 
 #
@@ -877,10 +879,8 @@ def apid_argparser():
     )
     parser.add_argument('--version', action='version', version='%(prog)s ' + version)
     parser.add_argument('mpath', type=str, nargs='?',
-                        default='C:\\Users\\ssotodi1\\Documents\\ASTgen\\Transfer_Test_Env\\test_env\\astropath_processing',
                         help='directory for astropath processing documents')
     parser.add_argument('email', type=str, nargs='?',
-                        default='ssotodi1@jhmi.edu',
                         help='defines person to email in case of errors')
     parser.add_argument('delete_type', type=str, nargs='?',
                         choices=["hybrid", "automatic", "manual"],
@@ -908,6 +908,18 @@ def launch_transfer():
     #
     print(sys.argv)
     arg = apid_argparser()
+    if not arg.mpath:
+        print("No mpath")
+    if not arg.email:
+        print("No email")
+    # cwd = '/'.join(os.getcwd().replace('\\', '/').split('/')[:-1])
+    # print(cwd)
+    # for root, dirs, files in os.walk(cwd, topdown=True):
+    #     if "shared_tools" in dirs:
+    #         os.chdir(root)
+    #         break
+    # cwd = '/'.join(os.getcwd().replace('\\', '/').split('/'))
+    # print(cwd)
     #
     # run the file checking and transfer algorithms in an infinite loop
     #
@@ -918,6 +930,7 @@ def launch_transfer():
             if not paths_data:
                 sys.exit()
             cwd = '/'.join(os.getcwd().replace('\\', '/').split('/')[:-1])
+            print(cwd)
             zip_path = ""
             for root, dirs, files in os.walk(cwd, topdown=False):
                 if "7-Zip" in dirs:

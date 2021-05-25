@@ -15,7 +15,10 @@ import re
 import sys
 import numpy
 import time
+import traceback
+import pandas
 import argparse
+import openpyxl
 from operator import itemgetter
 import shared_tools.shared_tools as st
 
@@ -116,7 +119,7 @@ def extract_data(dname, spath, mpath):
 # Generate SlideIDs for all slides starting from highest SlideID in master Astrodef.csv
 #
 def next_slide_id(mastro_csv, local_string, st_patient, st_batch_id, proj):
-    tags = ['SlideID', 'SampleName', 'ProjectID', 'CohortID', 'BatchID']
+    tags = ['SlideID', 'SampleName', 'Project', 'Cohort', 'BatchID']
     if not os.path.exists(local_string):
         with open(local_string, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=tags)
@@ -260,8 +263,6 @@ def apid_argparser():
     )
     parser.add_argument('--version', action='version', version='%(prog)s ' + version)
     parser.add_argument('mpath', type=str, nargs='?',
-                        default='C:\\Users\\ssotodi1\\Documents\\ASTgen'
-                                '\\Transfer_Test_Env\\test_env\\astropath_processing',
                         help='directory for astropath processing documents')
     args, unknown = parser.parse_known_args()
     return args
@@ -274,6 +275,14 @@ def start_gen():
     #
     # Process user input for the csv file path
     #
+    cwd = '/'.join(os.getcwd().replace('\\', '/').split('/')[:-1])
+    print(cwd)
+    for root, dirs, files in os.walk(cwd, topdown=True):
+        if "shared_tools" in dirs:
+            os.chdir(root)
+            break
+    cwd = '/'.join(os.getcwd().replace('\\', '/').split('/'))
+    print(cwd)
     print("Inputs: " + str(sys.argv))
     arg = apid_argparser()
     mpath = pathlib.Path(arg.mpath)
@@ -289,7 +298,7 @@ def start_gen():
     #
     for t in range(2):
         ast_gen(mpath, csv_file, mastro_csv)
-        minutes = 30
+        minutes = 0.1
         print("ALL AVAILABLE IDS GENERATED. SLEEP FOR " + str(minutes) + " MINUTES...")
         wait_time = 60 * minutes
         time.sleep(wait_time)
