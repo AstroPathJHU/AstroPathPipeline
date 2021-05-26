@@ -74,7 +74,7 @@ While($VMs){
     #
     # get VM credentials
     # 
-    $CredU = $cVM -replace "VM_i",".\I"
+    $CredU = "username"
     $CredPW = ConvertTo-SecureString -String "password" -AsPlainText -Force
     $Cred = New-Object System.Management.Automation.PSCredential -ArgumentList $CredU, $CredPW
     #
