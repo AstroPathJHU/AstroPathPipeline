@@ -33,15 +33,22 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
 
   def makeglobalcsv(self, *, checkcsv=True):
     toload = []
-    expectcsvs = {
+    batchcsvs = {
       self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
-      for csv in ("MergeConfig", "Batch")
+      for csv in ("MergeConfig", "BatchID")
       for s in self.sampledefs
-    } | {
+    }
+    for csv in batchcsvs.copy():
+      alternate = csv.parent/csv.name.replace("BatchID", "Batch")
+      if "BatchID" in csv.name and not csv.exists() and alternate.exists():
+        batchcsvs.pop(csv)
+        batchcsvs.add(alternate)
+    clinicalcsvs = {
       csv
       for csv in (self.root/"Clinical").glob(f"Clinical_Table_Specimen_{self.Cohort}_*.csv")
       if re.match(f"Clinical_Table_Specimen_{self.Cohort}_[0-9]+.csv", csv.name)
-    } | {
+    }
+    globalcontrolcsvs = {
       self.root/"Ctrl"/f"project{self.Project}_ctrl{ctrl}.csv"
       for ctrl in ("cores", "fluxes", "samples")
     }
@@ -53,7 +60,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
       }
     except IOError:
       controlcsvs = set()
-    expectcsvs |= controlcsvs
+    expectcsvs = batchcsvs | clinicalcsvs | globalcontrolcsvs | controlcsvs
     optionalcsvs = set()
     unknowncsvs = set()
     for csv in self.globalcsvs:
@@ -75,6 +82,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         match = re.match("(.*)_[0-9]+[.]csv", csv.name)
         csvclass, tablename = {
           "Batch": (GlobalBatch, "Batch"),
+          "BatchID": (GlobalBatch, "Batch"),
           "MergeConfig": (MergeConfig, "MergeConfig")
         }[match.group(1)]
         extrakwargs = {}
