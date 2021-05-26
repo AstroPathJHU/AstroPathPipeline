@@ -100,12 +100,11 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
    - [6.9 Csv Scan](astropath/slides/csvscan/)
  - [7. Sample Processing (samples)](astropath/samples/)
    - [7.1 Description](astropath/samples/)
-   - [7.2 Control TMAs](astropath/samples/ctrl/)
-   - [7.3 Calibration](astropath/samples/)
-   - [7.4. Load Data for Database](astropath/samples/loaddb/)
-   - [7.5. Load Zoomed Images for CellView](astropath/samples/loadzoom/)
-   - [7.6. Prepare the Merge for Database](astropath/samples/prepmerge/)
-   - [7.7. Merge the Sample Databases](astropath/samples/mergedb/)
+   - [7.2 Control TMAs & Calibration](astropath/samples/ctrl/)
+   - [7.3. Load Data for Database](astropath/samples/loaddb/)
+   - [7.4. Load Zoomed Images for CellView](astropath/samples/loadzoom/)
+   - [7.5. Prepare the Merge for Database](astropath/samples/prepmerge/)
+   - [7.6. Merge the Sample Databases](astropath/samples/mergedb/)
 
 ## Credits
 #### <div align="center">Created by: Benjamin Green<sup>1</sup>, Jeffrey S. Roskes<sup>4</sup>, Margaret Eminizer<sup>4</sup>, Richard Wilton<sup>4</sup>, Sigfredo Soto-Diaz<sup>2</sup>, Sneha Berry<sup>2</sup>, Elizabeth Engle<sup>2</sup>, Nicolas Giraldo<sup>3</sup>, Peter Nguyen<sup>2</sup>, Tricia Cottrell<sup>3</sup>, Janis Taube<sup>1,2,3</sup>, and Alex Szalay<sup>4</sup></div>
