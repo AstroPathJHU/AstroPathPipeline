@@ -75,7 +75,7 @@ While($VMs){
     # get VM credentials
     # 
     $CredU = $cVM -replace "VM_i",".\I"
-    $CredPW = ConvertTo-SecureString -String "Taubelab1" -AsPlainText -Force
+    $CredPW = ConvertTo-SecureString -String "password" -AsPlainText -Force
     $Cred = New-Object System.Management.Automation.PSCredential -ArgumentList $CredU, $CredPW
     #
     # Enter PSSession 
