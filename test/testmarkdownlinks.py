@@ -129,7 +129,7 @@ class TestMarkdownLinks(unittest.TestCase):
                 if not any(a.get("id") == anchor for a in anchors):
                   raise LinkError(f"link to nonexistent anchor: {dest} (resolves to {fulldestpath}, couldn't find {anchor})")
 
-              elif fulldestpath.suffix == ".py":
+              elif fulldestpath.suffix in (".py", ".au3"):
                 match = re.match("L([0-9]+)(?:-L([0-9]+))?$", anchor)
                 if not match:
                   raise LinkError(f"link to code file {destpath} with anchor {anchor}, expected the anchor to be a github line link e.g. L3 or L5-L7")
