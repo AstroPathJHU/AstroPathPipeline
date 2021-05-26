@@ -1,0 +1,5 @@
+0;0;YZ71;prepdb v0.1.dev1984+gf8a8bd2.d20201201;2020-12-01 10:40:04
+0;0;YZ71;WARNING: Found inconsistent image infos from different sources:;2020-12-01 10:40:04
+0;0;YZ71;WARNING: source                         pscale                         field width                    field height                  ;2020-12-01 10:40:04
+0;0;YZ71;WARNING: component tiff                 2.012259789636432              1872 pixels                    1404 pixels                   ;2020-12-01 10:40:04
+0;0;YZ71;WARNING: xml files                      2.012246532396163              1872 pixels                    1404 pixels                   ;2020-12-01 10:40:04
