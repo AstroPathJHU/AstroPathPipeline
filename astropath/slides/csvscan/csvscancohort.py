@@ -38,11 +38,17 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
       for csv in ("MergeConfig", "BatchID")
       for s in self.sampledefs
     }
-    for csv in batchcsvs.copy():
-      alternate = csv.parent/csv.name.replace("BatchID", "Batch")
-      if "BatchID" in csv.name and not csv.exists() and alternate.exists():
-        batchcsvs.pop(csv)
-        batchcsvs.add(alternate)
+    otherbatchcsvs = {
+      self.root/"Batch"/f"{csv}_{BatchID:02d}.csv"
+      for csv in ("MergeConfig", "BatchID")
+      for BatchID in range(1, max(s.BatchID for s in self.sampledefs)+1)
+    } - batchcsvs
+    for csvs in batchcsvs, otherbatchcsvs:
+      for csv in csvs.copy():
+        alternate = csv.parent/csv.name.replace("BatchID", "Batch")
+        if "BatchID" in csv.name and not csv.exists() and alternate.exists():
+          csvs.remove(csv)
+          csvs.add(alternate)
     clinicalcsvs = {
       csv
       for csv in (self.root/"Clinical").glob(f"Clinical_Table_Specimen_{self.Cohort}_*.csv")
@@ -61,12 +67,15 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
     except IOError:
       controlcsvs = set()
     expectcsvs = batchcsvs | clinicalcsvs | globalcontrolcsvs | controlcsvs
-    optionalcsvs = set()
+    queuecsvs = {log.with_name(log.name.replace(".log", "-queue.csv")) for log in (self.root/"logfiles").iterdir()}
+    optionalcsvs = otherbatchcsvs
     unknowncsvs = set()
     for csv in self.globalcsvs:
       if csv == self.csv("loadfiles"):
         continue
       if csv == self.root/"sampledef.csv":
+        continue
+      if csv in queuecsvs:
         continue
 
       try:
