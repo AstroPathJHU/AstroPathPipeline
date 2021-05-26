@@ -49,11 +49,23 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         if "BatchID" in csv.name and not csv.exists() and alternate.exists():
           csvs.remove(csv)
           csvs.add(alternate)
+
+    CSfoldername = self.root.name
+    if not CSfoldername:
+      assert len(self.root.parts) == 1
+      splitdrive = self.root.drive.split("\\")
+      assert len(splitdrive) == 4 and splitdrive[0] == splitdrive[1] == ""
+      CSfoldername = splitdrive[3]
+
+    tablename = CSfoldername.replace("Clinical_Specimen", "Clinical_Table_Specimen")
+    if tablename == CSfoldername: raise ValueError(f"Expected the folder name {CSfoldername} to have Clinical_Specimen in it")
     clinicalcsvs = {
       csv
-      for csv in (self.root/"Clinical").glob(f"Clinical_Table_Specimen_{self.Cohort}_*.csv")
-      if re.match(f"Clinical_Table_Specimen_{self.Cohort}_[0-9]+.csv", csv.name)
+      for csv in (self.root/"Clinical").glob(f"{tablename}_*.csv")
+      if re.match(f"{tablename}_[0-9]+.csv", csv.name)
     }
+    if not clinicalcsvs:
+      raise FileNotFoundError(f"Didn't find any clinical csvs in {self.root/'Clinical'}")
     globalcontrolcsvs = {
       self.root/"Ctrl"/f"project{self.Project}_ctrl{ctrl}.csv"
       for ctrl in ("cores", "fluxes", "samples")
@@ -71,12 +83,11 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
     optionalcsvs = otherbatchcsvs
     unknowncsvs = set()
     for csv in self.globalcsvs:
-      if csv == self.csv("loadfiles"):
-        continue
-      if csv == self.root/"sampledef.csv":
-        continue
-      if csv in queuecsvs:
-        continue
+      if csv == self.csv("loadfiles"): continue
+      if csv == self.root/"sampledef.csv": continue
+      if csv in queuecsvs: continue
+      if csv.parent == self.root/"tmp_inform_data": continue
+      if csv.parent == self.root/"upkeep_and_progress": continue
 
       try:
         expectcsvs.remove(csv)
