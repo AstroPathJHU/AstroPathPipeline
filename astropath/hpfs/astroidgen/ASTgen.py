@@ -17,7 +17,7 @@ import numpy
 import time
 import argparse
 from operator import itemgetter
-from shared import shared_tools as st
+from ...shared import shared_tools as st
 
 
 #
