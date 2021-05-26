@@ -63,7 +63,7 @@ Once virtual machines are set up install and launch the processing code accordin
 2. Edit the username and password in ```RunFullBatch.au3```
    - Download and install [AutoIt](https://www.autoitscript.com/site/)
    - open the ```RunFullBatch.au3``` found in the *BatchProcessing* folder
-   - Edit line 121
+   - Edit line 121 for a username and password that have access to the data drives
    - Go to 'tools' at the top of the page and compile (make sure the .exe is saved under the *BatchProcessing* folder)
 3. Make sure the the username used in [5.10.7.3.2](#510732-running-the-inform-queue-module) has full access to the *AstroPathPipeline* folder
 4. Copy the 'inform_worker-Shortcut' from *\*\\astropath\\hpfs\\launch* to the desktop of the virtual machine
