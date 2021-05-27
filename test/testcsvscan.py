@@ -48,12 +48,13 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
   def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False):
     root = thisfolder/"csvscan_test_for_jenkins"
     geomroot = thisfolder/"reference"/"geomcell"
-    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies"]
+    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     if selectrectangles is not None:
       args.append("--selectrectangles")
       for rid in selectrectangles: args.append(str(rid))
     if skipcheck:
       args.append("--skip-check")
+    print(args)
     CsvScanCohort.runfromargumentparser(args=args)
 
     s = CsvScanSample(root=root, geomroot=geomroot, samp=SlideID)
