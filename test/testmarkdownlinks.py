@@ -4,12 +4,16 @@ class GithubTocRendererMixin(marko.ext.toc.TocRendererMixin):
   def render_heading(self, element):
     children = self.render_children(element)
     slug = re.sub(r"<.+?>", "", children)
-    slug = re.sub(r"(?<=[0-9])[.](?=[0-9])", r"", slug)
+    slug = re.sub(r"(?<=[0-9a-zA-Z_])[.](?=[0-9])", r"", slug)
     slug = slug.replace("_", "UNDERSCOREUNDERSCORE")
     slug = slug.replace("#", "HASHTAGHASHTAG")
+    slug = slug.replace("®", "ALLRIGHTSRESERVEDALLRIGHTSRESERVED")
+    slug = slug.replace("&amp;", "AMPERSANDAMPERSAND")
     slug = slugify.slugify(slug)
     slug = slug.replace("underscoreunderscore", "_")
     slug = slug.replace("hashtaghashtag", "")
+    slug = slug.replace("allrightsreservedallrightsreserved", "")
+    slug = slug.replace("ampersandampersand", "")
     self.headings.append((int(element.level), slug, children))
     return '<h{0} id="{1}">{2}</h{0}>\n'.format(element.level, slug, children)
 
@@ -125,7 +129,7 @@ class TestMarkdownLinks(unittest.TestCase):
                 if not any(a.get("id") == anchor for a in anchors):
                   raise LinkError(f"link to nonexistent anchor: {dest} (resolves to {fulldestpath}, couldn't find {anchor})")
 
-              elif fulldestpath.suffix == ".py":
+              elif fulldestpath.suffix in (".py", ".au3"):
                 match = re.match("L([0-9]+)(?:-L([0-9]+))?$", anchor)
                 if not match:
                   raise LinkError(f"link to code file {destpath} with anchor {anchor}, expected the anchor to be a github line link e.g. L3 or L5-L7")

@@ -2,8 +2,9 @@ function Send_process(main)
 %
 % Check if a new bki05 can be started
 %
-if exist([main,'\process_flatw_queue.csv'], 'file')
-    tbl = readtable([main, '\process_flatw_queue.csv'], 'Delimiter' , ',',...
+if exist([main,'\across_project_queues\process_flatw_queue.csv'], 'file')
+    tbl = readtable([main, '\across_project_queues\process_flatw_queue.csv'],...
+        'Delimiter' , ',',...
         'ReadVariableNames', true, 'format', repmat('%s ',1,16));
 else
     return
@@ -97,7 +98,7 @@ for i2 = 1:length(drives)
         tt = 1;
         while p == 0 && tt <10
             try
-                writetable(tbl,[main,'\process_flatw_queue.csv']);
+                writetable(tbl,[main,'\across_project_queues\process_flatw_queue.csv']);
                 p = 1;
             catch
             end

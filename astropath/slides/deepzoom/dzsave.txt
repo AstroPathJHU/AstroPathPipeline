@@ -1,0 +1,1 @@
+vips dzsave L1_1-Z9-L1-wsi.png dz-Z9-L1 --suffix .png --background 0 --depth onetile --overlap 0 --tile-size 256
