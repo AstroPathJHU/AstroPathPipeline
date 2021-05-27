@@ -11,7 +11,7 @@ thisfolder = pathlib.Path(__file__).parent
 class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
   @classmethod
   def filestocopy(cls):
-    testroot = thisfolder/"csvscan_test_for_jenkins"
+    testroot = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
     dataroot = thisfolder/"data"
     yield dataroot/"sampledef.csv", testroot
 
@@ -40,13 +40,15 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"csvscan_test_for_jenkins"/SlideID/f"{SlideID}_{csv}.csv"
+      thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"/SlideID/"dbload"/f"{SlideID}_{csv}.csv"
       for csv in ("loadfiles",)
       for SlideID in ("M206",)
+    ] + [
+      thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"/"dbload"/"project0_loadfiles.csv"
     ]
 
   def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False):
-    root = thisfolder/"csvscan_test_for_jenkins"
+    root = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
     geomroot = thisfolder/"reference"/"geomcell"
     args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     if selectrectangles is not None:
@@ -54,7 +56,6 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       for rid in selectrectangles: args.append(str(rid))
     if skipcheck:
       args.append("--skip-check")
-    print(args)
     CsvScanCohort.runfromargumentparser(args=args)
 
     s = CsvScanSample(root=root, geomroot=geomroot, samp=SlideID)

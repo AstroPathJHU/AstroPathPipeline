@@ -1,6 +1,6 @@
 import re
 from ...baseclasses.cohort import GeomFolderCohort, GlobalDbloadCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
-from ...baseclasses.csvclasses import ClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
+from ...baseclasses.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
 from ...baseclasses.sample import SampleDef
 from .csvscansample import CsvScanBase, CsvScanSample
 
@@ -108,7 +108,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         extrakwargs = {}
         idx = 1
       elif csv.parent == self.root/"Clinical":
-        csvclass = ClinicalInfo
+        csvclass = MakeClinicalInfo(csv)
         tablename = "Clinical"
         extrakwargs = {}
         idx = 2
