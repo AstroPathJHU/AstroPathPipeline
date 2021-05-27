@@ -78,9 +78,9 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
       }
     except IOError:
       controlcsvs = set()
-    expectcsvs = batchcsvs | clinicalcsvs | globalcontrolcsvs | controlcsvs
+    expectcsvs = batchcsvs | clinicalcsvs | globalcontrolcsvs
     queuecsvs = {log.with_name(log.name.replace(".log", "-queue.csv")) for log in (self.root/"logfiles").iterdir()}
-    optionalcsvs = otherbatchcsvs
+    optionalcsvs = otherbatchcsvs | controlcsvs
     unknowncsvs = set()
     for csv in self.globalcsvs:
       if csv == self.csv("loadfiles"): continue
