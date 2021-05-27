@@ -412,7 +412,7 @@ class WorkflowCohort(Cohort):
     p = super().makeargumentparser()
     g = p.add_mutually_exclusive_group()
     g.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
-    g.add_argument("--ignore-dependencies", action="store_false", dest="ignore_dependencies", help="try (and probably fail) to run samples whose dependencies have not yet finished")
+    g.add_argument("--ignore-dependencies", action="store_false", dest="dependencies", help="try (and probably fail) to run samples whose dependencies have not yet finished")
     g.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
     p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
     return p
