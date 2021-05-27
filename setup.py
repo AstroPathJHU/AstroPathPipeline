@@ -12,6 +12,7 @@ setupkwargs = dict(
       "annowarpcohort=astropath.slides.annowarp.annowarpcohort:main",
       "annowarpsample=astropath.slides.annowarp.annowarpsample:main",
       "annowarpfailedfitswithconstraint=astropath.slides.annowarp.annowarpfailedfitswithconstraint:main",
+      "ast-gen=astropath.hpfs.astroidgen.ASTgen:start_gen",
       "checkannotations=astropath.baseclasses.annotationpolygonxmlreader:checkannotations",
       "csvscancohort=astropath.slides.csvscan.csvscancohort:main",
       "csvscansample=astropath.slides.csvscan.csvscansample:main",
@@ -38,6 +39,7 @@ setupkwargs = dict(
       "stitchinformmasksample=astropath.slides.zoom.stitchmasksample:informmain",
       "stitchastropathtissuemaskcohort=astropath.slides.zoom.stitchmaskcohort:astropathtissuemain",
       "stitchinformmaskcohort=astropath.slides.zoom.stitchmaskcohort:informmain",
+      "transfer-daemon=astropath.hpfs.transferdaemon.Daemon:launch_transfer"
       "zoomcohort=astropath.slides.zoom.zoomcohort:main",
       "zoomsample=astropath.slides.zoom.zoomsample:main",
     ],
@@ -55,6 +57,7 @@ setupkwargs = dict(
     "numba",
     "numpy>=1.17.0",
     "opencv-python",
+    "openpyxl",
     "pyopencl",
     "reikna",
     "seaborn",

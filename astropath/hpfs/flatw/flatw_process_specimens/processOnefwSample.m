@@ -72,7 +72,7 @@ end
 %
 end
 %%
-function [pqt,pqf, p2] = getfwpqt(dd, loc)
+function [pqt,pqf, p2] = getfwpqt(dd, loc1)
 %%
 % get the process flatw queue table for the drive designated by dd
 %
@@ -92,7 +92,7 @@ pqf = [dd,'\Processing_Specimens\process_flatw_queue.csv'];
 p2 = 0;
 pqt = [];
 %
-if loc == 1
+if loc1 == 1
     if exist(pqf,'file')
         %
         tt = 0;
@@ -116,7 +116,7 @@ if loc == 1
         p2 = 1;
         return
     end
-elseif loc == 2
+elseif loc1 == 2
     %
     tt = 0;
     %
@@ -244,10 +244,15 @@ if C
         end
     end
     %
-    desfiles = dir([des,'\*.im3']);
-    if isempty(desfiles)
+    if contains(des, '\*.im3')
+        desfiles = dir(des);
+    elseif ~isempty(dir([des,'\*.im3']))
+        desfiles = dir([des,'\*.im3']);
+    elseif ~isempty(dir([des,'\*.fw']))
         desfiles = dir([des,'\*.fw']);
         desfiles = [desfiles;dir([des,'\*.fw01'])];
+    elseif ~isempty(dir([des,'\*.xml']))
+        desfiles = dir([des,'\*.xml']);
     end
     %
     ndes = num2str(length(desfiles));
@@ -286,7 +291,7 @@ fwpath = [dd,'\Processing_Specimens\Specimen\flatw'];
 filepath = fileparts(mfilename('fullpath'));
 flatwcode = [filepath, '\..\flatw_matlab'];
 if ~exist(flatwcode, 'dir')
-    disp('ERROR: raw2mean_loop worker not set up')
+    disp('ERROR: startOneflat_loop worker not set up')
     flatwfiles = 0;
     p = 0;
     return
@@ -430,7 +435,7 @@ catch
 end
 
 p = p + p2 + p3;
-if p ~= 2
+if p ~= 3
     fprintf('FAILED TO COPY FLATW FILES. EXITING FUNCTION...\n')
     return
 end        
@@ -445,6 +450,5 @@ if p2 == 0
     fprintf('ERROR IN PQT. EXITING FUNCTION...\n')
     return
 end
-p = p + p2;
 %
 end

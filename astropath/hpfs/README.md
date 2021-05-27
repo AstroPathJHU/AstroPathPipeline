@@ -2,9 +2,9 @@
 ## 5.1. Description
 This section of the documentation and code picks up after the slides have been added to the *Specimen_Table_N.xlsx*, a description of that file is located [here](../scans/docs/scanning/SpecimenTable.md). After the ```transferdeamon``` module, all code assumes slides and file structure format in [4.6.](../scans/docs/DirectoryOrganization.md) have been adhered to, namely that the ```<ScanNN>``` subfolder is now in an additional *im3* subfolder under each ```<SlideID>```. Additional definitions on naming should be reviewed before continuing, found [here](../scans/docs/Definitions.md#43-definitions).
 
-In this section the ```<Dpath>\<Dname>``` processing folders are intialized, a slide list is created, and slides are assigned new ```SlideID```s [5.5.](AstroidGen#55-astroid-generation-v0000001 "Title"). Next images are renamed, transferred and backed up ([5.6.](TransferDaemon#56-transfer-daemon "Title")). Images are then corrected for imaging warping and flatfield effects ([5.8.](flatw#58-flatw "Title")). After this, cells are segmented and classified in each image using the multipass phenotype method in inForm. Each of these steps are run by custom code that process on perpetual loops with limited user interaction. An important step of this process is to create and check the quality control images generated on the cell classification output (that process is described in [5.10.6.](inform_processing/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)) . After, images from all slides in a cohort pass the cell classification quality control, cell segmenation maps are rebuilt to remove cells not defined by the final merged cell segmentation ([described here]()). Finally, slide macro regional annotations are applied to the images using the HALO software and distributed to the slides using a batch script [5.12.4.](transferanno/README.md#5124-transfer-annotations-to-the-bki-server). 
+In this section the ```<Dpath>\<Dname>``` processing folders are intialized, a slide list is created, and slides are assigned new ```SlideID```s [5.5.](astroidgen#55-astroid-generation-v0000001 "Title"). Next images are renamed, transferred and backed up ([5.6.](transferdaemon#56-transfer-daemon "Title")). Images are then corrected for imaging warping and flatfield effects ([5.8.](flatw#58-flatw "Title")). After this, cells are segmented and classified in each image using the multipass phenotype method in inForm. Each of these steps are run by custom code that process on perpetual loops with limited user interaction. An important step of this process is to create and check the quality control images generated on the cell classification output (that process is described in [5.10.6.](inform_processing/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)) . After, images from all slides in a cohort pass the cell classification quality control, cell segmentation maps are rebuilt to remove cells not defined by the final merged cell segmentation ([described here](segmaps#511-seg-maps "Title")). Finally, slide macro regional annotations are applied to the images using the HALO software and distributed to the slides using a batch script [5.12.4.](transferanno/README.md#5124-transfer-annotations-to-the-bki-server). 
 
-A final checklist of things to verify and complete before loading into the database is added [here](). In this section there is also a ```cleanup``` module which checks for any missing files as well as additional upkeep instructions.
+A final checklist of things to verify and complete before loading into the database is added [here](cleanup#513-clean-up). This section is a ```cleanup``` module which checks for any missing files, does the remaining file conversions, and provides final upkeep\ processing instructions.
 
 ## 5.2. Contents
 - [5.1. Description](#51-description "Title")
@@ -14,20 +14,21 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.3.2. Typical User Instructions](docs/TypicalUserInstructions.md#532-typical-user-instructions)
   - [5.3.3 Launching Code Instructions](docs/LaunchingCodeInstructions.md#533-launching-code-instructions)
 - [5.4. Workflow Overview](docs/WorkflowOverview.md#54-workflow-overview)
-- [5.5. AstroIDGen](AstroidGen#55-astroid-generation-v0000001 "Title")
-  - [5.5.1. Description](AstroidGen#551-description "Title")
-  - [5.5.2. Important Definitions](AstroidGen#552-important-definitions "Title")
-  - [5.5.3. Workflow](AstroidGen#553-workflow "Title")
-- [5.6. Transfer Daemon](TransferDaemon#56-transfer-daemon "Title")
-  - [5.6.1. Description](TransferDaemon#561-description "Title")
-  - [5.6.2. Important Definitions](TransferDaemon#562-important-definitions "Title")
-  - [5.6.3. Instructions](TransferDaemon#563-instructions "Title")
-  - [5.6.4. Workflow](TransferDaemon#564-workflow "Title")
-    - [5.6.4.1. Initial Transfer](TransferDaemon#5641-initial-transfer "Title")
-    - [5.6.4.2. MD5 Check](TransferDaemon#5642-md5-check "Title")
-    - [5.6.4.3. Compression Into Backup](TransferDaemon#5643-compression-into-backup "Title")
-    - [5.6.4.4. Source File Handling](TransferDaemon#5644-source-file-handling "Title")
-  - [5.6.5. Notes](TransferDaemon#565-notes "Title") 
+- [5.5. AstroIDGen](astroidgen#55-astroid-generation-v0000001 "Title")
+  - [5.5.1. Description](astroidgen#551-description "Title")
+  - [5.5.2. Important Definitions](astroidgen#552-important-definitions "Title")
+  - [5.5.3. Instructions](astroidgen#553-instructions "Title")
+  - [5.5.4. Workflow](astroidgen#554-workflow "Title")
+- [5.6. Transfer Daemon](transferdaemon#56-transfer-daemon "Title")
+  - [5.6.1. Description](transferdaemon#561-description "Title")
+  - [5.6.2. Important Definitions](transferdaemon#562-important-definitions "Title")
+  - [5.6.3. Instructions](transferdaemon#563-instructions "Title")
+  - [5.6.4. Workflow](transferdaemon#564-workflow "Title")
+    - [5.6.4.1. Initial Transfer](transferdaemon#5641-initial-transfer "Title")
+    - [5.6.4.2. MD5 Check](transferdaemon#5642-md5-check "Title")
+    - [5.6.4.3. Compression Into Backup](transferdaemon#5643-compression-into-backup "Title")
+    - [5.6.4.4. Source File Handling](transferdaemon#5644-source-file-handling "Title")
+  - [5.6.5. Notes](transferdaemon#565-notes "Title") 
 - [5.7. Meanimages](meanimages#57-meanimages "Title")
   - [5.7.1. Description](meanimages#571-description "Title")
   - [5.7.2. Important Definitions](meanimages#572-important-definitions "Title")
@@ -75,6 +76,13 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.10.5. Adding Slides to the inForm Queue](inform_processing/docs/AddingSlidestotheinFormQueue.md#5105-adding-slides-to-the-inform-queue)
   - [5.10.6. Evaluating inForm® Phenotype QC Output for the *AstroPath Pipeline*](inform_processing/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)
   - [5.10.7. Processing inForm® Tasks](inform_processing/docs/ProcessinginFormTasks.md#5107-proccessing-inform-tasks)
+    - [5.10.7.1. Description](inform_processing/docs/ProcessinginFormTasks.md#51071-description)
+    - [5.10.7.2. Important Definitions](inform_processing/docs/ProcessinginFormTasks.md#51072-important-definitions)
+    - [5.10.7.3. Instructions](inform_processing/docs/ProcessinginFormTasks.md#51073-instructions)
+      - [5.10.7.3.1. Setting up the Virtual Machines for inForm®](inform_processing/docs/ProcessinginFormTasks.md#510731-setting-up-the-virtual-machines-for-inform)
+      - [5.10.7.3.2. Running the ```inform queue``` Module](inform_processing/docs/ProcessinginFormTasks.md#510732-running-the-inform-queue-module)
+      - [5.10.7.3.3. Running the ```inform worker``` Module](inform_processing/docs/ProcessinginFormTasks.md#510733-running-the-inform-worker-module) 
+    - [5.10.7.4. Workflow](inform_processing/docs/ProcessinginFormTasks.md#51074-workflow) 
 - [5.11. Segmaps](segmaps#511-seg-maps "Title")
   - [5.11.1. Description](segmaps#5111-description)
   - [5.11.2. Instructions](segmaps#5112-instructions)
@@ -89,3 +97,7 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.12.4. Transfer Annotations to the BKI Server](transferanno/README.md#5124-transfer-annotations-to-the-bki-server)
     - [5.12.4.1. Description](transferanno/README.md#51241-description)
     - [5.12.4.2. Instructions](transferanno/README.md#51242-instructions)
+- [5.13. Cleanup](cleanup#513-clean-up)
+  - [5.13.1. Description](cleanup#5131-description)
+  - [5.13.2. Instructions](cleanup#5132-instructions)
+  - [5.13.3. Next Steps](cleanup#5133-next-steps)

@@ -106,7 +106,7 @@ for i1 = 1:height(ss)
     %
     % get merge tables info and run MaSS if needed
     %
-    [MergeTbls, MergeTblsDate{i1}, Rfd, dRfd] = getmergefiles(...
+    [MergeTbls, MergeTblsDate{i1}, Rfd] = getmergefiles(...
         sname, informpath, trackinform, tmpfd,...
         difallfd,expectedTablesnum, MergeConfig, logstring);
     if ~isempty(MergeTbls)
@@ -124,7 +124,7 @@ for i1 = 1:height(ss)
     % get image QC info and run image QC if needed
     %
     [QCImagesdate{i1}, QCImages{i1}]  = ...
-        getQCfiles(sname, informpath, Rfd, dRfd, MergeConfig, logstring);
+        getQCfiles(sname, informpath, Rfd, MergeConfig, logstring);
     %
     [QC_done_date{i1}] = getQCstatus(sname, wd, Targets);
     %

@@ -118,7 +118,7 @@ Func _ParseInput(ByRef $path, ByRef $sname, ByRef $ABx, ByRef $patha, ByRef $pat
 		If ($ss <> 'INVALID') Then
 			DriveMapDel("Z:")
 		EndIf
-		DriveMapAdd("Z:", $path, $DMA_PERSISTENT, "win\bkivmusr","BKI04user!")
+		DriveMapAdd("Z:", $path, $DMA_PERSISTENT, "win\username","password")
 		;
 		; check if the specimen\ flatw folder exists
 		;
