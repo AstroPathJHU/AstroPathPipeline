@@ -23,7 +23,7 @@ class TestPrepDb(unittest.TestCase):
       except FileNotFoundError:
         pass
 
-    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits"]
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies"]
     if skipannotations:
       args.append("--skip-annotations")
     PrepDbCohort.runfromargumentparser(args)
