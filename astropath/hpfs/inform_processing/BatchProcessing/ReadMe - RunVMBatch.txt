@@ -1,1 +1,0 @@
-Powershell -executionpolicy bypass -File "C:\Program Files\BatchProcessing\RunVMBatch.ps1"

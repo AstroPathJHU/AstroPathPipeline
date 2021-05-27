@@ -553,6 +553,4 @@ Path,Specimen,Antibody,Algorithm,Start,Finish
 \\bki04\Clinical_Specimen_5,YY1,CD163,CD163_Phenotype_3.8.2021_GA.ifr,Processing Started on: 03/23/2021 13:10:51,Processing Finished on: 03/23/2021 13:38:13
 \\bki07\Clinical_Specimen_12,AP0140003,CD8,03.23.2021_Phenotyping_CD8_under_NE_v4_case3.ifp,Processing Started on: 03/23/2021 16:18:14,Processing Finished on: 03/23/2021 16:18:14
 \\bki04\Clinical_Specimen_13,L9_3,FoxP3,FoxP3_L9-3_03.23.2021.ifp,Processing Started on: 03/23/2021 22:18:15,Processing Finished on: 03/24/2021 01:09:35
-\\bki04\Clinical_Specimen_13,L18_4,PDL1_2,PDL1_tumour_L18_4_3.31.21.ifr,Processing Started on: 04/01/2021 11:40:05,Processing Finished on: 04/01/2021 11:59:26
-\\bki07\Clinical_Specimen_12,AP0130005,Gzmb,03.14.2021_Phenotyping_GranB_NE_v7.ifp,Processing Started on: 04/04/2021 17:49:37,Processing Finished on: 04/04/2021 17:49:37
-\\bki07\Clinical_Specimen_12,AP0140003,CD8,03.11.2021_Phenotyping_CD8_under_NE_v3_case9.ifp,Processing Started on: 04/04/2021 20:29:38,Processing Finished on: 04/04/2021 20:29:38
+\\bki04\Clinical_Specimen_13,L18_4,PDL1_2,PDL1_tumour_L18_4_3.31.21.ifr,ProcessingStartedon:04/01/202111:40:05,Processing Started on: 05/25/2021 17:54:14
