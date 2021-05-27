@@ -39,7 +39,7 @@ setupkwargs = dict(
       "stitchinformmasksample=astropath.slides.zoom.stitchmasksample:informmain",
       "stitchastropathtissuemaskcohort=astropath.slides.zoom.stitchmaskcohort:astropathtissuemain",
       "stitchinformmaskcohort=astropath.slides.zoom.stitchmaskcohort:informmain",
-      "transfer-daemon=astropath.hpfs.transferdaemon.Daemon:launch_transfer"
+      "transfer-daemon=astropath.hpfs.transferdaemon.Daemon:launch_transfer",
       "zoomcohort=astropath.slides.zoom.zoomcohort:main",
       "zoomsample=astropath.slides.zoom.zoomsample:main",
     ],
