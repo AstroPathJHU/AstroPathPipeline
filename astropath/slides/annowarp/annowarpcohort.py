@@ -1,5 +1,5 @@
 from ...baseclasses.cohort import DbloadCohort, MaskCohort, WorkflowCohort, ZoomFolderCohort
-from .annowarpsample import AnnoWarpArgumentParserBase, AnnoWarpSampleBase, AnnoWarpSampleAstroPathTissueMask, AnnoWarpSampleInformTissueMask
+from .annowarpsample import AnnoWarpArgumentParserBase, AnnoWarpArgumentParserAstroPathTissueMask, AnnoWarpArgumentParserInformTissueMask, AnnoWarpSampleBase, AnnoWarpSampleAstroPathTissueMask, AnnoWarpSampleInformTissueMask
 
 class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCohort, AnnoWarpArgumentParserBase):
   """
@@ -31,31 +31,13 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCoh
   def workflowkwargs(self):
     return {"layers": [1], **super().workflowkwargs}
 
-class AnnoWarpCohortInformTissueMask(AnnoWarpCohortBase):
+class AnnoWarpCohortInformTissueMask(AnnoWarpCohortBase, AnnoWarpArgumentParserInformTissueMask):
   sampleclass = AnnoWarpSampleInformTissueMask
-  @classmethod
-  def maskselectionargumentgroup(cls, argumentparser):
-    g = super().maskselectionargumentgroup(argumentparser)
-    g.add_argument("--inform-mask", action="store_true", help="use the inform mask found in the component tiff to identify tissue")
-    return g
-  @classmethod
-  def runkwargsfromargumentparser(cls, parsed_args_dict):
-    assert parsed_args_dict.pop("inform_mask")
-    return super().runkwargsfromargumentparser(parsed_args_dict)
 
-class AnnoWarpCohortAstroPathTissueMask(AnnoWarpCohortBase):
+class AnnoWarpCohortAstroPathTissueMask(AnnoWarpCohortBase, AnnoWarpArgumentParserAstroPathTissueMask):
   sampleclass = AnnoWarpSampleAstroPathTissueMask
-  @classmethod
-  def maskselectionargumentgroup(cls, argumentparser):
-    g = super().maskselectionargumentgroup(argumentparser)
-    g.add_argument("--astropath-mask", action="store_true", help="use the AstroPath mask to identify tissue")
-    return g
-  @classmethod
-  def runkwargsfromargumentparser(cls, parsed_args_dict):
-    assert parsed_args_dict.pop("astropath_mask")
-    return super().runkwargsfromargumentparser(parsed_args_dict)
 
-class AnnoWarpCohort(AnnoWarpCohortInformTissueMask, AnnoWarpCohortAstroPathTissueMask):
+class AnnoWarpCohortSelectMask(AnnoWarpCohortInformTissueMask, AnnoWarpCohortAstroPathTissueMask):
   def __init__(self, *args, **kwargs):
     raise TypeError("This class should not be instantiated")
   sampleclass = None
@@ -75,7 +57,7 @@ class AnnoWarpCohort(AnnoWarpCohortInformTissueMask, AnnoWarpCohortAstroPathTiss
       assert False
 
 def main(args=None):
-  AnnoWarpCohort.runfromargumentparser(args)
+  AnnoWarpCohortSelectMask.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

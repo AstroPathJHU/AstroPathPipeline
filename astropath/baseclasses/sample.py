@@ -536,7 +536,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
       if misckwargs:
         raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
       sample = cls(**initkwargs)
-      sample.run(**runkwargs)
+      with sample:
+        sample.run(**runkwargs)
       return sample
 
   @classmethod
