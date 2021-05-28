@@ -27,25 +27,6 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCoh
       **self.__initiatesamplekwargs,
     }
 
-  @classmethod
-  def argumentparserhelpmessage(cls):
-    return AnnoWarpSampleBase.__doc__
-
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("--min-tissue-fraction", type=float, default=AnnoWarpSampleInformTissueMask.defaultmintissuefraction, help=f"minimum fraction of pixels in the tile that are considered tissue if it's to be used for alignment (default: {AnnoWarpSampleInformTissueMask.defaultmintissuefraction})")
-    cls.maskselectionargumentgroup(p)
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    kwargs = {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "mintissuefraction": parsed_args_dict.pop("min_tissue_fraction"),
-    }
-    return kwargs
-
   @property
   def workflowkwargs(self):
     return {"layers": [1], **super().workflowkwargs}

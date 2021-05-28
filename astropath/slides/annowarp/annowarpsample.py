@@ -1,6 +1,6 @@
 import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
-from ...baseclasses.argumentparser import DbloadArgumentParser, ZoomFolderArgumentParser
+from ...baseclasses.argumentparser import DbloadArgumentParser, MaskArgumentParser, ZoomFolderArgumentParser
 from ...baseclasses.annotationpolygonxmlreader import XMLPolygonAnnotationReader
 from ...baseclasses.csvclasses import Region, Vertex
 from ...baseclasses.polygon import SimplePolygon
@@ -130,6 +130,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, ZoomFolderArgumentParser)
     p = super().makeargumentparser()
     p.add_argument("--tilepixels", type=int, default=cls.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {cls.defaulttilepixels})")
     p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
+    cls.maskselectionargumentgroup(p)
     return p
 
   @classmethod
@@ -151,6 +152,10 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, ZoomFolderArgumentParser)
       "readalignments": parsed_args_dict.pop("dont_align"),
     }
     return kwargs
+
+  @classmethod
+  def argumentparserhelpmessage(cls):
+    return AnnoWarpSampleBase.__doc__
 
 class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFolderSampleBase, ZoomSampleBase, WorkflowSample, AnnoWarpArgumentParserBase):
   r"""
@@ -882,7 +887,23 @@ class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFo
   def workflowdependencies(cls):
     return [ZoomSample] + super().workflowdependencies()
 
-class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample, MaskWorkflowSampleBase):
+class AnnoWarpArgumentParserTissueMask(MaskArgumentParser, AnnoWarpArgumentParserBase):
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--min-tissue-fraction", type=float, default=cls.defaultmintissuefraction, help=f"minimum fraction of pixels in the tile that are considered tissue if it's to be used for alignment (default: {cls.defaultmintissuefraction})")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "mintissuefraction": parsed_args_dict.pop("min_tissue_fraction"),
+    }
+    return kwargs
+
+
+class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample, MaskWorkflowSampleBase, AnnoWarpArgumentParserTissueMask):
   """
   Use a tissue mask to determine which tiles to use for alignment
 
