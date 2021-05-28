@@ -1,7 +1,7 @@
 from ...baseclasses.cohort import DbloadCohort, MaskCohort, WorkflowCohort, ZoomFolderCohort
-from .annowarpsample import AnnoWarpSampleBase, AnnoWarpSampleAstroPathTissueMask, AnnoWarpSampleInformTissueMask
+from .annowarpsample import AnnoWarpArgumentParserBase, AnnoWarpSampleBase, AnnoWarpSampleAstroPathTissueMask, AnnoWarpSampleInformTissueMask
 
-class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCohort):
+class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCohort, AnnoWarpArgumentParserBase):
   """
   Cohort for running annowarp over a whole folder of samples.
 
@@ -34,30 +34,15 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCoh
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument("--tilepixels", type=int, default=AnnoWarpSampleInformTissueMask.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {AnnoWarpSampleInformTissueMask.defaulttilepixels})")
     p.add_argument("--min-tissue-fraction", type=float, default=AnnoWarpSampleInformTissueMask.defaultmintissuefraction, help=f"minimum fraction of pixels in the tile that are considered tissue if it's to be used for alignment (default: {AnnoWarpSampleInformTissueMask.defaultmintissuefraction})")
-    p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
     cls.maskselectionargumentgroup(p)
     return p
-
-  @classmethod
-  def maskselectionargumentgroup(cls, argumentparser):
-    return argumentparser.add_mutually_exclusive_group(required=True)
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
-      "tilepixels": parsed_args_dict.pop("tilepixels"),
       "mintissuefraction": parsed_args_dict.pop("min_tissue_fraction"),
-    }
-    return kwargs
-
-  @classmethod
-  def runkwargsfromargumentparser(cls, parsed_args_dict):
-    kwargs = {
-      **super().runkwargsfromargumentparser(parsed_args_dict),
-      "readalignments": parsed_args_dict.pop("dont_align"),
     }
     return kwargs
 

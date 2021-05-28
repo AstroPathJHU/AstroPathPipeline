@@ -1,10 +1,12 @@
 import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
+from ...baseclasses.argumentparser import DbloadArgumentParser, ZoomFolderArgumentParser
 from ...baseclasses.annotationpolygonxmlreader import XMLPolygonAnnotationReader
 from ...baseclasses.csvclasses import Region, Vertex
 from ...baseclasses.polygon import SimplePolygon
 from ...baseclasses.qptiff import QPTiff
 from ...baseclasses.sample import MaskWorkflowSampleBase, ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, ZoomFolderSampleBase
+from ...baseclasses.workflowdependency import WorkflowDependency
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint
@@ -13,7 +15,7 @@ from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..align.overlap import AlignmentComparison
-from ..zoom.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchInformMaskSample
+from ..zoom.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
@@ -120,7 +122,37 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     """
     return self.__imageinfo["yposition"]
 
-class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample):
+class AnnoWarpArgumentParserBase(DbloadArgumentParser, ZoomFolderArgumentParser):
+  defaulttilepixels = 100
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--tilepixels", type=int, default=cls.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {cls.defaulttilepixels})")
+    p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
+    return p
+
+  @classmethod
+  def maskselectionargumentgroup(cls, argumentparser):
+    return argumentparser.add_mutually_exclusive_group(required=True)
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "tilepixels": parsed_args_dict.pop("tilepixels"),
+    }
+    return kwargs
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().runkwargsfromargumentparser(parsed_args_dict),
+      "readalignments": parsed_args_dict.pop("dont_align"),
+    }
+    return kwargs
+
+class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFolderSampleBase, ZoomSampleBase, WorkflowSample, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -136,11 +168,10 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
 
   rectangletype = FieldReadComponentTiffMultiLayer
 
-  defaulttilepixels = 100
   __bigtilepixels = np.array([1400, 2100])
   __bigtileoffsetpixels = np.array([0, 1000])
 
-  def __init__(self, *args, tilepixels=defaulttilepixels, **kwargs):
+  def __init__(self, *args, tilepixels=None, **kwargs):
     """
     tilepixels: we divide the wsi and qptiff into tiles of this size
                 in order to align (default: 100)
@@ -148,6 +179,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
+    if tilepixels is None: tilepixels = self.defaulttilepixels
     self.__tilepixels = tilepixels
     if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
       raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")

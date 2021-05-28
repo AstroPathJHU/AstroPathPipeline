@@ -156,7 +156,7 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   def tissuemask(cls, mask):
     return mask
 
-class StitchMaskSample(ReadRectanglesDbload, WriteMaskSampleBase):
+class StitchMaskSample(WriteMaskSampleBase, ReadRectanglesDbload):
   """
   Base class for stitching the global mask together from the individual HPF masks
   """
