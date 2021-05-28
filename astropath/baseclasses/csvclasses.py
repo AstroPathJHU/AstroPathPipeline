@@ -1,4 +1,4 @@
-import dataclassy, datetime, numbers, numpy as np
+import csv, dataclassy, datetime, numbers, numpy as np
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import floattoint
@@ -398,39 +398,31 @@ class PhenotypedCell(MyDataClass):
   TotalCytoplasm780: float = optionalfield(float)
   ExprPhenotype: int
 
-class ClinicalInfo(MyDataClass):
+def MakeClinicalInfo(filename):
   __dateformat = "%m/%d/%Y"
-  REDCapID: int
-  SlideID: str
-  AgeAtCollection: int
-  Gender: str
-  Date_LastFollowUp: datetime.datetime = datefield(__dateformat)
-  Alive_Deceased: str
-  Date_Death: datetime.datetime = datefield(__dateformat, optional=True)
-  Date_PretxBx: datetime.datetime = datefield(__dateformat)
-  Tx1_Type: str
-  Tx1_Name: str
-  Tx1_Date: datetime.datetime = datefield(__dateformat)
-  Tx1_Response: str
-  Tx2_Type: str
-  Tx2_Date: datetime.datetime = datefield(__dateformat)
-  Tx3_Type: str
-  Tx3_Name: str
-  AdverseEvents: str
-  RecurrenceFree: str
-  Date_Collection: datetime.datetime = datefield(__dateformat)
-  Lesion_Type: str
-  Tumor_Type: str
-  TNM_cT: str
-  TNM_cN: str
-  TNM_cM: str
-  PreTx_AnatomicStage: str
-  TNM_ypT: str
-  TNM_ypN: str
-  TNM_ypM: str
-  PostTx_AnatomicStage: str
-  SmokingStatus: str
-  PackYears: int
+
+  __nodefault = object()
+  def annotationanddefault(fieldname):
+    if fieldname in ("REDCapID", "AgeAtCollection", "PackYears"): return int, __nodefault
+    if fieldname in ("Date_Death",): return datetime.datetime, datefield(__dateformat, optional=True)
+    if "Date" in fieldname: return datetime.datetime, datefield(__dateformat)
+    return str, __nodefault
+
+  with open(filename) as f:
+    reader = csv.DictReader(f)
+    annotations = {}
+    defaults = {}
+    for fieldname in reader.fieldnames:
+      annotations[fieldname], default = annotationanddefault(fieldname)
+      if default is not __nodefault:
+        defaults[fieldname] = default
+  ClinicalInfo = dataclassy.make_dataclass(
+    name="ClinicalInfo",
+    defaults=defaults,
+    fields=annotations,
+    bases=(MyDataClass,),
+  )
+  return ClinicalInfo
 
 class ControlCore(MyDataClass):
   ncore: int

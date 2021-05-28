@@ -34,7 +34,7 @@ class TestStitchMask(TestBaseCopyInput, TestBaseSaveOutput):
     dbloadroot = None
     if SlideID == "M21_1": dbloadroot = thisfolder/"reference"/"alignment"
 
-    args = [os.fspath(root), "--maskroot", os.fspath(maskroot), "--logroot", os.fspath(maskroot), "--mask-file-suffix", maskfilesuffix, "--allow-local-edits", "--sampleregex", SlideID+"$", "--debug"]
+    args = [os.fspath(root), "--maskroot", os.fspath(maskroot), "--logroot", os.fspath(maskroot), "--mask-file-suffix", maskfilesuffix, "--allow-local-edits", "--sampleregex", SlideID+"$", "--debug", "--ignore-dependencies", "--rerun-finished"]
     if dbloadroot is not None: args += ["--dbloadroot", os.fspath(dbloadroot)]
     cohortcls.runfromargumentparser(args)
 

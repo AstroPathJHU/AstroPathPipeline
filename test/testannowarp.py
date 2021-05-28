@@ -120,7 +120,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     zoomroot = thisfolder/"reference"/"zoom"
     logroot = thisfolder/"annowarp_test_for_jenkins"
     maskroot = thisfolder/"reference"/"stitchmask"
-    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot)]
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot), "--ignore-dependencies", "--rerun-finished"]
     with contextlib.ExitStack() as stack:
       for csv in "annotations", "regions", "vertices":
         stack.enter_context(temporarilyremove(root/SlideID/"dbload"/f"{SlideID}_{csv}.csv"))
