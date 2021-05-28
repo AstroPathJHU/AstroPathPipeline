@@ -1,5 +1,5 @@
 from ...baseclasses.cohort import DbloadCohort, MaskCohort, WorkflowCohort, ZoomFolderCohort
-from .annowarpsample import AnnoWarpArgumentParserBase, AnnoWarpArgumentParserAstroPathTissueMask, AnnoWarpArgumentParserInformTissueMask, AnnoWarpSampleBase, AnnoWarpSampleAstroPathTissueMask, AnnoWarpSampleInformTissueMask
+from .annowarpsample import AnnoWarpArgumentParserBase, AnnoWarpArgumentParserAstroPathTissueMask, AnnoWarpArgumentParserInformTissueMask, AnnoWarpSampleAstroPathTissueMask, AnnoWarpSampleInformTissueMask
 
 class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCohort, AnnoWarpArgumentParserBase):
   """

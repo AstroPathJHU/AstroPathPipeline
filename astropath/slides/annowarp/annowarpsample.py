@@ -6,7 +6,6 @@ from ...baseclasses.csvclasses import Region, Vertex
 from ...baseclasses.polygon import SimplePolygon
 from ...baseclasses.qptiff import QPTiff
 from ...baseclasses.sample import MaskWorkflowSampleBase, ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, ZoomFolderSampleBase
-from ...baseclasses.workflowdependency import WorkflowDependency
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint
