@@ -43,12 +43,6 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
       for csv in ("MergeConfig", "BatchID")
       for BatchID in range(1, max(s.BatchID for s in self.sampledefs)+1)
     } - batchcsvs
-    for csvs in batchcsvs, otherbatchcsvs:
-      for csv in csvs.copy():
-        alternate = csv.parent/csv.name.replace("BatchID", "Batch")
-        if "BatchID" in csv.name and not csv.exists() and alternate.exists():
-          csvs.remove(csv)
-          csvs.add(alternate)
 
     CSfoldername = self.root.name
     if not CSfoldername:
@@ -101,7 +95,6 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
       if csv.parent == self.root/"Batch":
         match = re.match("(.*)_[0-9]+[.]csv", csv.name)
         csvclass, tablename = {
-          "Batch": (GlobalBatch, "Batch"),
           "BatchID": (GlobalBatch, "Batch"),
           "MergeConfig": (MergeConfig, "MergeConfig")
         }[match.group(1)]
