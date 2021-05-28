@@ -11,7 +11,6 @@ setupkwargs = dict(
       "alignsample=astropath.slides.align.alignsample:main",
       "annowarpcohort=astropath.slides.annowarp.annowarpcohort:main",
       "annowarpsample=astropath.slides.annowarp.annowarpsample:main",
-      "annowarpfailedfitswithconstraint=astropath.slides.annowarp.annowarpfailedfitswithconstraint:main",
       "ast-gen=astropath.hpfs.astroidgen.ASTgen:start_gen",
       "checkannotations=astropath.baseclasses.annotationpolygonxmlreader:checkannotations",
       "csvscancohort=astropath.slides.csvscan.csvscancohort:main",
