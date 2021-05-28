@@ -4,9 +4,8 @@ from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
 from .sample import SampleBase, SampleDef
-from .workflowdependency import ThingWithRoots
 
-class Cohort(ThingWithRoots, RunFromArgumentParser):
+class Cohort(RunFromArgumentParser):
   """
   Base class for a cohort - a bunch of samples that can be run in a loop
 

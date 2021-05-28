@@ -10,7 +10,7 @@ from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
-from .workflowdependency import ThingWithRoots, WorkflowDependency
+from .workflowdependency import WorkflowDependency
 
 class SampleDef(MyDataClass):
   """
@@ -70,7 +70,7 @@ class SampleDef(MyDataClass):
   def __bool__(self):
     return bool(self.isGood)
 
-class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots, RunFromArgumentParser):
+class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentParser):
   """
   Base class for all sample classes.
 
