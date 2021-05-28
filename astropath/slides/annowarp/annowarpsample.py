@@ -13,7 +13,7 @@ from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..align.overlap import AlignmentComparison
-from ..zoom.stitchmasksample import InformMaskSample, TissueMaskSample, StitchInformMaskSample
+from ..zoom.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchInformMaskSample
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
@@ -892,6 +892,28 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
   @classmethod
   def workflowdependencies(cls):
     return [StitchInformMaskSample] + super().workflowdependencies()
+
+  @classmethod
+  def maskselectionargumentgroup(cls, argumentparser):
+    g = super().maskselectionargumentgroup(argumentparser)
+    g.add_argument("--inform-mask", action="store_true", help="use the inform mask found in the component tiff to identify tissue")
+    return g
+
+class AnnoWarpSampleAstroPathTissueMask(AnnoWarpSampleTissueMask, AstroPathTissueMaskSample):
+  """
+  Use the tissue mask from AstroPath to determine
+  which tiles to use for alignment
+  """
+
+  @classmethod
+  def workflowdependencies(cls):
+    return [StitchAstroPathTissueMaskSample] + super().workflowdependencies()
+
+  @classmethod
+  def maskselectionargumentgroup(cls, argumentparser):
+    g = super().maskselectionargumentgroup(argumentparser)
+    g.add_argument("--astropath-mask", action="store_true", help="use the AstroPath mask to identify tissue")
+    return g
 
 class QPTiffCoordinateBase(abc.ABC):
   """
