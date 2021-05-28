@@ -1,6 +1,7 @@
 import abc, argparse, pathlib
+from .workflowdependency import ThingWithRoots
 
-class RunFromArgumentParser(abc.ABC):
+class RunFromArgumentParser(ThingWithRoots):
   @classmethod
   def argumentparserhelpmessage(cls):
     return cls.__doc__

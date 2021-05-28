@@ -1,5 +1,6 @@
 import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
+from ...baseclasses.argumentparser import DbloadArgumentParser, MaskArgumentParser, ZoomFolderArgumentParser
 from ...baseclasses.annotationpolygonxmlreader import XMLPolygonAnnotationReader
 from ...baseclasses.csvclasses import Region, Vertex
 from ...baseclasses.polygon import SimplePolygon
@@ -13,7 +14,7 @@ from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..align.overlap import AlignmentComparison
-from ..zoom.stitchmasksample import InformMaskSample, TissueMaskSample, StitchInformMaskSample
+from ..zoom.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
@@ -120,7 +121,42 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     """
     return self.__imageinfo["yposition"]
 
-class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample):
+class AnnoWarpArgumentParserBase(DbloadArgumentParser, ZoomFolderArgumentParser):
+  defaulttilepixels = 100
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--tilepixels", type=int, default=cls.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {cls.defaulttilepixels})")
+    p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
+    cls.maskselectionargumentgroup(p)
+    return p
+
+  @classmethod
+  def maskselectionargumentgroup(cls, argumentparser):
+    return argumentparser.add_mutually_exclusive_group(required=True)
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "tilepixels": parsed_args_dict.pop("tilepixels"),
+    }
+    return kwargs
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().runkwargsfromargumentparser(parsed_args_dict),
+      "readalignments": parsed_args_dict.pop("dont_align"),
+    }
+    return kwargs
+
+  @classmethod
+  def argumentparserhelpmessage(cls):
+    return AnnoWarpSampleBase.__doc__
+
+class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFolderSampleBase, ZoomSampleBase, WorkflowSample, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -136,11 +172,10 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
 
   rectangletype = FieldReadComponentTiffMultiLayer
 
-  defaulttilepixels = 100
   __bigtilepixels = np.array([1400, 2100])
   __bigtileoffsetpixels = np.array([0, 1000])
 
-  def __init__(self, *args, tilepixels=defaulttilepixels, **kwargs):
+  def __init__(self, *args, tilepixels=None, **kwargs):
     """
     tilepixels: we divide the wsi and qptiff into tiles of this size
                 in order to align (default: 100)
@@ -148,6 +183,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
     super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
+    if tilepixels is None: tilepixels = self.defaulttilepixels
     self.__tilepixels = tilepixels
     if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
       raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
@@ -850,17 +886,34 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Rea
   def workflowdependencies(cls):
     return [ZoomSample] + super().workflowdependencies()
 
-class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample, MaskWorkflowSampleBase):
+class AnnoWarpArgumentParserTissueMask(MaskArgumentParser, AnnoWarpArgumentParserBase):
+  defaultmintissuefraction = 0.2
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument("--min-tissue-fraction", type=float, default=cls.defaultmintissuefraction, help=f"minimum fraction of pixels in the tile that are considered tissue if it's to be used for alignment (default: {cls.defaultmintissuefraction})")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "mintissuefraction": parsed_args_dict.pop("min_tissue_fraction"),
+    }
+    return kwargs
+
+
+class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample, MaskWorkflowSampleBase, AnnoWarpArgumentParserTissueMask):
   """
   Use a tissue mask to determine which tiles to use for alignment
 
   mintissuefraction: the minimum fraction of tissue pixels in the tile
                      to be used for alignment (default: 0.2)
   """
-  defaultmintissuefraction = 0.2
-
-  def __init__(self, *args, mintissuefraction=defaultmintissuefraction, **kwargs):
+  def __init__(self, *args, mintissuefraction=None, **kwargs):
     super().__init__(*args, **kwargs)
+    if mintissuefraction is None: mintissuefraction = self.defaultmintissuefraction
     self.mintissuefraction = mintissuefraction
 
   def printcuts(self):
@@ -883,7 +936,18 @@ class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample, MaskWorkflo
     with self.using_tissuemask():
       return super().align(*args, **kwargs)
 
-class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample):
+class AnnoWarpArgumentParserInformTissueMask(AnnoWarpArgumentParserTissueMask):
+  @classmethod
+  def maskselectionargumentgroup(cls, argumentparser):
+    g = super().maskselectionargumentgroup(argumentparser)
+    g.add_argument("--inform-mask", action="store_true", help="use the inform mask found in the component tiff to identify tissue")
+    return g
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    assert parsed_args_dict.pop("inform_mask")
+    return super().runkwargsfromargumentparser(parsed_args_dict)
+
+class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample, AnnoWarpArgumentParserInformTissueMask):
   """
   Use the tissue mask from inform in the component tiff to determine
   which tiles to use for alignment
@@ -892,6 +956,54 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
   @classmethod
   def workflowdependencies(cls):
     return [StitchInformMaskSample] + super().workflowdependencies()
+  def printcuts(self, *args, **kwargs):
+    super().printcuts(*args, **kwargs)
+    self.logger.info("      Using Inform mask to determine tissue regions")
+
+class AnnoWarpArgumentParserAstroPathTissueMask(AnnoWarpArgumentParserTissueMask):
+  @classmethod
+  def maskselectionargumentgroup(cls, argumentparser):
+    g = super().maskselectionargumentgroup(argumentparser)
+    g.add_argument("--astropath-mask", action="store_true", help="use the AstroPath mask to identify tissue")
+    return g
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    assert parsed_args_dict.pop("astropath_mask")
+    return super().runkwargsfromargumentparser(parsed_args_dict)
+
+class AnnoWarpSampleAstroPathTissueMask(AnnoWarpSampleTissueMask, AstroPathTissueMaskSample, AnnoWarpArgumentParserAstroPathTissueMask):
+  """
+  Use the tissue mask from AstroPath to determine
+  which tiles to use for alignment
+  """
+
+  @classmethod
+  def workflowdependencies(cls):
+    return [StitchAstroPathTissueMaskSample] + super().workflowdependencies()
+  def printcuts(self, *args, **kwargs):
+    super().printcuts(*args, **kwargs)
+    self.logger.info("      Using AstroPath mask to determine tissue regions")
+
+class AnnoWarpSampleSelectMask(AnnoWarpSampleInformTissueMask, AnnoWarpSampleAstroPathTissueMask):
+  def __init__(self, *args, **kwargs):
+    raise TypeError("This class should not be instantiated")
+  sampleclass = None
+  @classmethod
+  def defaultunits(cls):
+    result, = {_.defaultunits() for _ in cls.__bases__}
+    return result
+  @classmethod
+  def runfromargumentparser(cls, args=None):
+    p = cls.makeargumentparser()
+    parsed_args = p.parse_args(args=args)
+    if parsed_args.inform_mask:
+      return AnnoWarpSampleInformTissueMask.runfromargumentparser(args=args)
+    elif parsed_args.astropath_mask:
+      return AnnoWarpSampleAstroPathTissueMask.runfromargumentparser(args=args)
+    else:
+      assert False
+
 
 class QPTiffCoordinateBase(abc.ABC):
   """
@@ -1200,7 +1312,7 @@ class AnnoWarpAlignmentResults(list, units.ThingWithImscale):
     return type(self)(_ for _ in good if keep[_.n])
 
 def main(args=None):
-  AnnoWarpSampleInformTissueMask.runfromargumentparser(args)
+  AnnoWarpSampleSelectMask.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()
