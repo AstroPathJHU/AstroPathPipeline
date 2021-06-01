@@ -1,7 +1,7 @@
-from ...shared.cohort import DbloadCohort, WorkflowCohort
+from ...shared.cohort import DbloadCohort, XMLPolygonReaderCohort, WorkflowCohort
 from .prepdbsample import PrepDbArgumentParser, PrepDbSample
 
-class PrepDbCohort(DbloadCohort, WorkflowCohort, PrepDbArgumentParser):
+class PrepDbCohort(DbloadCohort, WorkflowCohort, XMLPolygonReaderCohort, PrepDbArgumentParser):
   sampleclass = PrepDbSample
   __doc__ = sampleclass.__doc__
 

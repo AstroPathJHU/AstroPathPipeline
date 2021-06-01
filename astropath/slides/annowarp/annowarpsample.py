@@ -1,11 +1,10 @@
 import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
-from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, ZoomFolderArgumentParser
-from ...shared.annotationpolygonxmlreader import XMLPolygonAnnotationReader
+from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from ...shared.csvclasses import Region, Vertex
 from ...shared.polygon import SimplePolygon
 from ...shared.qptiff import QPTiff
-from ...shared.sample import MaskWorkflowSampleBase, ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, ZoomFolderSampleBase
+from ...shared.sample import MaskWorkflowSampleBase, ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, XMLPolygonReader, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint
@@ -121,7 +120,7 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     """
     return self.__imageinfo["yposition"]
 
-class AnnoWarpArgumentParserBase(DbloadArgumentParser, ZoomFolderArgumentParser):
+class AnnoWarpArgumentParserBase(DbloadArgumentParser, ZoomFolderArgumentParser, XMLPolygonReaderArgumentParser):
   defaulttilepixels = 100
 
   @classmethod
@@ -156,7 +155,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, ZoomFolderArgumentParser)
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
 
-class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFolderSampleBase, ZoomSampleBase, WorkflowSample, AnnoWarpArgumentParserBase):
+class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFolderSampleBase, ZoomSampleBase, WorkflowSample, AnnoWarpArgumentParserBase, XMLPolygonReader):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -679,20 +678,11 @@ class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFo
     self.__stitchresult.writestitchresult(filename=filename, logger=self.logger)
 
   @methodtools.lru_cache()
-  def __getXMLpolygonannotations(self, *, pscale=None, apscale=None):
-    """
-    Read the annotations, vertices, and regions from the xml file
-    """
-    if pscale is None: return self.__getXMLpolygonannotations(pscale=self.pscale, apscale=apscale)
-    if apscale is None: return self.__getXMLpolygonannotations(pscale=pscale, apscale=self.apscale)
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger).getXMLpolygonannotations()
-
-  @methodtools.lru_cache()
   def __getannotations(self, **kwargs):
     """
     Read the annotations, vertices, and regions from the xml file
     """
-    return self.__getXMLpolygonannotations(**kwargs)[0]
+    return self.getXMLpolygonannotations(**kwargs)[0]
 
   @property
   def annotations(self):
@@ -703,7 +693,7 @@ class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFo
     """
     read in the original vertices from vertices.csv
     """
-    vertices = self.__getXMLpolygonannotations(**kwargs)[2]
+    vertices = self.getXMLpolygonannotations(**kwargs)[2]
     return [
       QPTiffVertex(
         vertex=v,
@@ -753,7 +743,7 @@ class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFo
     """
     read in the original regions from the xml
     """
-    return self.__getXMLpolygonannotations(**kwargs)[1]
+    return self.getXMLpolygonannotations(**kwargs)[1]
 
   @property
   def regions(self):

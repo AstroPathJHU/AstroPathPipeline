@@ -1,7 +1,7 @@
 import abc, os, job_lock, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
 from .sample import SampleBase, SampleDef
 
@@ -395,6 +395,14 @@ class PhenotypeFolderCohort(Cohort):
 
   @property
   def rootnames(self): return {"phenotyperoot", *super().rootnames}
+
+class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
+  def __init__(self, *args, annotationsynonyms=None, **kwargs):
+    self.__annotationsynonyms = annotationsynonyms
+    super().__init__(*args, **kwargs)
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "annotationsynonyms": self.__annotationsynonyms}
 
 class WorkflowCohort(Cohort):
   """

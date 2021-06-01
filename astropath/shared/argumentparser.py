@@ -1,4 +1,5 @@
 import abc, argparse, pathlib
+from .annotationpolygonxmlreader import add_rename_annotation_argument
 from .workflowdependency import ThingWithRoots
 
 class RunFromArgumentParser(ThingWithRoots):
@@ -248,4 +249,18 @@ class GeomFolderArgumentParser(RunFromArgumentParser):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "geomroot": parsed_args_dict.pop("geomroot"),
+    }
+
+class XMLPolygonReaderArgumentParser(RunFromArgumentParser):
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    add_rename_annotation_argument(p)
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "annotationsynonyms": parsed_args_dict.pop("annotationsynonyms"),
     }
