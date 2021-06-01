@@ -1,6 +1,6 @@
 import cv2, more_itertools
 from .polygon import SimplePolygon
-from ...utilities import units
+from ..utilities import units
 
 def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, fill=False, forgdal=False, **kwargs):
   """
@@ -9,7 +9,7 @@ def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, fill=False, forgda
 
   pscale: im3 pixel/micron scale
   apscale: qptiff pixel/micron scale
-  shiftby: shift all hte vertices by this vector (default: [0, 0])
+  shiftby: shift all the vertices by this vector (default: [0, 0])
   fill: fill holes in the polygon? (default: False)
         this is useful when the binary array just has 1 along the perimeter
   forgdal: if this is True, the returned polygons will be compatible
