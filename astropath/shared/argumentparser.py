@@ -2,7 +2,22 @@ import abc, argparse, pathlib
 from .annotationpolygonxmlreader import add_rename_annotation_argument
 from .workflowdependency import ThingWithRoots
 
-class RunFromArgumentParser(ThingWithRoots):
+class MRODebuggingMetaClass(abc.ABCMeta):
+  def __new__(cls, name, bases, dct):
+    try:
+      return super().__new__(cls, name, bases, dct)
+    except TypeError as e:
+      if "Cannot create a consistent" in str(e):
+        print("========================")
+        print(f"MROs of bases of {name}:")
+        for base in bases:
+          print("------------------------")
+          for c in base.__mro__:
+            print(c.__name__)
+        print("========================")
+      raise
+
+class RunFromArgumentParser(ThingWithRoots, metaclass=MRODebuggingMetaClass):
   @classmethod
   def argumentparserhelpmessage(cls):
     return cls.__doc__
