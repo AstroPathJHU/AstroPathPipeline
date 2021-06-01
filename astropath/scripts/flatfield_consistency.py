@@ -212,7 +212,10 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
         cropAndOverwriteImage(figname)
 
 #helper function to make the consistency check grid plot
-def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,sort_by,lines_after,bounds,all_or_brightest,save_all_layers) :
+def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,sort_by,lines_after,bounds,all_or_brightest,save_all_layers,flatw) :
+    #set the meanimage subdirectory name
+    if flatw :
+        MEANIMAGE_SUBDIR_NAME = FLATW_MEANIMAGE_SUBDIR_NAME
     #make the dict of slide IDs by root dir
     if input_file is not None :
         slide_ids_by_rootdir = {}
@@ -250,7 +253,7 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
                 logger.info(f'\tChecking {sid}...')
                 mi   = getRawAsHWL((root_dir / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-mean_image.bin'),*(dims),np.float64)
                 semi = getRawAsHWL((pathlib.Path(root_dir) / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-std_error_of_mean_image.bin'),*(dims),np.float64)
-                if np.min(mi)==np.max(mi) or np.max(semi)==0. or sum([np.min(semi[:,:,li])==0. for li in range(dims[-1])])==dims[-1] :
+                if np.min(mi)==np.max(mi) or np.max(semi)==0. : #or sum([np.min(semi[:,:,li])==0. for li in range(dims[-1])])==dims[-1] :
                     logger.warning(f'WARNING: slide {sid} will be skipped because not enough images were stacked!')
                     slide_ids_by_rootdir[root_dir].remove(sid)
                 else :
@@ -374,7 +377,7 @@ def main(args=None) :
     checkArgs(args)
     #run the main workhorse function
     consistency_check_grid_plot(args.input_file,args.root_dirs,args.skip_slides,args.workingdir,
-                                args.sort_by,args.lines_after,args.bounds,args.all_or_brightest,args.save_all_layers)
+                                args.sort_by,args.lines_after,args.bounds,args.all_or_brightest,args.save_all_layers,args.flatw)
     logger.info('Done : )')
 
 if __name__=='__main__' :
