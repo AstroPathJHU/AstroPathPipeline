@@ -1,4 +1,4 @@
-from ...baseclasses.cohort import DbloadCohort, WorkflowCohort
+from ...shared.cohort import DbloadCohort, WorkflowCohort
 from .prepdbsample import PrepDbArgumentParser, PrepDbSample
 
 class PrepDbCohort(DbloadCohort, WorkflowCohort, PrepDbArgumentParser):

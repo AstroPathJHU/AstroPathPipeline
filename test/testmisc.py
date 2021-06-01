@@ -1,9 +1,9 @@
 import cv2, hashlib, more_itertools, numpy as np, os, pathlib, skimage, unittest
-from astropath.baseclasses.annotationpolygonxmlreader import writeannotationcsvs
-from astropath.baseclasses.contours import findcontoursaspolygons
-from astropath.baseclasses.csvclasses import Annotation, Region, Vertex
-from astropath.baseclasses.polygon import Polygon, PolygonFromGdal, SimplePolygon
-from astropath.baseclasses.overlap import rectangleoverlaplist_fromcsvs
+from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
+from astropath.shared.contours import findcontoursaspolygons
+from astropath.shared.csvclasses import Annotation, Region, Vertex
+from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
+from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.utilities import units
 from .testbase import assertAlmostEqual

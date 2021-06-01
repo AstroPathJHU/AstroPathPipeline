@@ -1,5 +1,5 @@
 #imports
-from astropath.baseclasses.sample import SampleDef
+from astropath.shared.sample import SampleDef
 from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL
 from astropath.utilities.dataclasses import MyDataClass
 from astropath.utilities.tableio import readtable,writetable

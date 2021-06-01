@@ -9,7 +9,7 @@ from astropath.utilities.img_file_io import smoothImageWorker, getExposureTimesB
 from astropath.utilities.tableio import readtable, writetable
 from astropath.utilities.misc import cd, addCommonArgumentsToParser, cropAndOverwriteImage
 #from astropath.utilities import units
-#from astropath.baseclasses.csvclasses import constantsdict
+#from astropath.shared.csvclasses import constantsdict
 from astropath.utilities.dataclasses import MyDataClass
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp

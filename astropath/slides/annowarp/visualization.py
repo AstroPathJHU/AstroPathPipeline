@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt, numpy as np
-from ...baseclasses.polygon import SimplePolygon
+from ...shared.polygon import SimplePolygon
 from ...utilities import units
 
 def showannotation(image, regions, *, imagescale, vertices=None, xlim=(), ylim=(), figurekwargs={}, showplot=None, saveas=None, alpha=0.5):

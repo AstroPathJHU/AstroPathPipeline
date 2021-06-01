@@ -1,4 +1,4 @@
-from ...baseclasses.cohort import DbloadCohort, SelectRectanglesCohort, WorkflowCohort
+from ...shared.cohort import DbloadCohort, SelectRectanglesCohort, WorkflowCohort
 from .geomsample import GeomSample
 
 class GeomCohort(DbloadCohort, SelectRectanglesCohort, WorkflowCohort):

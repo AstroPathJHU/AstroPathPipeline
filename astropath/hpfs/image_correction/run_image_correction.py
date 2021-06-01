@@ -1,8 +1,8 @@
 #imports
 from .corrector import RawfileCorrector
 from .utilities import getWarpFieldPathsFromWarpDef
-from ...baseclasses.sample import SampleDef
-from ...baseclasses.logging import getlogger
+from ...shared.sample import SampleDef
+from ...shared.logging import getlogger
 from ...utilities.img_file_io import getImageHWLFromXMLFile
 from ...utilities.misc import addCommonArgumentsToParser
 from ...utilities.config import CONST as UNIV_CONST

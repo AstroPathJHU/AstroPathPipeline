@@ -1,10 +1,10 @@
 import abc, itertools, pathlib, re
 
-from ...baseclasses.argumentparser import RunFromArgumentParser
-from ...baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
-from ...baseclasses.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
-from ...baseclasses.overlap import Overlap
-from ...baseclasses.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
+from ...shared.argumentparser import RunFromArgumentParser
+from ...shared.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
+from ...shared.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
+from ...shared.overlap import Overlap
+from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield
 from ..align.field import Field, FieldOverlap

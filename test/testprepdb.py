@@ -1,7 +1,7 @@
 import more_itertools, numpy as np, os, pathlib, PIL.Image, unittest
-from astropath.baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
-from astropath.baseclasses.overlap import Overlap
-from astropath.baseclasses.rectangle import Rectangle
+from astropath.shared.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
+from astropath.shared.overlap import Overlap
+from astropath.shared.rectangle import Rectangle
 from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from .testbase import assertAlmostEqual

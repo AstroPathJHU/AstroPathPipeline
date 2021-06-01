@@ -1,11 +1,11 @@
 import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
-from ...baseclasses.argumentparser import DbloadArgumentParser, MaskArgumentParser, ZoomFolderArgumentParser
-from ...baseclasses.annotationpolygonxmlreader import XMLPolygonAnnotationReader
-from ...baseclasses.csvclasses import Region, Vertex
-from ...baseclasses.polygon import SimplePolygon
-from ...baseclasses.qptiff import QPTiff
-from ...baseclasses.sample import MaskWorkflowSampleBase, ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, ZoomFolderSampleBase
+from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, ZoomFolderArgumentParser
+from ...shared.annotationpolygonxmlreader import XMLPolygonAnnotationReader
+from ...shared.csvclasses import Region, Vertex
+from ...shared.polygon import SimplePolygon
+from ...shared.qptiff import QPTiff
+from ...shared.sample import MaskWorkflowSampleBase, ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint

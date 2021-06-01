@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, typing, uncertainties as unc
 
-from ...baseclasses.overlap import Overlap
+from ...shared.overlap import Overlap
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation
 from ...utilities.misc import covariance_matrix, floattoint

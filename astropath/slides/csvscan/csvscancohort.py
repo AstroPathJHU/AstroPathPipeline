@@ -1,7 +1,7 @@
 import re
-from ...baseclasses.cohort import GeomFolderCohort, GlobalDbloadCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
-from ...baseclasses.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
-from ...baseclasses.sample import SampleDef
+from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
+from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
+from ...shared.sample import SampleDef
 from .csvscansample import CsvScanBase, CsvScanSample
 
 class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort, CsvScanBase):

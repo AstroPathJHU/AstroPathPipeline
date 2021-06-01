@@ -1,5 +1,5 @@
 #imports
-from ...baseclasses.rectangle import RectangleTransformationBase
+from ...shared.rectangle import RectangleTransformationBase
 from ...slides.align.alignsample import AlignSampleFromXML
 from ...slides.align.rectangle import AlignmentRectangle
 from ...utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield

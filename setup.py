@@ -12,7 +12,7 @@ setupkwargs = dict(
       "annowarpcohort=astropath.slides.annowarp.annowarpcohort:main",
       "annowarpsample=astropath.slides.annowarp.annowarpsample:main",
       "ast-gen=astropath.hpfs.astroidgen.ASTgen:start_gen",
-      "checkannotations=astropath.baseclasses.annotationpolygonxmlreader:checkannotations",
+      "checkannotations=astropath.shared.annotationpolygonxmlreader:checkannotations",
       "csvscancohort=astropath.slides.csvscan.csvscancohort:main",
       "csvscansample=astropath.slides.csvscan.csvscansample:main",
       "deepzoomcohort=astropath.slides.deepzoom.deepzoomcohort:main",
@@ -27,7 +27,7 @@ setupkwargs = dict(
       "geomcellsample=astropath.slides.geomcell.geomcellsample:main",
       "prepdbcohort=astropath.slides.prepdb.prepdbcohort:main",
       "prepdbsample=astropath.slides.prepdb.prepdbsample:main",
-      "read_annotation_xml=astropath.baseclasses.annotationpolygonxmlreader:main",
+      "read_annotation_xml=astropath.shared.annotationpolygonxmlreader:main",
       "run_exposure_time_fits=astropath.hpfs.exposuretime.run_exposure_time_fits:main",
       "run_flatfield=astropath.hpfs.flatfield.run_flatfield:main",
       "run_image_correction=astropath.hpfs.image_correction.run_image_correction:main",
@@ -73,7 +73,7 @@ setupkwargs = dict(
     "vips": ["pyvips"],
   },
   package_data = {
-    "astropath": ["baseclasses/master_annotation_list.csv"],
+    "astropath": ["shared/master_annotation_list.csv"],
   },
 )
 

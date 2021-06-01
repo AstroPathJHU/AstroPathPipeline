@@ -1,8 +1,8 @@
 #imports
 from contextlib import ExitStack
 import pathlib, logging, traceback
-from ..baseclasses.sample import SampleDef
-from ..baseclasses.logging import getlogger
+from ..shared.sample import SampleDef
+from ..shared.logging import getlogger
 
 class RunLogger(ExitStack) :
     """

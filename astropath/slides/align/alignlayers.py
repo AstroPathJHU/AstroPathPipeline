@@ -3,7 +3,7 @@ Aligning layers with respect to each other is not fully implemented yet.
 """
 
 import cv2, itertools, methodtools, numpy as np
-from ...baseclasses.sample import ReadRectanglesOverlapsBase, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base
+from ...shared.sample import ReadRectanglesOverlapsBase, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base
 from .alignsample import AlignSample, AlignSampleBase
 from .rectangle import AlignmentRectangleMultiLayer, RectanglePCAByBroadbandFilter
 from .overlap import AlignmentOverlap, LayerAlignmentResult

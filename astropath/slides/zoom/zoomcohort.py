@@ -1,4 +1,4 @@
-from ...baseclasses.cohort import DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort
+from ...shared.cohort import DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort
 from .zoomsample import ZoomSample
 
 class ZoomCohort(DbloadCohort, SelectRectanglesCohort, TempDirCohort, ZoomFolderCohort, SelectLayersCohort, WorkflowCohort):

@@ -1,11 +1,11 @@
 import methodtools, numpy as np, PIL, skimage
-from ...baseclasses.annotationpolygonxmlreader import XMLPolygonAnnotationReader
-from ...baseclasses.argumentparser import DbloadArgumentParser
-from ...baseclasses.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
-from ...baseclasses.overlap import RectangleOverlapCollection
-from ...baseclasses.qptiff import QPTiff
-from ...baseclasses.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
-from ...baseclasses.workflowdependency import ShredXML
+from ...shared.annotationpolygonxmlreader import XMLPolygonAnnotationReader
+from ...shared.argumentparser import DbloadArgumentParser
+from ...shared.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
+from ...shared.overlap import RectangleOverlapCollection
+from ...shared.qptiff import QPTiff
+from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
+from ...shared.workflowdependency import ShredXML
 from ...utilities import units
 
 class PrepDbArgumentParser(DbloadArgumentParser):
