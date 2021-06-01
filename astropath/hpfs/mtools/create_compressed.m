@@ -15,7 +15,7 @@
 %compressed_path = '\\bki03\Compressed_Clinical_Specimens\Clinical_Specimen';
 %% ---------------------------------------------------
 %%
-function [] = create_compressed(main_path,compressed_path)
+function [] = create_compressed(main_path, compressed_path)
 %
 fdnames = dir(main_path);
 for i1 = 1:length(fdnames)

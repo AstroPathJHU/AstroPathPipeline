@@ -35,6 +35,8 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       for csv in oldtables.glob("*.csv"):
         yield csv, newtables
 
+      yield dataroot/SlideID/"im3"/f"{SlideID}-mean.csv", testroot/SlideID/"im3"
+
   @property
   def outputfilenames(self):
     return [
@@ -43,13 +45,15 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       for SlideID in ("M206",)
     ]
 
-  def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1]):
+  def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False):
     root = thisfolder/"csvscan_test_for_jenkins"
     geomroot = thisfolder/"reference"/"geomcell"
     args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
     if selectrectangles is not None:
       args.append("--selectrectangles")
       for rid in selectrectangles: args.append(str(rid))
+    if skipcheck:
+      args.append("--skip-check")
     CsvScanCohort.runfromargumentparser(args=args)
 
     s = CsvScanSample(root=root, geomroot=geomroot, samp=SlideID)
@@ -91,5 +95,8 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
     else:
       self.removeoutput()
 
-  def testCsvScanFastUnits(self, SlideID="M206", **kwargs):
-    self.testCsvScan(SlideID=SlideID, units="fast", **kwargs)
+  def testCsvScanFastUnits(self, **kwargs):
+    self.testCsvScan(units="fast", **kwargs)
+
+  def testCsvScanNoCheck(self, **kwargs):
+    self.testCsvScan(skipcheck=True)

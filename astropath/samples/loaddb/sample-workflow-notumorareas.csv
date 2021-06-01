@@ -1,0 +1,18 @@
+stepid,database,script
+1,core,exec spMakeSampleDBByID <sampleid>
+2,sample,A1.1-Schema.sql
+3,sample,A1.2-SpatialFunctions.sql
+4,sample,A1.3-LoadSchema.sql
+5,sample,A1.4-LoadFiles.sql
+6,sample,A2.1-LoadHPFAll.sql
+7,sample,A2.2-LoadOverlaps.sql
+8,sample,A3.1-LoadAnnotations.sql
+9,sample,A3.2-LoadFieldGeometry.sql
+10,sample,A3.3-LoadTumorGeometry.sql
+11,sample,A4.1-LoadCell.sql
+12,sample,A4.2-LoadCellGeom.sql
+13,sample,A4.3-LoadCellPos.sql
+14,sample,A4.4-LoadNeighbors.sql
+15,sample,A4.5-PrepareDuplicates.sql
+16,sample,A4.6-AddRandoms.sql
+17,sample,A4.7-LoadNeighborsRR.sql
