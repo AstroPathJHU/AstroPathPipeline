@@ -8,10 +8,10 @@ from .polygon import SimplePolygon
 from .qptiff import QPTiff
 
 class AllowedAnnotation(MyDataClass):
-  name: str
+  name: str = MetaDataAnnotation(readfunction=str.lower)
   layer: int
   color: str
-  synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
+  synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.lower().split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
 
 class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
@@ -49,6 +49,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   def allowedannotations(self):
     result = readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", AllowedAnnotation)
     for synonym, name in self.__annotationsynonyms.items():
+      synonym = synonym.lower()
+      name = name.lower()
       if any(synonym in {a.name} | a.synonyms for a in result):
         raise ValueError("Duplicate synonym: {synonym}")
       try:
@@ -93,6 +95,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
         except ValueError as e:
           errors.append(str(e))
           continue
+        name = targetannotation.name
         targetlayer = targetannotation.layer
         targetcolor = targetannotation.color
         if layer > targetlayer:
@@ -115,6 +118,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             layer = next(count)
         if color != targetcolor:
           self.__logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
+          color = targetcolor
         annotations.append(
           Annotation(
             color=color,

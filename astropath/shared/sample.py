@@ -1320,6 +1320,7 @@ class XMLPolygonReader(SampleBase, XMLPolygonReaderArgumentParser):
     self.__annotationsynonyms = annotationsynonyms
     super().__init__(*args, **kwargs)
 
+  @methodtools.lru_cache()
   def getXMLpolygonannotations(self, *, pscale=None, apscale=None):
     """
     Read the annotations, vertices, and regions from the xml file
