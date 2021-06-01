@@ -114,7 +114,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             )
             layer = next(count)
         if color != targetcolor:
-          errors.append(f"Annotation {name} has the wrong color {color}, expected {targetcolor}")
+          self.__logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
         annotations.append(
           Annotation(
             color=color,
