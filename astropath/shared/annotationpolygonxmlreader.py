@@ -8,10 +8,10 @@ from .polygon import SimplePolygon
 from .qptiff import QPTiff
 
 class AllowedAnnotation(MyDataClass):
-  name: str
+  name: str = MetaDataAnnotation(readfunction=str.lower)
   layer: int
   color: str
-  synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
+  synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.lower().split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
 
 class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
@@ -49,6 +49,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   def allowedannotations(self):
     result = readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", AllowedAnnotation)
     for synonym, name in self.__annotationsynonyms.items():
+      synonym = synonym.lower()
+      name = name.lower()
       if any(synonym in {a.name} | a.synonyms for a in result):
         raise ValueError("Duplicate synonym: {synonym}")
       try:
@@ -93,6 +95,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
         except ValueError as e:
           errors.append(str(e))
           continue
+        name = targetannotation.name
         targetlayer = targetannotation.layer
         targetcolor = targetannotation.color
         if layer > targetlayer:
@@ -114,7 +117,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             )
             layer = next(count)
         if color != targetcolor:
-          errors.append(f"Annotation {name} has the wrong color {color}, expected {targetcolor}")
+          self.__logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
+          color = targetcolor
         annotations.append(
           Annotation(
             color=color,
@@ -239,12 +243,15 @@ class AddToDict(argparse.Action):
     if dct is None: dct = {}; setattr(namespace, self.dest, dct)
     dct[k] = v
 
+def add_rename_annotation_argument(argumentparser):
+  return argumentparser.add_argument("--rename-annotation", nargs=2, action=AddToDict, dest="annotationsynonyms", metavar=("XMLNAME", "NEWNAME"), help="Rename an annotation given in the xml file to a new name (which has to be in the master list)")
+
 def main(args=None):
   p = argparse.ArgumentParser(description="read an annotations.polygons.xml file and write out csv files for the annotations, regions, and vertices")
   p.add_argument("dbloadfolder", type=pathlib.Path, help="folder to write the output csv files in")
   p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
   p.add_argument("--csvprefix", help="prefix to put in front of the csv file names")
-  p.add_argument("--rename-annotation", nargs=2, action=AddToDict, dest="annotationsynonyms")
+  add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
     writeannotationcsvs(**args.__dict__)
@@ -256,7 +263,7 @@ def checkannotations(args=None):
   g.add_argument("--save-bad-polygon-images", action="store_const", dest="badpolygonimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
   g.add_argument("--save-bad-polygon-images-folder", dest="badpolygonimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
   p.add_argument("--save-bad-polygon-images-filetype", default="pdf", choices=("pdf", "png"), help="image format to save debug images")
-  p.add_argument("--rename-annotation", nargs=2, action=AddToDict, dest="annotationsynonyms")
+  add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
     XMLPolygonAnnotationReader(args.xmlfile, badpolygonimagefolder=args.badpolygonimagefolder, badpolygonimagefiletype=args.save_bad_polygon_images_filetype, annotationsynonyms=args.annotationsynonyms, logger=printlogger).getXMLpolygonannotations()
