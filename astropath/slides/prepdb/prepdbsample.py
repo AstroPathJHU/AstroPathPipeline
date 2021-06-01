@@ -9,8 +9,8 @@ from ...utilities import units
 
 class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser):
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-annotations", action="store_true", help="do not check the annotations for validity and do not write the annotations, vertices, and regions csvs (they will be written later, in the annowarp step)")
     return p
 

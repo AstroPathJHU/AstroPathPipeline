@@ -7,8 +7,8 @@ class ZoomCohort(DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempD
   sampleclass = ZoomSample
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips", help="mode to run zoom: fast is fastest, vips uses the least memory.")
     return p
 

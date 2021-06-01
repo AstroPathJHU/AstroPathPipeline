@@ -14,11 +14,12 @@ class AlignCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohor
   sampleclass = AlignSample
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    g = p.add_mutually_exclusive_group()
-    g.add_argument("--dont-align", action="store_true", help="read the alignments from the preexisting align.csv and just do stitching")
-    g.add_argument("--dont-stitch", action="store_true", help="skip the stitching step and just do alignment")
+  def makeargumentparser(cls, *, _forworkflow=False, **kwargs):
+    p = super().makeargumentparser(_forworkflow=_forworkflow, **kwargs)
+    if not _forworkflow:
+      g = p.add_mutually_exclusive_group()
+      g.add_argument("--dont-align", action="store_true", help="read the alignments from the preexisting align.csv and just do stitching")
+      g.add_argument("--dont-stitch", action="store_true", help="skip the stitching step and just do alignment")
     return p
 
   @classmethod

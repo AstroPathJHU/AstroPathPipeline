@@ -137,11 +137,11 @@ class Cohort(RunFromArgumentParser):
     return cls.sampleclass.defaultunits()
 
   @classmethod
-  def makeargumentparser(cls):
+  def makeargumentparser(cls, **kwargs):
     """
     Create an argument parser to run this cohort on the command line
     """
-    p = super().makeargumentparser()
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
     p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
@@ -381,8 +381,8 @@ class PhenotypeFolderCohort(Cohort):
     return {**super().initiatesamplekwargs, "phenotyperoot": self.phenotyperoot}
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--phenotyperoot", type=pathlib.Path, help="root location of phenotype folder (default: same as root)")
     return p
 
@@ -415,8 +415,8 @@ class WorkflowCohort(Cohort):
   """
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
     p.add_argument("--ignore-dependencies", action="store_false", dest="dependencies", help="try (and probably fail) to run samples whose dependencies have not yet finished")
     p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")

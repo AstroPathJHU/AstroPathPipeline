@@ -45,8 +45,8 @@ class CsvScanBase(RunFromArgumentParser, TableReader):
     )
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
     return p
 

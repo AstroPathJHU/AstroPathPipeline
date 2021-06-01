@@ -519,8 +519,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
   def logendregex(cls): return rf"end {cls.logmodule()}"
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("SlideID", help="The SlideID of the sample to run")
     return p
 

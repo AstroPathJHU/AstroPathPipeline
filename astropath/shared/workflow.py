@@ -1,3 +1,4 @@
+import argparse
 from .argumentparser import RunFromArgumentParserBase
 from ..slides.align.aligncohort import AlignCohort
 from ..slides.annowarp.annowarpcohort import AnnoWarpCohortSelectMask
@@ -14,22 +15,22 @@ class Workflow(RunFromArgumentParserBase):
 
   _istmpclass = False
   @classmethod
-  def makeargumentparser(cls):
+  def makeargumentparser(cls, **kwargs):
     if cls._istmpclass:
-      return super().makeargumentparser()
+      return super().makeargumentparser(**kwargs)
 
     class tmpclass(cls, *cls.cohorts):
       _istmpclass = True
-    p = tmpclass.makeargumentparser()
+    p = tmpclass.makeargumentparser(_forworkflow=True, **kwargs)
     return p
 
   @classmethod
   def runfromparsedargs(cls, parsed_args):
     for cohort in cls.cohorts:
-      p = cohort.makeargumentparser()
+      p = cohort.makeargumentparser(_forworkflow=True)
       cohort.runfromparsedargs(
         argparse.Namespace(**{
-          k: v for k, v in parsed_args.__dict__
+          k: v for k, v in parsed_args.__dict__.items()
           if any(action.dest == k for action in p._actions)
         })
       )

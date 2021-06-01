@@ -124,10 +124,11 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
   defaulttilepixels = 100
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, _forworkflow=False, **kwargs):
+    p = super().makeargumentparser(_forworkflow=_forworkflow, **kwargs)
     p.add_argument("--tilepixels", type=int, default=cls.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {cls.defaulttilepixels})")
-    p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
+    if not _forworkflow:
+      p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
     cls.maskselectionargumentgroup(p)
     return p
 
@@ -880,8 +881,8 @@ class AnnoWarpArgumentParserTissueMask(AnnoWarpArgumentParserBase, DbloadArgumen
   defaultmintissuefraction = 0.2
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--min-tissue-fraction", type=float, default=cls.defaultmintissuefraction, help=f"minimum fraction of pixels in the tile that are considered tissue if it's to be used for alignment (default: {cls.defaultmintissuefraction})")
     return p
 
