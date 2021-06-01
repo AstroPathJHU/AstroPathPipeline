@@ -10,7 +10,7 @@ from ..zoom.zoomsample import ZoomSampleBase
 
 class MaskField(Field, MaskRectangle): pass
 
-class MaskSample(MaskSampleBase, ZoomSampleBase):
+class MaskSample(MaskSampleBase):
   """
   Base class for any sample that has a mask that can be loaded from a file.
   """
@@ -156,7 +156,7 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   def tissuemask(cls, mask):
     return mask
 
-class StitchMaskSample(WriteMaskSampleBase, ReadRectanglesDbload):
+class StitchMaskSample(WriteMaskSampleBase, ZoomSampleBase):
   """
   Base class for stitching the global mask together from the individual HPF masks
   """

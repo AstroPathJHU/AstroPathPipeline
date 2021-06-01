@@ -1114,7 +1114,7 @@ class ReadRectanglesOverlapsComponentTiffBase(ReadRectanglesOverlapsBase, ReadRe
   and loads the rectangle images from component tiff files.
   """
 
-class ReadRectanglesDbload(ReadRectanglesBase, DbloadSample):
+class ReadRectanglesDbload(ReadRectanglesBase, DbloadSample, DbloadArgumentParser, SelectRectanglesArgumentParser):
   """
   Base class for any sample that reads rectangles from the dbload folder.
   """

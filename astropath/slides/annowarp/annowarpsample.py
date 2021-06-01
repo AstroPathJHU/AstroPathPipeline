@@ -1,6 +1,6 @@
 import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
-from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from ...shared.csvclasses import Region, Vertex
 from ...shared.polygon import SimplePolygon
 from ...shared.qptiff import QPTiff
@@ -120,7 +120,7 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     """
     return self.__imageinfo["yposition"]
 
-class AnnoWarpArgumentParserBase(DbloadArgumentParser, ZoomFolderArgumentParser, XMLPolygonReaderArgumentParser):
+class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser):
   defaulttilepixels = 100
 
   @classmethod
@@ -876,7 +876,7 @@ class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFo
   def workflowdependencies(cls):
     return [ZoomSample] + super().workflowdependencies()
 
-class AnnoWarpArgumentParserTissueMask(MaskArgumentParser, AnnoWarpArgumentParserBase):
+class AnnoWarpArgumentParserTissueMask(AnnoWarpArgumentParserBase, DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser):
   defaultmintissuefraction = 0.2
 
   @classmethod

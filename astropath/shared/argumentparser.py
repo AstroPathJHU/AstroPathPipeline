@@ -1,4 +1,4 @@
-import abc, argparse, pathlib
+import abc, argparse, pathlib, re
 from .annotationpolygonxmlreader import add_rename_annotation_argument
 from .workflowdependency import ThingWithRoots
 
@@ -14,14 +14,47 @@ class MRODebuggingMetaClass(abc.ABCMeta):
           print("------------------------")
           for c in base.__mro__:
             print(c.__name__)
+        print("************************")
+        print("filtered for the bad ones:")
+        for base in bases:
+          bad = [c for c in base.__mro__ if re.search(rf"\b{c.__name__}\b", str(e))]
+          if len(bad) < 2: continue
+          print("------------------------")
+          print(base.__name__)
+          for c in bad:
+            print(c.__name__)
         print("========================")
       raise
 
-class RunFromArgumentParser(ThingWithRoots, metaclass=MRODebuggingMetaClass):
+class RunFromArgumentParserBase(metaclass=MRODebuggingMetaClass):
   @classmethod
   def argumentparserhelpmessage(cls):
     return cls.__doc__
 
+  @classmethod
+  def makeargumentparser(cls):
+    """
+    Create an argument parser to run on the command line
+    """
+    p = argparse.ArgumentParser(description=cls.argumentparserhelpmessage())
+    return p
+
+  @classmethod
+  def runfromargumentparser(cls, args=None, **kwargs):
+    """
+    Main function to run from command line arguments.
+    This function can be called in __main__
+    """
+    p = cls.makeargumentparser()
+    parsed_args = p.parse_args(args=args)
+    return cls.runfromparsedargs(parsed_args, **kwargs)
+
+  @classmethod
+  @abc.abstractmethod
+  def runfromparsedargs(cls, parsed_args):
+    pass
+
+class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
   @classmethod
   @abc.abstractmethod
   def defaultunits(cls):
@@ -32,7 +65,7 @@ class RunFromArgumentParser(ThingWithRoots, metaclass=MRODebuggingMetaClass):
     """
     Create an argument parser to run on the command line
     """
-    p = argparse.ArgumentParser(description=cls.argumentparserhelpmessage())
+    p = super().makeargumentparser()
     p.add_argument("root", type=pathlib.Path, help="The Clinical_Specimen folder where sample data is stored")
     p.add_argument("--units", choices=("safe", "fast", "fast_pixels", "fast_microns"), default=cls.defaultunits(), help=f"unit implementation (default: {cls.defaultunits()}; safe is only needed for debugging code)")
     g = p.add_mutually_exclusive_group()
@@ -123,14 +156,8 @@ class RunFromArgumentParser(ThingWithRoots, metaclass=MRODebuggingMetaClass):
   def runfromargsdicts(cls, **argsdicts): pass
 
   @classmethod
-  def runfromargumentparser(cls, args=None):
-    """
-    Main function to run from command line arguments.
-    This function can be called in __main__
-    """
-    p = cls.makeargumentparser()
-    args = p.parse_args(args=args)
-    argsdict = args.__dict__.copy()
+  def runfromparsedargs(cls, parsed_args):
+    argsdict = parsed_args.__dict__.copy()
     argsdicts = cls.argsdictsfromargumentparser(argsdict)
     if argsdict:
       raise TypeError(f"Some command line arguments were not processed:\n{argsdict}")
