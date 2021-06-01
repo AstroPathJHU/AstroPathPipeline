@@ -100,15 +100,17 @@ def checkArgs(args) :
                 mifp = root_dir / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-mean_image.bin'
                 if not mifp.is_file() :
                     logger.warning(f'WARNING: Mean image file does not exist for slide {sid}, will skip this slide!')
-                    slide_ids_by_rootdir[root_dir].remove(sid)
                     args.skip_slides.append(sid)
                     continue
                 semifp = root_dir / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-std_error_of_mean_image.bin'
                 if not semifp.is_file() :
                     logger.warning(f'WARNING: Standard error of mean image file does not exist for slide {sid}, will skip this slide!')
-                    slide_ids_by_rootdir[root_dir].remove(sid)
                     args.skip_slides.append(sid)
                     continue
+        for root_dir in slide_ids_by_rootdir.keys() :
+            for ssid in args.skip_slides :
+                if ssid in slide_ids_by_rootdir[root_dir] :
+                    slide_ids_by_rootdir[root_dir].remove(ssid)
             if len(slide_ids_by_rootdir[root_dir])<1 :
                 logger.warning(f'WARNING: no valid slides remain from root dir {root_dir}, will skip it!')
                 args.root_dirs.remove(root_dir)
@@ -128,7 +130,8 @@ def checkArgs(args) :
 
 #helper function to normalize an image layer by its weighted mean 
 def normalize_image_layer(mil,semil) :
-    weights = 1./(semil**2)
+    weights = np.zeros_like(semil)
+    weights[semil!=0] = 1./(semil[semil!=0]**2)
     weighted_mil = weights*mil
     sum_weighted_mil = np.sum(weighted_mil)
     sum_weights = np.sum(weights)
