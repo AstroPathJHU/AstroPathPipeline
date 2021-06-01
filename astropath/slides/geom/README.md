@@ -1,4 +1,4 @@
-#6.7. Tumor and field geometry
+# 6.7. Tumor and field geometry
 
 The geom step of the pipeline writes out the boundaries of the HPF
 primary regions and the boundaries of the tumor region determined
