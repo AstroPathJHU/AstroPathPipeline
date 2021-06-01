@@ -3,9 +3,9 @@ from .annotationpolygonxmlreader import add_rename_annotation_argument
 from .workflowdependency import ThingWithRoots
 
 class MRODebuggingMetaClass(abc.ABCMeta):
-  def __new__(cls, name, bases, dct):
+  def __new__(cls, name, bases, dct, **kwargs):
     try:
-      return super().__new__(cls, name, bases, dct)
+      return super().__new__(cls, name, bases, dct, **kwargs)
     except TypeError as e:
       if "Cannot create a consistent" in str(e):
         print("========================")
