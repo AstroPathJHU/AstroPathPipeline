@@ -1,7 +1,7 @@
 import re
-from ...baseclasses.cohort import GeomFolderCohort, GlobalDbloadCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
-from ...baseclasses.csvclasses import ClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
-from ...baseclasses.sample import SampleDef
+from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
+from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
+from ...shared.sample import SampleDef
 from .csvscansample import CsvScanBase, CsvScanSample
 
 class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort, CsvScanBase):
@@ -11,13 +11,14 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
   def runsample(self, sample, **kwargs):
     return sample.runcsvscan(**kwargs)
 
-  def run(self, *, checkcsvs=True, **kwargs):
-    super().run(checkcsvs=checkcsvs, **kwargs)
-    with self.globaljoblock(outputfiles=[self.csv("loadfiles")]) as lock:
-      if not lock: return
-      if self.csv("loadfiles").exists(): return
-      with self.globallogger():
-        self.makeglobalcsv(checkcsv=checkcsvs)
+  def run(self, *, checkcsvs=True, print_errors=False, **kwargs):
+    super().run(checkcsvs=checkcsvs, print_errors=print_errors, **kwargs)
+    if not print_errors:
+      with self.globaljoblock(outputfiles=[self.csv("loadfiles")]) as lock:
+        if not lock: return
+        if self.csv("loadfiles").exists(): return
+        with self.globallogger():
+          self.makeglobalcsv(checkcsv=checkcsvs)
 
   @property
   def globalcsvs(self):
@@ -32,15 +33,34 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
 
   def makeglobalcsv(self, *, checkcsv=True):
     toload = []
-    expectcsvs = {
+    batchcsvs = {
       self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
-      for csv in ("MergeConfig", "Batch")
+      for csv in ("MergeConfig", "BatchID")
       for s in self.sampledefs
-    } | {
+    }
+    otherbatchcsvs = {
+      self.root/"Batch"/f"{csv}_{BatchID:02d}.csv"
+      for csv in ("MergeConfig", "BatchID")
+      for BatchID in range(1, max(s.BatchID for s in self.sampledefs)+1)
+    } - batchcsvs
+
+    CSfoldername = self.root.name
+    if not CSfoldername:
+      assert len(self.root.parts) == 1
+      splitdrive = self.root.drive.split("\\")
+      assert len(splitdrive) == 4 and splitdrive[0] == splitdrive[1] == ""
+      CSfoldername = splitdrive[3]
+
+    tablename = CSfoldername.replace("Clinical_Specimen", "Clinical_Table_Specimen")
+    if tablename == CSfoldername: raise ValueError(f"Expected the folder name {CSfoldername} to have Clinical_Specimen in it")
+    clinicalcsvs = {
       csv
-      for csv in (self.root/"Clinical").glob(f"Clinical_Table_Specimen_{self.Cohort}_*.csv")
-      if re.match(f"Clinical_Table_Specimen_{self.Cohort}_[0-9]+.csv", csv.name)
-    } | {
+      for csv in (self.root/"Clinical").glob(f"{tablename}_*.csv")
+      if re.match(f"{tablename}_[0-9]+.csv", csv.name)
+    }
+    if not clinicalcsvs:
+      raise FileNotFoundError(f"Didn't find any clinical csvs in {self.root/'Clinical'}")
+    globalcontrolcsvs = {
       self.root/"Ctrl"/f"project{self.Project}_ctrl{ctrl}.csv"
       for ctrl in ("cores", "fluxes", "samples")
     }
@@ -52,14 +72,16 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
       }
     except IOError:
       controlcsvs = set()
-    expectcsvs |= controlcsvs
-    optionalcsvs = set()
+    expectcsvs = batchcsvs | clinicalcsvs | globalcontrolcsvs
+    queuecsvs = {log.with_name(log.name.replace(".log", "-queue.csv")) for log in (self.root/"logfiles").iterdir()}
+    optionalcsvs = otherbatchcsvs | controlcsvs
     unknowncsvs = set()
     for csv in self.globalcsvs:
-      if csv == self.csv("loadfiles"):
-        continue
-      if csv == self.root/"sampledef.csv":
-        continue
+      if csv == self.csv("loadfiles"): continue
+      if csv == self.root/"sampledef.csv": continue
+      if csv in queuecsvs: continue
+      if csv.parent == self.root/"tmp_inform_data": continue
+      if csv.parent == self.root/"upkeep_and_progress": continue
 
       try:
         expectcsvs.remove(csv)
@@ -73,13 +95,13 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
       if csv.parent == self.root/"Batch":
         match = re.match("(.*)_[0-9]+[.]csv", csv.name)
         csvclass, tablename = {
-          "Batch": (GlobalBatch, "Batch"),
+          "BatchID": (GlobalBatch, "Batch"),
           "MergeConfig": (MergeConfig, "MergeConfig")
         }[match.group(1)]
         extrakwargs = {}
         idx = 1
       elif csv.parent == self.root/"Clinical":
-        csvclass = ClinicalInfo
+        csvclass = MakeClinicalInfo(csv)
         tablename = "Clinical"
         extrakwargs = {}
         idx = 2

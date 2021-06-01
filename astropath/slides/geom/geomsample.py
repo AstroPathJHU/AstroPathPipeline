@@ -1,14 +1,19 @@
 import cv2, methodtools, more_itertools, numpy as np
-from ...baseclasses.csvclasses import Vertex
-from ...baseclasses.polygon import DataClassWithPolygon, SimplePolygon, Polygon, polygonfield
-from ...baseclasses.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample
+from ...shared.contours import findcontoursaspolygons
+from ...shared.csvclasses import Vertex
+from ...shared.polygon import DataClassWithPolygon, SimplePolygon, Polygon, polygonfield
+from ...shared.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
 from ...utilities.tableio import writetable
 from ..align.alignsample import AlignSample
 from ..align.field import FieldReadComponentTiff
-from .contours import findcontoursaspolygons
 
 class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
+  """
+  The geom step of the pipeline writes out the boundaries of the HPF
+  primary regions and the boundaries of the tumor region determined
+  by inform to csv files.
+  """
   def __init__(self, *args, **kwargs):
     super().__init__(*args, with_seg=True, layer="setlater", **kwargs)
     self.setlayers(layer=self.masklayer)
@@ -28,6 +33,9 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
 
   @methodtools.lru_cache()
   def getfieldboundaries(self):
+    """
+    Find the boundaries of the HPF primary regions.
+    """
     self.logger.info("getting field boundaries")
     boundaries = []
     for field in self.rectangles:
@@ -45,6 +53,11 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
 
   @methodtools.lru_cache()
   def gettumorboundaries(self):
+    """
+    Find the boundaries of the tumor region, as determined by
+    inform and stored in the mask layer of the segmented component
+    tiff.
+    """
     self.logger.info("getting tumor boundaries")
     boundaries = []
     for n, field in enumerate(self.rectangles, start=1):
@@ -62,6 +75,9 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
   def tumorfilename(self): return self.csv("tumorGeometry")
 
   def writeboundaries(self, *, fieldfilename=None, tumorfilename=None):
+    """
+    Write the field and tumor boundaries to csv files.
+    """
     if fieldfilename is None: fieldfilename = self.fieldfilename
     if tumorfilename is None: tumorfilename = self.tumorfilename
     writetable(fieldfilename, self.getfieldboundaries())
@@ -94,6 +110,13 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
     return [AlignSample] + super().workflowdependencies()
 
 class Boundary(DataClassWithPolygon):
+  """
+  Data class for storing a field or tumor boundary.
+
+  n: index of the HPF
+  k: index of the boundary within the HPF
+  poly: gdal polygon string for the boundary
+  """
   n: int
   k: int
   poly: Polygon = polygonfield()

@@ -1,4 +1,4 @@
-from ...baseclasses.cohort import DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort
+from ...shared.cohort import DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort
 from .alignsample import AlignSample
 
 class AlignCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort):

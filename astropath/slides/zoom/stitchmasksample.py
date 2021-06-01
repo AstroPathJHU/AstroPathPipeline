@@ -1,6 +1,6 @@
 import abc, contextlib, numpy as np, pathlib
-from ...baseclasses.rectangle import MaskRectangle
-from ...baseclasses.sample import MaskSampleBase, ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
+from ...shared.rectangle import MaskRectangle
+from ...shared.sample import MaskSampleBase, ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...hpfs.image_masking.utilities import unpackTissueMask
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.misc import floattoint
@@ -156,7 +156,7 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   def tissuemask(cls, mask):
     return mask
 
-class StitchMaskSample(ReadRectanglesDbload, WriteMaskSampleBase):
+class StitchMaskSample(WriteMaskSampleBase, ReadRectanglesDbload):
   """
   Base class for stitching the global mask together from the individual HPF masks
   """

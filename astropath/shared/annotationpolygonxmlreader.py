@@ -1,4 +1,4 @@
-import argparse, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, more_itertools, numpy as np, pathlib
+import argparse, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import dummylogger, floattoint, printlogger
@@ -8,18 +8,16 @@ from .polygon import SimplePolygon
 from .qptiff import QPTiff
 
 class AllowedAnnotation(MyDataClass):
-  name: str
+  name: str = MetaDataAnnotation(readfunction=str.lower)
   layer: int
   color: str
-  synonyms: tuple = MetaDataAnnotation((), readfunction=lambda x: tuple(x.split(",")) if x else (), writefunction=",".join)
-
-allowedannotations = readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", AllowedAnnotation)
+  synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.lower().split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
 
 class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, badpolygonimagefolder=None, badpolygonimagefiletype="pdf"):
+  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, badpolygonimagefolder=None, badpolygonimagefiletype="pdf", annotationsynonyms=None):
     self.xmlfile = pathlib.Path(xmlfile)
     self.__logger = logger
     if badpolygonimagefolder is not None: badpolygonimagefolder = pathlib.Path(badpolygonimagefolder)
@@ -34,6 +32,10 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
     self.__badpolygonimagefiletype = badpolygonimagefiletype
     self.__pscale = pscale
     self.__apscale = apscale
+    if annotationsynonyms is None:
+      annotationsynonyms = {}
+    self.__annotationsynonyms = annotationsynonyms
+    self.allowedannotations
   @property
   def pscale(self): return self.__pscale
   @property
@@ -42,18 +44,36 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   def qptifffilename(self):
     return self.xmlfile.with_suffix("").with_suffix("").with_suffix(".qptiff")
 
+  @methodtools.lru_cache()
+  @property
+  def allowedannotations(self):
+    result = readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", AllowedAnnotation)
+    for synonym, name in self.__annotationsynonyms.items():
+      synonym = synonym.lower()
+      name = name.lower()
+      if any(synonym in {a.name} | a.synonyms for a in result):
+        raise ValueError("Duplicate synonym: {synonym}")
+      try:
+        a, = {a for a in result if name in {a.name} | a.synonyms}
+      except ValueError:
+        raise ValueError(f"Unknown annotation for synonym: {name}")
+      a.synonyms.add(synonym)
+    return result
+
+  def allowedannotation(self, nameornumber):
+    try:
+      result, = {a for a in self.allowedannotations if nameornumber in {a.layer, a.name} | a.synonyms}
+    except ValueError:
+      typ = 'number' if isinstance(nameornumber, int) else 'name'
+      raise ValueError(f"Unknown annotation {typ} {nameornumber}")
+    if nameornumber not in {result.layer, result.name}:
+      self.__logger.warningglobal(f"renaming annotation {nameornumber} to {result.name}")
+    return result
+
   def getXMLpolygonannotations(self):
     annotations = []
     allregions = []
     allvertices = []
-
-    def allowedannotation(nameornumber):
-      try:
-        result, = {a for a in allowedannotations if nameornumber in (a.layer, a.name) + a.synonyms}
-      except ValueError:
-        typ = 'number' if isinstance(nameornumber, int) else 'name'
-        raise ValueError(f"Unknown annotation {typ} {nameornumber}")
-      return result
 
     errors = []
 
@@ -71,17 +91,18 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           count.prepend(layer)
           continue
         try:
-          targetannotation = allowedannotation(name)
+          targetannotation = self.allowedannotation(name)
         except ValueError as e:
           errors.append(str(e))
           continue
+        name = targetannotation.name
         targetlayer = targetannotation.layer
         targetcolor = targetannotation.color
         if layer > targetlayer:
-          errors.append(f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in allowedannotations)}, but {name} is after {annotations[-1].name}")
+          errors.append(f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in self.allowedannotations)}, but {name} is after {annotations[-1].name}")
         else:
           while layer < targetlayer:
-            emptycolor = allowedannotation(layer).color
+            emptycolor = self.allowedannotation(layer).color
             annotations.append(
               Annotation(
                 color=emptycolor,
@@ -96,7 +117,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             )
             layer = next(count)
         if color != targetcolor:
-          errors.append(f"Annotation {name} has the wrong color {color}, expected {targetcolor}")
+          self.__logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
+          color = targetcolor
         annotations.append(
           Annotation(
             color=color,
@@ -214,11 +236,22 @@ def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None):
   writetable(dbloadfolder/f"{csvprefix}regions.csv", regions)
   writetable(dbloadfolder/f"{csvprefix}vertices.csv", vertices)
 
+class AddToDict(argparse.Action):
+  def __call__(self, parser, namespace, values, option_string=None):
+    k, v = values
+    dct = getattr(namespace, self.dest)
+    if dct is None: dct = {}; setattr(namespace, self.dest, dct)
+    dct[k] = v
+
+def add_rename_annotation_argument(argumentparser):
+  return argumentparser.add_argument("--rename-annotation", nargs=2, action=AddToDict, dest="annotationsynonyms", metavar=("XMLNAME", "NEWNAME"), help="Rename an annotation given in the xml file to a new name (which has to be in the master list)")
+
 def main(args=None):
   p = argparse.ArgumentParser(description="read an annotations.polygons.xml file and write out csv files for the annotations, regions, and vertices")
   p.add_argument("dbloadfolder", type=pathlib.Path, help="folder to write the output csv files in")
   p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
   p.add_argument("--csvprefix", help="prefix to put in front of the csv file names")
+  add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
     writeannotationcsvs(**args.__dict__)
@@ -230,7 +263,8 @@ def checkannotations(args=None):
   g.add_argument("--save-bad-polygon-images", action="store_const", dest="badpolygonimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
   g.add_argument("--save-bad-polygon-images-folder", dest="badpolygonimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
   p.add_argument("--save-bad-polygon-images-filetype", default="pdf", choices=("pdf", "png"), help="image format to save debug images")
+  add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
-    XMLPolygonAnnotationReader(args.xmlfile, badpolygonimagefolder=args.badpolygonimagefolder, badpolygonimagefiletype=args.save_bad_polygon_images_filetype, logger=printlogger).getXMLpolygonannotations()
+    XMLPolygonAnnotationReader(args.xmlfile, badpolygonimagefolder=args.badpolygonimagefolder, badpolygonimagefiletype=args.save_bad_polygon_images_filetype, annotationsynonyms=args.annotationsynonyms, logger=printlogger).getXMLpolygonannotations()
   print(f"{args.xmlfile} looks good!")

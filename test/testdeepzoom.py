@@ -17,7 +17,7 @@ class TestDeepZoom(TestBaseSaveOutput):
     root = thisfolder/"data"
     zoomroot = thisfolder/"reference"/"zoom"
     deepzoomroot = thisfolder/"deepzoom_test_for_jenkins"
-    args = [str(root), "--zoomroot", str(zoomroot), "--deepzoomroot", str(deepzoomroot), "--logroot", str(deepzoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--layers", "1", "--allow-local-edits"]
+    args = [str(root), "--zoomroot", str(zoomroot), "--deepzoomroot", str(deepzoomroot), "--logroot", str(deepzoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--layers", "1", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     DeepZoomCohort.runfromargumentparser(args)
 
     sample = DeepZoomSample(root, SlideID, zoomroot=zoomroot, deepzoomroot=deepzoomroot, logroot=deepzoomroot)

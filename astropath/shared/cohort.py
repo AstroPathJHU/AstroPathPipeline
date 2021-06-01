@@ -1,12 +1,11 @@
 import abc, os, job_lock, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
 from .sample import SampleBase, SampleDef
-from .workflowdependency import ThingWithRoots
 
-class Cohort(ThingWithRoots, RunFromArgumentParser):
+class Cohort(RunFromArgumentParser):
   """
   Base class for a cohort - a bunch of samples that can be run in a loop
 
@@ -397,6 +396,14 @@ class PhenotypeFolderCohort(Cohort):
   @property
   def rootnames(self): return {"phenotyperoot", *super().rootnames}
 
+class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
+  def __init__(self, *args, annotationsynonyms=None, **kwargs):
+    self.__annotationsynonyms = annotationsynonyms
+    super().__init__(*args, **kwargs)
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "annotationsynonyms": self.__annotationsynonyms}
+
 class WorkflowCohort(Cohort):
   """
   Base class for a cohort that runs as a workflow:
@@ -410,8 +417,8 @@ class WorkflowCohort(Cohort):
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument("--skip-finished", action="store_true", help="only run samples that have not already run successfully")
-    p.add_argument("--dependencies", action="store_true", help="only run samples whose dependencies have finished by checking the logs")
+    p.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
+    p.add_argument("--ignore-dependencies", action="store_false", dest="dependencies", help="try (and probably fail) to run samples whose dependencies have not yet finished")
     p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
     p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
     return p
@@ -421,12 +428,13 @@ class WorkflowCohort(Cohort):
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
     }
+    if parsed_args_dict["print_errors"]:
+      kwargs["uselogfiles"] = False
+      parsed_args_dict["skip_finished"] = parsed_args_dict["dependencies"] = False
     if parsed_args_dict.pop("skip_finished"):
       kwargs["slideidfilters"].append(lambda self, sample: not self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs))
     if parsed_args_dict.pop("dependencies"):
       kwargs["slideidfilters"].append(lambda self, sample: all(dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs) for dependency in self.sampleclass.workflowdependencies()))
-    if parsed_args_dict["print_errors"]:
-      kwargs["uselogfiles"] = False
     return kwargs
 
   @classmethod

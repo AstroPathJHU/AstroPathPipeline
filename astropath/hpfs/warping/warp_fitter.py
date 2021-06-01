@@ -4,7 +4,7 @@ from .fit_parameter_set import FitParameterSet
 from .utilities import warp_logger, WarpingError, WarpFitResult, FieldLog
 from .plotting import OctetComparisonVisualization
 from .config import CONST
-from ...baseclasses.rectangle import rectangleoroverlapfilter
+from ...shared.rectangle import rectangleoroverlapfilter
 from ...slides.align.alignsample import AlignSampleFromXML
 from ...utilities.img_file_io import getImageHWLFromXMLFile, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
 from ...utilities.tableio import writetable

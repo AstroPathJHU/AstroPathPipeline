@@ -5,12 +5,13 @@ from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, ZoomFolderArgumentParser
+from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
-from .workflowdependency import ThingWithRoots, WorkflowDependency
+from .workflowdependency import WorkflowDependency
 
 class SampleDef(MyDataClass):
   """
@@ -70,7 +71,7 @@ class SampleDef(MyDataClass):
   def __bool__(self):
     return bool(self.isGood)
 
-class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots, RunFromArgumentParser):
+class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentParser):
   """
   Base class for all sample classes.
 
@@ -536,7 +537,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ThingWithRoots, Ru
       if misckwargs:
         raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
       sample = cls(**initkwargs)
-      sample.run(**runkwargs)
+      with sample:
+        sample.run(**runkwargs)
       return sample
 
   @classmethod
@@ -1309,6 +1311,23 @@ class XMLLayoutReader(SampleBase):
           )
         )
     return overlaps
+
+class XMLPolygonReader(SampleBase, XMLPolygonReaderArgumentParser):
+  """
+  Base class for any sample that reads the annotations from the XML metadata.
+  """
+  def __init__(self, *args, annotationsynonyms=None, **kwargs):
+    self.__annotationsynonyms = annotationsynonyms
+    super().__init__(*args, **kwargs)
+
+  @methodtools.lru_cache()
+  def getXMLpolygonannotations(self, *, pscale=None, apscale=None):
+    """
+    Read the annotations, vertices, and regions from the xml file
+    """
+    if pscale is None: return self.getXMLpolygonannotations(pscale=self.pscale, apscale=apscale)
+    if apscale is None: return self.getXMLpolygonannotations(pscale=pscale, apscale=self.apscale)
+    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger, annotationsynonyms=self.__annotationsynonyms).getXMLpolygonannotations()
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   """

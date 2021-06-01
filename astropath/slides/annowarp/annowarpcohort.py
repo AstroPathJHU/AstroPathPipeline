@@ -1,7 +1,7 @@
-from ...baseclasses.cohort import DbloadCohort, MaskCohort, WorkflowCohort, ZoomFolderCohort
-from .annowarpsample import AnnoWarpSampleBase, AnnoWarpSampleInformTissueMask
+from ...shared.cohort import DbloadCohort, MaskCohort, WorkflowCohort, XMLPolygonReaderCohort, ZoomFolderCohort
+from .annowarpsample import AnnoWarpArgumentParserBase, AnnoWarpArgumentParserAstroPathTissueMask, AnnoWarpArgumentParserInformTissueMask, AnnoWarpSampleAstroPathTissueMask, AnnoWarpSampleInformTissueMask
 
-class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCohort):
+class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCohort, XMLPolygonReaderCohort, AnnoWarpArgumentParserBase):
   """
   Cohort for running annowarp over a whole folder of samples.
 
@@ -9,7 +9,7 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCoh
   mintissuefraction: minimum amount of tissue in the tiles to
                      be used for alignment (default: 0.2)
   """
-  def __init__(self, *args, tilepixels=None, mintissuefraction=None, **kwargs):
+  def __init__(self, *args, tilepixels=None, mintissuefraction=None, readalignments=False, **kwargs):
     self.__initiatesamplekwargs = {
       "tilepixels": tilepixels,
       "mintissuefraction": mintissuefraction,
@@ -17,6 +17,7 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCoh
     for k, v in list(self.__initiatesamplekwargs.items()):
       if v is None:
         del self.__initiatesamplekwargs[k]
+    self.readalignments = readalignments
     super().__init__(*args, **kwargs)
 
   @property
@@ -26,53 +27,37 @@ class AnnoWarpCohortBase(DbloadCohort, ZoomFolderCohort, MaskCohort, WorkflowCoh
       **self.__initiatesamplekwargs,
     }
 
-  sampleclass = AnnoWarpSampleInformTissueMask
-
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("--tilepixels", type=int, default=AnnoWarpSampleInformTissueMask.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {AnnoWarpSampleInformTissueMask.defaulttilepixels})")
-    p.add_argument("--min-tissue-fraction", type=float, default=AnnoWarpSampleInformTissueMask.defaultmintissuefraction, help=f"minimum fraction of pixels in the tile that are considered tissue if it's to be used for alignment (default: {AnnoWarpSampleInformTissueMask.defaultmintissuefraction})")
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    kwargs = {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "tilepixels": parsed_args_dict.pop("tilepixels"),
-      "mintissuefraction": parsed_args_dict.pop("min_tissue_fraction"),
-    }
-    return kwargs
-
-class AnnoWarpCohort(AnnoWarpCohortBase):
-  def __init__(self, *args, readalignments=False, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.readalignments = readalignments
-
-  @classmethod
-  def argumentparserhelpmessage(cls):
-    return AnnoWarpSampleBase.__doc__
-
-  @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
-    p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
-    return p
-
-  @classmethod
-  def runkwargsfromargumentparser(cls, parsed_args_dict):
-    kwargs = {
-      **super().runkwargsfromargumentparser(parsed_args_dict),
-      "readalignments": parsed_args_dict.pop("dont_align"),
-    }
-    return kwargs
-
   @property
   def workflowkwargs(self):
     return {"layers": [1], **super().workflowkwargs}
 
+class AnnoWarpCohortInformTissueMask(AnnoWarpCohortBase, AnnoWarpArgumentParserInformTissueMask):
+  sampleclass = AnnoWarpSampleInformTissueMask
+
+class AnnoWarpCohortAstroPathTissueMask(AnnoWarpCohortBase, AnnoWarpArgumentParserAstroPathTissueMask):
+  sampleclass = AnnoWarpSampleAstroPathTissueMask
+
+class AnnoWarpCohortSelectMask(AnnoWarpCohortInformTissueMask, AnnoWarpCohortAstroPathTissueMask):
+  def __init__(self, *args, **kwargs):
+    raise TypeError("This class should not be instantiated")
+  sampleclass = None
+  @classmethod
+  def defaultunits(cls):
+    result, = {_.defaultunits() for _ in cls.__bases__}
+    return result
+  @classmethod
+  def runfromargumentparser(cls, args=None):
+    p = cls.makeargumentparser()
+    parsed_args = p.parse_args(args=args)
+    if parsed_args.inform_mask:
+      return AnnoWarpCohortInformTissueMask.runfromargumentparser(args=args)
+    elif parsed_args.astropath_mask:
+      return AnnoWarpCohortAstroPathTissueMask.runfromargumentparser(args=args)
+    else:
+      assert False
+
 def main(args=None):
-  AnnoWarpCohort.runfromargumentparser(args)
+  AnnoWarpCohortSelectMask.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

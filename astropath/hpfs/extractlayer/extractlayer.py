@@ -1,5 +1,5 @@
 import abc, argparse, collections, methodtools, numpy as np, pathlib, subprocess, tempfile
-from ...baseclasses.sample import Im3SampleBase
+from ...shared.sample import Im3SampleBase
 from ...utilities.misc import floattoint, memmapcontext
 
 here = pathlib.Path(__file__).parent

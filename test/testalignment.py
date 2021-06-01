@@ -1,5 +1,5 @@
 import contextlib2, logging, more_itertools, numpy as np, os, pathlib, re
-from astropath.baseclasses.sample import SampleDef
+from astropath.shared.sample import SampleDef
 from astropath.slides.align.aligncohort import AlignCohort
 from astropath.slides.align.alignsample import AlignSample, AlignSampleComponentTiff, AlignSampleFromXML, ImageStats
 from astropath.slides.align.overlap import AlignmentResult
@@ -291,7 +291,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testCohort(self, units="safe"):
     SlideID = "M21_1"
-    args = [str(thisfolder/"data"), str(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", str(thisfolder/"alignment_test_for_jenkins"), "--logroot", str(thisfolder/"alignment_test_for_jenkins"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits"]
+    args = [str(thisfolder/"data"), str(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", str(thisfolder/"alignment_test_for_jenkins"), "--logroot", str(thisfolder/"alignment_test_for_jenkins"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     AlignCohort.runfromargumentparser(args)
 
     a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")

@@ -1,12 +1,12 @@
 import contextlib, cv2, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, skimage
 
-from ...baseclasses.sample import ReadRectanglesBase, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
+from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiffMultiLayer
 
-class ZoomSampleBase(ReadRectanglesBase):
+class ZoomSampleBase(ReadRectanglesDbload):
   """
   Base class for any sample that does zooming and makes
   a wsi sized image

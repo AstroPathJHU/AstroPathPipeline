@@ -1,10 +1,10 @@
 import more_itertools, numpy as np, os, pathlib, PIL.Image, unittest
-from astropath.baseclasses.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
-from astropath.baseclasses.overlap import Overlap
-from astropath.baseclasses.rectangle import Rectangle
+from astropath.shared.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
+from astropath.shared.overlap import Overlap
+from astropath.shared.rectangle import Rectangle
 from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
-from .testbase import assertAlmostEqual
+from .testbase import assertAlmostEqual, temporarilyreplace
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -23,7 +23,7 @@ class TestPrepDb(unittest.TestCase):
       except FileNotFoundError:
         pass
 
-    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits"]
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--rerun-finished", "--rename-annotation", "Good tisue", "Good tissue"]
     if skipannotations:
       args.append("--skip-annotations")
     PrepDbCohort.runfromargumentparser(args)
@@ -70,4 +70,8 @@ class TestPrepDb(unittest.TestCase):
   def testPrepDbM206FastUnits(self):
     from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
     assembleqptiff()
-    self.testPrepDb(SlideID="M206", units="fast_microns")
+    xmlfile = thisfolder/"data"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml"
+    with open(xmlfile) as f:
+      contents = f.read()
+    with temporarilyreplace(xmlfile, contents.replace("Good tissue", "Good tisue")):
+      self.testPrepDb(SlideID="M206", units="fast_microns")

@@ -6,6 +6,17 @@ from ..utilities.dataclasses import MetaDataAnnotation
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithPscale
 
 class Polygon(units.ThingWithPscale, units.ThingWithApscale):
+  """
+  This class represents a polygon with holes in it.
+  It's more general than gdal because there can also
+  be nested holes (i.e. islands inside the holes).
+  You can convert it to gdal format as either a single
+  polygon if the holes don't have islands or as a list
+  of polygons if they do.
+
+  outerpolygon: a SimplePolygon
+  subtractpolygons: a list of Polygons to be subtracted from the outer polygon
+  """
   def __init__(self, outerpolygon, subtractpolygons):
     self.__outerpolygon = outerpolygon
     self.__subtractpolygons = subtractpolygons
@@ -36,6 +47,10 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   def subtractpolygons(self): return self.__subtractpolygons
 
   def __sub__(self, other):
+    """
+    Returns a polygon that is the same as self but with
+    other as a hole in it.
+    """
     if isinstance(other, numbers.Number) and other == 0: return self
     return Polygon(outerpolygon=self.outerpolygon, subtractpolygons=self.subtractpolygons+[other])
 
@@ -83,7 +98,8 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
 
   def gdalpolygons(self, **kwargs):
     """
-    An ogr.Geometry object corresponding to the polygon
+    A list of ogr.Geometry object corresponding to the polygon
+    and any islands inside its holes.
 
     imagescale: the scale to use for converting to pixels
                 (default: pscale)
@@ -98,6 +114,14 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     return [p.gdalpolygon(**kwargs) for p in self.polygonsforgdal]
 
   def gdalpolygon(self, **kwargs):
+    """
+    A single ogr.Geometry object corresponding to the polygon,
+    which only works if none of its holes have islands in them.
+
+    imagescale: the scale to use for converting to pixels
+                (default: pscale)
+    round: round to the nearest pixel?
+    """
     try:
       result, = self.gdalpolygons(**kwargs)
     except ValueError:
@@ -132,6 +156,15 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     )
 
   def numpyarray(self, *, shape, dtype, imagescale=None, shiftby=0):
+    """
+    A numpy array corresponding to the polygon, with 1 inside the
+    polygon and 0 outside.
+
+    shape: shape of the numpy array
+    dtype: dtype of the numpy array
+    imagescale: the scale to use for converting to pixels (default: pscale)
+    shiftby: vector to shift all the vertices by (default: [0, 0])
+    """
     if imagescale is None: imagescale = self.pscale
     array = np.zeros(shape, dtype)
     vv = self.outerpolygon.vertexarray
@@ -178,7 +211,10 @@ class SimplePolygon(Polygon):
   with the units functionality.  Also interfaces to gdal and matplotlib.
 
   vertices: a list of Vertex objects for the corners of the polygon
-  pixels: a string in GDAL format giving the corners of the polygon in pixels
+  OR
+  vertexarray: an array of [x, y] of the vertices
+  pscale: pscale of the polygon
+  apscale: apscale of the polygon
   """
 
   def __init__(self, *, vertexarray=None, vertices=None, pscale=None, apscale=None, power=1):
@@ -246,6 +282,12 @@ class SimplePolygon(Polygon):
     return np.all(self.vertexarray == other.vertexarray)
 
   def gdallinearring(self, *, imagescale=None, round=False):
+    """
+    Convert to a gdal linear ring.
+
+    imagescale: the scale to use for converting to pixels (default: pscale)
+    round: round to the nearest pixel (default: False)
+    """
     if imagescale is None: imagescale = self.pscale
     ring = ogr.Geometry(ogr.wkbLinearRing)
     for v in itertools.chain(self.vertexarray, [self.vertexarray[0]]):
@@ -264,6 +306,9 @@ class SimplePolygon(Polygon):
 
   @property
   def area(self):
+    """
+    Area of the polygon
+    """
     return units.convertpscale(
       polygonarea(self.vertexarray),
       self.apscale,
@@ -276,6 +321,9 @@ class SimplePolygon(Polygon):
     return [self.perimeter]
   @property
   def perimeter(self):
+    """
+    Perimeter of the polygon
+    """
     return units.convertpscale(
       polygonperimeter(self.vertexarray),
       self.apscale,
@@ -286,6 +334,10 @@ class SimplePolygon(Polygon):
     return f"PolygonFromGdal(pixels={str(self.gdalpolygon(round=round))!r}, pscale={self.pscale}, apscale={self.apscale})"
 
 def PolygonFromGdal(*, pixels, pscale, apscale):
+  """
+  Create a polygon from a GDAL format string or an
+  ogr.Geometry object
+  """
   if isinstance(pixels, ogr.Geometry):
     gdalpolygon = pixels
   else:
@@ -316,7 +368,7 @@ class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
 
   Usage:
   class HasPolygon(DataClassWithPolygon):
-    poly: polygonfield()
+    poly: Polygon = polygonfield()
   ihaveatriangle = HasPolygon(poly="POLYGON((0 0, 1 1, 1 0))", pscale=2, apscale=1)
   """
 
@@ -358,6 +410,10 @@ def polygonfield(**metadata):
   return MetaDataAnnotation(Polygon, **metadata)
 
 class _OgrImport:
+  """
+  Helper class to import ogr when needed, but allow using the other
+  features of this module even if gdal is not installed
+  """
   def __getattr__(self, attr):
     global ogr
     try:

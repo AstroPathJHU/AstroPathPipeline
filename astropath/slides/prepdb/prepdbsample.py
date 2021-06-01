@@ -1,14 +1,13 @@
 import methodtools, numpy as np, PIL, skimage
-from ...baseclasses.annotationpolygonxmlreader import XMLPolygonAnnotationReader
-from ...baseclasses.argumentparser import DbloadArgumentParser
-from ...baseclasses.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
-from ...baseclasses.overlap import RectangleOverlapCollection
-from ...baseclasses.qptiff import QPTiff
-from ...baseclasses.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
-from ...baseclasses.workflowdependency import ShredXML
+from ...shared.argumentparser import DbloadArgumentParser, XMLPolygonReaderArgumentParser
+from ...shared.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
+from ...shared.overlap import RectangleOverlapCollection
+from ...shared.qptiff import QPTiff
+from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader, XMLPolygonReader
+from ...shared.workflowdependency import ShredXML
 from ...utilities import units
 
-class PrepDbArgumentParser(DbloadArgumentParser):
+class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser):
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
@@ -22,7 +21,7 @@ class PrepDbArgumentParser(DbloadArgumentParser):
       "skipannotations": parsed_args_dict.pop("skip_annotations"),
     }
 
-class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
+class PrepDbSampleBase(XMLLayoutReader, XMLPolygonReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
   """
   The prepdb stage of the pipeline extracts metadata for a sample from the `.xml` files
   and writes it out to `.csv` files.
@@ -67,10 +66,6 @@ class PrepDbSampleBase(XMLLayoutReader, RectangleOverlapCollection, WorkflowSamp
 
   @property
   def globals(self): return self.getXMLplan()[1]
-
-  @methodtools.lru_cache()
-  def getXMLpolygonannotations(self):
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=self.pscale, apscale=self.apscale, logger=self.logger).getXMLpolygonannotations()
 
   @property
   def annotations(self): return self.getXMLpolygonannotations()[0]

@@ -1,8 +1,9 @@
 import cv2, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
-from ...baseclasses.csvclasses import constantsdict
-from ...baseclasses.polygon import DataClassWithPolygon, Polygon, polygonfield
-from ...baseclasses.rectangle import GeomLoadRectangle, rectanglefilter
-from ...baseclasses.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
+from ...shared.contours import findcontoursaspolygons
+from ...shared.csvclasses import constantsdict
+from ...shared.polygon import DataClassWithPolygon, Polygon, polygonfield
+from ...shared.rectangle import GeomLoadRectangle, rectanglefilter
+from ...shared.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
 from ...utilities.misc import dict_product, dummylogger
 from ...utilities.tableio import readtable, writetable
@@ -10,7 +11,6 @@ from ...utilities.units import ThingWithApscale, ThingWithPscale
 from ...utilities.units.dataclasses import distancefield
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiffMultiLayer
-from ..geom.contours import findcontoursaspolygons
 
 class GeomLoadField(Field, GeomLoadRectangle):
   pass

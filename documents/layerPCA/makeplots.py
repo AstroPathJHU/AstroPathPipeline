@@ -1,6 +1,6 @@
 import argparse, matplotlib.pyplot as plt, numpy as np, pathlib, pickle, sklearn.decomposition
 
-from astropath.baseclasses.sample import ReadRectanglesOverlapsDbloadIm3
+from astropath.shared.sample import ReadRectanglesOverlapsDbloadIm3
 from astropath.utilities import units
 
 here = pathlib.Path(__file__).parent

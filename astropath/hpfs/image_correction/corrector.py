@@ -32,7 +32,7 @@ class RawfileCorrector :
     def __init__(self,args,logger=None) :
         """
         args = the set of command line arguments from ArgumentParser
-        logger = the baseclasses.logging.MyLogger logger to use (if None, a custom logger with be used)
+        logger = the shared.logging.MyLogger logger to use (if None, a custom logger with be used)
         """
         #set the rawfile/root directories to use
         self._rawfile_top_dir = args.rawfile_top_dir

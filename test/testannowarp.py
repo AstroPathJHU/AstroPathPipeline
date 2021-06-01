@@ -1,9 +1,9 @@
 import contextlib, more_itertools, numpy as np, os, pathlib, re
 
-from astropath.baseclasses.csvclasses import Region
-from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
+from astropath.shared.csvclasses import Region
+from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, AnnoWarpSampleSelectMask, WarpedVertex
 from astropath.slides.annowarp.detectbigshift import DetectBigShiftSample
-from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohort
+from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohortSelectMask
 from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath.utilities import units
 
@@ -57,8 +57,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     regionsfilename = s.regionscsv
     referenceregionsfilename = thisfolder/"reference"/"annowarp"/SlideID/s.regionscsv.name
 
-    with s:
-      s.runannowarp()
+    AnnoWarpSampleSelectMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--inform-mask", "--allow-local-edits"])
 
     if not s.runstatus:
       raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus}")
@@ -120,11 +119,11 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     zoomroot = thisfolder/"reference"/"zoom"
     logroot = thisfolder/"annowarp_test_for_jenkins"
     maskroot = thisfolder/"reference"/"stitchmask"
-    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot)]
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot), "--ignore-dependencies", "--rerun-finished", "--inform-mask"]
     with contextlib.ExitStack() as stack:
       for csv in "annotations", "regions", "vertices":
         stack.enter_context(temporarilyremove(root/SlideID/"dbload"/f"{SlideID}_{csv}.csv"))
-      AnnoWarpCohort.runfromargumentparser(args)
+      AnnoWarpCohortSelectMask.runfromargumentparser(args)
 
   def testConstraint(self, SlideID="M206"):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"annowarp_test_for_jenkins")
