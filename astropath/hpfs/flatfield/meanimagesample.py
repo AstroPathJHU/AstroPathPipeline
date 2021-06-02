@@ -14,6 +14,10 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
     #################### PUBLIC FUNCTIONS ####################
 
     def __init__(self,*args,workingdir=pathlib.Path(CONST.MEANIMAGE_DIRNAME),et_offset_file=None,skip_masking=False,**kwargs) :
+        #set some runmode variables
+        self._et_offset_file = et_offset_file
+        self._skip_masking = skip_masking
+        #initialize the parent classes
         super().__init__(*args,**kwargs)
         #set the path to the working directory based on a kwarg
         self._workingdirpath = workingdir
@@ -21,9 +25,6 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         if self._workingdirpath.name==str(self._workingdirpath) :
             self._workingdirpath = self.im3folder / workingdir
         self._workingdirpath.mkdir(parents=True,exist_ok=True)
-        #set some other runmode variables
-        self._et_offset_file = et_offset_file
-        self._skip_masking = skip_masking
         self.image_masking_folder = self._workingdirpath / CONST.IMAGE_MASKING_SUBDIR_NAME if not self._skip_masking else None
 
     def run(self) :
