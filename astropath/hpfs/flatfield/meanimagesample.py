@@ -26,6 +26,9 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         self._skip_masking = skip_masking
         self.image_masking_folder = self._workingdirpath / CONST.IMAGE_MASKING_SUBDIR_NAME if not self._skip_masking else None
 
+    def run(self) :
+        print('MADE IT TO RUN!')
+
     #################### PROPERTIES ####################
 
     @property
