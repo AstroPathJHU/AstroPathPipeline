@@ -1321,13 +1321,19 @@ class XMLPolygonReader(SampleBase, XMLPolygonReaderArgumentParser):
     super().__init__(*args, **kwargs)
 
   @methodtools.lru_cache()
+  def __getXMLpolygonannotations(self, *, pscale=None, apscale=None):
+    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger, annotationsynonyms=self.__annotationsynonyms).getXMLpolygonannotations()
+
+  @methodtools.lru_cache()
   def getXMLpolygonannotations(self, *, pscale=None, apscale=None):
     """
     Read the annotations, vertices, and regions from the xml file
     """
-    if pscale is None: return self.getXMLpolygonannotations(pscale=self.pscale, apscale=apscale)
-    if apscale is None: return self.getXMLpolygonannotations(pscale=pscale, apscale=self.apscale)
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger, annotationsynonyms=self.__annotationsynonyms).getXMLpolygonannotations()
+    if pscale is None: pscale = self.pscale
+    if apscale is None: apscale = self.apscale
+    #use a nested lru_cache because otherwise it's sensitive to the order
+    #of the kwargs (pscale=1, apscale=2 is not the same as apscale=2, pscale=1)
+    return self.__getXMLpolygonannotations(pscale=pscale, apscale=apscale)
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   """
