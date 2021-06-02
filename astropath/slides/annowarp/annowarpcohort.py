@@ -1,8 +1,7 @@
-from ...shared.argumentparser import MaskArgumentParser, SelectRectanglesArgumentParser
-from ...shared.cohort import DbloadCohort, MaskCohort, WorkflowCohort, XMLPolygonReaderCohort, ZoomFolderCohort
+from ...shared.cohort import DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort, XMLPolygonReaderCohort, ZoomFolderCohort
 from .annowarpsample import AnnoWarpArgumentParserBase, AnnoWarpArgumentParserAstroPathTissueMask, AnnoWarpArgumentParserInformTissueMask, AnnoWarpArgumentParserTissueMask, AnnoWarpSampleAstroPathTissueMask, AnnoWarpSampleInformTissueMask
 
-class AnnoWarpCohortBase(DbloadCohort, WorkflowCohort, XMLPolygonReaderCohort, ZoomFolderCohort, AnnoWarpArgumentParserBase):
+class AnnoWarpCohortBase(DbloadCohort, SelectRectanglesCohort, WorkflowCohort, XMLPolygonReaderCohort, ZoomFolderCohort, AnnoWarpArgumentParserBase):
   """
   Cohort for running annowarp over a whole folder of samples.
   """
@@ -26,7 +25,7 @@ class AnnoWarpCohortBase(DbloadCohort, WorkflowCohort, XMLPolygonReaderCohort, Z
   def workflowkwargs(self):
     return {"layers": [1], **super().workflowkwargs}
 
-class AnnoWarpCohortMask(AnnoWarpCohortBase, MaskCohort, WorkflowCohort, AnnoWarpArgumentParserTissueMask):
+class AnnoWarpCohortMask(AnnoWarpCohortBase, MaskCohort, SelectRectanglesCohort, WorkflowCohort, AnnoWarpArgumentParserTissueMask):
   def __init__(self, *args, mintissuefraction=None, **kwargs):
     self.__initiatesamplekwargs = {
       "mintissuefraction": mintissuefraction,
