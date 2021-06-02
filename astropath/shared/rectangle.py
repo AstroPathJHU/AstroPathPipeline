@@ -3,6 +3,7 @@ from ..utilities import units
 from ..utilities.misc import floattoint, memmapcontext
 from ..utilities.tableio import timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
+from ..utilities.config import CONST as UNIV_CONST
 
 class Rectangle(DataClassWithPscale):
   """
@@ -321,11 +322,11 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     The full file path to the image file
     """
     if self.__filetype=="flatWarp" :
-      ext = ".fw"
+      ext = UNIV_CONST.FLATW_EXT
     elif self.__filetype=="camWarp" :
       ext = ".camWarp"
     elif self.__filetype=="raw" :
-      ext = ".Data.dat"
+      ext = UNIV_CONST.RAW_EXT
     else :
       raise ValueError(f"requested file type {self.__filetype} not recognized")
 
@@ -417,7 +418,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
       basename = result.name
       if basename.endswith(".camWarp") or basename.endswith(".dat"):
         basename += f"_layer{self.layer:02d}"
-      elif basename.endswith(".fw"):
+      elif basename.endswith(UNIV_CONST.FLATW_EXT):
         basename += f"{self.layer:02d}"
       else:
         assert False
