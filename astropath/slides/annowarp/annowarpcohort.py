@@ -1,5 +1,5 @@
 from ...shared.cohort import DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort, XMLPolygonReaderCohort, ZoomFolderCohort
-from .annowarpsample import AnnoWarpArgumentParserBase, AnnoWarpArgumentParserAstroPathTissueMask, AnnoWarpArgumentParserInformTissueMask, AnnoWarpArgumentParserTissueMask, AnnoWarpSampleAstroPathTissueMask, AnnoWarpSampleInformTissueMask
+from .annowarpsample import AnnoWarpArgumentParserBase, AnnoWarpArgumentParserTissueMask, AnnoWarpSampleAstroPathTissueMask, AnnoWarpSampleInformTissueMask
 
 class AnnoWarpCohortBase(DbloadCohort, SelectRectanglesCohort, WorkflowCohort, XMLPolygonReaderCohort, ZoomFolderCohort, AnnoWarpArgumentParserBase):
   """
@@ -43,35 +43,14 @@ class AnnoWarpCohortMask(AnnoWarpCohortBase, MaskCohort, SelectRectanglesCohort,
     }
 
 
-class AnnoWarpCohortInformTissueMask(AnnoWarpCohortMask, AnnoWarpArgumentParserInformTissueMask):
+class AnnoWarpCohortInformTissueMask(AnnoWarpCohortMask):
   sampleclass = AnnoWarpSampleInformTissueMask
 
-class AnnoWarpCohortAstroPathTissueMask(AnnoWarpCohortMask, AnnoWarpArgumentParserAstroPathTissueMask):
+class AnnoWarpCohortAstroPathTissueMask(AnnoWarpCohortMask):
   sampleclass = AnnoWarpSampleAstroPathTissueMask
 
-class AnnoWarpCohortSelectMask(AnnoWarpCohortInformTissueMask, AnnoWarpCohortAstroPathTissueMask):
-  def __init__(self, *args, **kwargs):
-    raise TypeError("This class should not be instantiated")
-  sampleclass = None
-  @classmethod
-  def defaultunits(cls):
-    if cls is AnnoWarpCohortSelectMask:
-      result, = {_.defaultunits() for _ in cls.__bases__}
-      return result
-    return super().defaultunits()
-  @classmethod
-  def runfromargumentparser(cls, args=None):
-    p = cls.makeargumentparser()
-    parsed_args = p.parse_args(args=args)
-    if parsed_args.inform_mask:
-      return AnnoWarpCohortInformTissueMask.runfromargumentparser(args=args)
-    elif parsed_args.astropath_mask:
-      return AnnoWarpCohortAstroPathTissueMask.runfromargumentparser(args=args)
-    else:
-      assert False
-
 def main(args=None):
-  AnnoWarpCohortSelectMask.runfromargumentparser(args)
+  AnnoWarpCohortAstroPathTissueMask.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

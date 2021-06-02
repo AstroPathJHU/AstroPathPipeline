@@ -26,8 +26,8 @@ class AlignCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohor
   def runkwargsfromargumentparser(cls, parsed_args_dict):
     kwargs = {
       **super().runkwargsfromargumentparser(parsed_args_dict),
-      "doalignment": not parsed_args_dict.pop("dont_align"),
-      "dostitching": not parsed_args_dict.pop("dont_stitch"),
+      "doalignment": not parsed_args_dict.pop("dont_align", False),
+      "dostitching": not parsed_args_dict.pop("dont_stitch", False),
     }
     return kwargs
 

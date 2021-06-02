@@ -1,7 +1,7 @@
 import argparse
 from .argumentparser import RunFromArgumentParserBase
 from ..slides.align.aligncohort import AlignCohort
-from ..slides.annowarp.annowarpcohort import AnnoWarpCohortSelectMask
+from ..slides.annowarp.annowarpcohort import AnnoWarpCohortAstroPathTissueMask
 from ..slides.csvscan.csvscancohort import CsvScanCohort
 from ..slides.deepzoom.deepzoomcohort import DeepZoomCohort
 from ..slides.geom.geomcohort import GeomCohort
@@ -11,7 +11,7 @@ from ..slides.zoom.stitchmaskcohort import StitchAstroPathTissueMaskCohort
 from ..slides.zoom.zoomcohort import ZoomCohort
 
 class Workflow(RunFromArgumentParserBase):
-  cohorts = PrepDbCohort, AlignCohort, ZoomCohort, DeepZoomCohort, StitchAstroPathTissueMaskCohort, AnnoWarpCohortSelectMask, GeomCohort, GeomCellCohort, CsvScanCohort
+  cohorts = PrepDbCohort, AlignCohort, ZoomCohort, DeepZoomCohort, StitchAstroPathTissueMaskCohort, AnnoWarpCohortAstroPathTissueMask, GeomCohort, GeomCellCohort, CsvScanCohort
 
   _istmpclass = False
   @classmethod
@@ -28,6 +28,7 @@ class Workflow(RunFromArgumentParserBase):
   def runfromparsedargs(cls, parsed_args):
     for cohort in cls.cohorts:
       p = cohort.makeargumentparser(_forworkflow=True)
+      print(cohort)
       cohort.runfromparsedargs(
         argparse.Namespace(**{
           k: v for k, v in parsed_args.__dict__.items()
