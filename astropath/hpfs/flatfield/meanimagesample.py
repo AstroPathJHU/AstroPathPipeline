@@ -66,6 +66,7 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
+            'filetype': parsed_args_dict.pop('filetype')
             'workingdir': parsed_args_dict.pop('workingdir'),
             'et_offset_file': None if parsed_args_dict.pop('skip_exposure_time_correction') else parsed_args_dict.pop('exposure_time_offset_file'),
             'skip_masking': parsed_args_dict.pop('skip_masking')
