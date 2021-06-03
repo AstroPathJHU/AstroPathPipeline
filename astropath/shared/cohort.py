@@ -402,7 +402,11 @@ class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
     super().__init__(*args, **kwargs)
   @property
   def initiatesamplekwargs(self):
-    return {**super().initiatesamplekwargs, "annotationsynonyms": self.__annotationsynonyms}
+    return {
+      **super().initiatesamplekwargs,
+      "annotationsynonyms": self.__annotationsynonyms,
+      "reorderannotations": self.__reorderannotations,
+    }
 
 class WorkflowCohort(Cohort):
   """

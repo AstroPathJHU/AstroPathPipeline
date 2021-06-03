@@ -1316,8 +1316,9 @@ class XMLPolygonReader(SampleBase, XMLPolygonReaderArgumentParser):
   """
   Base class for any sample that reads the annotations from the XML metadata.
   """
-  def __init__(self, *args, annotationsynonyms=None, **kwargs):
+  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
     self.__annotationsynonyms = annotationsynonyms
+    self.__reorderannotations = reorderannotations
     super().__init__(*args, **kwargs)
 
   @methodtools.lru_cache()
@@ -1327,7 +1328,7 @@ class XMLPolygonReader(SampleBase, XMLPolygonReaderArgumentParser):
     """
     if pscale is None: return self.getXMLpolygonannotations(pscale=self.pscale, apscale=apscale)
     if apscale is None: return self.getXMLpolygonannotations(pscale=pscale, apscale=self.apscale)
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger, annotationsynonyms=self.__annotationsynonyms).getXMLpolygonannotations()
+    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger, annotationsynonyms=self.__annotationsynonyms, reorderannotations=self.__reorderannotations).getXMLpolygonannotations()
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   """
