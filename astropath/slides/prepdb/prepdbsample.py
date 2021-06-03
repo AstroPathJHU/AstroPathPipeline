@@ -368,7 +368,7 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
 
   @classmethod
   def workflowdependencies(cls):
-    return [ShredXML] + super().workflowdependencies()
+    return super().workflowdependencies()
 
   @classmethod
   def logstartregex(cls):
