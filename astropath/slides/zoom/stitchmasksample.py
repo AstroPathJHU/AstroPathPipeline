@@ -297,8 +297,8 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
     return unpackTissueMask(
         field.tissuemaskfile,
         (
-          floattoint(float(self.fheight)),
-          floattoint(float(self.fwidth)),
+          floattoint(float(self.fheight/self.onepixel)),
+          floattoint(float(self.fwidth/self.onepixel)),
         )
       )
 

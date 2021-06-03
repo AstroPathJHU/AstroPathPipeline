@@ -23,7 +23,7 @@ class TestStitchMask(TestBaseCopyInput, TestBaseSaveOutput):
       for suffix in ("npz", "bin")
     ]
 
-  def _testStitchMask(self, *, SlideID, masktype, maskfilesuffix):
+  def _testStitchMask(self, *, SlideID, masktype, maskfilesuffix, units):
     root = thisfolder/"data"
     maskroot = thisfolder/"stitchmask_test_for_jenkins"
     samplecls, cohortcls = {
@@ -34,7 +34,7 @@ class TestStitchMask(TestBaseCopyInput, TestBaseSaveOutput):
     dbloadroot = None
     if SlideID == "M21_1": dbloadroot = thisfolder/"reference"/"alignment"
 
-    args = [os.fspath(root), "--maskroot", os.fspath(maskroot), "--logroot", os.fspath(maskroot), "--mask-file-suffix", maskfilesuffix, "--allow-local-edits", "--sampleregex", SlideID+"$", "--debug", "--ignore-dependencies", "--rerun-finished"]
+    args = [os.fspath(root), "--maskroot", os.fspath(maskroot), "--logroot", os.fspath(maskroot), "--mask-file-suffix", maskfilesuffix, "--allow-local-edits", "--sampleregex", SlideID+"$", "--debug", "--ignore-dependencies", "--rerun-finished", "--units", units]
     if dbloadroot is not None: args += ["--dbloadroot", os.fspath(dbloadroot)]
     cohortcls.runfromargumentparser(args)
 
@@ -52,8 +52,13 @@ class TestStitchMask(TestBaseCopyInput, TestBaseSaveOutput):
       self.removeoutput()
 
   def testStitchInformMask(self, *, SlideID="M206"):
-    self._testStitchMask(SlideID=SlideID, masktype="inform", maskfilesuffix=".npz")
+    self._testStitchMask(SlideID=SlideID, masktype="inform", maskfilesuffix=".npz", units="safe")
+
+  def testStitchInformMaskFastUnits(self, *, SlideID="M206"):
+    self._testStitchMask(SlideID=SlideID, masktype="inform", maskfilesuffix=".npz", units="fast")
+
+  def testStitchAstroPathTissueMask(self, SlideID="M21_1"):
+    self._testStitchMask(SlideID=SlideID, masktype="astropathtissue", maskfilesuffix=".bin", units="safe")
 
   def testStitchAstroPathTissueMaskFastUnits(self, SlideID="M21_1"):
-    with units.setup_context("fast"):
-      self._testStitchMask(SlideID=SlideID, masktype="astropathtissue", maskfilesuffix=".bin")
+    self._testStitchMask(SlideID=SlideID, masktype="astropathtissue", maskfilesuffix=".bin", units="fast")
