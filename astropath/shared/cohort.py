@@ -377,7 +377,7 @@ class PhenotypeFolderCohort(Cohort):
   """
   def __init__(self, *args, phenotyperoot=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if phenotyperoot is None: phenotyperoot = self.root
+    if phenotyperoot is None: phenotyperoot = self.informdataroot
     self.phenotyperoot = pathlib.Path(phenotyperoot)
 
   @property

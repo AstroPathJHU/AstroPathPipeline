@@ -38,11 +38,12 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
     return [_ for _ in folder.rglob("*") if _.is_file() and _ not in copiedfiles]
 
   def testWorkflow(self, units="safe"):
-    root = thisfolder/"workflow_test_for_jenkins"/"Clinical_Specimen_0"
+    testfolder = thisfolder/"workflow_test_for_jenkins"
+    root = testfolder/"Clinical_Specimen_0"
     datafolder = thisfolder/"data"
     root2 = datafolder/"flatw"
-    zoomroot = root/"zoom"
-    deepzoomroot = root/"deepzoom"
+    zoomroot = testfolder/"zoom"
+    deepzoomroot = testfolder/"deepzoom"
     SlideID = "M21_1"
     selectrectangles = 1, 17, 18, 23, 40
     args = [os.fspath(root), os.fspath(root2), "--im3root", os.fspath(datafolder), "--informdataroot", os.fspath(datafolder), "--zoomroot", os.fspath(zoomroot), "--deepzoomroot", os.fspath(deepzoomroot), "--selectrectangles", *(str(_) for _ in selectrectangles), "--layers", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
