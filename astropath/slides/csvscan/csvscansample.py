@@ -1,4 +1,4 @@
-import abc, itertools, pathlib, re
+import abc, pathlib, re
 
 from ...shared.argumentparser import RunFromArgumentParser
 from ...shared.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
@@ -45,8 +45,8 @@ class CsvScanBase(RunFromArgumentParser, TableReader):
     )
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
     return p
 
@@ -111,20 +111,24 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
     expectcsvs |= {
       r.phenotypecsv for r in self.rectangles if hasanycells(r)
     }
-    expectcsvs |= {
-      self.im3folder/f"{self.SlideID}-mean.csv"
-    }
 
+    meanimagecsvs = {
+      self.im3folder/f"{self.SlideID}-mean.csv",
+      self.im3folder/"meanimage"/"fields_used_meanimage.csv",
+      self.im3folder/"meanimage"/"metadata_summary_stacked_images_meanimage.csv",
+      self.im3folder/"meanimage"/"thresholding_info"/f"{self.SlideID}_thresholding_plots"/f"metadata_summary_tissue_edges_{self.SlideID}.csv",
+    }
     optionalcsvs = {
       self.csv(_) for _ in (
         "globals",
       )
     } | {
       r.phenotypeQAQCcsv for r in self.rectangles if hasanycells(r)
-    }
+    } | meanimagecsvs
+    goodcsvs = set()
     unknowncsvs = set()
     folders = {self.mainfolder, self.dbload.parent, self.geomfolder.parent, self.phenotypefolder.parent.parent}
-    for csv in itertools.chain(*(folder.rglob("*.csv") for folder in folders)):
+    for folder, csv in ((folder, csv) for folder in folders for csv in folder.rglob("*.csv")):
       if csv == self.csv("loadfiles"):
         continue
 
@@ -134,8 +138,11 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         try:
           optionalcsvs.remove(csv)
         except KeyError:
+          if any(otherfolder/csv.relative_to(folder) in expectcsvs|optionalcsvs|goodcsvs for otherfolder in folders): continue
           unknowncsvs.add(csv)
           continue
+
+      goodcsvs.add(csv)
 
       if csv.parent == self.dbload:
         match = re.match(f"{self.SlideID}_(.*)[.]csv$", csv.name)
@@ -182,7 +189,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         fieldsizelimit = None
       elif csv.parent == self.phenotypeQAQCtablesfolder:
         continue
-      elif csv == self.im3folder/f"{self.SlideID}-mean.csv":
+      elif csv in meanimagecsvs:
         continue
       else:
         assert False, csv

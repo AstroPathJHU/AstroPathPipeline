@@ -24,7 +24,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
   def globalcsvs(self):
     sampledefs = self.readtable(self.root/"sampledef.csv", SampleDef)
     slideids = [s.SlideID for s in sampledefs]
-    for folder in {self.root, self.dbloadroot, self.geomroot, self.phenotyperoot}:
+    for folder in {self.root}:
       for subfolder in folder.iterdir():
         if subfolder.name.endswith(".csv"): yield subfolder
         if not subfolder.is_dir(): continue

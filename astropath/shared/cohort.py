@@ -17,11 +17,15 @@ class Cohort(RunFromArgumentParser):
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, xmlfolders=[], version_requirement=None):
+  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, im3root=None, informdataroot=None, xmlfolders=[], version_requirement=None):
     super().__init__()
     self.root = pathlib.Path(root)
     if logroot is None: logroot = root
     self.logroot = pathlib.Path(logroot)
+    if im3root is None: im3root = root
+    self.im3root = pathlib.Path(im3root)
+    if informdataroot is None: informdataroot = root
+    self.informdataroot = pathlib.Path(informdataroot)
     self.slideidfilters = slideidfilters
     self.samplefilters = samplefilters
     self.debug = debug
@@ -72,7 +76,7 @@ class Cohort(RunFromArgumentParser):
   @property
   def initiatesamplekwargs(self):
     "Keyword arguments to pass to the sample class"
-    return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "xmlfolders": self.xmlfolders}
+    return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders}
 
   @classmethod
   def logmodule(cls):
@@ -81,7 +85,7 @@ class Cohort(RunFromArgumentParser):
 
   @property
   def rootnames(self):
-    return {*super().rootnames, "root", "logroot"}
+    return {*super().rootnames, "root", "logroot", "im3root", "informdataroot"}
   @property
   def workflowkwargs(self):
     return self.rootkwargs
@@ -137,11 +141,11 @@ class Cohort(RunFromArgumentParser):
     return cls.sampleclass.defaultunits()
 
   @classmethod
-  def makeargumentparser(cls):
+  def makeargumentparser(cls, **kwargs):
     """
     Create an argument parser to run this cohort on the command line
     """
-    p = super().makeargumentparser()
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
     p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
@@ -286,7 +290,7 @@ class MaskCohort(Cohort, MaskArgumentParser):
   """
   def __init__(self, *args, maskroot=None, maskfilesuffix=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if maskroot is None: maskroot = self.root
+    if maskroot is None: maskroot = self.im3root
     self.maskroot = pathlib.Path(maskroot)
     if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
     self.maskfilesuffix = maskfilesuffix
@@ -373,7 +377,7 @@ class PhenotypeFolderCohort(Cohort):
   """
   def __init__(self, *args, phenotyperoot=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if phenotyperoot is None: phenotyperoot = self.root
+    if phenotyperoot is None: phenotyperoot = self.informdataroot
     self.phenotyperoot = pathlib.Path(phenotyperoot)
 
   @property
@@ -381,8 +385,8 @@ class PhenotypeFolderCohort(Cohort):
     return {**super().initiatesamplekwargs, "phenotyperoot": self.phenotyperoot}
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--phenotyperoot", type=pathlib.Path, help="root location of phenotype folder (default: same as root)")
     return p
 
@@ -415,8 +419,8 @@ class WorkflowCohort(Cohort):
   """
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
     p.add_argument("--ignore-dependencies", action="store_false", dest="dependencies", help="try (and probably fail) to run samples whose dependencies have not yet finished")
     p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
