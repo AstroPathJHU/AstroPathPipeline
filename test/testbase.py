@@ -108,4 +108,7 @@ class TestBaseCopyInput(abc.ABC, unittest.TestCase):
     super().tearDownClass()
     if cls.removecopiedinput():
       for copyfrom, copytofolder in cls.filestocopy():
-        (copytofolder/copyfrom.name).unlink()
+        try:
+          (copytofolder/copyfrom.name).unlink()
+        except FileNotFoundError:
+          pass

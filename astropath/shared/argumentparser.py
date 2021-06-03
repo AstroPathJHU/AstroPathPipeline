@@ -1,4 +1,4 @@
-import abc, argparse, pathlib
+import abc, argparse, pathlib, re
 from .annotationpolygonxmlreader import add_rename_annotation_argument
 from .workflowdependency import ThingWithRoots
 
@@ -14,27 +14,62 @@ class MRODebuggingMetaClass(abc.ABCMeta):
           print("------------------------")
           for c in base.__mro__:
             print(c.__name__)
+        print("************************")
+        print("filtered for the bad ones:")
+        for base in bases:
+          bad = [c for c in base.__mro__ if re.search(rf"\b{c.__name__}\b", str(e))]
+          if len(bad) < 2: continue
+          print("------------------------")
+          print(base.__name__)
+          for c in bad:
+            print(c.__name__)
         print("========================")
       raise
 
-class RunFromArgumentParser(ThingWithRoots, metaclass=MRODebuggingMetaClass):
+class RunFromArgumentParserBase(metaclass=MRODebuggingMetaClass):
   @classmethod
   def argumentparserhelpmessage(cls):
     return cls.__doc__
 
+  @classmethod
+  def makeargumentparser(cls, *, _forworkflow=False):
+    """
+    Create an argument parser to run on the command line
+    """
+    p = argparse.ArgumentParser(description=cls.argumentparserhelpmessage())
+    return p
+
+  @classmethod
+  def runfromargumentparser(cls, args=None, **kwargs):
+    """
+    Main function to run from command line arguments.
+    This function can be called in __main__
+    """
+    p = cls.makeargumentparser()
+    parsed_args = p.parse_args(args=args)
+    return cls.runfromparsedargs(parsed_args, **kwargs)
+
+  @classmethod
+  @abc.abstractmethod
+  def runfromparsedargs(cls, parsed_args):
+    pass
+
+class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
   @classmethod
   @abc.abstractmethod
   def defaultunits(cls):
     pass
 
   @classmethod
-  def makeargumentparser(cls):
+  def makeargumentparser(cls, **kwargs):
     """
     Create an argument parser to run on the command line
     """
-    p = argparse.ArgumentParser(description=cls.argumentparserhelpmessage())
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("root", type=pathlib.Path, help="The Clinical_Specimen folder where sample data is stored")
     p.add_argument("--units", choices=("safe", "fast", "fast_pixels", "fast_microns"), default=cls.defaultunits(), help=f"unit implementation (default: {cls.defaultunits()}; safe is only needed for debugging code)")
+    p.add_argument("--im3root", type=pathlib.Path, help="root location where the sample im3 folders, containing im3 files from the microscope and some xml metadata, are stored (default: same as root)")
+    p.add_argument("--informdataroot", type=pathlib.Path, help="root location where the sample inform_data folders, which contain outputs from inform, are stored (default: same as root)")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--logroot", type=pathlib.Path, help="root location where the log files are stored (default: same as root)")
     g.add_argument("--no-log", action="store_true", help="do not write to log files")
@@ -50,11 +85,15 @@ class RunFromArgumentParser(ThingWithRoots, metaclass=MRODebuggingMetaClass):
     dct = parsed_args_dict
     initkwargs = {
       "root": dct.pop("root"),
+      "im3root": dct.pop("im3root"),
+      "informdataroot": dct.pop("informdataroot"),
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
       "xmlfolders": dct.pop("xmlfolders"),
     }
     if initkwargs["logroot"] is None: initkwargs["logroot"] = initkwargs["root"]
+    if initkwargs["im3root"] is None: initkwargs["im3root"] = initkwargs["root"]
+    if initkwargs["informdataroot"] is None: initkwargs["informdataroot"] = initkwargs["root"]
     return initkwargs
 
   @classmethod
@@ -123,14 +162,8 @@ class RunFromArgumentParser(ThingWithRoots, metaclass=MRODebuggingMetaClass):
   def runfromargsdicts(cls, **argsdicts): pass
 
   @classmethod
-  def runfromargumentparser(cls, args=None):
-    """
-    Main function to run from command line arguments.
-    This function can be called in __main__
-    """
-    p = cls.makeargumentparser()
-    args = p.parse_args(args=args)
-    argsdict = args.__dict__.copy()
+  def runfromparsedargs(cls, parsed_args):
+    argsdict = parsed_args.__dict__.copy()
     argsdicts = cls.argsdictsfromargumentparser(argsdict)
     if argsdict:
       raise TypeError(f"Some command line arguments were not processed:\n{argsdict}")
@@ -138,8 +171,8 @@ class RunFromArgumentParser(ThingWithRoots, metaclass=MRODebuggingMetaClass):
 
 class Im3ArgumentParser(RunFromArgumentParser):
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("root2", type=pathlib.Path, help="root location of sharded im3 files")
     return p
 
@@ -152,8 +185,8 @@ class Im3ArgumentParser(RunFromArgumentParser):
 
 class DbloadArgumentParser(RunFromArgumentParser):
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--dbloadroot", type=pathlib.Path, help="root location of dbload folder (default: same as root)")
     return p
 
@@ -166,8 +199,8 @@ class DbloadArgumentParser(RunFromArgumentParser):
 
 class ZoomFolderArgumentParser(RunFromArgumentParser):
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--zoomroot", type=pathlib.Path, required=True, help="root location of stitched wsi images")
     return p
 
@@ -180,8 +213,8 @@ class ZoomFolderArgumentParser(RunFromArgumentParser):
 
 class DeepZoomArgumentParser(RunFromArgumentParser):
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--deepzoomroot", type=pathlib.Path, required=True, help="root location of deepzoom images")
     return p
 
@@ -196,8 +229,8 @@ class MaskArgumentParser(RunFromArgumentParser):
   defaultmaskfilesuffix = ".npz"
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--maskroot", type=pathlib.Path, help="root location of mask folder (default: same as root)")
     p.add_argument("--mask-file-suffix", choices=(".npz", ".bin"), default=cls.defaultmaskfilesuffix, help=f"format for the mask files for either reading or writing (default: {cls.defaultmaskfilesuffix})")
     return p
@@ -212,8 +245,8 @@ class MaskArgumentParser(RunFromArgumentParser):
 
 class SelectRectanglesArgumentParser(RunFromArgumentParser):
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--selectrectangles", type=int, nargs="*", metavar="HPFID", help="select only certain HPF IDs to run on")
     return p
 
@@ -226,8 +259,8 @@ class SelectRectanglesArgumentParser(RunFromArgumentParser):
 
 class SelectLayersArgumentParser(RunFromArgumentParser):
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--layers", type=int, nargs="*", metavar="LAYER", help="select only certain layers to run on")
     return p
 
@@ -240,8 +273,8 @@ class SelectLayersArgumentParser(RunFromArgumentParser):
 
 class TempDirArgumentParser(RunFromArgumentParser):
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--temproot", type=pathlib.Path, help="root folder to save temp files in")
     return p
 
@@ -254,8 +287,8 @@ class TempDirArgumentParser(RunFromArgumentParser):
 
 class GeomFolderArgumentParser(RunFromArgumentParser):
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("--geomroot", type=pathlib.Path, help="root location of geom folder (default: same as root)")
     return p
 
@@ -268,8 +301,8 @@ class GeomFolderArgumentParser(RunFromArgumentParser):
 
 class XMLPolygonReaderArgumentParser(RunFromArgumentParser):
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     add_rename_annotation_argument(p)
     return p
 
