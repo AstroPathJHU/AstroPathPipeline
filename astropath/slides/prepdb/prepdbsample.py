@@ -4,7 +4,6 @@ from ...shared.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTi
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.qptiff import QPTiff
 from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader, XMLPolygonReader
-from ...shared.workflowdependency import ShredXML
 from ...utilities import units
 
 class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser):

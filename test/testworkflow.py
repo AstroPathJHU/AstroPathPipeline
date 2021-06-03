@@ -1,9 +1,8 @@
-import more_itertools, os, pathlib
+import os, pathlib
 
 from astropath.shared.workflow import Workflow
-from astropath.utilities.misc import commonroot
 
-from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -20,16 +19,6 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
       for csv in old.glob("*.csv"):
         yield csv, new
 
-    for SlideID in "M21_1",:
-      newdbload = testroot/SlideID/"dbload"
-      newtables = testroot/SlideID/"inform_data"/"Phenotyped"/"Results"/"Tables"
-
-      for olddbload in ():
-        for csv in olddbload.glob("*.csv"):
-          if csv == dataroot/SlideID/"dbload"/f"{SlideID}_vertices.csv": continue
-          if csv == dataroot/SlideID/"dbload"/f"{SlideID}_regions.csv": continue
-          yield csv, newdbload
-
   @property
   def outputfilenames(self):
     folder = thisfolder/"workflow_test_for_jenkins"
@@ -37,7 +26,7 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
     copiedfiles = {copytofolder/copyfrom.name for copyfrom, copytofolder in self.filestocopy()}
     return [_ for _ in folder.rglob("*") if _.is_file() and _ not in copiedfiles]
 
-  def testWorkflow(self, units="safe"):
+  def testWorkflowFastUnits(self, units="fast"):
     testfolder = thisfolder/"workflow_test_for_jenkins"
     root = testfolder/"Clinical_Specimen_0"
     datafolder = thisfolder/"data"
@@ -51,6 +40,3 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
       Workflow.runfromargumentparser(args=args)
     finally:
       self.removeoutput()
-
-  def testWorkflowFastUnits(self, **kwargs):
-    self.testWorkflow(units="fast", **kwargs)

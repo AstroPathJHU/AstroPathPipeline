@@ -53,6 +53,12 @@ pipeline {
           }
         }
 
+        stage('workflow') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
+          }
+        }
+
         stage('alignment') {
           stages {
             stage('test alignment') {

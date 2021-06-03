@@ -1,5 +1,4 @@
 import numpy as np, os, pathlib
-from astropath.utilities import units
 from astropath.slides.zoom.stitchmasksample import StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from astropath.slides.zoom.stitchmaskcohort import StitchAstroPathTissueMaskCohort, StitchInformMaskCohort
 from .testbase import TestBaseCopyInput, TestBaseSaveOutput
