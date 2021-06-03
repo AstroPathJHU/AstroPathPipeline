@@ -112,15 +112,19 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
       r.phenotypecsv for r in self.rectangles if hasanycells(r)
     }
 
+    meanimagecsvs = {
+      self.im3folder/f"{self.SlideID}-mean.csv",
+      self.im3folder/"meanimage"/"fields_used_meanimage.csv",
+      self.im3folder/"meanimage"/"metadata_summary_stacked_images_meanimage.csv",
+      self.im3folder/"meanimage"/f"metadata_summary_tissue_edges_{self.SlideID}.csv",
+    }
     optionalcsvs = {
       self.csv(_) for _ in (
         "globals",
       )
     } | {
       r.phenotypeQAQCcsv for r in self.rectangles if hasanycells(r)
-    } | {
-      self.im3folder/f"{self.SlideID}-mean.csv"
-    }
+    } | meanimagecsvs
     goodcsvs = set()
     unknowncsvs = set()
     folders = {self.mainfolder, self.dbload.parent, self.geomfolder.parent, self.phenotypefolder.parent.parent}
@@ -185,7 +189,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         fieldsizelimit = None
       elif csv.parent == self.phenotypeQAQCtablesfolder:
         continue
-      elif csv == self.im3folder/f"{self.SlideID}-mean.csv":
+      elif csv in meanimagecsvs:
         continue
       else:
         assert False, csv
