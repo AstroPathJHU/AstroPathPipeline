@@ -401,12 +401,17 @@ class PhenotypeFolderCohort(Cohort):
   def rootnames(self): return {"phenotyperoot", *super().rootnames}
 
 class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
-  def __init__(self, *args, annotationsynonyms=None, **kwargs):
+  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
     self.__annotationsynonyms = annotationsynonyms
+    self.__reorderannotations = reorderannotations
     super().__init__(*args, **kwargs)
   @property
   def initiatesamplekwargs(self):
-    return {**super().initiatesamplekwargs, "annotationsynonyms": self.__annotationsynonyms}
+    return {
+      **super().initiatesamplekwargs,
+      "annotationsynonyms": self.__annotationsynonyms,
+      "reorderannotations": self.__reorderannotations,
+    }
 
 class WorkflowCohort(Cohort):
   """
