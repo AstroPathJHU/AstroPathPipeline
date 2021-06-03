@@ -85,13 +85,17 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None):
     self.__root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
     self.__logroot = pathlib.Path(logroot)
+    if im3root is None: im3root = root
+    self.__im3root = pathlib.Path(im3root)
+    if informdataroot is None: informdataroot = root
+    self.__informdataroot = pathlib.Path(informdataroot)
     self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
@@ -104,11 +108,15 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
   @property
   def logroot(self): return self.__logroot
   @property
+  def im3root(self): return self.__im3root
+  @property
+  def informdataroot(self): return self.__informdataroot
+  @property
   def logger(self): return self.__logger
 
   @property
   def rootnames(self):
-    return {"root", "logroot", *super().rootnames}
+    return {"root", "logroot", "im3root", "informdataroot", *super().rootnames}
 
   @property
   def SampleID(self): return self.samp.SampleID
@@ -141,7 +149,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     """
     The sample's im3 folder
     """
-    return self.mainfolder/"im3"
+    return self.im3root/self.SlideID/"im3"
 
   @property
   def scanfolder(self):
@@ -162,7 +170,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     """
     The sample's component tiffs folder
     """
-    return self.mainfolder/"inform_data"/"Component_Tiffs"
+    return self.informdataroot/self.SlideID/"inform_data"/"Component_Tiffs"
 
   def __getimageinfofromcomponenttiff(self):
     """
@@ -700,7 +708,7 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
   """
   def __init__(self, *args, maskroot=None, maskfilesuffix=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if maskroot is None: maskroot = self.root
+    if maskroot is None: maskroot = self.im3root
     self.__maskroot = pathlib.Path(maskroot)
     if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
     self.__maskfilesuffix = maskfilesuffix
@@ -715,8 +723,8 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
   @property
   def maskfolder(self):
     result = self.im3folder/"meanimage"/"image_masking"
-    if self.maskroot != self.root:
-      result = self.maskroot/result.relative_to(self.root)
+    if self.maskroot != self.im3root:
+      result = self.maskroot/result.relative_to(self.im3root)
     return result
 
 class MaskWorkflowSampleBase(MaskSampleBase, WorkflowSample):
@@ -821,7 +829,7 @@ class CellPhenotypeSampleBase(SampleBase):
   """
   def __init__(self, *args, phenotyperoot=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if phenotyperoot is None: phenotyperoot = self.root
+    if phenotyperoot is None: phenotyperoot = self.informdataroot
     self.__phenotyperoot = pathlib.Path(phenotyperoot)
 
   @property

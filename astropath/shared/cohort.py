@@ -17,11 +17,15 @@ class Cohort(RunFromArgumentParser):
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, xmlfolders=[], version_requirement=None):
+  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, im3root=None, informdataroot=None, xmlfolders=[], version_requirement=None):
     super().__init__()
     self.root = pathlib.Path(root)
     if logroot is None: logroot = root
     self.logroot = pathlib.Path(logroot)
+    if im3root is None: im3root = root
+    self.im3root = pathlib.Path(im3root)
+    if informdataroot is None: informdataroot = root
+    self.informdataroot = pathlib.Path(informdataroot)
     self.slideidfilters = slideidfilters
     self.samplefilters = samplefilters
     self.debug = debug
@@ -72,7 +76,7 @@ class Cohort(RunFromArgumentParser):
   @property
   def initiatesamplekwargs(self):
     "Keyword arguments to pass to the sample class"
-    return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "xmlfolders": self.xmlfolders}
+    return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders}
 
   @classmethod
   def logmodule(cls):
@@ -81,7 +85,7 @@ class Cohort(RunFromArgumentParser):
 
   @property
   def rootnames(self):
-    return {*super().rootnames, "root", "logroot"}
+    return {*super().rootnames, "root", "logroot", "im3root", "informdataroot"}
   @property
   def workflowkwargs(self):
     return self.rootkwargs
@@ -286,7 +290,7 @@ class MaskCohort(Cohort, MaskArgumentParser):
   """
   def __init__(self, *args, maskroot=None, maskfilesuffix=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if maskroot is None: maskroot = self.root
+    if maskroot is None: maskroot = self.im3root
     self.maskroot = pathlib.Path(maskroot)
     if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
     self.maskfilesuffix = maskfilesuffix

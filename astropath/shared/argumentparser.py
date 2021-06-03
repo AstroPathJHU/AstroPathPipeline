@@ -68,6 +68,8 @@ class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("root", type=pathlib.Path, help="The Clinical_Specimen folder where sample data is stored")
     p.add_argument("--units", choices=("safe", "fast", "fast_pixels", "fast_microns"), default=cls.defaultunits(), help=f"unit implementation (default: {cls.defaultunits()}; safe is only needed for debugging code)")
+    p.add_argument("--im3root", type=pathlib.Path, help="root location where the sample im3 folders, containing im3 files from the microscope and some xml metadata, are stored (default: same as root)")
+    p.add_argument("--informdataroot", type=pathlib.Path, help="root location where the sample inform_data folders, which contain outputs from inform, are stored (default: same as root)")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--logroot", type=pathlib.Path, help="root location where the log files are stored (default: same as root)")
     g.add_argument("--no-log", action="store_true", help="do not write to log files")
@@ -83,11 +85,15 @@ class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
     dct = parsed_args_dict
     initkwargs = {
       "root": dct.pop("root"),
+      "im3root": dct.pop("im3root"),
+      "informdataroot": dct.pop("informdataroot"),
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
       "xmlfolders": dct.pop("xmlfolders"),
     }
     if initkwargs["logroot"] is None: initkwargs["logroot"] = initkwargs["root"]
+    if initkwargs["im3root"] is None: initkwargs["im3root"] = initkwargs["root"]
+    if initkwargs["informdataroot"] is None: initkwargs["informdataroot"] = initkwargs["root"]
     return initkwargs
 
   @classmethod

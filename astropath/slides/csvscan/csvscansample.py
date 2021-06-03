@@ -111,9 +111,6 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
     expectcsvs |= {
       r.phenotypecsv for r in self.rectangles if hasanycells(r)
     }
-    expectcsvs |= {
-      self.im3folder/f"{self.SlideID}-mean.csv"
-    }
 
     optionalcsvs = {
       self.csv(_) for _ in (
@@ -121,6 +118,8 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
       )
     } | {
       r.phenotypeQAQCcsv for r in self.rectangles if hasanycells(r)
+    } | {
+      self.im3folder/f"{self.SlideID}-mean.csv"
     }
     unknowncsvs = set()
     folders = {self.mainfolder, self.dbload.parent, self.geomfolder.parent, self.phenotypefolder.parent.parent}
