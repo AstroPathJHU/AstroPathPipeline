@@ -32,22 +32,33 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         self.__workingdirpath.mkdir(parents=True,exist_ok=True)
         #start up the meanimage
         self.__meanimage = MeanImage(skip_masking)
+        #set up the list of output files to add to as the code runs (though some will always be required)
+        self.__output_files = []
+        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
+        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        self.__output_files.append(self.__workingdirpath / CONST.FIELDS_USED_CSV_FILENAME)
+        self.__output_files.append(self.__workingdirpath / CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME)
 
     def initrectangles(self) :
         """
         Init Rectangles with additional transformations for exposure time differences after getting median exposure times and offsets
+        (only if exposure time corrections aren't being skipped)
         """
         super().initrectangles()
+        self.__med_ets = None
+        if self.__et_offset_file is None :
+            return
         #find the median exposure times
         slide_exp_times = np.zeros(shape=(len(self.rectangles),self.nlayers)) 
         for ir,r in enumerate(self.rectangles) :
             slide_exp_times[ir,:] = r.allexposuretimes
-        med_ets = np.median(slide_exp_times,axis=0)
+        self.__med_ets = np.median(slide_exp_times,axis=0)
         #read the exposure time offsets
         offsets = self.__read_exposure_time_offsets()
         #add the exposure time correction to every rectangle's transformations
         for r in self.rectangles :
-            r.add_exposure_time_correction_transformation(med_ets,offsets)
+            r.add_exposure_time_correction_transformation(self.__med_ets,offsets)
 
     def run(self) :
         """
@@ -72,10 +83,7 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
     @property
     def getoutputfiles(self) :
         print(f'RUNNING GETOUTPUTFILES')
-        output_files = []
-        output_files.append(self.__workingdirpath / CONST.FIELDS_USED_CSV_FILENAME)
-        output_files.append(self.__workingdirpath / CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME)
-        return output_files
+        return self.__output_files
     @property
     def image_masking_folder(self) :
         self.__workingdirpath / CONST.IMAGE_MASKING_SUBDIR_NAME
@@ -125,7 +133,7 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         """
         Read in the offset factors for exposure time corrections from the file defined by command line args
         """
-        self.logger.info(f'Copying exposure time offsets from file {self.__et_offset_file}')
+        self.logger.info(f'Copying exposure time offsets for {self.SlideId} from file {self.__et_offset_file}')
         layer_offsets_from_file = readtable(self.__et_offset_file,LayerOffset)
         offsets_to_return = []
         for ln in range(1,self.nlayers+1) :
@@ -146,7 +154,42 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         Return the bakcground thresholds for each image layer, either reading them from an existing file 
         or calculating them from the rectangles on the edges of the tissue
         """
-        print('Made it to __get_background_thresholds')
+        threshold_file_path = self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
+        if threshold_file_path.is_file() :
+            return self.__get_background_thresholds_from_file(threshold_file_path)
+        else :
+            return self.__find_background_thresholds_from_tissue_edge_images(threshold_file_path)
+
+    def __get_background_thresholds_from_file(self,threshold_file_path) :
+        """
+        Return the list of background thresholds found in a given file
+        """
+        background_thresholds_to_return = []
+        self.logger.info(f'Reading background thresholds for {self.SlideID} from file {threshold_file_path}')
+        with open(threshold_file_path,'r') as tfp :
+            all_lines = [l.rstrip() for l in tfp.readlines()]
+            for line in all_lines :
+                try :
+                    background_thresholds_to_return.append(int(line))
+                except ValueError :
+                    pass
+        if not len(background_thresholds_to_return)==self.nlayers :
+            errmsg = f'ERROR: number of background thresholds read from {threshold_file_path} is not equal to the number of image layers!'
+            errmsg+= f' (read {len(background_thresholds_to_return)} values but there are {self.nlayers} image layers)'
+            raise ValueError(errmsg)
+        return background_thresholds_to_return
+
+    def __find_background_thresholds_from_tissue_edge_images(self,threshold_file_path) :
+        """
+        Find, write out, and return the list of optimal background thresholds found from the set of images located on the edges of the tissue
+        """
+        print('made it to __find_background_thresholds_from_tissue_edge_images : )')
+        #add the output files that will be created to the list
+        #filter the list of rectangles for those that are on the edge of the tissue
+        #find the optimal thresholds for each tissue edge image
+        #write out the data table of all the thresholds found
+        #make some plots and collect them in a .pdf file
+        #return the list of background thresholds
 
 #################### FILE-SCOPE FUNCTIONS ####################
 
