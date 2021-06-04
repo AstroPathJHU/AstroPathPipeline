@@ -17,7 +17,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, badpolygonimagefolder=None, badpolygonimagefiletype="pdf", annotationsynonyms=None):
+  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, badpolygonimagefolder=None, badpolygonimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False):
     self.xmlfile = pathlib.Path(xmlfile)
     self.__logger = logger
     if badpolygonimagefolder is not None: badpolygonimagefolder = pathlib.Path(badpolygonimagefolder)
@@ -35,7 +35,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
     if annotationsynonyms is None:
       annotationsynonyms = {}
     self.__annotationsynonyms = annotationsynonyms
-    self.allowedannotations
+    self.__reorderannotations = reorderannotations
+    self.allowedannotations #make sure there are no duplicate synonyms etc.
   @property
   def pscale(self): return self.__pscale
   @property
@@ -60,15 +61,19 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
       a.synonyms.add(synonym)
     return result
 
-  def allowedannotation(self, nameornumber):
+  def allowedannotation(self, nameornumber, *, logwarning=True):
     try:
       result, = {a for a in self.allowedannotations if nameornumber in {a.layer, a.name} | a.synonyms}
     except ValueError:
       typ = 'number' if isinstance(nameornumber, int) else 'name'
       raise ValueError(f"Unknown annotation {typ} {nameornumber}")
-    if nameornumber not in {result.layer, result.name}:
+    if logwarning and nameornumber not in {result.layer, result.name}:
       self.__logger.warningglobal(f"renaming annotation {nameornumber} to {result.name}")
     return result
+
+  @staticmethod
+  def annotationname(xmlnode):
+    return xmlnode.get_xml_attr("Name").lower().strip()
 
   def getXMLpolygonannotations(self):
     annotations = []
@@ -79,14 +84,29 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
     with open(self.xmlfile, "rb") as f:
       count = more_itertools.peekable(itertools.count(1))
-      for layer, (path, _, node) in zip(count, jxmlease.parse(f, generator="/Annotations/Annotation")):
+      nodes = [node for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
+      def annotationorder(node):
+        try:
+          return self.allowedannotation(self.annotationname(node), logwarning=False).layer
+        except ValueError:
+          return float("inf")
+      sortednodes = sorted(nodes, key=annotationorder)
+      if sortednodes != nodes:
+        message = f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in self.allowedannotations)}, but your order is {', '.join(self.annotationname(node) for node in nodes)}."
+        if self.__reorderannotations:
+          self.__logger.warning(message+"  Reordering them.")
+        else:
+          errors.append(message)
+      nodes = sortednodes
+
+      for layer, node in zip(count, nodes):
         color = f"{int(node.get_xml_attr('LineColor')):06X}"
         color = color[4:6] + color[2:4] + color[0:2]
         visible = {
           "true": True,
           "false": False,
         }[node.get_xml_attr("Visible").lower().strip()]
-        name = node.get_xml_attr("Name").lower().strip()
+        name = self.annotationname(node)
         if name == "empty":
           count.prepend(layer)
           continue
@@ -99,7 +119,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
         targetlayer = targetannotation.layer
         targetcolor = targetannotation.color
         if layer > targetlayer:
-          errors.append(f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in self.allowedannotations)}, but {name} is after {annotations[-1].name}")
+          assert False
         else:
           while layer < targetlayer:
             emptycolor = self.allowedannotation(layer).color
@@ -222,10 +242,10 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
     return annotations, allregions, allvertices
 
-def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None):
+def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None, **kwargs):
   dbloadfolder = pathlib.Path(dbloadfolder)
   dbloadfolder.mkdir(parents=True, exist_ok=True)
-  annotations, regions, vertices = XMLPolygonAnnotationReader(xmlfile, logger=printlogger).getXMLpolygonannotations()
+  annotations, regions, vertices = XMLPolygonAnnotationReader(xmlfile, **kwargs).getXMLpolygonannotations()
   if csvprefix is None:
     csvprefix = ""
   elif csvprefix.endswith("_"):
@@ -244,7 +264,8 @@ class AddToDict(argparse.Action):
     dct[k] = v
 
 def add_rename_annotation_argument(argumentparser):
-  return argumentparser.add_argument("--rename-annotation", nargs=2, action=AddToDict, dest="annotationsynonyms", metavar=("XMLNAME", "NEWNAME"), help="Rename an annotation given in the xml file to a new name (which has to be in the master list)")
+  argumentparser.add_argument("--rename-annotation", nargs=2, action=AddToDict, dest="annotationsynonyms", metavar=("XMLNAME", "NEWNAME"), help="Rename an annotation given in the xml file to a new name (which has to be in the master list)")
+  argumentparser.add_argument("--reorder-annotations", action="store_true", dest="reorderannotations", help="Reorder annotations if they are in the wrong order")
 
 def main(args=None):
   p = argparse.ArgumentParser(description="read an annotations.polygons.xml file and write out csv files for the annotations, regions, and vertices")
@@ -254,7 +275,7 @@ def main(args=None):
   add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
-    writeannotationcsvs(**args.__dict__)
+    writeannotationcsvs(**args.__dict__, logger=printlogger)
 
 def checkannotations(args=None):
   p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")
@@ -262,9 +283,9 @@ def checkannotations(args=None):
   g = p.add_mutually_exclusive_group()
   g.add_argument("--save-bad-polygon-images", action="store_const", dest="badpolygonimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
   g.add_argument("--save-bad-polygon-images-folder", dest="badpolygonimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
-  p.add_argument("--save-bad-polygon-images-filetype", default="pdf", choices=("pdf", "png"), help="image format to save debug images")
+  p.add_argument("--save-bad-polygon-images-filetype", default="pdf", choices=("pdf", "png"), dest="badpolygonimagefiletype", help="image format to save debug images")
   add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
-    XMLPolygonAnnotationReader(args.xmlfile, badpolygonimagefolder=args.badpolygonimagefolder, badpolygonimagefiletype=args.save_bad_polygon_images_filetype, annotationsynonyms=args.annotationsynonyms, logger=printlogger).getXMLpolygonannotations()
+    XMLPolygonAnnotationReader(**args.__dict__, logger=printlogger).getXMLpolygonannotations()
   print(f"{args.xmlfile} looks good!")
