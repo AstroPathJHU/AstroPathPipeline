@@ -54,7 +54,8 @@ class Cohort(CohortBase, RunFromArgumentParser):
     self.uselogfiles = uselogfiles
     self.xmlfolders = xmlfolders
 
-  def __iter__(self):
+  @property
+  def filteredsampledefs(self):
     """
     Iterate over the sample's sampledef.csv file.
     It yields all the good samples (as defined by the isGood column)
@@ -68,6 +69,23 @@ class Cohort(CohortBase, RunFromArgumentParser):
         with self.getlogger(samp):
           raise
       yield samp
+
+
+  @property
+  def filteredsamples(self):
+    for samp in self.filteredsampledefs:
+      try:
+        sample = self.initiatesample(samp)
+        if not all(filter(self, sample) for filter in self.samplefilters):
+          continue
+        if sample.logmodule() != self.logmodule():
+          raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
+      except Exception:
+        #enter the logger here to log exceptions in __init__ of the sample
+        #but not KeyboardInterrupt
+        with self.getlogger(samp):
+          raise
+      yield sample
 
   def runsample(self, sample, **kwargs):
     "actually run whatever is supposed to be run on the sample"
@@ -116,20 +134,8 @@ class Cohort(CohortBase, RunFromArgumentParser):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
-    for samp in self:
-      try:
-        sample = self.initiatesample(samp)
-      except Exception:
-        #enter the logger here to log exceptions in __init__ of the sample
-        #but not KeyboardInterrupt
-        with self.getlogger(samp):
-          raise
-      else:
-        if not all(filter(self, sample) for filter in self.samplefilters):
-          continue
-        if sample.logmodule() != self.logmodule():
-          raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
-        self.processsample(sample, **kwargs)
+    for sample in self.filteredsamples:
+      self.processsample(sample, **kwargs)
 
   def processsample(self, sample, **kwargs):
     with sample:
@@ -143,7 +149,7 @@ class Cohort(CohortBase, RunFromArgumentParser):
     Print which samples would be run if you run the cohort
     """
     print(self.dryrunheader)
-    for samp in self: print(samp)
+    for samp in self.filteredsampledefs: print(samp)
 
   @classmethod
   def defaultunits(cls):
@@ -224,13 +230,7 @@ class Im3Cohort(Cohort, Im3ArgumentParser):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "root2": self.root2}
 
-class DbloadCohort(Cohort, DbloadArgumentParser):
-  """
-  Base class for any cohort that uses the dbload folder
-  dbloadroot: an alternate root to use for the dbload folder instead of root
-              (mostly useful for testing)
-              (default: same as root)
-  """
+class DbloadCohortBase(CohortBase, DbloadArgumentParser):
   def __init__(self, *args, dbloadroot=None, **kwargs):
     super().__init__(*args, **kwargs)
     if dbloadroot is None: dbloadroot = self.root
@@ -244,7 +244,15 @@ class DbloadCohort(Cohort, DbloadArgumentParser):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
 
-class GlobalDbloadCohort(DbloadCohort, TableReader):
+class DbloadCohort(Cohort, DbloadCohortBase):
+  """
+  Base class for any cohort that uses the dbload folder
+  dbloadroot: an alternate root to use for the dbload folder instead of root
+              (mostly useful for testing)
+              (default: same as root)
+  """
+
+class GlobalDbloadCohortBase(DbloadCohortBase, TableReader):
   @property
   def logger(self): return self.globallogger()
   @property
@@ -256,6 +264,9 @@ class GlobalDbloadCohort(DbloadCohort, TableReader):
     return self.readtable(self.csv(csv), *args, **kwargs)
   def writecsv(self, csv, *args, **kwargs):
     return writetable(self.csv(csv), *args, logger=self.logger, **kwargs)
+
+class GlobalDbloadCohort(GlobalDbloadCohortBase, DbloadCohort):
+  pass
 
 class ZoomFolderCohort(Cohort, ZoomFolderArgumentParser):
   """
