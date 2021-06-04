@@ -170,6 +170,24 @@ class RectangleWithImageBase(Rectangle):
             print("".join(formattedtb))
           warnings.warn(f"Loaded image {i} for rectangle {self} {ctr} times")
 
+  def add_transformation(self,new_transformation) :
+    """
+    Add a new transformation to this Rectangle post-initialization
+    Helpful in case a Rectangle needs to be transformed after calculating something from the whole set of Rectangles
+    
+    new_transformation: the new transformation to add (should inherit from RectangleTransformationBase)
+    """
+    old_nimages = self.nimages
+    self.__transformations.append(new_transformation)
+    self.__images_cache.append(None)
+    new_accessed_image = np.zeros(dtype=bool, shape=self.nimages)
+    new_using_image_counter = np.zeros(dtype=int, shape=self.nimages)
+    new_debug_load_images_counter = np.zeros(dtype=int, shape=self.nimages)
+    self.__accessed_image[old_nimages:] = new_accessed_image[old_nimages:]
+    self.__using_image_counter[old_nimages:] = new_using_image_counter[old_nimages:]
+    self.__debug_load_images_counter[old_nimages:] = new_debug_load_images_counter[old_nimages:]
+    self.__debug_load_images_tracebacks.append([])
+
   @abc.abstractmethod
   def getimage(self):
     """
@@ -360,7 +378,7 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     return image
 
   @property
-  def layers(self):
+  def layers(self) :
     return self.__layers
 
   @property
