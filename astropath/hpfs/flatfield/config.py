@@ -22,8 +22,6 @@ class Const :
         return '_full_mask.bin' #end of the filename for the blur and saturation mask files
     @property
     def TISSUE_MASK_FILE_NAME_STEM(self) :
-        return '_full_mask.bin' #end of the filename for the blur and saturation mask files
-
-
+        return '_tissue_mask.bin' #end of the filename for the blur and saturation mask files
 
 CONST=Const()

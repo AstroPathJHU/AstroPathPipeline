@@ -1,4 +1,5 @@
 #imports
+from .meanimage import MeanImage
 from .rectangle import RectangleCorrectedIm3MultiLayer
 from .config import CONST
 from ...shared.sample import ReadRectanglesIm3FromXML, WorkflowSample
@@ -23,13 +24,14 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         super().__init__(*args,**kwargs)
         #set some runmode variables
         self.__et_offset_file = et_offset_file
-        self.__skip_masking = skip_masking
         #set the path to the working directory based on a kwarg
         self.__workingdirpath = workingdir
         #if it was just a name, set it to a directory with that name in the default location (im3 subdir)
         if self.__workingdirpath.name==str(self.__workingdirpath) :
             self.__workingdirpath = self.im3folder / workingdir
         self.__workingdirpath.mkdir(parents=True,exist_ok=True)
+        #start up the meanimage
+        self.__meanimage = MeanImage(skip_masking)
 
     def initrectangles(self) :
         """
@@ -51,11 +53,10 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         """
         Main "run" function to be looped when entire cohorts are run
         """
-        r = self.rectangles[0]
-        with r.using_image() as im :
-            print(f'rectangle {r.n} shape = {im.shape} : )')
-            #plt.imshow(im[0,:,:])
-            #plt.show()
+        #figure out the background thresholds to use if images will be masked
+        background_thresholds = None if self.__meanimage.skip_masking else self.__get_background_thresholds()
+        #loop over all rectangle images and add them to the stack
+        #create and write out the final mask stack, mean image, and std. error of the mean image
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
@@ -77,7 +78,7 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         return output_files
     @property
     def image_masking_folder(self) :
-        self.__workingdirpath / CONST.IMAGE_MASKING_SUBDIR_NAME if not self.__skip_masking else None
+        self.__workingdirpath / CONST.IMAGE_MASKING_SUBDIR_NAME
 
 
     #################### CLASS METHODS ####################
@@ -139,6 +140,13 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
             else :
                 raise ValueError(f'ERROR: more than one entry found in LayerOffset file {self.__et_offset_file} for layer {ln}!')
         return offsets_to_return
+
+    def __get_background_thresholds(self) :
+        """
+        Return the bakcground thresholds for each image layer, either reading them from an existing file 
+        or calculating them from the rectangles on the edges of the tissue
+        """
+        print('Made it to __get_background_thresholds')
 
 #################### FILE-SCOPE FUNCTIONS ####################
 
