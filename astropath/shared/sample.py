@@ -11,7 +11,7 @@ from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
-from .workflowdependency import WorkflowDependency
+from .workflowdependency import WorkflowDependencySlideID
 
 class SampleDef(MyDataClass):
   """
@@ -560,7 +560,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
   def run(self, **kwargs):
     "actually run whatever is supposed to be run on the sample"
 
-class WorkflowSample(SampleBase, WorkflowDependency):
+class WorkflowSample(SampleBase, WorkflowDependencySlideID):
   """
   Base class for a sample that will be used in a workflow,
   i.e. it takes in input files and creates output files.

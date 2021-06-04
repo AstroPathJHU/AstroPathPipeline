@@ -11,6 +11,7 @@ class MyLogger:
   samp: the SampleDef object
   uselogfiles: should we write to log files (default: false)
   threshold: minimum level of messages that should be logged (default: logging.DEBUG)
+  isglobal: is this a global log for the cohort? in that case samplelog is set to None and all the info goes in the mainlog
   mainlog: main log file, which gets errors and the most important warnings
            (default: root/logfiles/module.log)
   samplelog: sample log file, which gets errors, warnings, and info
@@ -20,7 +21,7 @@ class MyLogger:
   reraiseexceptions: should the logger reraise exceptions after logging them
                      (default: True)
   """
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
     self.module = module
     self.root = pathlib.Path(root)
     self.samp = samp
@@ -34,6 +35,7 @@ class MyLogger:
     self.mainlog = pathlib.Path(mainlog)
     self.samplelog = pathlib.Path(samplelog)
     self.imagelog = None if imagelog is None else pathlib.Path(imagelog)
+    self.isglobal = isglobal
     self.reraiseexceptions = reraiseexceptions
     if uselogfiles and (self.Project is None or self.SampleID is None or self.Cohort is None):
       raise ValueError("Have to give a non-None SampleID, Project, and Cohort when writing to log files")
@@ -58,7 +60,7 @@ class MyLogger:
     )
   def __enter__(self):
     if self.nentered == 0:
-      self.logger = logging.getLogger(f"{self.root}.{self.module}.{self.Project}.{self.Cohort}.{self.SlideID}.{self.uselogfiles}.{self.threshold}")
+      self.logger = logging.getLogger(f"{self.root}.{self.module}.{self.Project}.{self.Cohort}.{self.SlideID}.{self.uselogfiles}.{self.threshold}.{self.isglobal}")
       self.logger.setLevel(self.threshold)
 
       printhandler = logging.StreamHandler()
@@ -72,15 +74,16 @@ class MyLogger:
         mainhandler = MyFileHandler(self.mainlog)
         mainhandler.setFormatter(self.formatter)
         mainhandler.addFilter(self.filter)
-        mainhandler.setLevel(logging.WARNING+1)
+        mainhandler.setLevel(logging.INFO if self.isglobal else logging.WARNING+1)
         self.logger.addHandler(mainhandler)
 
-        self.samplelog.parent.mkdir(exist_ok=True, parents=True)
-        samplehandler = MyFileHandler(self.samplelog)
-        samplehandler.setFormatter(self.formatter)
-        samplehandler.addFilter(self.filter)
-        samplehandler.setLevel(logging.INFO)
-        self.logger.addHandler(samplehandler)
+        if not self.isglobal:
+          self.samplelog.parent.mkdir(exist_ok=True, parents=True)
+          samplehandler = MyFileHandler(self.samplelog)
+          samplehandler.setFormatter(self.formatter)
+          samplehandler.addFilter(self.filter)
+          samplehandler.setLevel(logging.INFO)
+          self.logger.addHandler(samplehandler)
 
         if self.imagelog is not None :
           self.imagelog.parent.mkdir(exist_ok=True, parents=True)
@@ -193,17 +196,19 @@ class MyFileHandler:
 __notgiven = object()
 
 @functools.lru_cache(maxsize=None)
-def getlogger(*, module, root, samp, uselogfiles=__notgiven, threshold=__notgiven, mainlog=__notgiven, samplelog=__notgiven, imagelog=__notgiven, reraiseexceptions=__notgiven):
+def getlogger(*, module, root, samp, uselogfiles=__notgiven, threshold=__notgiven, isglobal=__notgiven, mainlog=__notgiven, samplelog=__notgiven, imagelog=__notgiven, reraiseexceptions=__notgiven):
   if uselogfiles is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=False, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=False, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
   if threshold is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=logging.DEBUG, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=logging.DEBUG, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+  if isglobal is __notgiven:
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=False, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
   if mainlog is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=None, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=None, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
   if samplelog is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=None, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=None, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
   if imagelog is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=None, reraiseexceptions=reraiseexceptions)
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=None, reraiseexceptions=reraiseexceptions)
   if reraiseexceptions is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=True)
-  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=True)
+  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)

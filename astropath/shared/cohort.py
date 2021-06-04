@@ -1,36 +1,19 @@
-import abc, os, job_lock, pathlib, re
+import abc, job_lock, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
 from .sample import SampleBase, SampleDef
+from .workflowdependency import ThingWithRoots
 
-class Cohort(RunFromArgumentParser):
+class CohortBase(ThingWithRoots):
   """
-  Base class for a cohort - a bunch of samples that can be run in a loop
-
-  root: the root path of the Cohort, i.e. Clinical_Specimen_*
-  filters: functions that are called on each sample to filter it
-           if any filter returns False, the sample is skipped
-           (default: [])
-  debug: raise error messages instead of logging them and continuing
-         (default: False)
-  uselogfiles, logroot: these arguments are passed to the logger
+  Base class for a cohort.  This class doesn't actually run anything
+  (for that use Cohort, below).
   """
-  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, im3root=None, informdataroot=None, xmlfolders=[], version_requirement=None):
-    super().__init__()
+  def __init__(self, *args, root, **kwargs):
+    super().__init__(*args, **kwargs)
     self.root = pathlib.Path(root)
-    if logroot is None: logroot = root
-    self.logroot = pathlib.Path(logroot)
-    if im3root is None: im3root = root
-    self.im3root = pathlib.Path(im3root)
-    if informdataroot is None: informdataroot = root
-    self.informdataroot = pathlib.Path(informdataroot)
-    self.slideidfilters = slideidfilters
-    self.samplefilters = samplefilters
-    self.debug = debug
-    self.uselogfiles = uselogfiles
-    self.xmlfolders = xmlfolders
 
   @property
   def sampledefs(self): return readtable(self.root/"sampledef.csv", SampleDef)
@@ -44,6 +27,32 @@ class Cohort(RunFromArgumentParser):
   def Cohort(self):
     Cohort, = {_.Cohort for _ in self.sampledefs}
     return Cohort
+
+class Cohort(CohortBase, RunFromArgumentParser):
+  """
+  Base class for a cohort that can be run in a loop
+
+  root: the root path of the Cohort, i.e. Clinical_Specimen_*
+  filters: functions that are called on each sample to filter it
+           if any filter returns False, the sample is skipped
+           (default: [])
+  debug: raise error messages instead of logging them and continuing
+         (default: False)
+  uselogfiles, logroot: these arguments are passed to the logger
+  """
+  def __init__(self, *args, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, im3root=None, informdataroot=None, xmlfolders=[], version_requirement=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if logroot is None: logroot = self.root
+    self.logroot = pathlib.Path(logroot)
+    if im3root is None: im3root = self.root
+    self.im3root = pathlib.Path(im3root)
+    if informdataroot is None: informdataroot = self.root
+    self.informdataroot = pathlib.Path(informdataroot)
+    self.slideidfilters = slideidfilters
+    self.samplefilters = samplefilters
+    self.debug = debug
+    self.uselogfiles = uselogfiles
+    self.xmlfolders = xmlfolders
 
   def __iter__(self):
     """
@@ -92,7 +101,7 @@ class Cohort(RunFromArgumentParser):
 
   def globallogger(self):
     samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
-    return self.getlogger(samp, samplelog=os.devnull)
+    return self.getlogger(samp, isglobal=True)
 
   def globaljoblock(self, **kwargs):
     lockfile = self.globallogger().mainlog.with_suffix(".lock")
