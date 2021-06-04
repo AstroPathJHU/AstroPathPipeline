@@ -136,7 +136,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     """
     images = [None, None]
     with self.rectangles[0].using_image() as images[0], self.rectangles[1].using_image() as images[1]:
-      result = tuple(image[:, :] if layer is None else image[r.layers.index(layer), :, :] for r, image, layer in more_itertools.zip_equal(self.rectangles, images, self.layers))
+      result = tuple(image[:, :] if layer is None else image[:, :, r.layers.index(layer)] for r, image, layer in more_itertools.zip_equal(self.rectangles, images, self.layers))
       for i in result: i.flags.writeable = False
       return result
 
