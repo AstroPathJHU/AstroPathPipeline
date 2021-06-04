@@ -18,9 +18,9 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
     """
 
     def __init__(self, ets, med_ets, offsets):
-        self._exp_times = ets
-        self._med_ets = med_ets
-        self._offsets = offsets
+        self._exp_times = np.array(ets)
+        self._med_ets = np.array(med_ets)
+        self._offsets = np.array(offsets)
         if not (len(self._exp_times)==len(self._med_ets)==len(self._offsets)) :
             errmsg = f'ERROR: exposure times (length {len(self._exp_times)}), median exposure times (length {len(self._med_ets)}),'
             errmsg+= f' and dark current offsets (length {len(self._offsets)}) must all be the same length!'
@@ -38,7 +38,7 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
         offsets = self._offsets[np.newaxis,np.newaxis,:]
         corr_img = np.where((originalimage-offsets)>0,
                             offsets+(1.*med_ets/exp_times)*(originalimage-offsets),
-                            raw_img_layer) #converted to a float here
+                            originalimage) #converted to a float here
         if np.issubdtype(raw_img_dtype,np.integer) :
             #round, clip to range, and convert back to original datatype
             max_value = np.iinfo(raw_img_dtype).max
