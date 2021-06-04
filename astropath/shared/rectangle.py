@@ -426,7 +426,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
 
   @property
   def imageshape(self):
-    return super().imageshape[1:]
+    return super().imageshape[:-1]
 
   @property
   def imagefile(self):
@@ -457,14 +457,14 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
       #it's saved as (height, width), which is what we want
       return (0, 1, 2)
     else:
-      #it's saved as (layers, width, height), we want (layers, height, width)
-      return (0, 2, 1)
+      #it's saved as (layers, width, height), we want (height, width, layers)
+      return (2, 1, 0)
   @property
   def imageslicefrominput(self):
     if self.__readlayerfile:
       return 0, slice(None), slice(None)
     else:
-      return self.layer-1, slice(None), slice(None)
+      return slice(None), slice(None), self.layer-1
 
   @property
   def exposuretime(self):
