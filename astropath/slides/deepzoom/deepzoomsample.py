@@ -1,4 +1,4 @@
-import collections, functools, jxmlease, numpy as np, os, pathlib, PIL, re, shutil
+import collections, errno, functools, jxmlease, numpy as np, os, pathlib, PIL, re, shutil
 
 from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.dataclasses import MyDataClass
@@ -247,6 +247,14 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
         for i in range(10):
           if (folder/f"{i}").exists():
             shutil.rmtree(folder/f"{i}")
+          if (folder/f"Z{i}").exists():
+            try:
+              (folder/f"Z{i}").rmdir()
+            except OSError as e:
+              if e.errno == errno.ENOTEMPTY:
+                pass
+              else:
+                raise
         if (folder/"runningflag").exists():
           for i in range(10):
             if (folder/f"Z{i}").exists():
@@ -277,10 +285,10 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     return {"layers": self.layers, **super().workflowkwargs}
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, root, deepzoomroot, layers, checkimages=False, **otherworkflowkwargs):
+  def getoutputfiles(cls, SlideID, *, root, informdataroot, deepzoomroot, layers, checkimages=False, **otherworkflowkwargs):
     zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
     if layers is None:
-      with open(root/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
+      with open(informdataroot/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
         for path, _, node in jxmlease.parse(f, generator="AllComponents"):
           layers = range(1, int(node.xml_attrs["dim"])+1)
     result = [

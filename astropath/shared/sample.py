@@ -85,13 +85,17 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None):
     self.__root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
       raise IOError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
     self.__logroot = pathlib.Path(logroot)
+    if im3root is None: im3root = root
+    self.__im3root = pathlib.Path(im3root)
+    if informdataroot is None: informdataroot = root
+    self.__informdataroot = pathlib.Path(informdataroot)
     self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
@@ -104,11 +108,15 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
   @property
   def logroot(self): return self.__logroot
   @property
+  def im3root(self): return self.__im3root
+  @property
+  def informdataroot(self): return self.__informdataroot
+  @property
   def logger(self): return self.__logger
 
   @property
   def rootnames(self):
-    return {"root", "logroot", *super().rootnames}
+    return {"root", "logroot", "im3root", "informdataroot", *super().rootnames}
 
   @property
   def SampleID(self): return self.samp.SampleID
@@ -141,7 +149,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     """
     The sample's im3 folder
     """
-    return self.mainfolder/"im3"
+    return self.im3root/self.SlideID/"im3"
 
   @property
   def scanfolder(self):
@@ -162,7 +170,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     """
     The sample's component tiffs folder
     """
-    return self.mainfolder/"inform_data"/"Component_Tiffs"
+    return self.informdataroot/self.SlideID/"inform_data"/"Component_Tiffs"
 
   def __getimageinfofromcomponenttiff(self):
     """
@@ -519,8 +527,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
   def logendregex(cls): return rf"end {cls.logmodule()}"
 
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument("SlideID", help="The SlideID of the sample to run")
     return p
 
@@ -700,7 +708,7 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
   """
   def __init__(self, *args, maskroot=None, maskfilesuffix=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if maskroot is None: maskroot = self.root
+    if maskroot is None: maskroot = self.im3root
     self.__maskroot = pathlib.Path(maskroot)
     if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
     self.__maskfilesuffix = maskfilesuffix
@@ -715,8 +723,8 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
   @property
   def maskfolder(self):
     result = self.im3folder/"meanimage"/"image_masking"
-    if self.maskroot != self.root:
-      result = self.maskroot/result.relative_to(self.root)
+    if self.maskroot != self.im3root:
+      result = self.maskroot/result.relative_to(self.im3root)
     return result
 
 class MaskWorkflowSampleBase(MaskSampleBase, WorkflowSample):
@@ -821,7 +829,7 @@ class CellPhenotypeSampleBase(SampleBase):
   """
   def __init__(self, *args, phenotyperoot=None, **kwargs):
     super().__init__(*args, **kwargs)
-    if phenotyperoot is None: phenotyperoot = self.root
+    if phenotyperoot is None: phenotyperoot = self.informdataroot
     self.__phenotyperoot = pathlib.Path(phenotyperoot)
 
   @property
@@ -1114,7 +1122,7 @@ class ReadRectanglesOverlapsComponentTiffBase(ReadRectanglesOverlapsBase, ReadRe
   and loads the rectangle images from component tiff files.
   """
 
-class ReadRectanglesDbload(ReadRectanglesBase, DbloadSample):
+class ReadRectanglesDbload(ReadRectanglesBase, DbloadSample, DbloadArgumentParser, SelectRectanglesArgumentParser):
   """
   Base class for any sample that reads rectangles from the dbload folder.
   """
@@ -1316,18 +1324,25 @@ class XMLPolygonReader(SampleBase, XMLPolygonReaderArgumentParser):
   """
   Base class for any sample that reads the annotations from the XML metadata.
   """
-  def __init__(self, *args, annotationsynonyms=None, **kwargs):
+  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
     self.__annotationsynonyms = annotationsynonyms
+    self.__reorderannotations = reorderannotations
     super().__init__(*args, **kwargs)
+
+  @methodtools.lru_cache()
+  def __getXMLpolygonannotations(self, *, pscale=None, apscale=None):
+    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger, annotationsynonyms=self.__annotationsynonyms, reorderannotations=self.__reorderannotations).getXMLpolygonannotations()
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self, *, pscale=None, apscale=None):
     """
     Read the annotations, vertices, and regions from the xml file
     """
-    if pscale is None: return self.getXMLpolygonannotations(pscale=self.pscale, apscale=apscale)
-    if apscale is None: return self.getXMLpolygonannotations(pscale=pscale, apscale=self.apscale)
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger, annotationsynonyms=self.__annotationsynonyms).getXMLpolygonannotations()
+    if pscale is None: pscale = self.pscale
+    if apscale is None: apscale = self.apscale
+    #use a nested lru_cache because otherwise it's sensitive to the order
+    #of the kwargs (pscale=1, apscale=2 is not the same as apscale=2, pscale=1)
+    return self.__getXMLpolygonannotations(pscale=pscale, apscale=apscale)
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   """

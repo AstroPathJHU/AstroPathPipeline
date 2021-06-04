@@ -402,9 +402,9 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     return {"layers": self.layers, **super().workflowkwargs}
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, root, zoomroot, layers, **otherrootkwargs):
+  def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, **otherrootkwargs):
     if layers is None:
-      with open(root/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
+      with open(informdataroot/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
         for path, _, node in jxmlease.parse(f, generator="AllComponents"):
           layers = range(1, int(node.xml_attrs["dim"])+1)
     return [

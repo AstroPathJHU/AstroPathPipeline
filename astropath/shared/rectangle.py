@@ -310,9 +310,9 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   @property
   def imageshape(self):
     return [
-      len(self.__layers),
       floattoint(float(self.__height / self.onepixel)),
       floattoint(float(self.__width / self.onepixel)),
+      len(self.__layers),
     ]
 
   @property
@@ -336,11 +336,11 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     return self.__nlayers, floattoint(float(self.__width / self.onepixel)), floattoint(float(self.__height / self.onepixel))
   @property
   def imagetransposefrominput(self):
-    #it's saved as (layers, width, height), we want (layers, height, width)
-    return (0, 2, 1)
+    #it's saved as (layers, width, height), we want (height, width, layers)
+    return (2, 1, 0)
   @property
   def imageslicefrominput(self):
-    return tuple(_-1 for _ in self.__layers), slice(None), slice(None)
+    return slice(None), slice(None), tuple(_-1 for _ in self.__layers)
 
   def getimage(self):
     image = np.ndarray(shape=self.imageshape, dtype=np.uint16)
@@ -407,7 +407,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
 
   @property
   def imageshape(self):
-    return super().imageshape[1:]
+    return super().imageshape[:-1]
 
   @property
   def imagefile(self):
@@ -438,14 +438,14 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
       #it's saved as (height, width), which is what we want
       return (0, 1, 2)
     else:
-      #it's saved as (layers, width, height), we want (layers, height, width)
-      return (0, 2, 1)
+      #it's saved as (layers, width, height), we want (height, width, layers)
+      return (2, 1, 0)
   @property
   def imageslicefrominput(self):
     if self.__readlayerfile:
       return 0, slice(None), slice(None)
     else:
-      return self.layer-1, slice(None), slice(None)
+      return slice(None), slice(None), self.layer-1
 
   @property
   def exposuretime(self):

@@ -12,6 +12,7 @@ setupkwargs = dict(
       "annowarpcohort=astropath.slides.annowarp.annowarpcohort:main",
       "annowarpsample=astropath.slides.annowarp.annowarpsample:main",
       "ast-gen=astropath.hpfs.astroidgen.ASTgen:start_gen",
+      "astropathworkflow=astropath.shared.workflow:main",
       "checkannotations=astropath.shared.annotationpolygonxmlreader:checkannotations",
       "csvscancohort=astropath.slides.csvscan.csvscancohort:main",
       "csvscansample=astropath.slides.csvscan.csvscansample:main",
@@ -46,7 +47,7 @@ setupkwargs = dict(
   install_requires = [
     "contextlib2>=0.6.0",
     "cvxpy",
-    "dataclassy>=0.10.0",
+    "dataclassy>=0.10.0,<0.10.3",
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
     "matplotlib>=3.3.2",
