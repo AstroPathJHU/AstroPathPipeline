@@ -180,12 +180,9 @@ class RectangleWithImageBase(Rectangle):
     old_nimages = self.nimages
     self.__transformations.append(new_transformation)
     self.__images_cache.append(None)
-    new_accessed_image = np.zeros(dtype=bool, shape=self.nimages)
-    new_using_image_counter = np.zeros(dtype=int, shape=self.nimages)
-    new_debug_load_images_counter = np.zeros(dtype=int, shape=self.nimages)
-    self.__accessed_image[old_nimages:] = new_accessed_image[old_nimages:]
-    self.__using_image_counter[old_nimages:] = new_using_image_counter[old_nimages:]
-    self.__debug_load_images_counter[old_nimages:] = new_debug_load_images_counter[old_nimages:]
+    self.__accessed_image = np.append(self.__accessed_image,0)
+    self.__using_image_counter = np.append(self.__using_image_counter,0)
+    self.__debug_load_images_counter = np.append(self.__debug_load_images_counter,0)
     self.__debug_load_images_tracebacks.append([])
 
   @abc.abstractmethod

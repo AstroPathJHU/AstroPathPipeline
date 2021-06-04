@@ -56,7 +56,6 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
             print(f'rectangle {r.n} shape = {im.shape} : )')
             #plt.imshow(im[0,:,:])
             #plt.show()
-        print('explicitly exited context')
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
