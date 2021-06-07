@@ -366,8 +366,8 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
     #(which can be skipped)
 
   @classmethod
-  def workflowdependencies(cls):
-    return super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return super().workflowdependencyclasses()
 
   @classmethod
   def logstartregex(cls):

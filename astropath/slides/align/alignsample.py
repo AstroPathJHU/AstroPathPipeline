@@ -457,8 +457,8 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
     ]
 
   @classmethod
-  def workflowdependencies(cls):
-    return [PrepDbSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [PrepDbSample] + super().workflowdependencyclasses()
 
 class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML):
   """

@@ -9,10 +9,6 @@ thisfolder = pathlib.Path(__file__).parent
 class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
   @classmethod
   def filestocopy(cls):
-    testroot = thisfolder/"workflow_test_for_jenkins"/"Clinical_Specimen_0"
-    dataroot = thisfolder/"data"
-    yield dataroot/"sampledef.csv", testroot
-
     for foldername in "Batch", "Clinical", "Ctrl", pathlib.Path("Control_TMA_1372_111_06.19.2019")/"dbload":
       old = dataroot/foldername
       new = testroot/foldername
@@ -25,6 +21,18 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
     if not folder.exists(): return []
     copiedfiles = {copytofolder/copyfrom.name for copyfrom, copytofolder in self.filestocopy()}
     return [_ for _ in folder.rglob("*") if _.is_file() and _ not in copiedfiles]
+
+  def setUp(self):
+    super().setUp()
+    slideids = "M206",
+
+    testroot = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
+    dataroot = thisfolder/"data"
+
+    with open(dataroot/"sampledef.csv") as f, open(testroot/"sampledef.csv", "w") as newf:
+      for line in f:
+        if line.strip() and line.split(",")[1] in ("SlideID",) + slideids:
+          newf.write(line)
 
   def testWorkflowFastUnits(self, units="fast"):
     testfolder = thisfolder/"workflow_test_for_jenkins"

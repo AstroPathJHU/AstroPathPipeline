@@ -869,8 +869,8 @@ class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFo
     ]
 
   @classmethod
-  def workflowdependencies(cls):
-    return [ZoomSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [ZoomSample] + super().workflowdependencyclasses()
 
 class AnnoWarpArgumentParserTissueMask(AnnoWarpArgumentParserBase, DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser):
   defaultmintissuefraction = 0.2
@@ -929,8 +929,8 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
   """
 
   @classmethod
-  def workflowdependencies(cls):
-    return [StitchInformMaskSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [StitchInformMaskSample] + super().workflowdependencyclasses()
   def printcuts(self, *args, **kwargs):
     super().printcuts(*args, **kwargs)
     self.logger.info("      Using Inform mask to determine tissue regions")
@@ -942,8 +942,8 @@ class AnnoWarpSampleAstroPathTissueMask(AnnoWarpSampleTissueMask, AstroPathTissu
   """
 
   @classmethod
-  def workflowdependencies(cls):
-    return [StitchAstroPathTissueMaskSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [StitchAstroPathTissueMaskSample] + super().workflowdependencyclasses()
   def printcuts(self, *args, **kwargs):
     super().printcuts(*args, **kwargs)
     self.logger.info("      Using AstroPath mask to determine tissue regions")

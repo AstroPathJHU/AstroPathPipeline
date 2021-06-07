@@ -413,8 +413,8 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     ]
 
   @classmethod
-  def workflowdependencies(cls):
-    return [AlignSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [AlignSample] + super().workflowdependencyclasses()
 
 def main(args=None):
   ZoomSample.runfromargumentparser(args)

@@ -578,11 +578,14 @@ class WorkflowSample(SampleBase, WorkflowDependencySlideID):
 
   @classmethod
   @abc.abstractmethod
-  def workflowdependencies(cls):
+  def workflowdependencyclasses(cls):
     """
     Previous steps that this step depends on
     """
     return []
+
+  def workflowdependencies(self):
+    return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses()]
 
   def joblock(self, **kwargs):
     self.samplelog.parent.mkdir(exist_ok=True, parents=True)
