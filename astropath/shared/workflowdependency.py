@@ -92,6 +92,10 @@ class WorkflowDependency(ThingWithRoots):
   def joblock(self):
     pass
 
+  @abc.abstractmethod
+  def workflowdependencies(self):
+    return []
+
 class WorkflowDependencySlideID(WorkflowDependency):
   @property
   def workflowkwargs(self):

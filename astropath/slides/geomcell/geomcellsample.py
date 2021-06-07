@@ -140,8 +140,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
     ]
 
   @classmethod
-  def workflowdependencies(cls):
-    return [AlignSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [AlignSample] + super().workflowdependencyclasses()
 
 class CellGeomLoad(DataClassWithPolygon):
   field: int

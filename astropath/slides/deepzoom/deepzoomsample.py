@@ -301,8 +301,8 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     return result
 
   @classmethod
-  def workflowdependencies(cls):
-    return [ZoomSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [ZoomSample] + super().workflowdependencyclasses()
 
 @functools.total_ordering
 class DeepZoomFile(MyDataClass):

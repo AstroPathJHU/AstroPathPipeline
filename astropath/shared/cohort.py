@@ -3,6 +3,7 @@ from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
+from .rectangle import rectanglefilter
 from .sample import SampleDef
 from .workflowdependency import ThingWithRoots, WorkflowDependency
 
@@ -104,12 +105,10 @@ class Cohort(CohortBase, RunFromArgumentParser):
 
 
   @property
-  def filteredsamples(self):
+  def samples(self):
     for samp in self.filteredsampledefs:
       try:
         sample = self.initiatesample(samp)
-        if not all(filter(self, sample) for filter in self.samplefilters):
-          continue
         if sample.logmodule() != self.logmodule():
           raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
       except Exception:
@@ -117,6 +116,13 @@ class Cohort(CohortBase, RunFromArgumentParser):
         #but not KeyboardInterrupt
         with self.getlogger(samp):
           raise
+      yield sample
+
+  @property
+  def filteredsamples(self):
+    for sample in self.samples:
+      if not all(filter(self, sample) for filter in self.samplefilters):
+        continue
       yield sample
 
   def runsample(self, sample, **kwargs):
@@ -353,11 +359,18 @@ class SelectRectanglesCohort(Cohort, SelectRectanglesArgumentParser):
   """
   def __init__(self, *args, selectrectangles=None, **kwargs):
     super().__init__(*args, **kwargs)
-    self.selectrectangles = selectrectangles
+    self.selectrectangles = rectanglefilter(selectrectangles)
 
   @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "selectrectangles": self.selectrectangles}
+
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "selectrectangles": self.selectrectangles,
+    }
 
 class SelectLayersCohort(Cohort, SelectLayersArgumentParser):
   """
@@ -480,7 +493,20 @@ class WorkflowCohort(Cohort):
     if parsed_args_dict.pop("skip_finished"):
       kwargs["slideidfilters"].append(lambda self, sample: not self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs))
     if parsed_args_dict.pop("dependencies"):
-      kwargs["slideidfilters"].append(lambda self, sample: all(dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs) for dependency in self.sampleclass.workflowdependencies()))
+      kwargs["slideidfilters"].append(
+        lambda self, sample:
+          all(
+            dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs)
+            for dependency in self.sampleclass.workflowdependencyclasses()
+          )
+      )
+      kwargs["samplefilters"].append(
+        lambda self, sample:
+          all(
+            dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
+            for dependency, SlideID in sample.workflowdependencies()
+          )
+      )
     return kwargs
 
   @classmethod

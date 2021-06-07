@@ -169,13 +169,16 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
       "Project": self.Project,
     }
 
+  def workflowdependencies(self):
+    return [(CsvScanSample, sampledef.SlideID) for sampledef in self.sampledefs]
+
 class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort, RunCsvScanBase):
   sampleclass = CsvScanSample
   __doc__ = sampleclass.__doc__
 
   @property
-  def filteredsamples(self):
-    yield from super().filteredsamples
+  def samples(self):
+    yield from super().samples
     yield self.globalcsv()
 
   def runsample(self, sample, **kwargs):
