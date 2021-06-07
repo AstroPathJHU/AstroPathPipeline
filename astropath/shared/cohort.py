@@ -517,4 +517,4 @@ class WorkflowCohort(Cohort):
           #was already logged so no need to log it again and confuse the issue.
           if status.missingfiles and status.error is None:
             status.ended = True #to get the missing files in the __str__
-            raise RuntimeError(f"{sample.SlideID} {status}")
+            raise RuntimeError(f"{sample.logger.SlideID} {status}")

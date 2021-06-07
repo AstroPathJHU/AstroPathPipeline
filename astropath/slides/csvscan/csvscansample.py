@@ -21,6 +21,10 @@ class CsvScanRectangle(GeomLoadRectangle, PhenotypedRectangle):
   pass
 
 class CsvScanBase(TableReader):
+  @property
+  @abc.abstractmethod
+  def logger(self): return super().logger
+
   def processcsv(self, csv, csvclass, tablename, extrakwargs={}, *, SlideID, checkcsv=True, fieldsizelimit=None):
     self.logger.debug(f"Processing {csv}")
     #read the csv, to check that it's valid
@@ -60,6 +64,9 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
 
 class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase):
   rectangletype = CsvScanRectangle
+  @property
+  def logger(self): return super().logger
+
   @property
   def rectangleextrakwargs(self):
     return {

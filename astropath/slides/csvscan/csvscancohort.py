@@ -6,12 +6,16 @@ from ...shared.workflowdependency import WorkflowDependency
 from .csvscansample import CsvScanBase, CsvScanSample, RunCsvScanBase
 
 class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, contextlib.ExitStack):
-  def __init__(self, *args, reraiseexceptions=True, **kwargs):
-    self.reraiseexceptions = reraiseexceptions
+  def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
   def __enter__(self):
+    result = super().__enter__()
     self.enter_context(self.logger)
+    return result
+
+  @property
+  def logger(self): return super().logger
 
   @property
   def samp(self):
@@ -119,7 +123,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
         errors.append("Unknown csvs: "+", ".join(str(_) for _ in sorted(unknowncsvs)))
       raise ValueError("\n".join(errors))
 
-    loadfiles = [self.processcsv(checkcsv=checkcsv, **kwargs) for kwargs in toload]
+    loadfiles = [self.processcsv(checkcsv=checkcsvs, **kwargs) for kwargs in toload]
 
     self.dbload.mkdir(exist_ok=True)
     self.writecsv("loadfiles", loadfiles, header=False)
@@ -153,7 +157,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
 
   @classmethod
   def getoutputfiles(cls, *, dbloadroot, Project, **workflowkwargs):
-    return [dbloadroot/"dbload"/"project{Project}_loadfiles.csv"]
+    return [dbloadroot/"dbload"/f"project{Project}_loadfiles.csv"]
 
   @property
   def workflowkwargs(self):
