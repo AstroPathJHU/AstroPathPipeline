@@ -15,6 +15,7 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
       old = dataroot/foldername
       new = testroot/foldername
       for csv in old.glob("*.csv"):
+        if csv.name in ("BatchID_24.csv", "MergeConfig_24.csv"): continue
         yield csv, new
 
   @property
