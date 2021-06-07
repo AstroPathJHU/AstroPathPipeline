@@ -9,7 +9,7 @@ thisfolder = pathlib.Path(__file__).parent
 class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
   @classmethod
   def filestocopy(cls):
-    testroot = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
+    testroot = thisfolder/"workflow_test_for_jenkins"/"Clinical_Specimen_0"
     dataroot = thisfolder/"data"
     for foldername in "Batch", "Clinical", "Ctrl", pathlib.Path("Control_TMA_1372_111_06.19.2019")/"dbload":
       old = dataroot/foldername
@@ -26,9 +26,9 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
 
   def setUp(self):
     super().setUp()
-    slideids = "M206",
+    slideids = "M21_1",
 
-    testroot = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
+    testroot = thisfolder/"workflow_test_for_jenkins"/"Clinical_Specimen_0"
     dataroot = thisfolder/"data"
 
     with open(dataroot/"sampledef.csv") as f, open(testroot/"sampledef.csv", "w") as newf:
@@ -49,5 +49,6 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
     args = [os.fspath(root), os.fspath(root2), "--im3root", os.fspath(datafolder), "--informdataroot", os.fspath(datafolder), "--zoomroot", os.fspath(zoomroot), "--deepzoomroot", os.fspath(deepzoomroot), "--selectrectangles", *(str(_) for _ in selectrectangles), "--layers", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
     try:
       Workflow.runfromargumentparser(args=args)
+      assert (testfolder/"dbload"/"project0_loadfiles.csv").exists()
     finally:
       self.removeoutput()
