@@ -9,6 +9,8 @@ thisfolder = pathlib.Path(__file__).parent
 class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
   @classmethod
   def filestocopy(cls):
+    testroot = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
+    dataroot = thisfolder/"data"
     for foldername in "Batch", "Clinical", "Ctrl", pathlib.Path("Control_TMA_1372_111_06.19.2019")/"dbload":
       old = dataroot/foldername
       new = testroot/foldername
