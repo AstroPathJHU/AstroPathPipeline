@@ -20,10 +20,10 @@ from ...utilities.tableio import TableReader
 class CsvScanRectangle(GeomLoadRectangle, PhenotypedRectangle):
   pass
 
-class CsvScanBase(RunFromArgumentParser, TableReader):
+class CsvScanBase(TableReader):
   @property
   @abc.abstractmethod
-  def logger(self): pass
+  def logger(self): return super().logger
 
   def processcsv(self, csv, csvclass, tablename, extrakwargs={}, *, SlideID, checkcsv=True, fieldsizelimit=None):
     self.logger.debug(f"Processing {csv}")
@@ -45,6 +45,10 @@ class CsvScanBase(RunFromArgumentParser, TableReader):
     )
 
   @classmethod
+  def logmodule(cls): return "csvscan"
+
+class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
+  @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
@@ -58,8 +62,11 @@ class CsvScanBase(RunFromArgumentParser, TableReader):
     }
     return kwargs
 
-class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase, CsvScanBase):
+class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase):
   rectangletype = CsvScanRectangle
+  @property
+  def logger(self): return super().logger
+
   @property
   def rectangleextrakwargs(self):
     return {
@@ -217,9 +224,6 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs)
-
-  @classmethod
-  def logmodule(cls): return "csvscan"
 
   @classmethod
   def workflowdependencies(cls):

@@ -15,49 +15,40 @@ class WorkflowDependency(ThingWithRoots):
 
   @classmethod
   @abc.abstractmethod
-  def getoutputfiles(cls, SlideID, **workflowkwargs):
+  def getoutputfiles(cls, **workflowkwargs):
     """
     Output files that this step is supposed to produce
     """
     return []
 
   @classmethod
-  def getmissingoutputfiles(cls, SlideID, **workflowkwargs):
+  def getmissingoutputfiles(cls, **workflowkwargs):
     """
     Output files that were supposed to be produced but are missing
     """
-    return [_ for _ in cls.getoutputfiles(SlideID, **workflowkwargs) if not _.exists()]
+    return [_ for _ in cls.getoutputfiles(**workflowkwargs) if not _.exists()]
 
   @property
   def outputfiles(self):
     """
     Output files that this step is supposed to produce
     """
-    return self.getoutputfiles(self.SlideID, **self.workflowkwargs)
+    return self.getoutputfiles(**self.workflowkwargs)
 
   @property
   def missingoutputfiles(self):
     """
     Output files that were supposed to be produced but are missing
     """
-    return self.getmissingoutputfiles(self.SlideID, **self.workflowkwargs)
+    return self.getmissingoutputfiles(**self.workflowkwargs)
 
   @classmethod
   @abc.abstractmethod
-  def logmodule(cls): pass
-
-
-  @property
+  def getlogfile(cls, *, logroot, **workflowkwargs):
+    pass
+  @classmethod
   @abc.abstractmethod
-  def SlideID(self): pass
-
-  @classmethod
-  def getsamplelog(cls, SlideID, *, logroot, **otherworkflowkwargs):
-    return logroot/SlideID/"logfiles"/f"{SlideID}-{cls.logmodule()}.log"
-
-  @classmethod
-  def getrunstatus(cls, SlideID, **workflowkwargs):
-    return SampleRunStatus.fromlog(samplelog=cls.getsamplelog(SlideID, **workflowkwargs), module=cls.logmodule(), missingfiles=cls.getmissingoutputfiles(SlideID, **workflowkwargs), startregex=cls.logstartregex(), endregex=cls.logendregex())
+  def usegloballogger(cls): pass
 
   @classmethod
   @abc.abstractmethod
@@ -66,6 +57,11 @@ class WorkflowDependency(ThingWithRoots):
   @abc.abstractmethod
   def logendregex(cls): pass
 
+  @classmethod
+  def getrunstatus(cls, *, SlideID, **workflowkwargs):
+    workflowkwargs["SlideID"] = SlideID
+    return SampleRunStatus.fromlog(SlideID=SlideID, samplelog=cls.getlogfile(**workflowkwargs), module=cls.logmodule(), missingfiles=cls.getmissingoutputfiles(**workflowkwargs), startregex=cls.logstartregex(), endregex=cls.logendregex())
+
   @property
   def runstatus(self):
     """
@@ -73,7 +69,7 @@ class WorkflowDependency(ThingWithRoots):
     the sample ran successfully or not, and information about
     the failure, if any.
     """
-    return self.getrunstatus(self.SlideID, **self.workflowkwargs)
+    return self.getrunstatus(**self.workflowkwargs)
 
   @property
   def rootnames(self):
@@ -84,7 +80,39 @@ class WorkflowDependency(ThingWithRoots):
   def logroot(self):
     pass
 
-class ExternalDependency(WorkflowDependency):
+  @abc.abstractmethod
+  def run(self):
+    pass
+
+  @property
+  @abc.abstractmethod
+  def logger(self):
+    pass
+  @abc.abstractmethod
+  def joblock(self):
+    pass
+
+class WorkflowDependencySlideID(WorkflowDependency):
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "SlideID": self.SlideID,
+    }
+
+  @classmethod
+  @abc.abstractmethod
+  def logmodule(cls): pass
+
+  @property
+  @abc.abstractmethod
+  def SlideID(self): pass
+
+  @classmethod
+  def getlogfile(cls, *, SlideID, logroot, **otherworkflowkwargs):
+    return logroot/SlideID/"logfiles"/f"{SlideID}-{cls.logmodule()}.log"
+
+class ExternalDependency(WorkflowDependencySlideID):
   def __init__(self, SlideID, logroot):
     self.__SlideID = SlideID
     self.__logroot = logroot
@@ -141,7 +169,7 @@ class SampleRunStatus:
     return self.previousrun.nruns + 1
 
   @classmethod
-  def fromlog(cls, *, samplelog, module, missingfiles, startregex, endregex):
+  def fromlog(cls, *, samplelog, SlideID, module, missingfiles, startregex, endregex):
     """
     Create a SampleRunStatus object by reading the log file.
     samplelog: from CohortFolder/SlideID/logfiles/SlideID-module.log
@@ -161,7 +189,9 @@ class SampleRunStatus:
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
-          if not row["message"]:
+          if row["SlideID"] != SlideID:
+            continue
+          elif not row["message"]:
             continue
           elif re.match(startregex, row["message"]):
             started = True
