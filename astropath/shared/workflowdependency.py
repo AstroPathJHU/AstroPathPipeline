@@ -55,8 +55,9 @@ class WorkflowDependency(ThingWithRoots):
   def logendregex(cls): pass
 
   @classmethod
-  def getrunstatus(cls, **workflowkwargs):
-    return SampleRunStatus.fromlog(samplelog=cls.getlogfile(**workflowkwargs), module=cls.logmodule(), missingfiles=cls.getmissingoutputfiles(**workflowkwargs), startregex=cls.logstartregex(), endregex=cls.logendregex())
+  def getrunstatus(cls, *, SlideID, **workflowkwargs):
+    workflowkwargs["SlideID"] = SlideID
+    return SampleRunStatus.fromlog(SlideID=SlideID, samplelog=cls.getlogfile(**workflowkwargs), module=cls.logmodule(), missingfiles=cls.getmissingoutputfiles(**workflowkwargs), startregex=cls.logstartregex(), endregex=cls.logendregex())
 
   @property
   def runstatus(self):
@@ -78,6 +79,14 @@ class WorkflowDependency(ThingWithRoots):
 
   @abc.abstractmethod
   def run(self):
+    pass
+
+  @property
+  @abc.abstractmethod
+  def logger(self):
+    pass
+  @abc.abstractmethod
+  def joblock(self):
     pass
 
 class WorkflowDependencySlideID(WorkflowDependency):
@@ -157,7 +166,7 @@ class SampleRunStatus:
     return self.previousrun.nruns + 1
 
   @classmethod
-  def fromlog(cls, *, samplelog, module, missingfiles, startregex, endregex):
+  def fromlog(cls, *, samplelog, SlideID, module, missingfiles, startregex, endregex):
     """
     Create a SampleRunStatus object by reading the log file.
     samplelog: from CohortFolder/SlideID/logfiles/SlideID-module.log
@@ -177,7 +186,9 @@ class SampleRunStatus:
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
-          if not row["message"]:
+          if row["SlideID"] != SlideID:
+            continue
+          elif not row["message"]:
             continue
           elif re.match(startregex, row["message"]):
             started = True

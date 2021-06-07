@@ -1,4 +1,4 @@
-import contextlib, csv, dataclasses, dataclassy, datetime, pathlib
+import abc, contextlib, csv, dataclasses, dataclassy, datetime, pathlib
 
 from .dataclasses import MetaDataAnnotation, MyDataClass
 from .misc import dummylogger
@@ -129,7 +129,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
   if printevery is not None:
     logger.info("finished!")
 
-class TableReader:
+class TableReader(abc.ABC):
   """
   Base class that has a readtable function
   so that you can override it and call super()

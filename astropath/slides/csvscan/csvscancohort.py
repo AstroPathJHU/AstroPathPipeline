@@ -1,37 +1,26 @@
-import re
-from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
+import contextlib, job_lock, re
+from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
 from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
 from ...shared.sample import SampleDef
-from .csvscansample import CsvScanBase, CsvScanSample
+from ...shared.workflowdependency import WorkflowDependency
+from .csvscansample import CsvScanBase, CsvScanSample, RunCsvScanBase
 
-class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort, CsvScanBase):
-  sampleclass = CsvScanSample
-  __doc__ = sampleclass.__doc__
+class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, contextlib.ExitStack):
+  def __init__(self, *args, reraiseexceptions=True, **kwargs):
+    self.reraiseexceptions = reraiseexceptions
+    super().__init__(*args, **kwargs)
 
-  def runsample(self, sample, **kwargs):
-    return sample.runcsvscan(**kwargs)
-
-  def run(self, *, checkcsvs=True, print_errors=False, **kwargs):
-    super().run(checkcsvs=checkcsvs, print_errors=print_errors, **kwargs)
-    if not print_errors:
-      with self.globaljoblock(outputfiles=[self.csv("loadfiles")]) as lock:
-        if not lock: return
-        if self.csv("loadfiles").exists(): return
-        with self.globallogger():
-          self.makeglobalcsv(checkcsv=checkcsvs)
+  def __enter__(self):
+    self.enter_context(self.logger)
 
   @property
-  def globalcsvs(self):
-    sampledefs = self.readtable(self.root/"sampledef.csv", SampleDef)
-    slideids = [s.SlideID for s in sampledefs]
-    for folder in {self.root}:
-      for subfolder in folder.iterdir():
-        if subfolder.name.endswith(".csv"): yield subfolder
-        if not subfolder.is_dir(): continue
-        if subfolder.name in slideids: continue
-        yield from subfolder.rglob("*.csv")
+  def samp(self):
+    return SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
 
-  def makeglobalcsv(self, *, checkcsv=True):
+  def inputfiles(self, *, checkcsvs=True):
+    return []  #will be checked in run()
+
+  def runcsvscan(self, *, checkcsvs=True):
     toload = []
     batchcsvs = {
       self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
@@ -134,6 +123,82 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
 
     self.dbload.mkdir(exist_ok=True)
     self.writecsv("loadfiles", loadfiles, header=False)
+
+  run = runcsvscan
+
+  @property
+  def globalcsvs(self):
+    sampledefs = self.readtable(self.root/"sampledef.csv", SampleDef)
+    slideids = [s.SlideID for s in sampledefs]
+    for folder in {self.root}:
+      for subfolder in folder.iterdir():
+        if subfolder.name.endswith(".csv"): yield subfolder
+        if not subfolder.is_dir(): continue
+        if subfolder.name in slideids: continue
+        yield from subfolder.rglob("*.csv")
+
+  @classmethod
+  def defaultunits(cls): return CsvScanSample.defaultunits()
+  @classmethod
+  def getlogfile(cls, *, logroot, **workflowkwargs):
+    return logroot/"logfiles"/f"{cls.logmodule()}.log"
+  def joblock(self, **kwargs):
+    self.mainlog.parent.mkdir(exist_ok=True, parents=True)
+    return job_lock.JobLock(self.mainlog.with_suffix(".lock"), **kwargs)
+
+  @classmethod
+  def logstartregex(cls): return rf"{cls.logmodule()} v[0-9a-f.devgd+]+$"
+  @classmethod
+  def logendregex(cls): return rf"end {cls.logmodule()}"
+
+  @classmethod
+  def getoutputfiles(cls, *, dbloadroot, Project, **workflowkwargs):
+    return [dbloadroot/"dbload"/"project{Project}_loadfiles.csv"]
+
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "SlideID": f"project{self.Project}",
+      "Project": self.Project,
+    }
+
+class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort, RunCsvScanBase):
+  sampleclass = CsvScanSample
+  __doc__ = sampleclass.__doc__
+
+  @property
+  def filteredsamples(self):
+    yield from super().filteredsamples
+    yield self.globalcsv()
+
+  def runsample(self, sample, **kwargs):
+    return sample.runcsvscan(**kwargs)
+
+  def run(self, *, checkcsvs=True, print_errors=False, **kwargs):
+    super().run(checkcsvs=checkcsvs, print_errors=print_errors, **kwargs)
+
+  @property
+  def globalcsvinitkwargs(self):
+    return {
+      k: v for k, v in self.initiatesamplekwargs.items()
+      if {
+        "dbloadroot": True,
+        "geomroot": False,
+        "im3root": False,
+        "informdataroot": False,
+        "logroot": True,
+        "phenotyperoot": False,
+        "reraiseexceptions": True,
+        "root": True,
+        "selectrectangles": False,
+        "uselogfiles": True,
+        "xmlfolders": False,
+      }[k]
+    }
+
+  def globalcsv(self):
+    return CsvScanGlobalCsv(**self.globalcsvinitkwargs)
 
 def main(args=None):
   CsvScanCohort.runfromargumentparser(args)

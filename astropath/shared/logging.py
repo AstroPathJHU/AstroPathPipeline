@@ -31,7 +31,10 @@ class MyLogger:
     if mainlog is None:
       mainlog = self.root/"logfiles"/f"{self.module}.log"
     if samplelog is None:
-      samplelog = self.root/self.SlideID/"logfiles"/f"{self.SlideID}-{self.module}.log"
+      self.root
+      self.samp.SlideID
+      self.module
+      samplelog = self.root/self.samp.SlideID/"logfiles"/f"{self.samp.SlideID}-{self.module}.log"
     self.mainlog = pathlib.Path(mainlog)
     self.samplelog = pathlib.Path(samplelog)
     self.imagelog = None if imagelog is None else pathlib.Path(imagelog)

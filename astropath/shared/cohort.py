@@ -4,16 +4,20 @@ from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
 from .sample import SampleBase, SampleDef
-from .workflowdependency import ThingWithRoots
+from .workflowdependency import ThingWithRoots, WorkflowDependency
 
 class CohortBase(ThingWithRoots):
   """
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
   """
-  def __init__(self, *args, root, **kwargs):
+  def __init__(self, *args, root, logroot=None, uselogfiles=True, reraiseexceptions=False, **kwargs):
     super().__init__(*args, **kwargs)
-    self.root = pathlib.Path(root)
+    self.__root = pathlib.Path(root)
+    if logroot is None: logroot = self.__root
+    self.__logroot = pathlib.Path(logroot)
+    self.uselogfiles = uselogfiles
+    self.reraiseexceptions = reraiseexceptions
 
   @property
   def sampledefs(self): return readtable(self.root/"sampledef.csv", SampleDef)
@@ -28,6 +32,36 @@ class CohortBase(ThingWithRoots):
     Cohort, = {_.Cohort for _ in self.sampledefs}
     return Cohort
 
+  def globallogger(self):
+    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
+    return self.getlogger(samp, isglobal=True)
+
+  @property
+  def logger(self): return self.globallogger()
+  @property
+  def mainlog(self): return self.logger.mainlog
+
+  def globaljoblock(self, **kwargs):
+    lockfile = self.globallogger().mainlog.with_suffix(".lock")
+    lockfile.parent.mkdir(exist_ok=True, parents=True)
+    return job_lock.JobLock(lockfile, **kwargs)
+
+  def getlogger(self, samp, **kwargs):
+    if isinstance(samp, WorkflowDependency): samp = samp.samp
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, **kwargs)
+
+  @classmethod
+  @abc.abstractmethod
+  def logmodule(cls): pass
+
+  @property
+  def root(self): return self.__root
+  @property
+  def logroot(self): return self.__logroot
+  @property
+  def rootnames(self):
+    return {*super().rootnames, "root", "logroot"}
+
 class Cohort(CohortBase, RunFromArgumentParser):
   """
   Base class for a cohort that can be run in a loop
@@ -40,18 +74,14 @@ class Cohort(CohortBase, RunFromArgumentParser):
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, *args, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, im3root=None, informdataroot=None, xmlfolders=[], version_requirement=None, **kwargs):
-    super().__init__(*args, **kwargs)
-    if logroot is None: logroot = self.root
-    self.logroot = pathlib.Path(logroot)
+  def __init__(self, *args, slideidfilters=[], samplefilters=[], im3root=None, debug=False, informdataroot=None, xmlfolders=[], version_requirement=None, **kwargs):
+    super().__init__(*args, reraiseexceptions=debug, **kwargs)
     if im3root is None: im3root = self.root
     self.im3root = pathlib.Path(im3root)
     if informdataroot is None: informdataroot = self.root
     self.informdataroot = pathlib.Path(informdataroot)
     self.slideidfilters = slideidfilters
     self.samplefilters = samplefilters
-    self.debug = debug
-    self.uselogfiles = uselogfiles
     self.xmlfolders = xmlfolders
 
   @property
@@ -103,7 +133,7 @@ class Cohort(CohortBase, RunFromArgumentParser):
   @property
   def initiatesamplekwargs(self):
     "Keyword arguments to pass to the sample class"
-    return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders}
+    return {"root": self.root, "reraiseexceptions": self.reraiseexceptions, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders}
 
   @classmethod
   def logmodule(cls):
@@ -112,23 +142,10 @@ class Cohort(CohortBase, RunFromArgumentParser):
 
   @property
   def rootnames(self):
-    return {*super().rootnames, "root", "logroot", "im3root", "informdataroot"}
+    return {*super().rootnames, "im3root", "informdataroot"}
   @property
   def workflowkwargs(self):
     return self.rootkwargs
-
-  def globallogger(self):
-    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
-    return self.getlogger(samp, isglobal=True)
-
-  def globaljoblock(self, **kwargs):
-    lockfile = self.globallogger().mainlog.with_suffix(".lock")
-    lockfile.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(lockfile, **kwargs)
-
-  def getlogger(self, samp, **kwargs):
-    if isinstance(samp, SampleBase): samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug, **kwargs)
 
   def run(self, **kwargs):
     """
@@ -230,7 +247,7 @@ class Im3Cohort(Cohort, Im3ArgumentParser):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "root2": self.root2}
 
-class DbloadCohortBase(CohortBase, DbloadArgumentParser):
+class DbloadCohortBase(CohortBase):
   def __init__(self, *args, dbloadroot=None, **kwargs):
     super().__init__(*args, **kwargs)
     if dbloadroot is None: dbloadroot = self.root
@@ -240,11 +257,7 @@ class DbloadCohortBase(CohortBase, DbloadArgumentParser):
   def rootnames(self):
     return {*super().rootnames, "dbloadroot"}
 
-  @property
-  def initiatesamplekwargs(self):
-    return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
-
-class DbloadCohort(Cohort, DbloadCohortBase):
+class DbloadCohort(Cohort, DbloadCohortBase, DbloadArgumentParser):
   """
   Base class for any cohort that uses the dbload folder
   dbloadroot: an alternate root to use for the dbload folder instead of root
@@ -252,9 +265,11 @@ class DbloadCohort(Cohort, DbloadCohortBase):
               (default: same as root)
   """
 
-class GlobalDbloadCohortBase(DbloadCohortBase, TableReader):
   @property
-  def logger(self): return self.globallogger()
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
+
+class GlobalDbloadCohortBase(DbloadCohortBase, TableReader):
   @property
   def dbload(self):
     return self.dbloadroot/"dbload"
