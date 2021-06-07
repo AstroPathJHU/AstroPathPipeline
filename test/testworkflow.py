@@ -50,6 +50,9 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
     args = [os.fspath(root), os.fspath(root2), "--im3root", os.fspath(datafolder), "--informdataroot", os.fspath(datafolder), "--zoomroot", os.fspath(zoomroot), "--deepzoomroot", os.fspath(deepzoomroot), "--selectrectangles", *(str(_) for _ in selectrectangles), "--layers", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
     try:
       Workflow.runfromargumentparser(args=args)
-      assert (testfolder/"dbload"/"project0_loadfiles.csv").exists()
-    finally:
+      assert (root/"dbload"/"project0_loadfiles.csv").exists()
+    except:
+      self.saveoutput()
+      raise
+    else:
       self.removeoutput()
