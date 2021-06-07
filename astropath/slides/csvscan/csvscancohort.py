@@ -151,6 +151,8 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
     return job_lock.JobLock(self.mainlog.with_suffix(".lock"), **kwargs)
 
   @classmethod
+  def usegloballogger(cls): return True
+  @classmethod
   def logstartregex(cls): return rf"{cls.logmodule()} v[0-9a-f.devgd+]+$"
   @classmethod
   def logendregex(cls): return rf"end {cls.logmodule()}"

@@ -46,9 +46,11 @@ class CohortBase(ThingWithRoots):
     lockfile.parent.mkdir(exist_ok=True, parents=True)
     return job_lock.JobLock(lockfile, **kwargs)
 
-  def getlogger(self, samp, **kwargs):
-    if isinstance(samp, WorkflowDependency): samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, **kwargs)
+  def getlogger(self, samp, *, isglobal=False, **kwargs):
+    if isinstance(samp, WorkflowDependency):
+      isglobal = isglobal or samp.usegloballogger()
+      samp = samp.samp
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, **kwargs)
 
   @classmethod
   @abc.abstractmethod

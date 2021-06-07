@@ -113,6 +113,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
   def informdataroot(self): return self.__informdataroot
   @property
   def logger(self): return self.__logger
+  @classmethod
+  def usegloballogger(cls): return False
 
   @property
   def rootnames(self):

@@ -46,6 +46,9 @@ class WorkflowDependency(ThingWithRoots):
   @abc.abstractmethod
   def getlogfile(cls, *, logroot, **workflowkwargs):
     pass
+  @classmethod
+  @abc.abstractmethod
+  def usegloballogger(cls): pass
 
   @classmethod
   @abc.abstractmethod
