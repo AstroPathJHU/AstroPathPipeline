@@ -184,6 +184,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
         }.get(match.group(1), {})
         fieldsizelimit = {
           "regions": 500000,
+          "tumorGeometry": 500000,
         }.get(match.group(1), None)
       elif csv.parent == self.geomfolder:
         csvclass = CellGeomLoad
