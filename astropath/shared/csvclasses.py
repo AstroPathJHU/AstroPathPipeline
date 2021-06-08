@@ -412,7 +412,7 @@ def MakeClinicalInfo(filename):
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
     kwargs = {renamekwargs.get(kw, kw): kwarg for kw, kwarg in kwargs.items()}
-    return super().transforminitargs(*args, **kwargs)
+    return super(ClinicalInfo, cls).transforminitargs(*args, **kwargs)
 
   with open(filename) as f:
     reader = csv.DictReader(f)
