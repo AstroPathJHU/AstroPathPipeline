@@ -408,11 +408,21 @@ def MakeClinicalInfo(filename):
     if "Date" in fieldname: return datetime.datetime, datefield(__dateformat)
     return str, __nodefault
 
+  renamekwargs = {}
+  @classmethod
+  def transforminitargs(cls, *args, **kwargs):
+    kwargs = {renamekwargs.get(kw, kw): kwarg for kw, kwarg in kwargs.items()}
+    return super().transforminitargs(*args, **kwargs)
+
   with open(filename) as f:
     reader = csv.DictReader(f)
     annotations = {}
-    defaults = {}
+    defaults = {"transforminitargs": transforminitargs}
     for fieldname in reader.fieldnames:
+      if " " in fieldname:
+        newname = fieldname.replace(" ", "")
+        renamekwargs[fieldname] = newname
+        fieldname = newname
       annotations[fieldname], default = annotationanddefault(fieldname)
       if default is not __nodefault:
         defaults[fieldname] = default
