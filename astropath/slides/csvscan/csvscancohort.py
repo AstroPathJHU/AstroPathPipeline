@@ -170,7 +170,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
     }
 
   def workflowdependencies(self):
-    return [(CsvScanSample, sampledef.SlideID) for sampledef in self.sampledefs]
+    return [(CsvScanSample, sampledef.SlideID) for sampledef in self.sampledefs if sampledef]
 
 class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort, RunCsvScanBase):
   sampleclass = CsvScanSample
