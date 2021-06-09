@@ -16,8 +16,8 @@ class Const :
     def STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM(self) :
         return 'std_err_of_mean_image.bin' #suffix to name of the standard error of the meanimage .bin file created by meanimagesample
     @property
-    def BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM(self) :
-        return 'background_thresholds.txt' #suffix to name of the background threshold .txt file created by meanimagesample
+    def BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM(self) :
+        return 'background_thresholds.csv' #suffix to name of the background threshold .txt file created by meanimagesample
     @property
     def METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME(self) :
         return 'metadata_summary_stacked_images.csv' #name of the .csv file giving the metadata summary for the HPFs that were stacked 

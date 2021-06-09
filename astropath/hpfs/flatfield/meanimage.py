@@ -1,7 +1,7 @@
 #imports
 from .config import CONST 
 from ..image_masking.image_mask import ImageMask
-from ...utilities.img_file_io import writeImageToFile, smoothImageWorker, smoothImageWithUncertaintyWorker
+from ...utilities.img_file_io import writeImageToFile, smooth_image_worker, smoothImageWithUncertaintyWorker
 from ...utilities.tableio import writetable
 from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST

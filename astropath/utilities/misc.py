@@ -128,6 +128,12 @@ class MetadataSummary(MyDataClass):
   mindate         : str
   maxdate         : str
 
+#A small dataclass to hold entries in the background threshold datatable
+class ThresholdTableEntry(MyDataClass) :
+  layer_n                 : int
+  counts_threshold        : int
+  counts_per_ms_threshold : float
+
 #helper function to return a list of rectangle ns for all rectangles on the edge of the tissue for this slide
 def getAlignSampleTissueEdgeRectNs(aset) :
   #get the list of sets of rectangle IDs by island

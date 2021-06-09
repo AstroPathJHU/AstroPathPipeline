@@ -98,7 +98,7 @@ def writeImageToFile(img_array,filename_to_write,dtype=np.uint16) :
 
 #helper function to smooth an image
 #this can be run in parallel on the GPU
-def smoothImageWorker(im_array,smoothsigma,return_list=None) :
+def smooth_image_worker(im_array,smoothsigma,return_list=None) :
   if return_list is not None :
     im_in_umat = cv2.UMat(im_array)
     im_out_umat = cv2.UMat(np.empty_like(im_array))

@@ -3,7 +3,7 @@ from .utilities import LabelledMaskRegion, getEnumeratedMask, getSizeFilteredMas
 from .utilities import getMorphedAndFilteredMask, getExclusiveMask
 from .plotting import doMaskingPlotsForImage
 from .config import CONST
-from ...utilities.img_file_io import smoothImageWorker, getExposureTimesByLayer, im3writeraw, writeImageToFile
+from ...utilities.img_file_io import smooth_image_worker, getExposureTimesByLayer, im3writeraw, writeImageToFile
 from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np

@@ -1,14 +1,16 @@
 #imports
 from .meanimage import MeanImage
 from .rectangle import RectangleCorrectedIm3MultiLayer
-from .plotting import plot_tissue_edge_rectangle_locations
+from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image, RectangleThresholdTableEntry
+from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms
 from .config import CONST
 from ...shared.sample import ReadRectanglesOverlapsIm3FromXML, WorkflowSample
 from ...shared.overlap import Overlap
 from ...utilities.img_file_io import LayerOffset
 from ...utilities.tableio import readtable, writetable
-from ...utilities.misc import cd, MetadataSummary
+from ...utilities.misc import cd, MetadataSummary, ThresholdTableEntry
 from ...utilities.config import CONST as UNIV_CONST
+from multiprocessing.pool import Pool
 import numpy as np
 import matplotlib.pyplot as plt
 import pathlib
@@ -51,14 +53,14 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         """
         super().initrectangles()
         self.__med_ets = None
-        if self.__et_offset_file is None :
-            return
         #find the median exposure times
         slide_exp_times = np.zeros(shape=(len(self.rectangles),self.nlayers)) 
         for ir,r in enumerate(self.rectangles) :
             slide_exp_times[ir,:] = r.allexposuretimes
         self.__med_ets = np.median(slide_exp_times,axis=0)
         #read the exposure time offsets
+        if self.__et_offset_file is None :
+            return
         offsets = self.__read_exposure_time_offsets()
         #add the exposure time correction to every rectangle's transformations
         for r in self.rectangles :
@@ -70,6 +72,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         """
         #figure out the background thresholds to use if images will be masked
         background_thresholds = None if self.__meanimage.skip_masking else self.__get_background_thresholds()
+        #make masks for every image in the slide if requested
         #loop over all rectangle images and add them to the stack
         #create and write out the final mask stack, mean image, and std. error of the mean image
 
@@ -164,11 +167,11 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         or calculating them from the rectangles on the edges of the tissue
         """
         #first check the working directory for the background threshold file
-        threshold_file_path = self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
+        threshold_file_path = self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}'
         #if it's not in the working directory, check in the slide's meanimage directory (if it exists)
         if not threshold_file_path.is_file() :
             other_threshold_file_path = self.root / f'{self.SlideID}' / f'{UNIV_CONST.IM3_DIR_NAME}' / f'{UNIV_CONST.MEANIMAGE_DIRNAME}' 
-            other_threshold_file_path = other_threshold_file_path / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
+            other_threshold_file_path = other_threshold_file_path / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}'
             if other_threshold_file_path.is_file() :
                 threshold_file_path = other_threshold_file_path
         #read the values from the files or find them from the tissue edge rectangles
@@ -181,41 +184,137 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         """
         Return the list of background thresholds found in a given file
         """
-        background_thresholds_to_return = []
         self.logger.info(f'Reading background thresholds for {self.SlideID} from file {threshold_file_path}')
-        with open(threshold_file_path,'r') as tfp :
-            all_lines = [l.rstrip() for l in tfp.readlines()]
-            for line in all_lines :
-                try :
-                    background_thresholds_to_return.append(int(line))
-                except ValueError :
-                    pass
-        if not len(background_thresholds_to_return)==self.nlayers :
-            errmsg = f'ERROR: number of background thresholds read from {threshold_file_path} is not equal to the number of image layers!'
-            errmsg+= f' (read {len(background_thresholds_to_return)} values but there are {self.nlayers} image layers)'
-            raise ValueError(errmsg)
+        background_thresholds_read = readtable(threshold_file_path,ThresholdTableEntry)
+        background_thresholds_to_return = []
+        for li in range(self.nlayers) :
+            layer_counts_threshold = [t.counts_threshold for t in background_thresholds_read if t.layer_n==li+1]
+            if len(layer_counts_threshold)>1 :
+                raise ValueError(f'ERROR: conflicting background thresholds for layer {li+1} listed in {threshold_file_path}')
+            elif len(layer_counts_threshold)==0 :
+                raise ValueError(f'ERROR: no background threshold for layer {li+1} listed in {threshold_file_path}')
+            else :
+                background_thresholds_to_return.append(layer_counts_threshold[0])
         return background_thresholds_to_return
 
     def __find_background_thresholds_from_tissue_edge_images(self,threshold_file_path) :
         """
         Find, write out, and return the list of optimal background thresholds found from the set of images located on the edges of the tissue
         """
+        self.logger.info(f'Finding background thresholds for {self.SlideID} using images on the edges of the tissue')
+        thresholding_plot_dir_path = self.__workingdirpath / CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
         #add the output file(s) that will be created to the list
-        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
+        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}')
+        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}')
         self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}')
         #get the list of rectangles that are on the edge of the tissue, plot their locations, and save a summary of their metadata
         tissue_edge_rects = [r for r in self.rectangles if len(self.overlapsforrectangle(r.n))<8]
-        plot_tissue_edge_rectangle_locations(self.rectangles,tissue_edge_rects,self.root,self.SlideID,
-                                             self.__workingdirpath / CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots'))
+        self.logger.info(f'Found {len(tissue_edge_rects)} images on the edge of the tissue from a set of {len(self.rectangles)} total images')
+        plot_tissue_edge_rectangle_locations(self.rectangles,tissue_edge_rects,self.root,self.SlideID,thresholding_plot_dir_path)
         edge_rect_ts = [r.t for r in tissue_edge_rects]
         with cd(self.__workingdirpath) :
             writetable(self.__workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}',
                       [MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(edge_rect_ts)),str(max(edge_rect_ts)))])
-        #find the optimal thresholds for each tissue edge image and make plots of the thresholds found in each layer
-
-        #write out the data table of all the thresholds found
-        #make some plots and collect them in a .pdf file
+        #find the optimal thresholds for each tissue edge image, write them out, and make plots of the thresholds found in each layer
+        image_background_thresholds_by_layer, image_hists_by_layer = self.__get_background_thresholds_and_pixel_hists_for_edge_rectangles(tissue_edge_rects)
+        slide_thresholds = []
+        for li in range(self.nlayers) :
+            valid_layer_thresholds = image_background_thresholds_by_layer[:,li][image_background_thresholds_by_layer[:,li]!=0]
+            if len(valid_layer_thresholds)<1 :
+                raise RuntimeError(f"ERROR: not enough image background thresholds were found in layer {li+1} for {self.SlideID} and so this slide can't be used")
+            if not self.__et_offset_file is None :
+                slide_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),np.median(valid_layer_thresholds)/self.__med_ets[li]))
+            else :
+                slide_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),-1.))
+        with cd(self.__workingdirpath) :
+            writetable(self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}',slide_thresholds)
+        plot_image_layer_thresholds_with_histograms(image_background_thresholds_by_layer,slide_thresholds,image_hists_by_layer,thresholding_plot_dir_path)
+        #collect plots in a .pdf file
         #return the list of background thresholds
+
+    def __get_background_thresholds_and_pixel_hists_for_edge_rectangles(self,tissue_edge_rects) :
+        """
+        Return arrays of optimal background thresholds found and pixel histograms in every layer for every tissue edge rectangle image
+        Will spawn a pool of multiprocessing processes if n_threads is greater than 1
+
+        tissue_edge_rects = the list of rectangles that are on the edge of the tissue
+        """
+        #start up the lists that will be returned (and the list of datatable entries to write out)
+        with tissue_edge_rects[0].using_image() as im :
+            image_background_thresholds_by_layer = np.zeros((len(tissue_edge_rects),im.shape[-1]),dtype=im.dtype)
+            tissue_edge_layer_hists = np.zeros((np.iinfo(im.dtype).max+1,im.shape[-1]),dtype=np.uint64)
+        rectangle_data_table_entries = []
+        #run the thresholding/histogram function in multiple parallel processes
+        if self.__n_threads>1 :
+            with Pool(processes=self.__n_threads) as pool :
+                proc_results = {}; current_image_i = 0
+                for ri,r in enumerate(tissue_edge_rects[:2]) :
+                    while len(proc_results)>=self.__n_threads :
+                        for rect,res in proc_results.items() :
+                            if res.ready() :
+                                try :
+                                    thresholds, hists = res.get()
+                                    for li,t in enumerate(thresholds) :
+                                        if self.__et_offset_file is not None :
+                                            rectangle_data_table_entries.append(RectangleThresholdTableEntry(rect.n,li+1,int(t),t/self.__med_ets[li]))
+                                        else :
+                                            rectangle_data_table_entries.append(RectangleThresholdTableEntry(rect.n,li+1,int(t),t/r.allexposuretimes[li]))
+                                    image_background_thresholds_by_layer[current_image_i,:] = thresholds
+                                    tissue_edge_layer_hists+=hists
+                                    current_image_i+=1
+                                    del rect.image
+                                except Exception as e :
+                                    warnmsg = f'WARNING: finding thresholds for rectangle {r.n} ({r.file}) failed '
+                                    warnmsg+= f'with error {e} and this rectangle WILL BE SKIPPED when finding thresholds for the overall slide!'
+                                    self.logger.warning(warnmsg)
+                                finally :
+                                    del proc_results[r]
+                                    break
+                    self.logger.info(f'Finding background thresholds for {r.file} ({ri+1} of {len(tissue_edge_rects)})....')
+                    proc_results[r] = pool.apply_async(get_background_thresholds_and_pixel_hists_for_rectangle_image,(r.image,))
+                for rect,res in proc_results.items() :
+                    try :
+                        thresholds, hists = res.get()
+                        for li,t in enumerate(thresholds) :
+                            if self.__et_offset_file is not None :
+                                rectangle_data_table_entries.append(RectangleThresholdTableEntry(rect.n,li+1,int(t),t/self.__med_ets[li]))
+                            else :
+                                rectangle_data_table_entries.append(RectangleThresholdTableEntry(rect.n,li+1,int(t),t/r.allexposuretimes[li]))
+                        image_background_thresholds_by_layer[current_image_i,:] = thresholds
+                        tissue_edge_layer_hists+=hists
+                        current_image_i+=1
+                        del rect.image
+                    except Exception as e :
+                        warnmsg = f'WARNING: finding thresholds for rectangle {r.n} ({r.file}) failed '
+                        warnmsg+= f'with the error "{e}" and this rectangle WILL BE SKIPPED when finding thresholds for the overall slide!'
+                        self.logger.warning(warnmsg)
+        #run the thresholding/histogram function serially in this current single process
+        else :
+            for ri,r in enumerate(tissue_edge_rects) :
+                self.logger.info(f'Finding background thresholds for {r.file} ({ri+1} of {len(tissue_edge_rects)})....')
+                try :
+                    thresholds, hists = get_background_thresholds_and_pixel_hists_for_rectangle_image(r.image)
+                    del r.image
+                    for li,t in enumerate(thresholds) :
+                        if self.__et_offset_file is not None :
+                            rectangle_data_table_entries.append(RectangleThresholdTableEntry(r.n,li+1,int(t),t/self.__med_ets[li]))
+                        else :
+                            rectangle_data_table_entries.append(RectangleThresholdTableEntry(r.n,li+1,int(t),t/r.allexposuretimes[li]))
+                    image_background_thresholds_by_layer[current_image_i,:] = thresholds
+                    tissue_edge_layer_hists+=hists
+                except Exception as e :
+                    warnmsg = f'WARNING: finding thresholds for rectangle {r.n} ({r.file}) failed '
+                    warnmsg+= f'with error {e} and this rectangle WILL BE SKIPPED when finding thresholds for the overall slide!'
+                    self.logger.warning(warnmsg)
+        #write out the data table of all the individual rectangle layer thresholds
+        if len(rectangle_data_table_entries)>0 :
+            with cd(self.__workingdirpath) :
+                writetable(f'{self.SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}',rectangle_data_table_entries)
+        return image_background_thresholds_by_layer, tissue_edge_layer_hists
+
+
+
+
 
 #################### FILE-SCOPE FUNCTIONS ####################
 

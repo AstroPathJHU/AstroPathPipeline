@@ -76,11 +76,22 @@ class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
         if transformations is None : 
             transformations = []
         super().__post_init__(*args, transformations=transformations, **kwargs)
+
     def add_exposure_time_correction_transformation(self,med_ets,offsets) :
+        """
+        Add a transformation to a rectangle to correct it for differences in exposure time given:
+
+        med_ets = the median exposure times in the rectangle's slide 
+        offsets = the list of dark current offsets for the rectangle's slide
+        """
         if (med_ets is not None) and (offsets is not None) :
             self.add_transformation(RectangleExposureTimeTransformationMultiLayer(self.allexposuretimes,med_ets,offsets))
+
     def add_flatfield_correction_transformation(self,flatfield) :
+        """
+        Add a transformation to a rectangle to correct it with a given flatfield
+
+        flatfield = the flatfield correction factor image to apply
+        """
         if flatfield is not None:
             self.add_transformation(RectangleFlatfieldTransformationMultilayer(flatfield))
-
-
