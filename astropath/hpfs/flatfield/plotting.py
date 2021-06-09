@@ -87,7 +87,7 @@ def plot_image_layer_thresholds_with_histograms(image_background_thresholds_by_l
         signal_layer_log_hist = np.zeros((len(log_bins)-1),dtype=np.uint64)
         log_bin_i = 0
         for lin_bin in range(axis_min,axis_max+1) :
-            if lin_bin>log_bins[log_bin_i] :
+            if lin_bin>log_bins[log_bin_i+1] :
                 log_bin_i+=1
             if lin_bin>chosen_t :
                 signal_layer_log_hist[log_bin_i]+=hists_by_layer[lin_bin,layer_n-1]
